@@ -1,5 +1,88 @@
 # AI State
 
+## Change Log 2026-02-19 (Visual Proof + Public Authority Tranche)
+
+**Status**: COMPLETE - Added enforced screenshot baselines for Home + all IDE modes, upgraded Home into a product-grade authority surface, and tightened IDE visual hierarchy/interaction polish using frozen tokens.
+
+### What Changed
+
+1. Public authority landing upgrades
+- Updated `packages/rb-apps/src/apps/HomeApp.tsx`:
+  - upgraded flow contract from 3-step to 4-step strip:
+    - `Design -> Verify -> Export -> Vivado`
+  - added explicit credibility line below hero subtitle:
+    - `Deterministic verification + Vivado-ready export for Basys3.`
+  - added credibility block section with deterministic markers:
+    - `data-testid="home-credibility-blocks"`
+    - hash trust signal
+    - export blocking trust signal
+    - click-to-fix diagnostics trust signal
+  - added visual demo strip section:
+    - `data-testid="home-demo-strip"`
+    - three mini demo cards (`project`, `verify`, `export`) to avoid text-wall onboarding.
+- Updated `packages/rb-apps/src/apps/HomeApp.module.css`:
+  - added styles for credibility cards and demo strip cards
+  - updated flow rail to 4 columns on desktop
+  - retained responsive collapse behavior for smaller breakpoints.
+
+2. IDE visual authority pass (hierarchy + interaction consistency)
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - added focus-ring tokens:
+    - `--rb-focus-ring`
+    - `--rb-focus-ring-offset`
+  - tightened panel hierarchy:
+    - primary panels elevated and visually dominant
+    - inspector sections subdued for secondary emphasis
+  - refined typography hierarchy:
+    - panel titles at mode-level scale
+    - section headers elevated above helper text
+  - strengthened interaction polish:
+    - consistent `:focus-visible` behavior for controls
+    - hover/active/disabled styling consistency on buttons/tabs/signal rows
+    - primary CTA alignment behavior in action rows remains deterministic via `data-testid="ide-primary-cta"` marker contract.
+
+3. Screenshot baseline gate with deterministic capture contract
+- Added `tests/e2e/ide-screenshot-baseline.spec.ts`:
+  - captures and asserts six baselines at `1920x1080`:
+    1. Home authority hero
+    2. IDE Project
+    3. IDE Design
+    4. IDE Verify
+    5. IDE Export
+    6. IDE Import
+  - deterministic capture controls:
+    - local/session storage cleared
+    - fixed Date + fixed random seed
+    - reduced motion + disabled transitions/animations for screenshot stability.
+- Added committed baseline assets:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/*.png` (6 files)
+- Updated script wiring:
+  - `package.json`:
+    - `ide:gate:screenshots`
+    - `ide:gate:screenshots:update`
+  - both scripts now build playground first to prevent stale-dist baseline drift.
+- Updated gate runners:
+  - `scripts/repo-status.mjs` now includes blocking `IDE Screenshot Baselines` check.
+  - `scripts/verify-gates-classroom.mjs` now includes `ide:screenshot-baselines`.
+
+4. Design-system doc verification extension
+- Updated `docs/ide/design-system-v1.md`:
+  - added `ide:gate:screenshots` under verification contract.
+
+### Validation Executed
+
+- `pnpm -s ide:gate:screenshots:update` -> PASS (baselines regenerated against fresh build)
+- `pnpm -s ide:gate:screenshots` -> PASS
+- `pnpm -s ide:gate:design-system-contract` -> PASS
+- `pnpm -s ide:gate:visual-contract` -> PASS
+- `pnpm -s ide:gate:primary-cta-contract` -> PASS
+- `pnpm -w exec vitest run packages/rb-apps/src/__tests__/home-app-onboarding.test.tsx packages/rb-shell/src/__tests__/ui-quality-gate.test.ts` -> PASS
+- `pnpm repo:status` -> PASS (10/10 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Authority Launch Hero + Design System Freeze Contract)
 
 **Status**: COMPLETE - Upgraded the public launch surface to communicate deterministic FPGA workflow at-a-glance, froze a design-system v1 contract doc, and added a static gate to prevent visual-system drift.

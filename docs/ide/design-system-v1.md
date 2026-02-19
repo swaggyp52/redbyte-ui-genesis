@@ -98,3 +98,4 @@ Visual quality is a correctness signal. Every screen must feel deterministic, in
 - `ide:gate:visual-contract`
 - `ide:gate:primary-cta-contract`
 - `ide:gate:examples-contract`
+- `ide:gate:screenshots`
