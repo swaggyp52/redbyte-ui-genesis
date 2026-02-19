@@ -15,7 +15,9 @@ const BASYS3_LED_PINS = [
   'V13', 'V3', 'W3', 'U3', 'P3', 'N3', 'P1', 'L1',
 ];
 
-const BASYS3_ALLOWED_PACKAGE_PINS = new Set([...BASYS3_SWITCH_PINS, ...BASYS3_LED_PINS]);
+const BASYS3_CLOCK_PIN = 'W5';
+
+const BASYS3_ALLOWED_PACKAGE_PINS = new Set([...BASYS3_SWITCH_PINS, ...BASYS3_LED_PINS, BASYS3_CLOCK_PIN]);
 
 function sanitizeIdentifier(name) {
   return name.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^(\d)/, '_$1');
@@ -39,17 +41,21 @@ function toSignalName(entry) {
 }
 
 function pinToPackagePin(pin) {
-  if (pin.startsWith('SW')) {
-    const index = Number.parseInt(pin.slice(2), 10);
+  const normalized = pin.trim().toUpperCase();
+  if (normalized.startsWith('SW')) {
+    const index = Number.parseInt(normalized.slice(2), 10);
     return Number.isFinite(index) && index >= 0 && index < BASYS3_SWITCH_PINS.length
       ? BASYS3_SWITCH_PINS[index]
       : null;
   }
-  if (pin.startsWith('LD')) {
-    const index = Number.parseInt(pin.slice(2), 10);
+  if (normalized.startsWith('LD')) {
+    const index = Number.parseInt(normalized.slice(2), 10);
     return Number.isFinite(index) && index >= 0 && index < BASYS3_LED_PINS.length
       ? BASYS3_LED_PINS[index]
       : null;
+  }
+  if (normalized === 'CLK100MHZ') {
+    return BASYS3_CLOCK_PIN;
   }
   return null;
 }

@@ -57,19 +57,20 @@ function toSignalName(entry: IoMappingEntry): string {
 }
 
 function pinToPackagePin(pin: string): string | null {
-  if (pin.startsWith('SW')) {
-    const index = Number.parseInt(pin.slice(2), 10);
+  const normalized = pin.trim().toUpperCase();
+  if (normalized.startsWith('SW')) {
+    const index = Number.parseInt(normalized.slice(2), 10);
     return Number.isFinite(index) && index >= 0 && index < BASYS3_SWITCH_PINS.length
       ? BASYS3_SWITCH_PINS[index]
       : null;
   }
-  if (pin.startsWith('LD')) {
-    const index = Number.parseInt(pin.slice(2), 10);
+  if (normalized.startsWith('LD')) {
+    const index = Number.parseInt(normalized.slice(2), 10);
     return Number.isFinite(index) && index >= 0 && index < BASYS3_LED_PINS.length
       ? BASYS3_LED_PINS[index]
       : null;
   }
-  if (pin === 'CLK100MHZ') {
+  if (normalized === 'CLK100MHZ') {
     return BASYS3_CLOCK_PIN;
   }
   return null;

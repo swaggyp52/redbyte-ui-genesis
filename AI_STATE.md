@@ -25,7 +25,13 @@
   - added explicit signal mapping for `q/out` outputs.
   - normalized warning text to ASCII for deterministic gate output.
 
-3. Export diagnostics mapping expanded for compiler identity
+3. JS mirror alignment for Basys3 bundle path
+- Updated `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.js` to remain 1:1 with TS behavior where runtime resolution prefers `.js`:
+  - added robust pin alias normalization (`trim().toUpperCase()`).
+  - restored explicit `CLK100MHZ -> W5` alias support.
+  - extended allowed package pin set with Basys3 clock pin (`W5`).
+
+4. Export diagnostics mapping expanded for compiler identity
 - Updated `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`:
   - added node-id extraction from compiler messages.
   - added diagnostic code/title coverage for new synth-subset failures:
@@ -40,7 +46,7 @@
     - `RBEX4204` unsupported reset polarity
     - `RBEX4300` unsupported top-level bus port.
 
-4. New synth-subset gate and repo wiring
+5. New synth-subset gate and repo wiring
 - Added `packages/rb-apps/src/__tests__/ide-synth-subset-contract.test.ts`:
   - deterministic contract project (clock/reset/enable naming) with stable artifact checks.
   - asserts no blockers and stable `top.vhd`/`top.xdc` across repeated export.
@@ -53,9 +59,15 @@
 - Updated `scripts/verify-gates-classroom.mjs`:
   - added classroom suite gate entry for synth subset contract.
 
+6. Baseline refresh after deterministic diagnostics/render changes
+- Updated screenshot baselines:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-design-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-export-chromium-win32.png`
+
 ### Validation Executed
 
 - `pnpm -s ide:gate:synth-subset-contract` -> PASS
+- `pnpm -s ide:gate:screenshots:update` -> PASS
 - `pnpm -s vitest run packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts` -> PASS
 - `pnpm -s vitest run packages/rb-apps/src/export/__tests__/vhdlExport.test.ts` -> PASS
 - `pnpm -s vitest run packages/rb-apps/src/export/__tests__/exportValidation.test.ts` -> PASS

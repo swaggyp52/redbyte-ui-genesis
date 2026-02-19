@@ -20,7 +20,7 @@ function loadFixtureVhdl(): string {
 function buildFixtureIoMapping(): IoMapping {
   return {
     inputs: [
-      { id: 'clk', nodeId: 'port_clk', port: 'out', label: 'clk', pin: 'SW2' },
+      { id: 'clk', nodeId: 'port_clk', port: 'out', label: 'clk', pin: 'CLK100MHZ' },
       { id: 'rst', nodeId: 'port_rst', port: 'out', label: 'rst', pin: 'SW0' },
       { id: 'count_en', nodeId: 'port_count_en', port: 'out', label: 'count_en', pin: 'SW1' },
     ],
@@ -72,7 +72,7 @@ describe('IDE synth subset contract', () => {
     expect(firstExport.determinismHash).toBe(secondExport.determinismHash);
 
     expect(firstExport.bundle?.topVhd).toContain('entity top is');
-    expect(firstExport.bundle?.topXdc).toContain('PACKAGE_PIN W16');
+    expect(firstExport.bundle?.topXdc).toContain('PACKAGE_PIN W5');
 
     const viewModel = buildExportViewModel(project);
     expect(viewModel.status).toBe('ok');
