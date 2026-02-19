@@ -1,4 +1,5 @@
 import React from 'react';
+import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
   IdeCallout,
@@ -64,8 +65,46 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   ];
 
   return (
-    <div className="ide-content-grid" data-testid="ide-mode-project" data-ide-mode-marker="project">
-      <main className="ide-main-area" data-testid="ide-mode-body">
+    <IdeSurfaceLayout
+      mode="project"
+      inspector={
+        <>
+          <IdeInspectorSection title="Project Settings">
+            <div className="ide-kv-list">
+              <div className="ide-kv-row">
+                <span>Name</span>
+                <span>{projectName}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Board</span>
+                <span>Basys3</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>IO Coverage</span>
+                <span>{ioCoverage}%</span>
+              </div>
+            </div>
+          </IdeInspectorSection>
+
+          <IdeInspectorSection title="Risk Checks">
+            {ioCoverage < 100 ? (
+              <IdeCallout tone="error" title="Incomplete IO map">
+                Complete all pin mappings before export.
+              </IdeCallout>
+            ) : (
+              <IdeCallout tone="success" title="IO mapping complete">
+                Constraints are ready for Basys3 export checks.
+              </IdeCallout>
+            )}
+            {!hasVectors && (
+              <IdeCallout tone="warn" title="Verification gap">
+                Add vectors to build trust in exported artifacts.
+              </IdeCallout>
+            )}
+          </IdeInspectorSection>
+        </>
+      }
+    >
         <IdePanel
           title="Project Overview"
           description="Manage project identity, readiness, and handoff artifacts."
@@ -172,43 +211,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 
           <IdeDataTable columns={['Artifact', 'Purpose', 'Status']} rows={artifactRows} testId="ide-project-artifact-table" />
         </IdePanel>
-      </main>
-
-      <aside className="ide-inspector" data-testid="ide-inspector">
-        <IdeInspectorSection title="Project Settings">
-          <div className="ide-kv-list">
-            <div className="ide-kv-row">
-              <span>Name</span>
-              <span>{projectName}</span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Board</span>
-              <span>Basys3</span>
-            </div>
-            <div className="ide-kv-row">
-              <span>IO Coverage</span>
-              <span>{ioCoverage}%</span>
-            </div>
-          </div>
-        </IdeInspectorSection>
-
-        <IdeInspectorSection title="Risk Checks">
-          {ioCoverage < 100 ? (
-            <IdeCallout tone="error" title="Incomplete IO map">
-              Complete all pin mappings before export.
-            </IdeCallout>
-          ) : (
-            <IdeCallout tone="success" title="IO mapping complete">
-              Constraints are ready for Basys3 export checks.
-            </IdeCallout>
-          )}
-          {!hasVectors && (
-            <IdeCallout tone="warn" title="Verification gap">
-              Add vectors to build trust in exported artifacts.
-            </IdeCallout>
-          )}
-        </IdeInspectorSection>
-      </aside>
-    </div>
+    </IdeSurfaceLayout>
   );
 };
