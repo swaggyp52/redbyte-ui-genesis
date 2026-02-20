@@ -1,5 +1,72 @@
 # AI State
 
+## Change Log 2026-02-20 (Vivado Export Pack v1: Deterministic TCL + Manifest Authority + Contract Gate)
+
+**Status**: COMPLETE - Evidence capsule/export output now includes a deterministic Vivado project-import script and enriched manifest authority metadata, with a dedicated vivado-pack contract gate wired into repo health checks.
+
+### What Changed
+
+1. Deterministic Vivado TCL generation added to Basys3 export artifacts
+- Added `packages/rb-apps/src/fpga/boards/basys3/vivadoImportTcl.ts`:
+  - deterministic `vivado_import.tcl` generator for Basys3 (`xc7a35tcpg236-1`)
+  - emits canonical project builder commands:
+    - `create_project -force ... -part xc7a35tcpg236-1`
+    - `add_files -norecurse` for HDL sources
+    - `add_files -fileset constrs_1 -norecurse` for constraints
+    - `set_property top ... [current_fileset]`
+    - optional synth run guarded by `run_synth` variable
+- Updated `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`:
+  - adds `vivado_import.tcl` as a first-class artifact in ready + blocked states
+  - extends artifact kind union with `'tcl'`
+
+2. Evidence capsule manifest authority upgrade (v2 schema)
+- Updated `packages/rb-apps/src/apps/ide/evidenceCapsule.ts`:
+  - evidence bundle now requires and includes `vivado_import.tcl`
+  - manifest upgraded to `rb.evidence-capsule.v2` with:
+    - `project` identity (`name`, stable `id`)
+    - `toolchain` metadata (`redbyteVersion`, `redbyteCommit`)
+    - nested `hashes` (`determinismHash`, `exportHash`, `verifyHash`, `verifyReportHash`)
+    - deterministic `mappingSummary` (`signal`, `direction`, `pin`, `required`, `status`)
+    - file list with per-file `sha256` + `sizeBytes`
+  - deterministic hash helper hardened for vitest/jsdom execution path
+
+3. Export workbench Vivado handoff panel (minimal UI, no layout refactor)
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`:
+  - resolves `VITE_APP_VERSION` + `VITE_GIT_SHA` for manifest toolchain fields
+  - passes `toolCommit` into `buildEvidenceCapsule`
+  - adds `Vivado Import` panel with:
+    - copyable command (`vivado -mode batch -source vivado_import.tcl ...`)
+    - `Copy TCL command` action
+    - `Copy quick debug report` action (manifest + hashes + mapping summary context)
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - styling hook for new Vivado import panel block
+
+4. New vivado-pack contract gate + wiring
+- Added `packages/rb-apps/src/__tests__/ide-vivado-pack-contract.test.ts`:
+  - builds deterministic fixture export/capsule
+  - asserts zip contains required files:
+    - `top.vhd`, `top.xdc`, `testbench.vhd`, `README.txt`, `MANIFEST.json`, `vivado_import.tcl`, etc.
+  - asserts `vivado_import.tcl` includes required Vivado builder commands + Basys3 part string
+  - asserts manifest file hashes match extracted zip contents
+- Added `scripts/gates/ide-vivado-pack-contract.mjs`
+- Wired new gate into:
+  - `package.json` (`ide:gate:vivado-pack-contract`)
+  - `scripts/repo-status.mjs`
+  - `scripts/verify-gates-classroom.mjs`
+
+### Validation Executed
+
+- `pnpm -s ide:gate:vivado-pack-contract` -> PASS
+- `pnpm -s ide:gate:evidence-capsule-contract` -> PASS
+- `pnpm -s ide:gate:export-artifact-explorer-contract` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:screenshots` -> PASS
+- `pnpm repo:status` -> PASS (23/23 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-19 (Vivado Parity Loop v1: Synth Subset Contract + Compiler Legality Diagnostics)
 
 **Status**: COMPLETE - Basys3 export now enforces synthesis-subset legality checks with deterministic diagnostic codes, and `repo:status` now blocks on a dedicated synth-subset contract gate.
