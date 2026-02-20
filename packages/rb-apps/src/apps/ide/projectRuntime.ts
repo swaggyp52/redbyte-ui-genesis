@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { CircuitEngine } from '@redbyte/rb-logic-core';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
 import type { RBProject } from '../../export/projectFormat';
@@ -26,13 +25,17 @@ import {
   type VerifyWaveSample,
 } from './verifyReport';
 import { generateBringUpVectors } from './bringupArtifacts';
+import {
+  DEFAULT_SIM_SPEED_HZ,
+  advanceSimulationState,
+  buildVerifyRowsFromRuntimeTrace,
+  resetSimulationState,
+} from './sim/simEngine';
+import type { RuntimeSignalProbe, RuntimeSimState } from './sim/simTypes';
+
+export type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
 
 const STORAGE_KEY = 'rb.ide.project-runtime.v1';
-const DEFAULT_SIM_SPEED_HZ = 12;
-const SIM_TRACE_CAPACITY = 256;
-
-let runtimeSimEngine: CircuitEngine | null = null;
-let runtimeSimIrHash = '';
 
 const DEFAULT_EXAMPLE = getIdeExampleById(IDE_DEFAULT_EXAMPLE_ID) ?? IDE_EXAMPLES[0];
 
@@ -63,29 +66,6 @@ export interface RunVerificationInput {
   }>;
   ranAtIso?: string;
   useRuntimeTrace?: boolean;
-}
-
-export interface RuntimeSimTraceSample {
-  tick: number;
-  signals: Record<string, 0 | 1>;
-}
-
-export interface RuntimeSignalProbe {
-  key: string;
-  label: string;
-}
-
-export interface RuntimeSimState {
-  tick: number;
-  running: boolean;
-  speedHz: number;
-  irHash: string;
-  traceHash: string;
-  inputs: Record<string, 0 | 1>;
-  signals: Record<string, 0 | 1>;
-  trace: RuntimeSimTraceSample[];
-  selectedSignalKey: string | null;
-  probes: RuntimeSignalProbe[];
 }
 
 export interface ProjectRuntimeActions {
@@ -740,294 +720,6 @@ function cloneSimState(sim: RuntimeSimState): RuntimeSimState {
   };
 }
 
-function buildVerifyRowsFromRuntimeTrace(
-  vectors: TestVector[],
-  ioRows: ProjectIoRow[],
-  sim: RuntimeSimState
-): Array<{ tick: number; signal: string; expected: string; actual: string }> {
-  if (vectors.length === 0 || sim.trace.length === 0) {
-    return [];
-  }
-  const traceByTick = new Map<number, RuntimeSimTraceSample>();
-  for (const entry of sim.trace) {
-    traceByTick.set(entry.tick, entry);
-  }
-  const outputRows = ioRows.filter((row) => row.direction === 'out');
-  const rows: Array<{ tick: number; signal: string; expected: string; actual: string }> = [];
-  for (const vector of vectors) {
-    const tick = Number.isFinite(vector.tick) ? Math.max(0, Math.floor(vector.tick)) : 0;
-    const sample = traceByTick.get(tick);
-    for (const outputRow of outputRows) {
-      const expected = resolveVectorBitSymbol(vector.expected ?? {}, outputRow);
-      const actual = resolveOutputSymbolFromTrace(sample, outputRow);
-      rows.push({
-        tick,
-        signal: normalizeSignalName(outputRow.label || outputRow.id),
-        expected,
-        actual,
-      });
-    }
-  }
-  return rows.sort((left, right) => {
-    if (left.tick !== right.tick) return left.tick - right.tick;
-    return compareText(left.signal, right.signal);
-  });
-}
-
-function resolveVectorBitSymbol(
-  expected: Record<string, boolean | number | string | undefined>,
-  row: ProjectIoRow
-): string {
-  const candidates = [row.id, row.label, row.port].map((entry) => normalizeSignalName(entry));
-  for (const [key, value] of Object.entries(expected)) {
-    const normalizedKey = normalizeSignalName(key);
-    if (candidates.includes(normalizedKey)) {
-      return normalizeBit(value) === 1 ? '1' : '0';
-    }
-  }
-  return '0';
-}
-
-function resolveOutputSymbolFromTrace(
-  sample: RuntimeSimTraceSample | undefined,
-  row: ProjectIoRow
-): string {
-  if (!sample) return '0';
-  const candidates = [
-    `${row.nodeId}.in`,
-    `${row.nodeId}.out`,
-    normalizeSignalName(row.id),
-    normalizeSignalName(row.label),
-  ];
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    const direct = sample.signals[candidate];
-    if (direct === 0 || direct === 1) {
-      return direct === 1 ? '1' : '0';
-    }
-    const normalizedCandidate = normalizeSignalName(candidate);
-    for (const [key, value] of Object.entries(sample.signals)) {
-      if (normalizeSignalName(key) === normalizedCandidate) {
-        return value === 1 ? '1' : '0';
-      }
-    }
-  }
-  return '0';
-}
-
-function resetSimulationState(
-  circuit: Circuit,
-  projectIoRows: ProjectIoRow[],
-  previous?: RuntimeSimState
-): RuntimeSimState {
-  const irHash = computeSimIrHash(circuit);
-  const inputs = deriveSimulationInputs(circuit, previous?.inputs);
-  const resetNodeId = resolveResetNodeId(projectIoRows, circuit);
-  if (resetNodeId) {
-    inputs[resetNodeId] = 1;
-  }
-  runtimeSimEngine = new CircuitEngine(cloneCircuit(circuit));
-  runtimeSimIrHash = irHash;
-  applyInputsToEngine(runtimeSimEngine, inputs);
-  runtimeSimEngine.tick();
-  if (resetNodeId) {
-    inputs[resetNodeId] = 0;
-    applyInputsToEngine(runtimeSimEngine, inputs);
-    runtimeSimEngine.tick();
-  }
-  const signals = normalizeSignalMap(runtimeSimEngine, circuit);
-  return {
-    tick: 0,
-    running: false,
-    speedHz: previous?.speedHz ?? DEFAULT_SIM_SPEED_HZ,
-    irHash,
-    traceHash: computeTraceHash(irHash, []),
-    inputs,
-    signals,
-    trace: [],
-    selectedSignalKey: previous?.selectedSignalKey ?? null,
-    probes: previous?.probes ? [...previous.probes] : [],
-  };
-}
-
-function advanceSimulationState(
-  circuit: Circuit,
-  projectIoRows: ProjectIoRow[],
-  sim: RuntimeSimState,
-  requestedTicks: number
-): RuntimeSimState {
-  const ticks = Math.max(0, Math.min(1024, Math.floor(requestedTicks)));
-  if (ticks === 0) {
-    return sim;
-  }
-  const irHash = computeSimIrHash(circuit);
-  if (!runtimeSimEngine || runtimeSimIrHash !== irHash) {
-    return resetSimulationState(circuit, projectIoRows, sim);
-  }
-  const engine = runtimeSimEngine;
-  applyInputsToEngine(engine, sim.inputs);
-  let tick = sim.tick;
-  let trace = [...sim.trace];
-  for (let index = 0; index < ticks; index += 1) {
-    engine.tick();
-    tick += 1;
-    trace.push({
-      tick,
-      signals: normalizeSignalMap(engine, circuit),
-    });
-  }
-  if (trace.length > SIM_TRACE_CAPACITY) {
-    trace = trace.slice(trace.length - SIM_TRACE_CAPACITY);
-  }
-  const signals = normalizeSignalMap(engine, circuit);
-  return {
-    ...sim,
-    running: sim.running,
-    tick,
-    irHash,
-    signals,
-    trace,
-    traceHash: computeTraceHash(irHash, trace),
-  };
-}
-
-function deriveSimulationInputs(
-  circuit: Circuit,
-  previousInputs?: Record<string, 0 | 1>
-): Record<string, 0 | 1> {
-  const nextInputs: Record<string, 0 | 1> = {};
-  for (const node of circuit.nodes) {
-    if (!isSimulationInputNode(node.type)) continue;
-    if (node.state?.isOn !== undefined) {
-      nextInputs[node.id] = normalizeBit(node.state.isOn);
-      continue;
-    }
-    const previous = previousInputs?.[node.id];
-    nextInputs[node.id] = previous === 0 || previous === 1 ? previous : 0;
-  }
-  return nextInputs;
-}
-
-function resolveResetNodeId(projectIoRows: ProjectIoRow[], circuit: Circuit): string | undefined {
-  const rows = projectIoRows.filter((row) => row.direction === 'in');
-  for (const row of rows) {
-    const normalized = normalizeSignalName(row.label || row.id);
-    if (normalized === 'rst' || normalized === 'reset' || normalized === 'reset_n') {
-      const exists = circuit.nodes.some((node) => node.id === row.nodeId);
-      if (exists) return row.nodeId;
-    }
-  }
-  return undefined;
-}
-
-function applyInputsToEngine(engine: CircuitEngine, inputs: Record<string, 0 | 1>): void {
-  for (const [nodeId, value] of Object.entries(inputs)) {
-    engine.setNodeValue(nodeId, value);
-  }
-}
-
-function normalizeSignalMap(engine: CircuitEngine, circuit: Circuit): Record<string, 0 | 1> {
-  const signalMap = engine.getAllSignals();
-  const next: Record<string, 0 | 1> = {};
-  const keys = Array.from(signalMap.keys()).sort(compareText);
-  for (const key of keys) {
-    next[key] = normalizeBit(signalMap.get(key));
-  }
-
-  for (const node of circuit.nodes) {
-    if (isSimulationInputNode(node.type)) {
-      const inputState = engine.getNodeState(node.id)?.isOn;
-      next[`${node.id}.out`] = normalizeBit(inputState);
-      continue;
-    }
-
-    if (node.type === 'OUTPUT' || node.type === 'Lamp') {
-      const nodeState = engine.getNodeState(node.id);
-      const fromConnection = circuit.connections.find((connection) => {
-        const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
-        return toNodeId === node.id;
-      });
-      let value = normalizeBit(nodeState?.isOn);
-      if ((!nodeState || nodeState.isOn === undefined) && fromConnection) {
-        const { fromNodeId, fromPort } = resolveConnectionPorts(fromConnection);
-        value = next[`${fromNodeId}.${fromPort}`] ?? 0;
-      }
-      next[`${node.id}.in`] = value;
-      next[`${node.id}.out`] = value;
-    }
-  }
-
-  const orderedEntries = Object.entries(next).sort(([left], [right]) => compareText(left, right));
-  return Object.fromEntries(orderedEntries) as Record<string, 0 | 1>;
-}
-
-function resolveConnectionPorts(connection: Circuit['connections'][number]): {
-  fromNodeId: string;
-  fromPort: string;
-  toNodeId: string;
-  toPort: string;
-} {
-  const fromNodeId = typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
-  const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
-  const fromPort =
-    typeof connection.from === 'string'
-      ? connection.fromPort ?? connection.fromPin ?? 'out'
-      : connection.from.portName ?? connection.from.port ?? 'out';
-  const toPort =
-    typeof connection.to === 'string'
-      ? connection.toPort ?? connection.toPin ?? 'in'
-      : connection.to.portName ?? connection.to.port ?? 'in';
-  return { fromNodeId, fromPort, toNodeId, toPort };
-}
-
-function computeTraceHash(irHash: string, trace: RuntimeSimTraceSample[]): string {
-  return `sim_${digestValue({ irHash, trace })}`;
-}
-
-function computeSimIrHash(circuit: Circuit): string {
-  const nodes = circuit.nodes
-    .map((node) => ({
-      id: node.id,
-      type: node.type,
-      position: {
-        x: roundToMill(node.position?.x ?? node.x ?? 0),
-        y: roundToMill(node.position?.y ?? node.y ?? 0),
-      },
-      config: node.config ?? {},
-    }))
-    .sort((left, right) => compareText(left.id, right.id));
-  const connections = circuit.connections
-    .map((connection) => {
-      const fromNodeId = typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
-      const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
-      const fromPort =
-        typeof connection.from === 'string'
-          ? connection.fromPort ?? connection.fromPin ?? 'out'
-          : connection.from.portName ?? connection.from.port ?? 'out';
-      const toPort =
-        typeof connection.to === 'string'
-          ? connection.toPort ?? connection.toPin ?? 'in'
-          : connection.to.portName ?? connection.to.port ?? 'in';
-      return {
-        id: `${fromNodeId}.${fromPort}-${toNodeId}.${toPort}`,
-        fromNodeId,
-        fromPort,
-        toNodeId,
-        toPort,
-      };
-    })
-    .sort((left, right) => compareText(left.id, right.id));
-  return `ir_${digestValue({ nodes, connections })}`;
-}
-
-function normalizeSignalName(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/\[[^\]]*\]/g, '')
-    .replace(/[^a-z0-9_.]/g, '');
-}
-
 function normalizeBit(value: unknown): 0 | 1 {
   if (value === true || value === 1 || value === '1') return 1;
   return 0;
@@ -1036,10 +728,6 @@ function normalizeBit(value: unknown): 0 | 1 {
 function clampSimSpeed(value: number): number {
   const next = Number.isFinite(value) ? Math.floor(value) : DEFAULT_SIM_SPEED_HZ;
   return Math.max(1, Math.min(120, next));
-}
-
-function isSimulationInputNode(nodeType: string): boolean {
-  return nodeType === 'INPUT' || nodeType === 'Switch';
 }
 
 function normalizeVerifyRows(
