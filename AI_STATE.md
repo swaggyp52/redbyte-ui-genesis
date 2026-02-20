@@ -1,5 +1,54 @@
 # AI State
 
+## Change Log 2026-02-20 (Tranche 4 Hardening: Shared Sim Engine Extraction + Bring-Up Sim Derivation)
+
+**Status**: COMPLETE - Runtime simulation internals were extracted into a shared sim module, and bring-up expected-IO generation now derives from the same deterministic simulation authority path (instead of vector metadata fallback only).
+
+### What Changed
+
+1. Extracted deterministic sim authority into dedicated IDE sim modules
+- Added `packages/rb-apps/src/apps/ide/sim/simTypes.ts`:
+  - canonical sim types (`RuntimeSimState`, `RuntimeSimTraceSample`, probe and verify trace row contracts).
+- Added `packages/rb-apps/src/apps/ide/sim/simEngine.ts`:
+  - runtime sim reset/advance authority (`resetSimulationState`, `advanceSimulationState`)
+  - runtime trace -> verify row mapping (`buildVerifyRowsFromRuntimeTrace`)
+  - deterministic vector replay helper for expected IO derivation (`simulateExpectedIoRows`).
+
+2. Removed split sim internals from `projectRuntime.ts`
+- Updated `packages/rb-apps/src/apps/ide/projectRuntime.ts`:
+  - now imports sim authority from `sim/simEngine`
+  - removed duplicated in-file sim implementation
+  - re-exports canonical sim types from `sim/simTypes`.
+
+3. Bring-up expected IO now uses shared sim authority
+- Updated `packages/rb-apps/src/apps/ide/bringupArtifacts.ts`:
+  - `BringUpIoRow` now carries optional `nodeId`
+  - when verify rows are unavailable, `EXPECTED_IO` values are derived from deterministic sim replay (`simulateExpectedIoRows`) over project vectors/circuit.
+
+4. Export/io-row and contract test alignment
+- Updated `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`:
+  - bring-up IO rows now include `nodeId` for deterministic signal binding in sim-derived expected IO.
+- Updated `packages/rb-apps/src/__tests__/ide-bringup-contract.test.ts`:
+  - include `nodeId` in bring-up IO rows for fixture parity.
+
+5. Screenshot baseline drift correction
+- Updated snapshot:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-design-chromium-win32.png`
+  - refreshed to match current Hardware-mode rail + Design right-dock probe authority surface.
+
+### Validation Executed
+
+- `pnpm -s ide:gate:live-sim-contract` -> PASS
+- `pnpm -s ide:gate:seq-sim-contract` -> PASS
+- `pnpm -s ide:gate:bringup-contract` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:screenshots:update` -> PASS
+- `pnpm repo:status` -> PASS (26/26 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-20 (Hardware Bring-Up + Proof Loop v1: Hardware Mode, Bring-Up Vectors, Export Artifacts, Gate)
 
 **Status**: COMPLETE - IDE now includes a dedicated Hardware mode with deterministic bring-up vector generation and Basys3 proof artifacts (`BRINGUP.md`, `EXPECTED_IO.json`, `program_and_test.tcl`) flowing through export/evidence capsule contracts.
