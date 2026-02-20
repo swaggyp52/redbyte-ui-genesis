@@ -130,6 +130,12 @@ if (!runCheck('IDE Design Fit Contract', 'pnpm -s ide:gate:design-fit-contract 2
 if (!runCheck('IDE Design Live Sim Contract', 'pnpm -s ide:gate:design-live-sim-contract 2>&1')) {
   process.exit(1);
 }
+if (!runCheck('IDE Live Sim Contract', 'pnpm -s ide:gate:live-sim-contract 2>&1')) {
+  process.exit(1);
+}
+if (!runCheck('IDE Sequential Sim Contract', 'pnpm -s ide:gate:seq-sim-contract 2>&1')) {
+  process.exit(1);
+}
 if (!runCheck('IDE Primary CTA Contract', 'pnpm -s ide:gate:primary-cta-contract 2>&1')) {
   process.exit(1);
 }

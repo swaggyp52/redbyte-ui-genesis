@@ -154,6 +154,8 @@
         "ide:gate:design-workbench-contract": "node ./scripts/gates/ide-design-workbench-contract.mjs",
         "ide:gate:design-fit-contract": "node ./scripts/gates/ide-design-fit-contract.mjs",
         "ide:gate:design-live-sim-contract": "node ./scripts/gates/ide-design-live-sim-contract.mjs",
+        "ide:gate:live-sim-contract": "node ./scripts/gates/ide-live-sim-contract.mjs",
+        "ide:gate:seq-sim-contract": "node ./scripts/gates/ide-seq-sim-contract.mjs",
         "ide:gate:diagnostics-jump-contract": "node ./scripts/gates/ide-diagnostics-jump-contract.mjs",
         "ide:gate:design-multiselect-contract": "node ./scripts/gates/ide-design-multiselect-contract.mjs",
         "ide:gate:design-inspector-contract": "node ./scripts/gates/ide-design-inspector-contract.mjs",

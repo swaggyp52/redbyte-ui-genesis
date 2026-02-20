@@ -43,6 +43,8 @@ function main() {
     runGate('ide:design-workbench-contract', 'pnpm -s ide:gate:design-workbench-contract', true),
     runGate('ide:design-fit-contract', 'pnpm -s ide:gate:design-fit-contract', true),
     runGate('ide:design-live-sim-contract', 'pnpm -s ide:gate:design-live-sim-contract', true),
+    runGate('ide:live-sim-contract', 'pnpm -s ide:gate:live-sim-contract', true),
+    runGate('ide:seq-sim-contract', 'pnpm -s ide:gate:seq-sim-contract', true),
     runGate('ide:design-multiselect-contract', 'pnpm -s ide:gate:design-multiselect-contract', true),
     runGate('ide:design-inspector-contract', 'pnpm -s ide:gate:design-inspector-contract', true),
     runGate('ide:project-readiness-contract', 'pnpm -s ide:gate:project-readiness-contract', true),
