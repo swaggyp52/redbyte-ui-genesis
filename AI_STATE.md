@@ -1,5 +1,97 @@
 # AI State
 
+## Change Log 2026-02-20 (Hardware Bring-Up + Proof Loop v1: Hardware Mode, Bring-Up Vectors, Export Artifacts, Gate)
+
+**Status**: COMPLETE - IDE now includes a dedicated Hardware mode with deterministic bring-up vector generation and Basys3 proof artifacts (`BRINGUP.md`, `EXPECTED_IO.json`, `program_and_test.tcl`) flowing through export/evidence capsule contracts.
+
+### What Changed
+
+1. Added Hardware mode to the IDE mode system and routing
+- Updated mode unions and rail definitions to include `hardware`:
+  - `packages/rb-apps/src/apps/ide/components/IdeLeftRail.tsx`
+  - `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+  - `packages/rb-apps/src/apps/ide/components/IdeSurfaceLayout.tsx`
+  - `packages/rb-apps/src/apps/ide/diagnostics.ts`
+  - `packages/rb-apps/src/apps/ide/projectHealth.ts`
+  - `packages/rb-apps/src/apps/ide/IdeContext.tsx`
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - supports `?mode=hardware`
+  - renders new `HardwareSurface`
+  - wires runtime bring-up vector generation action
+  - derives expected behavior from active example metadata or deterministic fallback.
+
+2. Added deterministic Hardware Bring-Up surface
+- Added `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`:
+  - workbench-aligned Hardware panel with mapping summary, required signal checklist, and expected behavior
+  - primary CTA `Build + Export Vivado Bundle`
+  - secondary CTA `Generate Bring-Up Vectors`
+  - console status path for blockers vs ready state.
+
+3. Added bring-up vector + artifact generation authority
+- Added `packages/rb-apps/src/apps/ide/bringupArtifacts.ts`:
+  - deterministic bring-up vector generator:
+    - sequential profiles (clock/reset/enable bounded run)
+    - combinational bounded sampling (max 16 cases)
+  - deterministic expected-IO report builder (`rb.expected-io.v1`)
+  - deterministic `BRINGUP.md` and `program_and_test.tcl` generators.
+- Updated runtime state in `packages/rb-apps/src/apps/ide/projectRuntime.ts`:
+  - added `generateBringUpVectors()` action storing generated vectors in canonical project runtime.
+
+4. Extended export/evidence outputs with hardware proof artifacts
+- Updated `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`:
+  - adds artifacts:
+    - `BRINGUP.md`
+    - `EXPECTED_IO.json`
+    - `program_and_test.tcl`
+  - includes these artifacts in ready and blocked states for consistent explorer behavior.
+- Updated `packages/rb-apps/src/apps/ide/evidenceCapsule.ts`:
+  - evidence capsule now requires and includes the three bring-up proof artifacts.
+- Updated naming cleanup:
+  - `Project` title -> `Project Overview` (`ProjectSurface.tsx`)
+  - `Verification Truth Screen` -> `Verify` (`VerifySurface.tsx`)
+  - `Evidence Capsule Compiler` -> `Export` (`ExportSurface.tsx`).
+
+5. Added Bring-Up contract gate and expanded mode/golden contracts
+- Added bring-up contract test + gate:
+  - `packages/rb-apps/src/__tests__/ide-bringup-contract.test.ts`
+  - `scripts/gates/ide-bringup-contract.mjs`
+- Wired new gate into:
+  - `package.json` (`ide:gate:bringup-contract`)
+  - `scripts/repo-status.mjs`
+  - `scripts/verify-gates-classroom.mjs`
+- Updated mode-coverage gates to include `hardware`:
+  - `scripts/gates/ide-primary-cta-contract.mjs`
+  - `scripts/gates/ide-visual-contract.mjs`
+  - `scripts/gates/ide-workbench-layout-contract.mjs`
+  - `scripts/gates/ide-layout-contract.mjs`
+- Updated evidence/vivado contracts for new proof artifacts:
+  - `scripts/gates/ide-evidence-capsule-contract.mjs`
+  - `packages/rb-apps/src/__tests__/ide-vivado-pack-contract.test.ts`.
+
+6. Screenshot baseline authority updated for Hardware mode
+- Updated `tests/e2e/ide-screenshot-baseline.spec.ts`:
+  - added `ide hardware baseline` capture
+  - extended mode union to include `hardware`.
+- Updated snapshots:
+  - added `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-hardware-chromium-win32.png`
+  - refreshed `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-export-chromium-win32.png`.
+
+### Validation Executed
+
+- `pnpm exec vitest run packages/rb-apps/src/__tests__/ide-bringup-contract.test.ts packages/rb-apps/src/__tests__/ide-vivado-pack-contract.test.ts` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:bringup-contract` -> PASS
+- `pnpm -s ide:gate:vivado-pack-contract` -> PASS
+- `pnpm -s ide:gate:primary-cta-contract` -> PASS
+- `pnpm -s ide:gate:workbench-layout-contract` -> PASS
+- `pnpm -s ide:gate:visual-contract` -> PASS
+- `pnpm -s ide:gate:evidence-capsule-contract` -> PASS
+- `pnpm -s ide:gate:screenshots:update` -> PASS
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-20 (Vivado Export Pack v1: Deterministic TCL + Manifest Authority + Contract Gate)
 
 **Status**: COMPLETE - Evidence capsule/export output now includes a deterministic Vivado project-import script and enriched manifest authority metadata, with a dedicated vivado-pack contract gate wired into repo health checks.
