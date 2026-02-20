@@ -14,6 +14,7 @@ import {
   type IdeDiagnosticOwner,
   type IdeDiagnosticSeverity,
 } from '../diagnostics';
+import { buildBringUpArtifacts } from '../bringupArtifacts';
 
 export type ExportDiagnosticSeverity = 'error' | 'warning';
 export type ExportPinDirection = 'in' | 'out' | 'inout';
@@ -45,7 +46,7 @@ export interface ExportPinTableRow {
 
 export interface ExportArtifactView {
   path: string;
-  kind: 'vhd' | 'xdc' | 'readme' | 'tb' | 'tcl';
+  kind: 'vhd' | 'xdc' | 'readme' | 'tb' | 'tcl' | 'md' | 'json';
   content: string;
   preview: string;
   status: 'ready' | 'blocked' | 'pending';
@@ -295,6 +296,17 @@ function buildArtifacts(
     constraintsPath: 'top.xdc',
     simulationPath: 'testbench.vhd',
   });
+  const bringUpArtifacts = buildBringUpArtifacts({
+    project,
+    ioRows: collectBringUpIoRows(project),
+    expectedBehavior:
+      project.description?.trim() || 'Outputs should reflect deterministic bring-up vectors.',
+    exportHash: exportResult.determinismHash,
+    verifyHash: runtimeVerifyRun?.deterministicHash,
+    verifyReportHash: runtimeVerifyRun?.reportHash,
+    verifyGeneratedAtIso: runtimeVerifyRun?.generatedAtIso,
+    verifyRows: runtimeVerifyRun?.report.rows,
+  });
 
   if (bundle) {
     artifacts.push({
@@ -328,6 +340,30 @@ function buildArtifacts(
       preview: buildPreview(vivadoImportTcl),
       status: blocked ? 'blocked' : 'ready',
       note: 'Vivado batch import script for Basys3 project setup.',
+    });
+    artifacts.push({
+      path: 'BRINGUP.md',
+      kind: 'md',
+      content: normalizeArtifactContent(bringUpArtifacts.bringupMarkdown),
+      preview: buildPreview(bringUpArtifacts.bringupMarkdown),
+      status: blocked ? 'blocked' : 'ready',
+      note: 'Fast board bring-up checklist and mapping summary.',
+    });
+    artifacts.push({
+      path: 'EXPECTED_IO.json',
+      kind: 'json',
+      content: normalizeArtifactContent(bringUpArtifacts.expectedIoJson),
+      preview: buildPreview(bringUpArtifacts.expectedIoJson),
+      status: blocked ? 'blocked' : 'ready',
+      note: 'Deterministic expected IO behavior for board bring-up vectors.',
+    });
+    artifacts.push({
+      path: 'program_and_test.tcl',
+      kind: 'tcl',
+      content: normalizeArtifactContent(bringUpArtifacts.programAndTestTcl),
+      preview: buildPreview(bringUpArtifacts.programAndTestTcl),
+      status: blocked ? 'blocked' : 'ready',
+      note: 'Hardware manager programming scaffold for Basys3 bring-up.',
     });
     if (runtimeBackedTestbench) {
       artifacts.push({
@@ -394,6 +430,30 @@ function buildArtifacts(
       note: 'Blocked by export diagnostics.',
     });
     artifacts.push({
+      path: 'BRINGUP.md',
+      kind: 'md',
+      content: '',
+      preview: '',
+      status: 'blocked',
+      note: 'Blocked by export diagnostics.',
+    });
+    artifacts.push({
+      path: 'EXPECTED_IO.json',
+      kind: 'json',
+      content: '',
+      preview: '',
+      status: 'blocked',
+      note: 'Blocked by export diagnostics.',
+    });
+    artifacts.push({
+      path: 'program_and_test.tcl',
+      kind: 'tcl',
+      content: '',
+      preview: '',
+      status: 'blocked',
+      note: 'Blocked by export diagnostics.',
+    });
+    artifacts.push({
       path: 'testbench.vhd',
       kind: 'tb',
       content: '',
@@ -430,6 +490,44 @@ function resolveTopEntity(project: RBProject): string {
       .trim()
       .replace(/[^A-Za-z0-9_]+/g, '_');
   return top.length > 0 ? top : 'top';
+}
+
+function collectBringUpIoRows(project: RBProject): Array<{
+  id: string;
+  label: string;
+  direction: 'in' | 'out';
+  pin: string;
+  required: boolean;
+}> {
+  const rows: Array<{
+    id: string;
+    label: string;
+    direction: 'in' | 'out';
+    pin: string;
+    required: boolean;
+  }> = [];
+
+  for (const input of project.ioMapping?.inputs ?? []) {
+    rows.push({
+      id: input.id,
+      label: (input.label ?? input.id).trim() || input.id,
+      direction: 'in',
+      pin: input.pin ?? '',
+      required: true,
+    });
+  }
+
+  for (const output of project.ioMapping?.outputs ?? []) {
+    rows.push({
+      id: output.id,
+      label: (output.label ?? output.id).trim() || output.id,
+      direction: 'out',
+      pin: output.pin ?? '',
+      required: true,
+    });
+  }
+
+  return rows;
 }
 
 function severityOrder(severity: ExportDiagnosticSeverity): number {

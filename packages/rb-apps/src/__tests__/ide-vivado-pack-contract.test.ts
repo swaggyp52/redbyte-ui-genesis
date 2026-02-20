@@ -109,8 +109,11 @@ describe('IDE Vivado pack contract', () => {
       .sort();
 
     const requiredPaths = [
+      'BRINGUP.md',
+      'EXPECTED_IO.json',
       'MANIFEST.json',
       'README.txt',
+      'program_and_test.tcl',
       'rb-project.json',
       'testbench.vhd',
       'top.vhd',
@@ -140,6 +143,17 @@ describe('IDE Vivado pack contract', () => {
     for (const artifactPath of referencedArtifacts) {
       expect(fileNames).toContain(artifactPath);
     }
+
+    const expectedIoText = await zip.file('EXPECTED_IO.json')!.async('string');
+    const expectedIo = JSON.parse(expectedIoText) as {
+      schemaVersion: string;
+      board: string;
+      source: string;
+      signals: Array<{ signal: string; values: Array<{ tick: number; expected: string }> }>;
+    };
+    expect(expectedIo.schemaVersion).toBe('rb.expected-io.v1');
+    expect(expectedIo.board).toBe('basys3');
+    expect(expectedIo.signals.length).toBeGreaterThan(0);
 
     const manifestRaw = await zip.file('MANIFEST.json')!.async('string');
     const manifest = JSON.parse(manifestRaw) as {

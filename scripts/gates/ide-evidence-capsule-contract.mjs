@@ -83,7 +83,10 @@ await runIdeGate('IDE evidence capsule contract satisfied', async ({ page, baseU
 
   const requiredFiles = [
     'MANIFEST.json',
+    'BRINGUP.md',
+    'EXPECTED_IO.json',
     'rb-project.json',
+    'program_and_test.tcl',
     'top.vhd',
     'top.xdc',
     'testbench.vhd',

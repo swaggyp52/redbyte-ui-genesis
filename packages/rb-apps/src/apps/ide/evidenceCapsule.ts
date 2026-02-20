@@ -75,6 +75,9 @@ export async function buildEvidenceCapsule(
   const topXdc = requireArtifactContent(input.exportViewModel, 'top.xdc');
   const testbench = requireArtifactContent(input.exportViewModel, 'testbench.vhd');
   const vivadoImportTcl = requireArtifactContent(input.exportViewModel, 'vivado_import.tcl');
+  const bringupDoc = requireArtifactContent(input.exportViewModel, 'BRINGUP.md');
+  const expectedIo = requireArtifactContent(input.exportViewModel, 'EXPECTED_IO.json');
+  const programAndTestTcl = requireArtifactContent(input.exportViewModel, 'program_and_test.tcl');
   const readme = resolveArtifactContent(input.exportViewModel, 'README.txt');
   const verifyReportText = stableStringify(
     input.verifyResult.report ?? {
@@ -92,6 +95,9 @@ export async function buildEvidenceCapsule(
     ['top.xdc', topXdc],
     ['testbench.vhd', testbench],
     ['vivado_import.tcl', vivadoImportTcl],
+    ['BRINGUP.md', bringupDoc],
+    ['EXPECTED_IO.json', expectedIo],
+    ['program_and_test.tcl', programAndTestTcl],
     ['vectors.json', stableStringify(input.project.vectors ?? [])],
     ['verify-report.json', verifyReportText],
   ]);
