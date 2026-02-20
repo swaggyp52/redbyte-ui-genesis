@@ -497,6 +497,8 @@ export const IdeApp: React.FC = () => {
             onRuntimeSimSetInput={setRuntimeSimInput}
             onRuntimeSimSetSelectedSignal={setRuntimeSimSelectedSignal}
             onRuntimeSimToggleProbe={toggleRuntimeSimProbe}
+            viewportSeed={`${activeExampleId ?? 'custom'}:${lastSavedAt}`}
+            ioRows={projectIoRows}
           />
         ) : currentMode === 'verify' ? (
           <VerifySurface

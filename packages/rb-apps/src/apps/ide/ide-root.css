@@ -1331,6 +1331,13 @@
   color: #cde8ff;
 }
 
+.ide-design-live-pin {
+  font-family: var(--ide-font-mono);
+  font-size: 10px;
+  color: #9fd6ff;
+  letter-spacing: 0.03em;
+}
+
 .ide-design-selection-warnings {
   display: grid;
   gap: var(--ide-space-1);

@@ -6,7 +6,7 @@ import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import type { TickEngine, Node, Connection, Circuit } from '@redbyte/rb-logic-core';
 import { useLogicViewStore, getGlobalViewStateStore, type LogicViewState } from './useLogicViewStore';
-import { NodeView, type ChipMetadata } from './components/NodeView';
+import { NodeView, type ChipMetadata, type NodeIoPresentation } from './components/NodeView';
 import { WireView } from './components/WireView';
 import { Toolbar } from './components/Toolbar';
 import { renderGrid } from './tools/grid';
@@ -49,6 +49,7 @@ export interface LogicCanvasProps {
   tickCount?: number;
   nodeDiagnosticBadges?: Record<string, { error: number; warn: number; total: number }>;
   onNodeDiagnosticBadgeClick?: (nodeId: string) => void;
+  ioPresentationMap?: Record<string, NodeIoPresentation>;
 }
 
 export const LogicCanvas: React.FC<LogicCanvasProps> = ({
@@ -80,6 +81,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   tickCount = 0,
   nodeDiagnosticBadges,
   onNodeDiagnosticBadgeClick,
+  ioPresentationMap,
 }) => {
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
@@ -1233,6 +1235,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               hoveredWireTargetState={hoveredWireTargetState}
               diagnosticBadge={nodeDiagnosticBadges?.[node.id]}
               onDiagnosticBadgeClick={onNodeDiagnosticBadgeClick}
+              ioPresentation={ioPresentationMap?.[node.id]}
             />
           ))}
         </g>
@@ -1398,6 +1401,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             .filter((node) => node.type === 'Switch' || node.type === 'INPUT')
             .filter((node) => node.position)
             .map((node) => {
+              const ioPresentation = ioPresentationMap?.[node.id] ?? inferNodeIoPresentation(node);
+              const ioKind = ioPresentation.kind;
+              const ioLabel = (ioPresentation.label?.trim() || node.label || node.id).toUpperCase();
+              const pinAlias = ioPresentation.pinAlias?.trim().toUpperCase() || '';
               const screenX = node.position!.x * camera.zoom + camera.x;
               const screenY = node.position!.y * camera.zoom + camera.y;
               const size = 48 * camera.zoom;
@@ -1449,28 +1456,83 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                     width={toggleWidth}
                     height={toggleHeight}
                     rx={toggleHeight / 2}
-                    fill={switchState ? '#22c55e' : '#374151'}
+                    fill={
+                      ioKind === 'button'
+                        ? switchState
+                          ? '#0f5a7a'
+                          : '#334155'
+                        : ioKind === 'clock'
+                          ? switchState
+                            ? '#0ea5e9'
+                            : '#334155'
+                          : switchState
+                            ? '#22c55e'
+                            : '#374151'
+                    }
                     stroke="#fff"
                     strokeWidth={1.5}
                     style={{ pointerEvents: 'none' }}
                   />
-                  <circle
-                    cx={switchState ? toggleX + toggleWidth - 9 : toggleX + 9}
-                    cy={toggleY + toggleHeight / 2}
-                    r={6}
-                    fill="#fff"
-                    style={{ pointerEvents: 'none' }}
-                  />
+                  {ioKind === 'button' ? (
+                    <rect
+                      x={toggleX + toggleWidth * 0.3}
+                      y={toggleY + 2}
+                      width={toggleWidth * 0.4}
+                      height={toggleHeight - 4}
+                      rx={4}
+                      fill="#f8fafc"
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  ) : ioKind === 'clock' ? (
+                    <text
+                      x={0}
+                      y={toggleY + toggleHeight / 2 + 0.5}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill="#f8fafc"
+                      fontSize={Math.max(8, 9 * camera.zoom)}
+                      fontWeight="700"
+                      style={{ pointerEvents: 'none', userSelect: 'none' }}
+                    >
+                      CLK
+                    </text>
+                  ) : (
+                    <circle
+                      cx={switchState ? toggleX + toggleWidth - 9 : toggleX + 9}
+                      cy={toggleY + toggleHeight / 2}
+                      r={6}
+                      fill="#fff"
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  )}
                   <text
                     x={0}
                     y={toggleY - 8}
                     textAnchor="middle"
-                    fill={switchState ? '#22c55e' : '#9ca3af'}
-                    fontSize={Math.max(9, 11 * camera.zoom)}
+                    fill={
+                      ioKind === 'button'
+                        ? switchState
+                          ? '#7dd3fc'
+                          : '#94a3b8'
+                        : ioKind === 'clock'
+                          ? switchState
+                            ? '#7dd3fc'
+                            : '#94a3b8'
+                          : switchState
+                            ? '#22c55e'
+                            : '#9ca3af'
+                    }
+                    fontSize={Math.max(8, 10 * camera.zoom)}
                     fontWeight="700"
                     style={{ pointerEvents: 'none', userSelect: 'none' }}
                   >
-                    {switchState ? 'ON' : 'OFF'}
+                    {ioKind === 'button'
+                      ? switchState
+                        ? 'PRESSED'
+                        : 'BUTTON'
+                      : ioKind === 'clock'
+                        ? `${pinAlias || 'CLK'} ${switchState ? '1' : '0'}`
+                        : `${ioLabel} ${switchState ? 'ON' : 'OFF'}`}
                   </text>
                 </g>
               );
@@ -1523,4 +1585,53 @@ function worldBoundsToScreen(bounds: SelectionBounds | null, camera: Camera) {
 function clampValue(value: number, min: number, max: number): number {
   if (max < min) return min;
   return Math.min(max, Math.max(min, value));
+}
+
+function inferNodeIoPresentation(node: Node): NodeIoPresentation {
+  const normalized = `${node.label ?? ''} ${node.id}`.trim().toUpperCase();
+  const isInput = node.type === 'INPUT' || node.type === 'Switch';
+  const isOutput = node.type === 'OUTPUT' || node.type === 'Lamp';
+
+  if (isOutput && /\b(LD\d+|LED\d+)\b/.test(normalized)) {
+    return {
+      kind: 'led',
+      label: extractAlias(normalized, /(LD\d+|LED\d+)/),
+      pinAlias: extractAlias(normalized, /(LD\d+|LED\d+)/),
+    };
+  }
+  if (isInput && /\b(CLK100MHZ|CLK|CLOCK)\b/.test(normalized)) {
+    return {
+      kind: 'clock',
+      label: extractAlias(normalized, /(CLK100MHZ|CLK|CLOCK)/),
+      pinAlias: 'CLK100MHZ',
+    };
+  }
+  if (isInput && /\b(BTN[CUDLR]|BTN\d+)\b/.test(normalized)) {
+    const alias = extractAlias(normalized, /(BTN[CUDLR]|BTN\d+)/);
+    return {
+      kind: 'button',
+      label: alias,
+      pinAlias: alias,
+    };
+  }
+  if (isInput && /\b(SW\d+)\b/.test(normalized)) {
+    const alias = extractAlias(normalized, /(SW\d+)/);
+    return {
+      kind: 'switch',
+      label: alias,
+      pinAlias: alias,
+    };
+  }
+  if (isOutput) {
+    return { kind: 'led', label: node.label ?? node.id };
+  }
+  if (isInput) {
+    return { kind: 'switch', label: node.label ?? node.id };
+  }
+  return { kind: 'generic', label: node.label ?? node.id };
+}
+
+function extractAlias(source: string, pattern: RegExp): string {
+  const match = pattern.exec(source);
+  return match?.[1] ?? source;
 }

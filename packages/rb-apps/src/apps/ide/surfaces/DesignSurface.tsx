@@ -1,7 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Circuit, Node } from '@redbyte/rb-logic-core';
 import { TickEngine } from '@redbyte/rb-logic-core';
-import { LogicCanvas, findSmartSpawnPosition, useLogicViewStore } from '@redbyte/rb-logic-view';
+import {
+  LogicCanvas,
+  findSmartSpawnPosition,
+  useLogicViewStore,
+  type NodeIoPresentation,
+} from '@redbyte/rb-logic-view';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { digestValue } from '../../../utils/digest';
 import type { IdeDiagnostic, IdeDiagnosticRouteRequest } from '../diagnostics';
@@ -38,6 +43,14 @@ export interface DesignSurfaceProps {
   onRuntimeSimSetInput?: (nodeId: string, value: 0 | 1) => void;
   onRuntimeSimSetSelectedSignal?: (signalKey: string | null) => void;
   onRuntimeSimToggleProbe?: (probe: RuntimeSignalProbe) => void;
+  viewportSeed?: string;
+  ioRows?: Array<{
+    id: string;
+    nodeId: string;
+    label: string;
+    pin: string;
+    direction: 'in' | 'out';
+  }>;
 }
 
 export interface DesignCompilerStatus {
@@ -83,6 +96,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   onRuntimeSimSetInput,
   onRuntimeSimSetSelectedSignal,
   onRuntimeSimToggleProbe,
+  viewportSeed,
+  ioRows = [],
 }) => {
   const circuit = useCircuitStore((state) => state.circuit);
   const addNode = useCircuitStore((state) => state.addNode);
@@ -125,6 +140,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [diagnosticFilterNodeId, setDiagnosticFilterNodeId] = useState<string | null>(null);
   const [tickEngine] = useState(() => new TickEngine(editorCircuit, { tickRate: 10 }));
   const hasAutoFitRef = useRef(false);
+  const lastViewportSeedRef = useRef<string | undefined>(undefined);
   const simTick = runtimeSim.tick;
   const simSpeed = runtimeSim.speedHz;
   const simRunning = runtimeSim.running;
@@ -134,6 +150,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       .sort((left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0));
     return new Map<string, 0 | 1>(entries);
   }, [runtimeSim.signals]);
+  const ioRowByNodeId = useMemo(() => {
+    const index = new Map<string, (typeof ioRows)[number]>();
+    for (const row of ioRows) {
+      const key = row.nodeId?.trim();
+      if (!key) continue;
+      index.set(key, row);
+    }
+    return index;
+  }, [ioRows]);
 
   useEffect(() => {
     setEngine(tickEngine.getEngine());
@@ -377,12 +402,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       setCamera({ x: 0, y: 0, zoom: 1 });
       return;
     }
-    const padding = 120;
-    const boundsWidth = Math.max(1, maxX - minX + padding * 2);
-    const boundsHeight = Math.max(1, maxY - minY + padding * 2);
-    const zoomX = canvasSize.width / boundsWidth;
-    const zoomY = canvasSize.height / boundsHeight;
-    const nextZoom = Math.max(0.35, Math.min(2.1, Math.min(zoomX, zoomY)));
+    const spanX = Math.max(96, maxX - minX);
+    const spanY = Math.max(96, maxY - minY);
+    const padding = Math.max(56, Math.min(140, Math.round(Math.max(spanX, spanY) * 0.14)));
+    const boundsWidth = Math.max(1, spanX + padding * 2);
+    const boundsHeight = Math.max(1, spanY + padding * 2);
+    const zoomX = (canvasSize.width * 0.9) / boundsWidth;
+    const zoomY = (canvasSize.height * 0.9) / boundsHeight;
+    const nextZoom = Math.max(0.55, Math.min(2.4, Math.min(zoomX, zoomY)));
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
     setCamera({
@@ -401,8 +428,68 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [canvasSize.height, canvasSize.width, zoomCamera]);
 
   const resetView = useCallback(() => {
-    setCamera({ x: 0, y: 0, zoom: 1 });
-  }, [setCamera]);
+    if (editorCircuit.nodes.length === 0) {
+      setCamera({ x: 0, y: 0, zoom: 1 });
+      return;
+    }
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const node of editorCircuit.nodes) {
+      const px = node.position?.x ?? node.x ?? 0;
+      const py = node.position?.y ?? node.y ?? 0;
+      minX = Math.min(minX, px);
+      maxX = Math.max(maxX, px);
+      minY = Math.min(minY, py);
+      maxY = Math.max(maxY, py);
+    }
+    if (!Number.isFinite(minX)) {
+      setCamera({ x: 0, y: 0, zoom: 1 });
+      return;
+    }
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    setCamera({
+      x: canvasSize.width / 2 - centerX,
+      y: canvasSize.height / 2 - centerY,
+      zoom: 1,
+    });
+  }, [canvasSize.height, canvasSize.width, editorCircuit.nodes, setCamera]);
+
+  const centerSelection = useCallback(() => {
+    const selectedNodes = editorCircuit.nodes.filter((node) => selection.nodes.has(node.id));
+    if (selectedNodes.length === 0) {
+      setActionToast('Select nodes first to center the view.');
+      return;
+    }
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const node of selectedNodes) {
+      const px = node.position?.x ?? node.x ?? 0;
+      const py = node.position?.y ?? node.y ?? 0;
+      minX = Math.min(minX, px);
+      maxX = Math.max(maxX, px);
+      minY = Math.min(minY, py);
+      maxY = Math.max(maxY, py);
+    }
+    if (!Number.isFinite(minX)) return;
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const targetZoom = Math.max(0.85, camera.zoom);
+    setCamera({
+      x: canvasSize.width / 2 - centerX * targetZoom,
+      y: canvasSize.height / 2 - centerY * targetZoom,
+      zoom: targetZoom,
+    });
+    setActionToast(
+      selectedNodes.length === 1
+        ? 'Centered selected node.'
+        : `Centered ${selectedNodes.length} selected nodes.`
+    );
+  }, [camera.zoom, canvasSize.height, canvasSize.width, editorCircuit.nodes, selection.nodes, setCamera]);
 
   useEffect(() => {
     if (editorCircuit.nodes.length === 0) return;
@@ -416,6 +503,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       hasAutoFitRef.current = false;
     }
   }, [editorCircuit.nodes.length]);
+
+  useEffect(() => {
+    if (!viewportSeed) return;
+    if (lastViewportSeedRef.current === viewportSeed) return;
+    lastViewportSeedRef.current = viewportSeed;
+    hasAutoFitRef.current = false;
+
+    if (editorCircuit.nodes.length === 0) {
+      setCamera({ x: 0, y: 0, zoom: 1 });
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      fitToCircuit();
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [editorCircuit.nodes.length, fitToCircuit, setCamera, viewportSeed]);
 
   const handleSignalsUpdated = useCallback(() => {
     // Runtime simulation state is authoritative. Canvas-local ticks are ignored.
@@ -539,21 +645,45 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const inputRows = editorCircuit.nodes
       .filter((node) => node.type === 'INPUT' || node.type === 'Switch')
       .slice(0, 4)
-      .map((node) => ({
-        id: node.id,
-        label: `${node.type} ${node.id}`,
-        value: liveSignals.get(`${node.id}.out`) ?? 0,
-      }));
+      .map((node) => {
+        const ioPresentation = resolveNodeIoPresentation(node, ioRowByNodeId.get(node.id));
+        return {
+          id: node.id,
+          label: ioPresentation.label ?? `${node.type} ${node.id}`,
+          pinAlias: ioPresentation.pinAlias,
+          value: liveSignals.get(`${node.id}.out`) ?? 0,
+        };
+      });
     const outputRows = editorCircuit.nodes
       .filter((node) => node.type === 'OUTPUT' || node.type === 'Lamp')
       .slice(0, 4)
-      .map((node) => ({
-        id: node.id,
-        label: `${node.type} ${node.id}`,
-        value: liveSignals.get(`${node.id}.in`) ?? liveSignals.get(`${node.id}.out`) ?? 0,
-      }));
+      .map((node) => {
+        const ioPresentation = resolveNodeIoPresentation(node, ioRowByNodeId.get(node.id));
+        return {
+          id: node.id,
+          label: ioPresentation.label ?? `${node.type} ${node.id}`,
+          pinAlias: ioPresentation.pinAlias,
+          value: liveSignals.get(`${node.id}.in`) ?? liveSignals.get(`${node.id}.out`) ?? 0,
+        };
+      });
     return { inputRows, outputRows };
-  }, [editorCircuit.nodes, liveSignals]);
+  }, [editorCircuit.nodes, ioRowByNodeId, liveSignals]);
+  const ioPresentationMap = useMemo(() => {
+    const map: Record<string, NodeIoPresentation> = {};
+    for (const node of editorCircuit.nodes) {
+      if (
+        node.type !== 'INPUT' &&
+        node.type !== 'Switch' &&
+        node.type !== 'OUTPUT' &&
+        node.type !== 'Lamp' &&
+        node.type !== 'Clock'
+      ) {
+        continue;
+      }
+      map[node.id] = resolveNodeIoPresentation(node, ioRowByNodeId.get(node.id));
+    }
+    return map;
+  }, [editorCircuit.nodes, ioRowByNodeId]);
   const selectedWireSignalKey = useMemo(() => {
     if (selectedWireIds.length === 0) return null;
     const parsed = parseWireId(selectedWireIds[0]);
@@ -699,13 +829,19 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             <div className="ide-kv-list" data-testid="ide-design-live-signals">
               {liveIoSignals.inputRows.map((entry) => (
                 <div className="ide-kv-row" key={`in-${entry.id}`} data-testid={`ide-design-live-input-${entry.id}`}>
-                  <span>{entry.label}</span>
+                  <span>
+                    {entry.label}
+                    {entry.pinAlias ? <span className="ide-design-live-pin"> {entry.pinAlias}</span> : null}
+                  </span>
                   <code>{entry.value}</code>
                 </div>
               ))}
               {liveIoSignals.outputRows.map((entry) => (
                 <div className="ide-kv-row" key={`out-${entry.id}`} data-testid={`ide-design-live-output-${entry.id}`}>
-                  <span>{entry.label}</span>
+                  <span>
+                    {entry.label}
+                    {entry.pinAlias ? <span className="ide-design-live-pin"> {entry.pinAlias}</span> : null}
+                  </span>
                   <code>{entry.value}</code>
                 </div>
               ))}
@@ -1080,11 +1216,19 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <IdeButton tone="ghost" onClick={zoomIn} testId="ide-design-zoom-in">
                 +
               </IdeButton>
+              <IdeButton
+                tone="ghost"
+                onClick={centerSelection}
+                disabled={selection.nodes.size === 0}
+                testId="ide-design-center-selection"
+              >
+                Center Selection
+              </IdeButton>
               <IdeButton tone="ghost" onClick={resetView} testId="ide-design-zoom-reset">
-                100%
+                Reset Zoom
               </IdeButton>
               <IdeButton tone="secondary" onClick={fitToCircuit} testId="ide-design-fit-circuit">
-                Fit
+                Zoom to Fit
               </IdeButton>
               <span className="ide-wire-mode-pill" data-testid="ide-design-command-zoom">
                 {zoomPercent}%
@@ -1176,6 +1320,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   debugTick={simTick}
                   nodeDiagnosticBadges={nodeDiagnosticBadges}
                   onNodeDiagnosticBadgeClick={handleNodeDiagnosticBadgeClick}
+                  ioPresentationMap={ioPresentationMap}
                 />
                 {editorCircuit.nodes.length === 0 && (
                   <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
@@ -1216,6 +1361,72 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     </IdeSurfaceLayout>
   );
 };
+
+type DesignIoRow = NonNullable<DesignSurfaceProps['ioRows']>[number];
+
+function resolveNodeIoPresentation(
+  node: Node,
+  ioRow?: DesignIoRow
+): NodeIoPresentation {
+  const tokenSource = [ioRow?.label, ioRow?.pin, node.label, node.id]
+    .filter((entry): entry is string => typeof entry === 'string')
+    .join(' ')
+    .toUpperCase();
+
+  const isInputNode = node.type === 'INPUT' || node.type === 'Switch';
+  const isOutputNode = node.type === 'OUTPUT' || node.type === 'Lamp';
+  const pinAlias = normalizeAlias(ioRow?.pin ?? '');
+
+  if (isInputNode && /(CLK100MHZ|CLK|CLOCK)/.test(tokenSource)) {
+    return {
+      kind: 'clock',
+      label: pinAlias.length > 0 ? pinAlias : 'CLK100MHZ',
+      pinAlias: pinAlias.length > 0 ? pinAlias : 'CLK100MHZ',
+    };
+  }
+
+  if (isInputNode && /(BTN[CUDLR]|BTN\d+)/.test(tokenSource)) {
+    const alias = extractAlias(tokenSource, /(BTN[CUDLR]|BTN\d+)/);
+    return {
+      kind: 'button',
+      label: alias,
+      pinAlias: pinAlias.length > 0 ? pinAlias : alias,
+    };
+  }
+
+  if (isInputNode && /(SW\d+)/.test(tokenSource)) {
+    const alias = extractAlias(tokenSource, /(SW\d+)/);
+    return {
+      kind: 'switch',
+      label: alias,
+      pinAlias: pinAlias.length > 0 ? pinAlias : alias,
+    };
+  }
+
+  if (isOutputNode && /(LD\d+|LED\d+)/.test(tokenSource)) {
+    const alias = extractAlias(tokenSource, /(LD\d+|LED\d+)/);
+    return {
+      kind: 'led',
+      label: alias,
+      pinAlias: pinAlias.length > 0 ? pinAlias : alias,
+    };
+  }
+
+  return {
+    kind: isInputNode ? 'switch' : isOutputNode ? 'led' : 'generic',
+    label: (ioRow?.label?.trim() || node.label || node.id).toUpperCase(),
+    pinAlias: pinAlias.length > 0 ? pinAlias : undefined,
+  };
+}
+
+function extractAlias(source: string, pattern: RegExp): string {
+  const match = pattern.exec(source);
+  return (match?.[1] ?? source).toUpperCase();
+}
+
+function normalizeAlias(value: string): string {
+  return value.trim().toUpperCase();
+}
 
 function normalizeCircuitForCanvas(circuit: Circuit): Circuit {
   return {

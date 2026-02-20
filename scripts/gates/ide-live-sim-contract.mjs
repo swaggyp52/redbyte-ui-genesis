@@ -68,6 +68,15 @@ await runIdeGate('IDE live simulation contract satisfied', async ({ page, baseUr
   const simInputIds = inputIds.filter((entry) => toggleIds.includes(entry)).slice(0, 2);
   assert(simInputIds.length === 2, 'expected two toggleable inputs in Design mode');
 
+  const widgetLabels = await page.$$eval(
+    '[data-testid^="switch-toggle-"][data-testid$="-container"] text',
+    (labels) => labels.map((node) => (node.textContent || '').trim().toUpperCase()).filter(Boolean)
+  );
+  assert(
+    widgetLabels.some((label) => label.includes('SW0') || label.includes('SW1')),
+    'Basys-style switch labels should be visible for AND starter inputs'
+  );
+
   await setBinaryInput(page, simInputIds[0], 1);
   await setBinaryInput(page, simInputIds[1], 1);
 

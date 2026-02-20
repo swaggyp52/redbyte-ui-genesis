@@ -1,5 +1,55 @@
 # AI State
 
+## Change Log 2026-02-20 (Student Loop Polish Slice: Design Readability + Basys3 IO Presentation)
+
+**Status**: COMPLETE - Design mode now auto-fits readable circuit framing on example/project changes, includes explicit camera controls (`Zoom to Fit`, `Center Selection`, `Reset Zoom`), and renders Basys3-aware IO presentation (switch/button/clock/LED semantics) through runtime-to-canvas wiring.
+
+### What Changed
+
+1. Design viewport readability and camera controls
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - added `viewportSeed` support to trigger deterministic re-fit on example/project switches.
+  - tuned `fitToCircuit` sizing to target readable occupancy (reduced tiny-circuit framing).
+  - added explicit `Center Selection` command action.
+  - upgraded `Reset Zoom` to recenter on circuit at `100%`.
+
+2. Basys3-aware IO presentation plumbing
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - accepts `ioRows` and derives per-node IO presentation metadata (`switch`, `button`, `clock`, `led`).
+  - live simulation list now shows board-style signal labels and pin aliases.
+  - passes `ioPresentationMap` into `LogicCanvas`.
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - wires `viewportSeed` and `ioRows` into `DesignSurface`.
+
+3. Canvas/node rendering authority upgrades for board mental model
+- Updated `packages/rb-logic-view/src/components/NodeView.tsx`:
+  - introduced `NodeIoPresentation`.
+  - IO nodes render board-style semantics (button/clock/switch visuals for inputs, LED lamp emphasis for outputs).
+  - node labels now use IO presentation labels/pin aliases when available.
+- Updated `packages/rb-logic-view/src/LogicCanvas.tsx`:
+  - added `ioPresentationMap` prop and fallback inference.
+  - switch overlay now renders style variants for switch/button/clock widgets while preserving deterministic toggle testids.
+- Updated export surface type barrel:
+  - `packages/rb-logic-view/src/index.ts` exports `NodeIoPresentation`.
+- Updated styling:
+  - `packages/rb-apps/src/apps/ide/ide-root.css` adds `ide-design-live-pin` style token usage.
+
+4. Gate hardening for usability contracts
+- Updated `scripts/gates/ide-design-fit-contract.mjs`:
+  - now validates readable default zoom framing on loaded AND example and verifies `Center Selection` control existence.
+- Updated `scripts/gates/ide-live-sim-contract.mjs`:
+  - now asserts Basys-style switch labels render in Design live sim path.
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:design-fit-contract` -> PASS
+- `pnpm -s ide:gate:live-sim-contract` -> PASS
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-20 (Basys3/Vivado I/O Compatibility Hardening: Canonical Pin Authority + XDC Dict Parsing)
 
 **Status**: COMPLETE - Basys3 alias/package-pin compatibility is now enforced from a single canonical map, export validation accepts real Vivado/Basys aliases (including buttons and seven-segment signals), and XDC import now parses both direct and `-dict` Vivado `PACKAGE_PIN` forms.

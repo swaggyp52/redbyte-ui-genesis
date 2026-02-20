@@ -19,7 +19,7 @@ export type {
 
 // Components
 export { NodeView } from './components/NodeView';
-export type { NodeViewProps, ChipMetadata } from './components/NodeView';
+export type { NodeViewProps, ChipMetadata, NodeIoPresentation } from './components/NodeView';
 export { WireView } from './components/WireView';
 export type { WireViewProps } from './components/WireView';
 export { Toolbar } from './components/Toolbar';

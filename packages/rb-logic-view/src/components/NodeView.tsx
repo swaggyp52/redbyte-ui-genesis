@@ -14,6 +14,12 @@ export interface ChipMetadata {
   layer?: number;
 }
 
+export interface NodeIoPresentation {
+  kind: 'switch' | 'button' | 'clock' | 'led' | 'generic';
+  label?: string;
+  pinAlias?: string;
+}
+
 export interface NodeViewProps {
   node: Node;
   camera: Camera;
@@ -41,6 +47,7 @@ export interface NodeViewProps {
   dragPosition?: { x: number; y: number } | null;
   diagnosticBadge?: { error: number; warn: number; total: number };
   onDiagnosticBadgeClick?: (nodeId: string) => void;
+  ioPresentation?: NodeIoPresentation;
 }
 
 const NODE_COLORS: Record<string, string> = {
@@ -88,6 +95,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   dragPosition: externalDragPosition,
   diagnosticBadge,
   onDiagnosticBadgeClick,
+  ioPresentation,
 }) => {
   // Safe rotation: default to 0 if undefined to prevent rotate(undefined) SVG errors
   const safeRotation = Number.isFinite(node.rotation) ? node.rotation : 0;
@@ -238,6 +246,9 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const inputSignal = signals?.get(`${node.id}.in`) ?? 0;
   const isActive =
     node.type === 'OUTPUT' || node.type === 'Lamp' ? inputSignal === 1 : outputSignal === 1;
+  const ioKind = ioPresentation?.kind ?? inferDefaultIoKind(node.type);
+  const ioDisplayLabel = (ioPresentation?.label?.trim() || node.label || node.type).toUpperCase();
+  const ioPinAlias = ioPresentation?.pinAlias?.trim();
   const isChip = !!chipMetadata;
   const hasDiagnosticBadge = (diagnosticBadge?.total ?? 0) > 0;
   const diagnosticLabel =
@@ -796,7 +807,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         y={-size / 2}
         width={size}
         height={size}
-        fill={isActive ? color : '#2a2a2a'}
+        fill={resolveNodeFill(node.type, ioKind, isActive, color)}
         stroke={isSelected ? '#3b82f6' : color}
         strokeWidth={isSelected ? 3 : 1}
         rx={4}
@@ -818,21 +829,121 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
       {renderDiagnosticBadge(size / 2 - 8, -size / 2 + 10)}
 
+      {node.type === 'INPUT' || node.type === 'Switch' ? (
+        <g pointerEvents="none">
+          {ioKind === 'button' ? (
+            <>
+              <rect
+                x={-size * 0.18}
+                y={-size * 0.18}
+                width={size * 0.36}
+                height={size * 0.36}
+                rx={4}
+                fill={isActive ? '#38bdf8' : '#1f2937'}
+                stroke={isActive ? '#bae6fd' : '#64748b'}
+                strokeWidth={1.2}
+              />
+              <text
+                x={0}
+                y={size * 0.34}
+                textAnchor="middle"
+                fill="#cbd5e1"
+                fontSize={Math.max(6, 8 * camera.zoom)}
+                fontWeight="600"
+              >
+                BTN
+              </text>
+            </>
+          ) : ioKind === 'clock' ? (
+            <>
+              <rect
+                x={-size * 0.26}
+                y={-size * 0.12}
+                width={size * 0.52}
+                height={size * 0.24}
+                rx={size * 0.08}
+                fill={isActive ? '#0ea5e9' : '#1e3a5f'}
+                stroke={isActive ? '#7dd3fc' : '#4f6f9a'}
+                strokeWidth={1.2}
+              />
+              <text
+                x={0}
+                y={size * 0.34}
+                textAnchor="middle"
+                fill="#dbeafe"
+                fontSize={Math.max(6, 8 * camera.zoom)}
+                fontWeight="600"
+              >
+                CLK
+              </text>
+            </>
+          ) : (
+            <>
+              <line
+                x1={-size * 0.18}
+                y1={size * 0.08}
+                x2={size * 0.18}
+                y2={size * 0.08}
+                stroke="#93c5fd"
+                strokeWidth={1.2}
+                strokeLinecap="round"
+              />
+              <circle cx={-size * 0.1} cy={size * 0.08} r={2.2} fill="#dbeafe" />
+              <circle cx={size * 0.1} cy={size * 0.08} r={2.2} fill="#dbeafe" />
+            </>
+          )}
+        </g>
+      ) : null}
+
+      {(node.type === 'OUTPUT' || node.type === 'Lamp') && ioKind === 'led' ? (
+        <g pointerEvents="none">
+          <circle
+            cx={0}
+            cy={-size * 0.08}
+            r={size * 0.17}
+            fill={isActive ? '#34d399' : '#1f2937'}
+            stroke={isActive ? '#a7f3d0' : '#64748b'}
+            strokeWidth={1.4}
+          />
+          {isActive ? (
+            <circle
+              cx={0}
+              cy={-size * 0.08}
+              r={size * 0.24}
+              fill="rgba(52, 211, 153, 0.22)"
+            />
+          ) : null}
+        </g>
+      ) : null}
+
       {/* Switch toggle control - DISABLED: now rendered in LogicCanvas overlay layer to avoid SVG clipping */}
       {/* Toggle is rendered in LogicCanvas.tsx <g id="rb-switch-overlay"> above all nodes */}
 
       {/* Node label */}
       <text
         x={0}
-        y={0}
+        y={node.type === 'OUTPUT' || node.type === 'Lamp' ? size * 0.18 : 0}
         textAnchor="middle"
         dominantBaseline="middle"
         fill="#fff"
         fontSize={Math.max(10, 12 * camera.zoom)}
         style={{ pointerEvents: 'none', userSelect: 'none' }}
       >
-        {node.type}
+        {ioDisplayLabel}
       </text>
+      {ioPinAlias ? (
+        <text
+          x={0}
+          y={size * 0.38}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#9fb6cf"
+          fontSize={Math.max(6, 8 * camera.zoom)}
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
+        >
+          {ioPinAlias.toUpperCase()}
+        </text>
+      ) : null}
 
       {/* Input port */}
       {!['PowerSource', 'Clock'].includes(node.type) && (() => {
@@ -1078,6 +1189,9 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
     prevProps.diagnosticBadge?.error === nextProps.diagnosticBadge?.error &&
     prevProps.diagnosticBadge?.warn === nextProps.diagnosticBadge?.warn &&
     prevProps.diagnosticBadge?.total === nextProps.diagnosticBadge?.total &&
+    prevProps.ioPresentation?.kind === nextProps.ioPresentation?.kind &&
+    prevProps.ioPresentation?.label === nextProps.ioPresentation?.label &&
+    prevProps.ioPresentation?.pinAlias === nextProps.ioPresentation?.pinAlias &&
     JSON.stringify(prevProps.node.state) === JSON.stringify(nextProps.node.state) &&
     JSON.stringify(prevProps.chipMetadata) === JSON.stringify(nextProps.chipMetadata) &&
     prevProps.wireStartPort?.nodeId === nextProps.wireStartPort?.nodeId &&
@@ -1109,3 +1223,27 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
     })()
   );
 });
+
+function inferDefaultIoKind(nodeType: string): NodeIoPresentation['kind'] {
+  if (nodeType === 'OUTPUT' || nodeType === 'Lamp') return 'led';
+  if (nodeType === 'Clock') return 'clock';
+  if (nodeType === 'INPUT' || nodeType === 'Switch') return 'switch';
+  return 'generic';
+}
+
+function resolveNodeFill(
+  nodeType: string,
+  ioKind: NodeIoPresentation['kind'],
+  isActive: boolean,
+  fallbackColor: string
+): string {
+  if (nodeType === 'INPUT' || nodeType === 'Switch') {
+    if (ioKind === 'button') return isActive ? '#0f3d57' : '#1f2937';
+    if (ioKind === 'clock') return isActive ? '#0f4b7a' : '#1e3046';
+    return isActive ? '#1f766f' : '#263241';
+  }
+  if (nodeType === 'OUTPUT' || nodeType === 'Lamp') {
+    return isActive ? '#18473b' : '#1f2937';
+  }
+  return isActive ? fallbackColor : '#2a2a2a';
+}
