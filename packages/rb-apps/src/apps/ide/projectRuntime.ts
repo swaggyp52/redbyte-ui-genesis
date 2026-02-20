@@ -88,6 +88,7 @@ export interface ProjectRuntimeActions {
 }
 
 export interface ProjectRuntimeState {
+  projectId: string;
   projectName: string;
   projectDescription: string;
   lastSavedAt: string;
@@ -124,10 +125,19 @@ export interface ProjectRuntimeState {
   clearVerification: () => void;
   recordVerification: (result: ProjectHealthVerifyResult) => void;
   recordExport: (result: ProjectHealthExportResult) => void;
+  setProjectIdentity: (input: {
+    projectId?: string;
+    projectName?: string;
+    projectDescription?: string;
+    markDirty?: boolean;
+  }) => void;
+  setLastSavedAt: (label: string) => void;
+  resetToActiveExample: () => void;
   clearUnsavedState: (label?: string) => void;
 }
 
 interface PersistedRuntimeState {
+  projectId: string;
   projectName: string;
   projectDescription: string;
   lastSavedAt: string;
@@ -282,14 +292,19 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         const example = getIdeExampleById(exampleId);
         if (!example) return;
         set({
-          ...stateFromExample(example),
+          ...stateFromExample(example, createProjectId(example.id)),
           lastSavedAt: `Example loaded: ${example.name}`,
         });
       },
       loadFromProject: (project) => {
         const projectIoRows = ioRowsFromProject(project);
         const circuit = cloneCircuit(project.circuit);
+        const incomingProjectId = (project.meta?.projectId ?? '').trim();
         set({
+          projectId:
+            incomingProjectId.length > 0
+              ? incomingProjectId
+              : createProjectId(project.name || 'imported'),
           projectName: project.name || 'Imported project',
           projectDescription: project.description ?? '',
           lastSavedAt: `Imported: ${project.name || 'project'}`,
@@ -658,6 +673,45 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           },
         }));
       },
+      setProjectIdentity: (input) => {
+        set((state) => {
+          const nextProjectId = (input.projectId ?? '').trim();
+          const nextName = (input.projectName ?? '').trim();
+          const nextDescription = input.projectDescription;
+          const shouldMarkDirty = input.markDirty ?? true;
+          return {
+            projectId: nextProjectId.length > 0 ? nextProjectId : state.projectId,
+            projectName: nextName.length > 0 ? nextName : state.projectName,
+            projectDescription:
+              typeof nextDescription === 'string'
+                ? nextDescription
+                : state.projectDescription,
+            projectHealthCore: shouldMarkDirty
+              ? {
+                  ...state.projectHealthCore,
+                  dirtySinceVerify: true,
+                  dirtySinceExport: true,
+                }
+              : state.projectHealthCore,
+          };
+        });
+      },
+      setLastSavedAt: (label) => {
+        const trimmed = label.trim();
+        if (!trimmed) return;
+        set({ lastSavedAt: trimmed });
+      },
+      resetToActiveExample: () => {
+        set((state) => {
+          const example =
+            (state.activeExampleId && getIdeExampleById(state.activeExampleId)) ??
+            DEFAULT_EXAMPLE;
+          return {
+            ...stateFromExample(example, createProjectId(example.id)),
+            lastSavedAt: `Reset to example: ${example.name}`,
+          };
+        });
+      },
       clearUnsavedState: (label) => {
         set((state) => ({
           lastSavedAt: label ?? state.lastSavedAt,
@@ -672,8 +726,9 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
     }),
     {
       name: STORAGE_KEY,
-      version: 3,
+      version: 4,
       partialize: (state): PersistedRuntimeState => ({
+        projectId: state.projectId,
         projectName: state.projectName,
         projectDescription: state.projectDescription,
         lastSavedAt: state.lastSavedAt,
@@ -696,10 +751,14 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
   )
 );
 
-function stateFromExample(example: IdeExampleDefinition): PersistedRuntimeState {
+function stateFromExample(
+  example: IdeExampleDefinition,
+  projectId = createProjectId(example.id)
+): PersistedRuntimeState {
   const projectIoRows = cloneIoRows(example.ioRows);
   const circuit = cloneCircuit(example.circuit);
   return {
+    projectId,
     projectName: example.name,
     projectDescription: example.summary,
     lastSavedAt: 'Seeded example',
@@ -939,4 +998,10 @@ function compareText(left: string, right: string): number {
   if (left < right) return -1;
   if (left > right) return 1;
   return 0;
+}
+
+function createProjectId(seed: string): string {
+  const normalizedSeed = normalizeBoardRowId(seed).replace(/_/g, '-');
+  const suffix = Date.now().toString(36).slice(-6);
+  return `rb-${normalizedSeed}-${suffix}`;
 }

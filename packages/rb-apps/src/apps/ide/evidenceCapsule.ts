@@ -74,6 +74,7 @@ export async function buildEvidenceCapsule(
   const topVhd = requireArtifactContent(input.exportViewModel, 'top.vhd');
   const topXdc = requireArtifactContent(input.exportViewModel, 'top.xdc');
   const testbench = requireArtifactContent(input.exportViewModel, 'testbench.vhd');
+  const rbprojJson = requireArtifactContent(input.exportViewModel, 'project.rbproj.json');
   const vivadoImportTcl = requireArtifactContent(input.exportViewModel, 'vivado_import.tcl');
   const bringupDoc = requireArtifactContent(input.exportViewModel, 'BRINGUP.md');
   const expectedIo = requireArtifactContent(input.exportViewModel, 'EXPECTED_IO.json');
@@ -90,6 +91,7 @@ export async function buildEvidenceCapsule(
   );
 
   const files = new Map<string, string>([
+    ['project.rbproj.json', rbprojJson],
     ['rb-project.json', stableStringify(input.project)],
     ['top.vhd', topVhd],
     ['top.xdc', topXdc],

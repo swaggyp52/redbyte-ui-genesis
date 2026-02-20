@@ -32,11 +32,12 @@ export async function runIdeGate(name, runScenario) {
 
     await waitForPreview(baseUrl);
 
+    const ideBaseUrl = await resolveIdeBaseUrl(baseUrl);
     browser = await chromium.launch();
     context = await browser.newContext({ serviceWorkers: 'block' });
     const page = await context.newPage();
 
-    await runScenario({ page, baseUrl });
+    await runScenario({ page, baseUrl: ideBaseUrl });
     console.log(`PASS: ${name}.`);
   } catch (error) {
     console.error(`FAIL: ${name}.`);
@@ -57,6 +58,27 @@ export async function runIdeGate(name, runScenario) {
       stopPreviewProcess(previewProcess);
     }
   }
+}
+
+async function resolveIdeBaseUrl(rootBaseUrl) {
+  const normalizedRoot = normalizeBaseUrl(rootBaseUrl);
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const response = await fetch(`${normalizedRoot}/`, {
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    const resolvedUrl = new URL(response.url);
+    const normalizedPath = resolvedUrl.pathname.replace(/\/+$/, '');
+    if (normalizedPath === '/os' || normalizedPath.startsWith('/os/')) {
+      return `${resolvedUrl.origin}/os`;
+    }
+  } catch {
+    // fall through to root URL
+  }
+  return normalizedRoot;
 }
 
 async function reservePort() {
@@ -151,4 +173,8 @@ function stopPreviewProcess(processRef) {
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function normalizeBaseUrl(value) {
+  return value.replace(/\/+$/, '');
 }

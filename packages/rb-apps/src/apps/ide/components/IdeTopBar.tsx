@@ -3,7 +3,12 @@ import { IdeButton, IdeStatusPill } from './IdePrimitives';
 
 export interface IdeTopBarProps {
   projectName: string;
+  projectId?: string;
   saveState: 'saved' | 'unsaved' | 'autosaving';
+  onSave?: () => void;
+  onSaveAs?: () => void;
+  onLoad?: () => void;
+  onResetToExample?: () => void;
   onRunVerify?: () => void;
   onExport?: () => void;
   onHelp?: () => void;
@@ -11,7 +16,12 @@ export interface IdeTopBarProps {
 
 export const IdeTopBar: React.FC<IdeTopBarProps> = ({
   projectName,
+  projectId,
   saveState,
+  onSave,
+  onSaveAs,
+  onLoad,
+  onResetToExample,
   onRunVerify,
   onExport,
   onHelp,
@@ -29,6 +39,7 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
         <div className="ide-project-meta">
           <p className="ide-project-label">RedByte IDE</p>
           <h1 className="ide-project-name">{projectName}</h1>
+          {projectId ? <p className="ide-project-subline">{projectId}</p> : null}
         </div>
       </div>
 
@@ -42,6 +53,18 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
         <IdeStatusPill tone={saveTone} testId="ide-save-state">
           {saveLabel}
         </IdeStatusPill>
+        <IdeButton tone="secondary" onClick={onSave} testId="ide-action-save">
+          Save
+        </IdeButton>
+        <IdeButton tone="ghost" onClick={onSaveAs} testId="ide-action-save-as">
+          Save As
+        </IdeButton>
+        <IdeButton tone="ghost" onClick={onLoad} testId="ide-action-load">
+          Load
+        </IdeButton>
+        <IdeButton tone="ghost" onClick={onResetToExample} testId="ide-action-reset-example">
+          Reset Example
+        </IdeButton>
         <IdeButton tone="secondary" onClick={onRunVerify} testId="ide-action-run-verify">
           Run Verify
         </IdeButton>

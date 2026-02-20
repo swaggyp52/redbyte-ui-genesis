@@ -1,11 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { parseVhdl } from '../../../import/vhdlImport';
 import { parseVerilog } from '../../../import/verilogImport';
 import { parseXdcPins, type XdcParseResult } from '../../../import/xdcImport';
-import { importToRbProject } from '../../../import/importToRbProject';
 import type { ParsedHDL } from '../../../import/hdlToCircuit';
 import type { RBProject } from '../../../export/projectFormat';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
+import {
+  buildImportedProject,
+  importVivadoZipFile,
+  type ZipImportInspection,
+} from '../zipImport';
 import {
   IdeButton,
   IdeCallout,
@@ -31,9 +35,13 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
   const [xdcText, setXdcText] = useState('');
   const [parsedHdl, setParsedHdl] = useState<ParsedHDL | null>(null);
   const [xdcResult, setXdcResult] = useState<XdcParseResult | null>(null);
+  const [zipInspection, setZipInspection] = useState<ZipImportInspection | null>(null);
+  const [zipBusy, setZipBusy] = useState(false);
+  const [pendingApplyProject, setPendingApplyProject] = useState<RBProject | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [statusMessage, setStatusMessage] = useState<string>('Paste HDL to begin import.');
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const zipInputRef = useRef<HTMLInputElement | null>(null);
 
   const ports = parsedHdl?.ports ?? [];
   const parsedEntityName = parsedHdl?.entityName ?? 'unparsed';
@@ -71,18 +79,21 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
     const warningRows: string[] = [];
     if (parsedHdl?.warnings?.length) warningRows.push(...parsedHdl.warnings);
     if (xdcResult?.warnings?.length) warningRows.push(...xdcResult.warnings);
+    if (zipInspection?.warnings?.length) warningRows.push(...zipInspection.warnings);
     return warningRows;
-  }, [parsedHdl, xdcResult]);
+  }, [parsedHdl, xdcResult, zipInspection]);
 
   const hasParsedHdl = parsedHdl !== null;
   const hasParsedXdc = xdcResult !== null;
+  const hasZipInspection = zipInspection !== null;
   const sourceFiles = useMemo(
     () => [
       { id: 'hdl', label: 'source.hdl', status: hasParsedHdl ? 'READY' : 'PENDING' },
       { id: 'xdc', label: 'constraints.xdc', status: hasParsedXdc ? 'READY' : 'OPTIONAL' },
+      { id: 'zip', label: 'import.zip', status: hasZipInspection ? 'READY' : 'OPTIONAL' },
       { id: 'report', label: 'import-report.json', status: blockingErrors.length === 0 ? 'CLEAN' : 'BLOCKED' },
     ],
-    [blockingErrors.length, hasParsedHdl, hasParsedXdc]
+    [blockingErrors.length, hasParsedHdl, hasParsedXdc, hasZipInspection]
   );
   const canApplySuggestions = useMemo(
     () => unmappedPorts.some((port) => Boolean(suggestBasys3Alias(port.name, port.direction))),
@@ -127,6 +138,8 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
       return;
     }
     try {
+      setZipInspection(null);
+      setPendingApplyProject(null);
       const effectiveLang =
         language === 'auto' ? detectHdlLanguage(source) : (language as 'vhdl' | 'verilog');
       const parsed = effectiveLang === 'vhdl' ? parseVhdl(source) : parseVerilog(source);
@@ -152,6 +165,8 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
       return;
     }
     try {
+      setZipInspection(null);
+      setPendingApplyProject(null);
       const parsed = parseXdcPins(source);
       setXdcResult(parsed);
       setMapping((previous) => {
@@ -187,13 +202,101 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
     setStatusMessage('Applied Basys3 mapping suggestions for eligible ports.');
   };
 
-  const importToProject = () => {
-    if (!parsedHdl || !canImport) return;
-    const project = importToRbProject(parsedHdl, xdcResult ?? undefined);
-    onImportProject?.(project);
+  const buildCurrentProject = (): RBProject | null => {
+    if (!parsedHdl) return null;
+    const sourceName =
+      zipInspection?.sourceName ??
+      `${parsedHdl.entityName.trim() || 'imported-design'}.${parsedHdl.lang === 'vhdl' ? 'vhd' : 'v'}`;
+    const topPath =
+      zipInspection?.detectedTopPath ?? `top.${parsedHdl.lang === 'vhdl' ? 'vhd' : 'v'}`;
+    const topText = hdlText.trim();
+    const normalizedXdcText = xdcText.trim();
+    return buildImportedProject({
+      sourceName,
+      topPath,
+      topText,
+      parsedHdl,
+      xdcPath: zipInspection?.detectedXdcPath ?? (normalizedXdcText ? 'top.xdc' : undefined),
+      xdcText: normalizedXdcText.length > 0 ? normalizedXdcText : undefined,
+      xdcResult: xdcResult ?? undefined,
+    });
+  };
+
+  const requestApplyProject = () => {
+    if (!canImport) return;
+    const nextProject = buildCurrentProject();
+    if (!nextProject) return;
+    setPendingApplyProject(nextProject);
+    setStatusMessage('Confirm applying import to replace the active project.');
+  };
+
+  const confirmApplyProject = () => {
+    if (!pendingApplyProject) return;
+    onImportProject?.(pendingApplyProject);
+    setPendingApplyProject(null);
     setStatusMessage(
-      `RBProject ready: ${project.circuit.nodes.length} nodes, ${project.circuit.connections.length} connections.`
+      `RBProject ready: ${pendingApplyProject.circuit.nodes.length} nodes, ${pendingApplyProject.circuit.connections.length} connections.`
     );
+  };
+
+  const cancelApplyProject = () => {
+    setPendingApplyProject(null);
+    setStatusMessage('Import apply canceled.');
+  };
+
+  const handleOpenZipPicker = () => {
+    zipInputRef.current?.click();
+  };
+
+  const handleZipInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    await handleZipFile(file);
+  };
+
+  const handleZipDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+    await handleZipFile(file);
+  };
+
+  const handleZipFile = async (file: File) => {
+    const fileName = file.name.trim().toLowerCase();
+    if (!fileName.endsWith('.zip')) {
+      setStatusMessage('ZIP import requires a .zip archive.');
+      return;
+    }
+    setZipBusy(true);
+    setPendingApplyProject(null);
+    try {
+      const inspection = await importVivadoZipFile(file);
+      setZipInspection(inspection);
+      setTab('upload');
+      setParsedHdl(inspection.parsedHdl);
+      const topSource = inspection.project.hdl?.sources?.[0]?.text ?? '';
+      setHdlText(topSource);
+      const constraintsText = inspection.project.fpga?.constraints?.text ?? '';
+      setXdcText(constraintsText);
+      setXdcResult(inspection.xdcResult ?? null);
+      setMapping(buildMappingRecord(inspection.project));
+      const mappedPins = Object.values(buildMappingRecord(inspection.project)).filter(
+        (pin) => pin.trim().length > 0
+      ).length;
+      setStatusMessage(
+        `ZIP parsed: ${inspection.detectedTopPath}${inspection.detectedXdcPath ? ` + ${inspection.detectedXdcPath}` : ''} (${mappedPins}/${inspection.parsedHdl.ports.length} mapped).`
+      );
+    } catch (error) {
+      setZipInspection(null);
+      setParsedHdl(null);
+      setXdcResult(null);
+      setStatusMessage(
+        `ZIP import failed: ${error instanceof Error ? error.message : 'unknown error'}`
+      );
+    } finally {
+      setZipBusy(false);
+    }
   };
 
   const copyDiagnostics = async () => {
@@ -230,7 +333,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
                 key={file.id}
                 type="button"
                 className={`ide-signal-row ${
-                  (file.id === 'hdl' && tab === 'hdl') || (file.id === 'xdc' && tab === 'xdc')
+                  (file.id === 'hdl' && tab === 'hdl') ||
+                  (file.id === 'xdc' && tab === 'xdc') ||
+                  (file.id === 'zip' && tab === 'upload')
                     ? 'is-active'
                     : ''
                 }`}
@@ -238,6 +343,10 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
                 onClick={() => {
                   if (file.id === 'hdl' || file.id === 'xdc') {
                     setTab(file.id);
+                    return;
+                  }
+                  if (file.id === 'zip') {
+                    setTab('upload');
                   }
                 }}
               >
@@ -315,11 +424,11 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
             <span data-testid="ide-primary-cta">
               <IdeButton
                 tone="primary"
-                onClick={importToProject}
+                onClick={requestApplyProject}
                 disabled={!canImport}
                 testId="ide-import-build-project"
               >
-                Import to Project
+                Apply to Project
               </IdeButton>
             </span>
           </>
@@ -333,6 +442,22 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
         }
         testId="ide-import-panel"
       >
+        {pendingApplyProject ? (
+          <IdeCallout tone="warn" title="Apply import to active project?" testId="ide-import-apply-confirmation">
+            <p className="ide-copy">
+              Applying this import replaces the current workspace project state.
+            </p>
+            <div className="ide-inline-actions">
+              <IdeButton tone="ghost" onClick={cancelApplyProject} testId="ide-import-apply-cancel">
+                Cancel
+              </IdeButton>
+              <IdeButton tone="primary" onClick={confirmApplyProject} testId="ide-import-apply-confirm">
+                Confirm Apply
+              </IdeButton>
+            </div>
+          </IdeCallout>
+        ) : null}
+
         <IdeGrid columns={2} testId="ide-import-pipeline-grid">
           <section className="ide-import-stage-col" data-testid="ide-import-inputs">
             <IdeSectionHeader title="Inputs" meta="Stage 1" />
@@ -356,10 +481,10 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
               <button
                 type="button"
                 className={`ide-export-artifact-tab ${tab === 'upload' ? 'is-active' : ''}`}
-                disabled
+                onClick={() => setTab('upload')}
                 data-testid="ide-import-tab-upload"
               >
-                Upload ZIP (Soon)
+                Upload ZIP
               </button>
             </div>
 
@@ -403,11 +528,92 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
             )}
 
             {tab === 'upload' && (
-              <div className="ide-empty-stack">
-                <div className="ide-empty-illustration ide-empty-illustration-import" aria-hidden="true" />
-                <IdeCallout tone="info" title="ZIP Import Pending">
-                  ZIP import is intentionally disabled in v1 to keep deterministic parsing strict.
+              <div className="ide-empty-stack ide-import-zip-stage" data-testid="ide-import-zip-stage">
+                <input
+                  ref={zipInputRef}
+                  type="file"
+                  accept=".zip,application/zip"
+                  className="ide-hidden-file-input"
+                  onChange={(event) => {
+                    void handleZipInputChange(event);
+                  }}
+                  data-testid="ide-import-zip-input"
+                />
+                <div
+                  className="ide-empty-illustration ide-empty-illustration-import"
+                  aria-hidden="true"
+                  data-testid="ide-import-zip-dropzone"
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    void handleZipDrop(event);
+                  }}
+                />
+                <IdeCallout tone="info" title="Vivado ZIP Import">
+                  Drop a Vivado project ZIP, or browse to inspect detected top/module and constraints.
                 </IdeCallout>
+                <div className="ide-inline-actions">
+                  <IdeButton
+                    tone="secondary"
+                    onClick={handleOpenZipPicker}
+                    disabled={zipBusy}
+                    testId="ide-import-zip-browse"
+                  >
+                    {zipBusy ? 'Importing ZIP...' : 'Select ZIP'}
+                  </IdeButton>
+                </div>
+
+                {zipInspection ? (
+                  <section className="ide-export-section" data-testid="ide-import-zip-inspection">
+                    <IdeSectionHeader
+                      title="ZIP Inspection"
+                      meta={`${zipInspection.detectedFiles.length} detected / ${zipInspection.ignoredFiles.length} ignored`}
+                    />
+                    <div className="ide-kv-list">
+                      <div className="ide-kv-row">
+                        <span>Top HDL</span>
+                        <code data-testid="ide-import-zip-top-path">{zipInspection.detectedTopPath}</code>
+                      </div>
+                      <div className="ide-kv-row">
+                        <span>Language</span>
+                        <span data-testid="ide-import-zip-top-language">
+                          {zipInspection.detectedTopLanguage.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="ide-kv-row">
+                        <span>XDC</span>
+                        <code data-testid="ide-import-zip-xdc-path">
+                          {zipInspection.detectedXdcPath ?? 'not found'}
+                        </code>
+                      </div>
+                    </div>
+                    <div className="ide-import-zip-lists">
+                      <div>
+                        <h4>Detected</h4>
+                        <ul className="ide-list" data-testid="ide-import-zip-detected-list">
+                          {zipInspection.detectedFiles.map((path) => (
+                            <li key={path}>
+                              <code>{path}</code>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <h4>Ignored</h4>
+                        {zipInspection.ignoredFiles.length > 0 ? (
+                          <ul className="ide-list" data-testid="ide-import-zip-ignored-list">
+                            {zipInspection.ignoredFiles.slice(0, 10).map((path) => (
+                              <li key={path}>
+                                <code>{path}</code>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="ide-copy">No extra files ignored.</p>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                ) : null}
               </div>
             )}
           </section>
@@ -592,4 +798,17 @@ function buildDiagnosticsReport(params: {
     for (const warning of warnings) lines.push(`- ${warning}`);
   }
   return lines.join('\n');
+}
+
+function buildMappingRecord(project: RBProject): Record<string, string> {
+  const rows = [
+    ...(project.ioMapping?.inputs ?? []),
+    ...(project.ioMapping?.outputs ?? []),
+  ];
+  const mapping: Record<string, string> = {};
+  for (const row of rows) {
+    const key = (row.label ?? row.id).trim() || row.id;
+    mapping[key] = (row.pin ?? '').toUpperCase();
+  }
+  return mapping;
 }

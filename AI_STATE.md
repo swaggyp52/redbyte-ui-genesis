@@ -1,5 +1,93 @@
 # AI State
 
+## Change Log 2026-02-20 (Tranche 9: Real Persistence + Vivado ZIP Import + Assignment Example Grouping)
+
+**Status**: COMPLETE - IDE persistence is now deterministic and test-enforced, export bundles include canonical `project.rbproj.json` with manifest hashing, Vivado ZIP import is wired end-to-end into Import mode with inspection/apply flow, examples are grouped with course/lab/concept metadata, and all repository contracts pass on current main working state.
+
+### What Changed
+
+1. RBProject persistence and export authority
+- Added `packages/rb-apps/src/apps/ide/projectPersistence.ts`:
+  - local snapshot model (`rb.ide.project.v1`) with index + hash tracking.
+  - deterministic list/load/decode helpers for saved projects.
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - wired Save / Save As / Load / Reset-to-example flows to persistence model.
+  - autosave path now writes deterministic snapshots and updates top-bar save state.
+- Updated `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`:
+  - includes `project.rbproj.json` artifact in export view model.
+- Updated `packages/rb-apps/src/apps/ide/evidenceCapsule.ts`:
+  - includes `project.rbproj.json` in bundle + `MANIFEST.json` file hash list.
+
+2. Vivado ZIP import v1.5 with inspection + guarded apply
+- Added `packages/rb-apps/src/apps/ide/zipImport.ts`:
+  - deterministic ZIP ingest via `JSZip`.
+  - detects top HDL (`top.vhd`/`top.v`) and XDC.
+  - reuses existing HDL/XDC parsers to build canonical `RBProject`.
+  - surfaces detected/ignored files + warnings for import inspection.
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`:
+  - enabled Upload ZIP stage and inspection panel.
+  - added guarded `Apply to Project` confirmation flow.
+  - manual parse path now builds full `RBProject` shape via shared builder.
+
+3. Assignment-style examples metadata in Project hub
+- Updated `packages/rb-apps/src/apps/ide/examplesCatalog.ts`:
+  - added `course`, `lab`, `concept` metadata for all shipped examples.
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`:
+  - grouped example catalog by course/lab.
+  - exposed deterministic group/meta test markers.
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - forwards example grouping metadata into Project surface.
+
+4. New Tranche 9 tests + gates
+- Added tests:
+  - `packages/rb-apps/src/__tests__/ide-export-includes-rbproj-contract.test.ts`
+  - `packages/rb-apps/src/__tests__/ide-zip-import-contract.test.ts`
+- Added gate runners:
+  - `scripts/gates/ide-export-includes-rbproj-contract.mjs`
+  - `scripts/gates/ide-zip-import-contract.mjs`
+  - `scripts/gates/ide-persistence-contract.mjs`
+- Updated existing contracts:
+  - `packages/rb-apps/src/__tests__/ide-vivado-pack-contract.test.ts`
+  - `scripts/gates/ide-examples-contract.mjs`
+- Wired gates into runners:
+  - `package.json`
+  - `scripts/repo-status.mjs`
+  - `scripts/verify-gates-classroom.mjs`
+
+5. Gate harness and IDE crash hardening required by Tranche 9 validation
+- Updated `scripts/gates/_gateHarness.mjs`:
+  - resolves preview base path deterministically (`/` vs `/os`) without mutating localStorage state.
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - fixed hook ordering TDZ crash (`hasUnsavedWork` referenced before initialization in production bundle path).
+
+6. Tranche 9 fixtures and screenshot baseline updates
+- Added ZIP fixture bundle:
+  - `packages/rb-apps/src/fixtures/import/zip/01-and-gate-vivado.zip`
+  - helper source files under `packages/rb-apps/src/fixtures/import/zip/`.
+- Updated screenshots:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-project-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-design-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-verify-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-export-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-import-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-hardware-chromium-win32.png`
+
+### Validation Executed
+
+- `pnpm -s ide:gate:export-includes-rbproj-contract` -> PASS
+- `pnpm -s ide:gate:zip-import-contract` -> PASS
+- `pnpm -s ide:gate:persistence-contract` -> PASS
+- `pnpm -s ide:gate:examples-contract` -> PASS
+- `pnpm -s ide:gate:vivado-pack-contract` -> PASS
+- `pnpm -s ide:gate:shell-chrome-contract` -> PASS
+- `pnpm -s ide:gate:screenshots:update` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm repo:status` -> PASS (35/35 checks; ahead warning remains non-blocking)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-20 (Tranche 8: Design Build-Fast + Export Compiler Clarity + Hardware Checklist Authority)
 
 **Status**: COMPLETE - Design now supports board-first Basys3 IO creation with smart wire cues and deterministic live-change feedback, Export is framed as a strict 3-step compiler surface (status/blockers/outputs + bring-up reliability), and Hardware exposes projector-ready checklist + expected-IO + if-wrong authority panels with full gate coverage.

@@ -53,6 +53,9 @@ export interface ProjectSurfaceProps {
     summary: string;
     expectedBehavior: string;
     tags: string[];
+    course: string;
+    lab: string;
+    concept: string;
   }>;
   activeExampleId: string | null;
   onOpenExample: (exampleId: string) => void;
@@ -145,6 +148,39 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     });
     return rows;
   }, [mappingRows]);
+
+  const groupedExamples = useMemo(() => {
+    const groups = new Map<
+      string,
+      {
+        key: string;
+        title: string;
+        examples: ProjectSurfaceProps['examples'];
+      }
+    >();
+
+    for (const example of examples) {
+      const groupTitle = `${example.course} · ${example.lab}`;
+      const groupKey = toSlug(groupTitle);
+      const current = groups.get(groupKey);
+      if (current) {
+        current.examples.push(example);
+      } else {
+        groups.set(groupKey, {
+          key: groupKey,
+          title: groupTitle,
+          examples: [example],
+        });
+      }
+    }
+
+    return Array.from(groups.values())
+      .sort((left, right) => compareText(left.title, right.title))
+      .map((group) => ({
+        ...group,
+        examples: [...group.examples].sort((left, right) => compareText(left.name, right.name)),
+      }));
+  }, [examples]);
 
   const unmappedRequiredCount = useMemo(
     () => sortedMappingRows.filter((row) => row.required && row.pin.trim().length === 0).length,
@@ -294,17 +330,36 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               {activeExampleId ? 'EXAMPLE LOADED' : 'CUSTOM PROJECT'}
             </IdeStatusPill>
           </header>
-          <div className="ide-signal-list">
-            {examples.slice(0, 4).map((example) => (
-              <button
-                key={example.id}
-                type="button"
-                className={`ide-signal-row ${activeExampleId === example.id ? 'is-active' : ''}`}
-                onClick={() => onOpenExample(example.id)}
-                data-testid={`ide-project-open-example-${example.id}`}
+          <div className="ide-signal-list" data-testid="ide-project-example-groups">
+            {groupedExamples.map((group) => (
+              <section
+                key={group.key}
+                className="ide-project-example-group"
+                data-testid={`ide-project-example-group-${group.key}`}
               >
-                <span>{example.name}</span>
-              </button>
+                <header className="ide-project-example-group-header">
+                  <h4>{group.title}</h4>
+                </header>
+                <div className="ide-project-example-group-list">
+                  {group.examples.map((example) => (
+                    <button
+                      key={example.id}
+                      type="button"
+                      className={`ide-signal-row ${activeExampleId === example.id ? 'is-active' : ''}`}
+                      onClick={() => onOpenExample(example.id)}
+                      data-testid={`ide-project-open-example-${example.id}`}
+                    >
+                      <span>{example.name}</span>
+                      <span
+                        className="ide-project-example-meta"
+                        data-testid={`ide-project-example-meta-${example.id}`}
+                      >
+                        {example.concept}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
           <div className="ide-inline-actions">
@@ -566,6 +621,14 @@ function formatSavedAt(value: string): string {
 
 function toMappingKey(value: string): string {
   return value.trim().toLowerCase();
+}
+
+function toSlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 function compareText(left: string, right: string): number {

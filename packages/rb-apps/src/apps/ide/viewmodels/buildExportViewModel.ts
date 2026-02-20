@@ -1,4 +1,4 @@
-import type { RBProject } from '../../../export/projectFormat';
+import { encodeRBProject, type RBProject } from '../../../export/projectFormat';
 import { compareCodepoint } from '../../../export/codepointSort';
 import {
   exportProjectAsBasys3,
@@ -286,6 +286,7 @@ function buildArtifacts(
 ): ExportArtifactView[] {
   const artifacts: ExportArtifactView[] = [];
   const bundle = exportResult.bundle;
+  const rbprojJson = encodeRBProject(project);
   const runtimeBackedTestbench = buildRuntimeBackedTestbench(project, runtimeVerifyRun);
   const topEntity = resolveTopEntity(project);
   const vhdlSourcePaths: string[] = ['top.vhd'];
@@ -309,6 +310,14 @@ function buildArtifacts(
   });
 
   if (bundle) {
+    artifacts.push({
+      path: 'project.rbproj.json',
+      kind: 'json',
+      content: normalizeArtifactContent(rbprojJson),
+      preview: buildPreview(rbprojJson),
+      status: 'ready',
+      note: 'Canonical RedByte project snapshot for Save/Load roundtrip.',
+    });
     artifacts.push({
       path: 'top.vhd',
       kind: 'vhd',
@@ -397,6 +406,14 @@ function buildArtifacts(
       });
     }
   } else {
+    artifacts.push({
+      path: 'project.rbproj.json',
+      kind: 'json',
+      content: normalizeArtifactContent(rbprojJson),
+      preview: buildPreview(rbprojJson),
+      status: 'ready',
+      note: 'Canonical RedByte project snapshot for Save/Load roundtrip.',
+    });
     artifacts.push({
       path: 'top.vhd',
       kind: 'vhd',

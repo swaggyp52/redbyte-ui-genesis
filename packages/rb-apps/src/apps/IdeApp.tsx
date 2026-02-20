@@ -1,10 +1,10 @@
 // Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 // IdeApp - IDE-first shell surface with deterministic mode markers.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { installFatalCapture, pushMount } from '@redbyte/rb-utils';
-import type { RBProject } from '../export/projectFormat';
+import { decodeRBProject, type RBProject } from '../export/projectFormat';
 import { useCircuitStore } from '../stores/circuitStore';
 import { digestValue } from '../utils/digest';
 import './ide/ide-root.css';
@@ -34,12 +34,25 @@ import {
   type ProjectHealthExportResult,
 } from './ide/projectHealth';
 import { useProjectRuntime } from './ide/projectRuntime';
+import {
+  decodePersistedIdeProject,
+  listIdeProjectSnapshots,
+  loadIdeProjectSnapshot,
+  saveIdeProjectSnapshot,
+  type PersistedIdeProjectIndexEntry,
+} from './ide/projectPersistence';
 
 export const IdeApp: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<IdeMode>(() => resolveInitialIdeMode());
   const [pendingExampleId, setPendingExampleId] = useState<string | null>(null);
   const [diagnosticRouteRequest, setDiagnosticRouteRequest] = useState<IdeDiagnosticRouteRequest | null>(null);
+  const [loadModalOpen, setLoadModalOpen] = useState(false);
+  const [savedProjects, setSavedProjects] = useState<PersistedIdeProjectIndexEntry[]>([]);
+  const [savedProjectHash, setSavedProjectHash] = useState<string | null>(null);
+  const [isAutosaving, setIsAutosaving] = useState(false);
+  const importFileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const projectId = useProjectRuntime((state) => state.projectId);
   const projectName = useProjectRuntime((state) => state.projectName);
   const projectDescription = useProjectRuntime((state) => state.projectDescription);
   const lastSavedAt = useProjectRuntime((state) => state.lastSavedAt);
@@ -74,8 +87,9 @@ export const IdeApp: React.FC = () => {
   );
   const toggleRuntimeSimProbe = useProjectRuntime((state) => state.actions.sim.toggleProbe);
   const recordExport = useProjectRuntime((state) => state.recordExport);
-
-  const determinismHash = useMemo(() => '2f4e0bb0f17ac4d2', []);
+  const setProjectIdentity = useProjectRuntime((state) => state.setProjectIdentity);
+  const setLastSavedAt = useProjectRuntime((state) => state.setLastSavedAt);
+  const resetToActiveExample = useProjectRuntime((state) => state.resetToActiveExample);
   const hasCircuit = circuit.nodes.length > 0;
   const missingRequiredCount = useMemo(
     () => projectIoRows.filter((entry) => entry.required && entry.pin.trim().length === 0).length,
@@ -89,8 +103,6 @@ export const IdeApp: React.FC = () => {
   );
   const hasVectors = projectVectors.length > 0;
   const latestVerifyPass = projectHealthCore.lastVerify?.status === 'pass';
-  const saveState: 'saved' | 'unsaved' | 'autosaving' =
-    projectHealthCore.dirtySinceVerify || projectHealthCore.dirtySinceExport ? 'unsaved' : 'saved';
 
   const readiness = useMemo(
     () => ({
@@ -122,9 +134,6 @@ export const IdeApp: React.FC = () => {
       }),
     [projectHealth, readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors]
   );
-
-  const hasUnsavedWork =
-    projectHealthCore.dirtySinceVerify || projectHealthCore.dirtySinceExport;
 
   const pendingExample = useMemo(
     () => (pendingExampleId ? getIdeExampleById(pendingExampleId) : undefined),
@@ -161,18 +170,6 @@ export const IdeApp: React.FC = () => {
       setCurrentMode('project');
     },
     [loadExample]
-  );
-
-  const handleOpenExample = useCallback(
-    (exampleId: string) => {
-      if (activeExampleId === exampleId) return;
-      if (hasUnsavedWork) {
-        setPendingExampleId(exampleId);
-        return;
-      }
-      applyExample(exampleId);
-    },
-    [activeExampleId, applyExample, hasUnsavedWork]
   );
 
   const handleConfirmExampleReplace = useCallback(() => {
@@ -232,12 +229,18 @@ export const IdeApp: React.FC = () => {
     markDesignMutated(useCircuitStore.getState().circuit);
   }, [markDesignMutated]);
 
+  const refreshSavedProjects = useCallback(() => {
+    setSavedProjects(listIdeProjectSnapshots());
+  }, []);
+
   const handleImportProject = useCallback(
     (project: RBProject) => {
       loadFromProject(project);
+      setSavedProjectHash(null);
+      refreshSavedProjects();
       setCurrentMode('project');
     },
-    [loadFromProject]
+    [loadFromProject, refreshSavedProjects]
   );
 
   const topEntityName = useMemo(() => buildTopEntityName(projectName), [projectName]);
@@ -309,10 +312,183 @@ export const IdeApp: React.FC = () => {
       vectors: projectVectors,
       meta: {
         appSurface: 'ide-export',
+        projectId,
       },
     }),
-    [circuit, hdlText, projectDescription, projectIoRows, projectName, projectVectors, topEntityName, xdcText]
+    [
+      circuit,
+      hdlText,
+      projectDescription,
+      projectId,
+      projectIoRows,
+      projectName,
+      projectVectors,
+      topEntityName,
+      xdcText,
+    ]
   );
+  const projectHash = useMemo(() => digestValue(exportProject), [exportProject]);
+  const determinismHash = projectHash;
+  const saveState: 'saved' | 'unsaved' | 'autosaving' = useMemo(() => {
+    if (isAutosaving) return 'autosaving';
+    return projectHash === savedProjectHash ? 'saved' : 'unsaved';
+  }, [isAutosaving, projectHash, savedProjectHash]);
+  const hasUnsavedWork = projectHash !== savedProjectHash;
+
+  const handleOpenExample = useCallback(
+    (exampleId: string) => {
+      if (activeExampleId === exampleId) return;
+      if (hasUnsavedWork) {
+        setPendingExampleId(exampleId);
+        return;
+      }
+      applyExample(exampleId);
+    },
+    [activeExampleId, applyExample, hasUnsavedWork]
+  );
+
+  const handleSaveProject = useCallback(() => {
+    const snapshot = saveIdeProjectSnapshot({
+      projectId,
+      projectName,
+      projectHash,
+      project: exportProject,
+    });
+    if (!snapshot) return;
+    setSavedProjectHash(snapshot.projectHash);
+    setLastSavedAt(`Saved ${formatSavedAtLabel(snapshot.savedAtIso)}`);
+    refreshSavedProjects();
+  }, [exportProject, projectHash, projectId, projectName, refreshSavedProjects, setLastSavedAt]);
+
+  const handleSaveAsProject = useCallback(() => {
+    const nextProjectId = createSaveAsProjectId(projectName, projectId, savedProjects);
+    const nextProject: RBProject = {
+      ...exportProject,
+      meta: {
+        ...(exportProject.meta ?? {}),
+        projectId: nextProjectId,
+      },
+    };
+    const nextHash = digestValue(nextProject);
+    const snapshot = saveIdeProjectSnapshot({
+      projectId: nextProjectId,
+      projectName,
+      projectHash: nextHash,
+      project: nextProject,
+    });
+    if (!snapshot) return;
+    setProjectIdentity({
+      projectId: nextProjectId,
+      markDirty: false,
+    });
+    setSavedProjectHash(snapshot.projectHash);
+    setLastSavedAt(`Saved as ${nextProjectId}`);
+    refreshSavedProjects();
+  }, [
+    exportProject,
+    projectId,
+    projectName,
+    refreshSavedProjects,
+    savedProjects,
+    setLastSavedAt,
+    setProjectIdentity,
+  ]);
+
+  const handleOpenLoadModal = useCallback(() => {
+    refreshSavedProjects();
+    setLoadModalOpen(true);
+  }, [refreshSavedProjects]);
+
+  const handleCloseLoadModal = useCallback(() => {
+    setLoadModalOpen(false);
+  }, []);
+
+  const handleLoadSavedProject = useCallback(
+    (entry: PersistedIdeProjectIndexEntry) => {
+      const snapshot = loadIdeProjectSnapshot(entry.projectId);
+      if (!snapshot) return;
+      const project = decodePersistedIdeProject(snapshot);
+      if (!project) return;
+      loadFromProject(project);
+      setSavedProjectHash(snapshot.projectHash);
+      setLastSavedAt(`Loaded ${entry.projectName}`);
+      refreshSavedProjects();
+      setLoadModalOpen(false);
+    },
+    [loadFromProject, refreshSavedProjects, setLastSavedAt]
+  );
+
+  const handleOpenProjectFile = useCallback(() => {
+    importFileInputRef.current?.click();
+  }, []);
+
+  const handleProjectFileSelected = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file) return;
+      try {
+        const raw = await file.text();
+        const parsed = decodeRBProject(raw);
+        loadFromProject(parsed);
+        setSavedProjectHash(null);
+        setLastSavedAt(`Loaded file ${file.name}`);
+        refreshSavedProjects();
+        setLoadModalOpen(false);
+      } catch {
+        setLastSavedAt(`Load failed for ${file.name}`);
+      }
+    },
+    [loadFromProject, refreshSavedProjects, setLastSavedAt]
+  );
+
+  const handleResetToExample = useCallback(() => {
+    resetToActiveExample();
+    setSavedProjectHash(null);
+    setLoadModalOpen(false);
+    setLastSavedAt('Reset to active example');
+    refreshSavedProjects();
+  }, [refreshSavedProjects, resetToActiveExample, setLastSavedAt]);
+
+  useEffect(() => {
+    setSavedProjects(listIdeProjectSnapshots());
+    const snapshot = loadIdeProjectSnapshot(projectId);
+    setSavedProjectHash(snapshot?.projectHash ?? null);
+  }, [projectId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!projectId.trim()) return;
+    if (projectHash === savedProjectHash) return;
+
+    setIsAutosaving(true);
+    const timer = window.setTimeout(() => {
+      const snapshot = saveIdeProjectSnapshot({
+        projectId,
+        projectName,
+        projectHash,
+        project: exportProject,
+      });
+      if (snapshot) {
+        setSavedProjectHash(snapshot.projectHash);
+        setSavedProjects(listIdeProjectSnapshots());
+        setLastSavedAt(`Autosaved ${formatSavedAtLabel(snapshot.savedAtIso)}`);
+      }
+      setIsAutosaving(false);
+    }, 700);
+
+    return () => {
+      window.clearTimeout(timer);
+      setIsAutosaving(false);
+    };
+  }, [
+    exportProject,
+    projectHash,
+    projectId,
+    projectName,
+    savedProjectHash,
+    setLastSavedAt,
+  ]);
 
   const exportViewModel = useMemo(
     () => buildExportViewModel(exportProject, verifyLastRun),
@@ -454,7 +630,12 @@ export const IdeApp: React.FC = () => {
 
       <IdeTopBar
         projectName={projectName}
+        projectId={projectId}
         saveState={saveState}
+        onSave={handleSaveProject}
+        onSaveAs={handleSaveAsProject}
+        onLoad={handleOpenLoadModal}
+        onResetToExample={handleResetToExample}
         onRunVerify={() => setCurrentMode('verify')}
         onExport={() => setCurrentMode('export')}
         onHelp={() => setCurrentMode('project')}
@@ -479,6 +660,9 @@ export const IdeApp: React.FC = () => {
               summary: example.summary,
               expectedBehavior: example.expectedBehavior,
               tags: example.tags,
+              course: example.course,
+              lab: example.lab,
+              concept: example.concept,
             }))}
             activeExampleId={activeExampleId}
             onOpenExample={handleOpenExample}
@@ -557,6 +741,60 @@ export const IdeApp: React.FC = () => {
           <ImportSurface onImportProject={handleImportProject} />
         )}
       </div>
+
+      <input
+        ref={importFileInputRef}
+        type="file"
+        accept=".rbproj,.rbproj.json,.json,application/json"
+        className="ide-hidden-file-input"
+        onChange={(event) => {
+          void handleProjectFileSelected(event);
+        }}
+        data-testid="ide-project-file-input"
+      />
+
+      {loadModalOpen ? (
+        <IdeModal
+          title="Load Saved Project"
+          body={
+            <div className="ide-load-project-modal" data-testid="ide-load-project-modal">
+              {savedProjects.length > 0 ? (
+                <div className="ide-load-project-list" data-testid="ide-load-project-list">
+                  {savedProjects.map((entry) => (
+                    <button
+                      key={entry.projectId}
+                      type="button"
+                      className="ide-load-project-row"
+                      onClick={() => handleLoadSavedProject(entry)}
+                      data-testid={`ide-load-project-${entry.projectId}`}
+                    >
+                      <span>{entry.projectName}</span>
+                      <span className="ide-status-mono">{entry.projectHash.slice(0, 10)}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="ide-copy">No local saved projects found yet.</p>
+              )}
+              <p className="ide-copy">
+                You can also load a <code>.rbproj.json</code> file from disk.
+              </p>
+            </div>
+          }
+          actions={
+            <>
+              <IdeButton tone="ghost" onClick={handleCloseLoadModal} testId="ide-load-close">
+                Close
+              </IdeButton>
+              <IdeButton tone="secondary" onClick={handleOpenProjectFile} testId="ide-load-file">
+                Load File
+              </IdeButton>
+            </>
+          }
+          onClose={handleCloseLoadModal}
+          testId="ide-load-modal"
+        />
+      ) : null}
 
       {pendingExample ? (
         <IdeModal
@@ -736,6 +974,37 @@ function extractExpectedIoRows(
   } catch {
     return [];
   }
+}
+
+function formatSavedAtLabel(savedAtIso: string): string {
+  const normalized = savedAtIso.trim();
+  if (!normalized) return 'recently';
+  return normalized.replace('T', ' ').replace('.000Z', 'Z');
+}
+
+function createSaveAsProjectId(
+  projectName: string,
+  currentProjectId: string,
+  existingProjects: PersistedIdeProjectIndexEntry[]
+): string {
+  const usedIds = new Set(existingProjects.map((entry) => entry.projectId));
+  const baseSeed = normalizeProjectIdSeed(projectName);
+  let candidate = `${baseSeed}-copy`;
+  let suffix = 2;
+  while (candidate === currentProjectId || usedIds.has(candidate)) {
+    candidate = `${baseSeed}-copy-${String(suffix).padStart(2, '0')}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
+function normalizeProjectIdSeed(value: string): string {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return normalized.length > 0 ? `rb-${normalized}` : 'rb-project';
 }
 
 export default IdeApp;

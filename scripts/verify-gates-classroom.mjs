@@ -51,6 +51,7 @@ function main() {
     runGate('ide:project-overview-contract', 'pnpm -s ide:gate:project-overview-contract', true),
     runGate('ide:project-health-live-contract', 'pnpm -s ide:gate:project-health-live-contract', true),
     runGate('ide:project-continue-cta-contract', 'pnpm -s ide:gate:project-continue-cta-contract', true),
+    runGate('ide:persistence-contract', 'pnpm -s ide:gate:persistence-contract', true),
     runGate('ide:examples-contract', 'pnpm -s ide:gate:examples-contract', true),
     runGate('ide:design-system-contract', 'pnpm -s ide:gate:design-system-contract', true),
     runGate('ide:shell-chrome-contract', 'pnpm -s ide:gate:shell-chrome-contract', true),
@@ -58,6 +59,12 @@ function main() {
     runGate('ide:verify-contract', 'pnpm -s ide:gate:verify-contract', true),
     runGate('ide:synth-subset-contract', 'pnpm -s ide:gate:synth-subset-contract', true),
     runGate('ide:vivado-pack-contract', 'pnpm -s ide:gate:vivado-pack-contract', true),
+    runGate(
+      'ide:export-includes-rbproj-contract',
+      'pnpm -s ide:gate:export-includes-rbproj-contract',
+      true
+    ),
+    runGate('ide:zip-import-contract', 'pnpm -s ide:gate:zip-import-contract', true),
     runGate('ide:bringup-contract', 'pnpm -s ide:gate:bringup-contract', true),
     runGate('ide:verify-workbench-contract', 'pnpm -s ide:gate:verify-workbench-contract', true),
     runGate('ide:verify-summary-contract', 'pnpm -s ide:gate:verify-summary-contract', true),

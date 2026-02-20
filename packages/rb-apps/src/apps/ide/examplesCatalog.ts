@@ -15,6 +15,9 @@ export interface IdeExampleDefinition {
   id: string;
   name: string;
   summary: string;
+  course: string;
+  lab: string;
+  concept: string;
   tags: string[];
   expectedBehavior: string;
   ioRows: IdeExampleIoRow[];
@@ -29,6 +32,9 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     id: 'counter-basics',
     name: '3-bit Counter Baseline',
     summary: 'Clocked baseline with enable and reset wiring for Basys3 bring-up.',
+    course: 'ECE141',
+    lab: 'Lab 8',
+    concept: 'Sequential Counter',
     tags: ['sequential', 'counter', 'basys3'],
     expectedBehavior: 'Toggles q0/q1/q2 style outputs with deterministic tick progression.',
     ioRows: [
@@ -104,6 +110,9 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     id: 'and-gate-basics',
     name: 'AND Gate Starter',
     summary: 'Two-switch combinational starter that drives one LED output.',
+    course: 'ECE141',
+    lab: 'Lab 1',
+    concept: 'Combinational Basics',
     tags: ['combinational', 'logic-basics', 'starter'],
     expectedBehavior: 'LED turns on only when both inputs are high.',
     ioRows: [
@@ -168,6 +177,9 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     id: 'xor-parity',
     name: 'XOR Parity Probe',
     summary: 'Simple XOR parity testbed with deterministic vectors.',
+    course: 'ECE141',
+    lab: 'Lab 2',
+    concept: 'Parity Logic',
     tags: ['combinational', 'xor', 'parity'],
     expectedBehavior: 'Output is high when an odd number of inputs are high.',
     ioRows: [
@@ -232,6 +244,9 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     id: 'dff-toggle',
     name: 'Clocked DFF Toggle',
     summary: 'Sequential starter with clock, data input, and one observed output.',
+    course: 'ECE141',
+    lab: 'Lab 6',
+    concept: 'DFF Timing',
     tags: ['sequential', 'clocked', 'dff'],
     expectedBehavior: 'Output follows data input on clock edge ticks.',
     ioRows: [
@@ -296,6 +311,9 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     id: 'majority-voter',
     name: 'Three-Input Majority',
     summary: 'Logic composition starter for 3-input majority style behavior.',
+    course: 'ECE141',
+    lab: 'Lab 4',
+    concept: 'Logic Composition',
     tags: ['combinational', 'intermediate', 'logic-composition'],
     expectedBehavior: 'Output should assert when at least two inputs are high.',
     ioRows: [
@@ -388,6 +406,9 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     id: 'button-or-indicator',
     name: 'Button OR Indicator',
     summary: 'Button-focused starter aligned with quick board sanity checks.',
+    course: 'ECE141',
+    lab: 'Lab 3',
+    concept: 'Board IO',
     tags: ['buttons', 'io-mapping', 'quick-check'],
     expectedBehavior: 'LED lights when either button is pressed.',
     ioRows: [

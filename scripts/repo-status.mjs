@@ -95,6 +95,21 @@ if (!runCheck('IDE Vivado Pack Contract', 'pnpm -s ide:gate:vivado-pack-contract
   process.exit(1);
 }
 
+// 2ba. RBProject archive inclusion contract
+if (
+  !runCheck(
+    'IDE Export Includes RBProject Contract',
+    'pnpm -s ide:gate:export-includes-rbproj-contract 2>&1'
+  )
+) {
+  process.exit(1);
+}
+
+// 2bb. Vivado ZIP import deterministic contract
+if (!runCheck('IDE ZIP Import Contract', 'pnpm -s ide:gate:zip-import-contract 2>&1')) {
+  process.exit(1);
+}
+
 // 2c. Hardware bring-up proof loop contract
 if (!runCheck('IDE Bring-Up Contract', 'pnpm -s ide:gate:bringup-contract 2>&1')) {
   process.exit(1);
@@ -119,6 +134,9 @@ if (!runCheck('IDE Project Health Live Contract', 'pnpm -s ide:gate:project-heal
   process.exit(1);
 }
 if (!runCheck('IDE Project Continue CTA Contract', 'pnpm -s ide:gate:project-continue-cta-contract 2>&1')) {
+  process.exit(1);
+}
+if (!runCheck('IDE Persistence Contract', 'pnpm -s ide:gate:persistence-contract 2>&1')) {
   process.exit(1);
 }
 if (!runCheck('IDE Workbench Layout Contract', 'pnpm -s ide:gate:workbench-layout-contract 2>&1')) {

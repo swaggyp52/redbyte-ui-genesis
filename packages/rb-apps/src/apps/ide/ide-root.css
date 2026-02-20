@@ -213,6 +213,14 @@
   text-overflow: ellipsis;
 }
 
+.ide-project-subline {
+  margin: 0;
+  font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 11px;
+  color: var(--ide-text-muted);
+  letter-spacing: 0.01em;
+}
+
 .ide-top-center {
   justify-self: center;
 }
@@ -465,6 +473,27 @@
   font-size: var(--rb-font-size-1);
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+.ide-project-example-group {
+  display: grid;
+  gap: var(--ide-space-1);
+}
+
+.ide-project-example-group-header h4 {
+  margin: 0;
+  font-size: var(--rb-font-size-2);
+  color: var(--ide-text-muted);
+}
+
+.ide-project-example-group-list {
+  display: grid;
+  gap: var(--ide-space-1);
+}
+
+.ide-project-example-meta {
+  color: var(--ide-text-soft);
+  font-size: var(--rb-font-size-1);
 }
 
 .ide-content-grid {
@@ -1611,6 +1640,22 @@
   height: 120px;
 }
 
+.ide-import-zip-stage {
+  align-content: start;
+}
+
+.ide-import-zip-lists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ide-space-2);
+}
+
+.ide-import-zip-lists h4 {
+  margin: 0 0 var(--ide-space-1);
+  font-size: var(--rb-font-size-2);
+  color: var(--ide-text-muted);
+}
+
 .ide-verify-vector-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1899,6 +1944,46 @@
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: var(--ide-space-2);
+}
+
+.ide-hidden-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ide-load-project-modal {
+  display: grid;
+  gap: var(--ide-space-3);
+}
+
+.ide-load-project-list {
+  display: grid;
+  gap: var(--ide-space-2);
+  max-height: 280px;
+  overflow: auto;
+  padding-right: var(--ide-space-1);
+}
+
+.ide-load-project-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ide-space-3);
+  padding: var(--ide-space-2) var(--ide-space-3);
+  border-radius: var(--ide-radius-m);
+  border: 1px solid var(--ide-border-strong);
+  background: var(--ide-surface-1);
+  color: var(--ide-text-0);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ide-load-project-row:hover {
+  border-color: rgba(46, 196, 182, 0.45);
+  background: rgba(46, 196, 182, 0.1);
 }
 
 .ide-status-pill {

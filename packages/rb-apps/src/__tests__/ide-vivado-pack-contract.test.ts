@@ -113,6 +113,7 @@ describe('IDE Vivado pack contract', () => {
       'EXPECTED_IO.json',
       'MANIFEST.json',
       'README.txt',
+      'project.rbproj.json',
       'program_and_test.tcl',
       'rb-project.json',
       'testbench.vhd',

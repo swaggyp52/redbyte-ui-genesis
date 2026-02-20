@@ -10,9 +10,20 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
   const examplesPanel = page.locator('[data-testid="ide-project-start-dock"]');
   assert(await visible(examplesPanel), 'project start dock should be visible');
 
+  const groups = examplesPanel.locator('[data-testid^="ide-project-example-group-"]');
+  const groupCount = await groups.count();
+  assert(groupCount >= 2, `expected >=2 grouped example sections, found ${groupCount}`);
+
   const cards = examplesPanel.locator('[data-testid^="ide-project-open-example-"]');
   const cardCount = await cards.count();
   assert(cardCount >= 3, `expected >=3 example launch rows, found ${cardCount}`);
+
+  const metadataRows = examplesPanel.locator('[data-testid^="ide-project-example-meta-"]');
+  const metadataCount = await metadataRows.count();
+  assert(
+    metadataCount >= 3,
+    `expected metadata rows for grouped examples, found ${metadataCount}`
+  );
 
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
