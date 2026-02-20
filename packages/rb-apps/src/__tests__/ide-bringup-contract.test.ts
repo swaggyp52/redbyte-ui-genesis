@@ -75,6 +75,7 @@ function toBringUpIoRows(project: RBProject): BringUpIoRow[] {
   for (const input of project.ioMapping?.inputs ?? []) {
     rows.push({
       id: input.id,
+      nodeId: input.nodeId,
       label: input.label ?? input.id,
       direction: 'in',
       pin: input.pin ?? '',
@@ -84,6 +85,7 @@ function toBringUpIoRows(project: RBProject): BringUpIoRow[] {
   for (const output of project.ioMapping?.outputs ?? []) {
     rows.push({
       id: output.id,
+      nodeId: output.nodeId,
       label: inputLabel(output),
       direction: 'out',
       pin: output.pin ?? '',

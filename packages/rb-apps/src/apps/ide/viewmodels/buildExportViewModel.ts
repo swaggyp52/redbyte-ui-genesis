@@ -494,6 +494,7 @@ function resolveTopEntity(project: RBProject): string {
 
 function collectBringUpIoRows(project: RBProject): Array<{
   id: string;
+  nodeId?: string;
   label: string;
   direction: 'in' | 'out';
   pin: string;
@@ -501,6 +502,7 @@ function collectBringUpIoRows(project: RBProject): Array<{
 }> {
   const rows: Array<{
     id: string;
+    nodeId?: string;
     label: string;
     direction: 'in' | 'out';
     pin: string;
@@ -510,6 +512,7 @@ function collectBringUpIoRows(project: RBProject): Array<{
   for (const input of project.ioMapping?.inputs ?? []) {
     rows.push({
       id: input.id,
+      nodeId: input.nodeId,
       label: (input.label ?? input.id).trim() || input.id,
       direction: 'in',
       pin: input.pin ?? '',
@@ -520,6 +523,7 @@ function collectBringUpIoRows(project: RBProject): Array<{
   for (const output of project.ioMapping?.outputs ?? []) {
     rows.push({
       id: output.id,
+      nodeId: output.nodeId,
       label: (output.label ?? output.id).trim() || output.id,
       direction: 'out',
       pin: output.pin ?? '',

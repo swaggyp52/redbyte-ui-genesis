@@ -3,9 +3,12 @@ import type { TestVector } from '@redbyte/rb-utils';
 import type { RBProject } from '../../export/projectFormat';
 import { stableStringify } from '../../export/stableStringify';
 import { compareCodepoint } from '../../export/codepointSort';
+import { simulateExpectedIoRows } from './sim/simEngine';
+import type { SimulatedExpectedIoRow } from './sim/simTypes';
 
 export interface BringUpIoRow {
   id: string;
+  nodeId?: string;
   label: string;
   direction: 'in' | 'out';
   pin: string;
@@ -126,6 +129,14 @@ function buildExpectedIoReport(input: BringUpArtifactsInput): BringUpExpectedIoR
 
   const verifyRows = input.verifyRows ?? [];
   const hasVerifyRows = verifyRows.length > 0;
+  const simulatedRows =
+    !hasVerifyRows && (input.project.vectors ?? []).length > 0
+      ? simulateExpectedIoRows({
+          circuit: input.project.circuit,
+          ioRows: input.ioRows,
+          vectors: input.project.vectors ?? [],
+        })
+      : [];
   const vectorTicks = uniqueSortedTicks(input.project.vectors ?? []);
   const verifyTicks = uniqueSortedTicks(verifyRows);
   const ticks = hasVerifyRows ? verifyTicks : vectorTicks;
@@ -139,6 +150,7 @@ function buildExpectedIoReport(input: BringUpArtifactsInput): BringUpExpectedIoR
         signalName,
         vectors: input.project.vectors ?? [],
         verifyRows,
+        simulatedRows,
       }),
     }));
 
@@ -337,6 +349,7 @@ function resolveExpectedValue(params: {
     expected: string;
     actual: string;
   }>;
+  simulatedRows: SimulatedExpectedIoRow[];
 }): '0' | '1' | '-' {
   const verifyMatch = params.verifyRows.find(
     (row) =>
@@ -345,6 +358,13 @@ function resolveExpectedValue(params: {
   );
   if (verifyMatch) {
     return normalizeBitSymbol(verifyMatch.expected);
+  }
+
+  const simulatedMatch = params.simulatedRows.find(
+    (row) => row.tick === params.tick && normalizeSignalName(row.signal) === params.signalName
+  );
+  if (simulatedMatch) {
+    return simulatedMatch.expected;
   }
 
   const vectorMatch = params.vectors.find((vector) => vector.tick === params.tick);
