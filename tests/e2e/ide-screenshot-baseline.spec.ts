@@ -40,6 +40,11 @@ test.describe('IDE screenshot baselines (authority surfaces)', () => {
     await expect(page.locator('[data-testid="ide-root"]')).toHaveScreenshot('ide-mode-verify.png', IMAGE_ASSERT);
   });
 
+  test('ide hardware baseline', async ({ page }) => {
+    await gotoIdeMode(page, 'hardware');
+    await expect(page.locator('[data-testid="ide-root"]')).toHaveScreenshot('ide-mode-hardware.png', IMAGE_ASSERT);
+  });
+
   test('ide export baseline', async ({ page }) => {
     await gotoIdeMode(page, 'export');
     await expect(page.locator('[data-testid="ide-root"]')).toHaveScreenshot('ide-mode-export.png', IMAGE_ASSERT);
@@ -53,7 +58,7 @@ test.describe('IDE screenshot baselines (authority surfaces)', () => {
 
 async function gotoIdeMode(
   page: Page,
-  mode: 'project' | 'design' | 'verify' | 'export' | 'import'
+  mode: 'project' | 'design' | 'verify' | 'hardware' | 'export' | 'import'
 ): Promise<void> {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => null);
@@ -110,4 +115,3 @@ async function applyDeterministicInit(page: Page): Promise<void> {
     Math.random = () => 0.123456789;
   });
 }
-

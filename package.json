@@ -168,6 +168,7 @@
         "ide:gate:verify-contract": "node ./scripts/gates/ide-verify-contract.mjs",
         "ide:gate:synth-subset-contract": "node ./scripts/gates/ide-synth-subset-contract.mjs",
         "ide:gate:vivado-pack-contract": "node ./scripts/gates/ide-vivado-pack-contract.mjs",
+        "ide:gate:bringup-contract": "node ./scripts/gates/ide-bringup-contract.mjs",
         "ide:gate:verify-workbench-contract": "node ./scripts/gates/ide-verify-workbench-contract.mjs",
         "ide:gate:evidence-capsule-contract": "node ./scripts/gates/ide-evidence-capsule-contract.mjs",
         "ide:gate:export-artifact-explorer-contract": "node ./scripts/gates/ide-export-artifact-explorer-contract.mjs",

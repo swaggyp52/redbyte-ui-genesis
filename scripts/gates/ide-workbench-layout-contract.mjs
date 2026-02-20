@@ -2,7 +2,7 @@
 
 import { assert, runIdeGate, visible } from './_gateHarness.mjs';
 
-const MODES = ['project', 'design', 'verify', 'export', 'import'];
+const MODES = ['project', 'design', 'verify', 'hardware', 'export', 'import'];
 
 await runIdeGate('IDE workbench layout contract satisfied', async ({ page, baseUrl }) => {
   await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });

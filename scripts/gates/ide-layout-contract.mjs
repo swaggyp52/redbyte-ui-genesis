@@ -8,7 +8,7 @@ const SELECTOR_IDE_ROOT = '[data-testid="ide-root"]';
 const SELECTOR_TOP_BAR = '[data-testid="ide-top-bar"]';
 const SELECTOR_LEFT_RAIL = '[data-testid="ide-left-rail"]';
 
-const MODES = ['project', 'design', 'verify', 'export', 'import'];
+const MODES = ['project', 'design', 'verify', 'hardware', 'export', 'import'];
 
 function assert(condition, message) {
   if (!condition) {

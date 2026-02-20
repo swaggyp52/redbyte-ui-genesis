@@ -2,7 +2,7 @@
 
 import { assert, runIdeGate, visible } from './_gateHarness.mjs';
 
-const MODES = ['project', 'design', 'verify', 'export', 'import'];
+const MODES = ['project', 'design', 'verify', 'hardware', 'export', 'import'];
 const EXPECTED_GRID_COLUMNS = 5;
 const EXPECTED_PANEL_PADDING_PX = 16;
 const INSPECTOR_MIN_WIDTH_PX = 280;

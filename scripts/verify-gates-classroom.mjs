@@ -55,6 +55,7 @@ function main() {
     runGate('ide:verify-contract', 'pnpm -s ide:gate:verify-contract', true),
     runGate('ide:synth-subset-contract', 'pnpm -s ide:gate:synth-subset-contract', true),
     runGate('ide:vivado-pack-contract', 'pnpm -s ide:gate:vivado-pack-contract', true),
+    runGate('ide:bringup-contract', 'pnpm -s ide:gate:bringup-contract', true),
     runGate('ide:verify-workbench-contract', 'pnpm -s ide:gate:verify-workbench-contract', true),
     runGate('ide:evidence-capsule-contract', 'pnpm -s ide:gate:evidence-capsule-contract', true),
     runGate('ide:export-artifact-explorer-contract', 'pnpm -s ide:gate:export-artifact-explorer-contract', true),

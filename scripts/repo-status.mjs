@@ -95,6 +95,11 @@ if (!runCheck('IDE Vivado Pack Contract', 'pnpm -s ide:gate:vivado-pack-contract
   process.exit(1);
 }
 
+// 2c. Hardware bring-up proof loop contract
+if (!runCheck('IDE Bring-Up Contract', 'pnpm -s ide:gate:bringup-contract 2>&1')) {
+  process.exit(1);
+}
+
 // 3. Build (includes typecheck in vite build for product apps)
 if (!runCheck('Building', 'pnpm build 2>&1')) {
   process.exit(1);
