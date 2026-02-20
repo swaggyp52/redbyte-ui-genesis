@@ -2336,6 +2336,7 @@ RedByte transformed from multi-window OS environment to focused Vivado companion
 - Gate reliability fixes:
   - new sim gates now open examples via explicit example action buttons (`ide-open-example-*`)
   - switch toggles use deterministic dispatched click events against `switch-toggle-*` SVG controls.
+  - `packages/rb-logic-view/src/LogicCanvas.tsx` now stops pointer propagation on SVG switch toggle hit targets, so direct click interaction updates live simulation state reliably.
 
 - **Build / Gate Verification**:
   - ✅ `pnpm --filter @redbyte/playground build`
