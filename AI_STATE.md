@@ -2307,6 +2307,45 @@ RedByte transformed from multi-window OS environment to focused Vivado companion
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-02-20 (Tranche 4: Runtime Live Simulation + Sequential Gate Stabilization)
+
+- Moved live simulation authority into IDE runtime state in `packages/rb-apps/src/apps/ide/projectRuntime.ts`:
+  - runtime-owned sim state/actions (`run`, `pause`, `step`, `reset`, `setInput`, `setSpeed`, probe selection)
+  - deterministic sim trace hashing (`traceHash`) and IR hashing (`irHash`)
+  - verify run path can consume runtime trace rows when available (`useRuntimeTrace`)
+  - persisted runtime sim state in project runtime store (persist version bumped to `3`)
+  - normalized runtime signals now include sink visibility for `OUTPUT`/`Lamp` nodes (`node.in`/`node.out`) so Design live-output rows reflect real values
+- Wired Design to runtime sim in:
+  - `packages/rb-apps/src/apps/IdeApp.tsx`
+  - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Design now reads runtime sim tick/signal/probe data and routes sim controls/toggles through runtime actions.
+- Updated Verify run trigger in `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` to request runtime-trace reuse (`useRuntimeTrace: true`).
+- Added new self-contained Playwright gates:
+  - `scripts/gates/ide-live-sim-contract.mjs`
+  - `scripts/gates/ide-seq-sim-contract.mjs`
+  - Both use harness-managed preview boot and deterministic fixture loading.
+- Wired new gates into orchestration:
+  - `package.json` scripts:
+    - `ide:gate:live-sim-contract`
+    - `ide:gate:seq-sim-contract`
+  - `scripts/repo-status.mjs`
+  - `scripts/verify-gates-classroom.mjs`
+- Fixed sequential fixture wiring so DFF behavior is observable in runtime sim:
+  - `packages/rb-apps/src/apps/ide/examplesCatalog.ts` (`dff-toggle` now uses `D`/`CLK`/`Q` ports)
+  - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` pin catalog updated to `DFlipFlop: ['D', 'CLK', 'Q']`
+- Gate reliability fixes:
+  - new sim gates now open examples via explicit example action buttons (`ide-open-example-*`)
+  - switch toggles use deterministic dispatched click events against `switch-toggle-*` SVG controls.
+
+- **Build / Gate Verification**:
+  - ✅ `pnpm --filter @redbyte/playground build`
+  - ✅ `pnpm -s ide:gate:live-sim-contract`
+  - ✅ `pnpm -s ide:gate:seq-sim-contract`
+  - ✅ `pnpm -s ide:gate:design-live-sim-contract`
+  - ✅ `pnpm -s ide:gate:verify-workbench-contract`
+
+- **Attribution**: Connor Angiel
+
 ---
 
 ## Change Log 2026-02-17 (IDE Sovereignty + Zoom-Safe Overhaul + Wiring UX)
