@@ -13,10 +13,13 @@ await runIdeGate('IDE project continue CTA contract satisfied', async ({ page, b
 
   const continueCta = page.locator('[data-testid="ide-project-continue-cta"]').first();
   const ctaText = await text(continueCta);
-  assert(ctaText.toLowerCase() === 'continue', `project primary CTA must be "Continue", got "${ctaText}"`);
+  assert(
+    ctaText.toLowerCase().startsWith('continue'),
+    `project primary CTA must start with "Continue", got "${ctaText}"`
+  );
 
   const nextTarget = await text(page.locator('[data-testid="ide-project-continue-target"]'));
-  assert(nextTarget.toLowerCase().includes('add test vectors'), 'expected initial next target to require vectors');
+  assert(nextTarget.toLowerCase().includes('verify'), 'expected initial next target to route to Verify');
 
   await continueCta.click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });

@@ -14,8 +14,8 @@ await runIdeGate('IDE project health live contract satisfied', async ({ page, ba
 
   const initialCta = await text(page.locator('[data-testid="ide-project-continue-target"]'));
   assert(
-    initialCta.toLowerCase().includes('add test vectors'),
-    `expected initial project continue target "Add Test Vectors", got "${initialCta}"`
+    initialCta.toLowerCase().includes('verify'),
+    `expected initial project continue target to route Verify, got "${initialCta}"`
   );
 
   await page.locator('[data-testid="mode-button-verify"]').click();
@@ -64,7 +64,7 @@ await runIdeGate('IDE project health live contract satisfied', async ({ page, ba
   );
   const ctaAfterMutation = await text(page.locator('[data-testid="ide-project-continue-target"]'));
   assert(
-    ctaAfterMutation.toLowerCase().includes('run verification'),
-    `expected project continue target "Run Verification" after design mutation, got "${ctaAfterMutation}"`
+    ctaAfterMutation.toLowerCase().includes('verify'),
+    `expected project continue target to route Verify after design mutation, got "${ctaAfterMutation}"`
   );
 });

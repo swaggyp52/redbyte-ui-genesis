@@ -132,17 +132,20 @@ export function choosePrimaryProjectCta(
   health: ProjectHealth,
   readiness: ProjectReadinessState
 ): ProjectPrimaryCta {
+  if (!readiness.hasCircuit) {
+    return { label: 'Design', mode: 'design', code: 'RBP3000' };
+  }
   if (!readiness.hasIoMapping) {
-    return { label: 'Fix Mapping', mode: 'project', code: 'RBP1001' };
+    return { label: 'Design', mode: 'design', code: 'RBP1001' };
   }
   if (!readiness.hasVectors) {
-    return { label: 'Add Test Vectors', mode: 'verify', code: 'RBP1002' };
+    return { label: 'Verify', mode: 'verify', code: 'RBP1002' };
   }
-  if (!health.lastVerify || health.dirtySinceVerify) {
-    return { label: 'Run Verification', mode: 'verify', code: 'RBP1004' };
+  if (!health.lastVerify || health.lastVerify.status !== 'pass' || health.dirtySinceVerify) {
+    return { label: 'Verify', mode: 'verify', code: 'RBP1004' };
   }
-  if (!health.lastExport || health.dirtySinceExport) {
-    return { label: 'Build Evidence Capsule', mode: 'export', code: 'RBP2002' };
+  if (!health.lastExport || health.lastExport.status === 'blocked' || health.dirtySinceExport) {
+    return { label: 'Export', mode: 'export', code: 'RBP2002' };
   }
-  return { label: 'Review Project Health', mode: 'project', code: 'RBP0000' };
+  return { label: 'Hardware', mode: 'hardware', code: 'RBP4000' };
 }

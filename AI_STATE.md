@@ -1,5 +1,95 @@
 # AI State
 
+## Change Log 2026-02-20 (Tranche 6+7: Project Overview Hub + Verify Clarity Contracts)
+
+**Status**: COMPLETE - Project mode now presents a strict Overview hub (Identity, I/O Mapping, Readiness) with a deterministic `Continue ->` route to the next blocked stage, and Verify now surfaces a single summary story (PASS/FAIL, first failing tick, failing signal diff, fix path) with relevant-signal default filtering.
+
+### What Changed
+
+1. Project hub clarity refactor (no new capability)
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`:
+  - reframed panel to **Project Overview** with canonical subtitle: _Everything you need to be ready to Verify/Export/Hardware._
+  - reduced main content to three panels only:
+    - `ide-project-panel-identity`
+    - `ide-project-panel-mapping`
+    - `ide-project-panel-readiness`
+  - added identity fields: board, top module, short hash, last saved.
+  - remapped I/O table contract columns to:
+    - `Port | Alias (Basys3) | Pin | Dir | Status`
+  - added alias->package resolution rendering (for example `SW0 -> V17`) using canonical Basys3 pin authority.
+  - sorted mapping rows so unmapped required rows float to top.
+  - exposed deterministic unmapped counter marker `ide-project-unmapped-count`.
+  - kept one primary CTA in fixed slot: `Continue ->`.
+
+2. Project CTA routing semantics aligned to stage progression
+- Updated `packages/rb-apps/src/apps/ide/projectHealth.ts`:
+  - `choosePrimaryProjectCta(...)` now routes by next blocked stage:
+    - `design -> verify -> export -> hardware`.
+  - labels now surface stage names (`Design`, `Verify`, `Export`, `Hardware`) for deterministic CTA targeting.
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - removed mapping special-case override from project CTA handler.
+  - passed `topModuleName`, `simRunning`, and `onOpenHardware` into `ProjectSurface`.
+  - added `mappedSignals` payload into `VerifySurface` for relevant-signal filtering.
+
+3. Verify clarity pass (single obvious story)
+- Updated `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`:
+  - added top summary card markers:
+    - `ide-verify-summary-card`
+    - `ide-verify-summary-status`
+    - `ide-verify-first-fail-tick`
+    - `ide-verify-first-fail-signal`
+    - `ide-verify-first-fail-diff`
+    - `ide-verify-summary-fix`
+  - added default signal relevance filter (mapped I/O + failing signals) with toggle:
+    - `ide-verify-show-all-signals`
+    - `ide-verify-signal-filter-state`
+  - vector authoring copy tightened to `Add Case` and `Generate Basics`.
+  - kept existing deterministic verify/report hash surfaces and fix-in-design route behavior.
+
+4. Gate additions and contract updates
+- Added new gates:
+  - `scripts/gates/ide-project-overview-contract.mjs`
+  - `scripts/gates/ide-verify-summary-contract.mjs`
+- Updated existing gates for new contracts/selectors:
+  - `scripts/gates/ide-primary-cta-contract.mjs`
+  - `scripts/gates/ide-verify-workbench-contract.mjs`
+  - `scripts/gates/ide-project-continue-cta-contract.mjs`
+  - `scripts/gates/ide-project-health-live-contract.mjs`
+  - `scripts/gates/ide-design-fit-contract.mjs`
+  - `scripts/gates/ide-live-sim-contract.mjs`
+  - `scripts/gates/ide-examples-contract.mjs`
+  - `scripts/gates/ide-seq-sim-contract.mjs`
+- Wired new gates into repo runners:
+  - `package.json`
+  - `scripts/repo-status.mjs`
+  - `scripts/verify-gates-classroom.mjs`
+
+5. Screenshot baseline updates
+- Updated snapshots after Project/Verify visual contract changes:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-project-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-verify-chromium-win32.png`
+
+### Validation Executed
+
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:project-overview-contract` -> PASS
+- `pnpm -s ide:gate:project-continue-cta-contract` -> PASS
+- `pnpm -s ide:gate:primary-cta-contract` -> PASS
+- `pnpm -s ide:gate:project-health-live-contract` -> PASS
+- `pnpm -s ide:gate:verify-summary-contract` -> PASS
+- `pnpm -s ide:gate:verify-workbench-contract` -> PASS
+- `pnpm -s ide:gate:verify-contract` -> PASS
+- `pnpm -s ide:gate:design-fit-contract` -> PASS
+- `pnpm -s ide:gate:live-sim-contract` -> PASS
+- `pnpm -s ide:gate:seq-sim-contract` -> PASS
+- `pnpm -s ide:gate:examples-contract` -> PASS
+- `pnpm -s ide:gate:screenshots:update` -> PASS
+- `pnpm repo:status` -> PASS (28/28 checks)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-20 (Student Loop Polish Slice: Design Readability + Basys3 IO Presentation)
 
 **Status**: COMPLETE - Design mode now auto-fits readable circuit framing on example/project changes, includes explicit camera controls (`Zoom to Fit`, `Center Selection`, `Reset Zoom`), and renders Basys3-aware IO presentation (switch/button/clock/LED semantics) through runtime-to-canvas wiring.

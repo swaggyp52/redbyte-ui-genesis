@@ -112,6 +112,9 @@ if (!runCheck('Import Pipeline Validation', 'pnpm gates:import-roundtrip 2>&1'))
 }
 
 // 4a. IDE UX runtime contracts (self-contained preview harness)
+if (!runCheck('IDE Project Overview Contract', 'pnpm -s ide:gate:project-overview-contract 2>&1')) {
+  process.exit(1);
+}
 if (!runCheck('IDE Project Health Live Contract', 'pnpm -s ide:gate:project-health-live-contract 2>&1')) {
   process.exit(1);
 }
@@ -158,6 +161,9 @@ if (!runCheck('IDE Screenshot Baselines', 'pnpm -s ide:gate:screenshots 2>&1')) 
   process.exit(1);
 }
 if (!runCheck('IDE Verify Workbench Contract', 'pnpm -s ide:gate:verify-workbench-contract 2>&1')) {
+  process.exit(1);
+}
+if (!runCheck('IDE Verify Summary Contract', 'pnpm -s ide:gate:verify-summary-contract 2>&1')) {
   process.exit(1);
 }
 if (!runCheck('IDE Evidence Capsule Contract', 'pnpm -s ide:gate:evidence-capsule-contract 2>&1')) {

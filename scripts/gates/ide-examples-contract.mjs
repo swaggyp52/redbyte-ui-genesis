@@ -7,12 +7,12 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
-  const examplesPanel = page.locator('[data-testid="ide-project-examples"]');
-  assert(await visible(examplesPanel), 'project examples panel should be visible');
+  const examplesPanel = page.locator('[data-testid="ide-project-start-dock"]');
+  assert(await visible(examplesPanel), 'project start dock should be visible');
 
-  const cards = examplesPanel.locator('[data-testid^="ide-example-card-"]');
+  const cards = examplesPanel.locator('[data-testid^="ide-project-open-example-"]');
   const cardCount = await cards.count();
-  assert(cardCount >= 3, `expected >=3 example cards, found ${cardCount}`);
+  assert(cardCount >= 3, `expected >=3 example launch rows, found ${cardCount}`);
 
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
@@ -21,7 +21,7 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
   await page.locator('[data-testid="mode-button-project"]').click();
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
 
-  const targetOpen = page.locator('[data-testid="ide-open-example-and-gate-basics"]');
+  const targetOpen = page.locator('[data-testid="ide-project-open-example-and-gate-basics"]');
   assert(await visible(targetOpen), 'AND starter open button should be visible');
   await targetOpen.click();
 
@@ -43,10 +43,9 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
     `project name should update after loading example, got \"${projectName.trim()}\"`
   );
 
-  const loadedState = page.locator('[data-testid="ide-example-card-and-gate-basics"] .ide-status-pill');
-  const loadedLabel = await loadedState.first().innerText();
+  const loadedButtonClass = await targetOpen.getAttribute('class');
   assert(
-    loadedLabel.trim().toUpperCase().includes('LOADED'),
-    `loaded example card should show LOADED status, got \"${loadedLabel.trim()}\"`
+    (loadedButtonClass ?? '').includes('is-active'),
+    `loaded example row should be active, got class \"${loadedButtonClass ?? ''}\"`
   );
 });

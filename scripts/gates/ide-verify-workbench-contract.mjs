@@ -22,6 +22,29 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   );
   await page.waitForSelector('[data-testid="ide-verify-workspace-waveform"]', { timeout: 10000 });
 
+  const filterState = (
+    (await page.locator('[data-testid="ide-verify-signal-filter-state"]').first().textContent().catch(() => '')) ??
+    ''
+  ).toLowerCase();
+  assert(
+    filterState.includes('relevant'),
+    `verify signal list must default to relevant signals, got "${filterState}"`
+  );
+
+  const signalRowsBefore = await page.locator('[data-testid="ide-verify-signal-list"] button').count();
+  const showAllButtonVisible = await page
+    .locator('[data-testid="ide-verify-show-all-signals"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  assert(showAllButtonVisible, 'verify signal list must expose Show all signals toggle');
+  await page.locator('[data-testid="ide-verify-show-all-signals"]').click();
+  const signalRowsAfter = await page.locator('[data-testid="ide-verify-signal-list"] button').count();
+  assert(
+    signalRowsAfter >= signalRowsBefore,
+    `showing all signals must not reduce signal rows (before=${signalRowsBefore}, after=${signalRowsAfter})`
+  );
+
   const centerBounds = await page.locator('[data-testid="ide-mode-body"]').boundingBox();
   const waveformBounds = await page
     .locator('[data-testid="ide-verify-workspace-waveform"]')

@@ -35,7 +35,7 @@ await runIdeGate('IDE live simulation contract satisfied', async ({ page, baseUr
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
   await page.locator('[data-testid="mode-button-project"]').click();
-  await page.locator('[data-testid="ide-open-example-and-gate-basics"]').click();
+  await page.locator('[data-testid="ide-project-open-example-and-gate-basics"]').click();
 
   const replaceModalVisible = await page
     .locator('[data-testid="ide-example-confirm-modal"]')

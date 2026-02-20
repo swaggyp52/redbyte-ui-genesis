@@ -46,6 +46,13 @@ export interface VerifyFailureTarget {
   actual: string;
 }
 
+interface VerifyMappedSignal {
+  id: string;
+  label?: string;
+  pin?: string;
+  direction: 'in' | 'out';
+}
+
 const VERIFY_SCENARIOS: VerifyScenario[] = [
   {
     id: 'fail',
@@ -54,6 +61,7 @@ const VERIFY_SCENARIOS: VerifyScenario[] = [
     rows: [
       { tick: 12, signal: 'q0', expected: '1', actual: '1' },
       { tick: 12, signal: 'q1', expected: '0', actual: '0' },
+      { tick: 12, signal: 'counter_internal', expected: '0', actual: '0' },
       { tick: 13, signal: 'q2', expected: '1', actual: '0' },
       { tick: 14, signal: 'q0', expected: '0', actual: '0' },
     ],
@@ -65,6 +73,7 @@ const VERIFY_SCENARIOS: VerifyScenario[] = [
     rows: [
       { tick: 12, signal: 'q0', expected: '1', actual: '1' },
       { tick: 12, signal: 'q1', expected: '0', actual: '0' },
+      { tick: 12, signal: 'counter_internal', expected: '0', actual: '0' },
       { tick: 13, signal: 'q2', expected: '1', actual: '1' },
       { tick: 14, signal: 'q0', expected: '0', actual: '0' },
     ],
@@ -79,6 +88,7 @@ export interface VerifySurfaceProps {
   vectors?: TestVector[];
   lastRun?: RuntimeVerifyRun;
   mappedInputs?: Array<{ id: string; label?: string; pin?: string }>;
+  mappedSignals?: VerifyMappedSignal[];
   onVectorsChange?: (vectors: VerifyAuthorVector[]) => void;
   onRunVerification?: (input: RunVerificationInput) => void;
   onClearVerification?: () => void;
@@ -92,6 +102,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   vectors,
   lastRun,
   mappedInputs,
+  mappedSignals,
   onVectorsChange,
   onRunVerification,
   onClearVerification,
@@ -99,7 +110,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   onFixPath,
 }) => {
   const inputFields = useMemo(() => {
-    const normalized = (mappedInputs ?? [])
+    const mappedInputSeed =
+      mappedInputs && mappedInputs.length > 0
+        ? mappedInputs
+        : (mappedSignals ?? [])
+            .filter((entry) => entry.direction === 'in')
+            .map((entry) => ({ id: entry.id, label: entry.label, pin: entry.pin }));
+
+    const normalized = mappedInputSeed
       .map((entry) => ({
         id: normalizeFieldId(entry.id),
         label: (entry.label ?? entry.id).trim() || entry.id,
@@ -117,7 +135,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       deduped.set('in_b', { id: 'in_b', label: 'in_b' });
     }
     return Array.from(deduped.values());
-  }, [mappedInputs]);
+  }, [mappedInputs, mappedSignals]);
 
   const authoredVectors = useMemo(
     () => normalizeVectors(vectors, inputFields),
@@ -172,6 +190,34 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     () => runRows.filter((row) => row.status === 'fail'),
     [runRows]
   );
+  const mappedSignalKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const signal of mappedSignals ?? []) {
+      const candidates = [signal.id, signal.label ?? ''];
+      for (const candidate of candidates) {
+        const normalized = normalizeFieldId(candidate);
+        if (normalized) keys.add(normalized);
+      }
+    }
+    return keys;
+  }, [mappedSignals]);
+  const failingSignalKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const row of failingRows) {
+      const normalized = normalizeFieldId(row.signal);
+      if (normalized) keys.add(normalized);
+    }
+    return keys;
+  }, [failingRows]);
+  const relevantSignalTimeline = useMemo(() => {
+    const filtered = signalTimeline.filter((entry) => {
+      const normalized = normalizeFieldId(entry.signal);
+      return mappedSignalKeys.has(normalized) || failingSignalKeys.has(normalized);
+    });
+    return filtered.length > 0 ? filtered : signalTimeline;
+  }, [failingSignalKeys, mappedSignalKeys, signalTimeline]);
+  const [showAllSignals, setShowAllSignals] = useState(false);
+  const visibleSignalTimeline = showAllSignals ? signalTimeline : relevantSignalTimeline;
   const selectedTickRows = useMemo(() => {
     if (selectedTick === null) return [];
     const keyed = tickIndex.rowsByTick[String(selectedTick)] ?? [];
@@ -196,17 +242,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [lastRun?.firstFailingTick, timelineTicks]);
 
   useEffect(() => {
-    if (signalTimeline.length === 0) {
+    if (visibleSignalTimeline.length === 0) {
       setSelectedSignal(null);
       return;
     }
     const firstFailSignal = failingRows[0]?.signal;
     setSelectedSignal((previous) => {
-      if (previous && signalTimeline.some((entry) => entry.signal === previous)) return previous;
+      if (previous && visibleSignalTimeline.some((entry) => entry.signal === previous)) return previous;
       if (firstFailSignal) return firstFailSignal;
-      return signalTimeline[0]?.signal ?? null;
+      return visibleSignalTimeline[0]?.signal ?? null;
     });
-  }, [failingRows, signalTimeline]);
+  }, [failingRows, visibleSignalTimeline]);
 
   useEffect(() => {
     if (lastRun) {
@@ -326,13 +372,28 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         <section className="ide-verify-left-dock" data-testid="ide-verify-left-dock">
           <header className="ide-design-subheader">
             <h3>Signals</h3>
-            <span className="ide-copy">{signalTimeline.length}</span>
+            <span className="ide-copy" data-testid="ide-verify-signal-filter-state">
+              {showAllSignals
+                ? `${signalTimeline.length} all`
+                : `${visibleSignalTimeline.length} relevant`}
+            </span>
           </header>
+          {signalTimeline.length > relevantSignalTimeline.length ? (
+            <div className="ide-inline-actions">
+              <IdeButton
+                tone="ghost"
+                onClick={() => setShowAllSignals((previous) => !previous)}
+                testId="ide-verify-show-all-signals"
+              >
+                {showAllSignals ? 'Show relevant signals' : 'Show all signals'}
+              </IdeButton>
+            </div>
+          ) : null}
           <div className="ide-signal-list" data-testid="ide-verify-signal-list">
-            {signalTimeline.length === 0 ? (
+            {visibleSignalTimeline.length === 0 ? (
               <p className="ide-copy">Run verification to populate waveform lanes.</p>
             ) : (
-              signalTimeline.map((signalRow) => (
+              visibleSignalTimeline.map((signalRow) => (
                 <button
                   key={signalRow.signal}
                   className={`ide-signal-row ${selectedSignal === signalRow.signal ? 'is-active' : ''}`}
@@ -436,14 +497,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </div>
               <div className="ide-inline-actions">
                 <IdeButton tone="primary" onClick={handleAddVector} testId="ide-verify-add-vector-submit">
-                  Add vector
+                  Add Case
                 </IdeButton>
                 <IdeButton
                   tone="secondary"
                   onClick={handleGenerateBasicVectors}
                   testId="ide-verify-generate-basic-vectors"
                 >
-                  Generate basic vectors
+                  Generate Basics
                 </IdeButton>
                 <IdeButton tone="ghost" onClick={onOpenProjectVectors}>
                   Open Project vectors
@@ -534,8 +595,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           className={`ide-verify-banner ${status === 'pass' ? 'is-pass' : status === 'fail' ? 'is-fail' : ''}`}
           data-testid="ide-verify-banner"
         >
-          <div>
-            <p className="ide-verify-label">Verification Result</p>
+          <div data-testid="ide-verify-summary-card">
+            <p className="ide-verify-label">Verification Summary</p>
             <h3 data-testid="ide-verify-status-label">
               {status === 'pass'
                 ? 'PASS - deterministic agreement'
@@ -543,11 +604,51 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   ? 'FAIL - mismatch detected'
                   : 'IDLE - run verification'}
             </h3>
-            {status === 'fail' && typeof firstFailureTick === 'number' && (
-              <p className="ide-copy" data-testid="ide-verify-first-fail-tick">
-                First failing tick: <code>{firstFailureTick}</code>
-              </p>
-            )}
+            <div className="ide-verify-summary-grid">
+              <div className="ide-kv-row">
+                <span>Status</span>
+                <IdeStatusPill
+                  tone={status === 'pass' ? 'ok' : status === 'fail' ? 'error' : 'idle'}
+                  testId="ide-verify-summary-status"
+                >
+                  {status.toUpperCase()}
+                </IdeStatusPill>
+              </div>
+              <div className="ide-kv-row">
+                <span>First failing tick</span>
+                <code data-testid="ide-verify-first-fail-tick">
+                  {typeof firstFailureTick === 'number' ? firstFailureTick : 'n/a'}
+                </code>
+              </div>
+              <div className="ide-kv-row">
+                <span>Failing signal</span>
+                <code data-testid="ide-verify-first-fail-signal">{firstFailure?.signal ?? 'n/a'}</code>
+              </div>
+              <div className="ide-kv-row">
+                <span>Expected / Actual</span>
+                <code data-testid="ide-verify-first-fail-diff">
+                  {firstFailure ? `${firstFailure.expected} / ${firstFailure.actual}` : 'n/a'}
+                </code>
+              </div>
+            </div>
+            <div className="ide-inline-actions">
+              <IdeButton
+                tone="secondary"
+                onClick={() => {
+                  if (!firstFailure) return;
+                  onFixPath?.({
+                    signal: firstFailure.signal,
+                    tick: firstFailure.tick,
+                    expected: firstFailure.expected,
+                    actual: firstFailure.actual,
+                  });
+                }}
+                disabled={!firstFailure || !onFixPath}
+                testId="ide-verify-summary-fix"
+              >
+                Fix in Design
+              </IdeButton>
+            </div>
           </div>
           <div className="ide-verify-hash-block">
             <span>Hash</span>

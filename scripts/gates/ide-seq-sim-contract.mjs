@@ -35,7 +35,7 @@ await runIdeGate('IDE sequential simulation contract satisfied', async ({ page, 
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
   await page.locator('[data-testid="mode-button-project"]').click();
-  await page.locator('[data-testid="ide-open-example-dff-toggle"]').click();
+  await page.locator('[data-testid="ide-project-open-example-dff-toggle"]').click();
 
   const replaceModalVisible = await page
     .locator('[data-testid="ide-example-confirm-modal"]')

@@ -199,13 +199,8 @@ export const IdeApp: React.FC = () => {
   }, [generateBringUpVectors]);
 
   const handleProjectPrimaryAction = useCallback(() => {
-    if (primaryProjectCta.code === 'RBP1001') {
-      handleAutoSuggestMapping();
-      setCurrentMode('project');
-      return;
-    }
     setCurrentMode(primaryProjectCta.mode);
-  }, [handleAutoSuggestMapping, primaryProjectCta.code, primaryProjectCta.mode]);
+  }, [primaryProjectCta.mode]);
 
   const handleVectorsChange = useCallback(
     (vectors: typeof projectVectors) => {
@@ -245,6 +240,18 @@ export const IdeApp: React.FC = () => {
   );
 
   const topEntityName = useMemo(() => buildTopEntityName(projectName), [projectName]);
+  const mappedIoSignals = useMemo(
+    () =>
+      projectIoRows
+        .filter((entry) => entry.pin.trim().length > 0)
+        .map((entry) => ({
+          id: entry.id,
+          label: entry.label,
+          pin: entry.pin,
+          direction: entry.direction,
+        })),
+    [projectIoRows]
+  );
   const hdlText = useMemo(
     () => buildVhdlFromMapping(topEntityName, projectIoRows),
     [projectIoRows, topEntityName]
@@ -456,9 +463,11 @@ export const IdeApp: React.FC = () => {
             description={projectDescription}
             determinismHash={determinismHash}
             lastSavedAt={lastSavedAt}
+            topModuleName={topEntityName}
             readiness={readiness}
             health={projectHealth}
             mappingRows={projectIoRows}
+            simRunning={runtimeSim.running}
             examples={IDE_EXAMPLES.map((example) => ({
               id: example.id,
               name: example.name,
@@ -475,6 +484,7 @@ export const IdeApp: React.FC = () => {
             onOpenDesign={() => setCurrentMode('design')}
             onOpenVerify={() => setCurrentMode('verify')}
             onOpenExport={() => setCurrentMode('export')}
+            onOpenHardware={() => setCurrentMode('hardware')}
             onOpenImport={() => setCurrentMode('import')}
             diagnosticRouteRequest={diagnosticRouteRequest}
           />
@@ -507,6 +517,7 @@ export const IdeApp: React.FC = () => {
             vectors={projectVectors}
             lastRun={verifyLastRun}
             mappedInputs={verifyMappedInputs}
+            mappedSignals={mappedIoSignals}
             onVectorsChange={handleVectorsChange}
             onRunVerification={handleRunVerification}
             onClearVerification={handleClearVerification}
