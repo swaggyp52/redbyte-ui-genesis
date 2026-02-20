@@ -130,6 +130,9 @@ if (!runCheck('IDE Design Workbench Contract', 'pnpm -s ide:gate:design-workbenc
 if (!runCheck('IDE Design Fit Contract', 'pnpm -s ide:gate:design-fit-contract 2>&1')) {
   process.exit(1);
 }
+if (!runCheck('IDE Design Build Fast Contract', 'pnpm -s ide:gate:design-build-fast-contract 2>&1')) {
+  process.exit(1);
+}
 if (!runCheck('IDE Design Live Sim Contract', 'pnpm -s ide:gate:design-live-sim-contract 2>&1')) {
   process.exit(1);
 }
@@ -175,6 +178,15 @@ if (
     'pnpm -s ide:gate:export-artifact-explorer-contract 2>&1'
   )
 ) {
+  process.exit(1);
+}
+if (!runCheck('IDE Export Blockers Contract', 'pnpm -s ide:gate:export-blockers-contract 2>&1')) {
+  process.exit(1);
+}
+if (!runCheck('IDE Export Ready Contract', 'pnpm -s ide:gate:export-ready-contract 2>&1')) {
+  process.exit(1);
+}
+if (!runCheck('IDE Hardware Checklist Contract', 'pnpm -s ide:gate:hardware-checklist-contract 2>&1')) {
   process.exit(1);
 }
 

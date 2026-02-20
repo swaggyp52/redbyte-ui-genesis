@@ -82,4 +82,72 @@ describe('IDE synth subset contract', () => {
     expect(viewModel.artifacts.find((artifact) => artifact.path === 'top.vhd')?.status).toBe('ready');
     expect(viewModel.artifacts.find((artifact) => artifact.path === 'top.xdc')?.status).toBe('ready');
   });
+
+  it('accepts board-first SW/LD aliases and exports clean Basys3 constraints', () => {
+    const project: RBProject = {
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-02-20T00:00:00.000Z',
+      updatedAt: '2026-02-20T00:00:00.000Z',
+      name: 'board-io-alias-contract',
+      description: 'Board-first IO alias contract fixture',
+      circuit: {
+        nodes: [
+          { id: 'g1', type: 'AND', x: 300, y: 195, label: 'and0', config: {}, state: {} },
+        ],
+        connections: [],
+      },
+      ioMapping: {
+        inputs: [
+          { id: 'sw0', nodeId: 'g1', port: 'in1', label: 'sw0', pin: 'SW0' },
+          { id: 'sw1', nodeId: 'g1', port: 'in2', label: 'sw1', pin: 'SW1' },
+        ],
+        outputs: [
+          { id: 'ld0', nodeId: 'g1', port: 'out', label: 'ld0', pin: 'LD0' },
+        ],
+      },
+      vectors: [],
+      hdl: {
+        top: 'top',
+        sources: [
+          {
+            path: 'top.vhd',
+            language: 'vhdl',
+            text: [
+              'library IEEE;',
+              'use IEEE.STD_LOGIC_1164.ALL;',
+              '',
+              'entity top is',
+              '  port (',
+              '    sw0 : in std_logic;',
+              '    sw1 : in std_logic;',
+              '    ld0 : out std_logic',
+              '  );',
+              'end top;',
+              '',
+              'architecture rtl of top is',
+              'begin',
+              '  ld0 <= sw0 and sw1;',
+              'end rtl;',
+            ].join('\n'),
+          },
+        ],
+      },
+      fpga: { board: 'basys3', top: 'top' },
+    };
+
+    const exportResult = exportProjectAsBasys3(project);
+    expect(exportResult.success).toBe(true);
+    expect(exportResult.errors).toEqual([]);
+    expect(exportResult.warnings).toEqual([]);
+    expect(exportResult.bundle?.topXdc).toContain('PACKAGE_PIN V17');
+    expect(exportResult.bundle?.topXdc).toContain('PACKAGE_PIN U16');
+    expect(exportResult.bundle?.readme).toContain('| g1_in1 | SW0 | V17 | input |');
+    expect(exportResult.bundle?.readme).toContain('| g1_out | LD0 | U16 | output |');
+
+    const viewModel = buildExportViewModel(project);
+    expect(viewModel.status).toBe('ok');
+    expect(viewModel.errors).toEqual([]);
+    expect(viewModel.warnings).toEqual([]);
+  });
 });
