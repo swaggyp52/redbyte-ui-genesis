@@ -93,4 +93,34 @@ describe('RC D2 basys3 bundle gate', () => {
     expect(result.valid).toBe(false);
     expect(result.warnings.some((warning) => warning.includes('Unsupported node: sw1 (Switch)'))).toBe(true);
   });
+
+  it('accepts Basys3 button/7-seg aliases and direct package pins in deterministic XDC output', () => {
+    const circuit: Circuit = {
+      nodes: [
+        { id: 'g1', type: 'AND', position: { x: 0, y: 0 }, config: {}, state: {} },
+        { id: 'g2', type: 'AND', position: { x: 200, y: 0 }, config: {}, state: {} },
+      ],
+      connections: [],
+    };
+
+    const mapping: IoMapping = {
+      inputs: [
+        { id: 'in_clk', nodeId: 'g1', port: 'in1', pin: 'CLK100MHZ' },
+        { id: 'in_btn', nodeId: 'g1', port: 'in2', pin: 'BTNC' },
+        { id: 'in_sw', nodeId: 'g2', port: 'in1', pin: 'SW0' },
+      ],
+      outputs: [
+        { id: 'out_seg', nodeId: 'g1', port: 'out', pin: 'SEG0' },
+        { id: 'out_an', nodeId: 'g2', port: 'out', pin: 'W4' },
+      ],
+    };
+
+    const result = exportBasys3Bundle(circuit, mapping);
+    expect(result.valid).toBe(true);
+    expect(result.topXdc).toContain('PACKAGE_PIN W5');
+    expect(result.topXdc).toContain('PACKAGE_PIN U18');
+    expect(result.topXdc).toContain('PACKAGE_PIN W7');
+    expect(result.topXdc).toContain('PACKAGE_PIN W4');
+    expect(result.warnings.some((warning) => warning.includes('Unsupported Basys3 pin alias'))).toBe(false);
+  });
 });

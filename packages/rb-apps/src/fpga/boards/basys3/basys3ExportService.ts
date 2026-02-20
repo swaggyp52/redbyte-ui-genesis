@@ -15,6 +15,13 @@ import type { RBProject } from '../../export/projectFormat';
 import { generateTestbenchVhdl } from './testbenchGenerator';
 import { parseVhdl } from '../../../import/vhdlImport';
 import { compareCodepoint } from '../../../export/codepointSort';
+import {
+  isBasys3InputCapablePin,
+  isBasys3OutputCapablePin,
+  listKnownBasys3AliasesForDirection,
+  normalizeBasys3PinAlias,
+  resolveBasys3PackagePin,
+} from './basys3Pins';
 
 export interface Basys3ExportError {
   type: 'validation' | 'constraint' | 'logic' | 'unknown';
@@ -52,6 +59,8 @@ interface MappingRecord {
   id: string;
   label?: string;
   pin?: string;
+  normalizedPin?: string;
+  resolvedPackagePin?: string;
   aliases: string[];
   key: string;
 }
@@ -63,23 +72,8 @@ interface NormalizedConnection {
   toPort: string;
 }
 
-const BASYS3_INPUT_ALIASES = new Set([
-  ...Array.from({ length: 16 }, (_, i) => `SW${i}`),
-  'BTNC',
-  'BTNU',
-  'BTNL',
-  'BTNR',
-  'BTND',
-  'CLK100MHZ',
-]);
-
-const BASYS3_OUTPUT_ALIASES = new Set(Array.from({ length: 16 }, (_, i) => `LD${i}`));
-
-const BASYS3_ALIAS_TO_PACKAGE_PIN: Record<string, string> = {
-  CLK100MHZ: 'W5',
-  SW0: 'V17',
-  LD0: 'U16',
-};
+const BASYS3_INPUT_ALIAS_LIST = listKnownBasys3AliasesForDirection('input');
+const BASYS3_OUTPUT_ALIAS_LIST = listKnownBasys3AliasesForDirection('output');
 
 const SYNTH_SUPPORTED_NODE_TYPES = new Set([
   'INPUT',
@@ -221,15 +215,15 @@ function validateProjectForBasys3(project: RBProject): Basys3ExportError[] {
 
   for (const entry of inputMappings) {
     if (!entry.pin) continue;
-    if (!BASYS3_INPUT_ALIASES.has(entry.pin) && !BASYS3_OUTPUT_ALIASES.has(entry.pin)) {
+    if (!entry.resolvedPackagePin) {
       errors.push({
         type: 'constraint',
         severity: 'error',
-        message: `Unsupported input pin "${entry.pin}" for ${entry.nodeId}.${entry.port}. Valid: SW0-15, BTND/U/L/R/C, CLK100MHZ`,
+        message: `Unsupported input pin "${entry.pin}" for ${entry.nodeId}.${entry.port}. Valid aliases: ${BASYS3_INPUT_ALIAS_LIST}. Direct Basys3 package pins are also supported.`,
       });
       continue;
     }
-    if (BASYS3_OUTPUT_ALIASES.has(entry.pin)) {
+    if (!isBasys3InputCapablePin(entry.pin) && isBasys3OutputCapablePin(entry.pin)) {
       errors.push({
         type: 'constraint',
         severity: 'warning',
@@ -240,15 +234,15 @@ function validateProjectForBasys3(project: RBProject): Basys3ExportError[] {
 
   for (const entry of outputMappings) {
     if (!entry.pin) continue;
-    if (!BASYS3_OUTPUT_ALIASES.has(entry.pin) && !BASYS3_INPUT_ALIASES.has(entry.pin)) {
+    if (!entry.resolvedPackagePin) {
       errors.push({
         type: 'constraint',
         severity: 'error',
-        message: `Unsupported output pin "${entry.pin}" for ${entry.nodeId}.${entry.port}. Valid: LD0-15`,
+        message: `Unsupported output pin "${entry.pin}" for ${entry.nodeId}.${entry.port}. Valid aliases: ${BASYS3_OUTPUT_ALIAS_LIST}. Direct Basys3 package pins are also supported.`,
       });
       continue;
     }
-    if (!BASYS3_OUTPUT_ALIASES.has(entry.pin)) {
+    if (!isBasys3OutputCapablePin(entry.pin) && isBasys3InputCapablePin(entry.pin)) {
       errors.push({
         type: 'constraint',
         severity: 'warning',
@@ -400,6 +394,8 @@ function normalizeMappings(project: RBProject, direction: MappingDirection): Map
         )
       ).sort((left, right) => compareCodepoint(left, right));
       const pin = (entry.pin ?? '').trim();
+      const normalizedPin = pin.length > 0 ? normalizeBasys3PinAlias(pin) : undefined;
+      const resolvedPackagePin = pin.length > 0 ? resolveBasys3PackagePin(pin) ?? undefined : undefined;
       return {
         direction,
         nodeId: entry.nodeId,
@@ -407,6 +403,8 @@ function normalizeMappings(project: RBProject, direction: MappingDirection): Map
         id: entry.id,
         label: entry.label,
         pin: pin.length > 0 ? pin : undefined,
+        normalizedPin,
+        resolvedPackagePin,
         aliases,
         key: `${direction}:${entry.nodeId}.${entry.port}.${entry.id}`,
       };

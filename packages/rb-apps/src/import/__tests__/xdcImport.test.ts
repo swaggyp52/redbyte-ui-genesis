@@ -39,4 +39,46 @@ describe('xdcImport', () => {
     expect(result.warnings.some(w => w.includes('IOSTANDARD'))).toBe(true);
     expect(result.warnings.some(w => w.includes('Pull-ups/downs'))).toBe(true);
   });
+
+  it('parses Vivado -dict PACKAGE_PIN format', () => {
+    const xdc = `
+      set_property -dict { PACKAGE_PIN W5 IOSTANDARD LVCMOS33 } [get_ports clk]
+      set_property -dict { PACKAGE_PIN U18 IOSTANDARD LVCMOS33 } [get_ports {btn[0]}]
+      set_property -dict { PACKAGE_PIN W7 IOSTANDARD LVCMOS33 } [get_ports {seg[0]}]
+      set_property -dict { PACKAGE_PIN V7 IOSTANDARD LVCMOS33 } [get_ports dp]
+      set_property -dict { PACKAGE_PIN U2 IOSTANDARD LVCMOS33 } [get_ports {an[0]}]
+    `;
+
+    const result = parseXdcPins(xdc);
+    expect(result.pinMap).toEqual({
+      clk: 'W5',
+      'btn[0]': 'U18',
+      'seg[0]': 'W7',
+      dp: 'V7',
+      'an[0]': 'U2',
+    });
+    expect(result.warnings).toContain('IOSTANDARD ignored (v1 does not configure voltage standards)');
+  });
+
+  it('accepts full preset-style 7-seg/button pins without unsupported-pin warnings', () => {
+    const xdc = `
+      set_property -dict { PACKAGE_PIN T18 IOSTANDARD LVCMOS33 } [get_ports {btn[1]}]
+      set_property -dict { PACKAGE_PIN W19 IOSTANDARD LVCMOS33 } [get_ports {btn[2]}]
+      set_property -dict { PACKAGE_PIN T17 IOSTANDARD LVCMOS33 } [get_ports {btn[3]}]
+      set_property -dict { PACKAGE_PIN U17 IOSTANDARD LVCMOS33 } [get_ports {btn[4]}]
+      set_property -dict { PACKAGE_PIN W6 IOSTANDARD LVCMOS33 } [get_ports {seg[1]}]
+      set_property -dict { PACKAGE_PIN U8 IOSTANDARD LVCMOS33 } [get_ports {seg[2]}]
+      set_property -dict { PACKAGE_PIN V8 IOSTANDARD LVCMOS33 } [get_ports {seg[3]}]
+      set_property -dict { PACKAGE_PIN U5 IOSTANDARD LVCMOS33 } [get_ports {seg[4]}]
+      set_property -dict { PACKAGE_PIN V5 IOSTANDARD LVCMOS33 } [get_ports {seg[5]}]
+      set_property -dict { PACKAGE_PIN U7 IOSTANDARD LVCMOS33 } [get_ports {seg[6]}]
+      set_property -dict { PACKAGE_PIN U4 IOSTANDARD LVCMOS33 } [get_ports {an[1]}]
+      set_property -dict { PACKAGE_PIN V4 IOSTANDARD LVCMOS33 } [get_ports {an[2]}]
+      set_property -dict { PACKAGE_PIN W4 IOSTANDARD LVCMOS33 } [get_ports {an[3]}]
+    `;
+
+    const result = parseXdcPins(xdc);
+    expect(Object.keys(result.pinMap).length).toBe(13);
+    expect(result.warnings.some((warning) => warning.includes('Unsupported pin'))).toBe(false);
+  });
 });

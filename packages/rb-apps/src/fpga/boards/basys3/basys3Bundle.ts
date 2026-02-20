@@ -11,20 +11,7 @@ import {
   type VhdlTopOutputBinding,
   type VhdlTopPort,
 } from '../../../export/vhdlExport';
-
-const BASYS3_SWITCH_PINS = [
-  'V17', 'V16', 'W16', 'W17', 'W15', 'V15', 'W14', 'W13',
-  'V2', 'T3', 'T2', 'R3', 'W2', 'U1', 'T1', 'R2',
-];
-
-const BASYS3_LED_PINS = [
-  'U16', 'E19', 'U19', 'V19', 'W18', 'U15', 'U14', 'V14',
-  'V13', 'V3', 'W3', 'U3', 'P3', 'N3', 'P1', 'L1',
-];
-
-const BASYS3_CLOCK_PIN = 'W5';
-
-const BASYS3_ALLOWED_PACKAGE_PINS = new Set([...BASYS3_SWITCH_PINS, ...BASYS3_LED_PINS, BASYS3_CLOCK_PIN]);
+import { BASYS3_ALLOWED_PACKAGE_PINS, resolveBasys3PackagePin } from './basys3Pins';
 
 export interface Basys3BundleResult {
   topV: string;
@@ -56,26 +43,6 @@ function toSignalName(entry: IoMappingEntry): string {
   return sanitizeIdentifier(`${entry.nodeId}_${entry.port}`);
 }
 
-function pinToPackagePin(pin: string): string | null {
-  const normalized = pin.trim().toUpperCase();
-  if (normalized.startsWith('SW')) {
-    const index = Number.parseInt(normalized.slice(2), 10);
-    return Number.isFinite(index) && index >= 0 && index < BASYS3_SWITCH_PINS.length
-      ? BASYS3_SWITCH_PINS[index]
-      : null;
-  }
-  if (normalized.startsWith('LD')) {
-    const index = Number.parseInt(normalized.slice(2), 10);
-    return Number.isFinite(index) && index >= 0 && index < BASYS3_LED_PINS.length
-      ? BASYS3_LED_PINS[index]
-      : null;
-  }
-  if (normalized === 'CLK100MHZ') {
-    return BASYS3_CLOCK_PIN;
-  }
-  return null;
-}
-
 function buildTopXdc(ioMapping: IoMapping, warnings: string[]): string {
   const lines: string[] = [];
   lines.push('# RedByte Basys3 Constraints (deterministic)');
@@ -86,13 +53,13 @@ function buildTopXdc(ioMapping: IoMapping, warnings: string[]): string {
   const sortedOutputs = stableSortMapping(ioMapping.outputs);
 
   if (sortedInputs.length > 0) {
-    lines.push('## Inputs (switches)');
+    lines.push('## Inputs');
     for (const entry of sortedInputs) {
       if (!entry.pin) {
         warnings.push(`Missing pin mapping for input ${entry.nodeId}.${entry.port}`);
         continue;
       }
-      const packagePin = pinToPackagePin(entry.pin);
+      const packagePin = resolveBasys3PackagePin(entry.pin);
       if (!packagePin) {
         warnings.push(`Unsupported Basys3 pin alias for input ${entry.nodeId}.${entry.port}: ${entry.pin}`);
         continue;
@@ -105,13 +72,13 @@ function buildTopXdc(ioMapping: IoMapping, warnings: string[]): string {
   }
 
   if (sortedOutputs.length > 0) {
-    lines.push('## Outputs (leds)');
+    lines.push('## Outputs');
     for (const entry of sortedOutputs) {
       if (!entry.pin) {
         warnings.push(`Missing pin mapping for output ${entry.nodeId}.${entry.port}`);
         continue;
       }
-      const packagePin = pinToPackagePin(entry.pin);
+      const packagePin = resolveBasys3PackagePin(entry.pin);
       if (!packagePin) {
         warnings.push(`Unsupported Basys3 pin alias for output ${entry.nodeId}.${entry.port}: ${entry.pin}`);
         continue;
@@ -148,7 +115,7 @@ function buildReadme(ioMapping: IoMapping, warnings: string[]): string {
   lines.push('| --- | --- | --- | --- |');
 
   for (const entry of sortedInputs) {
-    const packagePin = entry.pin ? pinToPackagePin(entry.pin) : null;
+    const packagePin = entry.pin ? resolveBasys3PackagePin(entry.pin) : null;
     if (!packagePin) {
       warnings.push(`README pin map omitted invalid input pin alias: ${entry.nodeId}.${entry.port}`);
       continue;
@@ -157,7 +124,7 @@ function buildReadme(ioMapping: IoMapping, warnings: string[]): string {
   }
 
   for (const entry of sortedOutputs) {
-    const packagePin = entry.pin ? pinToPackagePin(entry.pin) : null;
+    const packagePin = entry.pin ? resolveBasys3PackagePin(entry.pin) : null;
     if (!packagePin) {
       warnings.push(`README pin map omitted invalid output pin alias: ${entry.nodeId}.${entry.port}`);
       continue;

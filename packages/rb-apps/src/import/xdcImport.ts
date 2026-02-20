@@ -1,11 +1,11 @@
-// Copyright (c) 2025 Connor Angiel — RedByte OS Genesis
-// XDC Pin Parser — deterministically extract PACKAGE_PIN assignments from Vivado XDC.
+// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
+// XDC Pin Parser - deterministically extract PACKAGE_PIN assignments from Vivado XDC.
 //
-// Scope (v1): parse get_ports + PACKAGE_PIN only.
+// Scope (v1): parse get_ports + PACKAGE_PIN assignments.
 // Ignored with warnings: IOSTANDARD, PULLUP, DRIVE, SLEW, clocks, etc.
-// Unsupported pins: warn but don't crash.
+// Unsupported pins: warn but do not crash.
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { BASYS3_ALLOWED_PACKAGE_PINS, normalizeBasys3PinAlias } from '../fpga/boards/basys3/basys3Pins';
 
 export type XdcPinMap = Record<string, string>; // portName -> PACKAGE_PIN
 
@@ -14,77 +14,55 @@ export interface XdcParseResult {
   warnings: string[];
 }
 
-// ─── Basys3 Pin Reference ─────────────────────────────────────────────────────
+function normalizePortToken(token: string): string {
+  return token.replace(/[{}]/g, '').trim();
+}
 
-/**
- * Basys3 allowed pins (subset for v1).
- * Maps common names to actual PACKAGE_PIN values.
- */
-const BASYS3_ALLOWED_PINS = new Set([
-  // Switches
-  'V17', 'V16', 'W16', 'W17', 'W15', 'V15', 'W14', 'W13',
-  // LEDs
-  'U16', 'E19', 'U19', 'V19', 'W18', 'U18', 'U17', 'U14',
-  // Buttons
-  'D19', 'D20', 'L20', 'L19',
-  // Clock
-  'W5',
-  // UART
-  'D10', 'A9',
-  // Pmod
-  'C17', 'D18', 'E18', 'G17', 'D17', 'E17', 'F18', 'G18',
-  'D14', 'F16', 'G16', 'H14', 'E16', 'F13', 'G13', 'H16',
-  // Add more as needed
-]);
+function maybePushUnsupportedPinWarning(warnings: string[], pin: string): void {
+  if (BASYS3_ALLOWED_PACKAGE_PINS.has(pin)) return;
+  warnings.push(`Unsupported pin '${pin}'`);
+}
 
-// ─── Parser ────────────────────────────────────────────────────────────────────
-
-/**
- * Deterministically parse Vivado XDC for pin assignments.
- * Returns: { portName -> PACKAGE_PIN } mapping + warnings.
- *
- * Handles:
- *   set_property PACKAGE_PIN V17 [get_ports {SW0}]
- *   set_property PACKAGE_PIN V17 [get_ports SW0]
- *   set_property PACKAGE_PIN V17 [get_ports { sw[0] }]
- *   ... with spacing / tab / line continuation variants
- */
 export function parseXdcPins(xdcText: string): XdcParseResult {
   const pinMap: XdcPinMap = {};
   const warnings: string[] = [];
 
-  // Normalize: remove extra whitespace, handle line continuations
-  let normalized = xdcText
+  const normalized = xdcText
     .replace(/\r\n/g, '\n')
     .replace(/\t/g, ' ')
     .split('\n')
     .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith('#')) // Skip comments and empty
+    .filter((line) => line.length > 0 && !line.startsWith('#'))
     .join(' ');
 
-  // Match: set_property PACKAGE_PIN <pin> [get_ports { <name> }]
-  // Handles: {SW0}, { sw[0] }, SW0, etc.
-  const regex =
-    /set_property\s+PACKAGE_PIN\s+(\w+)\s+\[get_ports\s*(\{[^\}]*\}|[^\]]+)\s*\]/gi;
+  const upsertPin = (rawPin: string, rawPortToken: string) => {
+    const pin = normalizeBasys3PinAlias(rawPin);
+    const portName = normalizePortToken(rawPortToken);
+    if (portName.length === 0 || pin.length === 0) return;
 
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(normalized)) !== null) {
-    const pin = match[1].trim();
-    let portName = match[2].trim();
-
-    // Normalize port name: strip braces and extra whitespace
-    portName = portName.replace(/[\{\}]/g, '').trim();
-
-    // Warn if pin not in Basys3 set
-    if (!BASYS3_ALLOWED_PINS.has(pin)) {
-      warnings.push(`Unsupported pin '${pin}'`);
-    }
-
-    // Store mapping (last one wins if duplicates)
+    maybePushUnsupportedPinWarning(warnings, pin);
     pinMap[portName] = pin;
+  };
+
+  // Pattern: set_property PACKAGE_PIN V17 [get_ports {SW0}]
+  const directRegex =
+    /set_property\s+PACKAGE_PIN\s+([A-Za-z0-9_]+)\s+\[get_ports\s*(\{[^}]*\}|[^\]]+)\s*\]/gi;
+  let match: RegExpExecArray | null;
+  while ((match = directRegex.exec(normalized)) !== null) {
+    upsertPin(match[1], match[2]);
   }
 
-  // Warn for unsupported directives (simple heuristic)
+  // Pattern: set_property -dict { PACKAGE_PIN V17 IOSTANDARD LVCMOS33 } [get_ports {sw[0]}]
+  const dictRegex =
+    /set_property\s+-dict\s+\{([^}]*)\}\s+\[get_ports\s*(\{[^}]*\}|[^\]]+)\s*\]/gi;
+  while ((match = dictRegex.exec(normalized)) !== null) {
+    const dictBody = match[1];
+    const portToken = match[2];
+    const pinMatch = dictBody.match(/\bPACKAGE_PIN\s+([A-Za-z0-9_]+)\b/i);
+    if (!pinMatch) continue;
+    upsertPin(pinMatch[1], portToken);
+  }
+
   const unsupportedPatterns = [
     { pattern: /IOSTANDARD/i, msg: 'IOSTANDARD ignored (v1 does not configure voltage standards)' },
     { pattern: /PULLUP|PULLDOWN/i, msg: 'Pull-ups/downs ignored (v1 does not configure pulls)' },

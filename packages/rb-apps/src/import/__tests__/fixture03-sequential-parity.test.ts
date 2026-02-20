@@ -155,4 +155,30 @@ set_input_delay -clock clk 2.0 [get_ports rst]
       'Unused mapped input "unused_btn" will be ignored by top-entity export.',
     ]));
   });
+
+  it('accepts Basys3 button and seven-segment aliases as valid direction-compatible mappings', () => {
+    const { vhdl } = loadFixture();
+    const project = buildFixtureProject(vhdl);
+    project.ioMapping = {
+      inputs: (project.ioMapping?.inputs ?? []).map((entry) => {
+        if (entry.label === 'rst') return { ...entry, pin: 'BTNC' };
+        return entry;
+      }),
+      outputs: (project.ioMapping?.outputs ?? []).map((entry) => {
+        if (entry.label === 'q0') return { ...entry, pin: 'SEG0' };
+        if (entry.label === 'q1') return { ...entry, pin: 'AN0' };
+        if (entry.label === 'q2') return { ...entry, pin: 'DP' };
+        return entry;
+      }),
+    };
+
+    const exportResult = exportProjectAsBasys3(project);
+    expect(exportResult.success).toBe(true);
+    expect(exportResult.errors.some((error) => error.message.includes('Unsupported input pin'))).toBe(false);
+    expect(exportResult.errors.some((error) => error.message.includes('Unsupported output pin'))).toBe(false);
+    expect(exportResult.bundle?.topXdc).toContain('PACKAGE_PIN U18');
+    expect(exportResult.bundle?.topXdc).toContain('PACKAGE_PIN W7');
+    expect(exportResult.bundle?.topXdc).toContain('PACKAGE_PIN U2');
+    expect(exportResult.bundle?.topXdc).toContain('PACKAGE_PIN V7');
+  });
 });

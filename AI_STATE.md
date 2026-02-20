@@ -1,5 +1,60 @@
 # AI State
 
+## Change Log 2026-02-20 (Basys3/Vivado I/O Compatibility Hardening: Canonical Pin Authority + XDC Dict Parsing)
+
+**Status**: COMPLETE - Basys3 alias/package-pin compatibility is now enforced from a single canonical map, export validation accepts real Vivado/Basys aliases (including buttons and seven-segment signals), and XDC import now parses both direct and `-dict` Vivado `PACKAGE_PIN` forms.
+
+### What Changed
+
+1. Added canonical Basys3 pin authority module
+- Added `packages/rb-apps/src/fpga/boards/basys3/basys3Pins.ts`:
+  - canonical aliases -> package pins for:
+    - `SW0..SW15`, `LD0..LD15`, `LED0..LED15`
+    - `BTNC/BTNU/BTNL/BTNR/BTND`, `BTN0..BTN4`
+    - `SEG0..SEG6`, `AN0..AN3`, `DP`
+    - `CLK100MHZ` (and `CLK`)
+  - directional package-pin sets (input-capable vs output-capable)
+  - helpers for normalization, alias/package resolution, and direction checks.
+
+2. Unified Basys3 bundle pin resolution to canonical authority
+- Updated `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts`:
+  - removed local SW/LD-only pin conversion logic
+  - now resolves aliases and direct package pins through `basys3Pins.ts`
+  - retains deterministic XDC/README generation and lint checks.
+- Updated JS mirror to avoid dual-truth drift:
+  - `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.js` now thinly re-exports TS source.
+
+3. Expanded export validation compatibility for real Basys3/Vivado pin usage
+- Updated `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`:
+  - input/output pin validation now accepts:
+    - canonical aliases
+    - direct Basys3 package pins
+  - direction warnings now derive from canonical input/output capability sets
+  - unsupported-pin guidance now lists canonical alias sets from the shared map.
+
+4. Hardened XDC import parser for real Vivado formats
+- Replaced `packages/rb-apps/src/import/xdcImport.ts` with a clean deterministic parser that supports:
+  - `set_property PACKAGE_PIN ... [get_ports ...]`
+  - `set_property -dict { PACKAGE_PIN ... IOSTANDARD ... } [get_ports ...]`
+  - uppercase-normalized package pin capture, with unsupported-pin warnings from canonical Basys3 pin set.
+
+5. Added/extended tests for compatibility guarantees
+- Updated `packages/rb-apps/src/import/__tests__/xdcImport.test.ts`:
+  - coverage for Vivado `-dict` parsing and 7-seg/button/anode pins.
+- Updated `packages/rb-apps/src/__tests__/basys3-bundle-gate.test.ts`:
+  - verifies deterministic bundle generation with button/7-seg aliases + direct package pin output.
+- Updated `packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts`:
+  - verifies export accepts direction-compatible `BTNC`, `SEG0`, `AN0`, `DP` mappings without unsupported-pin errors.
+
+### Validation Executed
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/import/__tests__/xdcImport.test.ts packages/rb-apps/src/__tests__/basys3-bundle-gate.test.ts packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts` -> PASS
+- `pnpm repo:status` -> PASS (26/26 checks; non-blocking ahead-count warning remains)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-20 (Tranche 4 Hardening: Shared Sim Engine Extraction + Bring-Up Sim Derivation)
 
 **Status**: COMPLETE - Runtime simulation internals were extracted into a shared sim module, and bring-up expected-IO generation now derives from the same deterministic simulation authority path (instead of vector metadata fallback only).
