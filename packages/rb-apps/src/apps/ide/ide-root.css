@@ -1211,6 +1211,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--ide-space-2);
+  flex-wrap: wrap;
 }
 
 .ide-design-tool-hud-label {
@@ -1225,6 +1226,16 @@
 .ide-design-tool-hud-hint {
   font-size: var(--rb-font-size-2);
   color: var(--ide-text-muted);
+}
+
+.ide-design-tool-hud-wire {
+  margin-left: auto;
+  border: 1px solid rgba(46, 196, 182, 0.5);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: var(--rb-font-size-1);
+  color: #bffaf2;
+  background: rgba(46, 196, 182, 0.12);
 }
 
 .ide-design-overlay-empty {
@@ -1396,6 +1407,12 @@
   gap: var(--ide-space-3);
 }
 
+.ide-design-palette .ide-palette-groups {
+  max-height: 220px;
+  overflow: auto;
+  padding-right: var(--ide-space-1);
+}
+
 .ide-palette-group h4 {
   margin: 0 0 6px;
   font-size: 12px;
@@ -1421,6 +1438,22 @@
 .ide-palette-chip:hover {
   background: rgba(46, 196, 182, 0.18);
   border-color: rgba(46, 196, 182, 0.5);
+}
+
+.ide-palette-chip.ide-palette-chip-board {
+  border-color: rgba(36, 175, 224, 0.5);
+  background: rgba(14, 35, 58, 0.8);
+}
+
+.ide-palette-chip.ide-palette-chip-board:hover {
+  border-color: rgba(36, 175, 224, 0.78);
+  background: rgba(36, 175, 224, 0.2);
+}
+
+.ide-design-last-change {
+  margin: var(--ide-space-1) 0 0;
+  border-top: 1px solid rgba(58, 87, 116, 0.55);
+  padding-top: var(--ide-space-1);
 }
 
 .ide-verify-banner {

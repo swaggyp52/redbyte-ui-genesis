@@ -29,6 +29,7 @@ export interface ExportSurfaceProps {
   onExportBundle?: (artifacts: ExportArtifactView[]) => void;
   onExportResult?: (result: ProjectHealthExportResult) => void;
   onDiagnosticAction?: (diagnostic: IdeDiagnostic) => void;
+  onOpenVerify?: () => void;
 }
 
 export const ExportSurface: React.FC<ExportSurfaceProps> = ({
@@ -40,6 +41,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   onExportBundle,
   onExportResult,
   onDiagnosticAction,
+  onOpenVerify,
 }) => {
   const viewModel = useMemo(
     () => buildExportViewModel(project, verifyLastRun),
@@ -109,6 +111,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   }, [viewModel.pinTable]);
 
   const hasBlockingErrors = diagnosticsList.some((entry) => entry.severity === 'error');
+  const hasVerifyPass = verifyResult?.status === 'pass' && !dirtySinceVerify;
   const mappedCount = viewModel.pinTable.filter((row) => {
     const key = toPortKey(row.port);
     const pinValue = (pinOverrides[key] ?? '').trim();
@@ -170,6 +173,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     viewModel.exportHash,
     viewModel.pinTable,
   ]);
+  const exportReadinessLabel = hasBlockingErrors ? 'BLOCKED' : 'READY';
+  const bringUpReliabilityText = hasVerifyPass
+    ? 'Bring-up expected IO is derived from your latest PASS verification run.'
+    : 'Bring-up will be generated from current sim state (less reliable).';
 
   const jumpToMapping = (portKey: string) => {
     const row = rowRefs.current[portKey];
@@ -424,9 +431,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         </>
       }
     >
-        <IdePanel
+      <IdePanel
           title="Export"
-          description="Validate Basys3 readiness, package deterministic artifacts, and hand off a Vivado-ready bundle."
+          description="Compiler output in three steps: status, blockers, and deterministic Vivado-ready artifacts."
           actions={
             <>
               <span data-testid="ide-primary-cta">
@@ -435,7 +442,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   onClick={handleBuildEvidenceCapsule}
                   testId="ide-export-build-evidence-capsule"
                 >
-                  Build Evidence Capsule
+                  Download Vivado Pack (.zip)
                 </IdeButton>
               </span>
               <IdeButton tone="ghost">Re-run Validation</IdeButton>
@@ -451,9 +458,54 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           testId="ide-export-panel"
         >
           <div className="ide-export-sections">
+            <section className="ide-export-section" data-testid="ide-export-status-strip">
+              <header className="ide-export-section-header">
+                <h3>Status</h3>
+                <span className="ide-export-section-meta">{exportReadinessLabel}</span>
+              </header>
+              <div className="ide-kv-list">
+                <div className="ide-kv-row">
+                  <span>Export</span>
+                  <IdeStatusPill tone={hasBlockingErrors ? 'error' : 'ok'}>
+                    {exportReadinessLabel}
+                  </IdeStatusPill>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Export hash</span>
+                  <code data-testid="ide-export-status-hash">
+                    {viewModel.exportHash ? viewModel.exportHash.slice(0, 16) : 'pending'}
+                  </code>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Verify state</span>
+                  <IdeStatusPill tone={hasVerifyPass ? 'ok' : 'warn'}>
+                    {hasVerifyPass ? 'PASS' : 'UNVERIFIED'}
+                  </IdeStatusPill>
+                </div>
+              </div>
+              <IdeCallout
+                tone={hasVerifyPass ? 'success' : 'warn'}
+                title={hasVerifyPass ? 'Bring-up reliability: verified' : 'Bring-up reliability: fallback'}
+                testId="ide-export-bringup-reliability"
+              >
+                {bringUpReliabilityText}
+              </IdeCallout>
+              {!hasVerifyPass ? (
+                <div className="ide-inline-actions">
+                  <IdeButton
+                    tone="secondary"
+                    onClick={() => onOpenVerify?.()}
+                    testId="ide-export-run-verify-first"
+                  >
+                    Run Verify first
+                  </IdeButton>
+                </div>
+              ) : null}
+            </section>
+
             <section className="ide-export-section" data-testid="ide-export-build-output">
               <header className="ide-export-section-header">
-                <h3>Build Output</h3>
+                <h3>Blockers</h3>
                 <span className="ide-export-section-meta">
                   {diagnosticsList.length} diagnostics
                 </span>
@@ -481,7 +533,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 </IdeCallout>
               )}
 
-              <div className="ide-export-diagnostic-list">
+              <div className="ide-export-diagnostic-list" data-testid="ide-export-blockers-list">
                 {diagnosticsList.map((entry) => {
                   const portKey = entry.port ? toPortKey(entry.port) : undefined;
                   const mappingRow = portKey ? mappingIndex.get(portKey) : undefined;
@@ -619,7 +671,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
             <section className="ide-export-section" data-testid="ide-export-artifact-preview">
               <header className="ide-export-section-header">
-                <h3>Artifact Preview</h3>
+                <h3>Outputs</h3>
                 <span className="ide-export-section-meta">
                   {viewModel.artifacts.length} files
                 </span>

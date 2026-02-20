@@ -108,6 +108,12 @@ export interface ProjectRuntimeState {
   markDesignMutated: (circuit: Circuit) => void;
   addDesignNode: (nodeType: string, position: { x: number; y: number }) => void;
   addDesignIo: (direction: 'input' | 'output', position: { x: number; y: number }) => void;
+  addDesignBoardIo: (input: {
+    alias: string;
+    direction: 'in' | 'out';
+    kind?: 'switch' | 'button' | 'clock' | 'reset' | 'led' | 'segment' | 'anode' | 'dp';
+    position: { x: number; y: number };
+  }) => void;
   connectDesignNodes: (connection: {
     fromNodeId: string;
     fromPort: string;
@@ -391,6 +397,71 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       addDesignIo: (direction, position) => {
         const type = direction === 'input' ? 'INPUT' : 'OUTPUT';
         get().addDesignNode(type, position);
+      },
+      addDesignBoardIo: ({ alias, direction, kind, position }) => {
+        set((state) => {
+          const normalizedAlias = normalizeAliasToken(alias);
+          if (!normalizedAlias) return state;
+
+          const isInput = direction === 'in';
+          const normalizedKind = normalizeBoardIoKind(kind, isInput);
+          const nodeType =
+            normalizedKind === 'clock' ? 'Clock' : isInput ? 'INPUT' : 'OUTPUT';
+          const baseLabel =
+            normalizedKind === 'reset' ? 'rst' : normalizedAlias.toLowerCase();
+          const nodeId = getNextNamedNodeId(state.circuit, `${baseLabel}_node`);
+          const rowIdBase = normalizeBoardRowId(baseLabel);
+          const rowId = getNextIoRowId(state.projectIoRows, rowIdBase);
+          const rowPin = normalizedKind === 'reset' ? 'BTNC' : normalizedAlias;
+          const rowPort = isInput ? 'out' : 'in';
+
+          const nextCircuit = cloneCircuit(state.circuit);
+          nextCircuit.nodes.push({
+            id: nodeId,
+            type: nodeType,
+            label: baseLabel,
+            position: {
+              x: roundToMill(position.x),
+              y: roundToMill(position.y),
+            },
+            x: roundToMill(position.x),
+            y: roundToMill(position.y),
+            rotation: 0,
+            config: nodeType === 'Clock' ? { period: 10 } : {},
+            state: {},
+          });
+
+          const nextIoRows = cloneIoRows(state.projectIoRows);
+          const existingRow = nextIoRows.find(
+            (row) =>
+              normalizePortToken(row.id) === normalizePortToken(rowIdBase) ||
+              normalizePortToken(row.label) === normalizePortToken(baseLabel) ||
+              normalizePortToken(row.pin) === normalizePortToken(rowPin)
+          );
+
+          if (!existingRow) {
+            nextIoRows.push({
+              id: rowId,
+              nodeId,
+              port: rowPort,
+              label: baseLabel,
+              direction,
+              pin: rowPin,
+              required: true,
+            });
+          }
+
+          return {
+            circuit: nextCircuit,
+            projectIoRows: nextIoRows,
+            sim: resetSimulationState(nextCircuit, nextIoRows, state.sim),
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              dirtySinceVerify: true,
+              dirtySinceExport: true,
+            },
+          };
+        });
       },
       connectDesignNodes: (connection) => {
         set((state) => {
@@ -810,6 +881,53 @@ function getNextDesignNodeId(circuit: Circuit): string {
     next += 1;
   }
   return `${prefix}${next}`;
+}
+
+function getNextNamedNodeId(circuit: Circuit, baseId: string): string {
+  const seed = normalizeBoardRowId(baseId);
+  const used = new Set(circuit.nodes.map((node) => normalizePortToken(node.id)));
+  if (!used.has(normalizePortToken(seed))) return seed;
+  let suffix = 2;
+  while (used.has(normalizePortToken(`${seed}_${suffix}`))) {
+    suffix += 1;
+  }
+  return `${seed}_${suffix}`;
+}
+
+function getNextIoRowId(rows: ProjectIoRow[], baseId: string): string {
+  const normalizedBase = normalizeBoardRowId(baseId);
+  const used = new Set(rows.map((row) => normalizePortToken(row.id)));
+  if (!used.has(normalizePortToken(normalizedBase))) return normalizedBase;
+  let suffix = 2;
+  while (used.has(normalizePortToken(`${normalizedBase}_${suffix}`))) {
+    suffix += 1;
+  }
+  return `${normalizedBase}_${suffix}`;
+}
+
+function normalizeAliasToken(value: string): string {
+  return value.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '');
+}
+
+function normalizeBoardRowId(value: string): string {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return normalized.length > 0 ? normalized : 'io';
+}
+
+function normalizePortToken(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '');
+}
+
+function normalizeBoardIoKind(
+  kind: 'switch' | 'button' | 'clock' | 'reset' | 'led' | 'segment' | 'anode' | 'dp' | undefined,
+  isInput: boolean
+): 'switch' | 'button' | 'clock' | 'reset' | 'led' | 'segment' | 'anode' | 'dp' {
+  if (kind) return kind;
+  return isInput ? 'switch' : 'led';
 }
 
 function roundToMill(value: number): number {

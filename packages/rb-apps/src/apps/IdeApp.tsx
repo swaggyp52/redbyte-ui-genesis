@@ -59,6 +59,7 @@ export const IdeApp: React.FC = () => {
   const markDesignMutated = useProjectRuntime((state) => state.markDesignMutated);
   const addDesignNode = useProjectRuntime((state) => state.addDesignNode);
   const addDesignIo = useProjectRuntime((state) => state.addDesignIo);
+  const addDesignBoardIo = useProjectRuntime((state) => state.addDesignBoardIo);
   const connectDesignNodes = useProjectRuntime((state) => state.connectDesignNodes);
   const runRuntimeVerification = useProjectRuntime((state) => state.actions.verify.run);
   const clearRuntimeVerification = useProjectRuntime((state) => state.actions.verify.clear);
@@ -317,6 +318,10 @@ export const IdeApp: React.FC = () => {
     () => buildExportViewModel(exportProject, verifyLastRun),
     [exportProject, verifyLastRun]
   );
+  const hardwareExpectedIoRows = useMemo(
+    () => extractExpectedIoRows(exportViewModel.artifacts),
+    [exportViewModel.artifacts]
+  );
   const handleDiagnosticAction = useCallback((diagnostic: IdeDiagnostic) => {
     const action = choosePrimaryDiagnosticAction(diagnostic);
     if (!action) return;
@@ -494,6 +499,7 @@ export const IdeApp: React.FC = () => {
             onCircuitMutated={handleDesignMutation}
             onRuntimeAddNode={addDesignNode}
             onRuntimeAddIo={addDesignIo}
+            onRuntimeAddBoardIo={addDesignBoardIo}
             onRuntimeConnect={connectDesignNodes}
             compilerStatus={designCompilerStatus}
             onDiagnosticAction={handleDiagnosticAction}
@@ -529,6 +535,7 @@ export const IdeApp: React.FC = () => {
             projectName={projectName}
             expectedBehavior={hardwareExpectedBehavior}
             mappingRows={projectIoRows}
+            expectedIoRows={hardwareExpectedIoRows}
             vectorsCount={projectVectors.length}
             health={projectHealth}
             onGenerateBringUpVectors={handleGenerateBringUpVectors}
@@ -544,6 +551,7 @@ export const IdeApp: React.FC = () => {
             determinismHash={determinismHash}
             onExportResult={handleExportResult}
             onDiagnosticAction={handleDiagnosticAction}
+            onOpenVerify={() => setCurrentMode('verify')}
           />
         ) : (
           <ImportSurface onImportProject={handleImportProject} />
@@ -692,6 +700,42 @@ function createSignalName(raw: string, fallback: string): string {
     .replace(/^_+|_+$/g, '');
   if (normalized.length === 0) return fallback;
   return /^[a-z]/.test(normalized) ? normalized : `sig_${normalized}`;
+}
+
+function extractExpectedIoRows(
+  artifacts: ReturnType<typeof buildExportViewModel>['artifacts']
+): Array<{ signal: string; tick: number; expected: string }> {
+  const expectedIo = artifacts.find((artifact) => artifact.path === 'EXPECTED_IO.json');
+  if (!expectedIo || expectedIo.content.trim().length === 0) return [];
+  try {
+    const parsed = JSON.parse(expectedIo.content) as {
+      signals?: Array<{
+        signal?: string;
+        values?: Array<{ tick?: number; expected?: string | number }>;
+      }>;
+    };
+    const rows: Array<{ signal: string; tick: number; expected: string }> = [];
+    for (const signalRow of parsed.signals ?? []) {
+      const signal = (signalRow.signal ?? '').trim();
+      if (signal.length === 0) continue;
+      for (const value of signalRow.values ?? []) {
+        if (!Number.isFinite(value.tick)) continue;
+        rows.push({
+          signal,
+          tick: Math.max(0, Math.floor(Number(value.tick))),
+          expected: String(value.expected ?? '0'),
+        });
+      }
+    }
+    return rows
+      .sort((left, right) => {
+        if (left.tick !== right.tick) return left.tick - right.tick;
+        return left.signal.localeCompare(right.signal);
+      })
+      .slice(0, 40);
+  } catch {
+    return [];
+  }
 }
 
 export default IdeApp;

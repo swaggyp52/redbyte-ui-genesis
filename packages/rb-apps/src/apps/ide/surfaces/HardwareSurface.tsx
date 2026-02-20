@@ -23,6 +23,11 @@ export interface HardwareSurfaceProps {
   projectName: string;
   expectedBehavior: string;
   mappingRows: HardwareMappingRow[];
+  expectedIoRows: Array<{
+    signal: string;
+    tick: number;
+    expected: string;
+  }>;
   vectorsCount: number;
   health: ProjectHealth;
   onGenerateBringUpVectors: () => void;
@@ -34,6 +39,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   projectName,
   expectedBehavior,
   mappingRows,
+  expectedIoRows,
   vectorsCount,
   health,
   onGenerateBringUpVectors,
@@ -99,6 +105,24 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </IdeStatusPill>,
         ]),
     [mappingRows]
+  );
+  const expectedIoTableRows = useMemo(
+    () =>
+      expectedIoRows.slice(0, 20).map((row) => [
+        <code key={`${row.signal}-${row.tick}`}>{row.signal}</code>,
+        `t${row.tick}`,
+        <code key={`${row.signal}-${row.tick}-expected`}>{row.expected}</code>,
+      ]),
+    [expectedIoRows]
+  );
+  const checklistSteps = useMemo(
+    () => [
+      'Download Vivado pack from Export.',
+      'Run vivado_import.tcl in the unpacked folder.',
+      'Program Basys3 with generated bitstream.',
+      'Flip mapped SW/BTN inputs and compare LED outputs.',
+    ],
+    []
   );
 
   return (
@@ -180,6 +204,17 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               Mapping, vectors, and verify state are ready for deterministic Basys3 export.
             </IdeCallout>
           )}
+          <section className="ide-export-section" data-testid="ide-hardware-if-wrong">
+            <header className="ide-export-section-header">
+              <h3>If wrong</h3>
+            </header>
+            <ul className="ide-export-checklist">
+              <li>Confirm top module in Vivado matches exported top entity.</li>
+              <li>Check every required signal has a mapped Basys3 pin.</li>
+              <li>Ensure constraints file is added to <code>constrs_1</code>.</li>
+              <li>Re-run Verify and compare first failing signal before re-export.</li>
+            </ul>
+          </section>
         </section>
       }
     >
@@ -221,6 +256,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             <header className="ide-export-section-header">
               <h3>Bring-Up Checklist</h3>
             </header>
+            <ol className="ide-export-checklist ide-copy" data-testid="ide-hardware-checklist-steps">
+              {checklistSteps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
             <IdeDataTable
               columns={['Check', 'Status']}
               rows={checklistRows}
@@ -257,6 +297,24 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             rows={mappingTableRows}
             testId="ide-hardware-mapping-table"
           />
+        </section>
+
+        <section className="ide-export-section" data-testid="ide-hardware-expected-io-table">
+          <header className="ide-export-section-header">
+            <h3>Expected IO</h3>
+            <span className="ide-export-section-meta">{expectedIoRows.length} rows</span>
+          </header>
+          {expectedIoTableRows.length > 0 ? (
+            <IdeDataTable
+              columns={['Signal', 'Tick', 'Expected']}
+              rows={expectedIoTableRows}
+              testId="ide-hardware-expected-table"
+            />
+          ) : (
+            <IdeCallout tone="warn" title="Expected IO pending">
+              Generate bring-up vectors and run Verify to produce expected IO rows.
+            </IdeCallout>
+          )}
         </section>
       </IdePanel>
     </IdeSurfaceLayout>

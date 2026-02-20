@@ -25,6 +25,12 @@ export interface DesignSurfaceProps {
   onCircuitMutated?: () => void;
   onRuntimeAddNode?: (nodeType: string, position: { x: number; y: number }) => void;
   onRuntimeAddIo?: (direction: 'input' | 'output', position: { x: number; y: number }) => void;
+  onRuntimeAddBoardIo?: (input: {
+    alias: string;
+    direction: 'in' | 'out';
+    kind?: 'switch' | 'button' | 'clock' | 'reset' | 'led' | 'segment' | 'anode' | 'dp';
+    position: { x: number; y: number };
+  }) => void;
   onRuntimeConnect?: (connection: {
     fromNodeId: string;
     fromPort: string;
@@ -67,6 +73,12 @@ interface PaletteItem {
   category: 'IO' | 'Logic' | 'Sequential';
 }
 
+interface BoardIoPaletteItem {
+  alias: string;
+  kind: 'switch' | 'button' | 'clock' | 'reset' | 'led' | 'segment' | 'anode' | 'dp';
+  direction: 'in' | 'out';
+}
+
 const PALETTE_ITEMS: PaletteItem[] = [
   { type: 'INPUT', title: 'Input Pin', category: 'IO' },
   { type: 'OUTPUT', title: 'Output Pin', category: 'IO' },
@@ -78,11 +90,46 @@ const PALETTE_ITEMS: PaletteItem[] = [
   { type: 'Clock', title: 'Clock', category: 'Sequential' },
 ];
 
+const BASYS3_INPUT_ITEMS: BoardIoPaletteItem[] = [
+  ...Array.from({ length: 16 }, (_, index) => ({
+    alias: `SW${index}`,
+    direction: 'in' as const,
+    kind: 'switch' as const,
+  })),
+  { alias: 'BTNC', direction: 'in', kind: 'button' },
+  { alias: 'BTNU', direction: 'in', kind: 'button' },
+  { alias: 'BTNL', direction: 'in', kind: 'button' },
+  { alias: 'BTNR', direction: 'in', kind: 'button' },
+  { alias: 'BTND', direction: 'in', kind: 'button' },
+  { alias: 'CLK100MHZ', direction: 'in', kind: 'clock' },
+  { alias: 'RST', direction: 'in', kind: 'reset' },
+];
+
+const BASYS3_OUTPUT_ITEMS: BoardIoPaletteItem[] = [
+  ...Array.from({ length: 16 }, (_, index) => ({
+    alias: `LD${index}`,
+    direction: 'out' as const,
+    kind: 'led' as const,
+  })),
+  ...Array.from({ length: 7 }, (_, index) => ({
+    alias: `SEG${index}`,
+    direction: 'out' as const,
+    kind: 'segment' as const,
+  })),
+  ...Array.from({ length: 4 }, (_, index) => ({
+    alias: `AN${index}`,
+    direction: 'out' as const,
+    kind: 'anode' as const,
+  })),
+  { alias: 'DP', direction: 'out', kind: 'dp' },
+];
+
 export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   onOpenPalette,
   onCircuitMutated,
   onRuntimeAddNode,
   onRuntimeAddIo,
+  onRuntimeAddBoardIo,
   onRuntimeConnect,
   compilerStatus,
   onDiagnosticAction,
@@ -122,6 +169,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const zoomCamera = useLogicViewStore((state) => state.zoom);
   const rawSelection = useLogicViewStore((state) => state.selection);
   const interactionMode = useLogicViewStore((state) => state.interactionMode);
+  const wireStartPort = useLogicViewStore((state) => state.editingState.wireStartPort);
 
   const selection = useMemo(
     () => ({
@@ -206,11 +254,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         event.preventDefault();
         redo();
         onCircuitMutated?.();
+      } else if (event.key === 'Escape') {
+        clearSelection();
+        if (toolMode === 'wire') {
+          setToolMode('select');
+          setActionToast('Wire cancelled.');
+        }
+      } else if (!event.ctrlKey && !event.metaKey && event.key.toLowerCase() === 'w') {
+        setToolMode('wire');
+        setActionToast('Start Wire (W) enabled.');
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onCircuitMutated, redo, undo]);
+  }, [clearSelection, onCircuitMutated, redo, setToolMode, toolMode, undo]);
 
   useEffect(() => {
     if (!actionToast) return;
@@ -246,6 +303,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         item.category.toLowerCase().includes(query)
     );
   }, [paletteQuery]);
+  const filteredBasysInputs = useMemo(() => {
+    const query = paletteQuery.trim().toLowerCase();
+    if (!query) return BASYS3_INPUT_ITEMS;
+    return BASYS3_INPUT_ITEMS.filter((entry) => entry.alias.toLowerCase().includes(query));
+  }, [paletteQuery]);
+  const filteredBasysOutputs = useMemo(() => {
+    const query = paletteQuery.trim().toLowerCase();
+    if (!query) return BASYS3_OUTPUT_ITEMS;
+    return BASYS3_OUTPUT_ITEMS.filter((entry) => entry.alias.toLowerCase().includes(query));
+  }, [paletteQuery]);
 
   const spawnAtCanvasCenter = useCallback(
     (nodeType: string, extraOffset: { x: number; y: number } = { x: 0, y: 0 }) => {
@@ -275,6 +342,51 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       editorCircuit.nodes,
       onCircuitMutated,
       onRuntimeAddNode,
+    ]
+  );
+
+  const addBoardIoAlias = useCallback(
+    (entry: BoardIoPaletteItem) => {
+      hasAutoFitRef.current = false;
+      const center = {
+        x: (canvasSize.width / 2 - camera.x) / camera.zoom,
+        y: (canvasSize.height / 2 - camera.y) / camera.zoom,
+      };
+      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
+      const laneOffset = entry.direction === 'in' ? -180 : 180;
+      const position = {
+        x: basePosition.x + laneOffset,
+        y: basePosition.y + (entry.direction === 'in' ? -40 : 40),
+      };
+
+      if (onRuntimeAddBoardIo) {
+        onRuntimeAddBoardIo({
+          alias: entry.alias,
+          direction: entry.direction,
+          kind: entry.kind,
+          position,
+        });
+      } else if (onRuntimeAddIo) {
+        onRuntimeAddIo(entry.direction === 'in' ? 'input' : 'output', position);
+      } else {
+        spawnAtCanvasCenter(entry.direction === 'in' ? 'INPUT' : 'OUTPUT', {
+          x: laneOffset,
+          y: entry.direction === 'in' ? -40 : 40,
+        });
+      }
+
+      setActionToast(`Added ${entry.alias} to canvas.`);
+    },
+    [
+      camera.x,
+      camera.y,
+      camera.zoom,
+      canvasSize.height,
+      canvasSize.width,
+      editorCircuit.nodes,
+      onRuntimeAddBoardIo,
+      onRuntimeAddIo,
+      spawnAtCanvasCenter,
     ]
   );
 
@@ -628,7 +740,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     interactionMode === 'boxSelecting'
       ? 'Drag to marquee-select multiple nodes. Hold Shift to add to selection.'
       : toolMode === 'wire'
-        ? 'Click two ports to create a wire.'
+        ? wireStartPort
+          ? 'Hover valid sinks in green, then click to connect. Esc cancels the wire.'
+          : 'Start Wire (W), click a source pin, then click a valid sink pin.'
         : 'Click a node to inspect it. Drag to reposition.';
   const handleNodeDiagnosticBadgeClick = useCallback(
     (nodeId: string) => {
@@ -668,6 +782,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       });
     return { inputRows, outputRows };
   }, [editorCircuit.nodes, ioRowByNodeId, liveSignals]);
+  const liveChangeSummary = useMemo(
+    () => summarizeLiveChange(liveIoSignals.inputRows, liveIoSignals.outputRows),
+    [liveIoSignals.inputRows, liveIoSignals.outputRows]
+  );
   const ioPresentationMap = useMemo(() => {
     const map: Record<string, NodeIoPresentation> = {};
     for (const node of editorCircuit.nodes) {
@@ -735,6 +853,40 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             placeholder="Search gates, IO, DFF, clock..."
             data-testid="ide-design-search"
           />
+          <div className="ide-palette-groups" data-testid="ide-design-board-io-palette">
+            <div className="ide-palette-group" data-testid="ide-design-board-inputs">
+              <h4>Basys3 Inputs</h4>
+              <div className="ide-palette-chips">
+                {filteredBasysInputs.map((entry) => (
+                  <button
+                    key={entry.alias}
+                    className="ide-palette-chip ide-palette-chip-board"
+                    type="button"
+                    onClick={() => addBoardIoAlias(entry)}
+                    data-testid={`ide-design-board-input-${entry.alias.toLowerCase()}`}
+                  >
+                    {entry.alias}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="ide-palette-group" data-testid="ide-design-board-outputs">
+              <h4>Basys3 Outputs</h4>
+              <div className="ide-palette-chips">
+                {filteredBasysOutputs.map((entry) => (
+                  <button
+                    key={entry.alias}
+                    className="ide-palette-chip ide-palette-chip-board"
+                    type="button"
+                    onClick={() => addBoardIoAlias(entry)}
+                    data-testid={`ide-design-board-output-${entry.alias.toLowerCase()}`}
+                  >
+                    {entry.alias}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
           <div className="ide-palette-groups">
             {(['IO', 'Logic', 'Sequential'] as const).map((category) => {
               const items = filteredPalette.filter((item) => item.category === category);
@@ -846,6 +998,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </div>
               ))}
             </div>
+            <p className="ide-copy ide-design-last-change" data-testid="ide-design-last-change">
+              {liveChangeSummary}
+            </p>
           </IdeInspectorSection>
 
           <IdeInspectorSection title="Signal Probe" testId="ide-design-signal-probe">
@@ -1204,6 +1359,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               >
                 Delete
               </IdeButton>
+              <IdeButton
+                tone={toolMode === 'wire' ? 'secondary' : 'ghost'}
+                onClick={setWireMode}
+                testId="ide-design-tool-start-wire"
+              >
+                Start Wire (W)
+              </IdeButton>
               <span className={`ide-wire-mode-pill ${toolMode === 'wire' ? 'is-wire' : ''}`} data-testid="ide-design-wire-pill">
                 {activeModeLabel}
               </span>
@@ -1282,6 +1444,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div className="ide-design-tool-hud" data-testid="ide-design-tool-hud">
                 <span className="ide-design-tool-hud-label">{activeModeLabel}</span>
                 <span className="ide-design-tool-hud-hint">{toolHint}</span>
+                {toolMode === 'wire' ? (
+                  <span className="ide-design-tool-hud-wire" data-testid="ide-design-wire-cue">
+                    {wireStartPort ? 'Source selected. Click a valid sink pin.' : 'Pick a source pin to start wiring.'}
+                  </span>
+                ) : null}
               </div>
               <div
                 className={`ide-design-canvas-live ${toolMode === 'wire' ? 'is-wire-mode' : 'is-select-mode'}`}
@@ -1426,6 +1593,28 @@ function extractAlias(source: string, pattern: RegExp): string {
 
 function normalizeAlias(value: string): string {
   return value.trim().toUpperCase();
+}
+
+function summarizeLiveChange(
+  inputRows: Array<{ id: string; label: string; value: 0 | 1 }>,
+  outputRows: Array<{ id: string; label: string; value: 0 | 1 }>
+): string {
+  const primaryOutput = outputRows[0];
+  if (!primaryOutput) {
+    return 'No output probes yet. Add a Basys3 output pin to observe live state.';
+  }
+
+  if (inputRows.length === 0) {
+    return `${primaryOutput.label} = ${primaryOutput.value} (no mapped inputs yet)`;
+  }
+
+  const normalizedInputs = inputRows.slice(0, 2);
+  const sourceText =
+    normalizedInputs.length >= 2
+      ? `${normalizedInputs[0].label} & ${normalizedInputs[1].label}`
+      : normalizedInputs[0].label;
+
+  return `${primaryOutput.label} = ${primaryOutput.value} (from ${sourceText})`;
 }
 
 function normalizeCircuitForCanvas(circuit: Circuit): Circuit {
