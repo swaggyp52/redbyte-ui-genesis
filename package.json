@@ -167,6 +167,7 @@
         "ide:gate:screenshots:update": "pnpm --filter @redbyte/playground build && cross-env CI=1 PW_MODE=ci pnpm exec playwright test tests/e2e/ide-screenshot-baseline.spec.ts --project chromium --update-snapshots",
         "ide:gate:verify-contract": "node ./scripts/gates/ide-verify-contract.mjs",
         "ide:gate:synth-subset-contract": "node ./scripts/gates/ide-synth-subset-contract.mjs",
+        "ide:gate:vivado-pack-contract": "node ./scripts/gates/ide-vivado-pack-contract.mjs",
         "ide:gate:verify-workbench-contract": "node ./scripts/gates/ide-verify-workbench-contract.mjs",
         "ide:gate:evidence-capsule-contract": "node ./scripts/gates/ide-evidence-capsule-contract.mjs",
         "ide:gate:export-artifact-explorer-contract": "node ./scripts/gates/ide-export-artifact-explorer-contract.mjs",

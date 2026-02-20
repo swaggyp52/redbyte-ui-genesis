@@ -90,6 +90,11 @@ if (!runCheck('IDE Synth Subset Contract', 'pnpm -s ide:gate:synth-subset-contra
   process.exit(1);
 }
 
+// 2b. Vivado-ready export pack contract
+if (!runCheck('IDE Vivado Pack Contract', 'pnpm -s ide:gate:vivado-pack-contract 2>&1')) {
+  process.exit(1);
+}
+
 // 3. Build (includes typecheck in vite build for product apps)
 if (!runCheck('Building', 'pnpm build 2>&1')) {
   process.exit(1);
