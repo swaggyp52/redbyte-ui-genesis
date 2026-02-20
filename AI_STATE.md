@@ -1,5 +1,82 @@
 # AI State
 
+## Change Log 2026-02-20 (Tranche 8: Design Build-Fast + Export Compiler Clarity + Hardware Checklist Authority)
+
+**Status**: COMPLETE - Design now supports board-first Basys3 IO creation with smart wire cues and deterministic live-change feedback, Export is framed as a strict 3-step compiler surface (status/blockers/outputs + bring-up reliability), and Hardware exposes projector-ready checklist + expected-IO + if-wrong authority panels with full gate coverage.
+
+### What Changed
+
+1. Design build-fast loop hardening (board-first palette + smart wire cues + deterministic feedback)
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - added board-first palette sections and deterministic markers:
+    - `ide-design-board-io-palette`
+    - `ide-design-board-inputs`
+    - `ide-design-board-outputs`
+    - item-level aliases (`SW*`, `BTN*`, `CLK100MHZ`, `RST`, `LD*`, `SEG*`, `AN*`, `DP`)
+  - added smart wire affordances:
+    - keyboard shortcuts (`W` start wire, `Esc` cancel/clear)
+    - explicit `Start Wire (W)` action
+    - `ide-design-wire-cue` context hint driven by live wire-start state
+  - added deterministic sim feedback line:
+    - `ide-design-last-change` (`LDx = value (from SWx & SWy)` style summary)
+
+2. Runtime board-IO insertion authority (no local-only mutations)
+- Updated `packages/rb-apps/src/apps/ide/projectRuntime.ts`:
+  - added `addDesignBoardIo(...)` action to create deterministic board IO nodes and mapping rows.
+  - introduced stable helpers for alias/node/row normalization and deterministic IDs.
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - wired `onRuntimeAddBoardIo` into Design surface.
+  - added deterministic extraction of `EXPECTED_IO.json` rows for Hardware panel display.
+
+3. Export compiler framing and bring-up reliability clarity
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`:
+  - added `ide-export-status-strip` (READY/BLOCKED + hash + verify reliability context).
+  - added `ide-export-blockers-list` surface and hardened fix-path behavior.
+  - reframed artifacts section as compiler outputs.
+  - added `ide-export-bringup-reliability` message with `Run Verify first` path when PASS is missing.
+  - updated primary action copy to `Download Vivado Pack (.zip)`.
+
+4. Hardware checklist authority surfaces
+- Updated `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`:
+  - added deterministic checklist steps region (`ide-hardware-checklist-steps`).
+  - added expected-IO truth table (`ide-hardware-expected-io-table` / `ide-hardware-expected-table`).
+  - added projector-friendly failure guidance panel (`ide-hardware-if-wrong`).
+
+5. New Tranche 8 gates + runner wiring
+- Added:
+  - `scripts/gates/ide-design-build-fast-contract.mjs`
+  - `scripts/gates/ide-export-blockers-contract.mjs`
+  - `scripts/gates/ide-export-ready-contract.mjs`
+  - `scripts/gates/ide-hardware-checklist-contract.mjs`
+- Updated gate wiring in:
+  - `package.json`
+  - `scripts/repo-status.mjs`
+  - `scripts/verify-gates-classroom.mjs`
+
+6. Synth-subset contract extension for board-first alias compatibility
+- Updated `packages/rb-apps/src/__tests__/ide-synth-subset-contract.test.ts`:
+  - added stable board-first SW/LD alias fixture that exports cleanly with deterministic Basys3 XDC/README mapping output.
+
+7. Screenshot baseline refresh for changed authority surfaces
+- Updated:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-design-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-export-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-hardware-chromium-win32.png`
+
+### Validation Executed
+
+- `pnpm -s ide:gate:design-build-fast-contract` -> PASS
+- `pnpm -s ide:gate:synth-subset-contract` -> PASS
+- `pnpm -s ide:gate:export-blockers-contract` -> PASS
+- `pnpm -s ide:gate:export-ready-contract` -> PASS
+- `pnpm -s ide:gate:hardware-checklist-contract` -> PASS
+- `pnpm -s ide:gate:screenshots:update` -> PASS
+- `pnpm repo:status` -> PASS (32/32 checks; non-blocking ahead warning remains)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-20 (Tranche 6+7: Project Overview Hub + Verify Clarity Contracts)
 
 **Status**: COMPLETE - Project mode now presents a strict Overview hub (Identity, I/O Mapping, Readiness) with a deterministic `Continue ->` route to the next blocked stage, and Verify now surfaces a single summary story (PASS/FAIL, first failing tick, failing signal diff, fix path) with relevant-signal default filtering.
