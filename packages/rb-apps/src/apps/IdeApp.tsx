@@ -15,6 +15,7 @@ import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
 import { ProjectSurface } from './ide/surfaces/ProjectSurface';
 import { DesignSurface, type DesignCompilerStatus } from './ide/surfaces/DesignSurface';
 import { VerifySurface, type VerifyFailureTarget } from './ide/surfaces/VerifySurface';
+import { HardwareSurface } from './ide/surfaces/HardwareSurface';
 import { ExportSurface } from './ide/surfaces/ExportSurface';
 import { ImportSurface } from './ide/surfaces/ImportSurface';
 import { buildExportViewModel } from './ide/viewmodels/buildExportViewModel';
@@ -53,6 +54,7 @@ export const IdeApp: React.FC = () => {
   const setMappingPin = useProjectRuntime((state) => state.setMappingPin);
   const autoSuggestMapping = useProjectRuntime((state) => state.autoSuggestMapping);
   const setVectors = useProjectRuntime((state) => state.setVectors);
+  const generateBringUpVectors = useProjectRuntime((state) => state.generateBringUpVectors);
   const markDesignMutated = useProjectRuntime((state) => state.markDesignMutated);
   const addDesignNode = useProjectRuntime((state) => state.addDesignNode);
   const addDesignIo = useProjectRuntime((state) => state.addDesignIo);
@@ -116,6 +118,20 @@ export const IdeApp: React.FC = () => {
     () => (pendingExampleId ? getIdeExampleById(pendingExampleId) : undefined),
     [pendingExampleId]
   );
+  const activeExample = useMemo(
+    () => (activeExampleId ? getIdeExampleById(activeExampleId) : undefined),
+    [activeExampleId]
+  );
+  const hardwareExpectedBehavior = useMemo(() => {
+    const fromExample = activeExample?.expectedBehavior?.trim();
+    if (fromExample && fromExample.length > 0) return fromExample;
+    if (projectVectors.length > 0) {
+      return `Run ${projectVectors.length} deterministic bring-up vector${
+        projectVectors.length === 1 ? '' : 's'
+      } and confirm mapped outputs on Basys3.`;
+    }
+    return 'Generate bring-up vectors, run verify, then confirm mapped outputs on Basys3.';
+  }, [activeExample?.expectedBehavior, projectVectors.length]);
 
   const runtimeCircuitFingerprint = useMemo(() => digestValue(circuit), [circuit]);
   useEffect(() => {
@@ -166,6 +182,10 @@ export const IdeApp: React.FC = () => {
   const handleAutoSuggestMapping = useCallback(() => {
     autoSuggestMapping();
   }, [autoSuggestMapping]);
+  const handleGenerateBringUpVectors = useCallback(() => {
+    generateBringUpVectors();
+    setCurrentMode('hardware');
+  }, [generateBringUpVectors]);
 
   const handleProjectPrimaryAction = useCallback(() => {
     if (primaryProjectCta.code === 'RBP1001') {
@@ -471,6 +491,17 @@ export const IdeApp: React.FC = () => {
             onOpenProjectVectors={() => setCurrentMode('project')}
             onFixPath={handleVerifyFixPath}
           />
+        ) : currentMode === 'hardware' ? (
+          <HardwareSurface
+            projectName={projectName}
+            expectedBehavior={hardwareExpectedBehavior}
+            mappingRows={projectIoRows}
+            vectorsCount={projectVectors.length}
+            health={projectHealth}
+            onGenerateBringUpVectors={handleGenerateBringUpVectors}
+            onOpenExport={() => setCurrentMode('export')}
+            onOpenVerify={() => setCurrentMode('verify')}
+          />
         ) : currentMode === 'export' ? (
           <ExportSurface
             project={exportProject}
@@ -522,6 +553,7 @@ function resolveInitialIdeMode(): IdeMode {
     case 'project':
     case 'design':
     case 'verify':
+    case 'hardware':
     case 'export':
     case 'import':
       return requestedMode;

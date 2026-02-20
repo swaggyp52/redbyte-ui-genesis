@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-type IdeSurfaceMode = 'project' | 'design' | 'verify' | 'export' | 'import';
+type IdeSurfaceMode =
+  | 'project'
+  | 'design'
+  | 'verify'
+  | 'hardware'
+  | 'export'
+  | 'import';
 type ResizeEdge = 'left' | 'right' | 'bottom';
 
 const LAYOUT_STORAGE_KEY = 'rb.ide.workbench.layout.v1';

@@ -15,7 +15,13 @@ import type { RBProject, RBFpgaConfig } from '../../export/projectFormat';
 import type { ToolchainProjectInput } from '../../fpga/toolchainBackend';
 
 // ── IDE Mode ──────────────────────────────────────────────────────────────────
-export type IDEMode = 'project' | 'design' | 'verify' | 'export' | 'import';
+export type IDEMode =
+  | 'project'
+  | 'design'
+  | 'verify'
+  | 'hardware'
+  | 'export'
+  | 'import';
 
 // ── Context value ─────────────────────────────────────────────────────────────
 export interface IdeContextValue {

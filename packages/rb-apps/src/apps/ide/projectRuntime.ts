@@ -23,6 +23,7 @@ import {
   type VerifyReportVector,
   type VerifyWaveSample,
 } from './verifyReport';
+import { generateBringUpVectors } from './bringupArtifacts';
 
 const STORAGE_KEY = 'rb.ide.project-runtime.v1';
 
@@ -79,6 +80,7 @@ export interface ProjectRuntimeState {
   setMappingPin: (rowId: string, pin: string) => void;
   autoSuggestMapping: () => void;
   setVectors: (vectors: TestVector[]) => void;
+  generateBringUpVectors: () => TestVector[];
   markDesignMutated: (circuit: Circuit) => void;
   addDesignNode: (nodeType: string, position: { x: number; y: number }) => void;
   addDesignIo: (direction: 'input' | 'output', position: { x: number; y: number }) => void;
@@ -174,6 +176,22 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             dirtySinceExport: true,
           },
         }));
+      },
+      generateBringUpVectors: () => {
+        const generated = generateBringUpVectors({
+          ioRows: get().projectIoRows,
+          circuit: get().circuit,
+          existingVectors: get().projectVectors,
+        });
+        set((state) => ({
+          projectVectors: cloneVectors(generated),
+          projectHealthCore: {
+            ...state.projectHealthCore,
+            dirtySinceVerify: true,
+            dirtySinceExport: true,
+          },
+        }));
+        return generated;
       },
       markDesignMutated: (circuit) => {
         set((state) => ({

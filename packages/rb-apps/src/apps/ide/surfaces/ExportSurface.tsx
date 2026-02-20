@@ -425,8 +425,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       }
     >
         <IdePanel
-          title="Evidence Capsule Compiler"
-          description="Validate Basys3 readiness, run strict verify gates, and package deterministic grading evidence."
+          title="Export"
+          description="Validate Basys3 readiness, package deterministic artifacts, and hand off a Vivado-ready bundle."
           actions={
             <>
               <span data-testid="ide-primary-cta">

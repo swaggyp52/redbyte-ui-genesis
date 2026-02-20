@@ -313,7 +313,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       }
     >
       <IdePanel
-        title="Project Setup"
+        title="Project Overview"
         description="Sources, mapping, and readiness in one deterministic control surface."
         actions={
           <>

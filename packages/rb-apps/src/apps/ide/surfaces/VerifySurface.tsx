@@ -505,7 +505,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
     >
       <IdePanel
-        title="Verification Truth Screen"
+        title="Verify"
         description="Run deterministic vectors, scrub ticks, and jump directly from mismatch to fix path."
         actions={
           <>

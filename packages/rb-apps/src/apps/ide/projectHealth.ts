@@ -1,6 +1,12 @@
 import type { VerifyReport } from './verifyReport';
 
-export type ProjectHealthMode = 'project' | 'design' | 'verify' | 'export' | 'import';
+export type ProjectHealthMode =
+  | 'project'
+  | 'design'
+  | 'verify'
+  | 'hardware'
+  | 'export'
+  | 'import';
 
 export interface ProjectHealthFixPath {
   mode: ProjectHealthMode;

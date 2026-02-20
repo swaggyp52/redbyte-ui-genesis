@@ -1,7 +1,13 @@
 import React from 'react';
 import { IdeWorkbenchShell } from './IdeWorkbenchShell';
 
-type IdeSurfaceMode = 'project' | 'design' | 'verify' | 'export' | 'import';
+type IdeSurfaceMode =
+  | 'project'
+  | 'design'
+  | 'verify'
+  | 'hardware'
+  | 'export'
+  | 'import';
 
 export interface IdeSurfaceLayoutProps {
   mode: IdeSurfaceMode;

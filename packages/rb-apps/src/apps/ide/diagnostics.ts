@@ -1,6 +1,12 @@
 import { digestValue } from '../../utils/digest';
 
-export type IdeDiagnosticMode = 'project' | 'design' | 'verify' | 'export' | 'import';
+export type IdeDiagnosticMode =
+  | 'project'
+  | 'design'
+  | 'verify'
+  | 'hardware'
+  | 'export'
+  | 'import';
 export type IdeDiagnosticSeverity = 'error' | 'warn' | 'info';
 export type IdeDiagnosticOwnerKind = 'node' | 'port' | 'mapping' | 'file';
 

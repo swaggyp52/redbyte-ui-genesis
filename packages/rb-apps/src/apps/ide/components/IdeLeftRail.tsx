@@ -1,6 +1,12 @@
 import React from 'react';
 
-export type IdeMode = 'project' | 'design' | 'verify' | 'export' | 'import';
+export type IdeMode =
+  | 'project'
+  | 'design'
+  | 'verify'
+  | 'hardware'
+  | 'export'
+  | 'import';
 
 export interface IdeModeDefinition {
   id: IdeMode;
@@ -12,6 +18,7 @@ const MODES: IdeModeDefinition[] = [
   { id: 'project', label: 'Project', shortLabel: 'P' },
   { id: 'design', label: 'Design', shortLabel: 'D' },
   { id: 'verify', label: 'Verify', shortLabel: 'V' },
+  { id: 'hardware', label: 'Hardware', shortLabel: 'H' },
   { id: 'export', label: 'Export', shortLabel: 'E' },
   { id: 'import', label: 'Import', shortLabel: 'I' },
 ];
