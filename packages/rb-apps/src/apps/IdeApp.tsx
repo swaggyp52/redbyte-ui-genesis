@@ -48,6 +48,7 @@ export const IdeApp: React.FC = () => {
   const projectVectors = useProjectRuntime((state) => state.projectVectors);
   const circuit = useProjectRuntime((state) => state.circuit);
   const verifyLastRun = useProjectRuntime((state) => state.verifyLastRun);
+  const runtimeSim = useProjectRuntime((state) => state.sim);
   const projectHealthCore = useProjectRuntime((state) => state.projectHealthCore);
   const loadExample = useProjectRuntime((state) => state.loadExample);
   const loadFromProject = useProjectRuntime((state) => state.loadFromProject);
@@ -61,6 +62,16 @@ export const IdeApp: React.FC = () => {
   const connectDesignNodes = useProjectRuntime((state) => state.connectDesignNodes);
   const runRuntimeVerification = useProjectRuntime((state) => state.actions.verify.run);
   const clearRuntimeVerification = useProjectRuntime((state) => state.actions.verify.clear);
+  const runRuntimeSim = useProjectRuntime((state) => state.actions.sim.run);
+  const pauseRuntimeSim = useProjectRuntime((state) => state.actions.sim.pause);
+  const stepRuntimeSim = useProjectRuntime((state) => state.actions.sim.step);
+  const resetRuntimeSim = useProjectRuntime((state) => state.actions.sim.reset);
+  const setRuntimeSimSpeed = useProjectRuntime((state) => state.actions.sim.setSpeed);
+  const setRuntimeSimInput = useProjectRuntime((state) => state.actions.sim.setInput);
+  const setRuntimeSimSelectedSignal = useProjectRuntime(
+    (state) => state.actions.sim.setSelectedSignal
+  );
+  const toggleRuntimeSimProbe = useProjectRuntime((state) => state.actions.sim.toggleProbe);
   const recordExport = useProjectRuntime((state) => state.recordExport);
 
   const determinismHash = useMemo(() => '2f4e0bb0f17ac4d2', []);
@@ -477,6 +488,15 @@ export const IdeApp: React.FC = () => {
             compilerStatus={designCompilerStatus}
             onDiagnosticAction={handleDiagnosticAction}
             diagnosticRouteRequest={diagnosticRouteRequest}
+            runtimeSim={runtimeSim}
+            onRuntimeSimRun={runRuntimeSim}
+            onRuntimeSimPause={pauseRuntimeSim}
+            onRuntimeSimStep={stepRuntimeSim}
+            onRuntimeSimReset={resetRuntimeSim}
+            onRuntimeSimSetSpeed={setRuntimeSimSpeed}
+            onRuntimeSimSetInput={setRuntimeSimInput}
+            onRuntimeSimSetSelectedSignal={setRuntimeSimSelectedSignal}
+            onRuntimeSimToggleProbe={toggleRuntimeSimProbe}
           />
         ) : currentMode === 'verify' ? (
           <VerifySurface

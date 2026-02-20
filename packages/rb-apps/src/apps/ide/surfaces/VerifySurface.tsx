@@ -257,6 +257,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       scenarioName: activeScenario.name,
       deterministicHash: activeScenario.hash,
       rows: activeScenario.rows,
+      useRuntimeTrace: true,
     });
     setRunState('complete');
   };

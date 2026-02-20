@@ -13,6 +13,7 @@ import {
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
+import type { RuntimeSimState, RuntimeSignalProbe } from '../projectRuntime';
 
 export interface DesignSurfaceProps {
   onOpenPalette?: () => void;
@@ -28,6 +29,15 @@ export interface DesignSurfaceProps {
   compilerStatus?: DesignCompilerStatus;
   onDiagnosticAction?: (diagnostic: IdeDiagnostic) => void;
   diagnosticRouteRequest?: IdeDiagnosticRouteRequest | null;
+  runtimeSim: RuntimeSimState;
+  onRuntimeSimRun?: () => void;
+  onRuntimeSimPause?: () => void;
+  onRuntimeSimStep?: () => void;
+  onRuntimeSimReset?: () => void;
+  onRuntimeSimSetSpeed?: (hz: number) => void;
+  onRuntimeSimSetInput?: (nodeId: string, value: 0 | 1) => void;
+  onRuntimeSimSetSelectedSignal?: (signalKey: string | null) => void;
+  onRuntimeSimToggleProbe?: (probe: RuntimeSignalProbe) => void;
 }
 
 export interface DesignCompilerStatus {
@@ -64,6 +74,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   compilerStatus,
   onDiagnosticAction,
   diagnosticRouteRequest,
+  runtimeSim,
+  onRuntimeSimRun,
+  onRuntimeSimPause,
+  onRuntimeSimStep,
+  onRuntimeSimReset,
+  onRuntimeSimSetSpeed,
+  onRuntimeSimSetInput,
+  onRuntimeSimSetSelectedSignal,
+  onRuntimeSimToggleProbe,
 }) => {
   const circuit = useCircuitStore((state) => state.circuit);
   const addNode = useCircuitStore((state) => state.addNode);
@@ -105,11 +124,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [actionToast, setActionToast] = useState<string | null>(null);
   const [diagnosticFilterNodeId, setDiagnosticFilterNodeId] = useState<string | null>(null);
   const [tickEngine] = useState(() => new TickEngine(editorCircuit, { tickRate: 10 }));
-  const [simTick, setSimTick] = useState(0);
-  const [simSpeed, setSimSpeed] = useState(10);
-  const [simRunning, setSimRunning] = useState(false);
-  const [liveSignals, setLiveSignals] = useState<Map<string, 0 | 1>>(new Map());
   const hasAutoFitRef = useRef(false);
+  const simTick = runtimeSim.tick;
+  const simSpeed = runtimeSim.speedHz;
+  const simRunning = runtimeSim.running;
+  const liveSignals = useMemo(() => {
+    const entries = Object.entries(runtimeSim.signals)
+      .map(([key, value]) => [key, value === 1 ? 1 : 0] as const)
+      .sort((left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0));
+    return new Map<string, 0 | 1>(entries);
+  }, [runtimeSim.signals]);
 
   useEffect(() => {
     setEngine(tickEngine.getEngine());
@@ -121,8 +145,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   useEffect(() => {
     tickEngine.setCircuit(editorCircuit);
-    setLiveSignals(new Map(tickEngine.getEngine().getAllSignals() as Map<string, 0 | 1>));
-    setSimTick(tickEngine.getTickCount());
   }, [editorCircuit, tickEngine]);
 
   useEffect(() => {
@@ -139,15 +161,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, []);
 
   useEffect(() => {
+    if (!simRunning || !onRuntimeSimStep) return;
+    const intervalMs = Math.max(24, Math.round(1000 / Math.max(1, simSpeed)));
     const timer = window.setInterval(() => {
-      setSimTick(tickEngine.getTickCount());
-      setSimRunning(tickEngine.isRunning());
-      setLiveSignals(new Map(tickEngine.getEngine().getAllSignals() as Map<string, 0 | 1>));
-    }, 100);
+      onRuntimeSimStep();
+    }, intervalMs);
     return () => {
       window.clearInterval(timer);
     };
-  }, [tickEngine]);
+  }, [onRuntimeSimStep, simRunning, simSpeed]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -395,39 +417,33 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
   }, [editorCircuit.nodes.length]);
 
-  const handleSignalsUpdated = useCallback(
-    (signals: Map<string, 0 | 1>) => {
-      setLiveSignals(new Map(signals));
-      setSimTick(tickEngine.getTickCount());
+  const handleSignalsUpdated = useCallback(() => {
+    // Runtime simulation state is authoritative. Canvas-local ticks are ignored.
+  }, []);
+
+  const handleInputToggled = useCallback(
+    (nodeId: string, _portName: string, newValue: 0 | 1) => {
+      onRuntimeSimSetInput?.(nodeId, newValue);
+      setActionToast(`Updated ${nodeId} = ${newValue}.`);
     },
-    [tickEngine]
+    [onRuntimeSimSetInput]
   );
 
   const startSimulation = useCallback(() => {
-    tickEngine.setTickRate(Math.max(1, simSpeed));
-    tickEngine.start();
-    setSimRunning(true);
-  }, [simSpeed, tickEngine]);
+    onRuntimeSimRun?.();
+  }, [onRuntimeSimRun]);
 
   const pauseSimulation = useCallback(() => {
-    tickEngine.pause();
-    setSimRunning(false);
-  }, [tickEngine]);
+    onRuntimeSimPause?.();
+  }, [onRuntimeSimPause]);
 
   const stepSimulation = useCallback(() => {
-    tickEngine.stepOnce();
-    setSimTick(tickEngine.getTickCount());
-    setLiveSignals(new Map(tickEngine.getEngine().getAllSignals() as Map<string, 0 | 1>));
-  }, [tickEngine]);
+    onRuntimeSimStep?.();
+  }, [onRuntimeSimStep]);
 
   const resetSimulation = useCallback(() => {
-    tickEngine.pause();
-    tickEngine.resetTickCount();
-    tickEngine.setCircuit(editorCircuit);
-    setSimRunning(false);
-    setSimTick(0);
-    setLiveSignals(new Map(tickEngine.getEngine().getAllSignals() as Map<string, 0 | 1>));
-  }, [editorCircuit, tickEngine]);
+    onRuntimeSimReset?.();
+  }, [onRuntimeSimReset]);
 
   const selectedNodeIds = useMemo(() => Array.from(selection.nodes).slice(0, 5), [selection.nodes]);
   const selectedWireIds = useMemo(() => Array.from(selection.wires).slice(0, 5), [selection.wires]);
@@ -538,6 +554,36 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }));
     return { inputRows, outputRows };
   }, [editorCircuit.nodes, liveSignals]);
+  const selectedWireSignalKey = useMemo(() => {
+    if (selectedWireIds.length === 0) return null;
+    const parsed = parseWireId(selectedWireIds[0]);
+    if (!parsed) return null;
+    return `${parsed.fromNodeId}.${parsed.fromPort}`;
+  }, [selectedWireIds]);
+  const selectedSignalKey = runtimeSim.selectedSignalKey ?? selectedWireSignalKey;
+  const selectedSignalValue = selectedSignalKey ? runtimeSim.signals[selectedSignalKey] ?? 0 : 0;
+  const selectedSignalHistory = useMemo(() => {
+    if (!selectedSignalKey) return [];
+    const history = runtimeSim.trace.slice(-32).map((entry) => ({
+      tick: entry.tick,
+      value: entry.signals[selectedSignalKey] ?? 0,
+    }));
+    return history;
+  }, [runtimeSim.trace, selectedSignalKey]);
+  const pinnedProbeRows = useMemo(
+    () =>
+      runtimeSim.probes.map((probe) => ({
+        ...probe,
+        value: runtimeSim.signals[probe.key] ?? 0,
+      })),
+    [runtimeSim.probes, runtimeSim.signals]
+  );
+
+  useEffect(() => {
+    if (!onRuntimeSimSetSelectedSignal) return;
+    if (!selectedWireSignalKey) return;
+    onRuntimeSimSetSelectedSignal(selectedWireSignalKey);
+  }, [onRuntimeSimSetSelectedSignal, selectedWireSignalKey]);
 
   return (
     <IdeSurfaceLayout
@@ -646,7 +692,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 max={40}
                 step={1}
                 value={simSpeed}
-                onChange={(event) => setSimSpeed(Number(event.target.value))}
+                onChange={(event) => onRuntimeSimSetSpeed?.(Number(event.target.value))}
                 data-testid="ide-design-sim-speed"
               />
             </label>
@@ -664,6 +710,72 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </div>
               ))}
             </div>
+          </IdeInspectorSection>
+
+          <IdeInspectorSection title="Signal Probe" testId="ide-design-signal-probe">
+            {selectedSignalKey ? (
+              <>
+                <div className="ide-kv-list">
+                  <div className="ide-kv-row">
+                    <span>Signal</span>
+                    <code data-testid="ide-design-signal-selected">{selectedSignalKey}</code>
+                  </div>
+                  <div className="ide-kv-row">
+                    <span>Current</span>
+                    <code data-testid="ide-design-signal-current-value">{selectedSignalValue}</code>
+                  </div>
+                  <div className="ide-kv-row">
+                    <span>Samples</span>
+                    <span>{selectedSignalHistory.length}</span>
+                  </div>
+                </div>
+                <div className="ide-design-signal-history" data-testid="ide-design-signal-history">
+                  {selectedSignalHistory.length > 0 ? (
+                    selectedSignalHistory.map((entry) => (
+                      <button
+                        key={`${selectedSignalKey}-${entry.tick}`}
+                        type="button"
+                        className={`ide-verify-waveform-point ${entry.value === 1 ? 'is-selected' : ''}`}
+                        onClick={() => onRuntimeSimSetSelectedSignal?.(selectedSignalKey)}
+                        data-testid="ide-design-signal-history-point"
+                      >
+                        {entry.value}
+                      </button>
+                    ))
+                  ) : (
+                    <p className="ide-copy">No trace samples yet. Run or step simulation to populate history.</p>
+                  )}
+                </div>
+                <div className="ide-inline-actions">
+                  <IdeButton
+                    tone="secondary"
+                    onClick={() =>
+                      onRuntimeSimToggleProbe?.({
+                        key: selectedSignalKey,
+                        label: selectedSignalKey,
+                      })
+                    }
+                    testId="ide-design-signal-pin"
+                  >
+                    Pin signal
+                  </IdeButton>
+                </div>
+              </>
+            ) : (
+              <p className="ide-copy">
+                Select a wire or probe a node port to inspect live value and recent tick history.
+              </p>
+            )}
+            {pinnedProbeRows.length > 0 ? (
+              <div className="ide-kv-list ide-copy-top-gap" data-testid="ide-design-probe-list">
+                {pinnedProbeRows.map((probe) => (
+                  <div className="ide-kv-row" key={probe.key}>
+                    <code>{probe.label}</code>
+                    <span>{probe.value}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </IdeInspectorSection>
 
           <IdeInspectorSection title="Selection">
@@ -1048,10 +1160,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   showToolbar={false}
                   onCircuitChange={handleCircuitChange}
                   onSignalsUpdated={handleSignalsUpdated}
+                  onInputToggled={handleInputToggled}
+                  onProbeToggle={(nodeId, portName, label) =>
+                    onRuntimeSimToggleProbe?.({
+                      key: `${nodeId}.${portName}`,
+                      label,
+                    })
+                  }
+                  probedPorts={new Set(runtimeSim.probes.map((probe) => probe.key))}
                   showHints={false}
                   isRunning={simRunning}
                   tickRate={simSpeed}
                   tickCount={simTick}
+                  debugSignals={liveSignals}
+                  debugTick={simTick}
                   nodeDiagnosticBadges={nodeDiagnosticBadges}
                   onNodeDiagnosticBadgeClick={handleNodeDiagnosticBadgeClick}
                 />
@@ -1158,7 +1280,7 @@ const NODE_PIN_CATALOG: Record<string, string[]> = {
   OR: ['a', 'b', 'out'],
   XOR: ['a', 'b', 'out'],
   NOT: ['in', 'out'],
-  DFlipFlop: ['d', 'clk', 'q'],
+  DFlipFlop: ['D', 'CLK', 'Q'],
 };
 
 function deriveNodePins(node: Node | undefined, circuit: Circuit): string[] {

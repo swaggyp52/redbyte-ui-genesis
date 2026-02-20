@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { CircuitEngine } from '@redbyte/rb-logic-core';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
 import type { RBProject } from '../../export/projectFormat';
 import { deriveVerifySchedule } from '../../fpga/boards/basys3/verifySchedule';
+import { digestValue } from '../../utils/digest';
 import {
   IDE_DEFAULT_EXAMPLE_ID,
   IDE_EXAMPLES,
@@ -26,6 +28,11 @@ import {
 import { generateBringUpVectors } from './bringupArtifacts';
 
 const STORAGE_KEY = 'rb.ide.project-runtime.v1';
+const DEFAULT_SIM_SPEED_HZ = 12;
+const SIM_TRACE_CAPACITY = 256;
+
+let runtimeSimEngine: CircuitEngine | null = null;
+let runtimeSimIrHash = '';
 
 const DEFAULT_EXAMPLE = getIdeExampleById(IDE_DEFAULT_EXAMPLE_ID) ?? IDE_EXAMPLES[0];
 
@@ -55,12 +62,48 @@ export interface RunVerificationInput {
     actual: string;
   }>;
   ranAtIso?: string;
+  useRuntimeTrace?: boolean;
+}
+
+export interface RuntimeSimTraceSample {
+  tick: number;
+  signals: Record<string, 0 | 1>;
+}
+
+export interface RuntimeSignalProbe {
+  key: string;
+  label: string;
+}
+
+export interface RuntimeSimState {
+  tick: number;
+  running: boolean;
+  speedHz: number;
+  irHash: string;
+  traceHash: string;
+  inputs: Record<string, 0 | 1>;
+  signals: Record<string, 0 | 1>;
+  trace: RuntimeSimTraceSample[];
+  selectedSignalKey: string | null;
+  probes: RuntimeSignalProbe[];
 }
 
 export interface ProjectRuntimeActions {
   verify: {
     run: (input: RunVerificationInput) => RuntimeVerifyRun;
     clear: () => void;
+  };
+  sim: {
+    run: () => void;
+    pause: () => void;
+    step: () => void;
+    runTicks: (ticks: number) => void;
+    reset: () => void;
+    setSpeed: (hz: number) => void;
+    setInput: (nodeId: string, value: 0 | 1) => void;
+    toggleInput: (nodeId: string) => void;
+    setSelectedSignal: (signalKey: string | null) => void;
+    toggleProbe: (probe: RuntimeSignalProbe) => void;
   };
 }
 
@@ -73,6 +116,7 @@ export interface ProjectRuntimeState {
   projectVectors: TestVector[];
   circuit: Circuit;
   verifyLastRun?: RuntimeVerifyRun;
+  sim: RuntimeSimState;
   projectHealthCore: ProjectHealthCore;
   actions: ProjectRuntimeActions;
   loadExample: (exampleId: string) => void;
@@ -106,6 +150,7 @@ interface PersistedRuntimeState {
   projectVectors: TestVector[];
   circuit: Circuit;
   verifyLastRun?: RuntimeVerifyRun;
+  sim: RuntimeSimState;
   projectHealthCore: ProjectHealthCore;
 }
 
@@ -118,6 +163,134 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           run: (input) => get().runVerification(input),
           clear: () => get().clearVerification(),
         },
+        sim: {
+          run: () => {
+            set((state) => ({
+              sim: {
+                ...state.sim,
+                running: true,
+              },
+            }));
+          },
+          pause: () => {
+            set((state) => ({
+              sim: {
+                ...state.sim,
+                running: false,
+              },
+            }));
+          },
+          step: () => {
+            set((state) => ({
+              sim: advanceSimulationState(
+                state.circuit,
+                state.projectIoRows,
+                state.sim,
+                1
+              ),
+            }));
+          },
+          runTicks: (ticks) => {
+            const boundedTicks = Math.max(0, Math.min(512, Math.floor(ticks)));
+            if (boundedTicks === 0) return;
+            set((state) => ({
+              sim: advanceSimulationState(
+                state.circuit,
+                state.projectIoRows,
+                state.sim,
+                boundedTicks
+              ),
+            }));
+          },
+          reset: () => {
+            set((state) => ({
+              sim: resetSimulationState(state.circuit, state.projectIoRows, state.sim),
+            }));
+          },
+          setSpeed: (hz) => {
+            const speedHz = clampSimSpeed(hz);
+            set((state) => ({
+              sim: {
+                ...state.sim,
+                speedHz,
+              },
+            }));
+          },
+          setInput: (nodeId, value) => {
+            set((state) => {
+              const normalizedNodeId = nodeId.trim();
+              if (!normalizedNodeId) return state;
+              const bit = normalizeBit(value);
+              const nextInputs = {
+                ...state.sim.inputs,
+                [normalizedNodeId]: bit,
+              };
+              return {
+                sim: advanceSimulationState(
+                  state.circuit,
+                  state.projectIoRows,
+                  {
+                    ...state.sim,
+                    inputs: nextInputs,
+                    running: false,
+                  },
+                  1
+                ),
+              };
+            });
+          },
+          toggleInput: (nodeId) => {
+            set((state) => {
+              const normalizedNodeId = nodeId.trim();
+              if (!normalizedNodeId) return state;
+              const nextValue = state.sim.inputs[normalizedNodeId] === 1 ? 0 : 1;
+              const nextInputs = {
+                ...state.sim.inputs,
+                [normalizedNodeId]: nextValue as 0 | 1,
+              };
+              return {
+                sim: advanceSimulationState(
+                  state.circuit,
+                  state.projectIoRows,
+                  {
+                    ...state.sim,
+                    inputs: nextInputs,
+                    running: false,
+                  },
+                  1
+                ),
+              };
+            });
+          },
+          setSelectedSignal: (signalKey) => {
+            set((state) => ({
+              sim: {
+                ...state.sim,
+                selectedSignalKey: signalKey ? signalKey.trim() : null,
+              },
+            }));
+          },
+          toggleProbe: (probe) => {
+            set((state) => {
+              const key = probe.key.trim();
+              if (!key) return state;
+              const existing = state.sim.probes.find((entry) => entry.key === key);
+              let probes = state.sim.probes;
+              if (existing) {
+                probes = probes.filter((entry) => entry.key !== key);
+              } else {
+                probes = [...probes, { key, label: probe.label.trim() || key }];
+              }
+              probes = [...probes].sort((left, right) => compareText(left.key, right.key));
+              return {
+                sim: {
+                  ...state.sim,
+                  probes,
+                },
+              };
+            });
+          },
+        },
       },
       loadExample: (exampleId) => {
         const example = getIdeExampleById(exampleId);
@@ -128,15 +301,18 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         });
       },
       loadFromProject: (project) => {
+        const projectIoRows = ioRowsFromProject(project);
+        const circuit = cloneCircuit(project.circuit);
         set({
           projectName: project.name || 'Imported project',
           projectDescription: project.description ?? '',
           lastSavedAt: `Imported: ${project.name || 'project'}`,
           activeExampleId: null,
-          projectIoRows: ioRowsFromProject(project),
+          projectIoRows,
           projectVectors: cloneVectors(project.vectors ?? []),
-          circuit: cloneCircuit(project.circuit),
+          circuit,
           verifyLastRun: undefined,
+          sim: resetSimulationState(circuit, projectIoRows),
           projectHealthCore: {
             dirtySinceVerify: true,
             dirtySinceExport: true,
@@ -196,6 +372,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       markDesignMutated: (circuit) => {
         set((state) => ({
           circuit: cloneCircuit(circuit),
+          sim: resetSimulationState(circuit, state.projectIoRows, state.sim),
           projectHealthCore: {
             ...state.projectHealthCore,
             dirtySinceVerify: true,
@@ -222,6 +399,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           });
           return {
             circuit: nextCircuit,
+            sim: resetSimulationState(nextCircuit, state.projectIoRows, state.sim),
             projectHealthCore: {
               ...state.projectHealthCore,
               dirtySinceVerify: true,
@@ -269,6 +447,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
 
           return {
             circuit: nextCircuit,
+            sim: resetSimulationState(nextCircuit, state.projectIoRows, state.sim),
             projectHealthCore: {
               ...state.projectHealthCore,
               dirtySinceVerify: true,
@@ -280,16 +459,38 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       runVerification: (input) => {
         let runtimeRun: RuntimeVerifyRun | undefined;
         set((state) => {
-          const normalizedRows = normalizeVerifyRows(input.rows);
+          const scenarioId = input.scenarioId.trim() || 'runtime-verify';
+          const scenarioName = input.scenarioName.trim() || 'Runtime verification';
+          const runtimeRows = input.useRuntimeTrace
+            ? buildVerifyRowsFromRuntimeTrace(
+                state.projectVectors,
+                state.projectIoRows,
+                state.sim
+              )
+            : [];
+          const normalizedRows =
+            runtimeRows.length > 0 ? runtimeRows : normalizeVerifyRows(input.rows);
+          const useRuntimeRows = runtimeRows.length > 0;
+          const effectiveScenarioId = useRuntimeRows ? 'runtime-trace' : scenarioId;
+          const effectiveScenarioName = useRuntimeRows
+            ? 'Runtime trace verification'
+            : scenarioName;
+          const deterministicHash = useRuntimeRows
+            ? `sim_${digestValue({
+                irHash: state.sim.irHash,
+                traceHash: state.sim.traceHash,
+                vectors: toVerifyVectors(state.projectVectors),
+              })}`
+            : input.deterministicHash;
           const failedRows = normalizedRows.filter((row) => row.expected !== row.actual);
           const status: 'pass' | 'fail' = failedRows.length > 0 ? 'fail' : 'pass';
           const ranAtIso = input.ranAtIso ?? new Date().toISOString();
           const vectors = toVerifyVectors(state.projectVectors);
           const report = buildVerifyReport({
-            scenarioId: input.scenarioId,
-            scenarioName: input.scenarioName,
+            scenarioId: effectiveScenarioId,
+            scenarioName: effectiveScenarioName,
             status,
-            deterministicHash: input.deterministicHash,
+            deterministicHash,
             rows: normalizedRows,
             vectors,
             generatedAtIso: ranAtIso,
@@ -313,6 +514,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
 
           return {
             verifyLastRun: runtimeRun,
+            sim: {
+              ...state.sim,
+              running: false,
+            },
             projectHealthCore: {
               ...state.projectHealthCore,
               lastVerify: {
@@ -350,6 +555,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       clearVerification: () => {
         set((state) => ({
           verifyLastRun: undefined,
+          sim: {
+            ...state.sim,
+            running: false,
+          },
           projectHealthCore: {
             ...state.projectHealthCore,
             lastVerify: undefined,
@@ -412,7 +621,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
     }),
     {
       name: STORAGE_KEY,
-      version: 2,
+      version: 3,
       partialize: (state): PersistedRuntimeState => ({
         projectName: state.projectName,
         projectDescription: state.projectDescription,
@@ -424,6 +633,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         verifyLastRun: state.verifyLastRun
           ? cloneVerifyRun(state.verifyLastRun)
           : undefined,
+        sim: cloneSimState(state.sim),
         projectHealthCore: {
           lastVerify: state.projectHealthCore.lastVerify,
           lastExport: state.projectHealthCore.lastExport,
@@ -436,15 +646,18 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
 );
 
 function stateFromExample(example: IdeExampleDefinition): PersistedRuntimeState {
+  const projectIoRows = cloneIoRows(example.ioRows);
+  const circuit = cloneCircuit(example.circuit);
   return {
     projectName: example.name,
     projectDescription: example.summary,
     lastSavedAt: 'Seeded example',
     activeExampleId: example.id,
-    projectIoRows: cloneIoRows(example.ioRows),
+    projectIoRows,
     projectVectors: cloneVectors(example.vectors),
-    circuit: cloneCircuit(example.circuit),
+    circuit,
     verifyLastRun: undefined,
+    sim: resetSimulationState(circuit, projectIoRows),
     projectHealthCore: {
       dirtySinceVerify: false,
       dirtySinceExport: false,
@@ -514,10 +727,325 @@ function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
   };
 }
 
-function normalizeVerifyRows(
-  rows: RunVerificationInput['rows']
+function cloneSimState(sim: RuntimeSimState): RuntimeSimState {
+  return {
+    ...sim,
+    inputs: { ...sim.inputs },
+    signals: { ...sim.signals },
+    trace: sim.trace.map((entry) => ({
+      tick: entry.tick,
+      signals: { ...entry.signals },
+    })),
+    probes: sim.probes.map((probe) => ({ ...probe })),
+  };
+}
+
+function buildVerifyRowsFromRuntimeTrace(
+  vectors: TestVector[],
+  ioRows: ProjectIoRow[],
+  sim: RuntimeSimState
 ): Array<{ tick: number; signal: string; expected: string; actual: string }> {
-  return rows.map((row, index) => ({
+  if (vectors.length === 0 || sim.trace.length === 0) {
+    return [];
+  }
+  const traceByTick = new Map<number, RuntimeSimTraceSample>();
+  for (const entry of sim.trace) {
+    traceByTick.set(entry.tick, entry);
+  }
+  const outputRows = ioRows.filter((row) => row.direction === 'out');
+  const rows: Array<{ tick: number; signal: string; expected: string; actual: string }> = [];
+  for (const vector of vectors) {
+    const tick = Number.isFinite(vector.tick) ? Math.max(0, Math.floor(vector.tick)) : 0;
+    const sample = traceByTick.get(tick);
+    for (const outputRow of outputRows) {
+      const expected = resolveVectorBitSymbol(vector.expected ?? {}, outputRow);
+      const actual = resolveOutputSymbolFromTrace(sample, outputRow);
+      rows.push({
+        tick,
+        signal: normalizeSignalName(outputRow.label || outputRow.id),
+        expected,
+        actual,
+      });
+    }
+  }
+  return rows.sort((left, right) => {
+    if (left.tick !== right.tick) return left.tick - right.tick;
+    return compareText(left.signal, right.signal);
+  });
+}
+
+function resolveVectorBitSymbol(
+  expected: Record<string, boolean | number | string | undefined>,
+  row: ProjectIoRow
+): string {
+  const candidates = [row.id, row.label, row.port].map((entry) => normalizeSignalName(entry));
+  for (const [key, value] of Object.entries(expected)) {
+    const normalizedKey = normalizeSignalName(key);
+    if (candidates.includes(normalizedKey)) {
+      return normalizeBit(value) === 1 ? '1' : '0';
+    }
+  }
+  return '0';
+}
+
+function resolveOutputSymbolFromTrace(
+  sample: RuntimeSimTraceSample | undefined,
+  row: ProjectIoRow
+): string {
+  if (!sample) return '0';
+  const candidates = [
+    `${row.nodeId}.in`,
+    `${row.nodeId}.out`,
+    normalizeSignalName(row.id),
+    normalizeSignalName(row.label),
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const direct = sample.signals[candidate];
+    if (direct === 0 || direct === 1) {
+      return direct === 1 ? '1' : '0';
+    }
+    const normalizedCandidate = normalizeSignalName(candidate);
+    for (const [key, value] of Object.entries(sample.signals)) {
+      if (normalizeSignalName(key) === normalizedCandidate) {
+        return value === 1 ? '1' : '0';
+      }
+    }
+  }
+  return '0';
+}
+
+function resetSimulationState(
+  circuit: Circuit,
+  projectIoRows: ProjectIoRow[],
+  previous?: RuntimeSimState
+): RuntimeSimState {
+  const irHash = computeSimIrHash(circuit);
+  const inputs = deriveSimulationInputs(circuit, previous?.inputs);
+  const resetNodeId = resolveResetNodeId(projectIoRows, circuit);
+  if (resetNodeId) {
+    inputs[resetNodeId] = 1;
+  }
+  runtimeSimEngine = new CircuitEngine(cloneCircuit(circuit));
+  runtimeSimIrHash = irHash;
+  applyInputsToEngine(runtimeSimEngine, inputs);
+  runtimeSimEngine.tick();
+  if (resetNodeId) {
+    inputs[resetNodeId] = 0;
+    applyInputsToEngine(runtimeSimEngine, inputs);
+    runtimeSimEngine.tick();
+  }
+  const signals = normalizeSignalMap(runtimeSimEngine, circuit);
+  return {
+    tick: 0,
+    running: false,
+    speedHz: previous?.speedHz ?? DEFAULT_SIM_SPEED_HZ,
+    irHash,
+    traceHash: computeTraceHash(irHash, []),
+    inputs,
+    signals,
+    trace: [],
+    selectedSignalKey: previous?.selectedSignalKey ?? null,
+    probes: previous?.probes ? [...previous.probes] : [],
+  };
+}
+
+function advanceSimulationState(
+  circuit: Circuit,
+  projectIoRows: ProjectIoRow[],
+  sim: RuntimeSimState,
+  requestedTicks: number
+): RuntimeSimState {
+  const ticks = Math.max(0, Math.min(1024, Math.floor(requestedTicks)));
+  if (ticks === 0) {
+    return sim;
+  }
+  const irHash = computeSimIrHash(circuit);
+  if (!runtimeSimEngine || runtimeSimIrHash !== irHash) {
+    return resetSimulationState(circuit, projectIoRows, sim);
+  }
+  const engine = runtimeSimEngine;
+  applyInputsToEngine(engine, sim.inputs);
+  let tick = sim.tick;
+  let trace = [...sim.trace];
+  for (let index = 0; index < ticks; index += 1) {
+    engine.tick();
+    tick += 1;
+    trace.push({
+      tick,
+      signals: normalizeSignalMap(engine, circuit),
+    });
+  }
+  if (trace.length > SIM_TRACE_CAPACITY) {
+    trace = trace.slice(trace.length - SIM_TRACE_CAPACITY);
+  }
+  const signals = normalizeSignalMap(engine, circuit);
+  return {
+    ...sim,
+    running: sim.running,
+    tick,
+    irHash,
+    signals,
+    trace,
+    traceHash: computeTraceHash(irHash, trace),
+  };
+}
+
+function deriveSimulationInputs(
+  circuit: Circuit,
+  previousInputs?: Record<string, 0 | 1>
+): Record<string, 0 | 1> {
+  const nextInputs: Record<string, 0 | 1> = {};
+  for (const node of circuit.nodes) {
+    if (!isSimulationInputNode(node.type)) continue;
+    if (node.state?.isOn !== undefined) {
+      nextInputs[node.id] = normalizeBit(node.state.isOn);
+      continue;
+    }
+    const previous = previousInputs?.[node.id];
+    nextInputs[node.id] = previous === 0 || previous === 1 ? previous : 0;
+  }
+  return nextInputs;
+}
+
+function resolveResetNodeId(projectIoRows: ProjectIoRow[], circuit: Circuit): string | undefined {
+  const rows = projectIoRows.filter((row) => row.direction === 'in');
+  for (const row of rows) {
+    const normalized = normalizeSignalName(row.label || row.id);
+    if (normalized === 'rst' || normalized === 'reset' || normalized === 'reset_n') {
+      const exists = circuit.nodes.some((node) => node.id === row.nodeId);
+      if (exists) return row.nodeId;
+    }
+  }
+  return undefined;
+}
+
+function applyInputsToEngine(engine: CircuitEngine, inputs: Record<string, 0 | 1>): void {
+  for (const [nodeId, value] of Object.entries(inputs)) {
+    engine.setNodeValue(nodeId, value);
+  }
+}
+
+function normalizeSignalMap(engine: CircuitEngine, circuit: Circuit): Record<string, 0 | 1> {
+  const signalMap = engine.getAllSignals();
+  const next: Record<string, 0 | 1> = {};
+  const keys = Array.from(signalMap.keys()).sort(compareText);
+  for (const key of keys) {
+    next[key] = normalizeBit(signalMap.get(key));
+  }
+
+  for (const node of circuit.nodes) {
+    if (isSimulationInputNode(node.type)) {
+      const inputState = engine.getNodeState(node.id)?.isOn;
+      next[`${node.id}.out`] = normalizeBit(inputState);
+      continue;
+    }
+
+    if (node.type === 'OUTPUT' || node.type === 'Lamp') {
+      const nodeState = engine.getNodeState(node.id);
+      const fromConnection = circuit.connections.find((connection) => {
+        const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+        return toNodeId === node.id;
+      });
+      let value = normalizeBit(nodeState?.isOn);
+      if ((!nodeState || nodeState.isOn === undefined) && fromConnection) {
+        const { fromNodeId, fromPort } = resolveConnectionPorts(fromConnection);
+        value = next[`${fromNodeId}.${fromPort}`] ?? 0;
+      }
+      next[`${node.id}.in`] = value;
+      next[`${node.id}.out`] = value;
+    }
+  }
+
+  const orderedEntries = Object.entries(next).sort(([left], [right]) => compareText(left, right));
+  return Object.fromEntries(orderedEntries) as Record<string, 0 | 1>;
+}
+
+function resolveConnectionPorts(connection: Circuit['connections'][number]): {
+  fromNodeId: string;
+  fromPort: string;
+  toNodeId: string;
+  toPort: string;
+} {
+  const fromNodeId = typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+  const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+  const fromPort =
+    typeof connection.from === 'string'
+      ? connection.fromPort ?? connection.fromPin ?? 'out'
+      : connection.from.portName ?? connection.from.port ?? 'out';
+  const toPort =
+    typeof connection.to === 'string'
+      ? connection.toPort ?? connection.toPin ?? 'in'
+      : connection.to.portName ?? connection.to.port ?? 'in';
+  return { fromNodeId, fromPort, toNodeId, toPort };
+}
+
+function computeTraceHash(irHash: string, trace: RuntimeSimTraceSample[]): string {
+  return `sim_${digestValue({ irHash, trace })}`;
+}
+
+function computeSimIrHash(circuit: Circuit): string {
+  const nodes = circuit.nodes
+    .map((node) => ({
+      id: node.id,
+      type: node.type,
+      position: {
+        x: roundToMill(node.position?.x ?? node.x ?? 0),
+        y: roundToMill(node.position?.y ?? node.y ?? 0),
+      },
+      config: node.config ?? {},
+    }))
+    .sort((left, right) => compareText(left.id, right.id));
+  const connections = circuit.connections
+    .map((connection) => {
+      const fromNodeId = typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+      const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+      const fromPort =
+        typeof connection.from === 'string'
+          ? connection.fromPort ?? connection.fromPin ?? 'out'
+          : connection.from.portName ?? connection.from.port ?? 'out';
+      const toPort =
+        typeof connection.to === 'string'
+          ? connection.toPort ?? connection.toPin ?? 'in'
+          : connection.to.portName ?? connection.to.port ?? 'in';
+      return {
+        id: `${fromNodeId}.${fromPort}-${toNodeId}.${toPort}`,
+        fromNodeId,
+        fromPort,
+        toNodeId,
+        toPort,
+      };
+    })
+    .sort((left, right) => compareText(left.id, right.id));
+  return `ir_${digestValue({ nodes, connections })}`;
+}
+
+function normalizeSignalName(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\[[^\]]*\]/g, '')
+    .replace(/[^a-z0-9_.]/g, '');
+}
+
+function normalizeBit(value: unknown): 0 | 1 {
+  if (value === true || value === 1 || value === '1') return 1;
+  return 0;
+}
+
+function clampSimSpeed(value: number): number {
+  const next = Number.isFinite(value) ? Math.floor(value) : DEFAULT_SIM_SPEED_HZ;
+  return Math.max(1, Math.min(120, next));
+}
+
+function isSimulationInputNode(nodeType: string): boolean {
+  return nodeType === 'INPUT' || nodeType === 'Switch';
+}
+
+function normalizeVerifyRows(
+  rows: RunVerificationInput['rows'] | undefined
+): Array<{ tick: number; signal: string; expected: string; actual: string }> {
+  return (rows ?? []).map((row, index) => ({
     tick: Number.isFinite(row.tick) ? Math.max(0, Math.floor(row.tick)) : index,
     signal: row.signal.trim(),
     expected: String(row.expected),
@@ -599,4 +1127,10 @@ function getNextDesignNodeId(circuit: Circuit): string {
 function roundToMill(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.round(value * 1000) / 1000;
+}
+
+function compareText(left: string, right: string): number {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
 }

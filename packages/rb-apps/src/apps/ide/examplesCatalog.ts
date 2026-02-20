@@ -279,14 +279,14 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
       connections: [
         {
           from: { nodeId: 'dff_clk', portName: 'out' },
-          to: { nodeId: 'dff_core', portName: 'clk' },
+          to: { nodeId: 'dff_core', portName: 'CLK' },
         },
         {
           from: { nodeId: 'dff_data', portName: 'out' },
-          to: { nodeId: 'dff_core', portName: 'd' },
+          to: { nodeId: 'dff_core', portName: 'D' },
         },
         {
-          from: { nodeId: 'dff_core', portName: 'q' },
+          from: { nodeId: 'dff_core', portName: 'Q' },
           to: { nodeId: 'dff_q', portName: 'in' },
         },
       ],
