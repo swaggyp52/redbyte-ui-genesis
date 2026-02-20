@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { RBProject } from '../../../export/projectFormat';
+import { stableStringify } from '../../../export/stableStringify';
 import type { ProjectHealthExportResult, ProjectHealthVerifyResult } from '../projectHealth';
 import { createDiagnosticId, type IdeDiagnostic } from '../diagnostics';
-import { buildEvidenceCapsule } from '../evidenceCapsule';
+import { buildEvidenceCapsule, type EvidenceManifest } from '../evidenceCapsule';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import {
   buildExportViewModel,
@@ -60,6 +61,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const [capsuleFileList, setCapsuleFileList] = useState<string[]>([]);
   const [capsuleBuildError, setCapsuleBuildError] = useState<string>('');
   const [capsuleBuildState, setCapsuleBuildState] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [capsuleManifest, setCapsuleManifest] = useState<EvidenceManifest | null>(null);
+  const [copyState, setCopyState] = useState<'idle' | 'command' | 'report' | 'error'>('idle');
   const [highlightedPort, setHighlightedPort] = useState<string | null>(null);
   const [selectedArtifactPath, setSelectedArtifactPath] = useState<string>(() => {
     const readme = viewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'readme.txt');
@@ -68,6 +71,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   const pinInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const highlightResetTimer = useRef<number | null>(null);
+  const copyResetTimer = useRef<number | null>(null);
 
   useEffect(() => {
     setPinOverrides(createPinOverrideMap(viewModel.pinTable));
@@ -89,6 +93,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     return () => {
       if (highlightResetTimer.current !== null && typeof window !== 'undefined') {
         window.clearTimeout(highlightResetTimer.current);
+      }
+      if (copyResetTimer.current !== null && typeof window !== 'undefined') {
+        window.clearTimeout(copyResetTimer.current);
       }
     };
   }, []);
@@ -114,6 +121,55 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     (artifact) => artifact.path.toLowerCase() === 'readme.txt'
   );
   const readmePreview = (readmeArtifact?.preview ?? '').split('\n').slice(0, 20).join('\n').trim();
+  const vivadoCommand =
+    'vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log';
+  const appEnv = (import.meta as ImportMeta & {
+    env?: { VITE_APP_VERSION?: string; VITE_GIT_SHA?: string };
+  }).env;
+  const redbyteVersion = (appEnv?.VITE_APP_VERSION ?? 'dev').trim() || 'dev';
+  const redbyteCommit = (appEnv?.VITE_GIT_SHA ?? 'local').trim() || 'local';
+  const quickDebugReport = useMemo(() => {
+    const mappingLines = [...viewModel.pinTable]
+      .map((row) => {
+        const portKey = toPortKey(row.port);
+        const pinValue = (pinOverrides[portKey] ?? row.pin ?? '').trim();
+        const resolvedPin = pinValue.length > 0 ? pinValue : 'UNMAPPED';
+        const requiredTag = row.required ? ' required' : ' optional';
+        return `${row.port} (${row.direction}, ${row.status}${requiredTag}) -> ${resolvedPin}`;
+      })
+      .sort((left, right) => left.localeCompare(right));
+
+    const manifestBlock = capsuleManifest ? stableStringify(capsuleManifest) : 'pending';
+
+    return [
+      'RedByte Vivado Quick Debug Report',
+      `project=${project.name}`,
+      `board=basys3`,
+      `redbyteVersion=${redbyteVersion}`,
+      `redbyteCommit=${redbyteCommit}`,
+      `exportHash=${viewModel.exportHash ?? 'pending'}`,
+      `verifyHash=${verifyResult?.hash ?? 'pending'}`,
+      `manifestHash=${capsuleManifestHash}`,
+      `bundleHash=${capsuleBundleHash}`,
+      '',
+      'mapping:',
+      ...mappingLines,
+      '',
+      'manifest:',
+      manifestBlock,
+    ].join('\n');
+  }, [
+    capsuleBundleHash,
+    capsuleManifest,
+    capsuleManifestHash,
+    pinOverrides,
+    project.name,
+    redbyteCommit,
+    redbyteVersion,
+    verifyResult?.hash,
+    viewModel.exportHash,
+    viewModel.pinTable,
+  ]);
 
   const jumpToMapping = (portKey: string) => {
     const row = rowRefs.current[portKey];
@@ -157,6 +213,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     const ranAtIso = new Date().toISOString();
     setCapsuleBuildError('');
     setCapsuleBuildState('running');
+    setCapsuleManifest(null);
     if (hasBlockingErrors) {
       setCapsuleBuildError('Resolve blocking diagnostics before building an evidence capsule.');
       setCapsuleBuildState('error');
@@ -186,7 +243,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         exportViewModel: viewModel,
         verifyResult,
         deterministicHash: determinismHash,
-        toolVersion: 'redbyte-ide-v1',
+        toolVersion: redbyteVersion,
+        toolCommit: redbyteCommit,
         createdAtIso: ranAtIso,
       });
       if (typeof window !== 'undefined') {
@@ -204,6 +262,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       setCapsuleManifestHash(capsule.manifest.manifestHash);
       setCapsuleBundleHash(capsule.bundleHash);
       setCapsuleFileList(capsule.filePaths);
+      setCapsuleManifest(capsule.manifest);
       setCapsuleBuildState('done');
       onExportBundle?.(viewModel.artifacts);
       onExportResult?.({
@@ -229,6 +288,25 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         artifacts: viewModel.artifacts.map((artifact) => artifact.path),
         ranAtIso,
       });
+    }
+  };
+
+  const copyToClipboard = async (payload: string, target: 'command' | 'report') => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      setCopyState('error');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(payload);
+      setCopyState(target);
+      if (copyResetTimer.current !== null && typeof window !== 'undefined') {
+        window.clearTimeout(copyResetTimer.current);
+      }
+      if (typeof window !== 'undefined') {
+        copyResetTimer.current = window.setTimeout(() => setCopyState('idle'), 1600);
+      }
+    } catch {
+      setCopyState('error');
     }
   };
 
@@ -609,6 +687,53 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   README preview appears after export validation produces artifact text.
                 </IdeCallout>
               )}
+            </section>
+
+            <section className="ide-export-section" data-testid="ide-export-vivado-import-panel">
+              <header className="ide-export-section-header">
+                <h3>Vivado Import</h3>
+                <span className="ide-export-section-meta">batch command</span>
+              </header>
+              <div className="ide-export-vivado-box">
+                <p className="ide-copy">
+                  Run this command from the extracted export folder:
+                </p>
+                <pre
+                  className="ide-export-artifact-code ide-export-readme-code"
+                  data-testid="ide-export-vivado-command"
+                >
+                  {vivadoCommand}
+                </pre>
+                <div className="ide-export-diagnostic-actions">
+                  <IdeButton
+                    tone="secondary"
+                    onClick={() => {
+                      void copyToClipboard(vivadoCommand, 'command');
+                    }}
+                    testId="ide-export-copy-vivado-command"
+                  >
+                    Copy TCL command
+                  </IdeButton>
+                  <IdeButton
+                    tone="ghost"
+                    onClick={() => {
+                      void copyToClipboard(quickDebugReport, 'report');
+                    }}
+                    testId="ide-export-copy-debug-report"
+                  >
+                    Copy quick debug report
+                  </IdeButton>
+                </div>
+                <p className="ide-copy" data-testid="ide-export-copy-state">
+                  {copyState === 'command'
+                    ? 'Vivado command copied.'
+                    : copyState === 'report'
+                      ? 'Debug report copied.'
+                      : copyState === 'error'
+                        ? 'Clipboard unavailable in this browser context.'
+                        : 'Copy command/report for fast handoff debugging.'}
+                </p>
+              </div>
             </section>
 
             <section className="ide-export-section" data-testid="ide-export-vivado-checklist">

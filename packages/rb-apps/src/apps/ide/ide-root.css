@@ -2416,6 +2416,11 @@
   max-height: 280px;
 }
 
+.ide-export-vivado-box {
+  display: grid;
+  gap: var(--ide-space-2);
+}
+
 .ide-export-checklist {
   margin: 0;
   padding-left: 18px;

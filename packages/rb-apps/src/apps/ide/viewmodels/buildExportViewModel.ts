@@ -5,6 +5,7 @@ import {
   type Basys3ExportError,
 } from '../../../fpga/boards/basys3/basys3ExportService';
 import { generateTestbenchVhdl } from '../../../fpga/boards/basys3/testbenchGenerator';
+import { generateVivadoImportTcl } from '../../../fpga/boards/basys3/vivadoImportTcl';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import {
   createDiagnosticId,
@@ -44,7 +45,7 @@ export interface ExportPinTableRow {
 
 export interface ExportArtifactView {
   path: string;
-  kind: 'vhd' | 'xdc' | 'readme' | 'tb';
+  kind: 'vhd' | 'xdc' | 'readme' | 'tb' | 'tcl';
   content: string;
   preview: string;
   status: 'ready' | 'blocked' | 'pending';
@@ -285,6 +286,15 @@ function buildArtifacts(
   const artifacts: ExportArtifactView[] = [];
   const bundle = exportResult.bundle;
   const runtimeBackedTestbench = buildRuntimeBackedTestbench(project, runtimeVerifyRun);
+  const topEntity = resolveTopEntity(project);
+  const vhdlSourcePaths: string[] = ['top.vhd'];
+  const vivadoImportTcl = generateVivadoImportTcl({
+    projectName: project.name,
+    topEntity,
+    sourcePaths: vhdlSourcePaths,
+    constraintsPath: 'top.xdc',
+    simulationPath: 'testbench.vhd',
+  });
 
   if (bundle) {
     artifacts.push({
@@ -310,6 +320,14 @@ function buildArtifacts(
       preview: buildPreview(bundle.readme),
       status: blocked ? 'blocked' : 'ready',
       note: 'Vivado import instructions.',
+    });
+    artifacts.push({
+      path: 'vivado_import.tcl',
+      kind: 'tcl',
+      content: normalizeArtifactContent(vivadoImportTcl),
+      preview: buildPreview(vivadoImportTcl),
+      status: blocked ? 'blocked' : 'ready',
+      note: 'Vivado batch import script for Basys3 project setup.',
     });
     if (runtimeBackedTestbench) {
       artifacts.push({
@@ -368,6 +386,14 @@ function buildArtifacts(
       note: 'Blocked by export diagnostics.',
     });
     artifacts.push({
+      path: 'vivado_import.tcl',
+      kind: 'tcl',
+      content: '',
+      preview: '',
+      status: 'blocked',
+      note: 'Blocked by export diagnostics.',
+    });
+    artifacts.push({
       path: 'testbench.vhd',
       kind: 'tb',
       content: '',
@@ -396,6 +422,14 @@ function buildRuntimeBackedTestbench(
     content,
     note: `Deterministic schedule mirrored from latest Verify PASS (${runtimeVerifyRun.schedule}).`,
   };
+}
+
+function resolveTopEntity(project: RBProject): string {
+  const top =
+    (project.fpga?.top ?? project.hdl?.top ?? '')
+      .trim()
+      .replace(/[^A-Za-z0-9_]+/g, '_');
+  return top.length > 0 ? top : 'top';
 }
 
 function severityOrder(severity: ExportDiagnosticSeverity): number {

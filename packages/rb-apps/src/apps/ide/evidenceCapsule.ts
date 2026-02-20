@@ -14,15 +14,39 @@ export interface EvidenceManifestFile {
   sizeBytes: number;
 }
 
-export interface EvidenceManifest {
-  schemaVersion: 'rb.evidence-capsule.v1';
-  toolVersion: string;
-  createdAtIso: string;
-  board: 'basys3';
+export interface EvidenceManifestProject {
+  name: string;
+  id: string;
+}
+
+export interface EvidenceManifestToolchain {
+  redbyteVersion: string;
+  redbyteCommit: string;
+}
+
+export interface EvidenceManifestHashes {
   determinismHash: string;
   exportHash: string;
   verifyHash: string;
   verifyReportHash: string;
+}
+
+export interface EvidenceManifestMappingEntry {
+  signal: string;
+  direction: 'in' | 'out' | 'inout';
+  pin: string;
+  required: boolean;
+  status: 'mapped' | 'missing' | 'unused';
+}
+
+export interface EvidenceManifest {
+  schemaVersion: 'rb.evidence-capsule.v2';
+  createdAtIso: string;
+  project: EvidenceManifestProject;
+  board: 'basys3';
+  toolchain: EvidenceManifestToolchain;
+  hashes: EvidenceManifestHashes;
+  mappingSummary: EvidenceManifestMappingEntry[];
   files: EvidenceManifestFile[];
   manifestHash: string;
 }
@@ -33,6 +57,7 @@ export interface BuildEvidenceCapsuleInput {
   verifyResult: ProjectHealthVerifyResult;
   deterministicHash: string;
   toolVersion: string;
+  toolCommit: string;
   createdAtIso: string;
 }
 
@@ -49,6 +74,7 @@ export async function buildEvidenceCapsule(
   const topVhd = requireArtifactContent(input.exportViewModel, 'top.vhd');
   const topXdc = requireArtifactContent(input.exportViewModel, 'top.xdc');
   const testbench = requireArtifactContent(input.exportViewModel, 'testbench.vhd');
+  const vivadoImportTcl = requireArtifactContent(input.exportViewModel, 'vivado_import.tcl');
   const readme = resolveArtifactContent(input.exportViewModel, 'README.txt');
   const verifyReportText = stableStringify(
     input.verifyResult.report ?? {
@@ -65,6 +91,7 @@ export async function buildEvidenceCapsule(
     ['top.vhd', topVhd],
     ['top.xdc', topXdc],
     ['testbench.vhd', testbench],
+    ['vivado_import.tcl', vivadoImportTcl],
     ['vectors.json', stableStringify(input.project.vectors ?? [])],
     ['verify-report.json', verifyReportText],
   ]);
@@ -75,14 +102,24 @@ export async function buildEvidenceCapsule(
 
   const fileHashes = await computeFileHashes(files);
   const manifestBase = {
-    schemaVersion: 'rb.evidence-capsule.v1' as const,
-    toolVersion: input.toolVersion,
+    schemaVersion: 'rb.evidence-capsule.v2' as const,
     createdAtIso: input.createdAtIso,
+    project: {
+      name: input.project.name,
+      id: resolveProjectId(input.project),
+    },
     board: 'basys3' as const,
-    determinismHash: input.determinismHash,
-    exportHash: input.exportViewModel.exportHash ?? 'pending',
-    verifyHash: input.verifyResult.hash,
-    verifyReportHash: input.verifyResult.reportHash ?? 'pending',
+    toolchain: {
+      redbyteVersion: input.toolVersion,
+      redbyteCommit: input.toolCommit,
+    },
+    hashes: {
+      determinismHash: input.deterministicHash,
+      exportHash: input.exportViewModel.exportHash ?? 'pending',
+      verifyHash: input.verifyResult.hash,
+      verifyReportHash: input.verifyResult.reportHash ?? 'pending',
+    },
+    mappingSummary: buildMappingSummary(input.exportViewModel),
     files: fileHashes,
   };
   const manifestHash = await sha256FromText(stableStringify(manifestBase));
@@ -132,6 +169,30 @@ function resolveArtifactContent(viewModel: ExportViewModel, path: string): strin
   return artifact?.content ?? '';
 }
 
+function buildMappingSummary(viewModel: ExportViewModel): EvidenceManifestMappingEntry[] {
+  return viewModel.pinTable
+    .map((row) => ({
+      signal: row.port,
+      direction: row.direction,
+      pin: row.pin ?? '',
+      required: row.required,
+      status: row.status,
+    }))
+    .sort((left, right) => compareCodepoint(left.signal, right.signal));
+}
+
+function resolveProjectId(project: RBProject): string {
+  const projectId = (project.meta?.projectId ?? '').trim();
+  if (projectId.length > 0) return projectId;
+
+  const normalized = project.name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return normalized.length > 0 ? normalized : 'rb-project';
+}
+
 async function computeFileHashes(files: Map<string, string>): Promise<EvidenceManifestFile[]> {
   const entries: EvidenceManifestFile[] = [];
   const sortedPaths = Array.from(files.keys()).sort(compareCodepoint);
@@ -154,8 +215,15 @@ async function sha256FromText(text: string): Promise<string> {
 }
 
 async function sha256FromBytes(bytes: Uint8Array): Promise<string> {
-  const slice = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-  return hashBytes(slice);
+  const normalized = new Uint8Array(bytes.byteLength);
+  normalized.set(bytes);
+  if (typeof globalThis.crypto?.subtle?.digest === 'function') {
+    const digest = await crypto.subtle.digest('SHA-256', normalized);
+    return Array.from(new Uint8Array(digest))
+      .map((value) => value.toString(16).padStart(2, '0'))
+      .join('');
+  }
+  return hashBytes(normalized.buffer);
 }
 
 function normalizeNewlines(text: string): string {
