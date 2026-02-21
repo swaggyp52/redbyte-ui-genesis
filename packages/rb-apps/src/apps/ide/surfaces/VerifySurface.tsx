@@ -19,13 +19,6 @@ interface VerifyRow {
   actual: string;
 }
 
-interface VerifyScenario {
-  id: 'fail' | 'pass';
-  name: string;
-  hash: string;
-  rows: VerifyRow[];
-}
-
 interface VerifyVectorDraftInput {
   id: string;
   label: string;
@@ -52,33 +45,6 @@ interface VerifyMappedSignal {
   pin?: string;
   direction: 'in' | 'out';
 }
-
-const VERIFY_SCENARIOS: VerifyScenario[] = [
-  {
-    id: 'fail',
-    name: 'Counter mismatch sample',
-    hash: 'sha:verify-fail-7b91',
-    rows: [
-      { tick: 12, signal: 'q0', expected: '1', actual: '1' },
-      { tick: 12, signal: 'q1', expected: '0', actual: '0' },
-      { tick: 12, signal: 'counter_internal', expected: '0', actual: '0' },
-      { tick: 13, signal: 'q2', expected: '1', actual: '0' },
-      { tick: 14, signal: 'q0', expected: '0', actual: '0' },
-    ],
-  },
-  {
-    id: 'pass',
-    name: 'Counter baseline sample',
-    hash: 'sha:verify-pass-3f2c',
-    rows: [
-      { tick: 12, signal: 'q0', expected: '1', actual: '1' },
-      { tick: 12, signal: 'q1', expected: '0', actual: '0' },
-      { tick: 12, signal: 'counter_internal', expected: '0', actual: '0' },
-      { tick: 13, signal: 'q2', expected: '1', actual: '1' },
-      { tick: 14, signal: 'q0', expected: '0', actual: '0' },
-    ],
-  },
-];
 
 type VerifyStatus = 'idle' | 'pass' | 'fail';
 
@@ -142,7 +108,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [inputFields, vectors]
   );
 
-  const [selectedScenario, setSelectedScenario] = useState<VerifyScenario['id']>('fail');
   const [selectedTick, setSelectedTick] = useState<number | null>(null);
   const [selectedSignal, setSelectedSignal] = useState<string | null>(null);
   const [draftTick, setDraftTick] = useState<number>(() => nextVectorTick(vectors));
@@ -260,11 +225,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
   }, [lastRun?.reportHash]);
 
-  const activeScenario = useMemo(
-    () => VERIFY_SCENARIOS.find((scenario) => scenario.id === selectedScenario) ?? VERIFY_SCENARIOS[0],
-    [selectedScenario]
-  );
-
   const resultRows = useMemo(
     () =>
       runRows.map((row) => [
@@ -298,11 +258,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const runVerification = () => {
     setRunState('running');
+    const rows = authoredVectors.flatMap((vector) =>
+      Object.entries(vector.expected).map(([signal, expected]) => ({
+        tick: vector.tick,
+        signal,
+        expected: String(expected),
+        actual: '0',
+      }))
+    );
     onRunVerification?.({
-      scenarioId: activeScenario.id,
-      scenarioName: activeScenario.name,
-      deterministicHash: activeScenario.hash,
-      rows: activeScenario.rows,
+      scenarioId: `project-verify-${deterministicHash.slice(0, 8)}`,
+      scenarioName: 'Project Vectors',
+      deterministicHash,
+      rows,
       useRuntimeTrace: true,
     });
     setRunState('complete');
@@ -368,6 +336,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     <IdeSurfaceLayout
       mode="verify"
       consoleHasBlocking={status === 'fail'}
+      consoleHasEntries={hasResults}
       dock={
         <section className="ide-verify-left-dock" data-testid="ide-verify-left-dock">
           <header className="ide-design-subheader">
@@ -444,19 +413,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         <>
           <IdeInspectorSection title="Vectors">
             <p className="ide-copy">{vectorSourceLabel}</p>
-            <div className="ide-signal-list">
-              {VERIFY_SCENARIOS.map((scenario) => (
-                <button
-                  key={scenario.id}
-                  className="ide-signal-row"
-                  type="button"
-                  onClick={() => setSelectedScenario(scenario.id)}
-                  data-testid={`ide-verify-vector-${scenario.id}`}
-                >
-                  {scenario.name}
-                </button>
-              ))}
-            </div>
 
             <div className="ide-verify-vector-form" data-testid="ide-verify-add-vector-form">
               <label className="ide-verify-field">
@@ -663,9 +619,36 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {status === 'idle' ? (
           <div className="ide-empty-stack" data-testid="ide-verify-empty-state">
             <div className="ide-empty-illustration ide-empty-illustration-verify" aria-hidden="true" />
-            <IdeCallout tone="info" title="Run to generate evidence">
-              Add vectors from mapped inputs, run verification, then inspect tick-level waveform output.
-            </IdeCallout>
+            {authoredVectors.length === 0 ? (
+              <IdeCallout tone="info" title="No vectors yet">
+                <p className="ide-copy">Generate a basic set to get started, then click Run.</p>
+                <div className="ide-inline-actions">
+                  <IdeButton
+                    tone="primary"
+                    onClick={handleGenerateBasicVectors}
+                    testId="ide-verify-empty-generate-basics"
+                  >
+                    Generate Basics
+                  </IdeButton>
+                </div>
+              </IdeCallout>
+            ) : (
+              <IdeCallout tone="info" title="Vectors loaded — ready to run">
+                <p className="ide-copy">
+                  {authoredVectors.length} vector{authoredVectors.length !== 1 ? 's' : ''} ready.
+                  Click Run verification to produce deterministic waveform evidence.
+                </p>
+                <div className="ide-inline-actions">
+                  <IdeButton
+                    tone="primary"
+                    onClick={runVerification}
+                    testId="ide-verify-empty-run"
+                  >
+                    Run verification
+                  </IdeButton>
+                </div>
+              </IdeCallout>
+            )}
           </div>
         ) : (
           <div className="ide-verify-workbench" data-testid="ide-verify-workbench">
