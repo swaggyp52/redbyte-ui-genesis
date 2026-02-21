@@ -267,17 +267,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // Does NOT fire for runs with empty expectations (rows=[]) — that is a user
   // authoring state (vectors added but no expected values set), not a broken circuit.
   const hasNoTrace = lastRun !== undefined && runRows.length > 0 && signalTimeline.length === 0;
-  type DisplayStatus = 'BLOCKED' | 'READY' | 'RUNNING' | 'PASS' | 'FAIL';
+  const isTraceOnly = lastRun !== undefined && !hasResults && !hasNoTrace;
+  type DisplayStatus = 'BLOCKED' | 'READY' | 'RUNNING' | 'PASS' | 'FAIL' | 'TRACE';
   const displayStatus: DisplayStatus =
     runState === 'running'
       ? 'RUNNING'
-      : status === 'pass'
-        ? 'PASS'
-        : status === 'fail'
-          ? 'FAIL'
-          : authoredVectors.length === 0
-            ? 'BLOCKED'
-            : 'READY';
+      : isTraceOnly
+        ? 'TRACE'
+        : status === 'pass'
+          ? 'PASS'
+          : status === 'fail'
+            ? 'FAIL'
+            : authoredVectors.length === 0
+              ? 'BLOCKED'
+              : 'READY';
   const displayTone: 'ok' | 'warn' | 'error' | 'idle' =
     displayStatus === 'PASS'
       ? 'ok'
@@ -295,9 +298,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           : 'FAIL — mismatch detected'
         : displayStatus === 'RUNNING'
           ? 'Running verification…'
-          : displayStatus === 'BLOCKED'
-            ? 'Blocked — add test vectors to run'
-            : 'Ready — vectors loaded, click Run';
+          : displayStatus === 'TRACE'
+            ? 'TRACE ONLY — no expectations set'
+            : displayStatus === 'BLOCKED'
+              ? 'Blocked — add test vectors to run'
+              : 'Ready — vectors loaded, click Run';
 
   const vectorSourceLabel =
     authoredVectors.length > 0 || hasVectors ? 'Project vectors loaded' : 'No vectors saved yet';
@@ -574,7 +579,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         actions={
           <>
             <span data-testid="ide-primary-cta">
-              <IdeButton tone="primary" onClick={runVerification} disabled={authoredVectors.length === 0} testId="ide-verify-run">
+              <IdeButton tone="primary" onClick={runVerification} disabled={runState === 'running'} testId="ide-verify-run">
                 Run verification
               </IdeButton>
             </span>
@@ -653,7 +658,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         </section>
 
-        {status === 'idle' ? (
+        {status === 'idle' && runState !== 'complete' ? (
           <div className="ide-empty-stack" data-testid="ide-verify-empty-state">
             <div className="ide-empty-illustration ide-empty-illustration-verify" aria-hidden="true" />
             {authoredVectors.length === 0 ? (
@@ -766,7 +771,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ) : null}
               </section>
 
-              <div className="ide-waveform-stub" data-testid="ide-verify-waveform-preview">
+              <div className="ide-waveform-stub" data-testid="ide-verify-waveform-preview" data-verify-trace-only={isTraceOnly ? '1' : '0'}>
                 {signalTimeline.length === 0 ? (
                   <div className="ide-verify-waveform-empty" data-testid="ide-verify-waveform-empty">
                     <span>Run verification to see waveforms</span>
