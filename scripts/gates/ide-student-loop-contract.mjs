@@ -83,16 +83,10 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   const vivadoTcl = page
     .locator('[data-testid="ide-export-artifact-tree-item-vivado-import-tcl"]')
     .first();
-  if (await visible(vivadoTcl)) {
-    assert(true, 'vivado_import.tcl found in export artifact tree');
-  } else {
-    // fallback: assert at least one artifact is visible
-    const anyArtifact = page.locator('[data-testid^="ide-export-artifact-tree-item-"]').first();
-    assert(
-      await visible(anyArtifact),
-      'at least one artifact must be in the export artifact tree'
-    );
-  }
+  assert(
+    await visible(vivadoTcl),
+    'vivado_import.tcl must appear in the export artifact tree'
+  );
 
   // ── 5. Hardware: checklist + expected IO table ────────────────────────────
   await page.locator('[data-testid="mode-button-hardware"]').click();
@@ -102,11 +96,8 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   assert(await visible(checklist), 'hardware bring-up checklist must be visible');
 
   const expectedIoTable = page.locator('[data-testid="ide-hardware-expected-io-table"]').first();
-  if (await visible(expectedIoTable)) {
-    assert(true, 'hardware expected IO table is visible');
-  } else {
-    // fallback: check for the section wrapper
-    const expectedIoSection = page.locator('[data-testid="ide-hardware-expected-io"]').first();
-    assert(await visible(expectedIoSection), 'hardware expected IO section must be visible');
-  }
+  assert(
+    await visible(expectedIoTable),
+    'hardware expected IO table must be visible'
+  );
 });
