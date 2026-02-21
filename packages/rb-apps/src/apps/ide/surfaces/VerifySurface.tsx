@@ -768,7 +768,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
               <div className="ide-waveform-stub" data-testid="ide-verify-waveform-preview">
                 {signalTimeline.length === 0 ? (
-                  <p className="ide-copy">Waveform data appears after a verification run.</p>
+                  <div className="ide-verify-waveform-empty" data-testid="ide-verify-waveform-empty">
+                    <span>Run verification to see waveforms</span>
+                  </div>
                 ) : (
                   <div className="ide-verify-waveform-grid" data-testid="ide-verify-waveform-grid">
                     {signalTimeline.map((signalRow) => (

@@ -1124,6 +1124,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             ) : null}
           </IdeInspectorSection>
 
+          {(selection.nodes.size > 0 || selection.wires.size > 0) && (
           <IdeInspectorSection title="Selection" defaultOpen>
             {selectedNode && selection.nodes.size === 1 ? (
               <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
@@ -1205,15 +1206,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   Delete selected nodes
                 </IdeButton>
               </div>
-            ) : (
-              <p className="ide-copy">No node selected. Click a node to inspect type, id, and pins.</p>
-            )}
+            ) : null}
             {selectedWireIds.length > 0 && (
               <div className="ide-copy-top-gap">
                 <strong>Selected wires:</strong> {selectedWireIds.length}
               </div>
             )}
           </IdeInspectorSection>
+          )}
 
           <IdeInspectorSection title="Next Action" defaultOpen={false}>
             <IdeCallout tone="info" title="Design Flow">
@@ -1221,9 +1221,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </IdeCallout>
           </IdeInspectorSection>
 
+          {selectedNode && (
           <IdeInspectorSection title="Net / Pins" testId="ide-design-net-pins" defaultOpen={false}>
-            {selectedNode ? (
-              <div className="ide-kv-list">
+            <div className="ide-kv-list">
                 <div className="ide-kv-row">
                   <span>Selected</span>
                   <code>{selectedNode.id}</code>
@@ -1245,10 +1245,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </span>
                 </div>
               </div>
-            ) : (
-              <p className="ide-copy">Select a node to inspect nets and pin connectivity.</p>
-            )}
           </IdeInspectorSection>
+          )}
         </>
       }
       console={
@@ -1320,8 +1318,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
     >
         <IdePanel
-          title="Design Command Center"
-          description="Build your circuit with deterministic graph updates and explicit editing controls."
           actions={
             <div className="ide-design-primary-actions" data-testid="ide-design-primary-actions">
               <span data-testid="ide-primary-cta">

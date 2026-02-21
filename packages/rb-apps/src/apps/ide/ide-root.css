@@ -2243,6 +2243,15 @@
   padding: var(--ide-space-1);
 }
 
+.ide-verify-waveform-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 160px;
+  color: var(--rb-text-3, #5a7a9a);
+  font-size: var(--rb-font-size-1, 11px);
+}
+
 .ide-verify-waveform-grid {
   display: grid;
   gap: var(--ide-space-1);
