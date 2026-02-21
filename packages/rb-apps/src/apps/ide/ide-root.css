@@ -133,6 +133,8 @@
   --panel-border: transparent;
   --panel-radius: 0;
   --panel-gap: var(--ide-space-2);
+  /* Responsive density: comfortable (default) / compact (narrow viewport) */
+  --ide-density: comfortable;
   --dense-1: var(--ide-space-1);
   --dense-2: var(--ide-space-2);
 }
@@ -3090,6 +3092,22 @@
   .ide-mode-label {
     font-size: 10px;
     line-height: var(--rb-line-height-1);
+  }
+}
+
+@media (max-width: 960px) {
+  :root[data-redbyte-mode='ide'] {
+    --ide-dock-l-w: 180px;
+    --ide-dock-r-w: 240px;
+  }
+
+  .ide-workbench-shell {
+    --ide-workbench-left-width: 180px;
+    --ide-workbench-right-width: 240px;
+  }
+
+  .ide-top-right-group + .ide-top-right-group {
+    display: none;
   }
 }
 
