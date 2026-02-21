@@ -53,7 +53,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   rightDock,
   console,
   consoleHasBlocking = false,
-  consoleHasEntries = true,
+  consoleHasEntries = false,
 }) => {
   const [layout, setLayout] = useState<WorkbenchLayoutState>(DEFAULT_LAYOUT);
   const resizeRef = useRef<ActiveResizeState | null>(null);

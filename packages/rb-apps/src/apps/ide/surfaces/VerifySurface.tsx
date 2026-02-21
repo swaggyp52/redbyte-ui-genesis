@@ -586,11 +586,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </IdeButton>
           </>
         }
-        right={
-          <IdeStatusPill tone={displayTone} testId="ide-verify-panel-status">
-            {displayStatus}
-          </IdeStatusPill>
-        }
         testId="ide-verify-panel"
       >
         <section

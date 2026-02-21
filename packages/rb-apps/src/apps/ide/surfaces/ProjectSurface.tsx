@@ -475,7 +475,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       />
 
       <IdePanel
-        title="Project Overview"
         description="Everything you need to be ready to Verify/Export/Hardware."
         actions={
           <>

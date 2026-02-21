@@ -26,7 +26,7 @@ export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({
   dock,
   console,
   consoleHasBlocking = false,
-  consoleHasEntries = true,
+  consoleHasEntries = false,
 }) => {
   return (
     <IdeWorkbenchShell

@@ -47,7 +47,7 @@ export const IdeSectionHeader: React.FC<{
 };
 
 export const IdePanel: React.FC<{
-  title: string;
+  title?: string;
   description?: string;
   children: React.ReactNode;
   right?: React.ReactNode;
@@ -59,9 +59,11 @@ export const IdePanel: React.FC<{
       <header className="ide-panel-header" data-testid="ide-panel-title-row">
         <div className="ide-surface-header" data-testid="ide-surface-header">
           <div>
-            <h2 className="ide-panel-title" data-testid="ide-surface-title">
-              {title}
-            </h2>
+            {title && (
+              <h2 className="ide-panel-title" data-testid="ide-surface-title">
+                {title}
+              </h2>
+            )}
             {description && <p className="ide-panel-description">{description}</p>}
           </div>
           {right}
