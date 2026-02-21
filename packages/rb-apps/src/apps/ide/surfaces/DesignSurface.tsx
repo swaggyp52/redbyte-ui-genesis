@@ -541,6 +541,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     zoomCamera(-120, canvasSize.width / 2, canvasSize.height / 2);
   }, [canvasSize.height, canvasSize.width, zoomCamera]);
 
+  const setZoomToPreset = useCallback((targetZoom: number) => {
+    const cx = canvasSize.width / 2;
+    const cy = canvasSize.height / 2;
+    const worldX = (cx - camera.x) / camera.zoom;
+    const worldY = (cy - camera.y) / camera.zoom;
+    setCamera({
+      x: cx - worldX * targetZoom,
+      y: cy - worldY * targetZoom,
+      zoom: targetZoom,
+    });
+  }, [camera.x, camera.y, camera.zoom, canvasSize.width, canvasSize.height, setCamera]);
+
   const resetView = useCallback(() => {
     if (editorCircuit.nodes.length === 0) {
       setCamera({ x: 0, y: 0, zoom: 1 });
@@ -1538,6 +1550,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </div>
                 <div className="ide-design-canvas-mode-indicator" data-testid="ide-design-presentation-zoom-indicator">
                   {presentationZoom === 'classroom' ? 'Classroom Zoom' : 'Dense Zoom'}
+                </div>
+                <div className="ide-design-zoom-presets" data-testid="ide-design-zoom-presets">
+                  {([0.5, 0.75, 1.0, 1.25] as const).map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className={`ide-design-zoom-preset${Math.round(camera.zoom * 100) === Math.round(preset * 100) ? ' is-active' : ''}`}
+                      onClick={() => setZoomToPreset(preset)}
+                      data-testid={`ide-design-zoom-preset-${Math.round(preset * 100)}`}
+                    >
+                      {Math.round(preset * 100)}%
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="ide-design-zoom-preset"
+                    onClick={fitToCircuit}
+                    data-testid="ide-design-zoom-preset-fit"
+                  >
+                    Fit
+                  </button>
                 </div>
                 <div className="ide-design-canvas-controls" data-testid="ide-design-canvas-controls">
                   <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit-canvas">

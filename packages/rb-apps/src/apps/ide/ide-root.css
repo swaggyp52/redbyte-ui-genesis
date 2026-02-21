@@ -1472,6 +1472,44 @@
   padding: 3px 8px;
 }
 
+.ide-design-zoom-presets {
+  position: absolute;
+  right: var(--ide-space-1);
+  bottom: calc(var(--ide-space-1) + 32px);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--ide-radius-s);
+  border: 1px solid rgba(80, 114, 146, 0.58);
+  background: rgba(9, 18, 29, 0.88);
+}
+
+.ide-design-zoom-preset {
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ide-text-soft);
+  font-size: var(--rb-font-size-1);
+  font-family: var(--rb-font-mono);
+  padding: 2px 6px;
+  min-height: 22px;
+  cursor: pointer;
+  line-height: 1;
+  transition: color var(--rb-motion-fast), background var(--rb-motion-fast);
+}
+
+.ide-design-zoom-preset:hover {
+  color: var(--ide-text);
+  background: rgba(58, 87, 116, 0.45);
+}
+
+.ide-design-zoom-preset.is-active {
+  color: var(--rb-accent);
+  background: rgba(46, 196, 182, 0.12);
+}
+
 /* Minimap overlay */
 .rb-minimap {
   position: absolute;
