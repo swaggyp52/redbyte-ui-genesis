@@ -21,6 +21,8 @@ export interface ZipImportInspection {
   detectedXdcPath?: string;
   detectedFiles: string[];
   ignoredFiles: string[];
+  hdlCandidates: string[];      // all HDL files found, sorted by score (best first)
+  xdcCandidates: string[];      // all XDC files found, in preference order
   parsedHdl: ParsedHDL;
   xdcResult?: XdcParseResult;
   warnings: string[];
@@ -88,6 +90,16 @@ export async function importVivadoZipBytes(
     ...xdcPortWarnings,
   ]);
 
+  const hdlEntries = files.filter((entry) => isHdlPath(entry.path));
+  const hdlCandidates = [...hdlEntries]
+    .sort(compareHdlEntry)
+    .map((entry) => entry.path);
+
+  const xdcEntries = files.filter((entry) => entry.path.toLowerCase().endsWith('.xdc'));
+  const xdcCandidates = [...xdcEntries]
+    .sort(compareXdcEntry)
+    .map((entry) => entry.path);
+
   return {
     sourceName,
     detectedTopPath: topEntry.path,
@@ -95,6 +107,8 @@ export async function importVivadoZipBytes(
     detectedXdcPath: xdcEntry?.path,
     detectedFiles: [topEntry.path, ...(xdcEntry ? [xdcEntry.path] : [])],
     ignoredFiles,
+    hdlCandidates,
+    xdcCandidates,
     parsedHdl,
     xdcResult,
     warnings,
@@ -263,9 +277,18 @@ function compareHdlEntry(left: ZipTextEntry, right: ZipTextEntry): number {
 function compareXdcEntry(left: ZipTextEntry, right: ZipTextEntry): number {
   const leftPath = left.path.toLowerCase();
   const rightPath = right.path.toLowerCase();
+  // Prefer files in Vivado constrs_* directories
+  const leftConstrs = /\/constr[s]?_\d+\//.test(leftPath);
+  const rightConstrs = /\/constr[s]?_\d+\//.test(rightPath);
+  if (leftConstrs !== rightConstrs) return leftConstrs ? -1 : 1;
+  // Then prefer top.xdc by name
   const leftTop = leftPath.endsWith('/top.xdc') || leftPath === 'top.xdc';
   const rightTop = rightPath.endsWith('/top.xdc') || rightPath === 'top.xdc';
   if (leftTop !== rightTop) return leftTop ? -1 : 1;
+  // Then prefer basys3.xdc by name
+  const leftBasys = leftPath.endsWith('/basys3.xdc') || leftPath === 'basys3.xdc';
+  const rightBasys = rightPath.endsWith('/basys3.xdc') || rightPath === 'basys3.xdc';
+  if (leftBasys !== rightBasys) return leftBasys ? -1 : 1;
   const lengthDelta = left.path.length - right.path.length;
   if (lengthDelta !== 0) return lengthDelta;
   return compareCodepoint(left.path, right.path);
@@ -274,12 +297,17 @@ function compareXdcEntry(left: ZipTextEntry, right: ZipTextEntry): number {
 function topHdlScore(path: string): number {
   const lower = path.toLowerCase();
   const file = lower.split('/').pop() ?? lower;
-  if (file === 'top.vhd' || file === 'top.vhdl' || file === 'top.v' || file === 'top.sv') {
-    return 0;
-  }
-  if (file.startsWith('top.')) return 1;
-  if (file.includes('top')) return 2;
-  return 3;
+  const fileScore =
+    file === 'top.vhd' || file === 'top.vhdl' || file === 'top.v' || file === 'top.sv'
+      ? 0
+      : file.startsWith('top.')
+        ? 1
+        : file.includes('top')
+          ? 2
+          : 3;
+  // Files in sources_* dirs (Vivado project structure) sort before non-sources files at same level
+  const inSourcesDir = /\/sources?_\d+\//.test(lower);
+  return inSourcesDir ? fileScore : fileScore + 4;
 }
 
 function extensionRank(path: string): number {
