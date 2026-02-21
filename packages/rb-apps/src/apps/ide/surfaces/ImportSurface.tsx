@@ -432,6 +432,13 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
                 Apply to Project
               </IdeButton>
             </span>
+            {!canImport && hasParsedHdl && (
+              <span className="ide-import-apply-reason" data-testid="ide-import-apply-disabled-reason">
+                {unmappedPorts.length > 0
+                  ? `${unmappedPorts.length} unmapped port${unmappedPorts.length > 1 ? 's' : ''}`
+                  : `${blockingErrors.length} blocking error${blockingErrors.length > 1 ? 's' : ''}`}
+              </span>
+            )}
           </>
         }
         right={
@@ -462,32 +469,76 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
         <IdeGrid columns={2} testId="ide-import-pipeline-grid">
           <section className="ide-import-stage-col" data-testid="ide-import-inputs">
             <IdeSectionHeader title="Inputs" meta="Stage 1" />
-            <div className="ide-export-artifact-tabs">
+
+            <div className="ide-import-target-cards">
               <button
                 type="button"
-                className={`ide-export-artifact-tab ${tab === 'hdl' ? 'is-active' : ''}`}
+                className={`ide-import-target-card${tab === 'hdl' ? ' is-active' : ''}${hasParsedHdl ? ' is-done' : ''}`}
                 onClick={() => setTab('hdl')}
-                data-testid="ide-import-tab-hdl"
+                data-testid="ide-import-card-hdl"
               >
-                HDL
+                <span className="ide-import-target-card-icon">&lt;/&gt;</span>
+                <span className="ide-import-target-card-title">HDL Source</span>
+                <span className="ide-import-target-card-desc">Paste Verilog or VHDL module</span>
+                {hasParsedHdl && <span className="ide-import-target-card-badge">&#10003; Parsed</span>}
               </button>
               <button
                 type="button"
-                className={`ide-export-artifact-tab ${tab === 'xdc' ? 'is-active' : ''}`}
+                className={`ide-import-target-card${tab === 'xdc' ? ' is-active' : ''}${hasParsedXdc ? ' is-done' : ''}`}
                 onClick={() => setTab('xdc')}
-                data-testid="ide-import-tab-xdc"
+                data-testid="ide-import-card-xdc"
               >
-                XDC
+                <span className="ide-import-target-card-icon">&#x2316;</span>
+                <span className="ide-import-target-card-title">XDC Constraints</span>
+                <span className="ide-import-target-card-desc">Pin assignments from Vivado</span>
+                {hasParsedXdc ? (
+                  <span className="ide-import-target-card-badge">&#10003; Parsed</span>
+                ) : (
+                  <span className="ide-import-target-card-optional">Optional</span>
+                )}
               </button>
               <button
                 type="button"
-                className={`ide-export-artifact-tab ${tab === 'upload' ? 'is-active' : ''}`}
-                onClick={() => setTab('upload')}
-                data-testid="ide-import-tab-upload"
+                className={`ide-import-target-card ide-import-target-card-zip${tab === 'upload' ? ' is-active' : ''}${hasZipInspection ? ' is-done' : ''}`}
+                onClick={() => { setTab('upload'); handleOpenZipPicker(); }}
+                disabled={zipBusy}
+                data-testid="ide-import-card-zip"
               >
-                Upload ZIP
+                <span className="ide-import-target-card-icon">&#x25A6;</span>
+                <span className="ide-import-target-card-title">Vivado ZIP</span>
+                <span className="ide-import-target-card-desc">
+                  {zipBusy ? 'Importing...' : 'Auto-extract top module + constraints'}
+                </span>
+                {hasZipInspection ? (
+                  <span className="ide-import-target-card-badge">&#10003; Loaded</span>
+                ) : (
+                  <span className="ide-import-target-card-optional">Recommended</span>
+                )}
               </button>
             </div>
+
+            {hasParsedHdl && (
+              <div className="ide-import-parse-summary" data-testid="ide-import-parse-summary">
+                <span>Detected:</span>
+                <strong>{parsedHdl!.entityName}</strong>
+                <span>{ports.length} port{ports.length !== 1 ? 's' : ''}</span>
+                <span>XDC: {hasParsedXdc ? `${Object.keys(xdcResult!.pinMap).length} pins` : 'none'}</span>
+                {blockingErrors.length > 0 && (
+                  <span className="ide-import-summary-issues">{blockingErrors.length} issue{blockingErrors.length !== 1 ? 's' : ''}</span>
+                )}
+              </div>
+            )}
+
+            <input
+              ref={zipInputRef}
+              type="file"
+              accept=".zip,application/zip"
+              className="ide-hidden-file-input"
+              onChange={(event) => {
+                void handleZipInputChange(event);
+              }}
+              data-testid="ide-import-zip-input"
+            />
 
             {tab === 'hdl' && (
               <div className="ide-import-editor">
@@ -530,16 +581,6 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
 
             {tab === 'upload' && (
               <div className="ide-empty-stack ide-import-zip-stage" data-testid="ide-import-zip-stage">
-                <input
-                  ref={zipInputRef}
-                  type="file"
-                  accept=".zip,application/zip"
-                  className="ide-hidden-file-input"
-                  onChange={(event) => {
-                    void handleZipInputChange(event);
-                  }}
-                  data-testid="ide-import-zip-input"
-                />
                 <div
                   className="ide-empty-illustration ide-empty-illustration-import"
                   aria-hidden="true"
