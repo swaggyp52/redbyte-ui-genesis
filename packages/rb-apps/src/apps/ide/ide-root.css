@@ -274,7 +274,6 @@
 .ide-top-right .ide-button {
   padding: 4px 8px;
   min-height: 26px;
-  font-size: 10px;
 }
 
 .ide-layout-shell {
@@ -1469,7 +1468,6 @@
 .ide-design-canvas-controls .ide-button {
   min-height: 24px;
   padding: 3px 8px;
-  font-size: 10px;
 }
 
 /* Minimap overlay */
@@ -2228,8 +2226,8 @@
 .ide-button {
   border: 1px solid transparent;
   border-radius: var(--ide-radius-s);
-  padding: 6px 10px;
-  font-size: 11px;
+  padding: 5px 10px;
+  font-size: var(--rb-font-size-1);
   line-height: var(--rb-line-height-1);
   font-weight: var(--rb-font-weight-semibold);
   cursor: pointer;
