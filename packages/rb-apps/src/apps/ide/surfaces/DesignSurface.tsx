@@ -858,7 +858,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             <section className="ide-design-input-panel" data-testid="ide-design-input-panel">
               <header className="ide-design-subheader">
                 <h3>Live Inputs</h3>
-                <span className="ide-copy">{simRunning ? 'RUNNING' : 'PAUSED'}</span>
               </header>
               <div className="ide-design-input-toggle-list">
                 {allLiveInputRows.map((entry) => (
