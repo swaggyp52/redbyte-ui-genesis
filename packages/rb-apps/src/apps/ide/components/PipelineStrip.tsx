@@ -1,0 +1,183 @@
+// Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
+// PipelineStrip — replaces IdeGuidedStrip with a 4-stage pipeline visualization.
+// Drop-in compatible: same props interface as IdeGuidedStrip.
+
+import React, { useMemo } from 'react';
+import type { ProjectHealth, ProjectHealthMode, ProjectPrimaryCta } from '../projectHealth';
+import { IdeButton } from './IdePrimitives';
+
+export interface PipelineStripProps {
+  currentMode: ProjectHealthMode;
+  health: ProjectHealth;
+  primaryCta: ProjectPrimaryCta;
+  onNavigate: (mode: ProjectHealthMode) => void;
+}
+
+// Pipeline stages — Design, Verify, Hardware, Export (not project/import, those are entry points)
+type PipelineStage = 'design' | 'verify' | 'hardware' | 'export';
+type StageStatus = 'pass' | 'blocked' | 'active' | 'pending';
+
+interface StageConfig {
+  key: PipelineStage;
+  mode: ProjectHealthMode;
+  letter: string;
+  label: string;
+  blockerCodes: string[];
+}
+
+const STAGES: StageConfig[] = [
+  { key: 'design', mode: 'design', letter: 'D', label: 'Design', blockerCodes: ['RBP1000', 'RBP1001'] },
+  { key: 'verify', mode: 'verify', letter: 'V', label: 'Verify', blockerCodes: ['RBP1002', 'RBP1003', 'RBP1004'] },
+  { key: 'hardware', mode: 'hardware', letter: 'H', label: 'Hardware', blockerCodes: [] },
+  { key: 'export', mode: 'export', letter: 'E', label: 'Export', blockerCodes: ['RBP2001', 'RBP2002'] },
+];
+
+function deriveStageStatus(
+  stage: StageConfig,
+  health: ProjectHealth,
+  currentMode: ProjectHealthMode
+): StageStatus {
+  const codes = new Set(health.blockingIssues.map((i) => i.code));
+
+  // Blocked takes priority over active so the student sees the problem even on the current page
+  if (stage.blockerCodes.some((c) => codes.has(c))) return 'blocked';
+  if (currentMode === stage.mode) return 'active';
+
+  switch (stage.key) {
+    case 'design':
+      return !codes.has('RBP1000') && !codes.has('RBP1001') ? 'pass' : 'pending';
+    case 'verify':
+      return health.lastVerify?.status === 'pass' && !health.dirtySinceVerify ? 'pass' : 'pending';
+    case 'hardware':
+      // Hardware has no strong pass signal in the health model yet — keep pending unless verify passes
+      return 'pending';
+    case 'export':
+      return health.lastExport?.status === 'ok' && !health.dirtySinceExport ? 'pass' : 'pending';
+    default:
+      return 'pending';
+  }
+}
+
+// Checkmark icon for passing stages
+const CheckIcon: React.FC = () => (
+  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" aria-hidden="true">
+    <path
+      d="M1 4.5L3.5 7L8 1.5"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+// Warning dot for blocked stages
+const WarnIcon: React.FC = () => (
+  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" aria-hidden="true">
+    <path d="M4.5 1.5V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="4.5" cy="7" r="0.75" fill="currentColor" />
+  </svg>
+);
+
+export const PipelineStrip: React.FC<PipelineStripProps> = ({
+  currentMode,
+  health,
+  primaryCta,
+  onNavigate,
+}) => {
+  const stageStatuses = useMemo(
+    () =>
+      STAGES.map((stage) => ({
+        stage,
+        status: deriveStageStatus(stage, health, currentMode),
+      })),
+    [health, currentMode]
+  );
+
+  const primaryBlocker = health.blockingIssues[0];
+  // Only show CTA when the recommended destination is different from current page
+  const showCta = primaryCta.mode !== currentMode;
+
+  return (
+    <section
+      className="ide-pipeline-strip"
+      data-testid="ide-guided-strip"
+      data-current-mode={currentMode}
+      aria-label="Pipeline progress"
+    >
+      {/* Stage pills with PCB trace connectors */}
+      <div className="ide-pipeline-stages" role="list">
+        {stageStatuses.map(({ stage, status }, index) => (
+          <React.Fragment key={stage.key}>
+            {index > 0 && (
+              <span
+                className={`ide-pipeline-trace ide-pipeline-trace--${stageStatuses[index - 1].status}`}
+                aria-hidden="true"
+              />
+            )}
+            <button
+              type="button"
+              role="listitem"
+              className={`ide-pipeline-stage ide-pipeline-stage--${status}`}
+              data-testid={`ide-pipeline-stage-${stage.key}`}
+              onClick={() => onNavigate(stage.mode)}
+              aria-current={status === 'active' ? 'step' : undefined}
+              aria-label={`${stage.label} — ${status}`}
+            >
+              <span className="ide-pipeline-badge" aria-hidden="true">
+                {status === 'pass' ? <CheckIcon /> : status === 'blocked' ? <WarnIcon /> : stage.letter}
+              </span>
+              <span className="ide-pipeline-label">{stage.label}</span>
+            </button>
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* Right side: blocker message + primary CTA */}
+      <div className="ide-pipeline-right">
+        {primaryBlocker ? (
+          <span className="ide-pipeline-blocker" data-testid="ide-guided-blocker">
+            <span className="ide-pipeline-blocker-pulse" aria-hidden="true" />
+            <span
+              className="ide-pipeline-blocker-message"
+              data-testid="ide-guided-blocker-message"
+              title={primaryBlocker.message}
+            >
+              {primaryBlocker.message}
+            </span>
+            {health.blockingIssues.length > 1 && (
+              <span className="ide-pipeline-blocker-count" data-testid="ide-guided-blocker-count">
+                +{health.blockingIssues.length - 1}
+              </span>
+            )}
+          </span>
+        ) : null}
+
+        {showCta ? (
+          <IdeButton
+            tone="primary"
+            onClick={() => onNavigate(primaryCta.mode)}
+            testId="ide-guided-primary-cta"
+          >
+            {primaryCta.label} →
+          </IdeButton>
+        ) : !primaryBlocker ? (
+          <span className="ide-pipeline-all-pass" data-testid="ide-guided-ready">
+            All stages passing
+          </span>
+        ) : null}
+
+        {primaryBlocker?.fixPath ? (
+          <button
+            type="button"
+            className="ide-pipeline-fix-link"
+            onClick={() => onNavigate(primaryBlocker.fixPath!.mode)}
+            data-testid="ide-guided-fix-link"
+          >
+            {primaryBlocker.fixPath.actionLabel} →
+          </button>
+        ) : null}
+      </div>
+    </section>
+  );
+};

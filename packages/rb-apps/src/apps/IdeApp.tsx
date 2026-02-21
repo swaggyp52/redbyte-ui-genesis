@@ -18,7 +18,7 @@ import { VerifySurface, type VerifyFailureTarget } from './ide/surfaces/VerifySu
 import { HardwareSurface } from './ide/surfaces/HardwareSurface';
 import { ExportSurface } from './ide/surfaces/ExportSurface';
 import { ImportSurface } from './ide/surfaces/ImportSurface';
-import { IdeGuidedStrip } from './ide/components/IdeGuidedStrip';
+import { PipelineStrip } from './ide/components/PipelineStrip';
 import { buildExportViewModel } from './ide/viewmodels/buildExportViewModel';
 import {
   choosePrimaryDiagnosticAction,
@@ -646,7 +646,7 @@ export const IdeApp: React.FC = () => {
       <div className="ide-layout-shell">
         <IdeLeftRail currentMode={currentMode} onModeChange={setCurrentMode} />
         <div className="ide-surface-column">
-          <IdeGuidedStrip
+          <PipelineStrip
             currentMode={currentMode as ProjectHealthMode}
             health={projectHealth}
             primaryCta={primaryProjectCta}
