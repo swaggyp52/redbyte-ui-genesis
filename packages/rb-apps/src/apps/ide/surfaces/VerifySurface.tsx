@@ -130,6 +130,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [lastRun?.report]
   );
   const timelineTicks = tickIndex.ticks;
+  const waveformTicks = useMemo(() => {
+    const ticks = new Set<number>();
+    for (const sample of lastRun?.waveform ?? []) ticks.add(sample.tick);
+    return Array.from(ticks).sort((a, b) => a - b);
+  }, [lastRun?.waveform]);
+
   const signalTimeline = useMemo(() => {
     const signalValueMap = new Map<string, Map<number, string>>();
     for (const sample of lastRun?.waveform ?? []) {
@@ -140,16 +146,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
     }
 
+    const displayTicks = waveformTicks.length > 0 ? waveformTicks : timelineTicks;
     return Array.from(signalValueMap.entries())
       .sort((left, right) => compareText(left[0], right[0]))
       .map(([signal, values]) => ({
         signal,
-        values: timelineTicks.map((tick) => ({
+        values: displayTicks.map((tick) => ({
           tick,
           value: values.get(tick) ?? '-',
         })),
       }));
-  }, [lastRun?.waveform, timelineTicks]);
+  }, [lastRun?.waveform, timelineTicks, waveformTicks]);
 
   const failingRows = useMemo(
     () => runRows.filter((row) => row.status === 'fail'),
@@ -253,6 +260,45 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const firstFailure = failingRows[0];
   const firstFailureTick = firstFailure?.tick ?? lastRun?.firstFailingTick;
   const canExportTestbench = status === 'pass';
+
+  // Derived display-state machine: replaces the ambiguous IDLE label
+  // hasNoTrace fires only when the runtime ran with actual expectation rows
+  // AND still produced no waveform data (broken circuit / no I/O mapping).
+  // Does NOT fire for runs with empty expectations (rows=[]) — that is a user
+  // authoring state (vectors added but no expected values set), not a broken circuit.
+  const hasNoTrace = lastRun !== undefined && runRows.length > 0 && signalTimeline.length === 0;
+  type DisplayStatus = 'BLOCKED' | 'READY' | 'RUNNING' | 'PASS' | 'FAIL';
+  const displayStatus: DisplayStatus =
+    runState === 'running'
+      ? 'RUNNING'
+      : status === 'pass'
+        ? 'PASS'
+        : status === 'fail'
+          ? 'FAIL'
+          : authoredVectors.length === 0
+            ? 'BLOCKED'
+            : 'READY';
+  const displayTone: 'ok' | 'warn' | 'error' | 'idle' =
+    displayStatus === 'PASS'
+      ? 'ok'
+      : displayStatus === 'FAIL'
+        ? 'error'
+        : displayStatus === 'BLOCKED'
+          ? 'warn'
+          : 'idle';
+  const displayStatusLabel =
+    displayStatus === 'PASS'
+      ? 'PASS — deterministic agreement'
+      : displayStatus === 'FAIL'
+        ? hasNoTrace
+          ? 'No trace — run completed with empty waveform'
+          : 'FAIL — mismatch detected'
+        : displayStatus === 'RUNNING'
+          ? 'Running verification…'
+          : displayStatus === 'BLOCKED'
+            ? 'Blocked — add test vectors to run'
+            : 'Ready — vectors loaded, click Run';
+
   const vectorSourceLabel =
     authoredVectors.length > 0 || hasVectors ? 'Project vectors loaded' : 'No vectors saved yet';
 
@@ -480,8 +526,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         <section className="ide-verify-console" data-testid="ide-verify-console">
           <header className="ide-design-diagnostics-drawer-header">
             <h3>Activity</h3>
-            <IdeStatusPill tone={status === 'pass' ? 'ok' : status === 'fail' ? 'error' : 'idle'}>
-              {status === 'pass' ? 'PASS' : status === 'fail' ? 'FAIL' : 'IDLE'}
+            <IdeStatusPill tone={displayTone} data-testid="ide-verify-console-status">
+              {displayStatus}
             </IdeStatusPill>
           </header>
           <div className="ide-design-diagnostics-list">
@@ -541,8 +587,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </>
         }
         right={
-          <IdeStatusPill tone={status === 'pass' ? 'ok' : status === 'fail' ? 'error' : 'idle'}>
-            {status === 'pass' ? 'PASS' : status === 'fail' ? 'FAIL' : 'IDLE'}
+          <IdeStatusPill tone={displayTone} testId="ide-verify-panel-status">
+            {displayStatus}
           </IdeStatusPill>
         }
         testId="ide-verify-panel"
@@ -554,20 +600,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           <div data-testid="ide-verify-summary-card">
             <p className="ide-verify-label">Verification Summary</p>
             <h3 data-testid="ide-verify-status-label">
-              {status === 'pass'
-                ? 'PASS - deterministic agreement'
-                : status === 'fail'
-                  ? 'FAIL - mismatch detected'
-                  : 'IDLE - run verification'}
+              {displayStatusLabel}
             </h3>
             <div className="ide-verify-summary-grid">
               <div className="ide-kv-row">
                 <span>Status</span>
                 <IdeStatusPill
-                  tone={status === 'pass' ? 'ok' : status === 'fail' ? 'error' : 'idle'}
+                  tone={displayTone}
                   testId="ide-verify-summary-status"
                 >
-                  {status.toUpperCase()}
+                  {displayStatus}
                 </IdeStatusPill>
               </div>
               <div className="ide-kv-row">
@@ -651,7 +693,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             )}
           </div>
         ) : (
-          <div className="ide-verify-workbench" data-testid="ide-verify-workbench">
+          <div
+            className="ide-verify-workbench"
+            data-testid="ide-verify-workbench"
+            data-trace-ticks={waveformTicks.length}
+            data-trace-signals={signalTimeline.length}
+          >
             <section className="ide-verify-waveform-panel" data-testid="ide-verify-workspace-waveform">
               <header className="ide-section-header">
                 <h3>Waveform</h3>
@@ -662,6 +709,37 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   {runState.toUpperCase()}
                 </span>
               </header>
+
+              {hasNoTrace && (
+                <IdeCallout tone="error" title="No trace generated" testId="ide-verify-no-trace-guard">
+                  <p className="ide-copy">
+                    The run completed but produced no waveform data. Likely causes:
+                  </p>
+                  <ul className="ide-list">
+                    <li>Circuit has no outputs mapped to IO signals — check I/O mapping in Design</li>
+                    <li>No clock activity — simulation may not have advanced past tick 0</li>
+                    <li>Circuit has unconnected gates — verify all nodes are wired</li>
+                  </ul>
+                  <div className="ide-inline-actions">
+                    <IdeButton
+                      tone="primary"
+                      onClick={() =>
+                        onFixPath?.({
+                          signal: '',
+                          tick: 0,
+                          expected: '',
+                          actual: '',
+                        })
+                      }
+                      disabled={!onFixPath}
+                      testId="ide-verify-no-trace-fix"
+                    >
+                      Fix in Design
+                    </IdeButton>
+                  </div>
+                </IdeCallout>
+              )}
+
               <section className="ide-verify-tick-nav" data-testid="ide-verify-tick-nav">
                 <div className="ide-inline-actions">
                   <IdeButton
