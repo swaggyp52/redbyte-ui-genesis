@@ -8,6 +8,7 @@ import type { TickEngine, Node, Connection, Circuit } from '@redbyte/rb-logic-co
 import { useLogicViewStore, getGlobalViewStateStore, type LogicViewState } from './useLogicViewStore';
 import { NodeView, type ChipMetadata, type NodeIoPresentation } from './components/NodeView';
 import { WireView } from './components/WireView';
+import { Minimap } from './components/Minimap';
 import { Toolbar } from './components/Toolbar';
 import { renderGrid } from './tools/grid';
 import { isValidConnection, normalizeConnection, isInputPort } from './tools/wireValidation';
@@ -50,6 +51,7 @@ export interface LogicCanvasProps {
   nodeDiagnosticBadges?: Record<string, { error: number; warn: number; total: number }>;
   onNodeDiagnosticBadgeClick?: (nodeId: string) => void;
   ioPresentationMap?: Record<string, NodeIoPresentation>;
+  presentationZoomMode?: 'dense' | 'classroom';
 }
 
 export const LogicCanvas: React.FC<LogicCanvasProps> = ({
@@ -82,6 +84,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   nodeDiagnosticBadges,
   onNodeDiagnosticBadgeClick,
   ioPresentationMap,
+  presentationZoomMode = 'dense',
 }) => {
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
@@ -186,6 +189,16 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const wheelRafRef = React.useRef<number | null>(null);
   const wheelAnchorRef = React.useRef({ x: 0, y: 0 });
   const wheelStepRef = React.useRef<(() => void) | null>(null);
+  const handleMinimapPan = React.useCallback(
+    (worldX: number, worldY: number) => {
+      const cam = useLogicViewStore.getState().camera;
+      setCamera({
+        x: width / 2 - worldX * cam.zoom,
+        y: height / 2 - worldY * cam.zoom,
+      });
+    },
+    [width, height, setCamera]
+  );
   const bumpHud = React.useCallback(() => {
     setShowHud(true);
     if (hudTimerRef.current) {
@@ -1133,6 +1146,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                 connection={conn}
                 nodes={circuit.nodes}
                 camera={camera}
+                presentationZoomMode={presentationZoomMode}
                 isSelected={selection.wires.has(wireId)}
                 isHovered={hoveredWireId === wireId}
                 isNetHighlighted={isNetHighlighted}
@@ -1212,6 +1226,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               key={node.id}
               node={node}
               camera={camera}
+              presentationZoomMode={presentationZoomMode}
               isSelected={selection.nodes.has(node.id)}
               isHighlighted={node.id === highlightedNodeId}
               isMismatchHighlighted={mismatchNodeIds?.has(node.id) ?? false}
@@ -1539,6 +1554,15 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             })}
         </g>
       </svg>
+      {circuit && circuit.nodes.length > 0 && (
+        <Minimap
+          nodes={circuit.nodes}
+          camera={camera}
+          canvasWidth={width}
+          canvasHeight={height}
+          onClickPan={handleMinimapPan}
+        />
+      )}
       </div>
     </CanvasHost>
   );
