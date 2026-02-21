@@ -9,8 +9,18 @@ import { BASYS3_ALLOWED_PACKAGE_PINS, normalizeBasys3PinAlias } from '../fpga/bo
 
 export type XdcPinMap = Record<string, string>; // portName -> PACKAGE_PIN
 
+export type PinConfidence = 'strong' | 'weak';
+// strong = parsed pin is in BASYS3_ALLOWED_PACKAGE_PINS
+// weak   = parsed pin is recognized syntax but NOT in BASYS3_ALLOWED_PACKAGE_PINS
+
+export interface XdcPinEntry {
+  packagePin: string;
+  confidence: PinConfidence;
+}
+
 export interface XdcParseResult {
   pinMap: XdcPinMap;
+  pinEntries: Record<string, XdcPinEntry>;   // portName -> { packagePin, confidence }
   warnings: string[];
 }
 
@@ -25,6 +35,7 @@ function maybePushUnsupportedPinWarning(warnings: string[], pin: string): void {
 
 export function parseXdcPins(xdcText: string): XdcParseResult {
   const pinMap: XdcPinMap = {};
+  const pinEntries: Record<string, XdcPinEntry> = {};
   const warnings: string[] = [];
 
   const normalized = xdcText
@@ -42,6 +53,8 @@ export function parseXdcPins(xdcText: string): XdcParseResult {
 
     maybePushUnsupportedPinWarning(warnings, pin);
     pinMap[portName] = pin;
+    const confidence: PinConfidence = BASYS3_ALLOWED_PACKAGE_PINS.has(pin) ? 'strong' : 'weak';
+    pinEntries[portName] = { packagePin: pin, confidence };
   };
 
   // Pattern: set_property PACKAGE_PIN V17 [get_ports {SW0}]
@@ -76,5 +89,5 @@ export function parseXdcPins(xdcText: string): XdcParseResult {
     }
   }
 
-  return { pinMap, warnings };
+  return { pinMap, pinEntries, warnings };
 }

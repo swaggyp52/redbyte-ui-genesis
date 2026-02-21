@@ -82,3 +82,33 @@ describe('xdcImport', () => {
     expect(result.warnings.some((warning) => warning.includes('Unsupported pin'))).toBe(false);
   });
 });
+
+describe('parseXdcPins — pin confidence', () => {
+  it('sets confidence=strong for a known Basys3 package pin (V17)', () => {
+    const result = parseXdcPins('set_property PACKAGE_PIN V17 [get_ports {sw0}]');
+    expect(result.pinEntries['sw0']?.confidence).toBe('strong');
+    expect(result.pinEntries['sw0']?.packagePin).toBe('V17');
+  });
+
+  it('sets confidence=weak for an unknown package pin', () => {
+    const result = parseXdcPins('set_property PACKAGE_PIN ZZZZ [get_ports {sw0}]');
+    expect(result.pinEntries['sw0']?.confidence).toBe('weak');
+    expect(result.pinEntries['sw0']?.packagePin).toBe('ZZZZ');
+  });
+
+  it('returns pinEntries for all successfully parsed ports', () => {
+    const result = parseXdcPins(`
+set_property PACKAGE_PIN V17 [get_ports {sw0}]
+set_property PACKAGE_PIN V16 [get_ports {sw1}]
+set_property PACKAGE_PIN U16 [get_ports {ld0}]
+    `);
+    expect(Object.keys(result.pinEntries)).toHaveLength(3);
+    expect(result.pinEntries['sw0']?.confidence).toBe('strong');
+    expect(result.pinEntries['ld0']?.confidence).toBe('strong');
+  });
+
+  it('does not add entries for unparsed lines (comments, empty)', () => {
+    const result = parseXdcPins('# just a comment\n\n');
+    expect(Object.keys(result.pinEntries)).toHaveLength(0);
+  });
+});

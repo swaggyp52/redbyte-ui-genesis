@@ -25,6 +25,7 @@ export interface ZipImportInspection {
   xdcCandidates: string[];      // all XDC files found, in preference order
   parsedHdl: ParsedHDL;
   xdcResult?: XdcParseResult;
+  weakPinPorts: string[];
   warnings: string[];
   project: RBProject;
 }
@@ -100,6 +101,13 @@ export async function importVivadoZipBytes(
     .sort(compareXdcEntry)
     .map((entry) => entry.path);
 
+  const weakPinPorts = xdcResult?.pinEntries
+    ? Object.entries(xdcResult.pinEntries)
+        .filter(([, entry]) => entry.confidence === 'weak')
+        .map(([portName]) => portName)
+        .sort(compareCodepoint)
+    : [];
+
   return {
     sourceName,
     detectedTopPath: topEntry.path,
@@ -111,6 +119,7 @@ export async function importVivadoZipBytes(
     xdcCandidates,
     parsedHdl,
     xdcResult,
+    weakPinPorts,
     warnings,
     project,
   };

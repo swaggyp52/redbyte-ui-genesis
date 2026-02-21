@@ -28,6 +28,13 @@ export interface ImportSurfaceProps {
   onImportProject?: (project: RBProject) => void;
 }
 
+const BASYS3_QUICK_PINS = [
+  'SW0', 'SW1', 'SW2', 'SW3', 'SW4', 'SW5', 'SW6', 'SW7',
+  'LD0', 'LD1', 'LD2', 'LD3', 'LD4', 'LD5', 'LD6', 'LD7',
+  'BTNC', 'BTNU', 'BTND', 'BTNL', 'BTNR',
+  'CLK100MHZ',
+] as const;
+
 export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject }) => {
   const [tab, setTab] = useState<ImportTab>('hdl');
   const [language, setLanguage] = useState<HdlLanguage>('auto');
@@ -694,16 +701,24 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
             <section className="ide-export-section" data-testid="ide-import-unmapped-list">
               <IdeSectionHeader title="Unmapped Ports" meta={`${unmappedPorts.length} remaining`} />
               {unmappedPorts.length > 0 ? (
-                <ul className="ide-list">
-                  {unmappedPorts.map((port) => {
-                    const suggestion = suggestBasys3Alias(port.name, port.direction);
-                    return (
-                      <li key={port.name}>
-                        <code>{port.name}</code> - {suggestion ? `Suggested: ${suggestion.pin}` : 'No automatic alias'}
-                      </li>
-                    );
-                  })}
-                </ul>
+                <div className="ide-import-unmapped-rows">
+                  {unmappedPorts.map((port) => (
+                    <div key={port.name} className="ide-import-unmapped-row" data-testid={`ide-import-unmapped-row-${port.name}`}>
+                      <span className="ide-import-unmapped-port-name">{port.name}</span>
+                      <select
+                        className="ide-import-unmapped-pin-select"
+                        data-testid={`ide-import-unmapped-pin-select-${port.name}`}
+                        value={mapping[port.name] ?? ''}
+                        onChange={(e) => setMapping((prev) => ({ ...prev, [port.name]: e.target.value }))}
+                      >
+                        <option value="">— map to pin —</option>
+                        {BASYS3_QUICK_PINS.map((pin) => (
+                          <option key={pin} value={pin}>{pin}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
               ) : hasParsedHdl ? (
                 <IdeCallout tone="success" title="All required ports mapped">
                   Required ports are fully mapped and ready for import.
