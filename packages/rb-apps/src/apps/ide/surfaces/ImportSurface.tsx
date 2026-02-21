@@ -321,6 +321,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
     <IdeSurfaceLayout
       mode="import"
       consoleHasBlocking={blockingErrors.length > 0}
+      consoleHasEntries={blockingErrors.length > 0 || warnings.length > 0}
       dock={
         <section className="ide-import-file-tree" data-testid="ide-import-file-tree">
           <header className="ide-design-subheader">
@@ -362,7 +363,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
       }
       inspector={
         <>
-          <IdeInspectorSection title="Pipeline Stage">
+          <IdeInspectorSection title="Pipeline Stage" defaultOpen>
             <div className="ide-kv-list">
               <div className="ide-kv-row">
                 <span>HDL Parsed</span>
@@ -385,7 +386,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
             </div>
           </IdeInspectorSection>
 
-          <IdeInspectorSection title="Next Step">
+          <IdeInspectorSection title="Next Step" defaultOpen={false}>
             {canImport ? (
               <IdeCallout tone="success" title="Ready to Import">
                 Mapping is complete. Import this design to the project graph.
@@ -620,6 +621,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
 
           <section className="ide-import-stage-col" data-testid="ide-import-diagnostics-panel">
             <IdeSectionHeader title="Diagnostics + Preview" meta="Stage 2/3" />
+            {!hasParsedHdl && (
+              <IdeCallout tone="info" title="Nothing parsed yet" testId="ide-import-empty-state">
+                Paste module/entity HDL in the editor and click Parse — or Upload a Vivado ZIP to
+                auto-extract source and constraints.
+              </IdeCallout>
+            )}
             <div className="ide-kv-list">
               <div className="ide-kv-row">
                 <span>Parsed Entity</span>
@@ -656,11 +663,11 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
                     );
                   })}
                 </ul>
-              ) : (
+              ) : hasParsedHdl ? (
                 <IdeCallout tone="success" title="All required ports mapped">
                   Required ports are fully mapped and ready for import.
                 </IdeCallout>
-              )}
+              ) : null}
             </section>
 
             <section className="ide-export-section" data-testid="ide-import-warnings">
@@ -673,9 +680,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
                     ))}
                   </ul>
                 </IdeCallout>
-              ) : (
+              ) : hasParsedHdl ? (
                 <IdeCallout tone="info" title="No warnings">No parser warnings detected yet.</IdeCallout>
-              )}
+              ) : null}
             </section>
 
             <section className="ide-export-section" data-testid="ide-import-errors">
@@ -688,11 +695,11 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
                     ))}
                   </ul>
                 </IdeCallout>
-              ) : (
+              ) : hasParsedHdl ? (
                 <IdeCallout tone="success" title="No blocking errors">
                   Import can proceed once you click "Import to Project."
                 </IdeCallout>
-              )}
+              ) : null}
             </section>
 
             <section className="ide-export-section">
