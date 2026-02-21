@@ -278,8 +278,8 @@ function compareXdcEntry(left: ZipTextEntry, right: ZipTextEntry): number {
   const leftPath = left.path.toLowerCase();
   const rightPath = right.path.toLowerCase();
   // Prefer files in Vivado constrs_* directories
-  const leftConstrs = /\/constr[s]?_\d+\//.test(leftPath);
-  const rightConstrs = /\/constr[s]?_\d+\//.test(rightPath);
+  const leftConstrs = /(^|\/)constrs_\d+\//.test(leftPath);
+  const rightConstrs = /(^|\/)constrs_\d+\//.test(rightPath);
   if (leftConstrs !== rightConstrs) return leftConstrs ? -1 : 1;
   // Then prefer top.xdc by name
   const leftTop = leftPath.endsWith('/top.xdc') || leftPath === 'top.xdc';
@@ -306,7 +306,7 @@ function topHdlScore(path: string): number {
           ? 2
           : 3;
   // Files in sources_* dirs (Vivado project structure) sort before non-sources files at same level
-  const inSourcesDir = /\/sources?_\d+\//.test(lower);
+  const inSourcesDir = /(^|\/)sources?_\d+\//.test(lower);
   return inSourcesDir ? fileScore : fileScore + 4;
 }
 

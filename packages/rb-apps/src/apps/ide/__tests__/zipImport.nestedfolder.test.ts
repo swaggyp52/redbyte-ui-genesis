@@ -60,4 +60,41 @@ describe('zipImport — nested Vivado folder structure', () => {
     const result = await importVivadoZipBytes(bytes, { sourceName: 'project.zip' });
     expect(result.xdcCandidates[0]).toBe('project.srcs/constrs_1/new/basys3.xdc');
   });
+
+  it('prefers sources_1/ HDL over a competing root-level file', async () => {
+    const zip = new JSZip();
+    zip.file(
+      'project.srcs/sources_1/new/top.vhd',
+      `library ieee; use ieee.std_logic_1164.all;
+entity top is port (a : in std_logic; b : out std_logic); end top;
+architecture rtl of top is begin b <= a; end rtl;`
+    );
+    zip.file('helper.vhd', '-- not the top module');  // competing file at root
+    const buffer = await zip.generateAsync({ type: 'arraybuffer' });
+    const bytes = new Uint8Array(buffer);
+    const result = await importVivadoZipBytes(bytes, { sourceName: 'project.zip' });
+    expect(result.detectedTopPath).toBe('project.srcs/sources_1/new/top.vhd');
+    expect(result.hdlCandidates[0]).toBe('project.srcs/sources_1/new/top.vhd');
+  });
+
+  it('prefers constrs_1/ XDC over a competing root-level file', async () => {
+    const zip = new JSZip();
+    zip.file(
+      'project.srcs/sources_1/new/top.vhd',
+      `library ieee; use ieee.std_logic_1164.all;
+entity top is port (sw0 : in std_logic; ld0 : out std_logic); end top;
+architecture rtl of top is begin ld0 <= sw0; end rtl;`
+    );
+    zip.file(
+      'project.srcs/constrs_1/new/basys3.xdc',
+      `set_property PACKAGE_PIN V17 [get_ports {sw0}]
+set_property PACKAGE_PIN U16 [get_ports {ld0}]`
+    );
+    zip.file('other.xdc', '# not the right XDC');  // competing file at root
+    const buffer = await zip.generateAsync({ type: 'arraybuffer' });
+    const bytes = new Uint8Array(buffer);
+    const result = await importVivadoZipBytes(bytes, { sourceName: 'project.zip' });
+    expect(result.detectedXdcPath).toBe('project.srcs/constrs_1/new/basys3.xdc');
+    expect(result.xdcCandidates[0]).toBe('project.srcs/constrs_1/new/basys3.xdc');
+  });
 });
