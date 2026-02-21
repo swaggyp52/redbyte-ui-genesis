@@ -179,6 +179,7 @@
         "ide:gate:export-includes-rbproj-contract": "node ./scripts/gates/ide-export-includes-rbproj-contract.mjs",
         "ide:gate:zip-import-contract": "node ./scripts/gates/ide-zip-import-contract.mjs",
         "ide:gate:bringup-contract": "node ./scripts/gates/ide-bringup-contract.mjs",
+        "ide:gate:autolayout-contract": "node ./scripts/gates/ide-autolayout-contract.mjs",
         "ide:gate:verify-workbench-contract": "node ./scripts/gates/ide-verify-workbench-contract.mjs",
         "ide:gate:verify-summary-contract": "node ./scripts/gates/ide-verify-summary-contract.mjs",
         "ide:gate:evidence-capsule-contract": "node ./scripts/gates/ide-evidence-capsule-contract.mjs",

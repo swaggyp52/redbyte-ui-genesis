@@ -228,7 +228,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       const next = entries[0];
       if (!next) return;
       const width = Math.max(640, Math.floor(next.contentRect.width));
-      const height = Math.max(360, Math.floor(next.contentRect.height));
+      const height = Math.max(64, Math.floor(next.contentRect.height));
       setCanvasSize({ width, height });
     });
     observer.observe(canvasHostRef.current);
@@ -533,6 +533,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     });
   }, [canvasSize.height, canvasSize.width, editorCircuit.nodes, setCamera]);
 
+  const fitToCircuitRef = useRef(fitToCircuit);
+  useEffect(() => { fitToCircuitRef.current = fitToCircuit; }, [fitToCircuit]);
+
   const zoomIn = useCallback(() => {
     zoomCamera(120, canvasSize.width / 2, canvasSize.height / 2);
   }, [canvasSize.height, canvasSize.width, zoomCamera]);
@@ -635,19 +638,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (lastViewportSeedRef.current === viewportSeed) return;
     lastViewportSeedRef.current = viewportSeed;
     hasAutoFitRef.current = false;
-
-    if (editorCircuit.nodes.length === 0) {
-      setCamera({ x: 0, y: 0, zoom: 1 });
-      return;
-    }
-
     const frame = window.requestAnimationFrame(() => {
-      fitToCircuit();
+      fitToCircuitRef.current();
     });
     return () => {
       window.cancelAnimationFrame(frame);
     };
-  }, [editorCircuit.nodes.length, fitToCircuit, setCamera, viewportSeed]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewportSeed]);
 
   const handleSignalsUpdated = useCallback(() => {
     // Runtime simulation state is authoritative. Canvas-local ticks are ignored.
