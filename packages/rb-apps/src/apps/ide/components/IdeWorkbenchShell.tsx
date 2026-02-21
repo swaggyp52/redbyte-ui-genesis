@@ -9,16 +9,18 @@ type IdeSurfaceMode =
   | 'import';
 type ResizeEdge = 'left' | 'right' | 'bottom';
 
-const LAYOUT_STORAGE_KEY = 'rb.ide.workbench.layout.v1';
+const LAYOUT_STORAGE_KEY = 'rb.ide.workbench.layout.v2';
 const DEFAULT_LAYOUT = {
-  leftWidth: 240,
-  rightWidth: 296,
-  consoleHeight: 72,
+  leftWidth: 200,
+  rightWidth: 320,
+  consoleHeight: 64,
 };
 
-const LEFT_WIDTH_RANGE = { min: 200, max: 420 };
-const RIGHT_WIDTH_RANGE = { min: 240, max: 420 };
-const CONSOLE_HEIGHT_RANGE = { min: 64, max: 320 };
+const LEFT_WIDTH_RANGE = { min: 180, max: 420 };
+const RIGHT_WIDTH_RANGE = { min: 280, max: 480 };
+const CONSOLE_HEIGHT_RANGE = { min: 40, max: 320 };
+const COLLAPSED_CONSOLE_HEIGHT = 40;
+const DEFAULT_EXPANDED_CONSOLE_HEIGHT = 88;
 const EXPANDED_CONSOLE_HEIGHT = 176;
 
 interface WorkbenchLayoutState {
@@ -41,6 +43,7 @@ export interface IdeWorkbenchShellProps {
   rightDock?: React.ReactNode;
   console?: React.ReactNode;
   consoleHasBlocking?: boolean;
+  consoleHasEntries?: boolean;
 }
 
 export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
@@ -50,9 +53,20 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   rightDock,
   console,
   consoleHasBlocking = false,
+  consoleHasEntries = true,
 }) => {
   const [layout, setLayout] = useState<WorkbenchLayoutState>(DEFAULT_LAYOUT);
   const resizeRef = useRef<ActiveResizeState | null>(null);
+  const [consolePinnedOpen, setConsolePinnedOpen] = useState(false);
+  const [focusMode, setFocusMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(`rb.ide.workbench.focus.${mode}`) === '1';
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(`rb.ide.workbench.focus.${mode}`, focusMode ? '1' : '0');
+  }, [focusMode, mode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -82,6 +96,33 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
           }
     );
   }, [consoleHasBlocking]);
+
+  useEffect(() => {
+    if (consoleHasBlocking) {
+      setConsolePinnedOpen(true);
+      return;
+    }
+    if (consoleHasEntries) {
+      setLayout((previous) =>
+        previous.consoleHeight >= DEFAULT_EXPANDED_CONSOLE_HEIGHT
+          ? previous
+          : {
+              ...previous,
+              consoleHeight: DEFAULT_EXPANDED_CONSOLE_HEIGHT,
+            }
+      );
+      return;
+    }
+    setConsolePinnedOpen(false);
+    setLayout((previous) =>
+      previous.consoleHeight === COLLAPSED_CONSOLE_HEIGHT
+        ? previous
+        : {
+            ...previous,
+            consoleHeight: COLLAPSED_CONSOLE_HEIGHT,
+          }
+    );
+  }, [consoleHasBlocking, consoleHasEntries]);
 
   const onPointerMove = useCallback((event: PointerEvent) => {
     const active = resizeRef.current;
@@ -147,11 +188,18 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     [layout.consoleHeight, layout.leftWidth, layout.rightWidth]
   );
 
+  const consoleState = consoleHasBlocking
+    ? 'blocking'
+    : consoleHasEntries || consolePinnedOpen
+      ? 'expanded'
+      : 'collapsed';
+
   return (
     <section
-      className="ide-surface-shell ide-workbench-shell"
+      className={`ide-surface-shell ide-workbench-shell${focusMode ? ' is-focus-mode' : ''}`}
       data-testid={`ide-mode-${mode}`}
       data-ide-mode-marker={mode}
+      data-focus-mode={focusMode ? '1' : '0'}
       style={shellStyle}
     >
       <div className="ide-workbench-main" data-testid="ide-surface-grid" data-grid-columns="12">
@@ -192,7 +240,47 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
         onPointerDown={(event) => beginResize('bottom', event)}
       />
 
-      <section className="ide-workbench-console" data-testid="ide-workbench-console">
+      <section
+        className={`ide-workbench-console ${
+          consoleState === 'collapsed' ? 'is-collapsed' : 'is-expanded'
+        }`}
+        data-testid="ide-workbench-console"
+        data-console-state={consoleState}
+      >
+        <div className="ide-workbench-console-bar">
+          <button
+            type="button"
+            className="ide-workbench-focus-toggle"
+            data-testid="ide-workbench-focus-toggle"
+            onClick={() => setFocusMode((previous) => !previous)}
+            aria-label={focusMode ? 'Exit focus mode' : 'Enter focus mode'}
+          >
+            {focusMode ? '\u229e Restore' : '\u22a1 Focus'}
+          </button>
+          <button
+            type="button"
+            className="ide-workbench-console-toggle"
+            data-testid="ide-workbench-console-toggle"
+            onClick={() => {
+              if (consoleHasBlocking) return;
+              if (!consoleHasEntries) return;
+              setConsolePinnedOpen((previous) => !previous);
+              setLayout((previous) => ({
+                ...previous,
+                consoleHeight:
+                  previous.consoleHeight <= COLLAPSED_CONSOLE_HEIGHT
+                    ? DEFAULT_EXPANDED_CONSOLE_HEIGHT
+                    : COLLAPSED_CONSOLE_HEIGHT,
+              }));
+            }}
+            aria-label="Toggle workbench console"
+          >
+            <span className="ide-workbench-console-toggle-label">Console</span>
+            <span className="ide-workbench-console-toggle-state">
+              {consoleState === 'collapsed' ? 'Show' : 'Hide'}
+            </span>
+          </button>
+        </div>
         {console ?? <DefaultConsole mode={mode} />}
       </section>
     </section>
