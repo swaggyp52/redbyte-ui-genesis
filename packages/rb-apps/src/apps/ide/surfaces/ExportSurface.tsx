@@ -321,6 +321,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     <IdeSurfaceLayout
       mode="export"
       consoleHasBlocking={hasBlockingErrors}
+      consoleHasEntries={
+        diagnosticsList.length > 0 || capsuleBuildState === 'error' || capsuleBuildState === 'done'
+      }
       dock={
         <section className="ide-export-file-tree" data-testid="ide-export-artifact-tree">
           <header className="ide-design-subheader">
@@ -354,7 +357,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       }
       inspector={
         <>
-          <IdeInspectorSection title="Export Context">
+          <IdeInspectorSection title="Export Context" defaultOpen>
             <div className="ide-kv-list">
               <div className="ide-kv-row">
                 <span>Board</span>
@@ -401,7 +404,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </div>
           </IdeInspectorSection>
 
-          <IdeInspectorSection title="Artifact Checklist">
+          <IdeInspectorSection title="Artifact Checklist" defaultOpen={false}>
             <div className="ide-export-artifact-list">
               {viewModel.artifacts.map((artifact) => (
                 <div key={artifact.path} className="ide-export-artifact-row">
@@ -457,6 +460,19 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           }
           testId="ide-export-panel"
         >
+          <div
+            className={`ide-export-readiness-banner ${hasBlockingErrors ? 'is-blocked' : 'is-ready'}`}
+            data-testid="ide-export-readiness-banner"
+          >
+            <span className="ide-export-readiness-label" data-testid="ide-export-readiness-label">
+              {hasBlockingErrors ? 'BLOCKED' : 'READY TO EXPORT'}
+            </span>
+            <span className="ide-export-readiness-detail">
+              {hasBlockingErrors
+                ? `${diagnosticsList.filter((d) => d.severity === 'error').length} error${diagnosticsList.filter((d) => d.severity === 'error').length !== 1 ? 's' : ''} must be resolved`
+                : `All checks passed · ${viewModel.artifacts.length} artifact${viewModel.artifacts.length !== 1 ? 's' : ''} ready`}
+            </span>
+          </div>
           <div className="ide-export-sections">
             <section className="ide-export-section" data-testid="ide-export-status-strip">
               <header className="ide-export-section-header">

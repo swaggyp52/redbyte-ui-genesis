@@ -53,27 +53,31 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
         <IdeStatusPill tone={saveTone} testId="ide-save-state">
           {saveLabel}
         </IdeStatusPill>
-        <IdeButton tone="secondary" onClick={onSave} testId="ide-action-save">
-          Save
-        </IdeButton>
-        <IdeButton tone="ghost" onClick={onSaveAs} testId="ide-action-save-as">
-          Save As
-        </IdeButton>
-        <IdeButton tone="ghost" onClick={onLoad} testId="ide-action-load">
-          Load
-        </IdeButton>
-        <IdeButton tone="ghost" onClick={onResetToExample} testId="ide-action-reset-example">
-          Reset Example
-        </IdeButton>
-        <IdeButton tone="secondary" onClick={onRunVerify} testId="ide-action-run-verify">
-          Run Verify
-        </IdeButton>
-        <IdeButton tone="primary" onClick={onExport} testId="ide-action-export">
-          Export
-        </IdeButton>
-        <IdeButton tone="ghost" onClick={onHelp} testId="ide-action-help">
-          Help
-        </IdeButton>
+        <div className="ide-top-right-group" data-testid="ide-top-file-actions">
+          <IdeButton tone="secondary" onClick={onSave} testId="ide-action-save">
+            Save
+          </IdeButton>
+          <IdeButton tone="ghost" onClick={onSaveAs} testId="ide-action-save-as">
+            Save As
+          </IdeButton>
+          <IdeButton tone="ghost" onClick={onLoad} testId="ide-action-load">
+            Load
+          </IdeButton>
+          <IdeButton tone="ghost" onClick={onResetToExample} testId="ide-action-reset-example">
+            Reset
+          </IdeButton>
+        </div>
+        <div className="ide-top-right-group" data-testid="ide-top-run-actions">
+          <IdeButton tone="secondary" onClick={onRunVerify} testId="ide-action-run-verify">
+            Run Verify
+          </IdeButton>
+          <IdeButton tone="primary" onClick={onExport} testId="ide-action-export">
+            Export
+          </IdeButton>
+          <IdeButton tone="ghost" onClick={onHelp} testId="ide-action-help">
+            Help
+          </IdeButton>
+        </div>
       </div>
     </header>
   );

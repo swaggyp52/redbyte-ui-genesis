@@ -129,6 +129,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     <IdeSurfaceLayout
       mode="hardware"
       consoleHasBlocking={hasBlocking}
+      consoleHasEntries={hasBlocking}
       dock={
         <section className="ide-workbench-placeholder" data-testid="ide-hardware-sources-dock">
           <header className="ide-workbench-placeholder-header">
@@ -160,12 +161,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       }
       inspector={
         <>
-          <IdeInspectorSection title="Expected Behavior">
+          <IdeInspectorSection title="Expected Behavior" defaultOpen>
             <p className="ide-copy" data-testid="ide-hardware-expected-behavior">
               {expectedBehavior}
             </p>
           </IdeInspectorSection>
-          <IdeInspectorSection title="Bring-Up Status">
+          <IdeInspectorSection title="Bring-Up Status" defaultOpen={false}>
             <div className="ide-kv-list">
               <div className="ide-kv-row">
                 <span>Verify Hash</span>

@@ -94,6 +94,7 @@ export interface WireViewProps {
   connection: Connection;
   nodes: Node[];
   camera: Camera;
+  presentationZoomMode?: 'dense' | 'classroom';
   isSelected: boolean;
   isHovered?: boolean;
   isNetHighlighted?: boolean;
@@ -108,6 +109,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
   connection,
   nodes,
   camera,
+  presentationZoomMode = 'dense',
   isSelected,
   isHovered = false,
   isNetHighlighted = false,
@@ -144,7 +146,20 @@ const WireViewComponent: React.FC<WireViewProps> = ({
   const isActive = signal === 1;
   const netHighlightColor = '#fbbf24'; // amber-400
   const zoomBand = resolveWireZoomBand(camera.zoom);
-  const bandStyle = WIRE_BAND_STYLES[zoomBand];
+  const baseBandStyle = WIRE_BAND_STYLES[zoomBand];
+  const wireScale = presentationZoomMode === 'classroom' ? 1.18 : 1;
+  const bandStyle = {
+    ...baseBandStyle,
+    hitWidth: baseBandStyle.hitWidth * wireScale,
+    baseStroke: baseBandStyle.baseStroke * wireScale,
+    hoverStroke: baseBandStyle.hoverStroke * wireScale,
+    selectedStroke: baseBandStyle.selectedStroke * wireScale,
+    overlayStroke: baseBandStyle.overlayStroke * wireScale,
+    glowStroke: baseBandStyle.glowStroke * wireScale,
+    netGlowStroke: baseBandStyle.netGlowStroke * wireScale,
+    probeGlowStroke: baseBandStyle.probeGlowStroke * wireScale,
+    mismatchGlowStroke: baseBandStyle.mismatchGlowStroke * wireScale,
+  };
 
   return (
     <g

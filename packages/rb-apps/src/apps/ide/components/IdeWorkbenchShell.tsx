@@ -247,42 +247,41 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
         data-testid="ide-workbench-console"
         data-console-state={consoleState}
       >
-        <div className="ide-workbench-console-bar">
-          <button
-            type="button"
-            className="ide-workbench-focus-toggle"
-            data-testid="ide-workbench-focus-toggle"
-            onClick={() => setFocusMode((previous) => !previous)}
-            aria-label={focusMode ? 'Exit focus mode' : 'Enter focus mode'}
-          >
-            {focusMode ? '\u229e Restore' : '\u22a1 Focus'}
-          </button>
-          <button
-            type="button"
-            className="ide-workbench-console-toggle"
-            data-testid="ide-workbench-console-toggle"
-            onClick={() => {
-              if (consoleHasBlocking) return;
-              if (!consoleHasEntries) return;
-              setConsolePinnedOpen((previous) => !previous);
-              setLayout((previous) => ({
-                ...previous,
-                consoleHeight:
-                  previous.consoleHeight <= COLLAPSED_CONSOLE_HEIGHT
-                    ? DEFAULT_EXPANDED_CONSOLE_HEIGHT
-                    : COLLAPSED_CONSOLE_HEIGHT,
-              }));
-            }}
-            aria-label="Toggle workbench console"
-          >
-            <span className="ide-workbench-console-toggle-label">Console</span>
-            <span className="ide-workbench-console-toggle-state">
-              {consoleState === 'collapsed' ? 'Show' : 'Hide'}
-            </span>
-          </button>
-        </div>
+        <button
+          type="button"
+          className="ide-workbench-console-toggle"
+          data-testid="ide-workbench-console-toggle"
+          onClick={() => {
+            if (consoleHasBlocking) return;
+            if (!consoleHasEntries) return;
+            setConsolePinnedOpen((previous) => !previous);
+            setLayout((previous) => ({
+              ...previous,
+              consoleHeight:
+                previous.consoleHeight <= COLLAPSED_CONSOLE_HEIGHT
+                  ? DEFAULT_EXPANDED_CONSOLE_HEIGHT
+                  : COLLAPSED_CONSOLE_HEIGHT,
+            }));
+          }}
+          aria-label="Toggle workbench console"
+        >
+          <span className="ide-workbench-console-toggle-label">Console</span>
+          <span className="ide-workbench-console-toggle-state">
+            {consoleState === 'collapsed' ? 'Show' : 'Hide'}
+          </span>
+        </button>
         {console ?? <DefaultConsole mode={mode} />}
       </section>
+      {/* Focus toggle lives outside the console so it's always clickable */}
+      <button
+        type="button"
+        className="ide-workbench-focus-toggle"
+        data-testid="ide-workbench-focus-toggle"
+        onClick={() => setFocusMode((previous) => !previous)}
+        aria-label={focusMode ? 'Exit focus mode' : 'Enter focus mode'}
+      >
+        {focusMode ? '\u229e Restore' : '\u22a1 Focus'}
+      </button>
     </section>
   );
 };
