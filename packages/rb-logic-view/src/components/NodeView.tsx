@@ -6,6 +6,14 @@ import React from 'react';
 import type { Node, PortRef } from '@redbyte/rb-logic-core';
 import type { Camera } from '../useLogicViewStore';
 
+type NodeLodBand = 'full' | 'compact' | 'minimal';
+
+function resolveNodeLod(zoom: number): NodeLodBand {
+  if (zoom < 0.70) return 'minimal';
+  if (zoom < 0.85) return 'compact';
+  return 'full';
+}
+
 export interface ChipMetadata {
   name: string;
   inputs: Array<{ id: string; name: string }>;
@@ -23,6 +31,7 @@ export interface NodeIoPresentation {
 export interface NodeViewProps {
   node: Node;
   camera: Camera;
+  presentationZoomMode?: 'dense' | 'classroom';
   isSelected: boolean;
   isHighlighted?: boolean;
   isMismatchHighlighted?: boolean;
@@ -72,6 +81,7 @@ const NODE_COLORS: Record<string, string> = {
 const NodeViewComponent: React.FC<NodeViewProps> = ({
   node,
   camera,
+  presentationZoomMode = 'dense',
   isSelected,
   isHighlighted = false,
   isMismatchHighlighted = false,
@@ -175,9 +185,17 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const pos = externalDragPosition ?? node.position ?? { x: 0, y: 0 };
   const screenX = pos.x * camera.zoom + camera.x;
   const screenY = pos.y * camera.zoom + camera.y;
-  const size = 48 * camera.zoom;
+  const presentationScale = presentationZoomMode === 'classroom' ? 1.15 : 1;
+  const size = 48 * camera.zoom * presentationScale;
+  const portHitRadius = presentationZoomMode === 'classroom' ? 20 : 16;
+  const inlinePortRadius = presentationZoomMode === 'classroom' ? 6.4 : 5;
+  const inlinePortGlowRadius = presentationZoomMode === 'classroom' ? 9.5 : 8;
+  const nodeLabelFont = Math.max(11, (presentationZoomMode === 'classroom' ? 13 : 12) * camera.zoom);
+  const pinAliasFont = Math.max(7, (presentationZoomMode === 'classroom' ? 9 : 8) * camera.zoom);
+  const pinNameFont = Math.max(7, (presentationZoomMode === 'classroom' ? 9 : 8) * camera.zoom);
   const nodeScale = isDragging ? 1 : isSelected ? 1.03 : isHovered ? 1.018 : 1;
   const nodeTransform = `translate(${screenX}, ${screenY}) rotate(${safeRotation}) scale(${nodeScale})`;
+  const lod = resolveNodeLod(camera.zoom);
 
   const isSwitch = node.type === 'Switch' || node.type === 'INPUT';
   const switchState = node.state?.isOn ?? 0;
@@ -294,11 +312,15 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     const chipColor = chipMetadata.color || '#1e293b'; // Dark slate for chips
     const chipHeight = size * 1.5; // Taller for chips with multiple ports
     const portSpacing = chipHeight / (Math.max(chipMetadata.inputs.length, chipMetadata.outputs.length) + 1);
+    const nodeOutputValue = outputSignal;
 
     return (
       <g
         transform={nodeTransform}
         data-node-id={node.id}
+        data-node-type={node.type}
+        data-sim-value={nodeOutputValue}
+        data-lod={lod}
         data-node-selected={isSelected ? '1' : '0'}
         onDoubleClick={handleDoubleClick}
         onMouseEnter={() => setIsHovered(true)}
@@ -372,20 +394,22 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         <line x1={0} y1={-chipHeight / 4 + 3} x2={6} y2={chipHeight / 4 - 2} stroke="#64748b" strokeWidth={1} opacity={0.3} />
 
         {/* Chip label */}
-        <text
-          x={0}
-          y={chipHeight / 2 + 12}
-          textAnchor="middle"
-          fill="#94a3b8"
-          fontSize={Math.max(8, 10 * camera.zoom)}
-          fontWeight="600"
-          style={{ pointerEvents: 'none', userSelect: 'none' }}
-        >
-          {chipMetadata.name}
-        </text>
+        {lod !== 'minimal' && (
+          <text
+            x={0}
+            y={chipHeight / 2 + 12}
+            textAnchor="middle"
+            fill="#94a3b8"
+            fontSize={Math.max(8, 10 * camera.zoom)}
+            fontWeight="600"
+            style={{ pointerEvents: 'none', userSelect: 'none' }}
+          >
+            {chipMetadata.name}
+          </text>
+        )}
 
         {/* Layer badge */}
-        {chipMetadata.layer !== undefined && (
+        {lod === 'full' && chipMetadata.layer !== undefined && (
           <text
             x={0}
             y={-chipHeight / 2 - 8}
@@ -576,17 +600,19 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 </>
               )}
               {renderHoverBadge(-size / 2 - 12, yPos, input.id)}
-              <text
-                x={-size / 2 - 8}
-                y={yPos}
-                textAnchor="end"
-                dominantBaseline="middle"
-                fill="#94a3b8"
-                fontSize={Math.max(6, 8 * camera.zoom)}
-                style={{ pointerEvents: 'none', userSelect: 'none' }}
-              >
-                {input.name}
-              </text>
+              {lod === 'full' && (
+                <text
+                  x={-size / 2 - 8}
+                  y={yPos}
+                  textAnchor="end"
+                  dominantBaseline="middle"
+                  fill="#94a3b8"
+                  fontSize={Math.max(6, 8 * camera.zoom)}
+                  style={{ pointerEvents: 'none', userSelect: 'none' }}
+                >
+                  {input.name}
+                </text>
+              )}
             </g>
           );
         })}
@@ -666,7 +692,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               <circle
                 cx={size / 2}
                 cy={yPos}
-                r={16}
+                r={portHitRadius}
                 fill="transparent"
                 data-port-id={output.id}
                 style={{ cursor: 'crosshair' }}
@@ -704,7 +730,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               <circle
                 cx={size / 2}
                 cy={yPos}
-                r={4}
+                r={presentationZoomMode === 'classroom' ? 4.8 : 4}
                 fill={isWireStart ? "#00ffff" : isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.${output.id}`) ? "#00ffff" : outputSignal ? '#22c55e' : '#6b7280'}
                 stroke={isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.${output.id}`) ? "#00ffff" : "#fff"}
                 strokeWidth={probedPorts?.has(`${node.id}.${output.id}`) ? 2 : isHovered ? 2 : 1}
@@ -755,17 +781,19 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 </>
               )}
               {renderHoverBadge(size / 2 + 12, yPos, output.id)}
-              <text
-                x={size / 2 + 8}
-                y={yPos}
-                textAnchor="start"
-                dominantBaseline="middle"
-                fill="#94a3b8"
-                fontSize={Math.max(6, 8 * camera.zoom)}
-                style={{ pointerEvents: 'none', userSelect: 'none' }}
-              >
-                {output.name}
-              </text>
+              {lod === 'full' && (
+                <text
+                  x={size / 2 + 8}
+                  y={yPos}
+                  textAnchor="start"
+                  dominantBaseline="middle"
+                  fill="#94a3b8"
+                  fontSize={pinNameFont}
+                  style={{ pointerEvents: 'none', userSelect: 'none' }}
+                >
+                  {output.name}
+                </text>
+              )}
             </g>
           );
         })}
@@ -774,10 +802,14 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   }
 
   // Standard node rendering
+  const nodeOutputValue = node.type === 'OUTPUT' || node.type === 'Lamp' ? inputSignal : outputSignal;
   return (
     <g
       transform={nodeTransform}
       data-node-id={node.id}
+      data-node-type={node.type}
+      data-sim-value={nodeOutputValue}
+      data-lod={lod}
       data-node-selected={isSelected ? '1' : '0'}
       onDoubleClick={handleDoubleClick}
       onMouseEnter={() => setIsHovered(true)}
@@ -920,25 +952,28 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
       {/* Toggle is rendered in LogicCanvas.tsx <g id="rb-switch-overlay"> above all nodes */}
 
       {/* Node label */}
-      <text
-        x={0}
-        y={node.type === 'OUTPUT' || node.type === 'Lamp' ? size * 0.18 : 0}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill="#fff"
-        fontSize={Math.max(10, 12 * camera.zoom)}
-        style={{ pointerEvents: 'none', userSelect: 'none' }}
-      >
-        {ioDisplayLabel}
-      </text>
-      {ioPinAlias ? (
+      {lod !== 'minimal' && (
+        <text
+          data-node-label="1"
+          x={0}
+          y={node.type === 'OUTPUT' || node.type === 'Lamp' ? size * 0.18 : 0}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#fff"
+          fontSize={nodeLabelFont}
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
+        >
+          {ioDisplayLabel}
+        </text>
+      )}
+      {lod === 'full' && ioPinAlias ? (
         <text
           x={0}
           y={size * 0.38}
           textAnchor="middle"
           dominantBaseline="middle"
           fill="#9fb6cf"
-          fontSize={Math.max(6, 8 * camera.zoom)}
+          fontSize={pinAliasFont}
           style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
           {ioPinAlias.toUpperCase()}
@@ -982,7 +1017,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             <circle
               cx={-size / 2}
               cy={0}
-              r={5}
+                r={inlinePortRadius}
               fill={isWireStart ? "#00ffff" : isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.in`) ? "#00ffff" : "#3b82f6"}
               stroke={isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.in`) ? "#00ffff" : "#fff"}
               strokeWidth={probedPorts?.has(`${node.id}.in`) ? 2.5 : isHovered ? 2.5 : 1.5}
@@ -1013,7 +1048,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 <circle
                   cx={-size / 2}
                   cy={0}
-                  r={7}
+                  r={inlinePortGlowRadius}
                   fill="none"
                   stroke="#00ffff"
                   strokeWidth={3}
@@ -1093,7 +1128,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             <circle
               cx={size / 2}
               cy={0}
-              r={5}
+                r={inlinePortRadius}
               fill={isWireStart ? "#00ffff" : isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.out`) ? "#00ffff" : isActive ? '#22c55e' : '#9ca3af'}
               stroke={isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.out`) ? "#00ffff" : "#fff"}
               strokeWidth={probedPorts?.has(`${node.id}.out`) ? 2.5 : isHovered ? 2.5 : 1.5}
@@ -1124,7 +1159,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 <circle
                   cx={size / 2}
                   cy={0}
-                  r={7}
+                  r={inlinePortGlowRadius}
                   fill="none"
                   stroke="#00ffff"
                   strokeWidth={3}
@@ -1184,6 +1219,7 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
     prevProps.camera.x === nextProps.camera.x &&
     prevProps.camera.y === nextProps.camera.y &&
     prevProps.camera.zoom === nextProps.camera.zoom &&
+    prevProps.presentationZoomMode === nextProps.presentationZoomMode &&
     prevProps.dragPosition?.x === nextProps.dragPosition?.x &&
     prevProps.dragPosition?.y === nextProps.dragPosition?.y &&
     prevProps.diagnosticBadge?.error === nextProps.diagnosticBadge?.error &&
