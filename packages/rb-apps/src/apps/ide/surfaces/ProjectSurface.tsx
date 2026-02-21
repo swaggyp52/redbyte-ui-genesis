@@ -12,7 +12,6 @@ import {
 import type { ProjectHealth, ProjectHealthMode, ProjectPrimaryCta } from '../projectHealth';
 import type { IdeDiagnosticRouteRequest } from '../diagnostics';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
-import { IdeGuidedStrip } from '../components/IdeGuidedStrip';
 import {
   IdeButton,
   IdeCallout,
@@ -467,12 +466,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         </section>
       }
     >
-      <IdeGuidedStrip
-        currentMode="project"
-        health={health}
-        primaryCta={primaryCta}
-        onNavigate={handleNavigateToMode}
-      />
 
       <IdePanel
         description="Everything you need to be ready to Verify/Export/Hardware."
