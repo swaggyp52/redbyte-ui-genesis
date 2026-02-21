@@ -229,7 +229,9 @@ export function shouldGateStudioEntry(state: FirstRunState): boolean {
 }
 
 export function resolveFirstRunTargetApp(appId: string, state: FirstRunState): string {
-  void state;
+  if (!isWizardComplete(state) && appId !== 'first-run-wizard') {
+    return 'first-run-wizard';
+  }
   return appId;
 }
 

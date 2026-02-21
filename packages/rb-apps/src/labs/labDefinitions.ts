@@ -190,8 +190,6 @@ Opcode table:
       'Connect SW[10:8] (opcode S2/S1/S0) to the select lines of each mux.',
       'Connect the mux outputs to LED[3:0].',
       'Connect FA[3] Cout to LED[4].',
-      'Open Verify tab — run the test vectors — all rows must pass.',
-      'Export for Basys3 and follow the Vivado handoff guide.',
     ],
     simulateChecks: [
       'Test all 4 opcode selections with at least two A/B vectors each.',

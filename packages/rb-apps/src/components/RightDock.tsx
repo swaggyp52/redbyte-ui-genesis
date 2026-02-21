@@ -428,6 +428,7 @@ export const RightDock: React.FC<RightDockProps> = ({
             { tab: 'hdl' as RightDockTab, label: 'Export', testId: 'rightdock-tab-hdl' },
             { tab: 'import' as RightDockTab, label: 'Import', testId: 'rightdock-tab-import' },
             { tab: 'inspector' as RightDockTab, label: 'Info', testId: 'rightdock-tab-inspector' },
+            { tab: 'health' as RightDockTab, label: 'Health', testId: 'rightdock-tab-health' },
           ] as Array<{ tab: RightDockTab; label: string; testId: string }>).map(({ tab, label, testId }) => {
             const isActive = activeTab === tab;
             return (
