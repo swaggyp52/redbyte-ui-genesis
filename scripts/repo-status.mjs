@@ -178,6 +178,15 @@ if (!runCheck('IDE Design System Contract', 'pnpm -s ide:gate:design-system-cont
 if (!runCheck('IDE Shell Chrome Contract', 'pnpm -s ide:gate:shell-chrome-contract 2>&1')) {
   process.exit(1);
 }
+if (!runCheck('IDE Shell Density Contract', 'pnpm -s ide:gate:shell-density-contract 2>&1')) {
+  process.exit(1);
+}
+if (!runCheck('IDE Canvas Legibility Contract', 'pnpm -s ide:gate:canvas-legibility-contract 2>&1')) {
+  process.exit(1);
+}
+if (!runCheck('IDE Console Autocollapse Contract', 'pnpm -s ide:gate:console-autocollapse-contract 2>&1')) {
+  process.exit(1);
+}
 if (!runCheck('IDE Screenshot Baselines', 'pnpm -s ide:gate:screenshots 2>&1')) {
   process.exit(1);
 }
@@ -205,6 +214,9 @@ if (!runCheck('IDE Export Ready Contract', 'pnpm -s ide:gate:export-ready-contra
   process.exit(1);
 }
 if (!runCheck('IDE Hardware Checklist Contract', 'pnpm -s ide:gate:hardware-checklist-contract 2>&1')) {
+  process.exit(1);
+}
+if (!runCheck('IDE Student Loop Contract', 'pnpm -s ide:gate:student-loop-contract 2>&1')) {
   process.exit(1);
 }
 
