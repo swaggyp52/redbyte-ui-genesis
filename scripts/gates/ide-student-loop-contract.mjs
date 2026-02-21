@@ -13,7 +13,8 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   if (await confirmBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
     await confirmBtn.click();
   }
-  await page.waitForTimeout(400);
+  // Wait for the guided strip to reflect the loaded project state
+  await page.waitForSelector('[data-testid="ide-guided-strip"]', { timeout: 10000 });
 
   // Guided strip must be visible on project surface
   const strip = page.locator('[data-testid="ide-guided-strip"]').first();
@@ -25,6 +26,12 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
 
   const stripOnDesign = page.locator('[data-testid="ide-guided-strip"]').first();
   assert(await visible(stripOnDesign), 'guided strip must be visible on design surface');
+
+  // Live sim inputs must exist (circuit loaded with routable inputs)
+  await page
+    .locator('[data-testid^="ide-design-live-input-"]')
+    .first()
+    .waitFor({ state: 'visible', timeout: 10000 });
 
   // ── 3. Verify: generate basics → run → PASS/FAIL banner ─────────────────
   await page.locator('[data-testid="mode-button-verify"]').click();
