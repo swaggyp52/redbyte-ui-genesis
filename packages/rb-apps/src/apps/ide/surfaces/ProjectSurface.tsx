@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BASYS3_ANODE_PINS,
   BASYS3_BUTTON_PINS,
@@ -9,9 +9,10 @@ import {
   BASYS3_SWITCH_PINS,
   resolveBasys3PackagePin,
 } from '../../../fpga/boards/basys3/basys3Pins';
-import type { ProjectHealth } from '../projectHealth';
+import type { ProjectHealth, ProjectHealthMode, ProjectPrimaryCta } from '../projectHealth';
 import type { IdeDiagnosticRouteRequest } from '../diagnostics';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
+import { IdeGuidedStrip } from '../components/IdeGuidedStrip';
 import {
   IdeButton,
   IdeCallout,
@@ -60,6 +61,7 @@ export interface ProjectSurfaceProps {
   activeExampleId: string | null;
   onOpenExample: (exampleId: string) => void;
   primaryCtaLabel: string;
+  primaryCta: ProjectPrimaryCta;
   onPrimaryCta: () => void;
   onUpdateMappingPin: (rowId: string, pin: string) => void;
   onAutoSuggestMapping: () => void;
@@ -85,6 +87,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   activeExampleId,
   onOpenExample,
   primaryCtaLabel,
+  primaryCta,
   onPrimaryCta,
   onUpdateMappingPin,
   onAutoSuggestMapping,
@@ -193,6 +196,32 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const requiredCount = useMemo(
     () => sortedMappingRows.filter((row) => row.required).length,
     [sortedMappingRows]
+  );
+
+  const handleNavigateToMode = useCallback(
+    (mode: ProjectHealthMode) => {
+      switch (mode) {
+        case 'design':
+          onOpenDesign();
+          break;
+        case 'verify':
+          onOpenVerify();
+          break;
+        case 'export':
+          onOpenExport();
+          break;
+        case 'hardware':
+          onOpenHardware();
+          break;
+        case 'import':
+          onOpenImport();
+          break;
+        case 'project':
+        default:
+          break;
+      }
+    },
+    [onOpenDesign, onOpenVerify, onOpenExport, onOpenHardware, onOpenImport]
   );
 
   const verifyPass = health.lastVerify?.status === 'pass' && !health.dirtySinceVerify;
@@ -322,6 +351,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     <IdeSurfaceLayout
       mode="project"
       consoleHasBlocking={health.blockingIssues.length > 0}
+      consoleHasEntries={health.blockingIssues.length > 0}
       dock={
         <section className="ide-workbench-placeholder" data-testid="ide-project-start-dock">
           <header className="ide-workbench-placeholder-header">
@@ -371,7 +401,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       }
       inspector={
         <>
-          <IdeInspectorSection title="Activity">
+          <IdeInspectorSection title="Activity" defaultOpen>
             <div className="ide-kv-list">
               <div className="ide-kv-row">
                 <span>Last Verify</span>
@@ -437,6 +467,13 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         </section>
       }
     >
+      <IdeGuidedStrip
+        currentMode="project"
+        health={health}
+        primaryCta={primaryCta}
+        onNavigate={handleNavigateToMode}
+      />
+
       <IdePanel
         title="Project Overview"
         description="Everything you need to be ready to Verify/Export/Hardware."
@@ -454,11 +491,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               Auto-suggest Basys3
             </IdeButton>
           </>
-        }
-        right={
-          <IdeStatusPill tone={health.blockingIssues.length > 0 ? 'warn' : 'ok'}>
-            {health.blockingIssues.length > 0 ? 'NEEDS ACTION' : 'READY'}
-          </IdeStatusPill>
         }
         testId="ide-project-panel"
       >
@@ -499,6 +531,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             <header className="ide-export-section-header">
               <h3>Readiness</h3>
             </header>
+            {health.blockingIssues.length > 0 && health.blockingIssues[0] && (
+              <IdeCallout tone="warn" title="Next blocker" testId="ide-project-primary-blocker">
+                {health.blockingIssues[0].message}
+              </IdeCallout>
+            )}
             <IdeDataTable
               columns={['Check', 'State', 'Action']}
               rows={readinessRows}
