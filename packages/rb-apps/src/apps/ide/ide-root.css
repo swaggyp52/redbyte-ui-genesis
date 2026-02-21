@@ -418,11 +418,8 @@
 
 .ide-workbench-dock {
   min-height: 0;
-  overflow: auto;
-  border: 1px solid color-mix(in srgb, var(--ide-border) 84%, #6ba8dc 16%);
-  border-radius: var(--ide-radius-s);
-  background: linear-gradient(180deg, rgba(15, 25, 36, 0.9), rgba(11, 20, 30, 0.92));
-  box-shadow: var(--rb-shadow-1);
+  overflow: hidden;
+  background: rgba(12, 20, 30, 0.95);
   padding: var(--ide-card-pad);
 }
 
@@ -700,14 +697,12 @@
   border: 1px solid var(--ide-border);
   border-radius: var(--ide-radius-m);
   background: linear-gradient(180deg, rgba(20, 34, 50, 0.86), rgba(13, 24, 36, 0.9));
-  box-shadow: var(--rb-shadow-1);
 }
 
 .ide-panel {
   padding: var(--ide-card-pad);
   border-color: color-mix(in srgb, var(--ide-border) 80%, #8ec7ff 20%);
   background: linear-gradient(180deg, rgba(24, 40, 58, 0.9), rgba(15, 26, 38, 0.92));
-  box-shadow: var(--rb-shadow-2);
 }
 
 /* Flat sections for info-only content (no borders/background) */
@@ -747,9 +742,8 @@
   justify-content: flex-end;
   gap: var(--ide-space-1);
   flex-wrap: wrap;
-  margin-bottom: var(--ide-space-2);
+  margin-bottom: var(--ide-space-1);
   padding-bottom: var(--ide-space-1);
-  border-bottom: 1px solid rgba(58, 87, 116, 0.5);
 }
 
 .ide-surface-actions {

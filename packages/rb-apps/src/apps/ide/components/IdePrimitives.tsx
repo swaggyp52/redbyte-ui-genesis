@@ -67,11 +67,13 @@ export const IdePanel: React.FC<{
           {right}
         </div>
       </header>
-      <div className="ide-panel-actions" data-testid="ide-panel-action-row">
-        <div className="ide-surface-actions" data-testid="ide-surface-actions">
-          {actions}
+      {actions != null && (
+        <div className="ide-panel-actions" data-testid="ide-panel-action-row">
+          <div className="ide-surface-actions" data-testid="ide-surface-actions">
+            {actions}
+          </div>
         </div>
-      </div>
+      )}
       <div className="ide-panel-body">{children}</div>
     </section>
   );
@@ -186,11 +188,30 @@ export const IdeInspectorSection: React.FC<{
   title: string;
   children: React.ReactNode;
   testId?: string;
-}> = ({ title, children, testId }) => {
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+}> = ({ title, children, testId, collapsible = true, defaultOpen = true }) => {
+  const [open, setOpen] = React.useState(defaultOpen);
   return (
-    <section className="ide-inspector-section" data-testid={testId}>
-      <h4 className="ide-inspector-title">{title}</h4>
-      <div className="ide-inspector-content">{children}</div>
+    <section
+      className={`ide-inspector-section ${collapsible ? 'is-collapsible' : ''}`}
+      data-testid={testId}
+      data-open={open ? 'true' : 'false'}
+    >
+      {collapsible ? (
+        <button
+          type="button"
+          className="ide-inspector-toggle"
+          onClick={() => setOpen((previous) => !previous)}
+          data-testid={testId ? `${testId}-toggle` : undefined}
+        >
+          <h4 className="ide-inspector-title">{title}</h4>
+          <span className="ide-inspector-toggle-state">{open ? 'Hide' : 'Show'}</span>
+        </button>
+      ) : (
+        <h4 className="ide-inspector-title">{title}</h4>
+      )}
+      {open ? <div className="ide-inspector-content">{children}</div> : null}
     </section>
   );
 };
