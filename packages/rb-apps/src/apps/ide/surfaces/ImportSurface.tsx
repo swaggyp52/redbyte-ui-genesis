@@ -218,6 +218,16 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
       zipInspection?.detectedTopPath ?? `top.${parsedHdl.lang === 'vhdl' ? 'vhd' : 'v'}`;
     const topText = hdlText.trim();
     const normalizedXdcText = xdcText.trim();
+    // Merge user's pin selections from mapping state into XDC result
+    const userPins = Object.fromEntries(
+      Object.entries(mapping).filter(([, pin]) => pin.trim().length > 0)
+    );
+    const mergedXdcResult: XdcParseResult | undefined =
+      xdcResult
+        ? { ...xdcResult, pinMap: { ...xdcResult.pinMap, ...userPins } }
+        : Object.keys(userPins).length > 0
+          ? { pinMap: userPins, pinEntries: {}, warnings: [] }
+          : undefined;
     return buildImportedProject({
       sourceName,
       topPath,
@@ -225,7 +235,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
       parsedHdl,
       xdcPath: zipInspection?.detectedXdcPath ?? (normalizedXdcText ? 'top.xdc' : undefined),
       xdcText: normalizedXdcText.length > 0 ? normalizedXdcText : undefined,
-      xdcResult: xdcResult ?? undefined,
+      xdcResult: mergedXdcResult,
     });
   };
 
@@ -661,6 +671,20 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
                         )}
                       </div>
                     </div>
+                    {zipInspection.weakPinPorts.length > 0 && (
+                      <div className="ide-import-weak-pins-callout" data-testid="ide-import-weak-pins">
+                        <span className="ide-import-weak-pins-label">Weak pin mappings</span>
+                        <p>
+                          {zipInspection.weakPinPorts.length} port{zipInspection.weakPinPorts.length !== 1 ? 's' : ''} have
+                          pins that are not in the Basys3 pin table. They have been mapped as-is; verify they are correct.
+                        </p>
+                        <ul>
+                          {zipInspection.weakPinPorts.map((portName) => (
+                            <li key={portName} data-testid={`ide-import-weak-pin-${portName}`}>{portName}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </section>
                 ) : null}
               </div>

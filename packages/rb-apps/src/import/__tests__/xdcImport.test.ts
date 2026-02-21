@@ -104,6 +104,7 @@ set_property PACKAGE_PIN U16 [get_ports {ld0}]
     `);
     expect(Object.keys(result.pinEntries)).toHaveLength(3);
     expect(result.pinEntries['sw0']?.confidence).toBe('strong');
+    expect(result.pinEntries['sw1']?.confidence).toBe('strong');
     expect(result.pinEntries['ld0']?.confidence).toBe('strong');
   });
 
