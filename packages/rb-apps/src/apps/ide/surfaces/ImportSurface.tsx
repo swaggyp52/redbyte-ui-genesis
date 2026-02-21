@@ -685,6 +685,28 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
                         </ul>
                       </div>
                     )}
+                    {zipInspection?.reconstructionLevel === 'ports-only' && (
+                      <div
+                        className="ide-import-recon-callout ide-import-recon-callout--partial"
+                        data-testid="ide-import-recon-partial"
+                      >
+                        <strong>Behavioural HDL detected</strong>
+                        <p>
+                          This module uses process/always blocks. RedByte extracted I/O ports only — gates were
+                          not reconstructed. The project will have the correct I/O mapping but an empty circuit.
+                          You can wire the circuit manually in Design mode.
+                        </p>
+                      </div>
+                    )}
+                    {zipInspection?.reconstructionLevel === 'full' && (
+                      <div
+                        className="ide-import-recon-callout ide-import-recon-callout--full"
+                        data-testid="ide-import-recon-full"
+                      >
+                        <strong>Structural HDL detected</strong>
+                        <p>Circuit reconstructed with gates and connections.</p>
+                      </div>
+                    )}
                   </section>
                 ) : null}
               </div>

@@ -33,11 +33,15 @@ export interface ParsedHDL {
   lang: 'vhdl' | 'verilog';
 }
 
+export type ReconstructionLevel = 'full' | 'ports-only' | 'empty';
+
 export interface ImportResult {
   circuit: Circuit;
   warnings: string[];
   /** Instances that could not be mapped to a built-in node type */
   unmappedComponents: string[];
+  /** How faithfully the circuit was reconstructed from the HDL source */
+  reconstructionLevel: ReconstructionLevel;
 }
 
 // ─── Component type mapping ───────────────────────────────────────────────────
@@ -320,9 +324,20 @@ export function parsedHdlToCircuit(parsed: ParsedHDL): ImportResult {
   // 5. Auto-layout
   const positionedNodes = assignPositions(nodes, connections);
 
+  const hasGates = positionedNodes.some(
+    (node) => node.type !== 'INPUT' && node.type !== 'OUTPUT'
+  );
+  const reconstructionLevel: ReconstructionLevel =
+    positionedNodes.length === 0
+      ? 'empty'
+      : !hasGates
+        ? 'ports-only'
+        : 'full';
+
   return {
     circuit: { nodes: positionedNodes, connections },
     warnings,
     unmappedComponents,
+    reconstructionLevel,
   };
 }

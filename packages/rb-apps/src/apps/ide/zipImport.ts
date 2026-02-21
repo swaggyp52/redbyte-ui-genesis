@@ -2,7 +2,7 @@ import JSZip from 'jszip';
 import type { IoMapping } from '@redbyte/rb-utils';
 import type { RBProject } from '../../export/projectFormat';
 import { compareCodepoint } from '../../export/codepointSort';
-import { parsedHdlToCircuit, type ParsedHDL, type ParsedPort } from '../../import/hdlToCircuit';
+import { parsedHdlToCircuit, type ParsedHDL, type ParsedPort, type ReconstructionLevel } from '../../import/hdlToCircuit';
 import { parseVerilog } from '../../import/verilogImport';
 import { parseVhdl } from '../../import/vhdlImport';
 import { parseXdcPins, type XdcParseResult } from '../../import/xdcImport';
@@ -27,6 +27,7 @@ export interface ZipImportInspection {
   xdcResult?: XdcParseResult;
   weakPinPorts: string[];
   warnings: string[];
+  reconstructionLevel: ReconstructionLevel;
   project: RBProject;
 }
 
@@ -84,9 +85,10 @@ export async function importVivadoZipBytes(
     .filter((path) => !selectedPaths.has(path))
     .sort(compareCodepoint);
 
+  const converted = parsedHdlToCircuit(parsedHdl);
   const warnings = uniqueWarnings([
     ...(parsedHdl.warnings ?? []),
-    ...parsedHdlToCircuit(parsedHdl).warnings,
+    ...converted.warnings,
     ...(xdcResult?.warnings ?? []),
     ...xdcPortWarnings,
   ]);
@@ -121,6 +123,7 @@ export async function importVivadoZipBytes(
     xdcResult,
     weakPinPorts,
     warnings,
+    reconstructionLevel: converted.reconstructionLevel,
     project,
   };
 }
