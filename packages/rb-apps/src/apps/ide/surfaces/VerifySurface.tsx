@@ -500,7 +500,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   <div className="ide-design-diagnostic-row-header">
                     <code>HASH</code>
                     <span data-testid="ide-verify-console-hash">
-                      report=<code>{lastRun?.reportHash ?? 'pending'}</code>
+                      report=<code>{lastRun?.reportHash ?? '—'}</code>
                     </span>
                   </div>
                 </article>
@@ -610,9 +610,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <span>Hash</span>
             <code data-testid="ide-verify-hash">{lastRun?.deterministicHash ?? deterministicHash}</code>
             <span>Report</span>
-            <code data-testid="ide-verify-report-hash">{lastRun?.reportHash ?? 'pending'}</code>
+            <code data-testid="ide-verify-report-hash">{lastRun?.reportHash ?? '—'}</code>
             <span>Schedule</span>
-            <code data-testid="ide-verify-schedule">{lastRun?.schedule ?? 'pending'}</code>
+            <code data-testid="ide-verify-schedule">{lastRun?.schedule ?? '—'}</code>
           </div>
         </section>
 

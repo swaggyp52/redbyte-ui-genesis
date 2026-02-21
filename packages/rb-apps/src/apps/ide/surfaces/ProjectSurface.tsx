@@ -412,7 +412,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <div className="ide-kv-row">
                 <span>Verify Hash</span>
                 <span className="ide-status-mono" data-testid="ide-project-last-verify-hash">
-                  {health.lastVerify?.hash?.slice(0, 16) ?? 'pending'}
+                  {health.lastVerify?.hash?.slice(0, 16) ?? '—'}
                 </span>
               </div>
               <div className="ide-kv-row">
@@ -424,7 +424,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <div className="ide-kv-row">
                 <span>Export Hash</span>
                 <span className="ide-status-mono" data-testid="ide-project-last-export-hash">
-                  {health.lastExport?.hash?.slice(0, 16) ?? 'pending'}
+                  {health.lastExport?.hash?.slice(0, 16) ?? '—'}
                 </span>
               </div>
               <div className="ide-kv-row">
