@@ -528,7 +528,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         actions={
           <>
             <span data-testid="ide-primary-cta">
-              <IdeButton tone="primary" onClick={runVerification} testId="ide-verify-run">
+              <IdeButton tone="primary" onClick={runVerification} disabled={authoredVectors.length === 0} testId="ide-verify-run">
                 Run verification
               </IdeButton>
             </span>
