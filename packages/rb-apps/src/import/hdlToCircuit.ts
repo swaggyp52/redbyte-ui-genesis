@@ -153,37 +153,45 @@ const ORIGIN_Y = 80;
  *   Col N+1: OUTPUT nodes (entity output ports)
  */
 function assignPositions(nodes: Node[], connections: Connection[]): Node[] {
+  const GRID_Y_SPACING = 96; // was 80 — extra breathing room for labels
+
   const inputNodes = nodes.filter((n) => n.type === 'INPUT');
   const outputNodes = nodes.filter((n) => n.type === 'OUTPUT');
   const gateNodes = nodes.filter((n) => n.type !== 'INPUT' && n.type !== 'OUTPUT');
 
-  // Build adjacency for topological sort
+  // Build dependency map: gate node id → set of ids that feed into it
   const deps: Map<string, Set<string>> = new Map();
   for (const n of gateNodes) deps.set(n.id, new Set());
 
   for (const conn of connections) {
     const fromId = typeof conn.from === 'string' ? conn.from : (conn.from as any).nodeId;
     const toId = typeof conn.to === 'string' ? conn.to : (conn.to as any).nodeId;
-    if (deps.has(toId) && (deps.has(fromId) || nodes.find((n) => n.id === fromId)?.type === 'INPUT')) {
+    if (
+      deps.has(toId) &&
+      (deps.has(fromId) || nodes.find((n) => n.id === fromId)?.type === 'INPUT')
+    ) {
       deps.get(toId)?.add(fromId);
     }
   }
 
-  // Compute depth per gate node
+  // Compute topological depth per gate node
   const depthMap: Map<string, number> = new Map();
   function getDepth(id: string): number {
     if (depthMap.has(id)) return depthMap.get(id)!;
     const node = nodes.find((n) => n.id === id);
     if (!node || node.type === 'INPUT') return 0;
     const d = deps.get(id);
-    if (!d || d.size === 0) { depthMap.set(id, 1); return 1; }
+    if (!d || d.size === 0) {
+      depthMap.set(id, 1);
+      return 1;
+    }
     const max = Math.max(...[...d].map(getDepth));
     depthMap.set(id, max + 1);
     return max + 1;
   }
   for (const n of gateNodes) getDepth(n.id);
 
-  // Group by column
+  // Group gate nodes by column
   const columns: Map<number, Node[]> = new Map();
   for (const n of gateNodes) {
     const col = depthMap.get(n.id) ?? 1;
@@ -193,23 +201,61 @@ function assignPositions(nodes: Node[], connections: Connection[]): Node[] {
   const maxGateCol = columns.size > 0 ? Math.max(...columns.keys()) : 0;
   const outputCol = maxGateCol + 1;
 
+  // Global vertical centering: find tallest column, center everything around it
+  const allColSizes = [
+    inputNodes.length,
+    ...[...columns.values()].map((c) => c.length),
+    outputNodes.length,
+  ];
+  const maxColSize = Math.max(...allColSizes);
+  const globalCenterY = ORIGIN_Y + ((maxColSize - 1) * GRID_Y_SPACING) / 2;
+
+  function colStartY(colSize: number): number {
+    return globalCenterY - ((colSize - 1) * GRID_Y_SPACING) / 2;
+  }
+
+  // Track positioned nodes for cross-reduction heuristic
+  const positionedById = new Map<string, { x: number; y: number }>();
   const positioned: Node[] = [];
 
-  // INPUT column (col 0)
+  // INPUT column (col 0) — centered
+  const inputStartY = colStartY(inputNodes.length);
   inputNodes.forEach((n, i) => {
-    positioned.push({ ...n, x: ORIGIN_X, y: ORIGIN_Y + i * GRID_Y });
+    const y = inputStartY + i * GRID_Y_SPACING;
+    positioned.push({ ...n, x: ORIGIN_X, y });
+    positionedById.set(n.id, { x: ORIGIN_X, y });
   });
 
-  // Gate columns (col 1 … maxGateCol)
+  // Gate columns (1 … maxGateCol) — sorted by avg predecessor Y for cross-reduction
   for (const [col, colNodes] of [...columns.entries()].sort(([a], [b]) => a - b)) {
-    colNodes.forEach((n, i) => {
-      positioned.push({ ...n, x: ORIGIN_X + col * GRID_X, y: ORIGIN_Y + i * GRID_Y });
+    // Sort nodes in this column by the average Y of their already-positioned predecessors
+    const nodesWithAvgY = colNodes.map((n) => {
+      const predecessorIds = deps.get(n.id) ?? new Set<string>();
+      const ys = [...predecessorIds]
+        .map((id) => positionedById.get(id)?.y)
+        .filter((y): y is number => y !== undefined);
+      const avgY = ys.length > 0 ? ys.reduce((a, b) => a + b, 0) / ys.length : globalCenterY;
+      return { n, avgY };
+    });
+    nodesWithAvgY.sort((a, b) => a.avgY - b.avgY);
+    const sortedNodes = nodesWithAvgY.map((w) => w.n);
+
+    const startY = colStartY(sortedNodes.length);
+    sortedNodes.forEach((n, i) => {
+      const x = ORIGIN_X + col * GRID_X;
+      const y = startY + i * GRID_Y_SPACING;
+      positioned.push({ ...n, x, y });
+      positionedById.set(n.id, { x, y });
     });
   }
 
-  // OUTPUT column
+  // OUTPUT column — centered
+  const outputStartY = colStartY(outputNodes.length);
   outputNodes.forEach((n, i) => {
-    positioned.push({ ...n, x: ORIGIN_X + outputCol * GRID_X, y: ORIGIN_Y + i * GRID_Y });
+    const x = ORIGIN_X + outputCol * GRID_X;
+    const y = outputStartY + i * GRID_Y_SPACING;
+    positioned.push({ ...n, x, y });
+    positionedById.set(n.id, { x, y });
   });
 
   return positioned;
