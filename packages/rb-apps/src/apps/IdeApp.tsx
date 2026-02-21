@@ -33,6 +33,7 @@ import {
   choosePrimaryProjectCta,
   deriveProjectHealth,
   type ProjectHealthExportResult,
+  type ProjectHealthMode,
 } from './ide/projectHealth';
 import { useProjectRuntime } from './ide/projectRuntime';
 import {
@@ -646,7 +647,7 @@ export const IdeApp: React.FC = () => {
         <IdeLeftRail currentMode={currentMode} onModeChange={setCurrentMode} />
         <div className="ide-surface-column">
           <IdeGuidedStrip
-            currentMode={currentMode as any}
+            currentMode={currentMode as ProjectHealthMode}
             health={projectHealth}
             primaryCta={primaryProjectCta}
             onNavigate={(mode) => setCurrentMode(mode as IdeMode)}
