@@ -18,6 +18,7 @@ import { VerifySurface, type VerifyFailureTarget } from './ide/surfaces/VerifySu
 import { HardwareSurface } from './ide/surfaces/HardwareSurface';
 import { ExportSurface } from './ide/surfaces/ExportSurface';
 import { ImportSurface } from './ide/surfaces/ImportSurface';
+import { IdeGuidedStrip } from './ide/components/IdeGuidedStrip';
 import { buildExportViewModel } from './ide/viewmodels/buildExportViewModel';
 import {
   choosePrimaryDiagnosticAction,
@@ -643,6 +644,13 @@ export const IdeApp: React.FC = () => {
 
       <div className="ide-layout-shell">
         <IdeLeftRail currentMode={currentMode} onModeChange={setCurrentMode} />
+        <div className="ide-surface-column">
+          <IdeGuidedStrip
+            currentMode={currentMode as any}
+            health={projectHealth}
+            primaryCta={primaryProjectCta}
+            onNavigate={(mode) => setCurrentMode(mode as IdeMode)}
+          />
         {currentMode === 'project' ? (
           <ProjectSurface
             projectName={projectName}
@@ -667,6 +675,7 @@ export const IdeApp: React.FC = () => {
             activeExampleId={activeExampleId}
             onOpenExample={handleOpenExample}
             primaryCtaLabel={primaryProjectCta.label}
+            primaryCta={primaryProjectCta}
             onPrimaryCta={handleProjectPrimaryAction}
             onUpdateMappingPin={handleMappingPinChange}
             onAutoSuggestMapping={handleAutoSuggestMapping}
@@ -740,6 +749,7 @@ export const IdeApp: React.FC = () => {
         ) : (
           <ImportSurface onImportProject={handleImportProject} />
         )}
+        </div>
       </div>
 
       <input

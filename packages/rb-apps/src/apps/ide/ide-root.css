@@ -395,6 +395,7 @@
   --ide-workbench-left-width: var(--ide-dock-l-w);
   --ide-workbench-right-width: var(--ide-dock-r-w);
   --ide-workbench-console-height: var(--ide-console-default-h);
+  position: relative;
   display: grid;
   grid-template-rows: minmax(0, 1fr) 6px minmax(var(--ide-workbench-console-height), var(--ide-console-collapsed-h));
   gap: var(--ide-space-1);
@@ -532,9 +533,13 @@
 }
 
 .ide-workbench-focus-toggle {
+  position: absolute;
+  bottom: calc(var(--ide-space-1) + 6px);
+  left: calc(var(--ide-gutter) + 2px);
+  z-index: 10;
   border: 1px solid rgba(88, 131, 166, 0.45);
   border-radius: var(--ide-radius-s);
-  background: transparent;
+  background: rgba(9, 18, 29, 0.92);
   color: var(--ide-text-soft);
   font-size: var(--rb-font-size-1);
   padding: 2px 8px;
@@ -546,6 +551,7 @@
 .ide-workbench-focus-toggle:hover {
   color: var(--ide-text-muted);
   border-color: rgba(142, 199, 255, 0.55);
+  background: rgba(14, 26, 40, 0.96);
 }
 
 .is-focus-mode .ide-workbench-focus-toggle {
@@ -916,6 +922,30 @@
 .ide-guided-strip-fix-link:focus-visible {
   outline: 2px solid var(--rb-focus-ring);
   outline-offset: 2px;
+}
+
+/* Surface column: stacks guided strip + mode workspace in flex column */
+.ide-surface-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ide-surface-column > .ide-guided-strip {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  border-bottom: 1px solid rgba(46, 196, 182, 0.18);
+}
+
+.ide-surface-column > *:not(.ide-guided-strip) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .ide-list {
