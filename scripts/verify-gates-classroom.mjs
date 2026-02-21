@@ -78,6 +78,7 @@ function main() {
     runGate('ide:export-download-contract', 'pnpm -s ide:gate:export-download-contract', true),
     runGate('ide:hardware-checklist-contract', 'pnpm -s ide:gate:hardware-checklist-contract', true),
     runGate('ide:student-loop-contract', 'pnpm -s ide:gate:student-loop-contract', true),
+    runGate('ide:viewport-overflow-contract', 'pnpm -s ide:gate:viewport-overflow-contract', true),
     runGate('ide:primary-cta-contract', 'pnpm -s ide:gate:primary-cta-contract', true),
     runGate('ide:diagnostics-jump-contract', 'pnpm -s ide:gate:diagnostics-jump-contract', true),
     runGate('ide:visual-contract', 'pnpm -s ide:gate:visual-contract', true),

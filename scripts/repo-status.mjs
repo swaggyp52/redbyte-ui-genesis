@@ -219,6 +219,9 @@ if (!runCheck('IDE Hardware Checklist Contract', 'pnpm -s ide:gate:hardware-chec
 if (!runCheck('IDE Student Loop Contract', 'pnpm -s ide:gate:student-loop-contract 2>&1')) {
   process.exit(1);
 }
+if (!runCheck('IDE Viewport Overflow Contract', 'pnpm -s ide:gate:viewport-overflow-contract 2>&1')) {
+  process.exit(1);
+}
 
 // 5. Artifact verification
 console.log('\n[CHECK] Artifact Verification...');
