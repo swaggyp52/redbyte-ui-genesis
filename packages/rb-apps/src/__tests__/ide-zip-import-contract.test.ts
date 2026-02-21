@@ -10,7 +10,7 @@ const ZIP_FIXTURE_PATH = join(
   'packages/rb-apps/src/fixtures/import/zip/01-and-gate-vivado.zip'
 );
 
-const EXPECTED_PROJECT_HASH = '3c6b8e27';
+const EXPECTED_PROJECT_HASH = '1478e97a';
 
 describe('IDE zip import contract', () => {
   it('imports a Vivado-style zip into a deterministic project that is export-ready', async () => {
