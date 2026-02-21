@@ -184,6 +184,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const previousWireCountRef = useRef(editorCircuit.connections.length);
   const [canvasSize, setCanvasSize] = useState({ width: 880, height: 520 });
+  const [presentationZoom, setPresentationZoom] = useState<'dense' | 'classroom'>('dense');
+  const [showDetails, setShowDetails] = useState(false);
   const [actionToast, setActionToast] = useState<string | null>(null);
   const [diagnosticFilterNodeId, setDiagnosticFilterNodeId] = useState<string | null>(null);
   const [tickEngine] = useState(() => new TickEngine(editorCircuit, { tickRate: 10 }));
@@ -532,11 +534,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [canvasSize.height, canvasSize.width, editorCircuit.nodes, setCamera]);
 
   const zoomIn = useCallback(() => {
-    zoomCamera(0.12, canvasSize.width / 2, canvasSize.height / 2);
+    zoomCamera(120, canvasSize.width / 2, canvasSize.height / 2);
   }, [canvasSize.height, canvasSize.width, zoomCamera]);
 
   const zoomOut = useCallback(() => {
-    zoomCamera(-0.12, canvasSize.width / 2, canvasSize.height / 2);
+    zoomCamera(-120, canvasSize.width / 2, canvasSize.height / 2);
   }, [canvasSize.height, canvasSize.width, zoomCamera]);
 
   const resetView = useCallback(() => {
@@ -786,6 +788,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => summarizeLiveChange(liveIoSignals.inputRows, liveIoSignals.outputRows),
     [liveIoSignals.inputRows, liveIoSignals.outputRows]
   );
+  const allLiveInputRows = useMemo(() => {
+    return editorCircuit.nodes
+      .filter((node) => node.type === 'INPUT' || node.type === 'Switch')
+      .map((node) => {
+        const ioPresentation = resolveNodeIoPresentation(node, ioRowByNodeId.get(node.id));
+        return {
+          id: node.id,
+          label: ioPresentation.label ?? `${node.type} ${node.id}`,
+          value: liveSignals.get(`${node.id}.out`) ?? (0 as 0 | 1),
+        };
+      });
+  }, [editorCircuit.nodes, ioRowByNodeId, liveSignals]);
   const ioPresentationMap = useMemo(() => {
     const map: Record<string, NodeIoPresentation> = {};
     for (const node of editorCircuit.nodes) {
@@ -837,8 +851,33 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     <IdeSurfaceLayout
       mode="design"
       consoleHasBlocking={compilerErrorCount > 0}
+      consoleHasEntries={diagnosticsDrawerRows.length > 0}
       dock={
-        <section className="ide-design-palette" data-testid="ide-design-dock-palette">
+        <>
+          {allLiveInputRows.length > 0 && (
+            <section className="ide-design-input-panel" data-testid="ide-design-input-panel">
+              <header className="ide-design-subheader">
+                <h3>Live Inputs</h3>
+                <span className="ide-copy">{simRunning ? 'RUNNING' : 'PAUSED'}</span>
+              </header>
+              <div className="ide-design-input-toggle-list">
+                {allLiveInputRows.map((entry) => (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    className={`ide-design-input-toggle ${entry.value === 1 ? 'is-on' : 'is-off'}`}
+                    data-testid={`ide-design-input-toggle-${entry.id}`}
+                    aria-pressed={entry.value === 1}
+                    onClick={() => onRuntimeSimSetInput?.(entry.id, entry.value === 1 ? 0 : 1)}
+                  >
+                    <span className="ide-design-input-toggle-label">{entry.label}</span>
+                    <span className="ide-design-input-toggle-value">{entry.value}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+          <section className="ide-design-palette" data-testid="ide-design-dock-palette">
           <header className="ide-design-subheader">
             <h3>Palette</h3>
             <IdeButton tone="ghost" onClick={onOpenPalette}>
@@ -912,10 +951,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             })}
           </div>
         </section>
+        </>
       }
       inspector={
         <>
-          <IdeInspectorSection title="Workspace Metrics">
+          <IdeInspectorSection title="Workspace Metrics" defaultOpen={false}>
             <div className="ide-kv-list">
               <div className="ide-kv-row">
                 <span>Nodes</span>
@@ -939,7 +979,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
               <div className="ide-kv-row">
                 <span>Sim Tick</span>
-                <span data-testid="ide-design-sim-tick">{simTick}</span>
+                <span data-testid="ide-design-sim-tick-metrics">{simTick}</span>
               </div>
               <div className="ide-kv-row">
                 <span>Interaction</span>
@@ -948,7 +988,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           </IdeInspectorSection>
 
-          <IdeInspectorSection title="Live Simulation">
+          <IdeInspectorSection title="Live Simulation" defaultOpen>
             <div className="ide-inline-actions">
               {simRunning ? (
                 <IdeButton tone="secondary" onClick={pauseSimulation} testId="ide-design-sim-pause">
@@ -978,6 +1018,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 data-testid="ide-design-sim-speed"
               />
             </label>
+            <div className="ide-kv-row">
+              <span>Tick</span>
+              <span data-testid="ide-design-sim-tick">{simTick}</span>
+            </div>
             <div className="ide-kv-list" data-testid="ide-design-live-signals">
               {liveIoSignals.inputRows.map((entry) => (
                 <div className="ide-kv-row" key={`in-${entry.id}`} data-testid={`ide-design-live-input-${entry.id}`}>
@@ -1003,7 +1047,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </p>
           </IdeInspectorSection>
 
-          <IdeInspectorSection title="Signal Probe" testId="ide-design-signal-probe">
+          <IdeInspectorSection title="Signal Probe" testId="ide-design-signal-probe" defaultOpen={false}>
             {selectedSignalKey ? (
               <>
                 <div className="ide-kv-list">
@@ -1069,7 +1113,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             ) : null}
           </IdeInspectorSection>
 
-          <IdeInspectorSection title="Selection">
+          <IdeInspectorSection title="Selection" defaultOpen>
             {selectedNode && selection.nodes.size === 1 ? (
               <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
                 <div className="ide-kv-list">
@@ -1160,13 +1204,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             )}
           </IdeInspectorSection>
 
-          <IdeInspectorSection title="Next Action">
+          <IdeInspectorSection title="Next Action" defaultOpen={false}>
             <IdeCallout tone="info" title="Design Flow">
               Place IO pins, wire through logic gates, then switch to Verify for deterministic test vectors.
             </IdeCallout>
           </IdeInspectorSection>
 
-          <IdeInspectorSection title="Net / Pins" testId="ide-design-net-pins">
+          <IdeInspectorSection title="Net / Pins" testId="ide-design-net-pins" defaultOpen={false}>
             {selectedNode ? (
               <div className="ide-kv-list">
                 <div className="ide-kv-row">
@@ -1292,6 +1336,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <p data-testid="ide-design-mode-subtitle">Build your circuit</p>
             </div>
 
+            <IdeButton
+              tone="ghost"
+              onClick={() => setShowDetails((prev) => !prev)}
+              testId="ide-design-details-toggle"
+            >
+              Details {showDetails ? '▲' : '▼'}
+            </IdeButton>
+
             <div className="ide-design-tool-segmented" data-testid="ide-design-tool-segmented">
               <button
                 type="button"
@@ -1366,12 +1418,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               >
                 Start Wire (W)
               </IdeButton>
-              <span className={`ide-wire-mode-pill ${toolMode === 'wire' ? 'is-wire' : ''}`} data-testid="ide-design-wire-pill">
-                {activeModeLabel}
-              </span>
-              <span className="ide-wire-mode-pill" data-testid="ide-design-interaction-pill">
-                {interactionLabel}
-              </span>
               <IdeButton tone="ghost" onClick={zoomOut} testId="ide-design-zoom-out">
                 -
               </IdeButton>
@@ -1392,52 +1438,77 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <IdeButton tone="secondary" onClick={fitToCircuit} testId="ide-design-fit-circuit">
                 Zoom to Fit
               </IdeButton>
-              <span className="ide-wire-mode-pill" data-testid="ide-design-command-zoom">
-                {zoomPercent}%
-              </span>
+              <IdeButton
+                tone={presentationZoom === 'classroom' ? 'secondary' : 'ghost'}
+                onClick={() =>
+                  setPresentationZoom((previous) =>
+                    previous === 'dense' ? 'classroom' : 'dense'
+                  )
+                }
+                testId="ide-design-presentation-zoom-toggle"
+              >
+                Presentation {presentationZoom === 'classroom' ? 'On' : 'Off'}
+              </IdeButton>
             </div>
           </section>
 
-          <section className="ide-design-compiler-strip" data-testid="ide-design-compiler-strip">
-            <div className="ide-design-compiler-item">
-              <span>IR Hash</span>
-              <code data-testid="ide-design-ir-hash">{irHash}</code>
+          {showDetails && (
+            <section className="ide-design-compiler-strip" data-testid="ide-design-compiler-strip">
+              <div className="ide-design-compiler-item">
+                <span>IR Hash</span>
+                <code data-testid="ide-design-ir-hash">{irHash}</code>
+              </div>
+              <div className="ide-design-compiler-item">
+                <span>Dirty since verify</span>
+                <strong
+                  data-testid="ide-design-dirty-since-verify"
+                  className={dirtySinceVerify ? 'is-warn' : 'is-ok'}
+                >
+                  {dirtySinceVerify ? 'Yes' : 'No'}
+                </strong>
+              </div>
+              <div className="ide-design-compiler-item">
+                <span>Dirty since export</span>
+                <strong
+                  data-testid="ide-design-dirty-since-export"
+                  className={dirtySinceExport ? 'is-warn' : 'is-ok'}
+                >
+                  {dirtySinceExport ? 'Yes' : 'No'}
+                </strong>
+              </div>
+              <div className="ide-design-compiler-item">
+                <span>Errors</span>
+                <strong data-testid="ide-design-diagnostics-errors" className={compilerErrorCount > 0 ? 'is-error' : 'is-ok'}>
+                  {compilerErrorCount}
+                </strong>
+              </div>
+              <div className="ide-design-compiler-item">
+                <span>Warnings</span>
+                <strong data-testid="ide-design-diagnostics-warnings" className={compilerWarningCount > 0 ? 'is-warn' : 'is-ok'}>
+                  {compilerWarningCount}
+                </strong>
+              </div>
+              <div className="ide-design-compiler-item">
+                <span>Diagnostics linked</span>
+                <strong data-testid="ide-design-diagnostics-total">{compilerDiagnostics.length}</strong>
+              </div>
+            </section>
+          )}
+
+          {pinnedProbeRows.length > 0 && (
+            <div className="ide-design-probe-bar" data-testid="ide-design-probe-bar">
+              {pinnedProbeRows.map((probe) => (
+                <span
+                  key={probe.key}
+                  className="ide-design-probe-pill"
+                  data-testid={`ide-design-probe-pill-${probe.key}`}
+                >
+                  <code>{probe.label}</code>
+                  <span className="ide-design-probe-value">{probe.value}</span>
+                </span>
+              ))}
             </div>
-            <div className="ide-design-compiler-item">
-              <span>Dirty since verify</span>
-              <strong
-                data-testid="ide-design-dirty-since-verify"
-                className={dirtySinceVerify ? 'is-warn' : 'is-ok'}
-              >
-                {dirtySinceVerify ? 'Yes' : 'No'}
-              </strong>
-            </div>
-            <div className="ide-design-compiler-item">
-              <span>Dirty since export</span>
-              <strong
-                data-testid="ide-design-dirty-since-export"
-                className={dirtySinceExport ? 'is-warn' : 'is-ok'}
-              >
-                {dirtySinceExport ? 'Yes' : 'No'}
-              </strong>
-            </div>
-            <div className="ide-design-compiler-item">
-              <span>Errors</span>
-              <strong data-testid="ide-design-diagnostics-errors" className={compilerErrorCount > 0 ? 'is-error' : 'is-ok'}>
-                {compilerErrorCount}
-              </strong>
-            </div>
-            <div className="ide-design-compiler-item">
-              <span>Warnings</span>
-              <strong data-testid="ide-design-diagnostics-warnings" className={compilerWarningCount > 0 ? 'is-warn' : 'is-ok'}>
-                {compilerWarningCount}
-              </strong>
-            </div>
-            <div className="ide-design-compiler-item">
-              <span>Diagnostics linked</span>
-              <strong data-testid="ide-design-diagnostics-total">{compilerDiagnostics.length}</strong>
-            </div>
-          </section>
+          )}
 
           <div className="ide-design-layout ide-design-layout-canvas-only">
             <section className="ide-design-canvas" data-testid="ide-design-canvas">
@@ -1451,17 +1522,47 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 ) : null}
               </div>
               <div
-                className={`ide-design-canvas-live ${toolMode === 'wire' ? 'is-wire-mode' : 'is-select-mode'}`}
+                className={`ide-design-canvas-live ${toolMode === 'wire' ? 'is-wire-mode' : 'is-select-mode'} ${
+                  presentationZoom === 'classroom' ? 'is-presentation-zoom' : ''
+                }`}
                 ref={canvasHostRef}
                 data-testid="ide-design-live-canvas"
                 data-tool-mode={toolMode}
                 data-interaction-mode={interactionMode}
+                data-presentation-zoom={presentationZoom}
               >
                 <div className="ide-design-canvas-mode-indicator" data-testid="ide-design-canvas-mode-indicator">
                   {activeModeLabel}
                 </div>
                 <div className="ide-design-canvas-zoom-indicator" data-testid="ide-design-canvas-zoom-indicator">
                   tick {simTick}
+                </div>
+                <div className="ide-design-canvas-mode-indicator" data-testid="ide-design-presentation-zoom-indicator">
+                  {presentationZoom === 'classroom' ? 'Classroom Zoom' : 'Dense Zoom'}
+                </div>
+                <div className="ide-design-canvas-controls" data-testid="ide-design-canvas-controls">
+                  <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit-canvas">
+                    Fit
+                  </IdeButton>
+                  <IdeButton
+                    tone="ghost"
+                    onClick={centerSelection}
+                    disabled={selection.nodes.size === 0}
+                    testId="ide-design-center-selection-canvas"
+                  >
+                    Center
+                  </IdeButton>
+                  <IdeButton
+                    tone={presentationZoom === 'classroom' ? 'secondary' : 'ghost'}
+                    onClick={() =>
+                      setPresentationZoom((previous) =>
+                        previous === 'dense' ? 'classroom' : 'dense'
+                      )
+                    }
+                    testId="ide-design-presentation-zoom-toggle-canvas"
+                  >
+                    {presentationZoom === 'classroom' ? 'Classroom' : 'Dense'}
+                  </IdeButton>
                 </div>
                 <LogicCanvas
                   engine={tickEngine}
@@ -1488,6 +1589,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   nodeDiagnosticBadges={nodeDiagnosticBadges}
                   onNodeDiagnosticBadgeClick={handleNodeDiagnosticBadgeClick}
                   ioPresentationMap={ioPresentationMap}
+                  presentationZoomMode={presentationZoom}
                 />
                 {editorCircuit.nodes.length === 0 && (
                   <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">

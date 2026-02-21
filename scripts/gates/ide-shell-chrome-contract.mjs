@@ -22,14 +22,23 @@ await runIdeGate('IDE shell chrome contract satisfied', async ({ page, baseUrl }
   assert(Boolean(topBarBox), 'top bar bounding box unavailable');
   assert(Boolean(leftRailBox), 'left rail bounding box unavailable');
   assert(Boolean(consoleBox), 'console bounding box unavailable');
-  assert(topBarBox.height <= 60, `top bar must stay compact (<=60px), got ${topBarBox.height}`);
+  assert(topBarBox.height <= 52, `top bar must stay compact (<=52px), got ${topBarBox.height}`);
   assert(
-    leftRailBox.width >= 64 && leftRailBox.width <= 76,
-    `left rail width must stay within compact range 64..76px, got ${leftRailBox.width}`
+    leftRailBox.width >= 48 && leftRailBox.width <= 60,
+    `left rail width must stay within compact range 48..60px, got ${leftRailBox.width}`
+  );
+  const consoleStateAttr = await consolePanel.getAttribute('data-console-state');
+  const consoleClass = await consolePanel.getAttribute('class');
+  const consoleState =
+    consoleStateAttr ??
+    (consoleClass?.includes('is-collapsed') ? 'collapsed' : consoleClass?.includes('is-expanded') ? 'expanded' : null);
+  assert(
+    consoleState === 'collapsed',
+    `console should default collapsed in non-blocked mode, got "${consoleState ?? ''}"`
   );
   assert(
-    consoleBox.height <= 96,
-    `console should default collapsed in non-blocked mode (<=96px), got ${consoleBox.height}`
+    consoleBox.height <= 52,
+    `console should default collapsed in non-blocked mode (<=52px), got ${consoleBox.height}`
   );
 
   const activeButton = page.locator('[data-active="true"]').first();
