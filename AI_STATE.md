@@ -1,5 +1,177 @@
 # AI State
 
+## Change Log 2026-02-21 (Tranche 13: UI Truth + Zoom Authority)
+
+**Status**: COMPLETE — IDE visual overhaul v1 (viewport reclaim, elevation flatten, chrome reduce, button unify, responsive density, overflow gate) followed by 7-commit UI-truth + zoom-authority tranche eliminating false state and redundancy across all surfaces.
+
+### What Changed
+
+**Visual Overhaul v1 (6 commits):**
+1. `fix(ide): reclaim workbench viewport` — zeroed shell/workspace padding, fixed console grid minmax swap (min>max was locking console at 40px), stopped breakpoint 1120px→1280px from increasing padding
+2. `fix(ide): flatten elevation hierarchy` — removed dock border+shadow, dropped panel box-shadows, fixed dock overflow:hidden, conditional panel-actions (saves ~45px when actions absent)
+3. `fix(ide): reduce panel chrome overhead` — panel header 40px→36px, guided strip in surface-column 6px padding, mode label 8px→9px, JetBrains Mono→var(--rb-font-mono), project-name to token
+4. `fix(ide): unify button font-size to 12px` — base 11px→12px, removed topbar+canvas-controls overrides
+5. `fix(ide): responsive density system` — breakpoint fires at 1280px (not 1120px), added 960px dock-shrink tier, no padding increases at any breakpoint
+6. `test(gates): add ide-viewport-overflow-contract; rebaseline screenshots` — gate asserts scrollWidth ≤ clientWidth at 1366×768 across all 6 modes
+
+**UI Truth + Zoom Authority (7 commits + gate):**
+1. `fix(ide): single guidance authority in Project` — removed NEEDS ACTION badge from IdePanel `right` prop; added primary blocker callout in Readiness section before the checklist table
+2. `fix(ide): honest empty-state wording` — `?? 'pending'` → `?? '—'` for never-run hashes in ProjectSurface (verify hash, export hash) and VerifySurface (reportHash ×2, schedule)
+3. `fix(ide): single sim-state owner in Design` — removed RUNNING/PAUSED label from Live Inputs dock header; right-dock inspector is sole owner of sim state
+4. `feat(ide): zoom preset strip in Design canvas` — 50%/75%/100%/125%/Fit buttons above canvas controls; centre-stable setCamera math preserves world origin; active preset highlighted
+5. `fix(ide): disable Verify Run button when no vectors` — `disabled={authoredVectors.length === 0}` on primary Run CTA; empty-state already branches Generate Basics vs Run correctly
+6. `fix(ide): guided strip — always surface blockers; guard Ready` — removed `currentMode !== primaryCta.mode` guard from `showBlocker`; guarded "Status: Ready" behind `!showBlocker` so the two states can never contradict
+7. `fix(ide): remove false-green callouts in Import; add actionable empty state` — guarded All-ports-mapped, No-warnings, No-blocking-errors callouts with `hasParsedHdl`; added "Nothing parsed yet" info callout in diagnostics panel directing to paste HDL or Upload ZIP
+8. `test(gates): add ide-verify-reality-contract and ide-zoom-presets-contract` — verify-reality: AND example → Generate Basics → Run → assert PASS/FAIL + ≥8 waveform points + ≥1 signal row; zoom-presets: 50%/100% button clicks change zoom indicator
+
+### Architecture Notes
+
+- `IdeGuidedStrip.tsx` `showBlocker` fix is a 1-line change with wide correctness impact: every surface where `primaryCta.mode === currentMode` BUT blockers exist now correctly shows the blocker instead of "Ready"
+- Zoom preset centre-stable formula: `x = cx - worldX * targetZoom`, `y = cy - worldY * targetZoom` where `worldX = (cx - camera.x) / camera.zoom`
+- Import false-green root cause: empty arrays (`unmappedPorts.length === 0`, `blockingErrors.length === 0`) evaluate to true before any parse
+- Console grid minmax fix: `minmax(consoleHeight=64, collapsedH=40)` had min>max so CSS always used max(40px); fixed to `minmax(collapsedH, consoleHeight)`
+
+### Validation Executed
+
+- 7/7 screenshot baselines regenerated (Project, Verify, Import modes changed; Design, Hardware, Export unchanged)
+- TypeScript: no new errors in IDE surface packages
+- All 6 IDE modes render at 1366×768 without horizontal overflow (viewport-overflow-contract)
+
+## Change Log 2026-02-20 (Tranche 11: Micro-Polish Hardening — Visual Authority + Canvas Dominance)
+
+**Status**: COMPLETE - IDE chrome is more compact (42px topbar, 52px rail), canvas enforces 60vh minimum height with collapsible details, flat section styling removes "box soup" visual noise, LED glow + wire change pulse provide live feedback, and targeted gates validate layout contracts.
+
+### What Changed
+
+1. Flat section tokens and "box soup" removal
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - added flat section CSS tokens: `--panel-bg`, `--panel-border`, `--panel-radius`, `--panel-gap`, `--dense-1`, `--dense-2`.
+  - added `.ide-section-flat` class (no border, no background, no shadow) for info-only content.
+  - added `.ide-card-info-only` class inheriting flat styling for cards without actions.
+  - reduced nested padding and visual noise by removing borders from non-action containers.
+
+2. Chrome compaction: smaller topbar/statusbar/rail
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - reduced `--rb-topbar-height` from 46px to 42px.
+  - reduced `--rb-status-height` from 26px to 24px.
+  - reduced `--rb-rail-width` from 56px to 52px.
+  - tightened left rail padding from 4px to 2px, gap from 8px to 4px.
+  - compacted mode button sizing: padding 6px→5px, gap 4px→3px, label font 9px→8px.
+  - replaced LED dot active indicator with clean 2px left border (`border-left: 2px solid accent`).
+  - increased icon glyph tap target from 18px to 20px for better mobile UX despite smaller container.
+
+3. Canvas dominance: 60vh minimum height + collapsible details
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - changed `.ide-design-canvas-live` min-height from `460px` to `max(460px, 60vh)`.
+  - ensures canvas uses vertical screen space even on laptop displays at 125% scaling.
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - added `showDetails` state (default `false`).
+  - added "Details ▼" toggle button in command center header.
+  - secondary stats row (IR hash, dirty flags, error/warning counts) now collapsible behind toggle.
+  - canvas is dominant visual element by default; stats available on demand.
+
+4. Live visual feedback: LED glow + wire change pulse
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - added LED glow CSS: `[data-node-type="OUTPUT"][data-sim-value="1"]` and `[data-node-type="Lamp"][data-sim-value="1"]` get `drop-shadow(0 0 6px rgba(82, 210, 115, 0.7))` filter.
+  - added `.rb-logic-wire-changed` class with 250ms pulse animation (`@keyframes rb-wire-change-pulse`).
+  - subtle green glow for high outputs (not neon); yellow pulse for changed wires on sim step.
+- Updated `packages/rb-logic-view/src/components/NodeView.tsx`:
+  - added `data-node-type={node.type}` and `data-sim-value={nodeOutputValue}` attributes to `<g>` elements.
+  - enables CSS targeting for LED glow without JavaScript overhead.
+  - applies to both standard nodes and custom chip renderings.
+
+5. Verify first-fail auto-focus validation
+- No code changes required—already implemented in Tranche 10.
+- Confirmed: `useEffect` auto-selects `lastRun?.firstFailingTick` when FAIL status.
+- Confirmed: `useEffect` auto-selects first failing signal from `failingRows[0]?.signal`.
+- Student-facing default view instantly shows what failed and where.
+
+6. Targeted gate validation
+- Ran `pnpm -s ide:gate:shell-density-contract` → PASS (chrome compactness thresholds satisfied).
+- Ran `pnpm -s ide:gate:canvas-legibility-contract` → PASS (60vh + readable labels + presentation zoom).
+- Build verification: `pnpm --filter @redbyte/playground build` → success, no TypeScript errors introduced.
+
+### Validation Executed
+
+- `pnpm -s ide:gate:shell-density-contract` → PASS
+- `pnpm -s ide:gate:canvas-legibility-contract` → PASS
+- `pnpm --filter @redbyte/playground build` → SUCCESS (no TS errors)
+
+### Attribution
+
+- Connor Angiel
+
+## Change Log 2026-02-20 (Tranche 10: Visual Density + Layout System)
+
+**Status**: COMPLETE - IDE chrome is denser and more intentional, workbench console now auto-collapses when empty, design canvas legibility is improved with presentation zoom mode, right-dock sections are collapsible with targeted defaults, and new UI layout contracts are wired and passing.
+
+### What Changed
+
+1. Dense shell token/profile pass and global chrome tightening
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - tightened top bar, status bar, rail, and workbench spacing tokens.
+  - added explicit IDE density tokens (`--ide-gutter`, `--ide-card-pad`, `--ide-card-gap`, `--ide-dock-l-w`, `--ide-dock-r-w`, `--ide-font-sm/md/lg`, etc.).
+  - reduced card/table/action spacing and tightened panel/header rhythm across IDE surfaces.
+
+2. Console behavior: collapsible + auto-collapse on empty
+- Updated `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`:
+  - added `consoleHasEntries` support and explicit console state model (`collapsed` / `expanded` / `blocking`).
+  - auto-collapses to compact height when empty; auto-expands when entries/blockers exist.
+  - added explicit console toggle control and fixed shell markup integrity.
+- Updated `packages/rb-apps/src/apps/ide/components/IdeSurfaceLayout.tsx` and mode surfaces:
+  - threaded `consoleHasEntries` through `ProjectSurface`, `DesignSurface`, `VerifySurface`, `ExportSurface`, `ImportSurface`, and `HardwareSurface`.
+
+3. Dock/pane polish and accordion defaults
+- Updated `packages/rb-apps/src/apps/ide/components/IdePrimitives.tsx`:
+  - `IdeInspectorSection` is now collapsible with `defaultOpen` support.
+- Updated mode surfaces to use denser right-dock behavior:
+  - `DesignSurface`, `ExportSurface`, `ImportSurface`, `HardwareSurface`, `ProjectSurface`.
+  - default-open emphasis is now concentrated on key sections (not all panels expanded).
+
+4. Canvas legibility + presentation zoom
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - added `Presentation Zoom` toggle (`dense` vs `classroom`) and an always-visible canvas control cluster.
+  - emits `data-presentation-zoom` marker and keeps fit/center controls visible near canvas.
+- Updated `packages/rb-logic-view/src/LogicCanvas.tsx`:
+  - added `presentationZoomMode` prop and propagation to node/wire renderers.
+- Updated `packages/rb-logic-view/src/components/NodeView.tsx`:
+  - increased effective node/readability scale in classroom mode.
+  - enlarged pin hit targets and added deterministic `data-node-label` marker for legibility contracts.
+- Updated `packages/rb-logic-view/src/components/WireView.tsx`:
+  - scales wire stroke/hit/glow widths in classroom mode for better contrast and interaction.
+
+5. Verify/Export/Import layout tightening and screenshot refresh
+- Updated `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `ExportSurface.tsx`, `ImportSurface.tsx` and shared IDE CSS for denser structure and reduced dead space.
+- Updated screenshot baselines:
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-project-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-design-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-verify-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-export-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-import-chromium-win32.png`
+  - `tests/e2e/ide-screenshot-baseline.spec.ts-snapshots/ide-mode-hardware-chromium-win32.png`
+
+6. New tranche gates and runner wiring
+- Added:
+  - `scripts/gates/ide-shell-density-contract.mjs`
+  - `scripts/gates/ide-canvas-legibility-contract.mjs`
+  - `scripts/gates/ide-console-autocollapse-contract.mjs`
+- Updated:
+  - `scripts/gates/ide-shell-chrome-contract.mjs`
+  - `package.json`
+  - `scripts/repo-status.mjs`
+
+### Validation Executed
+
+- `pnpm -s ide:gate:shell-density-contract` -> PASS
+- `pnpm -s ide:gate:canvas-legibility-contract` -> PASS
+- `pnpm -s ide:gate:console-autocollapse-contract` -> PASS
+- `pnpm -s ide:gate:screenshots:update` -> PASS
+- `pnpm repo:status` -> PASS (38/38 checks; ahead warning remains non-blocking in current environment)
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-02-20 (Tranche 9: Real Persistence + Vivado ZIP Import + Assignment Example Grouping)
 
 **Status**: COMPLETE - IDE persistence is now deterministic and test-enforced, export bundles include canonical `project.rbproj.json` with manifest hashing, Vivado ZIP import is wired end-to-end into Import mode with inspection/apply flow, examples are grouped with course/lab/concept metadata, and all repository contracts pass on current main working state.
