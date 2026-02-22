@@ -1,0 +1,21 @@
+.board {
+  display: block;
+  border-radius: var(--ide-radius-s);
+  background: transparent;
+}
+
+.swGroup:hover .swHandle {
+  opacity: 0.9;
+}
+
+.btnCircle {
+  transition: fill 80ms ease;
+}
+
+.btnCircle:hover {
+  opacity: 0.8;
+}
+
+.ledCircle {
+  transition: fill 120ms ease;
+}

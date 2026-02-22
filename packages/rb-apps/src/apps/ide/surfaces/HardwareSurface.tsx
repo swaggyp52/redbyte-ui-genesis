@@ -11,6 +11,7 @@ import {
 } from '../components/IdePrimitives';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useIoBus } from '../ioBus';
+import { HardwareBoard2D } from '../components/HardwareBoard2D';
 
 export interface HardwareMappingRow {
   id: string;
@@ -96,6 +97,14 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     runtimeSim: runtimeSim ?? HARDWARE_EMPTY_SIM,
     setInput: onSimSetInput ?? (() => {}),
   });
+  const mappedSw = useMemo(
+    () => Array.from({ length: 16 }, (_, i) => ioBus.meta.swNodeIds[i] != null),
+    [ioBus.meta.swNodeIds]
+  );
+  const mappedLd = useMemo(
+    () => Array.from({ length: 16 }, (_, i) => ioBus.meta.ldNodeIds[i] != null),
+    [ioBus.meta.ldNodeIds]
+  );
   const hasOutputMapping = useMemo(
     () =>
       mappingRows.some((row) => row.direction === 'out' && row.pin.trim().length > 0),
@@ -309,27 +318,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         }
         testId="ide-hardware-panel"
       >
-        <div
-          className="ide-hardware-board-placeholder"
-          data-testid="ide-hardware-board-placeholder"
-          style={{
-            border: '1px dashed rgba(46,196,182,0.35)',
-            borderRadius: 'var(--ide-radius-s)',
-            minHeight: 240,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 'var(--ide-space-2)',
-            background: 'rgba(8,18,28,0.5)',
-            color: 'var(--ide-text-soft)',
-          }}
-        >
-          <span style={{ fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>
-            BASYS3
-          </span>
-          <span style={{ fontSize: 'var(--rb-font-size-1)' }}>Board visualization — wiring in progress</span>
-        </div>
+        <HardwareBoard2D
+          sw={ioBus.state.sw}
+          ld={ioBus.state.ld}
+          btn={ioBus.state.btn}
+          mappedSw={mappedSw}
+          mappedLd={mappedLd}
+          onToggleSwitch={(i) => ioBus.actions.toggleSwitch(i)}
+          onPressButton={(i, down) => ioBus.actions.setButton(i, down ? 1 : 0)}
+        />
 
         <section className="ide-export-section" data-testid="ide-hardware-mapping-summary">
           <header className="ide-export-section-header">
