@@ -2685,6 +2685,39 @@
   line-height: 1.35;
 }
 
+/* Gutter line spans (for per-line highlight) */
+.ide-code-gutter-line {
+  display: block;
+  line-height: 1.5;
+  padding-right: 4px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ide-code-gutter-line--warn {
+  background: color-mix(in srgb, #f59e0b 18%, transparent);
+  color: #fbbf24;
+  border-left: 2px solid #f59e0b;
+  padding-left: 2px;
+}
+
+/* Warning jump button */
+.ide-warning-jump {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 1px 5px;
+  font-family: var(--rb-font-mono, monospace);
+  font-size: var(--rb-font-size-1, 11px);
+  color: #5eead4;
+  background: color-mix(in srgb, #5eead4 12%, transparent);
+  border: 1px solid color-mix(in srgb, #5eead4 30%, transparent);
+  border-radius: 3px;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+.ide-warning-jump:hover {
+  background: color-mix(in srgb, #5eead4 22%, transparent);
+}
+
 /* Inline bullet list helper */
 .ide-bullets {
   margin: var(--ide-space-2, 8px) 0;

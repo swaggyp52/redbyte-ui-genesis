@@ -12,7 +12,7 @@
 //
 // Behavioural 'process' blocks are ignored with a warning.
 
-import type { ParsedHDL, ParsedPort, ParsedInstance } from './hdlToCircuit';
+import type { ParsedHDL, ParsedPort, ParsedInstance, ParsedHdlWarning } from './hdlToCircuit';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -23,6 +23,42 @@ function stripComments(src: string): string {
 
 function normaliseWs(src: string): string {
   return src.replace(/\r\n/g, '\n').replace(/\t/g, ' ').replace(/ {2,}/g, ' ');
+}
+
+// ─── Position helpers ─────────────────────────────────────────────────────────
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function findIdentifierLineCol(
+  source: string,
+  ident: string,
+): { line: number; col: number } | null {
+  if (!ident || !ident.trim()) return null;
+  const re = new RegExp(`\\b${escapeRegExp(ident.trim())}\\b`);
+  const m = re.exec(source);
+  if (!m) return null;
+  let line = 1;
+  let lastNl = -1;
+  for (let i = 0; i < m.index; i++) {
+    if (source.charCodeAt(i) === 10) { line++; lastNl = i; }
+  }
+  return { line, col: m.index - lastNl };
+}
+
+// ─── Warning event types ──────────────────────────────────────────────────────
+
+type WarningEvent =
+  | { kind: 'structural'; message: string }
+  | { kind: 'named'; message: string; ident: string };
+
+function mapWarningEvents(events: WarningEvent[], originalSource: string): ParsedHdlWarning[] {
+  return events.map((e) => {
+    if (e.kind === 'structural') return { message: e.message, kind: 'structural' as const };
+    const pos = findIdentifierLineCol(originalSource, e.ident);
+    return { message: e.message, kind: 'named' as const, ...(pos ?? {}) };
+  });
 }
 
 // ─── Entity parser ────────────────────────────────────────────────────────────
@@ -56,7 +92,7 @@ function parseEntity(src: string): { name: string; ports: ParsedPort[] } | null 
 
 function parseArchitecture(
   src: string,
-  warnings: string[],
+  events: WarningEvent[],
 ): { instances: ParsedInstance[]; signals: string[] } {
   const instances: ParsedInstance[] = [];
   const signals: string[] = [];
@@ -69,7 +105,7 @@ function parseArchitecture(
     const simpleRx = /begin([\s\S]*?)end\s+(?:architecture\s*)?\w*\s*;/i;
     const sm = src.match(simpleRx);
     if (!sm) return { instances, signals };
-    parseBeginBlock(sm[1], instances, signals, warnings);
+    parseBeginBlock(sm[1], instances, signals, events);
     return { instances, signals };
   }
 
@@ -82,7 +118,7 @@ function parseArchitecture(
     signals.push(...names);
   }
 
-  parseBeginBlock(archM[2], instances, signals, warnings);
+  parseBeginBlock(archM[2], instances, signals, events);
   return { instances, signals };
 }
 
@@ -90,13 +126,14 @@ function parseBeginBlock(
   body: string,
   instances: ParsedInstance[],
   _signals: string[],
-  warnings: string[],
+  events: WarningEvent[],
 ): void {
   // Warn about process blocks
   if (/\bprocess\b/i.test(body)) {
-    warnings.push(
-      'Behavioural PROCESS blocks detected — only structural port-map connections are imported.',
-    );
+    events.push({
+      kind: 'structural',
+      message: 'Behavioural PROCESS blocks detected — only structural port-map connections are imported.',
+    });
   }
 
   // Concurrent signal assignments (a <= b) — ignored with warning
@@ -116,7 +153,7 @@ function parseBeginBlock(
           portMap: { in: rhs, out: lhs },
         });
       } else {
-        warnings.push(`Signal assignment '${lhs} <= ${rhs}' not fully supported — skipped`);
+        events.push({ kind: 'named', message: `Signal assignment '${lhs} <= ${rhs}' not fully supported — skipped`, ident: lhs });
       }
     }
   }
@@ -166,22 +203,23 @@ function parseBeginBlock(
  * Handles structural VHDL only; behavioural process blocks are noted as warnings.
  */
 export function parseVhdl(source: string): ParsedHDL {
-  const warnings: string[] = [];
+  const originalSource = source;
+  const events: WarningEvent[] = [];
   const clean = normaliseWs(stripComments(source));
 
   const entity = parseEntity(clean);
   if (!entity) {
-    warnings.push('No entity declaration found. Make sure you paste a complete VHDL file.');
+    events.push({ kind: 'structural', message: 'No entity declaration found. Make sure you paste a complete VHDL file.' });
   }
 
-  const { instances, signals } = parseArchitecture(clean, warnings);
+  const { instances, signals } = parseArchitecture(clean, events);
 
   return {
     entityName: entity?.name ?? 'unknown',
     ports: entity?.ports ?? [],
     instances,
     signals,
-    warnings,
+    warnings: mapWarningEvents(events, originalSource),
     lang: 'vhdl',
   };
 }

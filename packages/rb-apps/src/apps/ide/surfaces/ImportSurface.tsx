@@ -1,8 +1,9 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseVhdl } from '../../../import/vhdlImport';
 import { parseVerilog } from '../../../import/verilogImport';
 import { parseXdcPins, type XdcParseResult } from '../../../import/xdcImport';
 import type { ParsedHDL } from '../../../import/hdlToCircuit';
+import type { ParsedHdlWarning } from '../../../import/hdlToCircuit';
 import type { RBProject } from '../../../export/projectFormat';
 import type { IdeExampleIoRow } from '../examplesCatalog';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
@@ -129,12 +130,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
   // --- Suggestion model state ---
   const [overrides, setOverrides] = useState<Record<string, string | null>>({});
+  const [activeWarningLine, setActiveWarningLine] = useState<number | null>(null);
 
   const lineCount = useMemo(() => Math.max(1, hdlText.split('\n').length), [hdlText]);
-  const lineNumbersText = useMemo(
-    () => Array.from({ length: lineCount }, (_, i) => String(i + 1)).join('\n'),
-    [lineCount]
-  );
 
   const rowIdByPortName = useMemo(() => {
     const m = new Map<string, string>();
@@ -218,6 +216,14 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     gutter.scrollTop = ta.scrollTop;
   }, []);
 
+  const scrollToLine = useCallback((line: number) => {
+    const ta = hdlTextareaRef.current;
+    if (!ta) return;
+    const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 18;
+    ta.scrollTop = Math.max(0, (line - 1) * lineHeight - ta.clientHeight / 3);
+    setActiveWarningLine(line);
+  }, []);
+
   const handleHdlKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       const isSave = (e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S');
@@ -277,6 +283,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     [parseHdl, setHdlText]
   );
 
+  useEffect(() => {
+    if (!activeWarningLine) return;
+    const t = window.setTimeout(() => setActiveWarningLine(null), 1200);
+    return () => window.clearTimeout(t);
+  }, [activeWarningLine]);
+
   const applicableItems = useMemo(
     () =>
       suggestions
@@ -324,7 +336,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
   const warnings = useMemo(() => {
     const warningRows: string[] = [];
-    if (parsedHdl?.warnings?.length) warningRows.push(...parsedHdl.warnings);
+    if (parsedHdl?.warnings?.length) warningRows.push(...parsedHdl.warnings.map((w) => w.message));
     if (xdcResult?.warnings?.length) warningRows.push(...xdcResult.warnings);
     if (zipInspection?.warnings?.length) warningRows.push(...zipInspection.warnings);
     return warningRows;
@@ -596,11 +608,28 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                   </IdeCallout>
                 )}
                 {hdlWarningCount > 0 ? (
-                  <ol className="ide-warning-list" data-testid="ide-import-warning-list">
+                  <ol className="ide-warning-list" data-testid="ide-import-parse-warnings">
                     {hdlParseWarnings.slice(0, 10).map((w, idx) => (
-                      <li key={`${idx}-${String(w).slice(0, 20)}`} className="ide-warning-row">
+                      <li
+                        key={`${idx}-${w.message.slice(0, 20)}`}
+                        className="ide-warning-row"
+                        data-testid="ide-import-parse-warning-row"
+                      >
                         <span className="ide-warning-index">{idx + 1}.</span>
-                        <span className="ide-warning-text">{String(w)}</span>
+                        <span className="ide-warning-text">
+                          {w.line != null ? (
+                            <button
+                              type="button"
+                              className="ide-warning-jump"
+                              onClick={() => scrollToLine(w.line!)}
+                              data-testid="ide-import-parse-warning-line"
+                              title={`Jump to line ${w.line}`}
+                            >
+                              Ln {w.line}
+                            </button>
+                          ) : null}
+                          {w.message}
+                        </span>
                       </li>
                     ))}
                   </ol>
@@ -985,7 +1014,17 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     data-testid="ide-import-hdl-gutter"
                     ref={hdlGutterRef}
                   >
-                    {lineNumbersText}
+                    {Array.from({ length: lineCount }, (_, i) => {
+                      const lineNum = i + 1;
+                      return (
+                        <span
+                          key={lineNum}
+                          className={`ide-code-gutter-line${activeWarningLine === lineNum ? ' ide-code-gutter-line--warn' : ''}`}
+                        >
+                          {lineNum}
+                        </span>
+                      );
+                    })}
                   </div>
                   <textarea
                     ref={hdlTextareaRef}

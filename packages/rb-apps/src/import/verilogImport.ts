@@ -8,7 +8,7 @@
 //   - module instantiations: <ModuleName> [#(…)] <label> ( .port(signal) … );
 //   - Behavioural always / assign blocks noted as warnings.
 
-import type { ParsedHDL, ParsedPort, ParsedInstance } from './hdlToCircuit';
+import type { ParsedHDL, ParsedPort, ParsedInstance, ParsedHdlWarning } from './hdlToCircuit';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -22,6 +22,42 @@ function stripComments(src: string): string {
 
 function normaliseWs(src: string): string {
   return src.replace(/\r\n/g, '\n').replace(/\t/g, ' ').replace(/ {2,}/g, ' ');
+}
+
+// ─── Position helpers ─────────────────────────────────────────────────────────
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function findIdentifierLineCol(
+  source: string,
+  ident: string,
+): { line: number; col: number } | null {
+  if (!ident || !ident.trim()) return null;
+  const re = new RegExp(`\\b${escapeRegExp(ident.trim())}\\b`);
+  const m = re.exec(source);
+  if (!m) return null;
+  let line = 1;
+  let lastNl = -1;
+  for (let i = 0; i < m.index; i++) {
+    if (source.charCodeAt(i) === 10) { line++; lastNl = i; }
+  }
+  return { line, col: m.index - lastNl };
+}
+
+// ─── Warning event types ──────────────────────────────────────────────────────
+
+type WarningEvent =
+  | { kind: 'structural'; message: string }
+  | { kind: 'named'; message: string; ident: string };
+
+function mapWarningEvents(events: WarningEvent[], originalSource: string): ParsedHdlWarning[] {
+  return events.map((e) => {
+    if (e.kind === 'structural') return { message: e.message, kind: 'structural' as const };
+    const pos = findIdentifierLineCol(originalSource, e.ident);
+    return { message: e.message, kind: 'named' as const, ...(pos ?? {}) };
+  });
 }
 
 // ─── Module header parser ─────────────────────────────────────────────────────
@@ -61,7 +97,7 @@ function parseModule(src: string): { name: string; ports: ParsedPort[] } | null 
 function parseBody(
   src: string,
   ports: ParsedPort[],
-  warnings: string[],
+  events: WarningEvent[],
 ): { instances: ParsedInstance[]; signals: string[] } {
   const instances: ParsedInstance[] = [];
   const signals: string[] = [];
@@ -96,7 +132,7 @@ function parseBody(
 
   // Warn about always blocks
   if (/\balways\b/i.test(body)) {
-    warnings.push('Behavioural always blocks detected — only structural connections are imported.');
+    events.push({ kind: 'structural', message: 'Behavioural always blocks detected — only structural connections are imported.' });
   }
 
   // Warn about assign with complex expressions
@@ -113,7 +149,7 @@ function parseBody(
         portMap: { in: rhs, out: lhs },
       });
     } else {
-      warnings.push(`assign '${lhs} = ${rhs}' uses an operator expression — imported as a note only`);
+      events.push({ kind: 'named', message: `assign '${lhs} = ${rhs}' uses an operator expression — imported as a note only`, ident: lhs });
     }
   }
 
@@ -176,23 +212,24 @@ function parseBody(
  * Parse Verilog/SystemVerilog source text and return a ParsedHDL intermediate.
  */
 export function parseVerilog(source: string): ParsedHDL {
-  const warnings: string[] = [];
+  const originalSource = source;
+  const events: WarningEvent[] = [];
   const clean = normaliseWs(stripComments(source));
 
   const mod = parseModule(clean);
   if (!mod) {
-    warnings.push('No module declaration found. Paste a complete Verilog file.');
+    events.push({ kind: 'structural', message: 'No module declaration found. Paste a complete Verilog file.' });
   }
 
   const ports = mod?.ports ?? [];
-  const { instances, signals } = parseBody(clean, ports, warnings);
+  const { instances, signals } = parseBody(clean, ports, events);
 
   return {
     entityName: mod?.name ?? 'unknown',
     ports,
     instances,
     signals,
-    warnings,
+    warnings: mapWarningEvents(events, originalSource),
     lang: 'verilog',
   };
 }

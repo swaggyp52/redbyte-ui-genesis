@@ -21,6 +21,13 @@ export interface ParsedInstance {
   portMap: Record<string, string>;
 }
 
+export type ParsedHdlWarning = {
+  message: string;
+  line?: number;  // 1-based, resolved against original source
+  col?: number;   // 1-based
+  kind?: 'structural' | 'named';
+};
+
 export interface ParsedHDL {
   entityName: string;
   ports: ParsedPort[];
@@ -28,7 +35,7 @@ export interface ParsedHDL {
   /** Signal names declared inside the entity/module */
   signals: string[];
   /** Non-fatal issues encountered during parsing */
-  warnings: string[];
+  warnings: ParsedHdlWarning[];
   /** Language that was parsed */
   lang: 'vhdl' | 'verilog';
 }
@@ -267,7 +274,7 @@ function assignPositions(nodes: Node[], connections: Connection[]): Node[] {
  * Convert a ParsedHDL intermediate representation into a RedByte Circuit.
  */
 export function parsedHdlToCircuit(parsed: ParsedHDL): ImportResult {
-  const warnings = [...parsed.warnings];
+  const warnings: string[] = [...parsed.warnings.map((w) => w.message)];
   const unmappedComponents: string[] = [];
   const nodes: Node[] = [];
   const connections: Connection[] = [];
