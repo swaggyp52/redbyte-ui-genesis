@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { TestVector } from '@redbyte/rb-utils';
 import type { RunVerificationInput, RuntimeVerifyRun } from '../projectRuntime';
 import { buildVerifyTickSignalIndex } from '../verifyReport';
+import type { IdeExampleDefinition } from '../examplesCatalog';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -60,6 +61,8 @@ export interface VerifySurfaceProps {
   onClearVerification?: () => void;
   onOpenProjectVectors: () => void;
   onFixPath?: (target: VerifyFailureTarget) => void;
+  example?: IdeExampleDefinition | null;
+  onGoToDesign?: () => void;
 }
 
 export const VerifySurface: React.FC<VerifySurfaceProps> = ({
@@ -74,6 +77,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   onClearVerification,
   onOpenProjectVectors,
   onFixPath,
+  example,
+  onGoToDesign,
 }) => {
   const inputFields = useMemo(() => {
     const mappedInputSeed =
@@ -261,6 +266,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const firstFailure = failingRows[0];
   const firstFailureTick = firstFailure?.tick ?? lastRun?.firstFailingTick;
   const canExportTestbench = status === 'pass';
+
+  const isShowcaseKit = example?.category === 'showcase';
+  const kitGoals = (example?.goals ?? []).filter(Boolean);
+
+  const handleJumpToFirstFailure = () => {
+    if (firstFailureTick == null) return;
+    setSelectedTick(firstFailureTick);
+    if (firstFailure?.signal) {
+      setSelectedSignal(firstFailure.signal);
+      setSelectedFailureSignal(firstFailure.signal);
+    }
+  };
 
   // Derived display-state machine: replaces the ambiguous IDLE label
   // hasNoTrace fires only when the runtime ran with actual expectation rows
@@ -464,6 +481,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
       inspector={
         <>
+          {isShowcaseKit && kitGoals.length > 0 && (
+            <IdeInspectorSection title="What to look for" defaultOpen testId="ide-verify-kit-goals">
+              <ul style={{ margin: 0, paddingLeft: '1.1rem', display: 'grid', gap: 'var(--ide-space-1)' }}>
+                {kitGoals.slice(0, 6).map((g) => (
+                  <li key={g} className="ide-copy" style={{ margin: 0 }}>
+                    {g}
+                  </li>
+                ))}
+              </ul>
+            </IdeInspectorSection>
+          )}
           <IdeInspectorSection title="Mismatch Detail" defaultOpen>
             {selectedFailureSignal ? (() => {
               const matchingFailure = failingRows.find((r) => r.signal === selectedFailureSignal);
@@ -635,6 +663,41 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         }
         testId="ide-verify-panel"
       >
+        {isShowcaseKit && (
+          <IdeCallout
+            tone={failingRows.length > 0 ? 'warn' : 'success'}
+            title="Showcase Kit: Verify is a teaching tool"
+            testId="ide-verify-kit-callout"
+          >
+            <p className="ide-copy" style={{ margin: 0 }}>
+              {failingRows.length > 0
+                ? 'This kit may include a deliberate failing vector so you can learn the debugger.'
+                : 'All vectors passing — explore the waveform to understand the circuit behavior.'}
+            </p>
+            {failingRows.length > 0 && firstFailureTick != null && (
+              <div style={{ marginTop: 'var(--ide-space-2)', display: 'flex', gap: 'var(--ide-space-2)', flexWrap: 'wrap' }}>
+                <IdeButton
+                  tone="primary"
+                  onClick={handleJumpToFirstFailure}
+                  testId="ide-verify-jump-first-failure"
+                >
+                  Jump to first failing tick
+                </IdeButton>
+              </div>
+            )}
+            {onGoToDesign && (
+              <div style={{ marginTop: 'var(--ide-space-2)' }}>
+                <IdeButton
+                  tone="secondary"
+                  onClick={onGoToDesign}
+                  testId="ide-verify-go-design"
+                >
+                  Fix in Design
+                </IdeButton>
+              </div>
+            )}
+          </IdeCallout>
+        )}
         <section
           className={`ide-verify-banner ${status === 'pass' ? 'is-pass' : status === 'fail' ? 'is-fail' : ''}`}
           data-testid="ide-verify-banner"

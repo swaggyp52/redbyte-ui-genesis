@@ -728,6 +728,8 @@ export const IdeApp: React.FC = () => {
             onClearVerification={handleClearVerification}
             onOpenProjectVectors={() => setCurrentMode('project')}
             onFixPath={handleVerifyFixPath}
+            example={activeExample ?? null}
+            onGoToDesign={() => setCurrentMode('design')}
           />
         ) : currentMode === 'hardware' ? (
           <HardwareSurface
