@@ -756,6 +756,9 @@ export const IdeApp: React.FC = () => {
             onExportResult={handleExportResult}
             onDiagnosticAction={handleDiagnosticAction}
             onOpenVerify={() => setCurrentMode('verify')}
+            example={activeExample ?? null}
+            onGoToHardware={() => setCurrentMode('hardware')}
+            onGoToProject={() => setCurrentMode('project')}
           />
         ) : (
           <ImportSurface onImportProject={handleImportProject} />

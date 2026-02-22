@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { IdeExampleDefinition } from '../examplesCatalog';
 import type { RBProject } from '../../../export/projectFormat';
 import { stableStringify } from '../../../export/stableStringify';
 import type { ProjectHealthExportResult, ProjectHealthVerifyResult } from '../projectHealth';
@@ -30,6 +31,9 @@ export interface ExportSurfaceProps {
   onExportResult?: (result: ProjectHealthExportResult) => void;
   onDiagnosticAction?: (diagnostic: IdeDiagnostic) => void;
   onOpenVerify?: () => void;
+  example?: IdeExampleDefinition | null;
+  onGoToHardware?: () => void;
+  onGoToProject?: () => void;
 }
 
 export const ExportSurface: React.FC<ExportSurfaceProps> = ({
@@ -42,6 +46,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   onExportResult,
   onDiagnosticAction,
   onOpenVerify,
+  example,
+  onGoToHardware,
+  onGoToProject,
 }) => {
   const viewModel = useMemo(
     () => buildExportViewModel(project, verifyLastRun),
@@ -353,10 +360,56 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               </IdeButton>
             </div>
           )}
+          <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-3)' }}>
+            {onGoToHardware && (
+              <IdeButton
+                tone={!hasBlockingErrors ? 'primary' : 'secondary'}
+                onClick={onGoToHardware}
+                testId="ide-export-go-hardware"
+              >
+                {!hasBlockingErrors ? 'Back to Hardware' : 'Go to Hardware'}
+              </IdeButton>
+            )}
+            {onGoToProject && (
+              <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-export-go-project">
+                Go to Project
+              </IdeButton>
+            )}
+          </div>
         </section>
       }
       inspector={
         <>
+          {/* Kit sections — only when showcase kit is loaded */}
+          {example?.category === 'showcase' && (
+            <>
+              <IdeInspectorSection title="Kit Summary" defaultOpen testId="ide-export-kit-summary">
+                <div className="ide-kv-list">
+                  <div className="ide-kv-row">
+                    <span>Name</span>
+                    <span style={{ fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>{example.name}</span>
+                  </div>
+                  {example.expectedBehavior && (
+                    <div className="ide-kv-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 'var(--ide-space-1)' }}>
+                      <span>Expected</span>
+                      <p className="ide-copy" style={{ margin: 0, fontSize: 'var(--rb-font-size-1)' }}>{example.expectedBehavior}</p>
+                    </div>
+                  )}
+                </div>
+              </IdeInspectorSection>
+
+              {(example.goals?.length ?? 0) > 0 && (
+                <IdeInspectorSection title="Export Goals" defaultOpen={false} testId="ide-export-kit-goals">
+                  <ul style={{ margin: 0, paddingLeft: 'var(--ide-space-4)', display: 'grid', gap: 'var(--ide-space-1)' }}>
+                    {(example.goals ?? []).slice(0, 6).map((g) => (
+                      <li key={g} className="ide-copy" style={{ margin: 0, fontSize: 'var(--rb-font-size-1)' }}>{g}</li>
+                    ))}
+                  </ul>
+                </IdeInspectorSection>
+              )}
+            </>
+          )}
+
           <IdeInspectorSection title="Export Context" defaultOpen>
             <div className="ide-kv-list">
               <div className="ide-kv-row">
@@ -435,7 +488,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       }
     >
       <IdePanel
-          title="Export"
+          title={hasBlockingErrors ? 'Export Blocked' : 'Export Ready'}
           description="Compiler output in three steps: status, blockers, and deterministic Vivado-ready artifacts."
           actions={
             <>
@@ -448,7 +501,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   Download Vivado Pack (.zip)
                 </IdeButton>
               </span>
-              <IdeButton tone="ghost">Re-run Validation</IdeButton>
             </>
           }
           right={
@@ -526,6 +578,28 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   {diagnosticsList.length} diagnostics
                 </span>
               </header>
+
+              {hasBlockingErrors && (
+                <IdeCallout
+                  tone="error"
+                  title={`${diagnosticsList.filter((d) => d.severity === 'error').length} blocker${diagnosticsList.filter((d) => d.severity === 'error').length !== 1 ? 's' : ''} — export unavailable`}
+                  testId="ide-export-blockers-callout"
+                >
+                  <p className="ide-copy" style={{ margin: 0 }}>Resolve all mapping and verification issues before downloading.</p>
+                  <div style={{ marginTop: 'var(--ide-space-2)', display: 'flex', gap: 'var(--ide-space-2)', flexWrap: 'wrap' }}>
+                    {onGoToProject && (
+                      <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-export-go-project">
+                        Fix in Project
+                      </IdeButton>
+                    )}
+                    {onOpenVerify && diagnosticsList.length > 0 && (
+                      <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-go-verify">
+                        Re-run Verify
+                      </IdeButton>
+                    )}
+                  </div>
+                </IdeCallout>
+              )}
 
               {hasBlockingErrors && (
                 <IdeCallout
@@ -686,6 +760,33 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </section>
 
             <section className="ide-export-section" data-testid="ide-export-artifact-preview">
+
+              {!hasBlockingErrors && (
+                <div
+                  data-testid="ide-export-ready-hero"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 'var(--ide-space-3)',
+                    padding: 'var(--ide-space-5) 0',
+                    textAlign: 'center',
+                  }}
+                >
+                  <IdeStatusPill tone="ok">ALL CHECKS PASSED</IdeStatusPill>
+                  <IdeButton
+                    tone="primary"
+                    onClick={handleBuildEvidenceCapsule}
+                    testId="ide-export-download-btn"
+                  >
+                    Download Vivado Pack
+                  </IdeButton>
+                  <p className="ide-copy" style={{ maxWidth: 440, margin: 0, color: 'var(--ide-text-soft)' }}>
+                    Contains top.vhd, top.xdc, vivado_import.tcl, and README.txt.
+                  </p>
+                </div>
+              )}
+
               <header className="ide-export-section-header">
                 <h3>Outputs</h3>
                 <span className="ide-export-section-meta">
@@ -932,12 +1033,4 @@ function statusTone(status: ExportPinStatus): 'ok' | 'error' | 'warn' {
 function resolveRowStatus(baseStatus: ExportPinStatus, pinValue: string): ExportPinStatus {
   if (baseStatus === 'unused') return 'unused';
   return pinValue.trim().length > 0 ? 'mapped' : 'missing';
-}
-
-function toArtifactTestId(path: string): string {
-  return path
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
 }
