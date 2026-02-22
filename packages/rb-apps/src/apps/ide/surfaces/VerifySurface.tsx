@@ -189,6 +189,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return filtered.length > 0 ? filtered : signalTimeline;
   }, [failingSignalKeys, mappedSignalKeys, signalTimeline]);
   const [showAllSignals, setShowAllSignals] = useState(false);
+  const [selectedFailureSignal, setSelectedFailureSignal] = useState<string | null>(null);
   const visibleSignalTimeline = showAllSignals ? signalTimeline : relevantSignalTimeline;
   const selectedTickRows = useMemo(() => {
     if (selectedTick === null) return [];
@@ -445,10 +446,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <button
                   key={`${row.tick}-${row.signal}`}
                   type="button"
-                  className="ide-signal-row"
+                  className={`ide-signal-row ${selectedFailureSignal === row.signal ? 'is-active' : ''}`}
                   onClick={() => {
                     setSelectedTick(row.tick);
                     setSelectedSignal(row.signal);
+                    setSelectedFailureSignal(row.signal);
                   }}
                   data-testid={`ide-verify-failure-${toTestId(`${row.signal}-${row.tick}`)}`}
                 >
@@ -462,6 +464,46 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
       inspector={
         <>
+          <IdeInspectorSection title="Mismatch Detail" defaultOpen>
+            {selectedFailureSignal ? (() => {
+              const matchingFailure = failingRows.find((r) => r.signal === selectedFailureSignal);
+              return (
+                <div className="ide-kv-list">
+                  <div className="ide-kv-row">
+                    <span>Signal</span>
+                    <code>{selectedFailureSignal}</code>
+                  </div>
+                  <div className="ide-kv-row">
+                    <span>Expected</span>
+                    <code>{matchingFailure?.expected ?? '—'}</code>
+                  </div>
+                  <div className="ide-kv-row">
+                    <span>Actual</span>
+                    <code>{matchingFailure?.actual ?? '—'}</code>
+                  </div>
+                  <div className="ide-kv-row">
+                    <span>Tick</span>
+                    <span>{matchingFailure?.tick ?? '—'}</span>
+                  </div>
+                  {onFixPath && matchingFailure && (
+                    <div className="ide-inline-actions">
+                      <IdeButton
+                        tone="secondary"
+                        onClick={() => onFixPath(matchingFailure)}
+                        testId="ide-verify-mismatch-fix"
+                      >
+                        Fix in Design
+                      </IdeButton>
+                    </div>
+                  )}
+                </div>
+              );
+            })() : (
+              <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+                Select a failing signal to see details.
+              </p>
+            )}
+          </IdeInspectorSection>
           <IdeInspectorSection title="Vectors">
             <p className="ide-copy">{vectorSourceLabel}</p>
 

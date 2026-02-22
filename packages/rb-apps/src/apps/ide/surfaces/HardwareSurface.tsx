@@ -5,7 +5,6 @@ import {
   IdeButton,
   IdeCallout,
   IdeDataTable,
-  IdeGrid,
   IdeInspectorSection,
   IdePanel,
   IdeStatusPill,
@@ -36,10 +35,9 @@ export interface HardwareSurfaceProps {
 }
 
 export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
-  projectName,
+  projectName: _projectName,
   expectedBehavior,
   mappingRows,
-  expectedIoRows,
   vectorsCount,
   health,
   onGenerateBringUpVectors,
@@ -106,24 +104,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         ]),
     [mappingRows]
   );
-  const expectedIoTableRows = useMemo(
-    () =>
-      expectedIoRows.slice(0, 20).map((row) => [
-        <code key={`${row.signal}-${row.tick}`}>{row.signal}</code>,
-        `t${row.tick}`,
-        <code key={`${row.signal}-${row.tick}-expected`}>{row.expected}</code>,
-      ]),
-    [expectedIoRows]
-  );
-  const checklistSteps = useMemo(
-    () => [
-      'Download Vivado pack from Export.',
-      'Run vivado_import.tcl in the unpacked folder.',
-      'Program Basys3 with generated bitstream.',
-      'Flip mapped SW/BTN inputs and compare LED outputs.',
-    ],
-    []
-  );
 
   return (
     <IdeSurfaceLayout
@@ -133,9 +113,14 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       dock={
         <section className="ide-workbench-placeholder" data-testid="ide-hardware-sources-dock">
           <header className="ide-workbench-placeholder-header">
-            <h3>Board Target</h3>
+            <h3>Bring-Up Checklist</h3>
             <IdeStatusPill tone="ok">BASYS3</IdeStatusPill>
           </header>
+          <IdeDataTable
+            columns={['Check', 'Status']}
+            rows={checklistRows}
+            testId="ide-hardware-checklist-table"
+          />
           <div className="ide-kv-list">
             <div className="ide-kv-row">
               <span>Mapped required</span>
@@ -147,20 +132,35 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               <span>Vectors</span>
               <span>{vectorsCount}</span>
             </div>
-            <div className="ide-kv-row">
-              <span>Verify</span>
-              <span>{health.lastVerify?.status?.toUpperCase() ?? 'NEVER'}</span>
-            </div>
           </div>
           <div className="ide-inline-actions">
             <IdeButton tone="secondary" onClick={onOpenVerify}>
-              Open Verify
+              Run Verify
             </IdeButton>
           </div>
         </section>
       }
       inspector={
         <>
+          <IdeInspectorSection title="Live Signals" defaultOpen>
+            <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+              Connect simulation to see live SW / LD values.
+            </p>
+            <div className="ide-kv-list">
+              <div className="ide-kv-row">
+                <span>SW</span>
+                <span>—</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>LD</span>
+                <span>—</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>BTN</span>
+                <span>—</span>
+              </div>
+            </div>
+          </IdeInspectorSection>
           <IdeInspectorSection title="Expected Behavior" defaultOpen>
             <p className="ide-copy" data-testid="ide-hardware-expected-behavior">
               {expectedBehavior}
@@ -252,41 +252,27 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         }
         testId="ide-hardware-panel"
       >
-        <IdeGrid columns={2} testId="ide-hardware-grid">
-          <section className="ide-export-section" data-testid="ide-hardware-checklist">
-            <header className="ide-export-section-header">
-              <h3>Bring-Up Checklist</h3>
-            </header>
-            <ol className="ide-export-checklist ide-copy" data-testid="ide-hardware-checklist-steps">
-              {checklistSteps.map((step) => (
-                <li key={step}>{step}</li>
-              ))}
-            </ol>
-            <IdeDataTable
-              columns={['Check', 'Status']}
-              rows={checklistRows}
-              testId="ide-hardware-checklist-table"
-            />
-          </section>
-
-          <section className="ide-export-section" data-testid="ide-hardware-required-signals">
-            <header className="ide-export-section-header">
-              <h3>Required Signals</h3>
-              <span className="ide-export-section-meta">{requiredCount} required</span>
-            </header>
-            {requiredCount > 0 ? (
-              <IdeCallout tone={mappedRequiredCount === requiredCount ? 'success' : 'warn'}>
-                {mappedRequiredCount === requiredCount
-                  ? 'All required signals are mapped to Basys3 pins.'
-                  : `${requiredCount - mappedRequiredCount} required signal(s) still unmapped.`}
-              </IdeCallout>
-            ) : (
-              <IdeCallout tone="warn" title="No required signals">
-                Add mapped IO rows before hardware bring-up.
-              </IdeCallout>
-            )}
-          </section>
-        </IdeGrid>
+        <div
+          className="ide-hardware-board-placeholder"
+          data-testid="ide-hardware-board-placeholder"
+          style={{
+            border: '1px dashed rgba(46,196,182,0.35)',
+            borderRadius: 'var(--ide-radius-s)',
+            minHeight: 240,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 'var(--ide-space-2)',
+            background: 'rgba(8,18,28,0.5)',
+            color: 'var(--ide-text-soft)',
+          }}
+        >
+          <span style={{ fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>
+            BASYS3
+          </span>
+          <span style={{ fontSize: 'var(--rb-font-size-1)' }}>Board visualization — wiring in progress</span>
+        </div>
 
         <section className="ide-export-section" data-testid="ide-hardware-mapping-summary">
           <header className="ide-export-section-header">
@@ -294,28 +280,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             <span className="ide-export-section-meta">{mappingRows.length} rows</span>
           </header>
           <IdeDataTable
-            columns={['Signal', 'Direction', 'Pin', 'Status']}
+            columns={['Signal', 'Dir', 'Pin', 'Status']}
             rows={mappingTableRows}
             testId="ide-hardware-mapping-table"
           />
-        </section>
-
-        <section className="ide-export-section" data-testid="ide-hardware-expected-io-table">
-          <header className="ide-export-section-header">
-            <h3>Expected IO</h3>
-            <span className="ide-export-section-meta">{expectedIoRows.length} rows</span>
-          </header>
-          {expectedIoTableRows.length > 0 ? (
-            <IdeDataTable
-              columns={['Signal', 'Tick', 'Expected']}
-              rows={expectedIoTableRows}
-              testId="ide-hardware-expected-table"
-            />
-          ) : (
-            <IdeCallout tone="warn" title="Expected IO pending">
-              Generate bring-up vectors and run Verify to produce expected IO rows.
-            </IdeCallout>
-          )}
         </section>
       </IdePanel>
     </IdeSurfaceLayout>

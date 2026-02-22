@@ -35,6 +35,20 @@ const BASYS3_QUICK_PINS = [
   'CLK100MHZ',
 ] as const;
 
+const SAMPLE_AND_GATE_VHDL = [
+  'library IEEE;',
+  'use IEEE.STD_LOGIC_1164.ALL;',
+  'entity top is',
+  '  Port ( in_a : in STD_LOGIC;',
+  '         in_b : in STD_LOGIC;',
+  '         out_y : out STD_LOGIC);',
+  'end top;',
+  'architecture Behavioral of top is',
+  'begin',
+  '  out_y <= in_a AND in_b;',
+  'end Behavioral;',
+].join('\n');
+
 export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject }) => {
   const [tab, setTab] = useState<ImportTab>('hdl');
   const [language, setLanguage] = useState<HdlLanguage>('auto');
@@ -93,15 +107,6 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
   const hasParsedHdl = parsedHdl !== null;
   const hasParsedXdc = xdcResult !== null;
   const hasZipInspection = zipInspection !== null;
-  const sourceFiles = useMemo(
-    () => [
-      { id: 'hdl', label: 'source.hdl', status: hasParsedHdl ? 'READY' : 'PENDING' },
-      { id: 'xdc', label: 'constraints.xdc', status: hasParsedXdc ? 'READY' : 'OPTIONAL' },
-      { id: 'zip', label: 'import.zip', status: hasZipInspection ? 'READY' : 'OPTIONAL' },
-      { id: 'report', label: 'import-report.json', status: blockingErrors.length === 0 ? 'CLEAN' : 'BLOCKED' },
-    ],
-    [blockingErrors.length, hasParsedHdl, hasParsedXdc, hasZipInspection]
-  );
   const canApplySuggestions = useMemo(
     () => unmappedPorts.some((port) => Boolean(suggestBasys3Alias(port.name, port.direction))),
     [unmappedPorts]
@@ -340,46 +345,58 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
       consoleHasBlocking={blockingErrors.length > 0}
       consoleHasEntries={blockingErrors.length > 0 || warnings.length > 0}
       dock={
-        <section className="ide-import-file-tree" data-testid="ide-import-file-tree">
-          <header className="ide-design-subheader">
-            <h3>Source Files</h3>
-            <span className="ide-copy">{sourceFiles.length}</span>
+        <section className="ide-workbench-placeholder" data-testid="ide-import-dock">
+          <header className="ide-workbench-placeholder-header">
+            <h3>Import</h3>
           </header>
-          <div className="ide-export-file-tree-list">
-            {sourceFiles.map((file) => (
-              <button
-                key={file.id}
-                type="button"
-                className={`ide-signal-row ${
-                  (file.id === 'hdl' && tab === 'hdl') ||
-                  (file.id === 'xdc' && tab === 'xdc') ||
-                  (file.id === 'zip' && tab === 'upload')
-                    ? 'is-active'
-                    : ''
-                }`}
-                data-testid={`ide-import-file-tree-item-${file.id}`}
-                onClick={() => {
-                  if (file.id === 'hdl' || file.id === 'xdc') {
-                    setTab(file.id);
-                    return;
-                  }
-                  if (file.id === 'zip') {
-                    setTab('upload');
-                  }
-                }}
-              >
-                <span>{file.label}</span>
-                <span>{file.status}</span>
-              </button>
-            ))}
+          <div className="ide-kv-list">
+            <div className="ide-kv-row">
+              <span>HDL</span>
+              <IdeStatusPill tone={hasParsedHdl ? 'ok' : 'idle'}>
+                {hasParsedHdl ? 'Parsed' : 'Pending'}
+              </IdeStatusPill>
+            </div>
+            <div className="ide-kv-row">
+              <span>XDC</span>
+              <IdeStatusPill tone={hasParsedXdc ? 'ok' : 'idle'}>
+                {hasParsedXdc ? 'Parsed' : 'Pending'}
+              </IdeStatusPill>
+            </div>
           </div>
-          <IdeCallout tone={canImport ? 'success' : 'info'} title="Import Pipeline">
-            Parse HDL, parse XDC, map ports, then import the RBProject graph.
-          </IdeCallout>
+          <div className="ide-inline-actions">
+            <IdeButton
+              tone="ghost"
+              onClick={() => {
+                setHdlText(SAMPLE_AND_GATE_VHDL);
+                setTab('hdl');
+              }}
+              testId="ide-import-load-sample"
+            >
+              Load sample project
+            </IdeButton>
+          </div>
         </section>
       }
       inspector={
         <>
+          <IdeInspectorSection title="Port Suggestions" defaultOpen>
+            {parsedHdl?.ports && parsedHdl.ports.length > 0 ? (
+              <div className="ide-kv-list">
+                {parsedHdl.ports.slice(0, 8).map((port) => (
+                  <div key={port.name} className="ide-kv-row">
+                    <code style={{ fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>
+                      {port.name}
+                    </code>
+                    <span style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+                      {port.direction === 'in' ? 'SW?' : 'LD?'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="ide-copy">Parse HDL to see port suggestions.</p>
+            )}
+          </IdeInspectorSection>
           <IdeInspectorSection title="Pipeline Stage" defaultOpen>
             <div className="ide-kv-list">
               <div className="ide-kv-row">
@@ -483,6 +500,21 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
           </IdeCallout>
         ) : null}
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ide-space-3)', marginBottom: 'var(--ide-space-3)' }}>
+          {(['upload', 'hdl', 'xdc'] as ImportTab[]).map((tabId, i) => (
+            <button
+              key={tabId}
+              type="button"
+              className={`ide-pipeline-stage ${tab === tabId ? 'ide-pipeline-stage--active' : 'ide-pipeline-stage--pending'}`}
+              onClick={() => setTab(tabId)}
+            >
+              <span className="ide-pipeline-badge">{i + 1}</span>
+              <span className="ide-pipeline-label">
+                {tabId === 'upload' ? 'Upload ZIP' : tabId === 'hdl' ? 'VHDL / Verilog' : 'XDC Constraints'}
+              </span>
+            </button>
+          ))}
+        </div>
         <IdeGrid columns={2} testId="ide-import-pipeline-grid">
           <section className="ide-import-stage-col" data-testid="ide-import-inputs">
             <IdeSectionHeader title="Inputs" meta="Stage 1" />

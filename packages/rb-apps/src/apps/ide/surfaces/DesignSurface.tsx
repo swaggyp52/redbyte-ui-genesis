@@ -964,6 +964,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       inspector={
         <>
+          <IdeInspectorSection title="Board Signal" defaultOpen>
+            <p className="ide-copy" style={{ color: 'var(--ide-text-soft)', fontSize: 'var(--rb-font-size-1)' }}>
+              Select a node to see its board pin mapping.
+            </p>
+          </IdeInspectorSection>
           <IdeInspectorSection title="Workspace Metrics" defaultOpen={false}>
             <div className="ide-kv-list">
               <div className="ide-kv-row">

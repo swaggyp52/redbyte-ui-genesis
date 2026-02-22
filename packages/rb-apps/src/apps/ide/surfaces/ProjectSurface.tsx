@@ -16,7 +16,6 @@ import {
   IdeButton,
   IdeCallout,
   IdeDataTable,
-  IdeGrid,
   IdeInspectorSection,
   IdePanel,
   IdeStatusPill,
@@ -354,43 +353,70 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       dock={
         <section className="ide-workbench-placeholder" data-testid="ide-project-start-dock">
           <header className="ide-workbench-placeholder-header">
-            <h3>Start</h3>
+            <h3>Setup</h3>
             <IdeStatusPill tone={activeExampleId ? 'ok' : 'idle'}>
-              {activeExampleId ? 'EXAMPLE LOADED' : 'CUSTOM PROJECT'}
+              {activeExampleId ? 'EXAMPLE' : 'CUSTOM'}
             </IdeStatusPill>
           </header>
-          <div className="ide-signal-list" data-testid="ide-project-example-groups">
-            {groupedExamples.map((group) => (
-              <section
-                key={group.key}
-                className="ide-project-example-group"
-                data-testid={`ide-project-example-group-${group.key}`}
-              >
-                <header className="ide-project-example-group-header">
-                  <h4>{group.title}</h4>
-                </header>
-                <div className="ide-project-example-group-list">
-                  {group.examples.map((example) => (
-                    <button
-                      key={example.id}
-                      type="button"
-                      className={`ide-signal-row ${activeExampleId === example.id ? 'is-active' : ''}`}
-                      onClick={() => onOpenExample(example.id)}
-                      data-testid={`ide-project-open-example-${example.id}`}
-                    >
-                      <span>{example.name}</span>
-                      <span
-                        className="ide-project-example-meta"
-                        data-testid={`ide-project-example-meta-${example.id}`}
+
+          {/* Readiness checklist — hero of left dock */}
+          {health.blockingIssues.length > 0 && health.blockingIssues[0] && (
+            <IdeCallout tone="warn" title="Next blocker" testId="ide-project-primary-blocker">
+              {health.blockingIssues[0].message}
+            </IdeCallout>
+          )}
+          <IdeDataTable
+            columns={['Check', 'State', 'Action']}
+            rows={readinessRows}
+            testId="ide-project-readiness-checklist"
+          />
+
+          {/* Examples collapsed into disclosure */}
+          <details style={{ marginTop: 'var(--ide-space-2)' }}>
+            <summary
+              style={{
+                fontSize: 'var(--rb-font-size-1)',
+                color: 'var(--ide-text-soft)',
+                cursor: 'pointer',
+                padding: '4px 0',
+              }}
+            >
+              Examples ({examples.length})
+            </summary>
+            <div className="ide-signal-list" data-testid="ide-project-example-groups">
+              {groupedExamples.map((group) => (
+                <section
+                  key={group.key}
+                  className="ide-project-example-group"
+                  data-testid={`ide-project-example-group-${group.key}`}
+                >
+                  <header className="ide-project-example-group-header">
+                    <h4>{group.title}</h4>
+                  </header>
+                  <div className="ide-project-example-group-list">
+                    {group.examples.map((example) => (
+                      <button
+                        key={example.id}
+                        type="button"
+                        className={`ide-signal-row ${activeExampleId === example.id ? 'is-active' : ''}`}
+                        onClick={() => onOpenExample(example.id)}
+                        data-testid={`ide-project-open-example-${example.id}`}
                       >
-                        {example.concept}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
+                        <span>{example.name}</span>
+                        <span
+                          className="ide-project-example-meta"
+                          data-testid={`ide-project-example-meta-${example.id}`}
+                        >
+                          {example.concept}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </details>
+
           <div className="ide-inline-actions">
             <IdeButton tone="secondary" onClick={onOpenImport}>
               Import HDL/XDC
@@ -400,7 +426,56 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       }
       inspector={
         <>
-          <IdeInspectorSection title="Activity" defaultOpen>
+          <IdeInspectorSection title="Mapping Guide" defaultOpen>
+            <div className="ide-kv-list">
+              <div className="ide-kv-row">
+                <span>Unmapped required</span>
+                <span data-testid="ide-project-unmapped-count">{unmappedRequiredCount}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Mapped required</span>
+                <span>
+                  {mappedRequiredCount}/{requiredCount}
+                </span>
+              </div>
+            </div>
+            <div className="ide-inline-actions">
+              <IdeButton tone="secondary" onClick={onAutoSuggestMapping}>
+                Auto-suggest Basys3
+              </IdeButton>
+            </div>
+          </IdeInspectorSection>
+
+          <IdeInspectorSection title="Project" defaultOpen={false}>
+            <div className="ide-kv-list" data-testid="ide-project-panel-identity">
+              <div className="ide-kv-row">
+                <span>Name</span>
+                <span>{projectName}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Description</span>
+                <span>{description || 'No description'}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Board</span>
+                <span data-testid="ide-project-board">Basys3</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Top module</span>
+                <code data-testid="ide-project-top-module">{topModuleName}</code>
+              </div>
+              <div className="ide-kv-row">
+                <span>Hash</span>
+                <code data-testid="ide-project-hash-short">{determinismHash.slice(0, 12)}</code>
+              </div>
+              <div className="ide-kv-row">
+                <span>Saved</span>
+                <span>{formatSavedAt(lastSavedAt)}</span>
+              </div>
+            </div>
+          </IdeInspectorSection>
+
+          <IdeInspectorSection title="Activity" defaultOpen={false}>
             <div className="ide-kv-list">
               <div className="ide-kv-row">
                 <span>Last Verify</span>
@@ -466,9 +541,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         </section>
       }
     >
-
+      {/* Workspace: I/O Mapping table as hero */}
       <IdePanel
-        description="Everything you need to be ready to Verify/Export/Hardware."
+        description="Map circuit ports to Basys3 pins to enable export."
         actions={
           <>
             <span data-testid="ide-primary-cta">
@@ -486,64 +561,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         }
         testId="ide-project-panel"
       >
-        <IdeGrid columns={2} testId="ide-project-overview-grid">
-          <section className="ide-export-section" data-testid="ide-project-panel-identity">
-            <header className="ide-export-section-header">
-              <h3>Identity</h3>
-            </header>
-            <div className="ide-kv-list">
-              <div className="ide-kv-row">
-                <span>Project</span>
-                <span>{projectName}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Description</span>
-                <span>{description || 'No description'}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Board</span>
-                <span data-testid="ide-project-board">Basys3</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Top module</span>
-                <code data-testid="ide-project-top-module">{topModuleName}</code>
-              </div>
-              <div className="ide-kv-row">
-                <span>Project hash</span>
-                <code data-testid="ide-project-hash-short">{determinismHash.slice(0, 12)}</code>
-              </div>
-              <div className="ide-kv-row">
-                <span>Last saved</span>
-                <span>{formatSavedAt(lastSavedAt)}</span>
-              </div>
-            </div>
-          </section>
-
-          <section className="ide-export-section" data-testid="ide-project-panel-readiness">
-            <header className="ide-export-section-header">
-              <h3>Readiness</h3>
-            </header>
-            {health.blockingIssues.length > 0 && health.blockingIssues[0] && (
-              <IdeCallout tone="warn" title="Next blocker" testId="ide-project-primary-blocker">
-                {health.blockingIssues[0].message}
-              </IdeCallout>
-            )}
-            <IdeDataTable
-              columns={['Check', 'State', 'Action']}
-              rows={readinessRows}
-              testId="ide-project-readiness-checklist"
-            />
-          </section>
-        </IdeGrid>
-
         <section className="ide-export-section" data-testid="ide-project-panel-mapping">
           <header className="ide-export-section-header">
             <h3>I/O Mapping</h3>
-            <span
-              className="ide-export-section-meta"
-              data-testid="ide-project-unmapped-count"
-            >
-              {unmappedRequiredCount} unmapped
+            <span className="ide-export-section-meta" data-testid="ide-project-unmapped-required">
+              {unmappedRequiredCount} unmapped required
             </span>
           </header>
           {unmappedRequiredCount > 0 ? (

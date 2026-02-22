@@ -325,33 +325,33 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         diagnosticsList.length > 0 || capsuleBuildState === 'error' || capsuleBuildState === 'done'
       }
       dock={
-        <section className="ide-export-file-tree" data-testid="ide-export-artifact-tree">
-          <header className="ide-design-subheader">
-            <h3>Artifacts</h3>
-            <span className="ide-copy">{viewModel.artifacts.length}</span>
+        <section className="ide-workbench-placeholder" data-testid="ide-export-checks-dock">
+          <header className="ide-workbench-placeholder-header">
+            <h3>Export Checks</h3>
+            <IdeStatusPill tone={hasBlockingErrors ? 'error' : 'ok'}>
+              {hasBlockingErrors ? 'BLOCKED' : 'READY'}
+            </IdeStatusPill>
           </header>
-          {viewModel.artifacts.length > 0 ? (
-            <div className="ide-export-file-tree-list">
-              {viewModel.artifacts.map((artifact) => {
-                const selected = selectedArtifactPath === artifact.path;
-                return (
-                  <button
-                    key={artifact.path}
-                    type="button"
-                    className={`ide-signal-row ${selected ? 'is-active' : ''}`}
-                    data-selected={selected ? 'true' : 'false'}
-                    data-testid={`ide-export-artifact-tree-item-${toArtifactTestId(artifact.path)}`}
-                    onClick={() => setSelectedArtifactPath(artifact.path)}
-                  >
-                    <span>{artifact.path}</span>
-                  </button>
-                );
-              })}
+          <div className="ide-kv-list">
+            <div className="ide-kv-row">
+              <span>Errors</span>
+              <span>{diagnosticsList.filter((d) => d.severity === 'error').length}</span>
             </div>
-          ) : (
-            <IdeCallout tone="warn" title="No artifacts">
-              Build output first to inspect generated files.
-            </IdeCallout>
+            <div className="ide-kv-row">
+              <span>Warnings</span>
+              <span>{diagnosticsList.filter((d) => d.severity === 'warning').length}</span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Artifacts</span>
+              <span>{viewModel.artifacts.length}</span>
+            </div>
+          </div>
+          {onOpenVerify && (
+            <div className="ide-inline-actions">
+              <IdeButton tone="ghost" onClick={onOpenVerify}>
+                Re-run Verify
+              </IdeButton>
+            </div>
           )}
         </section>
       }

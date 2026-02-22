@@ -290,9 +290,13 @@
   border-right: 1px solid var(--ide-border);
   background: linear-gradient(180deg, rgba(16, 26, 36, 0.95), rgba(10, 17, 24, 0.96));
   padding: var(--ide-space-1) 2px;
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: var(--ide-space-0);
+  width: var(--ide-rail-width);
+  transition: width var(--rb-motion-normal) var(--rb-ease-standard);
+  overflow: hidden;
+  min-width: 0;
 }
 
 .ide-left-rail-progress {
@@ -316,9 +320,12 @@
 }
 
 .ide-left-rail-nav {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: var(--ide-space-1);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .ide-mode-button {
@@ -390,6 +397,128 @@
   line-height: 11px;
   font-weight: var(--rb-font-weight-semibold);
   text-align: center;
+}
+
+/* ── Expanded rail mode ──────────────────────────────────────── */
+
+.ide-left-rail--expanded .ide-mode-button {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+
+.ide-left-rail--expanded .ide-mode-label {
+  font-size: 11px;
+  line-height: 14px;
+  text-align: left;
+}
+
+/* ── Left rail footer (collapse toggle + lab progress) ────────── */
+
+.ide-left-rail-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: auto;
+}
+
+.ide-left-rail--expanded .ide-left-rail-footer {
+  align-items: stretch;
+  padding: 4px 4px;
+}
+
+.ide-rail-lab-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 3px 2px;
+}
+
+.ide-left-rail--expanded .ide-rail-lab-progress {
+  justify-content: flex-start;
+  padding: 3px 6px;
+}
+
+.ide-rail-lab-step-badge {
+  font-size: 9px;
+  font-weight: var(--rb-font-weight-semibold);
+  font-family: var(--rb-font-mono);
+  color: var(--ide-accent);
+  background: color-mix(in srgb, var(--ide-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ide-accent) 28%, transparent);
+  border-radius: 4px;
+  padding: 1px 4px;
+  line-height: 12px;
+  white-space: nowrap;
+}
+
+.ide-rail-lab-step-label {
+  font-size: 10px;
+  color: var(--ide-text-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ide-rail-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ide-text-soft);
+  cursor: pointer;
+  transition:
+    border-color var(--rb-motion-fast) var(--rb-ease-standard),
+    background var(--rb-motion-fast) var(--rb-ease-standard),
+    color var(--rb-motion-fast) var(--rb-ease-standard);
+  flex-shrink: 0;
+}
+
+.ide-rail-collapse-btn:hover {
+  border-color: #3a5775;
+  background: rgba(30, 53, 77, 0.42);
+  color: var(--ide-text-muted);
+}
+
+.ide-rail-collapse-btn:focus-visible {
+  outline: 2px solid var(--rb-focus-ring);
+  outline-offset: 2px;
+}
+
+.ide-left-rail--expanded .ide-rail-collapse-btn {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 0 8px;
+}
+
+/* Chevron using CSS borders */
+.ide-rail-chevron {
+  display: inline-block;
+  width: 0;
+  height: 0;
+}
+
+.ide-rail-chevron--right {
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid currentColor;
+}
+
+.ide-rail-chevron--left {
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-right: 5px solid currentColor;
 }
 
 .ide-workbench-shell {
