@@ -164,39 +164,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     return rows;
   }, [mappingRows]);
 
-  const groupedExamples = useMemo(() => {
-    const groups = new Map<
-      string,
-      {
-        key: string;
-        title: string;
-        examples: ProjectSurfaceProps['examples'];
-      }
-    >();
-
-    for (const example of examples) {
-      const groupTitle = `${example.course} · ${example.lab}`;
-      const groupKey = toSlug(groupTitle);
-      const current = groups.get(groupKey);
-      if (current) {
-        current.examples.push(example);
-      } else {
-        groups.set(groupKey, {
-          key: groupKey,
-          title: groupTitle,
-          examples: [example],
-        });
-      }
-    }
-
-    return Array.from(groups.values())
-      .sort((left, right) => compareText(left.title, right.title))
-      .map((group) => ({
-        ...group,
-        examples: [...group.examples].sort((left, right) => compareText(left.name, right.name)),
-      }));
-  }, [examples]);
-
   const unmappedRequiredCount = useMemo(
     () => sortedMappingRows.filter((row) => row.required && row.pin.trim().length === 0).length,
     [sortedMappingRows]
@@ -459,38 +426,28 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 padding: '4px 0',
               }}
             >
-              Examples ({examples.length})
+              Showcase Kits ({examples.length})
             </summary>
+            <p style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-subtle, #4a5568)', margin: '0 0 var(--ide-space-2) 0' }}>
+              Tutorial kits · not course labs
+            </p>
             <div className="ide-signal-list" data-testid="ide-project-example-groups">
-              {groupedExamples.map((group) => (
-                <section
-                  key={group.key}
-                  className="ide-project-example-group"
-                  data-testid={`ide-project-example-group-${group.key}`}
+              {examples.map((example) => (
+                <button
+                  key={example.id}
+                  type="button"
+                  className={`ide-signal-row ${activeExampleId === example.id ? 'is-active' : ''}`}
+                  onClick={() => onOpenExample(example.id)}
+                  data-testid={`ide-project-open-example-${example.id}`}
                 >
-                  <header className="ide-project-example-group-header">
-                    <h4>{group.title}</h4>
-                  </header>
-                  <div className="ide-project-example-group-list">
-                    {group.examples.map((example) => (
-                      <button
-                        key={example.id}
-                        type="button"
-                        className={`ide-signal-row ${activeExampleId === example.id ? 'is-active' : ''}`}
-                        onClick={() => onOpenExample(example.id)}
-                        data-testid={`ide-project-open-example-${example.id}`}
-                      >
-                        <span>{example.name}</span>
-                        <span
-                          className="ide-project-example-meta"
-                          data-testid={`ide-project-example-meta-${example.id}`}
-                        >
-                          {example.concept}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
+                  <span>{example.name}</span>
+                  <span
+                    className="ide-project-example-meta"
+                    data-testid={`ide-project-example-meta-${example.id}`}
+                  >
+                    {example.concept}
+                  </span>
+                </button>
               ))}
             </div>
           </details>

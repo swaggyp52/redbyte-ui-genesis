@@ -704,7 +704,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       resetToActiveExample: () => {
         set((state) => {
           const example =
-            (state.activeExampleId && getIdeExampleById(state.activeExampleId)) ??
+            (state.activeExampleId ? getIdeExampleById(state.activeExampleId) : undefined) ??
             DEFAULT_EXAMPLE;
           return {
             ...stateFromExample(example, createProjectId(example.id)),
@@ -757,6 +757,13 @@ function stateFromExample(
 ): PersistedRuntimeState {
   const projectIoRows = cloneIoRows(example.ioRows);
   const circuit = cloneCircuit(example.circuit);
+  const baseSimState = resetSimulationState(circuit, projectIoRows);
+  // Build kit probes from example.probes if defined
+  const kitProbes = (example.probes ?? []).map((p) => ({
+    key: `${p.nodeId}.${p.portName}`,
+    label: p.label,
+  }));
+  const sim = kitProbes.length > 0 ? { ...baseSimState, probes: kitProbes } : baseSimState;
   return {
     projectId,
     projectName: example.name,
@@ -767,7 +774,7 @@ function stateFromExample(
     projectVectors: cloneVectors(example.vectors),
     circuit,
     verifyLastRun: undefined,
-    sim: resetSimulationState(circuit, projectIoRows),
+    sim,
     projectHealthCore: {
       dirtySinceVerify: false,
       dirtySinceExport: false,
