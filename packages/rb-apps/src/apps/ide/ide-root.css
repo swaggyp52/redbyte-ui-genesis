@@ -2685,6 +2685,25 @@
   line-height: 1.35;
 }
 
+/* Inline bullet list helper */
+.ide-bullets {
+  margin: var(--ide-space-2, 8px) 0;
+  padding-left: 1.1rem;
+  color: var(--ide-text-soft, #9ca3af);
+  font-size: var(--rb-font-size-1, 11px);
+}
+.ide-bullets li { margin: 0 0 var(--ide-space-1, 4px) 0; }
+
+/* Mini guide block */
+.ide-mini-guide {
+  padding: var(--ide-space-2, 8px) 0;
+}
+.ide-mini-guide h4 {
+  margin: 0 0 var(--ide-space-2, 8px) 0;
+  font-size: var(--rb-font-size-2, 12px);
+  color: var(--ide-text-main, #e2e8f0);
+}
+
 .ide-verify-vector-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

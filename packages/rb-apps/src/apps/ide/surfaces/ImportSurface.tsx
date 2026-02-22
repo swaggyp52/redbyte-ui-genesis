@@ -615,6 +615,13 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               </>
             )}
           </section>
+          <section className="ide-mini-guide" data-testid="ide-import-expectations">
+            <h4>What happens when you import</h4>
+            <ul className="ide-bullets">
+              <li><b>Apply Pins Only</b> fills missing pin assignments on your current project.</li>
+              <li><b>Replace Project…</b> swaps in the imported design (can overwrite your work).</li>
+            </ul>
+          </section>
           <div className="ide-inline-actions">
             <IdeButton
               tone="ghost"

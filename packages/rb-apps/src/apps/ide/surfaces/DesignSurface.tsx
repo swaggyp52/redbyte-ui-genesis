@@ -59,6 +59,8 @@ export interface DesignSurfaceProps {
     direction: 'in' | 'out';
   }>;
   onGoToHardware?: () => void;
+  onGoToImport?: () => void;
+  onGoToProject?: () => void;
 }
 
 export interface DesignCompilerStatus {
@@ -148,6 +150,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   viewportSeed,
   ioRows = [],
   onGoToHardware,
+  onGoToImport,
+  onGoToProject,
 }) => {
   const circuit = useCircuitStore((state) => state.circuit);
   const addNode = useCircuitStore((state) => state.addNode);
@@ -981,6 +985,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       inspector={
         <>
+          <IdeInspectorSection title="Authoring Mode" defaultOpen testId="ide-design-authoring-mode">
+            <p className="ide-copy">
+              You can build your circuit here using logic blocks. HDL editing happens in <b>Import</b>.
+            </p>
+            <ul className="ide-bullets">
+              <li><b>Design</b>: place gates / flip-flops / wires.</li>
+              <li><b>Import</b>: edit VHDL/Verilog text and apply pins (or replace the project).</li>
+            </ul>
+            <div className="ide-inline-actions">
+              {onGoToImport && (
+                <IdeButton tone="secondary" onClick={onGoToImport} testId="ide-design-go-import">
+                  Edit HDL in Import →
+                </IdeButton>
+              )}
+              {onGoToProject && (
+                <IdeButton tone="ghost" onClick={onGoToProject} testId="ide-design-go-project">
+                  Go to Mapping →
+                </IdeButton>
+              )}
+            </div>
+          </IdeInspectorSection>
           <IdeInspectorSection title="Board Signal" defaultOpen>
             {(() => {
               if (!selectedNode) {

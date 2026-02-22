@@ -724,6 +724,8 @@ export const IdeApp: React.FC = () => {
             viewportSeed={`${activeExampleId ?? 'custom'}:${lastSavedAt}`}
             ioRows={projectIoRows}
             onGoToHardware={() => setCurrentMode('hardware')}
+            onGoToImport={() => setCurrentMode('import')}
+            onGoToProject={() => setCurrentMode('project')}
           />
         ) : currentMode === 'verify' ? (
           <VerifySurface

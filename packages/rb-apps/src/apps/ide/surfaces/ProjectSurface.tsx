@@ -431,6 +431,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             <p style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-subtle, #4a5568)', margin: '0 0 var(--ide-space-2) 0' }}>
               Tutorial kits · not course labs
             </p>
+            <p className="ide-copy" data-testid="ide-project-authoring-hint">
+              Build circuits in <b>Design</b>. Edit HDL in <b>Import</b>.
+            </p>
             <div className="ide-signal-list" data-testid="ide-project-example-groups">
               {examples.map((example) => (
                 <button
