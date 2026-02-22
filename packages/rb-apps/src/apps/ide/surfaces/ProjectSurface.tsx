@@ -453,6 +453,23 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </details>
 
           <div className="ide-inline-actions">
+            {unmappedRequiredCount > 0 ? (
+              <IdeButton
+                tone="primary"
+                onClick={onAutoSuggestMapping}
+                testId="ide-project-cta-automap"
+              >
+                Auto-suggest Basys3
+              </IdeButton>
+            ) : (
+              <IdeButton
+                tone="primary"
+                onClick={onOpenVerify}
+                testId="ide-project-cta-continue"
+              >
+                Continue to Verify →
+              </IdeButton>
+            )}
             <IdeButton tone="secondary" onClick={onOpenImport}>
               Import HDL/XDC
             </IdeButton>

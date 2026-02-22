@@ -56,6 +56,21 @@ const SAMPLE_AND_GATE_VHDL = [
   'end Behavioral;',
 ].join('\n');
 
+const SAMPLE_AND_GATE_XDC = [
+  '## Basys3 Constraints — AND Gate sample',
+  '## clock',
+  'set_property PACKAGE_PIN W5 [get_ports clk]',
+  '  set_property IOSTANDARD LVCMOS33 [get_ports clk]',
+  '## Switches',
+  'set_property PACKAGE_PIN V17 [get_ports in_a]',
+  '  set_property IOSTANDARD LVCMOS33 [get_ports in_a]',
+  'set_property PACKAGE_PIN W16 [get_ports in_b]',
+  '  set_property IOSTANDARD LVCMOS33 [get_ports in_b]',
+  '## LEDs',
+  'set_property PACKAGE_PIN U16 [get_ports out_y]',
+  '  set_property IOSTANDARD LVCMOS33 [get_ports out_y]',
+].join('\n');
+
 type SuggestionKind = 'SW' | 'LD' | 'BTN' | 'CLK' | 'OTHER';
 
 interface PinSuggestion {
@@ -478,6 +493,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               tone="ghost"
               onClick={() => {
                 setHdlText(SAMPLE_AND_GATE_VHDL);
+                setXdcText(SAMPLE_AND_GATE_XDC);
                 setTab('hdl');
               }}
               testId="ide-import-load-sample"

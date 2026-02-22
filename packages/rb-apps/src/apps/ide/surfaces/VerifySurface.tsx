@@ -63,6 +63,7 @@ export interface VerifySurfaceProps {
   onFixPath?: (target: VerifyFailureTarget) => void;
   example?: IdeExampleDefinition | null;
   onGoToDesign?: () => void;
+  onGoToHardware?: () => void;
 }
 
 export const VerifySurface: React.FC<VerifySurfaceProps> = ({
@@ -79,6 +80,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   onFixPath,
   example,
   onGoToDesign,
+  onGoToHardware,
 }) => {
   const inputFields = useMemo(() => {
     const mappedInputSeed =
@@ -476,6 +478,36 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </button>
               ))
             )}
+          </div>
+          <div className="ide-inline-actions">
+            {status === 'pass' ? (
+              <IdeButton
+                tone="primary"
+                onClick={onGoToHardware}
+                testId="ide-verify-cta-continue"
+              >
+                Continue to Hardware →
+              </IdeButton>
+            ) : failingRows.length > 0 ? (
+              <>
+                <IdeButton
+                  tone="primary"
+                  onClick={handleJumpToFirstFailure}
+                  testId="ide-verify-cta-jump"
+                >
+                  Jump to first failing tick
+                </IdeButton>
+                {onGoToDesign && (
+                  <IdeButton
+                    tone="secondary"
+                    onClick={onGoToDesign}
+                    testId="ide-verify-cta-fix-design"
+                  >
+                    Fix in Design
+                  </IdeButton>
+                )}
+              </>
+            ) : null}
           </div>
         </section>
       }

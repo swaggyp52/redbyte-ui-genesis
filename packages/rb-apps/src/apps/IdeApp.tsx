@@ -740,6 +740,7 @@ export const IdeApp: React.FC = () => {
             onFixPath={handleVerifyFixPath}
             example={activeExample ?? null}
             onGoToDesign={() => setCurrentMode('design')}
+            onGoToHardware={() => setCurrentMode('hardware')}
           />
         ) : currentMode === 'hardware' ? (
           <HardwareSurface

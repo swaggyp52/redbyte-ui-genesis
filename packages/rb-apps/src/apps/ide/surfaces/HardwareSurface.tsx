@@ -306,23 +306,35 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         actions={
           <>
             <span data-testid="ide-primary-cta">
-              <IdeButton
-                tone="primary"
-                onClick={onOpenExport}
-                testId="ide-hardware-build-export"
-              >
-                Build + Export Vivado Bundle
-              </IdeButton>
+              {health.lastVerify?.status === 'pass' ? (
+                <IdeButton
+                  tone="primary"
+                  onClick={onOpenExport}
+                  testId="ide-hardware-build-export"
+                >
+                  Build + Export Vivado Bundle
+                </IdeButton>
+              ) : (
+                <IdeButton
+                  tone="primary"
+                  onClick={onOpenVerify}
+                  testId="ide-hardware-run-verify"
+                >
+                  Run Verify First
+                </IdeButton>
+              )}
             </span>
+            {health.lastVerify?.status === 'pass' && (
+              <IdeButton tone="ghost" onClick={onOpenVerify} testId="ide-hardware-open-verify">
+                Re-run Verify
+              </IdeButton>
+            )}
             <IdeButton
               tone="secondary"
               onClick={onGenerateBringUpVectors}
               testId="ide-hardware-generate-vectors"
             >
               Generate Bring-Up Vectors
-            </IdeButton>
-            <IdeButton tone="ghost" onClick={onOpenVerify} testId="ide-hardware-open-verify">
-              Run Verify
             </IdeButton>
           </>
         }
