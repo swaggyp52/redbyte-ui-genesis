@@ -351,17 +351,36 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           }}
         />
 
-        <section className="ide-export-section" data-testid="ide-hardware-mapping-summary">
-          <header className="ide-export-section-header">
-            <h3>Mapping Summary</h3>
-            <span className="ide-export-section-meta">{mappingRows.length} rows</span>
-          </header>
-          <IdeDataTable
-            columns={['Signal', 'Dir', 'Pin', 'Status']}
-            rows={mappingTableRows}
-            testId="ide-hardware-mapping-table"
-          />
-        </section>
+        <details style={{ marginTop: 'var(--ide-space-2)' }}>
+          <summary style={{
+            cursor: 'pointer',
+            fontSize: 'var(--rb-font-size-2)',
+            color: 'var(--ide-text-soft)',
+            padding: 'var(--ide-space-1) 0',
+            listStyle: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--ide-space-1)',
+            userSelect: 'none',
+          }}>
+            <span style={{ fontSize: '9px', color: 'var(--ide-text-soft)' }}>&#9654;</span>
+            Mapping Summary
+            <span style={{ marginLeft: 'auto', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+              {mappingRows.length} rows
+            </span>
+          </summary>
+          <section className="ide-export-section" data-testid="ide-hardware-mapping-summary">
+            <header className="ide-export-section-header">
+              <h3>Mapping Summary</h3>
+              <span className="ide-export-section-meta">{mappingRows.length} rows</span>
+            </header>
+            <IdeDataTable
+              columns={['Signal', 'Dir', 'Pin', 'Status']}
+              rows={mappingTableRows}
+              testId="ide-hardware-mapping-table"
+            />
+          </section>
+        </details>
       </IdePanel>
     </IdeSurfaceLayout>
   );

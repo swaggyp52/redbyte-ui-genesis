@@ -1694,6 +1694,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   ioPresentationMap={ioPresentationMap}
                   presentationZoomMode={presentationZoom}
                 />
+                {/* Canvas interaction hint */}
+                <div
+                  className="ide-canvas-hint is-visible"
+                  aria-hidden="true"
+                  style={{ opacity: 0.6 }}
+                >
+                  <span>Scroll: Zoom</span>
+                  <span className="ide-canvas-hint-divider" />
+                  <span>Middle drag: Pan</span>
+                  <span className="ide-canvas-hint-divider" />
+                  <span>F: Fit</span>
+                </div>
                 {editorCircuit.nodes.length === 0 && (
                   <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
                     <h3>Build a circuit in three steps</h3>

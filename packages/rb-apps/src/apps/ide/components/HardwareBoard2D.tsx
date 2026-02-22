@@ -43,6 +43,20 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
       preserveAspectRatio="xMidYMid meet"
       width="100%"
     >
+      <defs>
+        <linearGradient id="pcbGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#1a3d6e" />
+          <stop offset="100%" stopColor="#0f2a52" />
+        </linearGradient>
+        <filter id="ledGlow">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
       {/* Board outline */}
       <rect
         x="10"
@@ -51,10 +65,23 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
         height="240"
         rx="6"
         ry="6"
-        fill="#0b1a14"
-        stroke="#1a3a2a"
+        fill="url(#pcbGrad)"
+        stroke="#1a3a6a"
         strokeWidth="1.5"
       />
+
+      {/* PCB inner border — silkscreen style */}
+      <rect x="4" y="4" width="612" height="252" rx="8" ry="8"
+        fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+
+      {/* Section dividers */}
+      <line x1="18" y1="55" x2="602" y2="55" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+      <line x1="18" y1="175" x2="602" y2="175" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+
+      {/* Silkscreen labels */}
+      <text x="18" y="14" fontFamily="monospace" fontSize="7" fill="rgba(255,255,255,0.45)" letterSpacing="1">LD15                                                                    LD0</text>
+      <text x="18" y="192" fontFamily="monospace" fontSize="7" fill="rgba(255,255,255,0.45)" letterSpacing="1">SW15                                                                    SW0</text>
+      <text x="18" y="118" fontFamily="monospace" fontSize="7" fill="rgba(255,255,255,0.45)">BTN</text>
 
       {/* LEDs row */}
       {Array.from({ length: 16 }, (_, i) => {
@@ -65,7 +92,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
         const isMapped = mappedLd[idx];
         const isActiveLd = activeSignal?.type === 'ld' && activeSignal.index === idx;
 
-        let fill = '#1a2a20';
+        let fill = '#1a2a40';
         if (isOn) fill = 'var(--rb-signal)';
 
         let stroke: string | undefined;
@@ -83,12 +110,18 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
           opacity = 0.6;
         }
 
+        const ledClassName = [
+          styles.ledCircle,
+          isActiveLd ? styles.active : '',
+          isOn ? styles.ledOn : '',
+        ].filter(Boolean).join(' ');
+
         return (
           <g key={`ld-${idx}`}>
             <circle
               data-testid={`ide-hw-ld-${idx}`}
               data-active={isActiveLd ? 'true' : undefined}
-              className={isActiveLd ? `${styles.ledCircle} ${styles.active}` : styles.ledCircle}
+              className={ledClassName}
               cx={cx}
               cy={cy}
               r={7}
@@ -96,6 +129,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               stroke={stroke}
               strokeWidth={strokeWidth}
               opacity={opacity}
+              filter={isOn ? 'url(#ledGlow)' : undefined}
               style={{ cursor: 'pointer' }}
               onClick={() => onSelectSignal?.({ type: 'ld', index: idx })}
             />
@@ -103,7 +137,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               x={cx}
               y={58}
               fontSize={7}
-              fill="#4a5568"
+              fill="rgba(255,255,255,0.3)"
               textAnchor="middle"
             >
               {`LD${idx}`}
@@ -113,36 +147,12 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
       })}
 
       {/* FPGA chip */}
-      <rect
-        x="220"
-        y="90"
-        width="180"
-        height="90"
-        rx="4"
-        fill="#0f2518"
-        stroke="#2a4a32"
-        strokeWidth="1"
-      />
-      <text
-        x="310"
-        y="138"
-        textAnchor="middle"
-        fill="#4a7a5a"
-        fontSize="11"
-        fontFamily="var(--rb-font-mono)"
-      >
-        ARTIX-7
-      </text>
-      <text
-        x="310"
-        y="152"
-        textAnchor="middle"
-        fill="#2a4a32"
-        fontSize="8"
-        fontFamily="var(--rb-font-mono)"
-      >
-        XC7A35T
-      </text>
+      <rect x="240" y="80" width="140" height="100" rx="3" ry="3"
+        fill="#0a1a30" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+      <text x="310" y="126" fontFamily="monospace" fontSize="9" fill="rgba(255,255,255,0.3)"
+        textAnchor="middle" letterSpacing="0.5">ARTIX-7</text>
+      <text x="310" y="138" fontFamily="monospace" fontSize="7" fill="rgba(255,255,255,0.2)"
+        textAnchor="middle">XC7A35T</text>
 
       {/* Push buttons */}
       {BTN_POSITIONS.map(([cx, cy], i) => (
@@ -153,8 +163,8 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             cx={cx}
             cy={cy}
             r={10}
-            fill={btn[i] === 1 ? '#e53e3e' : '#1a2a20'}
-            stroke="#2a3a2a"
+            fill={btn[i] === 1 ? '#e53e3e' : '#1a2a40'}
+            stroke="#2a3a5a"
             strokeWidth="1"
             cursor="pointer"
             onMouseDown={() => onPressButton(i, true)}
@@ -165,7 +175,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             x={cx}
             y={cy + 20}
             fontSize={7}
-            fill="#4a5568"
+            fill="rgba(255,255,255,0.3)"
             textAnchor="middle"
           >
             {BTN_LABELS[i]}
@@ -184,12 +194,18 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
         const handleY = isOn ? 191 : 201;
         const isActiveSw = activeSignal?.type === 'sw' && activeSignal.index === idx;
 
+        const swGroupClassName = [
+          styles.swGroup,
+          isActiveSw ? styles.active : '',
+          isOn ? styles.swOn : '',
+        ].filter(Boolean).join(' ');
+
         return (
           <g
             key={`sw-${idx}`}
             data-testid={`ide-hw-sw-${idx}`}
             data-active={isActiveSw ? 'true' : undefined}
-            className={isActiveSw ? `${styles.swGroup} ${styles.active}` : styles.swGroup}
+            className={swGroupClassName}
             cursor="pointer"
             onClick={() => onToggleSwitch(idx)}
           >
@@ -200,8 +216,8 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               width="12"
               height="20"
               rx="2"
-              fill="#1a2830"
-              stroke={isMapped ? '#2ec4b6' : '#2a3a3a'}
+              fill="#0f2040"
+              stroke={isMapped ? '#2ec4b6' : '#1a2a5a'}
               strokeWidth={isMapped ? '1.5' : '1'}
               opacity={isMapped ? 1 : 0.4}
             />
@@ -213,7 +229,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               width="10"
               height="8"
               rx="1"
-              fill={isOn ? '#2ec4b6' : '#2a3a4a'}
+              fill={isOn ? '#2ec4b6' : '#1a2840'}
             />
             {/* SW label */}
             <text
@@ -221,7 +237,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               y={220}
               fontSize={7}
               textAnchor="middle"
-              fill="#4a5568"
+              fill="rgba(255,255,255,0.3)"
             >
               {`SW${idx}`}
             </text>

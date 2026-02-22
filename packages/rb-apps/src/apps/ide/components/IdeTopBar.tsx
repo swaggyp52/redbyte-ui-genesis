@@ -33,7 +33,7 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
         </div>
         <div className="ide-project-meta">
           <p className="ide-project-label">RedByte IDE</p>
-          <h1 className="ide-project-name">{projectName}</h1>
+          <h1 className="ide-project-name" title={projectName}>{projectName}</h1>
           {projectId ? <p className="ide-project-subline">{projectId}</p> : null}
         </div>
       </div>

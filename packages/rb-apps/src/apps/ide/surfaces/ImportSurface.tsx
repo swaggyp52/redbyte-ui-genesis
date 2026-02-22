@@ -701,6 +701,17 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
           </IdeCallout>
         ) : null}
 
+        {tab === 'upload' && (
+          <p style={{
+            margin: '0 0 var(--ide-space-2)',
+            fontSize: 'var(--rb-font-size-1)',
+            color: 'var(--ide-text-soft)',
+            fontFamily: 'var(--ide-font-mono)',
+            letterSpacing: '0.02em',
+          }}>
+            Try this in 60s: Load sample → Parse HDL → Parse XDC → Apply suggestions → Review
+          </p>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ide-space-3)', marginBottom: 'var(--ide-space-3)' }}>
           {(['upload', 'hdl', 'xdc'] as ImportTab[]).map((tabId, i) => (
             <button
@@ -708,6 +719,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               type="button"
               className={`ide-pipeline-stage ${tab === tabId ? 'ide-pipeline-stage--active' : 'ide-pipeline-stage--pending'}`}
               onClick={() => setTab(tabId)}
+              aria-current={tab === tabId ? 'step' : undefined}
             >
               <span className="ide-pipeline-badge">{i + 1}</span>
               <span className="ide-pipeline-label">

@@ -2576,13 +2576,31 @@
 }
 
 .ide-waveform-stub {
-  min-height: 168px;
+  min-height: 200px;
   border-radius: var(--ide-radius-s);
-  border: 1px solid rgba(130, 160, 188, 0.4);
-  background: linear-gradient(180deg, rgba(8, 18, 29, 0.78), rgba(14, 27, 40, 0.88));
+  border: 1px solid rgba(46, 196, 182, 0.2);
+  background: #040d14;
   display: grid;
-  gap: var(--ide-space-2);
-  padding: var(--ide-space-1);
+  gap: 0;
+  padding: var(--ide-space-1) 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Oscilloscope scanline overlay */
+.ide-waveform-stub::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 29px,
+    rgba(46, 196, 182, 0.04) 29px,
+    rgba(46, 196, 182, 0.04) 30px
+  );
+  pointer-events: none;
+  z-index: 0;
 }
 
 .ide-verify-waveform-empty {
@@ -2596,65 +2614,155 @@
 
 .ide-verify-waveform-grid {
   display: grid;
-  gap: var(--ide-space-1);
+  gap: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .ide-verify-waveform-row {
   display: grid;
-  grid-template-columns: minmax(54px, auto) minmax(0, 1fr);
-  gap: var(--ide-space-1);
-  align-items: center;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 0;
+  align-items: stretch;
+  border-bottom: 1px solid rgba(46, 196, 182, 0.06);
+  min-height: 36px;
+}
+
+.ide-verify-waveform-row:last-child {
+  border-bottom: none;
 }
 
 .ide-verify-waveform-row.is-selected {
-  border-radius: var(--ide-radius-s);
-  background: rgba(46, 196, 182, 0.12);
+  background: rgba(46, 196, 182, 0.07);
 }
 
 .ide-verify-waveform-label {
   border: 0;
-  background: transparent;
+  border-right: 1px solid rgba(46, 196, 182, 0.15);
+  background: rgba(4, 18, 30, 0.8);
   text-align: left;
-  padding: 0;
+  padding: 0 var(--ide-space-1);
   cursor: pointer;
   font-family: var(--ide-font-mono);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--ide-text-soft);
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.03em;
+  transition: color var(--rb-motion-fast);
+}
+
+.ide-verify-waveform-label:hover {
+  color: var(--rb-accent);
+}
+
+.ide-verify-waveform-row.is-selected .ide-verify-waveform-label {
+  color: var(--rb-accent);
 }
 
 .ide-verify-waveform-track {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
-  gap: 4px;
+  gap: 1px;
+  padding: 3px 2px;
+  align-items: stretch;
 }
 
 .ide-verify-waveform-point {
-  border: 1px solid rgba(138, 170, 200, 0.36);
+  border: none;
   cursor: pointer;
-  background: rgba(34, 56, 77, 0.74);
-  color: #cfe7ff;
   font-family: var(--ide-font-mono);
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1;
   text-align: center;
-  padding: 5px 0;
-  border-radius: 4px;
+  border-radius: 2px;
   transition:
-    border-color var(--rb-motion-fast) var(--rb-ease-standard),
     background var(--rb-motion-fast) var(--rb-ease-standard),
-    color var(--rb-motion-fast) var(--rb-ease-standard);
+    box-shadow var(--rb-motion-fast) var(--rb-ease-standard);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 2px;
+  position: relative;
+}
+
+/* LOW signal: dark base with faint number */
+.ide-verify-waveform-point[data-value="0"],
+.ide-verify-waveform-point.sig-low {
+  background: rgba(20, 40, 58, 0.6);
+  color: rgba(90, 130, 165, 0.6);
+  align-items: flex-end;
+  height: 100%;
+}
+
+/* HIGH signal: bright teal block */
+.ide-verify-waveform-point[data-value="1"],
+.ide-verify-waveform-point.sig-high {
+  background: rgba(46, 196, 182, 0.22);
+  color: rgba(46, 196, 182, 0.9);
+  border-top: 2px solid rgba(46, 196, 182, 0.7);
+  align-items: flex-start;
+  padding-top: 2px;
+  padding-bottom: 0;
+  height: 100%;
 }
 
 .ide-verify-waveform-point:hover {
-  border-color: rgba(142, 199, 255, 0.72);
-  background: rgba(54, 87, 118, 0.78);
+  box-shadow: inset 0 0 0 1px rgba(142, 199, 255, 0.5);
 }
 
 .ide-verify-waveform-point.is-selected {
-  border-color: rgba(46, 196, 182, 0.84);
-  background: rgba(16, 78, 83, 0.78);
-  color: #d8fffb;
+  box-shadow: inset 0 0 0 1.5px rgba(46, 196, 182, 0.9);
+  background: rgba(46, 196, 182, 0.25) !important;
+  color: #d8fffb !important;
+  border-top-color: var(--rb-accent) !important;
+}
+
+/* Run summary chips row */
+.ide-verify-run-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  flex-wrap: wrap;
+  padding: var(--ide-space-1) var(--ide-space-2);
+  border-bottom: 1px solid rgba(46, 196, 182, 0.12);
+  background: rgba(4, 13, 22, 0.5);
+}
+
+.ide-verify-run-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--ide-font-mono);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(58, 87, 116, 0.6);
+  color: var(--ide-text-soft);
+  background: rgba(10, 20, 32, 0.7);
+  white-space: nowrap;
+}
+
+.ide-verify-run-chip.is-pass {
+  border-color: rgba(82, 210, 115, 0.5);
+  color: #a8ffc0;
+  background: rgba(82, 210, 115, 0.08);
+}
+
+.ide-verify-run-chip.is-fail {
+  border-color: rgba(255, 107, 107, 0.5);
+  color: #ffb6b6;
+  background: rgba(255, 107, 107, 0.08);
+}
+
+.ide-verify-run-chip.is-info {
+  border-color: rgba(46, 196, 182, 0.4);
+  color: var(--rb-accent);
+  background: rgba(46, 196, 182, 0.07);
 }
 
 .ide-verify-tick-nav {
@@ -2697,14 +2805,43 @@
 
 .ide-verify-workbench {
   min-height: 0;
-  grid-template-rows: minmax(0, 1.15fr) minmax(0, 0.85fr) auto;
+  height: 100%;
+  display: grid;
+  gap: var(--ide-space-2);
+  grid-template-rows: minmax(200px, 1.4fr) minmax(120px, 0.6fr) auto;
+  overflow: hidden;
 }
 
-.ide-verify-waveform-panel,
+.ide-verify-waveform-panel {
+  border: 1px solid rgba(46, 196, 182, 0.2);
+  border-radius: var(--ide-radius-s);
+  background: rgba(4, 10, 18, 0.8);
+  padding: 0;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  overflow: hidden;
+  min-height: 0;
+}
+
 .ide-verify-mismatch-panel {
-  border: 1px solid rgba(58, 87, 116, 0.58);
+  border: 1px solid rgba(58, 87, 116, 0.45);
   border-radius: var(--ide-radius-s);
   background: rgba(8, 18, 30, 0.62);
+  padding: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.ide-verify-mismatch-panel > header {
+  padding: var(--ide-space-1) var(--ide-space-2);
+  border-bottom: 1px solid rgba(58, 87, 116, 0.35);
+}
+
+.ide-verify-mismatch-panel > .ide-table-wrap,
+.ide-verify-mismatch-panel > div {
+  overflow: auto;
   padding: var(--ide-space-1);
 }
 
@@ -3680,3 +3817,162 @@
   }
 }
 
+/* ─── Polish pass: global micro-improvements ─── */
+
+/* Better focus ring consistency */
+:focus-visible {
+  outline: 2px solid rgba(46, 196, 182, 0.7);
+  outline-offset: 2px;
+}
+
+/* Scrollbar styling for all panels */
+.ide-workbench-placeholder,
+.ide-table-wrap,
+.ide-signal-list,
+.ide-export-artifact-code,
+.ide-import-textarea {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(46, 196, 182, 0.25) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(46, 196, 182, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(46, 196, 182, 0.4);
+}
+
+/* Better IdePanel header visual separation */
+.ide-panel-header {
+  border-bottom: 1px solid rgba(58, 87, 116, 0.4);
+  padding-bottom: var(--ide-space-2);
+  margin-bottom: var(--ide-space-2);
+}
+
+/* Stronger hover state for all .ide-signal-row items */
+.ide-signal-row:hover {
+  border-color: rgba(46, 196, 182, 0.4) !important;
+  background: rgba(46, 196, 182, 0.06) !important;
+}
+
+.ide-signal-row.is-active {
+  border-color: rgba(46, 196, 182, 0.65) !important;
+  background: rgba(46, 196, 182, 0.14) !important;
+}
+
+/* Reduce visual noise on kv-rows — less border, more breathing room */
+.ide-kv-row {
+  border-bottom: none;
+  padding: 3px 0;
+}
+
+/* Better pipeline strip visual */
+.ide-pipeline-stage {
+  letter-spacing: 0.04em;
+}
+
+/* Import textarea focus glow */
+.ide-import-textarea:focus {
+  border-color: rgba(46, 196, 182, 0.5);
+  box-shadow: 0 0 0 2px rgba(46, 196, 182, 0.12);
+  outline: none;
+}
+
+/* Design canvas pan/zoom hint */
+.ide-canvas-hint {
+  position: absolute;
+  bottom: var(--ide-space-2);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  padding: 4px 12px;
+  background: rgba(4, 13, 22, 0.82);
+  border: 1px solid rgba(58, 87, 116, 0.5);
+  border-radius: 999px;
+  font-family: var(--ide-font-mono);
+  font-size: 10px;
+  color: var(--ide-text-soft);
+  pointer-events: none;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+
+.ide-canvas-hint.is-visible {
+  opacity: 1;
+}
+
+.ide-canvas-hint-divider {
+  width: 1px;
+  height: 10px;
+  background: rgba(58, 87, 116, 0.6);
+}
+
+/* Collapsible summary arrow */
+details summary::-webkit-details-marker {
+  display: none;
+}
+
+details[open] summary .details-arrow {
+  transform: rotate(90deg);
+}
+
+.details-arrow {
+  display: inline-block;
+  transition: transform 150ms ease;
+  font-size: 10px;
+  color: var(--ide-text-soft);
+}
+
+/* Import step wizard cleaner style */
+.ide-pipeline-stage--active .ide-pipeline-badge {
+  background: var(--rb-accent);
+  color: #000;
+}
+
+.ide-pipeline-stage--pending .ide-pipeline-badge {
+  background: rgba(58, 87, 116, 0.5);
+  color: var(--ide-text-soft);
+}
+
+.ide-pipeline-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--rb-font-mono);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+/* Export ready hero — centered download experience */
+[data-testid="ide-export-ready-hero"] {
+  text-align: center;
+  padding: var(--ide-space-5) var(--ide-space-4);
+}
+
+/* Import surface — make textarea feel like a code editor */
+.ide-import-textarea {
+  font-family: var(--ide-font-mono) !important;
+  line-height: 1.6 !important;
+  tab-size: 2;
+  color: #d0e8ff;
+}

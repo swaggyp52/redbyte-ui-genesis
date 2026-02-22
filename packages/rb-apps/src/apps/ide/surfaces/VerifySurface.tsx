@@ -815,6 +815,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </span>
               </header>
 
+              {lastRun && (
+                <div className="ide-verify-run-summary">
+                  <span className={`ide-verify-run-chip ${failingRows.length === 0 ? 'is-pass' : 'is-fail'}`}>
+                    {failingRows.length === 0 ? '✓' : '✗'} {runRows.length} vectors
+                  </span>
+                  <span className={`ide-verify-run-chip ${failingRows.length === 0 ? 'is-pass' : 'is-fail'}`}>
+                    {runRows.length - failingRows.length} pass
+                  </span>
+                  {failingRows.length > 0 && (
+                    <span className="ide-verify-run-chip is-fail">
+                      {failingRows.length} fail
+                    </span>
+                  )}
+                  {typeof firstFailureTick === 'number' && (
+                    <span className="ide-verify-run-chip is-info">
+                      first fail @ tick {firstFailureTick}
+                    </span>
+                  )}
+                  <span className="ide-verify-run-chip">
+                    {signalTimeline.length} signals
+                  </span>
+                </div>
+              )}
+
               {hasNoTrace && (
                 <IdeCallout tone="error" title="No trace generated" testId="ide-verify-no-trace-guard">
                   <p className="ide-copy">
@@ -845,7 +869,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </IdeCallout>
               )}
 
-              <section className="ide-verify-tick-nav" data-testid="ide-verify-tick-nav">
+              <section className="ide-verify-tick-nav" data-testid="ide-verify-tick-nav" style={{ padding: 'var(--ide-space-1) var(--ide-space-2)' }}>
                 <div className="ide-inline-actions">
                   <IdeButton
                     tone="secondary"
@@ -876,7 +900,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ) : null}
               </section>
 
-              <div className="ide-waveform-stub" data-testid="ide-verify-waveform-preview" data-verify-trace-only={isTraceOnly ? '1' : '0'}>
+              <div className="ide-waveform-stub" data-testid="ide-verify-waveform-preview" data-verify-trace-only={isTraceOnly ? '1' : '0'} style={{ margin: '0 var(--ide-space-1) var(--ide-space-1)' }}>
                 {signalTimeline.length === 0 ? (
                   <div className="ide-verify-waveform-empty" data-testid="ide-verify-waveform-empty">
                     <span>Run verification to see waveforms</span>
@@ -906,6 +930,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                               className={`ide-verify-waveform-point ${
                                 selectedTick === point.tick ? 'is-selected' : ''
                               }`}
+                              data-value={String(point.value)}
                               data-testid="ide-verify-waveform-point"
                               onClick={() => {
                                 setSelectedTick(point.tick);

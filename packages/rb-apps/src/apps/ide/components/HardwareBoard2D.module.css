@@ -1,27 +1,52 @@
 .board {
   display: block;
-  border-radius: var(--ide-radius-s);
+  border-radius: 8px;
   background: transparent;
+  width: 100%;
+  height: auto;
+}
+
+.swGroup {
+  cursor: pointer;
 }
 
 .swGroup:hover .swHandle {
-  opacity: 0.9;
+  opacity: 0.85;
+  filter: brightness(1.2);
+}
+
+.swGroup:active .swHandle {
+  transform: scaleY(0.95);
 }
 
 .btnCircle {
-  transition: fill 80ms ease;
+  transition: fill 80ms ease, filter 80ms ease;
+  cursor: pointer;
 }
 
 .btnCircle:hover {
-  opacity: 0.8;
+  filter: brightness(1.3);
+}
+
+.btnCircle:active {
+  filter: brightness(0.8);
 }
 
 .ledCircle {
-  transition: fill 120ms ease;
+  transition: fill 120ms ease, filter 120ms ease;
 }
 
 .active {
-  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--rb-signal) 70%, transparent));
   stroke: var(--rb-signal) !important;
   stroke-width: 2 !important;
+}
+
+/* LED on — bright with glow */
+.ledOn {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--rb-signal) 80%, transparent));
+}
+
+/* Switch on — teal handle glow */
+.swOn .swHandle {
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--rb-signal) 60%, transparent));
 }
