@@ -12,6 +12,7 @@ import {
 import type { RuntimeSimState } from '../projectRuntime';
 import { useIoBus } from '../ioBus';
 import { HardwareBoard2D } from '../components/HardwareBoard2D';
+import { useBoardSignal } from '../BoardSignalContext';
 
 export interface HardwareMappingRow {
   id: string;
@@ -38,6 +39,7 @@ export interface HardwareSurfaceProps {
   onGenerateBringUpVectors: () => void;
   onOpenExport: () => void;
   onOpenVerify: () => void;
+  onGoToDesign?: () => void;
 }
 
 const HARDWARE_EMPTY_SIM: RuntimeSimState = {
@@ -56,7 +58,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   onGenerateBringUpVectors,
   onOpenExport,
   onOpenVerify,
+  onGoToDesign,
 }) => {
+  const { activeBoardSignal, setActiveBoardSignal } = useBoardSignal();
   const mappedRequiredCount = useMemo(
     () => mappingRows.filter((row) => row.required && row.pin.trim().length > 0).length,
     [mappingRows]
@@ -226,6 +230,17 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 )}
               </div>
             )}
+            {onGoToDesign && (
+              <div style={{ marginTop: 'var(--ide-space-2)' }}>
+                <IdeButton
+                  tone="secondary"
+                  onClick={onGoToDesign}
+                  testId="ide-hardware-go-design"
+                >
+                  Open in Design
+                </IdeButton>
+              </div>
+            )}
           </IdeInspectorSection>
           <IdeInspectorSection title="Expected Behavior" defaultOpen>
             <p className="ide-copy" data-testid="ide-hardware-expected-behavior">
@@ -324,8 +339,16 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           btn={ioBus.state.btn}
           mappedSw={mappedSw}
           mappedLd={mappedLd}
-          onToggleSwitch={(i) => ioBus.actions.toggleSwitch(i)}
-          onPressButton={(i, down) => ioBus.actions.setButton(i, down ? 1 : 0)}
+          activeSignal={activeBoardSignal}
+          onSelectSignal={(sig) => setActiveBoardSignal(sig)}
+          onToggleSwitch={(i) => {
+            ioBus.actions.toggleSwitch(i);
+            setActiveBoardSignal({ type: 'sw', index: i });
+          }}
+          onPressButton={(i, down) => {
+            ioBus.actions.setButton(i, down ? 1 : 0);
+            if (down) setActiveBoardSignal({ type: 'btn', index: i });
+          }}
         />
 
         <section className="ide-export-section" data-testid="ide-hardware-mapping-summary">

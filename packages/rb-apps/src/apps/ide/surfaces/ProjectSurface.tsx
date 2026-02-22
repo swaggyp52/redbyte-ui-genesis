@@ -22,6 +22,7 @@ import {
 } from '../components/IdePrimitives';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useIoBus } from '../ioBus';
+import { useBoardSignal } from '../BoardSignalContext';
 
 export interface ProjectMappingRow {
   id: string;
@@ -73,6 +74,7 @@ export interface ProjectSurfaceProps {
   onOpenImport: () => void;
   diagnosticRouteRequest?: IdeDiagnosticRouteRequest | null;
   runtimeSim?: RuntimeSimState;
+  onGoToHardware?: () => void;
 }
 
 const PROJECT_EMPTY_SIM: RuntimeSimState = {
@@ -105,10 +107,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onOpenImport,
   diagnosticRouteRequest,
   runtimeSim,
+  onGoToHardware,
 }) => {
   const [highlightedMappingKey, setHighlightedMappingKey] = useState<string | null>(null);
   const mappingInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const highlightResetTimer = useRef<number | null>(null);
+  const { activeBoardSignal } = useBoardSignal();
 
   useEffect(() => {
     return () => {
@@ -325,10 +329,34 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       sortedMappingRows.map((row, index) => {
         const mappingView = toMappingView(row, index);
         const mappingKey = toMappingKey(row.label || row.id);
+        const swM2 = /^SW(\d+)$/i.exec(row.label);
+        const ldM2 = /^LD(\d+)$/i.exec(row.label);
+        const rowSigType = swM2 ? 'sw' : ldM2 ? 'ld' : null;
+        const rowSigIdx = swM2 ? parseInt(swM2[1], 10) : ldM2 ? parseInt(ldM2[1], 10) : -1;
+        const isActiveRow =
+          !!activeBoardSignal &&
+          !!rowSigType &&
+          activeBoardSignal.type === rowSigType &&
+          activeBoardSignal.index === rowSigIdx;
+        const portCell = (
+          <span
+            key={`${row.id}-port`}
+            data-testid={`ide-project-port-${mappingKey}`}
+            style={isActiveRow ? {
+              background: 'color-mix(in srgb, var(--rb-signal) 12%, transparent)',
+              borderRadius: 'var(--ide-radius-s)',
+              padding: '1px 4px',
+              cursor: onGoToHardware ? 'pointer' : undefined,
+            } : undefined}
+            onClick={isActiveRow && onGoToHardware ? () => onGoToHardware() : undefined}
+          >
+            <code style={{ fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>
+              {row.port || row.label || row.id}
+            </code>
+          </span>
+        );
         return [
-          <div key={`${row.id}-port`} data-testid={`ide-project-port-${mappingKey}`}>
-            <code>{row.port || row.label || row.id}</code>
-          </div>,
+          portCell,
           <span key={`${row.id}-alias`} data-testid={`ide-project-alias-${mappingKey}`}>
             {mappingView.aliasDisplay}
           </span>,
@@ -379,7 +407,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </span>,
         ];
       }),
-    [highlightedMappingKey, ioBus, onUpdateMappingPin, sortedMappingRows]
+    [activeBoardSignal, highlightedMappingKey, ioBus, onGoToHardware, onUpdateMappingPin, sortedMappingRows]
   );
 
   const lastVerifyStatusTone =
@@ -493,6 +521,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <IdeButton tone="secondary" onClick={onAutoSuggestMapping}>
                 Auto-suggest Basys3
               </IdeButton>
+              {onGoToHardware && (
+                <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-project-go-hardware">
+                  View on Board
+                </IdeButton>
+              )}
             </div>
           </IdeInspectorSection>
 

@@ -43,6 +43,7 @@ import {
   saveIdeProjectSnapshot,
   type PersistedIdeProjectIndexEntry,
 } from './ide/projectPersistence';
+import { BoardSignalProvider } from './ide/BoardSignalContext';
 
 export const IdeApp: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<IdeMode>(() => resolveInitialIdeMode());
@@ -627,6 +628,7 @@ export const IdeApp: React.FC = () => {
   }, []);
 
   return (
+    <BoardSignalProvider>
     <div className="ide-root" data-testid="ide-root" data-redbyte-mode="ide">
       <div className="ide-backdrop-gradient" aria-hidden="true" />
 
@@ -687,6 +689,7 @@ export const IdeApp: React.FC = () => {
             onOpenHardware={() => setCurrentMode('hardware')}
             onOpenImport={() => setCurrentMode('import')}
             diagnosticRouteRequest={diagnosticRouteRequest}
+            onGoToHardware={() => setCurrentMode('hardware')}
           />
         ) : currentMode === 'design' ? (
           <DesignSurface
@@ -710,6 +713,7 @@ export const IdeApp: React.FC = () => {
             onRuntimeSimToggleProbe={toggleRuntimeSimProbe}
             viewportSeed={`${activeExampleId ?? 'custom'}:${lastSavedAt}`}
             ioRows={projectIoRows}
+            onGoToHardware={() => setCurrentMode('hardware')}
           />
         ) : currentMode === 'verify' ? (
           <VerifySurface
@@ -738,6 +742,7 @@ export const IdeApp: React.FC = () => {
             onGenerateBringUpVectors={handleGenerateBringUpVectors}
             onOpenExport={() => setCurrentMode('export')}
             onOpenVerify={() => setCurrentMode('verify')}
+            onGoToDesign={() => setCurrentMode('design')}
           />
         ) : currentMode === 'export' ? (
           <ExportSurface
@@ -836,6 +841,7 @@ export const IdeApp: React.FC = () => {
 
       <IdeStatusBar mode={currentMode} determinismHash={determinismHash} gateStatus="warn" />
     </div>
+    </BoardSignalProvider>
   );
 };
 

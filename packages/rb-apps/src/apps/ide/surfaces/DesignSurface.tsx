@@ -19,6 +19,7 @@ import {
   IdeStatusPill,
 } from '../components/IdePrimitives';
 import type { RuntimeSimState, RuntimeSignalProbe } from '../projectRuntime';
+import { useBoardSignal } from '../BoardSignalContext';
 
 export interface DesignSurfaceProps {
   onOpenPalette?: () => void;
@@ -57,6 +58,7 @@ export interface DesignSurfaceProps {
     pin: string;
     direction: 'in' | 'out';
   }>;
+  onGoToHardware?: () => void;
 }
 
 export interface DesignCompilerStatus {
@@ -145,6 +147,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   onRuntimeSimToggleProbe,
   viewportSeed,
   ioRows = [],
+  onGoToHardware,
 }) => {
   const circuit = useCircuitStore((state) => state.circuit);
   const addNode = useCircuitStore((state) => state.addNode);
@@ -209,6 +212,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     return index;
   }, [ioRows]);
+
+  const { activeBoardSignal, setActiveBoardSignal } = useBoardSignal();
 
   useEffect(() => {
     setEngine(tickEngine.getEngine());
@@ -682,6 +687,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       selectedNodeIds.length > 0 ? editorCircuit.nodes.find((node) => node.id === selectedNodeIds[0]) : undefined,
     [editorCircuit.nodes, selectedNodeIds]
   );
+
+  useEffect(() => {
+    if (!selectedNode) return;
+    const row = ioRowByNodeId.get(selectedNode.id) ?? ioRowByNodeId.get(`${selectedNode.id}.out`);
+    if (!row) return;
+    const swM = /^SW(\d+)$/i.exec(row.label);
+    if (swM) { setActiveBoardSignal({ type: 'sw', index: parseInt(swM[1], 10) }); return; }
+    const ldM = /^LD(\d+)$/i.exec(row.label);
+    if (ldM) { setActiveBoardSignal({ type: 'ld', index: parseInt(ldM[1], 10) }); return; }
+  }, [selectedNode?.id, ioRowByNodeId, setActiveBoardSignal]);
   const selectedNodePins = useMemo(
     () => deriveNodePins(selectedNode, editorCircuit),
     [editorCircuit, selectedNode]
@@ -987,6 +1002,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 runtimeSim.signals[`${ioRow.nodeId}.out`] ??
                 0) === 1 ? 1 : 0;
               return (
+                <>
                 <div className="ide-kv-list">
                   <div className="ide-kv-row">
                     <span>Label</span>
@@ -1014,6 +1030,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </span>
                   </div>
                 </div>
+                {onGoToHardware && (
+                  <div style={{ marginTop: 'var(--ide-space-2)' }}>
+                    <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-design-go-hardware">
+                      Go to Hardware
+                    </IdeButton>
+                  </div>
+                )}
+                </>
               );
             })()}
           </IdeInspectorSection>

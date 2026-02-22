@@ -19,3 +19,9 @@
 .ledCircle {
   transition: fill 120ms ease;
 }
+
+.active {
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--rb-signal) 70%, transparent));
+  stroke: var(--rb-signal) !important;
+  stroke-width: 2 !important;
+}

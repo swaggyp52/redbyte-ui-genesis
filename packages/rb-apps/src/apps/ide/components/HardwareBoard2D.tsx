@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Bit } from '../ioBus';
+import type { BoardSignal } from '../BoardSignalContext';
 import styles from './HardwareBoard2D.module.css';
 
 export interface HardwareBoard2DProps {
@@ -10,6 +11,8 @@ export interface HardwareBoard2DProps {
   mappedLd: boolean[]; // length 16 — whether each LD has a nodeId mapping
   onToggleSwitch(i: number): void;
   onPressButton(i: number, down: boolean): void;
+  activeSignal?: BoardSignal | null;
+  onSelectSignal?: (sig: BoardSignal) => void;
 }
 
 const BTN_POSITIONS: [number, number][] = [
@@ -29,6 +32,8 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
   mappedLd,
   onToggleSwitch,
   onPressButton,
+  activeSignal,
+  onSelectSignal,
 }) => {
   return (
     <svg
@@ -58,6 +63,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
         const cy = 40;
         const isOn = ld[idx] === 1;
         const isMapped = mappedLd[idx];
+        const isActiveLd = activeSignal?.type === 'ld' && activeSignal.index === idx;
 
         let fill = '#1a2a20';
         if (isOn) fill = 'var(--rb-signal)';
@@ -81,7 +87,8 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
           <g key={`ld-${idx}`}>
             <circle
               data-testid={`ide-hw-ld-${idx}`}
-              className={styles.ledCircle}
+              data-active={isActiveLd ? 'true' : undefined}
+              className={isActiveLd ? `${styles.ledCircle} ${styles.active}` : styles.ledCircle}
               cx={cx}
               cy={cy}
               r={7}
@@ -89,6 +96,8 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               stroke={stroke}
               strokeWidth={strokeWidth}
               opacity={opacity}
+              style={{ cursor: 'pointer' }}
+              onClick={() => onSelectSignal?.({ type: 'ld', index: idx })}
             />
             <text
               x={cx}
@@ -173,12 +182,14 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
         const isOn = sw[idx] === 1;
         const isMapped = mappedSw[idx];
         const handleY = isOn ? 191 : 201;
+        const isActiveSw = activeSignal?.type === 'sw' && activeSignal.index === idx;
 
         return (
           <g
             key={`sw-${idx}`}
             data-testid={`ide-hw-sw-${idx}`}
-            className={styles.swGroup}
+            data-active={isActiveSw ? 'true' : undefined}
+            className={isActiveSw ? `${styles.swGroup} ${styles.active}` : styles.swGroup}
             cursor="pointer"
             onClick={() => onToggleSwitch(idx)}
           >
