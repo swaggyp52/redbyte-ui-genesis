@@ -75,6 +75,9 @@ export interface ProjectSurfaceProps {
   diagnosticRouteRequest?: IdeDiagnosticRouteRequest | null;
   runtimeSim?: RuntimeSimState;
   onGoToHardware?: () => void;
+  onSaveNow?: () => void;
+  onRestoreLastSave?: () => void;
+  onResetProject?: () => void;
 }
 
 const PROJECT_EMPTY_SIM: RuntimeSimState = {
@@ -108,6 +111,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   diagnosticRouteRequest,
   runtimeSim,
   onGoToHardware,
+  onSaveNow,
+  onRestoreLastSave,
+  onResetProject,
 }) => {
   const [highlightedMappingKey, setHighlightedMappingKey] = useState<string | null>(null);
   const mappingInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -477,6 +483,41 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               Import HDL/XDC
             </IdeButton>
           </div>
+
+          {/* Session controls */}
+          <section
+            style={{ marginTop: 'var(--ide-space-3)', borderTop: '1px solid var(--ide-border, rgba(255,255,255,0.08))', paddingTop: 'var(--ide-space-2)' }}
+            data-testid="ide-session-controls"
+          >
+            {lastSavedAt && (
+              <p
+                className="ide-copy"
+                data-testid="ide-session-last-saved"
+                style={{ marginBottom: 'var(--ide-space-2)', color: 'var(--ide-text-subtle)' }}
+              >
+                {lastSavedAt}
+              </p>
+            )}
+            <div className="ide-inline-actions">
+              {onSaveNow && (
+                <IdeButton tone="secondary" onClick={onSaveNow} testId="ide-session-save-now">
+                  Save now
+                </IdeButton>
+              )}
+              {onRestoreLastSave && (
+                <IdeButton tone="ghost" onClick={onRestoreLastSave} testId="ide-session-restore">
+                  Restore last save
+                </IdeButton>
+              )}
+            </div>
+            <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-1)' }}>
+              {onResetProject && (
+                <IdeButton tone="danger" onClick={onResetProject} testId="ide-session-reset">
+                  Reset project
+                </IdeButton>
+              )}
+            </div>
+          </section>
         </section>
       }
       inspector={

@@ -43,6 +43,12 @@ import {
   saveIdeProjectSnapshot,
   type PersistedIdeProjectIndexEntry,
 } from './ide/projectPersistence';
+import {
+  saveLabSessionMeta,
+  loadLabSessionMeta,
+  clearLabSessionMeta,
+  type LabSessionMeta,
+} from './ide/persistence/labSession';
 import { BoardSignalProvider } from './ide/BoardSignalContext';
 
 export const IdeApp: React.FC = () => {
@@ -53,6 +59,13 @@ export const IdeApp: React.FC = () => {
   const [savedProjects, setSavedProjects] = useState<PersistedIdeProjectIndexEntry[]>([]);
   const [savedProjectHash, setSavedProjectHash] = useState<string | null>(null);
   const [isAutosaving, setIsAutosaving] = useState(false);
+  const hasRestoredRef = useRef(false);
+  const isRestoringRef = useRef(false);
+  const sessionMetaRef = useRef<LabSessionMeta | null>(null);
+  const exportProjectRef = useRef<typeof exportProject | null>(null);
+  const projectIdRef = useRef('');
+  const projectNameRef = useRef('');
+  const projectHashRef = useRef('');
   const importFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const projectId = useProjectRuntime((state) => state.projectId);
@@ -342,6 +355,18 @@ export const IdeApp: React.FC = () => {
   );
   const projectHash = useMemo(() => digestValue(exportProject), [exportProject]);
   const determinismHash = projectHash;
+  exportProjectRef.current = exportProject;
+  projectIdRef.current = projectId;
+  projectNameRef.current = projectName;
+  projectHashRef.current = projectHash;
+  sessionMetaRef.current = {
+    version: 1,
+    savedAt: Date.now(),
+    projectId,
+    currentMode,
+    activeExampleId: activeExampleId ?? null,
+    probedKeys: runtimeSim.probes.map((p) => p.key),
+  };
   const saveState: 'saved' | 'unsaved' | 'autosaving' = useMemo(() => {
     if (isAutosaving) return 'autosaving';
     return projectHash === savedProjectHash ? 'saved' : 'unsaved';
@@ -463,6 +488,27 @@ export const IdeApp: React.FC = () => {
     refreshSavedProjects();
   }, [refreshSavedProjects, resetToActiveExample, setLastSavedAt]);
 
+  // One-time boot restore: reload last session on first mount
+  useEffect(() => {
+    if (hasRestoredRef.current) return;
+    hasRestoredRef.current = true;
+    const meta = loadLabSessionMeta();
+    if (!meta) return;
+    const snapshot = loadIdeProjectSnapshot(meta.projectId);
+    if (!snapshot) return;
+    const project = decodePersistedIdeProject(snapshot);
+    if (!project) return;
+    isRestoringRef.current = true;
+    loadFromProject(project);
+    setSavedProjectHash(snapshot.projectHash);
+    isRestoringRef.current = false;
+    const validModes = ['project', 'design', 'verify', 'hardware', 'export', 'import'] as const;
+    if ((validModes as readonly string[]).includes(meta.currentMode)) {
+      setCurrentMode(meta.currentMode as typeof validModes[number]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount only
+
   useEffect(() => {
     setSavedProjects(listIdeProjectSnapshots());
     const snapshot = loadIdeProjectSnapshot(projectId);
@@ -502,6 +548,18 @@ export const IdeApp: React.FC = () => {
     savedProjectHash,
     setLastSavedAt,
   ]);
+
+  // Session meta: save mode + probes (debounced 500ms)
+  useEffect(() => {
+    if (isRestoringRef.current) return;
+    if (typeof window === 'undefined') return;
+    const timer = window.setTimeout(() => {
+      if (sessionMetaRef.current) {
+        saveLabSessionMeta(sessionMetaRef.current);
+      }
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [currentMode, activeExampleId, runtimeSim.probes]);
 
   const exportViewModel = useMemo(
     () => buildExportViewModel(exportProject, verifyLastRun),
@@ -637,6 +695,26 @@ export const IdeApp: React.FC = () => {
     };
   }, []);
 
+  // Force-save on tab/window close
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (projectIdRef.current && exportProjectRef.current) {
+        saveIdeProjectSnapshot({
+          projectId: projectIdRef.current,
+          projectName: projectNameRef.current,
+          projectHash: projectHashRef.current,
+          project: exportProjectRef.current,
+        });
+      }
+      if (sessionMetaRef.current) {
+        saveLabSessionMeta(sessionMetaRef.current);
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally empty: refs provide current values
+
   return (
     <BoardSignalProvider>
     <div className="ide-root" data-testid="ide-root" data-redbyte-mode="ide">
@@ -700,6 +778,40 @@ export const IdeApp: React.FC = () => {
             onOpenImport={() => setCurrentMode('import')}
             diagnosticRouteRequest={diagnosticRouteRequest}
             onGoToHardware={() => setCurrentMode('hardware')}
+            onSaveNow={() => {
+              if (!exportProjectRef.current) return;
+              const snap = saveIdeProjectSnapshot({
+                projectId,
+                projectName,
+                projectHash,
+                project: exportProjectRef.current,
+              });
+              if (snap) {
+                setSavedProjectHash(snap.projectHash);
+                setSavedProjects(listIdeProjectSnapshots());
+                setLastSavedAt(`Saved ${new Date(snap.savedAtIso).toLocaleTimeString()}`);
+              }
+              if (sessionMetaRef.current) saveLabSessionMeta(sessionMetaRef.current);
+            }}
+            onRestoreLastSave={() => {
+              if (!window.confirm('Restore the last saved project? Unsaved changes will be lost.')) return;
+              const snap = loadIdeProjectSnapshot(projectId);
+              if (!snap) { window.alert('No saved session found.'); return; }
+              const proj = decodePersistedIdeProject(snap);
+              if (!proj) { window.alert('Saved session could not be decoded.'); return; }
+              isRestoringRef.current = true;
+              loadFromProject(proj);
+              setSavedProjectHash(snap.projectHash);
+              isRestoringRef.current = false;
+              setLastSavedAt('Restored from last save');
+            }}
+            onResetProject={() => {
+              if (!window.confirm('Reset to the default example? All unsaved work will be lost.')) return;
+              clearLabSessionMeta();
+              resetToActiveExample();
+              setCurrentMode('project');
+              setLastSavedAt('Reset to example');
+            }}
           />
         ) : currentMode === 'design' ? (
           <DesignSurface
