@@ -124,9 +124,17 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const [statusMessage, setStatusMessage] = useState<string>('Paste HDL to begin import.');
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'failed'>('idle');
   const zipInputRef = useRef<HTMLInputElement | null>(null);
+  const hdlTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const hdlGutterRef = useRef<HTMLDivElement | null>(null);
 
   // --- Suggestion model state ---
   const [overrides, setOverrides] = useState<Record<string, string | null>>({});
+
+  const lineCount = useMemo(() => Math.max(1, hdlText.split('\n').length), [hdlText]);
+  const lineNumbersText = useMemo(
+    () => Array.from({ length: lineCount }, (_, i) => String(i + 1)).join('\n'),
+    [lineCount]
+  );
 
   const rowIdByPortName = useMemo(() => {
     const m = new Map<string, string>();
@@ -174,6 +182,99 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       return s.pin;
     },
     [overrides]
+  );
+
+  const parseHdl = useCallback(() => {
+    const source = hdlText.trim();
+    if (!source) {
+      setStatusMessage('Paste HDL before parsing.');
+      return;
+    }
+    try {
+      setZipInspection(null);
+      setPendingApplyProject(null);
+      const effectiveLang =
+        language === 'auto' ? detectHdlLanguage(source) : (language as 'vhdl' | 'verilog');
+      const parsed = effectiveLang === 'vhdl' ? parseVhdl(source) : parseVerilog(source);
+      setParsedHdl(parsed);
+      setMapping((previous) => {
+        const next: Record<string, string> = {};
+        for (const port of parsed.ports) {
+          next[port.name] = previous[port.name] ?? '';
+        }
+        return next;
+      });
+      setStatusMessage(`HDL parsed: ${parsed.entityName} (${parsed.ports.length} ports).`);
+    } catch (error) {
+      setParsedHdl(null);
+      setStatusMessage(`HDL parse failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
+  }, [hdlText, language]);
+
+  const handleHdlScroll = useCallback(() => {
+    const ta = hdlTextareaRef.current;
+    const gutter = hdlGutterRef.current;
+    if (!ta || !gutter) return;
+    gutter.scrollTop = ta.scrollTop;
+  }, []);
+
+  const handleHdlKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      const isSave = (e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S');
+      if (isSave) {
+        e.preventDefault();
+        e.stopPropagation();
+        parseHdl();
+        return;
+      }
+
+      if (e.key !== 'Tab') return;
+
+      e.preventDefault();
+      const ta = e.currentTarget;
+      const value = ta.value;
+      const start = ta.selectionStart ?? 0;
+      const end = ta.selectionEnd ?? 0;
+
+      const indent = '  '; // 2 spaces
+
+      const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+      const lineEnd = value.indexOf('\n', end);
+      const sliceEnd = lineEnd === -1 ? value.length : lineEnd;
+      const block = value.slice(lineStart, sliceEnd);
+      const lines = block.split('\n');
+
+      if (e.shiftKey) {
+        const newLines = lines.map((ln) => {
+          if (ln.startsWith(indent)) return ln.slice(indent.length);
+          if (ln.startsWith('\t')) return ln.slice(1);
+          if (ln.startsWith(' ')) return ln.slice(1);
+          return ln;
+        });
+        const next = value.slice(0, lineStart) + newLines.join('\n') + value.slice(sliceEnd);
+        setHdlText(next);
+        queueMicrotask(() => {
+          const removed =
+            lines[0].startsWith(indent)
+              ? indent.length
+              : lines[0].startsWith('\t') || lines[0].startsWith(' ')
+                ? 1
+                : 0;
+          ta.selectionStart = Math.max(lineStart, start - removed);
+          ta.selectionEnd = Math.max(lineStart, end - removed);
+        });
+        return;
+      }
+
+      const newLines = lines.map((ln) => indent + ln);
+      const next = value.slice(0, lineStart) + newLines.join('\n') + value.slice(sliceEnd);
+      setHdlText(next);
+      queueMicrotask(() => {
+        ta.selectionStart = start + indent.length;
+        ta.selectionEnd = end + indent.length * newLines.length;
+      });
+    },
+    [parseHdl, setHdlText]
   );
 
   const applicableItems = useMemo(
@@ -267,33 +368,6 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       }),
     [mapping, ports]
   );
-
-  const parseHdl = () => {
-    const source = hdlText.trim();
-    if (!source) {
-      setStatusMessage('Paste HDL before parsing.');
-      return;
-    }
-    try {
-      setZipInspection(null);
-      setPendingApplyProject(null);
-      const effectiveLang =
-        language === 'auto' ? detectHdlLanguage(source) : (language as 'vhdl' | 'verilog');
-      const parsed = effectiveLang === 'vhdl' ? parseVhdl(source) : parseVerilog(source);
-      setParsedHdl(parsed);
-      setMapping((previous) => {
-        const next: Record<string, string> = {};
-        for (const port of parsed.ports) {
-          next[port.name] = previous[port.name] ?? '';
-        }
-        return next;
-      });
-      setStatusMessage(`HDL parsed: ${parsed.entityName} (${parsed.ports.length} ports).`);
-    } catch (error) {
-      setParsedHdl(null);
-      setStatusMessage(`HDL parse failed: ${error instanceof Error ? error.message : 'unknown error'}`);
-    }
-  };
 
   const parseXdc = () => {
     const source = xdcText.trim();
@@ -663,12 +737,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               Parse XDC
             </IdeButton>
             <IdeButton
-              tone="ghost"
+              tone="secondary"
               onClick={applySuggestions}
               disabled={!canApplySuggestions}
-              testId="ide-import-apply-mapping"
+              testId="ide-import-apply-pins-only"
             >
-              Apply suggestions
+              Apply Pins Only
             </IdeButton>
             <IdeButton tone="ghost" onClick={copyDiagnostics} testId="ide-import-copy-diagnostics">
               Copy report
@@ -678,9 +752,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 tone="primary"
                 onClick={requestApplyProject}
                 disabled={!canImport}
-                testId="ide-import-build-project"
+                testId="ide-import-replace-project"
               >
-                Apply to Project
+                Replace Project…
               </IdeButton>
             </span>
             {!canImport && hasParsedHdl && (
@@ -701,6 +775,13 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         }
         testId="ide-import-panel"
       >
+        <p
+          className="ide-copy"
+          style={{ color: 'var(--ide-text-soft)', marginBottom: 'var(--ide-space-2)' }}
+          data-testid="ide-import-mode-hint"
+        >
+          Import can fill pins on your current project, or replace the whole project.
+        </p>
         {pendingApplyProject ? (
           <IdeCallout tone="warn" title="Apply import to active project?" testId="ide-import-apply-confirmation">
             <p className="ide-copy">
@@ -833,14 +914,29 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     <option value="verilog">Verilog</option>
                   </select>
                 </div>
-                <textarea
-                  className="ide-import-textarea"
-                  value={hdlText}
-                  onChange={(event) => setHdlText(event.target.value)}
-                  placeholder="Paste module/entity source here."
-                  spellCheck={false}
-                  data-testid="ide-import-hdl-input"
-                />
+                <div className="ide-code-editor" data-testid="ide-import-hdl-editor">
+                  <div
+                    className="ide-code-gutter"
+                    aria-hidden="true"
+                    data-testid="ide-import-hdl-gutter"
+                    ref={hdlGutterRef}
+                  >
+                    {lineNumbersText}
+                  </div>
+                  <textarea
+                    ref={hdlTextareaRef}
+                    className="ide-code-textarea"
+                    data-testid="ide-import-hdl-textarea"
+                    value={hdlText}
+                    onChange={(e) => setHdlText(e.target.value)}
+                    onScroll={handleHdlScroll}
+                    onKeyDown={handleHdlKeyDown}
+                    placeholder="Paste module/entity source here."
+                    spellCheck={false}
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                  />
+                </div>
               </div>
             )}
 
