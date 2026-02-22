@@ -1,9 +1,10 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { parseVhdl } from '../../../import/vhdlImport';
 import { parseVerilog } from '../../../import/verilogImport';
 import { parseXdcPins, type XdcParseResult } from '../../../import/xdcImport';
 import type { ParsedHDL } from '../../../import/hdlToCircuit';
 import type { RBProject } from '../../../export/projectFormat';
+import type { IdeExampleIoRow } from '../examplesCatalog';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   buildImportedProject,
@@ -26,6 +27,9 @@ type HdlLanguage = 'auto' | 'vhdl' | 'verilog';
 
 export interface ImportSurfaceProps {
   onImportProject?: (project: RBProject) => void;
+  projectIoRows?: IdeExampleIoRow[];
+  onApplySuggestions?: (items: Array<{ rowId: string; pin: string }>) => void;
+  onGoToProject?: () => void;
 }
 
 const BASYS3_QUICK_PINS = [
@@ -34,6 +38,9 @@ const BASYS3_QUICK_PINS = [
   'BTNC', 'BTNU', 'BTND', 'BTNL', 'BTNR',
   'CLK100MHZ',
 ] as const;
+
+/** Common Basys3 physical pin IDs for quick assignment override. */
+const BASYS3_PHYSICAL_QUICK_PINS = ['V17', 'W16', 'W15', 'V15', 'U16', 'E19', 'U19', 'V19', 'J15', 'W5'] as const;
 
 const SAMPLE_AND_GATE_VHDL = [
   'library IEEE;',
@@ -49,7 +56,46 @@ const SAMPLE_AND_GATE_VHDL = [
   'end Behavioral;',
 ].join('\n');
 
-export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject }) => {
+type SuggestionKind = 'SW' | 'LD' | 'BTN' | 'CLK' | 'OTHER';
+
+interface PinSuggestion {
+  portName: string;
+  direction: 'in' | 'out';
+  rowId: string | null;       // null if no matching project row
+  pin: string | null;         // from XDC, or null
+  kind: SuggestionKind;
+  signalLabel: string;        // e.g. "SW0", "LD3", "CLK"
+  confidence: 'high' | 'medium' | 'low';
+  reason: string;
+  locked: boolean;            // true if project row already has a pin
+}
+
+function classifyPort(name: string): { kind: SuggestionKind; signalLabel: string; confidence: 'high' | 'medium' | 'low' } {
+  const n = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const swM = /^(sw|switch)(\d+)$/.exec(n);
+  if (swM) return { kind: 'SW', signalLabel: `SW${swM[2]}`, confidence: 'high' };
+  const ldM = /^(ld|led)(\d+)$/.exec(n);
+  if (ldM) return { kind: 'LD', signalLabel: `LD${ldM[2]}`, confidence: 'high' };
+  const btnM = /^btn(c|u|d|l|r|center|up|down|left|right)$/.exec(n);
+  if (btnM) {
+    const suffix = btnM[1][0].toUpperCase();
+    const label = suffix === 'C' ? 'BTNC' : suffix === 'U' ? 'BTNU' : suffix === 'D' ? 'BTND' : suffix === 'L' ? 'BTNL' : 'BTNR';
+    return { kind: 'BTN', signalLabel: label, confidence: 'high' };
+  }
+  if (/^(clk|clock)$/.test(n)) return { kind: 'CLK', signalLabel: 'CLK', confidence: 'high' };
+  // Weak matches
+  if (n.startsWith('sw') || n.startsWith('switch')) return { kind: 'SW', signalLabel: name.toUpperCase(), confidence: 'medium' };
+  if (n.startsWith('ld') || n.startsWith('led')) return { kind: 'LD', signalLabel: name.toUpperCase(), confidence: 'medium' };
+  if (n.startsWith('btn')) return { kind: 'BTN', signalLabel: name.toUpperCase(), confidence: 'medium' };
+  return { kind: 'OTHER', signalLabel: name.toUpperCase(), confidence: 'low' };
+}
+
+export const ImportSurface: React.FC<ImportSurfaceProps> = ({
+  onImportProject,
+  projectIoRows,
+  onApplySuggestions,
+  onGoToProject,
+}) => {
   const [tab, setTab] = useState<ImportTab>('hdl');
   const [language, setLanguage] = useState<HdlLanguage>('auto');
   const [hdlText, setHdlText] = useState('');
@@ -63,6 +109,70 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
   const [statusMessage, setStatusMessage] = useState<string>('Paste HDL to begin import.');
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'failed'>('idle');
   const zipInputRef = useRef<HTMLInputElement | null>(null);
+
+  // --- Suggestion model state ---
+  const [overrides, setOverrides] = useState<Record<string, string | null>>({});
+
+  const rowIdByPortName = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of (projectIoRows ?? [])) {
+      if (r.port) m.set(r.port.toLowerCase(), r.id);
+      if (r.label) m.set(r.label.toLowerCase(), r.id);
+    }
+    return m;
+  }, [projectIoRows]);
+
+  const pinByRowId = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of (projectIoRows ?? [])) {
+      m.set(r.id, r.pin ?? '');
+    }
+    return m;
+  }, [projectIoRows]);
+
+  const suggestions = useMemo((): PinSuggestion[] => {
+    if (!parsedHdl?.ports) return [];
+    const xdcPins: Record<string, string> = xdcResult?.pinMap ?? {};
+    return parsedHdl.ports.map((p): PinSuggestion => {
+      const portKey = p.name.toLowerCase();
+      const rowId = rowIdByPortName.get(portKey) ?? null;
+      const pin = xdcPins[p.name] ?? xdcPins[p.name.toLowerCase()] ?? null;
+      const classified = classifyPort(p.name);
+      const locked = rowId ? Boolean((pinByRowId.get(rowId) ?? '').trim()) : false;
+      return {
+        portName: p.name,
+        direction: p.direction,
+        rowId,
+        pin,
+        ...classified,
+        reason: pin
+          ? `Pin ${pin} from XDC constraints`
+          : `No XDC pin — matched by name only`,
+        locked,
+      };
+    });
+  }, [parsedHdl, rowIdByPortName, pinByRowId, xdcResult]);
+
+  const resolvedPin = useCallback(
+    (s: PinSuggestion): string | null => {
+      if (s.portName in overrides) return overrides[s.portName];
+      return s.pin;
+    },
+    [overrides]
+  );
+
+  const applicableItems = useMemo(
+    () =>
+      suggestions
+        .filter(s => s.rowId !== null && !s.locked && resolvedPin(s) !== null)
+        .map(s => ({ rowId: s.rowId!, pin: resolvedPin(s)! })),
+    [suggestions, resolvedPin]
+  );
+
+  const handleApplyAll = () => {
+    if (applicableItems.length === 0) return;
+    onApplySuggestions?.(applicableItems);
+  };
 
   const ports = parsedHdl?.ports ?? [];
   const parsedEntityName = parsedHdl?.entityName ?? 'unparsed';
@@ -379,22 +489,113 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({ onImportProject })
       }
       inspector={
         <>
-          <IdeInspectorSection title="Port Suggestions" defaultOpen>
-            {parsedHdl?.ports && parsedHdl.ports.length > 0 ? (
-              <div className="ide-kv-list">
-                {parsedHdl.ports.slice(0, 8).map((port) => (
-                  <div key={port.name} className="ide-kv-row">
-                    <code style={{ fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>
-                      {port.name}
-                    </code>
-                    <span style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-                      {port.direction === 'in' ? 'SW?' : 'LD?'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
+          <IdeInspectorSection title="Port Suggestions" defaultOpen testId="ide-import-port-suggestions">
+            {!parsedHdl ? (
               <p className="ide-copy">Parse HDL to see port suggestions.</p>
+            ) : suggestions.length === 0 ? (
+              <p className="ide-copy">No ports found in parsed HDL.</p>
+            ) : (
+              <>
+                {/* Summary counts */}
+                <div className="ide-kv-list" style={{ marginBottom: 'var(--ide-space-2)' }}>
+                  <div className="ide-kv-row">
+                    <span>Ready to apply</span>
+                    <IdeStatusPill tone="ok">{applicableItems.length}</IdeStatusPill>
+                  </div>
+                  <div className="ide-kv-row">
+                    <span>Already pinned</span>
+                    <IdeStatusPill tone="idle">{suggestions.filter(s => s.locked).length}</IdeStatusPill>
+                  </div>
+                  <div className="ide-kv-row">
+                    <span>No project row</span>
+                    <IdeStatusPill tone="idle">{suggestions.filter(s => !s.rowId).length}</IdeStatusPill>
+                  </div>
+                </div>
+
+                {/* Suggestion rows */}
+                {suggestions.map((s) => {
+                  const confidenceTone = s.confidence === 'high' ? 'ok' : s.confidence === 'medium' ? 'warn' : 'idle';
+                  return (
+                    <div
+                      key={s.portName}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr auto',
+                        gap: 'var(--ide-space-1)',
+                        alignItems: 'start',
+                        padding: 'var(--ide-space-1) 0',
+                        borderBottom: '1px solid color-mix(in srgb, var(--ide-border) 40%, transparent)',
+                        opacity: s.locked || !s.rowId ? 0.5 : 1,
+                      }}
+                      data-testid={`ide-import-suggestion-${s.portName}`}
+                    >
+                      <div>
+                        <code style={{ fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>
+                          {s.portName}
+                        </code>
+                        <span style={{ marginLeft: 'var(--ide-space-1)', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+                          {s.direction === 'in' ? '→' : '←'}
+                        </span>
+                      </div>
+                      <IdeStatusPill tone={confidenceTone}>{s.confidence === 'high' ? 'HIGH' : s.confidence === 'medium' ? 'MED' : 'LOW'}</IdeStatusPill>
+
+                      {/* Pin control */}
+                      <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 'var(--ide-space-1)' }}>
+                        <select
+                          disabled={s.locked || !s.rowId}
+                          value={overrides[s.portName] !== undefined ? (overrides[s.portName] ?? '') : (s.pin ?? '')}
+                          onChange={(e) => setOverrides(prev => ({ ...prev, [s.portName]: e.target.value || null }))}
+                          style={{
+                            flex: 1,
+                            fontFamily: 'var(--rb-font-mono)',
+                            fontSize: 'var(--rb-font-size-1)',
+                            background: 'var(--ide-bg-input, #0e1e2e)',
+                            color: 'var(--ide-text)',
+                            border: '1px solid var(--ide-border)',
+                            borderRadius: 'var(--ide-radius-s)',
+                            padding: '2px 4px',
+                          }}
+                          aria-label={`Pin for ${s.portName}`}
+                        >
+                          {s.pin && <option value={s.pin}>{s.pin} (XDC)</option>}
+                          <option value="">— (skip)</option>
+                          {/* Common Basys pins as convenience */}
+                          {BASYS3_PHYSICAL_QUICK_PINS.map(p =>
+                            p !== s.pin ? <option key={p} value={p}>{p}</option> : null
+                          )}
+                        </select>
+                        {s.locked && (
+                          <span style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>locked</span>
+                        )}
+                        {!s.rowId && (
+                          <span style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>not in project</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Apply all */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ide-space-2)', marginTop: 'var(--ide-space-3)' }}>
+                  <IdeButton
+                    tone="primary"
+                    onClick={handleApplyAll}
+                    testId="ide-import-apply-all"
+                    disabled={applicableItems.length === 0}
+                  >
+                    Apply {applicableItems.length} suggestion{applicableItems.length !== 1 ? 's' : ''} to project
+                  </IdeButton>
+                  {onGoToProject && (
+                    <IdeButton
+                      tone="secondary"
+                      onClick={onGoToProject}
+                      testId="ide-import-go-project"
+                    >
+                      Review in Project
+                    </IdeButton>
+                  )}
+                </div>
+              </>
             )}
           </IdeInspectorSection>
           <IdeInspectorSection title="Pipeline Stage" defaultOpen>

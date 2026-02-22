@@ -246,6 +246,16 @@ export const IdeApp: React.FC = () => {
     [loadFromProject, refreshSavedProjects]
   );
 
+  const handleApplySuggestions = useCallback(
+    (items: Array<{ rowId: string; pin: string }>) => {
+      for (const it of items) {
+        setMappingPin(it.rowId, it.pin);
+      }
+      setCurrentMode('project');
+    },
+    [setMappingPin, setCurrentMode]
+  );
+
   const topEntityName = useMemo(() => buildTopEntityName(projectName), [projectName]);
   const mappedIoSignals = useMemo(
     () =>
@@ -761,7 +771,12 @@ export const IdeApp: React.FC = () => {
             onGoToProject={() => setCurrentMode('project')}
           />
         ) : (
-          <ImportSurface onImportProject={handleImportProject} />
+          <ImportSurface
+            onImportProject={handleImportProject}
+            projectIoRows={projectIoRows}
+            onApplySuggestions={handleApplySuggestions}
+            onGoToProject={() => setCurrentMode('project')}
+          />
         )}
         </div>
       </div>
