@@ -1664,6 +1664,72 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* Design workspace: compact toolbar + full-height canvas */
+.ide-design-workspace {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ide-design-toolbar {
+  min-height: 36px;
+  padding: 0 var(--ide-space-3, 12px);
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2, 8px);
+  flex-wrap: nowrap;
+  border-bottom: 1px solid color-mix(in srgb, var(--rb-signal, #5af) 14%, transparent);
+  background: rgba(6, 16, 24, 0.65);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.ide-design-toolbarExpanded {
+  padding: var(--ide-space-2, 8px) var(--ide-space-3, 12px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ide-space-2, 8px);
+  align-items: center;
+  border-bottom: 1px solid color-mix(in srgb, var(--rb-signal, #5af) 10%, transparent);
+  background: rgba(6, 16, 24, 0.45);
+  flex-shrink: 0;
+}
+
+.ide-design-canvasWrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ide-design-canvasWrap > .ide-design-layout {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+.ide-toolbar-toggle {
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: var(--rb-font-size-1, 11px);
+  font-family: var(--rb-font-mono, monospace);
+  color: var(--ide-text-soft, #9ca3af);
+  background: transparent;
+  border: 1px solid var(--ide-border, rgba(255,255,255,0.12));
+  border-radius: var(--ide-radius-s, 4px);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ide-toolbar-toggle:hover {
+  color: var(--ide-text-main, #e2e8f0);
+  border-color: var(--ide-border-focus, rgba(255,255,255,0.25));
+}
+
 .ide-design-palette,
 .ide-design-canvas {
   border: 1px solid rgba(55, 86, 115, 0.72);

@@ -192,6 +192,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [actionToast, setActionToast] = useState<string | null>(null);
   const [diagnosticFilterNodeId, setDiagnosticFilterNodeId] = useState<string | null>(null);
   const [tickEngine] = useState(() => new TickEngine(editorCircuit, { tickRate: 10 }));
+  const [toolsExpanded, setToolsExpanded] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
   const hasAutoFitRef = useRef(false);
   const lastViewportSeedRef = useRef<string | undefined>(undefined);
   const simTick = runtimeSim.tick;
@@ -1408,338 +1410,302 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           right={<IdeStatusPill tone={toolMode === 'wire' ? 'warn' : 'ok'}>{activeModeLabel}</IdeStatusPill>}
           testId="ide-design-panel"
         >
-          <section
-            className="ide-design-command-center"
-            data-testid="ide-design-command-header"
-            data-interaction-mode={interactionMode}
-          >
-            <div className="ide-design-command-title">
-              <h3 data-testid="ide-design-mode-title">Design</h3>
-              <p data-testid="ide-design-mode-subtitle">Build your circuit</p>
-            </div>
+          <div className="ide-design-workspace" data-testid="ide-design-workspace">
 
-            <IdeButton
-              tone="ghost"
-              onClick={() => setShowDetails((prev) => !prev)}
-              testId="ide-design-details-toggle"
-            >
-              Details {showDetails ? '▲' : '▼'}
-            </IdeButton>
+            {/* ── Compact primary toolbar ── */}
+            <div className="ide-design-toolbar" data-testid="ide-design-toolbar">
+              {/* SEL / WIR segmented control — keep exactly as-is */}
+              <div className="ide-design-tool-segmented" data-testid="ide-design-tool-segmented">
+                <button
+                  type="button"
+                  className={`ide-design-tool-segment ${toolMode === 'select' ? 'is-active' : ''}`}
+                  onClick={setSelectMode}
+                  data-testid="ide-design-tool-select"
+                  aria-pressed={toolMode === 'select'}
+                >
+                  <span className="ide-design-tool-icon" aria-hidden="true">SEL</span>
+                  <span className="ide-design-tool-text"><strong>Select</strong><kbd>S</kbd></span>
+                </button>
+                <button
+                  type="button"
+                  className={`ide-design-tool-segment ${toolMode === 'wire' ? 'is-active' : ''}`}
+                  onClick={setWireMode}
+                  data-testid="ide-design-tool-wire"
+                  aria-pressed={toolMode === 'wire'}
+                >
+                  <span className="ide-design-tool-icon" aria-hidden="true">WIR</span>
+                  <span className="ide-design-tool-text"><strong>Wire</strong><kbd>W</kbd></span>
+                </button>
+              </div>
 
-            <div className="ide-design-tool-segmented" data-testid="ide-design-tool-segmented">
-              <button
-                type="button"
-                className={`ide-design-tool-segment ${toolMode === 'select' ? 'is-active' : ''}`}
-                onClick={setSelectMode}
-                data-testid="ide-design-tool-select"
-                aria-pressed={toolMode === 'select'}
-              >
-                <span className="ide-design-tool-icon" aria-hidden="true">
-                  SEL
-                </span>
-                <span className="ide-design-tool-text">
-                  <strong>Select</strong>
-                  <kbd>S</kbd>
-                </span>
-              </button>
-              <button
-                type="button"
-                className={`ide-design-tool-segment ${toolMode === 'wire' ? 'is-active' : ''}`}
-                onClick={setWireMode}
-                data-testid="ide-design-tool-wire"
-                aria-pressed={toolMode === 'wire'}
-              >
-                <span className="ide-design-tool-icon" aria-hidden="true">
-                  WIR
-                </span>
-                <span className="ide-design-tool-text">
-                  <strong>Wire</strong>
-                  <kbd>W</kbd>
-                </span>
-              </button>
-            </div>
-
-            <div className="ide-design-command-actions" data-testid="ide-design-command-actions">
-              <span className="ide-design-depth-pill" data-testid="ide-design-undo-depth">
-                Undo {undoDepth}
-              </span>
-              <span className="ide-design-depth-pill" data-testid="ide-design-redo-depth">
-                Redo {redoDepth}
-              </span>
               <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-tool-snap">
                 Snap {snapToGrid ? 'On' : 'Off'}
               </IdeButton>
-              <IdeButton
-                tone="ghost"
-                onClick={handleUndo}
-                disabled={undoDepth === 0}
-                testId="ide-design-tool-undo"
-              >
+              <IdeButton tone="ghost" onClick={handleUndo} disabled={undoDepth === 0} testId="ide-design-tool-undo">
                 Undo
               </IdeButton>
-              <IdeButton
-                tone="ghost"
-                onClick={handleRedo}
-                disabled={redoDepth === 0}
-                testId="ide-design-tool-redo"
-              >
+              <IdeButton tone="ghost" onClick={handleRedo} disabled={redoDepth === 0} testId="ide-design-tool-redo">
                 Redo
               </IdeButton>
-              <IdeButton
-                tone="danger"
-                onClick={deleteSelection}
-                disabled={!hasSelection}
-                testId="ide-design-tool-delete"
-              >
+              <IdeButton tone="danger" onClick={deleteSelection} disabled={!hasSelection} testId="ide-design-tool-delete">
                 Delete
               </IdeButton>
-              <IdeButton
-                tone={toolMode === 'wire' ? 'secondary' : 'ghost'}
-                onClick={setWireMode}
-                testId="ide-design-tool-start-wire"
+
+              <button
+                type="button"
+                className="ide-toolbar-toggle"
+                aria-expanded={toolsExpanded}
+                onClick={() => setToolsExpanded((v) => !v)}
+                data-testid="ide-design-tools-toggle"
               >
-                Start Wire (W)
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={zoomOut} testId="ide-design-zoom-out">
-                -
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={zoomIn} testId="ide-design-zoom-in">
-                +
-              </IdeButton>
-              <IdeButton
-                tone="ghost"
-                onClick={centerSelection}
-                disabled={selection.nodes.size === 0}
-                testId="ide-design-center-selection"
-              >
-                Center Selection
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={resetView} testId="ide-design-zoom-reset">
-                Reset Zoom
-              </IdeButton>
-              <IdeButton tone="secondary" onClick={fitToCircuit} testId="ide-design-fit-circuit">
-                Zoom to Fit
-              </IdeButton>
-              <IdeButton
-                tone={presentationZoom === 'classroom' ? 'secondary' : 'ghost'}
-                onClick={() =>
-                  setPresentationZoom((previous) =>
-                    previous === 'dense' ? 'classroom' : 'dense'
-                  )
-                }
-                testId="ide-design-presentation-zoom-toggle"
-              >
-                Presentation {presentationZoom === 'classroom' ? 'On' : 'Off'}
-              </IdeButton>
+                {toolsExpanded ? 'Less ▲' : 'More ▼'}
+              </button>
             </div>
-          </section>
 
-          {showDetails && (
-            <section className="ide-design-compiler-strip" data-testid="ide-design-compiler-strip">
-              <div className="ide-design-compiler-item">
-                <span>IR Hash</span>
-                <code data-testid="ide-design-ir-hash">{irHash}</code>
-              </div>
-              <div className="ide-design-compiler-item">
-                <span>Dirty since verify</span>
-                <strong
-                  data-testid="ide-design-dirty-since-verify"
-                  className={dirtySinceVerify ? 'is-warn' : 'is-ok'}
-                >
-                  {dirtySinceVerify ? 'Yes' : 'No'}
-                </strong>
-              </div>
-              <div className="ide-design-compiler-item">
-                <span>Dirty since export</span>
-                <strong
-                  data-testid="ide-design-dirty-since-export"
-                  className={dirtySinceExport ? 'is-warn' : 'is-ok'}
-                >
-                  {dirtySinceExport ? 'Yes' : 'No'}
-                </strong>
-              </div>
-              <div className="ide-design-compiler-item">
-                <span>Errors</span>
-                <strong data-testid="ide-design-diagnostics-errors" className={compilerErrorCount > 0 ? 'is-error' : 'is-ok'}>
-                  {compilerErrorCount}
-                </strong>
-              </div>
-              <div className="ide-design-compiler-item">
-                <span>Warnings</span>
-                <strong data-testid="ide-design-diagnostics-warnings" className={compilerWarningCount > 0 ? 'is-warn' : 'is-ok'}>
-                  {compilerWarningCount}
-                </strong>
-              </div>
-              <div className="ide-design-compiler-item">
-                <span>Diagnostics linked</span>
-                <strong data-testid="ide-design-diagnostics-total">{compilerDiagnostics.length}</strong>
-              </div>
-            </section>
-          )}
-
-          {pinnedProbeRows.length > 0 && (
-            <div className="ide-design-probe-bar" data-testid="ide-design-probe-bar">
-              {pinnedProbeRows.map((probe) => (
-                <span
-                  key={probe.key}
-                  className="ide-design-probe-pill"
-                  data-testid={`ide-design-probe-pill-${probe.key}`}
-                >
-                  <code>{probe.label}</code>
-                  <span className="ide-design-probe-value">{probe.value}</span>
+            {/* ── Expanded secondary toolbar ── */}
+            {toolsExpanded && (
+              <div className="ide-design-toolbarExpanded" data-testid="ide-design-toolbar-expanded">
+                <span className="ide-design-depth-pill" data-testid="ide-design-undo-depth">
+                  Undo {undoDepth}
                 </span>
-              ))}
-            </div>
-          )}
-
-          <div className="ide-design-layout ide-design-layout-canvas-only">
-            <section className="ide-design-canvas" data-testid="ide-design-canvas">
-              <div className="ide-design-tool-hud" data-testid="ide-design-tool-hud">
-                <span className="ide-design-tool-hud-label">{activeModeLabel}</span>
-                <span className="ide-design-tool-hud-hint">{toolHint}</span>
-                {toolMode === 'wire' ? (
-                  <span className="ide-design-tool-hud-wire" data-testid="ide-design-wire-cue">
-                    {wireStartPort ? 'Source selected. Click a valid sink pin.' : 'Pick a source pin to start wiring.'}
-                  </span>
-                ) : null}
-              </div>
-              <div
-                className={`ide-design-canvas-live ${toolMode === 'wire' ? 'is-wire-mode' : 'is-select-mode'} ${
-                  presentationZoom === 'classroom' ? 'is-presentation-zoom' : ''
-                }`}
-                ref={canvasHostRef}
-                data-testid="ide-design-live-canvas"
-                data-tool-mode={toolMode}
-                data-interaction-mode={interactionMode}
-                data-presentation-zoom={presentationZoom}
-              >
-                <div className="ide-design-canvas-mode-indicator" data-testid="ide-design-canvas-mode-indicator">
-                  {activeModeLabel}
-                </div>
-                <div className="ide-design-canvas-zoom-indicator" data-testid="ide-design-canvas-zoom-indicator">
-                  tick {simTick}
-                </div>
-                <div className="ide-design-canvas-mode-indicator" data-testid="ide-design-presentation-zoom-indicator">
-                  {presentationZoom === 'classroom' ? 'Classroom Zoom' : 'Dense Zoom'}
-                </div>
-                <div className="ide-design-zoom-presets" data-testid="ide-design-zoom-presets">
-                  {([0.5, 0.75, 1.0, 1.25] as const).map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      className={`ide-design-zoom-preset${Math.round(camera.zoom * 100) === Math.round(preset * 100) ? ' is-active' : ''}`}
-                      onClick={() => setZoomToPreset(preset)}
-                      data-testid={`ide-design-zoom-preset-${Math.round(preset * 100)}`}
-                    >
-                      {Math.round(preset * 100)}%
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    className="ide-design-zoom-preset"
-                    onClick={fitToCircuit}
-                    data-testid="ide-design-zoom-preset-fit"
-                  >
-                    Fit
-                  </button>
-                </div>
-                <div className="ide-design-canvas-controls" data-testid="ide-design-canvas-controls">
-                  <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit-canvas">
-                    Fit
-                  </IdeButton>
-                  <IdeButton
-                    tone="ghost"
-                    onClick={centerSelection}
-                    disabled={selection.nodes.size === 0}
-                    testId="ide-design-center-selection-canvas"
-                  >
-                    Center
-                  </IdeButton>
-                  <IdeButton
-                    tone={presentationZoom === 'classroom' ? 'secondary' : 'ghost'}
-                    onClick={() =>
-                      setPresentationZoom((previous) =>
-                        previous === 'dense' ? 'classroom' : 'dense'
-                      )
-                    }
-                    testId="ide-design-presentation-zoom-toggle-canvas"
-                  >
-                    {presentationZoom === 'classroom' ? 'Classroom' : 'Dense'}
-                  </IdeButton>
-                </div>
-                <LogicCanvas
-                  engine={tickEngine}
-                  circuit={editorCircuit}
-                  width={canvasSize.width}
-                  height={canvasSize.height}
-                  showToolbar={false}
-                  onCircuitChange={handleCircuitChange}
-                  onSignalsUpdated={handleSignalsUpdated}
-                  onInputToggled={handleInputToggled}
-                  onProbeToggle={(nodeId, portName, label) =>
-                    onRuntimeSimToggleProbe?.({
-                      key: `${nodeId}.${portName}`,
-                      label,
-                    })
-                  }
-                  probedPorts={new Set(runtimeSim.probes.map((probe) => probe.key))}
-                  showHints={false}
-                  isRunning={simRunning}
-                  tickRate={simSpeed}
-                  tickCount={simTick}
-                  debugSignals={liveSignals}
-                  debugTick={simTick}
-                  nodeDiagnosticBadges={nodeDiagnosticBadges}
-                  onNodeDiagnosticBadgeClick={handleNodeDiagnosticBadgeClick}
-                  ioPresentationMap={ioPresentationMap}
-                  presentationZoomMode={presentationZoom}
-                />
-                {/* Canvas interaction hint */}
-                <div
-                  className="ide-canvas-hint is-visible"
-                  aria-hidden="true"
-                  style={{ opacity: 0.6 }}
+                <span className="ide-design-depth-pill" data-testid="ide-design-redo-depth">
+                  Redo {redoDepth}
+                </span>
+                <IdeButton tone="ghost" onClick={zoomOut} testId="ide-design-zoom-out">-</IdeButton>
+                <IdeButton tone="ghost" onClick={zoomIn} testId="ide-design-zoom-in">+</IdeButton>
+                <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit">Zoom to Fit</IdeButton>
+                <IdeButton tone="ghost" onClick={resetView} testId="ide-design-zoom-reset">Reset Zoom</IdeButton>
+                <IdeButton
+                  tone="ghost"
+                  onClick={centerSelection}
+                  disabled={selection.nodes.size === 0}
+                  testId="ide-design-center-selection"
                 >
-                  <span>Scroll: Zoom</span>
-                  <span className="ide-canvas-hint-divider" />
-                  <span>Middle drag: Pan</span>
-                  <span className="ide-canvas-hint-divider" />
-                  <span>F: Fit</span>
+                  Center Selection
+                </IdeButton>
+                <IdeButton
+                  tone={presentationZoom === 'classroom' ? 'secondary' : 'ghost'}
+                  onClick={() => setPresentationZoom((previous) => previous === 'dense' ? 'classroom' : 'dense')}
+                  testId="ide-design-presentation-zoom-toggle"
+                >
+                  Presentation {presentationZoom === 'classroom' ? 'On' : 'Off'}
+                </IdeButton>
+                <IdeButton
+                  tone="ghost"
+                  onClick={() => setShowDetails((prev) => !prev)}
+                  testId="ide-design-details-toggle"
+                >
+                  Details {showDetails ? '▲' : '▼'}
+                </IdeButton>
+              </div>
+            )}
+
+            {/* ── Canvas area (fills remaining height) ── */}
+            <div
+              className="ide-design-canvasWrap"
+              data-testid="ide-design-canvas-wrap"
+              onPointerDown={() => setHasInteracted(true)}
+              onWheel={() => setHasInteracted(true)}
+            >
+              {showDetails && (
+                <section className="ide-design-compiler-strip" data-testid="ide-design-compiler-strip">
+                  <div className="ide-design-compiler-item">
+                    <span>IR Hash</span>
+                    <code data-testid="ide-design-ir-hash">{irHash}</code>
+                  </div>
+                  <div className="ide-design-compiler-item">
+                    <span>Dirty since verify</span>
+                    <strong data-testid="ide-design-dirty-since-verify" className={dirtySinceVerify ? 'is-warn' : 'is-ok'}>
+                      {dirtySinceVerify ? 'Yes' : 'No'}
+                    </strong>
+                  </div>
+                  <div className="ide-design-compiler-item">
+                    <span>Dirty since export</span>
+                    <strong data-testid="ide-design-dirty-since-export" className={dirtySinceExport ? 'is-warn' : 'is-ok'}>
+                      {dirtySinceExport ? 'Yes' : 'No'}
+                    </strong>
+                  </div>
+                  <div className="ide-design-compiler-item">
+                    <span>Errors</span>
+                    <strong data-testid="ide-design-diagnostics-errors" className={compilerErrorCount > 0 ? 'is-error' : 'is-ok'}>
+                      {compilerErrorCount}
+                    </strong>
+                  </div>
+                  <div className="ide-design-compiler-item">
+                    <span>Warnings</span>
+                    <strong data-testid="ide-design-diagnostics-warnings" className={compilerWarningCount > 0 ? 'is-warn' : 'is-ok'}>
+                      {compilerWarningCount}
+                    </strong>
+                  </div>
+                  <div className="ide-design-compiler-item">
+                    <span>Diagnostics linked</span>
+                    <strong data-testid="ide-design-diagnostics-total">{compilerDiagnostics.length}</strong>
+                  </div>
+                </section>
+              )}
+
+              {pinnedProbeRows.length > 0 && (
+                <div className="ide-design-probe-bar" data-testid="ide-design-probe-bar">
+                  {pinnedProbeRows.map((probe) => (
+                    <span
+                      key={probe.key}
+                      className="ide-design-probe-pill"
+                      data-testid={`ide-design-probe-pill-${probe.key}`}
+                    >
+                      <code>{probe.label}</code>
+                      <span className="ide-design-probe-value">{probe.value}</span>
+                    </span>
+                  ))}
                 </div>
-                {editorCircuit.nodes.length === 0 && (
-                  <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
-                    <h3>Build a circuit in three steps</h3>
-                    <ol className="ide-design-empty-steps" data-testid="ide-design-empty-checklist">
-                      <li>
-                        <span className="ide-design-empty-step-index">1</span>
-                        <span>Add Inputs/Outputs</span>
-                      </li>
-                      <li>
-                        <span className="ide-design-empty-step-index">2</span>
-                        <span>Place Gates</span>
-                      </li>
-                      <li>
-                        <span className="ide-design-empty-step-index">3</span>
-                        <span>Wire and Verify</span>
-                      </li>
-                    </ol>
-                    <div className="ide-design-empty-actions">
-                      <IdeButton tone="secondary" onClick={addIoPins} testId="ide-design-empty-add-io">
-                        Add Inputs/Outputs
+              )}
+
+              <div className="ide-design-layout ide-design-layout-canvas-only">
+                <section className="ide-design-canvas" data-testid="ide-design-canvas">
+                  <div className="ide-design-tool-hud" data-testid="ide-design-tool-hud">
+                    <span className="ide-design-tool-hud-label">{activeModeLabel}</span>
+                    <span className="ide-design-tool-hud-hint">{toolHint}</span>
+                    {toolMode === 'wire' ? (
+                      <span className="ide-design-tool-hud-wire" data-testid="ide-design-wire-cue">
+                        {wireStartPort ? 'Source selected. Click a valid sink pin.' : 'Pick a source pin to start wiring.'}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div
+                    className={`ide-design-canvas-live ${toolMode === 'wire' ? 'is-wire-mode' : 'is-select-mode'} ${
+                      presentationZoom === 'classroom' ? 'is-presentation-zoom' : ''
+                    }`}
+                    ref={canvasHostRef}
+                    data-testid="ide-design-live-canvas"
+                    data-tool-mode={toolMode}
+                    data-interaction-mode={interactionMode}
+                    data-presentation-zoom={presentationZoom}
+                  >
+                    <div className="ide-design-canvas-mode-indicator" data-testid="ide-design-canvas-mode-indicator">
+                      {activeModeLabel}
+                    </div>
+                    <div className="ide-design-canvas-zoom-indicator" data-testid="ide-design-canvas-zoom-indicator">
+                      tick {simTick}
+                    </div>
+                    <div className="ide-design-canvas-mode-indicator" data-testid="ide-design-presentation-zoom-indicator">
+                      {presentationZoom === 'classroom' ? 'Classroom Zoom' : 'Dense Zoom'}
+                    </div>
+                    <div className="ide-design-zoom-presets" data-testid="ide-design-zoom-presets">
+                      {([0.5, 0.75, 1.0, 1.25] as const).map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          className={`ide-design-zoom-preset${Math.round(camera.zoom * 100) === Math.round(preset * 100) ? ' is-active' : ''}`}
+                          onClick={() => setZoomToPreset(preset)}
+                          data-testid={`ide-design-zoom-preset-${Math.round(preset * 100)}`}
+                        >
+                          {Math.round(preset * 100)}%
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="ide-design-zoom-preset"
+                        onClick={fitToCircuit}
+                        data-testid="ide-design-zoom-preset-fit"
+                      >
+                        Fit
+                      </button>
+                    </div>
+                    <div className="ide-design-canvas-controls" data-testid="ide-design-canvas-controls">
+                      <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit-canvas">
+                        Fit
                       </IdeButton>
-                      <IdeButton tone="primary" onClick={addAndGateStarter} testId="ide-design-empty-add-and">
-                        Add an AND example
+                      <IdeButton
+                        tone="ghost"
+                        onClick={centerSelection}
+                        disabled={selection.nodes.size === 0}
+                        testId="ide-design-center-selection-canvas"
+                      >
+                        Center
+                      </IdeButton>
+                      <IdeButton
+                        tone={presentationZoom === 'classroom' ? 'secondary' : 'ghost'}
+                        onClick={() => setPresentationZoom((previous) => previous === 'dense' ? 'classroom' : 'dense')}
+                        testId="ide-design-presentation-zoom-toggle-canvas"
+                      >
+                        {presentationZoom === 'classroom' ? 'Classroom' : 'Dense'}
                       </IdeButton>
                     </div>
+                    <LogicCanvas
+                      engine={tickEngine}
+                      circuit={editorCircuit}
+                      width={canvasSize.width}
+                      height={canvasSize.height}
+                      showToolbar={false}
+                      onCircuitChange={handleCircuitChange}
+                      onSignalsUpdated={handleSignalsUpdated}
+                      onInputToggled={handleInputToggled}
+                      onProbeToggle={(nodeId, portName, label) =>
+                        onRuntimeSimToggleProbe?.({
+                          key: `${nodeId}.${portName}`,
+                          label,
+                        })
+                      }
+                      probedPorts={new Set(runtimeSim.probes.map((probe) => probe.key))}
+                      showHints={false}
+                      isRunning={simRunning}
+                      tickRate={simSpeed}
+                      tickCount={simTick}
+                      debugSignals={liveSignals}
+                      debugTick={simTick}
+                      nodeDiagnosticBadges={nodeDiagnosticBadges}
+                      onNodeDiagnosticBadgeClick={handleNodeDiagnosticBadgeClick}
+                      ioPresentationMap={ioPresentationMap}
+                      presentationZoomMode={presentationZoom}
+                    />
+                    {/* Canvas interaction hint — fades after first interaction */}
+                    <div
+                      className="ide-canvas-hint is-visible"
+                      aria-hidden="true"
+                      style={{ opacity: hasInteracted ? 0.15 : 0.6, transition: 'opacity 0.4s ease' }}
+                    >
+                      <span>Scroll: Zoom</span>
+                      <span className="ide-canvas-hint-divider" />
+                      <span>Middle drag: Pan</span>
+                      <span className="ide-canvas-hint-divider" />
+                      <span>F: Fit</span>
+                    </div>
+                    {editorCircuit.nodes.length === 0 && (
+                      <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
+                        <h3>Build a circuit in three steps</h3>
+                        <ol className="ide-design-empty-steps" data-testid="ide-design-empty-checklist">
+                          <li>
+                            <span className="ide-design-empty-step-index">1</span>
+                            <span>Add Inputs/Outputs</span>
+                          </li>
+                          <li>
+                            <span className="ide-design-empty-step-index">2</span>
+                            <span>Place Gates</span>
+                          </li>
+                          <li>
+                            <span className="ide-design-empty-step-index">3</span>
+                            <span>Wire and Verify</span>
+                          </li>
+                        </ol>
+                        <div className="ide-design-empty-actions">
+                          <IdeButton tone="secondary" onClick={addIoPins} testId="ide-design-empty-add-io">
+                            Add Inputs/Outputs
+                          </IdeButton>
+                          <IdeButton tone="primary" onClick={addAndGateStarter} testId="ide-design-empty-add-and">
+                            Add an AND example
+                          </IdeButton>
+                        </div>
+                      </div>
+                    )}
+                    {actionToast && (
+                      <div className="ide-design-toast" role="status" data-testid="ide-design-action-toast">
+                        {actionToast}
+                      </div>
+                    )}
                   </div>
-                )}
-                {actionToast && (
-                  <div className="ide-design-toast" role="status" data-testid="ide-design-action-toast">
-                    {actionToast}
-                  </div>
-                )}
+                </section>
               </div>
-            </section>
+            </div>
+
           </div>
         </IdePanel>
     </IdeSurfaceLayout>
