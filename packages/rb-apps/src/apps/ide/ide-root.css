@@ -2593,6 +2593,32 @@
   color: inherit;
 }
 
+/* Parse feedback warning list */
+.ide-warning-list {
+  margin: 0;
+  padding: 0 0 0 var(--ide-space-3, 12px);
+  display: grid;
+  gap: var(--ide-space-2, 8px);
+}
+
+.ide-warning-row {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: var(--ide-space-2, 8px);
+  align-items: start;
+  font-size: var(--rb-font-size-1, 11px);
+  color: var(--ide-text-soft, #9ca3af);
+}
+
+.ide-warning-index {
+  font-family: var(--rb-font-mono, monospace);
+  color: var(--ide-text-subtle, #6b7280);
+}
+
+.ide-warning-text {
+  line-height: 1.35;
+}
+
 .ide-verify-vector-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

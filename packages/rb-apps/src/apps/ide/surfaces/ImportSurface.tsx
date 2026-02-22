@@ -331,6 +331,10 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   }, [parsedHdl, xdcResult, zipInspection]);
 
   const hasParsedHdl = parsedHdl !== null;
+  const hdlLooksValid =
+    hasParsedHdl && parsedHdl?.entityName !== 'unknown' && (parsedHdl?.ports.length ?? 0) > 0;
+  const hdlParseWarnings = parsedHdl?.warnings ?? [];
+  const hdlWarningCount = hdlParseWarnings.length;
   const hasParsedXdc = xdcResult !== null;
   const hasZipInspection = zipInspection !== null;
   const canApplySuggestions = useMemo(
@@ -562,6 +566,55 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               </IdeStatusPill>
             </div>
           </div>
+          <section className="ide-import-feedback" data-testid="ide-import-parse-feedback">
+            <header className="ide-workbench-placeholder-header" style={{ marginTop: 'var(--ide-space-2)' }}>
+              <h3>Parse Feedback</h3>
+              {hasParsedHdl && (
+                <IdeStatusPill tone={hdlLooksValid ? 'ok' : hdlWarningCount > 0 ? 'warn' : 'idle'}>
+                  {hdlLooksValid
+                    ? 'OK'
+                    : hdlWarningCount > 0
+                      ? `${hdlWarningCount} warning${hdlWarningCount === 1 ? '' : 's'}`
+                      : 'Needs review'}
+                </IdeStatusPill>
+              )}
+            </header>
+
+            {!hasParsedHdl ? (
+              <p className="ide-copy">Parse HDL to see feedback.</p>
+            ) : hdlLooksValid && hdlWarningCount === 0 ? (
+              <p className="ide-copy">Looks good — ports detected and ready for pin suggestions.</p>
+            ) : (
+              <>
+                {!hdlLooksValid && (
+                  <IdeCallout
+                    tone="warn"
+                    title="Ports not detected"
+                    testId="ide-import-hdl-ports-not-detected"
+                  >
+                    The parser couldn&apos;t confidently detect your top entity and ports. Check warnings below and verify your entity/module syntax.
+                  </IdeCallout>
+                )}
+                {hdlWarningCount > 0 ? (
+                  <ol className="ide-warning-list" data-testid="ide-import-warning-list">
+                    {hdlParseWarnings.slice(0, 10).map((w, idx) => (
+                      <li key={`${idx}-${String(w).slice(0, 20)}`} className="ide-warning-row">
+                        <span className="ide-warning-index">{idx + 1}.</span>
+                        <span className="ide-warning-text">{String(w)}</span>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="ide-copy">No warnings were emitted, but ports still weren&apos;t detected.</p>
+                )}
+                {hdlWarningCount > 10 && (
+                  <p className="ide-copy" data-testid="ide-import-warning-truncation">
+                    Showing first 10 warnings.
+                  </p>
+                )}
+              </>
+            )}
+          </section>
           <div className="ide-inline-actions">
             <IdeButton
               tone="ghost"
@@ -581,7 +634,11 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         <>
           <IdeInspectorSection title="Port Suggestions" defaultOpen testId="ide-import-port-suggestions">
             {!parsedHdl ? (
-              <p className="ide-copy">Parse HDL to see port suggestions.</p>
+              <p className="ide-copy" data-testid="ide-import-port-suggestions-empty">Parse HDL to see port suggestions.</p>
+            ) : !hdlLooksValid ? (
+              <p className="ide-copy" data-testid="ide-import-port-suggestions-empty">
+                Ports not detected — see Parse Feedback in the left dock for warnings.
+              </p>
             ) : suggestions.length === 0 ? (
               <p className="ide-copy">No ports found in parsed HDL.</p>
             ) : (
