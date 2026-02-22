@@ -20,9 +20,12 @@ import {
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
+import type { RuntimeSimState } from '../projectRuntime';
+import { useIoBus } from '../ioBus';
 
 export interface ProjectMappingRow {
   id: string;
+  nodeId?: string;
   label: string;
   direction: 'in' | 'out';
   pin: string;
@@ -69,7 +72,13 @@ export interface ProjectSurfaceProps {
   onOpenHardware: () => void;
   onOpenImport: () => void;
   diagnosticRouteRequest?: IdeDiagnosticRouteRequest | null;
+  runtimeSim?: RuntimeSimState;
 }
+
+const PROJECT_EMPTY_SIM: RuntimeSimState = {
+  tick: 0, running: false, speedHz: 1, irHash: '', traceHash: '',
+  inputs: {}, signals: {}, trace: [], selectedSignalKey: null, probes: [],
+};
 
 export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   projectName,
@@ -95,6 +104,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onOpenHardware,
   onOpenImport,
   diagnosticRouteRequest,
+  runtimeSim,
 }) => {
   const [highlightedMappingKey, setHighlightedMappingKey] = useState<string | null>(null);
   const mappingInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -297,6 +307,19 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     ]
   );
 
+  const ioBusIoRows = useMemo(
+    () =>
+      mappingRows
+        .filter((r): r is ProjectMappingRow & { nodeId: string } => Boolean(r.nodeId))
+        .map((r) => ({ nodeId: r.nodeId, label: r.label, direction: r.direction })),
+    [mappingRows]
+  );
+  const ioBus = useIoBus({
+    ioRows: ioBusIoRows,
+    runtimeSim: runtimeSim ?? PROJECT_EMPTY_SIM,
+    setInput: () => {},
+  });
+
   const mappingRowsUi = useMemo(
     () =>
       sortedMappingRows.map((row, index) => {
@@ -324,12 +347,39 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             data-testid={`ide-project-map-input-${mappingKey}`}
           />,
           row.direction.toUpperCase(),
-          <IdeStatusPill key={`${row.id}-status`} tone={mappingView.statusTone}>
-            {mappingView.statusLabel}
-          </IdeStatusPill>,
+          <span key={`${row.id}-status`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <IdeStatusPill tone={mappingView.statusTone}>
+              {mappingView.statusLabel}
+            </IdeStatusPill>
+            {row.nodeId && (() => {
+              const swM = /^SW(\d+)$/i.exec(row.label);
+              const ldM = /^LD(\d+)$/i.exec(row.label);
+              if (swM) {
+                const bit = ioBus.state.sw[parseInt(swM[1], 10)] ?? 0;
+                return (
+                  <span
+                    data-testid={`ide-project-live-dot-${row.id}`}
+                    style={{ fontSize: 10, color: bit ? 'var(--rb-signal)' : 'var(--ide-text-subtle, #4a5568)' }}
+                    title={`Live: ${bit ? 'HIGH' : 'LOW'}`}
+                  >●</span>
+                );
+              }
+              if (ldM) {
+                const bit = ioBus.state.ld[parseInt(ldM[1], 10)] ?? 0;
+                return (
+                  <span
+                    data-testid={`ide-project-live-dot-${row.id}`}
+                    style={{ fontSize: 10, color: bit ? 'var(--rb-signal)' : 'var(--ide-text-subtle, #4a5568)' }}
+                    title={`Live: ${bit ? 'HIGH' : 'LOW'}`}
+                  >●</span>
+                );
+              }
+              return null;
+            })()}
+          </span>,
         ];
       }),
-    [highlightedMappingKey, onUpdateMappingPin, sortedMappingRows]
+    [highlightedMappingKey, ioBus, onUpdateMappingPin, sortedMappingRows]
   );
 
   const lastVerifyStatusTone =

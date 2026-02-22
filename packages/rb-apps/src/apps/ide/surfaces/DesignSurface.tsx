@@ -965,9 +965,57 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       inspector={
         <>
           <IdeInspectorSection title="Board Signal" defaultOpen>
-            <p className="ide-copy" style={{ color: 'var(--ide-text-soft)', fontSize: 'var(--rb-font-size-1)' }}>
-              Select a node to see its board pin mapping.
-            </p>
+            {(() => {
+              if (!selectedNode) {
+                return (
+                  <p className="ide-copy" style={{ color: 'var(--ide-text-soft)', fontSize: 'var(--rb-font-size-1)' }}>
+                    Select a node to see its board pin mapping.
+                  </p>
+                );
+              }
+              const ioRow = (ioRows ?? []).find((r) => r.nodeId === selectedNode.id);
+              if (!ioRow) {
+                return (
+                  <p className="ide-copy" style={{ color: 'var(--ide-text-soft)', fontSize: 'var(--rb-font-size-1)' }}>
+                    No board mapping for this node.
+                  </p>
+                );
+              }
+              const liveValue: 0 | 1 =
+                (runtimeSim.inputs[ioRow.nodeId] ??
+                runtimeSim.signals[ioRow.nodeId] ??
+                runtimeSim.signals[`${ioRow.nodeId}.out`] ??
+                0) === 1 ? 1 : 0;
+              return (
+                <div className="ide-kv-list">
+                  <div className="ide-kv-row">
+                    <span>Label</span>
+                    <code style={{ fontFamily: 'var(--rb-font-mono)' }}>{ioRow.label}</code>
+                  </div>
+                  <div className="ide-kv-row">
+                    <span>Pin</span>
+                    <code style={{ fontFamily: 'var(--rb-font-mono)' }}>{ioRow.pin || '—'}</code>
+                  </div>
+                  <div className="ide-kv-row">
+                    <span>Dir</span>
+                    <span>{ioRow.direction === 'in' ? 'IN' : 'OUT'}</span>
+                  </div>
+                  <div className="ide-kv-row">
+                    <span>Value</span>
+                    <span
+                      data-testid="ide-design-board-signal-value"
+                      style={{
+                        fontFamily: 'var(--rb-font-mono)',
+                        fontWeight: 600,
+                        color: liveValue ? 'var(--rb-signal)' : 'var(--ide-text-soft)',
+                      }}
+                    >
+                      {liveValue ? 'HIGH' : 'LOW'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
           </IdeInspectorSection>
           <IdeInspectorSection title="Workspace Metrics" defaultOpen={false}>
             <div className="ide-kv-list">

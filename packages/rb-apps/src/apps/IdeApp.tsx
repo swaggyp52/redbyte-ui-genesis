@@ -663,6 +663,7 @@ export const IdeApp: React.FC = () => {
             health={projectHealth}
             mappingRows={projectIoRows}
             simRunning={runtimeSim.running}
+            runtimeSim={runtimeSim}
             examples={IDE_EXAMPLES.map((example) => ({
               id: example.id,
               name: example.name,
@@ -732,6 +733,8 @@ export const IdeApp: React.FC = () => {
             expectedIoRows={hardwareExpectedIoRows}
             vectorsCount={projectVectors.length}
             health={projectHealth}
+            runtimeSim={runtimeSim}
+            onSimSetInput={setRuntimeSimInput}
             onGenerateBringUpVectors={handleGenerateBringUpVectors}
             onOpenExport={() => setCurrentMode('export')}
             onOpenVerify={() => setCurrentMode('verify')}

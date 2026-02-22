@@ -9,9 +9,12 @@ import {
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
+import type { RuntimeSimState } from '../projectRuntime';
+import { useIoBus } from '../ioBus';
 
 export interface HardwareMappingRow {
   id: string;
+  nodeId?: string;
   label: string;
   direction: 'in' | 'out';
   pin: string;
@@ -29,10 +32,17 @@ export interface HardwareSurfaceProps {
   }>;
   vectorsCount: number;
   health: ProjectHealth;
+  runtimeSim?: RuntimeSimState;
+  onSimSetInput?: (nodeId: string, v: 0 | 1) => void;
   onGenerateBringUpVectors: () => void;
   onOpenExport: () => void;
   onOpenVerify: () => void;
 }
+
+const HARDWARE_EMPTY_SIM: RuntimeSimState = {
+  tick: 0, running: false, speedHz: 1, irHash: '', traceHash: '',
+  inputs: {}, signals: {}, trace: [], selectedSignalKey: null, probes: [],
+};
 
 export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   projectName: _projectName,
@@ -40,6 +50,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   mappingRows,
   vectorsCount,
   health,
+  runtimeSim,
+  onSimSetInput,
   onGenerateBringUpVectors,
   onOpenExport,
   onOpenVerify,
@@ -72,6 +84,18 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       ),
     [mappingRows]
   );
+  const ioBusIoRows = useMemo(
+    () =>
+      mappingRows
+        .filter((r): r is HardwareMappingRow & { nodeId: string } => Boolean(r.nodeId))
+        .map((r) => ({ nodeId: r.nodeId, label: r.label, direction: r.direction })),
+    [mappingRows]
+  );
+  const ioBus = useIoBus({
+    ioRows: ioBusIoRows,
+    runtimeSim: runtimeSim ?? HARDWARE_EMPTY_SIM,
+    setInput: onSimSetInput ?? (() => {}),
+  });
   const hasOutputMapping = useMemo(
     () =>
       mappingRows.some((row) => row.direction === 'out' && row.pin.trim().length > 0),
@@ -143,23 +167,56 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       inspector={
         <>
           <IdeInspectorSection title="Live Signals" defaultOpen>
-            <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-              Connect simulation to see live SW / LD values.
-            </p>
-            <div className="ide-kv-list">
-              <div className="ide-kv-row">
-                <span>SW</span>
-                <span>—</span>
+            {ioBusIoRows.length === 0 ? (
+              <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+                No mapped signals. Add SW/LD IO rows in the Design tab.
+              </p>
+            ) : (
+              <div className="ide-kv-list">
+                {([0, 1, 2, 3] as const).map((i) =>
+                  ioBus.meta.swNodeIds[i] ? (
+                    <div key={`sw${i}`} className="ide-kv-row">
+                      <span style={{ fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>SW{i}</span>
+                      <button
+                        type="button"
+                        data-testid={`ide-hardware-sw-toggle-${i}`}
+                        onClick={() => ioBus.actions.toggleSwitch(i)}
+                        style={{
+                          fontFamily: 'var(--rb-font-mono)',
+                          fontSize: 'var(--rb-font-size-1)',
+                          fontWeight: 600,
+                          color: ioBus.state.sw[i] ? 'var(--rb-signal)' : 'var(--ide-text-soft)',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 0,
+                        }}
+                      >
+                        {ioBus.state.sw[i] ? '■ 1' : '□ 0'}
+                      </button>
+                    </div>
+                  ) : null
+                )}
+                {([0, 1, 2, 3] as const).map((i) =>
+                  ioBus.meta.ldNodeIds[i] ? (
+                    <div key={`ld${i}`} className="ide-kv-row">
+                      <span style={{ fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>LD{i}</span>
+                      <span
+                        data-testid={`ide-hardware-ld-value-${i}`}
+                        style={{
+                          fontFamily: 'var(--rb-font-mono)',
+                          fontSize: 'var(--rb-font-size-1)',
+                          fontWeight: 600,
+                          color: ioBus.state.ld[i] ? 'var(--rb-signal)' : 'var(--ide-text-soft)',
+                        }}
+                      >
+                        {ioBus.state.ld[i] ? '● 1' : '○ 0'}
+                      </span>
+                    </div>
+                  ) : null
+                )}
               </div>
-              <div className="ide-kv-row">
-                <span>LD</span>
-                <span>—</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>BTN</span>
-                <span>—</span>
-              </div>
-            </div>
+            )}
           </IdeInspectorSection>
           <IdeInspectorSection title="Expected Behavior" defaultOpen>
             <p className="ide-copy" data-testid="ide-hardware-expected-behavior">
