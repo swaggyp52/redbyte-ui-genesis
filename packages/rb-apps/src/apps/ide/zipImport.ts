@@ -36,9 +36,30 @@ export async function importVivadoZipFile(file: File): Promise<ZipImportInspecti
   return importVivadoZipBytes(bytes, { sourceName: file.name });
 }
 
+/**
+ * Re-runs ZIP inspection using caller-specified HDL and XDC paths.
+ * Used when the user overrides the auto-selected candidates in the UI.
+ */
+export async function reimportZipWithCandidates(
+  file: File,
+  hdlPath: string,
+  xdcPath: string | null
+): Promise<ZipImportInspection> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  return importVivadoZipBytes(bytes, {
+    sourceName: file.name,
+    overrideTopPath: hdlPath,
+    overrideXdcPath: xdcPath,
+  });
+}
+
 export async function importVivadoZipBytes(
   bytes: Uint8Array,
-  options?: { sourceName?: string }
+  options?: {
+    sourceName?: string;
+    overrideTopPath?: string;
+    overrideXdcPath?: string | null;
+  }
 ): Promise<ZipImportInspection> {
   const sourceName = (options?.sourceName ?? 'vivado-import.zip').trim() || 'vivado-import.zip';
   const zip = await JSZip.loadAsync(bytes);
@@ -47,15 +68,27 @@ export async function importVivadoZipBytes(
     throw new Error('ZIP contains no readable source files.');
   }
 
-  const topEntry = chooseTopHdlEntry(files);
-  if (!topEntry) {
+  const autoTopEntry = chooseTopHdlEntry(files);
+  if (!autoTopEntry) {
     throw new Error('No HDL source found in ZIP (expected .vhd, .vhdl, .v, or .sv).');
   }
+
+  // Use caller-specified overrides if provided; otherwise use auto-scored candidates
+  const topEntry = options?.overrideTopPath
+    ? (files.find((f) => f.path === options.overrideTopPath) ?? autoTopEntry)
+    : autoTopEntry;
+
   const detectedTopLanguage = detectHdlLanguage(topEntry.path, topEntry.text);
   const parsedHdl =
     detectedTopLanguage === 'vhdl' ? parseVhdl(topEntry.text) : parseVerilog(topEntry.text);
 
-  const xdcEntry = chooseXdcEntry(files);
+  const autoXdcEntry = chooseXdcEntry(files);
+  const xdcEntry =
+    options?.overrideXdcPath !== undefined
+      ? (options.overrideXdcPath !== null
+          ? (files.find((f) => f.path === options.overrideXdcPath) ?? undefined)
+          : undefined) // null → explicit "no XDC"
+      : autoXdcEntry;
   const xdcResult = xdcEntry ? parseXdcPins(xdcEntry.text) : undefined;
 
   const mappedPortNames = new Set(
@@ -87,7 +120,7 @@ export async function importVivadoZipBytes(
 
   const converted = parsedHdlToCircuit(parsedHdl);
   const warnings = uniqueWarnings([
-    ...(parsedHdl.warnings ?? []),
+    ...(parsedHdl.warnings ?? []).map((w) => w.message),
     ...converted.warnings,
     ...(xdcResult?.warnings ?? []),
     ...xdcPortWarnings,
@@ -112,9 +145,9 @@ export async function importVivadoZipBytes(
 
   return {
     sourceName,
-    detectedTopPath: topEntry.path,
+    detectedTopPath: autoTopEntry.path,
     detectedTopLanguage,
-    detectedXdcPath: xdcEntry?.path,
+    detectedXdcPath: autoXdcEntry?.path,
     detectedFiles: [topEntry.path, ...(xdcEntry ? [xdcEntry.path] : [])],
     ignoredFiles,
     hdlCandidates,

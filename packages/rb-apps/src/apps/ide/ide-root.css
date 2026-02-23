@@ -9,6 +9,18 @@
   --rb-space-6: 32px;
   --rb-space-7: 48px;
   --rb-space-8: 64px;
+  /* ── Elevation system: 3 layers give spatial depth without borders ── */
+  --rb-elevation-workspace: #0b1829;
+  --rb-elevation-dock: #080f1a;
+  --rb-elevation-float: #142030;
+  --rb-elevation-topbar: #0d1c2e;
+  /* ── Shadow system (depth via shadow, not border) ── */
+  --rb-shadow-dock: inset -1px 0 0 rgba(0,0,0,0.4), 4px 0 16px rgba(0,0,0,0.3);
+  --rb-shadow-panel: 0 2px 12px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.03);
+  --rb-shadow-node: 0 3px 10px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.3);
+  --rb-shadow-float: 0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4);
+  /* ── Motion ── */
+  --rb-motion-micro: 60ms;
   /* Radii: 8/12/16 */
   --rb-radius-1: 8px;
   --rb-radius-2: 12px;
@@ -186,8 +198,8 @@
   align-items: center;
   gap: var(--ide-space-2);
   padding: 0 var(--ide-gutter);
-  border-bottom: 1px solid var(--ide-border);
-  background: linear-gradient(180deg, rgba(20, 34, 50, 0.94), rgba(16, 26, 36, 0.94));
+  border-bottom: 1px solid rgba(46,196,182,0.1);
+  background: var(--rb-elevation-topbar);
   backdrop-filter: blur(6px);
 }
 
@@ -549,8 +561,9 @@
 .ide-workbench-dock {
   min-height: 0;
   overflow: hidden;
-  background: rgba(12, 20, 30, 0.95);
+  background: var(--rb-elevation-dock);
   padding: var(--ide-card-pad);
+  box-shadow: var(--rb-shadow-dock);
 }
 
 .ide-workbench-workspace {
@@ -559,6 +572,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
+  background: var(--rb-elevation-workspace);
 }
 
 .ide-workbench-workspace > .ide-panel {
@@ -891,10 +905,11 @@
 
 .ide-panel-title {
   margin: 0;
-  font-size: var(--rb-font-size-4);
+  font-size: 15px;
   line-height: var(--rb-line-height-3);
-  font-weight: var(--rb-font-weight-semibold);
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ide-text-strong);
 }
 
 .ide-panel-description {
@@ -3054,11 +3069,12 @@
   font-weight: var(--rb-font-weight-semibold);
   cursor: pointer;
   transition:
-    filter var(--rb-motion-fast) var(--rb-ease-standard),
-    background var(--rb-motion-fast) var(--rb-ease-standard),
-    border-color var(--rb-motion-fast) var(--rb-ease-standard),
-    color var(--rb-motion-fast) var(--rb-ease-standard),
-    transform var(--rb-motion-fast) var(--rb-ease-standard);
+    background var(--rb-motion-micro, 60ms) ease,
+    box-shadow var(--rb-motion-micro, 60ms) ease,
+    border-color var(--rb-motion-micro, 60ms) ease,
+    color var(--rb-motion-micro, 60ms) ease,
+    transform var(--rb-motion-micro, 60ms) ease;
+  white-space: nowrap;
 }
 
 .ide-button:disabled {
@@ -3069,38 +3085,77 @@
   cursor: not-allowed;
 }
 
+/* Primary — teal fill, clear dominant action */
 .ide-button-primary {
-  background: linear-gradient(180deg, #30c9bb, #1ca79a);
-  color: #062524;
-  border-color: rgba(46, 196, 182, 0.66);
-  box-shadow: 0 6px 14px rgba(7, 38, 46, 0.35);
+  background: var(--rb-accent, #2ec4b6);
+  color: #031a19;
+  border-color: transparent;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(46,196,182,0.2);
 }
-
-.ide-button-secondary {
-  background: rgba(249, 199, 79, 0.14);
-  border-color: rgba(249, 199, 79, 0.45);
-  color: #ffe7ab;
-}
-
-.ide-button-ghost {
-  background: transparent;
-  border-color: rgba(138, 170, 200, 0.45);
-  color: #bdd0e3;
-}
-
-.ide-button-danger {
-  background: rgba(255, 107, 107, 0.12);
-  border-color: rgba(255, 107, 107, 0.46);
-  color: #ffbaba;
-}
-
-.ide-button:hover:not(:disabled) {
-  filter: brightness(1.08);
+.ide-button-primary:hover:not(:disabled) {
+  background: #3dd5c7;
+  box-shadow: 0 0 14px rgba(46,196,182,0.45), 0 2px 6px rgba(0,0,0,0.4);
   transform: translateY(-1px);
 }
+.ide-button-primary:active:not(:disabled) {
+  background: #26b0a3;
+  box-shadow: none;
+  transform: scale(0.97);
+}
 
-.ide-button:active:not(:disabled) {
-  transform: translateY(0);
+/* Pulsing CTA — draws attention when action is pending */
+.ide-button-primary.is-pulsing {
+  animation: cta-pulse 1.6s ease-in-out infinite;
+}
+@keyframes cta-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(46,196,182,0.3); }
+  50%       { box-shadow: 0 0 22px rgba(46,196,182,0.65); }
+}
+
+/* Secondary — outlined teal, supporting action */
+.ide-button-secondary {
+  background: transparent;
+  color: var(--rb-accent, #2ec4b6);
+  border-color: rgba(46,196,182,0.45);
+}
+.ide-button-secondary:hover:not(:disabled) {
+  background: rgba(46,196,182,0.1);
+  border-color: rgba(46,196,182,0.7);
+  transform: translateY(-1px);
+}
+.ide-button-secondary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Ghost — text-only, low emphasis */
+.ide-button-ghost {
+  background: transparent;
+  color: var(--ide-text-muted, #c3d1df);
+  border-color: transparent;
+}
+.ide-button-ghost:hover:not(:disabled) {
+  background: rgba(255,255,255,0.06);
+  color: var(--ide-text-strong, #f2f8ff);
+  border-color: rgba(255,255,255,0.08);
+}
+.ide-button-ghost:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Danger — red tinted, destructive or failure state */
+.ide-button-danger {
+  background: rgba(255,107,107,0.14);
+  color: #ff9090;
+  border-color: rgba(255,107,107,0.4);
+}
+.ide-button-danger:hover:not(:disabled) {
+  background: rgba(255,107,107,0.24);
+  box-shadow: 0 0 12px rgba(255,107,107,0.28);
+  transform: translateY(-1px);
+}
+.ide-button-danger:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .ide-button:focus-visible {
@@ -3221,31 +3276,33 @@
   border-radius: 999px;
   font-size: 10px;
   line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0.03em;
   border: 1px solid transparent;
 }
 
 .ide-status-idle {
   color: var(--ide-text-muted);
-  border-color: #3a5774;
-  background: rgba(58, 87, 116, 0.2);
+  border-color: rgba(58, 87, 116, 0.55);
+  background: rgba(58, 87, 116, 0.18);
 }
 
 .ide-status-ok {
-  color: #c5ffd5;
-  border-color: rgba(82, 210, 115, 0.45);
-  background: rgba(82, 210, 115, 0.17);
+  color: #7de8dc;
+  border-color: rgba(46,196,182,0.38);
+  background: rgba(46,196,182,0.14);
 }
 
 .ide-status-warn {
-  color: #ffe7ad;
-  border-color: rgba(244, 185, 66, 0.48);
-  background: rgba(244, 185, 66, 0.16);
+  color: #f4c84a;
+  border-color: rgba(244,185,66,0.38);
+  background: rgba(244,185,66,0.13);
 }
 
 .ide-status-error {
-  color: #ffd2d2;
-  border-color: rgba(255, 107, 107, 0.52);
-  background: rgba(255, 107, 107, 0.17);
+  color: #ff9090;
+  border-color: rgba(255,107,107,0.42);
+  background: rgba(255,107,107,0.14);
 }
 
 .ide-callout {
@@ -3367,10 +3424,11 @@
 
 .ide-inspector-title {
   margin: 0;
-  font-size: var(--rb-font-size-3);
-  line-height: var(--rb-line-height-3);
+  font-size: 11px;
+  line-height: 14px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
+  font-weight: 600;
   color: var(--ide-text-soft);
 }
 
@@ -4157,3 +4215,4281 @@ details[open] summary .details-arrow {
   tab-size: 2;
   color: #d0e8ff;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   INSTRUMENT REDESIGN — Visual overhaul for professional EDA feel
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Surface entrance animation ── */
+.ide-surface-column {
+  animation: surface-enter 180ms var(--rb-ease-standard, cubic-bezier(0.2, 0, 0, 1)) both;
+}
+@keyframes surface-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Table enhancements ── */
+.ide-table tbody tr:hover td {
+  background: rgba(255,255,255,0.035);
+}
+.ide-table tbody tr[data-status='fail'] td {
+  background: rgba(255,107,107,0.07);
+}
+.ide-table tbody tr[data-status='fail'] td:first-child {
+  border-left: 2px solid rgba(255,107,107,0.7);
+}
+.ide-table tbody tr[data-status='pass'] td {
+  background: rgba(46,196,182,0.04);
+}
+
+/* ── SVG Waveform viewer container ── */
+.ide-waveform-outer {
+  position: relative;
+  border: 1px solid rgba(46,196,182,0.18);
+  border-radius: 8px;
+  overflow: auto;
+  background: #030810;
+}
+.ide-waveform-outer::after {
+  content: 'WAVEFORM';
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: rgba(46,196,182,0.28);
+  font-family: var(--ide-font-mono);
+  pointer-events: none;
+}
+
+/* ── Verify result chips ── */
+.ide-verify-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+.ide-verify-chip-pass {
+  background: rgba(46,196,182,0.14);
+  color: #7de8dc;
+  border-color: rgba(46,196,182,0.3);
+}
+.ide-verify-chip-fail {
+  background: rgba(255,107,107,0.14);
+  color: #ff9090;
+  border-color: rgba(255,107,107,0.3);
+}
+.ide-verify-chip-total {
+  background: rgba(255,255,255,0.06);
+  color: var(--ide-text-muted);
+  border-color: rgba(255,255,255,0.1);
+}
+
+/* ── Fail flash animation for new mismatch results ── */
+.ide-verify-fail-flash {
+  animation: fail-flash 700ms ease forwards;
+}
+@keyframes fail-flash {
+  0%   { background: rgba(255,107,107,0.28); }
+  100% { background: rgba(255,107,107,0.07); }
+}
+
+/* ── Export BLOCKED banner redesign ── */
+.ide-export-blocked-banner {
+  background: linear-gradient(135deg, rgba(239,35,60,0.13) 0%, rgba(255,107,107,0.06) 100%);
+  border: 1px solid rgba(239,35,60,0.42);
+  border-left: 4px solid var(--ide-danger, #ff6b6b);
+  border-radius: 8px;
+  padding: 14px 18px;
+}
+.ide-export-blocked-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ide-danger, #ff6b6b);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ── Blocker item rows ── */
+.ide-blocker-item {
+  border-left: 3px solid rgba(255,107,107,0.52);
+  background: rgba(255,107,107,0.07);
+  border-radius: 0 6px 6px 0;
+  padding: 10px 14px;
+}
+.ide-blocker-item + .ide-blocker-item {
+  margin-top: 8px;
+}
+
+/* ── Canvas dot-grid background ── */
+.ide-design-canvas-live {
+  background-color: #060d16;
+  background-image:
+    radial-gradient(circle, rgba(46,196,182,0.1) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ── Design canvas toolbar height increase ── */
+.ide-design-toolbar {
+  min-height: 42px;
+}
+
+/* ── Palette category section labels ── */
+.ide-palette-category-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ide-text-soft);
+  padding: 8px 8px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  margin-top: 4px;
+  display: block;
+}
+
+/* ── Section header uppercase treatment ── */
+.ide-section-header h3,
+.ide-export-section-header h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--ide-text-soft);
+}
+
+/* ── Tool segment active glow ── */
+.ide-design-tool-segment.is-active {
+  box-shadow: inset 0 0 10px rgba(46,196,182,0.12);
+}
+
+/* ── Board LED mapped (off but connected) subtle glow ── */
+.board-led-mapped-off {
+  filter: drop-shadow(0 0 3px rgba(46,196,182,0.18));
+}
+
+/* ── Canvas mode indicator — wire mode glow ── */
+.ide-design-canvas-live.is-wire-mode {
+  box-shadow: inset 0 0 0 1.5px rgba(46,196,182,0.5);
+}
+
+/* ── I/O table mapped row ── */
+.ide-table tbody tr[data-mapped='true'] .ide-status-pill {
+  background: rgba(46,196,182,0.16);
+  color: #7de8dc;
+  border-color: rgba(46,196,182,0.38);
+}
+.ide-table tbody tr[data-mapped='false'] td {
+  opacity: 0.72;
+}
+
+/* ── Phase 5: Export BLOCKED banner upgrade ── */
+.ide-export-readiness-banner.is-blocked {
+  background: linear-gradient(135deg, rgba(239,35,60,0.13) 0%, rgba(255,107,107,0.06) 100%);
+  border: 1px solid rgba(239,35,60,0.4);
+  border-left: 4px solid #ff6b6b;
+  border-radius: 8px;
+  padding: 14px 18px;
+}
+
+.ide-export-readiness-banner.is-blocked .ide-export-readiness-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ff9090;
+}
+
+.ide-export-readiness-banner.is-blocked .ide-export-readiness-detail {
+  color: rgba(255,160,160,0.75);
+}
+
+/* Ready state — stronger positive signal */
+.ide-export-readiness-banner.is-ready {
+  background: linear-gradient(135deg, rgba(46,196,182,0.12) 0%, rgba(46,196,182,0.05) 100%);
+  border: 1px solid rgba(46,196,182,0.35);
+  border-left: 4px solid #2ec4b6;
+}
+
+.ide-export-readiness-banner.is-ready .ide-export-readiness-label {
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #7de8dc;
+}
+
+/* ── Diagnostic rows — error gets left-border accent ── */
+.ide-export-diagnostic-row.is-error {
+  border-left: 3px solid rgba(255,107,107,0.7);
+  border-top-color: rgba(255,107,107,0.25);
+  border-right-color: rgba(255,107,107,0.15);
+  border-bottom-color: rgba(255,107,107,0.15);
+  background: rgba(255,107,107,0.07);
+  border-radius: 0 6px 6px 0;
+}
+
+.ide-export-diagnostic-row.is-warning {
+  border-left: 3px solid rgba(244,185,66,0.6);
+  border-top-color: rgba(244,185,66,0.2);
+  border-right-color: rgba(244,185,66,0.12);
+  border-bottom-color: rgba(244,185,66,0.12);
+  background: rgba(244,185,66,0.06);
+  border-radius: 0 6px 6px 0;
+}
+
+/* ── Palette group headings — uppercase instrument style ── */
+.ide-palette-group h4 {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(160,190,210,0.5);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+}
+
+/* ── Section header h3 — consistent uppercase instrument label ── */
+.ide-section-header h3 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--rb-text-3, rgba(160,185,210,0.55));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PHASE A — Teal Detox (reassign teal to Verify-only signaling)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* A1 — Selection / hover / focus states → electric blue */
+.ide-design-zoom-preset.is-active { color: #38bdf8; background: rgba(56,189,248,0.12); }
+.ide-design-tool-segment.is-active { border-color: rgba(56,189,248,0.55); background: rgba(56,189,248,0.14); color: #bae6fd; box-shadow: none; }
+.ide-load-project-row:hover { border-color: rgba(56,189,248,0.42); background: rgba(56,189,248,0.09); }
+.ide-chip-accent { color: #bae6fd; border-color: rgba(56,189,248,0.45); background: rgba(56,189,248,0.14); }
+.ide-design-canvas-live.is-wire-mode { border-color: rgba(56,189,248,0.6); box-shadow: inset 0 0 0 1.5px rgba(56,189,248,0.28); }
+.ide-design-canvas-live[data-wire-preview-active='1'] { box-shadow: inset 0 0 0 1px rgba(56,189,248,0.28); }
+.ide-design-canvas-live.is-wire-mode [data-port-id] { filter: drop-shadow(0 0 3px rgba(56,189,248,0.38)); }
+
+/* A2 — Structural decorative borders → muted steel-blue */
+.ide-top-bar { border-bottom-color: rgba(56,89,120,0.25); }
+.ide-verify-waveform-row { border-bottom-color: rgba(56,89,120,0.18); }
+.ide-verify-waveform-label { border-right-color: rgba(56,89,120,0.3); }
+.ide-waveform-outer { border-color: rgba(56,89,120,0.4); }
+
+/* A3 — Export READY state → blue (not Verify-teal) */
+.ide-export-readiness-banner.is-ready {
+  background: linear-gradient(135deg, rgba(56,189,248,0.1) 0%, rgba(14,165,233,0.04) 100%);
+  border-left-color: #38bdf8;
+  border-color: rgba(56,189,248,0.3);
+}
+.ide-export-readiness-banner.is-ready .ide-export-readiness-label { color: #7dd3fc; }
+
+/* A4 — Waveform label hover → white (not teal) */
+.ide-verify-waveform-label:hover { color: #e2eeff; }
+.ide-verify-waveform-row.is-selected .ide-verify-waveform-label { color: #bae6fd; }
+
+/* A5 — Canvas controls: frosted glass upgrade */
+.ide-design-canvas-controls,
+.ide-design-zoom-presets {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(4,10,18,0.82);
+  border-color: rgba(255,255,255,0.1);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PHASE B — Canvas Immersion (strip outer box, deepen background)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Strip outer canvas box — canvas bleeds to container edge */
+.ide-design-canvas { border: none !important; background: transparent !important; padding: 0 !important; }
+
+/* Inner live canvas: no default border (mode-specific borders remain) */
+.ide-design-canvas-live { border-color: transparent; }
+
+/* Deeper SVG background — removes the "container inside a container" blue haze */
+.rb-logic-canvas-svg {
+  background: radial-gradient(circle at 35% 0%, #020810 0%, #03070e 56%);
+}
+
+/* CSS canvas: deeper black + slightly higher contrast dot-grid */
+.ide-design-canvas-live {
+  background-color: #020508;
+  background-image: radial-gradient(circle, rgba(46,196,182,0.15) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PHASE D — Node Visual Depth (stronger drop-shadow + hover aura)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Stronger drop-shadow on all node groups */
+.rb-logic-canvas-svg [data-node-id] {
+  filter: drop-shadow(0 4px 14px rgba(0,0,0,0.75)) drop-shadow(0 1px 3px rgba(0,0,0,0.55));
+}
+/* Hover: add subtle blue aura without removing shadow */
+.rb-logic-canvas-svg [data-node-id]:hover {
+  filter: drop-shadow(0 0 6px rgba(56,189,248,0.22)) drop-shadow(0 4px 14px rgba(0,0,0,0.75));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PHASE E3 — Project Surface: compact pill badge + large CTA
+   ═══════════════════════════════════════════════════════════════ */
+
+.ide-project-mapping-status {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+  border-radius: 999px; border: 1px solid transparent;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+  margin-bottom: var(--ide-space-2);
+}
+.ide-project-mapping-status.is-complete { border-color: rgba(52,211,153,0.4); background: rgba(52,211,153,0.1); color: #6ee7b7; }
+.ide-project-mapping-status.is-error    { border-color: rgba(255,107,107,0.42); background: rgba(255,107,107,0.1); color: #fca5a5; }
+.ide-project-mapping-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.ide-project-mapping-status.is-complete .ide-project-mapping-status-dot { background: #34d399; }
+.ide-project-mapping-status.is-error    .ide-project-mapping-status-dot { background: #ff6b6b; animation: pipeline-pulse 1.8s ease-in-out infinite; }
+
+.ide-button-primary.is-large { padding: 9px 24px; font-size: 13px; letter-spacing: 0.03em; box-shadow: 0 0 18px rgba(46,196,182,0.35), 0 2px 8px rgba(0,0,0,0.4); }
+.ide-button-primary.is-large:hover:not(:disabled) { box-shadow: 0 0 28px rgba(46,196,182,0.55), 0 4px 12px rgba(0,0,0,0.5); transform: translateY(-1px); }
+
+/* ═══════════════════════════════════════════════════════════════
+   INSTRUMENT READINESS — Density, Typography, Role Audit
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Table breathing room (mapping + mismatch panels) ── */
+.ide-table th,
+.ide-table td {
+  padding: 9px 10px;
+}
+
+/* ── Dock borders: quieter (less visual boxing) ── */
+.ide-workbench-dock {
+  box-shadow: inset -1px 0 0 rgba(0,0,0,0.3), 4px 0 12px rgba(0,0,0,0.2);
+}
+
+/* ── Console border: softer ── */
+.ide-workbench-console {
+  border-color: rgba(41,68,94,0.4);
+}
+
+/* ── Heading hierarchy: panel title clearly dominates ── */
+.ide-panel-title {
+  font-size: 16px;
+  letter-spacing: -0.025em;
+}
+
+/* ── Inspector section title: slightly lighter ── */
+.ide-inspector-title {
+  color: rgba(160,185,210,0.6);
+}
+
+/* ── Mismatch panel: table cell spacing ── */
+.ide-verify-mismatch-panel .ide-table th,
+.ide-verify-mismatch-panel .ide-table td {
+  padding: 8px 10px;
+}
+
+/* ── Color role guard: primary CTA stays teal, never blue ── */
+.ide-button-primary {
+  background: var(--rb-accent);
+  color: #031a19;
+}
+
+/* ── Dock left-side border: subtle only ── */
+.ide-left-rail {
+  border-right-color: rgba(41,68,94,0.35);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase A — Top Bar & Left Rail: Minimum Viable Authority
+   ════════════════════════════════════════════════════════════════ */
+
+/* Brand mark: 9px → 13px, stronger contrast */
+.ide-brand-mark {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  border-color: rgba(100,160,220,0.35);
+  background: linear-gradient(135deg, #1a3d5c, #0f2438);
+}
+
+/* Board chip: 10px → 12px, bolder */
+.ide-board-chip {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+}
+
+/* Project label (tiny "RedByte IDE" subtitle): 10px → 11px */
+.ide-project-label {
+  font-size: 11px;
+}
+
+/* Project subline (hash): bump to 600 weight for legibility */
+.ide-project-subline {
+  font-weight: 600;
+  color: rgba(195,209,223,0.75);
+}
+
+/* Mode glyph (icon square): 10px → 12px */
+.ide-mode-glyph {
+  font-size: 12px;
+  font-weight: 700;
+  width: 22px;
+  height: 22px;
+  border-color: rgba(255,255,255,0.16);
+}
+
+/* Mode label collapsed: 9px → 10px */
+.ide-mode-label {
+  font-size: 10px;
+  line-height: 12px;
+}
+
+/* Mode label expanded: 11px → 12px */
+.ide-left-rail--expanded .ide-mode-label {
+  font-size: 12px;
+  line-height: 15px;
+}
+
+/* Active mode button: stronger teal left stripe + brighter text */
+.ide-mode-button.is-active {
+  background: rgba(46,196,182,0.1);
+  color: #e0fff9;
+}
+.ide-mode-button.is-active .ide-mode-glyph {
+  border-color: rgba(46,196,182,0.5);
+  background: rgba(46,196,182,0.14);
+  color: #2ec4b6;
+}
+
+/* Rail width slightly wider — gives labels more room */
+:root[data-redbyte-mode='ide'] {
+  --ide-rail-width: 56px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase B — Teal Detox
+   ════════════════════════════════════════════════════════════════ */
+
+/* A1: Selection / hover / UI interaction states → electric blue */
+.ide-design-zoom-preset.is-active { color: #38bdf8; background: rgba(56,189,248,0.12); }
+.ide-design-tool-segment.is-active {
+  border-color: rgba(56,189,248,0.55);
+  background: rgba(56,189,248,0.14);
+  color: #bae6fd;
+  box-shadow: none;
+}
+.ide-load-project-row:hover { border-color: rgba(56,189,248,0.42); background: rgba(56,189,248,0.09); }
+.ide-chip-accent { color: #bae6fd; border-color: rgba(56,189,248,0.45); background: rgba(56,189,248,0.14); }
+.ide-design-canvas-live.is-wire-mode { border-color: rgba(56,189,248,0.6); box-shadow: inset 0 0 0 1.5px rgba(56,189,248,0.28); }
+.ide-design-canvas-live[data-wire-preview-active='1'] { box-shadow: inset 0 0 0 1px rgba(56,189,248,0.28); }
+.ide-design-canvas-live.is-wire-mode [data-port-id] { filter: drop-shadow(0 0 3px rgba(56,189,248,0.38)); }
+
+/* A2: Structural/decorative borders → muted steel-blue */
+.ide-top-bar { border-bottom-color: rgba(56,89,120,0.25); }
+.ide-verify-waveform-row { border-bottom-color: rgba(56,89,120,0.18); }
+.ide-verify-waveform-label { border-right-color: rgba(56,89,120,0.3); }
+.ide-waveform-outer { border-color: rgba(56,89,120,0.4); }
+
+/* A3: Export READY → blue */
+.ide-export-readiness-banner.is-ready {
+  background: linear-gradient(135deg, rgba(56,189,248,0.1) 0%, rgba(14,165,233,0.04) 100%);
+  border-left-color: #38bdf8;
+  border-color: rgba(56,189,248,0.3);
+}
+.ide-export-readiness-banner.is-ready .ide-export-readiness-label { color: #7dd3fc; }
+
+/* A4: Waveform label hover → white, not teal */
+.ide-verify-waveform-label:hover { color: #e2eeff; }
+.ide-verify-waveform-row.is-selected .ide-verify-waveform-label { color: #bae6fd; }
+
+/* A5: Canvas controls → frosted glass */
+.ide-design-canvas-controls,
+.ide-design-zoom-presets {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(4,10,18,0.82);
+  border-color: rgba(255,255,255,0.1);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase C — Canvas Immersion
+   ════════════════════════════════════════════════════════════════ */
+.ide-design-canvas { border: none !important; background: transparent !important; padding: 0 !important; }
+.ide-design-canvas-live { border-color: transparent; }
+.rb-logic-canvas-svg { background: radial-gradient(circle at 35% 0%, #020810 0%, #03070e 56%); }
+.ide-design-canvas-live {
+  background-color: #020508;
+  background-image: radial-gradient(circle, rgba(46,196,182,0.15) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase D — Node Visual Depth
+   ════════════════════════════════════════════════════════════════ */
+.rb-logic-canvas-svg [data-node-id] {
+  filter: drop-shadow(0 4px 14px rgba(0,0,0,0.75)) drop-shadow(0 1px 3px rgba(0,0,0,0.55));
+}
+.rb-logic-canvas-svg [data-node-id]:hover {
+  filter: drop-shadow(0 0 6px rgba(56,189,248,0.22)) drop-shadow(0 4px 14px rgba(0,0,0,0.75));
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase F3 — Project Surface: Compact Status + Large CTA
+   ════════════════════════════════════════════════════════════════ */
+.ide-project-mapping-status {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+  border-radius: 999px; border: 1px solid transparent;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.03em;
+  margin-bottom: var(--ide-space-2);
+}
+.ide-project-mapping-status.is-complete { border-color: rgba(52,211,153,0.4); background: rgba(52,211,153,0.1); color: #6ee7b7; }
+.ide-project-mapping-status.is-error    { border-color: rgba(255,107,107,0.42); background: rgba(255,107,107,0.1); color: #fca5a5; }
+.ide-project-mapping-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.ide-project-mapping-status.is-complete .ide-project-mapping-status-dot { background: #34d399; }
+.ide-project-mapping-status.is-error    .ide-project-mapping-status-dot { background: #ff6b6b; animation: pipeline-pulse 1.8s ease-in-out infinite; }
+.ide-button-primary.is-large {
+  padding: 9px 24px; font-size: 13px; letter-spacing: 0.03em;
+  box-shadow: 0 0 18px rgba(46,196,182,0.35), 0 2px 8px rgba(0,0,0,0.4);
+}
+.ide-button-primary.is-large:hover:not(:disabled) {
+  box-shadow: 0 0 28px rgba(46,196,182,0.55), 0 4px 12px rgba(0,0,0,0.5);
+  transform: translateY(-1px);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase H — Global Text Size Floor
+   ════════════════════════════════════════════════════════════════ */
+
+/* Section meta labels */
+.ide-export-section-meta,
+.ide-section-header-meta { font-size: 11px; font-weight: 500; }
+
+/* Verify label */
+.ide-verify-label { font-size: 12px; font-weight: 600; }
+
+/* Live signal dots */
+.ide-project-live-dot { font-size: 12px; }
+
+/* Palette chip text */
+.ide-palette-chip { font-size: 12px; font-weight: 500; min-height: 28px; }
+.ide-palette-chip-board { font-size: 11px; }
+
+/* Toolbar depth pill */
+.ide-design-depth-pill { font-size: 11px; }
+
+/* Code gutter line numbers */
+.ide-code-gutter-line { font-size: 11px; }
+
+/* KBD shortcut keys in toolbar */
+.ide-design-tool-text kbd {
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.5);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 7A — Top bar grid fix
+   ════════════════════════════════════════════════════════════════ */
+.ide-top-bar {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 7B — Verify surface layout
+   ════════════════════════════════════════════════════════════════ */
+
+/* Compact status strip — replaces the big summary card */
+.ide-verify-status-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  padding: var(--ide-space-1) var(--ide-space-2);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-wrap: wrap;
+  min-height: 40px;
+}
+.ide-verify-status-strip .ide-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ide-verify-status-strip .ide-inline-actions {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Verify workbench v2 — flex column */
+.ide-verify-workbench-v2 {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+/* Waveform hero — claims vertical space */
+.ide-verify-waveform-hero {
+  flex: 0 0 auto;
+  min-height: 340px;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.ide-verify-waveform-hero .ide-waveform-outer {
+  flex: 1 1 auto;
+  overflow: auto;
+  margin: 0 var(--ide-space-1) var(--ide-space-1);
+  min-height: 200px;
+}
+
+/* Verify tab bar */
+.ide-verify-tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.18);
+  padding: 0 var(--ide-space-2);
+}
+.ide-verify-tab-btn {
+  padding: 7px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(180,200,220,0.6);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 100ms, border-color 100ms;
+}
+.ide-verify-tab-btn.is-active {
+  color: #e2eeff;
+  border-bottom-color: rgba(56,189,248,0.7);
+}
+.ide-verify-tab-btn:hover:not(.is-active) {
+  color: rgba(200,220,240,0.85);
+}
+.ide-verify-tab-badge {
+  margin-left: 5px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-size: 10px;
+  background: rgba(255,107,107,0.18);
+  color: #fca5a5;
+}
+
+/* Tab panel — scrollable below waveform + tabs */
+.ide-verify-tab-panel {
+  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 7C — Project quick-start cards
+   ════════════════════════════════════════════════════════════════ */
+.ide-project-quickstart {
+  padding: var(--ide-space-3);
+  border: 1px solid rgba(56,189,248,0.2);
+  border-radius: var(--rb-radius-1);
+  background: rgba(14,28,48,0.6);
+  margin-bottom: var(--ide-space-3);
+}
+.ide-project-quickstart-title {
+  margin: 0 0 var(--ide-space-1);
+  font-size: 13px;
+  font-weight: 700;
+  color: #c8dff4;
+}
+.ide-project-quickstart-sub {
+  margin: 0 0 var(--ide-space-2);
+  font-size: 12px;
+  color: var(--ide-text-soft);
+}
+.ide-project-example-card-row {
+  display: flex;
+  gap: var(--ide-space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--ide-space-2);
+}
+.ide-project-example-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--rb-radius-1);
+  cursor: pointer;
+  transition: border-color 120ms, background 120ms;
+  text-align: left;
+}
+.ide-project-example-btn:hover {
+  border-color: rgba(56,189,248,0.45);
+  background: rgba(56,189,248,0.07);
+}
+.ide-project-example-btn.is-active {
+  border-color: rgba(46,196,182,0.55);
+  background: rgba(46,196,182,0.08);
+}
+.ide-project-example-btn-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #d0e8ff;
+}
+.ide-project-example-btn-concept {
+  font-size: 10px;
+  color: var(--ide-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ide-project-quickstart-import-link {
+  font-size: 11px;
+  color: #7dd3fc;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 7D — Import sample cards
+   ════════════════════════════════════════════════════════════════ */
+.ide-import-samples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--ide-space-2);
+  margin-bottom: var(--ide-space-2);
+}
+.ide-import-sample-card {
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--rb-radius-1);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 120ms, background 120ms;
+}
+.ide-import-sample-card:hover {
+  border-color: rgba(46,196,182,0.45);
+  background: rgba(46,196,182,0.05);
+}
+.ide-import-sample-card-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #c8dff4;
+  margin-bottom: 2px;
+}
+.ide-import-sample-card-desc {
+  font-size: 10px;
+  color: var(--ide-text-muted);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 8.1 — Verify: Fail Navigator + Zoom presets + Density + Legend
+   ════════════════════════════════════════════════════════════════ */
+
+/* Fail Navigator mini-bar */
+.ide-verify-fail-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-1);
+  padding: 4px 0;
+  flex-wrap: wrap;
+}
+.ide-verify-fail-nav-position {
+  font-size: 11px;
+  color: rgba(252,165,165,0.85);
+  min-width: 0;
+  white-space: nowrap;
+}
+
+/* Zoom + density toggle row */
+.ide-verify-zoom-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+  flex-wrap: wrap;
+}
+.ide-verify-zoom-label {
+  font-size: 10px;
+  color: rgba(180,200,220,0.45);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  user-select: none;
+}
+.ide-verify-zoom-btn {
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: rgba(180,200,220,0.55);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 80ms, border-color 80ms, background 80ms;
+  font-family: IBM Plex Mono, monospace;
+}
+.ide-verify-zoom-btn:hover:not(.is-active) {
+  color: rgba(180,200,220,0.9);
+  border-color: rgba(255,255,255,0.18);
+}
+.ide-verify-zoom-btn.is-active {
+  color: #38bdf8;
+  background: rgba(56,189,248,0.1);
+  border-color: rgba(56,189,248,0.4);
+}
+
+/* Waveform legend strip */
+.ide-verify-waveform-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  padding: 4px var(--ide-space-2);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  background: rgba(0,0,0,0.15);
+}
+.ide-verify-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-family: IBM Plex Mono, monospace;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.ide-verify-legend-item::before {
+  content: '';
+  display: inline-block;
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+}
+.ide-verify-legend-pass {
+  color: rgba(46,196,182,0.7);
+}
+.ide-verify-legend-pass::before {
+  background: #2ec4b6;
+}
+.ide-verify-legend-fail {
+  color: rgba(255,107,107,0.8);
+}
+.ide-verify-legend-fail::before {
+  background: #ff6b6b;
+}
+.ide-verify-legend-select {
+  color: rgba(56,189,248,0.75);
+}
+.ide-verify-legend-select::before {
+  background: rgba(56,189,248,0.85);
+}
+
+/* ── Phase 8.3 — Top bar hierarchy ─────────────────────────────────────────── */
+.ide-project-name {
+  font-size: var(--rb-font-size-5, 18px);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ide-brand-mark {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  font-size: 8px;
+}
+.ide-save-state-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ide-save-state-dot-ok {
+  background: #6aab8a;
+  box-shadow: none;
+}
+.ide-save-state-dot-warn {
+  background: #f59e0b;
+  box-shadow: 0 0 4px rgba(245,158,11,0.5);
+}
+.ide-save-state-dot-error {
+  background: #f87171;
+  box-shadow: 0 0 4px rgba(248,113,113,0.6);
+}
+
+/* ── Phase 8.5 — Sample cards with learning goals ───────────────────────────── */
+.ide-project-example-btn-summary {
+  display: block;
+  font-size: 10px;
+  color: rgba(160,210,240,0.65);
+  line-height: 1.35;
+  margin-top: 2px;
+  white-space: normal;
+  text-align: left;
+}
+.ide-project-example-flow {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 6px;
+  flex-wrap: nowrap;
+}
+.ide-project-flow-chip {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(56,189,248,0.1);
+  border: 1px solid rgba(56,189,248,0.22);
+  color: rgba(125,211,252,0.8);
+  white-space: nowrap;
+}
+.ide-project-flow-arrow {
+  font-size: 8px;
+  color: rgba(148,163,184,0.45);
+}
+.ide-import-sample-card-learn {
+  display: block;
+  font-size: 9px;
+  color: rgba(134,239,172,0.6);
+  margin-top: 4px;
+  line-height: 1.35;
+  font-style: italic;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 9.1 — Spacing Redesign: Flat inspector + console height
+   ════════════════════════════════════════════════════════════════ */
+
+/* Inspector sections: flat rows, no nested boxes */
+.ide-inspector-section {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: var(--ide-space-2) 0;
+}
+
+/* Divider between consecutive sections */
+.ide-inspector-section + .ide-inspector-section {
+  border-top: 1px solid rgba(41, 68, 94, 0.4);
+}
+
+/* No gap between sections — divider handles spacing */
+.ide-inspector {
+  gap: 0;
+}
+
+/* Inspector content: tighten top margin */
+.ide-inspector-content {
+  margin-top: var(--ide-space-1);
+  padding-bottom: var(--ide-space-1);
+}
+
+/* KV rows: tighter vertical rhythm inside flat inspector */
+.ide-inspector-section .ide-kv-row {
+  padding: 2px 0;
+  font-size: 11px;
+}
+
+/* Inspector header toggle: tighter hit target */
+.ide-inspector-toggle {
+  padding: 3px 0;
+}
+
+/* Right dock: remove redundant outer padding now that sections are flat */
+.ide-workbench-dock {
+  padding: var(--ide-space-2) var(--ide-space-2);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 9.2/9.3 — Example card actions row
+   ════════════════════════════════════════════════════════════════ */
+
+/* Card is now a div, so needs explicit pointer on hover */
+.ide-project-example-btn {
+  cursor: default;
+}
+
+/* Actions row inside each example card */
+.ide-project-example-btn-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-1);
+  margin-top: var(--ide-space-1);
+  flex-wrap: wrap;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 10A — Top Bar Authority
+   Project name must dominate. Brand mark is a glyph, not a label.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Project name: larger, heavier, no competition */
+.ide-project-name {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+/* Project subline (ID hash): subtler */
+.ide-project-subline {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(180, 200, 220, 0.55);
+}
+
+/* Brand mark: geometric glyph authority */
+.ide-brand-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  border: 1px solid rgba(80, 140, 200, 0.3);
+  background: linear-gradient(135deg, #1e3f60, #0d2236);
+  flex-shrink: 0;
+}
+
+/* Top bar: 2px gradient underline accent instead of weak border */
+.ide-top-bar {
+  border-bottom: none;
+  position: relative;
+}
+.ide-top-bar::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(46, 196, 182, 0.35) 20%,
+    rgba(46, 196, 182, 0.55) 50%,
+    rgba(46, 196, 182, 0.35) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 10B — Pipeline Strip: Grounded, Not Floating
+   ════════════════════════════════════════════════════════════════ */
+
+/* Override the near-invisible bottom-only border in surface-column context */
+.ide-surface-column > .ide-pipeline-strip {
+  background: rgba(4, 10, 18, 0.92);
+  border-bottom: 1px solid rgba(46, 196, 182, 0.22);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 10C — Project Page: Example Cards Upgraded
+   Cards should feel like launch points, not list items.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Quick-start block: stronger top accent */
+.ide-project-quickstart {
+  border-top: 3px solid rgba(56, 189, 248, 0.45);
+  padding-top: var(--ide-space-3);
+}
+
+.ide-project-quickstart-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #d0ecff;
+  letter-spacing: -0.01em;
+}
+
+/* Example cards: gradient depth + hover lift */
+.ide-project-example-btn {
+  background: linear-gradient(160deg, rgba(20, 36, 54, 0.9) 0%, rgba(12, 22, 36, 0.95) 100%);
+  border: 1px solid rgba(70, 110, 150, 0.35);
+  border-radius: var(--rb-radius-1);
+  padding: 10px 14px;
+  transition: border-color 140ms, background 140ms, box-shadow 140ms, transform 140ms;
+  cursor: default;
+}
+.ide-project-example-btn:hover {
+  border-color: rgba(56, 189, 248, 0.5);
+  background: linear-gradient(160deg, rgba(24, 44, 68, 0.95) 0%, rgba(14, 28, 48, 0.98) 100%);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(56, 189, 248, 0.18);
+  transform: translateY(-2px);
+}
+.ide-project-example-btn.is-active {
+  border-color: rgba(46, 196, 182, 0.6);
+  background: linear-gradient(160deg, rgba(20, 46, 50, 0.95) 0%, rgba(10, 28, 32, 0.98) 100%);
+  box-shadow: 0 0 0 1px rgba(46, 196, 182, 0.22);
+  transform: none;
+}
+
+.ide-project-example-btn-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e0f0ff;
+  letter-spacing: -0.01em;
+}
+
+.ide-project-example-btn-concept {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(56, 189, 248, 0.7);
+  text-transform: uppercase;
+}
+
+.ide-project-example-btn-summary {
+  font-size: 11px;
+  color: rgba(160, 200, 230, 0.65);
+  line-height: 1.4;
+  margin-top: 3px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 10D — I/O Mapping Section: Reduced Visual Weight
+   The mapping table is a tool, not a hero. Flatten it.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Mapping section panel: lighter box */
+[data-testid='ide-project-panel-mapping'].ide-export-section {
+  border-color: rgba(44, 68, 90, 0.5);
+  background: rgba(8, 16, 26, 0.5);
+}
+
+/* Mapping header: smaller, instrument-label style */
+[data-testid='ide-project-panel-mapping'] .ide-export-section-header h3 {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: rgba(140, 170, 200, 0.55);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Mapping status pill: compact microtext */
+.ide-project-mapping-status {
+  font-size: 11px;
+  padding: 3px 8px;
+  margin-bottom: var(--ide-space-1);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 10E — Left Dock: Quieter Border
+   ════════════════════════════════════════════════════════════════ */
+
+.ide-workbench-dock-left,
+.ide-left-rail {
+  border-right-color: rgba(30, 50, 70, 0.4);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 10F — Top Bar Tightening + Project Page Polish
+   ════════════════════════════════════════════════════════════════ */
+
+/* 2-column grid now that chip is inline with project name */
+.ide-top-bar {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0 20px;
+}
+
+/* Chip inline — vertically centered with a small separator gap */
+.ide-top-left .ide-board-chip {
+  margin-left: var(--ide-space-2);
+  align-self: center;
+  flex-shrink: 0;
+}
+
+/* Subline: deeply dimmed, smaller */
+.ide-project-subline {
+  font-size: 10px;
+  color: rgba(160, 185, 210, 0.35);
+  margin: 0;
+}
+
+/* Pipeline strip: slightly more prominent bottom border */
+.ide-surface-column > .ide-pipeline-strip {
+  border-bottom: 1px solid rgba(56, 189, 248, 0.18);
+}
+
+/* Active example card: strong glow ring */
+.ide-project-example-btn.is-active {
+  border-color: rgba(46, 196, 182, 0.75);
+  box-shadow: 0 0 0 2px rgba(46, 196, 182, 0.5), 0 0 20px rgba(46, 196, 182, 0.15);
+}
+
+/* Mapping complete banner: quieter */
+.ide-project-mapping-status.is-complete {
+  background: rgba(46, 196, 182, 0.06);
+  border-color: rgba(46, 196, 182, 0.2);
+  color: rgba(46, 196, 182, 0.55);
+}
+.ide-project-mapping-status.is-complete .ide-project-mapping-status-dot {
+  background: rgba(46, 196, 182, 0.4);
+  box-shadow: none;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Project Surface — Hero Onboarding Panel
+   ════════════════════════════════════════════════════════════════ */
+
+.ide-project-hero {
+  display: grid;
+  gap: var(--ide-space-2);
+  padding: var(--ide-space-3);
+  border: 1px solid rgba(46,196,182,0.22);
+  border-radius: var(--ide-radius-s, 6px);
+  background: linear-gradient(135deg, rgba(14,28,48,0.7) 0%, rgba(8,18,30,0.75) 100%);
+  margin-bottom: var(--ide-space-3);
+}
+.ide-project-hero-status {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ide-text-soft, rgba(160,190,220,0.75));
+  line-height: 1.45;
+}
+.ide-project-hero-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+}
+.ide-project-hero-step-trace {
+  flex: 1 1 12px;
+  height: 1px;
+  min-width: 6px;
+  max-width: 24px;
+  background: rgba(41,68,94,0.55);
+}
+.ide-project-hero-step-trace.is-lit {
+  background: rgba(46,196,182,0.4);
+}
+.ide-project-hero-step {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 100ms;
+  flex-shrink: 0;
+}
+.ide-project-hero-step:hover { background: rgba(255,255,255,0.05); }
+.ide-project-hero-step:focus-visible { outline: 2px solid rgba(56,189,248,0.6); outline-offset: 2px; }
+.ide-project-hero-step-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-family: var(--rb-font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+/* Past */
+.ide-project-hero-step.is-past .ide-project-hero-step-badge {
+  background: rgba(46,196,182,0.14);
+  color: #2ec4b6;
+  border: 1px solid rgba(46,196,182,0.28);
+}
+.ide-project-hero-step.is-past .ide-project-hero-step-label { color: rgba(46,196,182,0.7); }
+/* Active */
+.ide-project-hero-step.is-active { background: rgba(46,196,182,0.07); }
+.ide-project-hero-step.is-active .ide-project-hero-step-badge {
+  background: #2ec4b6;
+  color: #062524;
+  border: 1px solid transparent;
+}
+.ide-project-hero-step.is-active .ide-project-hero-step-label {
+  color: #e2f5f2;
+  font-weight: 600;
+}
+/* Future */
+.ide-project-hero-step.is-future .ide-project-hero-step-badge {
+  background: rgba(255,255,255,0.05);
+  color: rgba(140,168,196,0.55);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.ide-project-hero-step.is-future .ide-project-hero-step-label { color: rgba(140,168,196,0.5); }
+/* Actions row */
+.ide-project-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  flex-wrap: wrap;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Project Surface — Mapping Summary Strip
+   ════════════════════════════════════════════════════════════════ */
+
+.ide-project-mapping-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  padding: var(--ide-space-1) 0;
+  min-height: 32px;
+  flex-wrap: wrap;
+}
+.ide-project-mapping-summary-stat {
+  font-size: 12px;
+  color: var(--ide-text-muted, rgba(140,168,196,0.55));
+  flex: 1 1 auto;
+}
+.ide-project-mapping-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid rgba(58,87,116,0.55);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(140,168,196,0.7);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 100ms, color 100ms, background 100ms;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ide-project-mapping-expand-btn:hover {
+  border-color: rgba(142,199,255,0.5);
+  color: rgba(200,220,240,0.9);
+  background: rgba(58,87,116,0.12);
+}
+.ide-project-mapping-expand-btn:focus-visible { outline: 2px solid rgba(56,189,248,0.6); outline-offset: 2px; }
+.ide-project-mapping-expand-arrow { font-size: 9px; line-height: 1; }
+.ide-project-mapping-table-wrap { margin-top: var(--ide-space-2); }
+
+/* ════════════════════════════════════════════════════════════════
+   Project Surface — Narrower right inspector (project mode only)
+   ════════════════════════════════════════════════════════════════ */
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-main {
+  grid-template-columns:
+    minmax(180px, var(--ide-workbench-left-width, 200px))
+    6px
+    minmax(0, 1fr)
+    6px
+    minmax(200px, 240px);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Project Surface — Hero Panel Visual Authority (Phase 12)
+   ════════════════════════════════════════════════════════════════ */
+
+/* Spotlight radial glow — hero claims the page */
+.ide-project-hero {
+  background:
+    radial-gradient(ellipse 75% 140% at 50% 0%, rgba(46,196,182,0.07) 0%, transparent 65%),
+    linear-gradient(160deg, rgba(12,26,44,0.88) 0%, rgba(6,14,26,0.92) 100%);
+  border: 1px solid rgba(46,196,182,0.28);
+  box-shadow: 0 0 0 1px rgba(46,196,182,0.08) inset, 0 4px 24px rgba(0,0,0,0.25);
+  padding: var(--ide-space-4, 20px) var(--ide-space-3);
+  gap: var(--ide-space-3);
+}
+
+/* Status message: slightly larger, leading the eye */
+.ide-project-hero-status {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(200,225,240,0.8);
+  letter-spacing: 0.01em;
+}
+
+/* Stepper: taller row, more breathing room */
+.ide-project-hero-stepper {
+  padding: 4px 0;
+  gap: 2px;
+}
+
+/* Step traces: slightly taller */
+.ide-project-hero-step-trace {
+  height: 2px;
+  max-width: 32px;
+}
+
+/* Step buttons: taller click target */
+.ide-project-hero-step {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+/* Active badge: larger, more weight */
+.ide-project-hero-step.is-active .ide-project-hero-step-badge {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+  box-shadow: 0 0 0 3px rgba(46,196,182,0.2);
+}
+.ide-project-hero-step.is-active .ide-project-hero-step-label {
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+
+/* Past badge: checkmark size matches active */
+.ide-project-hero-step.is-past .ide-project-hero-step-badge {
+  width: 20px;
+  height: 20px;
+}
+
+/* CTA row: give primary button room to breathe */
+.ide-project-hero-actions {
+  padding-top: 2px;
+}
+
+/* Primary CTA override — taller than anything else on the page */
+.ide-project-hero .ide-button.ide-button-primary.is-large,
+.ide-project-hero [data-testid='ide-primary-cta'] .ide-button-primary {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  min-height: 44px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Project Surface — Inspector width correction
+   ════════════════════════════════════════════════════════════════ */
+
+/* 320px right dock — present but not competing */
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-main {
+  grid-template-columns:
+    minmax(180px, var(--ide-workbench-left-width, 200px))
+    6px
+    minmax(0, 1fr)
+    6px
+    minmax(260px, 320px);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Project Surface — Mapping strip error state
+   ════════════════════════════════════════════════════════════════ */
+
+/* Strip container: red tint when errors exist */
+.ide-project-mapping-summary.has-error {
+  background: rgba(220,38,38,0.06);
+  border-radius: var(--ide-radius-s, 4px);
+  border: 1px solid rgba(220,38,38,0.2);
+  padding: 6px 10px;
+  margin-top: var(--ide-space-1);
+}
+
+/* Error state stat text */
+.ide-project-mapping-summary.has-error .ide-project-mapping-summary-stat {
+  color: rgba(252,165,165,0.85);
+  font-weight: 500;
+}
+
+/* Fix Mapping button: uses error palette */
+.ide-project-mapping-expand-btn.is-error {
+  border-color: rgba(239,68,68,0.45);
+  color: rgba(252,165,165,0.9);
+}
+.ide-project-mapping-expand-btn.is-error:hover {
+  border-color: rgba(239,68,68,0.7);
+  background: rgba(220,38,38,0.1);
+  color: #fca5a5;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Project Surface — Example card learn line
+   ════════════════════════════════════════════════════════════════ */
+
+/* "You'll learn:" prefix label */
+.ide-project-example-btn-learn-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(46,196,182,0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 1px;
+}
+
+/* Learn text itself */
+.ide-project-example-btn-summary {
+  font-size: 10px;
+  color: rgba(160,200,220,0.6);
+  line-height: 1.35;
+  font-style: italic;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 13 — Design Surface: Lab Instrument Authority
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Canvas container: remove outer border feel ── */
+.ide-design-canvas {
+  border: none;
+  box-shadow: inset 0 0 0 1px rgba(56,189,248,0.06);
+  background: #020810;
+}
+
+/* ── Canvas live surface: blue dot grid (replaces teal) ── */
+.ide-design-canvas-live {
+  background-color: #020810;
+  background-image: radial-gradient(circle, rgba(56,189,248,0.18) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ── Logic nodes: depth + bevel ── */
+.rb-logic-canvas-svg [data-node-id],
+.ide-logic-node-wrap [data-node-id] {
+  filter: drop-shadow(0 8px 20px rgba(0,0,0,0.85)) drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+}
+
+.ide-node {
+  background: linear-gradient(to bottom, #14263a, #0b1827);
+  border: 1px solid rgba(56,189,248,0.22);
+  box-shadow:
+    0 8px 20px rgba(0,0,0,0.8),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.ide-node:hover {
+  border-color: rgba(56,189,248,0.45);
+  box-shadow:
+    0 0 0 2px rgba(56,189,248,0.35),
+    0 10px 26px rgba(0,0,0,0.85),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+/* Selected node */
+.ide-node.is-selected,
+.ide-node[data-selected='true'] {
+  border-color: rgba(56,189,248,0.7);
+  box-shadow:
+    0 0 0 2px rgba(56,189,248,0.5),
+    0 10px 26px rgba(0,0,0,0.85),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+/* ── Toolbar: authority bar ── */
+.ide-design-toolbar {
+  background: #071522;
+  border-bottom: 2px solid rgba(56,189,248,0.28);
+  padding: 8px 12px;
+}
+
+/* Toolbar buttons: tighter, crisper */
+.ide-design-toolbar .ide-button,
+.ide-design-toolbar button {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+/* ── Palette: section header microtext ── */
+.ide-palette-group h4,
+.ide-palette-section > h4,
+.ide-palette > h4 {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(140,180,220,0.45);
+  padding: 6px 8px 3px;
+  margin: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+/* ── Inspector: quieter treatment ── */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector .ide-inspector-section {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector .ide-inspector-section + .ide-inspector-section {
+  border-top: none;
+}
+
+/* Inspector empty hint — shown when nothing selected */
+.ide-design-inspector-hint {
+  padding: var(--ide-space-3);
+  text-align: center;
+  color: rgba(140,170,200,0.3);
+  font-size: 11px;
+  font-style: italic;
+  user-select: none;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 14 — Design Surface: Control Deck + Instrument Feel
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Toolbar: 3-group layout ── */
+.ide-design-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: nowrap;
+}
+
+.ide-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  flex-shrink: 0;
+}
+
+/* Separator hairline between groups */
+.ide-toolbar-group + .ide-toolbar-group {
+  border-left: 1px solid rgba(255,255,255,0.07);
+}
+
+/* Mode group: no left padding, largest presence */
+.ide-toolbar-group.is-mode {
+  padding-left: 0;
+}
+
+/* Mode segments: taller, more authoritative */
+.ide-toolbar-group.is-mode .ide-design-tool-segment {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 11px;
+}
+
+.ide-toolbar-group.is-mode .ide-design-tool-segment.is-active {
+  background: rgba(56,189,248,0.14);
+  border-color: rgba(56,189,248,0.55);
+  color: #e2f4ff;
+  box-shadow: 0 0 0 1px rgba(56,189,248,0.22) inset;
+}
+
+/* Utilities group: pushed to the far right */
+.ide-toolbar-group.is-utils {
+  margin-left: auto;
+  padding-right: 0;
+}
+
+/* Edit group buttons: slightly smaller than mode segments */
+.ide-toolbar-group.is-edit .ide-button {
+  font-size: 11px;
+  padding: 4px 9px;
+  min-height: 28px;
+}
+
+/* ── Canvas: vignette overlay + glass edge ── */
+.ide-design-canvas {
+  position: relative;
+  overflow: hidden;
+}
+
+.ide-design-canvas::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(2,8,16,0.6) 100%);
+  border-radius: inherit;
+  z-index: 1;
+}
+
+/* ── Palette chips: hover lift ── */
+.ide-palette-chip {
+  transition: transform 100ms, border-color 100ms, background 100ms;
+}
+
+.ide-palette-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(56,189,248,0.45);
+  background: rgba(56,189,248,0.07);
+}
+
+/* ── Inspector: persistent selection header ── */
+.ide-design-inspector-sel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(56,189,248,0.1);
+  background: rgba(7,21,34,0.8);
+  min-height: 40px;
+  flex-shrink: 0;
+}
+
+.ide-design-inspector-sel-type {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7dd3fc;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ide-design-inspector-sel-id {
+  font-size: 10px;
+  color: rgba(140,180,220,0.45);
+  font-family: var(--rb-font-mono, monospace);
+}
+
+/* Override hint inside header: left-aligned, no padding */
+.ide-design-inspector-sel-header .ide-design-inspector-hint {
+  padding: 0;
+  text-align: left;
+}
+
+/* ── Tool HUD: reduce vertical steal ── */
+.ide-design-tool-hud {
+  padding: 3px 10px;
+  min-height: 26px;
+  font-size: 10px;
+}
+
+.ide-design-canvas-mode-indicator {
+  font-size: 10px;
+  padding: 2px 8px;
+  min-height: 22px;
+}
+
+/* ── Design console: stay collapsed unless there's output ── */
+.ide-workbench-shell[data-ide-mode-marker='design'] {
+  --ide-workbench-console-height: 40px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 15 — Design Surface: Canvas Hero + Instrument Polish
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Tool HUD: hide in select mode (toolbar already shows it) ── */
+/* Using :has() — supported Chrome 105+, Firefox 121+, Safari 15.4+ */
+.ide-design-canvas:has(.ide-design-canvas-live[data-tool-mode='select']) .ide-design-tool-hud {
+  display: none;
+}
+
+/* Wire mode HUD: compact cue bar, no double border */
+.ide-design-canvas:has(.ide-design-canvas-live[data-tool-mode='wire']) .ide-design-tool-hud {
+  padding: 4px 10px;
+  min-height: 0;
+  font-size: 10px;
+  background: rgba(7,21,34,0.88);
+  border-color: rgba(56,189,248,0.2);
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+}
+
+/* ── Canvas: flex column so canvas-live fills remaining height ── */
+.ide-design-canvas {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ide-design-canvas-live {
+  flex: 1 1 auto;
+  min-height: 200px;
+}
+
+/* ── Canvas layout wrapper: fill its parent ── */
+.ide-design-layout-canvas-only {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Palette: 2-column chip grid for denser parts-bin feel ── */
+.ide-palette-chips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+/* Single-item groups fall back to single column */
+.ide-palette-group:has(.ide-palette-chips > :only-child) .ide-palette-chips,
+.ide-palette-group:has(.ide-palette-chips > :nth-child(1):last-child) .ide-palette-chips {
+  grid-template-columns: 1fr;
+}
+
+/* Chip: tighter + more tactile */
+.ide-palette-chip {
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  min-height: 28px;
+  justify-content: center;
+  text-align: center;
+  border-radius: 3px;
+}
+
+/* ── Palette group header: stronger divider ── */
+.ide-palette-group {
+  padding-top: 0;
+}
+
+.ide-palette-group + .ide-palette-group {
+  border-top: 1px solid rgba(255,255,255,0.05);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+/* ── Inspector sections: card-feel with subtle backgrounds ── */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector .ide-inspector-section {
+  background: rgba(8,16,28,0.45);
+  border-radius: 4px;
+  margin: 3px 6px;
+  overflow: hidden;
+}
+
+/* Remove double borders between section header and content */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector .ide-inspector-toggle {
+  background: rgba(12,24,40,0.6);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+/* Live Simulation section gets a subtle blue tint to stand out */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector .ide-inspector-section:has([accordion-id='live-sim']) {
+  border: 1px solid rgba(56,189,248,0.1);
+}
+
+/* ── Selection header: bigger, more presence ── */
+.ide-design-inspector-sel-header {
+  padding: 10px 12px;
+  min-height: 44px;
+}
+
+.ide-design-inspector-sel-type {
+  font-size: 12px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 16 — Design Surface: Canvas / HDL / Split workspace
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── View-mode toggle pill strip in toolbar ── */
+.ide-design-view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid rgba(56,189,248,0.22);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-right: 8px;
+}
+.ide-design-view-btn {
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(148,197,255,0.55);
+  background: rgba(7,21,34,0.7);
+  border: none;
+  cursor: pointer;
+  transition: background 100ms, color 100ms;
+  white-space: nowrap;
+}
+.ide-design-view-btn + .ide-design-view-btn {
+  border-left: 1px solid rgba(56,189,248,0.15);
+}
+.ide-design-view-btn.is-active {
+  background: rgba(56,189,248,0.16);
+  color: #e2f0ff;
+}
+.ide-design-view-btn:hover:not(.is-active) {
+  background: rgba(56,189,248,0.07);
+  color: rgba(200,230,255,0.85);
+}
+
+/* ── Workspace layout: canvas-only / hdl-only / split ── */
+/* Canvas-only (default): canvasWrap takes full width */
+.ide-design-workspace[data-design-view='canvas'] {
+  flex-direction: column;
+}
+.ide-design-workspace[data-design-view='canvas'] .ide-design-canvasWrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ide-design-workspace[data-design-view='canvas'] .ide-design-hdl-pane {
+  display: none;
+}
+
+/* HDL-only: hide canvas, HDL takes full space */
+.ide-design-workspace[data-design-view='hdl'] {
+  flex-direction: column;
+}
+.ide-design-workspace[data-design-view='hdl'] .ide-design-canvasWrap {
+  display: none;
+}
+.ide-design-workspace[data-design-view='hdl'] .ide-design-hdl-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Split: canvas left, HDL right — side by side */
+.ide-design-workspace[data-design-view='split'] {
+  flex-direction: row;
+  align-items: stretch;
+}
+.ide-design-workspace[data-design-view='split'] .ide-design-canvasWrap {
+  flex: 1 1 55%;
+  min-width: 280px;
+  border-right: 1px solid rgba(56,189,248,0.1);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.ide-design-workspace[data-design-view='split'] .ide-design-hdl-pane {
+  flex: 0 0 42%;
+  min-width: 220px;
+}
+
+/* ── HDL Pane ── */
+.ide-design-hdl-pane {
+  display: flex;
+  flex-direction: column;
+  background: #020810;
+  overflow: hidden;
+}
+
+.ide-design-hdl-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(7,21,34,0.96);
+  border-bottom: 1px solid rgba(56,189,248,0.12);
+  flex-shrink: 0;
+  min-height: 34px;
+  flex-wrap: wrap;
+}
+
+.ide-design-hdl-header-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(148,197,255,0.8);
+}
+
+.ide-design-hdl-header-lang {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border: 1px solid rgba(56,189,248,0.2);
+  border-radius: 3px;
+  color: rgba(56,189,248,0.65);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ide-design-sync-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(251,191,36,0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(251,191,36,0.3);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  animation: syncBadgePulse 1.8s ease-in-out infinite;
+}
+@keyframes syncBadgePulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
+/* Action buttons in the HDL header */
+.ide-design-hdl-action-btn {
+  padding: 3px 9px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 3px;
+  cursor: pointer;
+  background: rgba(56,189,248,0.12);
+  color: #7dd3fc;
+  border: 1px solid rgba(56,189,248,0.28);
+  transition: background 100ms;
+  white-space: nowrap;
+}
+.ide-design-hdl-action-btn:hover {
+  background: rgba(56,189,248,0.22);
+}
+.ide-design-hdl-action-btn.is-secondary {
+  background: rgba(255,255,255,0.04);
+  color: rgba(200,220,240,0.6);
+  border-color: rgba(255,255,255,0.1);
+}
+.ide-design-hdl-action-btn.is-secondary:hover {
+  background: rgba(255,255,255,0.09);
+  color: rgba(200,220,240,0.9);
+}
+
+/* The HDL textarea inherits most styles from .ide-code-textarea */
+.ide-design-hdl-textarea {
+  flex: 1 1 auto;
+  min-height: 0;
+  resize: none;
+  border-radius: 0;
+  border: none;
+  border-top: none;
+  background: #020810;
+  font-family: var(--rb-font-mono, 'IBM Plex Mono', monospace);
+  font-size: 12px;
+  line-height: 1.65;
+  color: rgba(200,230,220,0.88);
+  padding: 10px 14px;
+  caret-color: #38bdf8;
+}
+.ide-design-hdl-textarea:focus {
+  outline: none;
+  background: #030c14;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 17 — Layout authority: pane-row + min-height/overflow fix
+   Overrides Phase 16's workspace-level flex-row approach.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Workspace: flex column that propagates height downward */
+.ide-design-workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Pane row: the real layout switchboard — lives below the toolbar */
+.ide-design-pane-row {
+  display: flex;
+  flex-direction: column;   /* default: canvas-only, single column */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Split mode — side by side */
+.ide-design-pane-row[data-design-view='split'] {
+  flex-direction: row;
+}
+
+/* Each pane: flex child that can shrink and grow */
+.ide-design-pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;     /* prevents horizontal overflow in split */
+  min-height: 0;    /* prevents vertical overflow in column */
+  overflow: hidden;
+}
+
+/* Show/hide based on view mode */
+.ide-design-pane-row[data-design-view='canvas'] .ide-design-pane--hdl { display: none; }
+.ide-design-pane-row[data-design-view='hdl'] .ide-design-pane--canvas { display: none; }
+
+/* Split proportions: canvas slightly wider */
+.ide-design-pane-row[data-design-view='split'] .ide-design-pane--canvas {
+  flex: 1.35 1 0;
+}
+.ide-design-pane-row[data-design-view='split'] .ide-design-pane--hdl {
+  flex: 1 1 0;
+  border-left: 1px solid rgba(56,189,248,0.1);
+}
+
+/* Canvas pane internals: each layer must pass height down */
+.ide-design-pane--canvas .ide-design-canvasWrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.ide-design-pane--canvas .ide-design-layout-canvas-only {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ide-design-pane--canvas .ide-design-canvas {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ide-design-pane--canvas .ide-design-canvas-live {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* HDL pane internals */
+.ide-design-pane--hdl {
+  background: #020810;
+}
+.ide-design-pane--hdl .ide-design-hdl-header {
+  flex-shrink: 0;
+}
+.ide-design-pane--hdl .ide-design-hdl-textarea {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 0;   /* forces textarea to honor flex sizing in Safari */
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 17 – Hotfix: panel-body collapse fix
+   Root cause: panel-body has grid-template-rows: auto auto minmax(0,1fr)
+   but workspace is its only child → lands in the first 'auto' row.
+   With min-height:0 on everything the workspace collapses to toolbar
+   height only. Fix: override panel-body to flex column so workspace
+   becomes a flex child that fills the full allocated height.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Step 1: panel-body → flex column so workspace fills it */
+.ide-surface-shell[data-ide-mode-marker='design'] .ide-main-area .ide-panel-body {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  gap: 0 !important;
+  padding: 0 !important;
+}
+
+/* Step 2: workspace fills panel-body */
+.ide-surface-shell[data-ide-mode-marker='design'] .ide-main-area .ide-panel-body > * {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Step 3: guarantee pane visibility — avoid any stale/conflicting display rules */
+.ide-design-pane-row[data-design-view] .ide-design-pane {
+  display: flex !important;
+}
+.ide-design-pane-row[data-design-view='canvas'] .ide-design-pane--hdl {
+  display: none !important;
+}
+.ide-design-pane-row[data-design-view='hdl'] .ide-design-pane--canvas {
+  display: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 18 — UX cleanup: toolbar CTAs, canvas titlebar,
+   live-sim hero, HDL code-editor look, split 60/40
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Phase 18A: Toolbar CTA group ── */
+.ide-toolbar-cta-group {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-1);
+  padding: 0 var(--ide-space-1);
+  border-left: 1px solid rgba(255,255,255,0.07);
+  margin-left: var(--ide-space-1);
+}
+.ide-toolbar-cta-group .ide-button.is-sm {
+  padding: 3px 10px;
+  font-size: 11px;
+  min-height: 24px;
+}
+
+/* ── Phase 18B: Canvas title strip ── */
+.ide-design-canvas-titlebar {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  padding: 4px var(--ide-space-2);
+  background: rgba(0,0,0,0.22);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+  min-height: 28px;
+}
+.ide-design-canvas-titlebar-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(200,220,255,0.7);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ide-design-canvas-titlebar-stat {
+  font-size: 10px;
+  font-family: var(--rb-font-mono);
+  color: rgba(140,170,200,0.55);
+  background: rgba(255,255,255,0.04);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+/* ── Phase 18C: Live Simulation hero card ── */
+.ide-inspector-section[data-testid='ide-design-live-sim-section'][data-open='true'] {
+  background: rgba(14,30,54,0.6);
+  border-radius: var(--ide-radius-m, 6px);
+  border: 1px solid rgba(56,189,248,0.18);
+  margin-bottom: var(--ide-space-2);
+}
+.ide-inspector-section[data-testid='ide-design-live-sim-section'][data-open='true'] .ide-inspector-toggle {
+  border-bottom: 1px solid rgba(56,189,248,0.1);
+}
+.ide-inspector-section[data-testid='ide-design-live-sim-section'] .ide-button-primary,
+.ide-inspector-section[data-testid='ide-design-live-sim-section'] .ide-button-secondary {
+  padding: 6px 16px;
+  font-size: 12px;
+}
+
+/* ── Phase 18D: HDL pane — code editor look ── */
+.ide-design-pane--hdl .ide-design-hdl-header {
+  background: rgba(6,14,26,0.85);
+}
+.ide-design-hdl-header-title {
+  font-family: var(--rb-font-mono);
+  font-size: 12px;
+  color: rgba(180,210,255,0.9);
+}
+.ide-code-textarea.ide-design-hdl-textarea {
+  font-family: var(--rb-font-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  tab-size: 2;
+  background: rgba(4,10,22,0.92);
+  color: rgba(200,225,255,0.88);
+  border-top: none;
+  resize: none;
+}
+
+/* ── Phase 18E: Split 60/40 — override Phase 17 proportions ── */
+.ide-design-pane-row[data-design-view='split'] .ide-design-pane--canvas {
+  flex: 3 1 0;
+}
+.ide-design-pane-row[data-design-view='split'] .ide-design-pane--hdl {
+  flex: 2 1 0;
+  border-left: 1px solid rgba(56,189,248,0.12);
+  border-top: none;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 19 — Verify UX: single hierarchy, waveform hero,
+   status strip, control bar, typography discipline
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Phase 19A: Status strip — status-first layout ── */
+.ide-verify-status-strip {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 5px var(--ide-space-2);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+  min-height: 36px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.ide-verify-strip-sep {
+  margin: 0 6px;
+  color: rgba(255,255,255,0.2);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.ide-verify-strip-meta {
+  font-size: 11px;
+  font-family: var(--rb-font-mono);
+  color: rgba(160,185,215,0.7);
+  flex-shrink: 0;
+}
+.ide-verify-strip-pass {
+  color: rgba(74,222,128,0.85);
+}
+.ide-verify-strip-fail {
+  color: rgba(248,113,113,0.9);
+  font-weight: 600;
+}
+.ide-verify-strip-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-1);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ── Phase 19A: Kit tip strip — collapsible one-liner ── */
+.ide-verify-kit-tip {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  background: rgba(14,25,45,0.5);
+  flex-shrink: 0;
+}
+.ide-verify-kit-tip-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-1);
+  width: 100%;
+  padding: 5px var(--ide-space-2);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 11px;
+  color: rgba(148,180,220,0.7);
+}
+.ide-verify-kit-tip-toggle:hover {
+  color: rgba(180,210,240,0.9);
+  background: rgba(255,255,255,0.03);
+}
+.ide-verify-kit-tip-icon {
+  font-size: 11px;
+  color: rgba(96,165,250,0.7);
+  flex-shrink: 0;
+}
+.ide-verify-kit-tip-arrow {
+  margin-left: auto;
+  font-size: 9px;
+  opacity: 0.5;
+}
+.ide-verify-kit-tip-body {
+  margin: 0;
+  padding: var(--ide-space-1) var(--ide-space-2) var(--ide-space-2) var(--ide-space-3);
+  list-style: disc;
+  display: grid;
+  gap: 3px;
+}
+.ide-verify-kit-tip-body li {
+  font-size: 11px;
+  color: rgba(160,190,225,0.75);
+  margin: 0;
+}
+
+/* ── Phase 19B: Waveform control bar ── */
+.ide-verify-waveform-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 4px var(--ide-space-2);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.18);
+  flex-shrink: 0;
+  min-height: 34px;
+  overflow: hidden;
+}
+.ide-verify-wfbar-group {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-1);
+  flex-shrink: 0;
+}
+.ide-verify-wfbar-center {
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 var(--ide-space-2);
+  border-left: 1px solid rgba(255,255,255,0.06);
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+.ide-verify-wfbar-right {
+  padding-left: var(--ide-space-2);
+}
+.ide-verify-wfbar-meta {
+  font-size: 10px;
+  color: rgba(140,165,200,0.5);
+  font-family: var(--rb-font-mono);
+}
+
+/* ── Phase 19C: Left dock — compact navigation feel ── */
+.ide-verify-left-dock .ide-design-subheader h3 {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(160,180,210,0.55);
+  font-weight: 600;
+  margin: 0;
+}
+.ide-verify-left-dock .ide-design-subheader {
+  padding: 8px var(--ide-space-2) 4px;
+  border-bottom: none;
+}
+.ide-verify-left-dock .ide-signal-row {
+  font-size: 12px;
+  padding: 4px var(--ide-space-2);
+}
+.ide-verify-left-dock .ide-callout {
+  margin: var(--ide-space-1) var(--ide-space-2);
+  font-size: 11px;
+}
+
+/* ── Phase 19D: Typography discipline ── */
+/* Major block spacing — waveform + tab panel separation */
+.ide-verify-workbench-v2 > * + * {
+  margin-top: 0;
+}
+/* Tab bar tighter padding */
+.ide-verify-tab-bar {
+  background: rgba(0,0,0,0.15);
+}
+/* Tab panel max-height increased — more room for content */
+.ide-verify-tab-panel {
+  max-height: 400px;
+}
+/* Mismatch table: cleaner row colors */
+.ide-verify-workbench-v2 .ide-table tr.is-selected td {
+  background: rgba(56,189,248,0.08);
+}
+.ide-verify-workbench-v2 .ide-table tr.is-fail td {
+  background: rgba(248,113,113,0.06);
+}
+/* Section headers: uniform 10px uppercase */
+.ide-verify-workbench-v2 .ide-section-header h3 {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(160,185,215,0.55);
+  font-weight: 600;
+}
+/* Empty state */
+.ide-verify-panel .ide-panel-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ide-verify-panel .ide-panel-body > .ide-verify-kit-tip,
+.ide-verify-panel .ide-panel-body > .ide-verify-status-strip {
+  flex-shrink: 0;
+}
+.ide-verify-panel .ide-panel-body > .ide-verify-workbench,
+.ide-verify-panel .ide-panel-body > .ide-empty-stack {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Phase 20 — PASS hero · mismatch table calm · waveform framing ·
+   "Create Test Case" subheader · color + typography discipline
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Phase 20A: PASS hero panel ── */
+.ide-verify-pass-hero {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ide-space-1);
+  padding: var(--ide-space-2) var(--ide-space-3);
+  background: linear-gradient(135deg, rgba(16,42,28,0.92) 0%, rgba(8,28,18,0.96) 100%);
+  border-bottom: 1px solid rgba(46,196,182,0.28);
+  border-top: 1px solid rgba(46,196,182,0.14);
+}
+.ide-verify-pass-hero-body {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-3);
+  flex-wrap: wrap;
+}
+.ide-verify-pass-hero-icon {
+  font-size: 28px;
+  line-height: 1;
+  color: #2ec4b6;
+  flex-shrink: 0;
+}
+.ide-verify-pass-hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ide-verify-pass-hero-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #a7f3d0;
+  letter-spacing: 0.01em;
+}
+.ide-verify-pass-hero-meta {
+  font-size: 11px;
+  color: rgba(46,196,182,0.65);
+}
+.ide-verify-pass-hero-actions {
+  display: flex;
+  gap: var(--ide-space-2);
+  flex-shrink: 0;
+}
+.ide-verify-pass-hero-hash {
+  font-family: var(--rb-font-mono);
+  font-size: 10px;
+  color: rgba(46,196,182,0.35);
+  padding: 0;
+  background: none;
+}
+
+/* Include pass hero in panel flex stack */
+.ide-verify-panel .ide-panel-body > .ide-verify-pass-hero {
+  flex-shrink: 0;
+}
+
+/* ── Phase 20B: Mismatch table — calm rows (left-border accent only) ── */
+.ide-table tbody tr[data-status="fail"] {
+  background: transparent;
+  border-left: 3px solid rgba(255,107,107,0.55);
+}
+.ide-table tbody tr[data-status="fail"] td {
+  color: rgba(230,180,180,0.85);
+}
+.ide-table tbody tr.ide-export-row-highlight {
+  background: rgba(56,189,248,0.09);
+  border-left: 3px solid rgba(56,189,248,0.65);
+}
+.ide-table tbody tr.ide-export-row-highlight td {
+  color: #e2eeff;
+}
+
+/* ── Phase 20C: "Create Test Case" subheader in inspector ── */
+.ide-verify-section-subheader {
+  margin: var(--ide-space-2) 0 var(--ide-space-1);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(140,165,200,0.5);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding-bottom: 4px;
+}
+
+/* ── Phase 20D: Waveform stage frame — oscilloscope-instrument feel ── */
+.ide-verify-waveform-panel {
+  border-color: rgba(30,50,80,0.7) !important;
+  background: rgba(2,8,16,0.92);
+}
+.ide-waveform-outer {
+  border-color: rgba(24,44,72,0.8) !important;
+  background: #020810;
+}
+/* Scope label color — match steel-blue instrument theme */
+.ide-waveform-outer::after {
+  color: rgba(56,150,200,0.22) !important;
+}
+
+/* ── Phase 20E: Status strip breathing room ── */
+.ide-verify-status-strip {
+  gap: var(--ide-space-2);
+  padding: 8px var(--ide-space-3);
+}
+.ide-verify-strip-meta {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(160,185,215,0.5);
+  letter-spacing: 0.03em;
+}
+.ide-verify-strip-pass {
+  color: rgba(46,196,182,0.7);
+}
+.ide-verify-strip-fail {
+  color: rgba(252,107,107,0.8);
+}
+.ide-verify-strip-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-1);
+}
+
+/* ── Phase 20F: Left dock signal list — dim unselected ── */
+.ide-verify-left-dock .ide-signal-list .ide-signal-row:not(.is-active) {
+  opacity: 0.7;
+}
+.ide-verify-left-dock .ide-signal-list .ide-signal-row:hover {
+  opacity: 1;
+}
+.ide-verify-left-dock .ide-design-subheader h3 {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(140,165,200,0.6);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Phase 21/22 — Instrument deck (65/35) · Oscilloscope stage ·
+   TruthTablePane · Supporting strip
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── workbench is a flex column; deck fills remaining height ── */
+.ide-verify-workbench {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.ide-verify-workbench > .ide-verify-instrument-deck {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* ── instrument deck: 65/35 column grid ── */
+.ide-verify-instrument-deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(300px, 1fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── oscilloscope stage (left column) ── */
+.ide-verify-oscilloscope-stage {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: clamp(440px, 55vh, 560px);
+  min-height: 440px;
+  border-right: 1px solid rgba(24,44,72,0.7);
+  background: rgba(2,8,16,0.94);
+}
+.ide-verify-oscilloscope-stage .ide-waveform-outer {
+  flex: 1 1 auto;
+  min-height: 0;
+  border-color: rgba(20,40,68,0.8) !important;
+}
+
+/* ── supporting strip (tab bar + panels below deck) ── */
+.ide-verify-supporting-strip {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  max-height: 220px;
+  overflow: hidden;
+}
+.ide-verify-supporting-strip .ide-verify-tab-panel {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* ── Truth Table Pane ── */
+.ide-truth-table-pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgba(4,10,18,0.88);
+}
+.ide-truth-table-header {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  padding: 7px var(--ide-space-2);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+  background: rgba(6,14,26,0.92);
+}
+.ide-truth-table-title {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(56,150,200,0.5);
+  flex: 1 1 auto;
+}
+.ide-truth-table-mode-toggle {
+  display: flex;
+  gap: 2px;
+}
+.ide-truth-table-mode-btn {
+  padding: 2px 8px;
+  font-size: 10px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 3px;
+  color: rgba(160,185,215,0.6);
+  cursor: pointer;
+  transition: background 0.13s, border-color 0.13s;
+}
+.ide-truth-table-mode-btn.is-active {
+  background: rgba(56,150,200,0.14);
+  border-color: rgba(56,150,200,0.32);
+  color: rgba(200,225,255,0.9);
+}
+.ide-truth-table-mode-btn:hover:not(.is-active) {
+  background: rgba(255,255,255,0.04);
+}
+.ide-truth-table-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+.ide-truth-table-scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.ide-truth-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--rb-font-mono);
+  font-size: 11px;
+}
+.ide-truth-table-thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(6,14,26,0.95);
+}
+.ide-truth-table-th {
+  padding: 5px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(140,165,200,0.5);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  white-space: nowrap;
+  text-align: left;
+}
+.ide-truth-table-th-tick { width: 46px; }
+.ide-truth-table-tr { cursor: pointer; }
+.ide-truth-table-tr:hover { background: rgba(56,189,248,0.05); }
+.ide-truth-table-tr.is-selected { background: rgba(56,189,248,0.09); }
+.ide-truth-table-tr.is-fail { border-left: 2px solid rgba(255,107,107,0.45); }
+.ide-truth-table-td {
+  padding: 3px 8px;
+  color: rgba(200,220,240,0.7);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  vertical-align: middle;
+}
+.ide-truth-table-td-tick {
+  vertical-align: top;
+  padding-top: 4px;
+}
+.ide-truth-table-tick-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 10px;
+  color: rgba(140,165,200,0.65);
+  cursor: pointer;
+  font-family: var(--rb-font-mono);
+  transition: background 0.12s;
+}
+.ide-truth-table-tick-btn.is-active,
+.ide-truth-table-tick-btn:hover {
+  background: rgba(56,150,200,0.18);
+  border-color: rgba(56,150,200,0.28);
+  color: rgba(200,225,255,0.9);
+}
+.ide-truth-table-signal {
+  font-size: 10px;
+  color: rgba(170,195,220,0.78);
+}
+.ide-truth-table-td-value { text-align: center; }
+.is-actual-fail {
+  color: rgba(252,107,107,0.85);
+  font-weight: 600;
+}
+.ide-truth-table-empty,
+.ide-truth-table-unavailable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ide-space-2);
+  height: 100%;
+  padding: var(--ide-space-3);
+  text-align: center;
+}
+.ide-truth-table-unavailable-icon {
+  font-size: 26px;
+  opacity: 0.25;
+}
+.ide-truth-table-empty-msg,
+.ide-truth-table-unavailable-msg {
+  font-size: 11px;
+  color: rgba(160,185,215,0.45);
+}
+.ide-truth-table-unavailable-sub {
+  font-size: 10px;
+  color: rgba(140,165,200,0.3);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Phase 23 — Oscilloscope bezel · Tab strip weight · Color discipline
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Oscilloscope bezel + inner shadow ── */
+.ide-verify-oscilloscope-stage {
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.04),
+    inset 0 1px 0 rgba(56,189,248,0.04),
+    inset 0 0 32px rgba(1,5,14,0.6);
+}
+/* Scope header area (waveform bar) acts as the instrument panel */
+.ide-verify-oscilloscope-stage > .ide-verify-waveform-bar {
+  background: rgba(4,10,20,0.9);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+/* Waveform empty state centered in stage */
+.ide-verify-waveform-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  padding: var(--ide-space-3);
+  color: rgba(140,165,200,0.35);
+  font-size: 12px;
+}
+
+/* ── Tab strip: lighter weight + blue underline active ── */
+.ide-verify-tab-bar {
+  border-top: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  background: rgba(4,10,20,0.7);
+}
+.ide-verify-tab-btn {
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 5px var(--ide-space-2);
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(160,185,215,0.55);
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+.ide-verify-tab-btn:hover {
+  color: rgba(200,220,240,0.8);
+}
+.ide-verify-tab-btn.is-active {
+  color: rgba(200,220,240,0.95);
+  border-bottom-color: rgba(56,189,248,0.7);
+  background: transparent;
+}
+.ide-verify-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  padding: 0 4px;
+  min-width: 16px;
+  height: 14px;
+  font-size: 9px;
+  font-weight: 700;
+  background: rgba(255,107,107,0.2);
+  color: rgba(252,107,107,0.9);
+  border-radius: 7px;
+  vertical-align: middle;
+}
+
+/* ── Truth table: tabular numbers + monospace column alignment ── */
+.ide-truth-table-td-value {
+  text-align: center;
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+/* Expected column dimmed on fail rows (Actual takes visual priority) */
+.ide-truth-table-tr.is-fail .ide-truth-table-td-value:nth-child(3) {
+  color: rgba(160,185,215,0.4);
+}
+
+/* ── Color discipline: reserve teal for action buttons only ── */
+/* Container borders use steel-blue or near-black, not teal */
+.ide-verify-waveform-panel,
+.ide-verify-waveform-hero {
+  border-color: rgba(24,44,72,0.7) !important;
+}
+/* Waveform legend: steel-blue tokens */
+.ide-verify-waveform-legend {
+  font-size: 10px;
+  padding: 4px var(--ide-space-2);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.ide-verify-legend-pass { color: rgba(46,196,182,0.7); }
+.ide-verify-legend-fail { color: rgba(252,107,107,0.8); }
+.ide-verify-legend-select { color: rgba(56,189,248,0.8); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Phase 24 — Console frame · 70/30 deck · Taller scope ·
+   Scope header · Drawer toggle · Actual pill · Fix button
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Console frame — binds scope + truth table into one visual unit ── */
+.ide-verify-console-frame {
+  border: 1px solid rgba(20,40,70,0.9);
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(2,6,14,0.96);
+}
+.ide-verify-panel .ide-panel-body > .ide-verify-workbench > .ide-verify-console-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ide-verify-console-frame > .ide-verify-instrument-deck {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* ── 70/30 deck + taller scope ── */
+.ide-verify-instrument-deck {
+  grid-template-columns: minmax(0, 2.35fr) minmax(260px, 1fr);
+}
+.ide-verify-oscilloscope-stage {
+  height: clamp(520px, 62vh, 720px);
+  min-height: 520px;
+}
+
+/* ── Oscilloscope instrument header (OSCILLOSCOPE label + chips) ── */
+.ide-verify-scope-header {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  padding: 5px var(--ide-space-2);
+  background: rgba(3,8,18,0.95);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+  min-height: 28px;
+}
+.ide-verify-scope-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(56,150,200,0.45);
+  flex-shrink: 0;
+}
+.ide-verify-scope-signal-chip {
+  font-family: var(--rb-font-mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  background: rgba(56,189,248,0.1);
+  border: 1px solid rgba(56,189,248,0.2);
+  border-radius: 3px;
+  color: rgba(56,189,248,0.8);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ide-verify-scope-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  margin-left: auto;
+}
+.ide-verify-scope-tick {
+  font-size: 10px;
+  color: rgba(56,189,248,0.6);
+  background: rgba(56,189,248,0.07);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.ide-verify-scope-fail-index {
+  font-size: 10px;
+  color: rgba(252,107,107,0.7);
+  font-weight: 600;
+}
+
+/* ── Supporting strip drawer ── */
+.ide-verify-supporting-strip {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  overflow: hidden;
+  max-height: 44px;
+  transition: max-height 0.18s ease;
+}
+.ide-verify-supporting-strip.is-open {
+  max-height: 260px;
+}
+.ide-verify-drawer-toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0 var(--ide-space-2);
+  height: 44px;
+  background: rgba(4,10,20,0.85);
+  border: none;
+  cursor: pointer;
+  color: rgba(160,185,215,0.7);
+  flex-shrink: 0;
+}
+.ide-verify-drawer-toggle:hover {
+  background: rgba(56,189,248,0.04);
+}
+.ide-verify-drawer-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  flex: 1 1 auto;
+  text-align: left;
+}
+.ide-verify-drawer-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  background: rgba(255,107,107,0.18);
+  color: rgba(252,107,107,0.9);
+  border-radius: 8px;
+}
+.ide-verify-drawer-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(200,220,240,0.5);
+  display: none;  /* hidden; tabs serve as labels */
+}
+.ide-verify-drawer-tabs {
+  display: flex;
+  gap: 2px;
+}
+.ide-verify-drawer-tab {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  color: rgba(160,185,215,0.5);
+  cursor: pointer;
+  transition: color 0.12s;
+}
+.ide-verify-drawer-tab:hover { color: rgba(200,220,240,0.8); }
+.ide-verify-drawer-tab.is-active {
+  color: rgba(200,220,240,0.95);
+  background: rgba(56,189,248,0.07);
+}
+.ide-verify-drawer-chevron {
+  font-size: 11px;
+  color: rgba(140,165,200,0.4);
+  flex-shrink: 0;
+}
+.ide-verify-drawer-body {
+  flex: 1 1 auto;
+  overflow: hidden;      /* NO scroll here — tab-panel is the only scroll container */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Truth table: actual red pill ── */
+.ide-truth-table-actual-pill {
+  display: inline-block;
+  padding: 0 5px;
+  background: rgba(255,85,85,0.18);
+  border: 1px solid rgba(255,85,85,0.3);
+  border-radius: 4px;
+  color: rgba(255,120,120,0.95);
+  font-weight: 700;
+  line-height: 1.6;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* ── Truth table: Fix → button ── */
+.ide-truth-table-th-fix { width: 40px; }
+.ide-truth-table-td-fix { width: 40px; padding: 2px 4px; }
+.ide-truth-table-fix-btn {
+  font-size: 9px;
+  padding: 2px 5px;
+  background: transparent;
+  border: 1px solid rgba(255,107,107,0.3);
+  border-radius: 3px;
+  color: rgba(252,107,107,0.7);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+.ide-truth-table-fix-btn:hover {
+  background: rgba(255,107,107,0.12);
+  color: rgba(255,130,130,0.95);
+}
+
+/* ── Mismatch redirect message ── */
+.ide-verify-mismatch-redirect {
+  padding: var(--ide-space-2) var(--ide-space-3);
+}
+.ide-verify-mismatch-redirect .ide-copy {
+  color: rgba(160,185,215,0.55);
+  font-size: 11px;
+}
+
+/* ── Workbench flex: console-frame is the flex:1 child ── */
+.ide-verify-workbench {
+  overflow: hidden;
+}
+.ide-verify-panel .ide-panel-body > .ide-verify-workbench {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Phase 25 — Scope dominance · Truth table instrument feel ·
+   Drawer hint · Inspector calm
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Phase 25A: Scope height — taller, claims more vertical real estate ── */
+.ide-verify-oscilloscope-stage {
+  height: clamp(560px, 66vh, 760px);
+  min-height: 560px;
+}
+
+/* ── Phase 25B: Waveform control bar — tighter, less "dashboard" ── */
+.ide-verify-waveform-bar {
+  min-height: 30px;
+  padding: 2px var(--ide-space-2);
+  gap: var(--ide-space-1);
+}
+.ide-verify-zoom-btn {
+  padding: 1px 7px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.ide-verify-zoom-label {
+  font-size: 9px;
+}
+.ide-verify-fail-nav-position {
+  font-size: 10px;
+}
+.ide-verify-wfbar-meta {
+  font-size: 10px;
+}
+/* Scrubber is compact — shrink the tick badge */
+.ide-verify-scrubber-field code {
+  font-size: 10px;
+  min-width: 22px;
+}
+
+/* ── Phase 25C: Truth table — instrument feel, not "another list" ── */
+
+/* Row max height */
+.ide-truth-table-tr {
+  height: 28px;
+  max-height: 28px;
+}
+
+/* Vertical column separators */
+.ide-truth-table-td {
+  border-right: 1px solid rgba(255,255,255,0.04);
+}
+.ide-truth-table-td:last-child {
+  border-right: none;
+}
+.ide-truth-table-th {
+  border-right: 1px solid rgba(255,255,255,0.04);
+}
+.ide-truth-table-th:last-child {
+  border-right: none;
+}
+
+/* Exp / Act columns — bigger, dominant, tabular */
+.ide-truth-table-td-value {
+  font-size: 13px;
+  font-weight: 700;
+  font-feature-settings: "tnum";
+  color: rgba(220,235,255,0.9);
+  min-width: 38px;
+  text-align: center;
+}
+
+/* Actual pill — larger, saturated */
+.ide-truth-table-actual-pill {
+  padding: 1px 8px;
+  font-size: 13px;
+  font-weight: 800;
+  background: rgba(255,60,60,0.22);
+  border-color: rgba(255,85,85,0.4);
+  color: rgba(255,130,130,1);
+}
+
+/* Tick cell sticky + bolder group header feel */
+.ide-truth-table-td-tick {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: rgba(4,12,24,0.95);
+  border-right: 1px solid rgba(56,189,248,0.12);
+}
+.ide-truth-table-tick-btn {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(56,189,248,0.75);
+}
+.ide-truth-table-tick-btn.is-active {
+  color: rgba(56,189,248,1);
+}
+/* Signal name — mono, dims vs exp/act */
+.ide-truth-table-signal {
+  font-size: 10px;
+  color: rgba(160,185,215,0.65);
+}
+
+/* ── Phase 25D: Drawer summary hint when collapsed ── */
+.ide-verify-drawer-hint {
+  font-size: 10px;
+  color: rgba(200,220,240,0.42);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ide-verify-drawer-hint code {
+  font-size: 10px;
+  color: rgba(252,107,107,0.75);
+  background: none;
+}
+
+/* ── Phase 25E: Inspector tick snapshot (no full table chrome) ── */
+.ide-verify-tick-snapshot {
+  padding: 0 0 var(--ide-space-1);
+}
+.ide-verify-tick-snapshot .ide-kv-row {
+  padding: 3px 0;
+}
+.ide-verify-tick-snapshot .ide-kv-row code {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(56,189,248,0.85);
+}
+
+/* ── Phase 25F: Oracle baseline badge ── */
+.ide-verify-oracle-badge {
+  display: inline-block;
+  margin-top: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(56,189,248,0.1);
+  border: 1px solid rgba(56,189,248,0.2);
+  color: rgba(56,189,248,0.65);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 26 — Console removal
+   The console row is dead weight. Zero it out at the CSS layer so
+   it claims no space even if JS layout state disagrees.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Override the CSS variables that drive the grid row size */
+:root {
+  --ide-console-collapsed-h: 0px;
+  --ide-console-default-h: 0px;
+}
+
+/* Collapsed console: zero dimensions, no border, no padding */
+.ide-workbench-console.is-collapsed {
+  min-height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Hide the horizontal resize divider when console has no height */
+.ide-workbench-shell:has(.ide-workbench-console.is-collapsed)
+  .ide-workbench-divider-horizontal {
+  height: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 27 — Hardware bring-up instrument
+   ════════════════════════════════════════════════════════════════ */
+
+/* 27A: Mode toggle strip */
+.ide-hw-mode-toggle {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.15);
+  padding: 0 var(--ide-space-2);
+  margin-bottom: var(--ide-space-1);
+}
+.ide-hw-mode-btn {
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(160,190,210,0.55);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 100ms, border-color 100ms;
+}
+.ide-hw-mode-btn.is-active {
+  color: #e2eeff;
+  border-bottom-color: rgba(56,189,248,0.65);
+}
+.ide-hw-mode-btn:hover:not(.is-active) {
+  color: rgba(200,220,240,0.8);
+}
+
+/* 27B: Bring-Up step card */
+.ide-hw-bringup-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ide-space-1);
+}
+.ide-hw-step-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--ide-space-1) 0;
+}
+.ide-hw-step-counter {
+  font-size: 11px;
+  color: var(--ide-text-soft);
+}
+.ide-hw-step-tick {
+  font-size: 11px;
+  color: rgba(56,189,248,0.75);
+}
+.ide-hw-step-nav {
+  display: flex;
+  gap: var(--ide-space-1);
+  padding-top: var(--ide-space-1);
+}
+
+/* 27C: Signal Event Log */
+.ide-hw-event-log {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ide-hw-event-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ide-space-1);
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 11px;
+}
+.ide-hw-event-tick {
+  flex-shrink: 0;
+  min-width: 32px;
+  color: rgba(56,189,248,0.6);
+  font-size: 10px;
+}
+.ide-hw-event-signals {
+  color: var(--ide-text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 28 — Hardware validation tool
+   ════════════════════════════════════════════════════════════════ */
+
+/* 28A: Assertion summary in bring-up dock */
+.ide-hw-assert-summary {
+  padding: var(--ide-space-1) 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.ide-hw-assert-fail-count {
+  color: #fca5a5;
+}
+.ide-hw-assert-pass-count {
+  color: rgba(61, 186, 110, 0.9);
+}
+
+/* 28B: Assertion log rows in bring-up inspector */
+.ide-hw-assert-log {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ide-hw-assert-row {
+  display: grid;
+  grid-template-columns: 36px 52px 18px 1fr;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 10px;
+}
+.ide-hw-assert-row.is-pass { opacity: 0.6; }
+.ide-hw-assert-row.is-fail { background: rgba(255,80,80,0.06); }
+.ide-hw-assert-row.is-nodata { opacity: 0.4; }
+.ide-hw-assert-tick { color: rgba(56,189,248,0.6); font-size: 9px; }
+.ide-hw-assert-signal { color: var(--ide-text-soft); }
+.ide-hw-assert-exp { color: var(--ide-text-muted); text-align: center; }
+.ide-hw-assert-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.is-pass .ide-hw-assert-badge { color: rgba(61,186,110,0.75); }
+.is-fail .ide-hw-assert-badge { color: #fca5a5; }
+.is-nodata .ide-hw-assert-badge { color: var(--ide-text-muted); }
+
+/* 28C: Confidence checklist */
+.ide-hw-confidence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--ide-space-1) 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: var(--ide-space-2);
+}
+.ide-hw-confidence-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.ide-hw-confidence-icon {
+  font-size: 11px;
+  width: 14px;
+  flex-shrink: 0;
+}
+.ide-hw-confidence-row.is-pass .ide-hw-confidence-icon { color: rgba(61,186,110,0.9); }
+.ide-hw-confidence-row.is-pending .ide-hw-confidence-icon { color: rgba(255,255,255,0.2); }
+.ide-hw-confidence-row.is-pass .ide-hw-confidence-label { color: var(--ide-text-soft); }
+.ide-hw-confidence-row.is-pending .ide-hw-confidence-label { color: rgba(255,255,255,0.3); }
+
+/* 28D: Proof certificate slab */
+.ide-hw-cert-slab {
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(56,189,248,0.15);
+  border-radius: 4px;
+  padding: var(--ide-space-1) var(--ide-space-2);
+  margin-bottom: var(--ide-space-2);
+  font-family: var(--rb-font-mono, monospace);
+}
+.ide-hw-cert-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  padding: 2px 0;
+  font-size: 10px;
+}
+.ide-hw-cert-key {
+  flex-shrink: 0;
+  width: 48px;
+  color: rgba(56,189,248,0.55);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+.ide-hw-cert-val {
+  color: rgba(200,230,255,0.75);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 29 — Deterministic proof engine
+   ════════════════════════════════════════════════════════════════ */
+
+/* 29A: Board wrap — positions overlay relative to board */
+.ide-hw-board-wrap {
+  position: relative;
+}
+
+/* 29B: Proof verdict overlay */
+.ide-hw-proof-verdict {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  pointer-events: none;
+  animation: hwVerdictIn 280ms ease forwards;
+}
+@keyframes hwVerdictIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ide-hw-proof-verdict-label {
+  font-family: var(--rb-font-mono, monospace);
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  text-shadow: 0 0 40px currentColor;
+}
+.ide-hw-proof-verdict.is-valid .ide-hw-proof-verdict-label { color: rgba(61, 186, 110, 0.95); }
+.ide-hw-proof-verdict.is-invalid .ide-hw-proof-verdict-label { color: #fca5a5; }
+.ide-hw-proof-verdict.is-pending .ide-hw-proof-verdict-label { color: rgba(180, 200, 220, 0.4); }
+.ide-hw-proof-verdict-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-family: var(--rb-font-mono, monospace);
+}
+.ide-hw-proof-verdict-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 10px;
+}
+
+/* 29C: Tick badge in mode toggle bar */
+.ide-hw-tick-badge {
+  margin-left: auto;
+  padding: 0 8px;
+  font-family: var(--rb-font-mono, monospace);
+  font-size: 10px;
+  color: rgba(56, 189, 248, 0.55);
+  letter-spacing: 0.04em;
+  align-self: center;
+}
+
+/* 29D: Formal assertion notation */
+.ide-hw-assert-formal-row {
+  padding: 1px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+.ide-hw-assert-formal {
+  font-family: var(--rb-font-mono, monospace);
+  font-size: 10px;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ide-hw-assert-formal.is-pass   { color: rgba(61, 186, 110, 0.7); }
+.ide-hw-assert-formal.is-fail   { color: #fca5a5; }
+.ide-hw-assert-formal.is-nodata { color: rgba(255, 255, 255, 0.25); }
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 30 — Hardware: live feed + board highlights
+   ════════════════════════════════════════════════════════════════ */
+
+/* 30A: Change feed event row */
+.ide-hw-event-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 10px;
+}
+.ide-hw-event-tick { color: rgba(56,189,248,0.55); font-family: var(--rb-font-mono, monospace); min-width: 32px; flex-shrink: 0; }
+.ide-hw-event-dir  { flex-shrink: 0; width: 12px; font-size: 9px; }
+.ide-hw-event-dir.is-input  { color: rgba(56,189,248,0.7); }
+.ide-hw-event-dir.is-output { color: rgba(61,186,110,0.7); }
+.ide-hw-event-label  { font-family: var(--rb-font-mono, monospace); color: var(--ide-text-soft); }
+.ide-hw-event-change { font-family: var(--rb-font-mono, monospace); color: var(--ide-text-muted); margin-left: auto; }
+
+/* 30B: Bring-Up step instruction */
+.ide-hw-step-instruction {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(56,189,248,0.85);
+  padding: var(--ide-space-1) 0 0;
+  margin: 0;
+  font-family: var(--rb-font-mono, monospace);
+}
+
+/* 30C: Proof HUD repositioned (override Phase 29 centering) */
+.ide-hw-proof-verdict {
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 8px;
+  gap: 6px;
+}
+.ide-hw-proof-verdict-label {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+.ide-hw-proof-verdict-meta {
+  padding: 6px 10px;
+}
+.ide-hw-proof-verdict-row {
+  font-size: 9px;
+  gap: 8px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 31 — Export: build system UI
+   ════════════════════════════════════════════════════════════════ */
+
+/* 31A: Two-column layout */
+.ide-export-layout {
+  display: grid;
+  grid-template-columns: 1fr 268px;
+  gap: var(--ide-space-3);
+  align-items: start;
+}
+.ide-export-left-col  { display: flex; flex-direction: column; gap: var(--ide-space-3); min-width: 0; }
+.ide-export-right-col { display: flex; flex-direction: column; gap: var(--ide-space-2); }
+
+/* 31B: Build gate stack */
+.ide-export-gate-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: var(--ide-space-2);
+}
+.ide-export-gate-row {
+  display: grid;
+  grid-template-columns: 58px 110px 1fr auto;
+  align-items: center;
+  gap: var(--ide-space-2);
+  padding: 7px var(--ide-space-2);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 11px;
+}
+.ide-export-gate-row:last-child { border-bottom: none; }
+.ide-export-gate-row.is-pass   { background: rgba(61,186,110,0.04); }
+.ide-export-gate-row.is-fail   { background: rgba(252,165,165,0.04); }
+.ide-export-gate-row.is-unrun  { opacity: 0.5; }
+.ide-export-gate-label  { font-weight: 600; color: var(--ide-text-soft); white-space: nowrap; }
+.ide-export-gate-detail { color: var(--ide-text-muted); font-family: var(--rb-font-mono, monospace); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 31C: Fix path drawer */
+.ide-export-fixpath-drawer {
+  margin-top: var(--ide-space-1);
+  padding: var(--ide-space-2) var(--ide-space-2) var(--ide-space-2) var(--ide-space-3);
+  border-left: 2px solid rgba(56,189,248,0.4);
+  background: rgba(56,189,248,0.04);
+  border-radius: 0 4px 4px 0;
+  animation: ideSlideDown 140ms ease forwards;
+}
+@keyframes ideSlideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ide-export-fixpath-cause { font-size: 11px; color: var(--ide-text-soft); margin: 0 0 var(--ide-space-1); }
+.ide-export-fixpath-steps { margin: 0 0 var(--ide-space-2); padding-left: var(--ide-space-3); display: grid; gap: 2px; }
+.ide-export-fixpath-step  { font-size: 11px; color: var(--ide-text-muted); }
+
+/* 31D: Artifact plan */
+.ide-export-artifact-plan {
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.ide-export-artifact-plan-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px var(--ide-space-2);
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.ide-export-artifact-plan-title { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: var(--ide-text-soft); }
+.ide-export-artifact-plan-row {
+  display: flex; align-items: flex-start; gap: var(--ide-space-1);
+  padding: 5px var(--ide-space-2);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 10px;
+}
+.ide-export-artifact-plan-row:last-child { border-bottom: none; }
+.ide-export-artifact-plan-row.is-ready   { opacity: 1; }
+.ide-export-artifact-plan-row.is-pending { opacity: 0.4; }
+.ide-export-plan-row-icon { width: 14px; flex-shrink: 0; margin-top: 1px; color: rgba(61,186,110,0.85); }
+.ide-export-artifact-plan-row.is-pending .ide-export-plan-row-icon { color: rgba(255,255,255,0.2); }
+.ide-export-plan-row-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ide-export-plan-row-path { font-family: var(--rb-font-mono, monospace); color: var(--ide-text-soft); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-export-plan-row-desc { font-size: 9px; color: var(--ide-text-muted); }
+
+/* 31E: Confidence badges */
+.ide-export-conf-badge { font-size: 10px; font-family: var(--rb-font-mono, monospace); font-weight: 700; }
+.ide-export-conf-exact   { color: rgba(61,186,110,0.85); }
+.ide-export-conf-likely  { color: rgba(250,200,0,0.75); }
+.ide-export-conf-unknown { color: rgba(255,255,255,0.2); }
+
+/* 31F: Context slab */
+.ide-export-context-slab {
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.ide-export-context-slab-header {
+  padding: 6px var(--ide-space-2);
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 11px; font-weight: 700; color: var(--ide-text-soft);
+}
+.ide-export-context-row {
+  display: grid; grid-template-columns: 72px 1fr; align-items: baseline;
+  gap: var(--ide-space-1); padding: 4px var(--ide-space-2);
+  border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 10px;
+}
+.ide-export-context-row:last-child { border-bottom: none; }
+.ide-export-context-key { color: rgba(56,189,248,0.55); font-size: 9px; letter-spacing: 0.06em; font-weight: 700; font-family: var(--rb-font-mono, monospace); }
+.ide-export-context-val { color: rgba(200,220,255,0.75); font-family: var(--rb-font-mono, monospace); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 31G: Download block */
+.ide-export-download-block {
+  border: 1px solid rgba(56,189,248,0.18);
+  border-radius: 4px;
+  padding: var(--ide-space-2);
+  background: rgba(14,28,48,0.5);
+  display: flex; flex-direction: column; gap: var(--ide-space-1);
+}
+.ide-export-download-gate-note {
+  font-size: 10px; font-family: var(--rb-font-mono, monospace);
+  color: rgba(252,165,165,0.8);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Phase 32 — Export Pipeline Authority
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── 32A: Build Card ──────────────────────────────────────────────────── */
+.ide-export-buildCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ide-space-2);
+  padding: var(--ide-space-3);
+  border: 1px solid var(--ide-border);
+  border-radius: var(--ide-radius);
+  background: var(--ide-bg-surface);
+}
+
+.ide-export-buildCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ide-space-2);
+}
+
+.ide-export-buildTitle {
+  font-size: 10px;
+  font-family: var(--ide-font-mono);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ide-text-muted);
+}
+
+/* Step list */
+.ide-export-buildSteps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid var(--ide-border);
+  padding-top: var(--ide-space-2);
+}
+
+.ide-export-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  font-family: var(--ide-font-mono);
+  color: var(--ide-text-muted);
+  line-height: 1.4;
+}
+
+.ide-export-step--done    { color: var(--ide-green-text, #4ade80); }
+.ide-export-step--error   { color: var(--ide-red-text,   #f87171); }
+.ide-export-step--running { color: var(--ide-text); font-weight: 600; }
+.ide-export-step--skipped { color: var(--ide-text-muted); opacity: 0.5; }
+
+.ide-export-stepMark {
+  flex-shrink: 0;
+  width: 30px;
+  font-weight: 700;
+}
+.ide-export-stepLabel { flex: 1; }
+.ide-export-stepDetail {
+  display: block;
+  font-size: 10px;
+  color: var(--ide-red-text, #f87171);
+  padding-left: 36px;
+  margin-top: 1px;
+}
+
+/* ─── 32B: Capsule Seal Slab ───────────────────────────────────────────── */
+.ide-export-capsuleSlab {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ide-border);
+  border-radius: var(--ide-radius);
+  overflow: hidden;
+}
+
+.ide-export-capsuleTop {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  padding: var(--ide-space-2) var(--ide-space-3);
+  background: rgba(255,255,255,0.02);
+}
+
+.ide-export-capsuleState--sealed   .ide-export-capsuleTop,
+.ide-export-capsuleTop.ide-export-capsuleState--sealed   { background: rgba(74, 222, 128, 0.07); }
+.ide-export-capsuleTop.ide-export-capsuleState--sealing  { background: rgba(250, 204, 21, 0.06); }
+.ide-export-capsuleTop.ide-export-capsuleState--not_sealed { background: rgba(255,255,255,0.02); }
+
+.ide-export-capsuleSealIcon {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+}
+
+.ide-export-capsuleSealLabel {
+  font-family: var(--ide-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.ide-export-capsuleTop.ide-export-capsuleState--sealed .ide-export-capsuleSealLabel {
+  color: var(--ide-green-text, #4ade80);
+}
+.ide-export-capsuleTop.ide-export-capsuleState--sealing .ide-export-capsuleSealLabel {
+  color: var(--ide-warn-text, #facc15);
+}
+.ide-export-capsuleTop.ide-export-capsuleState--not_sealed .ide-export-capsuleSealLabel {
+  color: var(--ide-text-muted);
+}
+
+.ide-export-capsuleRows {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--ide-border);
+}
+
+.ide-export-capsuleHint {
+  padding: var(--ide-space-2) var(--ide-space-3);
+  font-size: 10px;
+  color: var(--ide-text-muted);
+  margin: 0;
+  font-style: italic;
+  border-top: 1px solid var(--ide-border);
+}
+
+/* ─── 32C: Determinism Indicator ──────────────────────────────────────── */
+.ide-export-determinismChecks {
+  border: 1px solid var(--ide-border);
+  border-radius: var(--ide-radius);
+  overflow: hidden;
+}
+
+.ide-export-determinismHeader {
+  padding: 4px var(--ide-space-3);
+  font-size: 9px;
+  font-family: var(--ide-font-mono);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ide-text-muted);
+  background: rgba(255,255,255,0.025);
+  border-bottom: 1px solid var(--ide-border);
+}
+
+.ide-export-determinismRow {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: center;
+  gap: var(--ide-space-1);
+  padding: 4px var(--ide-space-3);
+  font-size: 11px;
+  font-family: var(--ide-font-mono);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.ide-export-determinismRow:last-child { border-bottom: none; }
+.ide-export-determinismRow.is-pass { background: rgba(74, 222, 128, 0.04); }
+.ide-export-determinismRow.is-fail { background: rgba(248, 113, 113, 0.04); }
+
+.ide-export-determinismIcon {
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+.ide-export-determinismRow.is-pass .ide-export-determinismIcon { color: var(--ide-green-text, #4ade80); }
+.ide-export-determinismRow.is-fail .ide-export-determinismIcon { color: var(--ide-red-text, #f87171); }
+
+.ide-export-determinismLabel { color: var(--ide-text-dim, var(--ide-text-muted)); }
+
+/* ─── 32D: Vivado Ready blocked hint ──────────────────────────────────── */
+.ide-export-vivado-blocked-hint {
+  color: var(--ide-text-muted);
+  font-style: italic;
+  font-size: 12px;
+  margin: 0 0 var(--ide-space-2) 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Phase 33 — Import Pipeline Authority
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── 33A: Import pipeline step list ──────────────────────────────────── */
+.ide-import-pipeline-steps {
+  list-style: none;
+  margin: 0 0 var(--ide-space-2) 0;
+  padding: var(--ide-space-2) var(--ide-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--ide-border);
+  border-radius: var(--ide-radius);
+}
+
+.ide-import-pipeline-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  font-family: var(--ide-font-mono);
+  color: var(--ide-text-muted);
+  line-height: 1.4;
+}
+
+.ide-import-pipeline-step--done    { color: var(--ide-green-text, #4ade80); }
+.ide-import-pipeline-step--error   { color: var(--ide-red-text,   #f87171); }
+.ide-import-pipeline-step--running { color: var(--ide-text); font-weight: 600; }
+.ide-import-pipeline-step--skipped { color: var(--ide-text-muted); opacity: 0.55; }
+
+.ide-import-step-mark  { flex-shrink: 0; width: 30px; font-weight: 700; }
+.ide-import-step-label { flex: 1; }
+.ide-import-step-detail {
+  font-size: 10px;
+  color: inherit;
+  opacity: 0.75;
+  padding-left: 36px;
+  display: block;
+}
+
+/* ─── 33B: Commit preview ─────────────────────────────────────────────── */
+.ide-import-commitPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--ide-border);
+  border-radius: var(--ide-radius);
+  overflow: hidden;
+  margin-bottom: var(--ide-space-3);
+}
+
+.ide-import-commitPreview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--ide-space-2) var(--ide-space-3);
+  background: rgba(250, 204, 21, 0.05);
+  border-bottom: 1px solid var(--ide-border);
+}
+
+.ide-import-commitPreview-title {
+  font-size: 9px;
+  font-family: var(--ide-font-mono);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ide-text-muted);
+}
+
+.ide-import-commitPreview-rows { display: flex; flex-direction: column; }
+
+.ide-import-commitPreview-row {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  align-items: baseline;
+  gap: var(--ide-space-2);
+  padding: 4px var(--ide-space-3);
+  font-size: 11px;
+  font-family: var(--ide-font-mono);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.ide-import-commitPreview-row:last-child { border-bottom: none; }
+.ide-import-commitPreview-row--add    { background: rgba(74, 222, 128, 0.04); }
+.ide-import-commitPreview-row--remove { background: rgba(248, 113, 113, 0.04); }
+
+.ide-import-commitPreview-key {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ide-text-muted);
+}
+.ide-import-commitPreview-val { color: var(--ide-text); }
+.ide-import-commitPreview-lang {
+  font-size: 9px;
+  color: var(--ide-text-muted);
+  margin-left: 4px;
+}
+
+/* ─── 33C: XDC Coverage section ───────────────────────────────────────── */
+.ide-import-xdc-coverage {
+  margin-top: var(--ide-space-3);
+}
+
+.ide-import-xdc-gaps,
+.ide-import-xdc-orphans {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--ide-space-2);
+}
+
+.ide-import-xdc-gap-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  padding: 4px var(--ide-space-2);
+  font-size: 11px;
+  font-family: var(--ide-font-mono);
+  border-radius: 3px;
+  background: rgba(255,255,255,0.02);
+}
+
+.ide-import-xdc-gap-row--unmapped { background: rgba(250, 204, 21, 0.04); }
+.ide-import-xdc-gap-row--orphan   { background: rgba(248, 113, 113, 0.04); }
+
+.ide-import-xdc-gap-port { font-size: 11px; font-weight: 600; }
+.ide-import-xdc-gap-dir  { color: var(--ide-text-muted); font-size: 10px; }
+.ide-import-xdc-gap-hint { color: var(--ide-text-muted); font-size: 10px; font-style: italic; }
+
+/* ─── 33D: Clock candidate badge in dock ──────────────────────────────── */
+.ide-import-clock-candidate {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  padding: 4px 0;
+  font-size: 11px;
+  font-family: var(--ide-font-mono);
+  color: var(--ide-text-dim, var(--ide-text-muted));
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 34 — Import Trust & Trace
+   ════════════════════════════════════════════════════════════════ */
+
+/* 34A: ZIP contents chooser */
+.ide-import-zip-chooser {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ide-space-3);
+  margin-bottom: var(--ide-space-2);
+}
+.ide-import-zip-chooser-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ide-import-zip-chooser-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ide-text-soft);
+  text-transform: uppercase;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 2px;
+}
+.ide-import-zip-auto-badge {
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  background: rgba(56,189,248,0.15);
+  color: rgba(56,189,248,0.85);
+  letter-spacing: 0.04em;
+}
+.ide-import-zip-radio-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 80ms;
+  font-size: 10px;
+}
+.ide-import-zip-radio-row:hover {
+  background: rgba(255,255,255,0.04);
+}
+.ide-import-zip-radio-row.is-selected {
+  background: rgba(56,189,248,0.08);
+}
+.ide-import-zip-radio-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  font-family: var(--rb-font-mono, monospace);
+  font-size: 10px;
+  color: var(--ide-text-soft);
+}
+.ide-import-zip-score-badge {
+  flex-shrink: 0;
+  font-size: 9px;
+  color: rgba(61,186,110,0.7);
+  letter-spacing: 0.04em;
+}
+
+/* 34B: Schematic preview (IO front panel) */
+.ide-import-schematic-preview-wrap {
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 4px;
+  background: rgba(0,0,0,0.2);
+  overflow: hidden;
+  min-height: 120px;
+  padding: var(--ide-space-2);
+}
+.ide-import-schematic-entity-header {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--rb-font-mono, monospace);
+  color: rgba(56,189,248,0.8);
+  margin-bottom: var(--ide-space-2);
+  letter-spacing: 0.04em;
+}
+.ide-import-schematic-io-columns {
+  display: grid;
+  grid-template-columns: 1fr 80px 1fr;
+  gap: var(--ide-space-1);
+  align-items: start;
+}
+.ide-import-schematic-in-col,
+.ide-import-schematic-out-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ide-import-schematic-out-col {
+  align-items: flex-end;
+}
+.ide-import-schematic-port-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+}
+.ide-import-schematic-out-col .ide-import-schematic-port-row {
+  flex-direction: row-reverse;
+}
+.ide-import-schematic-port-name {
+  font-family: var(--rb-font-mono, monospace);
+  color: var(--ide-text-soft);
+  font-size: 10px;
+}
+.ide-import-schematic-port-pin {
+  font-size: 9px;
+  color: rgba(56,189,248,0.55);
+  font-family: var(--rb-font-mono, monospace);
+}
+.ide-import-schematic-port-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.15);
+}
+.ide-import-schematic-port-dot.has-pin {
+  background: rgba(61,186,110,0.7);
+}
+.ide-import-schematic-entity-box {
+  border: 1px solid rgba(56,189,248,0.25);
+  border-radius: 4px;
+  background: rgba(56,189,248,0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ide-space-2);
+  min-height: 60px;
+}
+.ide-import-schematic-entity-name {
+  font-family: var(--rb-font-mono, monospace);
+  font-size: 11px;
+  color: rgba(56,189,248,0.6);
+  text-align: center;
+  word-break: break-all;
+}
+.ide-import-schematic-instance-list {
+  margin-top: var(--ide-space-2);
+  border-top: 1px solid rgba(255,255,255,0.05);
+  padding-top: var(--ide-space-1);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.ide-import-schematic-instance-chip {
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.07);
+  font-size: 9px;
+  font-family: var(--rb-font-mono, monospace);
+  color: rgba(200,220,255,0.55);
+  letter-spacing: 0.03em;
+}
+
+/* 34C: Import sample card learn line */
+.ide-import-sample-card-learn {
+  display: block;
+  font-size: 9px;
+  color: rgba(56,189,248,0.55);
+  margin-top: 2px;
+}
+
+/* 34D: Pipeline step indicators */
+.ide-import-pipeline-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--ide-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ide-import-pipeline-step {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ide-space-1);
+  font-size: 11px;
+  font-family: var(--rb-font-mono, monospace);
+  padding: 2px var(--ide-space-1);
+  border-radius: 3px;
+}
+.ide-import-pipeline-step--done    { color: rgba(61,186,110,0.75); }
+.ide-import-pipeline-step--running { color: rgba(56,189,248,0.75); background: rgba(56,189,248,0.06); }
+.ide-import-pipeline-step--error   { color: #fca5a5; background: rgba(252,165,165,0.05); }
+.ide-import-pipeline-step--skipped { color: rgba(255,255,255,0.3); }
+.ide-import-pipeline-step--idle    { color: rgba(255,255,255,0.25); }
+.ide-import-step-mark  { flex-shrink: 0; width: 32px; }
+.ide-import-step-label { flex-shrink: 0; }
+.ide-import-step-detail { color: rgba(255,255,255,0.4); font-size: 10px; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

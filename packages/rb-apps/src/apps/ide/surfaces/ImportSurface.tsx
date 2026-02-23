@@ -10,6 +10,7 @@ import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   buildImportedProject,
   importVivadoZipFile,
+  reimportZipWithCandidates,
   type ZipImportInspection,
 } from '../zipImport';
 import {
@@ -216,6 +217,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const [statusMessage, setStatusMessage] = useState<string>('Paste HDL to begin import.');
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'failed'>('idle');
   const zipInputRef = useRef<HTMLInputElement | null>(null);
+  const zipFileRef = useRef<File | null>(null);
+  const [selectedZipHdl, setSelectedZipHdl] = useState<string | null>(null);
+  const [selectedZipXdc, setSelectedZipXdc] = useState<string | null>(null);
   const hdlTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const hdlGutterRef = useRef<HTMLDivElement | null>(null);
   const xdcTextareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -857,11 +861,14 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       setStatusMessage('ZIP import requires a .zip archive.');
       return;
     }
+    zipFileRef.current = file;
     setZipBusy(true);
     setPendingApplyProject(null);
     try {
       const inspection = await importVivadoZipFile(file);
       setZipInspection(inspection);
+      setSelectedZipHdl(inspection.detectedTopPath);
+      setSelectedZipXdc(inspection.detectedXdcPath ?? null);
       setTab('upload');
       setParsedHdl(inspection.parsedHdl);
       const topSource = inspection.project.hdl?.sources?.[0]?.text ?? '';
@@ -883,6 +890,36 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       setStatusMessage(
         `ZIP import failed: ${error instanceof Error ? error.message : 'unknown error'}`
       );
+    } finally {
+      setZipBusy(false);
+    }
+  };
+
+  const handleReextractZip = async (hdlPath: string, xdcPath: string | null) => {
+    const file = zipFileRef.current;
+    if (!file) return;
+    setZipBusy(true);
+    setPendingApplyProject(null);
+    try {
+      const inspection = await reimportZipWithCandidates(file, hdlPath, xdcPath);
+      setZipInspection(inspection);
+      setSelectedZipHdl(hdlPath);
+      setSelectedZipXdc(xdcPath);
+      setParsedHdl(inspection.parsedHdl);
+      const topSource = inspection.project.hdl?.sources?.[0]?.text ?? '';
+      setHdlText(topSource);
+      const constraintsText = inspection.project.fpga?.constraints?.text ?? '';
+      setXdcText(constraintsText);
+      setXdcResult(inspection.xdcResult ?? null);
+      setMapping(buildMappingRecord(inspection.project));
+      const mappedPins = Object.values(buildMappingRecord(inspection.project)).filter(
+        (pin) => pin.trim().length > 0
+      ).length;
+      setStatusMessage(
+        `Re-extracted: ${hdlPath}${xdcPath ? ` + ${xdcPath}` : ''} (${mappedPins}/${inspection.parsedHdl.ports.length} mapped).`
+      );
+    } catch (error) {
+      setStatusMessage(`Re-extract failed: ${error instanceof Error ? error.message : 'unknown error'}`);
     } finally {
       setZipBusy(false);
     }
@@ -1599,22 +1636,97 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                       title="ZIP Inspection"
                       meta={`${zipInspection.detectedFiles.length} detected / ${zipInspection.ignoredFiles.length} ignored`}
                     />
-                    <div className="ide-kv-list">
-                      <div className="ide-kv-row">
-                        <span>Top HDL</span>
-                        <code data-testid="ide-import-zip-top-path">{zipInspection.detectedTopPath}</code>
+                    <div className="ide-import-zip-chooser" data-testid="ide-import-zip-chooser">
+                      <div className="ide-import-zip-chooser-col">
+                        <div className="ide-import-zip-chooser-label">
+                          HDL Top
+                          {zipInspection.detectedTopPath === selectedZipHdl && (
+                            <span className="ide-import-zip-auto-badge" data-testid="ide-import-zip-hdl-auto">auto</span>
+                          )}
+                        </div>
+                        {zipInspection.hdlCandidates.map((path) => (
+                          <label
+                            key={path}
+                            className={`ide-import-zip-radio-row${selectedZipHdl === path ? ' is-selected' : ''}`}
+                            data-testid={`ide-import-zip-hdl-option-${path}`}
+                          >
+                            <input
+                              type="radio"
+                              name="zip-hdl"
+                              value={path}
+                              checked={selectedZipHdl === path}
+                              onChange={() => setSelectedZipHdl(path)}
+                            />
+                            <code className="ide-import-zip-radio-path">{path}</code>
+                            {path === zipInspection.detectedTopPath && (
+                              <span className="ide-import-zip-score-badge">scored #1</span>
+                            )}
+                          </label>
+                        ))}
                       </div>
+
+                      <div className="ide-import-zip-chooser-col">
+                        <div className="ide-import-zip-chooser-label">
+                          XDC Constraints
+                          {zipInspection.detectedXdcPath === selectedZipXdc && (
+                            <span className="ide-import-zip-auto-badge" data-testid="ide-import-zip-xdc-auto">auto</span>
+                          )}
+                        </div>
+                        <label
+                          className={`ide-import-zip-radio-row${selectedZipXdc === null ? ' is-selected' : ''}`}
+                          data-testid="ide-import-zip-xdc-option-none"
+                        >
+                          <input
+                            type="radio"
+                            name="zip-xdc"
+                            value=""
+                            checked={selectedZipXdc === null}
+                            onChange={() => setSelectedZipXdc(null)}
+                          />
+                          <span className="ide-import-zip-radio-path" style={{ color: 'var(--ide-text-muted)' }}>none</span>
+                        </label>
+                        {zipInspection.xdcCandidates.map((path) => (
+                          <label
+                            key={path}
+                            className={`ide-import-zip-radio-row${selectedZipXdc === path ? ' is-selected' : ''}`}
+                            data-testid={`ide-import-zip-xdc-option-${path}`}
+                          >
+                            <input
+                              type="radio"
+                              name="zip-xdc"
+                              value={path}
+                              checked={selectedZipXdc === path}
+                              onChange={() => setSelectedZipXdc(path)}
+                            />
+                            <code className="ide-import-zip-radio-path">{path}</code>
+                            {path === zipInspection.detectedXdcPath && (
+                              <span className="ide-import-zip-score-badge">scored #1</span>
+                            )}
+                          </label>
+                        ))}
+                      </div>
+
+                      {(selectedZipHdl !== zipInspection.detectedTopPath ||
+                        selectedZipXdc !== (zipInspection.detectedXdcPath ?? null)) && selectedZipHdl && (
+                        <div className="ide-inline-actions" style={{ gridColumn: '1 / -1', marginTop: 'var(--ide-space-1)' }}>
+                          <IdeButton
+                            tone="secondary"
+                            onClick={() => void handleReextractZip(selectedZipHdl, selectedZipXdc)}
+                            disabled={zipBusy}
+                            testId="ide-import-zip-reextract"
+                          >
+                            {zipBusy ? 'Re-extracting…' : 'Re-extract with selection'}
+                          </IdeButton>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="ide-kv-list">
                       <div className="ide-kv-row">
                         <span>Language</span>
                         <span data-testid="ide-import-zip-top-language">
                           {zipInspection.detectedTopLanguage.toUpperCase()}
                         </span>
-                      </div>
-                      <div className="ide-kv-row">
-                        <span>XDC</span>
-                        <code data-testid="ide-import-zip-xdc-path">
-                          {zipInspection.detectedXdcPath ?? 'not found'}
-                        </code>
                       </div>
                     </div>
                     <div className="ide-import-zip-lists">
