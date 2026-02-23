@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
+import { AppErrorBoundary } from './AppErrorBoundary';
 import { restoreAutoSave } from './use-auto-save';
 import './index.css';
 
@@ -11,7 +12,9 @@ if (!root) throw new Error('Root element not found');
 restoreAutoSave().catch(console.warn);
 
 ReactDOM.createRoot(root).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
+  <AppErrorBoundary>
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  </AppErrorBoundary>
 );

@@ -9,6 +9,7 @@ export const PdfExporter: React.FC = () => {
   const [complete, setComplete] = useState(false);
 
   const truthTable = useLabStore((s) => s.doc.truthTable);
+  const docMeta = useLabStore((s) => s.doc.meta);
   const booleanExpressions = useLabStore((s) => s.doc.expressions);
   const verilogCode = useLabStore((s) => s.verilogCode);
   const kMaps = useLabStore((s) => s.doc.kMaps);
@@ -54,6 +55,15 @@ export const PdfExporter: React.FC = () => {
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'normal');
       pdf.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, 110, { align: 'center' });
+
+      // Student info
+      const studentName = (docMeta as any).studentName || 'Unknown';
+      const section = (docMeta as any).section || '';
+      const studentId = (docMeta as any).studentId || '';
+      pdf.setFontSize(11);
+      pdf.text(`Student: ${studentName}`, pageWidth / 2, 122, { align: 'center' });
+      if (section) pdf.text(`Section: ${section}`, pageWidth / 2, 130, { align: 'center' });
+      if (studentId) pdf.text(`ID: ${studentId}`, pageWidth / 2, 138, { align: 'center' });
       
       pdf.setTextColor(16, 185, 129);
       pdf.setFontSize(14);

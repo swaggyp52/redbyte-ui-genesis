@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLabStore } from './store/labStore';
+import type { KMapGroup } from './store/labStore';
 import { ChevronDown, Plus, Trash2, Lightbulb, Copy, Check } from 'lucide-react';
 import type { KMapState } from './types';
 
@@ -9,13 +10,6 @@ const GRAY_CODE_LABELS = {
   rows: ['00', '01', '11', '10'], // B3B2
   cols: ['00', '01', '11', '10'], // B1B0
 };
-
-interface KMapGroup {
-  id: string;
-  cells: number[]; // Array of cell indices (0-15)
-  color: string;
-  term?: string; // Boolean term this group represents
-}
 
 const GROUP_COLORS = [
   'rgba(6, 182, 212, 0.3)', // cyan
@@ -106,7 +100,9 @@ const KMapSegmentInteractive: React.FC<KMapSegmentInteractiveProps> = ({
   expr,
   onExprChange,
 }) => {
-  const [groups, setGroups] = useState<KMapGroup[]>([]);
+  const groups = useLabStore(s => s.kMapGroups[segmentName] || []);
+  const setKMapGroupsInStore = useLabStore(s => s.setKMapGroups);
+  const setGroups = (g: KMapGroup[]) => setKMapGroupsInStore(segmentName, g);
   const [selecting, setSelecting] = useState<{ startRow: number; startCol: number } | null>(null);
   const [hoveredCells, setHoveredCells] = useState<number[]>([]);
   const [editingExpr, setEditingExpr] = useState(false);

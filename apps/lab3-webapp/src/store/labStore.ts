@@ -15,6 +15,14 @@ import { recomputeDerived } from '../derive/recomputeDerived';
 // All mutations go through updateDoc().
 // ─────────────────────────────────────────────────────────
 
+/** K-map group drawn by the student (UI state, not part of LabDoc) */
+export interface KMapGroup {
+  id: string;
+  cells: number[]; // Array of cell indices (0-15)
+  color: string;
+  term?: string;
+}
+
 /**
  * LabStore: Unified global state for the lab3-webapp
  */
@@ -33,6 +41,22 @@ export type LabStoreState = {
   simulationInput: number;
   implMode: 'table' | 'verilogCase' | 'boolExpr';
   verilogCode: string;
+
+  // === Canvas view (survives tab switches; not part of doc so bypasses recomputeDerived) ===
+  canvasView: { panX: number; panY: number; zoom: number };
+  setCanvasView: (panX: number, panY: number, zoom: number) => void;
+
+  // === K-map groups (UI state, survives tab switches) ===
+  kMapGroups: Record<string, KMapGroup[]>; // keyed by segment name (a-g)
+  setKMapGroups: (segName: string, groups: KMapGroup[]) => void;
+
+  // === Simulator session UI (survives tab switches) ===
+  simAutoRunning: boolean;
+  simMultiDigitMode: boolean;
+  simShowFailures: boolean;
+  setSimAutoRunning: (v: boolean) => void;
+  setSimMultiDigitMode: (v: boolean) => void;
+  setSimShowFailures: (v: boolean) => void;
 
   // === Transient simulation state ===
   simulationMode: 'manual' | 'step';
@@ -73,7 +97,7 @@ export type LabStoreState = {
 
   // ─── Verilog ───
   setVerilogCode: (code: string) => void;
-  parseVerilogCase: (code: string) => void;
+  parseVerilogCase: (code: string) => number;
   generateVerilogFromExpr: () => string;
 
   // ─── Circuit designer ───
@@ -273,6 +297,11 @@ const useLabStore = create<LabStoreState>((set, get) => ({
   simulationInput: 0,
   implMode: 'table' as const,
   verilogCode: '',
+  canvasView: { panX: 0, panY: 0, zoom: 1 },
+  kMapGroups: { a: [], b: [], c: [], d: [], e: [], f: [], g: [] },
+  simAutoRunning: false,
+  simMultiDigitMode: false,
+  simShowFailures: false,
   simulationMode: 'manual',
   currentStep: 0,
   validationResults: [],
@@ -380,6 +409,18 @@ const useLabStore = create<LabStoreState>((set, get) => ({
   setHoveredKmapCell: (cell) => {
     set({ hoveredKmapCell: cell });
   },
+
+  setCanvasView: (panX, panY, zoom) => {
+    set({ canvasView: { panX, panY, zoom } });
+  },
+
+  setKMapGroups: (segName, groups) => set(s => ({
+    kMapGroups: { ...s.kMapGroups, [segName]: groups },
+  })),
+
+  setSimAutoRunning: (v) => set({ simAutoRunning: v }),
+  setSimMultiDigitMode: (v) => set({ simMultiDigitMode: v }),
+  setSimShowFailures: (v) => set({ simShowFailures: v }),
 
   setSimulationMode: (mode) => {
     const updates: Partial<LabStoreState> = { simulationMode: mode };
@@ -509,22 +550,30 @@ const useLabStore = create<LabStoreState>((set, get) => ({
     get().emitEvent('verilog.edit', {});
   },
 
-  parseVerilogCase: (code) => {
+  parseVerilogCase: (code): number => {
     const regex = /4'b([01]{4}):\s*seg\s*=\s*7'b([01]{7});/g;
     const newTable = createEmptyTruthTable();
     let match: RegExpExecArray | null;
+    let matchCount = 0;
     while ((match = regex.exec(code)) !== null) {
       const input = parseInt(match[1], 2);
       const seg = match[2].split('').map((s: string) => (parseInt(s) ? 1 : 0)) as [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1];
       newTable[input] = { ...newTable[input]!, seg, isDontCare: false };
+      matchCount++;
     }
 
-    get().updateDoc(
-      (doc) => ({ ...doc, truthTable: newTable }),
-      'verilog.import',
-      { lineCount: newTable.filter(r => !r.isDontCare).length }
-    );
-    set({ implMode: 'verilogCase', verilogCode: code });
+    // Only update the truth table if at least one row matched.
+    // A 0-match parse must never silently wipe the existing table.
+    if (matchCount > 0) {
+      get().updateDoc(
+        (doc) => ({ ...doc, truthTable: newTable }),
+        'verilog.import',
+        { lineCount: matchCount }
+      );
+      set({ implMode: 'verilogCase', verilogCode: code });
+    }
+
+    return matchCount;
   },
 
   generateVerilogFromExpr: () => {
@@ -687,6 +736,11 @@ const useLabStore = create<LabStoreState>((set, get) => ({
       verilogCode: '',
       simulationMode: 'manual',
       currentStep: 0,
+      canvasView: { panX: 0, panY: 0, zoom: 1 },
+      kMapGroups: { a: [], b: [], c: [], d: [], e: [], f: [], g: [] },
+      simAutoRunning: false,
+      simMultiDigitMode: false,
+      simShowFailures: false,
       windows: [],
       events: [],
       eventSeq: 0,

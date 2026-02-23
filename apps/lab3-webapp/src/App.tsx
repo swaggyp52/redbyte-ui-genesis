@@ -3,7 +3,7 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { ProgressTracker, useLabProgress, type ProgressStep } from './progress-tracker';
 import { Settings, Download, Upload, Zap, BookOpen, Table, Target, PlayCircle, FileCode, Cpu, AlertCircle } from 'lucide-react';
 import { useLabStore } from './store/labStore';
-import { loadSnapshot, initPersistence } from './store/persistence';
+import { loadSnapshot, initPersistence, persistenceQuotaExceeded } from './store/persistence';
 import { WindowManager } from './workspace/WindowManager';
 import { PluginRegistry } from './plugins/PluginRegistry';
 import { registerLab3 } from './plugins/registerLab3';
@@ -33,6 +33,7 @@ export const App: React.FC = () => {
   const [tab, setTab] = useState<Tab>('overview');
   const [showSettings, setShowSettings] = useState(false);
   const [showRecoveryBanner, setShowRecoveryBanner] = useState(false);
+  const [storageWarning, setStorageWarning] = useState(false);
   const [recoverySnapshot, setRecoverySnapshot] = useState<any>(null);
   const [showWindowManager, setShowWindowManager] = useState(false);
   const [highContrast, setHighContrast] = useState(() => {
@@ -84,12 +85,20 @@ export const App: React.FC = () => {
   // Initialize persistence and check for recovery on mount
   useEffect(() => {
     initPersistence(useLabStore);
-    
+
     const snapshot = loadSnapshot();
     if (snapshot) {
       setRecoverySnapshot(snapshot);
       setShowRecoveryBanner(true);
     }
+  }, []);
+
+  // Poll for localStorage quota exceeded flag
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (persistenceQuotaExceeded) setStorageWarning(true);
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   // Open 5 default windows on first load (only once)
@@ -103,7 +112,12 @@ export const App: React.FC = () => {
 
   const handleRecover = () => {
     if (recoverySnapshot) {
-      useLabStore.getState().hydrateFromSnapshot(recoverySnapshot);
+      try {
+        useLabStore.getState().hydrateFromSnapshot(recoverySnapshot);
+      } catch (err) {
+        console.error('[recovery] Failed to hydrate snapshot:', err);
+        localStorage.removeItem('rb.lab3.session.v1');
+      }
       setShowRecoveryBanner(false);
     }
   };
@@ -218,7 +232,22 @@ export const App: React.FC = () => {
           </div>
         </div>
       )}
-      
+
+      {/* Storage Quota Warning Banner */}
+      {storageWarning && (
+        <div className="bg-amber-900/80 border-b border-amber-500/50 px-6 py-3 flex items-center justify-between">
+          <span className="text-amber-200 text-sm font-digital">
+            ⚠️ Auto-save disabled — browser storage full. Export your work now.
+          </span>
+          <button
+            onClick={() => setTab('export')}
+            className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white text-xs rounded font-tech"
+          >
+            Go to Export
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-gradient-to-r from-slate-950 to-slate-900 border-b border-cyan-500/20 shadow-2xl sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-6">
@@ -472,6 +501,52 @@ export const App: React.FC = () => {
             {tab === 'export' && (
               <Suspense fallback={<LoadingFallback />}>
                 <div className="space-y-6">
+                  {/* Submission Info */}
+                  <div className="bg-slate-900/60 border border-slate-700 rounded-xl p-6">
+                    <h3 className="font-tech font-semibold text-slate-300 mb-4">Submission Info</h3>
+                    <div className="grid sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-xs text-slate-400 font-digital block mb-1">Student Name</label>
+                        <input
+                          type="text"
+                          value={(doc.meta as any).studentName || ''}
+                          onChange={e => useLabStore.getState().updateDoc(
+                            d => ({ ...d, meta: { ...d.meta, studentName: e.target.value } }),
+                            'meta.studentName'
+                          )}
+                          placeholder="Your full name"
+                          className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white font-digital focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400 font-digital block mb-1">Section</label>
+                        <input
+                          type="text"
+                          value={(doc.meta as any).section || ''}
+                          onChange={e => useLabStore.getState().updateDoc(
+                            d => ({ ...d, meta: { ...d.meta, section: e.target.value } }),
+                            'meta.section'
+                          )}
+                          placeholder="e.g. ECE141-03"
+                          className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white font-digital focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400 font-digital block mb-1">Student ID</label>
+                        <input
+                          type="text"
+                          value={(doc.meta as any).studentId || ''}
+                          onChange={e => useLabStore.getState().updateDoc(
+                            d => ({ ...d, meta: { ...d.meta, studentId: e.target.value } }),
+                            'meta.studentId'
+                          )}
+                          placeholder="e.g. 12345678"
+                          className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white font-digital focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="bg-gradient-to-br from-slate-900/80 to-slate-800/80 border border-cyan-500/20 rounded-2xl p-8 glow-box-cyan">
                     <h2 className="font-tech-display text-3xl font-bold text-cyan-400 neon-cyan mb-6">
                       📤 Export & Report Your Work
