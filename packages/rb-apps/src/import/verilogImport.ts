@@ -233,3 +233,17 @@ export function parseVerilog(source: string): ParsedHDL {
     lang: 'verilog',
   };
 }
+
+/**
+ * Returns all module names found in the Verilog source (in order of appearance).
+ * Does not parse ports — use parseVerilog() after selecting the desired module.
+ */
+export function scanVerilogModules(source: string): string[] {
+  const rx = /\bmodule\s+(\w+)\s*(?:#\s*\([^)]*\))?\s*\(/gi;
+  const names: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = rx.exec(source)) !== null) {
+    names.push(m[1]);
+  }
+  return names;
+}

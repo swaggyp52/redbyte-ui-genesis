@@ -223,3 +223,17 @@ export function parseVhdl(source: string): ParsedHDL {
     lang: 'vhdl',
   };
 }
+
+/**
+ * Returns all entity names found in the VHDL source (in order of appearance).
+ * Does not parse ports — use parseVhdl() after selecting the desired entity.
+ */
+export function scanVhdlEntities(source: string): string[] {
+  const rx = /entity\s+(\w+)\s+is\s+port\s*\(/gi;
+  const names: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = rx.exec(source)) !== null) {
+    names.push(m[1]);
+  }
+  return names;
+}

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { parseVhdl } from '../../../import/vhdlImport';
-import { parseVerilog } from '../../../import/verilogImport';
+import { parseVhdl, scanVhdlEntities } from '../../../import/vhdlImport';
+import { parseVerilog, scanVerilogModules } from '../../../import/verilogImport';
 import { parseXdcPins, type XdcParseResult } from '../../../import/xdcImport';
 import type { ParsedHDL } from '../../../import/hdlToCircuit';
 import type { ParsedHdlWarning } from '../../../import/hdlToCircuit';
@@ -72,6 +72,69 @@ const SAMPLE_AND_GATE_XDC = [
   '  set_property IOSTANDARD LVCMOS33 [get_ports out_y]',
 ].join('\n');
 
+const SAMPLE_PASSTHROUGH_VHDL = `library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+entity top is
+  Port ( sw : in  STD_LOGIC_VECTOR(3 downto 0);
+         ld : out STD_LOGIC_VECTOR(3 downto 0));
+end top;
+architecture Behavioral of top is
+begin
+  ld <= sw;
+end Behavioral;`;
+
+const SAMPLE_PASSTHROUGH_XDC = `## Basys3 — Switches -> LEDs passthrough
+set_property PACKAGE_PIN V17 [get_ports {sw[0]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {sw[0]}]
+set_property PACKAGE_PIN W16 [get_ports {sw[1]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {sw[1]}]
+set_property PACKAGE_PIN W15 [get_ports {sw[2]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {sw[2]}]
+set_property PACKAGE_PIN V15 [get_ports {sw[3]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {sw[3]}]
+set_property PACKAGE_PIN U16 [get_ports {ld[0]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {ld[0]}]
+set_property PACKAGE_PIN E19 [get_ports {ld[1]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {ld[1]}]
+set_property PACKAGE_PIN U19 [get_ports {ld[2]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {ld[2]}]
+set_property PACKAGE_PIN V19 [get_ports {ld[3]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {ld[3]}]`;
+
+const SAMPLE_EDGEDETECT_VHDL = `library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+entity top is
+  Port ( clk  : in  STD_LOGIC;
+         btn  : in  STD_LOGIC;
+         pulse: out STD_LOGIC);
+end top;
+architecture Behavioral of top is
+  signal prev : STD_LOGIC := '0';
+begin
+  process(clk)
+  begin
+    if rising_edge(clk) then
+      pulse <= btn AND NOT prev;
+      prev  <= btn;
+    end if;
+  end process;
+end Behavioral;`;
+
+const SAMPLE_EDGEDETECT_XDC = `## Basys3 — Edge Detector
+set_property PACKAGE_PIN W5  [get_ports clk]
+  set_property IOSTANDARD LVCMOS33 [get_ports clk]
+  create_clock -add -name sys_clk_pin -period 10.00 [get_ports clk]
+set_property PACKAGE_PIN U18 [get_ports btn]
+  set_property IOSTANDARD LVCMOS33 [get_ports btn]
+set_property PACKAGE_PIN U16 [get_ports pulse]
+  set_property IOSTANDARD LVCMOS33 [get_ports pulse]`;
+
+const IMPORT_SAMPLES = [
+  { id: 'and-gate',    name: 'AND Gate',          desc: 'VHDL + Basys3 constraints', learn: 'Entity/port syntax, combinational gates',    hdl: SAMPLE_AND_GATE_VHDL,    xdc: SAMPLE_AND_GATE_XDC },
+  { id: 'passthrough', name: 'Switches → LEDs', desc: '4-bit passthrough',         learn: 'Port vectors, direct signal assignment',        hdl: SAMPLE_PASSTHROUGH_VHDL, xdc: SAMPLE_PASSTHROUGH_XDC },
+  { id: 'edge-detect', name: 'Edge Detector',     desc: 'Rising-edge pulse gen',       learn: 'Clocked process, sequential logic, D flip-flop', hdl: SAMPLE_EDGEDETECT_VHDL,  xdc: SAMPLE_EDGEDETECT_XDC },
+] as const;
+
 type SuggestionKind = 'SW' | 'LD' | 'BTN' | 'CLK' | 'OTHER';
 
 interface PinSuggestion {
@@ -106,6 +169,34 @@ function classifyPort(name: string): { kind: SuggestionKind; signalLabel: string
   return { kind: 'OTHER', signalLabel: name.toUpperCase(), confidence: 'low' };
 }
 
+// ─── Phase 33: Import Pipeline Step Types ─────────────────────────────────
+type ImportPipelineStepId = 'load' | 'parse-hdl' | 'parse-xdc' | 'validate' | 'build';
+type ImportPipelineStepState = 'idle' | 'running' | 'done' | 'skipped' | 'error';
+
+interface ImportPipelineStep {
+  id: ImportPipelineStepId;
+  label: string;
+  state: ImportPipelineStepState;
+  detail?: string;
+}
+
+const IMPORT_PIPELINE: Array<{ id: ImportPipelineStepId; label: string }> = [
+  { id: 'load',      label: 'Load inputs' },
+  { id: 'parse-hdl', label: 'Parse HDL' },
+  { id: 'parse-xdc', label: 'Parse XDC' },
+  { id: 'validate',  label: 'Validate ports' },
+  { id: 'build',     label: 'Build project model' },
+];
+
+function makePipelineSteps(): ImportPipelineStep[] {
+  return IMPORT_PIPELINE.map((s) => ({ id: s.id, label: s.label, state: 'idle' as const }));
+}
+
+/** Yield control to React for a short duration between async pipeline steps. */
+function importTick(ms = 40): Promise<void> {
+  return new Promise((r) => window.setTimeout(r, ms));
+}
+
 export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   onImportProject,
   projectIoRows,
@@ -132,7 +223,21 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const [overrides, setOverrides] = useState<Record<string, string | null>>({});
   const [activeWarningLine, setActiveWarningLine] = useState<number | null>(null);
 
+  // Phase 34: entity chooser
+  const [selectedEntityName, setSelectedEntityName] = useState<string | null>(null);
+
+  // Phase 33: pipeline state
+  const [pipelineSteps, setPipelineSteps] = useState<ImportPipelineStep[]>(() => makePipelineSteps());
+  const [pipelineActive, setPipelineActive] = useState(false);
+
   const lineCount = useMemo(() => Math.max(1, hdlText.split('\n').length), [hdlText]);
+
+  const detectedEntityNames = useMemo((): string[] => {
+    const source = hdlText.trim();
+    if (!source) return [];
+    const effectiveLang = language === 'auto' ? detectHdlLanguage(source) : language;
+    return effectiveLang === 'vhdl' ? scanVhdlEntities(source) : scanVerilogModules(source);
+  }, [hdlText, language]);
 
   const rowIdByPortName = useMemo(() => {
     const m = new Map<string, string>();
@@ -193,7 +298,25 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       setPendingApplyProject(null);
       const effectiveLang =
         language === 'auto' ? detectHdlLanguage(source) : (language as 'vhdl' | 'verilog');
-      const parsed = effectiveLang === 'vhdl' ? parseVhdl(source) : parseVerilog(source);
+
+      // If multiple entities detected and the user selected a specific one, slice the source.
+      // parseVhdl/parseVerilog always take the first entity — so we extract just the chosen block.
+      let parseSource = source;
+      if (selectedEntityName && detectedEntityNames.length > 1) {
+        const sliceRx =
+          effectiveLang === 'vhdl'
+            ? new RegExp(
+                `entity\\s+${selectedEntityName}\\s+is[\\s\\S]*?end\\s+(?:entity\\s+)?(?:${selectedEntityName}\\s*)?;`,
+                'i'
+              )
+            : new RegExp(
+                `\\bmodule\\s+${selectedEntityName}\\b[\\s\\S]*?endmodule`,
+                'i'
+              );
+        const sliceMatch = source.match(sliceRx);
+        if (sliceMatch) parseSource = sliceMatch[0];
+      }
+      const parsed = effectiveLang === 'vhdl' ? parseVhdl(parseSource) : parseVerilog(parseSource);
       setParsedHdl(parsed);
       setMapping((previous) => {
         const next: Record<string, string> = {};
@@ -207,7 +330,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       setParsedHdl(null);
       setStatusMessage(`HDL parse failed: ${error instanceof Error ? error.message : 'unknown error'}`);
     }
-  }, [hdlText, language]);
+  }, [hdlText, language, selectedEntityName, detectedEntityNames]);
 
   const handleHdlScroll = useCallback(() => {
     const ta = hdlTextareaRef.current;
@@ -355,6 +478,54 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   );
   const canImport = hasParsedHdl && blockingErrors.length === 0;
 
+  const commitPreview = useMemo(() => {
+    if (!pendingApplyProject || !parsedHdl) return null;
+    const inPorts = parsedHdl.ports.filter((p) => p.direction === 'in');
+    const outPorts = parsedHdl.ports.filter((p) => p.direction === 'out');
+    const mappedCount = parsedHdl.ports.filter((p) => (mapping[p.name] ?? '').trim()).length;
+    const reconstructionLevel = zipInspection?.reconstructionLevel ?? 'ports-only';
+
+    // diff vs current project
+    const currentPortNames = new Set((projectIoRows ?? []).map((r) => (r.port ?? r.label ?? '').toLowerCase()));
+    const incomingPortNames = new Set(parsedHdl.ports.map((p) => p.name.toLowerCase()));
+    const addedPorts = parsedHdl.ports.filter((p) => !currentPortNames.has(p.name.toLowerCase()));
+    const removedPortNames = (projectIoRows ?? [])
+      .filter((r) => {
+        const key = (r.port ?? r.label ?? '').toLowerCase();
+        return key.length > 0 && !incomingPortNames.has(key);
+      })
+      .map((r) => r.port ?? r.label ?? r.id);
+
+    return {
+      entityName: parsedHdl.entityName,
+      lang: parsedHdl.lang,
+      inCount: inPorts.length,
+      outCount: outPorts.length,
+      totalPorts: parsedHdl.ports.length,
+      mappedCount,
+      reconstructionLevel,
+      addedPorts,
+      removedPortNames,
+      nodeCount: pendingApplyProject.circuit.nodes.length,
+      connectionCount: pendingApplyProject.circuit.connections.length,
+    };
+  }, [pendingApplyProject, parsedHdl, mapping, zipInspection, projectIoRows]);
+
+  const orphanXdcKeys = useMemo(() => {
+    if (!xdcResult || !parsedHdl) return [] as string[];
+    const portKeySet = new Set(parsedHdl.ports.map((p) => p.name.toLowerCase()));
+    return Object.keys(xdcResult.pinMap).filter(
+      (k) => !portKeySet.has(k.toLowerCase())
+    );
+  }, [xdcResult, parsedHdl]);
+
+  const clockCandidatePort = useMemo(() => {
+    if (!parsedHdl) return null;
+    return parsedHdl.ports.find((p) =>
+      /^(clk|clock|clk\d+|sys_clk|clk100mhz)$/i.test(p.name)
+    ) ?? null;
+  }, [parsedHdl]);
+
   const portRows = useMemo(
     () =>
       ports.map((port) => {
@@ -414,6 +585,15 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     }
   };
 
+  const markPipelineStep = useCallback(
+    (id: ImportPipelineStepId, state: ImportPipelineStepState, detail?: string) => {
+      setPipelineSteps((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, state, detail } : s))
+      );
+    },
+    []
+  );
+
   const applySuggestions = () => {
     if (!parsedHdl) return;
     setMapping((previous) => {
@@ -458,6 +638,153 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       xdcResult: mergedXdcResult,
     });
   };
+
+  const handleProcessDesign = useCallback(async () => {
+    setPipelineActive(true);
+    setPipelineSteps(makePipelineSteps());
+    setPendingApplyProject(null);
+    setStatusMessage('Processing design…');
+
+    try {
+      // STEP: load — check inputs present
+      markPipelineStep('load', 'running');
+      await importTick();
+      if (!hdlText.trim() && !zipInspection) {
+        markPipelineStep('load', 'error', 'No HDL source — paste HDL or upload a ZIP first');
+        setStatusMessage('Process failed: no HDL source.');
+        setPipelineActive(false);
+        return;
+      }
+      markPipelineStep('load', 'done');
+
+      // STEP: parse-hdl
+      markPipelineStep('parse-hdl', 'running');
+      await importTick();
+      const source = hdlText.trim();
+      if (!source) {
+        markPipelineStep('parse-hdl', 'skipped', 'No HDL pasted — using ZIP parse result');
+      } else {
+        try {
+          const effectiveLang =
+            language === 'auto' ? detectHdlLanguage(source) : (language as 'vhdl' | 'verilog');
+
+          // If multiple entities detected and user selected one, slice to that block.
+          let parseSource = source;
+          if (selectedEntityName && detectedEntityNames.length > 1) {
+            const sliceRx =
+              effectiveLang === 'vhdl'
+                ? new RegExp(
+                    `entity\\s+${selectedEntityName}\\s+is[\\s\\S]*?end\\s+(?:entity\\s+)?(?:${selectedEntityName}\\s*)?;`,
+                    'i'
+                  )
+                : new RegExp(
+                    `\\bmodule\\s+${selectedEntityName}\\b[\\s\\S]*?endmodule`,
+                    'i'
+                  );
+            const sliceMatch = source.match(sliceRx);
+            if (sliceMatch) parseSource = sliceMatch[0];
+          }
+          const parsed = effectiveLang === 'vhdl' ? parseVhdl(parseSource) : parseVerilog(parseSource);
+          setParsedHdl(parsed);
+          setMapping((prev) => {
+            const next: Record<string, string> = {};
+            for (const port of parsed.ports) next[port.name] = prev[port.name] ?? '';
+            return next;
+          });
+          markPipelineStep(
+            'parse-hdl',
+            parsed.ports.length > 0 ? 'done' : 'error',
+            parsed.ports.length > 0
+              ? `${parsed.entityName} · ${parsed.ports.length} ports`
+              : 'No ports detected — check entity/module syntax'
+          );
+          if (parsed.ports.length === 0) {
+            setStatusMessage('HDL parse found no ports.');
+            setPipelineActive(false);
+            return;
+          }
+        } catch (err) {
+          markPipelineStep('parse-hdl', 'error', err instanceof Error ? err.message : 'parse failed');
+          setStatusMessage(`HDL parse failed.`);
+          setPipelineActive(false);
+          return;
+        }
+      }
+
+      // STEP: parse-xdc
+      const xdcSource = xdcText.trim();
+      if (!xdcSource && !xdcResult) {
+        markPipelineStep('parse-xdc', 'skipped', 'No XDC — pins will need manual assignment');
+      } else {
+        markPipelineStep('parse-xdc', 'running');
+        await importTick();
+        if (xdcSource && !xdcResult) {
+          try {
+            const parsed = parseXdcPins(xdcSource);
+            setXdcResult(parsed);
+            setMapping((prev) => {
+              const next = { ...prev };
+              const activeParsedHdl = parsedHdl;
+              if (activeParsedHdl) {
+                for (const port of activeParsedHdl.ports) {
+                  const mappedPin = parsed.pinMap[port.name] ?? parsed.pinMap[port.name.toLowerCase()];
+                  if (mappedPin && !(next[port.name] ?? '').trim()) {
+                    next[port.name] = mappedPin.toUpperCase();
+                  }
+                }
+              }
+              return next;
+            });
+            markPipelineStep('parse-xdc', 'done', `${Object.keys(parsed.pinMap).length} pin assignments`);
+          } catch (err) {
+            markPipelineStep('parse-xdc', 'error', err instanceof Error ? err.message : 'XDC parse failed');
+            // non-fatal — continue
+          }
+        } else {
+          markPipelineStep('parse-xdc', 'done', `${Object.keys(xdcResult!.pinMap).length} pins already parsed`);
+        }
+      }
+
+      // STEP: validate
+      markPipelineStep('validate', 'running');
+      await importTick();
+      const activePorts = parsedHdl?.ports ?? [];
+      const activeMapping = mapping;
+      const unmapped = activePorts.filter((p) => !(activeMapping[p.name] ?? '').trim());
+      if (unmapped.length > 0) {
+        markPipelineStep('validate', 'error', `${unmapped.length} unmapped port${unmapped.length !== 1 ? 's' : ''}`);
+        setStatusMessage(`Validation: ${unmapped.length} unmapped ports.`);
+        setPipelineActive(false);
+        return;
+      }
+      markPipelineStep('validate', 'done', `${activePorts.length} ports valid`);
+
+      // STEP: build
+      markPipelineStep('build', 'running');
+      await importTick(60);
+      const built = buildCurrentProject();
+      if (!built) {
+        markPipelineStep('build', 'error', 'buildCurrentProject returned null');
+        setStatusMessage('Build failed.');
+        setPipelineActive(false);
+        return;
+      }
+      setPendingApplyProject(built);
+      markPipelineStep('build', 'done', `${built.circuit.nodes.length} nodes · ${built.circuit.connections.length} connections`);
+      setStatusMessage('Design processed. Review commit preview below.');
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : 'unknown error';
+      setStatusMessage(`Process failed: ${reason}`);
+      setPipelineSteps((prev) =>
+        prev.map((s) => (s.state === 'running' ? { ...s, state: 'error', detail: reason } : s))
+      );
+    } finally {
+      setPipelineActive(false);
+    }
+  }, [
+    hdlText, xdcText, language, zipInspection, xdcResult, parsedHdl, mapping,
+    markPipelineStep, buildCurrentProject, selectedEntityName, detectedEntityNames,
+  ]);
 
   const requestApplyProject = () => {
     if (!canImport) return;
@@ -595,7 +922,39 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
             {!hasParsedHdl ? (
               <p className="ide-copy">Parse HDL to see feedback.</p>
             ) : hdlLooksValid && hdlWarningCount === 0 ? (
-              <p className="ide-copy">Looks good — ports detected and ready for pin suggestions.</p>
+              <>
+                <div className="ide-import-parse-summary" data-testid="ide-import-stage-summary">
+                  <span data-testid="ide-import-entity-summary">
+                    Entity: <strong>{parsedEntityName}</strong>
+                  </span>
+                  <span data-testid="ide-import-port-summary">
+                    {parsedHdl!.ports.length} port{parsedHdl!.ports.length !== 1 ? 's' : ''}{' '}
+                    ({parsedHdl!.ports.filter((p) => p.direction === 'in').length} in
+                    {' / '}{parsedHdl!.ports.filter((p) => p.direction === 'out').length} out)
+                  </span>
+                  {hasParsedXdc ? (
+                    <span data-testid="ide-import-xdc-ok">XDC ✓</span>
+                  ) : (
+                    <span style={{ color: 'var(--rb-warning)', fontSize: 10 }} data-testid="ide-import-xdc-missing">
+                      No XDC — pins auto-guessed
+                    </span>
+                  )}
+                </div>
+                {clockCandidatePort && (
+                  <div
+                    className="ide-import-clock-candidate"
+                    data-testid="ide-import-clock-candidate"
+                  >
+                    <IdeStatusPill tone="ok">CLK</IdeStatusPill>
+                    <code>{clockCandidatePort.name}</code>
+                    <span>
+                      {xdcResult?.pinMap[clockCandidatePort.name]
+                        ? `→ ${xdcResult.pinMap[clockCandidatePort.name]}`
+                        : 'no pin constraint yet'}
+                    </span>
+                  </div>
+                )}
+              </>
             ) : (
               <>
                 {!hdlLooksValid && (
@@ -651,18 +1010,20 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               <li><b>Replace Project…</b> swaps in the imported design (can overwrite your work).</li>
             </ul>
           </section>
-          <div className="ide-inline-actions">
-            <IdeButton
-              tone="ghost"
-              onClick={() => {
-                setHdlText(SAMPLE_AND_GATE_VHDL);
-                setXdcText(SAMPLE_AND_GATE_XDC);
-                setTab('hdl');
-              }}
-              testId="ide-import-load-sample"
-            >
-              Load sample project
-            </IdeButton>
+          <div className="ide-import-samples-grid">
+            {IMPORT_SAMPLES.map((sample) => (
+              <button
+                key={sample.id}
+                type="button"
+                className="ide-import-sample-card"
+                onClick={() => { setHdlText(sample.hdl); setXdcText(sample.xdc); setTab('hdl'); }}
+                data-testid={`ide-import-load-sample-${sample.id}`}
+              >
+                <span className="ide-import-sample-card-name">{sample.name}</span>
+                <span className="ide-import-sample-card-desc">{sample.desc}</span>
+                <span className="ide-import-sample-card-learn">&#x1F393; {sample.learn}</span>
+              </button>
+            ))}
           </div>
         </section>
       }
@@ -840,6 +1201,14 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
             <IdeButton tone="ghost" onClick={copyDiagnostics} testId="ide-import-copy-diagnostics">
               Copy report
             </IdeButton>
+            <IdeButton
+              tone="secondary"
+              onClick={() => void handleProcessDesign()}
+              disabled={pipelineActive || (!hdlText.trim() && !zipInspection)}
+              testId="ide-import-process-design"
+            >
+              {pipelineActive ? 'Processing…' : 'Process Design'}
+            </IdeButton>
             <span data-testid="ide-primary-cta">
               <IdeButton
                 tone="primary"
@@ -875,20 +1244,72 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         >
           Import can fill pins on your current project, or replace the whole project.
         </p>
-        {pendingApplyProject ? (
-          <IdeCallout tone="warn" title="Apply import to active project?" testId="ide-import-apply-confirmation">
-            <p className="ide-copy">
-              Applying this import replaces the current workspace project state.
-            </p>
-            <div className="ide-inline-actions">
+        {pendingApplyProject && commitPreview ? (
+          <div className="ide-import-commitPreview" data-testid="ide-import-commit-preview">
+            <div className="ide-import-commitPreview-header">
+              <span className="ide-import-commitPreview-title">COMMIT PREVIEW</span>
+              <IdeStatusPill tone="warn">Pending</IdeStatusPill>
+            </div>
+
+            <div className="ide-import-commitPreview-rows">
+              <div className="ide-import-commitPreview-row">
+                <span className="ide-import-commitPreview-key">ENTITY</span>
+                <span className="ide-import-commitPreview-val">
+                  {commitPreview.entityName}
+                  <span className="ide-import-commitPreview-lang"> ({commitPreview.lang.toUpperCase()})</span>
+                </span>
+              </div>
+              <div className="ide-import-commitPreview-row">
+                <span className="ide-import-commitPreview-key">PORTS</span>
+                <span className="ide-import-commitPreview-val">
+                  {commitPreview.totalPorts} total · {commitPreview.inCount} in / {commitPreview.outCount} out
+                </span>
+              </div>
+              <div className="ide-import-commitPreview-row">
+                <span className="ide-import-commitPreview-key">PINS</span>
+                <span className="ide-import-commitPreview-val">
+                  {commitPreview.mappedCount}/{commitPreview.totalPorts} mapped
+                </span>
+              </div>
+              <div className="ide-import-commitPreview-row">
+                <span className="ide-import-commitPreview-key">GRAPH</span>
+                <span className="ide-import-commitPreview-val">
+                  {commitPreview.reconstructionLevel === 'full'
+                    ? `full · ${commitPreview.nodeCount} nodes`
+                    : commitPreview.reconstructionLevel === 'ports-only'
+                      ? `ports only (behavioral) · ${commitPreview.nodeCount} nodes`
+                      : `empty`}
+                </span>
+              </div>
+              {commitPreview.addedPorts.length > 0 && (
+                <div className="ide-import-commitPreview-row ide-import-commitPreview-row--add">
+                  <span className="ide-import-commitPreview-key">+PORTS</span>
+                  <span className="ide-import-commitPreview-val">
+                    {commitPreview.addedPorts.slice(0, 6).map((p) => p.name).join(', ')}
+                    {commitPreview.addedPorts.length > 6 ? ` +${commitPreview.addedPorts.length - 6} more` : ''}
+                  </span>
+                </div>
+              )}
+              {commitPreview.removedPortNames.length > 0 && (
+                <div className="ide-import-commitPreview-row ide-import-commitPreview-row--remove">
+                  <span className="ide-import-commitPreview-key">−PORTS</span>
+                  <span className="ide-import-commitPreview-val">
+                    {commitPreview.removedPortNames.slice(0, 6).join(', ')}
+                    {commitPreview.removedPortNames.length > 6 ? ` +${commitPreview.removedPortNames.length - 6} more` : ''}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
               <IdeButton tone="ghost" onClick={cancelApplyProject} testId="ide-import-apply-cancel">
                 Cancel
               </IdeButton>
               <IdeButton tone="primary" onClick={confirmApplyProject} testId="ide-import-apply-confirm">
-                Confirm Apply
+                Confirm Replace Project
               </IdeButton>
             </div>
-          </IdeCallout>
+          </div>
         ) : null}
 
         {tab === 'upload' && (
@@ -918,6 +1339,27 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
             </button>
           ))}
         </div>
+        {pipelineSteps.some((s) => s.state !== 'idle') && (
+          <ol className="ide-import-pipeline-steps" data-testid="ide-import-pipeline-steps">
+            {pipelineSteps.map((s) => (
+              <li
+                key={s.id}
+                className={`ide-import-pipeline-step ide-import-pipeline-step--${s.state}`}
+                data-testid={`ide-import-pipeline-step-${s.id}`}
+              >
+                <span className="ide-import-step-mark">
+                  {s.state === 'done'    ? '[✔]'
+                 : s.state === 'running' ? '[…]'
+                 : s.state === 'error'   ? '[✗]'
+                 : s.state === 'skipped' ? '[—]'
+                 :                         '[ ]'}
+                </span>
+                <span className="ide-import-step-label">{s.label}</span>
+                {s.detail && <span className="ide-import-step-detail">{s.detail}</span>}
+              </li>
+            ))}
+          </ol>
+        )}
         <IdeGrid columns={2} testId="ide-import-pipeline-grid">
           <section className="ide-import-stage-col" data-testid="ide-import-inputs">
             <IdeSectionHeader title="Inputs" meta="Stage 1" />
@@ -1007,6 +1449,26 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     <option value="verilog">Verilog</option>
                   </select>
                 </div>
+                {detectedEntityNames.length >= 2 && (
+                  <div className="ide-import-entity-chooser" data-testid="ide-import-entity-chooser">
+                    <span className="ide-import-entity-chooser-label">Top Entity</span>
+                    <select
+                      className="ide-export-pin-input"
+                      value={selectedEntityName ?? detectedEntityNames[0]}
+                      onChange={(e) => setSelectedEntityName(e.target.value)}
+                      data-testid="ide-import-entity-select"
+                    >
+                      {detectedEntityNames.map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </select>
+                    <span className="ide-import-entity-chooser-hint" data-testid="ide-import-entity-hint">
+                      {(selectedEntityName ?? detectedEntityNames[0]) === detectedEntityNames[0]
+                        ? 'Auto-selected: first entity'
+                        : 'User selected'}
+                    </span>
+                  </div>
+                )}
                 <div className="ide-code-editor" data-testid="ide-import-hdl-editor">
                   <div
                     className="ide-code-gutter"
@@ -1204,6 +1666,52 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               />
             </section>
 
+            {hasParsedHdl && (hasParsedXdc || unmappedPorts.length > 0) && (
+              <section
+                className="ide-import-xdc-coverage"
+                data-testid="ide-import-xdc-coverage"
+              >
+                <header className="ide-export-section-header">
+                  <h3>XDC Coverage</h3>
+                  <span className="ide-export-section-meta">
+                    {parsedHdl!.ports.length - unmappedPorts.length}/{parsedHdl!.ports.length} constrained
+                  </span>
+                </header>
+
+                {unmappedPorts.length > 0 && (
+                  <div className="ide-import-xdc-gaps" data-testid="ide-import-unmapped-list">
+                    {unmappedPorts.map((port) => (
+                      <div key={port.name} className="ide-import-xdc-gap-row ide-import-xdc-gap-row--unmapped">
+                        <IdeStatusPill tone="warn">UNMAPPED</IdeStatusPill>
+                        <code className="ide-import-xdc-gap-port">{port.name}</code>
+                        <span className="ide-import-xdc-gap-dir">{port.direction.toUpperCase()}</span>
+                        <span className="ide-import-xdc-gap-hint">No XDC constraint found</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {orphanXdcKeys.length > 0 && (
+                  <div className="ide-import-xdc-orphans" data-testid="ide-import-orphan-list">
+                    {orphanXdcKeys.map((key) => (
+                      <div key={key} className="ide-import-xdc-gap-row ide-import-xdc-gap-row--orphan">
+                        <IdeStatusPill tone="warn">ORPHAN</IdeStatusPill>
+                        <code className="ide-import-xdc-gap-port">{key}</code>
+                        <span className="ide-import-xdc-gap-dir">→ {xdcResult!.pinMap[key]}</span>
+                        <span className="ide-import-xdc-gap-hint">In XDC but not in HDL</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {unmappedPorts.length === 0 && orphanXdcKeys.length === 0 && (
+                  <p className="ide-copy" style={{ margin: 0, fontSize: 11, color: 'var(--ide-text-muted)' }}>
+                    All HDL ports are constrained. No orphan XDC keys.
+                  </p>
+                )}
+              </section>
+            )}
+
             <section className="ide-export-section" data-testid="ide-import-unmapped-list">
               <IdeSectionHeader title="Unmapped Ports" meta={`${unmappedPorts.length} remaining`} />
               {unmappedPorts.length > 0 ? (
@@ -1289,13 +1797,24 @@ function detectHdlLanguage(source: string): 'vhdl' | 'verilog' {
 
 function inferPortWidth(typeName: string): string {
   const normalized = typeName.trim().toLowerCase();
-  const vectorMatch = normalized.match(/\[(\d+)\s*:\s*(\d+)\]/);
-  if (vectorMatch) {
-    const left = Number(vectorMatch[1]);
-    const right = Number(vectorMatch[2]);
-    return String(Math.abs(left - right) + 1);
+  // Verilog: logic [7:0], wire [3:0]
+  const verilogMatch = normalized.match(/\[(\d+)\s*:\s*(\d+)\]/);
+  if (verilogMatch) {
+    return String(Math.abs(Number(verilogMatch[1]) - Number(verilogMatch[2])) + 1);
   }
-  if (normalized.includes('vector')) return 'bus';
+  // VHDL: std_logic_vector(N downto 0) or (N-1 downto 0)
+  const vhdlDownto = normalized.match(/\((\d+)\s+downto\s+(\d+)\)/);
+  if (vhdlDownto) {
+    return String(Math.abs(Number(vhdlDownto[1]) - Number(vhdlDownto[2])) + 1);
+  }
+  // VHDL: std_logic_vector(0 to N)
+  const vhdlTo = normalized.match(/\((\d+)\s+to\s+(\d+)\)/);
+  if (vhdlTo) {
+    return String(Math.abs(Number(vhdlTo[1]) - Number(vhdlTo[2])) + 1);
+  }
+  // Catch-all for vector types without extracted width
+  if (normalized.includes('vector') || normalized.includes('logic') ||
+      normalized.includes('bit_vector')) return 'bus';
   return '1';
 }
 
