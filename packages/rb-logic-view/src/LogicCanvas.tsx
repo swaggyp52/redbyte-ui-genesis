@@ -1107,6 +1107,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         onPointerDown={canvasInput.onPointerDown}
         onPointerMove={handlePointerMoveForWirePreview}
         onPointerUp={canvasInput.onPointerUp}
+        onPointerCancel={canvasInput.onPointerCancel}
         onContextMenu={(e) => e.preventDefault()}
       >
         {/* Grid — stable container prevents SVG reconciliation mismatch */}

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Circuit, Node } from '@redbyte/rb-logic-core';
 import { TickEngine } from '@redbyte/rb-logic-core';
 import {
@@ -14,6 +14,7 @@ import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
   IdeCallout,
+  IdeInspectorAccordion,
   IdeInspectorSection,
   IdePanel,
   IdeStatusPill,
@@ -61,6 +62,8 @@ export interface DesignSurfaceProps {
   onGoToHardware?: () => void;
   onGoToImport?: () => void;
   onGoToProject?: () => void;
+  topHdl?: string;
+  onApplyHdl?: (hdl: string) => void;
 }
 
 export interface DesignCompilerStatus {
@@ -152,6 +155,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   onGoToHardware,
   onGoToImport,
   onGoToProject,
+  topHdl,
+  onApplyHdl,
 }) => {
   const circuit = useCircuitStore((state) => state.circuit);
   const addNode = useCircuitStore((state) => state.addNode);
@@ -198,6 +203,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [tickEngine] = useState(() => new TickEngine(editorCircuit, { tickRate: 10 }));
   const [toolsExpanded, setToolsExpanded] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [designView, setDesignView] = useState<'canvas' | 'hdl' | 'split'>('canvas');
+  const [hdlDraftText, setHdlDraftText] = useState('');
+
+  // Force canvas host to recompute its size when view mode changes.
+  // Double-rAF: first frame applies display changes, second measures new dims.
+  useLayoutEffect(() => {
+    const outer = requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+    });
+    return () => cancelAnimationFrame(outer);
+  }, [designView]);
   const hasAutoFitRef = useRef(false);
   const lastViewportSeedRef = useRef<string | undefined>(undefined);
   const simTick = runtimeSim.tick;
@@ -985,7 +1001,19 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       inspector={
         <>
-          <IdeInspectorSection title="Authoring Mode" defaultOpen testId="ide-design-authoring-mode">
+          {/* Selection header — always visible, changes with selection */}
+          <div className="ide-design-inspector-sel-header" data-testid="ide-design-sel-header">
+            {selectedNode ? (
+              <>
+                <span className="ide-design-inspector-sel-type">{selectedNode.type}</span>
+                <code className="ide-design-inspector-sel-id">{selectedNode.id}</code>
+              </>
+            ) : (
+              <span className="ide-design-inspector-hint">No selection</span>
+            )}
+          </div>
+          <IdeInspectorAccordion defaultOpenId="live-sim">
+          <IdeInspectorSection title="Authoring Mode" accordionId="authoring-mode" testId="ide-design-authoring-mode">
             <p className="ide-copy">
               You can build your circuit here using logic blocks. HDL editing happens in <b>Import</b>.
             </p>
@@ -1006,7 +1034,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               )}
             </div>
           </IdeInspectorSection>
-          <IdeInspectorSection title="Board Signal" defaultOpen>
+          <IdeInspectorSection title="Board Signal" accordionId="board-signal">
             {(() => {
               if (!selectedNode) {
                 return (
@@ -1068,7 +1096,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               );
             })()}
           </IdeInspectorSection>
-          <IdeInspectorSection title="Workspace Metrics" defaultOpen={false}>
+          <IdeInspectorSection title="Workspace Metrics" accordionId="metrics">
             <div className="ide-kv-list">
               <div className="ide-kv-row">
                 <span>Nodes</span>
@@ -1101,7 +1129,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           </IdeInspectorSection>
 
-          <IdeInspectorSection title="Live Simulation" defaultOpen>
+          <IdeInspectorSection title="Live Simulation" accordionId="live-sim" testId="ide-design-live-sim-section">
             <div className="ide-inline-actions">
               {simRunning ? (
                 <IdeButton tone="secondary" onClick={pauseSimulation} testId="ide-design-sim-pause">
@@ -1160,7 +1188,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </p>
           </IdeInspectorSection>
 
-          <IdeInspectorSection title="Signal Probe" testId="ide-design-signal-probe" defaultOpen={false}>
+          <IdeInspectorSection title="Signal Probe" testId="ide-design-signal-probe" accordionId="signal-probe">
             {selectedSignalKey ? (
               <>
                 <div className="ide-kv-list">
@@ -1317,14 +1345,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           </IdeInspectorSection>
           )}
 
-          <IdeInspectorSection title="Next Action" defaultOpen={false}>
+          <IdeInspectorSection title="Next Action" accordionId="next-action">
             <IdeCallout tone="info" title="Design Flow">
               Place IO pins, wire through logic gates, then switch to Verify for deterministic test vectors.
             </IdeCallout>
           </IdeInspectorSection>
 
           {selectedNode && (
-          <IdeInspectorSection title="Net / Pins" testId="ide-design-net-pins" defaultOpen={false}>
+          <IdeInspectorSection title="Net / Pins" testId="ide-design-net-pins" accordionId="net-pins">
             <div className="ide-kv-list">
                 <div className="ide-kv-row">
                   <span>Selected</span>
@@ -1349,6 +1377,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
           </IdeInspectorSection>
           )}
+        </IdeInspectorAccordion>
         </>
       }
       console={
@@ -1420,18 +1449,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
     >
         <IdePanel
-          actions={
-            <div className="ide-design-primary-actions" data-testid="ide-design-primary-actions">
-              <span data-testid="ide-primary-cta">
-                <IdeButton tone="primary" onClick={addIoPins} testId="ide-design-add-io-pins">
-                  Add IO Pins
-                </IdeButton>
-              </span>
-              <IdeButton tone="secondary" onClick={addAndGateStarter} testId="ide-design-add-and-starter">
-                Add AND Starter
-              </IdeButton>
-            </div>
-          }
           right={<IdeStatusPill tone={toolMode === 'wire' ? 'warn' : 'ok'}>{activeModeLabel}</IdeStatusPill>}
           testId="ide-design-panel"
         >
@@ -1439,52 +1456,84 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
             {/* ── Compact primary toolbar ── */}
             <div className="ide-design-toolbar" data-testid="ide-design-toolbar">
-              {/* SEL / WIR segmented control — keep exactly as-is */}
-              <div className="ide-design-tool-segmented" data-testid="ide-design-tool-segmented">
-                <button
-                  type="button"
-                  className={`ide-design-tool-segment ${toolMode === 'select' ? 'is-active' : ''}`}
-                  onClick={setSelectMode}
-                  data-testid="ide-design-tool-select"
-                  aria-pressed={toolMode === 'select'}
-                >
-                  <span className="ide-design-tool-icon" aria-hidden="true">SEL</span>
-                  <span className="ide-design-tool-text"><strong>Select</strong><kbd>S</kbd></span>
-                </button>
-                <button
-                  type="button"
-                  className={`ide-design-tool-segment ${toolMode === 'wire' ? 'is-active' : ''}`}
-                  onClick={setWireMode}
-                  data-testid="ide-design-tool-wire"
-                  aria-pressed={toolMode === 'wire'}
-                >
-                  <span className="ide-design-tool-icon" aria-hidden="true">WIR</span>
-                  <span className="ide-design-tool-text"><strong>Wire</strong><kbd>W</kbd></span>
-                </button>
+              {/* Group 1: Mode — primary weight */}
+              <div className="ide-toolbar-group is-mode">
+                <div className="ide-design-tool-segmented" data-testid="ide-design-tool-segmented">
+                  <button
+                    type="button"
+                    className={`ide-design-tool-segment ${toolMode === 'select' ? 'is-active' : ''}`}
+                    onClick={setSelectMode}
+                    data-testid="ide-design-tool-select"
+                    aria-pressed={toolMode === 'select'}
+                  >
+                    <span className="ide-design-tool-icon" aria-hidden="true">SEL</span>
+                    <span className="ide-design-tool-text"><strong>Select</strong><kbd>S</kbd></span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`ide-design-tool-segment ${toolMode === 'wire' ? 'is-active' : ''}`}
+                    onClick={setWireMode}
+                    data-testid="ide-design-tool-wire"
+                    aria-pressed={toolMode === 'wire'}
+                  >
+                    <span className="ide-design-tool-icon" aria-hidden="true">WIR</span>
+                    <span className="ide-design-tool-text"><strong>Wire</strong><kbd>W</kbd></span>
+                  </button>
+                </div>
               </div>
 
-              <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-tool-snap">
-                Snap {snapToGrid ? 'On' : 'Off'}
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={handleUndo} disabled={undoDepth === 0} testId="ide-design-tool-undo">
-                Undo
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={handleRedo} disabled={redoDepth === 0} testId="ide-design-tool-redo">
-                Redo
-              </IdeButton>
-              <IdeButton tone="danger" onClick={deleteSelection} disabled={!hasSelection} testId="ide-design-tool-delete">
-                Delete
-              </IdeButton>
+              {/* Group 2: Edit operations */}
+              <div className="ide-toolbar-group is-edit">
+                <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-tool-snap">
+                  Snap {snapToGrid ? 'On' : 'Off'}
+                </IdeButton>
+                <IdeButton tone="ghost" onClick={handleUndo} disabled={undoDepth === 0} testId="ide-design-tool-undo">
+                  Undo
+                </IdeButton>
+                <IdeButton tone="ghost" onClick={handleRedo} disabled={redoDepth === 0} testId="ide-design-tool-redo">
+                  Redo
+                </IdeButton>
+                <IdeButton tone="danger" onClick={deleteSelection} disabled={!hasSelection} testId="ide-design-tool-delete">
+                  Delete
+                </IdeButton>
+              </div>
 
-              <button
-                type="button"
-                className="ide-toolbar-toggle"
-                aria-expanded={toolsExpanded}
-                onClick={() => setToolsExpanded((v) => !v)}
-                data-testid="ide-design-tools-toggle"
-              >
-                {toolsExpanded ? 'Less ▲' : 'More ▼'}
-              </button>
+              {/* Group 3: Utilities — floated right */}
+              <div className="ide-toolbar-group is-utils">
+                <div className="ide-design-view-toggle" data-testid="ide-design-view-toggle">
+                  {(['canvas', 'hdl', 'split'] as const).map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      className={`ide-design-view-btn${designView === v ? ' is-active' : ''}`}
+                      onClick={() => setDesignView(v)}
+                      data-testid={`ide-design-view-${v}`}
+                    >
+                      {v === 'canvas' ? 'Canvas' : v === 'hdl' ? 'HDL' : 'Split'}
+                    </button>
+                  ))}
+                </div>
+                {/* Primary CTAs — right-aligned actions */}
+                <div className="ide-toolbar-cta-group" data-testid="ide-design-cta-group">
+                  <span data-testid="ide-primary-cta">
+                    <IdeButton tone="primary" onClick={addIoPins} testId="ide-design-add-io-pins" className="is-sm">
+                      IO Pins
+                    </IdeButton>
+                  </span>
+                  <IdeButton tone="secondary" onClick={addAndGateStarter} testId="ide-design-add-and-starter" className="is-sm">
+                    AND Demo
+                  </IdeButton>
+                </div>
+                <button
+                  type="button"
+                  className="ide-toolbar-toggle"
+                  aria-expanded={toolsExpanded}
+                  onClick={() => setToolsExpanded((v) => !v)}
+                  data-testid="ide-design-tools-toggle"
+                >
+                  {toolsExpanded ? 'Less ▲' : 'More ▼'}
+                </button>
+              </div>
             </div>
 
             {/* ── Expanded secondary toolbar ── */}
@@ -1524,6 +1573,24 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </IdeButton>
               </div>
             )}
+
+            {/* ── Content Pane Row — owns height below toolbar — switches between column/row ── */}
+            <div className="ide-design-pane-row" data-design-view={designView} data-testid="ide-design-pane-row">
+              <div className="ide-design-pane ide-design-pane--canvas">
+
+            {/* ── Canvas title strip ── */}
+            <div className="ide-design-canvas-titlebar" data-testid="ide-design-canvas-titlebar">
+              <span className="ide-design-canvas-titlebar-label">Circuit Canvas</span>
+              <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-nodes">
+                {editorCircuit.nodes.length} nodes
+              </span>
+              <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-wires">
+                {editorCircuit.connections.length} wires
+              </span>
+              <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-zoom">
+                {Math.round(camera.zoom * 100)}%
+              </span>
+            </div>
 
             {/* ── Canvas area (fills remaining height) ── */}
             <div
@@ -1729,7 +1796,79 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </div>
                 </section>
               </div>
-            </div>
+            </div>{/* close ide-design-canvasWrap */}
+              </div>{/* close ide-design-pane--canvas */}
+
+            {/* ── HDL Pane — visible in hdl and split views ── */}
+            {designView !== 'canvas' && (
+              <div className="ide-design-pane ide-design-pane--hdl" data-testid="ide-design-hdl-pane">
+                <div className="ide-design-hdl-header" data-testid="ide-design-hdl-header">
+                  <span className="ide-design-hdl-header-title">top.vhd</span>
+                  <span className="ide-design-hdl-header-lang">VHDL</span>
+                  {hdlDraftText && hdlDraftText !== (topHdl ?? '') && (
+                    <span className="ide-design-sync-badge" data-testid="ide-design-sync-badge">
+                      Out of sync
+                    </span>
+                  )}
+                  <div className="ide-inline-actions" style={{ marginLeft: 'auto' }}>
+                    <button
+                      type="button"
+                      className="ide-design-hdl-action-btn is-secondary"
+                      onClick={() => {
+                        const text = hdlDraftText !== '' ? hdlDraftText : (topHdl ?? '');
+                        if (text && typeof navigator !== 'undefined' && navigator.clipboard) {
+                          void navigator.clipboard.writeText(text);
+                        }
+                      }}
+                      data-testid="ide-design-hdl-copy"
+                    >
+                      Copy
+                    </button>
+                    {hdlDraftText && hdlDraftText !== (topHdl ?? '') && onApplyHdl && (
+                      <button
+                        type="button"
+                        className="ide-design-hdl-action-btn"
+                        onClick={() => onApplyHdl(hdlDraftText)}
+                        data-testid="ide-design-apply-hdl"
+                      >
+                        Apply HDL → Graph
+                      </button>
+                    )}
+                    {topHdl && (
+                      <button
+                        type="button"
+                        className="ide-design-hdl-action-btn is-secondary"
+                        onClick={() => setHdlDraftText(topHdl)}
+                        data-testid="ide-design-regen-hdl"
+                      >
+                        Regenerate HDL
+                      </button>
+                    )}
+                    {onGoToImport && (
+                      <button
+                        type="button"
+                        className="ide-design-hdl-action-btn is-secondary"
+                        onClick={onGoToImport}
+                        data-testid="ide-design-hdl-go-import"
+                      >
+                        Open Import
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <textarea
+                  className="ide-code-textarea ide-design-hdl-textarea"
+                  data-testid="ide-design-hdl-textarea"
+                  value={hdlDraftText !== '' ? hdlDraftText : (topHdl ?? '')}
+                  onChange={(e) => setHdlDraftText(e.target.value)}
+                  placeholder="No HDL generated yet. Build a circuit in Canvas view, or import HDL via Import."
+                  spellCheck={false}
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                />
+              </div>
+            )}
+            </div>{/* close ide-design-pane-row */}
 
           </div>
         </IdePanel>

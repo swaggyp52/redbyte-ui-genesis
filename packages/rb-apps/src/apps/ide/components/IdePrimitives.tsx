@@ -2,6 +2,25 @@ import React from 'react';
 
 type ButtonTone = 'primary' | 'secondary' | 'ghost' | 'danger';
 
+// ─── Inspector Accordion Context ────────────────────────────────────────────
+
+const IdeAccordionContext = React.createContext<{
+  openId: string | null;
+  setOpenId: (id: string | null) => void;
+} | null>(null);
+
+export const IdeInspectorAccordion: React.FC<{
+  children: React.ReactNode;
+  defaultOpenId?: string | null;
+}> = ({ children, defaultOpenId = null }) => {
+  const [openId, setOpenId] = React.useState<string | null>(defaultOpenId);
+  return (
+    <IdeAccordionContext.Provider value={{ openId, setOpenId }}>
+      {children}
+    </IdeAccordionContext.Provider>
+  );
+};
+
 export const IdeCard: React.FC<{
   title?: string;
   subtitle?: string;
@@ -88,11 +107,12 @@ export const IdeButton: React.FC<{
   disabled?: boolean;
   testId?: string;
   type?: 'button' | 'submit';
-}> = ({ tone = 'secondary', children, onClick, disabled = false, testId, type = 'button' }) => {
+  className?: string;
+}> = ({ tone = 'secondary', children, onClick, disabled = false, testId, type = 'button', className }) => {
   return (
     <button
       type={type}
-      className={`ide-button ide-button-${tone}`}
+      className={`ide-button ide-button-${tone}${className ? ` ${className}` : ''}`}
       onClick={onClick}
       disabled={disabled}
       data-testid={testId}
@@ -192,8 +212,22 @@ export const IdeInspectorSection: React.FC<{
   testId?: string;
   collapsible?: boolean;
   defaultOpen?: boolean;
-}> = ({ title, children, testId, collapsible = true, defaultOpen = true }) => {
-  const [open, setOpen] = React.useState(defaultOpen);
+  accordionId?: string;
+}> = ({ title, children, testId, collapsible = true, defaultOpen = true, accordionId }) => {
+  const [localOpen, setLocalOpen] = React.useState(defaultOpen);
+  const accordion = React.useContext(IdeAccordionContext);
+
+  const isAccordion = !!accordionId && accordion !== null;
+  const open = isAccordion ? accordion.openId === accordionId : localOpen;
+
+  const toggleOpen = () => {
+    if (isAccordion) {
+      accordion.setOpenId(accordion.openId === accordionId ? null : accordionId);
+    } else {
+      setLocalOpen((previous) => !previous);
+    }
+  };
+
   return (
     <section
       className={`ide-inspector-section ${collapsible ? 'is-collapsible' : ''}`}
@@ -204,7 +238,7 @@ export const IdeInspectorSection: React.FC<{
         <button
           type="button"
           className="ide-inspector-toggle"
-          onClick={() => setOpen((previous) => !previous)}
+          onClick={toggleOpen}
           data-testid={testId ? `${testId}-toggle` : undefined}
         >
           <h4 className="ide-inspector-title">{title}</h4>

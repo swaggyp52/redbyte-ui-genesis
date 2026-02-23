@@ -8493,3 +8493,19 @@ details[open] summary .details-arrow {
 .ide-import-step-mark  { flex-shrink: 0; width: 32px; }
 .ide-import-step-label { flex-shrink: 0; }
 .ide-import-step-detail { color: rgba(255,255,255,0.4); font-size: 10px; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 34E: Import → Verify CTA */
+.ide-import-verify-cta {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-1);
+  border-left: 2px solid rgba(56,189,248,0.3);
+  padding-left: var(--ide-space-2);
+  margin-left: var(--ide-space-1);
+}
+.ide-import-verify-cta-label {
+  font-size: 10px;
+  color: rgba(56,189,248,0.7);
+  font-family: var(--rb-font-mono, monospace);
+  white-space: nowrap;
+}

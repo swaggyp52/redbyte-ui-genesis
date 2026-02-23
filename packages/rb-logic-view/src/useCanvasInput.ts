@@ -31,6 +31,7 @@ export interface CanvasInputHandlers {
   onPointerDown: (e: React.PointerEvent<SVGSVGElement>) => void;
   onPointerMove: (e: React.PointerEvent<SVGSVGElement>) => void;
   onPointerUp: (e: React.PointerEvent<SVGSVGElement>) => void;
+  onPointerCancel: (e: React.PointerEvent<SVGSVGElement>) => void;
   dragState: {
     isDragging: boolean;
     dragNodeId: string | null;
@@ -129,6 +130,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
         s.panLastScreen = { x: e.clientX, y: e.clientY };
         s.panVelocity = { x: 0, y: 0 };
         setInteractionMode('panning');
+        e.currentTarget.setPointerCapture(e.pointerId);
         return;
       }
 
@@ -358,6 +360,9 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
           };
           panInertiaRafRef.current = requestAnimationFrame(step);
         }
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
         setInteractionMode('idle');
       }
 
@@ -386,6 +391,22 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
     };
   }, [stopPanInertia]);
 
+  const onPointerCancel = useCallback(
+    (e: React.PointerEvent<SVGSVGElement>) => {
+      const s = stateRef.current;
+      if (s.mode === 'panning') {
+        stopPanInertia();
+        s.mode = 'idle';
+        s.panVelocity = { x: 0, y: 0 };
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+        setInteractionMode('idle');
+      }
+    },
+    [stopPanInertia, setInteractionMode],
+  );
+
   // -------------------------------------------------------------------
   // Return value
   // -------------------------------------------------------------------
@@ -393,6 +414,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
     onPointerDown,
     onPointerMove,
     onPointerUp,
+    onPointerCancel,
     dragState: {
       isDragging: stateRef.current.mode === 'dragging-node',
       dragNodeId: stateRef.current.dragNodeId,

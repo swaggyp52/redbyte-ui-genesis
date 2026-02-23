@@ -85,6 +85,14 @@ const PROJECT_EMPTY_SIM: RuntimeSimState = {
   inputs: {}, signals: {}, trace: [], selectedSignalKey: null, probes: [],
 };
 
+const HERO_STEPS: Array<{ key: string; label: string; mode: ProjectHealthMode }> = [
+  { key: 'import',   label: 'Import',   mode: 'import'   },
+  { key: 'design',   label: 'Design',   mode: 'design'   },
+  { key: 'verify',   label: 'Verify',   mode: 'verify'   },
+  { key: 'export',   label: 'Export',   mode: 'export'   },
+  { key: 'hardware', label: 'Hardware', mode: 'hardware' },
+];
+
 export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   projectName,
   description,
@@ -116,6 +124,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onResetProject,
 }) => {
   const [highlightedMappingKey, setHighlightedMappingKey] = useState<string | null>(null);
+  const [mappingExpanded, setMappingExpanded] = useState(false);
   const mappingInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const highlightResetTimer = useRef<number | null>(null);
   const { activeBoardSignal } = useBoardSignal();
@@ -217,6 +226,34 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     verifyPass &&
     health.lastExport?.status !== 'blocked';
   const hardwareReady = exportReady && !health.dirtySinceExport;
+
+  const heroStepIndex = useMemo(() => {
+    if (!readiness.hasCircuit) return 0;
+    if (!readiness.hasIoMapping) return 1;
+    if (!readiness.hasVectors || !verifyPass) return 2;
+    if (!exportReady) return 3;
+    return 4;
+  }, [readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors, verifyPass, exportReady]);
+
+  const heroStatusMessage = useMemo((): string => {
+    if (!readiness.hasCircuit) return 'No circuit loaded — start with an example or import HDL';
+    if (unmappedRequiredCount > 0)
+      return `Circuit loaded — ${unmappedRequiredCount} pin${unmappedRequiredCount !== 1 ? 's' : ''} unmapped`;
+    if (!readiness.hasIoMapping) return 'Circuit loaded — map pins or open Design';
+    if (!readiness.hasVectors) return 'Mapping complete — add test vectors in Verify';
+    if (!verifyPass) return 'Vectors defined — run Verify to confirm correctness';
+    if (!exportReady) return 'Verify passed — ready to export bitstream';
+    if (!hardwareReady) return 'Export ready — build bitstream and flash hardware';
+    return 'All stages complete — bring up on hardware';
+  }, [
+    readiness.hasCircuit,
+    readiness.hasIoMapping,
+    readiness.hasVectors,
+    unmappedRequiredCount,
+    verifyPass,
+    exportReady,
+    hardwareReady,
+  ]);
 
   const readinessRows = useMemo(
     () =>
@@ -399,12 +436,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   return (
     <IdeSurfaceLayout
       mode="project"
-      consoleHasBlocking={health.blockingIssues.length > 0}
-      consoleHasEntries={health.blockingIssues.length > 0}
+      consoleHasBlocking={false}
+      consoleHasEntries={false}
       dock={
         <section className="ide-workbench-placeholder" data-testid="ide-project-start-dock">
           <header className="ide-workbench-placeholder-header">
-            <h3>Setup</h3>
+            <h3>Start Here</h3>
             <IdeStatusPill tone={activeExampleId ? 'ok' : 'idle'}>
               {activeExampleId ? 'EXAMPLE' : 'CUSTOM'}
             </IdeStatusPill>
@@ -422,44 +459,33 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             testId="ide-project-readiness-checklist"
           />
 
-          {/* Examples collapsed into disclosure */}
-          <details style={{ marginTop: 'var(--ide-space-2)' }}>
-            <summary
-              style={{
-                fontSize: 'var(--rb-font-size-1)',
-                color: 'var(--ide-text-soft)',
-                cursor: 'pointer',
-                padding: '4px 0',
-              }}
-            >
-              Showcase Kits ({examples.length})
-            </summary>
-            <p style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-subtle, #4a5568)', margin: '0 0 var(--ide-space-2) 0' }}>
-              Tutorial kits · not course labs
-            </p>
-            <p className="ide-copy" data-testid="ide-project-authoring-hint">
-              Build circuits in <b>Design</b>. Edit HDL in <b>Import</b>.
-            </p>
-            <div className="ide-signal-list" data-testid="ide-project-example-groups">
-              {examples.map((example) => (
-                <button
-                  key={example.id}
-                  type="button"
-                  className={`ide-signal-row ${activeExampleId === example.id ? 'is-active' : ''}`}
-                  onClick={() => onOpenExample(example.id)}
-                  data-testid={`ide-project-open-example-${example.id}`}
-                >
-                  <span>{example.name}</span>
-                  <span
-                    className="ide-project-example-meta"
-                    data-testid={`ide-project-example-meta-${example.id}`}
+          {/* Examples compact list — full cards are in the main workspace */}
+          {examples.length > 0 && (
+            <div style={{ marginTop: 'var(--ide-space-2)' }}>
+              <p style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', margin: '0 0 var(--ide-space-1) 0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Examples
+              </p>
+              <div className="ide-signal-list" data-testid="ide-project-example-groups">
+                {examples.map((example) => (
+                  <button
+                    key={example.id}
+                    type="button"
+                    className={`ide-signal-row ${activeExampleId === example.id ? 'is-active' : ''}`}
+                    onClick={() => onOpenExample(example.id)}
+                    data-testid={`ide-project-open-example-${example.id}`}
                   >
-                    {example.concept}
-                  </span>
-                </button>
-              ))}
+                    <span>{example.name}</span>
+                    <span
+                      className="ide-project-example-meta"
+                      data-testid={`ide-project-example-meta-${example.id}`}
+                    >
+                      {example.concept}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </details>
+          )}
 
           <div className="ide-inline-actions">
             {unmappedRequiredCount > 0 ? (
@@ -522,7 +548,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       }
       inspector={
         <>
-          <IdeInspectorSection title="Mapping Guide" defaultOpen>
+          <IdeInspectorSection title="Mapping Guide" defaultOpen={false}>
             <div className="ide-kv-list">
               <div className="ide-kv-row">
                 <span>Unmapped required</span>
@@ -642,47 +668,172 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         </section>
       }
     >
-      {/* Workspace: I/O Mapping table as hero */}
+      {/* Workspace: Hero → Examples → Mapping */}
       <IdePanel
         description="Map circuit ports to Basys3 pins to enable export."
-        actions={
-          <>
-            <span data-testid="ide-primary-cta">
-              <IdeButton tone="primary" onClick={onPrimaryCta} testId="ide-project-continue-cta">
-                Continue -&gt;
-              </IdeButton>
-            </span>
-            <span className="ide-chip ide-chip-neutral" data-testid="ide-project-continue-target">
-              Next: {primaryCtaLabel}
-            </span>
-            <IdeButton tone="secondary" onClick={onAutoSuggestMapping} testId="ide-project-auto-suggest">
-              Auto-suggest Basys3
-            </IdeButton>
-          </>
-        }
         testId="ide-project-panel"
       >
-        <section className="ide-export-section" data-testid="ide-project-panel-mapping">
-          <header className="ide-export-section-header">
-            <h3>I/O Mapping</h3>
-            <span className="ide-export-section-meta" data-testid="ide-project-unmapped-required">
-              {unmappedRequiredCount} unmapped required
+        {/* ── Hero Onboarding Panel ── */}
+        <section className="ide-project-hero" data-testid="ide-project-hero">
+          <p className="ide-project-hero-status" data-testid="ide-project-hero-status">
+            {heroStatusMessage}
+          </p>
+
+          <nav className="ide-project-hero-stepper" aria-label="Workflow steps" data-testid="ide-project-hero-stepper">
+            {HERO_STEPS.map((step, index) => {
+              const isActive = index === heroStepIndex;
+              const isPast   = index < heroStepIndex;
+              const stateClass = isActive ? 'is-active' : isPast ? 'is-past' : 'is-future';
+              return (
+                <React.Fragment key={step.key}>
+                  {index > 0 && (
+                    <span
+                      className={`ide-project-hero-step-trace ${isPast || isActive ? 'is-lit' : ''}`}
+                      aria-hidden="true"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    className={`ide-project-hero-step ${stateClass}`}
+                    onClick={() => handleNavigateToMode(step.mode)}
+                    aria-current={isActive ? 'step' : undefined}
+                    data-testid={`ide-project-hero-step-${step.key}`}
+                  >
+                    <span className="ide-project-hero-step-badge" aria-hidden="true">
+                      {isPast ? '✓' : index + 1}
+                    </span>
+                    <span className="ide-project-hero-step-label">{step.label}</span>
+                  </button>
+                </React.Fragment>
+              );
+            })}
+          </nav>
+
+          <div className="ide-project-hero-actions">
+            <span data-testid="ide-primary-cta">
+              <IdeButton tone="primary" onClick={onPrimaryCta} testId="ide-project-continue-cta" className="is-large">
+                {primaryCtaLabel} →
+              </IdeButton>
             </span>
-          </header>
-          {unmappedRequiredCount > 0 ? (
-            <IdeCallout tone="error" title="Missing required mappings" testId="ide-project-mapping-banner">
-              Required ports without pins are listed first. Resolve each missing row to unblock export.
-            </IdeCallout>
-          ) : (
-            <IdeCallout tone="success" title="Required mappings complete" testId="ide-project-mapping-banner">
-              {mappedRequiredCount}/{requiredCount} required ports mapped for Basys3 export.
+            <IdeButton tone="secondary" onClick={onOpenImport} testId="ide-project-hero-import">
+              Import HDL/XDC
+            </IdeButton>
+            {unmappedRequiredCount > 0 && (
+              <IdeButton tone="secondary" onClick={onAutoSuggestMapping} testId="ide-project-hero-automap">
+                Auto-suggest Basys3
+              </IdeButton>
+            )}
+          </div>
+
+          {health.blockingIssues.length > 0 && health.blockingIssues[0] && (
+            <IdeCallout tone="warn" title="Next blocker" testId="ide-project-hero-blocker">
+              {health.blockingIssues[0].message}
             </IdeCallout>
           )}
-          <IdeDataTable
-            columns={['Port', 'Alias (Basys3)', 'Pin', 'Dir', 'Status']}
-            rows={mappingRowsUi}
-            testId="ide-project-mapping-table"
-          />
+        </section>
+
+        {/* ── Quick-start example cards ── */}
+        {examples.length > 0 && (
+          <div className="ide-project-quickstart" data-testid="ide-project-quickstart">
+            <p className="ide-project-quickstart-title">
+              {readiness.hasCircuit ? 'Explore Examples' : 'Launch an Example'}
+            </p>
+            <p className="ide-project-quickstart-sub">
+              {readiness.hasCircuit
+                ? 'Load a showcase kit to explore circuit concepts end-to-end.'
+                : 'Load a pre-built example to see the full workflow from Design → Verify → Export.'}
+            </p>
+            <div className="ide-project-example-card-row">
+              {examples.slice(0, 3).map((ex) => (
+                <div
+                  key={ex.id}
+                  className={`ide-project-example-btn ${activeExampleId === ex.id ? 'is-active' : ''}`}
+                  data-testid={`ide-project-example-${ex.id}`}
+                >
+                  <span className="ide-project-example-btn-name">{ex.name}</span>
+                  <span className="ide-project-example-btn-concept">{ex.concept}</span>
+                  {ex.expectedBehavior && (
+                    <>
+                      <span className="ide-project-example-btn-learn-label">You'll learn</span>
+                      <span className="ide-project-example-btn-summary">{ex.expectedBehavior}</span>
+                    </>
+                  )}
+                  <div className="ide-project-example-btn-actions">
+                    <button
+                      type="button"
+                      className="ide-button ide-button-primary"
+                      style={{ fontSize: 11, padding: '4px 12px', minHeight: 26 }}
+                      onClick={() => { onOpenExample(ex.id); onOpenDesign(); }}
+                      data-testid={`ide-project-load-start-${ex.id}`}
+                    >
+                      Load &amp; Design →
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="ide-copy" style={{ margin: 0, fontSize: 11 }}>
+              Or{' '}
+              <button type="button" className="ide-project-quickstart-import-link" onClick={onOpenImport}>
+                import HDL / Vivado ZIP
+              </button>{' '}
+              from an existing project.
+            </p>
+          </div>
+        )}
+
+        {/* ── Mapping section — collapsed by default ── */}
+        <section className="ide-export-section" data-testid="ide-project-panel-mapping">
+          <div
+            className={`ide-project-mapping-summary${unmappedRequiredCount > 0 ? ' has-error' : ''}`}
+            data-testid="ide-project-mapping-summary-strip"
+          >
+            <span className="ide-project-mapping-summary-stat" data-testid="ide-project-mapping-stat">
+              {unmappedRequiredCount > 0
+                ? `${unmappedRequiredCount} port${unmappedRequiredCount !== 1 ? 's' : ''} unmapped`
+                : `${mappedRequiredCount}/${requiredCount} required mapped`}
+            </span>
+            {unmappedRequiredCount > 0 && (
+              <span className="ide-chip ide-chip-warn" data-testid="ide-project-mapping-warn-chip">
+                {unmappedRequiredCount} unmapped
+              </span>
+            )}
+            <button
+              type="button"
+              className={`ide-project-mapping-expand-btn${unmappedRequiredCount > 0 ? ' is-error' : ''}`}
+              onClick={() => setMappingExpanded((previous) => !previous)}
+              data-testid="ide-project-mapping-expand-btn"
+              aria-expanded={mappingExpanded}
+            >
+              {mappingExpanded
+                ? 'Close Mapping'
+                : unmappedRequiredCount > 0 ? 'Fix Mapping' : 'Open Mapping'}
+              <span className="ide-project-mapping-expand-arrow" aria-hidden="true">
+                {mappingExpanded ? '▲' : '▼'}
+              </span>
+            </button>
+          </div>
+
+          {mappingExpanded && (
+            <div className="ide-project-mapping-table-wrap" data-testid="ide-project-mapping-table-wrap">
+              <div
+                className={`ide-project-mapping-status ${unmappedRequiredCount > 0 ? 'is-error' : 'is-complete'}`}
+                data-testid="ide-project-mapping-banner"
+              >
+                <span className="ide-project-mapping-status-dot" />
+                <span>
+                  {unmappedRequiredCount > 0
+                    ? `${unmappedRequiredCount} port${unmappedRequiredCount !== 1 ? 's' : ''} unmapped`
+                    : `${mappedRequiredCount} / ${requiredCount} required mapped`}
+                </span>
+              </div>
+              <IdeDataTable
+                columns={['Port', 'Alias (Basys3)', 'Pin', 'Dir', 'Status']}
+                rows={mappingRowsUi}
+                testId="ide-project-mapping-table"
+              />
+            </div>
+          )}
         </section>
       </IdePanel>
     </IdeSurfaceLayout>

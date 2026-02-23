@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { ProjectHealth } from '../projectHealth';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -47,10 +47,22 @@ const HARDWARE_EMPTY_SIM: RuntimeSimState = {
   inputs: {}, signals: {}, trace: [], selectedSignalKey: null, probes: [],
 };
 
+interface AssertionEntry {
+  tick: number;
+  signal: string;
+  expected: string;
+  actual: string | null; // null = no trace data for this tick
+  pass: boolean;
+  hasData: boolean;
+}
+
+type HwMode = 'live' | 'bringup' | 'proof';
+
 export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   projectName: _projectName,
   expectedBehavior,
   mappingRows,
+  expectedIoRows,
   vectorsCount,
   health,
   runtimeSim,
@@ -61,14 +73,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   onGoToDesign,
 }) => {
   const { activeBoardSignal, setActiveBoardSignal } = useBoardSignal();
-  const mappedRequiredCount = useMemo(
-    () => mappingRows.filter((row) => row.required && row.pin.trim().length > 0).length,
-    [mappingRows]
-  );
-  const requiredCount = useMemo(
-    () => mappingRows.filter((row) => row.required).length,
-    [mappingRows]
-  );
+  const [hwMode, setHwMode] = useState<HwMode>('live');
+  const [bringupStepIndex, setBringupStepIndex] = useState(0);
+
+  const sim = runtimeSim ?? HARDWARE_EMPTY_SIM;
+
   const hasClockMapping = useMemo(
     () =>
       mappingRows.some(
@@ -79,16 +88,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       ),
     [mappingRows]
   );
-  const hasResetMapping = useMemo(
-    () =>
-      mappingRows.some(
-        (row) =>
-          row.direction === 'in' &&
-          /(^rst$|reset)/i.test(row.label) &&
-          row.pin.trim().length > 0
-      ),
+  const hasOutputMapping = useMemo(
+    () => mappingRows.some((row) => row.direction === 'out' && row.pin.trim().length > 0),
     [mappingRows]
   );
+
   const ioBusIoRows = useMemo(
     () =>
       mappingRows
@@ -98,7 +102,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
   const ioBus = useIoBus({
     ioRows: ioBusIoRows,
-    runtimeSim: runtimeSim ?? HARDWARE_EMPTY_SIM,
+    runtimeSim: sim,
     setInput: onSimSetInput ?? (() => {}),
   });
   const mappedSw = useMemo(
@@ -109,168 +113,489 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     () => Array.from({ length: 16 }, (_, i) => ioBus.meta.ldNodeIds[i] != null),
     [ioBus.meta.ldNodeIds]
   );
-  const hasOutputMapping = useMemo(
-    () =>
-      mappingRows.some((row) => row.direction === 'out' && row.pin.trim().length > 0),
-    [mappingRows]
-  );
+
   const hasBlocking = health.blockingIssues.length > 0;
 
-  const checklistRows = useMemo(
-    () => [
-      ['Clock mapped', statusPill(hasClockMapping)],
-      ['Reset mapped', statusPill(hasResetMapping)],
-      ['Output pins mapped', statusPill(hasOutputMapping)],
-      ['Bring-up vectors', statusPill(vectorsCount > 0)],
-      ['Latest verify', statusPill(health.lastVerify?.status === 'pass')],
-    ],
-    [hasClockMapping, hasOutputMapping, hasResetMapping, health.lastVerify?.status, vectorsCount]
+  // ── Bring-Up: group expectedIoRows by tick ──────────────────────────
+  const bringupTickGroups = useMemo(() => {
+    const map = new Map<number, Array<{ signal: string; expected: string }>>();
+    for (const row of expectedIoRows) {
+      const bucket = map.get(row.tick) ?? [];
+      bucket.push({ signal: row.signal, expected: row.expected });
+      map.set(row.tick, bucket);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a - b);
+  }, [expectedIoRows]);
+
+  // ── Bring-Up: compare current step expected vs actual LD values ─────
+  const mismatchedLd = useMemo<boolean[]>(() => {
+    if (hwMode !== 'bringup' || bringupTickGroups.length === 0)
+      return Array(16).fill(false);
+    const currentGroup = bringupTickGroups[bringupStepIndex];
+    if (!currentGroup) return Array(16).fill(false);
+    const [, signals] = currentGroup;
+    return Array.from({ length: 16 }, (_, i) => {
+      const sig = signals.find(
+        (s) =>
+          s.signal.toLowerCase() === `ld${i}` ||
+          s.signal.toLowerCase() === `ld[${i}]`
+      );
+      if (!sig) return false;
+      return sig.expected !== String(ioBus.state.ld[i]);
+    });
+  }, [hwMode, bringupTickGroups, bringupStepIndex, ioBus.state.ld]);
+
+  const bringupStepPass = useMemo(
+    () => mismatchedLd.every((v) => !v),
+    [mismatchedLd]
   );
 
-  const mappingTableRows = useMemo(
-    () =>
-      [...mappingRows]
-        .sort((left, right) => left.label.localeCompare(right.label))
-        .map((row) => [
-          <code key={`${row.id}-signal`}>{row.label}</code>,
-          row.direction.toUpperCase(),
-          row.pin.trim().length > 0 ? row.pin : 'UNMAPPED',
-          <IdeStatusPill key={`${row.id}-status`} tone={row.pin.trim().length > 0 ? 'ok' : 'warn'}>
-            {row.pin.trim().length > 0 ? 'Mapped' : 'Missing'}
-          </IdeStatusPill>,
-        ]),
-    [mappingRows]
+  // ── Bring-Up inspector: actual vs expected rows ─────────────────────
+  const bringupStepRows = useMemo(() => {
+    const group = bringupTickGroups[bringupStepIndex];
+    if (!group) return [];
+    const [, signals] = group;
+    return signals.map((s) => {
+      const ldMatch = s.signal.match(/ld\[?(\d+)\]?/i);
+      const actual = ldMatch ? String(ioBus.state.ld[Number(ldMatch[1])] ?? '—') : '—';
+      const pass = actual === s.expected;
+      return [
+        <code key={s.signal}>{s.signal}</code>,
+        s.expected,
+        actual,
+        <IdeStatusPill key={`${s.signal}-pill`} tone={pass ? 'ok' : 'error'}>
+          {pass ? 'OK' : 'FAIL'}
+        </IdeStatusPill>,
+      ];
+    });
+  }, [bringupTickGroups, bringupStepIndex, ioBus.state.ld]);
+
+  // ── Live: signal event log from sim trace ───────────────────────────
+  const nodeKeyToMeta = useMemo(() => {
+    const m = new Map<string, { label: string; direction: 'in' | 'out' }>();
+    for (const r of ioBusIoRows) {
+      const meta = { label: r.label, direction: r.direction };
+      m.set(r.nodeId, meta);
+      m.set(`${r.nodeId}.out`, meta);
+      m.set(`${r.nodeId}.in`, meta);
+    }
+    return m;
+  }, [ioBusIoRows]);
+
+  interface SignalChangeEvent {
+    tick: number;
+    label: string;
+    from: 0 | 1;
+    to: 0 | 1;
+    direction: 'in' | 'out';
+  }
+
+  const signalChangeFeed = useMemo<SignalChangeEvent[]>(() => {
+    if (!sim.trace?.length) return [];
+    const events: SignalChangeEvent[] = [];
+    let prev: Record<string, 0 | 1> = {};
+    for (const sample of sim.trace) {
+      for (const [k, v] of Object.entries(sample.signals)) {
+        const meta = nodeKeyToMeta.get(k);
+        if (!meta) continue;
+        const was = prev[k];
+        if (was !== undefined && was !== v) {
+          events.push({ tick: sample.tick, label: meta.label, from: was, to: v as 0 | 1, direction: meta.direction });
+        }
+      }
+      Object.assign(prev, sample.signals);
+    }
+    return events.slice(-30).reverse();
+  }, [sim.trace, nodeKeyToMeta]);
+
+  // ── Assertions: trace × expected vectors ────────────────────────────
+  const traceByTick = useMemo(() => {
+    const map = new Map<number, Record<string, 0 | 1>>();
+    for (const sample of sim.trace ?? []) {
+      map.set(sample.tick, sample.signals);
+    }
+    return map;
+  }, [sim.trace]);
+
+  const hardwareAssertions = useMemo<AssertionEntry[]>(() => {
+    return expectedIoRows.map((row) => {
+      const ldMatch = row.signal.match(/ld\[?(\d+)\]?/i);
+      if (!ldMatch) {
+        return { tick: row.tick, signal: row.signal, expected: row.expected, actual: null, pass: false, hasData: false };
+      }
+      const ldIdx = Number(ldMatch[1]);
+      const nodeId = ioBus.meta.ldNodeIds[ldIdx];
+      if (!nodeId) {
+        return { tick: row.tick, signal: row.signal, expected: row.expected, actual: null, pass: false, hasData: false };
+      }
+      const signals = traceByTick.get(row.tick);
+      if (!signals) {
+        return { tick: row.tick, signal: row.signal, expected: row.expected, actual: null, pass: false, hasData: false };
+      }
+      const rawVal = signals[nodeId] ?? signals[`${nodeId}.out`] ?? signals[`${nodeId}.in`];
+      if (rawVal === undefined) {
+        return { tick: row.tick, signal: row.signal, expected: row.expected, actual: null, pass: false, hasData: false };
+      }
+      const actual = String(rawVal);
+      return { tick: row.tick, signal: row.signal, expected: row.expected, actual, pass: actual === row.expected, hasData: true };
+    });
+  }, [expectedIoRows, ioBus.meta.ldNodeIds, traceByTick]);
+
+  const assertionsWithData = useMemo(() => hardwareAssertions.filter((a) => a.hasData), [hardwareAssertions]);
+  const assertionFailCount = useMemo(() => assertionsWithData.filter((a) => !a.pass).length, [assertionsWithData]);
+  const assertionPassCount = useMemo(() => assertionsWithData.filter((a) => a.pass).length, [assertionsWithData]);
+  const hasAssertionData = assertionsWithData.length > 0;
+
+  // ── Confidence score ─────────────────────────────────────────────────
+  const confidenceChecks = useMemo(() => [
+    { label: 'Clock mapped',        pass: hasClockMapping },
+    { label: 'Outputs mapped',      pass: hasOutputMapping },
+    { label: 'Vectors generated',   pass: vectorsCount > 0 },
+    { label: 'All assertions pass', pass: hasAssertionData && assertionFailCount === 0 },
+    { label: 'Verify passed',       pass: health.lastVerify?.status === 'pass' },
+  ], [hasClockMapping, hasOutputMapping, vectorsCount, hasAssertionData, assertionFailCount, health.lastVerify?.status]);
+
+  const confidenceScore = useMemo(
+    () => Math.round((confidenceChecks.filter((c) => c.pass).length / confidenceChecks.length) * 100),
+    [confidenceChecks]
   );
+
+  // ── Dock: Bring-Up step table (expected only, compact) ──────────────
+  const bringupDockRows = useMemo(() => {
+    const group = bringupTickGroups[bringupStepIndex];
+    if (!group) return [];
+    const [, signals] = group;
+    return signals.map((s) => [
+      <code key={s.signal}>{s.signal}</code>,
+      s.expected,
+    ]);
+  }, [bringupTickGroups, bringupStepIndex]);
+
+  // ── Bring-Up: board highlights for current step ──────────────────────
+  const currentStepHighlights = useMemo(() => {
+    if (hwMode !== 'bringup' || bringupTickGroups.length === 0) {
+      return { sw: [] as number[], ld: [] as number[] };
+    }
+    const [, signals] = bringupTickGroups[bringupStepIndex] ?? [null, []];
+    const sw: number[] = [];
+    const ld: number[] = [];
+    for (const s of (signals ?? [])) {
+      const swM = s.signal.match(/sw\[?(\d+)\]?/i);
+      if (swM) sw.push(Number(swM[1]));
+      const ldM = s.signal.match(/ld\[?(\d+)\]?/i);
+      if (ldM) ld.push(Number(ldM[1]));
+    }
+    return { sw, ld };
+  }, [hwMode, bringupTickGroups, bringupStepIndex]);
+
+  const currentTick = bringupTickGroups[bringupStepIndex]?.[0];
+
+  // ── Dock nodes ──────────────────────────────────────────────────────
+  const liveDock = (
+    <section className="ide-workbench-placeholder" data-testid="ide-hw-live-dock">
+      <header className="ide-workbench-placeholder-header">
+        <h3>Live Monitor</h3>
+        <IdeStatusPill tone={sim.running ? 'ok' : 'idle'}>
+          {sim.running ? 'RUNNING' : 'STOPPED'}
+        </IdeStatusPill>
+      </header>
+      <div className="ide-kv-list">
+        <div className="ide-kv-row">
+          <span>Sim tick</span>
+          <code>{sim.tick}</code>
+        </div>
+        <div className="ide-kv-row">
+          <span>Mapped I/O</span>
+          <span>{ioBusIoRows.length}</span>
+        </div>
+        <div className="ide-kv-row">
+          <span>Clock</span>
+          <IdeStatusPill tone={hasClockMapping ? 'ok' : 'warn'}>
+            {hasClockMapping ? 'Mapped' : 'Missing'}
+          </IdeStatusPill>
+        </div>
+        <div className="ide-kv-row">
+          <span>Outputs</span>
+          <IdeStatusPill tone={hasOutputMapping ? 'ok' : 'warn'}>
+            {hasOutputMapping ? 'Mapped' : 'Missing'}
+          </IdeStatusPill>
+        </div>
+        <div className="ide-kv-row">
+          <span>Vectors</span>
+          <span>{vectorsCount}</span>
+        </div>
+      </div>
+      <div className="ide-inline-actions">
+        <IdeButton tone="secondary" onClick={onOpenVerify}>Run Verify</IdeButton>
+        <IdeButton tone="ghost" onClick={onGenerateBringUpVectors}>Gen Vectors</IdeButton>
+      </div>
+      {onGoToDesign && (
+        <div style={{ marginTop: 'var(--ide-space-2)' }}>
+          <IdeButton tone="ghost" onClick={onGoToDesign} testId="ide-hardware-go-design">
+            Open in Design
+          </IdeButton>
+        </div>
+      )}
+    </section>
+  );
+
+  const bringupDock = (
+    <section className="ide-workbench-placeholder" data-testid="ide-hw-bringup-dock">
+      <header className="ide-workbench-placeholder-header">
+        <h3>Bring-Up</h3>
+        <IdeStatusPill
+          tone={
+            bringupTickGroups.length === 0
+              ? 'warn'
+              : bringupStepPass
+                ? 'ok'
+                : 'error'
+          }
+        >
+          {bringupTickGroups.length === 0 ? 'No vectors' : bringupStepPass ? 'PASS' : 'FAIL'}
+        </IdeStatusPill>
+      </header>
+      {hasAssertionData && (
+        <div className="ide-hw-assert-summary" data-testid="ide-hw-assert-summary">
+          <span className={assertionFailCount > 0 ? 'ide-hw-assert-fail-count' : 'ide-hw-assert-pass-count'}>
+            {assertionFailCount > 0
+              ? `${assertionFailCount} ASSERTION${assertionFailCount > 1 ? 'S' : ''} FAILED`
+              : `${assertionPassCount} assertions passed`}
+          </span>
+        </div>
+      )}
+      {bringupTickGroups.length === 0 ? (
+        <IdeCallout tone="info" title="No bring-up vectors">
+          <p className="ide-copy">Generate vectors first, then run the simulation.</p>
+          <div className="ide-inline-actions">
+            <IdeButton tone="primary" onClick={onGenerateBringUpVectors}
+              testId="ide-hw-bringup-generate">
+              Generate
+            </IdeButton>
+            <IdeButton tone="ghost" onClick={onOpenVerify}>Run Verify</IdeButton>
+          </div>
+        </IdeCallout>
+      ) : (
+        <div className="ide-hw-bringup-step" data-testid="ide-hw-bringup-step">
+          <div className="ide-hw-step-header">
+            <span className="ide-hw-step-counter">
+              Step {bringupStepIndex + 1} of {bringupTickGroups.length}
+            </span>
+            {currentTick !== undefined && (
+              <code className="ide-hw-step-tick">t{currentTick}</code>
+            )}
+          </div>
+          {(() => {
+            const swSignals = (bringupTickGroups[bringupStepIndex]?.[1] ?? []).filter(s => /sw/i.test(s.signal));
+            if (swSignals.length === 0) return null;
+            return (
+              <p className="ide-hw-step-instruction" data-testid="ide-hw-step-instruction">
+                Set {swSignals.map(s => `${s.signal.toUpperCase()}=${s.expected}`).join(', ')}
+              </p>
+            );
+          })()}
+          <IdeDataTable
+            columns={['Signal', 'Expected']}
+            rows={bringupDockRows}
+            testId="ide-hw-bringup-step-table"
+          />
+          <div className="ide-hw-step-nav">
+            <IdeButton
+              tone="ghost"
+              onClick={() => setBringupStepIndex(Math.max(0, bringupStepIndex - 1))}
+              disabled={bringupStepIndex === 0}
+              testId="ide-hw-bringup-prev"
+            >
+              ← Prev
+            </IdeButton>
+            <IdeButton
+              tone="ghost"
+              onClick={() =>
+                setBringupStepIndex(
+                  Math.min(bringupTickGroups.length - 1, bringupStepIndex + 1)
+                )
+              }
+              disabled={bringupStepIndex === bringupTickGroups.length - 1}
+              testId="ide-hw-bringup-next"
+            >
+              Next →
+            </IdeButton>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+
+  const proofDock = (
+    <section className="ide-workbench-placeholder" data-testid="ide-hw-proof-dock">
+      <header className="ide-workbench-placeholder-header">
+        <h3>Proof Bundle</h3>
+        <IdeStatusPill tone={confidenceScore === 100 ? 'ok' : confidenceScore >= 60 ? 'warn' : 'error'}>
+          {confidenceScore}%
+        </IdeStatusPill>
+      </header>
+      <div className="ide-hw-confidence-list" data-testid="ide-hw-confidence-list">
+        {confidenceChecks.map((check) => (
+          <div key={check.label} className={`ide-hw-confidence-row ${check.pass ? 'is-pass' : 'is-pending'}`}>
+            <span className="ide-hw-confidence-icon">{check.pass ? '✓' : '○'}</span>
+            <span className="ide-hw-confidence-label">{check.label}</span>
+          </div>
+        ))}
+      </div>
+      <div className="ide-hw-cert-slab" data-testid="ide-hw-cert-slab">
+        <div className="ide-hw-cert-row">
+          <span className="ide-hw-cert-key">VERIFY</span>
+          <code className="ide-hw-cert-val">{health.lastVerify?.hash?.slice(0, 16) ?? '—'}</code>
+        </div>
+        <div className="ide-hw-cert-row">
+          <span className="ide-hw-cert-key">EXPORT</span>
+          <code className="ide-hw-cert-val">{health.lastExport?.hash?.slice(0, 16) ?? '—'}</code>
+        </div>
+        <div className="ide-hw-cert-row">
+          <span className="ide-hw-cert-key">ASSERT</span>
+          <code className="ide-hw-cert-val">{hasAssertionData ? `${assertionPassCount}P ${assertionFailCount}F` : '—'}</code>
+        </div>
+        <div className="ide-hw-cert-row">
+          <span className="ide-hw-cert-key">DIRTY</span>
+          <code className="ide-hw-cert-val">{health.dirtySinceVerify ? 'YES' : 'NO'}</code>
+        </div>
+      </div>
+      <div className="ide-inline-actions">
+        {health.lastVerify?.status === 'pass' ? (
+          <IdeButton tone="primary" onClick={onOpenExport} testId="ide-hardware-build-export">
+            Build + Export
+          </IdeButton>
+        ) : (
+          <IdeButton tone="primary" onClick={onOpenVerify} testId="ide-hardware-run-verify">
+            Run Verify First
+          </IdeButton>
+        )}
+      </div>
+    </section>
+  );
+
+  const activeDock =
+    hwMode === 'live' ? liveDock : hwMode === 'bringup' ? bringupDock : proofDock;
+
+  // ── Inspector nodes ─────────────────────────────────────────────────
+  const liveInspector = (
+    <IdeInspectorSection title="Signal Log" defaultOpen>
+      {signalChangeFeed.length === 0 ? (
+        <p className="ide-copy" data-testid="ide-hw-signal-log-empty">
+          No trace data.
+        </p>
+      ) : (
+        <div className="ide-hw-event-log" data-testid="ide-hw-signal-log">
+          {signalChangeFeed.map((ev, i) => (
+            <div key={i} className="ide-hw-event-row">
+              <code className="ide-hw-event-tick">t{ev.tick}</code>
+              <span className={`ide-hw-event-dir ${ev.direction === 'in' ? 'is-input' : 'is-output'}`}>
+                {ev.direction === 'in' ? '▶' : '◀'}
+              </span>
+              <code className="ide-hw-event-label">{ev.label}</code>
+              <span className="ide-hw-event-change">{ev.from}→{ev.to}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </IdeInspectorSection>
+  );
+
+  const bringupInspector = (
+    <>
+      <IdeInspectorSection title="Step Result" defaultOpen>
+        {bringupStepRows.length === 0 ? (
+          <p className="ide-copy">No signals.</p>
+        ) : (
+          <IdeDataTable
+            columns={['Signal', 'Exp', 'Act', 'Status']}
+            rows={bringupStepRows}
+            testId="ide-hw-bringup-result-table"
+          />
+        )}
+      </IdeInspectorSection>
+      <IdeInspectorSection title="Assertion Log" defaultOpen>
+        {!hasAssertionData ? null : (
+          <div className="ide-hw-assert-log" data-testid="ide-hw-assert-log">
+            {hardwareAssertions.slice(0, 30).map((a, i) => (
+              <div key={i} className="ide-hw-assert-formal-row">
+                <code
+                  className={`ide-hw-assert-formal ${a.hasData ? (a.pass ? 'is-pass' : 'is-fail') : 'is-nodata'}`}
+                  data-testid={`ide-hw-assert-row-${a.tick}-${a.signal}`}
+                >
+                  {`ASSERT t${a.tick} ${a.signal}=${a.expected} \u2192 ${
+                    !a.hasData ? 'NO_DATA' : a.pass ? 'PASS' : `FAIL(act=${a.actual})`
+                  }`}
+                </code>
+              </div>
+            ))}
+            {hardwareAssertions.length > 30 && (
+              <code className="ide-hw-assert-formal is-nodata">
+                ... +{hardwareAssertions.length - 30} assertions
+              </code>
+            )}
+          </div>
+        )}
+      </IdeInspectorSection>
+    </>
+  );
+
+  const proofInspector = (
+    <>
+      <IdeInspectorSection title="Assertion Summary" defaultOpen>
+        {!hasAssertionData ? (
+          <p className="ide-copy">Awaiting trace.</p>
+        ) : assertionFailCount === 0 ? (
+          <code
+            className="ide-hw-assert-formal is-pass"
+            data-testid="ide-hw-proof-assert-ok"
+            style={{ fontSize: 11 }}
+          >
+            {'\u22A2'} {assertionPassCount} assertions VALID{confidenceScore === 100 ? ' \u220E' : ''}
+          </code>
+        ) : (
+          <div data-testid="ide-hw-proof-assert-failures">
+            <p className="ide-copy" style={{ color: '#fca5a5', marginBottom: 4 }}>
+              {assertionFailCount} assertion{assertionFailCount > 1 ? 's' : ''} failed
+            </p>
+            <IdeDataTable
+              columns={['Tick', 'Signal', 'Exp', 'Act']}
+              rows={hardwareAssertions
+                .filter((a) => !a.pass && a.hasData)
+                .slice(0, 10)
+                .map((a) => [
+                  <code key={`t${a.tick}`}>t{a.tick}</code>,
+                  <code key={a.signal}>{a.signal}</code>,
+                  a.expected,
+                  a.actual ?? '—',
+                ])}
+              testId="ide-hw-proof-fail-table"
+            />
+          </div>
+        )}
+      </IdeInspectorSection>
+      <IdeInspectorSection title="Expected Behavior" defaultOpen={false}>
+        <p className="ide-copy" data-testid="ide-hardware-expected-behavior">
+          {expectedBehavior}
+        </p>
+      </IdeInspectorSection>
+    </>
+  );
+
+  const activeInspector =
+    hwMode === 'live'
+      ? liveInspector
+      : hwMode === 'bringup'
+        ? bringupInspector
+        : proofInspector;
 
   return (
     <IdeSurfaceLayout
       mode="hardware"
       consoleHasBlocking={hasBlocking}
       consoleHasEntries={hasBlocking}
-      dock={
-        <section className="ide-workbench-placeholder" data-testid="ide-hardware-sources-dock">
-          <header className="ide-workbench-placeholder-header">
-            <h3>Bring-Up Checklist</h3>
-            <IdeStatusPill tone="ok">BASYS3</IdeStatusPill>
-          </header>
-          <IdeDataTable
-            columns={['Check', 'Status']}
-            rows={checklistRows}
-            testId="ide-hardware-checklist-table"
-          />
-          <div className="ide-kv-list">
-            <div className="ide-kv-row">
-              <span>Mapped required</span>
-              <span>
-                {mappedRequiredCount}/{requiredCount}
-              </span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Vectors</span>
-              <span>{vectorsCount}</span>
-            </div>
-          </div>
-          <div className="ide-inline-actions">
-            <IdeButton tone="secondary" onClick={onOpenVerify}>
-              Run Verify
-            </IdeButton>
-          </div>
-        </section>
-      }
-      inspector={
-        <>
-          <IdeInspectorSection title="Live Signals" defaultOpen>
-            {ioBusIoRows.length === 0 ? (
-              <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-                No mapped signals. Add SW/LD IO rows in the Design tab.
-              </p>
-            ) : (
-              <div className="ide-kv-list">
-                {([0, 1, 2, 3] as const).map((i) =>
-                  ioBus.meta.swNodeIds[i] ? (
-                    <div key={`sw${i}`} className="ide-kv-row">
-                      <span style={{ fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>SW{i}</span>
-                      <button
-                        type="button"
-                        data-testid={`ide-hardware-sw-toggle-${i}`}
-                        onClick={() => ioBus.actions.toggleSwitch(i)}
-                        style={{
-                          fontFamily: 'var(--rb-font-mono)',
-                          fontSize: 'var(--rb-font-size-1)',
-                          fontWeight: 600,
-                          color: ioBus.state.sw[i] ? 'var(--rb-signal)' : 'var(--ide-text-soft)',
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: 0,
-                        }}
-                      >
-                        {ioBus.state.sw[i] ? '■ 1' : '□ 0'}
-                      </button>
-                    </div>
-                  ) : null
-                )}
-                {([0, 1, 2, 3] as const).map((i) =>
-                  ioBus.meta.ldNodeIds[i] ? (
-                    <div key={`ld${i}`} className="ide-kv-row">
-                      <span style={{ fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>LD{i}</span>
-                      <span
-                        data-testid={`ide-hardware-ld-value-${i}`}
-                        style={{
-                          fontFamily: 'var(--rb-font-mono)',
-                          fontSize: 'var(--rb-font-size-1)',
-                          fontWeight: 600,
-                          color: ioBus.state.ld[i] ? 'var(--rb-signal)' : 'var(--ide-text-soft)',
-                        }}
-                      >
-                        {ioBus.state.ld[i] ? '● 1' : '○ 0'}
-                      </span>
-                    </div>
-                  ) : null
-                )}
-              </div>
-            )}
-            {onGoToDesign && (
-              <div style={{ marginTop: 'var(--ide-space-2)' }}>
-                <IdeButton
-                  tone="secondary"
-                  onClick={onGoToDesign}
-                  testId="ide-hardware-go-design"
-                >
-                  Open in Design
-                </IdeButton>
-              </div>
-            )}
-          </IdeInspectorSection>
-          <IdeInspectorSection title="Expected Behavior" defaultOpen>
-            <p className="ide-copy" data-testid="ide-hardware-expected-behavior">
-              {expectedBehavior}
-            </p>
-          </IdeInspectorSection>
-          <IdeInspectorSection title="Bring-Up Status" defaultOpen={false}>
-            <div className="ide-kv-list">
-              <div className="ide-kv-row">
-                <span>Verify Hash</span>
-                <span className="ide-status-mono">
-                  {health.lastVerify?.hash?.slice(0, 16) ?? 'pending'}
-                </span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Export Hash</span>
-                <span className="ide-status-mono">
-                  {health.lastExport?.hash?.slice(0, 16) ?? 'pending'}
-                </span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Dirty Since Verify</span>
-                <IdeStatusPill tone={health.dirtySinceVerify ? 'warn' : 'ok'}>
-                  {health.dirtySinceVerify ? 'YES' : 'NO'}
-                </IdeStatusPill>
-              </div>
-            </div>
-          </IdeInspectorSection>
-        </>
-      }
+      dock={activeDock}
+      inspector={activeInspector}
       console={
         <section className="ide-workbench-console-content" data-testid="ide-hardware-console">
           <header className="ide-workbench-console-header">
@@ -283,61 +608,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             </IdeCallout>
           ) : (
             <IdeCallout tone="success" title="Bring-up ready">
-              Mapping, vectors, and verify state are ready for deterministic Basys3 export.
+              Ready to export.
             </IdeCallout>
           )}
-          <section className="ide-export-section" data-testid="ide-hardware-if-wrong">
-            <header className="ide-export-section-header">
-              <h3>If wrong</h3>
-            </header>
-            <ul className="ide-export-checklist">
-              <li>Confirm top module in Vivado matches exported top entity.</li>
-              <li>Check every required signal has a mapped Basys3 pin.</li>
-              <li>Ensure constraints file is added to <code>constrs_1</code>.</li>
-              <li>Re-run Verify and compare first failing signal before re-export.</li>
-            </ul>
-          </section>
         </section>
       }
     >
       <IdePanel
         title="Hardware"
-        description="Board bring-up truth screen for deterministic Basys3 proof in under five minutes."
-        actions={
-          <>
-            <span data-testid="ide-primary-cta">
-              {health.lastVerify?.status === 'pass' ? (
-                <IdeButton
-                  tone="primary"
-                  onClick={onOpenExport}
-                  testId="ide-hardware-build-export"
-                >
-                  Build + Export Vivado Bundle
-                </IdeButton>
-              ) : (
-                <IdeButton
-                  tone="primary"
-                  onClick={onOpenVerify}
-                  testId="ide-hardware-run-verify"
-                >
-                  Run Verify First
-                </IdeButton>
-              )}
-            </span>
-            {health.lastVerify?.status === 'pass' && (
-              <IdeButton tone="ghost" onClick={onOpenVerify} testId="ide-hardware-open-verify">
-                Re-run Verify
-              </IdeButton>
-            )}
-            <IdeButton
-              tone="secondary"
-              onClick={onGenerateBringUpVectors}
-              testId="ide-hardware-generate-vectors"
-            >
-              Generate Bring-Up Vectors
-            </IdeButton>
-          </>
-        }
+        description="Basys3 hardware proof."
         right={
           <IdeStatusPill tone={hasBlocking ? 'warn' : 'ok'}>
             {hasBlocking ? 'Needs Action' : 'Ready'}
@@ -345,59 +624,101 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         }
         testId="ide-hardware-panel"
       >
-        <HardwareBoard2D
-          sw={ioBus.state.sw}
-          ld={ioBus.state.ld}
-          btn={ioBus.state.btn}
-          mappedSw={mappedSw}
-          mappedLd={mappedLd}
-          activeSignal={activeBoardSignal}
-          onSelectSignal={(sig) => setActiveBoardSignal(sig)}
-          onToggleSwitch={(i) => {
-            ioBus.actions.toggleSwitch(i);
-            setActiveBoardSignal({ type: 'sw', index: i });
-          }}
-          onPressButton={(i, down) => {
-            ioBus.actions.setButton(i, down ? 1 : 0);
-            if (down) setActiveBoardSignal({ type: 'btn', index: i });
-          }}
-        />
-
-        <details style={{ marginTop: 'var(--ide-space-2)' }}>
-          <summary style={{
-            cursor: 'pointer',
-            fontSize: 'var(--rb-font-size-2)',
-            color: 'var(--ide-text-soft)',
-            padding: 'var(--ide-space-1) 0',
-            listStyle: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--ide-space-1)',
-            userSelect: 'none',
-          }}>
-            <span style={{ fontSize: '9px', color: 'var(--ide-text-soft)' }}>&#9654;</span>
-            Mapping Summary
-            <span style={{ marginLeft: 'auto', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-              {mappingRows.length} rows
+        {/* ── Mode toggle bar ── */}
+        <div className="ide-hw-mode-toggle" data-testid="ide-hw-mode-toggle">
+          {(['live', 'bringup', 'proof'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              className={`ide-hw-mode-btn ${hwMode === m ? 'is-active' : ''}`}
+              onClick={() => setHwMode(m)}
+              data-testid={`ide-hw-mode-btn-${m}`}
+            >
+              {m === 'live' ? 'Live Monitor' : m === 'bringup' ? 'Bring-Up' : 'Proof'}
+            </button>
+          ))}
+          {sim.tick > 0 && (
+            <span className="ide-hw-tick-badge" data-testid="ide-hw-tick-badge">
+              t{sim.tick}
             </span>
-          </summary>
-          <section className="ide-export-section" data-testid="ide-hardware-mapping-summary">
-            <header className="ide-export-section-header">
-              <h3>Mapping Summary</h3>
-              <span className="ide-export-section-meta">{mappingRows.length} rows</span>
-            </header>
-            <IdeDataTable
-              columns={['Signal', 'Dir', 'Pin', 'Status']}
-              rows={mappingTableRows}
-              testId="ide-hardware-mapping-table"
+          )}
+        </div>
+
+        {/* ── Board ── */}
+        <div className={`ide-hw-board-wrap ${hwMode === 'proof' ? 'is-proof' : ''}`}>
+          <div
+            className="ide-hw-board-inner"
+            style={undefined}
+          >
+            <HardwareBoard2D
+              sw={ioBus.state.sw}
+              ld={ioBus.state.ld}
+              btn={ioBus.state.btn}
+              mappedSw={mappedSw}
+              mappedLd={mappedLd}
+              mismatchedLd={mismatchedLd}
+              highlightedSw={currentStepHighlights.sw}
+              highlightedLd={currentStepHighlights.ld}
+              activeSignal={activeBoardSignal}
+              onSelectSignal={(sig) => setActiveBoardSignal(sig)}
+              onToggleSwitch={(i) => {
+                ioBus.actions.toggleSwitch(i);
+                setActiveBoardSignal({ type: 'sw', index: i });
+              }}
+              onPressButton={(i, down) => {
+                ioBus.actions.setButton(i, down ? 1 : 0);
+                if (down) setActiveBoardSignal({ type: 'btn', index: i });
+              }}
             />
-          </section>
-        </details>
+          </div>
+          {hwMode === 'proof' && (
+            <div
+              className={`ide-hw-proof-verdict ${
+                !hasAssertionData
+                  ? 'is-pending'
+                  : assertionFailCount === 0
+                    ? 'is-valid'
+                    : 'is-invalid'
+              }`}
+              data-testid="ide-hw-proof-verdict"
+            >
+              <span className="ide-hw-proof-verdict-label" data-testid="ide-hw-proof-verdict-label">
+                {!hasAssertionData
+                  ? 'PROOF PENDING'
+                  : assertionFailCount === 0
+                    ? 'PROOF VALID'
+                    : 'PROOF INVALID'}
+              </span>
+              <div className="ide-hw-proof-verdict-meta">
+                <div className="ide-hw-proof-verdict-row">
+                  <span className="ide-hw-cert-key">CONFIDENCE</span>
+                  <code className="ide-hw-cert-val">
+                    {confidenceScore}%{confidenceScore === 100 ? ' \u220E' : ''}
+                  </code>
+                </div>
+                <div className="ide-hw-proof-verdict-row">
+                  <span className="ide-hw-cert-key">ASSERTIONS</span>
+                  <code className="ide-hw-cert-val">
+                    {hasAssertionData ? `${assertionPassCount}P ${assertionFailCount}F` : '\u2014'}
+                  </code>
+                </div>
+                <div className="ide-hw-proof-verdict-row">
+                  <span className="ide-hw-cert-key">HASH</span>
+                  <code className="ide-hw-cert-val">
+                    {health.lastVerify?.hash?.slice(0, 16) ?? '\u2014'}
+                  </code>
+                </div>
+                <div className="ide-hw-proof-verdict-row">
+                  <span className="ide-hw-cert-key">DIRTY</span>
+                  <code className="ide-hw-cert-val">
+                    {health.dirtySinceVerify ? 'YES' : 'NO'}
+                  </code>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </IdePanel>
     </IdeSurfaceLayout>
   );
 };
-
-function statusPill(pass: boolean): React.ReactNode {
-  return <IdeStatusPill tone={pass ? 'ok' : 'warn'}>{pass ? 'Ready' : 'Missing'}</IdeStatusPill>;
-}

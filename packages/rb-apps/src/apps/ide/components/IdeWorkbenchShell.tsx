@@ -9,19 +9,17 @@ type IdeSurfaceMode =
   | 'import';
 type ResizeEdge = 'left' | 'right' | 'bottom';
 
-const LAYOUT_STORAGE_KEY = 'rb.ide.workbench.layout.v2';
+const LAYOUT_STORAGE_KEY = 'rb.ide.workbench.layout.v3';
 const DEFAULT_LAYOUT = {
   leftWidth: 200,
   rightWidth: 320,
-  consoleHeight: 64,
+  consoleHeight: 0,
 };
 
 const LEFT_WIDTH_RANGE = { min: 180, max: 420 };
 const RIGHT_WIDTH_RANGE = { min: 280, max: 480 };
-const CONSOLE_HEIGHT_RANGE = { min: 40, max: 320 };
-const COLLAPSED_CONSOLE_HEIGHT = 40;
-const DEFAULT_EXPANDED_CONSOLE_HEIGHT = 88;
-const EXPANDED_CONSOLE_HEIGHT = 176;
+const CONSOLE_HEIGHT_RANGE = { min: 0, max: 320 };
+const COLLAPSED_CONSOLE_HEIGHT = 0;
 
 interface WorkbenchLayoutState {
   leftWidth: number;
@@ -84,45 +82,6 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
   }, [layout]);
-
-  useEffect(() => {
-    if (!consoleHasBlocking) return;
-    setLayout((previous) =>
-      previous.consoleHeight >= EXPANDED_CONSOLE_HEIGHT
-        ? previous
-        : {
-            ...previous,
-            consoleHeight: EXPANDED_CONSOLE_HEIGHT,
-          }
-    );
-  }, [consoleHasBlocking]);
-
-  useEffect(() => {
-    if (consoleHasBlocking) {
-      setConsolePinnedOpen(true);
-      return;
-    }
-    if (consoleHasEntries) {
-      setLayout((previous) =>
-        previous.consoleHeight >= DEFAULT_EXPANDED_CONSOLE_HEIGHT
-          ? previous
-          : {
-              ...previous,
-              consoleHeight: DEFAULT_EXPANDED_CONSOLE_HEIGHT,
-            }
-      );
-      return;
-    }
-    setConsolePinnedOpen(false);
-    setLayout((previous) =>
-      previous.consoleHeight === COLLAPSED_CONSOLE_HEIGHT
-        ? previous
-        : {
-            ...previous,
-            consoleHeight: COLLAPSED_CONSOLE_HEIGHT,
-          }
-    );
-  }, [consoleHasBlocking, consoleHasEntries]);
 
   const onPointerMove = useCallback((event: PointerEvent) => {
     const active = resizeRef.current;
@@ -258,9 +217,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             setLayout((previous) => ({
               ...previous,
               consoleHeight:
-                previous.consoleHeight <= COLLAPSED_CONSOLE_HEIGHT
-                  ? DEFAULT_EXPANDED_CONSOLE_HEIGHT
-                  : COLLAPSED_CONSOLE_HEIGHT,
+                previous.consoleHeight <= COLLAPSED_CONSOLE_HEIGHT ? 120 : COLLAPSED_CONSOLE_HEIGHT,
             }));
           }}
           aria-label="Toggle workbench console"

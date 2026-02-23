@@ -26,25 +26,26 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
     saveState === 'saved' ? 'Saved' : saveState === 'autosaving' ? 'Autosaving' : 'Unsaved';
 
   return (
-    <header className="ide-top-bar" data-testid="ide-top-bar">
+    <header className="ide-top-bar" data-testid="ide-top-bar" data-save-state={saveState}>
       <div className="ide-top-left">
         <div className="ide-brand-mark" aria-hidden="true">
           RB
         </div>
         <div className="ide-project-meta">
-          <p className="ide-project-label">RedByte IDE</p>
           <h1 className="ide-project-name" title={projectName}>{projectName}</h1>
           {projectId ? <p className="ide-project-subline">{projectId}</p> : null}
         </div>
-      </div>
-
-      <div className="ide-top-center">
         <span className="ide-board-chip" data-testid="ide-board-chip">
           Basys3
         </span>
       </div>
 
       <div className="ide-top-right">
+        <span
+          className={`ide-save-state-dot ide-save-state-dot-${saveTone}`}
+          aria-hidden="true"
+          title={saveState === 'saved' ? 'All changes saved' : saveState === 'autosaving' ? 'Saving…' : 'Unsaved changes'}
+        />
         <IdeStatusPill tone={saveTone} testId="ide-save-state">
           {saveLabel}
         </IdeStatusPill>
