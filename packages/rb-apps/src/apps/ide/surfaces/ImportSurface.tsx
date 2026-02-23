@@ -218,6 +218,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const zipInputRef = useRef<HTMLInputElement | null>(null);
   const hdlTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const hdlGutterRef = useRef<HTMLDivElement | null>(null);
+  const xdcTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const xdcGutterRef = useRef<HTMLDivElement | null>(null);
+  const [activeXdcWarningLine, setActiveXdcWarningLine] = useState<number | null>(null);
 
   // --- Suggestion model state ---
   const [overrides, setOverrides] = useState<Record<string, string | null>>({});
@@ -231,6 +234,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const [pipelineActive, setPipelineActive] = useState(false);
 
   const lineCount = useMemo(() => Math.max(1, hdlText.split('\n').length), [hdlText]);
+  const xdcLineCount = useMemo(() => Math.max(1, xdcText.split('\n').length), [xdcText]);
 
   const detectedEntityNames = useMemo((): string[] => {
     const source = hdlText.trim();
@@ -347,6 +351,21 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     setActiveWarningLine(line);
   }, []);
 
+  const handleXdcScroll = useCallback(() => {
+    const ta = xdcTextareaRef.current;
+    const gutter = xdcGutterRef.current;
+    if (!ta || !gutter) return;
+    gutter.scrollTop = ta.scrollTop;
+  }, []);
+
+  const scrollToXdcLine = useCallback((line: number) => {
+    const ta = xdcTextareaRef.current;
+    if (!ta) return;
+    const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 18;
+    ta.scrollTop = Math.max(0, (line - 1) * lineHeight - ta.clientHeight / 3);
+    setActiveXdcWarningLine(line);
+  }, []);
+
   const handleHdlKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       const isSave = (e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S');
@@ -411,6 +430,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     const t = window.setTimeout(() => setActiveWarningLine(null), 1200);
     return () => window.clearTimeout(t);
   }, [activeWarningLine]);
+
+  useEffect(() => {
+    if (!activeXdcWarningLine) return;
+    const t = window.setTimeout(() => setActiveXdcWarningLine(null), 1200);
+    return () => window.clearTimeout(t);
+  }, [activeXdcWarningLine]);
 
   const applicableItems = useMemo(
     () =>
@@ -1507,14 +1532,39 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
             {tab === 'xdc' && (
               <div className="ide-import-editor">
-                <textarea
-                  className="ide-import-textarea"
-                  value={xdcText}
-                  onChange={(event) => setXdcText(event.target.value)}
-                  placeholder="Paste XDC constraints here."
-                  spellCheck={false}
-                  data-testid="ide-import-xdc-input"
-                />
+                <div className="ide-code-editor" data-testid="ide-import-xdc-editor">
+                  <div
+                    className="ide-code-gutter"
+                    aria-hidden="true"
+                    ref={xdcGutterRef}
+                  >
+                    {Array.from({ length: xdcLineCount }, (_, i) => {
+                      const lineNum = i + 1;
+                      return (
+                        <span
+                          key={lineNum}
+                          className={`ide-code-gutter-line${
+                            activeXdcWarningLine === lineNum ? ' ide-code-gutter-line--warn' : ''
+                          }`}
+                        >
+                          {lineNum}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <textarea
+                    ref={xdcTextareaRef}
+                    className="ide-code-textarea"
+                    data-testid="ide-import-xdc-input"
+                    value={xdcText}
+                    onChange={(event) => setXdcText(event.target.value)}
+                    onScroll={handleXdcScroll}
+                    placeholder="Paste XDC constraints here."
+                    spellCheck={false}
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                  />
+                </div>
               </div>
             )}
 
@@ -1698,7 +1748,19 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                         <IdeStatusPill tone="warn">ORPHAN</IdeStatusPill>
                         <code className="ide-import-xdc-gap-port">{key}</code>
                         <span className="ide-import-xdc-gap-dir">→ {xdcResult!.pinMap[key]}</span>
-                        <span className="ide-import-xdc-gap-hint">In XDC but not in HDL</span>
+                        {xdcResult!.pinEntries[key]?.line != null ? (
+                          <button
+                            type="button"
+                            className="ide-warning-jump"
+                            onClick={() => { setTab('xdc'); scrollToXdcLine(xdcResult!.pinEntries[key]!.line!); }}
+                            title={`Jump to XDC line ${xdcResult!.pinEntries[key]!.line}`}
+                            data-testid={`ide-import-xdc-jump-${key}`}
+                          >
+                            Ln {xdcResult!.pinEntries[key]!.line}
+                          </button>
+                        ) : (
+                          <span className="ide-import-xdc-gap-hint">In XDC but not in HDL</span>
+                        )}
                       </div>
                     ))}
                   </div>

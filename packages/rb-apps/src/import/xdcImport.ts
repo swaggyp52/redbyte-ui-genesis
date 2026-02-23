@@ -16,6 +16,7 @@ export type PinConfidence = 'strong' | 'weak';
 export interface XdcPinEntry {
   packagePin: string;
   confidence: PinConfidence;
+  line?: number; // 1-based line number of the set_property statement in the original XDC source
 }
 
 export interface XdcParseResult {
@@ -33,10 +34,39 @@ function maybePushUnsupportedPinWarning(warnings: string[], pin: string): void {
   warnings.push(`Unsupported pin '${pin}'`);
 }
 
+/**
+ * Pre-scans the raw XDC source line-by-line and returns a map of
+ * portName → 1-based line number for each set_property PACKAGE_PIN statement.
+ * This runs on the original text (before normalization) so line offsets are preserved.
+ */
+function scanXdcLineNumbers(xdcText: string): Record<string, number> {
+  const lineByPort: Record<string, number> = {};
+  const lines = xdcText.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line || line.startsWith('#')) continue;
+    // Pattern 1: set_property PACKAGE_PIN V17 [get_ports {portName}]
+    const direct = /set_property\s+PACKAGE_PIN\s+\S+\s+\[get_ports\s*(\{[^}]*\}|\S+)\s*\]/i.exec(line);
+    if (direct) {
+      const portName = direct[1].replace(/[{}\s]/g, '');
+      if (portName) lineByPort[portName] = i + 1;
+    }
+    // Pattern 2: set_property -dict { PACKAGE_PIN ... } [get_ports {portName}]
+    const dictMatch = /set_property\s+-dict\s+\{[^}]*\}\s+\[get_ports\s*(\{[^}]*\}|\S+)\s*\]/i.exec(line);
+    if (dictMatch) {
+      const portName = dictMatch[1].replace(/[{}\s]/g, '');
+      if (portName) lineByPort[portName] = i + 1;
+    }
+  }
+  return lineByPort;
+}
+
 export function parseXdcPins(xdcText: string): XdcParseResult {
   const pinMap: XdcPinMap = {};
   const pinEntries: Record<string, XdcPinEntry> = {};
   const warnings: string[] = [];
+
+  const lineByPort = scanXdcLineNumbers(xdcText);
 
   const normalized = xdcText
     .replace(/\r\n/g, '\n')
@@ -54,7 +84,7 @@ export function parseXdcPins(xdcText: string): XdcParseResult {
     maybePushUnsupportedPinWarning(warnings, pin);
     pinMap[portName] = pin;
     const confidence: PinConfidence = BASYS3_ALLOWED_PACKAGE_PINS.has(pin) ? 'strong' : 'weak';
-    pinEntries[portName] = { packagePin: pin, confidence };
+    pinEntries[portName] = { packagePin: pin, confidence, line: lineByPort[portName] };
   };
 
   // Pattern: set_property PACKAGE_PIN V17 [get_ports {SW0}]
