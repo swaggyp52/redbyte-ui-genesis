@@ -128,7 +128,8 @@
       "Bash(Select-String -Pattern \"validateCircuitShape\")",
       "Bash(Select-Object -First 3)",
       "Bash(del:*)",
-      "Bash(if not exist \"c:\\\\Users\\\\conno\\\\redbyte-ui\\\\docs\\\\plans\" mkdir \"c:\\\\Users\\\\conno\\\\redbyte-ui\\\\docs\\\\plans\")"
+      "Bash(if not exist \"c:\\\\Users\\\\conno\\\\redbyte-ui\\\\docs\\\\plans\" mkdir \"c:\\\\Users\\\\conno\\\\redbyte-ui\\\\docs\\\\plans\")",
+      "Bash(node_modules/.bin/tsc:*)"
     ],
     "deny": [],
     "ask": []

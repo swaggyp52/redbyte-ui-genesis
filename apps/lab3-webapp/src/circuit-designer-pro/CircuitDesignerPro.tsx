@@ -42,10 +42,9 @@ export const CircuitDesignerPro: React.FC = () => {
   // Extract circuit from doc (safe cast since we initialize as v2)
   const circuit = doc.circuitDesigner;
 
-  // UI state
-  const [panX, setPanX] = useState(0);
-  const [panY, setPanY] = useState(0);
-  const [zoom, setZoom] = useState(1);
+  // Canvas view — in Zustand so it survives tab switches and window close/reopen
+  const { panX, panY, zoom } = useLabStore((s) => s.canvasView);
+  const setCanvasView = useLabStore((s) => s.setCanvasView);
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
   const [hoveredWireId, setHoveredWireId] = useState<string>();
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -68,13 +67,6 @@ export const CircuitDesignerPro: React.FC = () => {
       setHistoryIndex(newHistory.length - 1);
     }
   }, [circuit]);
-
-  // Update doc when circuit changes
-  useEffect(() => {
-    if (updateCircuitDesigner && 'circuitDesigner' in doc) {
-      updateCircuitDesigner(circuit);
-    }
-  }, [circuit, doc, updateCircuitDesigner]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -171,6 +163,24 @@ export const CircuitDesignerPro: React.FC = () => {
     });
     // Clear validation result after 5 seconds
     setTimeout(() => setValidationResult(null), 5000);
+  };
+
+  // Wheel zoom — zoom toward cursor position
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const factor = e.deltaY > 0 ? 0.9 : 1.1;
+    const newZoom = Math.min(3, Math.max(0.25, zoom * factor));
+    // Adjust pan so the point under the cursor stays fixed
+    const rect = canvasContainerRef.current?.getBoundingClientRect();
+    if (rect) {
+      const cursorX = e.clientX - rect.left;
+      const cursorY = e.clientY - rect.top;
+      const newPanX = cursorX - (cursorX - panX) * (newZoom / zoom);
+      const newPanY = cursorY - (cursorY - panY) * (newZoom / zoom);
+      setCanvasView(newPanX, newPanY, newZoom);
+    } else {
+      setCanvasView(panX, panY, newZoom);
+    }
   };
 
   // Mouse event handlers for canvas
@@ -305,7 +315,7 @@ export const CircuitDesignerPro: React.FC = () => {
   });
 
   return (
-    <div className="relative w-full h-full bg-slate-950 overflow-hidden flex flex-col" ref={canvasContainerRef}>
+    <div className="relative w-full h-full bg-slate-950 overflow-hidden flex flex-col" ref={canvasContainerRef} onWheel={handleWheel}>
       {/* Toolbar */}
       <Toolbar
         onAddNode={handleAddNode}

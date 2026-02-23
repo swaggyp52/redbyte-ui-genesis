@@ -10,10 +10,15 @@ export const Simulator: React.FC = () => {
   const runAllVectors = useLabStore((s) => s.runAllVectors);
   const evalSeg = useLabStore((s) => s.evalSeg);
   const validationResults = useLabStore((s) => s.validationResults);
+  const autoRunning = useLabStore((s) => s.simAutoRunning);
+  const setAutoRunning = useLabStore((s) => s.setSimAutoRunning);
+  const multiDigitMode = useLabStore((s) => s.simMultiDigitMode);
+  const setMultiDigitMode = useLabStore((s) => s.setSimMultiDigitMode);
+  const showFailures = useLabStore((s) => s.simShowFailures);
+  const setShowFailures = useLabStore((s) => s.setSimShowFailures);
+  // isAnimating is purely a 200ms visual flash — OK to lose on tab switch
   const [isAnimating, setIsAnimating] = useState(false);
-  const [autoRunning, setAutoRunning] = useState(false);
-  const [multiDigitMode, setMultiDigitMode] = useState(false);
-  const [showFailures, setShowFailures] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
 
   const currentOutput = evalSeg(simulationInput);
   const currentSeg: [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1] = [
@@ -55,15 +60,15 @@ export const Simulator: React.FC = () => {
     setTimeout(() => setIsAnimating(false), 200);
   };
 
-  // Auto-run functionality
+  // Auto-run functionality — reads from store.getState() inside the callback so no stale closure
   useEffect(() => {
-    if (autoRunning) {
-      const interval = setInterval(() => {
-        setSimulationInput((simulationInput + 1) % 16);
-      }, 800);
-      return () => clearInterval(interval);
-    }
-  }, [autoRunning, setSimulationInput, simulationInput]);
+    if (!autoRunning) return;
+    const interval = setInterval(() => {
+      const current = useLabStore.getState().simulationInput;
+      useLabStore.getState().setSimulationInput((current + 1) % 16);
+    }, 800);
+    return () => clearInterval(interval);
+  }, [autoRunning]);
 
   const requiredResults = validationResults.filter((r) => r.input < 10);
   const passCount = requiredResults.filter((r) => r.pass).length;
@@ -81,7 +86,7 @@ export const Simulator: React.FC = () => {
               Interactive Simulator
             </h2>
             <p className="font-digital text-sm text-slate-400">
-              Test your seven-segment logic with animated signal propagation
+              Apply each 4-bit input vector and verify the combinational output
             </p>
           </div>
           <button
@@ -163,12 +168,19 @@ export const Simulator: React.FC = () => {
           <div className="space-y-3">
             <div className="text-sm font-digital text-slate-400 mb-2">Full Validation:</div>
             <button
-              onClick={runAllVectors}
-              className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-tech font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 glow-box-emerald"
-            title="Test all 16 input combinations"
+              onClick={() => {
+                if (isRunning) return;
+                setIsRunning(true);
+                runAllVectors();
+                // runAllVectors is synchronous; clear guard after one event loop tick
+                setTimeout(() => setIsRunning(false), 0);
+              }}
+              disabled={isRunning}
+              className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-tech font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 glow-box-emerald"
+              title="Test all 16 input combinations"
             >
               <Play size={18} />
-              Run All 16 Tests
+              {isRunning ? 'Running…' : 'Run All 16 Tests'}
             </button>
           </div>
         </div>
@@ -209,7 +221,7 @@ export const Simulator: React.FC = () => {
             )}
             {!allPassed && failedResults.length > 0 && (
               <button
-                onClick={() => setShowFailures((prev) => !prev)}
+                onClick={() => setShowFailures(!showFailures)}
                 className="px-3 py-1.5 rounded-md text-xs font-tech font-semibold bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 transition-all"
               >
                 {showFailures ? 'Hide failures' : 'View failures'}

@@ -176,10 +176,10 @@ export const WaveformViewerEnhanced: React.FC = () => {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Time label
+      // Vector label: show binary + decimal
       ctx.fillStyle = '#ef4444';
       ctx.font = 'bold 12px "Share Tech Mono", monospace';
-      ctx.fillText(`t=${currentTime}`, cursorX + 5, 15);
+      ctx.fillText(`vec ${currentTime.toString(2).padStart(4, '0')} (${currentTime})`, cursorX + 5, 15);
     }
   }, [samples, selectedSignals, zoom, panOffset, currentTime, playing]);
 
@@ -225,10 +225,10 @@ export const WaveformViewerEnhanced: React.FC = () => {
           <div>
             <h2 className="font-tech-display text-2xl font-bold text-cyan-400 neon-cyan mb-2 flex items-center gap-2">
               <Activity size={24} />
-              Waveform Oscilloscope
+              Input Vector Trace
             </h2>
             <p className="font-digital text-sm text-slate-400">
-              Real-time signal visualization with propagation delays
+              Combinational output at each 4-bit input vector (0000–1111). No clock — not a timing diagram.
             </p>
           </div>
         </div>
@@ -279,11 +279,11 @@ export const WaveformViewerEnhanced: React.FC = () => {
             </button>
           </div>
 
-          {/* Time display */}
+          {/* Vector display */}
           <div className="ml-auto px-4 py-2 bg-slate-800/50 rounded-lg border border-slate-700 font-digital text-sm">
-            <span className="text-slate-400">Time:</span>{' '}
-            <span className="text-cyan-400">{currentTime}</span>
-            <span className="text-slate-500"> / {samples.length - 1}</span>
+            <span className="text-slate-400">Vector:</span>{' '}
+            <span className="text-cyan-400">{currentTime.toString(2).padStart(4, '0')}</span>
+            <span className="text-slate-500"> ({currentTime} / {samples.length - 1})</span>
           </div>
         </div>
       </div>
@@ -327,7 +327,7 @@ export const WaveformViewerEnhanced: React.FC = () => {
       <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-3 flex justify-between items-center font-digital text-xs text-slate-400">
         <span>{selectedSignals.length} signals displayed</span>
         <span>Resolution: {Math.round(zoom * 100)}%</span>
-        <span>Simulated propagation: 5ns per gate</span>
+        <span>Combinational only — timing values are not hardware-accurate</span>
       </div>
     </div>
   );
