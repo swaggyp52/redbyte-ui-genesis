@@ -1948,11 +1948,14 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
             <section className="ide-export-section">
               <IdeSectionHeader title="Preview Schematic" meta="v1 preview" />
-              <div className="ide-waveform-stub" data-testid="ide-import-schematic-preview">
-                <span />
-                <span />
-                <span />
-                <span />
+              <div data-testid="ide-import-schematic-preview">
+                {parsedHdl ? (
+                  <ImportSchematicPreview parsedHdl={parsedHdl} mapping={mapping} />
+                ) : (
+                  <p className="ide-copy" style={{ color: 'var(--ide-text-muted)', fontSize: 11 }}>
+                    Parse HDL to see a port preview.
+                  </p>
+                )}
               </div>
             </section>
           </section>
@@ -1961,6 +1964,80 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     </IdeSurfaceLayout>
   );
 };
+
+// ─── Schematic preview ────────────────────────────────────────────────────────
+
+interface ImportSchematicPreviewProps {
+  parsedHdl: ParsedHDL;
+  mapping: Record<string, string>;
+}
+
+function ImportSchematicPreview({ parsedHdl, mapping }: ImportSchematicPreviewProps) {
+  const inPorts = parsedHdl.ports.filter((p) => p.direction === 'in');
+  const outPorts = parsedHdl.ports.filter((p) => p.direction === 'out');
+  const maxRows = Math.max(inPorts.length, outPorts.length, 1);
+
+  return (
+    <div className="ide-import-schematic-preview-wrap" data-testid="ide-import-schematic-preview-inner">
+      <div className="ide-import-schematic-entity-header">
+        {parsedHdl.lang.toUpperCase()} · {parsedHdl.entityName}
+      </div>
+      <div className="ide-import-schematic-io-columns" style={{ minHeight: Math.max(maxRows * 20, 60) }}>
+        {/* Input ports */}
+        <div className="ide-import-schematic-in-col">
+          {inPorts.map((port) => {
+            const pin = (mapping[port.name] ?? '').trim();
+            return (
+              <div key={port.name} className="ide-import-schematic-port-row">
+                <div className={`ide-import-schematic-port-dot${pin ? ' has-pin' : ''}`} title={pin || 'unmapped'} />
+                <span className="ide-import-schematic-port-name">{port.name}</span>
+                {pin && <span className="ide-import-schematic-port-pin">{pin}</span>}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Entity box */}
+        <div className="ide-import-schematic-entity-box">
+          <span className="ide-import-schematic-entity-name">{parsedHdl.entityName}</span>
+        </div>
+
+        {/* Output ports */}
+        <div className="ide-import-schematic-out-col">
+          {outPorts.map((port) => {
+            const pin = (mapping[port.name] ?? '').trim();
+            return (
+              <div key={port.name} className="ide-import-schematic-port-row">
+                <div className={`ide-import-schematic-port-dot${pin ? ' has-pin' : ''}`} title={pin || 'unmapped'} />
+                <span className="ide-import-schematic-port-name">{port.name}</span>
+                {pin && <span className="ide-import-schematic-port-pin">{pin}</span>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {parsedHdl.instances && parsedHdl.instances.length > 0 && (
+        <div className="ide-import-schematic-instance-list">
+          {parsedHdl.instances.slice(0, 12).map((inst) => (
+            <span
+              key={inst.id}
+              className="ide-import-schematic-instance-chip"
+              title={inst.componentType}
+            >
+              {inst.componentType}
+            </span>
+          ))}
+          {parsedHdl.instances.length > 12 && (
+            <span className="ide-import-schematic-instance-chip">
+              +{parsedHdl.instances.length - 12}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function detectHdlLanguage(source: string): 'vhdl' | 'verilog' {
   const lowered = source.toLowerCase();
