@@ -891,6 +891,7 @@ export const IdeApp: React.FC = () => {
             projectIoRows={projectIoRows}
             onApplySuggestions={handleApplySuggestions}
             onGoToProject={() => setCurrentMode('project')}
+            onGoToVerify={() => setCurrentMode('verify')}
           />
         )}
         </div>

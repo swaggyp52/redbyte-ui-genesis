@@ -32,6 +32,7 @@ export interface ImportSurfaceProps {
   projectIoRows?: IdeExampleIoRow[];
   onApplySuggestions?: (items: Array<{ rowId: string; pin: string }>) => void;
   onGoToProject?: () => void;
+  onGoToVerify?: () => void;
 }
 
 const BASYS3_QUICK_PINS = [
@@ -203,6 +204,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   projectIoRows,
   onApplySuggestions,
   onGoToProject,
+  onGoToVerify,
 }) => {
   const [tab, setTab] = useState<ImportTab>('hdl');
   const [language, setLanguage] = useState<HdlLanguage>('auto');
@@ -798,8 +800,18 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         setPipelineActive(false);
         return;
       }
-      setPendingApplyProject(built);
-      markPipelineStep('build', 'done', `${built.circuit.nodes.length} nodes · ${built.circuit.connections.length} connections`);
+      const baselineVectors = generateBaselineVectors(built);
+      const builtWithVectors: RBProject = baselineVectors.length > 0
+        ? { ...built, vectors: baselineVectors }
+        : built;
+      setPendingApplyProject(builtWithVectors);
+      markPipelineStep(
+        'build',
+        'done',
+        baselineVectors.length > 0
+          ? `${built.circuit.nodes.length} nodes · ${baselineVectors.length} baseline vectors`
+          : `${built.circuit.nodes.length} nodes · ${built.circuit.connections.length} connections`
+      );
       setStatusMessage('Design processed. Review commit preview below.');
     } catch (err) {
       const reason = err instanceof Error ? err.message : 'unknown error';
@@ -835,6 +847,14 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const cancelApplyProject = () => {
     setPendingApplyProject(null);
     setStatusMessage('Import apply canceled.');
+  };
+
+  const confirmAndVerify = () => {
+    if (!pendingApplyProject) return;
+    onImportProject?.(pendingApplyProject);
+    setPendingApplyProject(null);
+    setStatusMessage('Project imported. Opening Verify…');
+    onGoToVerify?.();
   };
 
   const handleOpenZipPicker = () => {
@@ -1363,13 +1383,29 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               )}
             </div>
 
-            <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
+            <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)', flexWrap: 'wrap' }}>
               <IdeButton tone="ghost" onClick={cancelApplyProject} testId="ide-import-apply-cancel">
                 Cancel
               </IdeButton>
-              <IdeButton tone="primary" onClick={confirmApplyProject} testId="ide-import-apply-confirm">
+              <IdeButton tone="secondary" onClick={confirmApplyProject} testId="ide-import-apply-confirm">
                 Confirm Replace Project
               </IdeButton>
+              {onGoToVerify && (
+                <div className="ide-import-verify-cta">
+                  <span className="ide-import-verify-cta-label">
+                    {(pendingApplyProject?.vectors?.length ?? 0) > 0
+                      ? `${pendingApplyProject!.vectors!.length} baseline vectors ready`
+                      : 'Import + open Verify'}
+                  </span>
+                  <IdeButton
+                    tone="primary"
+                    onClick={confirmAndVerify}
+                    testId="ide-import-apply-open-verify"
+                  >
+                    Confirm &amp; Open Verify →
+                  </IdeButton>
+                </div>
+              )}
             </div>
           </div>
         ) : null}
@@ -2150,4 +2186,48 @@ function buildMappingRecord(project: RBProject): Record<string, string> {
     mapping[key] = (row.pin ?? '').toUpperCase();
   }
   return mapping;
+}
+
+/**
+ * Generates minimal baseline test vectors from the circuit's INPUT nodes.
+ * Patterns: all-zeros (tick 0), one-hot per input (ticks 1..N), all-ones (tick N+1).
+ * Expected outputs are set to 0 — the student fills them in after running verify.
+ */
+function generateBaselineVectors(project: RBProject): Array<{
+  tick: number;
+  inputs: Record<string, number>;
+  expected: Record<string, number>;
+}> {
+  const inputNodes = (project.circuit.nodes ?? []).filter((n) => n.type === 'INPUT');
+  const outputNodes = (project.circuit.nodes ?? []).filter((n) => n.type === 'OUTPUT');
+  if (inputNodes.length === 0) return [];
+
+  const emptyExpected = Object.fromEntries(outputNodes.map((n) => [n.id, 0]));
+
+  const vectors: Array<{ tick: number; inputs: Record<string, number>; expected: Record<string, number> }> = [];
+
+  // Tick 0: all inputs = 0
+  vectors.push({
+    tick: 0,
+    inputs: Object.fromEntries(inputNodes.map((n) => [n.id, 0])),
+    expected: { ...emptyExpected },
+  });
+
+  // Ticks 1..N: one-hot inputs
+  inputNodes.forEach((inNode, i) => {
+    vectors.push({
+      tick: i + 1,
+      inputs: Object.fromEntries(inputNodes.map((n) => [n.id, n.id === inNode.id ? 1 : 0])),
+      expected: { ...emptyExpected },
+    });
+  });
+
+  // Final tick: all inputs = 1
+  vectors.push({
+    tick: inputNodes.length + 1,
+    inputs: Object.fromEntries(inputNodes.map((n) => [n.id, 1])),
+    expected: { ...emptyExpected },
+  });
+
+  return vectors;
 }
