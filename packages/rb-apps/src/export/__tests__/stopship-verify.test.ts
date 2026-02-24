@@ -11,7 +11,6 @@ import { netlistFromCircuit } from '../netlistExport';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import {
   exportBasys3Bundle,
-  // @ts-expect-error — buildVhdlTopLevelBindings will be exported in Task 2
   buildVhdlTopLevelBindings,
 } from '../../fpga/boards/basys3/basys3Bundle';
 import type { IoMapping } from '@redbyte/rb-utils';
@@ -326,7 +325,6 @@ describe('STOP-SHIP 6 — HDL pane VHDL equals export top.vhd', () => {
     const ioMapping = buildAndGateIoMapping();
 
     // Simulate what export does (basys3Bundle path)
-    // @ts-expect-error — exportBasys3Bundle options param added in Task 2
     const bundle = exportBasys3Bundle(circuit, ioMapping, { entityName: 'my_and_gate' });
     const exportVhd = bundle.topVhd;
 
@@ -346,7 +344,6 @@ describe('STOP-SHIP 6 — HDL pane VHDL equals export top.vhd', () => {
   it('entity name in export top.vhd matches topEntityName when provided', () => {
     const circuit = buildAndGateCircuit();
     const ioMapping = buildAndGateIoMapping();
-    // @ts-expect-error — exportBasys3Bundle options param added in Task 2
     const bundle = exportBasys3Bundle(circuit, ioMapping, { entityName: 'rb_test_entity' });
     expect(bundle.topVhd).toContain('entity rb_test_entity is');
     expect(bundle.topVhd).not.toContain('entity top is');

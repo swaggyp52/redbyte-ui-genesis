@@ -136,7 +136,7 @@ function buildReadme(ioMapping: IoMapping, warnings: string[]): string {
   return lines.join('\n');
 }
 
-function buildVhdlTopLevelBindings(ioMapping: IoMapping): {
+export function buildVhdlTopLevelBindings(ioMapping: IoMapping): {
   topPorts: VhdlTopPort[];
   topInputBindings: VhdlTopInputBinding[];
   topOutputBindings: VhdlTopOutputBinding[];
@@ -164,12 +164,16 @@ function buildVhdlTopLevelBindings(ioMapping: IoMapping): {
   return { topPorts, topInputBindings, topOutputBindings };
 }
 
-export function exportBasys3Bundle(circuit: Circuit, ioMapping: IoMapping): Basys3BundleResult {
+export function exportBasys3Bundle(
+  circuit: Circuit,
+  ioMapping: IoMapping,
+  options?: { entityName?: string },
+): Basys3BundleResult {
   const warnings: string[] = [];
   const netlist = netlistFromCircuit(circuit);
   const { topPorts, topInputBindings, topOutputBindings } = buildVhdlTopLevelBindings(ioMapping);
   const vhdl = vhdlFromNetlist(netlist, {
-    entityName: 'top',
+    entityName: options?.entityName ?? 'top',
     topPorts,
     topInputBindings,
     topOutputBindings,
@@ -178,7 +182,7 @@ export function exportBasys3Bundle(circuit: Circuit, ioMapping: IoMapping): Basy
   warnings.push(...vhdl.warnings);
 
   const verilog = circuitToVerilog(toCircuitV1(circuit), ioMapping, {
-    moduleName: 'top',
+    moduleName: options?.entityName ?? 'top',
     targetBoard: 'basys3',
   });
 
