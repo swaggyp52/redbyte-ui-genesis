@@ -16299,3 +16299,12 @@ Notes:
 - **Build Verification**:
   - ✅ `pnpm vitest run packages/rb-apps/src/export/__tests__/golden-examples.test.ts` → 16/16 pass (no regressions)
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-02-24 (STOP-SHIP 6 + 7 — All CI Gates Green)
+
+- Fixed STOP-SHIP 7 (`packages/rb-apps/src/fpga/boards/basys3/vectorRunner.ts`): added boot-reset CLK macro warmup before the main vector loop for `clocked_macro` schedules. SR-NAND-based DFlipFlop composite nodes initialize at Q=Q_inv=1 (metastable from all-zero NAND inputs) on first construction; one CLK pulse with first-vector data inputs drives the latch to valid Q=0 state, matching the stable start state the counter test vectors assume.
+- Fixed STOP-SHIP 6 (`packages/rb-fpga-toolchain/src/verilog-generator.ts` + `.js`): moved `IO_NODE_TYPES` definition before the unsupported-node filter and added an early-return check so INPUT/OUTPUT/Lamp/Switch/InputPin/Clock nodes are silently excluded as module ports rather than pushed into `unsupportedNodes`. Previously these caused `verilog.unsupportedNodes.length > 0` → `bundle.valid = false` even for correct AND-gate exports. `.js` mirror updated with same structural change including `nodeTypeById` map and IO_NODE_TYPES "no driver" guard in connections loop.
+
+- **Build Verification**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/export/__tests__/stopship-verify.test.ts packages/rb-apps/src/export/__tests__/golden-examples.test.ts` → 39/39 pass
+- **Attribution**: Connor Angiel
