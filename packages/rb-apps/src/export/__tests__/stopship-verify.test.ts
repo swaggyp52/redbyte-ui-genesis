@@ -14,6 +14,8 @@ import {
   buildVhdlTopLevelBindings,
 } from '../../fpga/boards/basys3/basys3Bundle';
 import type { IoMapping } from '@redbyte/rb-utils';
+import { IDE_EXAMPLES } from '../../apps/ide/examplesCatalog';
+import { runTestVectors } from '../../fpga/boards/basys3/vectorRunner';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -350,4 +352,22 @@ describe('STOP-SHIP 6 — HDL pane VHDL equals export top.vhd', () => {
     expect(bundle.topVhd).toContain('entity rb_test_entity is');
     expect(bundle.topVhd).not.toContain('entity top is');
   });
+});
+
+// ─── STOP-SHIP 7 — All IDE examples verify clean (no failures) ──────────────
+
+describe('STOP-SHIP 7 — All IDE examples verify clean', () => {
+  for (const example of IDE_EXAMPLES) {
+    it(`[${example.id}] verifies with 0 failures`, async () => {
+      const result = await runTestVectors(example.circuit, example.vectors);
+      if (result.failures.length > 0) {
+        const summary = result.failures
+          .map(f => `  tick=${f.tick} signal=${f.signal} expected=${f.expected} actual=${f.actual}`)
+          .join('\n');
+        throw new Error(`Example "${example.id}" has ${result.failures.length} verification failure(s):\n${summary}`);
+      }
+      expect(result.pass).toBe(true);
+      expect(result.failures).toHaveLength(0);
+    });
+  }
 });

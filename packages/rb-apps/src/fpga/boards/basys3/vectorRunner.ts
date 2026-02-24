@@ -151,16 +151,24 @@ function executeCombinatorialStep(
     for (const [portName, expected] of Object.entries(vector.expected)) {
       const expectedVal = typeof expected === 'boolean' ? (expected ? 1 : 0) : expected;
       const key = findSignalKey(signals, portName);
-      if (key) {
-        const actual = typeof signals.get(key) === 'number' ? signals.get(key) : 0;
-        if (actual !== expectedVal) {
-          failures.push({
-            tick: tickIdx,
-            signal: portName,
-            expected: expectedVal,
-            actual,
-          });
+      let actual: number | undefined;
+      if (key !== undefined) {
+        actual = typeof signals.get(key) === 'number' ? (signals.get(key) as number) : 0;
+      } else {
+        // Fallback: OUTPUT nodes store value in state.isOn (OUTPUTBehavior returns outputs:{})
+        const nodeState = engine.getNodeState(portName);
+        if (nodeState !== undefined) {
+          const raw = nodeState.isOn;
+          actual = typeof raw === 'number' ? raw : raw ? 1 : 0;
         }
+      }
+      if (actual !== undefined && actual !== expectedVal) {
+        failures.push({
+          tick: tickIdx,
+          signal: portName,
+          expected: expectedVal,
+          actual,
+        });
       }
     }
   }
@@ -212,16 +220,24 @@ function executeClockedMacroStep(
     for (const [portName, expected] of Object.entries(vector.expected)) {
       const expectedVal = typeof expected === 'boolean' ? (expected ? 1 : 0) : expected;
       const key = findSignalKey(signals, portName);
-      if (key) {
-        const actual = typeof signals.get(key) === 'number' ? signals.get(key) : 0;
-        if (actual !== expectedVal) {
-          failures.push({
-            tick: tickIdx,
-            signal: portName,
-            expected: expectedVal,
-            actual,
-          });
+      let actual: number | undefined;
+      if (key !== undefined) {
+        actual = typeof signals.get(key) === 'number' ? (signals.get(key) as number) : 0;
+      } else {
+        // Fallback: OUTPUT nodes store value in state.isOn (OUTPUTBehavior returns outputs:{})
+        const nodeState = engine.getNodeState(portName);
+        if (nodeState !== undefined) {
+          const raw = nodeState.isOn;
+          actual = typeof raw === 'number' ? raw : raw ? 1 : 0;
         }
+      }
+      if (actual !== undefined && actual !== expectedVal) {
+        failures.push({
+          tick: tickIdx,
+          signal: portName,
+          expected: expectedVal,
+          actual,
+        });
       }
     }
   }

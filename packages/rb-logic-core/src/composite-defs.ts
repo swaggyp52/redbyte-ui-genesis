@@ -43,54 +43,66 @@ export const RSLatchDef: CompositeNodeDef = {
 };
 
 /**
- * D Flip-Flop
+ * D Flip-Flop (transparent D-latch)
+ * Transparent when CLK=1: Q = D
+ * Hold when CLK=0: Q retains previous value
  * Inputs: D (data), CLK (clock)
  * Outputs: Q, Q_inv
+ *
+ * Implementation: 4-NAND transparent latch
+ *   nand1 = NAND(D, CLK)         → S_bar (active-low set)
+ *   nand2 = NAND(NOT(D), CLK)    → R_bar (active-low reset)
+ *   nand3 = NAND(S_bar, nand4)   → Q  (SR latch output)
+ *   nand4 = NAND(R_bar, nand3)   → Q_inv (SR latch complement)
  */
 export const DFlipFlopDef: CompositeNodeDef = {
   name: 'DFlipFlop',
-  description: 'D Flip-Flop - data storage triggered on clock edge',
+  description: 'D Flip-Flop - transparent latch, Q=D when CLK=1, holds when CLK=0',
   subcircuit: {
     nodes: [
       // Inputs
-      { id: 'd_in', type: 'Switch', position: { x: 0, y: 0 }, rotation: 0, config: {}, state: { isOn: 0 } },
-      { id: 'clk_in', type: 'Switch', position: { x: 0, y: 2 }, rotation: 0, config: {}, state: { isOn: 0 } },
+      { id: 'd_in',   type: 'Switch', position: { x: 0, y: 0 }, rotation: 0, config: {}, state: { isOn: 0 } },
+      { id: 'clk_in', type: 'Switch', position: { x: 0, y: 3 }, rotation: 0, config: {}, state: { isOn: 0 } },
 
-      // NOT for D_inv
-      { id: 'not1', type: 'NOT', position: { x: 1, y: 1 }, rotation: 0, config: {} },
+      // NOT(D) for R_bar path
+      { id: 'not1',  type: 'NOT',  position: { x: 1, y: 1 }, rotation: 0, config: {} },
 
-      // AND gates for gating
-      { id: 'and1', type: 'AND', position: { x: 2, y: 0 }, rotation: 0, config: {} },
-      { id: 'and2', type: 'AND', position: { x: 2, y: 2 }, rotation: 0, config: {} },
+      // Gating NANDs: S_bar and R_bar
+      { id: 'nand1', type: 'NAND', position: { x: 3, y: 0 }, rotation: 0, config: {} },
+      { id: 'nand2', type: 'NAND', position: { x: 3, y: 2 }, rotation: 0, config: {} },
 
-      // NAND latch
-      { id: 'nand1', type: 'NAND', position: { x: 4, y: 0 }, rotation: 0, config: {} },
-      { id: 'nand2', type: 'NAND', position: { x: 4, y: 2 }, rotation: 0, config: {} },
+      // SR-NAND latch: Q and Q_inv
+      { id: 'nand3', type: 'NAND', position: { x: 5, y: 0 }, rotation: 0, config: {} },
+      { id: 'nand4', type: 'NAND', position: { x: 5, y: 2 }, rotation: 0, config: {} },
     ],
     connections: [
-      // D and CLK to AND gates
-      { from: { nodeId: 'd_in', portName: 'out' }, to: { nodeId: 'and1', portName: 'a' } },
-      { from: { nodeId: 'd_in', portName: 'out' }, to: { nodeId: 'not1', portName: 'in' } },
-      { from: { nodeId: 'not1', portName: 'out' }, to: { nodeId: 'and2', portName: 'a' } },
-      { from: { nodeId: 'clk_in', portName: 'out' }, to: { nodeId: 'and1', portName: 'b' } },
-      { from: { nodeId: 'clk_in', portName: 'out' }, to: { nodeId: 'and2', portName: 'b' } },
+      // S_bar = NAND(D, CLK)
+      { from: { nodeId: 'd_in',   portName: 'out' }, to: { nodeId: 'nand1', portName: 'a' } },
+      { from: { nodeId: 'clk_in', portName: 'out' }, to: { nodeId: 'nand1', portName: 'b' } },
 
-      // AND outputs to NAND latch
-      { from: { nodeId: 'and1', portName: 'out' }, to: { nodeId: 'nand1', portName: 'a' } },
-      { from: { nodeId: 'and2', portName: 'out' }, to: { nodeId: 'nand2', portName: 'a' } },
+      // NOT(D)
+      { from: { nodeId: 'd_in',  portName: 'out' }, to: { nodeId: 'not1', portName: 'in' } },
 
-      // Cross-coupled NAND
-      { from: { nodeId: 'nand1', portName: 'out' }, to: { nodeId: 'nand2', portName: 'b' } },
-      { from: { nodeId: 'nand2', portName: 'out' }, to: { nodeId: 'nand1', portName: 'b' } },
+      // R_bar = NAND(NOT(D), CLK)
+      { from: { nodeId: 'not1',   portName: 'out' }, to: { nodeId: 'nand2', portName: 'a' } },
+      { from: { nodeId: 'clk_in', portName: 'out' }, to: { nodeId: 'nand2', portName: 'b' } },
+
+      // SR latch: Q = NAND(S_bar, Q_inv)
+      { from: { nodeId: 'nand1', portName: 'out' }, to: { nodeId: 'nand3', portName: 'a' } },
+      { from: { nodeId: 'nand4', portName: 'out' }, to: { nodeId: 'nand3', portName: 'b' } },
+
+      // SR latch: Q_inv = NAND(R_bar, Q)
+      { from: { nodeId: 'nand2', portName: 'out' }, to: { nodeId: 'nand4', portName: 'a' } },
+      { from: { nodeId: 'nand3', portName: 'out' }, to: { nodeId: 'nand4', portName: 'b' } },
     ],
   },
   inputMapping: {
-    D: 'd_in.isOn',
+    D:   'd_in.isOn',
     CLK: 'clk_in.isOn',
   },
   outputMapping: {
-    Q: 'nand1.out',
-    Q_inv: 'nand2.out',
+    Q:     'nand3.out',
+    Q_inv: 'nand4.out',
   },
 };
 
