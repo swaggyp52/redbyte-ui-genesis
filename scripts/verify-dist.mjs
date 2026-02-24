@@ -43,7 +43,7 @@ check(Boolean(versionJson.builtAt), 'dist/os/version.json includes builtAt');
 check(fs.existsSync(path.join(DIST, '_redirects')), 'dist/_redirects exists');
 const redirects = fs.readFileSync(path.join(DIST, '_redirects'), 'utf8');
 check(redirects.includes('/os/*'), 'dist/_redirects contains /os/* fallback');
-check(redirects.includes('/* /index.html 200'), 'dist/_redirects contains root fallback');
+check(/\/\*\s+\/index\.html\s+200/.test(redirects), 'dist/_redirects contains root fallback');
 
 // 5b. Headers check
 check(fs.existsSync(path.join(DIST, '_headers')), 'dist/_headers exists');
