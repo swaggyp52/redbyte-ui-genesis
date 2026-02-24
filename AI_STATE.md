@@ -16273,3 +16273,18 @@ Notes:
   - ✅ `node packages/rb-fpga-bridge/tests/toolchain-board-detect.test.js`
   - ✅ `pnpm -w exec vitest run packages/rb-apps/src/__tests__/toolchain-synth.test.ts packages/rb-apps/src/__tests__/hdl-editor-panel.test.tsx packages/rb-apps/src/__tests__/toolchain-program-bitstream.test.ts`
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-02-24 (PR1 — Golden Examples: Verification + Export Unblock)
+
+- Fixed B1 (`packages/rb-apps/src/apps/ide/sim/simEngine.ts`): added `row.nodeId` to `resolveVectorBitSymbol` candidates so nodeId-keyed vector keys (e.g. `ld0_node`) resolve correctly instead of always returning `'0'`.
+- Fixed B2 (`simEngine.ts`, `packages/rb-apps/src/apps/ide/projectRuntime.ts`): added `buildVerifyRowsDeterministicFromCircuit` that runs a fresh simulation from circuit when runtime trace doesn't cover vector ticks; `projectRuntime` falls back to it before the legacy `normalizeVerifyRows` path.
+- Fixed B3 (`packages/rb-lab-engine/src/verification/verifyTruthTable.ts`): changed OUTPUT/Lamp node reads from `getNodeValue(id, 'Q')` (wrong port) to `engine.getNodeState(nodeId)?.isOn ?? 0`.
+- Fixed B4 (`packages/rb-fpga-toolchain/src/verilog-generator.ts`): introduced `IO_NODE_TYPES` set covering `INPUT/OUTPUT/Lamp/Switch/InputPin/Clock`; suppressed false "no driver" warnings for module-port nodes.
+- Fixed B5 (`packages/rb-apps/src/fpga/boards/basys3/vectorRunner.ts`): hardened OUTPUT signal fallback in both `executeCombinatorialStep` and `executeClockedMacroStep`; used nodeId-direct `getNodeState` lookup with explicit coercion.
+- Fixed B6 (`packages/rb-apps/src/apps/ide/examplesCatalog.ts`): corrected probe `portName` from `'out'` → `'in'` for all OUTPUT nodes (OUTPUTBehavior stores value on `'in'`); reordered two-bit-counter `nodes` array to put `and_en` before `xor1` — Kahn's topo-sort appends cycle nodes in original array order, so `and_en` must precede `xor1` for correct same-tick carry propagation.
+- Added `vitest.config.ts` `resolve.extensions` with `.ts` before `.js` to prevent stale compiled `.js` artefacts in `src/` directories from shadowing TypeScript source at import-resolution time (was causing stale `verilog-generator.js` to load instead of `verilog-generator.ts` with B4 fix).
+- Added `packages/rb-apps/src/export/__tests__/golden-examples.test.ts`: 16-test STOP-SHIP gate covering all 3 IDE examples (signal-tour, logic-gates, two-bit-counter) with direct CLK-macro counter simulation and Verilog export driver-warning regression.
+
+- **Build Verification**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/export/__tests__/golden-examples.test.ts` → 16/16 pass
+- **Attribution**: Connor Angiel
