@@ -63,9 +63,15 @@ export function circuitToVerilog(
   const sortedNodes = [...circuit.nodes].sort((a, b) => cmpCodepoint(a.id, b.id));
   const sortedConnections = [...circuit.connections].sort(compareConnections);
 
-  // Filter out unsupported node types
+  // I/O node types: these are module ports, not logic primitives.
+  // Their signals are declared as module inputs/outputs, so they must not be
+  // flagged as unsupported synthesis nodes and must not trigger "no driver" warnings.
+  const IO_NODE_TYPES = new Set(['INPUT', 'OUTPUT', 'Lamp', 'Switch', 'InputPin', 'Clock']);
+
+  // Filter out unsupported node types (IO nodes are silently excluded — they become ports)
   const supportedTypes = new Set(getSupportedNodeTypes());
   const supportedNodes = sortedNodes.filter((node) => {
+    if (IO_NODE_TYPES.has(node.type)) return false; // module port — handled separately, not a primitive
     if (!supportedTypes.has(node.type)) {
       unsupportedNodes.push(`${node.id} (${node.type})`);
       warnings.push(`Node ${node.id} type "${node.type}" not supported for synthesis`);
@@ -77,11 +83,6 @@ export function circuitToVerilog(
   // Build wire map
   const wires = new Map<string, WireInfo>();
   const nodeOutputs = new Map<string, string[]>();
-
-  // I/O node types: these are module ports, not logic primitives.
-  // Their signals are declared as module inputs/outputs, so missing wires from
-  // them are expected and should not trigger "no driver" warnings.
-  const IO_NODE_TYPES = new Set(['INPUT', 'OUTPUT', 'Lamp', 'Switch', 'InputPin', 'Clock']);
   const nodeTypeById = new Map<string, string>();
   for (const node of sortedNodes) {
     nodeTypeById.set(node.id, node.type);

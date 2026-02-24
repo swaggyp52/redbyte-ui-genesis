@@ -19,9 +19,15 @@ export function circuitToVerilog(circuit, ioMapping, options = {}) {
     const unsupportedNodes = [];
     const sortedNodes = [...circuit.nodes].sort((a, b) => a.id.localeCompare(b.id));
     const sortedConnections = [...circuit.connections].sort(compareConnections);
-    // Filter out unsupported node types
+    // I/O node types: these are module ports, not logic primitives.
+    // They must not be flagged as unsupported synthesis nodes and must not
+    // trigger "no driver" warnings.
+    const IO_NODE_TYPES = new Set(['INPUT', 'OUTPUT', 'Lamp', 'Switch', 'InputPin', 'Clock']);
+    // Filter out unsupported node types (IO nodes are silently excluded — they become ports)
     const supportedTypes = new Set(getSupportedNodeTypes());
     const supportedNodes = sortedNodes.filter((node) => {
+        if (IO_NODE_TYPES.has(node.type))
+            return false; // module port — handled separately, not a primitive
         if (!supportedTypes.has(node.type)) {
             unsupportedNodes.push(`${node.id} (${node.type})`);
             warnings.push(`Node ${node.id} type "${node.type}" not supported for synthesis`);
@@ -32,6 +38,10 @@ export function circuitToVerilog(circuit, ioMapping, options = {}) {
     // Build wire map
     const wires = new Map();
     const nodeOutputs = new Map();
+    const nodeTypeById = new Map();
+    for (const node of sortedNodes) {
+        nodeTypeById.set(node.id, node.type);
+    }
     // Initialize node output tracking
     for (const node of supportedNodes) {
         const primitive = getPrimitive(node.type);
@@ -51,7 +61,9 @@ export function circuitToVerilog(circuit, ioMapping, options = {}) {
         if (wire) {
             wire.loads.push(toLoad);
         }
-        else {
+        else if (!IO_NODE_TYPES.has(nodeTypeById.get(conn.fromNodeId) ?? '')) {
+            // I/O nodes (INPUT, OUTPUT, Switch, etc.) are handled as module ports —
+            // missing wires from them are expected and not an error.
             warnings.push(`Connection from ${conn.fromNodeId}.${conn.fromPin} has no driver`);
         }
     }
