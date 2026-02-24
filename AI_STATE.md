@@ -16288,3 +16288,14 @@ Notes:
 - **Build Verification**:
   - ✅ `pnpm vitest run packages/rb-apps/src/export/__tests__/golden-examples.test.ts` → 16/16 pass
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-02-24 (PR2 — Verification UX Clarity)
+
+- Added `runDeterministicVerification()` to `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`: always simulates from circuit (`useRuntimeTrace: false`), bypassing interactive runtime trace. Exposed as "Run Deterministic" ghost button in the status strip action bar.
+- Added "What is a tick?" `<details>` info panel above the waveform (collapsed by default): explains simulation ticks, settle behavior for combinational vs sequential logic, and what a mismatch means for students.
+- Added contextual mismatch hints in the Mismatch Detail inspector section: actual=0/expected=1 → suggests checking wiring/driver; actual=1/expected=0 → suggests checking for unintended connections/inverted logic; otherwise → suggests verifying input conditions at the failing tick.
+- Improved status strip wording from "N vectors · M pass · Z fail · tK" to "N/M passed · Z fail at t{K} (sig1, sig2 +N more)" — readable single-sentence summary matching plan acceptance criteria.
+
+- **Build Verification**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/export/__tests__/golden-examples.test.ts` → 16/16 pass (no regressions)
+- **Attribution**: Connor Angiel
