@@ -133,7 +133,7 @@ export function choosePrimaryProjectCta(
   readiness: ProjectReadinessState
 ): ProjectPrimaryCta {
   if (!readiness.hasCircuit) {
-    return { label: 'Design', mode: 'design', code: 'RBP3000' };
+    return { label: 'Load Example or Import HDL', mode: 'import', code: 'RBP3000' };
   }
   if (!readiness.hasIoMapping) {
     return { label: 'Design', mode: 'design', code: 'RBP1001' };

@@ -81,6 +81,10 @@ export type LabStoreState = {
   setTableRow: (index: number, partial: Partial<TruthTableRow>) => void;
   toggleDontCare: (index: number) => void;
   fillStandardDigits: () => void;
+  fillHexDigits: () => void;
+  fillParityBit: () => void;
+  fillAndGate: () => void;
+  fillPassthrough: () => void;
 
   // ─── K-Maps / Boolean expressions ───
   generateKMaps: () => void;
@@ -95,9 +99,10 @@ export type LabStoreState = {
   evalSeg: (input: number) => number;
   setLastExportAt: (timestamp?: number) => void;
 
-  // ─── Verilog ───
+  // ─── Verilog / HDL ───
   setVerilogCode: (code: string) => void;
   parseVerilogCase: (code: string) => number;
+  parseVhdlCaseStatement: (code: string) => number;
   generateVerilogFromExpr: () => string;
 
   // ─── Circuit designer ───
@@ -377,6 +382,89 @@ const useLabStore = create<LabStoreState>((set, get) => ({
     );
   },
 
+  fillHexDigits: () => {
+    // Extends 0-9 with standard hex A-F patterns (active-low: 0=lit)
+    const HEX_PATTERNS: Record<number, TruthTableRow['seg']> = {
+      ...DIGIT_PATTERNS,
+      10: [0, 0, 0, 1, 0, 0, 0], // A: a,b,c,e,f,g
+      11: [1, 1, 0, 0, 0, 0, 0], // b: c,d,e,f,g
+      12: [0, 1, 1, 0, 0, 0, 1], // C: a,d,e,f
+      13: [1, 0, 0, 0, 0, 1, 0], // d: b,c,d,e,g
+      14: [0, 1, 1, 0, 0, 0, 0], // E: a,d,e,f,g
+      15: [0, 1, 1, 1, 0, 0, 0], // F: a,e,f,g
+    };
+    get().updateDoc(
+      (doc) => ({
+        ...doc,
+        truthTable: doc.truthTable.map((row, i) => ({
+          ...row,
+          seg: HEX_PATTERNS[i] ?? ([1, 1, 1, 1, 1, 1, 1] as any),
+          isDontCare: false,
+        })),
+      }),
+      'truthTable.fillHexDigits',
+      {}
+    );
+  },
+
+  fillParityBit: () => {
+    // 3-bit even parity: parity = XOR(B2, B1, B0), stored in seg[0]
+    // Rows 0-7: valid (uses B2=b2, B1=b1, B0=b0); rows 8-15: don't-care
+    get().updateDoc(
+      (doc) => ({
+        ...doc,
+        truthTable: doc.truthTable.map((row, i) => {
+          if (i >= 8) return { ...row, isDontCare: true, seg: [1, 1, 1, 1, 1, 1, 1] as any };
+          const parity = (row.b2 ^ row.b1 ^ row.b0) as 0 | 1;
+          return {
+            ...row,
+            isDontCare: false,
+            seg: [parity, 1, 1, 1, 1, 1, 1] as TruthTableRow['seg'],
+          };
+        }),
+      }),
+      'truthTable.fillParityBit',
+      {}
+    );
+  },
+
+  fillAndGate: () => {
+    // 2-input AND: uses B1 and B0. seg[0] = B1 AND B0.
+    // Rows 0-3: valid; rows 4-15: don't-care
+    get().updateDoc(
+      (doc) => ({
+        ...doc,
+        truthTable: doc.truthTable.map((row, i) => {
+          if (i >= 4) return { ...row, isDontCare: true, seg: [1, 1, 1, 1, 1, 1, 1] as any };
+          const out = (row.b1 & row.b0) as 0 | 1;
+          return {
+            ...row,
+            isDontCare: false,
+            seg: [out, 1, 1, 1, 1, 1, 1] as TruthTableRow['seg'],
+          };
+        }),
+      }),
+      'truthTable.fillAndGate',
+      {}
+    );
+  },
+
+  fillPassthrough: () => {
+    // 4-bit passthrough: seg[i] = B[i] for i=0..3
+    get().updateDoc(
+      (doc) => ({
+        ...doc,
+        truthTable: doc.truthTable.map((row) => ({
+          ...row,
+          isDontCare: false,
+          seg: [row.b0, row.b1, row.b2, row.b3, 1, 1, 1] as TruthTableRow['seg'],
+        })),
+      }),
+      'truthTable.fillPassthrough',
+      {}
+    );
+  },
+
   // ─── K-Maps / Boolean expressions ───
   generateKMaps: () => {
     // Now a no-op trigger that just forces recompute through updateDoc
@@ -573,6 +661,28 @@ const useLabStore = create<LabStoreState>((set, get) => ({
       set({ implMode: 'verilogCase', verilogCode: code });
     }
 
+    return matchCount;
+  },
+
+  parseVhdlCaseStatement: (code): number => {
+    // Matches: when "XXXX" => seg <= "XXXXXXX";
+    const regex = /when\s+"([01]{4})"\s*=>\s*seg\s*<=\s*"([01]{7})"/gi;
+    const newTable = createEmptyTruthTable();
+    let match: RegExpExecArray | null;
+    let matchCount = 0;
+    while ((match = regex.exec(code)) !== null) {
+      const input = parseInt(match[1], 2);
+      const seg = match[2].split('').map((s: string) => (parseInt(s) ? 1 : 0)) as [0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1, 0 | 1];
+      newTable[input] = { ...newTable[input]!, seg, isDontCare: false };
+      matchCount++;
+    }
+    if (matchCount > 0) {
+      get().updateDoc(
+        (doc) => ({ ...doc, truthTable: newTable }),
+        'vhdl.import',
+        { lineCount: matchCount }
+      );
+    }
     return matchCount;
   },
 

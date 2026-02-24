@@ -259,6 +259,13 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     () =>
       [
         {
+          id: 'circuit',
+          label: 'Circuit loaded',
+          ready: readiness.hasCircuit,
+          actionLabel: readiness.hasCircuit ? 'Open Design' : 'Import HDL',
+          onAction: readiness.hasCircuit ? onOpenDesign : onOpenImport,
+        },
+        {
           id: 'mapping',
           label: 'Mapping complete',
           ready: readiness.hasIoMapping,
@@ -266,15 +273,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           onAction: readiness.hasIoMapping ? onOpenDesign : onAutoSuggestMapping,
         },
         {
-          id: 'sim',
-          label: 'Sim running',
-          ready: simRunning,
-          actionLabel: simRunning ? 'View Design' : 'Run sim',
-          onAction: onOpenDesign,
-        },
-        {
           id: 'verify',
-          label: 'Verify has PASS',
+          label: 'Verify passed',
           ready: verifyPass,
           actionLabel: verifyPass ? 'Review verify' : 'Run Verify',
           onAction: onOpenVerify,
@@ -314,9 +314,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       onOpenDesign,
       onOpenExport,
       onOpenHardware,
+      onOpenImport,
       onOpenVerify,
+      readiness.hasCircuit,
       readiness.hasIoMapping,
-      simRunning,
       verifyPass,
     ]
   );
@@ -448,11 +449,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </header>
 
           {/* Readiness checklist — hero of left dock */}
-          {health.blockingIssues.length > 0 && health.blockingIssues[0] && (
-            <IdeCallout tone="warn" title="Next blocker" testId="ide-project-primary-blocker">
-              {health.blockingIssues[0].message}
-            </IdeCallout>
-          )}
           <IdeDataTable
             columns={['Check', 'State', 'Action']}
             rows={readinessRows}
@@ -715,9 +711,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 {primaryCtaLabel} →
               </IdeButton>
             </span>
-            <IdeButton tone="secondary" onClick={onOpenImport} testId="ide-project-hero-import">
-              Import HDL/XDC
-            </IdeButton>
             {unmappedRequiredCount > 0 && (
               <IdeButton tone="secondary" onClick={onAutoSuggestMapping} testId="ide-project-hero-automap">
                 Auto-suggest Basys3
@@ -924,14 +917,6 @@ function formatSavedAt(value: string): string {
 
 function toMappingKey(value: string): string {
   return value.trim().toLowerCase();
-}
-
-function toSlug(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
 }
 
 function compareText(left: string, right: string): number {

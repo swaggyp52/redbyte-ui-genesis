@@ -7,6 +7,7 @@ import { loadSnapshot, initPersistence, persistenceQuotaExceeded } from './store
 import { WindowManager } from './workspace/WindowManager';
 import { PluginRegistry } from './plugins/PluginRegistry';
 import { registerLab3 } from './plugins/registerLab3';
+import { LAB_TEMPLATES, type LabTemplate } from './labTemplates';
 
 // Lazy-loaded components (only loaded when tab is active)
 const TruthTableEditor = lazy(() => import('./truth-table').then(m => ({ default: m.TruthTableEditor })));
@@ -49,6 +50,16 @@ export const App: React.FC = () => {
   const reset = useLabStore((s) => s.reset);
   const exportJSON = useLabStore((s) => s.exportJSON);
   const importJSON = useLabStore((s) => s.importJSON);
+  const fillStandardDigits = useLabStore((s) => s.fillStandardDigits);
+  const fillHexDigits = useLabStore((s) => s.fillHexDigits);
+  const fillParityBit = useLabStore((s) => s.fillParityBit);
+  const fillAndGate = useLabStore((s) => s.fillAndGate);
+  const fillPassthrough = useLabStore((s) => s.fillPassthrough);
+
+  const applyTemplate = (t: LabTemplate) => {
+    const actions = { reset, fillStandardDigits, fillHexDigits, fillParityBit, fillAndGate, fillPassthrough };
+    (actions[t.storeAction] as () => void)();
+  };
   const { steps: progressSteps, nextStepId } = useLabProgress();
   const openWindow = useLabStore((s) => s.openWindow);
     const activeStepId = tab === 'table'
@@ -453,6 +464,36 @@ export const App: React.FC = () => {
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* Template Gallery */}
+                <div className="bg-slate-900/50 border border-slate-700 rounded-2xl p-6">
+                  <h3 className="font-tech-display text-lg font-bold text-slate-200 mb-4">
+                    Start from a template
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {LAB_TEMPLATES.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => { applyTemplate(t); setTab('table'); }}
+                        className="text-left p-3 rounded-xl border border-slate-700 hover:border-cyan-500/60 bg-slate-800/50 hover:bg-slate-800 transition-all group"
+                      >
+                        <div className="font-tech text-slate-200 text-sm font-semibold group-hover:text-cyan-300 transition-colors">
+                          {t.name}
+                        </div>
+                        <div className="text-slate-400 text-xs mt-1 leading-snug">{t.description}</div>
+                        {t.basys3Io !== '—' && (
+                          <div className="text-cyan-600 text-xs mt-2 font-mono">{t.basys3Io}</div>
+                        )}
+                        <div className={`text-xs mt-1.5 font-tech font-bold uppercase tracking-wide ${
+                          t.difficulty === 'beginner' ? 'text-emerald-500' :
+                          t.difficulty === 'core' ? 'text-amber-500' : 'text-red-400'
+                        }`}>
+                          {t.difficulty}
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </div>
 

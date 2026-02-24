@@ -50,6 +50,9 @@ import {
   type LabSessionMeta,
 } from './ide/persistence/labSession';
 import { BoardSignalProvider } from './ide/BoardSignalContext';
+import { netlistFromCircuit } from '../export/netlistExport';
+import { vhdlFromNetlist } from '../export/vhdlExport';
+import { buildVhdlTopLevelBindings } from '../fpga/boards/basys3/basys3Bundle';
 
 export const IdeApp: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<IdeMode>(() => resolveInitialIdeMode());
@@ -118,7 +121,7 @@ export const IdeApp: React.FC = () => {
     [missingRequiredCount, projectIoRows]
   );
   const hasVectors = projectVectors.length > 0;
-  const latestVerifyPass = projectHealthCore.lastVerify?.status === 'pass';
+  const latestVerifyPass = projectHealthCore.lastVerify?.status === 'pass' && !projectHealthCore.dirtySinceVerify;
 
   const readiness = useMemo(
     () => ({
@@ -282,10 +285,25 @@ export const IdeApp: React.FC = () => {
         })),
     [projectIoRows]
   );
-  const hdlText = useMemo(
-    () => buildVhdlFromMapping(topEntityName, projectIoRows),
-    [projectIoRows, topEntityName]
-  );
+  const hdlText = useMemo(() => {
+    try {
+      const netlist = netlistFromCircuit(circuit);
+      const ioMappingForExport = {
+        inputs: projectIoRows
+          .filter((r) => r.direction === 'in')
+          .map((r) => ({ id: r.id, nodeId: r.nodeId, port: r.port, label: r.label, pin: r.pin })),
+        outputs: projectIoRows
+          .filter((r) => r.direction === 'out')
+          .map((r) => ({ id: r.id, nodeId: r.nodeId, port: r.port, label: r.label, pin: r.pin })),
+      };
+      const hasMappedPins =
+        ioMappingForExport.inputs.length > 0 || ioMappingForExport.outputs.length > 0;
+      const bindings = hasMappedPins ? buildVhdlTopLevelBindings(ioMappingForExport) : {};
+      return vhdlFromNetlist(netlist, { entityName: topEntityName, ...bindings }).vhd;
+    } catch {
+      return '';
+    }
+  }, [circuit, projectIoRows, topEntityName]);
   const xdcText = useMemo(() => buildConstraintText(projectIoRows), [projectIoRows]);
 
   const exportProject = useMemo<RBProject>(
@@ -838,6 +856,7 @@ export const IdeApp: React.FC = () => {
             onGoToHardware={() => setCurrentMode('hardware')}
             onGoToImport={() => setCurrentMode('import')}
             onGoToProject={() => setCurrentMode('project')}
+            topEntityName={topEntityName}
           />
         ) : currentMode === 'verify' ? (
           <VerifySurface
@@ -975,7 +994,7 @@ export const IdeApp: React.FC = () => {
         />
       ) : null}
 
-      <IdeStatusBar mode={currentMode} determinismHash={determinismHash} gateStatus="warn" />
+      <IdeStatusBar mode={currentMode} determinismHash={determinismHash} gateStatus={projectHealth.blockingIssues.length > 0 ? 'fail' : (projectHealth.dirtySinceVerify || projectHealth.dirtySinceExport) ? 'warn' : 'pass'} />
     </div>
     </BoardSignalProvider>
   );
@@ -1029,46 +1048,6 @@ function buildTopEntityName(projectName: string): string {
   return /^[a-z]/.test(base) ? base : `rb_${base}`;
 }
 
-function buildVhdlFromMapping(topName: string, ioRows: Array<{ label: string; id: string; direction: 'in' | 'out' }>): string {
-  const inputRows = ioRows.filter((row) => row.direction === 'in');
-  const outputRows = ioRows.filter((row) => row.direction === 'out');
-
-  const inputSignals = inputRows.map((row, index) => createSignalName(row.label || row.id, `in_${index}`));
-  const outputSignals = outputRows.map((row, index) => createSignalName(row.label || row.id, `out_${index}`));
-
-  const portLines: string[] = [];
-  for (let index = 0; index < inputSignals.length; index++) {
-    portLines.push(`    ${inputSignals[index]} : in  std_logic;`);
-  }
-  for (let index = 0; index < outputSignals.length; index++) {
-    const suffix = index === outputSignals.length - 1 ? '' : ';';
-    portLines.push(`    ${outputSignals[index]} : out std_logic${suffix}`);
-  }
-
-  const sourceSignal = inputSignals[0] ?? "'0'";
-  const assignmentLines =
-    outputSignals.length > 0
-      ? outputSignals.map((signal) => `  ${signal} <= ${sourceSignal};`)
-      : ['  -- No output ports declared yet.'];
-
-  return [
-    'library IEEE;',
-    'use IEEE.STD_LOGIC_1164.ALL;',
-    '',
-    `entity ${topName} is`,
-    '  port (',
-    ...(portLines.length > 0
-      ? portLines
-      : ['    placeholder_in : in std_logic;', '    placeholder_out : out std_logic']),
-    '  );',
-    `end ${topName};`,
-    '',
-    `architecture rtl of ${topName} is`,
-    'begin',
-    ...assignmentLines,
-    'end rtl;',
-  ].join('\n');
-}
 
 function buildConstraintText(ioRows: Array<{ label: string; direction: 'in' | 'out'; pin: string; id: string }>): string {
   const clockRow = ioRows.find(

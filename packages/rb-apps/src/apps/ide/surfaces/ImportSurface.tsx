@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { parseVhdl, scanVhdlEntities } from '../../../import/vhdlImport';
 import { parseVerilog, scanVerilogModules } from '../../../import/verilogImport';
 import { parseXdcPins, type XdcParseResult } from '../../../import/xdcImport';
-import type { ParsedHDL } from '../../../import/hdlToCircuit';
+import type { ParsedHDL, ReconstructionLevel } from '../../../import/hdlToCircuit';
 import type { ParsedHdlWarning } from '../../../import/hdlToCircuit';
 import type { RBProject } from '../../../export/projectFormat';
 import type { IdeExampleIoRow } from '../examplesCatalog';
@@ -131,10 +131,63 @@ set_property PACKAGE_PIN U18 [get_ports btn]
 set_property PACKAGE_PIN U16 [get_ports pulse]
   set_property IOSTANDARD LVCMOS33 [get_ports pulse]`;
 
+const SAMPLE_SEVENSEG_VHDL = `library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+entity ssd_driver is
+  Port ( B   : in  STD_LOGIC_VECTOR(3 downto 0);
+         seg : out STD_LOGIC_VECTOR(6 downto 0));
+end ssd_driver;
+architecture Behavioral of ssd_driver is
+begin
+  process(B)
+  begin
+    case B is
+      when "0000" => seg <= "1000000";
+      when "0001" => seg <= "1111001";
+      when "0010" => seg <= "0100100";
+      when "0011" => seg <= "0110000";
+      when "0100" => seg <= "0011001";
+      when "0101" => seg <= "0010010";
+      when "0110" => seg <= "0000010";
+      when "0111" => seg <= "1111000";
+      when "1000" => seg <= "0000000";
+      when "1001" => seg <= "0010000";
+      when others => seg <= "1111111";
+    end case;
+  end process;
+end Behavioral;`;
+
+const SAMPLE_SEVENSEG_XDC = `## Basys3 — Seven-Segment Display Driver (BCD 0-9)
+## 4-bit switch inputs (SW3=MSB, SW0=LSB)
+set_property PACKAGE_PIN V17 [get_ports {B[0]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {B[0]}]
+set_property PACKAGE_PIN V16 [get_ports {B[1]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {B[1]}]
+set_property PACKAGE_PIN W16 [get_ports {B[2]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {B[2]}]
+set_property PACKAGE_PIN W17 [get_ports {B[3]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {B[3]}]
+## 7-segment outputs (active-low: 0 = segment ON)
+set_property PACKAGE_PIN W7 [get_ports {seg[0]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {seg[0]}]
+set_property PACKAGE_PIN W6 [get_ports {seg[1]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {seg[1]}]
+set_property PACKAGE_PIN U8 [get_ports {seg[2]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {seg[2]}]
+set_property PACKAGE_PIN V8 [get_ports {seg[3]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {seg[3]}]
+set_property PACKAGE_PIN U5 [get_ports {seg[4]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {seg[4]}]
+set_property PACKAGE_PIN V5 [get_ports {seg[5]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {seg[5]}]
+set_property PACKAGE_PIN U7 [get_ports {seg[6]}]
+  set_property IOSTANDARD LVCMOS33 [get_ports {seg[6]}]`;
+
 const IMPORT_SAMPLES = [
-  { id: 'and-gate',    name: 'AND Gate',          desc: 'VHDL + Basys3 constraints', learn: 'Entity/port syntax, combinational gates',    hdl: SAMPLE_AND_GATE_VHDL,    xdc: SAMPLE_AND_GATE_XDC },
-  { id: 'passthrough', name: 'Switches → LEDs', desc: '4-bit passthrough',         learn: 'Port vectors, direct signal assignment',        hdl: SAMPLE_PASSTHROUGH_VHDL, xdc: SAMPLE_PASSTHROUGH_XDC },
-  { id: 'edge-detect', name: 'Edge Detector',     desc: 'Rising-edge pulse gen',       learn: 'Clocked process, sequential logic, D flip-flop', hdl: SAMPLE_EDGEDETECT_VHDL,  xdc: SAMPLE_EDGEDETECT_XDC },
+  { id: 'and-gate',    name: 'AND Gate',          desc: 'Structural VHDL + Basys3 constraints', learn: 'Entity/port syntax, combinational gates',    hdl: SAMPLE_AND_GATE_VHDL,    xdc: SAMPLE_AND_GATE_XDC,    behavioral: false },
+  { id: 'passthrough', name: 'Switches → LEDs', desc: 'Structural 4-bit passthrough',         learn: 'Port vectors, direct signal assignment',        hdl: SAMPLE_PASSTHROUGH_VHDL, xdc: SAMPLE_PASSTHROUGH_XDC, behavioral: false },
+  { id: 'edge-detect', name: 'Edge Detector (behavioral — import blocked)', desc: 'Sequential VHDL — demonstrates blocker', learn: 'Shows what happens with process/rising_edge: import is blocked', hdl: SAMPLE_EDGEDETECT_VHDL,  xdc: SAMPLE_EDGEDETECT_XDC,  behavioral: true  },
+  { id: 'seven-seg',   name: '7-Seg Driver (behavioral — import blocked)', desc: 'Case-statement VHDL — demonstrates blocker', learn: 'Shows what happens with process/case: import is blocked', hdl: SAMPLE_SEVENSEG_VHDL,   xdc: SAMPLE_SEVENSEG_XDC,    behavioral: true  },
 ] as const;
 
 type SuggestionKind = 'SW' | 'LD' | 'BTN' | 'CLK' | 'OTHER';
@@ -169,6 +222,36 @@ function classifyPort(name: string): { kind: SuggestionKind; signalLabel: string
   if (n.startsWith('ld') || n.startsWith('led')) return { kind: 'LD', signalLabel: name.toUpperCase(), confidence: 'medium' };
   if (n.startsWith('btn')) return { kind: 'BTN', signalLabel: name.toUpperCase(), confidence: 'medium' };
   return { kind: 'OTHER', signalLabel: name.toUpperCase(), confidence: 'low' };
+}
+
+// ─── Behavioral HDL detection ─────────────────────────────────────────────────
+// STOP-SHIP: Any process/always/rising_edge construct must produce a hard blocker,
+// not a quiet warning, before the import is committed.
+
+/** Scans HDL source text for behavioral/sequential constructs that RedByte cannot import. */
+function scanBehavioralConstructs(source: string): string[] {
+  const found: string[] = [];
+  if (/\bprocess\b/i.test(source)) found.push('process (VHDL sequential)');
+  if (/\balways\b/i.test(source)) found.push('always (Verilog behavioral)');
+  if (/\binitial\b/i.test(source)) found.push('initial (Verilog test-bench/sequential init)');
+  if (/\brising_edge\b/i.test(source)) found.push('rising_edge (clocked logic)');
+  if (/\bposedge\b/i.test(source)) found.push('posedge (clock edge sensitivity)');
+  if (/\bnegedge\b/i.test(source)) found.push('negedge (clock edge sensitivity)');
+  if (/\bgenerate\b/i.test(source)) found.push('generate (structural generate — unsupported)');
+  return found;
+}
+
+/**
+ * Computes the reconstruction level for a paste-import (no ZIP inspection).
+ * Uses parsedHdl.instances to detect whether gate instances were parsed.
+ * NOTE: This is a pre-circuit estimate; the actual circuit may still be ports-only
+ * if all instances failed component-map lookup.
+ */
+function computeReconstructionLevelFromParsed(parsedHdl: ParsedHDL | null): ReconstructionLevel {
+  if (!parsedHdl || parsedHdl.ports.length === 0) return 'empty';
+  const hasGateInstances = parsedHdl.instances.some(i => i.componentType !== 'Wire');
+  if (hasGateInstances) return 'full';
+  return 'ports-only';
 }
 
 // ─── Phase 33: Import Pipeline Step Types ─────────────────────────────────
@@ -238,6 +321,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   // Phase 33: pipeline state
   const [pipelineSteps, setPipelineSteps] = useState<ImportPipelineStep[]>(() => makePipelineSteps());
   const [pipelineActive, setPipelineActive] = useState(false);
+  const [showBehavioralSamples, setShowBehavioralSamples] = useState(false);
 
   const lineCount = useMemo(() => Math.max(1, hdlText.split('\n').length), [hdlText]);
   const xdcLineCount = useMemo(() => Math.max(1, xdcText.split('\n').length), [xdcText]);
@@ -297,8 +381,8 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     [overrides]
   );
 
-  const parseHdl = useCallback(() => {
-    const source = hdlText.trim();
+  const parseHdl = useCallback((sourceOverride?: string) => {
+    const source = (sourceOverride ?? hdlText).trim();
     if (!source) {
       setStatusMessage('Paste HDL before parsing.');
       return;
@@ -509,12 +593,46 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   );
   const canImport = hasParsedHdl && blockingErrors.length === 0;
 
+  // ── STOP-SHIP: Behavioral construct pre-scan ───────────────────────────────
+  // Detect process/always/rising_edge BEFORE the commit is applied.
+  // These constructs are dropped silently; we must block the commit, not warn.
+  const detectedBehavioralConstructs = useMemo(
+    () => (hdlText.trim() ? scanBehavioralConstructs(hdlText) : []),
+    [hdlText]
+  );
+
+  // Compute reconstruction level for paste imports (where there's no zipInspection).
+  const effectiveReconstructionLevel = useMemo((): ReconstructionLevel => {
+    if (zipInspection?.reconstructionLevel) return zipInspection.reconstructionLevel;
+    return computeReconstructionLevelFromParsed(parsedHdl);
+  }, [zipInspection, parsedHdl]);
+
+  // Block commit when behavioral constructs detected or no gates were reconstructed.
+  // STOP-SHIP item 1: No silent dropping. STOP-SHIP item 5: No fake success.
+  const importBlockerReasons = useMemo((): string[] => {
+    if (!pendingApplyProject) return [];
+    const reasons: string[] = [];
+    if (detectedBehavioralConstructs.length > 0) {
+      reasons.push(
+        `This design uses behavioral/sequential HDL constructs that RedByte cannot import: ${detectedBehavioralConstructs.join(', ')}.`
+      );
+    }
+    if (effectiveReconstructionLevel === 'empty') {
+      reasons.push('No circuit was reconstructed — the schematic is empty. Check entity/module syntax.');
+    } else if (effectiveReconstructionLevel === 'ports-only') {
+      reasons.push('Only I/O ports were reconstructed — no gate logic found. RedByte supports structural HDL only.');
+    }
+    return reasons;
+  }, [pendingApplyProject, detectedBehavioralConstructs, effectiveReconstructionLevel]);
+
+  const hasImportBlocker = importBlockerReasons.length > 0;
+
   const commitPreview = useMemo(() => {
     if (!pendingApplyProject || !parsedHdl) return null;
     const inPorts = parsedHdl.ports.filter((p) => p.direction === 'in');
     const outPorts = parsedHdl.ports.filter((p) => p.direction === 'out');
     const mappedCount = parsedHdl.ports.filter((p) => (mapping[p.name] ?? '').trim()).length;
-    const reconstructionLevel = zipInspection?.reconstructionLevel ?? 'ports-only';
+    const reconstructionLevel = effectiveReconstructionLevel;
 
     // diff vs current project
     const currentPortNames = new Set((projectIoRows ?? []).map((r) => (r.port ?? r.label ?? '').toLowerCase()));
@@ -587,8 +705,8 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     [mapping, ports]
   );
 
-  const parseXdc = () => {
-    const source = xdcText.trim();
+  const parseXdc = (sourceOverride?: string) => {
+    const source = (sourceOverride ?? xdcText).trim();
     if (!source) {
       setStatusMessage('Paste XDC before parsing.');
       return;
@@ -1093,20 +1211,54 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
             </ul>
           </section>
           <div className="ide-import-samples-grid">
-            {IMPORT_SAMPLES.map((sample) => (
+            {IMPORT_SAMPLES.filter((s) => !s.behavioral).map((sample) => (
               <button
                 key={sample.id}
                 type="button"
                 className="ide-import-sample-card"
-                onClick={() => { setHdlText(sample.hdl); setXdcText(sample.xdc); setTab('hdl'); }}
+                onClick={() => {
+                  setHdlText(sample.hdl);
+                  setXdcText(sample.xdc);
+                  setTab('hdl');
+                  parseHdl(sample.hdl);
+                  if (sample.xdc.trim()) parseXdc(sample.xdc);
+                }}
                 data-testid={`ide-import-load-sample-${sample.id}`}
               >
                 <span className="ide-import-sample-card-name">{sample.name}</span>
                 <span className="ide-import-sample-card-desc">{sample.desc}</span>
-                <span className="ide-import-sample-card-learn">&#x1F393; {sample.learn}</span>
+                <span className="ide-import-sample-card-learn">🎓 {sample.learn}</span>
+              </button>
+            ))}
+            {showBehavioralSamples && IMPORT_SAMPLES.filter((s) => s.behavioral).map((sample) => (
+              <button
+                key={sample.id}
+                type="button"
+                className="ide-import-sample-card ide-import-sample-card--behavioral"
+                onClick={() => {
+                  setHdlText(sample.hdl);
+                  setXdcText(sample.xdc);
+                  setTab('hdl');
+                  parseHdl(sample.hdl);
+                  if (sample.xdc.trim()) parseXdc(sample.xdc);
+                }}
+                data-testid={`ide-import-load-sample-${sample.id}`}
+                style={{ opacity: 0.7, borderStyle: 'dashed' }}
+              >
+                <span className="ide-import-sample-card-name">{sample.name}</span>
+                <span className="ide-import-sample-card-desc">{sample.desc}</span>
+                <span className="ide-import-sample-card-learn">⚠️ {sample.learn}</span>
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            className="ide-import-behavioral-toggle"
+            data-testid="ide-import-toggle-behavioral-samples"
+            onClick={() => setShowBehavioralSamples((prev) => !prev)}
+          >
+            {showBehavioralSamples ? '▲ Hide unsupported examples' : '▼ Show unsupported examples (will be blocked)'}
+          </button>
         </section>
       }
       inspector={
@@ -1383,23 +1535,77 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               )}
             </div>
 
+            {/* ── STOP-SHIP: Behavioral / empty-circuit blocker ── */}
+            {hasImportBlocker && (
+              <div
+                className="ide-import-behavioral-blocker"
+                data-testid="ide-import-behavioral-blocker"
+                role="alert"
+                style={{
+                  margin: 'var(--ide-space-2) 0',
+                  padding: 'var(--ide-space-2)',
+                  border: '2px solid var(--rb-error, #e55)',
+                  borderRadius: 'var(--ide-radius-s)',
+                  background: 'color-mix(in srgb, var(--rb-error, #e55) 12%, transparent)',
+                }}
+              >
+                <strong style={{ display: 'block', marginBottom: 'var(--ide-space-1)', color: 'var(--rb-error, #e55)' }}>
+                  BLOCKED — Cannot commit this import
+                </strong>
+                {importBlockerReasons.map((reason, i) => (
+                  <p key={i} style={{ margin: '0 0 var(--ide-space-1)', fontSize: 'var(--rb-font-size-1)' }}>
+                    {reason}
+                  </p>
+                ))}
+                {detectedBehavioralConstructs.length > 0 && (
+                  <details style={{ marginTop: 'var(--ide-space-1)' }}>
+                    <summary
+                      style={{ cursor: 'pointer', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}
+                      data-testid="ide-import-blocker-dropped-constructs-summary"
+                    >
+                      Show dropped constructs ({detectedBehavioralConstructs.length})
+                    </summary>
+                    <ul
+                      style={{ margin: 'var(--ide-space-1) 0 0 var(--ide-space-2)', padding: 0, listStyle: 'disc', fontSize: 'var(--rb-font-size-1)' }}
+                      data-testid="ide-import-blocker-dropped-constructs"
+                    >
+                      {detectedBehavioralConstructs.map((c) => (
+                        <li key={c}><code>{c}</code></li>
+                      ))}
+                    </ul>
+                    <p style={{ marginTop: 'var(--ide-space-1)', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+                      RedByte supports structural/combinational HDL only. Behavioral constructs are detected and reported but their logic is not imported.
+                    </p>
+                  </details>
+                )}
+              </div>
+            )}
+
             <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)', flexWrap: 'wrap' }}>
               <IdeButton tone="ghost" onClick={cancelApplyProject} testId="ide-import-apply-cancel">
                 Cancel
               </IdeButton>
-              <IdeButton tone="secondary" onClick={confirmApplyProject} testId="ide-import-apply-confirm">
+              <IdeButton
+                tone="secondary"
+                onClick={confirmApplyProject}
+                disabled={hasImportBlocker}
+                testId="ide-import-apply-confirm"
+              >
                 Confirm Replace Project
               </IdeButton>
               {onGoToVerify && (
                 <div className="ide-import-verify-cta">
                   <span className="ide-import-verify-cta-label">
-                    {(pendingApplyProject?.vectors?.length ?? 0) > 0
-                      ? `${pendingApplyProject!.vectors!.length} baseline vectors ready`
-                      : 'Import + open Verify'}
+                    {hasImportBlocker
+                      ? 'Blocked — resolve issues above'
+                      : (pendingApplyProject?.vectors?.length ?? 0) > 0
+                        ? `${pendingApplyProject!.vectors!.length} baseline vectors ready`
+                        : 'Import + open Verify'}
                   </span>
                   <IdeButton
                     tone="primary"
                     onClick={confirmAndVerify}
+                    disabled={hasImportBlocker}
                     testId="ide-import-apply-open-verify"
                   >
                     Confirm &amp; Open Verify →
@@ -1534,6 +1740,66 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
             {tab === 'hdl' && (
               <div className="ide-import-editor">
+                {/* ── Supported HDL subset declaration (Req 6 from audit) ── */}
+                <details
+                  className="ide-import-hdl-scope-box"
+                  data-testid="ide-import-hdl-scope"
+                  style={{
+                    marginBottom: 'var(--ide-space-2)',
+                    border: '1px solid var(--ide-border)',
+                    borderRadius: 'var(--ide-radius-s)',
+                    padding: 'var(--ide-space-1) var(--ide-space-2)',
+                    fontSize: 'var(--rb-font-size-1)',
+                  }}
+                >
+                  <summary style={{ cursor: 'pointer', fontWeight: 600, marginBottom: 'var(--ide-space-1)' }}>
+                    What HDL does RedByte support? (click to expand)
+                  </summary>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--ide-space-2)', marginTop: 'var(--ide-space-1)' }}>
+                    <div>
+                      <strong style={{ color: 'var(--rb-success, #4a4)' }}>Supported</strong>
+                      <ul style={{ margin: 'var(--ide-space-1) 0 0 var(--ide-space-2)', padding: 0, listStyle: 'disc' }}>
+                        <li>entity / port declarations (VHDL + Verilog)</li>
+                        <li>structural component instantiations</li>
+                        <li>concurrent signal assignments</li>
+                        <li>Verilog gate primitives (and, or, not, xor …)</li>
+                        <li>simple assign statements</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <strong style={{ color: 'var(--rb-error, #e55)' }}>Not supported — will be BLOCKED</strong>
+                      <ul style={{ margin: 'var(--ide-space-1) 0 0 var(--ide-space-2)', padding: 0, listStyle: 'disc' }}>
+                        <li>process / always blocks</li>
+                        <li>sequential / clocked logic (rising_edge, posedge)</li>
+                        <li>generate statements</li>
+                        <li>generics / parameters</li>
+                        <li>multiple architectures (first only)</li>
+                      </ul>
+                    </div>
+                  </div>
+                </details>
+
+                {/* Live behavioral warning banner — shows immediately as user types */}
+                {detectedBehavioralConstructs.length > 0 && (
+                  <div
+                    className="ide-import-behavioral-warning"
+                    data-testid="ide-import-behavioral-warning"
+                    role="alert"
+                    style={{
+                      marginBottom: 'var(--ide-space-2)',
+                      padding: 'var(--ide-space-1) var(--ide-space-2)',
+                      border: '1px solid var(--rb-warning, #fa0)',
+                      borderRadius: 'var(--ide-radius-s)',
+                      background: 'color-mix(in srgb, var(--rb-warning, #fa0) 10%, transparent)',
+                      fontSize: 'var(--rb-font-size-1)',
+                    }}
+                  >
+                    <strong>Behavioral/sequential constructs detected</strong> — this design uses{' '}
+                    {detectedBehavioralConstructs.join(', ')}. RedByte supports structural/combinational
+                    HDL only. Importing will block at the commit step.
+                  </div>
+                )}
+
                 <div className="ide-import-language-row">
                   <span>Language</span>
                   <select
@@ -1835,10 +2101,16 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
           <section className="ide-import-stage-col" data-testid="ide-import-diagnostics-panel">
             <IdeSectionHeader title="Diagnostics + Preview" meta="Stage 2/3" />
-            {!hasParsedHdl && (
-              <IdeCallout tone="info" title="Nothing parsed yet" testId="ide-import-empty-state">
-                Paste module/entity HDL in the editor and click Parse — or Upload a Vivado ZIP to
-                auto-extract source and constraints.
+            {!hasParsedHdl && !hdlText.trim() && (
+              <IdeCallout tone="info" title="Paste HDL to begin" testId="ide-import-empty-state">
+                Paste a VHDL entity or Verilog module in the editor, then click{' '}
+                <strong>Parse HDL</strong> — or upload a Vivado project ZIP to auto-extract.
+              </IdeCallout>
+            )}
+            {!hasParsedHdl && hdlText.trim().length > 0 && (
+              <IdeCallout tone="warn" title="HDL detected — not yet parsed" testId="ide-import-needs-parse">
+                Your HDL is ready. Click <strong>Parse HDL</strong> above to analyse ports and
+                reconstruct the circuit.
               </IdeCallout>
             )}
             <div className="ide-kv-list">

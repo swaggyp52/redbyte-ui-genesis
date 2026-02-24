@@ -63,11 +63,14 @@ function mapWarningEvents(events: WarningEvent[], originalSource: string): Parse
 
 // ─── Entity parser ────────────────────────────────────────────────────────────
 
-function parseEntity(src: string): { name: string; ports: ParsedPort[] } | null {
-  // Match: entity <name> is port ( ... ); end [entity] [<name>];
-  const entityRx = /entity\s+(\w+)\s+is\s+port\s*\(([\s\S]*?)\)\s*;/i;
+function parseEntity(src: string): { name: string; ports: ParsedPort[]; hasGenerics: boolean } | null {
+  // Match: entity <name> is [generic (...);] port ( ... );
+  // The optional generic clause must be handled — without it, entities with generics fail silently.
+  const entityRx = /entity\s+(\w+)\s+is\s+(?:generic\s*\([\s\S]*?\)\s*;[\s\n]*)?\s*port\s*\(([\s\S]*?)\)\s*;/i;
+  const hasGenericsRx = /entity\s+\w+\s+is\s+generic\s*\(/i;
   const m = src.match(entityRx);
   if (!m) return null;
+  const hasGenerics = hasGenericsRx.test(src);
 
   const entityName = m[1];
   const portBlock = m[2];
@@ -85,7 +88,7 @@ function parseEntity(src: string): { name: string; ports: ParsedPort[] } | null 
     }
   }
 
-  return { name: entityName, ports };
+  return { name: entityName, ports, hasGenerics };
 }
 
 // ─── Architecture parser ──────────────────────────────────────────────────────
@@ -210,6 +213,11 @@ export function parseVhdl(source: string): ParsedHDL {
   const entity = parseEntity(clean);
   if (!entity) {
     events.push({ kind: 'structural', message: 'No entity declaration found. Make sure you paste a complete VHDL file.' });
+  } else if (entity.hasGenerics) {
+    events.push({
+      kind: 'structural',
+      message: 'Entity uses generics — generic values are not imported (ports are extracted, generic parameters are ignored).',
+    });
   }
 
   const { instances, signals } = parseArchitecture(clean, events);
@@ -229,7 +237,8 @@ export function parseVhdl(source: string): ParsedHDL {
  * Does not parse ports — use parseVhdl() after selecting the desired entity.
  */
 export function scanVhdlEntities(source: string): string[] {
-  const rx = /entity\s+(\w+)\s+is\s+port\s*\(/gi;
+  // Match entities with or without a generic clause before port
+  const rx = /entity\s+(\w+)\s+is\s+(?:generic\s*\([\s\S]*?\)\s*;[\s\n]*)?\s*port\s*\(/gi;
   const names: string[] = [];
   let m: RegExpExecArray | null;
   while ((m = rx.exec(source)) !== null) {

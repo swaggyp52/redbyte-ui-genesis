@@ -8509,3 +8509,46 @@ details[open] summary .details-arrow {
   font-family: var(--rb-font-mono, monospace);
   white-space: nowrap;
 }
+
+/* ════════════════════════════════════════════════════════════════
+   Dock scroll — left dock was clipping content below the fold.
+   The base .ide-workbench-dock sets overflow: hidden for clipping
+   purposes, but the left dock must scroll so students can reach
+   session controls, examples list, and the bottom CTAs.
+   The right dock (.ide-inspector) already has overflow: auto.
+   ════════════════════════════════════════════════════════════════ */
+
+.ide-workbench-dock-left {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Grid placeholders inside the docks use display:grid.
+   Without align-content:start the grid rows stretch to fill
+   the available height, which breaks after the dock gains scroll. */
+.ide-workbench-placeholder {
+  align-content: start;
+}
+
+/* Verify left dock inherits the same scroll behaviour. */
+.ide-verify-left-dock {
+  display: grid;
+  gap: var(--ide-space-2);
+  align-content: start;
+}
+
+/* ImportSurface: toggle button to reveal blocked (behavioral) example samples */
+.ide-import-behavioral-toggle {
+  all: unset;
+  cursor: pointer;
+  display: block;
+  margin-top: var(--ide-space-2);
+  font-size: var(--rb-font-size-1);
+  color: var(--ide-text-soft);
+  opacity: 0.7;
+  transition: opacity var(--rb-motion-fast);
+}
+.ide-import-behavioral-toggle:hover {
+  opacity: 1;
+  color: var(--ide-text-muted);
+}

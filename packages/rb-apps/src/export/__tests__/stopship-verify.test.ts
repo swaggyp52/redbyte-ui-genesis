@@ -339,6 +339,8 @@ describe('STOP-SHIP 6 — HDL pane VHDL equals export top.vhd', () => {
     }).vhd;
 
     expect(paneVhd).toBe(exportVhd);
+    expect(bundle.valid).toBe(true);
+    expect(bundle.warnings).not.toContain('top module not found in generated verilog');
   });
 
   it('entity name in export top.vhd matches topEntityName when provided', () => {

@@ -89,6 +89,38 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                   XOR
                 </button>
                 <button
+                  onClick={() => { onAddNode('NAND'); setShowGatePalette(false); }}
+                  className="w-full text-left px-2 py-1.5 text-xs text-teal-100 hover:bg-slate-700 block border-b border-slate-700"
+                  role="menuitem"
+                  aria-label="Add NAND gate"
+                >
+                  NAND
+                </button>
+                <button
+                  onClick={() => { onAddNode('NOR'); setShowGatePalette(false); }}
+                  className="w-full text-left px-2 py-1.5 text-xs text-cyan-100 hover:bg-slate-700 block border-b border-slate-700"
+                  role="menuitem"
+                  aria-label="Add NOR gate"
+                >
+                  NOR
+                </button>
+                <button
+                  onClick={() => { onAddNode('XNOR'); setShowGatePalette(false); }}
+                  className="w-full text-left px-2 py-1.5 text-xs text-purple-100 hover:bg-slate-700 block border-b border-slate-700"
+                  role="menuitem"
+                  aria-label="Add XNOR gate"
+                >
+                  XNOR
+                </button>
+                <button
+                  onClick={() => { onAddNode('BUF'); setShowGatePalette(false); }}
+                  className="w-full text-left px-2 py-1.5 text-xs text-slate-100 hover:bg-slate-700 block border-b border-slate-700"
+                  role="menuitem"
+                  aria-label="Add BUF gate"
+                >
+                  BUF
+                </button>
+                <button
                   onClick={() => { onAddNode('OUTPUT'); setShowGatePalette(false); }}
                   className="w-full text-left px-2 py-1.5 text-xs text-red-100 hover:bg-slate-700"
                   role="menuitem"
@@ -191,6 +223,38 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         >
           <Plus size={16} />
           XOR
+        </button>
+        <button
+          onClick={() => onAddNode('NAND')}
+          className="px-3 py-2 bg-teal-800 hover:bg-teal-700 text-teal-100 rounded text-sm flex items-center gap-1 transition"
+          title="Add NAND gate"
+        >
+          <Plus size={16} />
+          NAND
+        </button>
+        <button
+          onClick={() => onAddNode('NOR')}
+          className="px-3 py-2 bg-cyan-800 hover:bg-cyan-700 text-cyan-100 rounded text-sm flex items-center gap-1 transition"
+          title="Add NOR gate"
+        >
+          <Plus size={16} />
+          NOR
+        </button>
+        <button
+          onClick={() => onAddNode('XNOR')}
+          className="px-3 py-2 bg-purple-800 hover:bg-purple-700 text-purple-100 rounded text-sm flex items-center gap-1 transition"
+          title="Add XNOR gate"
+        >
+          <Plus size={16} />
+          XNOR
+        </button>
+        <button
+          onClick={() => onAddNode('BUF')}
+          className="px-3 py-2 bg-slate-600 hover:bg-slate-500 text-slate-100 rounded text-sm flex items-center gap-1 transition"
+          title="Add BUF (buffer) gate"
+        >
+          <Plus size={16} />
+          BUF
         </button>
         <button
           onClick={() => onAddNode('OUTPUT')}

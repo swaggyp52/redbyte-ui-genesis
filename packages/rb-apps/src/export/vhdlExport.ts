@@ -360,7 +360,6 @@ export function vhdlFromNetlist(
     lines.push('-- RedByte Generated VHDL');
     lines.push(`-- Entity: ${entityName}`);
     if (labTitle) lines.push(`-- ${labTitle}`);
-    lines.push(`-- Generated: ${new Date().toISOString()}`);
     lines.push('--');
     lines.push('');
   }

@@ -29,7 +29,7 @@ export interface TruthTableRow {
  */
 export interface CircuitNode {
   id: string;
-  type: 'AND' | 'OR' | 'NOT' | 'XOR' | 'INPUT' | 'OUTPUT' | 'CONST_0' | 'CONST_1';
+  type: 'AND' | 'OR' | 'NOT' | 'XOR' | 'NAND' | 'NOR' | 'XNOR' | 'BUF' | 'INPUT' | 'OUTPUT' | 'CONST_0' | 'CONST_1';
   x: number;
   y: number;
   rotation?: number; // 0, 90, 180, 270

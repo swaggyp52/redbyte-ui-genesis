@@ -85,7 +85,8 @@ const WaveformViewer: React.FC<{
   onSelectTick: (tick: number) => void;
   onSelectSignal: (signal: string) => void;
   rowHeight?: number;
-}> = ({ signals, ticks, failTicks, failingSignalKeys, selectedTick, onSelectTick, onSelectSignal, rowHeight = 38 }) => {
+  emptyMessage?: string;
+}> = ({ signals, ticks, failTicks, failingSignalKeys, selectedTick, onSelectTick, onSelectSignal, rowHeight = 38, emptyMessage = 'Run verification to see waveforms' }) => {
   const LABEL_W = 88;
   const ROW_H = rowHeight;
   const ROW_HI = Math.round(ROW_H * 0.24);
@@ -99,7 +100,7 @@ const WaveformViewer: React.FC<{
   if (signals.length === 0) {
     return (
       <div className="ide-verify-waveform-empty" data-testid="ide-verify-waveform-empty">
-        <span>Run verification to see waveforms</span>
+        <span>{emptyMessage}</span>
       </div>
     );
   }
@@ -597,6 +598,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return allWaveformTicks.filter((t) => t >= center - 10 && t <= center + 10);
   }, [allWaveformTicks, tickZoom, firstFailureTick, tickWindowCenter, selectedTick]);
 
+  // STOP-SHIP: Stale verify badge detection.
+  // If the circuit's deterministic hash changed since the last run, the result is stale.
+  // Any displayed PASS or FAIL that was computed against a different circuit is misleading.
+  const isRunStale =
+    lastRun !== undefined &&
+    lastRun.deterministicHash !== '' &&
+    deterministicHash !== '' &&
+    lastRun.deterministicHash !== deterministicHash;
+
   // Derived display-state machine: replaces the ambiguous IDLE label
   // hasNoTrace fires only when the runtime ran with actual expectation rows
   // AND still produced no waveform data (broken circuit / no I/O mapping).
@@ -604,25 +614,27 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // authoring state (vectors added but no expected values set), not a broken circuit.
   const hasNoTrace = lastRun !== undefined && runRows.length > 0 && signalTimeline.length === 0;
   const isTraceOnly = lastRun !== undefined && !hasResults && !hasNoTrace;
-  type DisplayStatus = 'BLOCKED' | 'READY' | 'RUNNING' | 'PASS' | 'FAIL' | 'TRACE';
+  type DisplayStatus = 'BLOCKED' | 'READY' | 'RUNNING' | 'PASS' | 'FAIL' | 'TRACE' | 'STALE';
   const displayStatus: DisplayStatus =
     runState === 'running'
       ? 'RUNNING'
-      : isTraceOnly
-        ? 'TRACE'
-        : status === 'pass'
-          ? 'PASS'
-          : status === 'fail'
-            ? 'FAIL'
-            : authoredVectors.length === 0
-              ? 'BLOCKED'
-              : 'READY';
+      : isRunStale
+        ? 'STALE'
+        : isTraceOnly
+          ? 'TRACE'
+          : status === 'pass'
+            ? 'PASS'
+            : status === 'fail'
+              ? 'FAIL'
+              : authoredVectors.length === 0
+                ? 'BLOCKED'
+                : 'READY';
   const displayTone: 'ok' | 'warn' | 'error' | 'idle' =
     displayStatus === 'PASS'
       ? 'ok'
       : displayStatus === 'FAIL'
         ? 'error'
-        : displayStatus === 'BLOCKED'
+        : displayStatus === 'STALE' || displayStatus === 'BLOCKED'
           ? 'warn'
           : 'idle';
   const displayStatusLabel =
@@ -632,13 +644,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         ? hasNoTrace
           ? 'No trace — run completed with empty waveform'
           : 'FAIL — mismatch detected'
-        : displayStatus === 'RUNNING'
-          ? 'Running verification…'
-          : displayStatus === 'TRACE'
-            ? 'TRACE ONLY — no expectations set'
-            : displayStatus === 'BLOCKED'
-              ? 'Blocked — add test vectors to run'
-              : 'Ready — vectors loaded, click Run';
+        : displayStatus === 'STALE'
+          ? 'STALE — circuit changed since last run, re-run to get current result'
+          : displayStatus === 'RUNNING'
+            ? 'Running verification…'
+            : displayStatus === 'TRACE'
+              ? 'TRACE ONLY — no expectations set'
+              : displayStatus === 'BLOCKED'
+                ? 'Blocked — add test vectors to run'
+                : 'Ready — vectors loaded, click Run';
 
   const vectorSourceLabel =
     authoredVectors.length > 0 || hasVectors ? 'Project vectors loaded' : 'No vectors saved yet';
@@ -803,7 +817,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           ) : null}
           <div className="ide-signal-list" data-testid="ide-verify-signal-list">
             {visibleSignalTimeline.length === 0 ? (
-              <p className="ide-copy">Run verification to populate waveform lanes.</p>
+              <p className="ide-copy">
+                {lastRun
+                  ? 'No signal data in the last run — check circuit mapping.'
+                  : 'Run verification to populate waveform lanes.'}
+              </p>
             ) : (
               visibleSignalTimeline.map((signalRow) => (
                 <button
@@ -1061,6 +1079,34 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
+        {/* STOP-SHIP: Stale verify result banner.
+            If the circuit changed since the last run, the result is outdated.
+            The badge must never show PASS/FAIL for a circuit that has since changed. */}
+        {isRunStale && (
+          <div
+            className="ide-verify-stale-banner"
+            data-testid="ide-verify-stale-banner"
+            role="alert"
+            style={{
+              padding: 'var(--ide-space-1) var(--ide-space-2)',
+              background: 'color-mix(in srgb, var(--rb-warning, #fa0) 15%, transparent)',
+              border: '1px solid var(--rb-warning, #fa0)',
+              borderRadius: 'var(--ide-radius-s)',
+              marginBottom: 'var(--ide-space-2)',
+              fontSize: 'var(--rb-font-size-1)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--ide-space-2)',
+            }}
+          >
+            <strong style={{ color: 'var(--rb-warning, #fa0)' }}>STALE</strong>
+            <span>Circuit changed since last run. Re-run verification to get a current result.</span>
+            <IdeButton tone="secondary" onClick={runVerification} testId="ide-verify-stale-rerun">
+              Re-run now
+            </IdeButton>
+          </div>
+        )}
+
         {/* Status strip — status-first, one primary CTA */}
         <div className="ide-verify-status-strip" data-testid="ide-verify-banner">
           <IdeStatusPill tone={displayTone} testId="ide-verify-summary-status">
@@ -1094,10 +1140,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           )}
           <div className="ide-verify-strip-actions">
             {/* Primary CTA varies by state */}
-            {status === 'pass' ? (
+            {status === 'pass' && !isRunStale ? (
               <span data-testid="ide-primary-cta">
                 <IdeButton tone="primary" onClick={onGoToHardware} testId="ide-verify-cta-continue">
                   Continue → Hardware
+                </IdeButton>
+              </span>
+            ) : isRunStale ? (
+              <span data-testid="ide-primary-cta">
+                <IdeButton tone="primary" onClick={runVerification} disabled={runState === 'running'} testId="ide-verify-stale-primary-rerun">
+                  Re-run Verification
                 </IdeButton>
               </span>
             ) : failingRows.length > 0 ? (
@@ -1145,14 +1197,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         </div>
 
-        {status === 'pass' && runState !== 'running' && (
+        {status === 'pass' && runState !== 'running' && runRows.length > 0 && (
           <div className="ide-verify-pass-hero" data-testid="ide-verify-pass-hero">
             <div className="ide-verify-pass-hero-body">
               <span className="ide-verify-pass-hero-icon" aria-hidden="true">✓</span>
               <div className="ide-verify-pass-hero-text">
                 <strong className="ide-verify-pass-hero-title">Verification Passed</strong>
                 <span className="ide-verify-pass-hero-meta">
-                  {runRows.length} vector{runRows.length !== 1 ? 's' : ''} · {runRows.length} pass · 0 fail
+                  {runRows.length} vector{runRows.length !== 1 ? 's' : ''} · {runRows.length - failingRows.length} pass · {failingRows.length} fail
                 </span>
                 {oracleApplied && (
                   <span className="ide-verify-oracle-badge" data-testid="ide-verify-oracle-badge">
@@ -1388,6 +1440,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   onSelectTick={setSelectedTick}
                   onSelectSignal={setSelectedSignal}
                   rowHeight={ROW_H_MAP[waveformDensity]}
+                  emptyMessage={
+                    lastRun
+                      ? 'No waveform data in this run — check I/O mapping in Design'
+                      : 'Run verification to see waveforms'
+                  }
                 />
               </div>
             </section>

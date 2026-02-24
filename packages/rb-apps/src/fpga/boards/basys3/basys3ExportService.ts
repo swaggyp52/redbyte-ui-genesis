@@ -326,7 +326,9 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
     return result;
   }
 
-  const bundleResult = exportBasys3Bundle(project.circuit, project.ioMapping);
+  const bundleResult = exportBasys3Bundle(project.circuit, project.ioMapping, {
+    entityName: project.hdl?.top,
+  });
   const hdlPortProjection = isTopLevelHdlPortProjection(project);
   const filteredBundleWarnings = hdlPortProjection
     ? bundleResult.warnings.filter((warning) => !isHdlProjectionScaffoldWarning(warning))

@@ -200,6 +200,106 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       ).length,
     [viewModel.pinTable, pinOverrides]
   );
+
+  // Version constants — defined here so handleBuildEvidenceCapsule can reference them
+  // before the gateRows useMemo that depends on handleBuildEvidenceCapsule.
+  const appEnv = (import.meta as ImportMeta & {
+    env?: { VITE_APP_VERSION?: string; VITE_GIT_SHA?: string };
+  }).env;
+  const redbyteVersion = (appEnv?.VITE_APP_VERSION ?? 'dev').trim() || 'dev';
+  const redbyteCommit = (appEnv?.VITE_GIT_SHA ?? 'local').trim() || 'local';
+
+  // Must be defined before gateRows useMemo because gateRows references it in
+  // the Evidence Capsule gate's onAction. Defining it after gateRows causes a
+  // temporal dead zone ReferenceError on first render.
+  const handleBuildEvidenceCapsule = useCallback(async () => {
+    const ranAtIso = new Date().toISOString();
+    setCapsuleBuildError('');
+    setCapsuleBuildState('running');
+    setCapsuleManifest(null);
+    if (hasBlockingErrors) {
+      setCapsuleBuildError('Resolve blocking diagnostics before building an evidence capsule.');
+      setCapsuleBuildState('error');
+      onExportResult?.({
+        status: 'blocked',
+        hash: viewModel.exportHash,
+        artifacts: viewModel.artifacts.map((artifact) => artifact.path),
+        ranAtIso,
+      });
+      return;
+    }
+    if (!verifyResult || verifyResult.status !== 'pass' || dirtySinceVerify) {
+      setCapsuleBuildError('Evidence Capsule requires a PASS verification with no pending design changes.');
+      setCapsuleBuildState('error');
+      onExportResult?.({
+        status: 'blocked',
+        hash: viewModel.exportHash,
+        artifacts: viewModel.artifacts.map((artifact) => artifact.path),
+        ranAtIso,
+      });
+      return;
+    }
+
+    try {
+      const capsule = await buildEvidenceCapsule({
+        project,
+        exportViewModel: viewModel,
+        verifyResult,
+        deterministicHash: determinismHash,
+        toolVersion: redbyteVersion,
+        toolCommit: redbyteCommit,
+        createdAtIso: ranAtIso,
+      });
+      if (typeof window !== 'undefined') {
+        const blob = new Blob([capsule.zipBytes as BlobPart], { type: 'application/zip' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'redbyte-evidence-capsule.zip';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      }
+
+      setCapsuleManifestHash(capsule.manifest.manifestHash);
+      setCapsuleBundleHash(capsule.bundleHash);
+      setCapsuleFileList(capsule.filePaths);
+      setCapsuleManifest(capsule.manifest);
+      setCapsuleBuildState('done');
+      onExportBundle?.(viewModel.artifacts);
+      onExportResult?.({
+        status: 'ok',
+        hash: viewModel.exportHash,
+        manifestHash: capsule.manifest.manifestHash,
+        bundleHash: capsule.bundleHash,
+        artifacts: capsule.filePaths,
+        ranAtIso,
+      });
+    } catch (error) {
+      const reason =
+        error instanceof Error && error.message.trim().length > 0
+          ? error.message.trim()
+          : 'unknown build error';
+      setCapsuleBuildError(
+        `Evidence Capsule build failed: ${reason}. Check export diagnostics and artifact readiness.`
+      );
+      setCapsuleBuildState('error');
+      onExportResult?.({
+        status: 'blocked',
+        hash: viewModel.exportHash,
+        artifacts: viewModel.artifacts.map((artifact) => artifact.path),
+        ranAtIso,
+      });
+    }
+  }, [
+    hasBlockingErrors, viewModel, verifyResult, dirtySinceVerify,
+    determinismHash, redbyteVersion, redbyteCommit,
+    project, onExportResult, onExportBundle,
+    setCapsuleBuildError, setCapsuleBuildState, setCapsuleManifest,
+    setCapsuleManifestHash, setCapsuleBundleHash, setCapsuleFileList,
+  ]);
+
   const gateRows = useMemo(() => {
     const verifyTone = hasVerifyPass
       ? 'ok' as const
@@ -277,6 +377,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     hasBlockingErrors,
     diagnosticsList,
     onOpenVerify,
+    handleBuildEvidenceCapsule,
   ]);
 
   const deterministicChecks = useMemo(() => [
@@ -306,11 +407,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     viewModel.artifacts[0];
   const vivadoCommand =
     'vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log';
-  const appEnv = (import.meta as ImportMeta & {
-    env?: { VITE_APP_VERSION?: string; VITE_GIT_SHA?: string };
-  }).env;
-  const redbyteVersion = (appEnv?.VITE_APP_VERSION ?? 'dev').trim() || 'dev';
-  const redbyteCommit = (appEnv?.VITE_GIT_SHA ?? 'local').trim() || 'local';
   const quickDebugReport = useMemo(() => {
     const mappingLines = [...viewModel.pinTable]
       .map((row) => {
@@ -551,88 +647,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
-  const handleBuildEvidenceCapsule = async () => {
-    const ranAtIso = new Date().toISOString();
-    setCapsuleBuildError('');
-    setCapsuleBuildState('running');
-    setCapsuleManifest(null);
-    if (hasBlockingErrors) {
-      setCapsuleBuildError('Resolve blocking diagnostics before building an evidence capsule.');
-      setCapsuleBuildState('error');
-      onExportResult?.({
-        status: 'blocked',
-        hash: viewModel.exportHash,
-        artifacts: viewModel.artifacts.map((artifact) => artifact.path),
-        ranAtIso,
-      });
-      return;
-    }
-    if (!verifyResult || verifyResult.status !== 'pass' || dirtySinceVerify) {
-      setCapsuleBuildError('Evidence Capsule requires a PASS verification with no pending design changes.');
-      setCapsuleBuildState('error');
-      onExportResult?.({
-        status: 'blocked',
-        hash: viewModel.exportHash,
-        artifacts: viewModel.artifacts.map((artifact) => artifact.path),
-        ranAtIso,
-      });
-      return;
-    }
-
-    try {
-      const capsule = await buildEvidenceCapsule({
-        project,
-        exportViewModel: viewModel,
-        verifyResult,
-        deterministicHash: determinismHash,
-        toolVersion: redbyteVersion,
-        toolCommit: redbyteCommit,
-        createdAtIso: ranAtIso,
-      });
-      if (typeof window !== 'undefined') {
-        const blob = new Blob([capsule.zipBytes], { type: 'application/zip' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'redbyte-evidence-capsule.zip';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.setTimeout(() => URL.revokeObjectURL(url), 0);
-      }
-
-      setCapsuleManifestHash(capsule.manifest.manifestHash);
-      setCapsuleBundleHash(capsule.bundleHash);
-      setCapsuleFileList(capsule.filePaths);
-      setCapsuleManifest(capsule.manifest);
-      setCapsuleBuildState('done');
-      onExportBundle?.(viewModel.artifacts);
-      onExportResult?.({
-        status: 'ok',
-        hash: viewModel.exportHash,
-        manifestHash: capsule.manifest.manifestHash,
-        bundleHash: capsule.bundleHash,
-        artifacts: capsule.filePaths,
-        ranAtIso,
-      });
-    } catch (error) {
-      const reason =
-        error instanceof Error && error.message.trim().length > 0
-          ? error.message.trim()
-          : 'unknown build error';
-      setCapsuleBuildError(
-        `Evidence Capsule build failed: ${reason}. Check export diagnostics and artifact readiness.`
-      );
-      setCapsuleBuildState('error');
-      onExportResult?.({
-        status: 'blocked',
-        hash: viewModel.exportHash,
-        artifacts: viewModel.artifacts.map((artifact) => artifact.path),
-        ranAtIso,
-      });
-    }
-  };
-
   const copyToClipboard = async (payload: string, target: 'command' | 'report') => {
     if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
       setCopyState('error');
@@ -680,11 +694,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
             <IdeButton
               tone={hasBlockingErrors ? 'secondary' : 'primary'}
-              onClick={handleBuildEvidenceCapsule}
-              disabled={hasBlockingErrors}
+              onClick={() => void handleRebuildExport()}
+              disabled={hasBlockingErrors || isRebuilding}
               testId="ide-export-dock-download"
             >
-              Download Pack
+              {isRebuilding ? 'Building…' : 'Build Export Pack'}
             </IdeButton>
           </div>
           <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
@@ -822,10 +836,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <span data-testid="ide-primary-cta">
                 <IdeButton
                   tone="primary"
-                  onClick={handleBuildEvidenceCapsule}
-                  disabled={hasBlockingErrors}
+                  onClick={() => void handleRebuildExport()}
+                  disabled={hasBlockingErrors || isRebuilding}
                 >
-                  Download Vivado Pack (.zip)
+                  {isRebuilding ? 'Building…' : capsuleBuildState === 'done' ? 'Rebuild Export' : 'Build Export Pack'}
                 </IdeButton>
               </span>
             </>

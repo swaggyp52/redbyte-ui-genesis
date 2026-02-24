@@ -7,7 +7,6 @@ import { join } from 'path';
 import { parseVhdl } from '../vhdlImport';
 import { parseXdcPins } from '../xdcImport';
 import { importToRbProject } from '../importToRbProject';
-import { vhdlExport } from '../../export/vhdlExport';
 
 const FIXTURES_DIR = join(__dirname, '../../fixtures/import');
 

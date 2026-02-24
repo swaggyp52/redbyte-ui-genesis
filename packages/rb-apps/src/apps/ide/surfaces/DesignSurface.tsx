@@ -21,6 +21,10 @@ import {
 } from '../components/IdePrimitives';
 import type { RuntimeSimState, RuntimeSignalProbe } from '../projectRuntime';
 import { useBoardSignal } from '../BoardSignalContext';
+import { netlistFromCircuit } from '../../../export/netlistExport';
+import { vhdlFromNetlist } from '../../../export/vhdlExport';
+import { synthesizableVerilogFromNetlist } from '../../../export/verilogExport';
+import { buildVhdlTopLevelBindings } from '../../../fpga/boards/basys3/basys3Bundle';
 
 export interface DesignSurfaceProps {
   onOpenPalette?: () => void;
@@ -57,6 +61,7 @@ export interface DesignSurfaceProps {
     nodeId: string;
     label: string;
     pin: string;
+    port: string;
     direction: 'in' | 'out';
   }>;
   onGoToHardware?: () => void;
@@ -64,6 +69,7 @@ export interface DesignSurfaceProps {
   onGoToProject?: () => void;
   topHdl?: string;
   onApplyHdl?: (hdl: string) => void;
+  topEntityName?: string;
 }
 
 export interface DesignCompilerStatus {
@@ -93,6 +99,9 @@ const PALETTE_ITEMS: PaletteItem[] = [
   { type: 'OR', title: 'OR Gate', category: 'Logic' },
   { type: 'XOR', title: 'XOR Gate', category: 'Logic' },
   { type: 'NOT', title: 'NOT Gate', category: 'Logic' },
+  { type: 'NAND', title: 'NAND Gate', category: 'Logic' },
+  { type: 'NOR', title: 'NOR Gate', category: 'Logic' },
+  { type: 'XNOR', title: 'XNOR Gate', category: 'Logic' },
   { type: 'DFlipFlop', title: 'DFF', category: 'Sequential' },
   { type: 'Clock', title: 'Clock', category: 'Sequential' },
 ];
@@ -157,6 +166,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   onGoToProject,
   topHdl,
   onApplyHdl,
+  topEntityName,
 }) => {
   const circuit = useCircuitStore((state) => state.circuit);
   const addNode = useCircuitStore((state) => state.addNode);
@@ -191,6 +201,38 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     [rawSelection]
   );
   const editorCircuit = useMemo(() => normalizeCircuitForCanvas(circuit), [circuit]);
+
+  // ── Live HDL generation (VHDL + Verilog from current circuit) ────────────
+  const liveHdlResult = useMemo(() => {
+    try {
+      const netlist = netlistFromCircuit(circuit);
+      // Build board-aware port bindings from ioRows — same logic as exportBasys3Bundle
+      // so the pane VHDL is byte-identical to the exported top.vhd (STOP-SHIP 6).
+      const rows = ioRows ?? [];
+      const ioMappingForPane = {
+        inputs: rows
+          .filter((r) => r.direction === 'in')
+          .map((r) => ({ id: r.id, nodeId: r.nodeId, port: r.port, label: r.label, pin: r.pin })),
+        outputs: rows
+          .filter((r) => r.direction === 'out')
+          .map((r) => ({ id: r.id, nodeId: r.nodeId, port: r.port, label: r.label, pin: r.pin })),
+      };
+      const hasMappedPins = ioMappingForPane.inputs.length > 0 || ioMappingForPane.outputs.length > 0;
+      const bindings = hasMappedPins ? buildVhdlTopLevelBindings(ioMappingForPane) : {};
+      const vhdlResult = vhdlFromNetlist(netlist, {
+        entityName: topEntityName ?? 'top',
+        ...bindings,
+      });
+      const verilogResult = synthesizableVerilogFromNetlist(netlist);
+      return {
+        vhd: vhdlResult.vhd,
+        verilog: verilogResult.topModule,
+        warnings: vhdlResult.warnings,
+      };
+    } catch {
+      return { vhd: '', verilog: '', warnings: [] };
+    }
+  }, [circuit, topEntityName, ioRows]);
 
   const [paletteQuery, setPaletteQuery] = useState('');
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
@@ -1449,6 +1491,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
     >
         <IdePanel
+          title="Circuit Designer"
           right={<IdeStatusPill tone={toolMode === 'wire' ? 'warn' : 'ok'}>{activeModeLabel}</IdeStatusPill>}
           testId="ide-design-panel"
         >
@@ -1802,12 +1845,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             {/* ── HDL Pane — visible in hdl and split views ── */}
             {designView !== 'canvas' && (
               <div className="ide-design-pane ide-design-pane--hdl" data-testid="ide-design-hdl-pane">
+                {/* VHDL section */}
                 <div className="ide-design-hdl-header" data-testid="ide-design-hdl-header">
                   <span className="ide-design-hdl-header-title">top.vhd</span>
                   <span className="ide-design-hdl-header-lang">VHDL</span>
-                  {hdlDraftText && hdlDraftText !== (topHdl ?? '') && (
+                  {!hdlDraftText && !topHdl && liveHdlResult.vhd && (
+                    <span className="ide-design-sync-badge" style={{ color: 'var(--ide-color-accent, #3b82f6)' }} data-testid="ide-design-live-badge">
+                      Live
+                    </span>
+                  )}
+                  {hdlDraftText && hdlDraftText !== (topHdl ?? liveHdlResult.vhd) && (
                     <span className="ide-design-sync-badge" data-testid="ide-design-sync-badge">
-                      Out of sync
+                      Modified
+                    </span>
+                  )}
+                  {liveHdlResult.warnings.length > 0 && (
+                    <span className="ide-design-sync-badge" style={{ color: 'var(--ide-color-warn, #f59e0b)' }}>
+                      {liveHdlResult.warnings.length} warning{liveHdlResult.warnings.length !== 1 ? 's' : ''}
                     </span>
                   )}
                   <div className="ide-inline-actions" style={{ marginLeft: 'auto' }}>
@@ -1815,7 +1869,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       type="button"
                       className="ide-design-hdl-action-btn is-secondary"
                       onClick={() => {
-                        const text = hdlDraftText !== '' ? hdlDraftText : (topHdl ?? '');
+                        const text = hdlDraftText !== '' ? hdlDraftText : (topHdl ?? liveHdlResult.vhd);
                         if (text && typeof navigator !== 'undefined' && navigator.clipboard) {
                           void navigator.clipboard.writeText(text);
                         }
@@ -1824,7 +1878,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     >
                       Copy
                     </button>
-                    {hdlDraftText && hdlDraftText !== (topHdl ?? '') && onApplyHdl && (
+                    {hdlDraftText && hdlDraftText !== (topHdl ?? liveHdlResult.vhd) && onApplyHdl && (
                       <button
                         type="button"
                         className="ide-design-hdl-action-btn"
@@ -1834,14 +1888,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         Apply HDL → Graph
                       </button>
                     )}
-                    {topHdl && (
+                    {hdlDraftText && (
                       <button
                         type="button"
                         className="ide-design-hdl-action-btn is-secondary"
-                        onClick={() => setHdlDraftText(topHdl)}
+                        onClick={() => setHdlDraftText('')}
                         data-testid="ide-design-regen-hdl"
                       >
-                        Regenerate HDL
+                        Reset to live
                       </button>
                     )}
                     {onGoToImport && (
@@ -1859,13 +1913,47 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <textarea
                   className="ide-code-textarea ide-design-hdl-textarea"
                   data-testid="ide-design-hdl-textarea"
-                  value={hdlDraftText !== '' ? hdlDraftText : (topHdl ?? '')}
+                  value={hdlDraftText !== '' ? hdlDraftText : (topHdl ?? liveHdlResult.vhd)}
                   onChange={(e) => setHdlDraftText(e.target.value)}
-                  placeholder="No HDL generated yet. Build a circuit in Canvas view, or import HDL via Import."
+                  placeholder="Build a circuit in Canvas view to generate live VHDL, or import HDL via Import."
                   spellCheck={false}
                   autoCapitalize="off"
                   autoCorrect="off"
                 />
+                {/* Verilog section */}
+                {liveHdlResult.verilog && (
+                  <div style={{ borderTop: '1px solid var(--ide-border, #334155)', marginTop: '4px' }}>
+                    <div className="ide-design-hdl-header" data-testid="ide-design-verilog-header">
+                      <span className="ide-design-hdl-header-title">top.v</span>
+                      <span className="ide-design-hdl-header-lang" style={{ color: 'var(--ide-color-green, #4ade80)' }}>Verilog</span>
+                      <span className="ide-design-sync-badge" style={{ color: 'var(--ide-color-accent, #3b82f6)' }}>Live</span>
+                      <div className="ide-inline-actions" style={{ marginLeft: 'auto' }}>
+                        <button
+                          type="button"
+                          className="ide-design-hdl-action-btn is-secondary"
+                          onClick={() => {
+                            if (liveHdlResult.verilog && typeof navigator !== 'undefined' && navigator.clipboard) {
+                              void navigator.clipboard.writeText(liveHdlResult.verilog);
+                            }
+                          }}
+                          data-testid="ide-design-verilog-copy"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      className="ide-code-textarea ide-design-hdl-textarea"
+                      data-testid="ide-design-verilog-textarea"
+                      value={liveHdlResult.verilog}
+                      readOnly
+                      style={{ minHeight: '120px' }}
+                      spellCheck={false}
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                    />
+                  </div>
+                )}
               </div>
             )}
             </div>{/* close ide-design-pane-row */}
@@ -2027,6 +2115,10 @@ const NODE_PIN_CATALOG: Record<string, string[]> = {
   OR: ['a', 'b', 'out'],
   XOR: ['a', 'b', 'out'],
   NOT: ['in', 'out'],
+  NAND: ['a', 'b', 'out'],
+  NOR: ['a', 'b', 'out'],
+  XNOR: ['a', 'b', 'out'],
+  BUF: ['in', 'out'],
   DFlipFlop: ['D', 'CLK', 'Q'],
 };
 

@@ -195,7 +195,7 @@ export function exportBasys3Bundle(
   const lint = lintBasys3ProjectPorts(
     {
       sources: [{ path: 'top.v', language: 'verilog', text: verilog.verilog }],
-      top: 'top',
+      top: options?.entityName ?? 'top',
     },
     topXdc
   );
