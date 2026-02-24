@@ -3,6 +3,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: {
+    // Prioritize .ts before .js so local TS source files are always preferred over
+    // any stale compiled .js artefacts that may exist alongside them in src/.
+    extensions: ['.ts', '.tsx', '.mts', '.cts', '.mjs', '.js', '.jsx', '.cjs', '.json'],
     alias: [
       // Force single React instance for all packages
       // Zustand's React adapter needs React to be available, so ensure it resolves correctly
@@ -49,9 +52,11 @@ export default defineConfig({
       optimizer: {
         web: {
           enabled: true,
+          exclude: ['@redbyte/rb-fpga-toolchain'],
         },
         ssr: {
           enabled: true,
+          exclude: ['@redbyte/rb-fpga-toolchain'],
         },
       },
     },

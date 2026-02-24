@@ -78,6 +78,15 @@ export function circuitToVerilog(
   const wires = new Map<string, WireInfo>();
   const nodeOutputs = new Map<string, string[]>();
 
+  // I/O node types: these are module ports, not logic primitives.
+  // Their signals are declared as module inputs/outputs, so missing wires from
+  // them are expected and should not trigger "no driver" warnings.
+  const IO_NODE_TYPES = new Set(['INPUT', 'OUTPUT', 'Lamp', 'Switch', 'InputPin', 'Clock']);
+  const nodeTypeById = new Map<string, string>();
+  for (const node of sortedNodes) {
+    nodeTypeById.set(node.id, node.type);
+  }
+
   // Initialize node output tracking
   for (const node of supportedNodes) {
     const primitive = getPrimitive(node.type);
@@ -99,7 +108,9 @@ export function circuitToVerilog(
     const wire = wires.get(fromWire);
     if (wire) {
       wire.loads.push(toLoad);
-    } else {
+    } else if (!IO_NODE_TYPES.has(nodeTypeById.get(conn.fromNodeId) ?? '')) {
+      // I/O nodes (INPUT, OUTPUT, Switch, etc.) are handled as module ports —
+      // missing wires from them are expected and not an error.
       warnings.push(`Connection from ${conn.fromNodeId}.${conn.fromPin} has no driver`);
     }
   }

@@ -126,6 +126,44 @@ export function buildVerifyRowsFromRuntimeTrace(
   });
 }
 
+/**
+ * Build verify rows by running a fresh deterministic simulation from the circuit.
+ * Use this when the runtime simulation trace doesn't cover the required vector ticks.
+ */
+export function buildVerifyRowsDeterministicFromCircuit(
+  circuit: Circuit,
+  ioRows: SimulationIoRow[],
+  vectors: TestVector[]
+): RuntimeVerifyTraceRow[] {
+  if (vectors.length === 0) return [];
+  const trace = simulateTraceFromVectors(circuit, ioRows, vectors);
+  const traceByTick = new Map<number, RuntimeSimTraceSample>();
+  for (const entry of trace) {
+    traceByTick.set(entry.tick, entry);
+  }
+  const outputRows = ioRows.filter((row) => row.direction === 'out');
+  const rows: RuntimeVerifyTraceRow[] = [];
+  for (const vector of vectors) {
+    const tick = Number.isFinite(vector.tick) ? Math.max(0, Math.floor(vector.tick)) : 0;
+    // simulateTraceFromVectors pushes after engine.tick() so the post-vector tick is tick+1
+    const sample = traceByTick.get(tick + 1) ?? traceByTick.get(tick);
+    for (const outputRow of outputRows) {
+      const expected = resolveVectorBitSymbol(vector.expected ?? {}, outputRow);
+      const actual = resolveOutputSymbolFromTrace(sample, outputRow);
+      rows.push({
+        tick,
+        signal: normalizeSignalName(outputRow.label || outputRow.id),
+        expected,
+        actual,
+      });
+    }
+  }
+  return rows.sort((left, right) => {
+    if (left.tick !== right.tick) return left.tick - right.tick;
+    return compareText(left.signal, right.signal);
+  });
+}
+
 export function simulateExpectedIoRows(params: {
   circuit: Circuit;
   ioRows: SimulationIoRow[];
@@ -268,7 +306,9 @@ function resolveVectorBitSymbol(
   expected: Record<string, boolean | number | string | undefined>,
   row: SimulationIoRow
 ): string {
-  const candidates = [row.id, row.label].map((entry) => normalizeSignalName(entry));
+  const candidates = [row.id, row.label, row.nodeId ?? '']
+    .map((entry) => normalizeSignalName(entry))
+    .filter(Boolean);
   for (const [key, value] of Object.entries(expected)) {
     const normalizedKey = normalizeSignalName(key);
     if (candidates.includes(normalizedKey)) {

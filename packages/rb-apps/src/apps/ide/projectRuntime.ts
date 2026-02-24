@@ -29,6 +29,7 @@ import {
   DEFAULT_SIM_SPEED_HZ,
   advanceSimulationState,
   buildVerifyRowsFromRuntimeTrace,
+  buildVerifyRowsDeterministicFromCircuit,
   resetSimulationState,
 } from './sim/simEngine';
 import type { RuntimeSignalProbe, RuntimeSimState } from './sim/simTypes';
@@ -535,7 +536,15 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               )
             : [];
           const normalizedRows =
-            runtimeRows.length > 0 ? runtimeRows : normalizeVerifyRows(input.rows);
+            runtimeRows.length > 0
+              ? runtimeRows
+              : state.projectVectors.length > 0
+                ? buildVerifyRowsDeterministicFromCircuit(
+                    state.circuit,
+                    state.projectIoRows,
+                    state.projectVectors
+                  )
+                : normalizeVerifyRows(input.rows);
           const useRuntimeRows = runtimeRows.length > 0;
           const effectiveScenarioId = useRuntimeRows ? 'runtime-trace' : scenarioId;
           const effectiveScenarioName = useRuntimeRows

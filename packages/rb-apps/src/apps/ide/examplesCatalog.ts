@@ -68,8 +68,8 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
       { tick: 7, inputs: { sw0_node: 0, sw1_node: 0, sw2_node: 0, sw3_node: 0 }, expected: { ld0_node: 0, ld1_node: 0, ld2_node: 0, ld3_node: 0 } },
     ],
     probes: [
-      { nodeId: 'ld0_node', portName: 'out', label: 'LD0', color: '#00ffff' },
-      { nodeId: 'ld1_node', portName: 'out', label: 'LD1', color: '#ffff00' },
+      { nodeId: 'ld0_node', portName: 'in', label: 'LD0', color: '#00ffff' },
+      { nodeId: 'ld1_node', portName: 'in', label: 'LD1', color: '#ffff00' },
     ],
     circuit: {
       nodes: [
@@ -121,9 +121,9 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
       { tick: 3, inputs: { sw0_node: 1, sw1_node: 1 }, expected: { ld0_node: 1, ld1_node: 1, ld2_node: 0 } },
     ],
     probes: [
-      { nodeId: 'ld0_node', portName: 'out', label: 'AND', color: '#00ffff' },
-      { nodeId: 'ld1_node', portName: 'out', label: 'OR',  color: '#ffff00' },
-      { nodeId: 'ld2_node', portName: 'out', label: 'XOR', color: '#ff00ff' },
+      { nodeId: 'ld0_node', portName: 'in', label: 'AND', color: '#00ffff' },
+      { nodeId: 'ld1_node', portName: 'in', label: 'OR',  color: '#ffff00' },
+      { nodeId: 'ld2_node', portName: 'in', label: 'XOR', color: '#ff00ff' },
     ],
     circuit: {
       nodes: [
@@ -189,8 +189,8 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
       { tick: 5, inputs: { clk_node: 0, en_node: 0 }, expected: { q0_out: 0, q1_out: 0 } },
     ],
     probes: [
-      { nodeId: 'q0_out',   portName: 'out', label: 'LD0', color: '#00ffff' },
-      { nodeId: 'q1_out',   portName: 'out', label: 'LD1', color: '#ffff00' },
+      { nodeId: 'q0_out',   portName: 'in',  label: 'LD0', color: '#00ffff' },
+      { nodeId: 'q1_out',   portName: 'in',  label: 'LD1', color: '#ffff00' },
       { nodeId: 'clk_node', portName: 'out', label: 'CLK', color: '#ffffff' },
     ],
     circuit: {
@@ -198,11 +198,13 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
         // CLK is type INPUT so the macro schedule can drive it (Clock type ignores setNodeState)
         { id: 'clk_node', type: 'INPUT',     x: 90,  y: 100, label: 'CLK', config: {}, state: {} },
         { id: 'en_node',  type: 'INPUT',     x: 90,  y: 220, label: 'EN',  config: {}, state: {} },
-        // XOR gates for next-state logic
+        // XOR gates for next-state logic (and_en must precede xor1 so Kahn topo-sort appends
+        // and_en before xor1; xor1 then reads and_en.out from the current-tick signalCache
+        // rather than the previous-tick fallback, ensuring correct carry propagation).
         { id: 'xor0',     type: 'XOR',       x: 250, y: 100, label: 'XOR0', config: {}, state: {} },
-        { id: 'xor1',     type: 'XOR',       x: 250, y: 260, label: 'XOR1', config: {}, state: {} },
-        // AND gate: Q0 AND EN → enable Q1 toggle
+        // AND gate: Q0 AND EN → enable Q1 toggle (must come before xor1 in nodes array)
         { id: 'and_en',   type: 'AND',       x: 250, y: 180, label: 'AND', config: {}, state: {} },
+        { id: 'xor1',     type: 'XOR',       x: 250, y: 260, label: 'XOR1', config: {}, state: {} },
         // D flip-flops (transparent latch, CLK=1→transparent, CLK=0→hold)
         { id: 'q0_ff',    type: 'DFlipFlop', x: 430, y: 100, label: 'Q0',  config: {}, state: {} },
         { id: 'q1_ff',    type: 'DFlipFlop', x: 430, y: 260, label: 'Q1',  config: {}, state: {} },

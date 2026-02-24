@@ -155,11 +155,12 @@ function executeCombinatorialStep(
       if (key !== undefined) {
         actual = typeof signals.get(key) === 'number' ? (signals.get(key) as number) : 0;
       } else {
-        // Fallback: OUTPUT nodes store value in state.isOn (OUTPUTBehavior returns outputs:{})
+        // OUTPUT nodes store their value in state.isOn (OUTPUTBehavior returns outputs:{}).
+        // Look up by nodeId directly — vector keys should match node IDs.
         const nodeState = engine.getNodeState(portName);
         if (nodeState !== undefined) {
           const raw = nodeState.isOn;
-          actual = typeof raw === 'number' ? raw : raw ? 1 : 0;
+          actual = typeof raw === 'number' ? raw : (raw ? 1 : 0);
         }
       }
       if (actual !== undefined && actual !== expectedVal) {
@@ -224,11 +225,12 @@ function executeClockedMacroStep(
       if (key !== undefined) {
         actual = typeof signals.get(key) === 'number' ? (signals.get(key) as number) : 0;
       } else {
-        // Fallback: OUTPUT nodes store value in state.isOn (OUTPUTBehavior returns outputs:{})
+        // OUTPUT nodes store their value in state.isOn (OUTPUTBehavior returns outputs:{}).
+        // Look up by nodeId directly — vector keys should match node IDs.
         const nodeState = engine.getNodeState(portName);
         if (nodeState !== undefined) {
           const raw = nodeState.isOn;
-          actual = typeof raw === 'number' ? raw : raw ? 1 : 0;
+          actual = typeof raw === 'number' ? raw : (raw ? 1 : 0);
         }
       }
       if (actual !== undefined && actual !== expectedVal) {

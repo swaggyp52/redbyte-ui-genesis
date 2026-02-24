@@ -63,7 +63,15 @@ export async function verifyTruthTable(
         (n) => n.label === outputSignal || n.id === outputSignal
       );
       if (outputNode) {
-        actualRow[outputSignal] = engine.getNodeValue(outputNode.id, 'Q') ?? 0;
+        // OUTPUT and Lamp nodes store their value in state.isOn (outputs: {} is empty).
+        // Other node types expose their value via 'out' or 'Q' ports in the signal cache.
+        const nodeType = outputNode.type;
+        if (nodeType === 'OUTPUT' || nodeType === 'Lamp') {
+          actualRow[outputSignal] = (engine.getNodeState(outputNode.id)?.isOn as number) ?? 0;
+        } else {
+          const portName = nodeType === 'DFlipFlop' ? 'Q' : 'out';
+          actualRow[outputSignal] = (engine.getNodeValue(outputNode.id, portName) as number) ?? 0;
+        }
       } else {
         actualRow[outputSignal] = 0; // Missing output
       }
