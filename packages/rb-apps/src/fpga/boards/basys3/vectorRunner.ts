@@ -79,6 +79,27 @@ export async function runTestVectors(
     actual: number;
   }> = [];
 
+  const clockNodeName = scheduleContract.needsSimClockInjection
+    ? '__sim_clk__'
+    : (scheduleContract.clockSignalName ?? '__sim_clk__');
+
+  // Boot-reset for clocked_macro circuits: run one CLK cycle with the first
+  // vector's data inputs before the main loop.  SR-NAND-based latches (e.g.
+  // DFlipFlop composite) initialise from all-zero NAND inputs → Q=Q_inv=1
+  // (metastable). One CLK pulse with first-vector EN drives D=XOR(1,EN) and
+  // captures Q=0, matching the stable start state the test vectors assume.
+  if (schedule === 'clocked_macro' && vectors.length > 0) {
+    const firstVector = vectors[0];
+    for (const [portName, value] of Object.entries(firstVector.inputs ?? {})) {
+      if (portName === clockNodeName) continue;
+      driveInput(engine, portName, value);
+    }
+    for (const clockValue of CLOCKED_MACRO_SEQUENCE) {
+      driveInput(engine, clockNodeName, clockValue);
+      engine.tick();
+    }
+  }
+
   // Execute vectors
   for (let tickIdx = 0; tickIdx < vectors.length; tickIdx++) {
     const vector = vectors[tickIdx];
@@ -92,9 +113,7 @@ export async function runTestVectors(
         tickIdx,
         trace,
         failures,
-        scheduleContract.needsSimClockInjection
-          ? '__sim_clk__'
-          : (scheduleContract.clockSignalName ?? '__sim_clk__')
+        clockNodeName
       );
     }
   }
