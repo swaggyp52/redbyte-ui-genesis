@@ -677,6 +677,28 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setRunState('complete');
   };
 
+  // Run Deterministic: always simulates from the circuit — ignores interactive runtime trace.
+  // Use when the user hasn't stepped the simulation manually or wants reproducible results.
+  const runDeterministicVerification = () => {
+    setRunState('running');
+    const rows = authoredVectors.flatMap((vector) =>
+      Object.entries(vector.expected).map(([signal, expected]) => ({
+        tick: vector.tick,
+        signal,
+        expected: String(expected),
+        actual: '0',
+      }))
+    );
+    onRunVerification?.({
+      scenarioId: `project-verify-det-${deterministicHash.slice(0, 8)}`,
+      scenarioName: 'Project Vectors (deterministic)',
+      deterministicHash,
+      rows,
+      useRuntimeTrace: false,
+    });
+    setRunState('complete');
+  };
+
   const clearResults = () => {
     onClearVerification?.();
     setRunState('idle');
@@ -887,6 +909,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     <span>Tick</span>
                     <span>{matchingFailure?.tick ?? '—'}</span>
                   </div>
+                  {matchingFailure && matchingFailure.expected !== matchingFailure.actual && (
+                    <div className="ide-kv-row" data-testid="ide-verify-mismatch-hint">
+                      <span>Hint</span>
+                      <span style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+                        {matchingFailure.actual === '0' && matchingFailure.expected === '1'
+                          ? `${matchingFailure.signal} reads 0 when 1 is expected — verify the driving node is connected and producing output.`
+                          : matchingFailure.actual === '1' && matchingFailure.expected === '0'
+                            ? `${matchingFailure.signal} reads 1 when 0 is expected — check for unintended connections or inverted logic.`
+                            : `${matchingFailure.signal} has an unexpected value at tick ${String(matchingFailure.tick)} — verify input conditions.`}
+                      </span>
+                    </div>
+                  )}
                   {onFixPath && matchingFailure && (
                     <div className="ide-inline-actions">
                       <IdeButton
@@ -1115,25 +1149,25 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           {lastRun && (
             <>
               <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
-              <span className="ide-verify-strip-meta">{runRows.length} vectors</span>
-              <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
-              <span className="ide-verify-strip-meta ide-verify-strip-pass">
-                {runRows.length - failingRows.length} pass
+              <span className="ide-verify-strip-meta ide-verify-strip-pass" data-testid="ide-verify-strip-pass-count">
+                {runRows.length - failingRows.length}/{runRows.length} passed
               </span>
               {failingRows.length > 0 && (
                 <>
                   <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
-                  <span className="ide-verify-strip-meta ide-verify-strip-fail">
+                  <span className="ide-verify-strip-meta ide-verify-strip-fail" data-testid="ide-verify-strip-fail-count">
                     {failingRows.length} fail
+                    {typeof firstFailureTick === 'number' && (
+                      <> at t{firstFailureTick}
+                        {failingRows.slice(0, 2).length > 0 && (
+                          <> ({failingRows.slice(0, 2).map((r) => r.signal).join(', ')}
+                            {failingRows.length > 2 ? ` +${failingRows.length - 2} more` : ''}
+                          )
+                          </>
+                        )}
+                      </>
+                    )}
                   </span>
-                </>
-              )}
-              {typeof firstFailureTick === 'number' && (
-                <>
-                  <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
-                  <code className="ide-verify-strip-meta" data-testid="ide-verify-first-fail-tick">
-                    t{firstFailureTick}
-                  </code>
                 </>
               )}
             </>
@@ -1183,6 +1217,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </IdeButton>
             )}
             <IdeButton tone="ghost" onClick={clearResults} testId="ide-verify-clear">Clear</IdeButton>
+            {authoredVectors.length > 0 && onRunVerification && (
+              <span title="Always simulates from the circuit, ignoring the interactive runtime trace. Use for reproducible results.">
+                <IdeButton
+                  tone="ghost"
+                  onClick={runDeterministicVerification}
+                  disabled={runState === 'running'}
+                  testId="ide-verify-run-deterministic"
+                >
+                  Run Deterministic
+                </IdeButton>
+              </span>
+            )}
             {canSetOracle && (
               <span title="Copies the last run's output values into expected for each vector. Use when expectations are missing or wrong for this circuit.">
                 <IdeButton
@@ -1420,6 +1466,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 data-verify-trace-only={isTraceOnly ? '1' : '0'}
                 style={{ margin: '0 var(--ide-space-1) var(--ide-space-1)' }}
               >
+                {/* Student onboarding: tick explanation */}
+                <details className="ide-verify-tick-explainer" data-testid="ide-verify-tick-explainer">
+                  <summary style={{ cursor: 'pointer', userSelect: 'none', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', padding: '2px 0' }}>
+                    What is a tick?
+                  </summary>
+                  <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', margin: '4px 0 4px 12px' }}>
+                    A <strong>tick</strong> is one simulation step. For combinational logic, one tick
+                    settles all outputs. For sequential logic (flip-flops), each clock edge is one tick.
+                    Expected values are checked at the end of each tick — a mismatch means the circuit
+                    produced a different value than specified.
+                  </p>
+                </details>
                 {/* Legend */}
                 {visibleSignalTimeline.length > 0 && (
                   <div className="ide-verify-waveform-legend" data-testid="ide-verify-waveform-legend">
