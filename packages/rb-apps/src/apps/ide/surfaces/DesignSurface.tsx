@@ -69,6 +69,8 @@ export interface DesignSurfaceProps {
   onGoToHardware?: () => void;
   onGoToImport?: () => void;
   onGoToProject?: () => void;
+  onGoToVerify?: () => void;
+  onClearDiagnostic?: () => void;
   topHdl?: string;
   onApplyHdl?: (hdl: string) => void;
   topEntityName?: string;
@@ -166,6 +168,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   onGoToHardware,
   onGoToImport,
   onGoToProject,
+  onGoToVerify,
+  onClearDiagnostic,
   topHdl,
   onApplyHdl,
   topEntityName,
@@ -320,6 +324,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       window.clearInterval(timer);
     };
   }, [onRuntimeSimStep, simRunning, simSpeed]);
+
+  const deleteSelection = useCallback(() => {
+    const selectedNodeIds = Array.from(selection.nodes);
+    const selectedWireIds = Array.from(selection.wires);
+
+    for (const nodeId of selectedNodeIds) {
+      deleteNode(nodeId);
+    }
+
+    for (const wireId of selectedWireIds) {
+      const parsed = parseWireId(wireId);
+      if (!parsed) continue;
+      deleteConnection(parsed.fromNodeId, parsed.fromPort, parsed.toNodeId, parsed.toPort);
+    }
+
+    clearSelection();
+    if (selectedNodeIds.length + selectedWireIds.length > 0) {
+      setActionToast('Removed selected nodes and wires.');
+      onCircuitMutated?.();
+    }
+  }, [clearSelection, deleteConnection, deleteNode, onCircuitMutated, selection.nodes, selection.wires]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -537,27 +562,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     setToolMode('wire');
     setActionToast('Wire mode active.');
   }, [setToolMode]);
-
-  const deleteSelection = useCallback(() => {
-    const selectedNodeIds = Array.from(selection.nodes);
-    const selectedWireIds = Array.from(selection.wires);
-
-    for (const nodeId of selectedNodeIds) {
-      deleteNode(nodeId);
-    }
-
-    for (const wireId of selectedWireIds) {
-      const parsed = parseWireId(wireId);
-      if (!parsed) continue;
-      deleteConnection(parsed.fromNodeId, parsed.fromPort, parsed.toNodeId, parsed.toPort);
-    }
-
-    clearSelection();
-    if (selectedNodeIds.length + selectedWireIds.length > 0) {
-      setActionToast('Removed selected nodes and wires.');
-      onCircuitMutated?.();
-    }
-  }, [clearSelection, deleteConnection, deleteNode, onCircuitMutated, selection.nodes, selection.wires]);
 
   const handleCircuitChange = useCallback(
     (nextCircuit: Circuit) => {
@@ -1726,6 +1730,34 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </span>
                     ) : null}
                   </div>
+                  {diagnosticRouteRequest && diagnosticRouteRequest.mode === 'design' && (
+                    <div
+                      style={{ position: 'absolute', top: 8, left: 8, right: 8, zIndex: 10, pointerEvents: 'auto' }}
+                      data-testid="ide-design-diagnostic-callout"
+                    >
+                      <IdeCallout tone="warn">
+                        Checking{diagnosticRouteRequest.signal ? ` signal ${diagnosticRouteRequest.signal}` : ''}
+                        {typeof diagnosticRouteRequest.tick === 'number' ? ` at tick ${diagnosticRouteRequest.tick}` : ''}.
+                        <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-1)' }}>
+                          {onGoToProject && (
+                            <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-design-diagnostic-go-mapping">
+                              Open mapping
+                            </IdeButton>
+                          )}
+                          {onGoToVerify && (
+                            <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-design-diagnostic-go-verify">
+                              Rerun verify
+                            </IdeButton>
+                          )}
+                          {onClearDiagnostic && (
+                            <IdeButton tone="ghost" onClick={onClearDiagnostic} testId="ide-design-diagnostic-dismiss">
+                              Dismiss
+                            </IdeButton>
+                          )}
+                        </div>
+                      </IdeCallout>
+                    </div>
+                  )}
                   <div
                     className={`ide-design-canvas-live ${toolMode === 'wire' ? 'is-wire-mode' : 'is-select-mode'} ${
                       presentationZoom === 'classroom' ? 'is-presentation-zoom' : ''

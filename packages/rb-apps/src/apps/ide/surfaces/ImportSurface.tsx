@@ -6,6 +6,7 @@ import type { ParsedHDL, ReconstructionLevel } from '../../../import/hdlToCircui
 import type { ParsedHdlWarning } from '../../../import/hdlToCircuit';
 import type { RBProject } from '../../../export/projectFormat';
 import type { IdeExampleIoRow } from '../examplesCatalog';
+import { parseIdeSubmissionZip, NotASubmissionZipError, type ParsedIdeSubmission } from '../../../export/parseIdeSubmission';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   buildImportedProject,
@@ -33,6 +34,7 @@ export interface ImportSurfaceProps {
   onApplySuggestions?: (items: Array<{ rowId: string; pin: string }>) => void;
   onGoToProject?: () => void;
   onGoToVerify?: () => void;
+  onImportSubmission?: (submission: ParsedIdeSubmission) => void;
 }
 
 const BASYS3_QUICK_PINS = [
@@ -53,10 +55,13 @@ const SAMPLE_AND_GATE_VHDL = [
   '         in_b : in STD_LOGIC;',
   '         out_y : out STD_LOGIC);',
   'end top;',
-  'architecture Behavioral of top is',
+  'architecture Structural of top is',
+  '  component AND2',
+  '    port (A : in STD_LOGIC; B : in STD_LOGIC; Y : out STD_LOGIC);',
+  '  end component;',
   'begin',
-  '  out_y <= in_a AND in_b;',
-  'end Behavioral;',
+  '  U1 : AND2 port map (A => in_a, B => in_b, Y => out_y);',
+  'end Structural;',
 ].join('\n');
 
 const SAMPLE_AND_GATE_XDC = [
@@ -288,6 +293,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   onApplySuggestions,
   onGoToProject,
   onGoToVerify,
+  onImportSubmission,
 }) => {
   const [tab, setTab] = useState<ImportTab>('hdl');
   const [language, setLanguage] = useState<HdlLanguage>('auto');
@@ -1002,6 +1008,26 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     zipFileRef.current = file;
     setZipBusy(true);
     setPendingApplyProject(null);
+
+    // First: try parsing as a submission ZIP
+    if (onImportSubmission) {
+      try {
+        const bytes = await file.arrayBuffer();
+        const submission = await parseIdeSubmissionZip(bytes);
+        setZipBusy(false);
+        onImportSubmission(submission);
+        return;
+      } catch (err) {
+        if (!(err instanceof NotASubmissionZipError)) {
+          // Unexpected error — show it and abort
+          setZipBusy(false);
+          setStatusMessage(`Submission parse failed: ${err instanceof Error ? err.message : String(err)}`);
+          return;
+        }
+        // NotASubmissionZipError → fall through to Vivado ZIP path
+      }
+    }
+
     try {
       const inspection = await importVivadoZipFile(file);
       setZipInspection(inspection);

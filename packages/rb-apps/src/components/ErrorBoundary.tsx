@@ -129,7 +129,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       const studentError = toStudentFacingError(this.state.error);
 
       return (
-        <div className={styles.errorBoundary}>
+        <div className={styles.errorBoundary} data-testid="error-boundary-fallback">
           <div className={styles.errorCard}>
             <div className={styles.errorIcon}>WARN</div>
             <h2 className={styles.errorTitle}>{title}</h2>

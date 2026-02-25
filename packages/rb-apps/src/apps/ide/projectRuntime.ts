@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
-import type { RBProject } from '../../export/projectFormat';
+import { encodeRBProject, type RBProject } from '../../export/projectFormat';
+import { stableSerialize } from '../../utils/stableSerialize';
 import { deriveVerifySchedule } from '../../fpga/boards/basys3/verifySchedule';
 import { digestValue } from '../../utils/digest';
 import {
@@ -41,6 +42,27 @@ const STORAGE_KEY = 'rb.ide.project-runtime.v1';
 const DEFAULT_EXAMPLE = getIdeExampleById(IDE_DEFAULT_EXAMPLE_ID) ?? IDE_EXAMPLES[0];
 
 export type ProjectIoRow = IdeExampleIoRow;
+
+export interface VerifyRunLedgerEntry {
+  runId: string;
+  ranAtIso: string;
+  status: 'pass' | 'fail';
+  passedRows: number;
+  failedRows: number;
+  firstFailure: {
+    tick: number;
+    signal: string;
+    expected: string;
+    actual: string;
+  } | null;
+  circuitHash: string;
+  vectorsHash: string;
+  mappingHash: string;
+  projectHash: string;
+  didCircuitChangeSinceLast: boolean;
+  didVectorsChangeSinceLast: boolean;
+  didMappingChangeSinceLast: boolean;
+}
 
 export interface RuntimeVerifyRun {
   scenarioId: string;
@@ -98,6 +120,7 @@ export interface ProjectRuntimeState {
   projectVectors: TestVector[];
   circuit: Circuit;
   verifyLastRun?: RuntimeVerifyRun;
+  verifyRunHistory: VerifyRunLedgerEntry[];
   sim: RuntimeSimState;
   projectHealthCore: ProjectHealthCore;
   actions: ProjectRuntimeActions;
@@ -147,6 +170,7 @@ interface PersistedRuntimeState {
   projectVectors: TestVector[];
   circuit: Circuit;
   verifyLastRun?: RuntimeVerifyRun;
+  verifyRunHistory: VerifyRunLedgerEntry[];
   sim: RuntimeSimState;
   projectHealthCore: ProjectHealthCore;
 }
@@ -314,6 +338,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           projectVectors: cloneVectors(project.vectors ?? []),
           circuit,
           verifyLastRun: undefined,
+          verifyRunHistory: [],
           sim: resetSimulationState(circuit, projectIoRows),
           projectHealthCore: {
             dirtySinceVerify: true,
@@ -587,8 +612,40 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             waveform: buildVerifyWaveSamples(report),
           };
 
+          // Build ledger entry (synchronous hashes via digestValue + stableSerialize)
+          const circuitHash = digestValue(stableSerialize(state.circuit));
+          const vectorsHash = digestValue(stableSerialize(state.projectVectors));
+          const mappingHash = digestValue(stableSerialize(toIoMapping(state.projectIoRows)));
+          const projectSnap = {
+            circuit: state.circuit,
+            vectors: state.projectVectors,
+            mapping: toIoMapping(state.projectIoRows),
+          };
+          const projectHash = digestValue(stableSerialize(projectSnap));
+          const prevEntry = state.verifyRunHistory[state.verifyRunHistory.length - 1] ?? null;
+          const firstFailRow = report.rows.find((row) => row.status === 'fail') ?? null;
+          const ledgerEntry: VerifyRunLedgerEntry = {
+            runId: `run-${ranAtIso}-${report.reportHash.slice(0, 8)}`,
+            ranAtIso,
+            status: report.status,
+            passedRows: report.rows.filter((row) => row.status === 'pass').length,
+            failedRows: report.rows.filter((row) => row.status === 'fail').length,
+            firstFailure: firstFailRow
+              ? { tick: firstFailRow.tick, signal: firstFailRow.signal, expected: firstFailRow.expected, actual: firstFailRow.actual }
+              : null,
+            circuitHash,
+            vectorsHash,
+            mappingHash,
+            projectHash,
+            didCircuitChangeSinceLast: prevEntry ? prevEntry.circuitHash !== circuitHash : false,
+            didVectorsChangeSinceLast: prevEntry ? prevEntry.vectorsHash !== vectorsHash : false,
+            didMappingChangeSinceLast: prevEntry ? prevEntry.mappingHash !== mappingHash : false,
+          };
+          const nextHistory = [...state.verifyRunHistory, ledgerEntry].slice(-50);
+
           return {
             verifyLastRun: runtimeRun,
+            verifyRunHistory: nextHistory,
             sim: {
               ...state.sim,
               running: false,
@@ -748,6 +805,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         verifyLastRun: state.verifyLastRun
           ? cloneVerifyRun(state.verifyLastRun)
           : undefined,
+        verifyRunHistory: state.verifyRunHistory.slice(-50),
         sim: cloneSimState(state.sim),
         projectHealthCore: {
           lastVerify: state.projectHealthCore.lastVerify,
@@ -783,6 +841,7 @@ function stateFromExample(
     projectVectors: cloneVectors(example.vectors),
     circuit,
     verifyLastRun: undefined,
+    verifyRunHistory: [],
     sim,
     projectHealthCore: {
       dirtySinceVerify: false,

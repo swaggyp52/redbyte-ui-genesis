@@ -5,7 +5,7 @@ import { RbUserError } from '@redbyte/rb-utils';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
 describe('ErrorBoundary gate (student-friendly + recovery)', () => {
-  it('renders student-friendly message and recovers via Reload App', () => {
+  it('renders student-friendly message and recovers via Try Again', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     let shouldThrow = true;
 
@@ -24,13 +24,13 @@ describe('ErrorBoundary gate (student-friendly + recovery)', () => {
 
     expect(getByText('Test Boundary')).toBeTruthy();
     expect(getByText(/RedByte Bridge Unreachable/i)).toBeTruthy();
-    expect(getByText('Reload App')).toBeTruthy();
+    expect(getByText('Try Again')).toBeTruthy();
     expect(getByText('Copy Error Details')).toBeTruthy();
-    expect(getByText('Reload Page')).toBeTruthy();
+    expect(getByText('Reset Workspace')).toBeTruthy();
 
     act(() => {
       shouldThrow = false;
-      fireEvent.click(getByText('Reload App'));
+      fireEvent.click(getByText('Try Again'));
     });
 
     expect(queryByTestId('ok')).toBeTruthy();

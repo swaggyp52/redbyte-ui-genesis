@@ -302,7 +302,7 @@ function exampleToIoMapping(example: { ioRows: Array<{ id: string; nodeId: strin
   };
 }
 
-describe('GOLDEN — Bundle validity: all 3 examples produce bundle.valid === true', () => {
+describe('GOLDEN — Bundle validity: all 5 examples produce bundle.valid === true', () => {
   it('signal-tour: bundle.valid === true', () => {
     const ex = getIdeExampleById('signal-tour')!;
     const bundle = exportBasys3Bundle(ex.circuit as Circuit, exampleToIoMapping(ex));
@@ -329,6 +329,24 @@ describe('GOLDEN — Bundle validity: all 3 examples produce bundle.valid === tr
     }
     expect(bundle.valid).toBe(true);
   });
+
+  it('half-adder: bundle.valid === true', () => {
+    const ex = getIdeExampleById('half-adder')!;
+    const bundle = exportBasys3Bundle(ex.circuit as Circuit, exampleToIoMapping(ex));
+    if (!bundle.valid) {
+      throw new Error(`half-adder bundle.valid is false. warnings: ${JSON.stringify(bundle.warnings)}`);
+    }
+    expect(bundle.valid).toBe(true);
+  });
+
+  it('full-adder: bundle.valid === true', () => {
+    const ex = getIdeExampleById('full-adder')!;
+    const bundle = exportBasys3Bundle(ex.circuit as Circuit, exampleToIoMapping(ex));
+    if (!bundle.valid) {
+      throw new Error(`full-adder bundle.valid is false. warnings: ${JSON.stringify(bundle.warnings)}`);
+    }
+    expect(bundle.valid).toBe(true);
+  });
 });
 
 // ─── GOLDEN GATE 5: Verify must pass — with full diagnostic dump ──────────────
@@ -352,6 +370,8 @@ describe('GOLDEN — Gate A: verify must pass (full diagnostic dump)', () => {
     'signal-tour',
     'logic-gates',
     'two-bit-counter',
+    'half-adder',
+    'full-adder',
   ] as const)('%s: runTestVectors pass === true', async (exampleId) => {
     const ex = getIdeExampleById(exampleId)!;
     const result = await runTestVectors(ex.circuit as Circuit, ex.vectors);
@@ -393,6 +413,14 @@ const EXAMPLE_PIN_CONTRACT: Record<string, Record<string, string>> = {
     clk: 'W5', en: 'V17', rst: 'U18',
     q0: 'U16', q1: 'E19',
   },
+  'half-adder': {
+    sw0: 'V17', sw1: 'W16',
+    ld0: 'U16', ld1: 'E19',
+  },
+  'full-adder': {
+    sw0: 'V17', sw1: 'W16', sw2: 'W15',
+    ld0: 'U16', ld1: 'E19',
+  },
 };
 
 describe('GOLDEN — Gate B: mapping completeness and exact pin contract', () => {
@@ -400,6 +428,8 @@ describe('GOLDEN — Gate B: mapping completeness and exact pin contract', () =>
     'signal-tour',
     'logic-gates',
     'two-bit-counter',
+    'half-adder',
+    'full-adder',
   ] as const)('%s: all pins present, no duplicates, exact contract matches', (exampleId) => {
     const ex = getIdeExampleById(exampleId)!;
     const mapping = exampleToIoMapping(ex);

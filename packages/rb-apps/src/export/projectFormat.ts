@@ -74,6 +74,8 @@ export interface RBProject {
     labId?: string;
     labStepIndex?: number;
     appSurface?: string;
+    studentName?: string;  // optional, manually entered — stored in project meta
+    labCode?: string;      // optional instructor-defined e.g. "ECE347-L3-2026-02"
   };
 }
 

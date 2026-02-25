@@ -18,7 +18,12 @@ import { VerifySurface, type VerifyFailureTarget } from './ide/surfaces/VerifySu
 import { HardwareSurface } from './ide/surfaces/HardwareSurface';
 import { ExportSurface } from './ide/surfaces/ExportSurface';
 import { ImportSurface } from './ide/surfaces/ImportSurface';
+import { SubmissionViewerSurface } from './ide/surfaces/SubmissionViewerSurface';
+import { generateIdeSubmissionBundle } from '../export/ideSubmissionBundle';
+import type { ParsedIdeSubmission } from '../export/parseIdeSubmission';
 import { PipelineStrip } from './ide/components/PipelineStrip';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { ThrowOnce } from '../components/ThrowOnce';
 import { buildExportViewModel } from './ide/viewmodels/buildExportViewModel';
 import {
   choosePrimaryDiagnosticAction,
@@ -62,6 +67,9 @@ export const IdeApp: React.FC = () => {
   const [savedProjects, setSavedProjects] = useState<PersistedIdeProjectIndexEntry[]>([]);
   const [savedProjectHash, setSavedProjectHash] = useState<string | null>(null);
   const [isAutosaving, setIsAutosaving] = useState(false);
+  const [submissionViewData, setSubmissionViewData] = useState<ParsedIdeSubmission | null>(null);
+  const [submissionExportPending, setSubmissionExportPending] = useState(false);
+  const [studentName, setStudentName] = useState<string>('');
   const hasRestoredRef = useRef(false);
   const isRestoringRef = useRef(false);
   const sessionMetaRef = useRef<LabSessionMeta | null>(null);
@@ -70,6 +78,13 @@ export const IdeApp: React.FC = () => {
   const projectNameRef = useRef('');
   const projectHashRef = useRef('');
   const importFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Dev/test only — causes the named surface to throw once on mount
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const param = new URLSearchParams(window.location.search).get('__rb_throw');
+    if (param) (window as any).__RB_THROW_SURFACE__ = param;
+  }, []);
 
   const projectId = useProjectRuntime((state) => state.projectId);
   const projectName = useProjectRuntime((state) => state.projectName);
@@ -80,6 +95,7 @@ export const IdeApp: React.FC = () => {
   const projectVectors = useProjectRuntime((state) => state.projectVectors);
   const circuit = useProjectRuntime((state) => state.circuit);
   const verifyLastRun = useProjectRuntime((state) => state.verifyLastRun);
+  const verifyRunHistory = useProjectRuntime((state) => state.verifyRunHistory);
   const runtimeSim = useProjectRuntime((state) => state.sim);
   const projectHealthCore = useProjectRuntime((state) => state.projectHealthCore);
   const loadExample = useProjectRuntime((state) => state.loadExample);
@@ -110,6 +126,10 @@ export const IdeApp: React.FC = () => {
   const setLastSavedAt = useProjectRuntime((state) => state.setLastSavedAt);
   const resetToActiveExample = useProjectRuntime((state) => state.resetToActiveExample);
   const hasCircuit = circuit.nodes.length > 0;
+  const hasDff = useMemo(
+    () => circuit.nodes.some((n) => n.type === 'DFlipFlop'),
+    [circuit.nodes]
+  );
   const missingRequiredCount = useMemo(
     () => projectIoRows.filter((entry) => entry.required && entry.pin.trim().length === 0).length,
     [projectIoRows]
@@ -246,6 +266,7 @@ export const IdeApp: React.FC = () => {
 
   const handleDesignMutation = useCallback(() => {
     markDesignMutated(useCircuitStore.getState().circuit);
+    setDiagnosticRouteRequest(null);
   }, [markDesignMutated]);
 
   const refreshSavedProjects = useCallback(() => {
@@ -271,6 +292,68 @@ export const IdeApp: React.FC = () => {
     },
     [setMappingPin, setCurrentMode]
   );
+
+  const handleImportSubmission = useCallback(
+    (submission: ParsedIdeSubmission) => {
+      setSubmissionViewData(submission);
+    },
+    []
+  );
+
+  const handleSafeLoadIntoIde = useCallback(
+    (project: RBProject) => {
+      // Auto-backup current project before replacing
+      if (hasCircuit && exportProjectRef.current) {
+        const backupName = `Backup — ${projectName} — ${new Date().toLocaleTimeString()}`;
+        const backupProject: RBProject = {
+          ...exportProjectRef.current,
+          name: backupName,
+        };
+        const backupId = `backup-${projectId}-${Date.now().toString(36)}`;
+        saveIdeProjectSnapshot({
+          projectId: backupId,
+          projectName: backupName,
+          projectHash: digestValue(backupProject),
+          project: backupProject,
+        });
+        setLastSavedAt(`Previous project backed up as "${backupName}"`);
+        refreshSavedProjects();
+      }
+      loadFromProject(project);
+      setSubmissionViewData(null);
+      setCurrentMode('project');
+    },
+    [hasCircuit, projectId, projectName, loadFromProject, refreshSavedProjects, setLastSavedAt]
+  );
+
+  const handleExportSubmission = useCallback(async () => {
+    if (!exportProjectRef.current) return;
+    setSubmissionExportPending(true);
+    try {
+      const appCommitSha = (import.meta.env.VITE_GIT_COMMIT ?? '').slice(0, 12) || 'dev';
+      const result = await generateIdeSubmissionBundle({
+        project: exportProjectRef.current,
+        verifyLastRun: verifyLastRun ?? null,
+        verifyRunHistory,
+        submittedAt: new Date().toISOString(),
+        appCommitSha,
+      });
+      // Trigger download
+      const blob = new Blob([result.bytes], { type: 'application/zip' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = result.downloadFilename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Submission export failed:', err);
+    } finally {
+      setSubmissionExportPending(false);
+    }
+  }, [verifyLastRun, verifyRunHistory]);
 
   const topEntityName = useMemo(() => buildTopEntityName(projectName), [projectName]);
   const mappedIoSignals = useMemo(
@@ -357,6 +440,7 @@ export const IdeApp: React.FC = () => {
       meta: {
         appSurface: 'ide-export',
         projectId,
+        ...(studentName.trim() ? { studentName: studentName.trim() } : {}),
       },
     }),
     [
@@ -367,6 +451,7 @@ export const IdeApp: React.FC = () => {
       projectIoRows,
       projectName,
       projectVectors,
+      studentName,
       topEntityName,
       xdcText,
     ]
@@ -760,158 +845,188 @@ export const IdeApp: React.FC = () => {
             primaryCta={primaryProjectCta}
             onNavigate={(mode) => setCurrentMode(mode as IdeMode)}
           />
-        {currentMode === 'project' ? (
-          <ProjectSurface
-            projectName={projectName}
-            description={projectDescription}
-            determinismHash={determinismHash}
-            lastSavedAt={lastSavedAt}
-            topModuleName={topEntityName}
-            readiness={readiness}
-            health={projectHealth}
-            mappingRows={projectIoRows}
-            simRunning={runtimeSim.running}
-            runtimeSim={runtimeSim}
-            examples={IDE_EXAMPLES.map((example) => ({
-              id: example.id,
-              name: example.name,
-              summary: example.summary,
-              expectedBehavior: example.expectedBehavior,
-              tags: example.tags,
-              course: example.course,
-              lab: example.lab,
-              concept: example.concept,
-            }))}
-            activeExampleId={activeExampleId}
-            onOpenExample={handleOpenExample}
-            primaryCtaLabel={primaryProjectCta.label}
-            primaryCta={primaryProjectCta}
-            onPrimaryCta={handleProjectPrimaryAction}
-            onUpdateMappingPin={handleMappingPinChange}
-            onAutoSuggestMapping={handleAutoSuggestMapping}
-            onOpenDesign={() => setCurrentMode('design')}
-            onOpenVerify={() => setCurrentMode('verify')}
-            onOpenExport={() => setCurrentMode('export')}
-            onOpenHardware={() => setCurrentMode('hardware')}
-            onOpenImport={() => setCurrentMode('import')}
-            diagnosticRouteRequest={diagnosticRouteRequest}
-            onGoToHardware={() => setCurrentMode('hardware')}
-            onSaveNow={() => {
-              if (!exportProjectRef.current) return;
-              const snap = saveIdeProjectSnapshot({
-                projectId,
-                projectName,
-                projectHash,
-                project: exportProjectRef.current,
-              });
-              if (snap) {
+        {submissionViewData !== null ? (
+          <ErrorBoundary fallbackTitle="Submission viewer crashed">
+            <SubmissionViewerSurface
+              submission={submissionViewData}
+              onLoadIntoIde={handleSafeLoadIntoIde}
+              onClose={() => setSubmissionViewData(null)}
+            />
+          </ErrorBoundary>
+        ) : currentMode === 'project' ? (
+          <ErrorBoundary fallbackTitle="Project editor crashed">
+            <ProjectSurface
+              projectName={projectName}
+              description={projectDescription}
+              determinismHash={determinismHash}
+              lastSavedAt={lastSavedAt}
+              topModuleName={topEntityName}
+              readiness={readiness}
+              health={projectHealth}
+              mappingRows={projectIoRows}
+              simRunning={runtimeSim.running}
+              runtimeSim={runtimeSim}
+              examples={IDE_EXAMPLES.map((example) => ({
+                id: example.id,
+                name: example.name,
+                summary: example.summary,
+                expectedBehavior: example.expectedBehavior,
+                tags: example.tags,
+                course: example.course,
+                lab: example.lab,
+                concept: example.concept,
+              }))}
+              activeExampleId={activeExampleId}
+              onOpenExample={handleOpenExample}
+              primaryCtaLabel={primaryProjectCta.label}
+              primaryCta={primaryProjectCta}
+              onPrimaryCta={handleProjectPrimaryAction}
+              onUpdateMappingPin={handleMappingPinChange}
+              onAutoSuggestMapping={handleAutoSuggestMapping}
+              onOpenDesign={() => setCurrentMode('design')}
+              onOpenVerify={() => setCurrentMode('verify')}
+              onOpenExport={() => setCurrentMode('export')}
+              onOpenHardware={() => setCurrentMode('hardware')}
+              onOpenImport={() => setCurrentMode('import')}
+              diagnosticRouteRequest={diagnosticRouteRequest}
+              onGoToHardware={() => setCurrentMode('hardware')}
+              studentName={studentName}
+              onStudentNameChange={setStudentName}
+              hasVerifyRun={verifyLastRun !== undefined}
+              onExportSubmission={() => { void handleExportSubmission(); }}
+              submissionExportPending={submissionExportPending}
+              onSaveNow={() => {
+                if (!exportProjectRef.current) return;
+                const snap = saveIdeProjectSnapshot({
+                  projectId,
+                  projectName,
+                  projectHash,
+                  project: exportProjectRef.current,
+                });
+                if (snap) {
+                  setSavedProjectHash(snap.projectHash);
+                  setSavedProjects(listIdeProjectSnapshots());
+                  setLastSavedAt(`Saved ${new Date(snap.savedAtIso).toLocaleTimeString()}`);
+                }
+                if (sessionMetaRef.current) saveLabSessionMeta(sessionMetaRef.current);
+              }}
+              onRestoreLastSave={() => {
+                if (!window.confirm('Restore the last saved project? Unsaved changes will be lost.')) return;
+                const snap = loadIdeProjectSnapshot(projectId);
+                if (!snap) { window.alert('No saved session found.'); return; }
+                const proj = decodePersistedIdeProject(snap);
+                if (!proj) { window.alert('Saved session could not be decoded.'); return; }
+                isRestoringRef.current = true;
+                loadFromProject(proj);
                 setSavedProjectHash(snap.projectHash);
-                setSavedProjects(listIdeProjectSnapshots());
-                setLastSavedAt(`Saved ${new Date(snap.savedAtIso).toLocaleTimeString()}`);
-              }
-              if (sessionMetaRef.current) saveLabSessionMeta(sessionMetaRef.current);
-            }}
-            onRestoreLastSave={() => {
-              if (!window.confirm('Restore the last saved project? Unsaved changes will be lost.')) return;
-              const snap = loadIdeProjectSnapshot(projectId);
-              if (!snap) { window.alert('No saved session found.'); return; }
-              const proj = decodePersistedIdeProject(snap);
-              if (!proj) { window.alert('Saved session could not be decoded.'); return; }
-              isRestoringRef.current = true;
-              loadFromProject(proj);
-              setSavedProjectHash(snap.projectHash);
-              isRestoringRef.current = false;
-              setLastSavedAt('Restored from last save');
-            }}
-            onResetProject={() => {
-              if (!window.confirm('Reset to the default example? All unsaved work will be lost.')) return;
-              clearLabSessionMeta();
-              resetToActiveExample();
-              setCurrentMode('project');
-              setLastSavedAt('Reset to example');
-            }}
-          />
+                isRestoringRef.current = false;
+                setLastSavedAt('Restored from last save');
+              }}
+              onResetProject={() => {
+                if (!window.confirm('Reset to the default example? All unsaved work will be lost.')) return;
+                clearLabSessionMeta();
+                resetToActiveExample();
+                setCurrentMode('project');
+                setLastSavedAt('Reset to example');
+              }}
+            />
+          </ErrorBoundary>
         ) : currentMode === 'design' ? (
-          <DesignSurface
-            onOpenPalette={() => null}
-            onCircuitMutated={handleDesignMutation}
-            onRuntimeAddNode={addDesignNode}
-            onRuntimeAddIo={addDesignIo}
-            onRuntimeAddBoardIo={addDesignBoardIo}
-            onRuntimeConnect={connectDesignNodes}
-            compilerStatus={designCompilerStatus}
-            onDiagnosticAction={handleDiagnosticAction}
-            diagnosticRouteRequest={diagnosticRouteRequest}
-            runtimeSim={runtimeSim}
-            onRuntimeSimRun={runRuntimeSim}
-            onRuntimeSimPause={pauseRuntimeSim}
-            onRuntimeSimStep={stepRuntimeSim}
-            onRuntimeSimReset={resetRuntimeSim}
-            onRuntimeSimSetSpeed={setRuntimeSimSpeed}
-            onRuntimeSimSetInput={setRuntimeSimInput}
-            onRuntimeSimSetSelectedSignal={setRuntimeSimSelectedSignal}
-            onRuntimeSimToggleProbe={toggleRuntimeSimProbe}
-            viewportSeed={`${activeExampleId ?? 'custom'}:${lastSavedAt}`}
-            ioRows={projectIoRows}
-            onGoToHardware={() => setCurrentMode('hardware')}
-            onGoToImport={() => setCurrentMode('import')}
-            onGoToProject={() => setCurrentMode('project')}
-            topEntityName={topEntityName}
-          />
+          <ErrorBoundary fallbackTitle="Design editor crashed">
+            <ThrowOnce surface="design" />
+            <DesignSurface
+              onOpenPalette={() => null}
+              onCircuitMutated={handleDesignMutation}
+              onRuntimeAddNode={addDesignNode}
+              onRuntimeAddIo={addDesignIo}
+              onRuntimeAddBoardIo={addDesignBoardIo}
+              onRuntimeConnect={connectDesignNodes}
+              compilerStatus={designCompilerStatus}
+              onDiagnosticAction={handleDiagnosticAction}
+              diagnosticRouteRequest={diagnosticRouteRequest}
+              runtimeSim={runtimeSim}
+              onRuntimeSimRun={runRuntimeSim}
+              onRuntimeSimPause={pauseRuntimeSim}
+              onRuntimeSimStep={stepRuntimeSim}
+              onRuntimeSimReset={resetRuntimeSim}
+              onRuntimeSimSetSpeed={setRuntimeSimSpeed}
+              onRuntimeSimSetInput={setRuntimeSimInput}
+              onRuntimeSimSetSelectedSignal={setRuntimeSimSelectedSignal}
+              onRuntimeSimToggleProbe={toggleRuntimeSimProbe}
+              viewportSeed={`${activeExampleId ?? 'custom'}:${lastSavedAt}`}
+              ioRows={projectIoRows}
+              onGoToHardware={() => setCurrentMode('hardware')}
+              onGoToImport={() => setCurrentMode('import')}
+              onGoToProject={() => setCurrentMode('project')}
+              onGoToVerify={() => setCurrentMode('verify')}
+              onClearDiagnostic={() => setDiagnosticRouteRequest(null)}
+              topEntityName={topEntityName}
+            />
+          </ErrorBoundary>
         ) : currentMode === 'verify' ? (
-          <VerifySurface
-            deterministicHash={determinismHash}
-            hasVectors={projectVectors.length > 0}
-            vectors={projectVectors}
-            lastRun={verifyLastRun}
-            mappedInputs={verifyMappedInputs}
-            mappedSignals={mappedIoSignals}
-            onVectorsChange={handleVectorsChange}
-            onRunVerification={handleRunVerification}
-            onClearVerification={handleClearVerification}
-            onOpenProjectVectors={() => setCurrentMode('project')}
-            onFixPath={handleVerifyFixPath}
-            example={activeExample ?? null}
-            onGoToDesign={() => setCurrentMode('design')}
-            onGoToHardware={() => setCurrentMode('hardware')}
-          />
+          <ErrorBoundary fallbackTitle="Verification crashed">
+            <VerifySurface
+              deterministicHash={determinismHash}
+              hasVectors={projectVectors.length > 0}
+              vectors={projectVectors}
+              lastRun={verifyLastRun}
+              mappedInputs={verifyMappedInputs}
+              mappedSignals={mappedIoSignals}
+              onVectorsChange={handleVectorsChange}
+              onRunVerification={handleRunVerification}
+              onClearVerification={handleClearVerification}
+              onOpenProjectVectors={() => setCurrentMode('project')}
+              onFixPath={handleVerifyFixPath}
+              example={activeExample ?? null}
+              onGoToDesign={() => setCurrentMode('design')}
+              onGoToHardware={() => setCurrentMode('hardware')}
+              hasDff={hasDff}
+            />
+          </ErrorBoundary>
         ) : currentMode === 'hardware' ? (
-          <HardwareSurface
-            projectName={projectName}
-            expectedBehavior={hardwareExpectedBehavior}
-            mappingRows={projectIoRows}
-            expectedIoRows={hardwareExpectedIoRows}
-            vectorsCount={projectVectors.length}
-            health={projectHealth}
-            runtimeSim={runtimeSim}
-            onSimSetInput={setRuntimeSimInput}
-            onGenerateBringUpVectors={handleGenerateBringUpVectors}
-            onOpenExport={() => setCurrentMode('export')}
-            onOpenVerify={() => setCurrentMode('verify')}
-            onGoToDesign={() => setCurrentMode('design')}
-          />
+          <ErrorBoundary fallbackTitle="Hardware surface crashed">
+            <HardwareSurface
+              projectName={projectName}
+              expectedBehavior={hardwareExpectedBehavior}
+              mappingRows={projectIoRows}
+              expectedIoRows={hardwareExpectedIoRows}
+              vectorsCount={projectVectors.length}
+              health={projectHealth}
+              runtimeSim={runtimeSim}
+              onSimSetInput={setRuntimeSimInput}
+              onGenerateBringUpVectors={handleGenerateBringUpVectors}
+              onOpenExport={() => setCurrentMode('export')}
+              onOpenVerify={() => setCurrentMode('verify')}
+              onGoToDesign={() => setCurrentMode('design')}
+            />
+          </ErrorBoundary>
         ) : currentMode === 'export' ? (
-          <ExportSurface
-            project={exportProject}
-            verifyResult={projectHealthCore.lastVerify}
-            verifyLastRun={verifyLastRun}
-            dirtySinceVerify={projectHealthCore.dirtySinceVerify}
-            determinismHash={determinismHash}
-            onExportResult={handleExportResult}
-            onDiagnosticAction={handleDiagnosticAction}
-            onOpenVerify={() => setCurrentMode('verify')}
-            example={activeExample ?? null}
-            onGoToHardware={() => setCurrentMode('hardware')}
-            onGoToProject={() => setCurrentMode('project')}
-          />
+          <ErrorBoundary fallbackTitle="Export surface crashed">
+            <ExportSurface
+              project={exportProject}
+              verifyResult={projectHealthCore.lastVerify}
+              verifyLastRun={verifyLastRun}
+              dirtySinceVerify={projectHealthCore.dirtySinceVerify}
+              determinismHash={determinismHash}
+              onExportResult={handleExportResult}
+              onDiagnosticAction={handleDiagnosticAction}
+              onOpenVerify={() => setCurrentMode('verify')}
+              example={activeExample ?? null}
+              onGoToHardware={() => setCurrentMode('hardware')}
+              onGoToProject={() => setCurrentMode('project')}
+            />
+          </ErrorBoundary>
         ) : (
-          <ImportSurface
-            onImportProject={handleImportProject}
-            projectIoRows={projectIoRows}
-            onApplySuggestions={handleApplySuggestions}
-            onGoToProject={() => setCurrentMode('project')}
-            onGoToVerify={() => setCurrentMode('verify')}
-          />
+          <ErrorBoundary fallbackTitle="Import surface crashed">
+            <ImportSurface
+              onImportProject={handleImportProject}
+              projectIoRows={projectIoRows}
+              onApplySuggestions={handleApplySuggestions}
+              onGoToProject={() => setCurrentMode('project')}
+              onGoToVerify={() => setCurrentMode('verify')}
+              onImportSubmission={handleImportSubmission}
+            />
+          </ErrorBoundary>
         )}
         </div>
       </div>

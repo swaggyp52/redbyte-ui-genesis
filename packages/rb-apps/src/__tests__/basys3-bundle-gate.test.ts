@@ -81,7 +81,7 @@ describe('RC D2 basys3 bundle gate', () => {
 
   it('returns invalid bundle with crisp warnings for unsupported nodes', () => {
     const unsupportedCircuit: Circuit = {
-      nodes: [{ id: 'sw1', type: 'Switch', position: { x: 0, y: 0 }, config: {}, state: {} }],
+      nodes: [{ id: 'sw1', type: 'UnknownGate', position: { x: 0, y: 0 }, config: {}, state: {} }],
       connections: [],
     };
 
@@ -91,7 +91,7 @@ describe('RC D2 basys3 bundle gate', () => {
     });
 
     expect(result.valid).toBe(false);
-    expect(result.warnings.some((warning) => warning.includes('Unsupported node: sw1 (Switch)'))).toBe(true);
+    expect(result.warnings.some((warning) => warning.includes('Unsupported node: sw1 (UnknownGate)'))).toBe(true);
   });
 
   it('accepts Basys3 button/7-seg aliases and direct package pins in deterministic XDC output', () => {

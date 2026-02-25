@@ -260,6 +260,137 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
       ],
     },
   },
+  {
+    id: 'half-adder',
+    category: 'course' as const,
+    name: 'Half Adder',
+    summary: 'XOR gives the sum bit; AND gives the carry. Toggle SW0 and SW1 to verify all 4 input combinations.',
+    course: '',
+    lab: '',
+    concept: 'Combinational Arithmetic',
+    tags: ['arithmetic', 'combinational', 'adder'],
+    expectedBehavior: 'LD1 shows the SUM (SW0 XOR SW1). LD0 shows the CARRY (SW0 AND SW1). Both LEDs light only when both switches are ON.',
+    goals: [
+      'Toggle SW0 and SW1 — LD1 shows sum, LD0 shows carry',
+      'Run Verify — all 4 truth-table rows should pass green',
+      'Compare with Full Adder: notice there is no carry-in',
+      'Export the Vivado bundle and check the gate-level RTL view',
+    ],
+    ioRows: [
+      { id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'SW0', direction: 'in',  pin: 'V17', required: true },
+      { id: 'sw1', nodeId: 'sw1_node', port: 'out', label: 'SW1', direction: 'in',  pin: 'W16', required: true },
+      { id: 'ld0', nodeId: 'ld0_node', port: 'in',  label: 'LD0', direction: 'out', pin: 'U16', required: true },
+      { id: 'ld1', nodeId: 'ld1_node', port: 'in',  label: 'LD1', direction: 'out', pin: 'E19', required: true },
+    ],
+    vectors: [
+      { tick: 0, inputs: { sw0_node: 0, sw1_node: 0 }, expected: { ld0_node: 0, ld1_node: 0 } },
+      { tick: 1, inputs: { sw0_node: 0, sw1_node: 1 }, expected: { ld0_node: 0, ld1_node: 1 } },
+      { tick: 2, inputs: { sw0_node: 1, sw1_node: 0 }, expected: { ld0_node: 0, ld1_node: 1 } },
+      { tick: 3, inputs: { sw0_node: 1, sw1_node: 1 }, expected: { ld0_node: 1, ld1_node: 0 } },
+    ],
+    probes: [
+      { nodeId: 'and_node', portName: 'out', label: 'CARRY', color: '#ffff00' },
+      { nodeId: 'xor_node', portName: 'out', label: 'SUM',   color: '#00ffff' },
+    ],
+    circuit: {
+      nodes: [
+        { id: 'sw0_node', type: 'INPUT',  x: 90,  y: 120, label: 'SW0 (A)', config: {}, state: {} },
+        { id: 'sw1_node', type: 'INPUT',  x: 90,  y: 260, label: 'SW1 (B)', config: {}, state: {} },
+        { id: 'and_node', type: 'AND',    x: 300, y: 100, label: 'AND',     config: {}, state: {} },
+        { id: 'xor_node', type: 'XOR',    x: 300, y: 230, label: 'XOR',     config: {}, state: {} },
+        { id: 'ld0_node', type: 'OUTPUT', x: 500, y: 100, label: 'LD0 (CARRY)', config: {}, state: {} },
+        { id: 'ld1_node', type: 'OUTPUT', x: 500, y: 230, label: 'LD1 (SUM)',   config: {}, state: {} },
+      ],
+      connections: [
+        { from: { nodeId: 'sw0_node', portName: 'out' }, to: { nodeId: 'and_node', portName: 'a' } },
+        { from: { nodeId: 'sw1_node', portName: 'out' }, to: { nodeId: 'and_node', portName: 'b' } },
+        { from: { nodeId: 'sw0_node', portName: 'out' }, to: { nodeId: 'xor_node', portName: 'a' } },
+        { from: { nodeId: 'sw1_node', portName: 'out' }, to: { nodeId: 'xor_node', portName: 'b' } },
+        { from: { nodeId: 'and_node', portName: 'out' }, to: { nodeId: 'ld0_node', portName: 'in' } },
+        { from: { nodeId: 'xor_node', portName: 'out' }, to: { nodeId: 'ld1_node', portName: 'in' } },
+      ],
+    },
+  },
+  {
+    id: 'full-adder',
+    category: 'course' as const,
+    name: 'Full Adder',
+    summary: '3-input addition with carry-in. Two XOR stages compute the sum; two AND gates + OR compute the carry-out.',
+    course: '',
+    lab: '',
+    concept: 'Combinational Arithmetic',
+    tags: ['arithmetic', 'combinational', 'adder'],
+    expectedBehavior: 'LD1 shows SUM, LD0 shows CARRY-OUT. SW2 is the carry-in. Compare with Half Adder to see how CIN changes the behavior.',
+    goals: [
+      'Compare with Half Adder — how does CIN change the behavior?',
+      'Run Verify — all 8 truth-table rows should pass green',
+      'Trace the carry chain: AND0 and AND1 both contribute to CARRY via OR',
+      'Export to Vivado and inspect the two-stage XOR cascade in RTL view',
+    ],
+    ioRows: [
+      { id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'SW0 (A)',   direction: 'in',  pin: 'V17', required: true },
+      { id: 'sw1', nodeId: 'sw1_node', port: 'out', label: 'SW1 (B)',   direction: 'in',  pin: 'W16', required: true },
+      { id: 'sw2', nodeId: 'sw2_node', port: 'out', label: 'SW2 (CIN)', direction: 'in',  pin: 'W15', required: true },
+      { id: 'ld0', nodeId: 'ld0_node', port: 'in',  label: 'LD0 (CARRY)', direction: 'out', pin: 'U16', required: true },
+      { id: 'ld1', nodeId: 'ld1_node', port: 'in',  label: 'LD1 (SUM)',   direction: 'out', pin: 'E19', required: true },
+    ],
+    // Full truth table: A B CIN → SUM CARRY
+    // 000 → 0 0 | 001 → 1 0 | 010 → 1 0 | 011 → 0 1
+    // 100 → 1 0 | 101 → 0 1 | 110 → 0 1 | 111 → 1 1
+    vectors: [
+      { tick: 0, inputs: { sw0_node: 0, sw1_node: 0, sw2_node: 0 }, expected: { ld0_node: 0, ld1_node: 0 } },
+      { tick: 1, inputs: { sw0_node: 0, sw1_node: 0, sw2_node: 1 }, expected: { ld0_node: 0, ld1_node: 1 } },
+      { tick: 2, inputs: { sw0_node: 0, sw1_node: 1, sw2_node: 0 }, expected: { ld0_node: 0, ld1_node: 1 } },
+      { tick: 3, inputs: { sw0_node: 0, sw1_node: 1, sw2_node: 1 }, expected: { ld0_node: 1, ld1_node: 0 } },
+      { tick: 4, inputs: { sw0_node: 1, sw1_node: 0, sw2_node: 0 }, expected: { ld0_node: 0, ld1_node: 1 } },
+      { tick: 5, inputs: { sw0_node: 1, sw1_node: 0, sw2_node: 1 }, expected: { ld0_node: 1, ld1_node: 0 } },
+      { tick: 6, inputs: { sw0_node: 1, sw1_node: 1, sw2_node: 0 }, expected: { ld0_node: 1, ld1_node: 0 } },
+      { tick: 7, inputs: { sw0_node: 1, sw1_node: 1, sw2_node: 1 }, expected: { ld0_node: 1, ld1_node: 1 } },
+    ],
+    probes: [
+      { nodeId: 'or_node',  portName: 'out', label: 'CARRY', color: '#ffff00' },
+      { nodeId: 'xor2_node', portName: 'out', label: 'SUM',  color: '#00ffff' },
+    ],
+    circuit: {
+      // SUM = A XOR B XOR CIN
+      // CARRY = (A AND B) OR (A XOR B) AND CIN
+      //       = (A AND B) OR (XOR1_out AND CIN)
+      nodes: [
+        { id: 'sw0_node',  type: 'INPUT',  x: 90,  y: 100, label: 'SW0 (A)',   config: {}, state: {} },
+        { id: 'sw1_node',  type: 'INPUT',  x: 90,  y: 220, label: 'SW1 (B)',   config: {}, state: {} },
+        { id: 'sw2_node',  type: 'INPUT',  x: 90,  y: 340, label: 'SW2 (CIN)', config: {}, state: {} },
+        // Stage 1: A XOR B, A AND B
+        { id: 'xor1_node', type: 'XOR',    x: 280, y: 140, label: 'XOR1 (A⊕B)',    config: {}, state: {} },
+        { id: 'and0_node', type: 'AND',    x: 280, y: 260, label: 'AND0 (A·B)',    config: {}, state: {} },
+        // Stage 2: (A⊕B) XOR CIN → SUM, (A⊕B) AND CIN → partial carry
+        { id: 'xor2_node', type: 'XOR',    x: 470, y: 180, label: 'XOR2 (SUM)',    config: {}, state: {} },
+        { id: 'and1_node', type: 'AND',    x: 470, y: 310, label: 'AND1 (carry2)', config: {}, state: {} },
+        // Carry OR
+        { id: 'or_node',   type: 'OR',     x: 650, y: 280, label: 'OR (CARRY)',    config: {}, state: {} },
+        // Outputs
+        { id: 'ld0_node',  type: 'OUTPUT', x: 840, y: 260, label: 'LD0 (CARRY)',   config: {}, state: {} },
+        { id: 'ld1_node',  type: 'OUTPUT', x: 840, y: 180, label: 'LD1 (SUM)',     config: {}, state: {} },
+      ],
+      connections: [
+        // Stage 1 inputs
+        { from: { nodeId: 'sw0_node',  portName: 'out' }, to: { nodeId: 'xor1_node', portName: 'a' } },
+        { from: { nodeId: 'sw1_node',  portName: 'out' }, to: { nodeId: 'xor1_node', portName: 'b' } },
+        { from: { nodeId: 'sw0_node',  portName: 'out' }, to: { nodeId: 'and0_node', portName: 'a' } },
+        { from: { nodeId: 'sw1_node',  portName: 'out' }, to: { nodeId: 'and0_node', portName: 'b' } },
+        // Stage 2: SUM and partial carry
+        { from: { nodeId: 'xor1_node', portName: 'out' }, to: { nodeId: 'xor2_node', portName: 'a' } },
+        { from: { nodeId: 'sw2_node',  portName: 'out' }, to: { nodeId: 'xor2_node', portName: 'b' } },
+        { from: { nodeId: 'xor1_node', portName: 'out' }, to: { nodeId: 'and1_node', portName: 'a' } },
+        { from: { nodeId: 'sw2_node',  portName: 'out' }, to: { nodeId: 'and1_node', portName: 'b' } },
+        // OR for final carry
+        { from: { nodeId: 'and0_node', portName: 'out' }, to: { nodeId: 'or_node',   portName: 'a' } },
+        { from: { nodeId: 'and1_node', portName: 'out' }, to: { nodeId: 'or_node',   portName: 'b' } },
+        // Outputs
+        { from: { nodeId: 'xor2_node', portName: 'out' }, to: { nodeId: 'ld1_node',  portName: 'in' } },
+        { from: { nodeId: 'or_node',   portName: 'out' }, to: { nodeId: 'ld0_node',  portName: 'in' } },
+      ],
+    },
+  },
 ];
 
 export function getIdeExampleById(id: string): IdeExampleDefinition | undefined {

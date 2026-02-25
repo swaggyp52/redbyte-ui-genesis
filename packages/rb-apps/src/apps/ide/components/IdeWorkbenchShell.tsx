@@ -12,12 +12,12 @@ type ResizeEdge = 'left' | 'right' | 'bottom';
 const LAYOUT_STORAGE_KEY = 'rb.ide.workbench.layout.v3';
 const DEFAULT_LAYOUT = {
   leftWidth: 200,
-  rightWidth: 320,
+  rightWidth: 260,
   consoleHeight: 0,
 };
 
 const LEFT_WIDTH_RANGE = { min: 180, max: 420 };
-const RIGHT_WIDTH_RANGE = { min: 280, max: 480 };
+const RIGHT_WIDTH_RANGE = { min: 240, max: 480 };
 const CONSOLE_HEIGHT_RANGE = { min: 0, max: 320 };
 const COLLAPSED_CONSOLE_HEIGHT = 0;
 
@@ -42,6 +42,7 @@ export interface IdeWorkbenchShellProps {
   console?: React.ReactNode;
   consoleHasBlocking?: boolean;
   consoleHasEntries?: boolean;
+  hideRightDock?: boolean;
 }
 
 export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
@@ -52,6 +53,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   console,
   consoleHasBlocking = false,
   consoleHasEntries = false,
+  hideRightDock = false,
 }) => {
   const [layout, setLayout] = useState<WorkbenchLayoutState>(DEFAULT_LAYOUT);
   const resizeRef = useRef<ActiveResizeState | null>(null);
@@ -161,7 +163,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       data-focus-mode={focusMode ? '1' : '0'}
       style={shellStyle}
     >
-      <div className="ide-workbench-main" data-testid="ide-surface-grid" data-grid-columns="12">
+      <div className={`ide-workbench-main${hideRightDock ? ' hide-right-dock' : ''}`} data-testid="ide-surface-grid" data-grid-columns="12">
         <aside className="ide-workbench-dock ide-workbench-dock-left" data-testid="ide-left-dock">
           {leftDock ?? <DefaultDock mode={mode} side="left" />}
         </aside>
@@ -178,17 +180,21 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
           {workspace}
         </main>
 
-        <button
-          type="button"
-          className="ide-workbench-divider ide-workbench-divider-vertical"
-          data-testid="ide-workbench-resize-right"
-          aria-label="Resize right dock"
-          onPointerDown={(event) => beginResize('right', event)}
-        />
+        {!hideRightDock && (
+          <>
+            <button
+              type="button"
+              className="ide-workbench-divider ide-workbench-divider-vertical"
+              data-testid="ide-workbench-resize-right"
+              aria-label="Resize right dock"
+              onPointerDown={(event) => beginResize('right', event)}
+            />
 
-        <aside className="ide-inspector ide-workbench-dock ide-workbench-dock-right" data-testid="ide-inspector">
-          {rightDock ?? <DefaultDock mode={mode} side="right" />}
-        </aside>
+            <aside className="ide-inspector ide-workbench-dock ide-workbench-dock-right" data-testid="ide-inspector">
+              {rightDock ?? <DefaultDock mode={mode} side="right" />}
+            </aside>
+          </>
+        )}
       </div>
 
       <button

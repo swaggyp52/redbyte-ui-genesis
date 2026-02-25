@@ -9,14 +9,13 @@ import {
   BASYS3_SWITCH_PINS,
   resolveBasys3PackagePin,
 } from '../../../fpga/boards/basys3/basys3Pins';
-import type { ProjectHealth, ProjectHealthMode, ProjectPrimaryCta } from '../projectHealth';
+import type { ProjectHealth, ProjectPrimaryCta } from '../projectHealth';
 import type { IdeDiagnosticRouteRequest } from '../diagnostics';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
   IdeCallout,
   IdeDataTable,
-  IdeInspectorSection,
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
@@ -78,20 +77,18 @@ export interface ProjectSurfaceProps {
   onSaveNow?: () => void;
   onRestoreLastSave?: () => void;
   onResetProject?: () => void;
+  // PR15: student identity + submission export
+  studentName?: string;
+  onStudentNameChange?: (name: string) => void;
+  hasVerifyRun?: boolean;
+  onExportSubmission?: () => void;
+  submissionExportPending?: boolean;
 }
 
 const PROJECT_EMPTY_SIM: RuntimeSimState = {
   tick: 0, running: false, speedHz: 1, irHash: '', traceHash: '',
   inputs: {}, signals: {}, trace: [], selectedSignalKey: null, probes: [],
 };
-
-const HERO_STEPS: Array<{ key: string; label: string; mode: ProjectHealthMode }> = [
-  { key: 'import',   label: 'Import',   mode: 'import'   },
-  { key: 'design',   label: 'Design',   mode: 'design'   },
-  { key: 'verify',   label: 'Verify',   mode: 'verify'   },
-  { key: 'export',   label: 'Export',   mode: 'export'   },
-  { key: 'hardware', label: 'Hardware', mode: 'hardware' },
-];
 
 export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   projectName,
@@ -106,9 +103,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   examples,
   activeExampleId,
   onOpenExample,
-  primaryCtaLabel,
-  primaryCta,
-  onPrimaryCta,
+  primaryCtaLabel: _primaryCtaLabel,
+  primaryCta: _primaryCta,
+  onPrimaryCta: _onPrimaryCta,
   onUpdateMappingPin,
   onAutoSuggestMapping,
   onOpenDesign,
@@ -122,6 +119,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onSaveNow,
   onRestoreLastSave,
   onResetProject,
+  studentName = '',
+  onStudentNameChange,
+  hasVerifyRun = false,
+  onExportSubmission,
+  submissionExportPending = false,
 }) => {
   const [highlightedMappingKey, setHighlightedMappingKey] = useState<string | null>(null);
   const [mappingExpanded, setMappingExpanded] = useState(false);
@@ -192,32 +194,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [sortedMappingRows]
   );
 
-  const handleNavigateToMode = useCallback(
-    (mode: ProjectHealthMode) => {
-      switch (mode) {
-        case 'design':
-          onOpenDesign();
-          break;
-        case 'verify':
-          onOpenVerify();
-          break;
-        case 'export':
-          onOpenExport();
-          break;
-        case 'hardware':
-          onOpenHardware();
-          break;
-        case 'import':
-          onOpenImport();
-          break;
-        case 'project':
-        default:
-          break;
-      }
-    },
-    [onOpenDesign, onOpenVerify, onOpenExport, onOpenHardware, onOpenImport]
-  );
-
   const verifyPass = health.lastVerify?.status === 'pass' && !health.dirtySinceVerify;
   const exportReady =
     readiness.hasCircuit &&
@@ -226,14 +202,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     verifyPass &&
     health.lastExport?.status !== 'blocked';
   const hardwareReady = exportReady && !health.dirtySinceExport;
-
-  const heroStepIndex = useMemo(() => {
-    if (!readiness.hasCircuit) return 0;
-    if (!readiness.hasIoMapping) return 1;
-    if (!readiness.hasVectors || !verifyPass) return 2;
-    if (!exportReady) return 3;
-    return 4;
-  }, [readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors, verifyPass, exportReady]);
 
   const heroStatusMessage = useMemo((): string => {
     if (!readiness.hasCircuit) return 'No circuit loaded — start with an example or import HDL';
@@ -421,24 +389,27 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [activeBoardSignal, highlightedMappingKey, ioBus, onGoToHardware, onUpdateMappingPin, sortedMappingRows]
   );
 
-  const lastVerifyStatusTone =
-    health.lastVerify?.status === 'pass'
-      ? 'ok'
-      : health.lastVerify?.status === 'fail'
-        ? 'error'
-        : 'idle';
-  const lastExportStatusTone =
-    health.lastExport?.status === 'ok'
-      ? 'ok'
-      : health.lastExport?.status === 'blocked'
-        ? 'error'
-        : 'idle';
+  const designCardDone = readiness.hasCircuit && readiness.hasIoMapping;
+  const designInProgress = readiness.hasCircuit && !designCardDone;
+  const verifyCardDone = readiness.verifyPass;
+  const verifyCardLocked = !designCardDone;
+  const hardwareCardDone = hardwareReady;
+  const hardwareCardLocked = !verifyCardDone;
+  const designPinStatus = readiness.hasIoMapping
+    ? `${mappedRequiredCount}/${requiredCount} pins mapped`
+    : unmappedRequiredCount > 0
+      ? `${unmappedRequiredCount} pin${unmappedRequiredCount !== 1 ? 's' : ''} unmapped`
+      : readiness.hasCircuit
+        ? 'No pins required'
+        : 'No circuit loaded';
 
   return (
     <IdeSurfaceLayout
       mode="project"
       consoleHasBlocking={false}
       consoleHasEntries={false}
+      inspector={null}
+      hideRightDock
       dock={
         <section className="ide-workbench-placeholder" data-testid="ide-project-start-dock">
           <header className="ide-workbench-placeholder-header">
@@ -506,6 +477,56 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             </IdeButton>
           </div>
 
+          {/* Student identity + submission export */}
+          {(onExportSubmission || onStudentNameChange) && (
+            <section
+              style={{ marginTop: 'var(--ide-space-3)', borderTop: '1px solid var(--ide-border, rgba(255,255,255,0.08))', paddingTop: 'var(--ide-space-2)' }}
+              data-testid="ide-submission-section"
+            >
+              <p style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', margin: '0 0 var(--ide-space-1) 0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Submission
+              </p>
+              {onStudentNameChange && (
+                <div style={{ marginBottom: 'var(--ide-space-2)' }}>
+                  <label
+                    htmlFor="ide-student-name-input"
+                    style={{ display: 'block', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', marginBottom: 4 }}
+                  >
+                    Student name (optional)
+                  </label>
+                  <input
+                    id="ide-student-name-input"
+                    type="text"
+                    className="ide-export-pin-input"
+                    value={studentName}
+                    onChange={(e) => onStudentNameChange(e.target.value)}
+                    placeholder="Your name"
+                    data-testid="ide-student-name-input"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              )}
+              {onExportSubmission && (
+                <div>
+                  {!hasVerifyRun && (
+                    <IdeCallout tone="info" title="No verify run yet" testId="ide-submission-no-verify-hint">
+                      Run verification first for full evidence — export still works but grade will show lastStatus: none
+                    </IdeCallout>
+                  )}
+                  <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-1)' }}>
+                    <IdeButton
+                      tone="secondary"
+                      onClick={onExportSubmission}
+                      testId="ide-export-submission-btn"
+                    >
+                      {submissionExportPending ? 'Exporting…' : 'Export Submission ZIP'}
+                    </IdeButton>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
           {/* Session controls */}
           <section
             style={{ marginTop: 'var(--ide-space-3)', borderTop: '1px solid var(--ide-border, rgba(255,255,255,0.08))', paddingTop: 'var(--ide-space-2)' }}
@@ -542,110 +563,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </section>
         </section>
       }
-      inspector={
-        <>
-          <IdeInspectorSection title="Mapping Guide" defaultOpen={false}>
-            <div className="ide-kv-list">
-              <div className="ide-kv-row">
-                <span>Unmapped required</span>
-                <span data-testid="ide-project-unmapped-count">{unmappedRequiredCount}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Mapped required</span>
-                <span>
-                  {mappedRequiredCount}/{requiredCount}
-                </span>
-              </div>
-            </div>
-            <div className="ide-inline-actions">
-              <IdeButton tone="secondary" onClick={onAutoSuggestMapping}>
-                Auto-suggest Basys3
-              </IdeButton>
-              {onGoToHardware && (
-                <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-project-go-hardware">
-                  View on Board
-                </IdeButton>
-              )}
-            </div>
-          </IdeInspectorSection>
-
-          <IdeInspectorSection title="Project" defaultOpen={false}>
-            <div className="ide-kv-list" data-testid="ide-project-panel-identity">
-              <div className="ide-kv-row">
-                <span>Name</span>
-                <span>{projectName}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Description</span>
-                <span>{description || 'No description'}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Board</span>
-                <span data-testid="ide-project-board">Basys3</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Top module</span>
-                <code data-testid="ide-project-top-module">{topModuleName}</code>
-              </div>
-              <div className="ide-kv-row">
-                <span>Hash</span>
-                <code data-testid="ide-project-hash-short">{determinismHash.slice(0, 12)}</code>
-              </div>
-              <div className="ide-kv-row">
-                <span>Saved</span>
-                <span>{formatSavedAt(lastSavedAt)}</span>
-              </div>
-            </div>
-          </IdeInspectorSection>
-
-          <IdeInspectorSection title="Activity" defaultOpen={false}>
-            <div className="ide-kv-list">
-              <div className="ide-kv-row">
-                <span>Last Verify</span>
-                <IdeStatusPill tone={lastVerifyStatusTone} testId="ide-project-last-verify-status">
-                  {health.lastVerify?.status?.toUpperCase() ?? 'NEVER'}
-                </IdeStatusPill>
-              </div>
-              <div className="ide-kv-row">
-                <span>Verify Hash</span>
-                <span className="ide-status-mono" data-testid="ide-project-last-verify-hash">
-                  {health.lastVerify?.hash?.slice(0, 16) ?? '—'}
-                </span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Last Export</span>
-                <IdeStatusPill tone={lastExportStatusTone} testId="ide-project-last-export-status">
-                  {health.lastExport?.status?.toUpperCase() ?? 'NEVER'}
-                </IdeStatusPill>
-              </div>
-              <div className="ide-kv-row">
-                <span>Export Hash</span>
-                <span className="ide-status-mono" data-testid="ide-project-last-export-hash">
-                  {health.lastExport?.hash?.slice(0, 16) ?? '—'}
-                </span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Dirty since verify</span>
-                <IdeStatusPill
-                  tone={health.dirtySinceVerify ? 'warn' : 'ok'}
-                  testId="ide-project-dirty-since-verify"
-                >
-                  {health.dirtySinceVerify ? 'DIRTY' : 'CLEAN'}
-                </IdeStatusPill>
-              </div>
-              <div className="ide-kv-row">
-                <span>Dirty since export</span>
-                <IdeStatusPill
-                  tone={health.dirtySinceExport ? 'warn' : 'ok'}
-                  testId="ide-project-dirty-since-export"
-                >
-                  {health.dirtySinceExport ? 'DIRTY' : 'CLEAN'}
-                </IdeStatusPill>
-              </div>
-            </div>
-          </IdeInspectorSection>
-        </>
-      }
       console={
         <section className="ide-workbench-console-content" data-testid="ide-project-console">
           <header className="ide-workbench-console-header">
@@ -675,47 +592,62 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             {heroStatusMessage}
           </p>
 
-          <nav className="ide-project-hero-stepper" aria-label="Workflow steps" data-testid="ide-project-hero-stepper">
-            {HERO_STEPS.map((step, index) => {
-              const isActive = index === heroStepIndex;
-              const isPast   = index < heroStepIndex;
-              const stateClass = isActive ? 'is-active' : isPast ? 'is-past' : 'is-future';
-              return (
-                <React.Fragment key={step.key}>
-                  {index > 0 && (
-                    <span
-                      className={`ide-project-hero-step-trace ${isPast || isActive ? 'is-lit' : ''}`}
-                      aria-hidden="true"
-                    />
-                  )}
-                  <button
-                    type="button"
-                    className={`ide-project-hero-step ${stateClass}`}
-                    onClick={() => handleNavigateToMode(step.mode)}
-                    aria-current={isActive ? 'step' : undefined}
-                    data-testid={`ide-project-hero-step-${step.key}`}
-                  >
-                    <span className="ide-project-hero-step-badge" aria-hidden="true">
-                      {isPast ? '✓' : index + 1}
-                    </span>
-                    <span className="ide-project-hero-step-label">{step.label}</span>
-                  </button>
-                </React.Fragment>
-              );
-            })}
-          </nav>
+          <div className="ide-project-launchpad" data-testid="ide-project-launchpad">
+            {/* Card 1: Design */}
+            <div
+              className={`ide-launchpad-card ${designCardDone ? 'ide-launchpad-card--done' : 'ide-launchpad-card--active'}`}
+              data-testid="ide-launchpad-design"
+            >
+              <span className="ide-launchpad-card__label" aria-hidden="true">{designCardDone ? '✓' : '1'}</span>
+              <span className="ide-launchpad-card__title">Design</span>
+              <span className="ide-launchpad-card__sub">Build your circuit</span>
+              <span className="ide-launchpad-card__badge">{designPinStatus}</span>
+              <IdeButton
+                tone={designCardDone ? 'ghost' : 'primary'}
+                onClick={onOpenDesign}
+                testId="ide-launchpad-design-cta"
+              >
+                {designCardDone ? 'Revisit' : designInProgress ? 'Continue Design →' : 'Start Design →'}
+              </IdeButton>
+            </div>
 
-          <div className="ide-project-hero-actions">
-            <span data-testid="ide-primary-cta">
-              <IdeButton tone="primary" onClick={onPrimaryCta} testId="ide-project-continue-cta" className="is-large">
-                {primaryCtaLabel} →
-              </IdeButton>
-            </span>
-            {unmappedRequiredCount > 0 && (
-              <IdeButton tone="secondary" onClick={onAutoSuggestMapping} testId="ide-project-hero-automap">
-                Auto-suggest Basys3
-              </IdeButton>
-            )}
+            {/* Card 2: Verify */}
+            <div
+              className={`ide-launchpad-card ${verifyCardDone ? 'ide-launchpad-card--done' : verifyCardLocked ? 'ide-launchpad-card--locked' : 'ide-launchpad-card--active'}`}
+              data-testid="ide-launchpad-verify"
+            >
+              <span className="ide-launchpad-card__label" aria-hidden="true">{verifyCardDone ? '✓' : '2'}</span>
+              <span className="ide-launchpad-card__title">Verify</span>
+              <span className="ide-launchpad-card__sub">Run test vectors</span>
+              {!verifyCardLocked && (
+                <IdeButton
+                  tone={verifyCardDone ? 'ghost' : 'primary'}
+                  onClick={onOpenVerify}
+                  testId="ide-launchpad-verify-cta"
+                >
+                  {verifyCardDone ? 'Revisit' : 'Start Verify →'}
+                </IdeButton>
+              )}
+            </div>
+
+            {/* Card 3: Hardware */}
+            <div
+              className={`ide-launchpad-card ${hardwareCardDone ? 'ide-launchpad-card--done' : hardwareCardLocked ? 'ide-launchpad-card--locked' : 'ide-launchpad-card--active'}`}
+              data-testid="ide-launchpad-hardware"
+            >
+              <span className="ide-launchpad-card__label" aria-hidden="true">{hardwareCardDone ? '✓' : '3'}</span>
+              <span className="ide-launchpad-card__title">Hardware</span>
+              <span className="ide-launchpad-card__sub">Flash the board</span>
+              {!hardwareCardLocked && (
+                <IdeButton
+                  tone={hardwareCardDone ? 'ghost' : 'primary'}
+                  onClick={onOpenHardware}
+                  testId="ide-launchpad-hardware-cta"
+                >
+                  {hardwareCardDone ? 'Revisit' : 'Start Hardware →'}
+                </IdeButton>
+              )}
+            </div>
           </div>
 
           {health.blockingIssues.length > 0 && health.blockingIssues[0] && (

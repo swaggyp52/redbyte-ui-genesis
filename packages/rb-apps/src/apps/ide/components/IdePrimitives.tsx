@@ -108,7 +108,8 @@ export const IdeButton: React.FC<{
   testId?: string;
   type?: 'button' | 'submit';
   className?: string;
-}> = ({ tone = 'secondary', children, onClick, disabled = false, testId, type = 'button', className }) => {
+  title?: string;
+}> = ({ tone = 'secondary', children, onClick, disabled = false, testId, type = 'button', className, title }) => {
   return (
     <button
       type={type}
@@ -116,6 +117,7 @@ export const IdeButton: React.FC<{
       onClick={onClick}
       disabled={disabled}
       data-testid={testId}
+      title={title}
     >
       {children}
     </button>
@@ -151,9 +153,10 @@ export const IdeCallout: React.FC<{
   title?: string;
   children: React.ReactNode;
   testId?: string;
-}> = ({ tone = 'info', title, children, testId }) => {
+  className?: string;
+}> = ({ tone = 'info', title, children, testId, className }) => {
   return (
-    <div className={`ide-callout ide-callout-${tone}`} data-testid={testId}>
+    <div className={`ide-callout ide-callout-${tone}${className ? ` ${className}` : ''}`} data-testid={testId}>
       {title && <strong className="ide-callout-title">{title}</strong>}
       <div className="ide-callout-body">{children}</div>
     </div>

@@ -17,6 +17,7 @@ export interface IdeSurfaceLayoutProps {
   console?: React.ReactNode;
   consoleHasBlocking?: boolean;
   consoleHasEntries?: boolean;
+  hideRightDock?: boolean;
 }
 
 export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({
@@ -27,6 +28,7 @@ export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({
   console,
   consoleHasBlocking = false,
   consoleHasEntries = false,
+  hideRightDock = false,
 }) => {
   return (
     <IdeWorkbenchShell
@@ -37,6 +39,7 @@ export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({
       console={console}
       consoleHasBlocking={consoleHasBlocking}
       consoleHasEntries={consoleHasEntries}
+      hideRightDock={hideRightDock}
     />
   );
 };
