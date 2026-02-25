@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { TestVector } from '@redbyte/rb-utils';
 import type { RunVerificationInput, RuntimeVerifyRun } from '../projectRuntime';
 import { buildVerifyTickSignalIndex } from '../verifyReport';
 import type { IdeExampleDefinition } from '../examplesCatalog';
+import { getVerifyHint, type VerifyHintContext } from '../verifyHints';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -67,6 +68,7 @@ export interface VerifySurfaceProps {
   example?: IdeExampleDefinition | null;
   onGoToDesign?: () => void;
   onGoToHardware?: () => void;
+  hasDff?: boolean;
 }
 
 // ─── SVG WaveformViewer ──────────────────────────────────────────────────────
@@ -331,6 +333,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   example,
   onGoToDesign,
   onGoToHardware,
+  hasDff = false,
 }) => {
   const inputFields = useMemo(() => {
     const mappedInputSeed =
@@ -502,6 +505,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
   }, [lastRun?.reportHash]);
 
+  // Track last auto-opened run so we only auto-open drawer once per run
+  const autoOpenedRunRef = useRef<string | null>(null);
+
+  // Auto-open drawer + select mismatches tab when a FAIL result arrives
+  useEffect(() => {
+    if (!lastRun || lastRun.status !== 'fail') return;
+    const key = lastRun.reportHash ?? lastRun.generatedAtIso ?? '';
+    if (autoOpenedRunRef.current === key) return;
+    autoOpenedRunRef.current = key;
+    setDrawerOpen(true);
+    setVerifyTab('mismatches');
+  }, [lastRun?.reportHash, lastRun?.status]);
+
   const resultRows = useMemo(
     () =>
       runRows.map((row) => [
@@ -551,6 +567,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const firstFailure = failingRows[0];
   const firstFailureTick = firstFailure?.tick ?? lastRun?.firstFailingTick;
   const canExportTestbench = status === 'pass';
+
+  // Compute verify hint (only shown in FAIL state)
+  const verifyHint = useMemo((): string | null => {
+    if (status !== 'fail' || failingRows.length === 0) return null;
+    const totalRows = runRows.length;
+    const failCount = failingRows.length;
+    const ctx: VerifyHintContext = {
+      hasDff,
+      mappingComplete: true, // no unmapped pin data here — conservative default
+      allTicksFail: totalRows > 0 && failCount === totalRows,
+      onlyFirstTickFails:
+        failCount === 1 && timelineTicks.length > 1
+          ? failingRows[0].tick === timelineTicks[0]
+          : failCount > 0 &&
+            failingRows.every((r) => r.tick === failingRows[0].tick) &&
+            failingRows[0].tick === timelineTicks[0] &&
+            timelineTicks.length > 1,
+      mismatch: firstFailure
+        ? { expected: firstFailure.expected, actual: firstFailure.actual }
+        : null,
+      hasFloatingOutputWarning: false, // no compiler status available here
+    };
+    return getVerifyHint(ctx);
+  }, [status, failingRows, runRows.length, hasDff, timelineTicks, firstFailure]);
 
   const isShowcaseKit = example?.category === 'showcase';
   const kitGoals = (example?.goals ?? []).filter(Boolean);
@@ -1230,18 +1270,69 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </span>
             )}
             {canSetOracle && (
-              <span title="Copies the last run's output values into expected for each vector. Use when expectations are missing or wrong for this circuit.">
+              <span title="Updates your truth table expected values to match what the circuit currently produces. Use this once the circuit is behaving correctly.">
                 <IdeButton
                   tone="ghost"
                   onClick={handleSetOracleExpected}
                   testId="ide-verify-set-oracle"
                 >
-                  Set expected = observed
+                  Capture observed outputs as expected
                 </IdeButton>
               </span>
             )}
+            {displayStatus === 'FAIL' && firstFailure && onFixPath && (
+              <IdeButton
+                tone="danger"
+                onClick={() => { onFixPath(firstFailure); onGoToDesign?.(); }}
+                testId="ide-verify-jump-to-failure"
+              >
+                Jump to failing node →
+              </IdeButton>
+            )}
           </div>
         </div>
+
+        {displayStatus === 'FAIL' && (
+          <div className="ide-verify-fail-summary" data-testid="ide-verify-fail-card">
+            <span className="ide-verify-fail-summary__status">FAIL</span>
+            <span className="ide-verify-fail-summary__count">
+              {failingRows.length} of {runRows.length} vectors failing
+            </span>
+            {firstFailure && (
+              <span className="ide-verify-fail-summary__first">
+                First failure: <code>{firstFailure.signal}</code> at tick <code>{firstFailure.tick}</code>
+              </span>
+            )}
+            {firstFailure && onFixPath && (
+              <IdeButton
+                tone="danger"
+                onClick={() => { onFixPath(firstFailure); onGoToDesign?.(); }}
+                testId="ide-verify-jump-to-failure-card"
+              >
+                Jump to failing node →
+              </IdeButton>
+            )}
+          </div>
+        )}
+
+        {hasDff && (
+          <IdeCallout tone="info" testId="ide-verify-clocked-banner">
+            Clocked circuit: expected outputs are sampled AFTER the rising edge of each clock tick.
+            Tick 0 = initial state (no clock pulse yet).
+          </IdeCallout>
+        )}
+
+        {displayStatus === 'FAIL' && verifyHint && (
+          <IdeCallout tone="warn" testId="ide-verify-hint-callout" className="ide-callout--hint">
+            {verifyHint}
+          </IdeCallout>
+        )}
+
+        {displayStatus === 'FAIL' && oracleApplied && (
+          <IdeCallout tone="info" testId="ide-verify-oracle-applied-note">
+            Expected values updated — re-run to confirm.
+          </IdeCallout>
+        )}
 
         {status === 'pass' && runState !== 'running' && runRows.length > 0 && (
           <div className="ide-verify-pass-hero" data-testid="ide-verify-pass-hero">
@@ -1282,12 +1373,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               but no expected outputs were defined so nothing was verified.
             </p>
             <p className="ide-copy">
-              Click <strong>Set expected = observed</strong> to lock in the current outputs as the expected values.
+              Click <strong>Capture observed outputs as expected</strong> to lock in the current outputs as the expected values.
               Future runs will fail if the circuit produces different results — that is how Verify works.
             </p>
             <div className="ide-inline-actions">
               <IdeButton tone="primary" onClick={handleSetOracleExpected} testId="ide-verify-trace-oracle-btn">
-                Set expected = observed
+                Capture observed outputs as expected
               </IdeButton>
               {authoredVectors.length === 0 && (
                 <IdeButton tone="secondary" onClick={handleGenerateBasicVectors} testId="ide-verify-trace-generate-basics">
