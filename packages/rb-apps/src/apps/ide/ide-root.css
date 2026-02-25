@@ -6951,6 +6951,16 @@ details[open] summary .details-arrow {
   overflow: hidden;
   position: relative;
 }
+.ide-truth-table-clock-note {
+  margin: 0;
+  padding: 3px 8px 4px;
+  font-size: 10px;
+  font-family: var(--rb-font-mono);
+  color: var(--rb-c-text-dim, #555e6e);
+  background: transparent;
+  border-bottom: 1px solid var(--rb-c-border, #1e2430);
+  flex: 0 0 auto;
+}
 .ide-truth-table-scroll {
   position: absolute;
   inset: 0;

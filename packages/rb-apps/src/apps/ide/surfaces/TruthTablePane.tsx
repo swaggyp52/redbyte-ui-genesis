@@ -82,6 +82,11 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
           </button>
         </div>
       </div>
+      {mode === 'ticks' && (
+        <p className="ide-truth-table-clock-note">
+          For clocked circuits, Exp is evaluated after the rising edge of each tick.
+        </p>
+      )}
 
       {/* ── Body ── */}
       <div className="ide-truth-table-body">

@@ -176,21 +176,22 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     // D_final = AND(D_normal, NOT(RST))  ← synchronous reset implemented via NOT + AND gates
     // Q0_next = Q0 XOR EN   (when RST=0)
     // Q1_next = Q1 XOR (Q0 AND EN)  (when RST=0)
+    // All expected values are sampled AFTER the rising edge of that tick (post-clock model).
     // Trace from Q0=0, Q1=0 after boot-reset warmup:
-    //   tick0 RST=1,EN=0: Q0→0 Q1→0  (synchronous reset to 00)
-    //   tick1 RST=0,EN=1: Q0→1 Q1→0  (01)
-    //   tick2 RST=0,EN=1: Q0→0 Q1→1  (10)
-    //   tick3 RST=0,EN=1: Q0→1 Q1→1  (11)
-    //   tick4 RST=0,EN=1: Q0→0 Q1→0  (00 rollover)
-    //   tick5 RST=0,EN=0: Q0→0 Q1→0  (held)
-    //   tick6 RST=0,EN=0: Q0→0 Q1→0  (still held)
+    //   tick0 RST=1,EN=0: Q0→0 Q1→0  (reset asserted)
+    //   tick1 RST=0,EN=0: Q0→0 Q1→0  (reset released, EN still low — sequencing lesson)
+    //   tick2 RST=0,EN=1: Q0→1 Q1→0  (01)
+    //   tick3 RST=0,EN=1: Q0→0 Q1→1  (10)
+    //   tick4 RST=0,EN=1: Q0→1 Q1→1  (11)
+    //   tick5 RST=0,EN=1: Q0→0 Q1→0  (00 rollover)
+    //   tick6 RST=0,EN=0: Q0→0 Q1→0  (hold)
     vectors: [
       { tick: 0, inputs: { clk_node: 0, en_node: 0, rst_node: 1 }, expected: { q0_out: 0, q1_out: 0 } },
-      { tick: 1, inputs: { clk_node: 0, en_node: 1, rst_node: 0 }, expected: { q0_out: 1, q1_out: 0 } },
-      { tick: 2, inputs: { clk_node: 0, en_node: 1, rst_node: 0 }, expected: { q0_out: 0, q1_out: 1 } },
-      { tick: 3, inputs: { clk_node: 0, en_node: 1, rst_node: 0 }, expected: { q0_out: 1, q1_out: 1 } },
-      { tick: 4, inputs: { clk_node: 0, en_node: 1, rst_node: 0 }, expected: { q0_out: 0, q1_out: 0 } },
-      { tick: 5, inputs: { clk_node: 0, en_node: 0, rst_node: 0 }, expected: { q0_out: 0, q1_out: 0 } },
+      { tick: 1, inputs: { clk_node: 0, en_node: 0, rst_node: 0 }, expected: { q0_out: 0, q1_out: 0 } },
+      { tick: 2, inputs: { clk_node: 0, en_node: 1, rst_node: 0 }, expected: { q0_out: 1, q1_out: 0 } },
+      { tick: 3, inputs: { clk_node: 0, en_node: 1, rst_node: 0 }, expected: { q0_out: 0, q1_out: 1 } },
+      { tick: 4, inputs: { clk_node: 0, en_node: 1, rst_node: 0 }, expected: { q0_out: 1, q1_out: 1 } },
+      { tick: 5, inputs: { clk_node: 0, en_node: 1, rst_node: 0 }, expected: { q0_out: 0, q1_out: 0 } },
       { tick: 6, inputs: { clk_node: 0, en_node: 0, rst_node: 0 }, expected: { q0_out: 0, q1_out: 0 } },
     ],
     probes: [
