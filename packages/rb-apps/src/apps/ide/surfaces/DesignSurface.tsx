@@ -10,6 +10,7 @@ import {
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
 import { digestValue } from '../../../utils/digest';
+import { parseWireId } from '../../../utils/wireId';
 import type { IdeDiagnostic, IdeDiagnosticRouteRequest } from '../diagnostics';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -2116,34 +2117,6 @@ function normalizeCircuitForCanvas(circuit: Circuit): Circuit {
     }),
     connections: circuit.connections.map((connection) => ({ ...connection })),
   };
-}
-
-function parseWireId(
-  wireId: string
-): { fromNodeId: string; fromPort: string; toNodeId: string; toPort: string } | null {
-  // Wire IDs: "{fromNodeId}.{fromPort}-{toNodeId}.{toPort}"
-  // Node IDs may contain hyphens (e.g. "node-v2-1"), so we cannot split on the first "-".
-  // Port names are alphanumeric+underscore only — no dots or hyphens — so we scan all
-  // hyphen positions and pick the first split where both halves have a valid {id}.{port}.
-  const segments = wireId.split('-');
-  for (let split = 1; split < segments.length; split++) {
-    const fromPart = segments.slice(0, split).join('-');
-    const toPart = segments.slice(split).join('-');
-    const fromDot = fromPart.lastIndexOf('.');
-    const toDot = toPart.lastIndexOf('.');
-    if (fromDot < 0 || toDot < 0) continue;
-    const fromPort = fromPart.slice(fromDot + 1);
-    const toPort = toPart.slice(toDot + 1);
-    // Port names must not contain dots or hyphens
-    if (fromPort.includes('.') || fromPort.includes('-')) continue;
-    if (toPort.includes('.') || toPort.includes('-')) continue;
-    const fromNodeId = fromPart.slice(0, fromDot);
-    const toNodeId = toPart.slice(0, toDot);
-    if (fromNodeId.length > 0 && toNodeId.length > 0) {
-      return { fromNodeId, fromPort, toNodeId, toPort };
-    }
-  }
-  return null;
 }
 
 function predictNextNodeIds(circuit: Circuit, count: number): string[] {

@@ -16319,3 +16319,14 @@ Notes:
 - **Build Verification**:
   - ✅ `pnpm vitest run packages/rb-apps/src/export/__tests__/golden-examples.test.ts packages/rb-apps/src/export/__tests__/stopship-verify.test.ts` → 39/39 pass
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-02-24 (PR4 — Examples + Verification Contract)
+
+- Extracted `parseWireId` from `DesignSurface.tsx` into `packages/rb-apps/src/utils/wireId.ts` (new shared utility). Added `encodeWireId(fromNodeId, fromPort, toNodeId, toPort): string`. All callers now import from the utility — no duplicate implementations.
+- Added `packages/rb-apps/src/utils/__tests__/wireId.test.ts`: 14 tests covering encode, decode (simple, hyphenated, multi-hyphen node IDs), null cases, and 4-case roundtrip table using `it.each`.
+- Added bundle validity gate in `packages/rb-apps/src/export/__tests__/golden-examples.test.ts`: `exampleToIoMapping` helper converts `IdeExampleIoRow[]` to `IoMapping`; 3 new tests assert `exportBasys3Bundle(...).valid === true` for signal-tour, logic-gates, and two-bit-counter. This completes the "export pack succeeds" requirement for every shipped example.
+- Verified `onFixPath` wiring: clicking "Fix in Design" in VerifySurface calls `handleVerifyFixPath` in IdeApp which calls `setCurrentMode('design')` + `setDiagnosticRouteRequest({nodeId, signal, tick, panTo})`. DesignSurface selects the node and pans camera — "Where in the circuit?" requirement is met.
+
+- **Build Verification**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/utils/__tests__/wireId.test.ts packages/rb-apps/src/export/__tests__/golden-examples.test.ts packages/rb-apps/src/export/__tests__/stopship-verify.test.ts` → 56/56 pass (14 wireId + 19 golden-examples + 23 stopship)
+- **Attribution**: Connor Angiel

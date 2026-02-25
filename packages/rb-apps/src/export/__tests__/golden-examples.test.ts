@@ -16,10 +16,13 @@ import {
 import { buildVerifyReport } from '../../apps/ide/verifyReport';
 import { runTestVectors } from '../../fpga/boards/basys3/vectorRunner';
 import { circuitToVerilog } from '@redbyte/rb-fpga-toolchain';
+import {
+  exportBasys3Bundle,
+} from '../../fpga/boards/basys3/basys3Bundle';
 import type { SimulationIoRow } from '../../apps/ide/sim/simTypes';
 import { CircuitEngine } from '@redbyte/rb-logic-core';
 import type { Circuit } from '@redbyte/rb-logic-core';
-import type { CircuitV1 } from '@redbyte/rb-utils';
+import type { CircuitV1, IoMapping } from '@redbyte/rb-utils';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -281,5 +284,48 @@ describe('REGRESSION — B1: resolveVectorBitSymbol must match nodeId keys', () 
     const ld0Row = rows.find((r) => r.signal === 'ld0');
     expect(ld0Row).toBeDefined();
     expect(ld0Row!.expected).toBe('1');
+  });
+});
+
+// ─── GOLDEN GATE 4: Bundle validity for all 3 shipped examples ───────────────
+
+/** Build IoMapping from an example's ioRows (uses port/pin as-is from catalog). */
+function exampleToIoMapping(example: { ioRows: Array<{ id: string; nodeId: string; port: string; label: string; direction: 'in' | 'out'; pin: string }> }): IoMapping {
+  return {
+    inputs: example.ioRows
+      .filter((r) => r.direction === 'in')
+      .map((r) => ({ id: r.id, nodeId: r.nodeId, port: r.port, label: r.label, pin: r.pin })),
+    outputs: example.ioRows
+      .filter((r) => r.direction === 'out')
+      .map((r) => ({ id: r.id, nodeId: r.nodeId, port: r.port, label: r.label, pin: r.pin })),
+  };
+}
+
+describe('GOLDEN — Bundle validity: all 3 examples produce bundle.valid === true', () => {
+  it('signal-tour: bundle.valid === true', () => {
+    const ex = getIdeExampleById('signal-tour')!;
+    const bundle = exportBasys3Bundle(ex.circuit as Circuit, exampleToIoMapping(ex));
+    if (!bundle.valid) {
+      throw new Error(`signal-tour bundle.valid is false. warnings: ${JSON.stringify(bundle.warnings)}`);
+    }
+    expect(bundle.valid).toBe(true);
+  });
+
+  it('logic-gates: bundle.valid === true', () => {
+    const ex = getIdeExampleById('logic-gates')!;
+    const bundle = exportBasys3Bundle(ex.circuit as Circuit, exampleToIoMapping(ex));
+    if (!bundle.valid) {
+      throw new Error(`logic-gates bundle.valid is false. warnings: ${JSON.stringify(bundle.warnings)}`);
+    }
+    expect(bundle.valid).toBe(true);
+  });
+
+  it('two-bit-counter: bundle.valid === true', () => {
+    const ex = getIdeExampleById('two-bit-counter')!;
+    const bundle = exportBasys3Bundle(ex.circuit as Circuit, exampleToIoMapping(ex));
+    if (!bundle.valid) {
+      throw new Error(`two-bit-counter bundle.valid is false. warnings: ${JSON.stringify(bundle.warnings)}`);
+    }
+    expect(bundle.valid).toBe(true);
   });
 });
