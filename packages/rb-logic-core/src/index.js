@@ -12,14 +12,14 @@ export { serialize, deserialize } from './serialization';
 export { toCircuitV1, fromCircuitV1 } from './convertCircuitV1';
 export { SCHEMA_VERSION, createDefaultMeta, createEmptyCircuit, createBlankProjectDoc, normalizeProjectDoc, serializeProjectDoc, deserializeProjectDoc, updateProjectDocTimestamp, } from './projectDoc';
 // Built-in behaviors
-export { PowerSourceBehavior, SwitchBehavior, LampBehavior, WireBehavior, ANDBehavior, ORBehavior, NOTBehavior, NANDBehavior, XORBehavior, ClockBehavior, DelayBehavior, } from './builtins';
+export { PowerSourceBehavior, SwitchBehavior, LampBehavior, WireBehavior, ANDBehavior, ORBehavior, NOTBehavior, NANDBehavior, XORBehavior, ClockBehavior, DelayBehavior, TFlipFlopBehavior, JKFlipFlopBehavior, } from './builtins';
 export { createCompositeNodeBehavior, registerCompositeNode } from './CompositeNode';
-export { RSLatchDef, DFlipFlopDef, JKFlipFlopDef, FullAdderDef, Counter4BitDef, } from './composite-defs';
+export { RSLatchDef, DFlipFlopDef, DLatchDef, JKFlipFlopDef, FullAdderDef, Counter4BitDef, } from './composite-defs';
 // Auto-register built-in node types
 import { NodeRegistry } from './NodeRegistry';
-import { PowerSourceBehavior, SwitchBehavior, LampBehavior, WireBehavior, ANDBehavior, ORBehavior, NOTBehavior, NANDBehavior, XORBehavior, ClockBehavior, DelayBehavior, INPUTBehavior, OUTPUTBehavior, } from './builtins';
+import { PowerSourceBehavior, SwitchBehavior, LampBehavior, WireBehavior, ANDBehavior, ORBehavior, NOTBehavior, NANDBehavior, XORBehavior, ClockBehavior, DelayBehavior, TFlipFlopBehavior, JKFlipFlopBehavior, INPUTBehavior, OUTPUTBehavior, } from './builtins';
 import { registerCompositeNode } from './CompositeNode';
-import { RSLatchDef, DFlipFlopDef, JKFlipFlopDef, FullAdderDef, Counter4BitDef, } from './composite-defs';
+import { RSLatchDef, DFlipFlopDef, DLatchDef, JKFlipFlopDef, FullAdderDef, Counter4BitDef, } from './composite-defs';
 import { registerAnalogNodes } from './analog';
 NodeRegistry.register('PowerSource', PowerSourceBehavior);
 NodeRegistry.register('Switch', SwitchBehavior);
@@ -32,12 +32,14 @@ NodeRegistry.register('NAND', NANDBehavior);
 NodeRegistry.register('XOR', XORBehavior);
 NodeRegistry.register('Clock', ClockBehavior);
 NodeRegistry.register('Delay', DelayBehavior);
+NodeRegistry.register('TFlipFlop', TFlipFlopBehavior);
+NodeRegistry.register('JKFlipFlop', JKFlipFlopBehavior);
 NodeRegistry.register('INPUT', INPUTBehavior);
 NodeRegistry.register('OUTPUT', OUTPUTBehavior);
 // Register composite nodes
 registerCompositeNode(RSLatchDef);
 registerCompositeNode(DFlipFlopDef);
-registerCompositeNode(JKFlipFlopDef);
+registerCompositeNode(DLatchDef);
 registerCompositeNode(FullAdderDef);
 registerCompositeNode(Counter4BitDef);
 // Register analog nodes

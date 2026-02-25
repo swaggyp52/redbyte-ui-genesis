@@ -134,7 +134,8 @@
       "Bash(cd /c/Users/conno/redbyte-ui && gh auth status 2>&1)",
       "Bash(cd /c/Users/conno/redbyte-ui && gh auth switch --hostname github.com --user swaggyp52 2>&1 && gh run list --repo swaggyp52/redbyte-ui-genesis --limit 5 2>&1)",
       "Bash(cd /c/Users/conno/redbyte-ui && unset GITHUB_TOKEN && gh auth switch --hostname github.com --user swaggyp52 2>&1 && gh run list --repo swaggyp52/redbyte-ui-genesis --limit 5 2>&1)",
-      "Bash(cd /c/Users/conno/redbyte-ui && unset GITHUB_TOKEN && gh run watch 22364222584 --repo swaggyp52/redbyte-ui-genesis 2>&1)"
+      "Bash(cd /c/Users/conno/redbyte-ui && unset GITHUB_TOKEN && gh run watch 22364222584 --repo swaggyp52/redbyte-ui-genesis 2>&1)",
+      "Bash(git:*)"
     ],
     "deny": [],
     "ask": []

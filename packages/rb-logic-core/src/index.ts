@@ -62,6 +62,8 @@ export {
   XORBehavior,
   ClockBehavior,
   DelayBehavior,
+  TFlipFlopBehavior,
+  JKFlipFlopBehavior,
 } from './builtins';
 
 // Composite nodes
@@ -70,6 +72,7 @@ export { createCompositeNodeBehavior, registerCompositeNode } from './CompositeN
 export {
   RSLatchDef,
   DFlipFlopDef,
+  DLatchDef,
   JKFlipFlopDef,
   FullAdderDef,
   Counter4BitDef,
@@ -89,6 +92,8 @@ import {
   XORBehavior,
   ClockBehavior,
   DelayBehavior,
+  TFlipFlopBehavior,
+  JKFlipFlopBehavior,
   INPUTBehavior,
   OUTPUTBehavior,
 } from './builtins';
@@ -96,6 +101,7 @@ import { registerCompositeNode } from './CompositeNode';
 import {
   RSLatchDef,
   DFlipFlopDef,
+  DLatchDef,
   JKFlipFlopDef,
   FullAdderDef,
   Counter4BitDef,
@@ -113,13 +119,15 @@ NodeRegistry.register('NAND', NANDBehavior);
 NodeRegistry.register('XOR', XORBehavior);
 NodeRegistry.register('Clock', ClockBehavior);
 NodeRegistry.register('Delay', DelayBehavior);
+NodeRegistry.register('TFlipFlop', TFlipFlopBehavior);
+NodeRegistry.register('JKFlipFlop', JKFlipFlopBehavior);
 NodeRegistry.register('INPUT', INPUTBehavior);
 NodeRegistry.register('OUTPUT', OUTPUTBehavior);
 
 // Register composite nodes
 registerCompositeNode(RSLatchDef);
 registerCompositeNode(DFlipFlopDef);
-registerCompositeNode(JKFlipFlopDef);
+registerCompositeNode(DLatchDef);
 registerCompositeNode(FullAdderDef);
 registerCompositeNode(Counter4BitDef);
 

@@ -5,7 +5,7 @@
       "id": "sw_clk",
       "type": "Switch",
       "label": "CLK",
-      "position": { "x": 80, "y": 90 },
+      "position": { "x": 60, "y": 80 },
       "rotation": 0,
       "config": {}
     },
@@ -13,15 +13,103 @@
       "id": "sw_d",
       "type": "Switch",
       "label": "D",
-      "position": { "x": 80, "y": 170 },
+      "position": { "x": 60, "y": 160 },
       "rotation": 0,
       "config": {}
     },
     {
-      "id": "led_q",
+      "id": "sw_en",
+      "type": "Switch",
+      "label": "EN",
+      "position": { "x": 60, "y": 240 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_t",
+      "type": "Switch",
+      "label": "T",
+      "position": { "x": 60, "y": 320 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_j",
+      "type": "Switch",
+      "label": "J",
+      "position": { "x": 60, "y": 400 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "sw_k",
+      "type": "Switch",
+      "label": "K",
+      "position": { "x": 60, "y": 480 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "dlatch",
+      "type": "DLatch",
+      "label": "DLatch",
+      "position": { "x": 300, "y": 80 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "dff",
+      "type": "DFlipFlop",
+      "label": "DFF",
+      "position": { "x": 300, "y": 200 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "tff",
+      "type": "TFlipFlop",
+      "label": "TFF",
+      "position": { "x": 300, "y": 320 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "jkff",
+      "type": "JKFlipFlop",
+      "label": "JKFF",
+      "position": { "x": 300, "y": 440 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led_dlatch_q",
       "type": "Lamp",
-      "label": "Q",
-      "position": { "x": 860, "y": 140 },
+      "label": "Q_DL",
+      "position": { "x": 560, "y": 80 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led_dff_q",
+      "type": "Lamp",
+      "label": "Q_DFF",
+      "position": { "x": 560, "y": 200 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led_tff_q",
+      "type": "Lamp",
+      "label": "Q_TFF",
+      "position": { "x": 560, "y": 320 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "led_jkff_q",
+      "type": "Lamp",
+      "label": "Q_JK",
+      "position": { "x": 560, "y": 440 },
       "rotation": 0,
       "config": {}
     }

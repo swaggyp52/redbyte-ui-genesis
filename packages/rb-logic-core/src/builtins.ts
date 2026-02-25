@@ -175,6 +175,62 @@ export const DelayBehavior: NodeBehavior = {
 };
 
 /**
+ * T Flip-Flop - edge-triggered toggle flip-flop
+ * Inputs: T (toggle), CLK (clock)
+ * Output: Q (and out for compatibility)
+ * Rising edge: if T=1, Q toggles; if T=0, Q holds
+ *
+ * Implemented as a behavioral node (not structural composite) to avoid
+ * the oscillation/race condition inherent in a level-triggered T latch.
+ */
+export const TFlipFlopBehavior: NodeBehavior = {
+  evaluate(inputs, state) {
+    const t       = (inputs.T   ?? 0) as number;
+    const clk     = (inputs.CLK ?? 0) as number;
+    const lastClk = (state.lastClk ?? 0) as number;
+    let q         = (state.q     ?? 0) as number;
+
+    // Rising edge: lastClk=0 → clk=1
+    if (lastClk === 0 && clk === 1) {
+      if (t === 1) q = q === 0 ? 1 : 0;
+    }
+
+    return {
+      outputs: { Q: q as Signal, out: q as Signal },
+      state: { q, lastClk: clk },
+    };
+  },
+};
+
+/**
+ * JK Flip-Flop (level-triggered latch)
+ * Inputs: J, K, CLK
+ * Output: Q (and out for compatibility)
+ * When CLK=1: J=1 K=0 → SET, J=0 K=1 → RESET, J=K=1 → TOGGLE, J=K=0 → HOLD
+ * When CLK=0: always HOLD
+ */
+export const JKFlipFlopBehavior: NodeBehavior = {
+  evaluate(inputs, state) {
+    const j   = (inputs.J   ?? 0) as number;
+    const k   = (inputs.K   ?? 0) as number;
+    const clk = (inputs.CLK ?? 0) as number;
+    let q     = (state.q    ?? 0) as number;
+
+    if (clk === 1) {
+      if      (j === 1 && k === 0) q = 1;
+      else if (j === 0 && k === 1) q = 0;
+      else if (j === 1 && k === 1) q = q === 0 ? 1 : 0;
+      // j=0, k=0: hold
+    }
+
+    return {
+      outputs: { Q: q as Signal, out: q as Signal },
+      state: { q },
+    };
+  },
+};
+
+/**
  * INPUT - external input source (state-based)
  */
 export const INPUTBehavior: NodeBehavior = {

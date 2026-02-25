@@ -84,6 +84,46 @@ export const DFlipFlopDef = {
     },
 };
 /**
+ * D Latch (level-sensitive)
+ * Inputs: D (data), EN (enable)
+ * Outputs: Q, Q_inv
+ * Transparent when EN=1; holds when EN=0.
+ */
+export const DLatchDef = {
+    name: 'DLatch',
+    description: 'D Latch - level-sensitive, transparent when EN=1, holds when EN=0',
+    subcircuit: {
+        nodes: [
+            { id: 'd_in',  type: 'Switch', position: { x: 0, y: 0 }, rotation: 0, config: {}, state: { isOn: 0 } },
+            { id: 'en_in', type: 'Switch', position: { x: 0, y: 3 }, rotation: 0, config: {}, state: { isOn: 0 } },
+            { id: 'not1',  type: 'NOT',    position: { x: 1, y: 1 }, rotation: 0, config: {} },
+            { id: 'nand1', type: 'NAND',   position: { x: 3, y: 0 }, rotation: 0, config: {} },
+            { id: 'nand2', type: 'NAND',   position: { x: 3, y: 2 }, rotation: 0, config: {} },
+            { id: 'nand3', type: 'NAND',   position: { x: 5, y: 0 }, rotation: 0, config: {} },
+            { id: 'nand4', type: 'NAND',   position: { x: 5, y: 2 }, rotation: 0, config: {} },
+        ],
+        connections: [
+            { from: { nodeId: 'd_in',  portName: 'out' }, to: { nodeId: 'nand1', portName: 'a' } },
+            { from: { nodeId: 'en_in', portName: 'out' }, to: { nodeId: 'nand1', portName: 'b' } },
+            { from: { nodeId: 'd_in',  portName: 'out' }, to: { nodeId: 'not1',  portName: 'in' } },
+            { from: { nodeId: 'not1',  portName: 'out' }, to: { nodeId: 'nand2', portName: 'a' } },
+            { from: { nodeId: 'en_in', portName: 'out' }, to: { nodeId: 'nand2', portName: 'b' } },
+            { from: { nodeId: 'nand1', portName: 'out' }, to: { nodeId: 'nand3', portName: 'a' } },
+            { from: { nodeId: 'nand4', portName: 'out' }, to: { nodeId: 'nand3', portName: 'b' } },
+            { from: { nodeId: 'nand2', portName: 'out' }, to: { nodeId: 'nand4', portName: 'a' } },
+            { from: { nodeId: 'nand3', portName: 'out' }, to: { nodeId: 'nand4', portName: 'b' } },
+        ],
+    },
+    inputMapping: {
+        D:  'd_in.isOn',
+        EN: 'en_in.isOn',
+    },
+    outputMapping: {
+        Q:     'nand3.out',
+        Q_inv: 'nand4.out',
+    },
+};
+/**
  * JK Flip-Flop
  * Inputs: J, K, CLK
  * Outputs: Q, Q_inv

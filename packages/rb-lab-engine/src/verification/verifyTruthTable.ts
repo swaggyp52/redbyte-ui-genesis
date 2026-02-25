@@ -69,7 +69,9 @@ export async function verifyTruthTable(
         if (nodeType === 'OUTPUT' || nodeType === 'Lamp') {
           actualRow[outputSignal] = (engine.getNodeState(outputNode.id)?.isOn as number) ?? 0;
         } else {
-          const portName = nodeType === 'DFlipFlop' ? 'Q' : 'out';
+          // Sequential types expose their output on the 'Q' port; combinational types use 'out'
+          const SEQUENTIAL_Q_TYPES = new Set(['DFlipFlop', 'DLatch', 'TFlipFlop', 'JKFlipFlop', 'RSLatch']);
+          const portName = SEQUENTIAL_Q_TYPES.has(nodeType) ? 'Q' : 'out';
           actualRow[outputSignal] = (engine.getNodeValue(outputNode.id, portName) as number) ?? 0;
         }
       } else {

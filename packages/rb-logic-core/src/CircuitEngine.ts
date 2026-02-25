@@ -160,7 +160,7 @@ export class CircuitEngine {
 
   private detectCombinationalLoop(): { hasLoop: boolean; cycleNodeIds?: string[] } {
     // Memory/delay elements break combinational feedback loops.
-    const memoryTypes = new Set(['Delay', 'DFlipFlop', 'JKFlipFlop', 'RSLatch', 'Counter4Bit']);
+    const memoryTypes = new Set(['Delay', 'DFlipFlop', 'DLatch', 'TFlipFlop', 'JKFlipFlop', 'RSLatch', 'Counter4Bit']);
 
     const nodesById = new Map<string, Node>();
     for (const node of this.circuit.nodes) nodesById.set(node.id, node);

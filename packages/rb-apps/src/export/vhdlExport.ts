@@ -72,6 +72,7 @@ const SUPPORTED_LOGIC_TYPES = new Set([
   'FullAdder',
   'MUX4',
   'DFlipFlop',
+  'DLatch', 'TFlipFlop', 'JKFlipFlop',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -112,6 +113,10 @@ function deriveSignalName(node: NetlistNode, counter: number): string {
     XNOR: 'xnor',
     FullAdder: 'fa',
     MUX4: 'mux',
+    DFlipFlop:  'dff',
+    DLatch:     'dlatch',
+    TFlipFlop:  'tff',
+    JKFlipFlop: 'jkff',
   };
 
   const prefix = typePrefix[node.type] ?? 'sig';
@@ -504,6 +509,98 @@ export function vhdlFromNetlist(
         lines.push(`      ${sigName} <= ${d};`);
       }
 
+      lines.push('    end if;');
+      lines.push('  end process;');
+      return;
+    }
+
+    if (node.type === 'DLatch') {
+      const d  =
+        resolveInputSignal(node.id, 'd',  nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'in', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        "'0'";
+      const en =
+        resolveInputSignal(node.id, 'en',     nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'enable', nets, nodeIdToSignal, topInputBindingByTarget);
+
+      nodeIdToSignal.set(`${node.id}:Q`,   sigName);
+      nodeIdToSignal.set(`${node.id}:out`, sigName);
+
+      if (!en) {
+        warnings.push(`DLatch "${node.id}" has no EN input — Q will be tied low`);
+        lines.push(`  ${sigName} <= '0'; -- missing DLatch EN`);
+        return;
+      }
+
+      lines.push(`  process (${en}, ${d})`);
+      lines.push('  begin');
+      lines.push(`    if ${en} = '1' then`);
+      lines.push(`      ${sigName} <= ${d};`);
+      lines.push('    end if;');
+      lines.push('  end process;');
+      return;
+    }
+
+    if (node.type === 'TFlipFlop') {
+      const t   =
+        resolveInputSignal(node.id, 't',   nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'in',  nets, nodeIdToSignal, topInputBindingByTarget) ??
+        "'0'";
+      const clk =
+        resolveInputSignal(node.id, 'clk',   nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'clock', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'c',     nets, nodeIdToSignal, topInputBindingByTarget);
+
+      nodeIdToSignal.set(`${node.id}:Q`,   sigName);
+      nodeIdToSignal.set(`${node.id}:out`, sigName);
+
+      if (!clk) {
+        warnings.push(`TFlipFlop "${node.id}" has no CLK input — Q will be tied low`);
+        lines.push(`  ${sigName} <= '0'; -- missing TFlipFlop clock`);
+        return;
+      }
+
+      lines.push(`  process (${clk})`);
+      lines.push('  begin');
+      lines.push(`    if rising_edge(${clk}) then`);
+      lines.push(`      if ${t} = '1' then`);
+      lines.push(`        ${sigName} <= not ${sigName};`);
+      lines.push('      end if;');
+      lines.push('    end if;');
+      lines.push('  end process;');
+      return;
+    }
+
+    if (node.type === 'JKFlipFlop') {
+      const j   =
+        resolveInputSignal(node.id, 'j',  nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
+      const k   =
+        resolveInputSignal(node.id, 'k',  nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
+      const clk =
+        resolveInputSignal(node.id, 'clk',   nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'clock', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'c',     nets, nodeIdToSignal, topInputBindingByTarget);
+
+      nodeIdToSignal.set(`${node.id}:Q`,     sigName);
+      nodeIdToSignal.set(`${node.id}:Q_inv`, `${sigName}_inv`);
+      nodeIdToSignal.set(`${node.id}:out`,   sigName);
+
+      if (!clk) {
+        warnings.push(`JKFlipFlop "${node.id}" has no CLK input — Q will be tied low`);
+        lines.push(`  ${sigName} <= '0'; -- missing JKFlipFlop clock`);
+        return;
+      }
+
+      lines.push(`  process (${clk})`);
+      lines.push('  begin');
+      lines.push(`    if rising_edge(${clk}) then`);
+      lines.push(`      if ${j} = '1' and ${k} = '0' then`);
+      lines.push(`        ${sigName} <= '1';`);
+      lines.push(`      elsif ${j} = '0' and ${k} = '1' then`);
+      lines.push(`        ${sigName} <= '0';`);
+      lines.push(`      elsif ${j} = '1' and ${k} = '1' then`);
+      lines.push(`        ${sigName} <= not ${sigName};`);
+      lines.push('      end if;');
       lines.push('    end if;');
       lines.push('  end process;');
       return;

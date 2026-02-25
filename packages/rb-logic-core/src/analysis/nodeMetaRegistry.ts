@@ -21,6 +21,16 @@ const META_BY_TYPE: Record<string, NodeMeta> = {
     clockPort: "CLK",
     note: "clocked_macro v1 - level-triggered gated latch",
   },
+  DLatch: {
+    isSequential: true,
+    clockPort: "EN",
+    note: "level-sensitive D latch; transparent when EN=1, holds when EN=0",
+  },
+  TFlipFlop: {
+    isSequential: true,
+    clockPort: "CLK",
+    note: "edge-triggered toggle flip-flop; Q toggles on rising CLK when T=1",
+  },
   JKFlipFlop: {
     isSequential: true,
     clockPort: "CLK",

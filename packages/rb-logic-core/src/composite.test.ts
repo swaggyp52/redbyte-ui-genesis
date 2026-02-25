@@ -76,3 +76,64 @@ describe('Composite Nodes', () => {
   // Note: RS Latch, D/JK Flip-Flops have feedback loops that require special handling
   // Skipping those tests for now - they would need a different evaluation strategy
 });
+
+describe('DLatch', () => {
+  it('should be transparent when EN=1: Q follows D=1', () => {
+    const circuit: Circuit = {
+      nodes: [
+        { id: 'dlatch', type: 'DLatch', position: { x: 0, y: 0 }, rotation: 0, config: {} },
+        { id: 'd_src',  type: 'PowerSource', position: { x: -2, y: 0 }, rotation: 0, config: {} },
+        { id: 'en_src', type: 'PowerSource', position: { x: -2, y: 3 }, rotation: 0, config: {} },
+      ],
+      connections: [
+        { from: { nodeId: 'd_src',  portName: 'out' }, to: { nodeId: 'dlatch', portName: 'D' } },
+        { from: { nodeId: 'en_src', portName: 'out' }, to: { nodeId: 'dlatch', portName: 'EN' } },
+      ],
+    };
+
+    const engine = new CircuitEngine(circuit);
+    engine.stabilize();
+    expect(engine.getAllSignals().get('dlatch.Q')).toBe(1);
+  });
+
+  it('should be Q=0 when EN=1 and D=0', () => {
+    const circuit: Circuit = {
+      nodes: [
+        { id: 'dlatch', type: 'DLatch', position: { x: 0, y: 0 }, rotation: 0, config: {} },
+        { id: 'en_src', type: 'PowerSource', position: { x: -2, y: 3 }, rotation: 0, config: {} },
+      ],
+      connections: [
+        { from: { nodeId: 'en_src', portName: 'out' }, to: { nodeId: 'dlatch', portName: 'EN' } },
+      ],
+    };
+
+    const engine = new CircuitEngine(circuit);
+    engine.stabilize();
+    // EN=1, D=0 (unconnected → 0) → Q=0
+    expect(engine.getAllSignals().get('dlatch.Q')).toBe(0);
+  });
+
+  it('should hold state when EN transitions from 1 to 0', () => {
+    const circuit: Circuit = {
+      nodes: [
+        { id: 'dlatch', type: 'DLatch', position: { x: 0, y: 0 }, rotation: 0, config: {} },
+        { id: 'd_sw',   type: 'Switch', position: { x: -2, y: 0 }, rotation: 0, config: {}, state: { isOn: 1 } },
+        { id: 'en_sw',  type: 'Switch', position: { x: -2, y: 3 }, rotation: 0, config: {}, state: { isOn: 1 } },
+      ],
+      connections: [
+        { from: { nodeId: 'd_sw',  portName: 'out' }, to: { nodeId: 'dlatch', portName: 'D' } },
+        { from: { nodeId: 'en_sw', portName: 'out' }, to: { nodeId: 'dlatch', portName: 'EN' } },
+      ],
+    };
+
+    const engine = new CircuitEngine(circuit);
+    engine.stabilize();
+    expect(engine.getAllSignals().get('dlatch.Q')).toBe(1); // EN=1, D=1 → Q=1
+
+    // Disable and change D — Q should hold
+    engine.setNodeState('en_sw', { isOn: 0 });
+    engine.setNodeState('d_sw',  { isOn: 0 });
+    engine.stabilize();
+    expect(engine.getAllSignals().get('dlatch.Q')).toBe(1); // still holds 1
+  });
+});

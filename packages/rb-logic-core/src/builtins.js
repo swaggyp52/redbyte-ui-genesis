@@ -156,6 +156,51 @@ export const DelayBehavior = {
     },
 };
 /**
+ * T Flip-Flop - edge-triggered toggle flip-flop
+ * Inputs: T (toggle), CLK (clock)
+ * Output: Q (and out for compatibility)
+ * Rising edge: if T=1, Q toggles; if T=0, Q holds
+ */
+export const TFlipFlopBehavior = {
+    evaluate(inputs, state) {
+        const t = (inputs.T ?? 0);
+        const clk = (inputs.CLK ?? 0);
+        const lastClk = (state.lastClk ?? 0);
+        let q = (state.q ?? 0);
+        // Rising edge: lastClk=0 → clk=1
+        if (lastClk === 0 && clk === 1) {
+            if (t === 1) q = q === 0 ? 1 : 0;
+        }
+        return {
+            outputs: { Q: q, out: q },
+            state: { q, lastClk: clk },
+        };
+    },
+};
+/**
+ * JK Flip-Flop (level-triggered latch)
+ * When CLK=1: J=1 K=0 → SET, J=0 K=1 → RESET, J=K=1 → TOGGLE, J=K=0 → HOLD
+ * When CLK=0: always HOLD
+ */
+export const JKFlipFlopBehavior = {
+    evaluate(inputs, state) {
+        const j   = (inputs.J   ?? 0);
+        const k   = (inputs.K   ?? 0);
+        const clk = (inputs.CLK ?? 0);
+        let q     = (state.q    ?? 0);
+        if (clk === 1) {
+            if      (j === 1 && k === 0) q = 1;
+            else if (j === 0 && k === 1) q = 0;
+            else if (j === 1 && k === 1) q = q === 0 ? 1 : 0;
+            // j=0, k=0: hold
+        }
+        return {
+            outputs: { Q: q, out: q },
+            state: { q },
+        };
+    },
+};
+/**
  * INPUT - external input source (state-based)
  */
 export const INPUTBehavior = {

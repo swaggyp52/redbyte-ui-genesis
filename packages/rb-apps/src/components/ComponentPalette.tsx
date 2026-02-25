@@ -60,9 +60,11 @@ const COMPONENTS: ComponentInfo[] = [
   { type: 'Delay', name: 'Delay', description: 'Delays signal by one tick', Icon: DelayIcon, category: 'Timing', color: '#a3e635' },
 
   // Advanced
-  { type: 'RSLatch', name: 'RS Latch', description: 'Memory cell - stores 1 bit', Icon: LatchIcon, category: 'Advanced', color: '#f87171' },
-  { type: 'DFlipFlop', name: 'D Flip-Flop', description: 'Clocked memory element', Icon: FlipFlopIcon, category: 'Advanced', color: '#34d399' },
-  { type: 'JKFlipFlop', name: 'JK Flip-Flop', description: 'Advanced flip-flop', Icon: FlipFlopIcon, category: 'Advanced', color: '#fcd34d' },
+  { type: 'RSLatch',    name: 'RS Latch',    description: 'Memory cell - stores 1 bit',                         Icon: LatchIcon,    category: 'Advanced', color: '#f87171' },
+  { type: 'DLatch',    name: 'D Latch',     description: 'Level-sensitive latch, transparent when EN=1',       Icon: LatchIcon,    category: 'Advanced', color: '#fb923c' },
+  { type: 'DFlipFlop', name: 'D Flip-Flop', description: 'Clocked memory element',                             Icon: FlipFlopIcon, category: 'Advanced', color: '#34d399' },
+  { type: 'TFlipFlop', name: 'T Flip-Flop', description: 'Toggle flip-flop, Q flips on rising CLK when T=1',  Icon: FlipFlopIcon, category: 'Advanced', color: '#a78bfa' },
+  { type: 'JKFlipFlop', name: 'JK Flip-Flop', description: 'Advanced flip-flop',                              Icon: FlipFlopIcon, category: 'Advanced', color: '#fcd34d' },
   { type: 'FullAdder', name: 'Full Adder', description: 'Adds 3 binary digits', Icon: AdderIcon, category: 'Advanced', color: '#818cf8' },
   { type: 'Counter4Bit', name: '4-Bit Counter', description: 'Counts from 0 to 15', Icon: CounterIcon, category: 'Advanced', color: '#e879f9' },
 ];
