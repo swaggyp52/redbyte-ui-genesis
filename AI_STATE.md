@@ -16330,3 +16330,23 @@ Notes:
 - **Build Verification**:
   - ✅ `pnpm vitest run packages/rb-apps/src/utils/__tests__/wireId.test.ts packages/rb-apps/src/export/__tests__/golden-examples.test.ts packages/rb-apps/src/export/__tests__/stopship-verify.test.ts` → 56/56 pass (14 wireId + 19 golden-examples + 23 stopship)
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-02-24 (PR4 Gate Hardening — Gate A + Gate B)
+
+- Added Gate A (`GOLDEN — Gate A: verify must pass`) in `golden-examples.test.ts`:
+  Uses `runTestVectors` (board-schedule path) for all 3 examples via `it.each`. On
+  failure throws a rich diagnostic: `tick`, `signal`, `expected`, `actual`, plus the
+  Fix-path nodeId from `ioRows` lookup — exactly what VerifySurface Mismatch Detail shows.
+
+- Added Gate B (`GOLDEN — Gate B: mapping completeness and exact pin contract`) in
+  `golden-examples.test.ts`:
+  1. All ioRows have non-empty pin strings.
+  2. No duplicate pin assignments (swap detection — failure message lists every id→pin).
+  3. `EXAMPLE_PIN_CONTRACT` table asserts exact Basys3 pin per row for all 3 examples:
+     signal-tour 8 rows, logic-gates 5 rows, two-bit-counter 4 rows.
+  Mutation of the catalog that silently changes a pin will fail this gate before wasting
+  a 30-minute Vivado run.
+
+- **Build Verification**:
+  - ✅ 62/62 pass: 14 wireId + 25 golden-examples + 23 stopship
+- **Attribution**: Connor Angiel

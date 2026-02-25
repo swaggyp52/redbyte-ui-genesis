@@ -329,3 +329,117 @@ describe('GOLDEN — Bundle validity: all 3 examples produce bundle.valid === tr
     expect(bundle.valid).toBe(true);
   });
 });
+
+// ─── GOLDEN GATE 5: Verify must pass — with full diagnostic dump ──────────────
+//
+// Uses the vectorRunner path (same as STOP-SHIP 7) because it exercises the
+// actual board-level scheduling logic. On failure the thrown message includes:
+//   tick, signal, expected, actual, AND the Fix-path nodeId from ioRows.
+// This is the exact information shown in VerifySurface → Mismatch Detail.
+
+/**
+ * Map a failing signal key (which is a nodeId) back to the ioRow so we can
+ * include the "Fix in Design" target in the failure dump.
+ */
+function failureToFixPath(signal: string, ioRows: Array<{ nodeId: string; id: string; label: string }>) {
+  const row = ioRows.find((r) => r.nodeId === signal || r.id === signal);
+  return row ? `node=${row.nodeId} (label: ${row.label})` : `unknown nodeId "${signal}"`;
+}
+
+describe('GOLDEN — Gate A: verify must pass (full diagnostic dump)', () => {
+  it.each([
+    'signal-tour',
+    'logic-gates',
+    'two-bit-counter',
+  ] as const)('%s: runTestVectors pass === true', async (exampleId) => {
+    const ex = getIdeExampleById(exampleId)!;
+    const result = await runTestVectors(ex.circuit as Circuit, ex.vectors);
+
+    if (!result.pass || result.failures.length > 0) {
+      const lines = result.failures.map((f) => {
+        const fixPath = failureToFixPath(f.signal, ex.ioRows);
+        return `  tick=${f.tick} signal=${f.signal} expected=${f.expected} actual=${f.actual} → fix: ${fixPath}`;
+      });
+      throw new Error(
+        `[${exampleId}] ${result.failures.length} verify failure(s):\n${lines.join('\n')}\n` +
+        `Schedule: ${result.schedule}  hash: ${result.deterministicHash}\n` +
+        (result.warningBanner ? `Warning: ${result.warningBanner}` : '')
+      );
+    }
+
+    expect(result.pass).toBe(true);
+    expect(result.failures).toHaveLength(0);
+  });
+});
+
+// ─── GOLDEN GATE 6: Mapping completeness — exact pins, no swaps ──────────────
+//
+// Asserts the catalog's declared pin assignments are stable and internally
+// consistent. A scrambled catalog (swapped pins, duplicates, missing entries)
+// will break this gate before it wastes a Vivado run.
+
+/** Canonical pin assignments for every shipped example (sourced from examplesCatalog). */
+const EXAMPLE_PIN_CONTRACT: Record<string, Record<string, string>> = {
+  'signal-tour': {
+    sw0: 'V17', sw1: 'W16', sw2: 'W15', sw3: 'V15',
+    ld0: 'U16', ld1: 'E19', ld2: 'U19', ld3: 'V19',
+  },
+  'logic-gates': {
+    sw0: 'V17', sw1: 'W16',
+    ld0: 'U16', ld1: 'E19', ld2: 'U19',
+  },
+  'two-bit-counter': {
+    clk: 'W5', en: 'V17',
+    q0: 'U16', q1: 'E19',
+  },
+};
+
+describe('GOLDEN — Gate B: mapping completeness and exact pin contract', () => {
+  it.each([
+    'signal-tour',
+    'logic-gates',
+    'two-bit-counter',
+  ] as const)('%s: all pins present, no duplicates, exact contract matches', (exampleId) => {
+    const ex = getIdeExampleById(exampleId)!;
+    const mapping = exampleToIoMapping(ex);
+    const allRows = [...mapping.inputs, ...mapping.outputs];
+
+    // 1. All pins are non-empty strings
+    const emptyPins = allRows.filter((r) => !r.pin || r.pin.trim().length === 0);
+    if (emptyPins.length > 0) {
+      throw new Error(
+        `[${exampleId}] ${emptyPins.length} row(s) have empty pins: ` +
+        emptyPins.map((r) => r.id).join(', ')
+      );
+    }
+
+    // 2. No duplicate pin assignments (swap detection)
+    const pins = allRows.map((r) => r.pin);
+    const duplicates = pins.filter((p, i) => pins.indexOf(p) !== i);
+    if (duplicates.length > 0) {
+      throw new Error(
+        `[${exampleId}] Duplicate pin(s) — possible swap: ${[...new Set(duplicates)].join(', ')}\n` +
+        allRows.map((r) => `  ${r.id}: ${r.pin}`).join('\n')
+      );
+    }
+
+    // 3. Exact pin contract (catches catalog edits that silently change the wiring)
+    const contract = EXAMPLE_PIN_CONTRACT[exampleId];
+    if (contract) {
+      for (const [rowId, expectedPin] of Object.entries(contract)) {
+        const row = allRows.find((r) => r.id === rowId);
+        if (!row) {
+          throw new Error(`[${exampleId}] Contract row "${rowId}" not found in ioRows`);
+        }
+        if (row.pin !== expectedPin) {
+          throw new Error(
+            `[${exampleId}] Pin mismatch for "${rowId}": ` +
+            `catalog says ${row.pin}, contract expects ${expectedPin}`
+          );
+        }
+      }
+    }
+
+    expect(allRows.length).toBeGreaterThan(0);
+  });
+});
