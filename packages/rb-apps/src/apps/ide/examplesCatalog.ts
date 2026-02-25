@@ -49,9 +49,9 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     ],
     ioRows: [
       { id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'SW0', direction: 'in',  pin: 'V17', required: true },
-      { id: 'sw1', nodeId: 'sw1_node', port: 'out', label: 'SW1', direction: 'in',  pin: 'W16', required: true },
-      { id: 'sw2', nodeId: 'sw2_node', port: 'out', label: 'SW2', direction: 'in',  pin: 'W15', required: true },
-      { id: 'sw3', nodeId: 'sw3_node', port: 'out', label: 'SW3', direction: 'in',  pin: 'V15', required: true },
+      { id: 'sw1', nodeId: 'sw1_node', port: 'out', label: 'SW1', direction: 'in',  pin: 'V16', required: true },
+      { id: 'sw2', nodeId: 'sw2_node', port: 'out', label: 'SW2', direction: 'in',  pin: 'W16', required: true },
+      { id: 'sw3', nodeId: 'sw3_node', port: 'out', label: 'SW3', direction: 'in',  pin: 'W17', required: true },
       { id: 'ld0', nodeId: 'ld0_node', port: 'in',  label: 'LD0', direction: 'out', pin: 'U16', required: true },
       { id: 'ld1', nodeId: 'ld1_node', port: 'in',  label: 'LD1', direction: 'out', pin: 'E19', required: true },
       { id: 'ld2', nodeId: 'ld2_node', port: 'in',  label: 'LD2', direction: 'out', pin: 'U19', required: true },
@@ -108,7 +108,7 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     ],
     ioRows: [
       { id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'SW0', direction: 'in',  pin: 'V17', required: true },
-      { id: 'sw1', nodeId: 'sw1_node', port: 'out', label: 'SW1', direction: 'in',  pin: 'W16', required: true },
+      { id: 'sw1', nodeId: 'sw1_node', port: 'out', label: 'SW1', direction: 'in',  pin: 'V16', required: true },
       { id: 'ld0', nodeId: 'ld0_node', port: 'in',  label: 'LD0', direction: 'out', pin: 'U16', required: true },
       { id: 'ld1', nodeId: 'ld1_node', port: 'in',  label: 'LD1', direction: 'out', pin: 'E19', required: true },
       { id: 'ld2', nodeId: 'ld2_node', port: 'in',  label: 'LD2', direction: 'out', pin: 'U19', required: true },

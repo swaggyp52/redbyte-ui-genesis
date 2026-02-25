@@ -16350,3 +16350,17 @@ Notes:
 - **Build Verification**:
   - ✅ 62/62 pass: 14 wireId + 25 golden-examples + 23 stopship
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-02-24 (Pin Fix — SW1/SW2/SW3 corrected to physical Basys3 numbering)
+
+- Fixed `examplesCatalog.ts` (signal-tour + logic-gates): SW1 was mapped to W16 (physical
+  SW2 on Basys3) and SW2/SW3 were SW4/SW5. Now use the canonical Basys3 switch pins:
+  SW0=V17, SW1=V16, SW2=W16, SW3=W17 (from BASYS3_SWITCH_PINS[0..3] in basys3Pins.ts).
+  Previously a student flipping physical SW1 (V16) would see no response — the example
+  was listening to W16 (SW2). This was a classroom-breaking mismatch.
+- Updated `EXAMPLE_PIN_CONTRACT` in golden-examples.test.ts Gate B to reflect corrected pins.
+  pin change: signal-tour {sw1:W16→V16, sw2:W15→W16, sw3:V15→W17}; logic-gates {sw1:W16→V16}
+
+- **Build Verification**:
+  - ✅ 48/48 pass: 25 golden-examples + 23 stopship (V16/W16/W17 are valid Basys3 pins, bundle.valid stays true)
+- **Attribution**: Connor Angiel

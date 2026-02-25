@@ -381,11 +381,11 @@ describe('GOLDEN — Gate A: verify must pass (full diagnostic dump)', () => {
 /** Canonical pin assignments for every shipped example (sourced from examplesCatalog). */
 const EXAMPLE_PIN_CONTRACT: Record<string, Record<string, string>> = {
   'signal-tour': {
-    sw0: 'V17', sw1: 'W16', sw2: 'W15', sw3: 'V15',
+    sw0: 'V17', sw1: 'V16', sw2: 'W16', sw3: 'W17',
     ld0: 'U16', ld1: 'E19', ld2: 'U19', ld3: 'V19',
   },
   'logic-gates': {
-    sw0: 'V17', sw1: 'W16',
+    sw0: 'V17', sw1: 'V16',
     ld0: 'U16', ld1: 'E19', ld2: 'U19',
   },
   'two-bit-counter': {
