@@ -172,20 +172,21 @@ describe('GOLDEN — 2-Bit Up Counter', () => {
     expect(example).toBeDefined();
   });
 
-  it('has 6 test vectors', () => {
-    expect(example!.vectors).toHaveLength(6);
+  it('has 7 test vectors', () => {
+    expect(example!.vectors).toHaveLength(7);
   });
 
-  it('verifies deterministically: all 6 vectors pass', () => {
+  it('verifies deterministically: all 7 vectors pass', () => {
     // Counter uses DFlipFlop (transparent latch) — requires explicit CLK macro per vector.
     // Direct CircuitEngine simulation: apply inputs, drive CLK 0→1→0, read OUTPUT state.isOn.
     const engine = new CircuitEngine(JSON.parse(JSON.stringify(example!.circuit)));
 
     // Boot-reset warmup: DFlipFlop composite SR-NAND latch initializes at Q=1,Q_inv=1 (invalid
-    // state) due to all-zero signals on construction. With EN=1, one CLK pulse computes
+    // state) due to all-zero signals on construction. With EN=1 and RST=0, one CLK pulse computes
     // D0=XOR(1,1)=0 and D1=XOR(1,1)=0, clocking both FFs to Q=0 — the correct start state
-    // for vector 0 (which expects q0=1 after the first count from 00→01).
+    // for vector 0 (which asserts RST=1 and confirms Q stays 00).
     engine.setNodeValue('en_node', 1 as 0 | 1);
+    engine.setNodeValue('rst_node', 0 as 0 | 1);
     engine.setNodeValue('clk_node', 0 as 0 | 1); engine.tick();
     engine.setNodeValue('clk_node', 1 as 0 | 1); engine.tick();
     engine.setNodeValue('clk_node', 0 as 0 | 1); engine.tick();
@@ -389,7 +390,7 @@ const EXAMPLE_PIN_CONTRACT: Record<string, Record<string, string>> = {
     ld0: 'U16', ld1: 'E19', ld2: 'U19',
   },
   'two-bit-counter': {
-    clk: 'W5', en: 'V17',
+    clk: 'W5', en: 'V17', rst: 'U18',
     q0: 'U16', q1: 'E19',
   },
 };
