@@ -101,11 +101,14 @@ export function circuitToVerilog(
     }
   }
 
-  // Process connections
+  // Process connections — normalize port names to lowercase so primitive port names
+  // (always lowercase, e.g. 'd', 'clk', 'q') match catalog connection names (e.g. 'D', 'CLK', 'Q').
   for (const conn of sortedConnections) {
-    const fromWire = `${conn.fromNodeId}_${conn.fromPin}`;
-    const toLoad = `${conn.toNodeId}_${conn.toPin}`;
-    
+    const fromPin = conn.fromPin.toLowerCase();
+    const toPin   = conn.toPin.toLowerCase();
+    const fromWire = `${conn.fromNodeId}_${fromPin}`;
+    const toLoad   = `${conn.toNodeId}_${toPin}`;
+
     const wire = wires.get(fromWire);
     if (wire) {
       wire.loads.push(toLoad);
@@ -207,6 +210,31 @@ export function circuitToVerilog(
     verilog += `\n  );\n\n`;
   }
 
+  // Output assignments: connect each module output port to its driver signal.
+  //   Case A — logic wire drives output: assign q0_out_in = q0_ff_q;
+  //   Case B — module input drives output directly (e.g. straight-wire pass-through):
+  //             assign ld0_node_in = sw0_node_out;
+  const assignStmts: string[] = [];
+  for (const outPortName of uniqueOutputs) {
+    const driver = findOutputDriver(
+      outPortName,
+      wires,
+      sortedConnections,
+      IO_NODE_TYPES,
+      nodeTypeById,
+    );
+    if (driver) {
+      assignStmts.push(
+        `  assign ${sanitizeIdentifier(outPortName)} = ${sanitizeIdentifier(driver)};`,
+      );
+    }
+  }
+  if (assignStmts.length > 0) {
+    verilog += `  // Output assignments\n`;
+    verilog += assignStmts.join('\n');
+    verilog += `\n\n`;
+  }
+
   verilog += `endmodule\n`;
 
   return {
@@ -220,33 +248,93 @@ export function circuitToVerilog(
 }
 
 /**
- * Find the wire that drives a given node input pin
+ * Port name aliases: circuit catalog uses legacy single-letter names ('a', 'b') while
+ * primitive definitions and Verilog instantiation use 'in1', 'in2'.
+ * Each entry lists all equivalent names for a given logical port.
  */
+const PORT_NAME_ALIAS_GROUPS: ReadonlyArray<ReadonlyArray<string>> = [
+  ['in1', 'a'],
+  ['in2', 'b'],
+  ['in3', 'c'],
+];
+
+/** Return all port name aliases for a given name, including the name itself. */
+function portAliases(name: string): ReadonlyArray<string> {
+  for (const group of PORT_NAME_ALIAS_GROUPS) {
+    if (group.includes(name)) return group;
+  }
+  return [name];
+}
+
+/**
+ * Find the signal name (wire or module port) that should drive a given module output port.
+ *
+ * Case A — internal logic wire drives output:
+ *   The wire's loads list contains `outputPortName`.
+ * Case B — module input port drives output directly (straight-wire pass-through, no logic):
+ *   A connection exists where both fromNodeId and toNodeId are I/O nodes.
+ */
+function findOutputDriver(
+  outputPortName: string,
+  wires: Map<string, WireInfo>,
+  connections: CircuitConnection[],
+  ioNodeTypes: Set<string>,
+  nodeTypeById: Map<string, string>,
+): string | null {
+  // Case A: a logic wire's loads list references this output port
+  const sortedWireNames = Array.from(wires.keys()).sort((a, b) => cmpCodepoint(a, b));
+  for (const wireName of sortedWireNames) {
+    const wire = wires.get(wireName);
+    if (!wire) continue;
+    if (wire.loads.includes(outputPortName)) return wireName;
+  }
+
+  // Case B: direct INPUT → OUTPUT connection (no logic in between)
+  const sortedConns = [...connections].sort(compareConnections);
+  for (const conn of sortedConns) {
+    const toLoad = `${conn.toNodeId}_${conn.toPin.toLowerCase()}`;
+    if (
+      toLoad === outputPortName &&
+      ioNodeTypes.has(nodeTypeById.get(conn.fromNodeId) ?? '')
+    ) {
+      return `${conn.fromNodeId}_${conn.fromPin.toLowerCase()}`;
+    }
+  }
+
+  return null;
+}
+
 function findDriverForPin(
   nodeId: string,
   pinName: string,
   connections: CircuitConnection[],
   wires: Map<string, WireInfo>
 ): string | null {
-  const targetLoad = `${nodeId}_${pinName}`;
+  // Normalize to lowercase: primitive ports are always lowercase (e.g. 'd', 'clk', 'q')
+  // and catalog connections may use uppercase (e.g. 'D', 'CLK', 'Q', 'a', 'b').
+  const normalizedPin = pinName.toLowerCase();
+  const aliases = portAliases(normalizedPin);
 
+  // Check the wires index for any alias of pinName (all entries lowercase)
   const sortedWireNames = Array.from(wires.keys()).sort((a, b) => cmpCodepoint(a, b));
   for (const wireName of sortedWireNames) {
     const wire = wires.get(wireName);
     if (!wire) continue;
-    if (wire.loads.includes(targetLoad)) {
-      return wireName;
+    for (const alias of aliases) {
+      if (wire.loads.includes(`${nodeId}_${alias}`)) {
+        return wireName;
+      }
     }
   }
 
-  // Check connections directly
+  // Check connections directly — normalize toPin/fromPin to lowercase before comparing
   const sortedConnections = [...connections].sort(compareConnections);
   for (const conn of sortedConnections) {
-    if (conn.toNodeId === nodeId && conn.toPin === pinName) {
-      return `${conn.fromNodeId}_${conn.fromPin}`;
+    if (conn.toNodeId === nodeId && aliases.includes(conn.toPin.toLowerCase())) {
+      return `${conn.fromNodeId}_${conn.fromPin.toLowerCase()}`;
     }
   }
-  
+
   return null;
 }
 
