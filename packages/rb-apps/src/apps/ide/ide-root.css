@@ -130,7 +130,7 @@
   --ide-rail-width: var(--rb-rail-width);
   --ide-inspector-width: var(--rb-inspector-min);
   --ide-dock-l-w: 220px;
-  --ide-dock-r-w: 280px;
+  --ide-dock-r-w: 240px;
   --ide-topbar-height: var(--rb-topbar-height);
   --ide-status-height: var(--rb-status-height);
   --ide-console-collapsed-h: 40px;
@@ -3113,15 +3113,16 @@
   50%       { box-shadow: 0 0 22px rgba(46,196,182,0.65); }
 }
 
-/* Secondary — outlined teal, supporting action */
+/* Secondary — outlined neutral, supporting action */
 .ide-button-secondary {
   background: transparent;
-  color: var(--rb-accent, #2ec4b6);
-  border-color: rgba(46,196,182,0.45);
+  color: var(--rb-text-2, #c3d1df);
+  border-color: rgba(195,209,223,0.18);
 }
 .ide-button-secondary:hover:not(:disabled) {
-  background: rgba(46,196,182,0.1);
-  border-color: rgba(46,196,182,0.7);
+  background: rgba(195,209,223,0.06);
+  border-color: rgba(195,209,223,0.35);
+  color: var(--rb-text-1, #f2f8ff);
   transform: translateY(-1px);
 }
 .ide-button-secondary:active:not(:disabled) {
@@ -3136,7 +3137,7 @@
 }
 .ide-button-ghost:hover:not(:disabled) {
   background: rgba(255,255,255,0.06);
-  color: var(--ide-text-strong, #f2f8ff);
+  color: var(--rb-accent, #2ec4b6);
   border-color: rgba(255,255,255,0.08);
 }
 .ide-button-ghost:active:not(:disabled) {
@@ -3174,8 +3175,9 @@
 }
 
 .ide-chip-neutral {
-  color: var(--ide-text-muted);
+  color: var(--rb-text-2, #c3d1df);
   background: rgba(58, 87, 116, 0.22);
+  border-color: rgba(195,209,223,0.2);
 }
 
 .ide-chip-accent {
@@ -4582,9 +4584,10 @@ details[open] summary .details-arrow {
   letter-spacing: -0.025em;
 }
 
-/* ── Inspector section title: slightly lighter ── */
+/* ── Inspector section title: slightly lighter */
 .ide-inspector-title {
-  color: rgba(160,185,210,0.6);
+  color: var(--rb-text-3, rgba(140,165,190,0.6));
+  letter-spacing: 0.09em;
 }
 
 /* ── Mismatch panel: table cell spacing ── */
@@ -4778,8 +4781,11 @@ details[open] summary .details-arrow {
 /* Live signal dots */
 .ide-project-live-dot { font-size: 12px; }
 
+/* Live I/O signal list — compact scroll to save right-dock height */
+.ide-design-live-signals { max-height: 140px; overflow-y: auto; }
+
 /* Palette chip text */
-.ide-palette-chip { font-size: 12px; font-weight: 500; min-height: 28px; }
+.ide-palette-chip { font-size: 12px; font-weight: 500; min-height: 26px; }
 .ide-palette-chip-board { font-size: 11px; }
 
 /* Toolbar depth pill */
@@ -4829,6 +4835,38 @@ details[open] summary .details-arrow {
 .ide-verify-status-strip .ide-inline-actions {
   margin-left: auto;
   flex-shrink: 0;
+}
+
+/* ── FAIL summary card — dominant block above waveform ── */
+.ide-verify-fail-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--rb-error-bg);
+  border-left: 4px solid var(--rb-error);
+  border-radius: var(--rb-radius-1);
+  padding: 16px 20px;
+  margin: 8px 0;
+}
+.ide-verify-fail-summary__status {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--rb-error);
+  line-height: 1;
+}
+.ide-verify-fail-summary__count { font-size: 16px; color: var(--rb-text-1); }
+.ide-verify-fail-summary__first { font-size: 13px; color: var(--rb-text-2); }
+.ide-verify-fail-summary__first code { font-family: var(--rb-font-mono); }
+.ide-verify-fail-summary .ide-button { margin-top: 8px; align-self: flex-start; }
+
+/* ── Hint callout — accent bar for FAIL hints ── */
+.ide-callout--hint {
+  border-left: 3px solid var(--rb-warning) !important;
+  background: linear-gradient(90deg, rgba(244,185,66,0.1) 0%, transparent 60%) !important;
+}
+.ide-callout--hint .ide-callout-body {
+  font-size: var(--rb-font-size-3);
+  font-weight: var(--rb-font-weight-medium);
 }
 
 /* Verify workbench v2 — flex column */
@@ -5453,6 +5491,74 @@ details[open] summary .details-arrow {
 }
 
 /* ════════════════════════════════════════════════════════════════
+   Project Surface — 3-Card Workflow Launchpad
+   ════════════════════════════════════════════════════════════════ */
+
+.ide-project-launchpad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 16px 0 24px;
+}
+
+.ide-launchpad-card {
+  background: var(--rb-panel-bg);
+  border-radius: var(--rb-radius-2);
+  padding: 24px 20px;
+  border-left: 4px solid transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ide-launchpad-card--done {
+  border-left-color: var(--rb-success);
+  opacity: 0.72;
+}
+.ide-launchpad-card--active {
+  background: rgba(14, 28, 46, 0.85);
+  border-left-color: var(--rb-accent);
+  box-shadow: 0 2px 20px rgba(0,0,0,0.45), 0 0 0 1px rgba(46,196,182,0.12);
+  padding: 28px 24px;
+  animation: lp-pulse 2.4s ease-in-out infinite;
+}
+.ide-launchpad-card--active .ide-launchpad-card__label { color: var(--rb-accent); }
+.ide-launchpad-card--active .ide-launchpad-card__title { font-size: 20px; }
+.ide-launchpad-card--locked { opacity: 0.4; pointer-events: none; }
+
+.ide-launchpad-card__label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--rb-text-3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ide-launchpad-card__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--rb-text-1);
+  line-height: 1.2;
+  margin-top: 2px;
+}
+.ide-launchpad-card__sub  { font-size: 13px; color: var(--rb-text-2); }
+.ide-launchpad-card__badge {
+  font-size: 11px;
+  color: var(--rb-text-3);
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.ide-launchpad-card .ide-button {
+  margin-top: 8px;
+  align-self: flex-start;
+}
+
+@keyframes lp-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(46,196,182,0); }
+  50%       { box-shadow: 0 0 0 3px rgba(46,196,182,0.3); }
+}
+
+/* ════════════════════════════════════════════════════════════════
    Project Surface — Hero Onboarding Panel
    ════════════════════════════════════════════════════════════════ */
 
@@ -5603,6 +5709,14 @@ details[open] summary .details-arrow {
     minmax(0, 1fr)
     6px
     minmax(200px, 240px);
+}
+
+/* Project surface hides right dock entirely */
+.ide-workbench-main.hide-right-dock {
+  grid-template-columns:
+    minmax(180px, var(--ide-workbench-left-width))
+    6px
+    minmax(0, 1fr);
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -6553,6 +6667,7 @@ details[open] summary .details-arrow {
   flex-shrink: 0;
 }
 
+
 /* ── Phase 19A: Kit tip strip — collapsible one-liner ── */
 .ide-verify-kit-tip {
   border-bottom: 1px solid rgba(255,255,255,0.05);
@@ -6632,6 +6747,34 @@ details[open] summary .details-arrow {
   font-size: 10px;
   color: rgba(140,165,200,0.5);
   font-family: var(--rb-font-mono);
+}
+
+/* PR13: Secondary controls — visually quieter, all features present */
+.ide-verify-wfbar-center,
+.ide-verify-wfbar-right {
+  opacity: 0.82;
+  transition: opacity 0.15s;
+}
+.ide-verify-wfbar-center:hover,
+.ide-verify-wfbar-right:hover {
+  opacity: 1;
+}
+
+/* Quieter truth table header weight */
+.ide-truth-table-header {
+  opacity: 0.88;
+}
+
+/* Strip secondary ghost/secondary buttons — de-emphasized */
+.ide-verify-strip-actions .ide-button-ghost,
+.ide-verify-strip-actions .ide-button-secondary {
+  opacity: 0.8;
+  font-size: 11px;
+  transition: opacity 0.15s;
+}
+.ide-verify-strip-actions .ide-button-ghost:hover,
+.ide-verify-strip-actions .ide-button-secondary:hover {
+  opacity: 1;
 }
 
 /* ── Phase 19C: Left dock — compact navigation feel ── */
@@ -6737,8 +6880,8 @@ details[open] summary .details-arrow {
   min-width: 0;
 }
 .ide-verify-pass-hero-title {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   color: #a7f3d0;
   letter-spacing: 0.01em;
 }
@@ -6750,6 +6893,7 @@ details[open] summary .details-arrow {
   display: flex;
   gap: var(--ide-space-2);
   flex-shrink: 0;
+  margin-top: 12px;
 }
 .ide-verify-pass-hero-hash {
   font-family: var(--rb-font-mono);
@@ -6876,7 +7020,7 @@ details[open] summary .details-arrow {
   height: clamp(440px, 55vh, 560px);
   min-height: 440px;
   border-right: 1px solid rgba(24,44,72,0.7);
-  background: rgba(2,8,16,0.94);
+  background: rgba(8, 16, 30, 0.92);
 }
 .ide-verify-oscilloscope-stage .ide-waveform-outer {
   flex: 1 1 auto;
@@ -7243,7 +7387,7 @@ details[open] summary .details-arrow {
   border-top: 1px solid rgba(255,255,255,0.06);
   overflow: hidden;
   max-height: 44px;
-  transition: max-height 0.18s ease;
+  transition: max-height 0.14s ease;
 }
 .ide-verify-supporting-strip.is-open {
   max-height: 260px;
@@ -7259,6 +7403,8 @@ details[open] summary .details-arrow {
   cursor: pointer;
   color: rgba(160,185,215,0.7);
   flex-shrink: 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  justify-content: space-between;
 }
 .ide-verify-drawer-toggle:hover {
   background: rgba(56,189,248,0.04);
