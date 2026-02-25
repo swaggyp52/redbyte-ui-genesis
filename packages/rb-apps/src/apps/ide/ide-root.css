@@ -869,6 +869,7 @@
   justify-content: space-between;
   gap: var(--ide-space-2);
   min-height: var(--ide-title-row-height);
+  min-height: 30px; /* PR14: tighter header — override */
 }
 
 .ide-surface-header {
@@ -2387,6 +2388,15 @@
   line-height: var(--rb-line-height-4);
 }
 
+/* PR14: Details tab advanced actions */
+.ide-verify-details-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
 .ide-verify-hash-block {
   display: grid;
   gap: 4px;
@@ -3403,6 +3413,7 @@
 
 .ide-inspector-section {
   padding: var(--ide-card-pad);
+  padding: 8px 12px; /* PR14: tighter — override */
   border-color: color-mix(in srgb, var(--ide-border) 88%, transparent 12%);
   background: linear-gradient(180deg, rgba(14, 24, 35, 0.84), rgba(10, 19, 28, 0.86));
 }
@@ -6723,7 +6734,7 @@ details[open] summary .details-arrow {
   border-bottom: 1px solid rgba(255,255,255,0.06);
   background: rgba(0,0,0,0.18);
   flex-shrink: 0;
-  min-height: 34px;
+  min-height: 30px; /* PR14: 4px recovered */
   overflow: hidden;
 }
 .ide-verify-wfbar-group {
@@ -7500,6 +7511,71 @@ details[open] summary .details-arrow {
 .ide-verify-mismatch-redirect .ide-copy {
   color: rgba(160,185,215,0.55);
   font-size: 11px;
+}
+
+/* PR14: Mismatch inline list */
+.ide-verify-mismatch-list {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  font-family: var(--rb-font-mono);
+}
+.ide-verify-mismatch-list thead th {
+  text-align: left;
+  padding: 4px 8px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ide-text-soft);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  position: sticky;
+  top: 0;
+  background: rgba(8,16,28,0.95);
+}
+.ide-verify-mismatch-row {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.ide-verify-mismatch-row:hover {
+  background: rgba(255,255,255,0.03);
+}
+.ide-verify-mismatch-tick {
+  width: 36px;
+  text-align: center;
+}
+.ide-verify-mismatch-tick-btn {
+  all: unset;
+  cursor: pointer;
+  color: var(--rb-accent);
+  font-size: 10px;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+.ide-verify-mismatch-tick-btn:hover {
+  background: rgba(46,196,182,0.12);
+}
+.ide-verify-mismatch-list td {
+  padding: 3px 8px;
+  vertical-align: middle;
+}
+.ide-verify-mismatch-signal { color: var(--rb-text-2); }
+.ide-verify-mismatch-expected { color: var(--rb-text-2); }
+.ide-verify-mismatch-actual--fail {
+  color: var(--rb-error, #ff6b6b);
+  font-weight: 600;
+}
+.ide-verify-mismatch-fix-btn {
+  all: unset;
+  cursor: pointer;
+  font-size: 9px;
+  font-family: var(--rb-font-sans);
+  color: var(--rb-error, #ff6b6b);
+  border: 1px solid rgba(255,107,107,0.3);
+  border-radius: 3px;
+  padding: 1px 5px;
+  transition: background 0.1s;
+}
+.ide-verify-mismatch-fix-btn:hover {
+  background: rgba(255,107,107,0.1);
 }
 
 /* ── Workbench flex: console-frame is the flex:1 child ── */

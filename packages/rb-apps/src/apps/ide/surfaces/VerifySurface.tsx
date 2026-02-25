@@ -1257,18 +1257,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </IdeButton>
             )}
             <IdeButton tone="ghost" onClick={clearResults} testId="ide-verify-clear">Clear</IdeButton>
-            {authoredVectors.length > 0 && onRunVerification && (
-              <span title="Always simulates from the circuit, ignoring the interactive runtime trace. Use for reproducible results.">
-                <IdeButton
-                  tone="ghost"
-                  onClick={runDeterministicVerification}
-                  disabled={runState === 'running'}
-                  testId="ide-verify-run-deterministic"
-                >
-                  Run Deterministic
-                </IdeButton>
-              </span>
-            )}
             {canSetOracle && (
               <span title="Updates your truth table expected values to match what the circuit currently produces. Use this once the circuit is behaving correctly.">
                 <IdeButton
@@ -1279,15 +1267,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   Capture observed outputs as expected
                 </IdeButton>
               </span>
-            )}
-            {displayStatus === 'FAIL' && firstFailure && onFixPath && (
-              <IdeButton
-                tone="danger"
-                onClick={() => { onFixPath(firstFailure); onGoToDesign?.(); }}
-                testId="ide-verify-jump-to-failure"
-              >
-                Jump to failing node →
-              </IdeButton>
             )}
           </div>
         </div>
@@ -1679,29 +1658,53 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <div className="ide-verify-tab-panel">
               {verifyTab === 'mismatches' && (
                 <section className="ide-verify-mismatch-panel" data-testid="ide-verify-mismatch-table">
-                  {status === 'fail' ? (
-                    <div className="ide-verify-mismatch-redirect" data-testid="ide-verify-mismatch-redirect">
-                      <p className="ide-copy">
-                        {failingRows.length} mismatch{failingRows.length !== 1 ? 'es' : ''} shown in the Truth Table panel above.
-                        Click any row to jump to that tick on the waveform.
-                      </p>
-                      {firstFailure && onFixPath && (
-                        <div className="ide-inline-actions">
-                          <IdeButton
-                            tone="secondary"
-                            onClick={() => onFixPath(firstFailure)}
-                            testId="ide-verify-mismatch-redirect-fix"
-                          >
-                            Fix first failure in Design
-                          </IdeButton>
-                        </div>
-                      )}
-                    </div>
-                  ) : failingRows.length === 0 ? (
+                  {failingRows.length === 0 ? (
                     <IdeCallout tone="success" title="No mismatches in current run">
                       PASS evidence is ready for export.
                     </IdeCallout>
-                  ) : null}
+                  ) : (
+                    <table className="ide-verify-mismatch-list" data-testid="ide-verify-mismatch-list">
+                      <thead>
+                        <tr>
+                          <th>Tick</th>
+                          <th>Signal</th>
+                          <th>Expected</th>
+                          <th>Actual</th>
+                          {onFixPath && <th />}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {failingRows.map((row) => (
+                          <tr key={`${row.tick}-${row.signal}`} className="ide-verify-mismatch-row">
+                            <td className="ide-verify-mismatch-tick">
+                              <button
+                                type="button"
+                                className="ide-verify-mismatch-tick-btn"
+                                onClick={() => setSelectedTick(row.tick)}
+                              >
+                                t{row.tick}
+                              </button>
+                            </td>
+                            <td><code className="ide-verify-mismatch-signal">{row.signal}</code></td>
+                            <td><code className="ide-verify-mismatch-expected">{row.expected}</code></td>
+                            <td><code className="ide-verify-mismatch-actual--fail">{row.actual}</code></td>
+                            {onFixPath && (
+                              <td>
+                                <button
+                                  type="button"
+                                  className="ide-verify-mismatch-fix-btn"
+                                  onClick={() => { onFixPath({ signal: row.signal, tick: row.tick, expected: row.expected, actual: row.actual }); onGoToDesign?.(); }}
+                                  title={`Fix ${row.signal} in Design`}
+                                >
+                                  Fix →
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </section>
               )}
 
@@ -1722,6 +1725,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
               {verifyTab === 'details' && (
                 <>
+                  {/* Advanced run actions */}
+                  <div className="ide-verify-details-actions" data-testid="ide-verify-details-actions">
+                    {authoredVectors.length > 0 && onRunVerification && (
+                      <IdeButton
+                        tone="secondary"
+                        onClick={runDeterministicVerification}
+                        disabled={runState === 'running'}
+                        testId="ide-verify-run-deterministic"
+                        title="Always simulates from the circuit, ignoring the interactive runtime trace. Use for reproducible results."
+                      >
+                        Run Deterministic
+                      </IdeButton>
+                    )}
+                  </div>
                   <section data-testid="ide-verify-signal-table">
                     <IdeDataTable
                       columns={['Signal', `Tick ${selectedTick ?? '-'}`, 'Expected', 'Actual']}
