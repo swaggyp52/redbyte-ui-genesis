@@ -41,7 +41,15 @@ $ErrorActionPreference = 'Stop'
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 
 # ── Resolve local SHA ─────────────────────────────────────────────────────────
+# Prefer origin/main (what Pages deploys) over local HEAD.
+# Resolution order: -CommitSha arg → origin/main (after fetch) → HEAD (fallback)
 
+if (-not $CommitSha) {
+  try {
+    & git -C $RepoRoot fetch origin --quiet 2>$null
+    $CommitSha = (& git -C $RepoRoot rev-parse origin/main 2>$null).Trim()
+  } catch {}
+}
 if (-not $CommitSha) {
   try { $CommitSha = (& git -C $RepoRoot rev-parse HEAD 2>$null).Trim() } catch {}
 }
