@@ -42,6 +42,7 @@ puts "REDBYTE_ARGS: proj=$proj part=$part top=$top"
 puts "REDBYTE_ARGS: src=$src"
 puts "REDBYTE_ARGS: xdc=$xdc"
 puts "REDBYTE_ARGS: outdir=$outdir"
+puts "REDBYTE_VIVADO_VERSION: [version -short]"
 
 # Create output directories
 file mkdir $outdir

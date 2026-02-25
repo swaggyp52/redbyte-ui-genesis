@@ -22,6 +22,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { createHash } from 'crypto';
+import { execSync } from 'child_process';
 
 // Relative imports from workspace source — not routed through package public API.
 // tsx is run from repo root, so ../../ == repo root.
@@ -98,6 +99,10 @@ const manifest = {
   exampleId,
   top: TOP,
   part: PART,
+  commitSha: (() => {
+    try { return execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim(); }
+    catch { return ''; }
+  })(),
   srcPath,
   xdcPath,
   srcSha256: sha256(bundle.topV),

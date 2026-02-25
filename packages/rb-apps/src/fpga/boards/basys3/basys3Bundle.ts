@@ -67,6 +67,12 @@ function buildTopXdc(ioMapping: IoMapping, warnings: string[]): string {
       lines.push(
         `set_property -dict { PACKAGE_PIN ${packagePin} IOSTANDARD LVCMOS33 } [get_ports {${toSignalName(entry)}}]`
       );
+      // Basys3 onboard 100 MHz oscillator is on W5 — emit timing constraint.
+      if (packagePin === 'W5') {
+        lines.push(
+          `create_clock -period 10.000 -name sys_clk -waveform {0.000 5.000} [get_ports {${toSignalName(entry)}}]`
+        );
+      }
     }
     lines.push('');
   }

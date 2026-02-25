@@ -85,6 +85,12 @@ $OutRootAbs   = Join-Path $RepoRoot $OutRoot
 $Part         = 'xc7a35tcpg236-1'
 $Top          = 'top'
 
+# ── Repo commit SHA ───────────────────────────────────────────────────────────
+
+$CommitSha = ''
+try { $CommitSha = (& git -C $RepoRoot rev-parse HEAD 2>$null).Trim() } catch {}
+Write-Host "Commit : $CommitSha"
+
 foreach ($required in @($TclScript, $ExportScript)) {
   if (-not (Test-Path $required)) {
     Write-Host "ERROR: Missing required file: $required"
@@ -112,11 +118,12 @@ foreach ($exId in $ExampleList) {
 
   New-Item -ItemType Directory -Force -Path $ExOutDir | Out-Null
 
-  $startTime   = Get-Date -Format 'o'
-  $exportOk    = $false
-  $vivadoOk    = $false
-  $bitExists   = $false
-  $failReason  = ''
+  $startTime     = Get-Date -Format 'o'
+  $exportOk      = $false
+  $vivadoOk      = $false
+  $bitExists     = $false
+  $failReason    = ''
+  $vivadoVersion = ''
 
   Write-Host "── $exId ─────────────────────────────────────────────────"
 
@@ -155,6 +162,10 @@ foreach ($exId in $ExampleList) {
       # Save full Vivado output for post-mortem
       $vivadoOutput | Out-File -FilePath $LogPath -Encoding utf8
 
+      # Extract Vivado version from REDBYTE_VIVADO_VERSION marker
+      $vLine = $vivadoOutput | Where-Object { $_ -match 'REDBYTE_VIVADO_VERSION:' } | Select-Object -First 1
+      if ($vLine) { $vivadoVersion = ($vLine -replace '.*REDBYTE_VIVADO_VERSION:\s*', '').Trim() }
+
       $bitExists = Test-Path $BitPath
 
       if ($vivadoExit -ne 0) {
@@ -180,13 +191,14 @@ foreach ($exId in $ExampleList) {
 
   # ── Read manifest for sha values ──────────────────────────────────────────
 
-  $srcSha = ''; $xdcSha = ''
+  $srcSha = ''; $xdcSha = ''; $manifestCommitSha = ''
   $manifestFile = Join-Path $ExOutDir 'manifest.json'
   if (Test-Path $manifestFile) {
     try {
-      $mJson  = Get-Content $manifestFile -Raw | ConvertFrom-Json
-      $srcSha = $mJson.srcSha256
-      $xdcSha = $mJson.xdcSha256
+      $mJson             = Get-Content $manifestFile -Raw | ConvertFrom-Json
+      $srcSha            = $mJson.srcSha256
+      $xdcSha            = $mJson.xdcSha256
+      $manifestCommitSha = if ($mJson.PSObject.Properties['commitSha']) { $mJson.commitSha } else { '' }
     } catch {
       # non-fatal — hashes will be empty in result.json
     }
@@ -195,20 +207,22 @@ foreach ($exId in $ExampleList) {
   # ── Write result.json ─────────────────────────────────────────────────────
 
   $resultObj = [ordered]@{
-    schemaVersion = 1
-    exampleId     = $exId
-    part          = $Part
-    top           = $Top
-    pass          = $passed
-    failReason    = if ($passed) { $null } else { $failReason }
-    srcPath       = $SrcPath
-    xdcPath       = $XdcPath
-    bitPath       = if ($bitExists) { [string]$BitPath } else { $null }
-    logPath       = $LogPath
-    srcSha256     = $srcSha
-    xdcSha256     = $xdcSha
-    startedAt     = $startTime
-    finishedAt    = (Get-Date -Format 'o')
+    schemaVersion  = 1
+    exampleId      = $exId
+    part           = $Part
+    top            = $Top
+    pass           = $passed
+    failReason     = if ($passed) { $null } else { $failReason }
+    vivadoVersion  = $vivadoVersion
+    commitSha      = if ($manifestCommitSha) { $manifestCommitSha } else { $CommitSha }
+    srcPath        = $SrcPath
+    xdcPath        = $XdcPath
+    bitPath        = if ($bitExists) { [string]$BitPath } else { $null }
+    logPath        = $LogPath
+    srcSha256      = $srcSha
+    xdcSha256      = $xdcSha
+    startedAt      = $startTime
+    finishedAt     = (Get-Date -Format 'o')
   }
 
   $resultObj | ConvertTo-Json | Out-File -FilePath $ResultPath -Encoding utf8
