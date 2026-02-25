@@ -1,0 +1,272 @@
+# ECE141 Lab Modernization Plan — Basys3 + Vivado + RedByte
+
+Generated: 2026-02-25
+Course: Gannon University ECE141 Digital Logic Design Lab
+Instructor: Dr. Jung (fac_jung002)
+Original tooling: Xilinx ISE 8.1i + Spartan2E/3 + ModelSim + parallel cable
+Target tooling: RedByte (browser) + Vivado 2025.1 + Basys3 + USB-JTAG
+
+---
+
+## Overview of the Modern Workflow
+
+The modernized workflow replaces every ISE-specific step with its current equivalent:
+
+| Original Step | Modern Equivalent |
+|---|---|
+| Launch Xilinx ISE 8.1i Project Navigator | Open RedByte in browser (no install) |
+| File > New Project, select Spartan2E | In RedByte, open lab starter from Project surface |
+| Add Schematic source, draw gates in ECS | Drag gates onto RedByte canvas (DesignSurface) |
+| HDL Bencher — set input waveforms | RedByte VerifySurface — enter test vectors in truth table |
+| ModelSim "Generate Expected Simulation Results" | RedByte "Run Verification" → PASS/FAIL per row |
+| ISE Synthesis + implement + PACE pin assignment | RedByte "Export Submission ZIP" → open in Vivado; XDC pre-generated |
+| iMPACT Configure Device via parallel cable | Vivado Hardware Manager > Program Device via USB-JTAG |
+| Lab report + instructor-signed notebook | RedByte Submission ZIP → grade/summary.json → instructor Import viewer |
+
+---
+
+## Per-Lab Modernization Plan
+
+### Lab 1 — Basic Gate Operation
+
+**Original:** Draw AND + 2x INV schematic in ISE. Build truth table manually.
+Simulate with ModelSim. Optional breadboard.
+
+**Modernized:**
+- Tool: RedByte only (no Vivado needed for Lab 1)
+- Starter: `01_wire-lamp` (pre-loaded in RedByte lab-1)
+- Student places NOT gate on input A, routes A through INV to AND2 input 1, routes B to AND2 input 2, routes AND2 output through INV to output F
+- Builds truth table rows in VerifySurface; runs verification
+- Gate to unlock submission: `sim-ran` (must run verify once)
+- Submits ZIP with circuit + verify evidence
+- No Basys3 required; no Vivado required
+
+**Outdated elements removed:**
+- Xilinx ISE setup (path config, ModelSim paths, library compile) — all gone
+- Breadboard wiring — replaced by software verification
+- Instructor notebook signature — replaced by submission ZIP + grade summary JSON
+
+**What stays:**
+- Learning objective: understand gate behavior, build truth table, verify outputs
+- Boolean equation derivation (F = ~(A' AND B)) — unchanged
+
+---
+
+### Lab 2 — 4-bit Binary Adder (Hierarchical Design)
+
+**Original:** Create full_adder schematic, use Symbol Wizard to create Macro,
+instantiate 4x in Adder_4bit top-level. Simulate 4 addition vectors.
+
+**Modernized:**
+- Tool: RedByte (starter pre-scaffolds hierarchy)
+- Starter: `09_4bit-adder` (pre-loaded in RedByte lab-2)
+- Starter provides 4 full-adder blocks placed on canvas; student wires carry chain
+  (FA[0].Cout → FA[1].Cin, etc.) and A/B inputs
+- Simulation vectors: the 4 addition cases from original PDF
+  (0100+1001, 1100+0011, 1110+1000, 0011+1101)
+- Gate to unlock: `probe-carry` — carry transition must be captured
+- No Basys3 required; no Vivado required
+
+**Outdated elements removed:**
+- ISE Symbol Wizard (Macro creation) — replaced by pre-built starter
+- ISE ECS schematic hierarchy — replaced by flat RedByte canvas with FA blocks
+
+**Gap flagged:** Students do not practice Macro creation. Instructor should add
+a pre-lab exercise asking students to describe what a Macro is and why hierarchy matters.
+
+---
+
+### Lab 3 — Seven-Segment Display Driver
+
+**Original:** Design SSD driver from truth table + K-maps → ISE schematic →
+synthesize to Spartan3 → assign pins via PACE → program with iMPACT → demonstrate on board.
+
+**Modernized — Phase 1 (Simulation only, no board session):**
+- Tool: RedByte
+- Starter: `12_2to4-decoder` adapted; or a new `seven-segment-driver` starter
+- Student fills truth table in VerifySurface (10 decimal digit patterns → 7 cathode outputs)
+- Verify all 10 digit patterns pass
+- Gate: `basys3-profile` block — must select Basys3 seven-segment preset
+
+**Modernized — Phase 2 (Hardware, if board available):**
+- Tool: RedByte export → Vivado 2025.1
+- Student exports Submission ZIP; ZIP includes `top.vhd` and `top.xdc`
+- Open Vivado, create project, add sources from ZIP, select xc7a35t-1cpg236C
+- Synthesize + implement → generate bitstream
+- Program Basys3 via Vivado Hardware Manager (USB-JTAG — no parallel cable)
+- Toggle SW[3:0] to observe decimal 0-9 on rightmost 7-segment digit
+
+**Pin mapping update (Basys3 replaces Spartan3 Digilab board):**
+
+| Signal | Original (Spartan3) | Basys3 Replacement |
+|---|---|---|
+| B3 input | SW4 | SW3 (W17) |
+| B2 input | SW3 | SW2 (W16) |
+| B1 input | SW2 | V16 |
+| B0 input | SW1 | V17 |
+| CA output | Spartan3 SSD pin | W7 (Basys3 CA) |
+| CB output | — | W6 |
+| CC output | — | U8 |
+| CD output | — | V8 |
+| CE output | — | U5 |
+| CF output | — | V5 |
+| CG output | — | U7 |
+| AN[0] | AN1 (active-low) | U2 (AN[0]) |
+
+XDC pre-generated by RedByte export. Students do not write XDC manually.
+
+**Outdated elements removed:**
+- Spartan3 Digilab board — replaced by Basys3
+- ISE PACE pin assignment GUI — replaced by RedByte-generated XDC
+- iMPACT parallel cable programming — replaced by Vivado Hardware Manager USB-JTAG
+- Engineering Change exercise (swap xc2s200e to xc3s200) — no longer relevant; one board target
+
+---
+
+### Lab 4 — Simplified ALU
+
+**Original:** MUX-based ALU (m8_1e) and Decoder-based ALU (d3_8e + tri-state bufe)
+in ISE schematic. 8 opcodes: AND, NAND, OR, NOR, XOR, XNOR, Sum, Carry.
+
+**Modernized:**
+- Tool: RedByte (starter `19_lab4-alu-starter-basys3`)
+- Starter pre-places AND, OR, XOR, FA blocks + 4x MUX4 output selectors
+- Student wires: A/B operand paths, carry chain, opcode select lines (SW[10:8])
+- Simplified opcode table (4 operations vs original 8): AND/OR/XOR/ADD
+- Simulation: test all 4 opcodes with carry-producing ADD case
+- Hardware: SW[3:0]=A, SW[7:4]=B, SW[10:8]=opcode, LED[3:0]=result, LED[4]=Cout
+
+**Key difference from original:** Original used tri-state buffers (bufe) for Decoder
+implementation. RedByte does not model tri-state. MUX implementation is used exclusively.
+The learning outcome (opcode-driven datapath selection) is preserved.
+
+**Outdated elements removed:**
+- Decoder + tri-state buffer implementation variant — removed (not supported in RedByte)
+- ISE m8_1e, d3_8e, bufe library primitives — replaced by RedByte MUX4 node
+
+---
+
+### Lab 5 — 2's Complement Adder/Subtractor
+
+**Original:** Hierarchical circuit (4 levels): full_adder → Adder/Subtractor →
+2's Complement Converter → top-level with SSD Driver. Full ISE schematic.
+
+**Modernized:**
+- Tool: RedByte (starter `20_lab5-addsub-starter-basys3`)
+- Starter pre-scaffolds the adder/subtractor structure
+- Student implements: mode-controlled XOR inversion on B inputs + carry-in from Mode signal
+- Simulation vectors: positive add, negative result, overflow detection
+- Hardware: M<-SW8, A[3:0]<-SW[7:4], B[3:0]<-SW[3:0], result->LEDs, overflow->LED
+
+**Outdated elements removed:**
+- Full 4-level ISE hierarchy (full_adder Macro, Adder/Subtractor Macro, 2's Complement Converter)
+- SSD display integration (simplified — LED output only in RedByte starter)
+
+---
+
+### Lab 6 — Latches and Flip-Flops
+
+**CURRENT GAP:** RedByte does not have T flip-flop or JK flip-flop node types,
+and does not have a D latch node. Only DFlipFlop is available.
+
+**Immediate workaround:** Lab 6 can be run with DFF only — students demonstrate
+edge-sensitive behavior and state hold. T-FF and JK-FF can be deferred to a future
+RedByte release.
+
+**Full modernization (requires new node types):**
+- Add `DLatch`, `TFlipFlop`, `JKFlipFlop` node types to `@redbyte/rb-logic-core`
+- Starter: provide one canvas with all 4 element types pre-placed, unconnected
+- Students wire inputs, run simulation vectors for each characteristic table row
+- Gate: `clock-evidence` — must capture clock edge transitions
+
+**Original IBUF requirement (ISE-specific) — dropped:**
+Original required IBUF on clock path because ISE/ModelSim required it.
+RedByte simulation has no such constraint. Clock is just a regular input.
+
+---
+
+### Lab 7 — Synchronous Counter
+
+**Original:** Design 4-bit binary counter with Load/CE/reset from D flip-flops.
+Create BCD counter variant. Connect to SSD via bus wiring.
+
+**Modernized:**
+- Tool: RedByte (starter `22_lab7-sync-counter-starter-basys3`)
+- Starter: 4x DFF blocks placed; student derives D equations from state table
+  and wires combinational next-state logic
+- BCD variant: student adds NAND detection gate for state 1001 → reset
+- Simulation: verify 0000→0001→...→1111→0000 sequence over N ticks
+- Gate: `sequence-proof` — must capture at least one full count window
+- Hardware: EN<-SW8, CLK<-button, RST<-SW6, Q[3:0]->LED[3:0]
+
+**Bus wiring concept — simplified:**
+Original lab dedicated a section to Xilinx bus wiring (Q(3:0) bus + bus taps).
+RedByte uses named nodes/wires; bus concept not needed. Remove from handout.
+
+---
+
+### Lab 8 — Sequential Network Design (Security Lock FSM)
+
+**Original:** 3-state Moore FSM (sequence detector for 010/100) + 2 counters
+(0-4 and 0-12) + SSD display. Full system in ISE schematic.
+
+**Modernized:**
+- Tool: RedByte (starter `23_lab8-fsm-lock-starter-basys3`)
+- Starter scaffolds block diagram from Figure 1 of original PDF
+- Student derives state diagram from problem statement, reduces states,
+  derives D flip-flop input equations, wires FSM in RedByte
+- Simulation: test the example stream X = 110010010100 → verify Z outputs
+- Gate: `fsm-paths` — must demonstrate both valid (unlock) and invalid path
+
+**Key learning objective preserved:**
+- State minimization procedure
+- Moore FSM output equation derivation
+- Non-overlapping sequence detection
+- Counter customization (0-4 and 0-12 counting sequences)
+
+---
+
+## Priority Ranking
+
+| Priority | Action | Impact | Effort |
+|---|---|---|---|
+| P1 | Add DLatch, TFlipFlop, JKFlipFlop node types | Unblocks Lab 6 completely | High (core library change) |
+| P2 | Create updated Lab 3 handout with Basys3 pin table + Vivado steps | Lab 3 is the first hardware lab; most student friction | Low |
+| P3 | Add waveform display to VerifySurface | Labs 6-7 fidelity; required for clock-edge visualization | Medium |
+| P4 | Create updated Lab 1 handout (pure RedByte, no ISE) | Lowest friction entry point for new students | Low |
+| P5 | Update Lab 4 ALU starter to match Basys3 SW/LED pin table exactly | Lab 4 is currently functional but pin table needs audit | Low |
+
+---
+
+## What Stays the Same (Learning Outcomes Preserved)
+
+All 8 labs preserve these learning outcomes from the original PDFs:
+1. Boolean algebra and gate-level reasoning (Lab 1)
+2. Hierarchical circuit design concepts (Lab 2)
+3. Combinational decode logic for SSD (Lab 3)
+4. Opcode-driven datapath selection (Lab 4)
+5. Two's complement arithmetic (Lab 5)
+6. Storage elements: edge vs. level sensitivity (Lab 6)
+7. Synchronous counter design from state tables (Lab 7)
+8. FSM design: state minimization, Moore model, sequence detection (Lab 8)
+
+These are independent of the toolchain. The instructor's expected competencies
+do not change; only the implementation environment changes.
+
+---
+
+## What Changes (Tooling Replacements)
+
+| Removed | Replaced By | Note |
+|---|---|---|
+| Xilinx ISE 8.1i | RedByte (browser) | No install required |
+| ISE ECS schematic capture | RedByte DesignSurface | Equivalent drag-and-drop |
+| ISE Symbol Wizard (Macros) | RedByte example starters | Pre-scaffolded hierarchy |
+| ModelSim HDL Bencher | RedByte VerifySurface | Equivalent truth-table verification |
+| ISE XST synthesis | Vivado 2025.1 | Student opens ZIP in Vivado |
+| ISE PACE pin assignment | RedByte XDC export | No manual pin editing needed |
+| iMPACT + parallel cable | Vivado Hardware Manager + USB-JTAG | Built into Basys3 board |
+| Spartan2E / Spartan3 board | Basys3 (Artix-7 XC7A35T) | Current Digilent board |
+| Word doc lab report + signature | RedByte submission ZIP | Machine-readable + reimportable |
+| K-map derivation (hand-drawn) | Still required — hand-drawn in pre-lab | Unchanged; conceptual step |
+| State table derivation (hand-drawn) | Still required — hand-drawn in pre-lab | Unchanged; conceptual step |
