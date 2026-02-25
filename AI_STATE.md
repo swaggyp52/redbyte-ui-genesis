@@ -16308,3 +16308,14 @@ Notes:
 - **Build Verification**:
   - ✅ `pnpm vitest run packages/rb-apps/src/export/__tests__/stopship-verify.test.ts packages/rb-apps/src/export/__tests__/golden-examples.test.ts` → 39/39 pass
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-02-24 (PR3 — Canvas + UX Ergonomics)
+
+- Fixed `parseWireId` (`packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`): replaced `indexOf('-')` split (broken for `node-v2-*` IDs) with a scan-all-hyphen-splits approach that validates each half has a dot-separated `{nodeId}.{portName}` where portName contains no dots or hyphens. Fixes wire deletion via Delete key for all node IDs.
+- Added Delete/Backspace keyboard handler in `DesignSurface.tsx`: guards against focus in `<input>`, `<textarea>`, or `contentEditable` elements, then calls existing `deleteSelection()` which handles both node and wire deletion with undo history + `onCircuitMutated` notification.
+- Added draggable split divider between canvas and HDL panes in split view: pointer-capture drag on `.ide-design-split-handle` div computes `splitRatio = (clientX - rect.left) / rect.width` against `paneRowRef`, writes to `useLayoutStore.setSplitRatio` (auto-persists to localStorage). Canvas pane gets `flex: 0 0 ${splitRatio * 100}%` inline style; HDL pane gets `flex: 0 0 ${(1 - splitRatio) * 100}%`. Handle has hover + `.is-dragging` visual states.
+- Added `.ide-design-split-handle` CSS in `ide-root.css`: `flex: 0 0 6px`, `cursor: col-resize`, `touch-action: none` (required for pointer capture), accent-blue background on hover/dragging.
+
+- **Build Verification**:
+  - ✅ `pnpm vitest run packages/rb-apps/src/export/__tests__/golden-examples.test.ts packages/rb-apps/src/export/__tests__/stopship-verify.test.ts` → 39/39 pass
+- **Attribution**: Connor Angiel

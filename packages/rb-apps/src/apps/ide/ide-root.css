@@ -6324,6 +6324,22 @@ details[open] summary .details-arrow {
   border-left: 1px solid rgba(56,189,248,0.1);
 }
 
+/* Drag handle between canvas and HDL panes in split mode */
+.ide-design-split-handle {
+  flex: 0 0 6px;
+  min-width: 6px;
+  cursor: col-resize;
+  background: rgba(56, 189, 248, 0.08);
+  border-left: 1px solid rgba(56, 189, 248, 0.12);
+  border-right: 1px solid rgba(56, 189, 248, 0.12);
+  transition: background 0.15s ease;
+  touch-action: none; /* required for pointer capture API */
+}
+.ide-design-split-handle:hover,
+.ide-design-split-handle.is-dragging {
+  background: rgba(56, 189, 248, 0.22);
+}
+
 /* Canvas pane internals: each layer must pass height down */
 .ide-design-pane--canvas .ide-design-canvasWrap {
   display: flex;

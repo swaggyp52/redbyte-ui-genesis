@@ -8,6 +8,7 @@ import {
   type NodeIoPresentation,
 } from '@redbyte/rb-logic-view';
 import { useCircuitStore } from '../../../stores/circuitStore';
+import { useLayoutStore } from '../../../stores/layoutStore';
 import { digestValue } from '../../../utils/digest';
 import type { IdeDiagnostic, IdeDiagnosticRouteRequest } from '../diagnostics';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
@@ -247,6 +248,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [hasInteracted, setHasInteracted] = useState(false);
   const [designView, setDesignView] = useState<'canvas' | 'hdl' | 'split'>('canvas');
   const [hdlDraftText, setHdlDraftText] = useState('');
+  const splitRatio = useLayoutStore((state) => state.splitRatio);
+  const setSplitRatio = useLayoutStore((state) => state.setSplitRatio);
+  const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
+  const paneRowRef = useRef<HTMLDivElement>(null);
 
   // Force canvas host to recompute its size when view mode changes.
   // Double-rAF: first frame applies display changes, second measures new dims.
@@ -325,6 +330,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         event.preventDefault();
         redo();
         onCircuitMutated?.();
+      } else if (event.key === 'Delete' || event.key === 'Backspace') {
+        // Guard: don't intercept when focus is in an editable element
+        const activeEl = document.activeElement as HTMLElement | null;
+        const tag = activeEl?.tagName?.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || activeEl?.isContentEditable) return;
+        event.preventDefault();
+        deleteSelection();
       } else if (event.key === 'Escape') {
         clearSelection();
         if (toolMode === 'wire') {
@@ -338,7 +350,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [clearSelection, onCircuitMutated, redo, setToolMode, toolMode, undo]);
+  }, [clearSelection, deleteSelection, onCircuitMutated, redo, setToolMode, toolMode, undo]);
 
   useEffect(() => {
     if (!actionToast) return;
@@ -1618,8 +1630,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             )}
 
             {/* ── Content Pane Row — owns height below toolbar — switches between column/row ── */}
-            <div className="ide-design-pane-row" data-design-view={designView} data-testid="ide-design-pane-row">
-              <div className="ide-design-pane ide-design-pane--canvas">
+            <div
+              ref={paneRowRef}
+              className="ide-design-pane-row"
+              data-design-view={designView}
+              data-testid="ide-design-pane-row"
+            >
+              <div
+                className="ide-design-pane ide-design-pane--canvas"
+                style={designView === 'split' ? { flex: `0 0 ${splitRatio * 100}%`, minWidth: 0 } : undefined}
+              >
 
             {/* ── Canvas title strip ── */}
             <div className="ide-design-canvas-titlebar" data-testid="ide-design-canvas-titlebar">
@@ -1842,9 +1862,35 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>{/* close ide-design-canvasWrap */}
               </div>{/* close ide-design-pane--canvas */}
 
+            {/* ── Split divider handle — drag to resize ── */}
+            {designView === 'split' && (
+              <div
+                className={`ide-design-split-handle${isDraggingSplitter ? ' is-dragging' : ''}`}
+                data-testid="ide-design-split-handle"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  (e.target as HTMLElement).setPointerCapture(e.pointerId);
+                  setIsDraggingSplitter(true);
+                }}
+                onPointerMove={(e) => {
+                  if (!isDraggingSplitter || !paneRowRef.current) return;
+                  const rect = paneRowRef.current.getBoundingClientRect();
+                  setSplitRatio((e.clientX - rect.left) / rect.width);
+                }}
+                onPointerUp={(e) => {
+                  (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+                  setIsDraggingSplitter(false);
+                }}
+              />
+            )}
+
             {/* ── HDL Pane — visible in hdl and split views ── */}
             {designView !== 'canvas' && (
-              <div className="ide-design-pane ide-design-pane--hdl" data-testid="ide-design-hdl-pane">
+              <div
+                className="ide-design-pane ide-design-pane--hdl"
+                data-testid="ide-design-hdl-pane"
+                style={designView === 'split' ? { flex: `0 0 ${(1 - splitRatio) * 100}%`, minWidth: 0 } : undefined}
+              >
                 {/* VHDL section */}
                 <div className="ide-design-hdl-header" data-testid="ide-design-hdl-header">
                   <span className="ide-design-hdl-header-title">top.vhd</span>
@@ -2075,20 +2121,29 @@ function normalizeCircuitForCanvas(circuit: Circuit): Circuit {
 function parseWireId(
   wireId: string
 ): { fromNodeId: string; fromPort: string; toNodeId: string; toPort: string } | null {
-  const separatorIndex = wireId.indexOf('-');
-  if (separatorIndex < 0) return null;
-  const fromRaw = wireId.slice(0, separatorIndex);
-  const toRaw = wireId.slice(separatorIndex + 1);
-  const fromDot = fromRaw.indexOf('.');
-  const toDot = toRaw.indexOf('.');
-  if (fromDot < 0 || toDot < 0) return null;
-
-  return {
-    fromNodeId: fromRaw.slice(0, fromDot),
-    fromPort: fromRaw.slice(fromDot + 1),
-    toNodeId: toRaw.slice(0, toDot),
-    toPort: toRaw.slice(toDot + 1),
-  };
+  // Wire IDs: "{fromNodeId}.{fromPort}-{toNodeId}.{toPort}"
+  // Node IDs may contain hyphens (e.g. "node-v2-1"), so we cannot split on the first "-".
+  // Port names are alphanumeric+underscore only — no dots or hyphens — so we scan all
+  // hyphen positions and pick the first split where both halves have a valid {id}.{port}.
+  const segments = wireId.split('-');
+  for (let split = 1; split < segments.length; split++) {
+    const fromPart = segments.slice(0, split).join('-');
+    const toPart = segments.slice(split).join('-');
+    const fromDot = fromPart.lastIndexOf('.');
+    const toDot = toPart.lastIndexOf('.');
+    if (fromDot < 0 || toDot < 0) continue;
+    const fromPort = fromPart.slice(fromDot + 1);
+    const toPort = toPart.slice(toDot + 1);
+    // Port names must not contain dots or hyphens
+    if (fromPort.includes('.') || fromPort.includes('-')) continue;
+    if (toPort.includes('.') || toPort.includes('-')) continue;
+    const fromNodeId = fromPart.slice(0, fromDot);
+    const toNodeId = toPart.slice(0, toDot);
+    if (fromNodeId.length > 0 && toNodeId.length > 0) {
+      return { fromNodeId, fromPort, toNodeId, toPort };
+    }
+  }
+  return null;
 }
 
 function predictNextNodeIds(circuit: Circuit, count: number): string[] {
