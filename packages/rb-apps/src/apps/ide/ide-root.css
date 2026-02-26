@@ -9327,3 +9327,119 @@ details[open] summary .details-arrow {
 .ide-rail-chevron--left  { transform: rotate(135deg) translate(-1px, 1px); }
 
 /* End Phase 7 */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PHASE 8 — Layout Reorganization: Structural Fixes
+   Identity: B+C — Clean academic lab IDE + Linear/Vercel spatial discipline
+   No behavior changes. No test ID changes. CSS structure only.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Remove all decorative background gradients ──────────────────────── */
+
+/* Kill the bottom-left yellow + top-right teal radial glow.
+   This was the most prominent artifact on the Project page. */
+.ide-backdrop-gradient {
+  background: none;
+}
+
+/* Body: one flat dark base — no radial fog bleeding through the shell.
+   Everything is opaque from here up. */
+:root[data-redbyte-mode='ide'] body {
+  background: #070d16;
+}
+
+/* Shell root: consistent flat base */
+.ide-root {
+  background: #070d16;
+}
+
+/* Layout shell column: no stray bg color */
+.ide-layout-shell {
+  background: #070d16;
+}
+
+/* ── 2. Left rail: fully solid, occludes app shell ──────────────────────── */
+
+/* Phase 7 already set background: #070d16 — adding z-index + position
+   to guarantee it stacks above any background layer that bleeds through. */
+.ide-left-rail {
+  background: #070d16;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── 3. Flatten card hierarchy — max 2 visual depth levels ─────────────── */
+
+/*  Depth map after Phase 8:
+    Level 0: app shell (#070d16 — body, ide-root, shell)
+    Level 1: dock / workspace surfaces (var(--rb-elevation-dock/workspace))
+    Level 2: content — text, tables, forms — no nested card border
+    Removed: .ide-project-hero card border inside workspace panel (was Level 3) */
+
+/* Project hero: was a bordered gradient card inside IdePanel.
+   Now it's a plain visual section — padding only, no border or background card. */
+.ide-project-hero {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: var(--ide-space-2) 0 var(--ide-space-2) 0 !important;
+  margin-top: var(--ide-space-1);
+}
+
+/* Workspace panel in project: reduce the visual "lift" to feel flush.
+   Border made subtle so it reads as a content region, not a floating card. */
+.ide-workbench-workspace > .ide-panel {
+  border-color: rgba(41, 68, 94, 0.25);
+  box-shadow: none;
+}
+
+/* ── 4. ProjectSurface: tighter vertical rhythm ─────────────────────────── */
+
+/* Left dock: tighter top gap */
+.ide-workbench-placeholder {
+  padding-top: var(--ide-space-1);
+}
+
+/* Dock header: reduce weight, it's navigation not a title */
+.ide-workbench-placeholder-header h3 {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(140, 175, 210, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Hero status message: clear, not cramped */
+.ide-project-hero-status {
+  margin: 0 0 var(--ide-space-2) 0;
+  font-size: 13px;
+  color: var(--rb-text-2);
+  line-height: 1.4;
+}
+
+/* Launchpad cards: tighter padding, cleaner borders */
+.ide-launchpad-card {
+  padding: var(--ide-space-2) var(--ide-space-2);
+}
+
+/* ── 5. Header + pipeline strip: seamless top band ──────────────────────── */
+
+/* TopBar: already #070d16 from Phase 7; make border crisper */
+.ide-top-bar {
+  background: #070d16;
+  border-bottom: 1px solid rgba(46, 196, 182, 0.1);
+}
+
+/* Pipeline strip: flush continuation of top band */
+.ide-pipeline-strip {
+  background: #070d16 !important;
+  border-top: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* ── 6. Remove project-hero override gradient stacking from prior phases ─── */
+/* Earlier phases added .ide-project-hero overrides with radial/linear
+   backgrounds. The !important above defeats those. */
+
+/* End Phase 8 */
