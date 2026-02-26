@@ -8865,3 +8865,465 @@ details[open] summary .details-arrow {
 .ide-export-plan-row-desc {
   font-size: 10px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Phase 7 — Design Sprint: Coherent Header, Numbered Rail, Typography Polish
+   Swings A–E
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Shell baseline: widen to 72px collapsed rail ────────────────────────── */
+:root[data-redbyte-mode='ide'] {
+  --ide-rail-width: 72px;
+  --ide-topbar-height: 48px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SWING A — Unified Header Band
+   TopBar + PipelineStrip share one dark background, no visible seam.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.ide-top-bar {
+  height: var(--ide-topbar-height);
+  min-height: var(--ide-topbar-height);
+  background: #070d16;
+  border-bottom: none;
+  padding: 0 var(--ide-space-3);
+  grid-template-columns: 1fr auto;
+  gap: var(--ide-space-3);
+}
+.ide-top-bar::after {
+  display: none; /* remove the teal gradient underline — pipeline strip handles the bottom edge */
+}
+
+/* Brand mark: clean hex SVG container, no gradient box */
+.ide-brand-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  flex-shrink: 0;
+}
+.ide-brand-svg {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
+/* Wordmark "RedByte" */
+.ide-brand-wordmark {
+  font-family: var(--rb-font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: rgba(180, 220, 255, 0.85);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Breadcrumb separators */
+.ide-breadcrumb-sep {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.18);
+  font-weight: 300;
+  flex-shrink: 0;
+  padding: 0 2px;
+}
+
+/* Project name: bigger, readable */
+.ide-project-name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--rb-text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.ide-project-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.ide-project-subline {
+  display: none; /* hide the project ID hash from the topbar — too noisy */
+}
+
+/* Active mode breadcrumb */
+.ide-mode-breadcrumb {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--rb-accent);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Basys3 board chip: repositioned after project name */
+.ide-board-chip {
+  margin-left: var(--ide-space-1);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(46, 196, 182, 0.75);
+  background: rgba(46, 196, 182, 0.08);
+  border: 1px solid rgba(46, 196, 182, 0.22);
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Save state: dot only, small label */
+.ide-save-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.ide-save-dot--ok       { background: var(--rb-success); box-shadow: 0 0 0 2px rgba(82,210,115,0.15); }
+.ide-save-dot--saving   { background: var(--rb-warning); animation: pipeline-pulse 1.4s ease-in-out infinite; }
+.ide-save-dot--unsaved  { background: rgba(255,255,255,0.25); }
+
+.ide-save-label {
+  font-size: 11px;
+  color: rgba(180, 200, 220, 0.45);
+  white-space: nowrap;
+}
+
+/* Top-right group: tighter */
+.ide-top-right {
+  gap: var(--ide-space-1);
+  flex-shrink: 0;
+}
+
+/* Pipeline strip: visually unified with topbar */
+.ide-surface-column > .ide-pipeline-strip {
+  background: #0a1220;
+  border-top: none;
+  border-bottom: 1px solid rgba(46, 196, 182, 0.18);
+  box-shadow: none;
+  padding: 0 var(--ide-space-3);
+  min-height: 36px;
+}
+
+/* Pipeline badges: slightly larger for readability */
+.ide-pipeline-badge {
+  width: 20px;
+  height: 20px;
+  font-size: 10px;
+  border-radius: 5px;
+}
+.ide-pipeline-label {
+  font-size: 12px;
+}
+.ide-pipeline-stage {
+  gap: var(--ide-space-1);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SWING B — Left Rail: Numbered Workflow Steps
+   72px collapsed, always-visible labels, clear step hierarchy.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.ide-left-rail {
+  width: 72px;
+  background: #070d16;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  padding: var(--ide-space-1) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Utility sections */
+.ide-left-rail-utility-top,
+.ide-left-rail-utility-bottom {
+  padding: 2px var(--ide-space-0);
+}
+
+/* Divider */
+.ide-rail-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.05);
+  margin: 2px var(--ide-space-1);
+  flex-shrink: 0;
+}
+
+/* Nav: centered column */
+.ide-left-rail-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px var(--ide-space-0);
+  overflow: hidden;
+}
+
+/* ── Mode button: collapsed (72px rail) ─────────────────────────────────── */
+.ide-mode-button {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 4px 6px;
+  background: transparent;
+  color: rgba(140, 165, 190, 0.65);
+  cursor: pointer;
+  transition:
+    background var(--rb-motion-fast) var(--rb-ease-standard),
+    color var(--rb-motion-fast) var(--rb-ease-standard);
+  min-height: 52px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.ide-mode-button:hover {
+  background: rgba(46, 196, 182, 0.06);
+  color: rgba(180, 215, 235, 0.85);
+}
+.ide-mode-button:focus-visible {
+  outline: 2px solid var(--rb-focus-ring);
+  outline-offset: -2px;
+}
+
+/* Step mode: left accent bar on active */
+.ide-mode-button--step.is-active {
+  background: rgba(46, 196, 182, 0.1);
+  color: #c8fff8;
+}
+.ide-mode-button--step.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--rb-accent);
+}
+
+/* Utility mode active */
+.ide-mode-button--utility.is-active {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(200, 220, 240, 0.9);
+}
+
+/* Step number badge */
+.ide-step-num {
+  font-family: var(--rb-font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(100, 140, 175, 0.6);
+  line-height: 1;
+  margin-bottom: 1px;
+}
+.ide-mode-button--step.is-active .ide-step-num {
+  color: rgba(46, 196, 182, 0.7);
+}
+
+/* Icon wrapper */
+.ide-mode-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Label: always visible in collapsed rail */
+.ide-mode-label {
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.03em;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 62px;
+  color: inherit;
+}
+
+/* ── Expanded rail (160px) ───────────────────────────────────────────────── */
+.ide-left-rail--expanded {
+  width: 160px;
+}
+.ide-left-rail--expanded .ide-mode-button {
+  flex-direction: row;
+  align-items: center;
+  text-align: left;
+  padding: 8px 12px;
+  gap: var(--ide-space-1);
+  min-height: 40px;
+}
+.ide-left-rail--expanded .ide-step-num {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: rgba(80, 120, 155, 0.5);
+}
+.ide-left-rail--expanded .ide-mode-label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  max-width: none;
+}
+
+/* Collapse toggle in expanded mode */
+.ide-left-rail--expanded .ide-left-rail-footer {
+  align-items: stretch;
+  padding: 4px 8px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SWING C — Typography: Surface Headings, Labels, Body
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Section header h3: readable, not screaming uppercase */
+.ide-export-section-header h3,
+.ide-section-header h3 {
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-weight: 600;
+  color: rgba(180, 205, 225, 0.8);
+}
+
+/* Inspector section headers: same treatment */
+.ide-inspector-section-header {
+  padding: var(--ide-space-2) var(--ide-space-3);
+}
+.ide-inspector-section-header > * {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+/* KV rows: consistent 12px */
+.ide-kv-row {
+  font-size: 12px;
+}
+.ide-inspector-section .ide-kv-row {
+  font-size: 12px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SWING D — ExportSurface Layout Hierarchy
+   Primary CTA (Download Vivado Kit) gets visual dominance.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Build card: more prominent */
+.ide-export-buildCard {
+  border-color: rgba(46, 196, 182, 0.2);
+  background: rgba(46, 196, 182, 0.04);
+  padding: var(--ide-space-3) var(--ide-space-3);
+}
+
+/* Export section: slightly more breathing room */
+.ide-export-section {
+  gap: var(--ide-space-2);
+}
+
+/* Section titles: no uppercase, readable */
+.ide-export-section-header h3 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--rb-text-1);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SWING E — Remove Enterprise Dashboard Visuals
+   Reduce nested borders, reduce pills density, use whitespace.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Inspector sections: simpler borders */
+.ide-inspector-section {
+  border-radius: 8px;
+  border-color: rgba(41, 68, 94, 0.5);
+}
+
+/* Status pills: smaller, less heavy */
+.ide-status-pill {
+  font-size: 10px;
+  padding: 1px 6px;
+  font-weight: 600;
+}
+
+/* Pipeline strip stages: remove letter-glyph box shadow */
+.ide-pipeline-stage--active {
+  background: rgba(46, 196, 182, 0.09);
+  border-radius: 6px;
+}
+
+/* Surface layout: more breathing room between sections */
+.ide-export-layout {
+  gap: var(--ide-space-4);
+}
+
+/* Left rail footer */
+.ide-left-rail-footer {
+  padding: 4px var(--ide-space-0);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Collapse button */
+.ide-rail-collapse-btn {
+  width: 32px;
+  height: 24px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  color: rgba(140, 165, 190, 0.5);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--rb-motion-fast), color var(--rb-motion-fast);
+}
+.ide-rail-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(180, 210, 235, 0.8);
+}
+
+/* ── Chevron glyphs ─────────────────────────────────────────────────────── */
+.ide-rail-chevron {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+}
+.ide-rail-chevron--right { transform: rotate(-45deg) translate(-1px, 1px); }
+.ide-rail-chevron--left  { transform: rotate(135deg) translate(-1px, 1px); }
+
+/* End Phase 7 */
