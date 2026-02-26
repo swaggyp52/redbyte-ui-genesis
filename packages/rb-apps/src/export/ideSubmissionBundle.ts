@@ -4,7 +4,10 @@ import { encodeRBProject } from './projectFormat';
 import { stableSerialize } from '../utils/stableSerialize';
 import { stableStringify } from './stableStringify';
 import type { VerifyRunLedgerEntry, RuntimeVerifyRun } from '../apps/ide/projectRuntime';
-import { validateSubmissionForLab } from '../labs/submissionGates';
+import {
+  validateSubmissionForLab,
+} from '../labs/submissionGates';
+import { deriveProofRunFlags } from '../labs/proofRunFlags';
 import { compareCodepoint } from './codepointSort';
 
 const ZIP_ENTRY_DATE = new Date('2000-01-01T00:00:00.000Z');
@@ -37,6 +40,10 @@ export interface IdeSubmissionGradeSummary {
     complete: boolean;
   };
   vectors: { count: number };
+  proofRuns: {
+    sequenceProofRun: boolean;
+    fsmPathsRun: boolean;
+  };
 
   verifyRuns: {
     total: number;
@@ -123,7 +130,7 @@ function computeNodeTypes(nodes: RBProject['circuit']['nodes']): Record<string, 
   return counts;
 }
 
-function buildGradeSummary(input: {
+async function buildGradeSummary(input: {
   project: RBProject;
   verifyLastRun: RuntimeVerifyRun | null;
   verifyRunHistory: VerifyRunLedgerEntry[];
@@ -131,7 +138,7 @@ function buildGradeSummary(input: {
   appCommitSha: string;
   bundleId: string;
   deviceId: string;
-}): IdeSubmissionGradeSummary {
+}): Promise<IdeSubmissionGradeSummary> {
   const { project, verifyLastRun, verifyRunHistory, submittedAt, appCommitSha, bundleId, deviceId } = input;
 
   // Circuit summary
@@ -158,11 +165,13 @@ function buildGradeSummary(input: {
   const labId = project.meta?.labId;
   let gateResults: IdeSubmissionGradeSummary['gateResults'] = [];
   let overallGateVerdict: IdeSubmissionGradeSummary['overallGateVerdict'] = 'ungraded';
+  const proofRuns = await deriveProofRunFlags(project, labId ?? null);
 
   if (labId && labId.trim().length > 0) {
     const gateResult = validateSubmissionForLab(labId.trim(), {
       projectSnapshot: project,
       doctorReport: null,
+      recentRuns: proofRuns,
     });
     gateResults = gateResult.issues.map((issue) => ({
       gateId: issue.code,
@@ -198,6 +207,10 @@ function buildGradeSummary(input: {
       complete: allRows.length > 0 && mappedRows === allRows.length,
     },
     vectors: { count: (project.vectors ?? []).length },
+    proofRuns: {
+      sequenceProofRun: proofRuns.sequenceProofRun === true,
+      fsmPathsRun: proofRuns.fsmPathsRun === true,
+    },
     verifyRuns: {
       total: verifyRunHistory.length,
       passes,
@@ -301,7 +314,7 @@ export async function generateIdeSubmissionBundle(input: {
   const bundleId = await sha256Hex(bundleIdBytes);
 
   // Build grade summary (submittedAt lives here but NOT in bundleId)
-  const gradeSummary = buildGradeSummary({
+  const gradeSummary = await buildGradeSummary({
     project,
     verifyLastRun,
     verifyRunHistory,

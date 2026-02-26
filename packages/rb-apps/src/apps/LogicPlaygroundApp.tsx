@@ -4566,7 +4566,7 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
           <OverlayRoot className="bg-black bg-opacity-50 flex items-center justify-center">
             <OverlayPanel className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
               <h3 className="text-lg font-semibold mb-3 text-white">Load Example</h3>
-              <div className="flex-1 overflow-y-auto mb-4">
+              <div className="flex-1 overflow-y-auto mb-4" data-testid="ide-project-start-dock">
                 {([0, 1, 2, 3, 4, 5, 6] as CircuitLayer[]).map((layer) => {
                   const layerExamples = listExamplesByLayer(layer);
                   if (layerExamples.length === 0) return null;
@@ -4576,21 +4576,28 @@ const LogicPlaygroundInner: React.FC<LogicPlaygroundInnerProps> = ({
                         Layer {layer}: {getLayerDescription(layer)}
                       </h4>
                       <div className="space-y-1">
-                        {layerExamples.map((ex) => (
-                          <button
-                            key={ex.id}
-                            onClick={() => {
-                              handleLoadExample(ex.id);
-                              setShowExamplesModal(false);
-                            }}
-                            className="w-full text-left px-3 py-2 bg-gray-900 hover:bg-gray-700 border border-gray-700 rounded text-white text-sm transition-colors"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium">{ex.name}</span>
-                              <span className="text-xs text-gray-400">{ex.difficulty}</span>
-                            </div>
-                          </button>
-                        ))}
+                        {layerExamples.map((ex) => {
+                          const isActive = selectedExampleId === ex.id;
+                          return (
+                            <button
+                              key={ex.id}
+                              onClick={() => {
+                                handleLoadExample(ex.id);
+                                setShowExamplesModal(false);
+                              }}
+                              data-testid={`ide-project-example-${ex.id}`}
+                              data-example-id={ex.id}
+                              className={`w-full text-left px-3 py-2 bg-gray-900 hover:bg-gray-700 border border-gray-700 rounded text-white text-sm transition-colors ${isActive ? 'is-active ring-1 ring-cyan-500/70' : ''}`}
+                            >
+                              <span data-testid="ide-project-example-card" data-example-id={ex.id} className="hidden" />
+                              <span data-testid="ide-project-example-load" data-example-id={ex.id} className="hidden" />
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium ide-project-example-btn-name">{ex.name}</span>
+                                <span className="text-xs text-gray-400">{ex.difficulty}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   );

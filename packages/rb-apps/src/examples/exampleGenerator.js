@@ -28,6 +28,7 @@ export function convertLegacyCircuitToV1(legacy) {
 }
 export function generateExampleProject(source) {
     const circuit = convertLegacyCircuitToV1(source.legacyCircuit);
+    const labSpec = source.labSpec ? JSON.parse(JSON.stringify(source.labSpec)) : undefined;
     const now = new Date().toISOString();
     // Auto-detect probe candidates (outputs, LEDs, significant intermediate nodes)
     const probes = circuit.nodes
@@ -81,6 +82,7 @@ export function generateExampleProject(source) {
             },
         },
         ioMapping,
+        ...(labSpec ? { labSpec } : {}),
         evidence: {
             actions: [],
             snapshots: [],

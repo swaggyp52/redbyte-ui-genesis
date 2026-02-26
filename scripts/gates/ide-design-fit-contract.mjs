@@ -12,7 +12,7 @@ await runIdeGate('IDE design fit contract satisfied', async ({ page, baseUrl }) 
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
   await page.locator('[data-testid="mode-button-project"]').click();
-  await page.locator('[data-testid="ide-project-open-example-and-gate-basics"]').click();
+  await page.locator('[data-testid="ide-project-load-start-logic-gates"]').click();
   const replaceModalVisible = await page
     .locator('[data-testid="ide-example-confirm-modal"]')
     .first()
@@ -26,9 +26,9 @@ await runIdeGate('IDE design fit contract satisfied', async ({ page, baseUrl }) 
   await page.waitForSelector('[data-node-id]', { timeout: 15000 });
 
   const canvas = page.locator('[data-testid="ide-design-live-canvas"]').first();
-  const fitButton = page.locator('[data-testid="ide-design-fit-circuit"]').first();
-  const centerSelectionButton = page.locator('[data-testid="ide-design-center-selection"]');
-  const zoomPill = page.locator('[data-testid="ide-design-command-zoom"]').first();
+  const fitButton = page.locator('[data-testid="ide-design-fit-circuit-canvas"]').first();
+  const centerSelectionButton = page.locator('[data-testid="ide-design-center-selection-canvas"]');
+  const zoomPill = page.locator('[data-testid="ide-design-canvas-stat-zoom"]').first();
   assert(await visible(canvas), 'design canvas must be visible');
   assert(await visible(fitButton), 'fit-to-circuit control must be visible');
   assert((await centerSelectionButton.count()) > 0, 'center-selection control must exist');
@@ -81,3 +81,4 @@ await runIdeGate('IDE design fit contract satisfied', async ({ page, baseUrl }) 
 
   await fitButton.click();
 });
+

@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RedByteApp } from '../types';
 import styles from './SubmissionInspectorApp.module.css';
 import JSZip from 'jszip';
@@ -32,6 +32,11 @@ import type { ToolchainDoctorReport } from '../fpga/toolchainTypes';
 import { getClassroomLockdownState, getRedByteUiMode } from '../utils/uiMode';
 import type { SubmissionGateResult } from '../labs/submissionGates';
 import { NEO_STATUS } from '../ui/neoGlossary';
+import {
+  NotASubmissionZipError,
+  parseIdeSubmissionZip,
+  type ParsedIdeSubmission,
+} from '../export/parseIdeSubmission';
 
 const INSPECTOR_INVARIANTS = {
   reads: ['bundle', 'lab_templates'],
@@ -45,7 +50,7 @@ interface BundleData {
   manifest: Record<string, any>;
   capsule: Record<string, any> | null;
   events: Array<Record<string, any>>;
-  bundleKind?: 'legacy' | 'submission';
+  bundleKind?: 'legacy' | 'submission' | 'ide_submission';
   schemaVersion?: 'v1' | 'v2';
   signatureStatus?: SignatureStatus;
   traceEvents?: HardwareTraceEvent[];
@@ -82,6 +87,59 @@ interface BundleData {
   // v1-json specific
   circuitSnapshot?: any;
   probesSnapshot?: any[];
+  // ide-submission-v1 specific
+  ideSubmission?: ParsedIdeSubmission | null;
+}
+
+type InspectorQueueGateVerdict = 'pass' | 'warn' | 'block' | 'ungraded' | 'unknown';
+type InspectorQueueCommitSkew = 'match' | 'mismatch' | 'unknown';
+
+interface InspectorQueueMeta {
+  bundleId: string | null;
+  studentName: string | null;
+  deviceId: string | null;
+  labCode: string | null;
+  labId: string | null;
+  submittedAt: string | null;
+  overallGateVerdict: InspectorQueueGateVerdict;
+  lastStatus: 'pass' | 'fail' | 'none' | 'unknown';
+  passes: number | null;
+  fails: number | null;
+  firstPassAt: string | null;
+  lastPassAt: string | null;
+  appCommitSha: string | null;
+  commitSkew: InspectorQueueCommitSkew;
+}
+
+interface InspectorQueueEntry {
+  queueId: string;
+  importedAtIso: string;
+  fileName: string;
+  bundle: BundleData;
+  meta: InspectorQueueMeta;
+  flagged: boolean;
+  notes: string;
+}
+
+interface InspectorQueueCsvRow {
+  groupKey: string;
+  fileName: string;
+  studentName: string;
+  deviceId: string;
+  labId: string;
+  labCode: string;
+  submittedAt: string;
+  overallGateVerdict: InspectorQueueGateVerdict;
+  lastStatus: string;
+  passes: string;
+  fails: string;
+  firstPassAt: string;
+  lastPassAt: string;
+  appCommitSha: string;
+  commitSkew: InspectorQueueCommitSkew;
+  importedAt: string;
+  flagged: string;
+  notes: string;
 }
 
 interface InspectorProps {
@@ -297,6 +355,266 @@ function buildSubmissionGradeSummary(
   };
 }
 
+function trimToNull(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeCommit(value: string | null | undefined): string | null {
+  const trimmed = trimToNull(value);
+  return trimmed ? trimmed.toLowerCase() : null;
+}
+
+function getCurrentViewerCommitSha(): string | null {
+  const injected = trimToNull((globalThis as Record<string, unknown>).__RB_APP_COMMIT_SHA__);
+  if (injected) return injected;
+  return trimToNull(import.meta.env.VITE_GIT_COMMIT ?? import.meta.env.VITE_GIT_SHA ?? null);
+}
+
+function deriveCommitSkew(appCommitSha: string | null): InspectorQueueCommitSkew {
+  const bundleCommit = normalizeCommit(appCommitSha);
+  const viewerCommit = normalizeCommit(getCurrentViewerCommitSha());
+  if (!bundleCommit || !viewerCommit) return 'unknown';
+  return bundleCommit === viewerCommit ? 'match' : 'mismatch';
+}
+
+function isSupportedSubmissionFileName(fileName: string): boolean {
+  const lower = fileName.toLowerCase();
+  return lower.endsWith('.rb-lab.zip') || lower.endsWith('.rbx.zip') || lower.endsWith('.zip') || lower.endsWith('.json');
+}
+
+function toTimestampValue(isoValue: string | null | undefined): number {
+  const iso = trimToNull(isoValue);
+  if (!iso) return 0;
+  const ts = Date.parse(iso);
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+function getQueueGroupKey(meta: InspectorQueueMeta): string {
+  const normalizedDeviceId = trimToNull(meta.deviceId)?.toLowerCase();
+  if (normalizedDeviceId) {
+    return `device:${normalizedDeviceId}`;
+  }
+  const normalizedStudent = trimToNull(meta.studentName)?.toLowerCase();
+  if (normalizedStudent) {
+    return `student:${normalizedStudent}`;
+  }
+  const bundleId = trimToNull(meta.bundleId)?.toLowerCase();
+  if (bundleId) {
+    return `bundle:${bundleId}`;
+  }
+  return 'unknown:submission';
+}
+
+function sortQueueEntriesNewestFirst(entries: InspectorQueueEntry[]): InspectorQueueEntry[] {
+  return [...entries].sort((left, right) => {
+    const submittedDelta = toTimestampValue(right.meta.submittedAt) - toTimestampValue(left.meta.submittedAt);
+    if (submittedDelta !== 0) return submittedDelta;
+    const importedDelta = toTimestampValue(right.importedAtIso) - toTimestampValue(left.importedAtIso);
+    if (importedDelta !== 0) return importedDelta;
+    return right.queueId.localeCompare(left.queueId);
+  });
+}
+
+function toLatestQueueEntries(entries: InspectorQueueEntry[]): InspectorQueueEntry[] {
+  const byGroup = new Map<string, InspectorQueueEntry>();
+  for (const entry of sortQueueEntriesNewestFirst(entries)) {
+    const key = getQueueGroupKey(entry.meta);
+    if (!byGroup.has(key)) {
+      byGroup.set(key, entry);
+    }
+  }
+  return sortQueueEntriesNewestFirst(Array.from(byGroup.values()));
+}
+
+function createQueueCsvRow(entry: InspectorQueueEntry): InspectorQueueCsvRow {
+  return {
+    groupKey: getQueueGroupKey(entry.meta),
+    fileName: entry.fileName,
+    studentName: entry.meta.studentName ?? '',
+    deviceId: entry.meta.deviceId ?? '',
+    labId: entry.meta.labId ?? '',
+    labCode: entry.meta.labCode ?? '',
+    submittedAt: entry.meta.submittedAt ?? '',
+    overallGateVerdict: entry.meta.overallGateVerdict,
+    lastStatus: entry.meta.lastStatus,
+    passes: entry.meta.passes == null ? '' : String(entry.meta.passes),
+    fails: entry.meta.fails == null ? '' : String(entry.meta.fails),
+    firstPassAt: entry.meta.firstPassAt ?? '',
+    lastPassAt: entry.meta.lastPassAt ?? '',
+    appCommitSha: entry.meta.appCommitSha ?? '',
+    commitSkew: entry.meta.commitSkew,
+    importedAt: entry.importedAtIso,
+    flagged: entry.flagged ? 'true' : 'false',
+    notes: entry.notes,
+  };
+}
+
+function escapeCsvCell(value: string): string {
+  if (!/[",\n\r]/.test(value)) return value;
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+function buildQueueCsv(entries: InspectorQueueEntry[]): string {
+  const rows = entries.map(createQueueCsvRow);
+  const headers: Array<keyof InspectorQueueCsvRow> = [
+    'groupKey',
+    'fileName',
+    'studentName',
+    'deviceId',
+    'labId',
+    'labCode',
+    'submittedAt',
+    'overallGateVerdict',
+    'lastStatus',
+    'passes',
+    'fails',
+    'firstPassAt',
+    'lastPassAt',
+    'appCommitSha',
+    'commitSkew',
+    'importedAt',
+    'flagged',
+    'notes',
+  ];
+  const lines = [
+    headers.join(','),
+    ...rows.map((row) => headers.map((header) => escapeCsvCell(String(row[header] ?? ''))).join(',')),
+  ];
+  return lines.join('\n');
+}
+
+function formatQueueTimestamp(value: string | null): string {
+  const iso = trimToNull(value);
+  if (!iso) return '-';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString();
+}
+
+function mapSubmissionVerdict(value: unknown): InspectorQueueGateVerdict {
+  if (value === 'pass' || value === 'warn' || value === 'block' || value === 'ungraded') {
+    return value;
+  }
+  return 'unknown';
+}
+
+function deriveQueueMetaFromBundle(bundleData: BundleData): InspectorQueueMeta {
+  if (bundleData.ideSubmission) {
+    const gradeSummary = bundleData.ideSubmission.gradeSummary;
+    const appCommitSha = trimToNull(gradeSummary.appCommitSha);
+    return {
+      bundleId: trimToNull(gradeSummary.bundleId),
+      studentName: trimToNull(gradeSummary.studentName),
+      deviceId: trimToNull(gradeSummary.deviceId),
+      labCode: trimToNull(gradeSummary.labCode),
+      labId: trimToNull(gradeSummary.assignmentId),
+      submittedAt: trimToNull(gradeSummary.submittedAt),
+      overallGateVerdict: mapSubmissionVerdict(gradeSummary.overallGateVerdict),
+      lastStatus: gradeSummary.verifyRuns?.lastStatus ?? 'unknown',
+      passes: gradeSummary.verifyRuns?.passes ?? null,
+      fails: gradeSummary.verifyRuns?.fails ?? null,
+      firstPassAt: trimToNull(gradeSummary.verifyRuns?.firstPassAt ?? null),
+      lastPassAt: trimToNull(gradeSummary.verifyRuns?.lastPassAt ?? null),
+      appCommitSha,
+      commitSkew: deriveCommitSkew(appCommitSha),
+    };
+  }
+
+  const embeddedProject = bundleData.submission?.embeddedProject ?? null;
+  const appCommitSha =
+    trimToNull((bundleData.manifest as Record<string, unknown>)?.appCommitSha) ??
+    trimToNull((embeddedProject?.meta as Record<string, unknown> | undefined)?.appCommitSha);
+
+  return {
+    bundleId: trimToNull(bundleData.submission?.manifest.bundleId ?? null),
+    studentName:
+      trimToNull((embeddedProject?.meta as Record<string, unknown> | undefined)?.studentName) ??
+      trimToNull((bundleData.manifest?.student as Record<string, unknown> | undefined)?.name),
+    deviceId:
+      trimToNull((embeddedProject?.meta as Record<string, unknown> | undefined)?.deviceId) ??
+      trimToNull((bundleData.manifest as Record<string, unknown>)?.deviceId),
+    labCode: trimToNull((embeddedProject?.meta as Record<string, unknown> | undefined)?.labCode),
+    labId: trimToNull(
+      bundleData.submission?.submissionLabId ??
+      ((embeddedProject?.meta as Record<string, unknown> | undefined)?.labId as string | null | undefined),
+    ),
+    submittedAt:
+      trimToNull(bundleData.submission?.submissionTimestamp ?? null) ??
+      trimToNull((bundleData.manifest as Record<string, unknown>)?.created_at),
+    overallGateVerdict: mapSubmissionVerdict(
+      bundleData.submission?.submissionGates?.verdict ??
+      bundleData.submission?.manifest?.submissionGates?.verdict ??
+      null,
+    ),
+    lastStatus: 'unknown',
+    passes: null,
+    fails: null,
+    firstPassAt: null,
+    lastPassAt: null,
+    appCommitSha,
+    commitSkew: deriveCommitSkew(appCommitSha),
+  };
+}
+
+function buildIdeSubmissionBundleData(parsedSubmission: ParsedIdeSubmission): BundleData {
+  const gradeSummary = parsedSubmission.gradeSummary;
+  return {
+    manifest: {
+      schemaVersion: gradeSummary.schemaVersion,
+      bundleId: gradeSummary.bundleId,
+      appCommitSha: gradeSummary.appCommitSha,
+      created_at: gradeSummary.createdAt,
+      submitted_at: gradeSummary.submittedAt,
+      student: {
+        name: gradeSummary.studentName ?? null,
+      },
+      deviceId: gradeSummary.deviceId ?? null,
+      lab_id: gradeSummary.assignmentId ?? gradeSummary.labCode ?? null,
+    },
+    capsule: null,
+    events: [],
+    bundleKind: 'ide_submission',
+    schemaVersion: 'v1',
+    signatureStatus: 'Unsigned',
+    traceEvents: [],
+    traceReplay: [],
+    traceFilePresent: false,
+    bitstreamFilePresent: false,
+    missingArtifacts: [],
+    checkResults: [],
+    checksPass: gradeSummary.lastRun?.status === 'pass',
+    traceStats: undefined,
+    hardware: undefined,
+    grade: {
+      json: gradeSummary as Record<string, unknown>,
+      md: null,
+    },
+    fileEntries: [
+      'manifest.json',
+      'grade/summary.json',
+      'project.rbproj.json',
+      ...(parsedSubmission.verifyLastRun ? ['verify/last-run.json'] : []),
+      'verify/run-ledger.json',
+    ],
+    ideSubmission: parsedSubmission,
+  };
+}
+
+function toQueueEntry(file: File, bundleData: BundleData, sequence: number): InspectorQueueEntry {
+  const importedAtIso = new Date().toISOString();
+  return {
+    queueId: `${file.name}:${file.lastModified}:${file.size}:${sequence}:${importedAtIso}`,
+    importedAtIso,
+    fileName: file.name,
+    bundle: bundleData,
+    meta: deriveQueueMetaFromBundle(bundleData),
+    flagged: false,
+    notes: '',
+  };
+}
+
 export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
   loadSample,
   onOpenSubmissionProject,
@@ -309,6 +627,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
   const [openingEmbeddedProject, setOpeningEmbeddedProject] = useState(false);
   const [traceCursor, setTraceCursor] = useState(0);
   const [traceCurrent, setTraceCurrent] = useState<HardwareTraceEvent | null>(null);
+  const [queueEntries, setQueueEntries] = useState<InspectorQueueEntry[]>([]);
   const hasAutoLoadedSample = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uiMode = getRedByteUiMode();
@@ -329,31 +648,140 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
     );
   }
 
-  const parseJsonEvidence = useCallback(async (file: File) => {
+  const openBundle = useCallback((nextBundle: BundleData) => {
+    setBundle(nextBundle);
+    setTraceCursor(0);
+    setTraceCurrent(null);
+    setDemoMode(false);
+    setActiveTab('summary');
+  }, []);
+
+  const parseJsonEvidence = useCallback(async (file: File): Promise<BundleData> => {
+    const text = await file.text();
+    const json = JSON.parse(text) as EvidenceBundle;
+
+    const { integrity, ...rest } = json;
+    const canonical = canonicalizeEvidence(rest);
+    const { hash } = hashEvidence(canonical);
+
+    const isVerified = integrity?.integrityHash === hash;
+    const signatureStatus: SignatureStatus = isVerified ? 'Valid' : 'Invalid';
+
+    return {
+      manifest: {
+        lab_id: json.context.selectedExampleId || 'Unknown Lab',
+        created_at: json.exportedAtIso,
+        redbyte_version: json.app.version,
+        student: { name: 'Unknown (v1)' },
+      },
+      capsule: null,
+      events: [],
+      bundleKind: 'legacy',
+      schemaVersion: 'v1',
+      signatureStatus,
+      traceEvents: [],
+      traceReplay: [],
+      traceFilePresent: false,
+      bitstreamFilePresent: false,
+      missingArtifacts: [],
+      checkResults: [],
+      checksPass: isVerified,
+      traceStats: undefined,
+      hardware: undefined,
+      grade: undefined,
+      circuitSnapshot: json.circuitSnapshot,
+      probesSnapshot: json.probesSnapshot,
+    };
+  }, []);
+
+  const parseBundleData = useCallback(async (file: File): Promise<BundleData> => {
+    if (file.name.toLowerCase().endsWith('.json')) {
+      return parseJsonEvidence(file);
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
     try {
-      const text = await file.text();
-      const json = JSON.parse(text) as EvidenceBundle;
+      const ideSubmission = await parseIdeSubmissionZip(arrayBuffer);
+      return buildIdeSubmissionBundleData(ideSubmission);
+    } catch (ideError) {
+      if (!(ideError instanceof NotASubmissionZipError)) {
+        throw ideError;
+      }
+    }
 
-      // Verify Integrity
-      const { integrity, ...rest } = json;
-      const canonical = canonicalizeEvidence(rest);
-      const { hash } = hashEvidence(canonical);
+    const zipBytes = new Uint8Array(arrayBuffer);
+    const zip = new JSZip();
+    const loaded = await zip.loadAsync(zipBytes);
+    const fileEntries = Object.keys(loaded.files)
+      .filter((entry) => !loaded.files[entry]?.dir)
+      .sort((left, right) => left.localeCompare(right));
 
-      const isVerified = integrity?.integrityHash === hash;
-      const signatureStatus: SignatureStatus = isVerified ? 'Valid' : 'Invalid';
+    const manifestFile = loaded.file('manifest.json');
+    if (!manifestFile) {
+      throw new Error('manifest.json not found');
+    }
+    const manifest = JSON.parse(await manifestFile.async('string'));
 
-      // Map to BundleData
-      setBundle({
-        manifest: {
-          lab_id: json.context.selectedExampleId || 'Unknown Lab',
-          created_at: json.exportedAtIso,
-          redbyte_version: json.app.version,
-          student: { name: 'Unknown (v1)' },
-        },
+    if (manifest?.schema_version === 'rb_submission_manifest_v1') {
+      const signatureStatus = await verifyBundleSignature(zipBytes);
+      const doctorReport = parseOptionalJson<ToolchainDoctorReport>(
+        loaded.file('doctor-report.json')
+          ? await loaded.file('doctor-report.json')!.async('string')
+          : null,
+      );
+      const reproducibility = parseOptionalJson<SubmissionReproducibilityReport>(
+        loaded.file('reproducibility.json')
+          ? await loaded.file('reproducibility.json')!.async('string')
+          : null,
+      );
+      const submissionGatesArtifact = parseOptionalJson<SubmissionGateResult | SubmissionGatesArtifact>(
+        loaded.file('submission-gates.json')
+          ? await loaded.file('submission-gates.json')!.async('string')
+          : null,
+      );
+      const submissionGates = normalizeSubmissionGates(submissionGatesArtifact);
+      const submissionLabId =
+        submissionGatesArtifact &&
+        typeof submissionGatesArtifact === 'object' &&
+        !Array.isArray((submissionGatesArtifact as SubmissionGateResult).issues)
+          ? (submissionGatesArtifact as SubmissionGatesArtifact).labId ?? null
+          : null;
+      const submissionTimestamp =
+        submissionGatesArtifact &&
+        typeof submissionGatesArtifact === 'object' &&
+        !Array.isArray((submissionGatesArtifact as SubmissionGateResult).issues)
+          ? (submissionGatesArtifact as SubmissionGatesArtifact).timestamp ?? null
+          : null;
+
+      let embeddedProject: RBProject | null = null;
+      let projectArchiveError: string | null = null;
+      let targetAppId: 'logic-playground' | 'ece-lab' = 'logic-playground';
+      const projectArchiveFile = loaded.file('project.rbx.zip');
+      if (!projectArchiveFile) {
+        projectArchiveError = 'project.rbx.zip missing from submission bundle.';
+      } else {
+        try {
+          const projectArchiveBytes = await projectArchiveFile.async('uint8array');
+          const projectArchive = await new JSZip().loadAsync(projectArchiveBytes);
+          const rbProjectFile = projectArchive.file('rb-project.json');
+          if (!rbProjectFile) {
+            projectArchiveError = 'rb-project.json missing inside project.rbx.zip.';
+          } else {
+            embeddedProject = decodeRBProject(await rbProjectFile.async('string'));
+            targetAppId = resolveSubmissionTargetApp(embeddedProject);
+          }
+        } catch (archiveError) {
+          projectArchiveError = archiveError instanceof Error
+            ? archiveError.message
+            : 'Failed to parse project.rbx.zip.';
+        }
+      }
+
+      return {
+        manifest,
         capsule: null,
         events: [],
-        bundleKind: 'legacy',
-        schemaVersion: 'v1', // Using v1 for JSON evidence
+        bundleKind: 'submission',
         signatureStatus,
         traceEvents: [],
         traceReplay: [],
@@ -361,246 +789,159 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
         bitstreamFilePresent: false,
         missingArtifacts: [],
         checkResults: [],
-        checksPass: isVerified,
+        checksPass: reproducibility?.status === 'pass',
         traceStats: undefined,
         hardware: undefined,
         grade: undefined,
-        circuitSnapshot: json.circuitSnapshot,
-        probesSnapshot: json.probesSnapshot,
-      });
-      setActiveTab('summary');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to parse JSON evidence');
-      setBundle(null);
-    }
-  }, []);
-
-  const parseBundle = useCallback(async (file: File) => {
-    setLoading(true);
-    setError(null);
-
-    if (file.name.endsWith('.json')) {
-      await parseJsonEvidence(file);
-      setLoading(false);
-      return;
+        fileEntries,
+        submission: {
+          manifest: manifest as SubmissionBundleManifest,
+          doctorReport,
+          reproducibility,
+          submissionGates,
+          submissionLabId,
+          submissionTimestamp,
+          embeddedProject,
+          targetAppId,
+          projectArchiveError,
+        },
+      };
     }
 
-    try {
-      const zipBytes = new Uint8Array(await file.arrayBuffer());
-      const zip = new JSZip();
-      const loaded = await zip.loadAsync(zipBytes);
-      const fileEntries = Object.keys(loaded.files)
-        .filter((entry) => !loaded.files[entry]?.dir)
-        .sort((left, right) => left.localeCompare(right));
+    const schemaVersion = manifest.schema_version === 'v2' ? 'v2' : 'v1';
+    const capsulePath = schemaVersion === 'v2' ? null : 'proofs/capsule.json';
+    const capsuleFile = capsulePath ? loaded.file(capsulePath) : null;
+    const capsule = capsuleFile ? JSON.parse(await capsuleFile.async('string')) : null;
 
-      // Parse manifest
-      const manifestFile = loaded.file('manifest.json');
-      if (!manifestFile) throw new Error('manifest.json not found');
-      const manifest = JSON.parse(await manifestFile.async('string'));
+    let events: Array<Record<string, any>> = [];
+    let traceEvents: HardwareTraceEvent[] = [];
+    let traceFilePresent = false;
+    let bitstreamFilePresent = false;
+    let traceStats: BundleData['traceStats'] = undefined;
+    const missingArtifacts: string[] = [];
+    if (schemaVersion === 'v2') {
+      const traceFile = loaded.file('trace/hw_trace.ndjson');
+      const traceText = traceFile ? await traceFile.async('string') : '';
+      traceFilePresent = !!traceFile;
+      traceEvents = traceText
+        .split('\n')
+        .filter((line) => line.trim())
+        .map((line) => JSON.parse(line))
+        .filter((event) => typeof event?.hw_tick === 'number' && typeof event?.mono_seq === 'number');
+      bitstreamFilePresent = !!loaded.file('bitstream/design.bit');
+      if (!traceFilePresent) missingArtifacts.push('trace/hw_trace.ndjson');
+      if (!bitstreamFilePresent) missingArtifacts.push('bitstream/design.bit');
 
-      if (manifest?.schema_version === 'rb_submission_manifest_v1') {
-        const signatureStatus = await verifyBundleSignature(zipBytes);
-        const doctorReport = parseOptionalJson<ToolchainDoctorReport>(
-          loaded.file('doctor-report.json')
-            ? await loaded.file('doctor-report.json')!.async('string')
-            : null
-        );
-        const reproducibility = parseOptionalJson<SubmissionReproducibilityReport>(
-          loaded.file('reproducibility.json')
-            ? await loaded.file('reproducibility.json')!.async('string')
-            : null
-        );
-        const submissionGatesArtifact = parseOptionalJson<SubmissionGateResult | SubmissionGatesArtifact>(
-          loaded.file('submission-gates.json')
-            ? await loaded.file('submission-gates.json')!.async('string')
-            : null,
-        );
-        const submissionGates = normalizeSubmissionGates(submissionGatesArtifact);
-        const submissionLabId =
-          submissionGatesArtifact && typeof submissionGatesArtifact === 'object' && !Array.isArray((submissionGatesArtifact as SubmissionGateResult).issues)
-            ? (submissionGatesArtifact as SubmissionGatesArtifact).labId ?? null
-            : null;
-        const submissionTimestamp =
-          submissionGatesArtifact && typeof submissionGatesArtifact === 'object' && !Array.isArray((submissionGatesArtifact as SubmissionGateResult).issues)
-            ? (submissionGatesArtifact as SubmissionGatesArtifact).timestamp ?? null
-            : null;
-
-        let embeddedProject: RBProject | null = null;
-        let projectArchiveError: string | null = null;
-        let targetAppId: 'logic-playground' | 'ece-lab' = 'logic-playground';
-        const projectArchiveFile = loaded.file('project.rbx.zip');
-        if (!projectArchiveFile) {
-          projectArchiveError = 'project.rbx.zip missing from submission bundle.';
-        } else {
-          try {
-            const projectArchiveBytes = await projectArchiveFile.async('uint8array');
-            const projectArchive = await new JSZip().loadAsync(projectArchiveBytes);
-            const rbProjectFile = projectArchive.file('rb-project.json');
-            if (!rbProjectFile) {
-              projectArchiveError = 'rb-project.json missing inside project.rbx.zip.';
-            } else {
-              embeddedProject = decodeRBProject(await rbProjectFile.async('string'));
-              targetAppId = resolveSubmissionTargetApp(embeddedProject);
-            }
-          } catch (archiveError) {
-            projectArchiveError = archiveError instanceof Error
-              ? archiveError.message
-              : 'Failed to parse project.rbx.zip.';
-          }
+      let minTick: number | null = null;
+      let maxTick: number | null = null;
+      let monoNondecreasing = true;
+      let prevSeq: number | null = null;
+      for (const event of traceEvents) {
+        if (minTick === null || event.hw_tick < minTick) minTick = event.hw_tick;
+        if (maxTick === null || event.hw_tick > maxTick) maxTick = event.hw_tick;
+        if (prevSeq !== null && event.mono_seq < prevSeq) {
+          monoNondecreasing = false;
         }
-
-        setBundle({
-          manifest,
-          capsule: null,
-          events: [],
-          bundleKind: 'submission',
-          signatureStatus,
-          traceEvents: [],
-          traceReplay: [],
-          traceFilePresent: false,
-          bitstreamFilePresent: false,
-          missingArtifacts: [],
-          checkResults: [],
-          checksPass: reproducibility?.status === 'pass',
-          traceStats: undefined,
-          hardware: undefined,
-          grade: undefined,
-          fileEntries,
-          submission: {
-            manifest: manifest as SubmissionBundleManifest,
-            doctorReport,
-            reproducibility,
-            submissionGates,
-            submissionLabId,
-            submissionTimestamp,
-            embeddedProject,
-            targetAppId,
-            projectArchiveError,
-          },
-        });
-        setTraceCursor(0);
-        setTraceCurrent(null);
-        setDemoMode(false);
-        setActiveTab('summary');
-        return;
+        prevSeq = event.mono_seq;
       }
 
-      const schemaVersion = manifest.schema_version === 'v2' ? 'v2' : 'v1';
-
-      // Parse capsule (v1 proof capsule only)
-      const capsulePath = schemaVersion === 'v2' ? null : 'proofs/capsule.json';
-      const capsuleFile = capsulePath ? loaded.file(capsulePath) : null;
-      const capsule = capsuleFile ? JSON.parse(await capsuleFile.async('string')) : null;
-
-      // Parse events (NDJSON)
-      let events: Array<Record<string, any>> = [];
-      let traceEvents: HardwareTraceEvent[] = [];
-      let traceFilePresent = false;
-      let bitstreamFilePresent = false;
-      let traceStats: BundleData['traceStats'] = undefined;
-      let missingArtifacts: string[] = [];
-      if (schemaVersion === 'v2') {
-        const traceFile = loaded.file('trace/hw_trace.ndjson');
-        const traceText = traceFile ? await traceFile.async('string') : '';
-        traceFilePresent = !!traceFile;
-        traceEvents = traceText
+      traceStats = {
+        event_count: traceEvents.length,
+        hw_tick_min: minTick,
+        hw_tick_max: maxTick,
+        mono_seq_nondecreasing: monoNondecreasing,
+      };
+    } else {
+      const eventsFile = loaded.file('proofs/events.ndjson');
+      events = eventsFile
+        ? (await eventsFile.async('string'))
           .split('\n')
           .filter((line) => line.trim())
           .map((line) => JSON.parse(line))
-          .filter((event) => typeof event?.hw_tick === 'number' && typeof event?.mono_seq === 'number');
-        bitstreamFilePresent = !!loaded.file('bitstream/design.bit');
-        if (!traceFilePresent) missingArtifacts.push('trace/hw_trace.ndjson');
-        if (!bitstreamFilePresent) missingArtifacts.push('bitstream/design.bit');
-
-        let minTick: number | null = null;
-        let maxTick: number | null = null;
-        let monoNondecreasing = true;
-        let prevSeq: number | null = null;
-        for (const event of traceEvents) {
-          if (minTick === null || event.hw_tick < minTick) minTick = event.hw_tick;
-          if (maxTick === null || event.hw_tick > maxTick) maxTick = event.hw_tick;
-          if (prevSeq !== null && event.mono_seq < prevSeq) {
-            monoNondecreasing = false;
-          }
-          prevSeq = event.mono_seq;
-        }
-
-        traceStats = {
-          event_count: traceEvents.length,
-          hw_tick_min: minTick,
-          hw_tick_max: maxTick,
-          mono_seq_nondecreasing: monoNondecreasing,
-        };
-      } else {
-        const eventsFile = loaded.file('proofs/events.ndjson');
-        events = eventsFile
-          ? (await eventsFile.async('string'))
-            .split('\n')
-            .filter((line) => line.trim())
-            .map((line) => JSON.parse(line))
-          : [];
-      }
-
-      // Parse hardware if present
-      const hardwarePath = schemaVersion === 'v2' ? null : 'proofs/hardware.json';
-      const hardwareFile = hardwarePath ? loaded.file(hardwarePath) : null;
-      const hardware = hardwareFile ? JSON.parse(await hardwareFile.async('string')) : null;
-
-      // Parse grade artifacts if present
-      const gradeJsonFile = loaded.file('grade.json');
-      const gradeMdFile = loaded.file('grade.md');
-      const grade = {
-        json: gradeJsonFile ? JSON.parse(await gradeJsonFile.async('string')) : null,
-        md: gradeMdFile ? await gradeMdFile.async('string') : null,
-      };
-
-      // Parse circuit snapshot if present
-      const circuitSnapshotFile = loaded.file('proofs/circuit_snapshot.json');
-      const circuitSnapshot = circuitSnapshotFile
-        ? JSON.parse(await circuitSnapshotFile.async('string'))
-        : null;
-
-      const signatureStatus = await verifyBundleSignature(zipBytes);
-      const traceReplay = traceEvents.length > 0 ? Array.from(replayHardwareTrace(traceEvents)) : [];
-      const labTemplate = manifest?.lab_id ? getLabTemplate(String(manifest.lab_id)) : null;
-      const checkEvaluation = evaluateChecks(labTemplate, traceReplay);
-
-      setBundle({
-        manifest,
-        capsule,
-        events,
-        bundleKind: 'legacy',
-        schemaVersion,
-        signatureStatus,
-        traceEvents,
-        traceReplay,
-        traceFilePresent,
-        bitstreamFilePresent,
-        labTemplate,
-        checkResults: checkEvaluation.results,
-        checksPass: checkEvaluation.pass,
-        traceStats,
-        missingArtifacts,
-        hardware,
-        grade,
-        circuitSnapshot,
-        fileEntries,
-      });
-      setTraceCursor(0);
-      setTraceCurrent(null);
-      setActiveTab('summary');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to parse bundle');
-      setBundle(null);
-    } finally {
-      setLoading(false);
+        : [];
     }
-  }, []);
 
-  const handleLoadSample = useCallback(async () => {
+    const hardwarePath = schemaVersion === 'v2' ? null : 'proofs/hardware.json';
+    const hardwareFile = hardwarePath ? loaded.file(hardwarePath) : null;
+    const hardware = hardwareFile ? JSON.parse(await hardwareFile.async('string')) : null;
+
+    const gradeJsonFile = loaded.file('grade.json');
+    const gradeMdFile = loaded.file('grade.md');
+    const grade = {
+      json: gradeJsonFile ? JSON.parse(await gradeJsonFile.async('string')) : null,
+      md: gradeMdFile ? await gradeMdFile.async('string') : null,
+    };
+
+    const circuitSnapshotFile = loaded.file('proofs/circuit_snapshot.json');
+    const circuitSnapshot = circuitSnapshotFile
+      ? JSON.parse(await circuitSnapshotFile.async('string'))
+      : null;
+
+    const signatureStatus = await verifyBundleSignature(zipBytes);
+    const traceReplay = traceEvents.length > 0 ? Array.from(replayHardwareTrace(traceEvents)) : [];
+    const labTemplate = manifest?.lab_id ? getLabTemplate(String(manifest.lab_id)) : null;
+    const checkEvaluation = evaluateChecks(labTemplate, traceReplay);
+
+    return {
+      manifest,
+      capsule,
+      events,
+      bundleKind: 'legacy',
+      schemaVersion,
+      signatureStatus,
+      traceEvents,
+      traceReplay,
+      traceFilePresent,
+      bitstreamFilePresent,
+      labTemplate,
+      checkResults: checkEvaluation.results,
+      checksPass: checkEvaluation.pass,
+      traceStats,
+      missingArtifacts,
+      hardware,
+      grade,
+      circuitSnapshot,
+      fileEntries,
+    };
+  }, [parseJsonEvidence]);
+
+  const ingestFiles = useCallback(async (files: File[]) => {
+    const supportedFiles = files.filter((file) => isSupportedSubmissionFileName(file.name));
+    if (supportedFiles.length === 0) {
+      setError('No supported submission files were provided.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
+    const newEntries: InspectorQueueEntry[] = [];
+    const parseErrors: string[] = [];
+
+    for (let index = 0; index < supportedFiles.length; index += 1) {
+      const file = supportedFiles[index]!;
+      try {
+        const parsedBundle = await parseBundleData(file);
+        newEntries.push(toQueueEntry(file, parsedBundle, index));
+      } catch (parseError) {
+        const message = parseError instanceof Error ? parseError.message : String(parseError);
+        parseErrors.push(`${file.name}: ${message}`);
+      }
+    }
+
+    if (newEntries.length > 0) {
+      const sortedNewEntries = sortQueueEntriesNewestFirst(newEntries);
+      openBundle(sortedNewEntries[0]!.bundle);
+      setQueueEntries((previous) => sortQueueEntriesNewestFirst([...sortedNewEntries, ...previous]));
+    }
+    if (parseErrors.length > 0) {
+      setError(`Failed to parse ${parseErrors.length} file(s): ${parseErrors.join(' | ')}`);
+    }
+
+    setLoading(false);
+  }, [openBundle, parseBundleData]);
+
+  const handleLoadSample = useCallback(async () => {
     try {
       const response = await fetch('/samples/basys3_mvp_sample.rb-lab.zip');
       if (!response.ok) {
@@ -608,24 +949,24 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
       }
       const buffer = await response.arrayBuffer();
       const file = new File([buffer], 'basys3_mvp_sample.rb-lab.zip', { type: 'application/zip' });
-      await parseBundle(file);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load sample bundle');
-      setLoading(false);
+      await ingestFiles([file]);
+    } catch (sampleError) {
+      setError(sampleError instanceof Error ? sampleError.message : 'Failed to load sample bundle');
     }
-  }, [parseBundle]);
+  }, [ingestFiles]);
 
   useEffect(() => {
     if (!loadSample || hasAutoLoadedSample.current) return;
     hasAutoLoadedSample.current = true;
-    handleLoadSample();
+    void handleLoadSample();
   }, [handleLoadSample, loadSample]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.currentTarget.files?.[0];
-    if (file) {
-      parseBundle(file);
+    const files = Array.from(e.currentTarget.files ?? []);
+    if (files.length > 0) {
+      void ingestFiles(files);
     }
+    e.currentTarget.value = '';
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -640,15 +981,9 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     (e.currentTarget as HTMLElement).style.background = '';
-    const file = e.dataTransfer.files?.[0];
-    if (
-      file &&
-      (file.name.endsWith('.rb-lab.zip') ||
-        file.name.endsWith('.rbx.zip') ||
-        file.name.endsWith('.zip') ||
-        file.name.endsWith('.json'))
-    ) {
-      parseBundle(file);
+    const files = Array.from(e.dataTransfer.files ?? []);
+    if (files.length > 0) {
+      void ingestFiles(files);
     }
   };
 
@@ -692,26 +1027,94 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const openProjectPayload = useMemo(() => {
+    if (bundle?.submission?.embeddedProject) {
+      return {
+        project: bundle.submission.embeddedProject,
+        targetAppId: bundle.submission.targetAppId,
+      };
+    }
+    if (bundle?.ideSubmission?.project) {
+      return {
+        project: bundle.ideSubmission.project,
+        targetAppId: resolveSubmissionTargetApp(bundle.ideSubmission.project),
+      };
+    }
+    return null;
+  }, [bundle]);
+
   const handleOpenEmbeddedProject = useCallback(async () => {
-    if (!bundle?.submission?.embeddedProject || !onOpenSubmissionProject) {
+    if (!openProjectPayload || !onOpenSubmissionProject) {
       return;
     }
     setOpeningEmbeddedProject(true);
     setError(null);
     try {
       await onOpenSubmissionProject({
-        project: bundle.submission.embeddedProject,
-        targetAppId: bundle.submission.targetAppId,
+        project: openProjectPayload.project,
+        targetAppId: openProjectPayload.targetAppId,
       });
     } catch (openError) {
       setError(openError instanceof Error ? openError.message : 'Failed to open embedded project');
     } finally {
       setOpeningEmbeddedProject(false);
     }
-  }, [bundle, onOpenSubmissionProject]);
+  }, [onOpenSubmissionProject, openProjectPayload]);
+
+  const queueLatestEntries = useMemo(() => toLatestQueueEntries(queueEntries), [queueEntries]);
+  const queueGroupCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const entry of queueEntries) {
+      const key = getQueueGroupKey(entry.meta);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  }, [queueEntries]);
+
+  const handleToggleQueueFlag = useCallback((queueId: string) => {
+    setQueueEntries((previous) => previous.map((entry) => (
+      entry.queueId === queueId
+        ? { ...entry, flagged: !entry.flagged }
+        : entry
+    )));
+  }, []);
+
+  const handleQueueNotesChange = useCallback((queueId: string, notes: string) => {
+    setQueueEntries((previous) => previous.map((entry) => (
+      entry.queueId === queueId
+        ? { ...entry, notes }
+        : entry
+    )));
+  }, []);
+
+  const handleOpenQueueEntry = useCallback((queueId: string) => {
+    const entry = queueEntries.find((candidate) => candidate.queueId === queueId);
+    if (!entry) return;
+    openBundle(entry.bundle);
+    setError(null);
+  }, [openBundle, queueEntries]);
+
+  const handleExportQueueCsv = useCallback((mode: 'latest' | 'all') => {
+    const sourceEntries = mode === 'latest' ? queueLatestEntries : sortQueueEntriesNewestFirst(queueEntries);
+    if (sourceEntries.length === 0) return;
+    const csv = buildQueueCsv(sourceEntries);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = mode === 'latest'
+      ? 'rb-submission-queue-latest.csv'
+      : 'rb-submission-queue-all.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, [queueEntries, queueLatestEntries]);
 
   const isSubmissionBundle = bundle?.bundleKind === 'submission';
+  const isIdeSubmissionBundle = bundle?.bundleKind === 'ide_submission';
   const submissionGradeSummary = isSubmissionBundle ? buildSubmissionGradeSummary(bundle?.submission) : null;
+  const ideSubmissionGradeSummary = isIdeSubmissionBundle ? bundle?.ideSubmission?.gradeSummary ?? null : null;
   const handleExportDiagnosticsBundle = useCallback(() => {
     if (!bundle) return;
     void (async () => {
@@ -763,7 +1166,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
       <div className={`${styles.container} rb-ui-lab-page`}>
         <div className={styles.header}>
           <h1 className={styles.title}>Submission Inspector</h1>
-          <p className={styles.subtitle}>Open a submission bundle (.rb-lab.zip or rb-submission-*.zip)</p>
+          <p className={styles.subtitle}>Open one or many submission bundles (.rb-lab.zip or rb-submission-*.zip)</p>
         </div>
 
         <div
@@ -772,14 +1175,14 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className={styles.dropZoneIcon}>📦</div>
-          <div className={styles.dropZoneTitle}>Drop .rb-lab.zip file here</div>
+          <div className={styles.dropZoneIcon}>[ZIP]</div>
+          <div className={styles.dropZoneTitle}>Drop submission files here</div>
           <div className={styles.dropZoneOr}>or</div>
           <button
             className={`${styles.browseButton} rbButtonPrimary`}
             onClick={() => fileInputRef.current?.click()}
           >
-            Browse for File
+            Browse Files
           </button>
           <div className={styles.dropZoneOr}>or</div>
           <button
@@ -793,11 +1196,131 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
             ref={fileInputRef}
             type="file"
             accept=".rb-lab.zip,.rbx.zip,.zip,.json"
+            multiple
             onChange={handleFileSelect}
             style={{ display: 'none' }}
             aria-label="Upload submission file"
           />
         </div>
+
+        {queueLatestEntries.length > 0 && (
+          <div className={styles.queuePanel} data-testid="submission-inspector-queue-panel">
+            <div className={styles.queueHeader}>
+              <h2 className={styles.sectionTitle}>Submission Queue</h2>
+              <div className={styles.queueActions}>
+                <button
+                  className={styles.exportButton}
+                  onClick={() => handleExportQueueCsv('latest')}
+                  data-testid="submission-inspector-export-csv-latest"
+                >
+                  Export CSV (Latest)
+                </button>
+                <button
+                  className={styles.exportButton}
+                  onClick={() => handleExportQueueCsv('all')}
+                  data-testid="submission-inspector-export-csv-all"
+                >
+                  Export CSV (All)
+                </button>
+              </div>
+            </div>
+            <div className={styles.queueHint}>
+              Latest-per-student/device view. Duplicate uploads are grouped and newest submissions are retained.
+            </div>
+            <div className={styles.queueTableWrap}>
+              <table className={styles.queueTable} data-testid="submission-inspector-queue-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Device</th>
+                    <th>Lab</th>
+                    <th>Submitted</th>
+                    <th>Gate</th>
+                    <th>Last Verify</th>
+                    <th>Pass/Fail</th>
+                    <th>Commit</th>
+                    <th>Actions</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {queueLatestEntries.map((entry) => {
+                    const groupKey = getQueueGroupKey(entry.meta);
+                    const duplicateCount = queueGroupCounts.get(groupKey) ?? 1;
+                    return (
+                      <tr key={entry.queueId} data-testid={`submission-inspector-queue-row-${entry.queueId}`}>
+                        <td>{entry.meta.studentName ?? '-'}</td>
+                        <td>{entry.meta.deviceId ?? '-'}</td>
+                        <td>
+                          {entry.meta.labId ?? '-'}
+                          {entry.meta.labCode ? ` (${entry.meta.labCode})` : ''}
+                        </td>
+                        <td>{formatQueueTimestamp(entry.meta.submittedAt)}</td>
+                        <td>
+                          <span className={styles.queueVerdictPill}>{entry.meta.overallGateVerdict.toUpperCase()}</span>
+                        </td>
+                        <td>{entry.meta.lastStatus.toUpperCase()}</td>
+                        <td>
+                          {entry.meta.passes == null ? '-' : entry.meta.passes}
+                          {' / '}
+                          {entry.meta.fails == null ? '-' : entry.meta.fails}
+                        </td>
+                        <td>
+                          <div className={styles.queueCommitCell}>
+                            <span className={styles.queueCommitValue}>{entry.meta.appCommitSha ?? '-'}</span>
+                            {entry.meta.commitSkew === 'mismatch' ? (
+                              <span
+                                className={styles.queueSkewMismatch}
+                                data-testid={`submission-inspector-version-skew-${entry.queueId}`}
+                              >
+                                MISMATCH
+                              </span>
+                            ) : entry.meta.commitSkew === 'match' ? (
+                              <span className={styles.queueSkewMatch}>MATCH</span>
+                            ) : (
+                              <span className={styles.queueSkewUnknown}>UNKNOWN</span>
+                            )}
+                            {duplicateCount > 1 ? (
+                              <span className={styles.queueDuplicateBadge}>+{duplicateCount - 1} older</span>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td>
+                          <div className={styles.queueRowActions}>
+                            <button
+                              className={styles.exportButton}
+                              onClick={() => handleOpenQueueEntry(entry.queueId)}
+                              data-testid={`submission-inspector-queue-open-${entry.queueId}`}
+                            >
+                              Open
+                            </button>
+                            <button
+                              className={styles.exportButton}
+                              onClick={() => handleToggleQueueFlag(entry.queueId)}
+                              data-testid={`submission-inspector-queue-flag-${entry.queueId}`}
+                            >
+                              {entry.flagged ? 'Unflag' : 'Flag'}
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <input
+                            className={styles.queueNotesInput}
+                            type="text"
+                            value={entry.notes}
+                            onChange={(event) => handleQueueNotesChange(entry.queueId, event.currentTarget.value)}
+                            placeholder="Notes"
+                            data-testid={`submission-inspector-queue-notes-${entry.queueId}`}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className={styles.error}>
@@ -825,7 +1348,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
               setDemoMode(false);
             }}
           >
-            ← Open Bundle
+            Back To Queue
           </button>
           {isTaMode ? (
             <button
@@ -836,7 +1359,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
               Export Diagnostics Bundle
             </button>
           ) : null}
-          {!isSubmissionBundle ? (
+          {!isSubmissionBundle && !isIdeSubmissionBundle ? (
           <button
             className={styles.closeButton}
             onClick={() => setDemoMode(!demoMode)}
@@ -846,13 +1369,13 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
               color: demoMode ? '#3B82F6' : '#94a3b8',
             }}
           >
-            {demoMode ? '✓ Demo Mode' : 'Demo Mode'}
+            {demoMode ? 'Demo Mode On' : 'Demo Mode'}
           </button>
           ) : null}
         </div>
       </div>
 
-      {demoMode && !isSubmissionBundle ? (
+      {demoMode && !isSubmissionBundle && !isIdeSubmissionBundle ? (
         // Demo Mode: Presentation layout
         <div className={styles.demoModeContainer}>
           <div className={styles.demoVerdictSection}>
@@ -949,7 +1472,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
             >
               Summary
             </button>
-            {!isSubmissionBundle && (
+            {!isSubmissionBundle && !isIdeSubmissionBundle && (
               <button
                 className={`${styles.tab} ${activeTab === 'vectors' ? styles.tabActive : ''}`}
                 onClick={() => setActiveTab('vectors')}
@@ -957,7 +1480,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
                 Vectors ({bundle.capsule?.vectors?.length || 0})
               </button>
             )}
-            {!isSubmissionBundle && (
+            {!isSubmissionBundle && !isIdeSubmissionBundle && (
               <button
                 className={`${styles.tab} ${activeTab === 'events' ? styles.tabActive : ''}`}
                 onClick={() => setActiveTab('events')}
@@ -965,7 +1488,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
                 Events ({bundle.events.length})
               </button>
             )}
-            {!isSubmissionBundle && bundle.hardware && (
+            {!isSubmissionBundle && !isIdeSubmissionBundle && bundle.hardware && (
               <button
                 className={`${styles.tab} ${activeTab === 'hardware' ? styles.tabActive : ''}`}
                 onClick={() => setActiveTab('hardware')}
@@ -986,13 +1509,15 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
             {activeTab === 'summary' && (
               <div className={styles.panel}>
                 <div className={styles.sectionHeader}>
-                  <h2 className={styles.sectionTitle}>{isSubmissionBundle ? 'Grader Summary' : 'Submission Summary'}</h2>
-                  {!isSubmissionBundle ? (
+                  <h2 className={styles.sectionTitle}>
+                    {isSubmissionBundle ? 'Grader Summary' : isIdeSubmissionBundle ? 'IDE Submission Summary' : 'Submission Summary'}
+                  </h2>
+                  {!isSubmissionBundle && !isIdeSubmissionBundle ? (
                     <button className={styles.exportButton} onClick={handleExportGradingReport}>
                       Export Report
                     </button>
                   ) : null}
-                  {isSubmissionBundle && bundle.submission?.embeddedProject && onOpenSubmissionProject ? (
+                  {openProjectPayload && onOpenSubmissionProject ? (
                     <button
                       className={styles.exportButton}
                       onClick={() => void handleOpenEmbeddedProject()}
@@ -1161,6 +1686,89 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
                     {!onOpenSubmissionProject ? (
                       <div className={styles.missingItem}>Shell import callback unavailable. Open project manually from bundle.</div>
                     ) : null}
+                  </div>
+                ) : isIdeSubmissionBundle ? (
+                  <div data-testid="submission-inspector-ide-summary">
+                    <div className={styles.summaryGrid}>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Student</div>
+                        <div className={styles.summaryValue}>{ideSubmissionGradeSummary?.studentName ?? 'Unknown'}</div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Device ID</div>
+                        <div className={styles.summaryValue}>{ideSubmissionGradeSummary?.deviceId ?? '-'}</div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Assignment</div>
+                        <div className={styles.summaryValue}>{ideSubmissionGradeSummary?.assignmentId ?? '-'}</div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Lab Code</div>
+                        <div className={styles.summaryValue}>{ideSubmissionGradeSummary?.labCode ?? '-'}</div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Project</div>
+                        <div className={styles.summaryValue}>{ideSubmissionGradeSummary?.projectName ?? 'Unknown'}</div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Submitted</div>
+                        <div className={styles.summaryValue}>
+                          {formatQueueTimestamp(ideSubmissionGradeSummary?.submittedAt ?? null)}
+                        </div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Gate Verdict</div>
+                        <div className={styles.summaryValue}>{ideSubmissionGradeSummary?.overallGateVerdict ?? 'unknown'}</div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>Last Verify</div>
+                        <div className={styles.summaryValue}>{ideSubmissionGradeSummary?.verifyRuns.lastStatus ?? 'none'}</div>
+                      </div>
+                      <div className={styles.summaryCard}>
+                        <div className={styles.summaryLabel}>App Commit</div>
+                        <div className={styles.summaryValue}>{ideSubmissionGradeSummary?.appCommitSha ?? '-'}</div>
+                      </div>
+                    </div>
+
+                    <div className={styles.summarySection}>
+                      <h3>Verify Runs</h3>
+                      <div className={styles.summaryStats}>
+                        <div className={styles.stat}>
+                          <span className={styles.statLabel}>Total</span>
+                          <span className={styles.statValue}>{ideSubmissionGradeSummary?.verifyRuns.total ?? 0}</span>
+                        </div>
+                        <div className={styles.stat}>
+                          <span className={styles.statLabel}>Passes</span>
+                          <span className={styles.statValue}>{ideSubmissionGradeSummary?.verifyRuns.passes ?? 0}</span>
+                        </div>
+                        <div className={styles.stat}>
+                          <span className={styles.statLabel}>Fails</span>
+                          <span className={styles.statValue}>{ideSubmissionGradeSummary?.verifyRuns.fails ?? 0}</span>
+                        </div>
+                      </div>
+                      <div className={styles.summaryValue}>
+                        First pass: {formatQueueTimestamp(ideSubmissionGradeSummary?.verifyRuns.firstPassAt ?? null)}
+                        {' | '}
+                        Last pass: {formatQueueTimestamp(ideSubmissionGradeSummary?.verifyRuns.lastPassAt ?? null)}
+                      </div>
+                    </div>
+
+                    {ideSubmissionGradeSummary?.gateResults?.length ? (
+                      <div className={styles.summarySection}>
+                        <h3>Gate Results</h3>
+                        <div className={styles.checkList}>
+                          {ideSubmissionGradeSummary.gateResults.map((gate) => (
+                            <div key={gate.gateId} className={styles.checkItem}>
+                              <span className={styles.checkLabel}>{gate.gateId}</span>
+                              <span className={styles.checkStatus}>{gate.verdict}</span>
+                              <span className={styles.checkMessage}>{gate.title}: {gate.detail}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={styles.empty}>No gate results in this IDE submission bundle.</div>
+                    )}
                   </div>
                 ) : (
                 <>
@@ -1425,7 +2033,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
             )}
 
             {/* Vectors Tab */}
-            {!isSubmissionBundle && activeTab === 'vectors' && (
+            {!isSubmissionBundle && !isIdeSubmissionBundle && activeTab === 'vectors' && (
               <div className={styles.panel}>
                 <h2 className={styles.sectionTitle}>Test Vectors</h2>
                 {bundle.capsule?.vectors && bundle.capsule.vectors.length > 0 ? (
@@ -1451,7 +2059,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
             )}
 
             {/* Events Tab */}
-            {!isSubmissionBundle && activeTab === 'events' && (
+            {!isSubmissionBundle && !isIdeSubmissionBundle && activeTab === 'events' && (
               <div className={styles.panel}>
                 <h2 className={styles.sectionTitle}>Event Timeline</h2>
                 {bundle.events.length > 0 ? (
@@ -1475,7 +2083,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
             )}
 
             {/* Hardware Tab */}
-            {!isSubmissionBundle && activeTab === 'hardware' && (
+            {!isSubmissionBundle && !isIdeSubmissionBundle && activeTab === 'hardware' && (
               <div className={styles.panel}>
                 <h2 className={styles.sectionTitle}>Hardware Evidence</h2>
                 {bundle.hardware ? (
@@ -1533,7 +2141,7 @@ export const SubmissionInspectorAppContent: React.FC<InspectorProps> = ({
               <div className={styles.panel}>
                 <h2 className={styles.sectionTitle}>Bundle Contents</h2>
                 <div className={styles.filesList}>
-                  {isSubmissionBundle ? (
+                  {isSubmissionBundle || isIdeSubmissionBundle ? (
                     <>
                       {(bundle.fileEntries ?? []).length > 0 ? (
                         (bundle.fileEntries ?? []).map((entry) => (

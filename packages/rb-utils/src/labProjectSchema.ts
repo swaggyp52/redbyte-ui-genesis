@@ -13,6 +13,8 @@
  * 5. Board profiles loaded from JSON, not hardcoded
  */
 
+import type { VerifySchedule } from './verifySchedule';
+
 // ============================================================================
 // Core Circuit Schema (Versioned Independently)
 // ============================================================================
@@ -189,6 +191,15 @@ export interface TruthTableCheckpoint extends CheckpointDefinition {
     inputs: string[]; // Signal names
     outputs: string[]; // Signal names
     table: TruthTableRow[];
+    /**
+     * 'combinational': drive inputs, tick once, sample outputs
+     * 'clocked_macro': drive inputs, run [0,1,0] on clockSignal with one tick each phase, sample outputs
+     */
+    schedule?: VerifySchedule;
+    /**
+     * Required when schedule='clocked_macro'. Can match node label or node id.
+     */
+    clockSignal?: string;
   };
 }
 

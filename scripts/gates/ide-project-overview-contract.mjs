@@ -42,6 +42,8 @@ await runIdeGate('IDE project overview contract satisfied', async ({ page, baseU
     .catch(() => false);
   assert(continueVisible, 'project primary Continue CTA must render');
 
+  await page.locator('[data-testid="ide-project-mapping-expand-btn"]').click();
+  await page.waitForSelector('[data-testid="ide-project-mapping-table"]', { timeout: 10000 });
   const firstMappingInput = page.locator('[data-testid^="ide-project-map-input-"]').first();
   await firstMappingInput.fill('');
   await firstMappingInput.blur();

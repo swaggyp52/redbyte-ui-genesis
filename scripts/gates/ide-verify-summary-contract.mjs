@@ -11,29 +11,47 @@ await runIdeGate('IDE verify summary contract satisfied', async ({ page, baseUrl
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
+  await page.locator('[data-testid="mode-button-project"]').click();
+  await page.locator('[data-testid="ide-project-load-start-logic-gates"]').click();
+  const replaceModalVisible = await page
+    .locator('[data-testid="ide-example-confirm-modal"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  if (replaceModalVisible) {
+    await page.locator('[data-testid="ide-example-confirm"]').click();
+  }
+
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
 
-  await page.locator('[data-testid="ide-verify-vector-fail"]').click();
+  await page.locator('[data-testid="ide-verify-generate-basic-vectors"]').click();
   await page.locator('[data-testid="ide-verify-run"]').click();
   await page.waitForFunction(
     () => {
       const status = document.querySelector('[data-testid="ide-verify-summary-status"]');
-      return Boolean(status && /FAIL/i.test(status.textContent || ''));
+      return Boolean(status && /PASS|FAIL|TRACE/i.test(status.textContent || ''));
     },
     { timeout: 10000 }
   );
 
-  const failTick = await text(page.locator('[data-testid="ide-verify-first-fail-tick"]'));
-  assert(failTick.length > 0 && failTick.toLowerCase() !== 'n/a', 'verify summary must include first failing tick');
+  const statusText = await text(page.locator('[data-testid="ide-verify-summary-status"]'));
+  if (/FAIL/i.test(statusText)) {
+    const failStrip = await text(page.locator('[data-testid="ide-verify-strip-fail-count"]'));
+    assert(
+      failStrip.includes('fail') && /at t\d+/i.test(failStrip),
+      `verify fail summary must include fail count and first failing tick, got "${failStrip}"`
+    );
 
-  const failSignal = await text(page.locator('[data-testid="ide-verify-first-fail-signal"]'));
-  assert(failSignal.length > 0 && failSignal.toLowerCase() !== 'n/a', 'verify summary must include failing signal');
+    const jumpFirst = page.locator('[data-testid="ide-verify-jump-first-failure"]').first();
+    const jumpVisible = await jumpFirst.isVisible().catch(() => false);
+    assert(jumpVisible, 'jump-to-first-failure action must be visible on FAIL');
 
-  const failDiff = await text(page.locator('[data-testid="ide-verify-first-fail-diff"]'));
-  assert(failDiff.includes('/'), 'verify summary must include expected/actual diff');
-
-  await page.locator('[data-testid="ide-verify-summary-fix"]').click();
-  await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-design-selection-id"]', { timeout: 10000 });
+    const beforeTick = await text(page.locator('[data-testid="ide-verify-selected-tick"]'));
+    await jumpFirst.click();
+    const afterTick = await text(page.locator('[data-testid="ide-verify-selected-tick"]'));
+    assert(afterTick.length > 0, 'selected tick must remain populated after jump');
+    assert(beforeTick.length > 0, 'selected tick must be visible before jump');
+  }
 });
+

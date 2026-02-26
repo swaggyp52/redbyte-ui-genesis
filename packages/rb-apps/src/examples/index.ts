@@ -355,12 +355,15 @@ export function loadExampleAsProject(id: ExampleId): LabProjectV1 {
   if (!example) {
     throw new Error(`Example not found: ${id}`);
   }
+
+  const sourceLabSpec = (example.data as unknown as { labSpec?: LabProjectV1['labSpec'] }).labSpec;
   
   const source: ExampleSource = {
     id: example.metadata.id,
     name: example.metadata.name,
     description: example.metadata.description,
     legacyCircuit: example.data,
+    labSpec: sourceLabSpec,
     difficulty: example.metadata.difficulty,
     layer: example.metadata.layer,
   };

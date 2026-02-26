@@ -313,7 +313,7 @@ Opcode table:
       'Verify control behavior (enable/load/reset) with vectors.',
     ],
     hardwareSteps: [
-      'Use Basys3 mapping: EN<-SW8, CLK<-SW7, RST<-SW6, Q2/Q1/Q0->LED2/LED1/LED0.',
+      'Use Basys3 mapping: EN<-SW8, CLK<-SW7, RST<-SW6, Q3/Q2/Q1/Q0->LED3/LED2/LED1/LED0.',
       'Observe sequence behavior and demonstrate at least one reset/load event on hardware.',
     ],
     submitEvidence: [
@@ -526,8 +526,8 @@ const LAB_EXPECTED_BEHAVIOR_BY_ID: Record<string, LabExpectedBehaviorVisual> = {
   'lab-7': {
     kind: 'waveform',
     title: 'Counter sequence',
-    columns: ['tick', 'en', 'Q[2:0]'],
-    rows: [['0', '1', '000'], ['1', '1', '001'], ['2', '1', '010']],
+    columns: ['tick', 'en', 'Q[3:0]'],
+    rows: [['0', '1', '0000'], ['1', '1', '0001'], ['2', '1', '0010']],
   },
   'lab-8': {
     kind: 'waveform',

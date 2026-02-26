@@ -35,7 +35,7 @@ await runIdeGate('IDE auto-layout contract satisfied', async ({ page, baseUrl })
   await page.waitForSelector('[data-testid="ide-import-zip-inspection"]', { timeout: 15000 });
 
   // ── 4. Apply + confirm ────────────────────────────────────────────────────
-  const applyBtn = page.locator('[data-testid="ide-import-build-project"]');
+  const applyBtn = page.locator('[data-testid="ide-import-process-design"]');
   const disabled = await applyBtn.getAttribute('disabled');
   assert(disabled === null, 'Apply button must not be disabled');
   await applyBtn.click();
@@ -106,3 +106,4 @@ await runIdeGate('IDE auto-layout contract satisfied', async ({ page, baseUrl })
     );
   }
 });
+

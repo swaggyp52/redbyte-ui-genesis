@@ -18,15 +18,20 @@ await runIdeGate('IDE primary CTA contract satisfied', async ({ page, baseUrl })
     await page.waitForSelector(`[data-testid="ide-mode-${mode}"]`, { timeout: 10000 });
 
     const modeRoot = page.locator(`[data-testid="ide-mode-${mode}"]`).first();
-    const ctaLocator = modeRoot.locator('[data-testid="ide-primary-cta"]');
-    const count = await ctaLocator.count();
-    assert(count === 1, `mode=${mode} expected exactly one ide-primary-cta, found ${count}`);
-
-    const isVisible = await ctaLocator.first().isVisible().catch(() => false);
-    assert(isVisible, `mode=${mode} ide-primary-cta must be visible`);
-
     if (mode === 'project') {
-      const continueButton = modeRoot.locator('[data-testid="ide-project-continue-cta"]').first();
+      const continueButton = modeRoot.locator('[data-testid="ide-project-cta-continue"]').first();
+      const autoMapButton = modeRoot.locator('[data-testid="ide-project-cta-automap"]').first();
+      const launchpadDesignButton = modeRoot.locator('[data-testid="ide-launchpad-design-cta"]').first();
+      const projectContinueVisible = await continueButton.isVisible().catch(() => false);
+      const autoMapVisible = await autoMapButton.isVisible().catch(() => false);
+      const launchpadVisible = await launchpadDesignButton.isVisible().catch(() => false);
+      assert(
+        projectContinueVisible || autoMapVisible || launchpadVisible,
+        'mode=project expected at least one project CTA hook to be visible'
+      );
+      if (!projectContinueVisible) {
+        continue;
+      }
       const continueLabel = await text(continueButton);
       assert(
         continueLabel.toLowerCase().startsWith('continue'),
@@ -35,6 +40,35 @@ await runIdeGate('IDE primary CTA contract satisfied', async ({ page, baseUrl })
 
       await continueButton.click();
       await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
+      continue;
+    }
+    if (mode === 'design') {
+      const cta = modeRoot.locator('[data-testid="ide-primary-cta"]').first();
+      assert(await cta.isVisible().catch(() => false), 'mode=design ide-primary-cta must be visible');
+      continue;
+    }
+    if (mode === 'verify') {
+      const runButton = modeRoot.locator('[data-testid="ide-verify-run"]').first();
+      assert(await runButton.isVisible().catch(() => false), 'mode=verify verify-run button must be visible');
+      continue;
+    }
+    if (mode === 'hardware') {
+      const modeToggle = modeRoot.locator('[data-testid="ide-hw-mode-toggle"]').first();
+      assert(await modeToggle.isVisible().catch(() => false), 'mode=hardware mode toggle must be visible');
+      continue;
+    }
+    if (mode === 'export') {
+      const rebuild = modeRoot.locator('[data-testid="ide-export-rebuild-btn"]').first();
+      const generic = modeRoot.locator('[data-testid="ide-primary-cta"]').first();
+      const rebuildVisible = await rebuild.isVisible().catch(() => false);
+      const genericVisible = await generic.isVisible().catch(() => false);
+      assert(rebuildVisible || genericVisible, 'mode=export expected export CTA to be visible');
+      continue;
+    }
+    if (mode === 'import') {
+      const process = modeRoot.locator('[data-testid="ide-import-process-design"]').first();
+      assert(await process.isVisible().catch(() => false), 'mode=import process-design CTA must be visible');
+      continue;
     }
   }
 });

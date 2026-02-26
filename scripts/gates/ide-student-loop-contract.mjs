@@ -3,37 +3,49 @@
 import { assert, runIdeGate, visible } from './_gateHarness.mjs';
 
 await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }) => {
-  // ── 1. Project: open example ───────────────────────────────────────────
+  // 1. Project: open the runtime examples catalog and load an example
   await page.goto(`${baseUrl}/?mode=project`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
+  await page.waitForSelector('[data-testid="ide-project-start-dock"]', { timeout: 10000 });
 
-  await page.locator('[data-testid="ide-project-open-example-and-gate-basics"]').click();
-  const confirmBtn = page.locator('[data-testid="ide-example-confirm"]');
-  if (await confirmBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await confirmBtn.click();
+  const loadRows = page.locator('[data-testid="ide-project-example-load"]');
+  const loadCount = await loadRows.count();
+  assert(loadCount >= 1, `expected >=1 quickstart load action, found ${loadCount}`);
+
+  const targetLoad = loadRows.nth(loadCount > 1 ? 1 : 0);
+  const targetExampleId = (await targetLoad.getAttribute('data-example-id')) ?? '';
+  assert(targetExampleId.length > 0, 'example load row must carry data-example-id');
+
+  await targetLoad.locator('button').first().click();
+
+  const ideConfirm = page.locator('[data-testid="ide-example-confirm"]').first();
+  if (await ideConfirm.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await ideConfirm.click();
+  } else {
+    const guardrailConfirm = page.getByRole('button', { name: /load/i }).first();
+    if (await guardrailConfirm.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await guardrailConfirm.click();
+    }
   }
-  // Wait for the guided strip to reflect the loaded project state
+  await page.locator('.ide-modal-backdrop').first().waitFor({ state: 'hidden', timeout: 5000 }).catch(() => null);
+
+  if (!(await page.locator('[data-testid="ide-mode-design"]').isVisible({ timeout: 2000 }).catch(() => false))) {
+    await page.locator('[data-testid="mode-button-design"]').click();
+    await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
+  }
+
   await page.waitForSelector('[data-testid="ide-guided-strip"]', { timeout: 10000 });
-
-  // Guided strip must be visible on project surface
-  const strip = page.locator('[data-testid="ide-guided-strip"]').first();
-  assert(await visible(strip), 'guided strip must be visible on project surface');
-
-  // ── 2. Design: guided strip visible ─────────────────────────────────────
-  await page.locator('[data-testid="mode-button-design"]').click();
-  await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
 
   const stripOnDesign = page.locator('[data-testid="ide-guided-strip"]').first();
   assert(await visible(stripOnDesign), 'guided strip must be visible on design surface');
 
-  // Live sim inputs must exist (circuit loaded with routable inputs)
   await page
     .locator('[data-testid^="ide-design-live-input-"]')
     .first()
     .waitFor({ state: 'visible', timeout: 10000 });
 
-  // ── 3. Verify: generate basics → run → PASS/FAIL banner ─────────────────
+  // 2. Verify: generate basics -> run -> PASS/FAIL banner
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
 
@@ -47,10 +59,12 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   await page.locator('[data-testid="ide-verify-run"]').click();
   await page.waitForFunction(
     () => {
-      const label = document.querySelector('[data-testid="ide-verify-status-label"]');
-      return Boolean(label && !/IDLE/i.test(label.textContent || ''));
+      const legacy = document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent ?? '';
+      const summary = document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent ?? '';
+      const combined = `${legacy} ${summary}`;
+      return /PASS|FAIL/i.test(combined);
     },
-    { timeout: 10000 }
+    { timeout: 10000 },
   );
 
   const verifyBanner = page.locator('[data-testid="ide-verify-banner"]').first();
@@ -58,53 +72,76 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
 
   const statusLabel = (
     await page
-      .locator('[data-testid="ide-verify-status-label"]')
+      .locator('[data-testid="ide-verify-summary-status"]')
       .first()
       .textContent()
-      .catch(() => '')
+      .catch(async () =>
+        page
+          .locator('[data-testid="ide-verify-summary-status"]')
+          .first()
+          .textContent()
+          .catch(() => ''),
+      )
   )?.trim() ?? '';
   assert(
     /PASS|FAIL/i.test(statusLabel),
-    `verify status must be PASS or FAIL after run, got "${statusLabel}"`
+    `verify status must be PASS or FAIL after run, got "${statusLabel}"`,
   );
 
-  // ── 4. Export: READY/BLOCKED banner + vivado_import.tcl artifact ─────────
+  // 3. Export: gate state + Vivado command contract
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
 
-  const readinessBanner = page.locator('[data-testid="ide-export-readiness-banner"]').first();
-  assert(await visible(readinessBanner), 'export readiness banner must be visible');
+  const exportPanel = page.locator('[data-testid="ide-export-panel"]').first();
+  assert(await visible(exportPanel), 'export panel must be visible');
+
+  const gateStack = page.locator('[data-testid="ide-export-gate-stack"]').first();
+  assert(await visible(gateStack), 'export gate stack must be visible');
+
+  const hasBlockersCallout = await page
+    .locator('[data-testid="ide-export-blockers-callout"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  const hasVivadoReadyCallout = await page
+    .locator('[data-testid="ide-export-vivado-ready-callout"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  assert(
+    hasBlockersCallout || hasVivadoReadyCallout,
+    'export must show either blockers callout or Vivado-ready callout',
+  );
 
   const readinessLabel = (
     await page
-      .locator('[data-testid="ide-export-readiness-label"]')
+      .locator('[data-testid="ide-export-vivado-command"]')
       .first()
       .textContent()
       .catch(() => '')
   )?.trim() ?? '';
   assert(
     readinessLabel.length > 0,
-    `export readiness label must have non-empty text, got "${readinessLabel}"`
+    `export Vivado command/status must have non-empty text, got "${readinessLabel}"`,
   );
 
-  const vivadoTcl = page
-    .locator('[data-testid="ide-export-artifact-tree-item-vivado-import-tcl"]')
-    .first();
+  const downloadBlock = page.locator('[data-testid="ide-export-download-block"]').first();
   assert(
-    await visible(vivadoTcl),
-    'vivado_import.tcl must appear in the export artifact tree'
+    await visible(downloadBlock),
+    'export download block must be visible',
   );
 
-  // ── 5. Hardware: checklist + expected IO table ────────────────────────────
+  // 4. Hardware: panel + mode controls
   await page.locator('[data-testid="mode-button-hardware"]').click();
   await page.waitForSelector('[data-testid="ide-mode-hardware"]', { timeout: 10000 });
 
-  const checklist = page.locator('[data-testid="ide-hardware-checklist"]').first();
-  assert(await visible(checklist), 'hardware bring-up checklist must be visible');
+  const hardwarePanel = page.locator('[data-testid="ide-hardware-panel"]').first();
+  assert(await visible(hardwarePanel), 'hardware panel must be visible');
 
-  const expectedIoTable = page.locator('[data-testid="ide-hardware-expected-io-table"]').first();
+  const hardwareModeToggle = page.locator('[data-testid="ide-hw-mode-toggle"]').first();
   assert(
-    await visible(expectedIoTable),
-    'hardware expected IO table must be visible'
+    await visible(hardwareModeToggle),
+    'hardware mode toggle must be visible',
   );
 });
+

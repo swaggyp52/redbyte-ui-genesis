@@ -50,7 +50,7 @@ await runIdeGate('IDE professor import reality contract', async ({ page, baseUrl
   );
 
   // 6. Apply to project
-  const applyBtn = page.locator('[data-testid="ide-import-build-project"]');
+  const applyBtn = page.locator('[data-testid="ide-import-process-design"]');
   const applyDisabled = await applyBtn.getAttribute('disabled');
   assert(applyDisabled === null, 'Apply button must not be disabled');
   await applyBtn.click();
@@ -78,3 +78,4 @@ await runIdeGate('IDE professor import reality contract', async ({ page, baseUrl
   const nodeCount = await page.locator('[data-node-id]').count();
   assert(nodeCount >= 2, `design must have >=2 nodes (at least ports), got ${nodeCount}`);
 });
+

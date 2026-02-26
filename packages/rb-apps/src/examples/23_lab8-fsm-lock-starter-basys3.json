@@ -50,5 +50,78 @@
       "config": {}
     }
   ],
-  "connections": []
+  "connections": [],
+  "labSpec": {
+    "schemaVersion": "1.0",
+    "labId": "lab-8",
+    "title": "Lab 8 - Security Lock FSM",
+    "description": "Starter contract checkpoints for valid and invalid serial FSM paths.",
+    "objectives": [
+      "Prove both invalid and valid serial trajectories with ENTER as the clock pulse."
+    ],
+    "checkpoints": [
+      {
+        "id": "fsm-invalid-path",
+        "type": "truth-table",
+        "title": "Invalid path proof",
+        "description": "Bitstream 110010010100 on IN0 with IN2/IN1 held low must never unlock.",
+        "config": {
+          "schedule": "clocked_macro",
+          "clockSignal": "sw_enter",
+          "inputs": ["sw_in0", "sw_in1", "sw_in2", "sw_reset"],
+          "outputs": ["led_lock"],
+          "table": [
+            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } }
+          ]
+        },
+        "spec": {
+          "inputs": ["sw_in0", "sw_in1", "sw_in2", "sw_reset"],
+          "outputs": ["led_lock"],
+          "expectedTable": []
+        }
+      },
+      {
+        "id": "fsm-valid-path",
+        "type": "truth-table",
+        "title": "Valid path proof",
+        "description": "Bitstream 010100010100 on IN0 with IN2/IN1 held low must unlock at the final step.",
+        "config": {
+          "schedule": "clocked_macro",
+          "clockSignal": "sw_enter",
+          "inputs": ["sw_in0", "sw_in1", "sw_in2", "sw_reset"],
+          "outputs": ["led_lock"],
+          "table": [
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": true } }
+          ]
+        },
+        "spec": {
+          "inputs": ["sw_in0", "sw_in1", "sw_in2", "sw_reset"],
+          "outputs": ["led_lock"],
+          "expectedTable": []
+        }
+      }
+    ]
+  }
 }

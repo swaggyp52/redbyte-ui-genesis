@@ -54,6 +54,7 @@ function makeGradeSummary(overrides: Partial<IdeSubmissionGradeSummary> = {}): I
     circuit: { nodeCount: 1, wireCount: 0, containsDff: false, nodeTypes: { INPUT: 1 } },
     mapping: { totalRows: 0, mappedRows: 0, complete: false },
     vectors: { count: 0 },
+    proofRuns: { sequenceProofRun: false, fsmPathsRun: false },
     verifyRuns: {
       total: 2,
       passes: 1,
@@ -121,6 +122,18 @@ describe('SubmissionViewerSurface — rendering', () => {
       />
     );
     expect(getByTestId('ide-submission-viewer-banner')).toBeTruthy();
+  });
+
+  it('shows integrity and safe-load guidance', () => {
+    const { getByTestId } = render(
+      <SubmissionViewerSurface
+        submission={makeSubmission()}
+        onLoadIntoIde={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+    expect(getByTestId('ide-submission-integrity-ok')).toBeTruthy();
+    expect(getByTestId('ide-submission-safe-load-hint').textContent).toContain('Load Saved Project');
   });
 
   it('renders run ledger when history is non-empty', () => {

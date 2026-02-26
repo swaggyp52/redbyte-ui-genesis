@@ -77,4 +77,78 @@ describe('validateSubmissionForLab', () => {
     expect(result.verdict).not.toBe('block');
     expect(result.issues.some((issue) => issue.code === 'toolchain_required_for_hardware_evidence')).toBe(false);
   });
+
+  it('lab 7 blocks when sequenceProofRun is missing or false', () => {
+    const baseProject = createProject({
+      meta: { labId: 'lab-7' },
+      fpga: { board: 'basys3', top: 'top', preset: 'basys3' },
+    });
+
+    const missingResult = validateSubmissionForLab('lab-7', {
+      projectSnapshot: baseProject,
+      doctorReport: null,
+      recentRuns: { simulated: true, synthesized: true },
+    });
+    expect(missingResult.verdict).toBe('block');
+    expect(missingResult.issues.some((issue) => issue.code === 'sequence_proof_missing')).toBe(true);
+
+    const falseResult = validateSubmissionForLab('lab-7', {
+      projectSnapshot: baseProject,
+      doctorReport: null,
+      recentRuns: { simulated: true, synthesized: true, sequenceProofRun: false },
+    });
+    expect(falseResult.verdict).toBe('block');
+    expect(falseResult.issues.some((issue) => issue.code === 'sequence_proof_missing')).toBe(true);
+  });
+
+  it('lab 7 unblocks sequence-proof when sequenceProofRun is true', () => {
+    const result = validateSubmissionForLab('lab-7', {
+      projectSnapshot: createProject({
+        meta: { labId: 'lab-7' },
+        fpga: { board: 'basys3', top: 'top', preset: 'basys3' },
+      }),
+      doctorReport: null,
+      recentRuns: { simulated: true, synthesized: true, sequenceProofRun: true },
+    });
+
+    expect(result.issues.some((issue) => issue.code === 'sequence_proof_missing')).toBe(false);
+    expect(result.verdict).not.toBe('block');
+  });
+
+  it('lab 8 blocks when fsmPathsRun is missing or false', () => {
+    const baseProject = createProject({
+      meta: { labId: 'lab-8' },
+      fpga: { board: 'basys3', top: 'top', preset: 'basys3' },
+    });
+
+    const missingResult = validateSubmissionForLab('lab-8', {
+      projectSnapshot: baseProject,
+      doctorReport: null,
+      recentRuns: { simulated: true, synthesized: true },
+    });
+    expect(missingResult.verdict).toBe('block');
+    expect(missingResult.issues.some((issue) => issue.code === 'fsm_paths_missing')).toBe(true);
+
+    const falseResult = validateSubmissionForLab('lab-8', {
+      projectSnapshot: baseProject,
+      doctorReport: null,
+      recentRuns: { simulated: true, synthesized: true, fsmPathsRun: false },
+    });
+    expect(falseResult.verdict).toBe('block');
+    expect(falseResult.issues.some((issue) => issue.code === 'fsm_paths_missing')).toBe(true);
+  });
+
+  it('lab 8 unblocks fsm-paths when fsmPathsRun is true', () => {
+    const result = validateSubmissionForLab('lab-8', {
+      projectSnapshot: createProject({
+        meta: { labId: 'lab-8' },
+        fpga: { board: 'basys3', top: 'top', preset: 'basys3' },
+      }),
+      doctorReport: null,
+      recentRuns: { simulated: true, synthesized: true, fsmPathsRun: true },
+    });
+
+    expect(result.issues.some((issue) => issue.code === 'fsm_paths_missing')).toBe(false);
+    expect(result.verdict).not.toBe('block');
+  });
 });

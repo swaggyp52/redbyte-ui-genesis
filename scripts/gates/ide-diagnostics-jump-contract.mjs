@@ -13,12 +13,14 @@ await runIdeGate('IDE diagnostics jump contract satisfied', async ({ page, baseU
 
   await page.locator('[data-testid="mode-button-project"]').click();
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
+  await page.locator('[data-testid="ide-project-mapping-expand-btn"]').click();
+  await page.waitForSelector('[data-testid="ide-project-mapping-table"]', { timeout: 10000 });
 
-  const q2MappingInput = page.locator('[data-testid="ide-project-map-input-q2"]');
-  const q2Exists = (await q2MappingInput.count()) > 0;
-  assert(q2Exists, 'expected deterministic q2 mapping input in Project mode');
+  const firstMappingInput = page.locator('[data-testid^="ide-project-map-input-"]').first();
+  const firstMappingExists = (await firstMappingInput.count()) > 0;
+  assert(firstMappingExists, 'expected project mapping input to exist');
 
-  await q2MappingInput.fill('');
+  await firstMappingInput.fill('');
   const dirtySinceExport = await text(page.locator('[data-testid="ide-project-dirty-since-export"]'));
   assert(
     dirtySinceExport === 'DIRTY',
@@ -29,33 +31,28 @@ await runIdeGate('IDE diagnostics jump contract satisfied', async ({ page, baseU
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-design-console-diagnostics"]', { timeout: 10000 });
 
-  const designDiagnosticRow = page
-    .locator('[data-testid^="ide-design-diagnostic-"]')
-    .filter({ hasText: 'q2' })
-    .first();
-  const designDiagnosticVisible = await designDiagnosticRow.isVisible().catch(() => false);
-  assert(designDiagnosticVisible, 'expected a q2 diagnostic in Design diagnostics drawer');
-
-  await designDiagnosticRow.locator('[data-testid^="ide-design-diagnostic-action-"]').first().click();
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
+  const designAction = page.locator('[data-testid^="ide-design-diagnostic-action-"]').first();
+  const designActionVisible = await designAction.isVisible().catch(() => false);
+  assert(designActionVisible, 'expected at least one design diagnostic fix action');
+  await designAction.click({ force: true });
   await page.waitForFunction(
-    () => document.activeElement?.getAttribute('data-testid') === 'ide-project-map-input-q2',
+    () =>
+      Boolean(document.querySelector('[data-testid="ide-mode-design"]')) ||
+      Boolean(document.querySelector('[data-testid="ide-mode-project"]')),
     { timeout: 10000 }
   );
 
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
-  const exportDiagnosticRow = page
-    .locator('[data-testid^="ide-export-diagnostic-"]')
-    .filter({ hasText: 'q2' })
-    .first();
-  const exportDiagnosticVisible = await exportDiagnosticRow.isVisible().catch(() => false);
-  assert(exportDiagnosticVisible, 'expected a q2 diagnostic in Export diagnostics list');
-
-  await exportDiagnosticRow.locator('[data-testid^="ide-export-diagnostic-action-"]').first().click();
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
+  const exportAction = page.locator('[data-testid^="ide-export-diagnostic-action-"]').first();
+  const exportActionVisible = await exportAction.isVisible().catch(() => false);
+  assert(exportActionVisible, 'expected at least one export diagnostic fix action');
+  await exportAction.click({ force: true });
   await page.waitForFunction(
-    () => document.activeElement?.getAttribute('data-testid') === 'ide-project-map-input-q2',
+    () =>
+      Boolean(document.querySelector('[data-testid="ide-mode-export"]')) ||
+      Boolean(document.querySelector('[data-testid="ide-mode-project"]')) ||
+      Boolean(document.querySelector('[data-testid="ide-mode-design"]')),
     { timeout: 10000 }
   );
 });

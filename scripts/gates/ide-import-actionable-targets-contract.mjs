@@ -19,7 +19,7 @@ await runIdeGate('IDE import actionable targets contract satisfied', async ({ pa
   // ── 2. HDL card click → HDL textarea accessible ───────────────────────────
   await hdlCard.click();
   await page.waitForTimeout(100);
-  const hdlTextarea = page.locator('[data-testid="ide-import-hdl-input"]').first();
+  const hdlTextarea = page.locator('[data-testid="ide-import-hdl-textarea"]').first();
   assert(await visible(hdlTextarea), 'HDL textarea must be visible after clicking HDL card');
 
   // HDL card must be active
@@ -65,7 +65,7 @@ await runIdeGate('IDE import actionable targets contract satisfied', async ({ pa
   // Simulate a parse by checking disabled reason appears when HDL is entered
   // We cannot drive a full parse without a backend, but we can confirm the
   // Apply button starts disabled and no reason is shown (hasParsedHdl=false)
-  const applyBtn = page.locator('[data-testid="ide-import-build-project"]').first();
+  const applyBtn = page.locator('[data-testid="ide-import-process-design"]').first();
   const applyDisabled = await applyBtn.getAttribute('disabled').catch(() => null);
   assert(applyDisabled !== null, 'Apply to Project button must start disabled before any parse');
 
@@ -75,3 +75,4 @@ await runIdeGate('IDE import actionable targets contract satisfied', async ({ pa
     'disabled reason must not appear before any HDL is parsed (hasParsedHdl=false)'
   );
 });
+

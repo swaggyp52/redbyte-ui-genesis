@@ -303,11 +303,13 @@ export function loadExampleAsProject(id) {
     if (!example) {
         throw new Error(`Example not found: ${id}`);
     }
+    const sourceLabSpec = example.data?.labSpec;
     const source = {
         id: example.metadata.id,
         name: example.metadata.name,
         description: example.metadata.description,
         legacyCircuit: example.data,
+        labSpec: sourceLabSpec,
         difficulty: example.metadata.difficulty,
         layer: example.metadata.layer,
     };

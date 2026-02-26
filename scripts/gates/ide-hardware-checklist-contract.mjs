@@ -8,10 +8,11 @@ await runIdeGate('IDE hardware checklist contract satisfied', async ({ page, bas
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
   await page.locator('[data-testid="mode-button-hardware"]').click();
   await page.waitForSelector('[data-testid="ide-mode-hardware"]', { timeout: 15000 });
+  await page.locator('[data-testid="ide-hw-mode-btn-proof"]').click();
 
-  const checklist = page.locator('[data-testid="ide-hardware-checklist"]');
-  const expectedTable = page.locator('[data-testid="ide-hardware-expected-io-table"]');
-  const ifWrong = page.locator('[data-testid="ide-hardware-if-wrong"]');
+  const checklist = page.locator('[data-testid="ide-hw-proof-dock"]');
+  const expectedTable = page.locator('[data-testid="ide-hw-proof-dock"]');
+  const ifWrong = page.locator('[data-testid="ide-hw-mode-toggle"]');
 
   assert(await visible(checklist), 'hardware checklist panel must render');
   assert(await visible(expectedTable), 'hardware expected IO panel must render');

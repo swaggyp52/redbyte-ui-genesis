@@ -27,8 +27,10 @@ import {
 } from '../labs/labDefinitions';
 import {
   type SubmissionGateResult,
+  type SubmissionValidationRecentRuns,
   validateSubmissionForLab,
 } from '../labs/submissionGates';
+import { deriveProofRunFlags } from '../labs/proofRunFlags';
 import {
   LAB_WORKSPACE_MODES,
   LAB_WORKSPACE_MODE_LABELS,
@@ -57,6 +59,34 @@ const MODE_ACCENTS: Record<LabWorkspaceMode, string> = {
 
 const EMPTY_VERIFICATION: VerificationStatus = { status: 'unknown' };
 const EMPTY_SUBMISSION_GATES: SubmissionGateResult = { verdict: 'pass', issues: [] };
+type WorkspaceRecentRuns = SubmissionValidationRecentRuns & {
+  simulated: boolean;
+  synthesized: boolean;
+  waveformCaptured: boolean;
+  hardwareObserved: boolean;
+};
+
+function mergeProofRuns(
+  base: WorkspaceRecentRuns,
+  proofRuns: Pick<SubmissionValidationRecentRuns, 'sequenceProofRun' | 'fsmPathsRun'>,
+): WorkspaceRecentRuns {
+  return {
+    ...base,
+    ...(proofRuns.sequenceProofRun !== undefined ? { sequenceProofRun: proofRuns.sequenceProofRun } : {}),
+    ...(proofRuns.fsmPathsRun !== undefined ? { fsmPathsRun: proofRuns.fsmPathsRun } : {}),
+  };
+}
+
+function recentRunsEqual(left: WorkspaceRecentRuns, right: WorkspaceRecentRuns): boolean {
+  return (
+    left.simulated === right.simulated
+    && left.synthesized === right.synthesized
+    && left.waveformCaptured === right.waveformCaptured
+    && left.hardwareObserved === right.hardwareObserved
+    && left.sequenceProofRun === right.sequenceProofRun
+    && left.fsmPathsRun === right.fsmPathsRun
+  );
+}
 
 interface LabWorkspaceProps {
   windowId: string;
@@ -193,16 +223,13 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
   const [lab4LiveIo, setLab4LiveIo] = useState<Lab4LiveIoState>(DEFAULT_LAB4_LIVE_IO);
   const isMountedRef = useRef(true);
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const [recentRuns, setRecentRuns] = useState<{
-    simulated: boolean;
-    synthesized: boolean;
-    waveformCaptured: boolean;
-    hardwareObserved: boolean;
-  }>({
+  const [recentRuns, setRecentRuns] = useState<WorkspaceRecentRuns>({
     simulated: false,
     synthesized: false,
     waveformCaptured: false,
     hardwareObserved: false,
+    sequenceProofRun: false,
+    fsmPathsRun: false,
   });
 
   const labDefinition = useMemo(() => resolveLabDefinition(starterInstructions), [starterInstructions]);
@@ -444,6 +471,8 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
       synthesized: false,
       waveformCaptured: false,
       hardwareObserved: false,
+      sequenceProofRun: false,
+      fsmPathsRun: false,
     });
     setSubmitStatus(null);
     setSubmitGateResult(EMPTY_SUBMISSION_GATES);
@@ -704,6 +733,13 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
     setIsCheckingSubmitGates(true);
     void (async () => {
       const snapshot = buildWorkspaceProjectSnapshot();
+      const proofRuns = await deriveProofRunFlags(snapshot, contextLabId);
+      if (canceled) return;
+      const validationRecentRuns = mergeProofRuns(recentRuns, proofRuns);
+      setRecentRuns((previous) => {
+        const merged = mergeProofRuns(previous, proofRuns);
+        return recentRunsEqual(previous, merged) ? previous : merged;
+      });
       try {
         const backend = getToolchainBackend();
         const doctorReport = await backend.doctorReport({ hdl: project, fpga }, { refreshProbe: true, logs: [] });
@@ -713,7 +749,7 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
             projectSnapshot: snapshot,
             doctorReport,
             buildPath: doctorReport.buildPath ?? null,
-            recentRuns,
+            recentRuns: validationRecentRuns,
           }),
         );
       } catch {
@@ -723,7 +759,7 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
             projectSnapshot: snapshot,
             doctorReport: null,
             buildPath: null,
-            recentRuns,
+            recentRuns: validationRecentRuns,
           }),
         );
       } finally {
@@ -945,13 +981,19 @@ const LabWorkspaceAppComponent: React.FC<LabWorkspaceProps> = ({ windowId, start
 
     try {
       const rbProject = buildWorkspaceProjectSnapshot();
+      const proofRuns = await deriveProofRunFlags(rbProject, contextLabId);
+      const validationRecentRuns = mergeProofRuns(recentRuns, proofRuns);
+      setRecentRuns((previous) => {
+        const merged = mergeProofRuns(previous, proofRuns);
+        return recentRunsEqual(previous, merged) ? previous : merged;
+      });
       const backend = getToolchainBackend();
       const doctorReport = await backend.doctorReport({ hdl: rbProject.hdl ?? project, fpga: rbProject.fpga ?? fpga }, { refreshProbe: true, logs: [] });
       const atomicSubmissionGates = validateSubmissionForLab(contextLabId, {
         projectSnapshot: rbProject,
         doctorReport,
         buildPath: doctorReport.buildPath ?? null,
-        recentRuns,
+        recentRuns: validationRecentRuns,
       });
       setSubmitGateResult(atomicSubmissionGates);
 

@@ -7,16 +7,18 @@ async function text(locator) {
 }
 
 await runIdeGate('IDE export artifact explorer contract satisfied', async ({ page, baseUrl }) => {
-  await page.goto(`${baseUrl}/?mode=export`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
+  await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
+  await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 15000 });
 
-  const tree = page.locator('[data-testid="ide-export-artifact-tree"]').first();
+  const tree = page.locator('[data-testid="ide-export-artifact-tabs"]').first();
   const preview = page.locator('[data-testid="ide-export-artifact-preview"]').first();
   assert(await visible(tree), 'export artifact tree must render');
   assert(await visible(preview), 'export artifact preview must render');
 
-  const treeItems = page.locator('[data-testid^="ide-export-artifact-tree-item-"]');
+  const treeItems = page.locator('[data-testid^="ide-export-artifact-tab-"]');
   const itemCount = await treeItems.count();
   assert(itemCount >= 2, `expected at least 2 artifact tree items, got ${itemCount}`);
 

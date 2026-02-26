@@ -22,7 +22,7 @@ await runIdeGate('IDE design build-fast contract satisfied', async ({ page, base
     'board-first palette should confirm node insertion via toast'
   );
 
-  const startWire = page.locator('[data-testid="ide-design-tool-start-wire"]');
+  const startWire = page.locator('[data-testid="ide-design-tool-wire"]');
   assert(await visible(startWire), 'start wire shortcut control must be visible');
   await startWire.click();
   const wireCue = page.locator('[data-testid="ide-design-wire-cue"]');
@@ -42,3 +42,4 @@ await runIdeGate('IDE design build-fast contract satisfied', async ({ page, base
   assert(lastChange.includes('='), 'last-change line must include computed value summary');
   assert(lastChange.toLowerCase().includes('from'), 'last-change line must include source explanation');
 });
+

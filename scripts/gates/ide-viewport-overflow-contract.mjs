@@ -7,11 +7,13 @@ const MODES = ['project', 'design', 'verify', 'hardware', 'export', 'import'];
 await runIdeGate('IDE viewport overflow contract satisfied', async ({ page, baseUrl }) => {
   // Set a standard classroom viewport
   await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
+  await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
   for (const mode of MODES) {
-    await page.goto(`${baseUrl}/?mode=${mode}`, { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
-    await page.waitForSelector(`[data-testid="ide-mode-${mode}"]`, { timeout: 15000 }).catch(() => null);
+    await page.locator(`[data-testid="mode-button-${mode}"]`).click();
+    await page.waitForSelector(`[data-testid="ide-mode-${mode}"]`, { timeout: 15000 });
 
     // Check for horizontal overflow: scrollWidth should not exceed clientWidth
     const { scrollWidth, clientWidth } = await page.evaluate(() => ({

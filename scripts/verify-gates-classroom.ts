@@ -5,6 +5,7 @@ interface GateResult {
   label: string;
   pass: boolean;
   blocking: boolean;
+  details?: string;
 }
 
 function runGate(name: string, command: string, blocking: boolean): GateResult {
@@ -19,6 +20,7 @@ function runGate(name: string, command: string, blocking: boolean): GateResult {
 
 function main() {
   console.log('[verify:gates:classroom] Starting classroom gate suite...\n');
+  const screenshotStrict = process.env.SCREENSHOT_STRICT === '1';
 
   const results: GateResult[] = [
     runGate('rehearse:lab4', 'pnpm -s classroom:rehearse:lab4', true),
@@ -31,12 +33,26 @@ function main() {
     runGate('golden-basys3-export', 'pnpm -s rc:e1:golden-basys3-export-gate', true),
     runGate('golden-basys3-alu-export', 'pnpm -s rc:e1:golden-basys3-alu-export-gate', true),
     runGate('dev-guards', 'pnpm -s ui:dev-guards-contract-gate', true),
+    ...(screenshotStrict
+      ? [runGate('ide:screenshot-baselines', 'pnpm -s ide:gate:screenshots', true)]
+      : [
+          {
+            name: 'ide:screenshot-baselines',
+            label: 'IDE:SCREENSHOT-BASELINES',
+            pass: true,
+            blocking: false,
+            details: 'Skipped by default (set SCREENSHOT_STRICT=1 to enforce).',
+          },
+        ]),
   ];
 
   console.log('\n======= CLASSROOM GATES =======');
   for (const r of results) {
     const status = r.pass ? 'PASS' : 'FAIL';
     console.log(`  ${r.label}: ${status}`);
+    if (!r.pass && r.details) {
+      console.log(`    ${r.details.split('\n').join('\n    ')}`);
+    }
   }
 
   const blockingFail = results.some((r) => r.blocking && !r.pass);

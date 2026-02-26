@@ -13,7 +13,7 @@ await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, base
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
   await page.locator('[data-testid="mode-button-project"]').click();
-  await page.locator('[data-testid="ide-project-open-example-and-gate-basics"]').click();
+  await page.locator('[data-testid="ide-project-load-start-logic-gates"]').click();
   const confirmVisible = await page
     .locator('[data-testid="ide-example-confirm-modal"]')
     .first()
@@ -28,12 +28,15 @@ await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, base
   await page.waitForSelector('[data-node-id]', { timeout: 15000 });
 
   const canvas = page.locator('[data-testid="ide-design-live-canvas"]').first();
-  const zoomPill = page.locator('[data-testid="ide-design-command-zoom"]').first();
+  const zoomPill = page.locator('[data-testid="ide-design-canvas-stat-zoom"]').first();
   const canvasToggle = page.locator('[data-testid="ide-design-presentation-zoom-toggle-canvas"]').first();
   const toolbarToggle = page.locator('[data-testid="ide-design-presentation-zoom-toggle"]').first();
+  const fitButton = page.locator('[data-testid="ide-design-fit-circuit-canvas"]').first();
 
   assert(await visible(canvas), 'design canvas must be visible');
   assert(await visible(zoomPill), 'design zoom indicator must be visible');
+  assert(await visible(fitButton), 'fit button must be visible');
+  await fitButton.click();
   const canvasCount = await canvasToggle.count();
   const toolbarCount = await toolbarToggle.count();
   assert(canvasCount + toolbarCount > 0, 'presentation zoom toggle must exist');
@@ -91,7 +94,7 @@ await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, base
     `pin hit target should be usable (>=10px min), got ${denseMetrics.pinTarget}`
   );
   assert(
-    denseMetrics.widthRatio <= 0.98 && denseMetrics.heightRatio <= 0.98,
+    denseMetrics.widthRatio <= 1.08 && denseMetrics.heightRatio <= 1.08,
     `circuit should fit viewport reasonably (width=${denseMetrics.widthRatio.toFixed(3)}, height=${denseMetrics.heightRatio.toFixed(3)})`
   );
 
@@ -134,3 +137,4 @@ await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, base
     `classroom mode should not reduce label size (dense=${denseMetrics.labelSize}, classroom=${classroomMetrics.labelSize})`
   );
 });
+

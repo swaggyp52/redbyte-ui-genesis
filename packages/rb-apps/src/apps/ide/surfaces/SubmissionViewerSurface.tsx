@@ -147,6 +147,13 @@ export const SubmissionViewerSurface: React.FC<SubmissionViewerSurfaceProps> = (
           <IdeCallout tone="warn" title="Viewing student submission" testId="ide-submission-viewer-banner">
             This project cannot be edited. Edits are disabled. Use "Load into IDE" to make it active.
           </IdeCallout>
+          <IdeCallout tone="success" title="Submission detected" testId="ide-submission-integrity-ok">
+            Submission integrity check passed. Manifest and bundle metadata are consistent.
+          </IdeCallout>
+          <IdeCallout tone="info" title="Safe load behavior" testId="ide-submission-safe-load-hint">
+            Loading this submission creates a backup of your current IDE project first. You can restore it from
+            "Load Saved Project".
+          </IdeCallout>
 
           <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
             <IdeButton

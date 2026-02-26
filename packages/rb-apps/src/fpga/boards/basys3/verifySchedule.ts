@@ -1,12 +1,11 @@
 import type { Circuit } from '@redbyte/rb-logic-core';
-import type { IoMapping } from '@redbyte/rb-utils';
+import type { IoMapping, VerifySchedule } from '@redbyte/rb-utils';
 import type { ToolchainProjectInput } from '../../toolchainBackend';
 import type { SequentialAnalysis } from './sequentialAnalysis';
 import { analyzeSequentialLogic } from './sequentialAnalysis';
 
-export type VerifySchedule = 'combinational' | 'clocked_macro';
-
-export const CLOCKED_MACRO_SEQUENCE: readonly [0, 1, 0] = [0, 1, 0];
+export type { VerifySchedule } from '@redbyte/rb-utils';
+export { CLOCKED_MACRO_SEQUENCE } from '@redbyte/rb-utils';
 
 export interface VerifyScheduleContract {
   schedule: VerifySchedule;

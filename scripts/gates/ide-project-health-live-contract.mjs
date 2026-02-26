@@ -26,11 +26,11 @@ await runIdeGate('IDE project health live contract satisfied', async ({ page, ba
   const firstInput = page.locator('[data-testid^="ide-verify-add-vector-input-"]').first();
   await firstInput.selectOption('1');
   await page.locator('[data-testid="ide-verify-add-vector-submit"]').click();
-  await page.locator('[data-testid="ide-verify-vector-pass"]').click();
+  await page.locator('[data-testid="ide-verify-generate-basic-vectors"]').click();
   await page.locator('[data-testid="ide-verify-run"]').click();
   await page.waitForFunction(
     () => {
-      const label = document.querySelector('[data-testid="ide-verify-status-label"]');
+      const label = document.querySelector('[data-testid="ide-verify-summary-status"]');
       return Boolean(label && /(PASS|FAIL)/i.test(label.textContent || ''));
     },
     { timeout: 10000 }
@@ -68,3 +68,4 @@ await runIdeGate('IDE project health live contract satisfied', async ({ page, ba
     `expected project continue target to route Verify after design mutation, got "${ctaAfterMutation}"`
   );
 });
+

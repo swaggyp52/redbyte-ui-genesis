@@ -26,6 +26,14 @@
       "config": {}
     },
     {
+      "id": "led_q3",
+      "type": "Lamp",
+      "label": "Q3 (LED3)",
+      "position": { "x": 900, "y": 40 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
       "id": "led_q2",
       "type": "Lamp",
       "label": "Q2 (LED2)",
@@ -50,5 +58,51 @@
       "config": {}
     }
   ],
-  "connections": []
+  "connections": [],
+  "labSpec": {
+    "schemaVersion": "1.0",
+    "labId": "lab-7",
+    "title": "Lab 7 - Synchronous Counter",
+    "description": "Starter contract checkpoint for full 4-bit sequence proof.",
+    "objectives": [
+      "Prove a deterministic 0->15 trajectory under clocked macro stepping."
+    ],
+    "checkpoints": [
+      {
+        "id": "counter-sequence-proof",
+        "type": "truth-table",
+        "title": "Counter sequence proof (0..15)",
+        "description": "With EN=1 and RST=0, prove the complete 4-bit sequence window.",
+        "config": {
+          "schedule": "clocked_macro",
+          "clockSignal": "sw_clk",
+          "inputs": ["sw_en", "sw_rst"],
+          "outputs": ["led_q3", "led_q2", "led_q1", "led_q0"],
+          "table": [
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": false, "led_q2": false, "led_q1": false, "led_q0": false } },
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": false, "led_q2": false, "led_q1": false, "led_q0": true } },
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": false, "led_q2": false, "led_q1": true, "led_q0": false } },
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": false, "led_q2": false, "led_q1": true, "led_q0": true } },
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": false, "led_q2": true, "led_q1": false, "led_q0": false } },
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": false, "led_q2": true, "led_q1": false, "led_q0": true } },
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": false, "led_q2": true, "led_q1": true, "led_q0": false } },
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": false, "led_q2": true, "led_q1": true, "led_q0": true } },
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": true, "led_q2": false, "led_q1": false, "led_q0": false } },
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": true, "led_q2": false, "led_q1": false, "led_q0": true } },
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": true, "led_q2": false, "led_q1": true, "led_q0": false } },
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": true, "led_q2": false, "led_q1": true, "led_q0": true } },
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": true, "led_q2": true, "led_q1": false, "led_q0": false } },
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": true, "led_q2": true, "led_q1": false, "led_q0": true } },
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": true, "led_q2": true, "led_q1": true, "led_q0": false } },
+            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": true, "led_q2": true, "led_q1": true, "led_q0": true } }
+          ]
+        },
+        "spec": {
+          "inputs": ["sw_en", "sw_rst"],
+          "outputs": ["led_q3", "led_q2", "led_q1", "led_q0"],
+          "expectedTable": []
+        }
+      }
+    ]
+  }
 }

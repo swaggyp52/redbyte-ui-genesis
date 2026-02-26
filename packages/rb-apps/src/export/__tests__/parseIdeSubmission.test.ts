@@ -9,7 +9,11 @@
 
 import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
-import { parseIdeSubmissionZip, NotASubmissionZipError } from '../parseIdeSubmission';
+import {
+  parseIdeSubmissionZip,
+  NotASubmissionZipError,
+  SubmissionIntegrityError,
+} from '../parseIdeSubmission';
 import { generateIdeSubmissionBundle } from '../ideSubmissionBundle';
 import type { RBProject } from '../projectFormat';
 import { buildVerifyReport } from '../../apps/ide/verifyReport';
@@ -151,6 +155,37 @@ describe('parseIdeSubmissionZip — rejects non-submission ZIPs', () => {
     const bytes = new TextEncoder().encode('not a zip file at all').buffer as ArrayBuffer;
     await expect(parseIdeSubmissionZip(bytes)).rejects.toThrow(NotASubmissionZipError);
   });
+
+  it('throws SubmissionIntegrityError when manifest missing required submission files', async () => {
+    const zip = new JSZip();
+    zip.file('manifest.json', JSON.stringify({
+      bundleId: 'abc',
+      schemaVersion: '1.0',
+      includedFiles: [
+        { path: 'grade/summary.json', sha256: '00', sizeBytes: 0 },
+      ],
+    }));
+    zip.file('grade/summary.json', JSON.stringify({
+      rbSubmissionVersion: 'ide-submission-v1',
+      bundleId: 'abc',
+    }));
+
+    const bytes = await zip.generateAsync({ type: 'uint8array' });
+    await expect(parseIdeSubmissionZip(bytes.buffer as ArrayBuffer))
+      .rejects.toThrow(SubmissionIntegrityError);
+  });
+
+  it('throws SubmissionIntegrityError when a listed file hash is tampered', async () => {
+    const bytes = await makeValidSubmissionZip();
+    const zip = await JSZip.loadAsync(bytes);
+    zip.file('project.rbproj.json', '{"tampered":true}');
+
+    const tamperedBytes = await zip.generateAsync({ type: 'uint8array' });
+    await expect(parseIdeSubmissionZip(tamperedBytes.buffer as ArrayBuffer))
+      .rejects.toThrow(SubmissionIntegrityError);
+    await expect(parseIdeSubmissionZip(tamperedBytes.buffer as ArrayBuffer))
+      .rejects.toThrow(/Submission integrity failed: (hash|size) mismatch for "project\.rbproj\.json"/);
+  });
 });
 
 describe('parseIdeSubmissionZip — roundtrip', () => {
@@ -195,5 +230,23 @@ describe('parseIdeSubmissionZip — roundtrip', () => {
     expect(parsed.gradeSummary.lastRun?.status).toBe(generated.gradeSummary.lastRun?.status);
     expect(parsed.project.name).toBe(generated.gradeSummary.projectName);
     expect(parsed.verifyRunHistory).toHaveLength(ledger.length);
+  });
+
+  it('accepts legacy IDE submissions without manifest includedFiles', async () => {
+    const project = makeProject();
+    const zip = new JSZip();
+    zip.file('manifest.json', JSON.stringify({ bundleId: 'legacy-bundle', schemaVersion: '1.0' }));
+    zip.file('grade/summary.json', JSON.stringify({
+      rbSubmissionVersion: 'ide-submission-v1',
+      bundleId: 'legacy-bundle',
+      projectName: project.name,
+    }));
+    zip.file('project.rbproj.json', JSON.stringify(project));
+    zip.file('verify/run-ledger.json', JSON.stringify([]));
+
+    const bytes = await zip.generateAsync({ type: 'uint8array' });
+    const parsed = await parseIdeSubmissionZip(bytes.buffer as ArrayBuffer);
+    expect(parsed.gradeSummary.bundleId).toBe('legacy-bundle');
+    expect(parsed.project.name).toBe(project.name);
   });
 });

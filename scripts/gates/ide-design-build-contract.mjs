@@ -20,10 +20,13 @@ await runIdeGate('IDE design build contract satisfied', async ({ page, baseUrl }
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-design-command-header"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-design-toolbar"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-design-tool-segmented"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-design-empty-state"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-design-canvas-zoom-indicator"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-design-canvas-stat-zoom"]', { timeout: 10000 });
+
+  await page.locator('[data-testid="ide-design-tools-toggle"]').click();
+  await page.waitForSelector('[data-testid="ide-design-toolbar-expanded"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-design-undo-depth"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-design-redo-depth"]', { timeout: 10000 });
 
@@ -43,7 +46,7 @@ await runIdeGate('IDE design build contract satisfied', async ({ page, baseUrl }
   });
   assert(initialSnapshot, 'circuit store unavailable on window.__RB_CIRCUIT_STORE__');
 
-  const initialZoom = await page.locator('[data-testid="ide-design-canvas-zoom-indicator"]').innerText();
+  const initialZoom = await page.locator('[data-testid="ide-design-canvas-stat-zoom"]').innerText();
 
   await page.locator('[data-testid="ide-design-tool-select"]').click();
   await page.waitForFunction(
@@ -55,8 +58,12 @@ await runIdeGate('IDE design build contract satisfied', async ({ page, baseUrl }
     () => document.querySelector('[data-testid="ide-design-live-canvas"]')?.getAttribute('data-tool-mode') === 'wire',
     { timeout: 5000 }
   );
-  const wirePillText = (await page.locator('[data-testid="ide-design-wire-pill"]').first().textContent())?.trim();
-  assert(wirePillText === 'Wire Mode', `wire mode pill mismatch: ${wirePillText}`);
+  const wirePillText = (await page.locator('[data-testid="ide-design-wire-cue"]').first().textContent())?.trim();
+  assert(
+    (wirePillText ?? '').toLowerCase().includes('wire') ||
+      (wirePillText ?? '').toLowerCase().includes('pin'),
+    `wire mode cue mismatch: ${wirePillText}`
+  );
 
   await page.locator('[data-testid="ide-design-add-and-starter"]').click();
 
@@ -171,7 +178,7 @@ await runIdeGate('IDE design build contract satisfied', async ({ page, baseUrl }
     { timeout: 10000 }
   );
 
-  const updatedZoom = await page.locator('[data-testid="ide-design-canvas-zoom-indicator"]').innerText();
+  const updatedZoom = await page.locator('[data-testid="ide-design-canvas-stat-zoom"]').innerText();
   assert(updatedZoom.includes('%'), `expected zoom indicator percent, got ${updatedZoom}`);
   assert(initialZoom.includes('%'), `expected initial zoom indicator percent, got ${initialZoom}`);
 
@@ -190,3 +197,4 @@ await runIdeGate('IDE design build contract satisfied', async ({ page, baseUrl }
   assert(!finalSnapshot.hasCrash, 'crash marker detected during design flow');
   assert(pageErrors.length === 0, `page errors detected: ${pageErrors.join(' | ')}`);
 });
+

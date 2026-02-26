@@ -35,7 +35,7 @@ await runIdeGate('IDE sequential simulation contract satisfied', async ({ page, 
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
   await page.locator('[data-testid="mode-button-project"]').click();
-  await page.locator('[data-testid="ide-project-open-example-dff-toggle"]').click();
+  await page.locator('[data-testid="ide-project-load-start-two-bit-counter"]').click();
 
   const replaceModalVisible = await page
     .locator('[data-testid="ide-example-confirm-modal"]')
@@ -85,3 +85,4 @@ await runIdeGate('IDE sequential simulation contract satisfied', async ({ page, 
   const resetValue = (await text(outputRow)) || (await text(outputFallback));
   assert(resetValue === '0', `expected sequential reset to clear output to 0, got ${resetValue}`);
 });
+

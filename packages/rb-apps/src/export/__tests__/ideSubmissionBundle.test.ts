@@ -16,6 +16,9 @@ import type { IdeSubmissionGradeSummary } from '../ideSubmissionBundle';
 import type { RBProject } from '../projectFormat';
 import type { VerifyRunLedgerEntry, RuntimeVerifyRun } from '../../apps/ide/projectRuntime';
 import { buildVerifyReport } from '../../apps/ide/verifyReport';
+import { parseIdeSubmissionZip } from '../parseIdeSubmission';
+import { validateSubmissionForLab } from '../../labs/submissionGates';
+import { deriveProofRunFlags } from '../../labs/proofRunFlags';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -100,6 +103,19 @@ function makeLastRun(status: 'pass' | 'fail'): RuntimeVerifyRun {
     schedule: 'combinational',
     report,
     waveform: [],
+  };
+}
+
+function makeLabReadyHdl() {
+  return {
+    top: 'top',
+    sources: [
+      {
+        path: 'top.vhd',
+        language: 'vhdl' as const,
+        text: 'entity top is end top; architecture rtl of top is begin end rtl;',
+      },
+    ],
   };
 }
 
@@ -309,5 +325,372 @@ describe('generateIdeSubmissionBundle — gate results', () => {
     // lab-1 has requireSimEvidence — should produce a warn/block gate issue
     expect(result.gradeSummary.gateResults.length).toBeGreaterThan(0);
     expect(result.gradeSummary.overallGateVerdict).not.toBe('ungraded');
+  });
+
+  it('lab 7 remains blocked until counter-sequence-proof checkpoint passes', async () => {
+    const failingLab7 = makeProject({
+      hdl: makeLabReadyHdl(),
+      meta: {
+        projectId: 'lab7-fail',
+        appSurface: 'ide-export',
+        labId: 'lab-7',
+      },
+      labSpec: {
+        schemaVersion: '1.0',
+        labId: 'lab-7',
+        title: 'Lab 7',
+        objectives: ['Counter proof'],
+        checkpoints: [
+          {
+            id: 'counter-sequence-proof',
+            type: 'truth-table',
+            title: 'Counter sequence',
+            config: {
+              schedule: 'combinational',
+              inputs: ['n1'],
+              outputs: ['n2'],
+              table: [{ inputs: { n1: true }, outputs: { n2: false } }],
+            },
+          },
+        ],
+      },
+    });
+
+    const blocked = await generateIdeSubmissionBundle({
+      project: failingLab7,
+      verifyLastRun: null,
+      verifyRunHistory: [],
+      submittedAt: '2026-01-15T12:00:00.000Z',
+      appCommitSha: 'abc123',
+    });
+
+    expect(blocked.gradeSummary.proofRuns.sequenceProofRun).toBe(false);
+    expect(blocked.gradeSummary.gateResults.some((gate) => gate.gateId === 'sequence_proof_missing')).toBe(true);
+
+    const passingLab7 = makeProject({
+      hdl: makeLabReadyHdl(),
+      meta: {
+        projectId: 'lab7-pass',
+        appSurface: 'ide-export',
+        labId: 'lab-7',
+      },
+      labSpec: {
+        schemaVersion: '1.0',
+        labId: 'lab-7',
+        title: 'Lab 7',
+        objectives: ['Counter proof'],
+        checkpoints: [
+          {
+            id: 'counter-sequence-proof',
+            type: 'truth-table',
+            title: 'Counter sequence',
+            config: {
+              schedule: 'combinational',
+              inputs: ['n1'],
+              outputs: ['n2'],
+              table: [{ inputs: { n1: true }, outputs: { n2: true } }],
+            },
+          },
+        ],
+      },
+    });
+
+    const unblocked = await generateIdeSubmissionBundle({
+      project: passingLab7,
+      verifyLastRun: null,
+      verifyRunHistory: [],
+      submittedAt: '2026-01-15T12:00:00.000Z',
+      appCommitSha: 'abc123',
+    });
+
+    expect(unblocked.gradeSummary.proofRuns.sequenceProofRun).toBe(true);
+    expect(unblocked.gradeSummary.gateResults.some((gate) => gate.gateId === 'sequence_proof_missing')).toBe(false);
+  });
+
+  it('lab 8 remains blocked until both fsm path checkpoints pass', async () => {
+    const failingLab8 = makeProject({
+      hdl: makeLabReadyHdl(),
+      meta: {
+        projectId: 'lab8-fail',
+        appSurface: 'ide-export',
+        labId: 'lab-8',
+      },
+      labSpec: {
+        schemaVersion: '1.0',
+        labId: 'lab-8',
+        title: 'Lab 8',
+        objectives: ['FSM path proof'],
+        checkpoints: [
+          {
+            id: 'fsm-invalid-path',
+            type: 'truth-table',
+            title: 'Invalid path',
+            config: {
+              schedule: 'combinational',
+              inputs: ['n1'],
+              outputs: ['n2'],
+              table: [{ inputs: { n1: true }, outputs: { n2: true } }],
+            },
+          },
+          {
+            id: 'fsm-valid-path',
+            type: 'truth-table',
+            title: 'Valid path',
+            config: {
+              schedule: 'combinational',
+              inputs: ['n1'],
+              outputs: ['n2'],
+              table: [{ inputs: { n1: true }, outputs: { n2: false } }],
+            },
+          },
+        ],
+      },
+    });
+
+    const blocked = await generateIdeSubmissionBundle({
+      project: failingLab8,
+      verifyLastRun: null,
+      verifyRunHistory: [],
+      submittedAt: '2026-01-15T12:00:00.000Z',
+      appCommitSha: 'abc123',
+    });
+
+    expect(blocked.gradeSummary.proofRuns.fsmPathsRun).toBe(false);
+    expect(blocked.gradeSummary.gateResults.some((gate) => gate.gateId === 'fsm_paths_missing')).toBe(true);
+
+    const passingLab8 = makeProject({
+      hdl: makeLabReadyHdl(),
+      meta: {
+        projectId: 'lab8-pass',
+        appSurface: 'ide-export',
+        labId: 'lab-8',
+      },
+      labSpec: {
+        schemaVersion: '1.0',
+        labId: 'lab-8',
+        title: 'Lab 8',
+        objectives: ['FSM path proof'],
+        checkpoints: [
+          {
+            id: 'fsm-invalid-path',
+            type: 'truth-table',
+            title: 'Invalid path',
+            config: {
+              schedule: 'combinational',
+              inputs: ['n1'],
+              outputs: ['n2'],
+              table: [{ inputs: { n1: true }, outputs: { n2: true } }],
+            },
+          },
+          {
+            id: 'fsm-valid-path',
+            type: 'truth-table',
+            title: 'Valid path',
+            config: {
+              schedule: 'combinational',
+              inputs: ['n1'],
+              outputs: ['n2'],
+              table: [{ inputs: { n1: true }, outputs: { n2: true } }],
+            },
+          },
+        ],
+      },
+    });
+
+    const unblocked = await generateIdeSubmissionBundle({
+      project: passingLab8,
+      verifyLastRun: null,
+      verifyRunHistory: [],
+      submittedAt: '2026-01-15T12:00:00.000Z',
+      appCommitSha: 'abc123',
+    });
+
+    expect(unblocked.gradeSummary.proofRuns.fsmPathsRun).toBe(true);
+    expect(unblocked.gradeSummary.gateResults.some((gate) => gate.gateId === 'fsm_paths_missing')).toBe(false);
+  });
+
+  it('proof flags stay in lockstep between runtime gate evaluation and parsed submission summary', async () => {
+    const scenarios: Array<{
+      label: string;
+      labId: 'lab-7' | 'lab-8';
+      project: RBProject;
+      proofKey: 'sequenceProofRun' | 'fsmPathsRun';
+      missingGateId: 'sequence_proof_missing' | 'fsm_paths_missing';
+      expectedProof: boolean;
+    }> = [
+      {
+        label: 'lab7-fail',
+        labId: 'lab-7',
+        project: makeProject({
+          hdl: makeLabReadyHdl(),
+          meta: { projectId: 'lab7-sync-fail', appSurface: 'ide-export', labId: 'lab-7' },
+          labSpec: {
+            schemaVersion: '1.0',
+            labId: 'lab-7',
+            title: 'Lab 7',
+            objectives: ['Counter proof'],
+            checkpoints: [
+              {
+                id: 'counter-sequence-proof',
+                type: 'truth-table',
+                title: 'Counter sequence',
+                config: {
+                  schedule: 'combinational',
+                  inputs: ['n1'],
+                  outputs: ['n2'],
+                  table: [{ inputs: { n1: true }, outputs: { n2: false } }],
+                },
+              },
+            ],
+          },
+        }),
+        proofKey: 'sequenceProofRun',
+        missingGateId: 'sequence_proof_missing',
+        expectedProof: false,
+      },
+      {
+        label: 'lab7-pass',
+        labId: 'lab-7',
+        project: makeProject({
+          hdl: makeLabReadyHdl(),
+          meta: { projectId: 'lab7-sync-pass', appSurface: 'ide-export', labId: 'lab-7' },
+          labSpec: {
+            schemaVersion: '1.0',
+            labId: 'lab-7',
+            title: 'Lab 7',
+            objectives: ['Counter proof'],
+            checkpoints: [
+              {
+                id: 'counter-sequence-proof',
+                type: 'truth-table',
+                title: 'Counter sequence',
+                config: {
+                  schedule: 'combinational',
+                  inputs: ['n1'],
+                  outputs: ['n2'],
+                  table: [{ inputs: { n1: true }, outputs: { n2: true } }],
+                },
+              },
+            ],
+          },
+        }),
+        proofKey: 'sequenceProofRun',
+        missingGateId: 'sequence_proof_missing',
+        expectedProof: true,
+      },
+      {
+        label: 'lab8-fail',
+        labId: 'lab-8',
+        project: makeProject({
+          hdl: makeLabReadyHdl(),
+          meta: { projectId: 'lab8-fsm-fail', appSurface: 'ide-export', labId: 'lab-8' },
+          labSpec: {
+            schemaVersion: '1.0',
+            labId: 'lab-8',
+            title: 'Lab 8',
+            objectives: ['FSM path proof'],
+            checkpoints: [
+              {
+                id: 'fsm-invalid-path',
+                type: 'truth-table',
+                title: 'Invalid path',
+                config: {
+                  schedule: 'combinational',
+                  inputs: ['n1'],
+                  outputs: ['n2'],
+                  table: [{ inputs: { n1: true }, outputs: { n2: true } }],
+                },
+              },
+              {
+                id: 'fsm-valid-path',
+                type: 'truth-table',
+                title: 'Valid path',
+                config: {
+                  schedule: 'combinational',
+                  inputs: ['n1'],
+                  outputs: ['n2'],
+                  table: [{ inputs: { n1: true }, outputs: { n2: false } }],
+                },
+              },
+            ],
+          },
+        }),
+        proofKey: 'fsmPathsRun',
+        missingGateId: 'fsm_paths_missing',
+        expectedProof: false,
+      },
+      {
+        label: 'lab8-pass',
+        labId: 'lab-8',
+        project: makeProject({
+          hdl: makeLabReadyHdl(),
+          meta: { projectId: 'lab8-fsm-pass', appSurface: 'ide-export', labId: 'lab-8' },
+          labSpec: {
+            schemaVersion: '1.0',
+            labId: 'lab-8',
+            title: 'Lab 8',
+            objectives: ['FSM path proof'],
+            checkpoints: [
+              {
+                id: 'fsm-invalid-path',
+                type: 'truth-table',
+                title: 'Invalid path',
+                config: {
+                  schedule: 'combinational',
+                  inputs: ['n1'],
+                  outputs: ['n2'],
+                  table: [{ inputs: { n1: true }, outputs: { n2: true } }],
+                },
+              },
+              {
+                id: 'fsm-valid-path',
+                type: 'truth-table',
+                title: 'Valid path',
+                config: {
+                  schedule: 'combinational',
+                  inputs: ['n1'],
+                  outputs: ['n2'],
+                  table: [{ inputs: { n1: true }, outputs: { n2: true } }],
+                },
+              },
+            ],
+          },
+        }),
+        proofKey: 'fsmPathsRun',
+        missingGateId: 'fsm_paths_missing',
+        expectedProof: true,
+      },
+    ];
+
+    for (const scenario of scenarios) {
+      const proofRuns = await deriveProofRunFlags(scenario.project, scenario.labId);
+      const runtimeGate = validateSubmissionForLab(scenario.labId, {
+        projectSnapshot: scenario.project,
+        doctorReport: null,
+        recentRuns: {
+          simulated: true,
+          synthesized: true,
+          ...proofRuns,
+        },
+      });
+
+      const generated = await generateIdeSubmissionBundle({
+        project: scenario.project,
+        verifyLastRun: null,
+        verifyRunHistory: [],
+        submittedAt: '2026-01-15T12:00:00.000Z',
+        appCommitSha: 'abc123',
+      });
+      const parsed = await parseIdeSubmissionZip(generated.bytes.buffer as ArrayBuffer);
+
+      expect(parsed.gradeSummary.proofRuns[scenario.proofKey], `${scenario.label}: parsed proof flag`).toBe(scenario.expectedProof);
+      expect(generated.gradeSummary.proofRuns[scenario.proofKey], `${scenario.label}: generated proof flag`).toBe(scenario.expectedProof);
+
+      const runtimeMissing = runtimeGate.issues.some((issue) => issue.code === scenario.missingGateId);
+      const summaryMissing = parsed.gradeSummary.gateResults.some((gate) => gate.gateId === scenario.missingGateId);
+      expect(runtimeMissing, `${scenario.label}: runtime missing gate issue`).toBe(!scenario.expectedProof);
+      expect(summaryMissing, `${scenario.label}: parsed summary missing gate issue`).toBe(!scenario.expectedProof);
+      expect(parsed.gradeSummary.overallGateVerdict, `${scenario.label}: verdict parity`).toBe(runtimeGate.verdict);
+    }
   });
 });

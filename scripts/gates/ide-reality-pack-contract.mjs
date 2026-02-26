@@ -31,7 +31,7 @@ async function uploadZip(page, fixturePath, filename) {
 }
 
 async function applyAndConfirm(page) {
-  const applyBtn = page.locator('[data-testid="ide-import-build-project"]');
+  const applyBtn = page.locator('[data-testid="ide-import-process-design"]');
   await applyBtn.click();
   const confirmBtn = page.locator('[data-testid="ide-import-apply-confirm"]');
   const confirmVisible = await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false);
@@ -66,7 +66,7 @@ await runIdeGate('IDE reality-pack contract', async ({ page, baseUrl }) => {
     `[fx03] top path must NOT include helper.vhd, got "${topPath03}"`
   );
 
-  const applyBtn03 = page.locator('[data-testid="ide-import-build-project"]');
+  const applyBtn03 = page.locator('[data-testid="ide-import-process-design"]');
   const applyDisabled03 = await applyBtn03.getAttribute('disabled');
   assert(applyDisabled03 === null, '[fx03] Apply button must not be disabled');
 
@@ -123,7 +123,7 @@ await runIdeGate('IDE reality-pack contract', async ({ page, baseUrl }) => {
     `[fx04] warnings must mention "clk", got: "${warningsText04?.substring(0, 200)}"`
   );
 
-  const applyBtn04 = page.locator('[data-testid="ide-import-build-project"]');
+  const applyBtn04 = page.locator('[data-testid="ide-import-process-design"]');
   const applyDisabled04 = await applyBtn04.getAttribute('disabled');
   assert(applyDisabled04 === null, '[fx04] Apply button must not be disabled (mismatch warns but does not block)');
 
@@ -143,7 +143,7 @@ await runIdeGate('IDE reality-pack contract', async ({ page, baseUrl }) => {
   const reconPartialVisible = await reconPartial.isVisible({ timeout: 5000 });
   assert(reconPartialVisible, '[fx05] ide-import-recon-partial callout must be visible for behavioural HDL');
 
-  const applyBtn05 = page.locator('[data-testid="ide-import-build-project"]');
+  const applyBtn05 = page.locator('[data-testid="ide-import-process-design"]');
   const applyDisabled05 = await applyBtn05.getAttribute('disabled');
   assert(applyDisabled05 === null, '[fx05] Apply button must not be disabled for ports-only import');
 
@@ -160,3 +160,4 @@ await runIdeGate('IDE reality-pack contract', async ({ page, baseUrl }) => {
     `[fx05] mapping table must have header + >=3 rows (3 ports), got ${ioRows05}`
   );
 });
+

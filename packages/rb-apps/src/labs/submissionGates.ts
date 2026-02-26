@@ -26,6 +26,8 @@ export interface SubmissionValidationRecentRuns {
   synthesized?: boolean;
   waveformCaptured?: boolean;
   hardwareObserved?: boolean;
+  sequenceProofRun?: boolean;
+  fsmPathsRun?: boolean;
 }
 
 export interface SubmissionValidationInput {
@@ -252,6 +254,32 @@ export function validateSubmissionForLab(
       message: 'No hardware session evidence was detected in this workspace.',
       fixHint: 'Run Hardware once and capture evidence if a board is available.',
       cta: { label: 'Open Hardware', action: 'openTab', tab: 'hardware' },
+    });
+  }
+
+  const hasSequenceProofGate = definition?.submitGates.some((gate) => gate.id === 'sequence-proof') ?? false;
+  if (hasSequenceProofGate && input.recentRuns?.sequenceProofRun !== true) {
+    issues.push({
+      code: 'sequence_proof_missing',
+      severity: 'block',
+      title: 'Sequence proof missing',
+      message: 'This lab requires a full counter trajectory proof before submission.',
+      fixHint: 'Run the Lab 7 sequence checkpoint in Simulate to produce proof evidence.',
+      cta: { label: 'Open Simulate', action: 'openTab', tab: 'simulate' },
+      evidence: { key: 'recentRuns.sequenceProofRun', expected: 'true', actual: 'false' },
+    });
+  }
+
+  const hasFsmPathsGate = definition?.submitGates.some((gate) => gate.id === 'fsm-paths') ?? false;
+  if (hasFsmPathsGate && input.recentRuns?.fsmPathsRun !== true) {
+    issues.push({
+      code: 'fsm_paths_missing',
+      severity: 'block',
+      title: 'FSM path evidence missing',
+      message: 'This lab requires both valid and invalid FSM path proof before submission.',
+      fixHint: 'Run both Lab 8 FSM path checkpoints in Simulate to produce proof evidence.',
+      cta: { label: 'Open Simulate', action: 'openTab', tab: 'simulate' },
+      evidence: { key: 'recentRuns.fsmPathsRun', expected: 'true', actual: 'false' },
     });
   }
 

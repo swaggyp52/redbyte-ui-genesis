@@ -47,7 +47,7 @@ await runIdeGate('IDE verify trace-only contract', async ({ page, baseUrl }) => 
   // 8. Status label must say TRACE ONLY
   const statusLabel = (
     await page
-      .locator('[data-testid="ide-verify-status-label"]')
+      .locator('[data-testid="ide-verify-summary-status"]')
       .first()
       .textContent()
       .catch(() => '')
@@ -86,3 +86,4 @@ await runIdeGate('IDE verify trace-only contract', async ({ page, baseUrl }) => 
     .catch(() => false);
   assert(!emptyStateAfter, 'Empty state must NOT be visible after a trace-only run');
 });
+

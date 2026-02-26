@@ -35,7 +35,7 @@ await runIdeGate('IDE live simulation contract satisfied', async ({ page, baseUr
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
   await page.locator('[data-testid="mode-button-project"]').click();
-  await page.locator('[data-testid="ide-project-open-example-and-gate-basics"]').click();
+  await page.locator('[data-testid="ide-project-load-start-logic-gates"]').click();
 
   const replaceModalVisible = await page
     .locator('[data-testid="ide-example-confirm-modal"]')
@@ -110,3 +110,4 @@ await runIdeGate('IDE live simulation contract satisfied', async ({ page, baseUr
   const outputAfterStep = await text(page.locator('[data-testid^="ide-design-live-output-"] code').first());
   assert(outputAfterStep === '1', `expected combinational output to stay high after step, got ${outputAfterStep}`);
 });
+

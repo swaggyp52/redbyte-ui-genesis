@@ -28,7 +28,7 @@ await runIdeGate('IDE zoom presets contract satisfied', async ({ page, baseUrl }
   await page.locator('[data-testid="ide-design-zoom-preset-50"]').click();
   await page.waitForTimeout(150);
   const zoomText50 = await page
-    .locator('[data-testid="ide-design-zoom-indicator"]').first().textContent().catch(() => '');
+    .locator('[data-testid="ide-design-canvas-stat-zoom"]').first().textContent().catch(() => '');
   // zoomPercent rounds to nearest integer; 50% = zoom 0.5 = "50%"
   assert(
     (zoomText50 ?? '').includes('50'),
@@ -39,7 +39,7 @@ await runIdeGate('IDE zoom presets contract satisfied', async ({ page, baseUrl }
   await page.locator('[data-testid="ide-design-zoom-preset-100"]').click();
   await page.waitForTimeout(150);
   const zoomText100 = await page
-    .locator('[data-testid="ide-design-zoom-indicator"]').first().textContent().catch(() => '');
+    .locator('[data-testid="ide-design-canvas-stat-zoom"]').first().textContent().catch(() => '');
   assert(
     (zoomText100 ?? '').includes('100'),
     `after clicking 100%, zoom indicator should show 100, got "${zoomText100}"`

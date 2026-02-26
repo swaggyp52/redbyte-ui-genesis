@@ -205,6 +205,148 @@
   color: var(--rb-ui-lab-text);
 }
 
+.queuePanel {
+  margin: 0 var(--rb-ui-lab-gutter) var(--rb-ui-lab-gutter);
+  padding: 0.875rem;
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 8px;
+  background: var(--rb-ui-lab-bg-surface);
+}
+
+.queueHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.queueActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.queueHint {
+  margin: 0.5rem 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.queueTableWrap {
+  overflow: auto;
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 8px;
+}
+
+.queueTable {
+  width: 100%;
+  min-width: 1100px;
+  border-collapse: collapse;
+  background: var(--rb-ui-lab-bg-elevated);
+}
+
+.queueTable th,
+.queueTable td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--rb-ui-lab-border);
+  font-size: 0.8125rem;
+  color: var(--rb-ui-lab-text);
+}
+
+.queueTable th {
+  position: sticky;
+  top: 0;
+  background: color-mix(in srgb, var(--rb-ui-lab-bg-surface) 95%, transparent);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.queueVerdictPill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--rb-ui-lab-border);
+  background: var(--rb-ui-lab-bg-surface);
+  padding: 0.1rem 0.45rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.queueCommitCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.queueCommitValue {
+  font-family: var(--rb-font-mono);
+  color: var(--rb-ui-lab-text-muted);
+  font-size: 0.75rem;
+}
+
+.queueSkewMismatch,
+.queueSkewMatch,
+.queueSkewUnknown {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.queueSkewMismatch {
+  color: var(--rb-ui-lab-danger);
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-danger) 42%, transparent);
+  background: color-mix(in srgb, var(--rb-ui-lab-danger) 14%, transparent);
+}
+
+.queueSkewMatch {
+  color: var(--rb-ui-lab-success);
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-success) 42%, transparent);
+  background: color-mix(in srgb, var(--rb-ui-lab-success) 14%, transparent);
+}
+
+.queueSkewUnknown {
+  color: var(--rb-ui-lab-warning);
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-warning) 42%, transparent);
+  background: color-mix(in srgb, var(--rb-ui-lab-warning) 14%, transparent);
+}
+
+.queueDuplicateBadge {
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid var(--rb-ui-lab-border);
+  padding: 0.08rem 0.4rem;
+  font-size: 0.625rem;
+  color: var(--rb-ui-lab-text-muted);
+  background: var(--rb-ui-lab-bg-surface);
+}
+
+.queueRowActions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.queueNotesInput {
+  width: 100%;
+  min-width: 160px;
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 6px;
+  background: var(--rb-ui-lab-bg-surface);
+  color: var(--rb-ui-lab-text);
+  font-size: 0.75rem;
+  padding: 0.35rem 0.45rem;
+}
+
 .empty {
   padding: 2rem;
   text-align: center;

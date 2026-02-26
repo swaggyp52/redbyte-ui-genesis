@@ -6,7 +6,7 @@ import type { Circuit } from '@redbyte/rb-logic-core';
 import type { RunRecord } from '../recording/runRecord';
 import type { Probe } from '../stores/probeStore';
 import type { ToolchainProjectInput } from '../fpga/toolchainBackend';
-import type { IoMapping, TestVector } from '@redbyte/rb-utils';
+import type { IoMapping, LabSpecV1, TestVector } from '@redbyte/rb-utils';
 import { stableStringify } from './stableStringify';
 import { compareCodepoint } from './codepointSort';
 
@@ -65,6 +65,7 @@ export interface RBProject {
   vectors?: TestVector[];
   traceMetadata?: TraceMetadata;
   submodules?: SubmoduleEntry[];
+  labSpec?: LabSpecV1;
   meta?: {
     appVersion?: string;
     gitCommit?: string;

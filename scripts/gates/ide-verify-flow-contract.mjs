@@ -30,7 +30,7 @@ await runIdeGate('IDE verify flow contract satisfied', async ({ page, baseUrl })
   await page.locator('[data-testid="ide-verify-run"]').click();
   await page.waitForFunction(
     () => {
-      const label = document.querySelector('[data-testid="ide-verify-status-label"]');
+      const label = document.querySelector('[data-testid="ide-verify-summary-status"]');
       return Boolean(label && !/IDLE/i.test(label.textContent || ''));
     },
     { timeout: 10000 }
@@ -46,7 +46,7 @@ await runIdeGate('IDE verify flow contract satisfied', async ({ page, baseUrl })
 
   // Status must not be IDLE
   const statusText = (
-    await page.locator('[data-testid="ide-verify-status-label"]').first().textContent().catch(() => '')
+    await page.locator('[data-testid="ide-verify-summary-status"]').first().textContent().catch(() => '')
   )?.trim();
   assert(
     Boolean(statusText && !/IDLE/i.test(statusText)),
@@ -57,3 +57,4 @@ await runIdeGate('IDE verify flow contract satisfied', async ({ page, baseUrl })
   const jumpButton = page.locator('[data-testid="ide-verify-jump-first-fail"]').first();
   assert(await visible(jumpButton), 'jump-to-first-fail button must render after run');
 });
+

@@ -35,6 +35,38 @@ jobs:
       - name: Verify Unified Artifact
         run: node scripts/merge-dist.mjs && node scripts/verify-dist.mjs
 
+  ide-screenshot-baselines:
+    name: IDE Screenshot Baselines (optional)
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.SCREENSHOT_STRICT == '1' }}
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run IDE screenshot baselines (strict)
+        env:
+          SCREENSHOT_STRICT: '1'
+        run: pnpm -s ide:gate:screenshots
+
   cloudflare-parity:
     name: Cloudflare Parity Build
     runs-on: windows-latest

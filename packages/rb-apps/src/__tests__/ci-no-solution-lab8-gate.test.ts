@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { loadExampleAsProject } from '../examples';
 import { getLabDefinitionById } from '../labs/labDefinitions';
 
 interface StarterNode {
@@ -17,6 +18,16 @@ interface StarterConnection {
 interface StarterCircuitFile {
   nodes?: StarterNode[];
   connections?: StarterConnection[];
+  labSpec?: {
+    checkpoints?: Array<{
+      id?: string;
+      type?: string;
+      config?: {
+        schedule?: string;
+        clockSignal?: string;
+      };
+    }>;
+  };
 }
 
 const STARTER_PATH = join(process.cwd(), 'packages/rb-apps/src/examples/23_lab8-fsm-lock-starter-basys3.json');
@@ -39,11 +50,36 @@ describe('ci:no-solution:lab8 gate', () => {
     const suspiciousTypes = new Set(['FSM', 'COUNTER', 'DECODER', 'REGISTER', 'DFF']);
     const suspiciousNodes = nodes.filter((node) => suspiciousTypes.has(String(node.type ?? '').toUpperCase()));
     expect(suspiciousNodes).toEqual([]);
+
+    const checkpoints = starter.labSpec?.checkpoints ?? [];
+    const invalidCheckpoint = checkpoints.find((checkpoint) => checkpoint.id === 'fsm-invalid-path');
+    const validCheckpoint = checkpoints.find((checkpoint) => checkpoint.id === 'fsm-valid-path');
+
+    expect(invalidCheckpoint).toBeTruthy();
+    expect(validCheckpoint).toBeTruthy();
+    expect(invalidCheckpoint?.type).toBe('truth-table');
+    expect(validCheckpoint?.type).toBe('truth-table');
+    expect(invalidCheckpoint?.config?.schedule).toBe('clocked_macro');
+    expect(validCheckpoint?.config?.schedule).toBe('clocked_macro');
+    expect(invalidCheckpoint?.config?.clockSignal).toBe('sw_enter');
+    expect(validCheckpoint?.config?.clockSignal).toBe('sw_enter');
   });
 
   it('maps Lab 8 to the unsolved starter scaffold', () => {
     const lab = getLabDefinitionById('lab-8');
     expect(lab).toBeTruthy();
     expect(lab?.starterExampleId).toBe('23_lab8-fsm-lock-starter-basys3');
+  });
+
+  it('preserves labSpec checkpoints when loading the starter as a project', () => {
+    const project = loadExampleAsProject('23_lab8-fsm-lock-starter-basys3');
+    const checkpoints = project.labSpec?.checkpoints ?? [];
+    const invalidCheckpoint = checkpoints.find((checkpoint) => checkpoint.id === 'fsm-invalid-path');
+    const validCheckpoint = checkpoints.find((checkpoint) => checkpoint.id === 'fsm-valid-path');
+
+    expect(invalidCheckpoint).toBeTruthy();
+    expect(validCheckpoint).toBeTruthy();
+    expect((invalidCheckpoint?.config as { clockSignal?: string } | undefined)?.clockSignal).toBe('sw_enter');
+    expect((validCheckpoint?.config as { clockSignal?: string } | undefined)?.clockSignal).toBe('sw_enter');
   });
 });
