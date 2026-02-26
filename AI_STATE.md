@@ -1,5 +1,36 @@
 # AI State
 
+## Change Log 2026-02-26 (PR22 IDE Export E2E Contract Gate)
+
+**Status**: COMPLETE - Added a gate-only export contract that proves Generated HDL preview parity with the downloaded Vivado Kit ZIP and validates XDC mapping coverage from project state.
+
+### What Changed
+- Added `scripts/gates/ide-export-e2e-contract.mjs`:
+  - loads the same IDE example flow used by existing verify/export contract gates (`logic-gates`),
+  - runs Verify to PASS, opens Export, captures Generated HDL preview content,
+  - downloads the Vivado Kit ZIP and asserts byte equality for:
+    - `top.vhd` preview vs ZIP
+    - `top.xdc` (constraints artifact) preview vs ZIP
+    - `testbench.vhd` preview vs ZIP
+  - asserts ZIP artifact presence for top HDL, constraints XDC, testbench, and (when expected) `vivado_import.tcl`,
+  - checks for `README.txt` presence as optional/preferred,
+  - parses `project.rbproj.json` mapping rows from the same export state and asserts XDC `PACKAGE_PIN` mappings:
+    - one mapping line per mapped port
+    - XDC mapped port names match expected mapped project port names.
+- Added package script:
+  - `ide:gate:export-e2e-contract` in `package.json`.
+- Updated classroom gate runner:
+  - `scripts/classroom-gate.mjs` now includes `ide:gate:export-e2e-contract` in the required sequence.
+
+### Validation Executed
+- `node --check scripts/gates/ide-export-e2e-contract.mjs` -> PASS
+- `pnpm build` -> PASS
+- `pnpm -s classroom:gate` -> PASS
+  - includes `ide:gate:export-e2e-contract` -> PASS
+
+### Attribution
+- Connor Angiel
+
 ## Change Log 2026-02-26 (Structural Audit & Reorganization)
 
 **Status**: COMPLETE — Repo archaeology, architecture docs, student UX simplification, HDL transparency.
