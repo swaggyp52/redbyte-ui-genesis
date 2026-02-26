@@ -14,6 +14,7 @@ import {
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
+import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import { TruthTablePane } from './TruthTablePane';
 import type { TruthTableMode, TruthTableRow } from './TruthTablePane';
 
@@ -1158,22 +1159,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             The badge must never show PASS/FAIL for a circuit that has since changed. */}
         {isRunStale && (
           <div
-            className="ide-verify-stale-banner"
+            className="ide-verify-stale-banner ide-surface-panel"
             data-testid="ide-verify-stale-banner"
             role="alert"
-            style={{
-              padding: 'var(--ide-space-1) var(--ide-space-2)',
-              background: 'color-mix(in srgb, var(--rb-warning, #fa0) 15%, transparent)',
-              border: '1px solid var(--rb-warning, #fa0)',
-              borderRadius: 'var(--ide-radius-s)',
-              marginBottom: 'var(--ide-space-2)',
-              fontSize: 'var(--rb-font-size-1)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--ide-space-2)',
-            }}
           >
-            <strong style={{ color: 'var(--rb-warning, #fa0)' }}>STALE</strong>
+            <strong className="ide-verify-stale-banner-label">STALE</strong>
             <span>Circuit changed since last run. Re-run verification to get a current result.</span>
             <IdeButton tone="secondary" onClick={runVerification} testId="ide-verify-stale-rerun">
               Re-run now
@@ -1272,7 +1262,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         </div>
 
         {displayStatus === 'FAIL' && (
-          <div className="ide-verify-fail-summary" data-testid="ide-verify-fail-card">
+          <SurfacePanel className="ide-verify-fail-summary" testId="ide-verify-fail-card">
             <span className="ide-verify-fail-summary__status">FAIL</span>
             <span className="ide-verify-fail-summary__count">
               {failingRows.length} of {runRows.length} vectors failing
@@ -1291,7 +1281,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 Jump to failing node →
               </IdeButton>
             )}
-          </div>
+          </SurfacePanel>
         )}
 
         {hasDff && (
@@ -1314,7 +1304,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )}
 
         {status === 'pass' && runState !== 'running' && runRows.length > 0 && (
-          <div className="ide-verify-pass-hero" data-testid="ide-verify-pass-hero">
+          <SurfacePanel className="ide-verify-pass-hero" testId="ide-verify-pass-hero">
             <div className="ide-verify-pass-hero-body">
               <span className="ide-verify-pass-hero-icon" aria-hidden="true">✓</span>
               <div className="ide-verify-pass-hero-text">
@@ -1342,7 +1332,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <code className="ide-verify-pass-hero-hash" data-testid="ide-verify-pass-hero-hash">
               {lastRun?.reportHash?.slice(0, 16) ?? deterministicHash.slice(0, 16)}
             </code>
-          </div>
+          </SurfacePanel>
         )}
 
         {isTraceOnly && canSetOracle && (
@@ -1538,10 +1528,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               >
                 {/* Student onboarding: tick explanation */}
                 <details className="ide-verify-tick-explainer" data-testid="ide-verify-tick-explainer">
-                  <summary style={{ cursor: 'pointer', userSelect: 'none', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', padding: '2px 0' }}>
+                  <summary className="ide-verify-tick-explainer-summary">
                     What is a tick?
                   </summary>
-                  <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', margin: '4px 0 4px 12px' }}>
+                  <p className="ide-copy ide-verify-tick-explainer-copy">
                     A <strong>tick</strong> is one simulation step. For combinational logic, one tick
                     settles all outputs. For sequential logic (flip-flops), each clock edge is one tick.
                     Expected values are checked at the end of each tick — a mismatch means the circuit
@@ -1554,7 +1544,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     <span className="ide-verify-legend-item ide-verify-legend-pass">PASS</span>
                     <span className="ide-verify-legend-item ide-verify-legend-fail">FAIL</span>
                     <span className="ide-verify-legend-item ide-verify-legend-select">SELECTED</span>
-                    <span className="ide-copy" style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.5 }}>
+                    <span className="ide-copy ide-verify-waveform-legend-meta">
                       {zoomedTicks.length}/{allWaveformTicks.length} ticks shown
                     </span>
                   </div>

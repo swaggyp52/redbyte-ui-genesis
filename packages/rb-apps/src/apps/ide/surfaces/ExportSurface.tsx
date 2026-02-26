@@ -20,6 +20,7 @@ import {
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
+import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 
 export interface ExportSurfaceProps {
   project: RBProject;
@@ -693,7 +694,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           </div>
           <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
             <IdeButton
-              tone={hasBlockingErrors ? 'secondary' : 'primary'}
+              tone="secondary"
               onClick={() => void handleRebuildExport()}
               disabled={hasBlockingErrors || isRebuilding}
               testId="ide-export-dock-download"
@@ -1280,12 +1281,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
             <div className="ide-export-right-col">
 
-              <div className="ide-export-buildCard" data-testid="ide-export-download-block">
+              <SurfacePanel className="ide-export-buildCard" testId="ide-export-download-block">
                 <div className="ide-export-buildCardTop">
                   <span className="ide-export-buildTitle">Vivado Kit</span>
                   <span data-testid="ide-primary-cta">
                     <IdeButton
-                      tone={hasBlockingErrors ? 'secondary' : 'primary'}
+                      tone="secondary"
                       onClick={() => void handleRebuildExport()}
                       disabled={hasBlockingErrors || isRebuilding}
                       testId="ide-export-rebuild-btn"
@@ -1323,9 +1324,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     ))}
                   </ol>
                 )}
-              </div>
+              </SurfacePanel>
 
-              <div className="ide-export-determinismChecks" data-testid="ide-export-determinism-checks">
+              <SurfacePanel className="ide-export-determinismChecks" testId="ide-export-determinism-checks">
                 <div className="ide-export-determinismHeader">DETERMINISM</div>
                 {deterministicChecks.map((check) => (
                   <div
@@ -1337,9 +1338,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     <span className="ide-export-determinismLabel">{check.label}</span>
                   </div>
                 ))}
-              </div>
+              </SurfacePanel>
 
-              <div className="ide-export-artifact-plan" data-testid="ide-export-artifact-plan">
+              <SurfacePanel className="ide-export-artifact-plan" testId="ide-export-artifact-plan">
                 <div className="ide-export-artifact-plan-header">
                   <span className="ide-export-artifact-plan-title">PACK CONTENTS</span>
                   <span style={{ fontSize: 10, color: 'var(--ide-text-muted)' }}>
@@ -1364,7 +1365,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     </div>
                   );
                 })}
-              </div>
+              </SurfacePanel>
 
               <details style={{ marginTop: 'var(--ide-space-2)' }} data-testid="ide-export-capsule-slab">
                 <summary style={{ cursor: 'pointer', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', userSelect: 'none' }}>

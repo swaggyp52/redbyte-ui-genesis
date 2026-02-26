@@ -9443,3 +9443,231 @@ details[open] summary .details-arrow {
    backgrounds. The !important above defeats those. */
 
 /* End Phase 8 */
+
+/* UX Unification Sprint: shared surface language */
+.ide-surface-panel {
+  border: 1px solid rgba(41, 68, 94, 0.45);
+  border-radius: var(--ide-radius-s);
+  background: rgba(10, 18, 28, 0.48);
+  padding: var(--ide-space-2);
+  display: grid;
+  gap: var(--ide-space-2);
+}
+
+.ide-surface-section-title .ide-section-header {
+  margin-bottom: var(--ide-space-1);
+}
+
+.ide-surface-block-stack {
+  display: grid;
+  gap: var(--ide-space-1);
+  margin-top: var(--ide-space-2);
+}
+
+.ide-surface-block-label {
+  margin: 0;
+  color: var(--ide-text-soft);
+  font-size: var(--rb-font-size-1);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ide-surface-dock-section {
+  margin-top: var(--ide-space-3);
+  border-top: 1px solid rgba(41, 68, 94, 0.5);
+  padding-top: var(--ide-space-2);
+  display: grid;
+  gap: var(--ide-space-1);
+}
+
+.ide-surface-field-stack {
+  margin-bottom: var(--ide-space-2);
+}
+
+.ide-surface-field-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--ide-text-strong);
+  font-size: var(--rb-font-size-1);
+  font-weight: 600;
+}
+
+.ide-surface-callout {
+  display: grid;
+  gap: var(--ide-space-1);
+}
+
+.ide-surface-two-col {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: var(--ide-space-3);
+  align-items: start;
+}
+
+.ide-surface-two-col-main,
+.ide-surface-two-col-side {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ide-space-2);
+}
+
+@media (max-width: 1200px) {
+  .ide-surface-two-col {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ide-surface-dock-subheader {
+  margin-top: var(--ide-space-2);
+}
+
+.ide-import-commit-actions {
+  margin-top: var(--ide-space-2);
+  flex-wrap: wrap;
+}
+
+.ide-import-upload-hint {
+  margin: 0 0 var(--ide-space-2);
+  color: var(--ide-text-soft);
+  font-size: var(--rb-font-size-1);
+  font-family: var(--ide-font-mono);
+  letter-spacing: 0.02em;
+}
+
+.ide-import-pipeline-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-3);
+  margin-bottom: var(--ide-space-3);
+}
+
+.ide-import-behavioral-blocker {
+  margin: var(--ide-space-2) 0;
+  padding: var(--ide-space-2);
+  border: 2px solid var(--rb-error, #e55);
+  border-radius: var(--ide-radius-s);
+  background: color-mix(in srgb, var(--rb-error, #e55) 12%, transparent);
+}
+
+.ide-import-behavioral-blocker-title {
+  display: block;
+  margin-bottom: var(--ide-space-1);
+  color: var(--rb-error, #e55);
+}
+
+.ide-import-behavioral-blocker-reason {
+  margin: 0 0 var(--ide-space-1);
+  font-size: var(--rb-font-size-1);
+}
+
+.ide-verify-stale-banner {
+  margin-bottom: var(--ide-space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  border-color: var(--rb-warning, #fa0);
+  background: color-mix(in srgb, var(--rb-warning, #fa0) 15%, transparent);
+  font-size: var(--rb-font-size-1);
+}
+
+.ide-verify-stale-banner-label {
+  color: var(--rb-warning, #fa0);
+}
+
+.ide-verify-tick-explainer-summary {
+  cursor: pointer;
+  user-select: none;
+  color: var(--ide-text-soft);
+  font-size: var(--rb-font-size-1);
+  padding: 2px 0;
+}
+
+.ide-verify-tick-explainer-copy {
+  margin: 4px 0 4px 12px;
+  font-size: var(--rb-font-size-1);
+}
+
+.ide-verify-waveform-legend-meta {
+  margin-left: auto;
+  font-size: 10px;
+  opacity: 0.5;
+}
+
+.ide-hw-live-design-link {
+  margin-top: var(--ide-space-2);
+}
+
+.ide-hw-proof-assert-ok {
+  font-size: 11px;
+}
+
+.ide-hw-proof-assert-fail-note {
+  color: #fca5a5;
+  margin-bottom: 4px;
+}
+
+.ide-design-board-signal-empty {
+  color: var(--ide-text-soft);
+  font-size: var(--rb-font-size-1);
+}
+
+.ide-design-board-signal-code {
+  font-family: var(--rb-font-mono);
+}
+
+.ide-design-board-signal-value {
+  font-family: var(--rb-font-mono);
+  font-weight: 600;
+}
+
+.ide-design-board-signal-value.is-high {
+  color: var(--rb-signal);
+}
+
+.ide-design-board-signal-value.is-low {
+  color: var(--ide-text-soft);
+}
+
+.ide-design-board-signal-actions {
+  margin-top: var(--ide-space-2);
+}
+
+.ide-design-diagnostic-callout {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.ide-design-diagnostic-callout-actions {
+  margin-top: var(--ide-space-1);
+}
+
+.ide-design-sync-badge-live {
+  color: var(--ide-color-accent, #3b82f6);
+}
+
+.ide-design-sync-badge-warn {
+  color: var(--ide-color-warn, #f59e0b);
+}
+
+.ide-design-hdl-actions {
+  margin-left: auto;
+}
+
+.ide-design-verilog-block {
+  border-top: 1px solid var(--ide-border, #334155);
+  margin-top: 4px;
+}
+
+.ide-design-hdl-header-lang--verilog {
+  color: var(--ide-color-green, #4ade80);
+}
+
+.ide-design-hdl-textarea--compact {
+  min-height: 120px;
+}

@@ -21,6 +21,7 @@ import {
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
+import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { RuntimeSimState, RuntimeSignalProbe } from '../projectRuntime';
 import { useBoardSignal } from '../BoardSignalContext';
 import { netlistFromCircuit } from '../../../export/netlistExport';
@@ -961,7 +962,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       dock={
         <>
           {allLiveInputRows.length > 0 && (
-            <section className="ide-design-input-panel" data-testid="ide-design-input-panel">
+            <SurfacePanel className="ide-design-input-panel" testId="ide-design-input-panel">
               <header className="ide-design-subheader">
                 <h3>Live Inputs</h3>
               </header>
@@ -980,9 +981,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </button>
                 ))}
               </div>
-            </section>
+            </SurfacePanel>
           )}
-          <section className="ide-design-palette" data-testid="ide-design-dock-palette">
+          <SurfacePanel className="ide-design-palette" testId="ide-design-dock-palette">
           <header className="ide-design-subheader">
             <h3>Palette</h3>
             <IdeButton tone="ghost" onClick={onOpenPalette}>
@@ -1055,7 +1056,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               );
             })}
           </div>
-        </section>
+        </SurfacePanel>
         </>
       }
       inspector={
@@ -1097,7 +1098,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             {(() => {
               if (!selectedNode) {
                 return (
-                  <p className="ide-copy" style={{ color: 'var(--ide-text-soft)', fontSize: 'var(--rb-font-size-1)' }}>
+                  <p className="ide-copy ide-design-board-signal-empty">
                     Select a node to see its board pin mapping.
                   </p>
                 );
@@ -1105,7 +1106,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               const ioRow = (ioRows ?? []).find((r) => r.nodeId === selectedNode.id);
               if (!ioRow) {
                 return (
-                  <p className="ide-copy" style={{ color: 'var(--ide-text-soft)', fontSize: 'var(--rb-font-size-1)' }}>
+                  <p className="ide-copy ide-design-board-signal-empty">
                     No board mapping for this node.
                   </p>
                 );
@@ -1120,11 +1121,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <div className="ide-kv-list">
                   <div className="ide-kv-row">
                     <span>Label</span>
-                    <code style={{ fontFamily: 'var(--rb-font-mono)' }}>{ioRow.label}</code>
+                    <code className="ide-design-board-signal-code">{ioRow.label}</code>
                   </div>
                   <div className="ide-kv-row">
                     <span>Pin</span>
-                    <code style={{ fontFamily: 'var(--rb-font-mono)' }}>{ioRow.pin || '—'}</code>
+                    <code className="ide-design-board-signal-code">{ioRow.pin || '—'}</code>
                   </div>
                   <div className="ide-kv-row">
                     <span>Dir</span>
@@ -1134,18 +1135,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <span>Value</span>
                     <span
                       data-testid="ide-design-board-signal-value"
-                      style={{
-                        fontFamily: 'var(--rb-font-mono)',
-                        fontWeight: 600,
-                        color: liveValue ? 'var(--rb-signal)' : 'var(--ide-text-soft)',
-                      }}
+                      className={`ide-design-board-signal-value ${liveValue ? 'is-high' : 'is-low'}`}
                     >
                       {liveValue ? 'HIGH' : 'LOW'}
                     </span>
                   </div>
                 </div>
                 {onGoToHardware && (
-                  <div style={{ marginTop: 'var(--ide-space-2)' }}>
+                  <div className="ide-design-board-signal-actions">
                     <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-design-go-hardware">
                       Go to Hardware
                     </IdeButton>
@@ -1732,13 +1729,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </div>
                   {diagnosticRouteRequest && diagnosticRouteRequest.mode === 'design' && (
                     <div
-                      style={{ position: 'absolute', top: 8, left: 8, right: 8, zIndex: 10, pointerEvents: 'auto' }}
+                      className="ide-design-diagnostic-callout"
                       data-testid="ide-design-diagnostic-callout"
                     >
                       <IdeCallout tone="warn">
                         Checking{diagnosticRouteRequest.signal ? ` signal ${diagnosticRouteRequest.signal}` : ''}
                         {typeof diagnosticRouteRequest.tick === 'number' ? ` at tick ${diagnosticRouteRequest.tick}` : ''}.
-                        <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-1)' }}>
+                        <div className="ide-inline-actions ide-design-diagnostic-callout-actions">
                           {onGoToProject && (
                             <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-design-diagnostic-go-mapping">
                               Open mapping
@@ -1929,7 +1926,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <span className="ide-design-hdl-header-title">top.vhd</span>
                   <span className="ide-design-hdl-header-lang">VHDL</span>
                   {!hdlDraftText && !topHdl && liveHdlResult.vhd && (
-                    <span className="ide-design-sync-badge" style={{ color: 'var(--ide-color-accent, #3b82f6)' }} data-testid="ide-design-live-badge">
+                    <span className="ide-design-sync-badge ide-design-sync-badge-live" data-testid="ide-design-live-badge">
                       Live
                     </span>
                   )}
@@ -1939,11 +1936,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </span>
                   )}
                   {liveHdlResult.warnings.length > 0 && (
-                    <span className="ide-design-sync-badge" style={{ color: 'var(--ide-color-warn, #f59e0b)' }}>
+                    <span className="ide-design-sync-badge ide-design-sync-badge-warn">
                       {liveHdlResult.warnings.length} warning{liveHdlResult.warnings.length !== 1 ? 's' : ''}
                     </span>
                   )}
-                  <div className="ide-inline-actions" style={{ marginLeft: 'auto' }}>
+                  <div className="ide-inline-actions ide-design-hdl-actions">
                     <button
                       type="button"
                       className="ide-design-hdl-action-btn is-secondary"
@@ -2001,12 +1998,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 />
                 {/* Verilog section */}
                 {liveHdlResult.verilog && (
-                  <div style={{ borderTop: '1px solid var(--ide-border, #334155)', marginTop: '4px' }}>
+                  <div className="ide-design-verilog-block">
                     <div className="ide-design-hdl-header" data-testid="ide-design-verilog-header">
                       <span className="ide-design-hdl-header-title">top.v</span>
-                      <span className="ide-design-hdl-header-lang" style={{ color: 'var(--ide-color-green, #4ade80)' }}>Verilog</span>
-                      <span className="ide-design-sync-badge" style={{ color: 'var(--ide-color-accent, #3b82f6)' }}>Live</span>
-                      <div className="ide-inline-actions" style={{ marginLeft: 'auto' }}>
+                      <span className="ide-design-hdl-header-lang ide-design-hdl-header-lang--verilog">Verilog</span>
+                      <span className="ide-design-sync-badge ide-design-sync-badge-live">Live</span>
+                      <div className="ide-inline-actions ide-design-hdl-actions">
                         <button
                           type="button"
                           className="ide-design-hdl-action-btn is-secondary"
@@ -2022,11 +2019,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </div>
                     </div>
                     <textarea
-                      className="ide-code-textarea ide-design-hdl-textarea"
+                      className="ide-code-textarea ide-design-hdl-textarea ide-design-hdl-textarea--compact"
                       data-testid="ide-design-verilog-textarea"
                       value={liveHdlResult.verilog}
                       readOnly
-                      style={{ minHeight: '120px' }}
                       spellCheck={false}
                       autoCapitalize="off"
                       autoCorrect="off"

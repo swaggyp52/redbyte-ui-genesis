@@ -19,6 +19,7 @@ import {
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
+import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useIoBus } from '../ioBus';
 import { useBoardSignal } from '../BoardSignalContext';
@@ -456,8 +457,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 
           {/* Examples compact list — full cards are in the main workspace */}
           {examples.length > 0 && (
-            <div style={{ marginTop: 'var(--ide-space-2)' }}>
-              <p style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', margin: '0 0 var(--ide-space-1) 0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            <div className="ide-surface-block-stack">
+              <p className="ide-surface-block-label">
                 Examples
               </p>
               <div className="ide-signal-list" data-testid="ide-project-example-groups">
@@ -514,19 +515,13 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 
           {/* Student identity + submission export */}
           {(onExportSubmission || onStudentNameChange) && (
-            <section
-              style={{ marginTop: 'var(--ide-space-3)', borderTop: '1px solid var(--ide-border, rgba(255,255,255,0.08))', paddingTop: 'var(--ide-space-2)' }}
-              data-testid="ide-submission-section"
-            >
-              <p style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', margin: '0 0 var(--ide-space-1) 0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            <section className="ide-surface-dock-section" data-testid="ide-submission-section">
+              <p className="ide-surface-block-label">
                 Submission
               </p>
               {onStudentNameChange && (
-                <div style={{ marginBottom: 'var(--ide-space-2)' }}>
-                  <label
-                    htmlFor="ide-student-name-input"
-                    style={{ display: 'block', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text)', marginBottom: 4, fontWeight: 600 }}
-                  >
+                <div className="ide-surface-field-stack">
+                  <label htmlFor="ide-student-name-input" className="ide-surface-field-label">
                     Your name
                   </label>
                   <input
@@ -554,7 +549,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     </IdeCallout>
                   )}
                   {submissionPreviewRows.length > 0 && (
-                    <div style={{ marginTop: 'var(--ide-space-2)' }} data-testid="ide-submission-preview">
+                    <div className="ide-surface-block-stack" data-testid="ide-submission-preview">
                       <IdeDataTable
                         columns={['Submission field', 'Current value']}
                         rows={submissionPreviewRows}
@@ -577,15 +572,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           )}
 
           {/* Session controls */}
-          <section
-            style={{ marginTop: 'var(--ide-space-3)', borderTop: '1px solid var(--ide-border, rgba(255,255,255,0.08))', paddingTop: 'var(--ide-space-2)' }}
-            data-testid="ide-session-controls"
-          >
+          <section className="ide-surface-dock-section" data-testid="ide-session-controls">
             {lastSavedAt && (
               <p
                 className="ide-copy"
                 data-testid="ide-session-last-saved"
-                style={{ marginBottom: 'var(--ide-space-2)', color: 'var(--ide-text-subtle)' }}
+                style={{ color: 'var(--ide-text-subtle)' }}
               >
                 {lastSavedAt}
               </p>
@@ -672,7 +664,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </div>
         </section>
         {/* ── Hero Onboarding Panel ── */}
-        <section className="ide-project-hero" data-testid="ide-project-hero">
+        <SurfacePanel className="ide-project-hero" testId="ide-project-hero">
           <p className="ide-project-hero-status" data-testid="ide-project-hero-status">
             {heroStatusMessage}
           </p>
@@ -746,11 +738,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               {health.blockingIssues[0].message}
             </IdeCallout>
           )}
-        </section>
+        </SurfacePanel>
 
         {/* ── Quick-start example cards ── */}
         {examples.length > 0 && (
-          <div className="ide-project-quickstart" data-testid="ide-project-quickstart">
+          <SurfacePanel className="ide-project-quickstart" testId="ide-project-quickstart">
             <p className="ide-project-quickstart-title">
               {readiness.hasCircuit ? 'Explore Examples' : 'Launch an Example'}
             </p>
@@ -801,7 +793,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               </button>{' '}
               from an existing project.
             </p>
-          </div>
+          </SurfacePanel>
         )}
 
         {/* ── Mapping section — collapsed by default ── */}
@@ -971,4 +963,3 @@ function submissionVerdictPill(
         : 'idle';
   return <IdeStatusPill tone={tone}>{verdict.toUpperCase()}</IdeStatusPill>;
 }
-

@@ -9,6 +9,7 @@ import {
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
+import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useIoBus } from '../ioBus';
 import { HardwareBoard2D } from '../components/HardwareBoard2D';
@@ -292,7 +293,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
   // ── Dock nodes ──────────────────────────────────────────────────────
   const liveDock = (
-    <section className="ide-workbench-placeholder" data-testid="ide-hw-live-dock">
+    <SurfacePanel className="ide-workbench-placeholder" testId="ide-hw-live-dock">
       <header className="ide-workbench-placeholder-header">
         <h3>Live Monitor</h3>
         <IdeStatusPill tone={sim.running ? 'ok' : 'idle'}>
@@ -330,17 +331,17 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         <IdeButton tone="ghost" onClick={onGenerateBringUpVectors}>Gen Vectors</IdeButton>
       </div>
       {onGoToDesign && (
-        <div style={{ marginTop: 'var(--ide-space-2)' }}>
+        <div className="ide-hw-live-design-link">
           <IdeButton tone="ghost" onClick={onGoToDesign} testId="ide-hardware-go-design">
             Open in Design
           </IdeButton>
         </div>
       )}
-    </section>
+    </SurfacePanel>
   );
 
   const bringupDock = (
-    <section className="ide-workbench-placeholder" data-testid="ide-hw-bringup-dock">
+    <SurfacePanel className="ide-workbench-placeholder" testId="ide-hw-bringup-dock">
       <header className="ide-workbench-placeholder-header">
         <h3>Bring-Up</h3>
         <IdeStatusPill
@@ -423,11 +424,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </div>
         </div>
       )}
-    </section>
+    </SurfacePanel>
   );
 
   const proofDock = (
-    <section className="ide-workbench-placeholder" data-testid="ide-hw-proof-dock">
+    <SurfacePanel className="ide-workbench-placeholder" testId="ide-hw-proof-dock">
       <header className="ide-workbench-placeholder-header">
         <h3>Proof Bundle</h3>
         <IdeStatusPill tone={confidenceScore === 100 ? 'ok' : confidenceScore >= 60 ? 'warn' : 'error'}>
@@ -471,7 +472,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </IdeButton>
         )}
       </div>
-    </section>
+    </SurfacePanel>
   );
 
   const activeDock =
@@ -547,15 +548,14 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           <p className="ide-copy">Awaiting trace.</p>
         ) : assertionFailCount === 0 ? (
           <code
-            className="ide-hw-assert-formal is-pass"
+            className="ide-hw-assert-formal ide-hw-proof-assert-ok is-pass"
             data-testid="ide-hw-proof-assert-ok"
-            style={{ fontSize: 11 }}
           >
             {'\u22A2'} {assertionPassCount} assertions VALID{confidenceScore === 100 ? ' \u220E' : ''}
           </code>
         ) : (
           <div data-testid="ide-hw-proof-assert-failures">
-            <p className="ide-copy" style={{ color: '#fca5a5', marginBottom: 4 }}>
+            <p className="ide-copy ide-hw-proof-assert-fail-note">
               {assertionFailCount} assertion{assertionFailCount > 1 ? 's' : ''} failed
             </p>
             <IdeDataTable
@@ -646,10 +646,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
         {/* ── Board ── */}
         <div className={`ide-hw-board-wrap ${hwMode === 'proof' ? 'is-proof' : ''}`}>
-          <div
-            className="ide-hw-board-inner"
-            style={undefined}
-          >
+          <div className="ide-hw-board-inner">
             <HardwareBoard2D
               sw={ioBus.state.sw}
               ld={ioBus.state.ld}

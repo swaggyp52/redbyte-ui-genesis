@@ -29,6 +29,7 @@ import {
   IdeSectionHeader,
   IdeStatusPill,
 } from '../components/IdePrimitives';
+import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 
 type ImportTab = 'hdl' | 'xdc' | 'upload';
 type HdlLanguage = 'auto' | 'vhdl' | 'verilog';
@@ -1181,7 +1182,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
             </IdeCallout>
           )}
           <section className="ide-import-feedback" data-testid="ide-import-parse-feedback">
-            <header className="ide-workbench-placeholder-header" style={{ marginTop: 'var(--ide-space-2)' }}>
+            <header className="ide-workbench-placeholder-header ide-surface-dock-subheader">
               <h3>Parse Feedback</h3>
               {hasParsedHdl && (
                 <IdeStatusPill tone={hdlLooksValid ? 'ok' : hdlWarningCount > 0 ? 'warn' : 'idle'}>
@@ -1554,7 +1555,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
           Import can fill pins on your current project, or replace the whole project.
         </p>
         {pendingApplyProject && commitPreview ? (
-          <div className="ide-import-commitPreview" data-testid="ide-import-commit-preview">
+          <SurfacePanel className="ide-import-commitPreview" testId="ide-import-commit-preview">
             <div className="ide-import-commitPreview-header">
               <span className="ide-import-commitPreview-title">COMMIT PREVIEW</span>
               <IdeStatusPill tone="warn">Pending</IdeStatusPill>
@@ -1616,19 +1617,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 className="ide-import-behavioral-blocker"
                 data-testid="ide-import-behavioral-blocker"
                 role="alert"
-                style={{
-                  margin: 'var(--ide-space-2) 0',
-                  padding: 'var(--ide-space-2)',
-                  border: '2px solid var(--rb-error, #e55)',
-                  borderRadius: 'var(--ide-radius-s)',
-                  background: 'color-mix(in srgb, var(--rb-error, #e55) 12%, transparent)',
-                }}
               >
-                <strong style={{ display: 'block', marginBottom: 'var(--ide-space-1)', color: 'var(--rb-error, #e55)' }}>
+                <strong className="ide-import-behavioral-blocker-title">
                   BLOCKED — Cannot commit this import
                 </strong>
                 {importBlockerReasons.map((reason, i) => (
-                  <p key={i} style={{ margin: '0 0 var(--ide-space-1)', fontSize: 'var(--rb-font-size-1)' }}>
+                  <p key={i} className="ide-import-behavioral-blocker-reason">
                     {reason}
                   </p>
                 ))}
@@ -1656,7 +1650,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               </div>
             )}
 
-            <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)', flexWrap: 'wrap' }}>
+            <div className="ide-inline-actions ide-import-commit-actions">
               <IdeButton tone="ghost" onClick={cancelApplyProject} testId="ide-import-apply-cancel">
                 Cancel
               </IdeButton>
@@ -1688,21 +1682,15 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 </div>
               )}
             </div>
-          </div>
+          </SurfacePanel>
         ) : null}
 
         {tab === 'upload' && (
-          <p style={{
-            margin: '0 0 var(--ide-space-2)',
-            fontSize: 'var(--rb-font-size-1)',
-            color: 'var(--ide-text-soft)',
-            fontFamily: 'var(--ide-font-mono)',
-            letterSpacing: '0.02em',
-          }}>
+          <p className="ide-import-upload-hint">
             Try this in 60s: Load sample → Parse HDL → Parse XDC → Apply suggestions → Review
           </p>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ide-space-3)', marginBottom: 'var(--ide-space-3)' }}>
+        <div className="ide-import-pipeline-tabs">
           {(['upload', 'hdl', 'xdc'] as ImportTab[]).map((tabId, i) => (
             <button
               key={tabId}
