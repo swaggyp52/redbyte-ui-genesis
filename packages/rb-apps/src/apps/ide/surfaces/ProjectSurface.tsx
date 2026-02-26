@@ -83,6 +83,14 @@ export interface ProjectSurfaceProps {
   hasVerifyRun?: boolean;
   onExportSubmission?: () => void;
   submissionExportPending?: boolean;
+  submissionPreview?: {
+    lastStatus: 'pass' | 'fail' | 'none';
+    passes: number;
+    fails: number;
+    overallGateVerdict: 'pass' | 'warn' | 'block' | 'ungraded';
+    assignmentId: string | null;
+    labCode: string | null;
+  } | null;
 }
 
 const PROJECT_EMPTY_SIM: RuntimeSimState = {
@@ -124,6 +132,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   hasVerifyRun = false,
   onExportSubmission,
   submissionExportPending = false,
+  submissionPreview = null,
 }) => {
   const [highlightedMappingKey, setHighlightedMappingKey] = useState<string | null>(null);
   const [mappingExpanded, setMappingExpanded] = useState(false);
@@ -402,6 +411,23 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       : readiness.hasCircuit
         ? 'No pins required'
         : 'No circuit loaded';
+  const submissionPreviewRows = useMemo(() => {
+    if (!submissionPreview) return [];
+    return [
+      [
+        'Last verify status',
+        submissionRunStatusPill(submissionPreview.lastStatus),
+      ],
+      ['Verify passes', String(submissionPreview.passes)],
+      ['Verify fails', String(submissionPreview.fails)],
+      [
+        'Gate verdict',
+        submissionVerdictPill(submissionPreview.overallGateVerdict),
+      ],
+      ['Assignment ID', submissionPreview.assignmentId ?? '—'],
+      ['Lab code', submissionPreview.labCode ?? '—'],
+    ];
+  }, [submissionPreview]);
 
   return (
     <IdeSurfaceLayout
@@ -420,11 +446,13 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </header>
 
           {/* Readiness checklist — hero of left dock */}
-          <IdeDataTable
-            columns={['Check', 'State', 'Action']}
-            rows={readinessRows}
-            testId="ide-project-readiness-checklist"
-          />
+          <div data-testid="ide-project-panel-readiness">
+            <IdeDataTable
+              columns={['Check', 'State', 'Action']}
+              rows={readinessRows}
+              testId="ide-project-readiness-checklist"
+            />
+          </div>
 
           {/* Examples compact list — full cards are in the main workspace */}
           {examples.length > 0 && (
@@ -456,22 +484,29 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 
           <div className="ide-inline-actions">
             {unmappedRequiredCount > 0 ? (
-              <IdeButton
-                tone="primary"
-                onClick={onAutoSuggestMapping}
-                testId="ide-project-cta-automap"
-              >
-                Auto-suggest Basys3
-              </IdeButton>
+              <span data-testid="ide-project-auto-suggest">
+                <IdeButton
+                  tone="primary"
+                  onClick={onAutoSuggestMapping}
+                  testId="ide-project-cta-automap"
+                >
+                  Auto-suggest Basys3
+                </IdeButton>
+              </span>
             ) : (
-              <IdeButton
-                tone="primary"
-                onClick={onOpenVerify}
-                testId="ide-project-cta-continue"
-              >
-                Continue to Verify →
-              </IdeButton>
+              <span data-testid="ide-project-continue-cta">
+                <IdeButton
+                  tone="primary"
+                  onClick={onOpenVerify}
+                  testId="ide-project-cta-continue"
+                >
+                  Continue to Verify →
+                </IdeButton>
+              </span>
             )}
+            <span style={{ display: 'none' }} data-testid="ide-project-continue-target">
+              {unmappedRequiredCount > 0 ? 'Design' : 'Verify'}
+            </span>
             <IdeButton tone="secondary" onClick={onOpenImport}>
               Import HDL/XDC
             </IdeButton>
@@ -490,9 +525,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 <div style={{ marginBottom: 'var(--ide-space-2)' }}>
                   <label
                     htmlFor="ide-student-name-input"
-                    style={{ display: 'block', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', marginBottom: 4 }}
+                    style={{ display: 'block', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text)', marginBottom: 4, fontWeight: 600 }}
                   >
-                    Student name (optional)
+                    Your name
                   </label>
                   <input
                     id="ide-student-name-input"
@@ -500,26 +535,40 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     className="ide-export-pin-input"
                     value={studentName}
                     onChange={(e) => onStudentNameChange(e.target.value)}
-                    placeholder="Your name"
+                    placeholder="First Last"
                     data-testid="ide-student-name-input"
                     style={{ width: '100%' }}
                   />
                 </div>
               )}
+              {onStudentNameChange && studentName.trim().length === 0 && (
+                <IdeCallout tone="warn" title="Name required" testId="ide-submission-student-name-warning">
+                  Your submission will only have a device ID without a name. Add your name before exporting.
+                </IdeCallout>
+              )}
               {onExportSubmission && (
                 <div>
                   {!hasVerifyRun && (
-                    <IdeCallout tone="info" title="No verify run yet" testId="ide-submission-no-verify-hint">
-                      Run verification first for full evidence — export still works but grade will show lastStatus: none
+                    <IdeCallout tone="info" title="Run Verify first" testId="ide-submission-no-verify-hint">
+                      Verify your circuit before exporting for a complete submission.
                     </IdeCallout>
+                  )}
+                  {submissionPreviewRows.length > 0 && (
+                    <div style={{ marginTop: 'var(--ide-space-2)' }} data-testid="ide-submission-preview">
+                      <IdeDataTable
+                        columns={['Submission field', 'Current value']}
+                        rows={submissionPreviewRows}
+                        testId="ide-submission-preview-table"
+                      />
+                    </div>
                   )}
                   <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-1)' }}>
                     <IdeButton
-                      tone="secondary"
+                      tone="primary"
                       onClick={onExportSubmission}
                       testId="ide-export-submission-btn"
                     >
-                      {submissionExportPending ? 'Exporting…' : 'Export Submission ZIP'}
+                      {submissionExportPending ? 'Exporting…' : 'Export Submission'}
                     </IdeButton>
                   </div>
                 </div>
@@ -586,6 +635,42 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         description="Map circuit ports to Basys3 pins to enable export."
         testId="ide-project-panel"
       >
+        <section className="ide-export-section" data-testid="ide-project-panel-identity">
+          <div className="ide-kv-list">
+            <div className="ide-kv-row">
+              <span>Determinism hash</span>
+              <code data-testid="ide-project-hash-short">{determinismHash.slice(0, 12)}</code>
+            </div>
+            <div className="ide-kv-row">
+              <span>Last verify</span>
+              <span data-testid="ide-project-last-verify-status">
+                {(health.lastVerify?.status ?? 'none').toUpperCase()}
+              </span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Verify hash</span>
+              <code data-testid="ide-project-last-verify-hash">
+                {health.lastVerify?.hash?.slice(0, 12) ?? '—'}
+              </code>
+            </div>
+            <div className="ide-kv-row">
+              <span>Dirty since verify</span>
+              <span data-testid="ide-project-dirty-since-verify">
+                {health.dirtySinceVerify ? 'DIRTY' : 'CLEAN'}
+              </span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Dirty since export</span>
+              <span data-testid="ide-project-dirty-since-export">
+                {health.dirtySinceExport ? 'DIRTY' : 'CLEAN'}
+              </span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Unmapped required</span>
+              <span data-testid="ide-project-unmapped-count">{unmappedRequiredCount} unmapped</span>
+            </div>
+          </div>
+        </section>
         {/* ── Hero Onboarding Panel ── */}
         <section className="ide-project-hero" data-testid="ide-project-hero">
           <p className="ide-project-hero-status" data-testid="ide-project-hero-status">
@@ -602,13 +687,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <span className="ide-launchpad-card__title">Design</span>
               <span className="ide-launchpad-card__sub">Build your circuit</span>
               <span className="ide-launchpad-card__badge">{designPinStatus}</span>
-              <IdeButton
-                tone={designCardDone ? 'ghost' : 'primary'}
-                onClick={onOpenDesign}
-                testId="ide-launchpad-design-cta"
-              >
-                {designCardDone ? 'Revisit' : designInProgress ? 'Continue Design →' : 'Start Design →'}
-              </IdeButton>
+              <div data-testid="ide-project-cta-design">
+                <IdeButton
+                  tone={designCardDone ? 'ghost' : 'primary'}
+                  onClick={onOpenDesign}
+                  testId="ide-launchpad-design-cta"
+                >
+                  {designCardDone ? 'Revisit' : designInProgress ? 'Continue Design →' : 'Start Design →'}
+                </IdeButton>
+              </div>
             </div>
 
             {/* Card 2: Verify */}
@@ -620,13 +707,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <span className="ide-launchpad-card__title">Verify</span>
               <span className="ide-launchpad-card__sub">Run test vectors</span>
               {!verifyCardLocked && (
-                <IdeButton
-                  tone={verifyCardDone ? 'ghost' : 'primary'}
-                  onClick={onOpenVerify}
-                  testId="ide-launchpad-verify-cta"
-                >
-                  {verifyCardDone ? 'Revisit' : 'Start Verify →'}
-                </IdeButton>
+                <div data-testid="ide-project-cta-verify">
+                  <IdeButton
+                    tone={verifyCardDone ? 'ghost' : 'primary'}
+                    onClick={onOpenVerify}
+                    testId="ide-launchpad-verify-cta"
+                  >
+                    {verifyCardDone ? 'Revisit' : 'Start Verify →'}
+                  </IdeButton>
+                </div>
               )}
             </div>
 
@@ -639,13 +728,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <span className="ide-launchpad-card__title">Hardware</span>
               <span className="ide-launchpad-card__sub">Flash the board</span>
               {!hardwareCardLocked && (
-                <IdeButton
-                  tone={hardwareCardDone ? 'ghost' : 'primary'}
-                  onClick={onOpenHardware}
-                  testId="ide-launchpad-hardware-cta"
-                >
-                  {hardwareCardDone ? 'Revisit' : 'Start Hardware →'}
-                </IdeButton>
+                <div data-testid="ide-project-cta-hardware">
+                  <IdeButton
+                    tone={hardwareCardDone ? 'ghost' : 'primary'}
+                    onClick={onOpenHardware}
+                    testId="ide-launchpad-hardware-cta"
+                  >
+                    {hardwareCardDone ? 'Revisit' : 'Start Hardware →'}
+                  </IdeButton>
+                </div>
               )}
             </div>
           </div>
@@ -674,7 +765,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   key={ex.id}
                   className={`ide-project-example-btn ${activeExampleId === ex.id ? 'is-active' : ''}`}
                   data-testid={`ide-project-example-${ex.id}`}
+                  data-example-id={ex.id}
                 >
+                  <span data-testid="ide-project-example-card" data-example-id={ex.id} />
                   <span className="ide-project-example-btn-name">{ex.name}</span>
                   <span className="ide-project-example-btn-concept">{ex.concept}</span>
                   {ex.expectedBehavior && (
@@ -683,7 +776,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                       <span className="ide-project-example-btn-summary">{ex.expectedBehavior}</span>
                     </>
                   )}
-                  <div className="ide-project-example-btn-actions">
+                  <div
+                    className="ide-project-example-btn-actions"
+                    data-testid="ide-project-example-load"
+                    data-example-id={ex.id}
+                  >
                     <button
                       type="button"
                       className="ide-button ide-button-primary"
@@ -856,3 +953,22 @@ function compareText(left: string, right: string): number {
   if (left > right) return 1;
   return 0;
 }
+
+function submissionRunStatusPill(status: 'pass' | 'fail' | 'none'): React.ReactNode {
+  const tone = status === 'pass' ? 'ok' : status === 'fail' ? 'error' : 'idle';
+  return <IdeStatusPill tone={tone}>{status.toUpperCase()}</IdeStatusPill>;
+}
+
+function submissionVerdictPill(
+  verdict: 'pass' | 'warn' | 'block' | 'ungraded'
+): React.ReactNode {
+  const tone = verdict === 'pass'
+    ? 'ok'
+    : verdict === 'warn'
+      ? 'warn'
+      : verdict === 'block'
+        ? 'error'
+        : 'idle';
+  return <IdeStatusPill tone={tone}>{verdict.toUpperCase()}</IdeStatusPill>;
+}
+

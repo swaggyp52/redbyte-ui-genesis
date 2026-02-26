@@ -840,13 +840,13 @@
 .ide-inspector-section {
   border: 1px solid var(--ide-border);
   border-radius: var(--ide-radius-m);
-  background: linear-gradient(180deg, rgba(20, 34, 50, 0.86), rgba(13, 24, 36, 0.9));
+  background: var(--rb-panel-bg);
 }
 
 .ide-panel {
   padding: var(--ide-card-pad);
   border-color: color-mix(in srgb, var(--ide-border) 80%, #8ec7ff 20%);
-  background: linear-gradient(180deg, rgba(24, 40, 58, 0.9), rgba(15, 26, 38, 0.92));
+  background: var(--rb-panel-bg-raised);
 }
 
 /* Flat sections for info-only content (no borders/background) */
@@ -5258,7 +5258,7 @@ details[open] summary .details-arrow {
 /* KV rows: tighter vertical rhythm inside flat inspector */
 .ide-inspector-section .ide-kv-row {
   padding: 2px 0;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* Inspector header toggle: tighter hit target */
@@ -8799,4 +8799,69 @@ details[open] summary .details-arrow {
 .ide-import-behavioral-toggle:hover {
   opacity: 1;
   color: var(--ide-text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Phase 6 — Visual Simplification
+   Goal: reduce gradient nesting, improve readability, lower density.
+   Rule: CSS surgery only. Design-system tokens and brand colors unchanged.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Surface body text: 13px floor for copy in surface sections */
+.ide-export-section .ide-copy,
+.ide-export-checklist,
+.ide-export-checklist li {
+  font-size: var(--rb-font-size-2); /* 13px */
+}
+
+/* Export section headers: soften uppercase weight for student context */
+.ide-export-section-header h3 {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* Reduce export section border prominence — lighter than full --ide-border */
+.ide-export-section {
+  border-color: rgba(41, 68, 94, 0.45);
+  background: rgba(10, 18, 28, 0.5);
+}
+
+/* Export buildCard: remove filled border, use subtle separator instead */
+.ide-export-buildCard {
+  border-color: rgba(41, 68, 94, 0.4);
+  background: transparent;
+}
+
+/* Determinism block: reduce header visual weight */
+.ide-export-determinismHeader {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+/* Section meta labels: bump from 11px to 12px */
+.ide-export-section-meta,
+.ide-section-header-meta {
+  font-size: 12px;
+}
+
+/* Import inspector section: reduce fixpath step font size to 12px */
+.ide-export-fixpath-cause,
+.ide-export-fixpath-step {
+  font-size: 12px;
+}
+
+/* Gate row labels: bump to 12px for readability */
+.ide-export-gate-label {
+  font-size: 12px;
+}
+
+/* Artifact plan row text: bump from 10px to 11px */
+.ide-export-artifact-plan-row {
+  font-size: 11px;
+}
+.ide-export-plan-row-path {
+  font-size: 11px;
+}
+.ide-export-plan-row-desc {
+  font-size: 10px;
 }

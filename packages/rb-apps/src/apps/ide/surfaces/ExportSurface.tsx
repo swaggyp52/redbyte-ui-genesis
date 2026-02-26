@@ -218,7 +218,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     setCapsuleBuildState('running');
     setCapsuleManifest(null);
     if (hasBlockingErrors) {
-      setCapsuleBuildError('Resolve blocking diagnostics before building an evidence capsule.');
+      setCapsuleBuildError('Resolve blocking diagnostics before downloading the Vivado Kit.');
       setCapsuleBuildState('error');
       onExportResult?.({
         status: 'blocked',
@@ -229,7 +229,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       return;
     }
     if (!verifyResult || verifyResult.status !== 'pass' || dirtySinceVerify) {
-      setCapsuleBuildError('Evidence Capsule requires a PASS verification with no pending design changes.');
+      setCapsuleBuildError('Download requires a passing verification with no pending design changes.');
       setCapsuleBuildState('error');
       onExportResult?.({
         status: 'blocked',
@@ -255,7 +255,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'redbyte-evidence-capsule.zip';
+        link.download = 'redbyte-vivado-kit.zip';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -282,7 +282,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           ? error.message.trim()
           : 'unknown build error';
       setCapsuleBuildError(
-        `Evidence Capsule build failed: ${reason}. Check export diagnostics and artifact readiness.`
+        `Export failed: ${reason}. Check diagnostics and artifact readiness.`
       );
       setCapsuleBuildState('error');
       onExportResult?.({
@@ -355,12 +355,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       },
       {
         id: 'capsule',
-        label: 'Evidence Capsule',
+        label: 'Vivado Kit',
         tone: capsuleTone,
         detail:
           capsuleTone === 'ok'
-            ? 'Ready to build'
-            : `${gateBlockCount} gate block${gateBlockCount !== 1 ? 's' : ''}`,
+            ? 'Ready to download'
+            : `${gateBlockCount} blocker${gateBlockCount !== 1 ? 's' : ''}`,
         actionLabel: 'Download',
         onAction: capsuleTone === 'ok' ? handleBuildEvidenceCapsule : undefined,
       },
@@ -515,7 +515,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       await tick();
       if (hasBlockingErrors) {
         markStep('validate', 'error', 'Blocking diagnostics present');
-        setCapsuleBuildError('Resolve blocking diagnostics before building an evidence capsule.');
+        setCapsuleBuildError('Resolve blocking diagnostics before downloading the Vivado Kit.');
         setCapsuleBuildState('error');
         setIsRebuilding(false);
         return;
@@ -539,7 +539,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       await tick();
       if (!verifyResult || verifyResult.status !== 'pass' || dirtySinceVerify) {
         markStep('clock', 'error', 'Verify PASS required');
-        setCapsuleBuildError('Evidence Capsule requires a PASS verification with no pending design changes.');
+        setCapsuleBuildError('Download requires a passing verification with no pending design changes.');
         setCapsuleBuildState('error');
         setIsRebuilding(false);
         return;
@@ -590,7 +590,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'redbyte-evidence-capsule.zip';
+        link.download = 'redbyte-vivado-kit.zip';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -698,7 +698,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               disabled={hasBlockingErrors || isRebuilding}
               testId="ide-export-dock-download"
             >
-              {isRebuilding ? 'Building…' : 'Build Export Pack'}
+              {isRebuilding ? 'Building…' : 'Download Vivado Kit'}
             </IdeButton>
           </div>
           <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
@@ -751,51 +751,58 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </>
           )}
 
-          <IdeInspectorSection title="Export Context" defaultOpen>
+          <IdeInspectorSection title="Export Status" defaultOpen>
             <div className="ide-kv-list">
               <div className="ide-kv-row">
                 <span>Board</span>
                 <span>Basys3</span>
               </div>
               <div className="ide-kv-row">
-                <span>Export Hash</span>
-                <span className="ide-status-mono" data-testid="ide-export-context-export-hash">
-                  {viewModel.exportHash ? viewModel.exportHash.slice(0, 16) : 'pending'}
-                </span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Verify Hash</span>
-                <span className="ide-status-mono" data-testid="ide-export-context-verify-hash">
-                  {verifyResult?.hash ? verifyResult.hash.slice(0, 16) : 'pending'}
-                </span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Manifest Hash</span>
-                <span className="ide-status-mono" data-testid="ide-export-context-manifest-hash">
-                  {capsuleManifestHash.slice(0, 16)}
-                </span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Bundle Hash</span>
-                <span className="ide-status-mono">{capsuleBundleHash.slice(0, 16)}</span>
-              </div>
-              <div className="ide-kv-row">
                 <span>Blocking Errors</span>
                 <span>{diagnosticsList.filter((entry) => entry.severity === 'error').length}</span>
               </div>
-              <div className="ide-kv-row">
-                <span>Capsule Files</span>
-                <span>{capsuleFileList.length > 0 ? capsuleFileList.length : 'pending'}</span>
-              </div>
               <div className="ide-kv-row" data-testid="ide-export-capsule-build-state">
-                <span>Capsule State</span>
-                <span>{capsuleBuildState.toUpperCase()}</span>
+                <span>Export State</span>
+                <span>{capsuleBuildState === 'done' ? 'Downloaded' : capsuleBuildState === 'running' ? 'Building…' : capsuleBuildState === 'error' ? 'Error' : 'Ready'}</span>
               </div>
               <div className="ide-kv-row ide-kv-row-hidden" data-testid="ide-export-capsule-files">
-                <span>Capsule File List</span>
+                <span>File List</span>
                 <code>{capsuleFileList.join(',')}</code>
               </div>
             </div>
+            <details style={{ marginTop: 'var(--ide-space-2)' }}>
+              <summary style={{ cursor: 'pointer', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+                Advanced
+              </summary>
+              <div className="ide-kv-list" style={{ marginTop: 'var(--ide-space-1)' }}>
+                <div className="ide-kv-row">
+                  <span>Export Hash</span>
+                  <span className="ide-status-mono" data-testid="ide-export-context-export-hash">
+                    {viewModel.exportHash ? viewModel.exportHash.slice(0, 16) : 'pending'}
+                  </span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Verify Hash</span>
+                  <span className="ide-status-mono" data-testid="ide-export-context-verify-hash">
+                    {verifyResult?.hash ? verifyResult.hash.slice(0, 16) : 'pending'}
+                  </span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Manifest Hash</span>
+                  <span className="ide-status-mono" data-testid="ide-export-context-manifest-hash">
+                    {capsuleManifestHash.slice(0, 16)}
+                  </span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Bundle Hash</span>
+                  <span className="ide-status-mono">{capsuleBundleHash.slice(0, 16)}</span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Files</span>
+                  <span>{capsuleFileList.length > 0 ? capsuleFileList.length : 'pending'}</span>
+                </div>
+              </div>
+            </details>
           </IdeInspectorSection>
 
           <IdeInspectorSection title="Artifact Checklist" defaultOpen={false}>
@@ -830,7 +837,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     >
       <IdePanel
           title={hasBlockingErrors ? 'Export Blocked' : 'Export Ready'}
-          description="Compiler output in three steps: status, blockers, and deterministic Vivado-ready artifacts."
+          description="Generate VHDL, pin constraints, and testbench for your Basys3 board."
           actions={
             <>
               <span data-testid="ide-primary-cta">
@@ -839,7 +846,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   onClick={() => void handleRebuildExport()}
                   disabled={hasBlockingErrors || isRebuilding}
                 >
-                  {isRebuilding ? 'Building…' : capsuleBuildState === 'done' ? 'Rebuild Export' : 'Build Export Pack'}
+                  {isRebuilding ? 'Building…' : capsuleBuildState === 'done' ? 'Re-download' : 'Download Vivado Kit'}
                 </IdeButton>
               </span>
             </>
@@ -919,7 +926,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 )}
 
                 {capsuleBuildError.length > 0 && (
-                  <IdeCallout tone="error" title="Capsule Build Error" testId="ide-export-capsule-error">
+                  <IdeCallout tone="error" title="Export Error" testId="ide-export-capsule-error">
                     {capsuleBuildError}
                   </IdeCallout>
                 )}
@@ -1120,23 +1127,23 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
               <section className="ide-export-section" data-testid="ide-export-artifact-preview">
                 <header className="ide-export-section-header">
-                  <h3>Outputs</h3>
+                  <h3>Generated HDL</h3>
                   <span className="ide-export-section-meta">
-                    {viewModel.artifacts.length} files
+                    {viewModel.artifacts.length > 0 ? `${viewModel.artifacts.length} files` : 'pending'}
                   </span>
                 </header>
 
                 {viewModel.artifacts.length === 0 && (
                   <div className="ide-empty-stack" data-testid="ide-export-empty-state">
-                    <IdeCallout tone="warn" title="No artifact data">
-                      Artifact previews appear after a successful export build.
+                    <IdeCallout tone="warn" title="No generated files yet">
+                      Add circuit elements and map pins to see generated VHDL and constraints.
                     </IdeCallout>
                   </div>
                 )}
 
                 {viewModel.artifacts.length > 0 && (
                   <>
-                    <div className="ide-export-artifact-tabs">
+                    <div className="ide-export-artifact-tabs" data-testid="ide-export-artifact-tabs">
                       {viewModel.artifacts.map((artifact) => (
                         <button
                           key={artifact.path}
@@ -1145,6 +1152,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                             selectedArtifact?.path === artifact.path ? 'is-active' : ''
                           }`}
                           onClick={() => setSelectedArtifactPath(artifact.path)}
+                          data-testid={`ide-export-artifact-tab-${artifact.path
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]+/g, '-')
+                            .replace(/^-+|-+$/g, '')}`}
                         >
                           {artifact.path}
                         </button>
@@ -1154,19 +1165,30 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       <div className="ide-export-artifact-preview">
                         <div className="ide-export-artifact-preview-header">
                           <span data-testid="ide-export-preview-path">{selectedArtifact.path}</span>
-                          <IdeButton
-                            tone="secondary"
-                            onClick={() => handleDownloadArtifact(selectedArtifact)}
-                            disabled={selectedArtifact.preview.trim().length === 0}
-                          >
-                            Download
-                          </IdeButton>
+                          <div style={{ display: 'flex', gap: 'var(--ide-space-1)' }}>
+                            <IdeButton
+                              tone="ghost"
+                              onClick={() => void copyToClipboard(selectedArtifact.content, 'command')}
+                              disabled={selectedArtifact.content.trim().length === 0}
+                            >
+                              {copyState === 'command' ? 'Copied!' : 'Copy'}
+                            </IdeButton>
+                            <IdeButton
+                              tone="secondary"
+                              onClick={() => handleDownloadArtifact(selectedArtifact)}
+                              disabled={selectedArtifact.preview.trim().length === 0}
+                            >
+                              Download
+                            </IdeButton>
+                          </div>
                         </div>
                         {selectedArtifact.preview.trim().length > 0 ? (
-                          <pre className="ide-export-artifact-code">{selectedArtifact.preview}</pre>
+                          <pre className="ide-export-artifact-code" data-testid="ide-export-preview-code">
+                            {selectedArtifact.preview}
+                          </pre>
                         ) : (
                           <p className="ide-export-artifact-empty">
-                            Artifact content unavailable until export validation passes.
+                            File content will appear once the circuit and pin mapping are complete.
                           </p>
                         )}
                       </div>
@@ -1177,53 +1199,81 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
               <section className="ide-export-section" data-testid="ide-export-vivado-ready">
                 <header className="ide-export-section-header">
-                  <h3>Vivado Ready</h3>
+                  <h3>Open in Vivado</h3>
                   {!hasBlockingErrors && hasVerifyPass
-                    ? <IdeStatusPill tone="ok">GO</IdeStatusPill>
-                    : <IdeStatusPill tone="error">BLOCKED</IdeStatusPill>
+                    ? <IdeStatusPill tone="ok">Ready</IdeStatusPill>
+                    : <IdeStatusPill tone="error">Blocked</IdeStatusPill>
                   }
                 </header>
 
                 {!hasBlockingErrors && hasVerifyPass ? (
-                  <IdeCallout tone="success" title="Ready for Vivado" testId="ide-export-vivado-ready-callout">
+                  <IdeCallout tone="success" title="Ready to program your Basys3" testId="ide-export-vivado-ready-callout">
                     <p className="ide-copy" style={{ margin: '0 0 var(--ide-space-1) 0' }}>
-                      Board: <code>Basys3</code> · Tool: <code>Vivado 2020.1+</code>
-                    </p>
-                    <pre
-                      className="ide-export-artifact-code ide-export-readme-code"
-                      data-testid="ide-export-vivado-command"
-                    >
-                      {vivadoCommand}
-                    </pre>
-                    <div className="ide-export-diagnostic-actions">
-                      <IdeButton
-                        tone="secondary"
-                        onClick={() => void copyToClipboard(vivadoCommand, 'command')}
-                        testId="ide-export-copy-vivado-command"
-                      >
-                        Copy command
-                      </IdeButton>
-                    </div>
-                    <p className="ide-copy" style={{ margin: 0, fontSize: 10 }} data-testid="ide-export-copy-command-state">
-                      {copyState === 'command' ? 'Copied.' : copyState === 'error' ? 'Clipboard unavailable.' : ''}
+                      Download the Vivado Kit above, then follow these steps.
                     </p>
                   </IdeCallout>
                 ) : (
-                  <p
-                    className="ide-copy ide-export-vivado-blocked-hint"
-                    data-testid="ide-export-vivado-command"
-                  >
-                    Resolve all gate blockers to unlock Vivado import.
-                  </p>
+                  <IdeCallout tone="warn" title="Resolve issues first" testId="ide-export-vivado-blocked-callout">
+                    <p className="ide-copy" style={{ margin: 0 }} data-testid="ide-export-vivado-command">
+                      Fix the blockers listed above before opening in Vivado.
+                    </p>
+                  </IdeCallout>
                 )}
 
-                <ol className="ide-export-checklist">
-                  <li>Create a Vivado RTL project for Basys3.</li>
-                  <li>Add <code>top.vhd</code> as a Design Source.</li>
-                  <li>Add <code>top.xdc</code> as Constraints.</li>
-                  <li>Add <code>testbench.vhd</code> as Simulation Source only.</li>
-                  <li>Run synthesis → implementation → bitstream → program.</li>
-                </ol>
+                <div data-testid="ide-export-vivado-steps" style={{ marginTop: 'var(--ide-space-2)' }}>
+                  <div data-testid="ide-export-vivado-checklist">
+                    <div className="ide-kv-list" style={{ marginBottom: 'var(--ide-space-2)' }}>
+                      <div className="ide-kv-row">
+                        <span>Board</span>
+                        <span><code>Basys3</code></span>
+                      </div>
+                      <div className="ide-kv-row">
+                        <span>Part</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--ide-space-1)' }}>
+                          <code data-testid="ide-export-part-number">xc7a35t-1cpg236-1</code>
+                          <IdeButton
+                            tone="ghost"
+                            onClick={() => void copyToClipboard('xc7a35t-1cpg236-1', 'command')}
+                          >
+                            Copy
+                          </IdeButton>
+                        </span>
+                      </div>
+                      <div className="ide-kv-row">
+                        <span>Tool</span>
+                        <span><code>Vivado 2024.1+</code></span>
+                      </div>
+                    </div>
+                    <ol className="ide-export-checklist">
+                      <li>Open Vivado → <strong>Create Project</strong></li>
+                      <li>Select <strong>RTL Project</strong> → Next</li>
+                      <li>Add <code>top.vhd</code> from the ZIP as a <strong>Design Source</strong></li>
+                      <li>Add <code>top.xdc</code> from the ZIP as a <strong>Constraints</strong> file</li>
+                      <li>Search part <code>xc7a35t-1cpg236-1</code> (or use Boards tab → Basys3)</li>
+                      <li>Click <strong>Finish</strong></li>
+                      <li>Run Synthesis → Implementation → Generate Bitstream → Program Device</li>
+                    </ol>
+                    <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', marginTop: 'var(--ide-space-2)' }}>
+                      Simulation: add <code>testbench.vhd</code> as Simulation Source → Run Behavioral Simulation.
+                    </p>
+                  </div>
+                  {/* Gate contract compatibility: vivado command/readme must be findable */}
+                  {!hasBlockingErrors && hasVerifyPass ? (
+                    <div data-testid="ide-export-readme-preview" style={{ marginTop: 'var(--ide-space-1)' }}>
+                      <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-muted)', margin: 0 }}
+                         data-testid="ide-export-vivado-command">
+                        Batch import: <code>{vivadoCommand}</code>
+                      </p>
+                    </div>
+                  ) : (
+                    <p
+                      className="ide-copy ide-export-vivado-blocked-hint"
+                      data-testid="ide-export-vivado-command"
+                    >
+                      Resolve all blockers before importing to Vivado.
+                    </p>
+                  )}
+                </div>
               </section>
 
             </div>
@@ -1232,7 +1282,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
               <div className="ide-export-buildCard" data-testid="ide-export-download-block">
                 <div className="ide-export-buildCardTop">
-                  <span className="ide-export-buildTitle">Export Pack</span>
+                  <span className="ide-export-buildTitle">Vivado Kit</span>
                   <span data-testid="ide-primary-cta">
                     <IdeButton
                       tone={hasBlockingErrors ? 'secondary' : 'primary'}
@@ -1240,7 +1290,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       disabled={hasBlockingErrors || isRebuilding}
                       testId="ide-export-rebuild-btn"
                     >
-                      {isRebuilding ? 'Building…' : capsuleBuildState === 'done' ? 'Rebuild Export' : 'Build Export Pack'}
+                      {isRebuilding ? 'Building…' : capsuleBuildState === 'done' ? 'Re-download' : 'Download Vivado Kit'}
                     </IdeButton>
                   </span>
                 </div>
@@ -1316,64 +1366,69 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 })}
               </div>
 
-              <div className="ide-export-capsuleSlab" data-testid="ide-export-capsule-slab">
-                <div
-                  className={`ide-export-capsuleTop ide-export-capsuleState--${capsuleSealState}`}
-                  data-testid="ide-export-seal-bar"
-                >
-                  <span className="ide-export-capsuleSealIcon">
-                    {capsuleSealState === 'sealed' ? '◉' : capsuleSealState === 'sealing' ? '◌' : '○'}
-                  </span>
-                  <span className="ide-export-capsuleSealLabel">
-                    {capsuleSealState === 'sealed' ? 'SEALED'
-                     : capsuleSealState === 'sealing' ? 'SEALING…'
-                     : 'NOT SEALED'}
-                  </span>
-                </div>
-                {capsuleSealPayload.sig ? (
-                  <div className="ide-export-capsuleRows" data-testid="ide-export-capsule-payload">
-                    {([
-                      { key: 'SIG',    val: capsuleSealPayload.sig },
-                      { key: 'VERIFY', val: capsuleSealPayload.verifyHash ?? 'n/a' },
-                      { key: 'EXPORT', val: capsuleSealPayload.exportHash ?? 'n/a' },
-                      { key: 'PINS',   val: capsuleSealPayload.pins ?? 'n/a' },
-                      { key: 'TS',     val: capsuleSealPayload.ts ?? 'n/a' },
-                    ] as const).map(({ key, val }) => (
-                      <div key={key} className="ide-export-context-row" data-testid={`ide-export-capsule-${key.toLowerCase()}`}>
-                        <span className="ide-export-context-key">{key}</span>
-                        <span className="ide-export-context-val">{val}</span>
-                      </div>
-                    ))}
+              <details style={{ marginTop: 'var(--ide-space-2)' }} data-testid="ide-export-capsule-slab">
+                <summary style={{ cursor: 'pointer', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', userSelect: 'none' }}>
+                  Advanced
+                </summary>
+                <div className="ide-export-capsuleSlab" style={{ marginTop: 'var(--ide-space-1)' }}>
+                  <div
+                    className={`ide-export-capsuleTop ide-export-capsuleState--${capsuleSealState}`}
+                    data-testid="ide-export-seal-bar"
+                  >
+                    <span className="ide-export-capsuleSealIcon">
+                      {capsuleSealState === 'sealed' ? '◉' : capsuleSealState === 'sealing' ? '◌' : '○'}
+                    </span>
+                    <span className="ide-export-capsuleSealLabel">
+                      {capsuleSealState === 'sealed' ? 'SEALED'
+                       : capsuleSealState === 'sealing' ? 'SEALING…'
+                       : 'NOT SEALED'}
+                    </span>
                   </div>
-                ) : (
-                  <p className="ide-export-capsuleHint">
-                    {capsuleBuildState === 'error'
-                      ? 'Seal failed — resolve errors and rebuild.'
-                      : 'Build the export pack to seal this capsule.'}
+                  {capsuleSealPayload.sig ? (
+                    <div className="ide-export-capsuleRows" data-testid="ide-export-capsule-payload">
+                      {([
+                        { key: 'SIG',    val: capsuleSealPayload.sig },
+                        { key: 'VERIFY', val: capsuleSealPayload.verifyHash ?? 'n/a' },
+                        { key: 'EXPORT', val: capsuleSealPayload.exportHash ?? 'n/a' },
+                        { key: 'PINS',   val: capsuleSealPayload.pins ?? 'n/a' },
+                        { key: 'TS',     val: capsuleSealPayload.ts ?? 'n/a' },
+                      ] as const).map(({ key, val }) => (
+                        <div key={key} className="ide-export-context-row" data-testid={`ide-export-capsule-${key.toLowerCase()}`}>
+                          <span className="ide-export-context-key">{key}</span>
+                          <span className="ide-export-context-val">{val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="ide-export-capsuleHint">
+                      {capsuleBuildState === 'error'
+                        ? 'Seal failed — resolve errors and try again.'
+                        : 'Download the kit to see integrity details.'}
+                    </p>
+                  )}
+                  <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-1)' }}>
+                    <IdeButton
+                      tone="ghost"
+                      onClick={() => void copyToClipboard(quickDebugReport, 'report')}
+                      testId="ide-export-copy-debug-report"
+                    >
+                      Copy debug report
+                    </IdeButton>
+                  </div>
+                  <p
+                    className="ide-copy"
+                    style={{ fontSize: 10, marginTop: 0 }}
+                    data-testid="ide-export-copy-state"
+                  >
+                    {copyState === 'report'
+                      ? 'Copied.'
+                      : copyState === 'error'
+                        ? 'Clipboard error.'
+                        : 'Hashes + mapping for TA handoff.'}
                   </p>
-                )}
-              </div>
+                </div>
+              </details>
 
-              <div className="ide-inline-actions">
-                <IdeButton
-                  tone="ghost"
-                  onClick={() => void copyToClipboard(quickDebugReport, 'report')}
-                  testId="ide-export-copy-debug-report"
-                >
-                  Copy debug report
-                </IdeButton>
-              </div>
-              <p
-                className="ide-copy"
-                style={{ fontSize: 10, marginTop: 0 }}
-                data-testid="ide-export-copy-state"
-              >
-                {copyState === 'report'
-                  ? 'Copied.'
-                  : copyState === 'error'
-                    ? 'Clipboard error.'
-                    : 'Hashes + mapping for TA handoff.'}
-              </p>
 
             </div>
           </div>

@@ -1,29 +1,221 @@
-# RedByte OS Architecture
+# RedByte IDE Architecture
 
-## Kernel layer
-- **Event bus:** `src/kernel/EventBus.ts` defines a lightweight publish/subscribe bus used to broadcast window lifecycle and layout events across the OS.【F:src/kernel/EventBus.ts†L1-L36】
-- **Process tracking:** `src/kernel/ProcessManager.ts` listens to event bus notifications to synthesize a simulated process table, updating CPU/memory metrics and state transitions for window-backed processes.【F:src/kernel/ProcessManager.ts†L1-L116】
-- **Kernel provider:** `src/kernel/KernelProvider.tsx` wraps the UI to expose notifications, kernel settings, and the current process list. It also converts window events into user-facing notifications and bootstraps the virtual file system on load.【F:src/kernel/KernelProvider.tsx†L1-L122】【F:src/kernel/KernelProvider.tsx†L156-L189】
+This document defines the five architectural layers of the RedByte IDE system and the explicit
+boundaries between them. Use this as the authoritative guide when deciding where new code belongs.
 
-## Desktop shell
-- **Window manager:** `src/os/core/SystemProvider.tsx` owns the master list of open windows, routes focus/resize/snap actions, and emits window events to the kernel bus for telemetry and notifications.【F:src/os/core/SystemProvider.tsx†L1-L155】
-- **Shell surface:** `src/os/desktop/DesktopShell.tsx` renders the desktop chrome, sidebar app launcher, and window frames. It respects layout preferences from `SettingsContext` and spawns app components defined in the app registry.【F:src/os/desktop/DesktopShell.tsx†L1-L139】【F:src/os/desktop/DesktopShell.tsx†L141-L204】
+---
 
-## Application layer
-- **Registry:** `src/os/apps/index.ts` enumerates OS apps (Launchpad, Terminal, Notification Center, Agents, File Explorer, Logic Designer, CPU Designer, Notes, System Monitor, Settings) with labels, hints, and multi-instance rules. The `loadApp` helper resolves the React component for a given ID.【F:src/os/apps/index.ts†L1-L60】
-- **App windows:** Each registry entry maps to a `src/os/apps/*.tsx` component rendered inside a `WindowFrame` by the desktop shell, giving every tool a consistent windowed surface.【F:src/os/desktop/DesktopShell.tsx†L143-L204】
+## Layer Map
 
-## Contexts
-- **Settings context:** The desktop shell uses settings to choose layout mode and grid size for window snapping and sizing, ensuring consistent behavior across windows.【F:src/os/desktop/DesktopShell.tsx†L11-L34】
-- **Project context:** `src/os/context/ProjectContext.tsx` holds the active hardware design state (logic gates, CPU units, historical snapshots) and exposes add/remove helpers used by design apps.【F:src/os/context/ProjectContext.tsx†L1-L128】【F:src/os/context/ProjectContext.tsx†L142-L223】
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Layer E — Student UX Shell                                     │
+│  packages/rb-apps/src/apps/IdeApp.tsx + 6 surfaces + components │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer D — Submission Engine                                    │
+│  packages/rb-apps/src/export/ideSubmissionBundle.ts             │
+│  packages/rb-apps/src/export/parseIdeSubmission.ts              │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer C — Vivado Adapter                                       │
+│  packages/rb-apps/src/fpga/boards/basys3/                       │
+│  (basys3ExportService, basys3Bundle, testbenchGenerator, …)     │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer B — Verification Engine                                  │
+│  packages/rb-apps/src/fpga/boards/basys3/verifySchedule.ts      │
+│  packages/rb-lab-engine/src/verification/verifyTruthTable.ts    │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer A — FPGA Logic Core                                      │
+│  packages/rb-logic-core/                                        │
+│  packages/rb-lab-engine/  (non-verification modules)            │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-## Simulation and world modules
-- **2D redstone simulator:** `src/sim/RedstoneEngine.ts` provides grid creation, cell editing, and a step function that evaluates sources, wires, gates, and outputs for each tick.【F:src/sim/RedstoneEngine.ts†L1-L104】
-- **Logic export & mapping:** `src/logic/LogicExport.ts` and `src/logic/LogicToRedstone.ts` convert logical templates into Verilog-style text or block placements suitable for redstone layouts.【F:src/logic/LogicExport.ts†L1-L103】【F:src/logic/LogicToRedstone.ts†L1-L74】
-- **3D world simulation:** `src/world3d/Redstone3DEngine.ts` advances a voxel-based world by computing dust power propagation and evaluating non-wire components, storing snapshots for analysis.【F:src/world3d/Redstone3DEngine.ts†L1-L100】【F:src/world3d/Redstone3DEngine.ts†L102-L168】
-- **Bridges:** `src/world3d/RedstoneBuilder.ts` maps logic templates into block placements through a registered 3D world handle, while `src/world3d/BlueprintBridge.ts` moves designs between 2D redstone grids and voxel layers, persisting slices as named blueprints.【F:src/world3d/RedstoneBuilder.ts†L1-L26】【F:src/world3d/BlueprintBridge.ts†L1-L91】【F:src/world3d/BlueprintBridge.ts†L93-L136】
+---
 
-## Data flow highlights
-- Design apps consume `ProjectContext` to add or remove gates and CPU units, updating the shared project state and rolling history snapshots for later export or analysis.【F:src/os/apps/LogicDesigner.tsx†L1-L74】【F:src/os/apps/CpuDesigner.tsx†L1-L70】【F:src/os/context/ProjectContext.tsx†L142-L223】
-- Logic templates can be transformed into redstone block lists via `mapLogicToRedstone`, then injected into a 3D world through `buildLogicInto3D`, enabling ProjectContext-managed designs to be visualized in simulation space.【F:src/logic/LogicToRedstone.ts†L48-L74】【F:src/world3d/RedstoneBuilder.ts†L12-L26】
-- The 3D voxel world can import/export 2D blueprints, allowing data to circulate between the grid simulator, the world renderer, and any stored blueprint assets.【F:src/world3d/BlueprintBridge.ts†L44-L91】【F:src/world3d/BlueprintBridge.ts†L93-L136】
+## Layer A — FPGA Logic Core
+
+**Package(s):** `packages/rb-logic-core`, `packages/rb-lab-engine` (non-verification modules)
+
+**What it does:**
+- Deterministic circuit simulation: gate evaluation, node resolution, fan-out propagation
+- Lab schema definitions (`labProjectSchema.ts` in `rb-utils`)
+- Primitive type definitions: `AND2`, `OR2`, `XOR2`, `NOT`, `DFlipFlop`, `TFlipFlop`, etc.
+- Wire connectivity and node graph representation
+
+**What it does NOT do:**
+- Any UI rendering
+- File I/O or ZIP creation
+- FPGA-specific pin mapping or HDL generation
+- Truth table comparison
+
+**Depends on:** Nothing above this layer.
+
+---
+
+## Layer B — Verification Engine
+
+**Files:**
+- `packages/rb-apps/src/fpga/boards/basys3/verifySchedule.ts`
+- `packages/rb-lab-engine/src/verification/verifyTruthTable.ts`
+- `packages/rb-utils/src/verifySchedule.ts` (shared types)
+
+**What it does:**
+- Runs the student's circuit against expected truth table vectors
+- Produces a `VerifyResult` with pass/fail per vector, failing node identification
+- Handles both combinational (single-tick) and sequential (multi-tick with clock) schedules
+- Deterministic: same circuit + same vectors always produces the same result
+
+**What it does NOT do:**
+- Any UI rendering or state management
+- File I/O or HDL generation
+- Communication with hardware
+
+**Depends on:** Layer A only.
+
+---
+
+## Layer C — Vivado Adapter
+
+**Directory:** `packages/rb-apps/src/fpga/boards/basys3/`
+
+**Key files:**
+- `basys3ExportService.ts` — orchestrates HDL/XDC/TCL generation
+- `basys3Bundle.ts` — assembles the ZIP artifact for Vivado
+- `testbenchGenerator.ts` — generates VHDL testbench from circuit + vectors
+- `basys3Pins.ts` — pin mapping database for Basys3 board
+- `sequentialAnalysis.ts` — clock domain analysis for sequential circuits
+- `vivadoImportTcl.ts` — generates Vivado TCL project script
+- `vectorRunner.ts` — runs vectors through the Vivado simulation path
+- `portLint.ts` — validates port names and widths against VHDL rules
+
+**What it does:**
+- Converts a circuit graph into synthesizable VHDL (`top.vhd`)
+- Generates pin constraints (`constraints.xdc`) for Basys3
+- Generates a VHDL testbench (`testbench.vhd`) from truth table vectors
+- Produces the complete Vivado project ZIP
+
+**What it does NOT do:**
+- UI rendering or student-facing state
+- Verification (uses Layer B results as input)
+- Submission bundling or integrity hashing
+
+**Depends on:** Layers A and B.
+
+---
+
+## Layer D — Submission Engine
+
+**Files:**
+- `packages/rb-apps/src/export/ideSubmissionBundle.ts`
+- `packages/rb-apps/src/export/parseIdeSubmission.ts`
+- `packages/rb-apps/src/export/fileTreeManifest.ts`
+- `packages/rb-apps/src/export/deterministicZip.ts`
+- `packages/rb-apps/src/export/stableStringify.ts`
+
+**What it does:**
+- Bundles the student's work into a deterministic ZIP with integrity hashes
+- Embeds: project JSON, verify ledger, gate verdict, run counts, manifest
+- Parses and validates imported submission ZIPs (checks `SubmissionIntegrityError`)
+- Provides `deriveProofRunFlags` + `validateSubmissionForLab` for gate computation
+
+**What it does NOT do:**
+- UI rendering
+- HDL generation (delegates to Layer C)
+- Verification execution (reads Layer B results)
+
+**Depends on:** Layers A, B, and C.
+
+**Integrity guarantee:** The submission ZIP is deterministic — same inputs always produce the
+same bytes. Hash values in the manifest are content-addressed and used for tamper detection.
+
+---
+
+## Layer E — Student UX Shell
+
+**Files:**
+- `packages/rb-apps/src/apps/IdeApp.tsx` — main shell, mode routing, state management
+- `packages/rb-apps/src/apps/ide/surfaces/*.tsx` — 6 student-facing surfaces
+- `packages/rb-apps/src/apps/ide/components/` — surface-specific UI components
+- `packages/rb-apps/src/components/` — shared UI primitives (ErrorBoundary, IdePrimitives)
+
+**Surfaces:**
+
+| Surface | Mode | Student Purpose |
+|---------|------|-----------------|
+| `ProjectSurface.tsx` | `project` | Enter name, view lab info, export submission |
+| `DesignSurface.tsx` | `design` | Build circuit with drag-and-drop gate editor |
+| `VerifySurface.tsx` | `verify` | Run simulation, see pass/fail, jump to failures |
+| `HardwareSurface.tsx` | `hardware` | Map circuit ports to Basys3 physical pins |
+| `ExportSurface.tsx` | `export` | Download Vivado Kit, view generated HDL |
+| `ImportSurface.tsx` | `import` | Import VHDL, ZIP, or XDC into circuit |
+
+**What it does:**
+- Student-appropriate views with no internal diagnostic language
+- Orchestrates calls to Layers B, C, D on user actions
+- Maintains UI state: `IdeMode`, `verifyLedger`, `diagnosticRouteRequest`
+- Wraps all surfaces in `ErrorBoundary`
+
+**What it does NOT do:**
+- Logic simulation (delegates to Layer A)
+- Verification math (delegates to Layer B)
+- HDL generation (delegates to Layer C)
+- Submission hashing (delegates to Layer D)
+
+**Content rules for this layer:**
+- No manifest hashes, bundle hashes, or capsule state language in default view
+- No "Pipeline Stage", "WAITING", "not sealed" diagnostic text
+- Integrity/hash data belongs in collapsed "Advanced" accordions only
+- Maximum 3 status pills per surface
+
+---
+
+## Application Contexts
+
+**`IdeApp`** — student lab tool. Always-on simplified view. Used directly by students.
+
+**`LabWorkspaceApp`** — guided lab context with lab step tracking. Used in structured assignments.
+
+**`SubmissionInspectorApp`** — instructor grading tool. Full diagnostic view including all hashes,
+gate verdicts, and submission details. Not student-facing.
+
+**`LogicPlaygroundApp`** — open-ended sandbox, no submission system.
+
+---
+
+## Legacy Packages (not used by current IDE)
+
+These packages exist in the monorepo but are not imported by any active surface:
+- `rb-analog-sim` — analog simulation prototype
+- `rb-logic-3d` — 3D voxel logic visualizer
+- `rb-windowing` — OS-era window manager
+- `rb-bridge-agent` — hardware bridge agent (replaced by `rb-fpga-bridge`)
+- `ops-server` — ops backend, standalone service
+
+---
+
+## Data Flow: Student Submission
+
+```
+Student designs circuit (Layer E DesignSurface)
+    ↓
+Runs verification (Layer B verifyTruthTable + verifySchedule)
+    ↓ verify ledger stored in IdeApp state
+Maps pins in HardwareSurface (Layer E)
+    ↓
+Clicks "Download Vivado Kit" (Layer E ExportSurface)
+    ↓
+Layer C generates top.vhd + constraints.xdc + testbench.vhd
+    ↓
+Layer D wraps in ZIP with integrity manifest
+    ↓
+Student downloads ZIP → imports into Vivado
+```
+
+---
+
+## See Also
+
+- `docs/STUDENT_UX_LAYER.md` — student/instructor content rules per surface
+- `docs/VIVADO_INTEGRATION.md` — step-by-step Vivado workflow spec
+- `AI_STATE.md` — running log of architectural decisions and changes
+- `AGENTS.md` — agent navigation guide

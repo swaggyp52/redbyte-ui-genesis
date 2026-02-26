@@ -6,7 +6,12 @@ import type { ParsedHDL, ReconstructionLevel } from '../../../import/hdlToCircui
 import type { ParsedHdlWarning } from '../../../import/hdlToCircuit';
 import type { RBProject } from '../../../export/projectFormat';
 import type { IdeExampleIoRow } from '../examplesCatalog';
-import { parseIdeSubmissionZip, NotASubmissionZipError, type ParsedIdeSubmission } from '../../../export/parseIdeSubmission';
+import {
+  parseIdeSubmissionZip,
+  NotASubmissionZipError,
+  SubmissionIntegrityError,
+  type ParsedIdeSubmission,
+} from '../../../export/parseIdeSubmission';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   buildImportedProject,
@@ -306,6 +311,11 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const [pendingApplyProject, setPendingApplyProject] = useState<RBProject | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [statusMessage, setStatusMessage] = useState<string>('Paste HDL to begin import.');
+  const [submissionImportFeedback, setSubmissionImportFeedback] = useState<{
+    tone: 'success' | 'error';
+    title: string;
+    detail: string;
+  } | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'failed'>('idle');
   const zipInputRef = useRef<HTMLInputElement | null>(null);
   const zipFileRef = useRef<File | null>(null);
@@ -1002,29 +1012,53 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const handleZipFile = async (file: File) => {
     const fileName = file.name.trim().toLowerCase();
     if (!fileName.endsWith('.zip')) {
+      setSubmissionImportFeedback(null);
       setStatusMessage('ZIP import requires a .zip archive.');
       return;
     }
     zipFileRef.current = file;
     setZipBusy(true);
     setPendingApplyProject(null);
+    setSubmissionImportFeedback(null);
 
     // First: try parsing as a submission ZIP
     if (onImportSubmission) {
       try {
         const bytes = await file.arrayBuffer();
         const submission = await parseIdeSubmissionZip(bytes);
+        setSubmissionImportFeedback({
+          tone: 'success',
+          title: 'Student submission detected',
+          detail: 'Integrity check passed. Opening read-only submission viewer.',
+        });
+        setStatusMessage('Submission ZIP detected. Opening read-only submission viewer.');
         setZipBusy(false);
         onImportSubmission(submission);
         return;
       } catch (err) {
-        if (!(err instanceof NotASubmissionZipError)) {
-          // Unexpected error — show it and abort
+        if (err instanceof NotASubmissionZipError) {
+          // NotASubmissionZipError → fall through to Vivado ZIP path
+          setSubmissionImportFeedback(null);
+        } else {
+          // Integrity or parser errors are hard failures for submission imports.
           setZipBusy(false);
-          setStatusMessage(`Submission parse failed: ${err instanceof Error ? err.message : String(err)}`);
+          if (err instanceof SubmissionIntegrityError) {
+            setStatusMessage(err.message);
+            setSubmissionImportFeedback({
+              tone: 'error',
+              title: 'Submission integrity check failed',
+              detail: err.message,
+            });
+          } else {
+            setStatusMessage(`Submission parse failed: ${err instanceof Error ? err.message : String(err)}`);
+            setSubmissionImportFeedback({
+              tone: 'error',
+              title: 'Submission parse failed',
+              detail: err instanceof Error ? err.message : String(err),
+            });
+          }
           return;
         }
-        // NotASubmissionZipError → fall through to Vivado ZIP path
       }
     }
 
@@ -1047,6 +1081,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       setStatusMessage(
         `ZIP parsed: ${inspection.detectedTopPath}${inspection.detectedXdcPath ? ` + ${inspection.detectedXdcPath}` : ''} (${mappedPins}/${inspection.parsedHdl.ports.length} mapped).`
       );
+      setSubmissionImportFeedback(null);
     } catch (error) {
       setZipInspection(null);
       setParsedHdl(null);
@@ -1054,6 +1089,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       setStatusMessage(
         `ZIP import failed: ${error instanceof Error ? error.message : 'unknown error'}`
       );
+      setSubmissionImportFeedback(null);
     } finally {
       setZipBusy(false);
     }
@@ -1131,6 +1167,19 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               </IdeStatusPill>
             </div>
           </div>
+          {submissionImportFeedback && (
+            <IdeCallout
+              tone={submissionImportFeedback.tone}
+              title={submissionImportFeedback.title}
+              testId={
+                submissionImportFeedback.tone === 'success'
+                  ? 'ide-import-submission-detected'
+                  : 'ide-import-submission-integrity-failed'
+              }
+            >
+              {submissionImportFeedback.detail}
+            </IdeCallout>
+          )}
           <section className="ide-import-feedback" data-testid="ide-import-parse-feedback">
             <header className="ide-workbench-placeholder-header" style={{ marginTop: 'var(--ide-space-2)' }}>
               <h3>Parse Feedback</h3>
@@ -1402,22 +1451,22 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               </>
             )}
           </IdeInspectorSection>
-          <IdeInspectorSection title="Pipeline Stage" defaultOpen>
+          <IdeInspectorSection title="Import Status" defaultOpen>
             <div className="ide-kv-list">
               <div className="ide-kv-row">
-                <span>HDL Parsed</span>
+                <span>HDL</span>
                 <IdeStatusPill tone={hasParsedHdl ? 'ok' : 'idle'}>
-                  {hasParsedHdl ? 'READY' : 'WAITING'}
+                  {hasParsedHdl ? 'Parsed' : 'Pending'}
                 </IdeStatusPill>
               </div>
               <div className="ide-kv-row">
-                <span>XDC Parsed</span>
+                <span>XDC</span>
                 <IdeStatusPill tone={hasParsedXdc ? 'ok' : 'idle'}>
-                  {hasParsedXdc ? 'READY' : 'OPTIONAL'}
+                  {hasParsedXdc ? 'Parsed' : 'Optional'}
                 </IdeStatusPill>
               </div>
               <div className="ide-kv-row">
-                <span>Mapped Ports</span>
+                <span>Ports mapped</span>
                 <span>
                   {ports.length - unmappedPorts.length}/{ports.length}
                 </span>
@@ -1440,8 +1489,8 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       }
     >
       <IdePanel
-        title="Import Truth Screen"
-        description="Paste HDL and XDC, resolve deterministic diagnostics, then import with confidence."
+        title="Import HDL"
+        description="Paste or upload VHDL/Verilog and XDC constraints to load a design into the circuit editor."
         actions={
           <>
             <IdeButton tone="secondary" onClick={parseHdl} testId="ide-import-parse">
