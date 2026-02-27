@@ -10753,3 +10753,84 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-verify-panel .ide-panel-body > .ide-verify-workbench > .ide-verify-console-frame {
   flex-shrink: 0;
 }
+
+/* Phase 26B — Project: horizontal pipeline + compact metrics */
+
+/* Override grid-based launchpad to a single flex row */
+[data-ide-mode-marker='project'] .ide-project-launchpad {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 0;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+[data-ide-mode-marker='project'] .ide-project-launchpad > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Hide the old ::before gradient line — border-right handles dividers now */
+[data-ide-mode-marker='project'] .ide-project-launchpad::before {
+  display: none;
+}
+
+/* Border-right divider between cards */
+[data-ide-mode-marker='project'] .ide-project-launchpad > *:not(:last-child) {
+  border-right: 1px solid var(--ide-border, rgba(255, 255, 255, 0.1));
+  position: relative;
+}
+
+/* Dot connector centred on the divider line */
+[data-ide-mode-marker='project'] .ide-project-launchpad > *:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: -3px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ide-border, rgba(255, 255, 255, 0.18));
+  z-index: 1;
+}
+
+/* Responsive: 2×2 grid below 1100px */
+@media (max-width: 1100px) {
+  [data-ide-mode-marker='project'] .ide-project-launchpad {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    flex-wrap: wrap;
+  }
+
+  [data-ide-mode-marker='project'] .ide-project-launchpad > *:not(:last-child) {
+    border-right: none;
+  }
+
+  [data-ide-mode-marker='project'] .ide-project-launchpad > *:not(:last-child)::after {
+    display: none;
+  }
+}
+
+/* Compact metrics strip — horizontal, tight typography */
+[data-ide-mode-marker='project'] .ide-project-overview {
+  min-height: 0;
+  padding: var(--rb-space-2, 8px) var(--rb-space-3, 12px);
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--rb-space-2, 8px);
+  align-items: center;
+}
+
+[data-ide-mode-marker='project'] .ide-project-overview-metrics {
+  display: contents;
+}
+
+[data-ide-mode-marker='project'] .ide-project-overview-metric {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--rb-space-1, 4px) var(--rb-space-2, 8px);
+  font-size: var(--rb-font-size-1, 11px);
+}
