@@ -141,8 +141,8 @@ const WireViewComponent: React.FC<WireViewProps> = ({
     onSelect(wireId, e.shiftKey);
   };
 
-  const strokeColor = signal === 1 ? '#22c55e' : '#6b7280';
-  const hoverColor = '#8ec7ff';
+  const strokeColor = signal === 1 ? '#34d399' : '#8aa6c3';
+  const hoverColor = '#9ed5ff';
   const isActive = signal === 1;
   const netHighlightColor = '#fbbf24'; // amber-400
   const zoomBand = resolveWireZoomBand(camera.zoom);
@@ -281,7 +281,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
               ? bandStyle.hoverStroke
               : bandStyle.baseStroke
         }
-        opacity={signal === 1 ? 1 : 0.5}
+        opacity={signal === 1 ? 1 : 0.72}
       />
 
       {isSelected && (

@@ -25,30 +25,30 @@ interface GridBandStyle {
 const GRID_BAND_STYLES: Record<GridZoomBand, GridBandStyle> = {
   far: {
     majorStroke: 1,
-    majorOpacity: 0.3,
+    majorOpacity: 0.22,
     minorStroke: 0.45,
     minorOpacity: 0,
     showMinorLines: false,
   },
   medium: {
     majorStroke: 1,
-    majorOpacity: 0.34,
+    majorOpacity: 0.24,
     minorStroke: 0.5,
-    minorOpacity: 0.13,
+    minorOpacity: 0.08,
     showMinorLines: true,
   },
   near: {
     majorStroke: 1.05,
-    majorOpacity: 0.4,
+    majorOpacity: 0.28,
     minorStroke: 0.55,
-    minorOpacity: 0.18,
+    minorOpacity: 0.11,
     showMinorLines: true,
   },
   detail: {
     majorStroke: 1.1,
-    majorOpacity: 0.46,
+    majorOpacity: 0.32,
     minorStroke: 0.62,
-    minorOpacity: 0.24,
+    minorOpacity: 0.14,
     showMinorLines: true,
   },
 };

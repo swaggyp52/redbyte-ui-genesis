@@ -89,7 +89,6 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   onSelect,
   onMove,
   onPortClick,
-  onToggleSwitch,
   onNodeDoubleClick,
   onProbeToggle,
   signals,
@@ -113,7 +112,6 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const isDragging = externalDragPosition != null;
   const [hoveredPort, setHoveredPort] = React.useState<string | null>(null);
   const [isHovered, setIsHovered] = React.useState(false);
-  const [isToggleHovered, setIsToggleHovered] = React.useState(false);
   const [hoveredProbePort, setHoveredProbePort] = React.useState<{ portName: string; x: number; y: number } | null>(null);
 
   const getPortValue = React.useCallback(
@@ -194,19 +192,14 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const pinAliasFont = Math.max(7, (presentationZoomMode === 'classroom' ? 9 : 8) * camera.zoom);
   const pinNameFont = Math.max(7, (presentationZoomMode === 'classroom' ? 9 : 8) * camera.zoom);
   const nodeScale = isDragging ? 1 : isSelected ? 1.03 : isHovered ? 1.018 : 1;
+  const nodeCornerRadius = presentationZoomMode === 'classroom' ? 10 : 8;
+  const nodeHeaderHeight = Math.max(14, size * (presentationZoomMode === 'classroom' ? 0.3 : 0.28));
+  const chipHeaderHeight = Math.max(16, size * (presentationZoomMode === 'classroom' ? 0.28 : 0.24));
   const nodeTransform = `translate(${screenX}, ${screenY}) rotate(${safeRotation}) scale(${nodeScale})`;
   const lod = resolveNodeLod(camera.zoom);
+  const shouldShowPortLabels = lod === 'full' && (isHovered || isSelected || wireStartPort != null);
 
   const isSwitch = node.type === 'Switch' || node.type === 'INPUT';
-  const switchState = node.state?.isOn ?? 0;
-  const toggleWidth = size * 0.75; // Increased from 0.66
-  const toggleHeight = 16; // Increased from 14
-  const toggleX = -toggleWidth / 2;
-  const toggleY = -size / 2 - 20; // Moved slightly further up
-  const toggleHitWidth = size * 1.0; // Increased hit area
-  const toggleHitHeight = 28; // Increased hit area
-  const toggleHitX = -toggleHitWidth / 2;
-  const toggleHitY = toggleY - (toggleHitHeight - toggleHeight) / 2;
 
 
   const isIssueHighlighted = (portName: string) =>
@@ -237,19 +230,6 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   // Drag handling is now centralized in useCanvasInput (CanvasInputController).
   // NodeView only handles port clicks, toggle, and double-click.
 
-  const handleToggleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    // Only toggle if NOT drawing a wire
-    if (!wireStartPort && onToggleSwitch) {
-      onToggleSwitch(node.id);
-    }
-  };
-
-  const handleToggleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     // Double-click for chip drill-down only (not switches)
@@ -268,6 +248,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const ioKind = ioPresentation?.kind ?? inferDefaultIoKind(node.type);
   const ioDisplayLabel = (ioPresentation?.label?.trim() || node.label || node.type).toUpperCase();
   const ioPinAlias = ioPresentation?.pinAlias?.trim();
+  const shouldShowPinAlias = lod === 'full' && !!ioPinAlias && (isHovered || isSelected);
   const showOutputStateBadge =
     !isSwitch &&
     node.type !== 'OUTPUT' &&
@@ -350,6 +331,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
         {/* Chip body - black box appearance */}
         <rect
+          className="logic-node-body"
           x={-size / 2}
           y={-chipHeight / 2}
           width={size}
@@ -357,7 +339,18 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           fill={chipColor}
           stroke={isSelected ? '#3b82f6' : isHovered ? '#8b5cf6' : '#475569'}
           strokeWidth={isSelected ? 3 : isHovered ? 2.5 : 2}
-          rx={6}
+          rx={nodeCornerRadius}
+        />
+        <rect
+          className="logic-node-header"
+          x={-size / 2}
+          y={-chipHeight / 2}
+          width={size}
+          height={chipHeaderHeight}
+          rx={nodeCornerRadius}
+          fill="rgba(10, 22, 37, 0.92)"
+          stroke="rgba(142, 199, 255, 0.3)"
+          strokeWidth={0.8}
         />
         {isMismatchHighlighted && (
           <rect
@@ -400,35 +393,15 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           </g>
         ) : null}
 
-        {/* Hover hint - double-click to drill down */}
-        {isHovered && onNodeDoubleClick && (
-          <text
-            x={0}
-            y={-chipHeight / 2 - 8}
-            textAnchor="middle"
-            fill="#8b5cf6"
-            fontSize={9}
-            fontWeight="500"
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
-          >
-            Double-click to explore
-          </text>
-        )}
-
-        {/* Chip icon - small circuit pattern */}
-        <circle cx={0} cy={-chipHeight / 4} r={3} fill="#64748b" opacity={0.5} />
-        <circle cx={-6} cy={chipHeight / 4} r={2} fill="#64748b" opacity={0.5} />
-        <circle cx={6} cy={chipHeight / 4} r={2} fill="#64748b" opacity={0.5} />
-        <line x1={0} y1={-chipHeight / 4 + 3} x2={-6} y2={chipHeight / 4 - 2} stroke="#64748b" strokeWidth={1} opacity={0.3} />
-        <line x1={0} y1={-chipHeight / 4 + 3} x2={6} y2={chipHeight / 4 - 2} stroke="#64748b" strokeWidth={1} opacity={0.3} />
-
         {/* Chip label */}
         {lod !== 'minimal' && (
           <text
+            className="logic-node-label"
             x={0}
-            y={chipHeight / 2 + 12}
+            y={-chipHeight / 2 + chipHeaderHeight / 2}
+            dominantBaseline="middle"
             textAnchor="middle"
-            fill="#94a3b8"
+            fill="#eaf2ff"
             fontSize={Math.max(8, 10 * camera.zoom)}
             fontWeight="600"
             style={{ pointerEvents: 'none', userSelect: 'none' }}
@@ -440,10 +413,12 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         {/* Layer badge */}
         {lod === 'full' && chipMetadata.layer !== undefined && (
           <text
+            className="logic-node-sub-label"
             x={0}
-            y={-chipHeight / 2 - 8}
+            y={chipHeight / 2 + 10}
+            dominantBaseline="middle"
             textAnchor="middle"
-            fill="#64748b"
+            fill="#8aa8c7"
             fontSize={Math.max(7, 8 * camera.zoom)}
             style={{ pointerEvents: 'none', userSelect: 'none' }}
           >
@@ -629,8 +604,9 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 </>
               )}
               {renderHoverBadge(-size / 2 - 12, yPos, input.id)}
-              {lod === 'full' && (
+              {shouldShowPortLabels && (
                 <text
+                  className="logic-port-label"
                   x={-size / 2 - 8}
                   y={yPos}
                   textAnchor="end"
@@ -810,8 +786,9 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 </>
               )}
               {renderHoverBadge(size / 2 + 12, yPos, output.id)}
-              {lod === 'full' && (
+              {shouldShowPortLabels && (
                 <text
+                  className="logic-port-label"
                   x={size / 2 + 8}
                   y={yPos}
                   textAnchor="start"
@@ -863,6 +840,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
       {/* Node body */}
       <rect
+        className="logic-node-body"
         x={-size / 2}
         y={-size / 2}
         width={size}
@@ -870,7 +848,18 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         fill={resolveNodeFill(node.type, ioKind, isActive, color)}
         stroke={isSelected ? '#3b82f6' : color}
         strokeWidth={isSelected ? 3 : 1}
-        rx={4}
+        rx={nodeCornerRadius}
+      />
+      <rect
+        className="logic-node-header"
+        x={-size / 2}
+        y={-size / 2}
+        width={size}
+        height={nodeHeaderHeight}
+        rx={nodeCornerRadius}
+        fill="rgba(10, 22, 37, 0.92)"
+        stroke="rgba(142, 199, 255, 0.3)"
+        strokeWidth={0.8}
       />
       {isMismatchHighlighted && (
         <rect
@@ -913,89 +902,38 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         </g>
       ) : null}
 
-      {node.type === 'INPUT' || node.type === 'Switch' ? (
-        <g pointerEvents="none">
-          {ioKind === 'button' ? (
-            <>
-              <rect
-                x={-size * 0.18}
-                y={-size * 0.18}
-                width={size * 0.36}
-                height={size * 0.36}
-                rx={4}
-                fill={isActive ? '#38bdf8' : '#1f2937'}
-                stroke={isActive ? '#bae6fd' : '#64748b'}
-                strokeWidth={1.2}
-              />
-              <text
-                x={0}
-                y={size * 0.34}
-                textAnchor="middle"
-                fill="#cbd5e1"
-                fontSize={Math.max(6, 8 * camera.zoom)}
-                fontWeight="600"
-              >
-                BTN
-              </text>
-            </>
-          ) : ioKind === 'clock' ? (
-            <>
-              <rect
-                x={-size * 0.26}
-                y={-size * 0.12}
-                width={size * 0.52}
-                height={size * 0.24}
-                rx={size * 0.08}
-                fill={isActive ? '#0ea5e9' : '#1e3a5f'}
-                stroke={isActive ? '#7dd3fc' : '#4f6f9a'}
-                strokeWidth={1.2}
-              />
-              <text
-                x={0}
-                y={size * 0.34}
-                textAnchor="middle"
-                fill="#dbeafe"
-                fontSize={Math.max(6, 8 * camera.zoom)}
-                fontWeight="600"
-              >
-                CLK
-              </text>
-            </>
-          ) : (
-            <>
-              <line
-                x1={-size * 0.18}
-                y1={size * 0.08}
-                x2={size * 0.18}
-                y2={size * 0.08}
-                stroke="#93c5fd"
-                strokeWidth={1.2}
-                strokeLinecap="round"
-              />
-              <circle cx={-size * 0.1} cy={size * 0.08} r={2.2} fill="#dbeafe" />
-              <circle cx={size * 0.1} cy={size * 0.08} r={2.2} fill="#dbeafe" />
-            </>
-          )}
-        </g>
-      ) : null}
-
-      {(node.type === 'OUTPUT' || node.type === 'Lamp') && ioKind === 'led' ? (
+      {(node.type === 'INPUT' || node.type === 'Switch' || node.type === 'Clock' || node.type === 'OUTPUT' || node.type === 'Lamp') ? (
         <g pointerEvents="none">
           <circle
             cx={0}
-            cy={-size * 0.08}
-            r={size * 0.17}
-            fill={isActive ? '#34d399' : '#1f2937'}
+            cy={size * 0.08}
+            r={Math.max(5, size * 0.11)}
+            fill={isActive ? '#22c55e' : '#1e293b'}
             stroke={isActive ? '#a7f3d0' : '#64748b'}
             strokeWidth={1.4}
           />
           {isActive ? (
             <circle
               cx={0}
-              cy={-size * 0.08}
-              r={size * 0.24}
-              fill="rgba(52, 211, 153, 0.22)"
+              cy={size * 0.08}
+              r={Math.max(8, size * 0.18)}
+              fill="rgba(34, 197, 94, 0.22)"
             />
+          ) : null}
+          {lod === 'full' ? (
+            <text
+              className="logic-node-sub-label"
+              x={0}
+              y={size * 0.36}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#9fb6cf"
+              fontSize={Math.max(7, 9 * camera.zoom)}
+              fontWeight="600"
+              style={{ pointerEvents: 'none', userSelect: 'none' }}
+            >
+              {nodeOutputValue}
+            </text>
           ) : null}
         </g>
       ) : null}
@@ -1006,20 +944,23 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
       {/* Node label */}
       {lod !== 'minimal' && (
         <text
+          className="logic-node-label"
           data-node-label="1"
           x={0}
-          y={node.type === 'OUTPUT' || node.type === 'Lamp' ? size * 0.18 : 0}
+          y={-size / 2 + nodeHeaderHeight / 2}
           textAnchor="middle"
           dominantBaseline="middle"
           fill="#fff"
           fontSize={nodeLabelFont}
+          fontWeight="600"
           style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
           {ioDisplayLabel}
         </text>
       )}
-      {lod === 'full' && ioPinAlias ? (
+      {shouldShowPinAlias ? (
         <text
+          className="logic-node-sub-label"
           x={0}
           y={size * 0.38}
           textAnchor="middle"
@@ -1364,15 +1305,17 @@ function resolveNodeFill(
   isActive: boolean,
   fallbackColor: string
 ): string {
+  const inactiveBase = '#162333';
+  const activeBase = '#1f3146';
   if (nodeType === 'INPUT' || nodeType === 'Switch') {
-    if (ioKind === 'button') return isActive ? '#0f3d57' : '#1f2937';
-    if (ioKind === 'clock') return isActive ? '#0f4b7a' : '#1e3046';
-    return isActive ? '#1f766f' : '#263241';
+    if (ioKind === 'button') return isActive ? '#1f3f56' : inactiveBase;
+    if (ioKind === 'clock') return isActive ? '#1c4365' : inactiveBase;
+    return isActive ? '#1f3e4f' : inactiveBase;
   }
   if (nodeType === 'OUTPUT' || nodeType === 'Lamp') {
-    return isActive ? '#18473b' : '#1f2937';
+    return isActive ? '#1c3f37' : inactiveBase;
   }
-  return isActive ? fallbackColor : '#2a2a2a';
+  return isActive ? activeBase : fallbackColor ? '#1b2b3f' : inactiveBase;
 }
 
 function shallowObjectEqual(

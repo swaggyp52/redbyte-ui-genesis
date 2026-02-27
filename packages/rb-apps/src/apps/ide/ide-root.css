@@ -9701,3 +9701,79 @@ details[open] summary .details-arrow {
 .rb-logic-canvas-svg [data-testid='logic-wire-reconnect-layer'] g:hover circle {
   transform: scale(1.08);
 }
+
+/* Design readability pass: reduce canvas noise and improve node text legibility */
+.ide-design-canvas::after {
+  content: none !important;
+}
+
+.ide-design-canvas-live {
+  background-color: #07111b !important;
+  background-image: radial-gradient(circle, rgba(142, 199, 255, 0.1) 1px, transparent 1px) !important;
+  background-size: 28px 28px !important;
+}
+
+.rb-logic-canvas-svg {
+  background: linear-gradient(180deg, rgba(9, 17, 27, 0.9) 0%, rgba(5, 10, 16, 0.92) 100%) !important;
+}
+
+.rb-logic-canvas-svg .logic-node-label,
+.rb-logic-canvas-svg .logic-port-label,
+.rb-logic-canvas-svg .logic-node-sub-label {
+  paint-order: stroke fill;
+  stroke: rgba(2, 8, 14, 0.86);
+  stroke-width: 2.8px;
+  stroke-linejoin: round;
+}
+
+.rb-logic-canvas-svg .logic-node-label {
+  fill: #eaf2ff;
+  font-weight: 600;
+}
+
+.rb-logic-canvas-svg .logic-port-label {
+  fill: #d6e6f8;
+  font-size: 11px;
+  opacity: 0.95;
+}
+
+.rb-logic-canvas-svg .logic-node-sub-label {
+  fill: #b8cde5;
+  font-size: 11px;
+}
+
+/* Designer intent pass: clearer node hierarchy and board resource affordance */
+.rb-logic-canvas-svg .logic-node-body {
+  fill: #162333 !important;
+  stroke: rgba(124, 168, 210, 0.58) !important;
+}
+
+.rb-logic-canvas-svg .logic-node-header {
+  fill: rgba(9, 19, 31, 0.94) !important;
+  stroke: rgba(142, 199, 255, 0.35) !important;
+}
+
+.rb-logic-canvas-svg [data-node-id]:hover .logic-node-body {
+  stroke: rgba(142, 199, 255, 0.72) !important;
+}
+
+.rb-logic-canvas-svg [data-node-selected='1'] .logic-node-body {
+  stroke: rgba(90, 180, 255, 0.95) !important;
+}
+
+.rb-logic-canvas-svg [data-wire-id] path {
+  stroke-linecap: round;
+}
+
+.rb-logic-canvas-svg [data-wire-id] path[stroke='#6b7280'] {
+  stroke: #8aa6c3 !important;
+}
+
+.ide-palette-chip.ide-palette-chip-board.is-placed,
+.ide-palette-chip.ide-palette-chip-board:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  border-color: rgba(120, 147, 176, 0.4);
+  color: rgba(174, 196, 220, 0.7);
+  background: rgba(15, 26, 40, 0.75);
+}
