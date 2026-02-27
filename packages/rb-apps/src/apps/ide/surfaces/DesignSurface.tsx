@@ -486,6 +486,24 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (!query) return BASYS3_OUTPUT_ITEMS;
     return BASYS3_OUTPUT_ITEMS.filter((entry) => entry.alias.toLowerCase().includes(query));
   }, [paletteQuery]);
+  const boardIoRowByAlias = useMemo(() => {
+    const index = new Map<string, { nodeId: string }>();
+    for (const row of ioRows) {
+      const direction = row.direction === 'in' ? 'in' : 'out';
+      const candidates = [row.pin, row.label, row.id]
+        .map((value) => normalizeAlias(value))
+        .filter((value) => value.length > 0);
+      for (const token of candidates) {
+        index.set(`${direction}:${token}`, { nodeId: row.nodeId });
+      }
+    }
+    return index;
+  }, [ioRows]);
+  const isBoardAliasPlaced = useCallback(
+    (entry: BoardIoPaletteItem) =>
+      boardIoRowByAlias.has(`${entry.direction}:${normalizeAlias(entry.alias)}`),
+    [boardIoRowByAlias]
+  );
 
   const spawnAtCanvasCenter = useCallback(
     (nodeType: string, extraOffset: { x: number; y: number } = { x: 0, y: 0 }) => {
@@ -520,7 +538,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   const addBoardIoAlias = useCallback(
     (entry: BoardIoPaletteItem) => {
-      hasAutoFitRef.current = false;
+      const aliasKey = `${entry.direction}:${normalizeAlias(entry.alias)}`;
+      const existing = boardIoRowByAlias.get(aliasKey);
+      if (existing) {
+        if (existing.nodeId) {
+          setToolMode('select');
+          selectMultipleNodes([existing.nodeId], false);
+        }
+        setActionToast(`${entry.alias} already exists on canvas.`);
+        return;
+      }
+
       const center = {
         x: (canvasSize.width / 2 - camera.x) / camera.zoom,
         y: (canvasSize.height / 2 - camera.y) / camera.zoom,
@@ -551,6 +579,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       setActionToast(`Added ${entry.alias} to canvas.`);
     },
     [
+      boardIoRowByAlias,
       camera.x,
       camera.y,
       camera.zoom,
@@ -1144,33 +1173,43 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             <div className="ide-palette-group" data-testid="ide-design-board-inputs">
               <h4>Basys3 Inputs</h4>
               <div className="ide-palette-chips">
-                {filteredBasysInputs.map((entry) => (
-                  <button
-                    key={entry.alias}
-                    className="ide-palette-chip ide-palette-chip-board"
-                    type="button"
-                    onClick={() => addBoardIoAlias(entry)}
-                    data-testid={`ide-design-board-input-${entry.alias.toLowerCase()}`}
-                  >
-                    {entry.alias}
-                  </button>
-                ))}
+                {filteredBasysInputs.map((entry) => {
+                  const isPlaced = isBoardAliasPlaced(entry);
+                  return (
+                    <button
+                      key={entry.alias}
+                      className={`ide-palette-chip ide-palette-chip-board${isPlaced ? ' is-placed' : ''}`}
+                      type="button"
+                      onClick={() => addBoardIoAlias(entry)}
+                      data-testid={`ide-design-board-input-${entry.alias.toLowerCase()}`}
+                      disabled={isPlaced}
+                      title={isPlaced ? `${entry.alias} already placed` : undefined}
+                    >
+                      {entry.alias}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div className="ide-palette-group" data-testid="ide-design-board-outputs">
               <h4>Basys3 Outputs</h4>
               <div className="ide-palette-chips">
-                {filteredBasysOutputs.map((entry) => (
-                  <button
-                    key={entry.alias}
-                    className="ide-palette-chip ide-palette-chip-board"
-                    type="button"
-                    onClick={() => addBoardIoAlias(entry)}
-                    data-testid={`ide-design-board-output-${entry.alias.toLowerCase()}`}
-                  >
-                    {entry.alias}
-                  </button>
-                ))}
+                {filteredBasysOutputs.map((entry) => {
+                  const isPlaced = isBoardAliasPlaced(entry);
+                  return (
+                    <button
+                      key={entry.alias}
+                      className={`ide-palette-chip ide-palette-chip-board${isPlaced ? ' is-placed' : ''}`}
+                      type="button"
+                      onClick={() => addBoardIoAlias(entry)}
+                      data-testid={`ide-design-board-output-${entry.alias.toLowerCase()}`}
+                      disabled={isPlaced}
+                      title={isPlaced ? `${entry.alias} already placed` : undefined}
+                    >
+                      {entry.alias}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

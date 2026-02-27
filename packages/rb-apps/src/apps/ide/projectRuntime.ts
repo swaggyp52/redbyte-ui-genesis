@@ -462,11 +462,34 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             normalizedKind === 'clock' ? 'Clock' : isInput ? 'INPUT' : 'OUTPUT';
           const baseLabel =
             normalizedKind === 'reset' ? 'rst' : normalizedAlias.toLowerCase();
-          const nodeId = getNextNamedNodeId(state.circuit, `${baseLabel}_node`);
           const rowIdBase = normalizeBoardRowId(baseLabel);
-          const rowId = getNextIoRowId(state.projectIoRows, rowIdBase);
           const rowPin = normalizedKind === 'reset' ? 'BTNC' : normalizedAlias;
           const rowPort = isInput ? 'out' : 'in';
+          const nextIoRows = cloneIoRows(state.projectIoRows);
+          const existingRow = nextIoRows.find(
+            (row) =>
+              row.direction === direction &&
+              (
+                normalizePortToken(row.pin) === normalizePortToken(rowPin) ||
+                normalizePortToken(row.id) === normalizePortToken(rowIdBase) ||
+                normalizePortToken(row.label) === normalizePortToken(baseLabel)
+              )
+          );
+          const existingNodeId = existingRow?.nodeId ? normalizePortToken(existingRow.nodeId) : '';
+          if (
+            existingNodeId.length > 0 &&
+            state.circuit.nodes.some((node) => normalizePortToken(node.id) === existingNodeId)
+          ) {
+            return state;
+          }
+
+          let nodeId =
+            existingRow?.nodeId && existingRow.nodeId.trim().length > 0
+              ? existingRow.nodeId.trim()
+              : getNextNamedNodeId(state.circuit, `${baseLabel}_node`);
+          if (state.circuit.nodes.some((node) => normalizePortToken(node.id) === normalizePortToken(nodeId))) {
+            nodeId = getNextNamedNodeId(state.circuit, `${baseLabel}_node`);
+          }
 
           const nextCircuit = cloneCircuit(state.circuit);
           nextCircuit.nodes.push({
@@ -484,15 +507,15 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             state: {},
           });
 
-          const nextIoRows = cloneIoRows(state.projectIoRows);
-          const existingRow = nextIoRows.find(
-            (row) =>
-              normalizePortToken(row.id) === normalizePortToken(rowIdBase) ||
-              normalizePortToken(row.label) === normalizePortToken(baseLabel) ||
-              normalizePortToken(row.pin) === normalizePortToken(rowPin)
-          );
-
-          if (!existingRow) {
+          if (existingRow) {
+            existingRow.nodeId = nodeId;
+            existingRow.port = rowPort;
+            existingRow.label = baseLabel;
+            existingRow.pin = rowPin;
+            existingRow.direction = direction;
+            existingRow.required = true;
+          } else {
+            const rowId = getNextIoRowId(state.projectIoRows, rowIdBase);
             nextIoRows.push({
               id: rowId,
               nodeId,
