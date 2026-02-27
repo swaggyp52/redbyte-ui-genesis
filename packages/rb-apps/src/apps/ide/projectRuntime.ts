@@ -31,6 +31,7 @@ import {
   advanceSimulationState,
   buildVerifyRowsFromRuntimeTrace,
   buildVerifyRowsDeterministicFromCircuit,
+  recomputeSimulationState,
   resetSimulationState,
 } from './sim/simEngine';
 import type { RuntimeSignalProbe, RuntimeSimState } from './sim/simTypes';
@@ -190,6 +191,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               sim: {
                 ...state.sim,
                 running: true,
+                lastAction: 'run',
               },
             }));
           },
@@ -198,6 +200,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               sim: {
                 ...state.sim,
                 running: false,
+                lastAction: 'pause',
               },
             }));
           },
@@ -206,7 +209,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               sim: advanceSimulationState(
                 state.circuit,
                 state.projectIoRows,
-                state.sim,
+                {
+                  ...state.sim,
+                  lastAction: 'step',
+                },
                 1
               ),
             }));
@@ -218,14 +224,20 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               sim: advanceSimulationState(
                 state.circuit,
                 state.projectIoRows,
-                state.sim,
+                {
+                  ...state.sim,
+                  lastAction: 'step',
+                },
                 boundedTicks
               ),
             }));
           },
           reset: () => {
             set((state) => ({
-              sim: resetSimulationState(state.circuit, state.projectIoRows, state.sim),
+              sim: resetSimulationState(state.circuit, state.projectIoRows, {
+                ...state.sim,
+                lastAction: 'reset',
+              }),
             }));
           },
           setSpeed: (hz) => {
@@ -247,15 +259,15 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 [normalizedNodeId]: bit,
               };
               return {
-                sim: advanceSimulationState(
+                sim: recomputeSimulationState(
                   state.circuit,
                   state.projectIoRows,
                   {
                     ...state.sim,
                     inputs: nextInputs,
-                    running: false,
-                  },
-                  1
+                    running: state.sim.running,
+                    lastAction: 'input',
+                  }
                 ),
               };
             });
@@ -270,15 +282,15 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 [normalizedNodeId]: nextValue as 0 | 1,
               };
               return {
-                sim: advanceSimulationState(
+                sim: recomputeSimulationState(
                   state.circuit,
                   state.projectIoRows,
                   {
                     ...state.sim,
                     inputs: nextInputs,
-                    running: false,
-                  },
-                  1
+                    running: state.sim.running,
+                    lastAction: 'input',
+                  }
                 ),
               };
             });

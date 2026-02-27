@@ -40,6 +40,7 @@ export function resetSimulationState(
   return {
     tick: 0,
     running: false,
+    lastAction: previous?.lastAction,
     speedHz: previous?.speedHz ?? DEFAULT_SIM_SPEED_HZ,
     irHash,
     traceHash: computeTraceHash(irHash, []),
@@ -89,6 +90,28 @@ export function advanceSimulationState(
     signals,
     trace,
     traceHash: computeTraceHash(irHash, trace),
+  };
+}
+
+export function recomputeSimulationState(
+  circuit: Circuit,
+  ioRows: SimulationIoRow[],
+  sim: RuntimeSimState
+): RuntimeSimState {
+  const irHash = computeSimIrHash(circuit);
+  if (!runtimeSimEngine || runtimeSimIrHash !== irHash) {
+    return resetSimulationState(circuit, ioRows, sim);
+  }
+  const engine = runtimeSimEngine;
+  applyInputsToEngine(engine, sim.inputs);
+  engine.tick();
+  const signals = normalizeSignalMap(engine, circuit);
+  return {
+    ...sim,
+    running: sim.running,
+    irHash,
+    signals,
+    traceHash: computeTraceHash(irHash, sim.trace),
   };
 }
 

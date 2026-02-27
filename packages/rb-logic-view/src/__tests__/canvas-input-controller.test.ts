@@ -52,6 +52,7 @@ function makePointerEvent(
     target: opts.target ?? document.createElement('div'),
     currentTarget: opts.currentTarget ?? {
       setPointerCapture: vi.fn(() => { captured.hasCaptured = true; }),
+      hasPointerCapture: vi.fn(() => captured.hasCaptured),
       releasePointerCapture: vi.fn(),
     },
     stopPropagation: vi.fn(),
@@ -106,6 +107,32 @@ describe('useCanvasInput — state machine', () => {
     });
 
     expect(onClearSelection).toHaveBeenCalled();
+  });
+
+  it('left click on wire does not enter background box-select flow', () => {
+    const onClearSelection = vi.fn();
+    const setInteractionMode = vi.fn();
+
+    const wireEl = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    wireEl.setAttribute('data-wire-id', 'from.out-to.in');
+    const target = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    wireEl.appendChild(target);
+
+    const { result } = renderHook(() =>
+      useCanvasInput(makeOptions({ onClearSelection, setInteractionMode })),
+    );
+
+    act(() => {
+      result.current.onPointerDown(
+        makePointerEvent('pointerdown', { button: 0, target }),
+      );
+      result.current.onPointerUp(
+        makePointerEvent('pointerup', { button: 0, target }),
+      );
+    });
+
+    expect(onClearSelection).not.toHaveBeenCalled();
+    expect(setInteractionMode).not.toHaveBeenCalledWith('boxSelecting');
   });
 
   it('left click on node selects it', () => {

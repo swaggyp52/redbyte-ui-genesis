@@ -146,6 +146,9 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
 
         // If a port was clicked, let the port handler deal with it.
         if (target.closest('[data-port-id]')) return;
+        // Wire clicks are handled by WireView. Treating them as background would
+        // immediately enter pending box-select and clear wire selection on pointerup.
+        if (target.closest('[data-wire-id]')) return;
 
         const nodeEl = target.closest('[data-node-id]');
         if (nodeEl) {
