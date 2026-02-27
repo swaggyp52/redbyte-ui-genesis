@@ -9392,11 +9392,25 @@ details[open] summary .details-arrow {
   margin-top: var(--ide-space-1);
 }
 
-/* Workspace panel in project: reduce the visual "lift" to feel flush.
-   Border made subtle so it reads as a content region, not a floating card. */
-.ide-workbench-workspace > .ide-panel {
-  border-color: rgba(41, 68, 94, 0.25);
-  box-shadow: none;
+/* Project mode: workspace IdePanel becomes a plain scroll container —
+   no border, no card background, no box-shadow. Content reads as a page,
+   not a floating modal sitting next to the dock. */
+[data-ide-mode-marker="project"] .ide-workbench-workspace > .ide-panel {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* Hide the now-empty IdePanel header in project mode (no title or description set). */
+[data-ide-mode-marker="project"] .ide-workbench-workspace > .ide-panel > .ide-panel-header {
+  display: none;
+}
+
+/* Align project panel body top padding with dock top padding so the
+   identity strip and dock nav grid sit at the same vertical baseline. */
+[data-ide-mode-marker="project"] .ide-workbench-workspace > .ide-panel > .ide-panel-body {
+  padding-top: var(--ide-space-1);
 }
 
 /* ── 4. ProjectSurface: tighter vertical rhythm ─────────────────────────── */

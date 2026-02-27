@@ -447,43 +447,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             <IdeButton tone="ghost" onClick={onOpenHardware} testId="ide-project-dock-nav-hardware">Hardware</IdeButton>
           </div>
 
-          {/* Readiness status — gate contract preserved */}
-          <div data-testid="ide-project-panel-readiness">
-            <IdeDataTable
-              columns={['Check', 'State', 'Action']}
-              rows={readinessRows}
-              testId="ide-project-readiness-checklist"
-            />
-          </div>
-
-          {/* Primary action — gate contract preserved */}
-          <div className="ide-inline-actions">
-            {unmappedRequiredCount > 0 ? (
-              <span data-testid="ide-project-auto-suggest">
-                <IdeButton
-                  tone="primary"
-                  onClick={onAutoSuggestMapping}
-                  testId="ide-project-cta-automap"
-                >
-                  Auto-suggest Basys3
-                </IdeButton>
-              </span>
-            ) : (
-              <span data-testid="ide-project-continue-cta">
-                <IdeButton
-                  tone="primary"
-                  onClick={onOpenVerify}
-                  testId="ide-project-cta-continue"
-                >
-                  Continue to Verify →
-                </IdeButton>
-              </span>
-            )}
-            <span style={{ display: 'none' }} data-testid="ide-project-continue-target">
-              {unmappedRequiredCount > 0 ? 'Design' : 'Verify'}
-            </span>
-          </div>
-
           {/* Student identity + submission export */}
           {(onExportSubmission || onStudentNameChange) && (
             <section className="ide-surface-dock-section" data-testid="ide-submission-section">
@@ -595,7 +558,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     >
       {/* Workspace: Hero → Examples → Mapping */}
       <IdePanel
-        description="Map circuit ports to Basys3 pins to enable export."
         testId="ide-project-panel"
       >
         <div className="ide-project-identity-strip" data-testid="ide-project-identity-strip">
@@ -613,6 +575,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             {heroStatusMessage}
           </p>
 
+          <div data-testid="ide-project-panel-readiness">
           <div className="ide-project-launchpad" data-testid="ide-project-launchpad">
             {/* Card 1: Design */}
             <div
@@ -642,16 +605,25 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <span className="ide-launchpad-card__label" aria-hidden="true">{verifyCardDone ? <code>DONE</code> : <code>STEP 2</code>}</span>
               <span className="ide-launchpad-card__title">Verify</span>
               <span className="ide-launchpad-card__sub">Run test vectors</span>
-              {!verifyCardLocked && (
-                <div data-testid="ide-project-cta-verify">
+              {!verifyCardLocked && verifyCardDone && (
+                <IdeButton
+                  tone="ghost"
+                  onClick={onOpenVerify}
+                  testId="ide-launchpad-verify-cta"
+                >
+                  Revisit
+                </IdeButton>
+              )}
+              {!verifyCardLocked && !verifyCardDone && (
+                <span data-testid="ide-project-continue-cta">
                   <IdeButton
-                    tone={verifyCardDone ? 'ghost' : 'primary'}
+                    tone="primary"
                     onClick={onOpenVerify}
                     testId="ide-launchpad-verify-cta"
                   >
-                    {verifyCardDone ? 'Revisit' : 'Start Verify →'}
+                    Continue to Verify →
                   </IdeButton>
-                </div>
+                </span>
               )}
             </div>
 
@@ -676,6 +648,22 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               )}
             </div>
           </div>
+          </div>{/* end ide-project-panel-readiness */}
+
+          {/* Fallback continue CTA: shown when verify card is locked or already done */}
+          {(verifyCardLocked || verifyCardDone) && (
+            <span data-testid="ide-project-continue-cta">
+              <IdeButton
+                tone="secondary"
+                onClick={onOpenVerify}
+                testId="ide-project-cta-continue"
+              >
+                Continue to Verify →
+              </IdeButton>
+            </span>
+          )}
+          {/* Gate sentinel — text content only, not displayed */}
+          <span style={{ display: 'none' }} data-testid="ide-project-continue-target">Verify</span>
 
           {health.blockingIssues.length > 0 && health.blockingIssues[0] && (
             <IdeCallout tone="warn" title="Next blocker" testId="ide-project-hero-blocker">

@@ -7,11 +7,12 @@ await runIdeGate('IDE project readiness contract satisfied', async ({ page, base
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
 
-  await page.waitForSelector('[data-testid="ide-project-readiness-checklist"]', { timeout: 10000 });
-  const checklistRows = await page
-    .locator('[data-testid="ide-project-readiness-checklist"] tbody tr')
+  // Launchpad cards are now the readiness representation (replaced the old checklist table)
+  await page.waitForSelector('[data-testid="ide-project-panel-readiness"]', { timeout: 10000 });
+  const launchpadCards = await page
+    .locator('[data-testid^="ide-launchpad-"]')
     .count();
-  assert(checklistRows === 5, `expected 5 readiness checklist rows, found ${checklistRows}`);
+  assert(launchpadCards === 3, `expected 3 launchpad cards, found ${launchpadCards}`);
 
   const mappingStat = page.locator('[data-testid="ide-project-mapping-stat"]').first();
   assert(await visible(mappingStat), 'project mapping status strip must render');
