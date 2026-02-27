@@ -1016,7 +1016,7 @@ export const IdeApp: React.FC = () => {
               onRuntimeSimSetInput={setRuntimeSimInput}
               onRuntimeSimSetSelectedSignal={setRuntimeSimSelectedSignal}
               onRuntimeSimToggleProbe={toggleRuntimeSimProbe}
-              viewportSeed={`${activeExampleId ?? 'custom'}:${lastSavedAt}`}
+              viewportSeed={`${activeExampleId ?? 'custom'}:${projectId}`}
               ioRows={projectIoRows}
               onGoToHardware={() => setCurrentMode('hardware')}
               onGoToImport={() => setCurrentMode('import')}

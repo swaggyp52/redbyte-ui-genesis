@@ -79,6 +79,14 @@ const BUILTIN_PORT_NAMES: Record<string, string[]> = {
   Counter4Bit: ['CLK', 'Q0', 'Q1', 'Q2', 'Q3'],
 };
 
+const FIT_ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
+
+function snapFitZoom(rawZoom: number): number {
+  return FIT_ZOOM_STEPS.reduce((closest, candidate) =>
+    Math.abs(candidate - rawZoom) < Math.abs(closest - rawZoom) ? candidate : closest
+  );
+}
+
 function getBuiltinPortNames(nodeType: string): string[] | null {
   const ports = BUILTIN_PORT_NAMES[nodeType];
   return ports ? [...ports] : null;
@@ -230,7 +238,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const renderSignals = debugSignals ?? signals;
   const svgRef = React.useRef<SVGSVGElement>(null);
   const lastSyncedSelection = React.useRef<Set<string>>(new Set());
-  const lastCircuitNodeCount = React.useRef(0);
   const lastFocusRequestId = React.useRef<number>(-1);
   const mouseRafPending = React.useRef<boolean>(false);
 
@@ -349,49 +356,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       setInternalCircuit(nextCircuit);
     }
   }, [engine, externalCircuit, onCircuitChange]);
-
-  // Auto-center and fit circuit in view when circuit changes
-  React.useEffect(() => {
-    const currentNodeCount = circuit.nodes.length;
-
-    // Only auto-fit if the circuit has changed (different node count)
-    if (currentNodeCount > 0 && currentNodeCount !== lastCircuitNodeCount.current) {
-      lastCircuitNodeCount.current = currentNodeCount;
-
-      // Calculate bounds
-      let minX = Infinity, maxX = -Infinity;
-      let minY = Infinity, maxY = -Infinity;
-
-      circuit.nodes.forEach((node) => {
-        minX = Math.min(minX, node.position.x);
-        maxX = Math.max(maxX, node.position.x);
-        minY = Math.min(minY, node.position.y);
-        maxY = Math.max(maxY, node.position.y);
-      });
-
-      if (!isFinite(minX)) return;
-
-      // Add padding
-      const padding = 100;
-      const boundsWidth = maxX - minX + padding * 2;
-      const boundsHeight = maxY - minY + padding * 2;
-
-      // Calculate zoom to fit
-      const zoomX = width / boundsWidth;
-      const zoomY = height / boundsHeight;
-      const newZoom = Math.min(zoomX, zoomY, 2); // Max zoom of 2x
-
-      // Calculate center offset
-      const centerX = (minX + maxX) / 2;
-      const centerY = (minY + maxY) / 2;
-
-      setCamera({
-        x: width / 2 - centerX * newZoom,
-        y: height / 2 - centerY * newZoom,
-        zoom: newZoom,
-      });
-    }
-  }, [circuit.nodes.length, width, height, setCamera]);
 
   // Sample engine state on UI ticks (keeps UI responsive without per-tick churn)
   React.useEffect(() => {
@@ -861,7 +825,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     }
 
     const newCamera = fitToBounds({ minX, maxX, minY, maxY }, width, height, 100, 2);
-    setCamera(newCamera);
+    setCamera({ ...newCamera, zoom: snapFitZoom(newCamera.zoom) });
   }, [circuit.nodes, width, height, setCamera]);
 
   // Reset view to default

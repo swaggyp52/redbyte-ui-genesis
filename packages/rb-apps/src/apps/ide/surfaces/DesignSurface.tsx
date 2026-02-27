@@ -147,6 +147,14 @@ const BASYS3_OUTPUT_ITEMS: BoardIoPaletteItem[] = [
   { alias: 'DP', direction: 'out', kind: 'dp' },
 ];
 
+const FIT_ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.4] as const;
+
+function snapFitZoom(rawZoom: number): number {
+  return FIT_ZOOM_STEPS.reduce((closest, candidate) =>
+    Math.abs(candidate - rawZoom) < Math.abs(closest - rawZoom) ? candidate : closest
+  );
+}
+
 const DESIGN_DEBUG_DOWNSTREAM_KEYS = [
   'xor_node.out',
   'ld2_node.in',
@@ -551,12 +559,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       editorCircuit.nodes,
       onRuntimeAddBoardIo,
       onRuntimeAddIo,
+      selectMultipleNodes,
+      setToolMode,
       spawnAtCanvasCenter,
     ]
   );
 
   const addIoPins = useCallback(() => {
-    hasAutoFitRef.current = false;
     if (onRuntimeAddIo) {
       const center = {
         x: (canvasSize.width / 2 - camera.x) / camera.zoom,
@@ -573,7 +582,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, editorCircuit.nodes, onCircuitMutated, onRuntimeAddIo, spawnAtCanvasCenter]);
 
   const addAndGateStarter = useCallback(() => {
-    hasAutoFitRef.current = false;
     if (onRuntimeAddNode && onRuntimeConnect) {
       const center = {
         x: (canvasSize.width / 2 - camera.x) / camera.zoom,
@@ -665,7 +673,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const boundsHeight = Math.max(1, spanY + padding * 2);
     const zoomX = (canvasSize.width * 0.9) / boundsWidth;
     const zoomY = (canvasSize.height * 0.9) / boundsHeight;
-    const nextZoom = Math.max(0.55, Math.min(2.4, Math.min(zoomX, zoomY)));
+    const nextZoom = snapFitZoom(Math.max(0.55, Math.min(2.4, Math.min(zoomX, zoomY))));
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
     setCamera({
@@ -765,9 +773,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   useEffect(() => {
     if (editorCircuit.nodes.length === 0) return;
     if (hasAutoFitRef.current) return;
+    const cameraIsDefault =
+      Math.abs(camera.x) < 0.001 &&
+      Math.abs(camera.y) < 0.001 &&
+      Math.abs(camera.zoom - 1) < 0.001;
+    if (!cameraIsDefault) {
+      hasAutoFitRef.current = true;
+      return;
+    }
     hasAutoFitRef.current = true;
     fitToCircuit();
-  }, [editorCircuit.nodes.length, fitToCircuit]);
+  }, [camera.x, camera.y, camera.zoom, editorCircuit.nodes.length, fitToCircuit]);
 
   useEffect(() => {
     if (editorCircuit.nodes.length === 0) {
@@ -779,6 +795,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (!viewportSeed) return;
     if (lastViewportSeedRef.current === viewportSeed) return;
     lastViewportSeedRef.current = viewportSeed;
+    setHasInteracted(false);
     hasAutoFitRef.current = false;
     const frame = window.requestAnimationFrame(() => {
       fitToCircuitRef.current();
