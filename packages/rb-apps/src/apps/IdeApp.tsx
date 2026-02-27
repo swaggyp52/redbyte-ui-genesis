@@ -145,10 +145,7 @@ export const IdeApp: React.FC = () => {
   const setLastSavedAt = useProjectRuntime((state) => state.setLastSavedAt);
   const resetToActiveExample = useProjectRuntime((state) => state.resetToActiveExample);
   const hasCircuit = circuit.nodes.length > 0;
-  const hasDff = useMemo(
-    () => circuit.nodes.some((n) => n.type === 'DFlipFlop'),
-    [circuit.nodes]
-  );
+  const hasDff = verifyLastRun?.schedule === 'clocked_macro';
   const missingRequiredCount = useMemo(
     () => projectIoRows.filter((entry) => entry.required && entry.pin.trim().length === 0).length,
     [projectIoRows]
