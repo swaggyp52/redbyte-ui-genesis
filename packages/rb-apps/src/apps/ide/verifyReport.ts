@@ -24,6 +24,7 @@ export interface VerifyReport {
   firstFailingTick?: number;
   rows: VerifyReportRow[];
   vectors: VerifyReportVector[];
+  inputsAtTick: Record<number, Record<string, 0 | 1>>;
   generatedAtIso: string;
   reportHash: string;
 }
@@ -96,6 +97,11 @@ export function buildVerifyReport(input: BuildVerifyReportInput): VerifyReport {
       return 0;
     });
 
+  const inputsAtTick: Record<number, Record<string, 0 | 1>> = {};
+  for (const vector of normalizedVectors) {
+    inputsAtTick[vector.tick] = { ...vector.inputs };
+  }
+
   const firstFailingTick = normalizedRows.find((row) => row.status === 'fail')?.tick;
   const hashSeed = {
     schemaVersion: 'rb.verify-report.v1',
@@ -117,6 +123,7 @@ export function buildVerifyReport(input: BuildVerifyReportInput): VerifyReport {
     firstFailingTick,
     rows: normalizedRows,
     vectors: normalizedVectors,
+    inputsAtTick,
     generatedAtIso: input.generatedAtIso,
     reportHash: `vrf_${digestValue(hashSeed)}`,
   };

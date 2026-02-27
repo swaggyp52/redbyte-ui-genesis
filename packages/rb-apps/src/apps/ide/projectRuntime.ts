@@ -957,6 +957,9 @@ function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
         inputs: { ...vector.inputs },
         expected: { ...vector.expected },
       })),
+      inputsAtTick: Object.fromEntries(
+        Object.entries(run.report.inputsAtTick).map(([tick, inputs]) => [tick, { ...inputs }])
+      ),
     },
     waveform: run.waveform.map((sample) => ({
       tick: sample.tick,
