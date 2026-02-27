@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { buildVerifyReport } from '../verifyReport';
+import { buildVerifyReport } from '../apps/ide/verifyReport';
 
-describe('buildVerifyReport — inputsAtTick', () => {
+describe('buildVerifyReport - inputsAtTick', () => {
   it('joins vectors inputs into inputsAtTick by tick number', () => {
     const report = buildVerifyReport({
       scenarioId: 'test',
@@ -23,7 +23,7 @@ describe('buildVerifyReport — inputsAtTick', () => {
     expect(report.inputsAtTick[1]).toEqual({ a: 1, b: 0 });
   });
 
-  it('inputsAtTick is empty when no vectors provided', () => {
+  it('inputsAtTick is empty when no vectors are provided', () => {
     const report = buildVerifyReport({
       scenarioId: 'test',
       scenarioName: 'Test',
@@ -37,7 +37,7 @@ describe('buildVerifyReport — inputsAtTick', () => {
     expect(report.inputsAtTick).toEqual({});
   });
 
-  it('reportHash is stable — inputsAtTick does not affect hash', () => {
+  it('reportHash is stable for identical report inputs', () => {
     const base = buildVerifyReport({
       scenarioId: 's1',
       scenarioName: 'S1',
@@ -47,11 +47,6 @@ describe('buildVerifyReport — inputsAtTick', () => {
       vectors: [{ id: 'v1', tick: 0, inputs: { a: 1 }, expected: { q: 1 } }],
       generatedAtIso: '2026-01-01T00:00:00.000Z',
     });
-
-    // Build a second report with different inputs but same rows/status
-    // (This should produce a different hash because vectors differ,
-    // but we're testing that inputsAtTick itself doesn't DOUBLE-count in hash)
-    // Simpler: build the same report twice and check hash is identical
     const again = buildVerifyReport({
       scenarioId: 's1',
       scenarioName: 'S1',

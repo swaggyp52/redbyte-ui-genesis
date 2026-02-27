@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { deriveVerifySchedule } from '../../../fpga/boards/basys3/verifySchedule';
-import type { VerifyRunMeta } from '../projectRuntime';
+import { deriveVerifySchedule } from '../fpga/boards/basys3/verifySchedule';
+import type { VerifyRunMeta } from '../apps/ide/projectRuntime';
 
-// Helper: apply the same logic as buildVerifyRunMeta (mirrors private function for testing)
-function applyMetaRules(schedule: 'combinational' | 'clocked_macro', clockSignalName?: string): VerifyRunMeta {
+function applyMetaRules(
+  schedule: 'combinational' | 'clocked_macro',
+  clockSignalName?: string
+): VerifyRunMeta {
   const isClocked = schedule === 'clocked_macro';
   return {
     circuitKind: isClocked ? 'sequential' : 'combinational',
@@ -14,9 +16,8 @@ function applyMetaRules(schedule: 'combinational' | 'clocked_macro', clockSignal
   };
 }
 
-describe('VerifyRunMeta — sampling semantics', () => {
+describe('VerifyRunMeta - sampling semantics', () => {
   it('combinational circuit produces steady-state meta', () => {
-    // A circuit with no nodes is combinational
     const contract = deriveVerifySchedule({ nodes: [], connections: [] }, undefined);
     expect(contract.schedule).toBe('combinational');
 
@@ -29,7 +30,6 @@ describe('VerifyRunMeta — sampling semantics', () => {
   });
 
   it('clocked circuit (DFlipFlop) produces post-rising-edge meta', () => {
-    // Minimal circuit with a DFlipFlop → triggers clocked_macro schedule
     const circuit = {
       nodes: [{ id: 'dff1', type: 'DFlipFlop', position: { x: 0, y: 0 }, x: 0, y: 0, rotation: 0, config: {}, state: {} }],
       connections: [],
@@ -44,8 +44,7 @@ describe('VerifyRunMeta — sampling semantics', () => {
     expect(meta.tick0Meaning).toBe('initial-state');
   });
 
-  it('JKFlipFlop circuit produces sequential meta (not just DFlipFlop)', () => {
-    // This is the regression test: old hasDff proxy only detected DFlipFlop
+  it('JKFlipFlop circuit produces sequential meta', () => {
     const circuit = {
       nodes: [{ id: 'jk1', type: 'JKFlipFlop', position: { x: 0, y: 0 }, x: 0, y: 0, rotation: 0, config: {}, state: {} }],
       connections: [],
