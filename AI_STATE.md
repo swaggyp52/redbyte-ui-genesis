@@ -1,5 +1,39 @@
 # AI State
 
+## Change Log 2026-02-27 (Verify Batch A: Run Context + Tick Window Legibility)
+
+**Status**: COMPLETE - Verify now explains what the current ticks mean, why a window is shown, and presents sequential runs as a trace log instead of a truth-table clone.
+
+### What Changed
+- Updated `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`:
+  - added a `Run context` block above the waveform showing:
+    - scenario + case count
+    - protocol
+    - sampling semantics
+    - tick 0 meaning
+    - ticks shown
+    - why that tick window is currently visible
+  - replaced opaque `X/Y ticks shown` copy with explicit tick-window text such as `Showing t0-t6 (fail window)` or `Showing all N ticks`.
+  - added a fail-window/all-ticks toggle in fail runs so the current view explains itself and can be expanded directly.
+  - switched failure input snapshots to prefer `report.inputsAtTick` before falling back to authored vectors or waveform samples.
+  - tightened sequential detection inside the surface to use runtime meta/schedule consistently.
+- Rebuilt `packages/rb-apps/src/apps/ide/surfaces/TruthTablePane.tsx`:
+  - sequential runs now render `TRACE TABLE (TICK LOG)` instead of `TRUTH TABLE`.
+  - sequential runs no longer show the Combos toggle.
+  - combinational combos/K-map content remains available through the same pane contract.
+  - empty-state and note copy now reflects whether the run is trace-oriented or combinational.
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - added Verify run-context styling and supporting K-map container styles.
+- Updated `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`:
+  - added assertions for the new run-context strip and sequential trace-table behavior.
+
+### Validation Executed
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx` -> PASS (2 files, 6 tests)
+- `pnpm --filter rb-apps test` -> PASS (`115 passed`, `5 skipped` test files; `558 passed`, `42 skipped` tests)
+
+### Attribution
+- Connor Angiel
+
 ## Change Log 2026-02-27 (Verify Runtime Schema Hardening + Test Inclusion)
 
 **Status**: COMPLETE - Verify runtime now carries explicit sequential/report metadata, and the default `rb-apps` suite includes the new schema regression coverage.

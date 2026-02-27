@@ -10834,3 +10834,100 @@ details[open].ide-export-evidence-details > summary::before {
   padding: var(--rb-space-1, 4px) var(--rb-space-2, 8px);
   font-size: var(--rb-font-size-1, 11px);
 }
+
+/* Phase 26C - Verify run context + explicit tick windows */
+.ide-verify-run-context {
+  margin: 0 var(--ide-space-1);
+  padding: 8px 10px;
+  border: 1px solid rgba(56, 189, 248, 0.14);
+  border-radius: 4px;
+  background: rgba(7, 16, 29, 0.92);
+}
+
+.ide-verify-run-context__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ide-verify-run-context__title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(148, 187, 220, 0.72);
+}
+
+.ide-verify-run-context__toggle {
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  background: rgba(56, 189, 248, 0.08);
+  color: rgba(214, 236, 255, 0.9);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.ide-verify-run-context__toggle:hover {
+  background: rgba(56, 189, 248, 0.14);
+}
+
+.ide-verify-run-context__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.ide-verify-run-context__item {
+  min-width: 0;
+}
+
+.ide-verify-run-context__item dt {
+  margin: 0 0 3px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(132, 154, 178, 0.62);
+}
+
+.ide-verify-run-context__item dd {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(223, 236, 248, 0.9);
+}
+
+.ide-truth-table-kmap-stack {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.ide-truth-table-kmap {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ide-truth-table-kmap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(6, 14, 26, 0.92);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(132, 154, 178, 0.72);
+}
+
+@media (max-width: 980px) {
+  .ide-verify-run-context__grid {
+    grid-template-columns: 1fr;
+  }
+}

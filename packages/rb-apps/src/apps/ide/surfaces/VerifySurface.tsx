@@ -703,21 +703,35 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       isFail: row.status === 'fail',
     }));
   }, [runRows]);
+  const isSequentialRun = Boolean(
+    hasDff ||
+      lastRun?.meta?.circuitKind === 'sequential' ||
+      lastRun?.schedule === 'clocked_macro'
+  );
   const truthTableEmptyReason = useMemo(() => {
     if (!lastRun) return 'Run verification to populate tick-by-tick expected and observed values.';
     if (runRows.length > 0) return '';
     if (waveformTicks.length > 0) {
       return 'Verification ran without expectations. Capture observed outputs as expected, then run again.';
     }
-    if (hasDff || lastRun.schedule === 'clocked_macro') {
+    if (isSequentialRun) {
       return 'No evaluable rows yet. Add vectors with expected outputs for this sequential circuit.';
     }
     return 'No deterministic rows were produced for this run. Verify vectors and expected outputs.';
-  }, [hasDff, lastRun, runRows.length, waveformTicks.length]);
+  }, [isSequentialRun, lastRun, runRows.length, waveformTicks.length]);
   const firstFailure = failingRows[0];
   const firstFailureTick = firstFailure?.tick ?? lastRun?.firstFailingTick;
   const firstFailureInputs = useMemo(() => {
     if (!firstFailure) return null;
+    const reportInputs = lastRun?.report.inputsAtTick?.[firstFailure.tick];
+    if (reportInputs) {
+      const snapshot = inputFields.map((field) => ({
+        label: field.label,
+        value: String(reportInputs[field.id] ?? reportInputs[normalizeFieldId(field.id)] ?? '-'),
+      }));
+      const hasKnownInput = snapshot.some((entry) => entry.value !== '-');
+      if (hasKnownInput) return snapshot;
+    }
     const vector = authoredVectors.find((entry) => entry.tick === firstFailure.tick);
     const snapshot: Array<{ label: string; value: string }> = [];
     if (vector) {
@@ -737,7 +751,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       snapshot.push({ label: field.label, value: signalEntry?.[1] ?? '-' });
     }
     return snapshot;
-  }, [authoredVectors, firstFailure, inputFields, lastRun?.waveform]);
+  }, [authoredVectors, firstFailure, inputFields, lastRun?.report.inputsAtTick, lastRun?.waveform]);
   const inputSignalKeys = useMemo(
     () => new Set(inputFields.map((field) => normalizeFieldId(field.id))),
     [inputFields]
@@ -768,7 +782,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [runRows]);
   const combosUnavailableReason = useMemo(() => {
     if (!lastRun) return 'Run verification first to build combinational combinations.';
-    if (hasDff || lastRun.schedule === 'clocked_macro') {
+    if (isSequentialRun) {
       return 'Combinational combos unavailable for sequential behavior (clocked circuit).';
     }
     if (inputFields.length === 0) return 'No mapped input signals are available.';
@@ -776,7 +790,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (runRows.length === 0) return 'No verify rows were generated for this run.';
     if (outputSignalOrder.length === 0) return 'No output signals were found in verification results.';
     return null;
-  }, [hasDff, inputFields.length, lastRun, outputSignalOrder.length, runRows.length]);
+  }, [inputFields.length, isSequentialRun, lastRun, outputSignalOrder.length, runRows.length]);
   const comboRows = useMemo<TruthTableComboRow[]>(() => {
     if (combosUnavailableReason) return [];
     const comboMap = new Map<string, TruthTableComboRow>();
@@ -855,7 +869,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     const totalRows = runRows.length;
     const failCount = failingRows.length;
     const ctx: VerifyHintContext = {
-      hasDff,
+      hasDff: isSequentialRun,
       mappingComplete: true, // no unmapped pin data here — conservative default
       allTicksFail: totalRows > 0 && failCount === totalRows,
       onlyFirstTickFails:
@@ -871,7 +885,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       hasFloatingOutputWarning: false, // no compiler status available here
     };
     return getVerifyHint(ctx);
-  }, [status, failingRows, runRows.length, hasDff, timelineTicks, firstFailure]);
+  }, [status, failingRows, runRows.length, isSequentialRun, timelineTicks, firstFailure]);
 
   const isShowcaseKit = example?.category === 'showcase';
   const kitGoals = (example?.goals ?? []).filter(Boolean);
@@ -976,12 +990,73 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
   const zoomedTicks = useMemo(() => {
     if (tickZoom === 'all' || allWaveformTicks.length === 0) return allWaveformTicks;
-    const center =
-      tickZoom === 'fail'
-        ? firstFailureTick ?? allWaveformTicks[0] ?? 0
-        : tickWindowCenter ?? selectedTick ?? allWaveformTicks[0] ?? 0;
-    return allWaveformTicks.filter((t) => t >= center - 10 && t <= center + 10);
+    if (tickZoom === 'fail') {
+      return buildFailWindowTicks(allWaveformTicks, firstFailureTick ?? null);
+    }
+    return buildSelectedWindowTicks(
+      allWaveformTicks,
+      tickWindowCenter ?? selectedTick ?? allWaveformTicks[0] ?? 0
+    );
   }, [allWaveformTicks, tickZoom, firstFailureTick, tickWindowCenter, selectedTick]);
+  const runVectorCount = lastRun?.report.vectors?.length ?? authoredVectors.length;
+  const waveformWindowLabel = useMemo(
+    () => formatTickWindowLabel(allWaveformTicks, zoomedTicks, tickZoom),
+    [allWaveformTicks, tickZoom, zoomedTicks]
+  );
+  const waveformWindowReason = useMemo(
+    () =>
+      formatTickWindowReason({
+        allTicks: allWaveformTicks,
+        shownTicks: zoomedTicks,
+        tickZoom,
+        firstFailureTick: firstFailureTick ?? null,
+        selectedTick,
+      }),
+    [allWaveformTicks, firstFailureTick, selectedTick, tickZoom, zoomedTicks]
+  );
+  const runContextRows = useMemo(
+    () =>
+      lastRun
+        ? [
+            {
+              label: 'Scenario',
+              value: `${lastRun.scenarioName} (${runVectorCount} case${runVectorCount === 1 ? '' : 's'})`,
+            },
+            {
+              label: 'Protocol',
+              value: formatVerifyProtocol(lastRun),
+            },
+            {
+              label: 'Sampling',
+              value: formatVerifySampling(lastRun),
+            },
+            {
+              label: 'Tick 0',
+              value: formatVerifyTickZero(lastRun),
+            },
+            {
+              label: 'Ticks shown',
+              value: waveformWindowLabel,
+            },
+            {
+              label: 'Why these ticks',
+              value: waveformWindowReason,
+            },
+          ]
+        : [],
+    [lastRun, runVectorCount, waveformWindowLabel, waveformWindowReason]
+  );
+
+  useEffect(() => {
+    if (!lastRun) return;
+    if (lastRun.status === 'fail' && firstFailureTick !== undefined) {
+      setTickZoom('fail');
+      setTickWindowCenter(firstFailureTick);
+      return;
+    }
+    setTickZoom('all');
+    setTickWindowCenter(null);
+  }, [firstFailureTick, lastRun?.reportHash, lastRun?.status]);
 
   // STOP-SHIP: Stale verify badge detection.
   // If the circuit's deterministic hash changed since the last run, the result is stale.
@@ -1733,7 +1808,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         </div>
 
-        {hasDff && (
+        {isSequentialRun && (
           <IdeCallout tone="info" testId="ide-verify-clocked-banner">
             Clocked circuit: expected outputs are sampled AFTER the rising edge of each clock tick.
             Tick 0 = initial state (no clock pulse yet).
@@ -1925,7 +2000,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
                 {/* Center: Zoom + Row density */}
                 <div className="ide-verify-wfbar-group ide-verify-wfbar-center">
-                  <span className="ide-verify-zoom-label ide-copy">Zoom</span>
+                  <span className="ide-verify-zoom-label ide-copy">Tick range</span>
                   {(['all', 'fail', 'window'] as const).map((mode) => (
                     <button
                       key={mode}
@@ -1937,7 +2012,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       }}
                       data-testid={`ide-verify-zoom-${mode}`}
                     >
-                      {mode === 'all' ? 'Fit all' : mode === 'fail' ? 'Fit fail' : '±10'}
+                      {mode === 'all' ? 'All ticks' : mode === 'fail' ? 'Fail window' : 'Selected'}
                     </button>
                   ))}
                   <span className="ide-verify-zoom-label ide-copy" style={{ marginLeft: 'var(--ide-space-2)' }}>Rows</span>
@@ -2019,6 +2094,36 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </div>
               </div>
 
+              {runContextRows.length > 0 && (
+                <section className="ide-verify-run-context" data-testid="ide-verify-run-context">
+                  <div className="ide-verify-run-context__header">
+                    <span className="ide-verify-run-context__title">Run context</span>
+                    {lastRun?.status === 'fail' && allWaveformTicks.length > zoomedTicks.length && (
+                      <button
+                        type="button"
+                        className="ide-verify-run-context__toggle"
+                        onClick={() => setTickZoom((previous) => (previous === 'all' ? 'fail' : 'all'))}
+                        data-testid="ide-verify-tick-window-toggle"
+                      >
+                        {tickZoom === 'all' ? 'View fail window' : 'View all ticks'}
+                      </button>
+                    )}
+                  </div>
+                  <dl className="ide-verify-run-context__grid">
+                    {runContextRows.map((row) => (
+                      <div
+                        key={row.label}
+                        className="ide-verify-run-context__item"
+                        data-testid={`ide-verify-run-context-${toTestId(row.label)}`}
+                      >
+                        <dt>{row.label}</dt>
+                        <dd>{row.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+              )}
+
               {/* No-trace diagnostic — shown when run produced no waveform data */}
               {hasNoTrace && (
                 <IdeCallout tone="error" title="No trace generated" testId="ide-verify-no-trace-guard">
@@ -2066,7 +2171,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     <span className="ide-verify-legend-item ide-verify-legend-fail">FAIL</span>
                     <span className="ide-verify-legend-item ide-verify-legend-select">SELECTED</span>
                     <span className="ide-copy ide-verify-waveform-legend-meta">
-                      {zoomedTicks.length}/{allWaveformTicks.length} ticks shown
+                      {waveformWindowLabel}
                     </span>
                   </div>
                 )}
@@ -2118,7 +2223,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <TruthTablePane
               mode={truthTableMode}
               rows={truthRows}
-              isSequential={Boolean(hasDff || lastRun?.schedule === 'clocked_macro')}
+              isSequential={isSequentialRun}
               selectedTick={selectedTick}
               onSelectTick={setSelectedTick}
               onModeChange={setTruthTableMode}
@@ -2565,4 +2670,84 @@ function formatBusValue(
   }
   if (!hasValue) return null;
   return `0x${value.toString(16).toUpperCase()}`;
+}
+
+function buildFailWindowTicks(ticks: number[], failureTick: number | null): number[] {
+  if (ticks.length <= 7) return ticks;
+  if (failureTick === null) return ticks.slice(0, 7);
+  const failureIndex = ticks.indexOf(failureTick);
+  if (failureIndex < 0) return ticks.slice(0, 7);
+  const start = Math.max(0, Math.min(failureIndex - 2, ticks.length - 7));
+  return ticks.slice(start, start + 7);
+}
+
+function buildSelectedWindowTicks(ticks: number[], centerTick: number): number[] {
+  if (ticks.length <= 7) return ticks;
+  const centerIndex = ticks.indexOf(centerTick);
+  if (centerIndex < 0) return ticks.slice(0, 7);
+  const start = Math.max(0, Math.min(centerIndex - 3, ticks.length - 7));
+  return ticks.slice(start, start + 7);
+}
+
+function formatTickSpan(ticks: number[]): string {
+  if (ticks.length === 0) return 'no ticks';
+  if (ticks.length === 1) return `t${ticks[0]}`;
+  return `t${ticks[0]}-t${ticks[ticks.length - 1]}`;
+}
+
+function formatTickWindowLabel(
+  allTicks: number[],
+  shownTicks: number[],
+  tickZoom: 'all' | 'fail' | 'window'
+): string {
+  if (allTicks.length === 0) return 'No ticks shown';
+  if (shownTicks.length === 0) return 'No ticks shown';
+  if (shownTicks.length === allTicks.length || tickZoom === 'all') {
+    return `Showing all ${allTicks.length} tick${allTicks.length === 1 ? '' : 's'}`;
+  }
+  if (tickZoom === 'fail') {
+    return `Showing ${formatTickSpan(shownTicks)} (fail window)`;
+  }
+  return `Showing ${formatTickSpan(shownTicks)} (selected window)`;
+}
+
+function formatTickWindowReason(input: {
+  allTicks: number[];
+  shownTicks: number[];
+  tickZoom: 'all' | 'fail' | 'window';
+  firstFailureTick: number | null;
+  selectedTick: number | null;
+}): string {
+  const { allTicks, shownTicks, tickZoom, firstFailureTick, selectedTick } = input;
+  if (allTicks.length === 0 || shownTicks.length === 0) return 'Run verification to inspect a tick range.';
+  if (shownTicks.length === allTicks.length || tickZoom === 'all') {
+    return 'Showing the full verification run.';
+  }
+  if (tickZoom === 'fail' && firstFailureTick !== null) {
+    return `First mismatch at t${firstFailureTick}; showing ${shownTicks.length} ticks for context.`;
+  }
+  if (selectedTick !== null) {
+    return `Centered on selected tick t${selectedTick}.`;
+  }
+  return `Showing ${shownTicks.length} ticks for local context.`;
+}
+
+function formatVerifyProtocol(run: RuntimeVerifyRun): string {
+  if (run.meta.clockingProtocol === 'clocked_macro' || run.schedule === 'clocked_macro') {
+    const clockSignalName = run.meta.clockSignalName ?? 'CLK';
+    return `Clocked macro (${clockSignalName}: 0 -> 1 -> 0 per case)`;
+  }
+  return 'Combinational settle (one evaluation per case)';
+}
+
+function formatVerifySampling(run: RuntimeVerifyRun): string {
+  if (run.meta.samplePoint === 'post-rising-edge') return 'Outputs sampled post-rising-edge';
+  if (run.meta.samplePoint === 'steady-state') return 'Outputs sampled at steady state';
+  return 'Sampling semantics unavailable';
+}
+
+function formatVerifyTickZero(run: RuntimeVerifyRun): string {
+  if (run.meta.tick0Meaning === 'initial-state') return 'Initial state before the first clock pulse';
+  if (run.meta.tick0Meaning === 'reset-phase') return 'Reset phase before normal stepping begins';
+  return 'First evaluated case';
 }

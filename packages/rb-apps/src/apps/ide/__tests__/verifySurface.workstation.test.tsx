@@ -22,6 +22,15 @@ function makePassRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      vectors: [
+        { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+        { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+      ],
+      inputsAtTick: {
+        0: { sw0: 0 },
+        1: { sw0: 1 },
+      },
+      signalRoles: { sw0: 'input', ld0: 'output' },
       rows: [
         { tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass' },
         { tick: 1, signal: 'ld0', expected: '1', actual: '1', status: 'pass' },
@@ -52,6 +61,15 @@ function makeFailRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      vectors: [
+        { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+        { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+      ],
+      inputsAtTick: {
+        0: { sw0: 0 },
+        1: { sw0: 1 },
+      },
+      signalRoles: { sw0: 'input', ld0: 'output' },
       rows: [
         { tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass' },
         { tick: 1, signal: 'ld0', expected: '1', actual: '0', status: 'fail' },
@@ -85,6 +103,10 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(queryByTestId('ide-truth-table-empty')).toBeNull();
+    expect(getByTestId('ide-verify-run-context')).toBeTruthy();
+    expect(getByTestId('ide-verify-run-context-sampling').textContent).toContain('steady state');
+    expect(getByTestId('ide-verify-run-context-ticks_shown').textContent).toContain('Showing all 2 ticks');
+    fireEvent.click(getByTestId('ide-truth-table-mode-ticks'));
     expect(getByTestId('ide-truth-table-row-0-ld0')).toBeTruthy();
     expect(getByTestId('ide-truth-table-row-1-ld0')).toBeTruthy();
   });
@@ -158,9 +180,16 @@ describe('VerifySurface workstation controls', () => {
       ...makePassRun(),
       schedule: 'clocked_macro',
       reportHash: 'rep-seq',
+      meta: {
+        circuitKind: 'sequential',
+        clockingProtocol: 'clocked_macro',
+        samplePoint: 'post-rising-edge',
+        tick0Meaning: 'initial-state',
+        clockSignalName: 'CLK',
+      },
     };
 
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -179,7 +208,8 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(getByTestId('ide-verify-truth-table-title').textContent).toContain('TRACE TABLE (TICK LOG)');
-    fireEvent.click(getByTestId('ide-truth-table-mode-combos'));
-    expect(getByTestId('ide-truth-table-combos-na')).toBeTruthy();
+    expect(queryByTestId('ide-truth-table-mode-combos')).toBeNull();
+    expect(getByTestId('ide-verify-run-context-protocol').textContent).toContain('Clocked macro');
+    expect(getByTestId('ide-verify-run-context-tick_0').textContent).toContain('Initial state');
   });
 });
