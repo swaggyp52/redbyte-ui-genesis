@@ -45,7 +45,7 @@ function resolveWireZoomBand(zoom: number): WireZoomBand {
 
 const WIRE_BAND_STYLES: Record<WireZoomBand, WireBandStyle> = {
   far: {
-    hitWidth: 12,
+    hitWidth: 16,
     baseStroke: 1.4,
     hoverStroke: 2.1,
     selectedStroke: 2.8,
@@ -56,7 +56,7 @@ const WIRE_BAND_STYLES: Record<WireZoomBand, WireBandStyle> = {
     mismatchGlowStroke: 4.8,
   },
   medium: {
-    hitWidth: 11,
+    hitWidth: 14,
     baseStroke: 1.8,
     hoverStroke: 2.6,
     selectedStroke: 3.4,
@@ -67,7 +67,7 @@ const WIRE_BAND_STYLES: Record<WireZoomBand, WireBandStyle> = {
     mismatchGlowStroke: 5.8,
   },
   near: {
-    hitWidth: 10,
+    hitWidth: 12,
     baseStroke: 2.1,
     hoverStroke: 3,
     selectedStroke: 3.9,
@@ -78,7 +78,7 @@ const WIRE_BAND_STYLES: Record<WireZoomBand, WireBandStyle> = {
     mismatchGlowStroke: 6.3,
   },
   detail: {
-    hitWidth: 9,
+    hitWidth: 11,
     baseStroke: 2.4,
     hoverStroke: 3.3,
     selectedStroke: 4.2,

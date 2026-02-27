@@ -5,6 +5,7 @@ import {
   LogicCanvas,
   findSmartSpawnPosition,
   useLogicViewStore,
+  type ChipMetadata,
   type NodeIoPresentation,
 } from '@redbyte/rb-logic-view';
 import { useCircuitStore } from '../../../stores/circuitStore';
@@ -28,6 +29,7 @@ import { netlistFromCircuit } from '../../../export/netlistExport';
 import { vhdlFromNetlist } from '../../../export/vhdlExport';
 import { synthesizableVerilogFromNetlist } from '../../../export/verilogExport';
 import { buildVhdlTopLevelBindings } from '../../../fpga/boards/basys3/basys3Bundle';
+import { getDesignChipMetadata } from '../designChipMetadata';
 
 export interface DesignSurfaceProps {
   onOpenPalette?: () => void;
@@ -145,6 +147,52 @@ const BASYS3_OUTPUT_ITEMS: BoardIoPaletteItem[] = [
   { alias: 'DP', direction: 'out', kind: 'dp' },
 ];
 
+const DESIGN_DEBUG_DOWNSTREAM_KEYS = [
+  'xor_node.out',
+  'ld2_node.in',
+  'ld2_node.out',
+  'and_node.out',
+  'or_node.out',
+  'ld0_node.in',
+  'ld1_node.in',
+] as const;
+
+interface DesignDebugSignalSample {
+  key: string;
+  value: 0 | 1;
+}
+
+interface DesignDebugToggleSample {
+  nodeId: string;
+  source: 'canvas' | 'dock';
+  requestedValue: 0 | 1;
+  requestedAtIso: string;
+  uiBefore: 0 | 1;
+  simInputBefore: 0 | 1;
+  downstreamBefore: DesignDebugSignalSample | null;
+}
+
+function resolveDesignDebugSample(
+  signals: Record<string, 0 | 1>,
+  preferredKeys: readonly string[]
+): DesignDebugSignalSample | null {
+  for (const key of preferredKeys) {
+    const value = signals[key];
+    if (value === 0 || value === 1) {
+      return { key, value };
+    }
+  }
+  return null;
+}
+
+function readDesignDebugQueryParam(): boolean {
+  if (typeof window === 'undefined') return false;
+  const raw = new URLSearchParams(window.location.search).get('designDebug');
+  if (!raw) return false;
+  const normalized = raw.trim().toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'on' || normalized === 'yes';
+}
+
 export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   onOpenPalette,
   onCircuitMutated,
@@ -253,6 +301,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [toolsExpanded, setToolsExpanded] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [designView, setDesignView] = useState<'canvas' | 'hdl' | 'split'>('canvas');
+  const [designDebugEnabled, setDesignDebugEnabled] = useState(() => readDesignDebugQueryParam());
   const [hdlDraftText, setHdlDraftText] = useState('');
   const splitRatio = useLayoutStore((state) => state.splitRatio);
   const setSplitRatio = useLayoutStore((state) => state.setSplitRatio);
@@ -269,6 +318,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [designView]);
   const hasAutoFitRef = useRef(false);
   const lastViewportSeedRef = useRef<string | undefined>(undefined);
+  const pendingDebugToggleRef = useRef<DesignDebugToggleSample | null>(null);
   const simTick = runtimeSim.tick;
   const simSpeed = runtimeSim.speedHz;
   const simRunning = runtimeSim.running;
@@ -287,6 +337,43 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     return index;
   }, [ioRows]);
+  const allLiveInputRows = useMemo(() => {
+    return editorCircuit.nodes
+      .filter((node) => node.type === 'INPUT' || node.type === 'Switch')
+      .map((node) => {
+        const ioPresentation = resolveNodeIoPresentation(node, ioRowByNodeId.get(node.id));
+        return {
+          id: node.id,
+          label: ioPresentation.label ?? `${node.type} ${node.id}`,
+          value: liveSignals.get(`${node.id}.out`) ?? (0 as 0 | 1),
+        };
+      });
+  }, [editorCircuit.nodes, ioRowByNodeId, liveSignals]);
+  const liveInputValueById = useMemo(() => {
+    const valueById = new Map<string, 0 | 1>();
+    for (const row of allLiveInputRows) {
+      valueById.set(row.id, row.value);
+    }
+    return valueById;
+  }, [allLiveInputRows]);
+  const queueDesignDebugToggleSample = useCallback(
+    (nodeId: string, requestedValue: 0 | 1, source: 'canvas' | 'dock') => {
+      if (!designDebugEnabled) return;
+      pendingDebugToggleRef.current = {
+        nodeId,
+        source,
+        requestedValue,
+        requestedAtIso: new Date().toISOString(),
+        uiBefore: liveInputValueById.get(nodeId) ?? 0,
+        simInputBefore: runtimeSim.inputs[nodeId] ?? 0,
+        downstreamBefore: resolveDesignDebugSample(runtimeSim.signals, DESIGN_DEBUG_DOWNSTREAM_KEYS),
+      };
+    },
+    [designDebugEnabled, liveInputValueById, runtimeSim.inputs, runtimeSim.signals]
+  );
+  const getChipMetadata = useCallback((nodeType: string): ChipMetadata | undefined => {
+    return getDesignChipMetadata(nodeType);
+  }, []);
 
   const { activeBoardSignal, setActiveBoardSignal } = useBoardSignal();
 
@@ -346,38 +433,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       onCircuitMutated?.();
     }
   }, [clearSelection, deleteConnection, deleteNode, onCircuitMutated, selection.nodes, selection.wires]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z') {
-        event.preventDefault();
-        undo();
-        onCircuitMutated?.();
-      } else if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === 'y' || (event.shiftKey && event.key.toLowerCase() === 'z'))) {
-        event.preventDefault();
-        redo();
-        onCircuitMutated?.();
-      } else if (event.key === 'Delete' || event.key === 'Backspace') {
-        // Guard: don't intercept when focus is in an editable element
-        const activeEl = document.activeElement as HTMLElement | null;
-        const tag = activeEl?.tagName?.toLowerCase();
-        if (tag === 'input' || tag === 'textarea' || activeEl?.isContentEditable) return;
-        event.preventDefault();
-        deleteSelection();
-      } else if (event.key === 'Escape') {
-        clearSelection();
-        if (toolMode === 'wire') {
-          setToolMode('select');
-          setActionToast('Wire cancelled.');
-        }
-      } else if (!event.ctrlKey && !event.metaKey && event.key.toLowerCase() === 'w') {
-        setToolMode('wire');
-        setActionToast('Start Wire (W) enabled.');
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [clearSelection, deleteSelection, onCircuitMutated, redo, setToolMode, toolMode, undo]);
 
   useEffect(() => {
     if (!actionToast) return;
@@ -740,10 +795,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   const handleInputToggled = useCallback(
     (nodeId: string, _portName: string, newValue: 0 | 1) => {
+      queueDesignDebugToggleSample(nodeId, newValue, 'canvas');
       onRuntimeSimSetInput?.(nodeId, newValue);
       setActionToast(`Updated ${nodeId} = ${newValue}.`);
     },
-    [onRuntimeSimSetInput]
+    [onRuntimeSimSetInput, queueDesignDebugToggleSample]
   );
 
   const startSimulation = useCallback(() => {
@@ -895,18 +951,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => summarizeLiveChange(liveIoSignals.inputRows, liveIoSignals.outputRows),
     [liveIoSignals.inputRows, liveIoSignals.outputRows]
   );
-  const allLiveInputRows = useMemo(() => {
-    return editorCircuit.nodes
-      .filter((node) => node.type === 'INPUT' || node.type === 'Switch')
-      .map((node) => {
-        const ioPresentation = resolveNodeIoPresentation(node, ioRowByNodeId.get(node.id));
-        return {
-          id: node.id,
-          label: ioPresentation.label ?? `${node.type} ${node.id}`,
-          value: liveSignals.get(`${node.id}.out`) ?? (0 as 0 | 1),
-        };
-      });
-  }, [editorCircuit.nodes, ioRowByNodeId, liveSignals]);
   const ioPresentationMap = useMemo(() => {
     const map: Record<string, NodeIoPresentation> = {};
     for (const node of editorCircuit.nodes) {
@@ -954,6 +998,83 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     onRuntimeSimSetSelectedSignal(selectedWireSignalKey);
   }, [onRuntimeSimSetSelectedSignal, selectedWireSignalKey]);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!event.shiftKey || event.key.toLowerCase() !== 'd') return;
+      const activeEl = document.activeElement as HTMLElement | null;
+      const tagName = activeEl?.tagName?.toLowerCase();
+      if (tagName === 'input' || tagName === 'textarea' || activeEl?.isContentEditable) {
+        return;
+      }
+      event.preventDefault();
+      setDesignDebugEnabled((previous) => {
+        const next = !previous;
+        console.info(`[DesignDebug] ${next ? 'enabled' : 'disabled'} (Shift+D)`);
+        return next;
+      });
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    const pending = pendingDebugToggleRef.current;
+    if (!designDebugEnabled || !pending) return;
+
+    const uiAfter = liveInputValueById.get(pending.nodeId) ?? 0;
+    const simInputAfter = runtimeSim.inputs[pending.nodeId] ?? 0;
+    const downstreamAfter = resolveDesignDebugSample(runtimeSim.signals, DESIGN_DEBUG_DOWNSTREAM_KEYS);
+
+    const uiChanged = pending.uiBefore !== uiAfter;
+    const simInputChanged = pending.simInputBefore !== simInputAfter;
+    const downstreamChanged =
+      pending.downstreamBefore?.key !== downstreamAfter?.key ||
+      pending.downstreamBefore?.value !== downstreamAfter?.value;
+
+    let classification = 'design-render-subscription-path';
+    let branchMessage =
+      'B and C changed. If visuals are stale, inspect render selectors/memo comparators.';
+    if (uiChanged && !simInputChanged) {
+      classification = 'ui-to-runtime-sim-wiring';
+      branchMessage = 'A changed but B did not: UI interaction is not committing runtime sim inputs.';
+    } else if (simInputChanged && !downstreamChanged) {
+      classification = 'runtime-sim-recompute';
+      branchMessage = 'B changed but C did not: recompute/propagation path is stale.';
+    } else if (!uiChanged && simInputChanged) {
+      classification = 'live-input-row-source';
+      branchMessage = 'B changed but A did not: live input row source is stale.';
+    }
+
+    console.groupCollapsed(
+      `[DesignDebug] triage ${pending.nodeId} -> ${pending.requestedValue} (${pending.source})`
+    );
+    console.info('[A] UI live input', { before: pending.uiBefore, after: uiAfter });
+    console.info('[B] runtime sim input', { before: pending.simInputBefore, after: simInputAfter });
+    console.info('[C] runtime downstream sample', {
+      before: pending.downstreamBefore,
+      after: downstreamAfter,
+    });
+    console.info('[tick/action]', {
+      tick: runtimeSim.tick,
+      lastAction: runtimeSim.lastAction ?? null,
+      requestedAt: pending.requestedAtIso,
+    });
+    console.info('[classification]', classification);
+    console.info('[branch]', branchMessage);
+    console.groupEnd();
+
+    pendingDebugToggleRef.current = null;
+  }, [
+    designDebugEnabled,
+    liveInputValueById,
+    runtimeSim.inputs,
+    runtimeSim.lastAction,
+    runtimeSim.signals,
+    runtimeSim.tick,
+  ]);
+
   return (
     <IdeSurfaceLayout
       mode="design"
@@ -974,7 +1095,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     className={`ide-design-input-toggle ${entry.value === 1 ? 'is-on' : 'is-off'}`}
                     data-testid={`ide-design-input-toggle-${entry.id}`}
                     aria-pressed={entry.value === 1}
-                    onClick={() => onRuntimeSimSetInput?.(entry.id, entry.value === 1 ? 0 : 1)}
+                    onClick={() => {
+                      const next = entry.value === 1 ? 0 : 1;
+                      queueDesignDebugToggleSample(entry.id, next, 'dock');
+                      onRuntimeSimSetInput?.(entry.id, next);
+                    }}
                   >
                     <span className="ide-design-input-toggle-label">{entry.label}</span>
                     <span className="ide-design-input-toggle-value">{entry.value}</span>
@@ -1821,6 +1946,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       width={canvasSize.width}
                       height={canvasSize.height}
                       showToolbar={false}
+                      getChipMetadata={getChipMetadata}
                       onCircuitChange={handleCircuitChange}
                       onSignalsUpdated={handleSignalsUpdated}
                       onInputToggled={handleInputToggled}
@@ -1841,6 +1967,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       onNodeDiagnosticBadgeClick={handleNodeDiagnosticBadgeClick}
                       ioPresentationMap={ioPresentationMap}
                       presentationZoomMode={presentationZoom}
+                      onUndo={handleUndo}
+                      onRedo={handleRedo}
                     />
                     {/* Canvas interaction hint — fades after first interaction */}
                     <div

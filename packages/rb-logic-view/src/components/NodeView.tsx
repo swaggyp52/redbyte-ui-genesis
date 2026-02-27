@@ -264,9 +264,15 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const inputSignal = signals?.get(`${node.id}.in`) ?? 0;
   const isActive =
     node.type === 'OUTPUT' || node.type === 'Lamp' ? inputSignal === 1 : outputSignal === 1;
+  const nodeOutputValue = node.type === 'OUTPUT' || node.type === 'Lamp' ? inputSignal : outputSignal;
   const ioKind = ioPresentation?.kind ?? inferDefaultIoKind(node.type);
   const ioDisplayLabel = (ioPresentation?.label?.trim() || node.label || node.type).toUpperCase();
   const ioPinAlias = ioPresentation?.pinAlias?.trim();
+  const showOutputStateBadge =
+    !isSwitch &&
+    node.type !== 'OUTPUT' &&
+    node.type !== 'Lamp' &&
+    node.type !== 'Clock';
   const isChip = !!chipMetadata;
   const hasDiagnosticBadge = (diagnosticBadge?.total ?? 0) > 0;
   const diagnosticLabel =
@@ -312,8 +318,6 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     const chipColor = chipMetadata.color || '#1e293b'; // Dark slate for chips
     const chipHeight = size * 1.5; // Taller for chips with multiple ports
     const portSpacing = chipHeight / (Math.max(chipMetadata.inputs.length, chipMetadata.outputs.length) + 1);
-    const nodeOutputValue = outputSignal;
-
     return (
       <g
         transform={nodeTransform}
@@ -322,6 +326,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         data-sim-value={nodeOutputValue}
         data-lod={lod}
         data-node-selected={isSelected ? '1' : '0'}
+        data-testid={`node-${node.type}-${node.id}`}
         onDoubleClick={handleDoubleClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -370,6 +375,30 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         )}
 
         {renderDiagnosticBadge(size / 2 - 8, -chipHeight / 2 + 10)}
+        {showOutputStateBadge ? (
+          <g data-testid={`logic-node-output-indicator-${node.id}`}>
+            <circle
+              cx={-size / 2 + 10}
+              cy={-chipHeight / 2 + 10}
+              r={8}
+              fill={nodeOutputValue === 1 ? '#166534' : '#1e293b'}
+              stroke={nodeOutputValue === 1 ? '#86efac' : '#94a3b8'}
+              strokeWidth={1.4}
+            />
+            <text
+              x={-size / 2 + 10}
+              y={-chipHeight / 2 + 10}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill={nodeOutputValue === 1 ? '#dcfce7' : '#cbd5e1'}
+              fontSize={8}
+              fontWeight="700"
+              style={{ pointerEvents: 'none', userSelect: 'none' }}
+            >
+              {nodeOutputValue}
+            </text>
+          </g>
+        ) : null}
 
         {/* Hover hint - double-click to drill down */}
         {isHovered && onNodeDoubleClick && (
@@ -802,7 +831,6 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   }
 
   // Standard node rendering
-  const nodeOutputValue = node.type === 'OUTPUT' || node.type === 'Lamp' ? inputSignal : outputSignal;
   return (
     <g
       transform={nodeTransform}
@@ -860,6 +888,30 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
       )}
 
       {renderDiagnosticBadge(size / 2 - 8, -size / 2 + 10)}
+      {showOutputStateBadge ? (
+        <g data-testid={`logic-node-output-indicator-${node.id}`}>
+          <circle
+            cx={-size / 2 + 10}
+            cy={-size / 2 + 10}
+            r={8}
+            fill={nodeOutputValue === 1 ? '#166534' : '#1e293b'}
+            stroke={nodeOutputValue === 1 ? '#86efac' : '#94a3b8'}
+            strokeWidth={1.4}
+          />
+          <text
+            x={-size / 2 + 10}
+            y={-size / 2 + 10}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={nodeOutputValue === 1 ? '#dcfce7' : '#cbd5e1'}
+            fontSize={8}
+            fontWeight="700"
+            style={{ pointerEvents: 'none', userSelect: 'none' }}
+          >
+            {nodeOutputValue}
+          </text>
+        </g>
+      ) : null}
 
       {node.type === 'INPUT' || node.type === 'Switch' ? (
         <g pointerEvents="none">
@@ -991,6 +1043,16 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
         return (
           <g>
+            {isHovered && !wireStartPort ? (
+              <circle
+                cx={-size / 2}
+                cy={0}
+                r={10}
+                fill="#0ea5e9"
+                opacity={0.2}
+                style={{ pointerEvents: 'none' }}
+              />
+            ) : null}
             {shouldGlow && (
               <circle
                 cx={-size / 2}
@@ -1102,6 +1164,16 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
         return (
           <g>
+            {isHovered && !wireStartPort ? (
+              <circle
+                cx={size / 2}
+                cy={0}
+                r={10}
+                fill="#0ea5e9"
+                opacity={0.2}
+                style={{ pointerEvents: 'none' }}
+              />
+            ) : null}
             {shouldGlow && (
               <circle
                 cx={size / 2}
@@ -1228,19 +1300,33 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
     prevProps.ioPresentation?.kind === nextProps.ioPresentation?.kind &&
     prevProps.ioPresentation?.label === nextProps.ioPresentation?.label &&
     prevProps.ioPresentation?.pinAlias === nextProps.ioPresentation?.pinAlias &&
-    JSON.stringify(prevProps.node.state) === JSON.stringify(nextProps.node.state) &&
-    JSON.stringify(prevProps.chipMetadata) === JSON.stringify(nextProps.chipMetadata) &&
+    shallowObjectEqual(prevProps.node.state as Record<string, unknown>, nextProps.node.state as Record<string, unknown>) &&
+    chipMetadataEqual(prevProps.chipMetadata, nextProps.chipMetadata) &&
     prevProps.wireStartPort?.nodeId === nextProps.wireStartPort?.nodeId &&
     prevProps.wireStartPort?.portName === nextProps.wireStartPort?.portName &&
     prevProps.validWireTargets === nextProps.validWireTargets &&
     prevProps.hoveredWireTargetState === nextProps.hoveredWireTargetState &&
     // Check if relevant signals changed
     (() => {
-      // Get all ports for this node
-      const getPorts = (nodeType: string) => {
+      const getPorts = (nodeType: string, metadata?: ChipMetadata) => {
+        if (metadata) {
+          return Array.from(
+            new Set([
+              ...metadata.inputs.map((input) => input.id),
+              ...metadata.outputs.map((output) => output.id),
+            ])
+          );
+        }
+        if (nodeType === 'PowerSource' || nodeType === 'Switch' || nodeType === 'INPUT' || nodeType === 'Clock') return ['out'];
+        if (nodeType === 'Lamp' || nodeType === 'OUTPUT') return ['in'];
         if (nodeType === 'AND' || nodeType === 'NAND') return ['a', 'b', 'out'];
         if (nodeType === 'OR' || nodeType === 'NOR' || nodeType === 'XOR' || nodeType === 'XNOR') return ['a', 'b', 'out'];
         if (nodeType === 'NOT') return ['in', 'out'];
+        if (nodeType === 'DFlipFlop') return ['D', 'CLK', 'Q', 'out'];
+        if (nodeType === 'JKFlipFlop') return ['J', 'K', 'CLK', 'Q', 'out'];
+        if (nodeType === 'RSLatch') return ['R', 'S', 'Q', 'Q_inv'];
+        if (nodeType === 'FullAdder') return ['A', 'B', 'Cin', 'Sum', 'Cout'];
+        if (nodeType === 'Counter4Bit') return ['CLK', 'Q0', 'Q1', 'Q2', 'Q3'];
         if (nodeType === 'VoltageSource') return ['out'];
         if (nodeType === 'LDR') return ['resistance', 'v_out'];
         if (nodeType === 'FixedResistor') return ['resistance'];
@@ -1249,7 +1335,12 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
         return ['in', 'out'];
       };
 
-      const ports = getPorts(prevProps.node.type);
+      const ports = Array.from(
+        new Set([
+          ...getPorts(prevProps.node.type, prevProps.chipMetadata),
+          ...getPorts(nextProps.node.type, nextProps.chipMetadata),
+        ])
+      );
       for (const port of ports) {
         const prevSignal = prevProps.signals?.get(`${prevProps.node.id}.${port}`);
         const nextSignal = nextProps.signals?.get(`${nextProps.node.id}.${port}`);
@@ -1282,4 +1373,44 @@ function resolveNodeFill(
     return isActive ? '#18473b' : '#1f2937';
   }
   return isActive ? fallbackColor : '#2a2a2a';
+}
+
+function shallowObjectEqual(
+  left: Record<string, unknown> | undefined,
+  right: Record<string, unknown> | undefined
+): boolean {
+  if (left === right) return true;
+  const leftKeys = Object.keys(left ?? {});
+  const rightKeys = Object.keys(right ?? {});
+  if (leftKeys.length !== rightKeys.length) return false;
+  for (const key of leftKeys) {
+    if ((left?.[key] ?? undefined) !== (right?.[key] ?? undefined)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function chipMetadataEqual(left?: ChipMetadata, right?: ChipMetadata): boolean {
+  if (left === right) return true;
+  if (!left || !right) return false;
+  if (left.name !== right.name) return false;
+  if (left.color !== right.color) return false;
+  if (left.layer !== right.layer) return false;
+  if (left.inputs.length !== right.inputs.length || left.outputs.length !== right.outputs.length) {
+    return false;
+  }
+  for (let index = 0; index < left.inputs.length; index += 1) {
+    const l = left.inputs[index];
+    const r = right.inputs[index];
+    if (!l || !r) return false;
+    if (l.id !== r.id || l.name !== r.name) return false;
+  }
+  for (let index = 0; index < left.outputs.length; index += 1) {
+    const l = left.outputs[index];
+    const r = right.outputs[index];
+    if (!l || !r) return false;
+    if (l.id !== r.id || l.name !== r.name) return false;
+  }
+  return true;
 }

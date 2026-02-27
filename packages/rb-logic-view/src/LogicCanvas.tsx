@@ -52,6 +52,60 @@ export interface LogicCanvasProps {
   onNodeDiagnosticBadgeClick?: (nodeId: string) => void;
   ioPresentationMap?: Record<string, NodeIoPresentation>;
   presentationZoomMode?: 'dense' | 'classroom';
+  onUndo?: () => void;
+  onRedo?: () => void;
+}
+
+const BUILTIN_PORT_NAMES: Record<string, string[]> = {
+  PowerSource: ['out'],
+  Switch: ['out'],
+  INPUT: ['out'],
+  Lamp: ['in'],
+  OUTPUT: ['in'],
+  Wire: ['in', 'out'],
+  AND: ['a', 'b', 'out'],
+  OR: ['a', 'b', 'out'],
+  XOR: ['a', 'b', 'out'],
+  XNOR: ['a', 'b', 'out'],
+  NAND: ['a', 'b', 'out'],
+  NOR: ['a', 'b', 'out'],
+  NOT: ['in', 'out'],
+  Clock: ['out'],
+  Delay: ['in', 'out'],
+  DFlipFlop: ['D', 'CLK', 'Q', 'out'],
+  JKFlipFlop: ['J', 'K', 'CLK', 'Q', 'out'],
+  RSLatch: ['R', 'S', 'Q', 'Q_inv'],
+  FullAdder: ['A', 'B', 'Cin', 'Sum', 'Cout'],
+  Counter4Bit: ['CLK', 'Q0', 'Q1', 'Q2', 'Q3'],
+};
+
+function getBuiltinPortNames(nodeType: string): string[] | null {
+  const ports = BUILTIN_PORT_NAMES[nodeType];
+  return ports ? [...ports] : null;
+}
+
+function resolveConnectionEndpoints(connection: Connection): {
+  fromNodeId: string;
+  fromPortName: string;
+  toNodeId: string;
+  toPortName: string;
+} {
+  const fromNodeId = typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+  const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+  const fromPortName =
+    typeof connection.from === 'string'
+      ? connection.fromPort ?? connection.fromPin ?? 'out'
+      : connection.from.portName ?? connection.from.port ?? 'out';
+  const toPortName =
+    typeof connection.to === 'string'
+      ? connection.toPort ?? connection.toPin ?? 'in'
+      : connection.to.portName ?? connection.to.port ?? 'in';
+  return { fromNodeId, fromPortName, toNodeId, toPortName };
+}
+
+function toWireId(connection: Connection): string {
+  const { fromNodeId, fromPortName, toNodeId, toPortName } = resolveConnectionEndpoints(connection);
+  return `${fromNodeId}.${fromPortName}-${toNodeId}.${toPortName}`;
 }
 
 export const LogicCanvas: React.FC<LogicCanvasProps> = ({
@@ -85,6 +139,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   onNodeDiagnosticBadgeClick,
   ioPresentationMap,
   presentationZoomMode = 'dense',
+  onUndo,
+  onRedo,
 }) => {
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
@@ -420,6 +476,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const [hoveredPort, setHoveredPort] = React.useState<{ nodeId: string; portName: string } | null>(null);
   const [showFirstWireToast, setShowFirstWireToast] = React.useState(false);
   const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
+  const [wireRewireDraft, setWireRewireDraft] = React.useState<{
+    wireId: string;
+    anchor: { nodeId: string; portName: string };
+  } | null>(null);
 
   // Stable ref for handleNodeMove (defined below) so canvasInput doesn't re-create on every render
   const handleNodeMoveRef = React.useRef<(nodeId: string, x: number, y: number) => void>(() => {});
@@ -585,6 +645,11 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         ];
       }
 
+      const builtinPorts = getBuiltinPortNames(node.type);
+      if (builtinPorts) {
+        return builtinPorts;
+      }
+
       const ports: string[] = [];
       if (!['PowerSource', 'Clock'].includes(node.type)) ports.push('in');
       if (!['Lamp'].includes(node.type)) ports.push('out');
@@ -642,12 +707,19 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       // Normalize connection (output -> input)
       const normalizedConnection = normalizeConnection(from, to, circuit, getChipMetadata);
 
+      const nextConnections = wireRewireDraft
+        ? circuit.connections
+            .filter((connection) => toWireId(connection) !== wireRewireDraft.wireId)
+            .concat(normalizedConnection)
+        : [...circuit.connections, normalizedConnection];
+
       const updatedCircuit = {
         ...circuit,
-        connections: [...circuit.connections, normalizedConnection],
+        connections: nextConnections,
       };
 
       commitCircuit(updatedCircuit);
+      setWireRewireDraft(null);
       endWire(); // This sets interactionMode back to 'idle'
 
       // Show first-wire toast if this is the user's first wire
@@ -660,9 +732,39 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       }
     } else if (interactionMode === 'idle') {
       // Start wire - only from idle state
+      setWireRewireDraft(null);
       startWire({ nodeId, portName }); // This sets interactionMode to 'wiring'
     }
-  }, [circuit, editingState.wireStartPort, commitCircuit, endWire, startWire, getChipMetadata, isReplayMode, interactionMode]);
+  }, [circuit, editingState.wireStartPort, commitCircuit, endWire, startWire, getChipMetadata, isReplayMode, interactionMode, wireRewireDraft]);
+
+  const beginWireReconnect = React.useCallback(
+    (wireId: string, endpoint: 'from' | 'to') => {
+      if (isReplayMode) return;
+      const connection = circuit.connections.find((entry) => toWireId(entry) === wireId);
+      if (!connection) return;
+
+      const {
+        fromNodeId,
+        fromPortName,
+        toNodeId,
+        toPortName,
+      } = resolveConnectionEndpoints(connection);
+      const anchor =
+        endpoint === 'from'
+          ? { nodeId: toNodeId, portName: toPortName }
+          : { nodeId: fromNodeId, portName: fromPortName };
+
+      setWireRewireDraft({ wireId, anchor });
+      startWire(anchor);
+    },
+    [circuit.connections, isReplayMode, startWire]
+  );
+
+  React.useEffect(() => {
+    if (interactionMode === 'wiring') return;
+    if (!wireRewireDraft) return;
+    setWireRewireDraft(null);
+  }, [interactionMode, wireRewireDraft]);
 
   const handleAddNode = React.useCallback((type: string) => {
     if (isReplayMode) return;
@@ -694,7 +796,12 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     if (isReplayMode) return;
     // Don't delete if focus is in input/textarea
     const activeElement = document.activeElement;
-    if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+    if (
+      activeElement &&
+      (activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        (activeElement as HTMLElement).isContentEditable)
+    ) {
       return;
     }
 
@@ -705,8 +812,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       updatedCircuit = {
         nodes: circuit.nodes.filter((n) => !selection.nodes.has(n.id)),
         connections: circuit.connections.filter(
-          (c) =>
-            !selection.nodes.has(c.from.nodeId) && !selection.nodes.has(c.to.nodeId)
+          (connection) => {
+            const { fromNodeId, toNodeId } = resolveConnectionEndpoints(connection);
+            return !selection.nodes.has(fromNodeId) && !selection.nodes.has(toNodeId);
+          }
         ),
       };
     }
@@ -715,9 +824,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     if (selection.wires.size > 0) {
       updatedCircuit = {
         ...updatedCircuit,
-        connections: updatedCircuit.connections.filter((c) => {
-          const wireId = `${c.from.nodeId}.${c.from.portName}-${c.to.nodeId}.${c.to.portName}`;
-          return !selection.wires.has(wireId);
+        connections: updatedCircuit.connections.filter((connection) => {
+          return !selection.wires.has(toWireId(connection));
         }),
       };
     }
@@ -841,6 +949,15 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       setIsCtrlPressed(true);
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       handleDeleteRef.current();
+    } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      onUndo?.();
+    } else if (
+      (e.ctrlKey || e.metaKey) &&
+      (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))
+    ) {
+      e.preventDefault();
+      onRedo?.();
     } else if (e.key === 'Escape') {
       clearSelectionRef.current();
       setEditingStateRef.current({ marquee: undefined });
@@ -848,6 +965,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         setInteractionModeRef.current('idle');
       }
       if (editingStateRef.current.wireStartPort) {
+        setWireRewireDraft(null);
         endWireRef.current();
       }
     } else if (e.key === 'w' || e.key === 'W') {
@@ -885,7 +1003,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         resetViewRef.current();
       }
     }
-  }, [zoomFn]);
+  }, [onRedo, onUndo, zoomFn]);
 
   const handleKeyUpActive = React.useCallback((e: KeyboardEvent) => {
     if (e.key === ' ') {
@@ -949,6 +1067,38 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       y: canvasInput.dragState.dragPosition.y * camera.zoom + camera.y,
     };
   }, [camera.x, camera.y, camera.zoom, canvasInput.dragState.dragPosition, showSnapGuides]);
+
+  const selectedWireOverlay = React.useMemo(() => {
+    const selectedWireIds = Array.from(selection.wires);
+    if (selectedWireIds.length !== 1) return null;
+    const wireId = selectedWireIds[0];
+    if (!wireId) return null;
+
+    const connection = circuit.connections.find((entry) => toWireId(entry) === wireId);
+    if (!connection) return null;
+
+    const { fromNodeId, fromPortName, toNodeId, toPortName } = resolveConnectionEndpoints(connection);
+    const fromNode = circuit.nodes.find((node) => node.id === fromNodeId);
+    const toNode = circuit.nodes.find((node) => node.id === toNodeId);
+    if (!fromNode || !toNode) return null;
+    if (!fromNode.position || !toNode.position) return null;
+
+    return {
+      wireId,
+      from: {
+        nodeId: fromNodeId,
+        portName: fromPortName,
+        x: (fromNode.position.x + 24) * camera.zoom + camera.x,
+        y: fromNode.position.y * camera.zoom + camera.y,
+      },
+      to: {
+        nodeId: toNodeId,
+        portName: toPortName,
+        x: (toNode.position.x - 24) * camera.zoom + camera.x,
+        y: toNode.position.y * camera.zoom + camera.y,
+      },
+    };
+  }, [camera.x, camera.y, camera.zoom, circuit.connections, circuit.nodes, selection.wires]);
 
   return (
     <CanvasHost
@@ -1123,16 +1273,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         {/* Wires — stable container */}
         <g key="wire-layer">
           {visibleConnections.map((conn) => {
-            const fromNodeId = typeof conn.from === 'string' ? conn.from : conn.from.nodeId;
-            const toNodeId = typeof conn.to === 'string' ? conn.to : conn.to.nodeId;
-            const fromPortName = typeof conn.from === 'string'
-              ? (conn.fromPin ?? conn.fromPort ?? 'out')
-              : (conn.from.portName ?? conn.from.port ?? 'out');
-            const toPortName = typeof conn.to === 'string'
-              ? (conn.toPin ?? conn.toPort ?? 'in')
-              : (conn.to.portName ?? conn.to.port ?? 'in');
-
-            const wireId = `${fromNodeId}.${fromPortName}-${toNodeId}.${toPortName}`;
+            const { fromNodeId, fromPortName } = resolveConnectionEndpoints(conn);
+            const wireId = toWireId(conn);
             const signal = renderSignals.get(`${fromNodeId}.${fromPortName}`);
             const probeColors = probeWireHighlights?.get(wireId);
             const mismatchColors = mismatchWireHighlights?.get(wireId);
@@ -1219,6 +1361,49 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             );
           })()}
         </g>
+
+        {/* Selected wire reconnect handles */}
+        {selectedWireOverlay ? (
+          <g key="wire-reconnect-layer" data-testid="logic-wire-reconnect-layer">
+            {(['from', 'to'] as const).map((endpointKey) => {
+              const endpoint = selectedWireOverlay[endpointKey];
+              const activeRewire =
+                wireRewireDraft?.wireId === selectedWireOverlay.wireId &&
+                wireRewireDraft.anchor.nodeId === endpoint.nodeId &&
+                wireRewireDraft.anchor.portName === endpoint.portName;
+              return (
+                <g
+                  key={`${selectedWireOverlay.wireId}-${endpointKey}`}
+                  data-testid={`logic-wire-reconnect-${endpointKey}`}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    beginWireReconnect(selectedWireOverlay.wireId, endpointKey);
+                  }}
+                  style={{ cursor: 'crosshair' }}
+                >
+                  <circle
+                    cx={endpoint.x}
+                    cy={endpoint.y}
+                    r={10}
+                    fill={activeRewire ? 'rgba(34, 197, 94, 0.26)' : 'rgba(142, 199, 255, 0.22)'}
+                    stroke={activeRewire ? '#22c55e' : '#8ec7ff'}
+                    strokeWidth={2}
+                  />
+                  <circle
+                    cx={endpoint.x}
+                    cy={endpoint.y}
+                    r={4}
+                    fill={activeRewire ? '#22c55e' : '#8ec7ff'}
+                  />
+                </g>
+              );
+            })}
+          </g>
+        ) : null}
 
         {/* Nodes — stable container */}
         <g key="node-layer">

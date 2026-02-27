@@ -549,18 +549,17 @@
 .ide-workbench-main {
   display: grid;
   grid-template-columns:
-    minmax(180px, var(--ide-workbench-left-width))
-    6px
+    var(--ide-workbench-left-width)
     minmax(0, 1fr)
-    6px
-    minmax(280px, var(--ide-workbench-right-width));
+    var(--ide-workbench-right-width);
   gap: 0;
   min-height: 0;
 }
 
 .ide-workbench-dock {
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--rb-elevation-dock);
   padding: var(--ide-card-pad);
   box-shadow: var(--rb-shadow-dock);
@@ -5710,24 +5709,39 @@ details[open] summary .details-arrow {
 .ide-project-mapping-table-wrap { margin-top: var(--ide-space-2); }
 
 /* ════════════════════════════════════════════════════════════════
-   Project Surface — Narrower right inspector (project mode only)
+   Project Surface — Fixed dock grid (no vertical splitter tracks)
    ════════════════════════════════════════════════════════════════ */
 
-.ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-main {
+.ide-workbench-shell[data-ide-mode-marker='project'] {
+  --ide-workbench-left-width: 320px;
+  --ide-workbench-right-width: 320px;
+  background: var(--rb-elevation-workspace);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-main:not(.hide-right-dock) {
   grid-template-columns:
-    minmax(180px, var(--ide-workbench-left-width, 200px))
-    6px
+    var(--ide-workbench-left-width)
     minmax(0, 1fr)
-    6px
-    minmax(200px, 240px);
+    var(--ide-workbench-right-width);
 }
 
 /* Project surface hides right dock entirely */
 .ide-workbench-main.hide-right-dock {
   grid-template-columns:
-    minmax(180px, var(--ide-workbench-left-width))
-    6px
-    minmax(0, 1fr);
+    var(--ide-workbench-left-width)
+    minmax(720px, 1fr);
+  width: min(100%, 1440px);
+  margin-inline: auto;
+}
+
+/* Project mode: keep centered layout but treat outer gutter as intentional workspace. */
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-main.hide-right-dock {
+  width: min(100%, 1600px);
+  background: var(--rb-elevation-workspace);
+  position: relative;
+  box-shadow:
+    inset 1px 0 0 rgba(58, 87, 116, 0.45),
+    inset -1px 0 0 rgba(58, 87, 116, 0.45);
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -5802,20 +5816,6 @@ details[open] summary .details-arrow {
   font-weight: 700;
   letter-spacing: 0.02em;
   min-height: 44px;
-}
-
-/* ════════════════════════════════════════════════════════════════
-   Project Surface — Inspector width correction
-   ════════════════════════════════════════════════════════════════ */
-
-/* 320px right dock — present but not competing */
-.ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-main {
-  grid-template-columns:
-    minmax(180px, var(--ide-workbench-left-width, 200px))
-    6px
-    minmax(0, 1fr)
-    6px
-    minmax(260px, 320px);
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -9670,4 +9670,29 @@ details[open] summary .details-arrow {
 
 .ide-design-hdl-textarea--compact {
   min-height: 120px;
+}
+
+/* Design interaction clarity contract */
+.ide-design-canvas-live:focus-within {
+  box-shadow: inset 0 0 0 1px rgba(142, 199, 255, 0.42);
+}
+
+.rb-logic-canvas-svg [data-wire-hovered='1'] path {
+  opacity: 1;
+}
+
+.rb-logic-canvas-svg [data-wire-selected='1'] path {
+  opacity: 1;
+}
+
+.rb-logic-canvas-svg [data-node-selected='1'] > rect:first-of-type {
+  filter: drop-shadow(0 0 8px rgba(142, 199, 255, 0.28));
+}
+
+.rb-logic-canvas-svg [data-testid='logic-wire-reconnect-layer'] circle {
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+
+.rb-logic-canvas-svg [data-testid='logic-wire-reconnect-layer'] g:hover circle {
+  transform: scale(1.08);
 }
