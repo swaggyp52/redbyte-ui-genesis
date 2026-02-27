@@ -67,6 +67,13 @@ function makeLastRun(): RuntimeVerifyRun {
     reportHash: report.reportHash,
     generatedAtIso: '2026-01-01T10:00:00.000Z',
     schedule: 'combinational',
+    meta: {
+      circuitKind: 'combinational',
+      clockingProtocol: null,
+      samplePoint: 'steady-state',
+      tick0Meaning: null,
+      clockSignalName: null,
+    },
     report,
     waveform: [],
   };

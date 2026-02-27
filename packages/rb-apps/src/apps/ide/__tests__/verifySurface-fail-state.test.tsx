@@ -15,6 +15,13 @@ function makeFailRun(): RuntimeVerifyRun {
     firstFailingTick: 0,
     generatedAtIso: new Date().toISOString(),
     schedule: 'combinational',
+    meta: {
+      circuitKind: 'combinational',
+      clockingProtocol: null,
+      samplePoint: 'steady-state',
+      tick0Meaning: null,
+      clockSignalName: null,
+    },
     report: {
       rows: [
         { tick: 0, signal: 'out_led', expected: '1', actual: '0', status: 'fail' },

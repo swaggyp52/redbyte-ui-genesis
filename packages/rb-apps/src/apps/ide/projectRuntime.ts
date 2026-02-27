@@ -4,7 +4,7 @@ import type { Circuit } from '@redbyte/rb-logic-core';
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
 import { encodeRBProject, type RBProject } from '../../export/projectFormat';
 import { stableSerialize } from '../../utils/stableSerialize';
-import { deriveVerifySchedule } from '../../fpga/boards/basys3/verifySchedule';
+import { deriveVerifySchedule, type VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
 import { digestValue } from '../../utils/digest';
 import {
   IDE_DEFAULT_EXAMPLE_ID,
@@ -65,6 +65,14 @@ export interface VerifyRunLedgerEntry {
   didMappingChangeSinceLast: boolean;
 }
 
+export interface VerifyRunMeta {
+  circuitKind: 'sequential' | 'combinational';
+  clockingProtocol: 'clocked_macro' | null;
+  samplePoint: 'post-rising-edge' | 'steady-state' | null;
+  tick0Meaning: 'reset-phase' | 'initial-state' | null;
+  clockSignalName: string | null;
+}
+
 export interface RuntimeVerifyRun {
   scenarioId: string;
   scenarioName: string;
@@ -74,6 +82,7 @@ export interface RuntimeVerifyRun {
   firstFailingTick?: number;
   generatedAtIso: string;
   schedule: 'combinational' | 'clocked_macro';
+  meta: VerifyRunMeta;
   report: VerifyReport;
   waveform: VerifyWaveSample[];
 }
@@ -643,6 +652,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             firstFailingTick: report.firstFailingTick,
             generatedAtIso: report.generatedAtIso,
             schedule: scheduleContract.schedule,
+            meta: buildVerifyRunMeta(scheduleContract),
             report,
             waveform: buildVerifyWaveSamples(report),
           };
@@ -707,6 +717,13 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           reportHash: 'pending',
           generatedAtIso: input.ranAtIso ?? new Date().toISOString(),
           schedule: 'combinational',
+          meta: {
+            circuitKind: 'combinational',
+            clockingProtocol: null,
+            samplePoint: 'steady-state',
+            tick0Meaning: null,
+            clockSignalName: null,
+          },
           report: buildVerifyReport({
             scenarioId: input.scenarioId,
             scenarioName: input.scenarioName,
@@ -735,6 +752,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       },
       recordVerification: (result) => {
         set((state) => {
+          const scheduleContract = deriveVerifySchedule(state.circuit, toIoMapping(state.projectIoRows));
           const nextRun =
             result.report
               ? ({
@@ -748,8 +766,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                       ? result.failingTick
                       : result.report.firstFailingTick,
                   generatedAtIso: result.ranAtIso,
-                  schedule: deriveVerifySchedule(state.circuit, toIoMapping(state.projectIoRows))
-                    .schedule,
+                  schedule: scheduleContract.schedule,
+                  meta: buildVerifyRunMeta(scheduleContract),
                   report: result.report,
                   waveform: buildVerifyWaveSamples(result.report),
                 } satisfies RuntimeVerifyRun)
@@ -930,6 +948,7 @@ function cloneCircuit(circuit: Circuit): Circuit {
 function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
   return {
     ...run,
+    meta: { ...run.meta },
     report: {
       ...run.report,
       rows: run.report.rows.map((row) => ({ ...row })),
@@ -1022,6 +1041,17 @@ function toIoMapping(rows: ProjectIoRow[]): IoMapping {
         label: row.label,
         pin: row.pin,
       })),
+  };
+}
+
+function buildVerifyRunMeta(scheduleContract: VerifyScheduleContract): VerifyRunMeta {
+  const isClocked = scheduleContract.schedule === 'clocked_macro';
+  return {
+    circuitKind: isClocked ? 'sequential' : 'combinational',
+    clockingProtocol: isClocked ? 'clocked_macro' : null,
+    samplePoint: isClocked ? 'post-rising-edge' : 'steady-state',
+    tick0Meaning: isClocked ? 'initial-state' : null,
+    clockSignalName: scheduleContract.clockSignalName ?? null,
   };
 }
 

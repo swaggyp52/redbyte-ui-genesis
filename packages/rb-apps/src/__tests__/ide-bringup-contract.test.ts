@@ -130,7 +130,8 @@ function buildRuntimeRun(project: RBProject): RuntimeVerifyRun {
     generatedAtIso: '2026-02-20T00:00:00.000Z',
   });
 
-  const schedule = deriveVerifySchedule(project.circuit, project.ioMapping ?? { inputs: [], outputs: [] }).schedule;
+  const scheduleContract = deriveVerifySchedule(project.circuit, project.ioMapping ?? { inputs: [], outputs: [] });
+  const isClocked = scheduleContract.schedule === 'clocked_macro';
 
   return {
     scenarioId: report.scenarioId,
@@ -140,7 +141,14 @@ function buildRuntimeRun(project: RBProject): RuntimeVerifyRun {
     reportHash: report.reportHash,
     generatedAtIso: report.generatedAtIso,
     firstFailingTick: report.firstFailingTick,
-    schedule,
+    schedule: scheduleContract.schedule,
+    meta: {
+      circuitKind: isClocked ? 'sequential' as const : 'combinational' as const,
+      clockingProtocol: isClocked ? 'clocked_macro' as const : null,
+      samplePoint: isClocked ? 'post-rising-edge' as const : 'steady-state' as const,
+      tick0Meaning: isClocked ? 'initial-state' as const : null,
+      clockSignalName: scheduleContract.clockSignalName ?? null,
+    },
     report,
     waveform: buildVerifyWaveSamples(report),
   };
