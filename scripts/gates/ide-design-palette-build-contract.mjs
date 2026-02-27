@@ -5,35 +5,32 @@ import { assert, runIdeGate } from './_gateHarness.mjs';
 const UPDATE_TIMEOUT_MS = 250;
 
 await runIdeGate('IDE design palette build contract satisfied', async ({ page, baseUrl }) => {
+  // Deterministic desktop viewport keeps design controls in-frame for interaction.
+  await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto(`${baseUrl}/?mode=design`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
-
-  const resetApplied = await page.evaluate(() => {
+  const baselineNodeIds = await page.evaluate(() => {
     const store = window.__RB_CIRCUIT_STORE__;
-    if (!store?.getState) return false;
-    store.getState().reset();
-    return true;
+    if (!store?.getState) return null;
+    return (store.getState().circuit?.nodes ?? []).map((node) => node.id);
   });
-  assert(resetApplied, 'expected circuit store reset API');
+  assert(Array.isArray(baselineNodeIds), 'expected baseline circuit node IDs');
 
-  await page.waitForFunction(() => {
-    const store = window.__RB_CIRCUIT_STORE__;
-    if (!store?.getState) return false;
-    const circuit = store.getState().circuit;
-    return Array.isArray(circuit?.nodes) && circuit.nodes.length === 0;
-  });
+  await assertUniqueBoardAlias(page, 'SW0', '[data-testid="ide-design-board-input-sw0"]');
+  await assertUniqueBoardAlias(page, 'LD0', '[data-testid="ide-design-board-output-ld0"]');
 
   await page.locator('[data-testid="ide-design-palette-input"]').first().click();
   await page.locator('[data-testid="ide-design-palette-input"]').first().click();
   await page.locator('[data-testid="ide-design-palette-xor"]').first().click();
   await page.locator('[data-testid="ide-design-palette-output"]').first().click();
 
-  const circuitIds = await page.evaluate(() => {
+  const circuitIds = await page.evaluate((knownNodeIds) => {
     const store = window.__RB_CIRCUIT_STORE__;
     if (!store?.getState) return null;
-    const nodes = store.getState().circuit?.nodes ?? [];
+    const known = new Set(Array.isArray(knownNodeIds) ? knownNodeIds : []);
+    const nodes = (store.getState().circuit?.nodes ?? []).filter((node) => !known.has(node.id));
     const inputNodeIds = nodes.filter((node) => node.type === 'INPUT').map((node) => node.id).slice(0, 2);
     const xorNodeId = nodes.find((node) => node.type === 'XOR')?.id ?? null;
     const outputNodeId = nodes.find((node) => node.type === 'OUTPUT')?.id ?? null;
@@ -43,7 +40,7 @@ await runIdeGate('IDE design palette build contract satisfied', async ({ page, b
       outputNodeId,
       nodeCount: nodes.length,
     };
-  });
+  }, baselineNodeIds);
 
   assert(Boolean(circuitIds), 'expected circuit ids from store');
   assert(circuitIds.nodeCount >= 4, `expected at least 4 nodes, got ${circuitIds.nodeCount}`);
@@ -62,14 +59,33 @@ await runIdeGate('IDE design palette build contract satisfied', async ({ page, b
   await clickPort(page, xorNodeId, 'out');
   await clickPort(page, outputNodeId, 'in');
 
-  await page.waitForFunction((expectedCount) => {
+  const expectedConnections = [
+    `${inputA}.out->${xorNodeId}.a`,
+    `${inputB}.out->${xorNodeId}.b`,
+    `${xorNodeId}.out->${outputNodeId}.in`,
+  ];
+
+  await page.waitForFunction((expected) => {
     const store = window.__RB_CIRCUIT_STORE__;
     if (!store?.getState) return false;
-    return (store.getState().circuit?.connections?.length ?? -1) >= expectedCount;
-  }, 3, { timeout: 10000 });
+    const serialized = (store.getState().circuit?.connections ?? []).map((entry) => {
+      const fromNodeId = typeof entry.from === 'string' ? entry.from : entry.from.nodeId;
+      const toNodeId = typeof entry.to === 'string' ? entry.to : entry.to.nodeId;
+      const fromPort =
+        typeof entry.from === 'string'
+          ? entry.fromPort ?? entry.fromPin ?? 'out'
+          : entry.from.portName ?? entry.from.port ?? 'out';
+      const toPort =
+        typeof entry.to === 'string'
+          ? entry.toPort ?? entry.toPin ?? 'in'
+          : entry.to.portName ?? entry.to.port ?? 'in';
+      return `${fromNodeId}.${fromPort}->${toNodeId}.${toPort}`;
+    });
+    return expected.every((entry) => serialized.includes(entry));
+  }, expectedConnections, { timeout: 10000 });
 
   await ensureSimPaused(page);
-  await assertLiveRowsPresent(page, [inputA, inputB], [outputNodeId]);
+  await assertControlsPresent(page, [inputA, inputB], outputNodeId);
 
   const scenarios = [
     { a: 0, b: 0, out: 0 },
@@ -87,7 +103,12 @@ await runIdeGate('IDE design palette build contract satisfied', async ({ page, b
 
 async function clickPort(page, nodeId, portName) {
   const selector = `[data-node-id="${nodeId}"] [data-port-id="${portName}"]`;
-  await page.locator(selector).first().click({ force: true });
+  await page
+    .locator(selector)
+    .first()
+    .evaluate((element) => {
+      element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    });
 }
 
 async function ensureSimPaused(page) {
@@ -98,36 +119,39 @@ async function ensureSimPaused(page) {
   await page.waitForSelector('[data-testid="ide-design-sim-run"]', { timeout: 5000 });
 }
 
-async function assertLiveRowsPresent(page, inputNodeIds, outputNodeIds) {
+async function assertControlsPresent(page, inputNodeIds, outputNodeId) {
   for (const nodeId of inputNodeIds) {
-    await page.waitForSelector(`[data-testid="ide-design-live-input-${nodeId}"]`, {
+    await page.waitForSelector(`[data-testid="ide-design-input-toggle-${nodeId}"]`, {
       timeout: 10000,
     });
   }
-  for (const nodeId of outputNodeIds) {
-    await page.waitForSelector(`[data-testid="ide-design-live-output-${nodeId}"]`, {
-      timeout: 10000,
-    });
-  }
+  await page.waitForSelector(`[data-testid="node-OUTPUT-${outputNodeId}"]`, {
+    timeout: 10000,
+  });
 }
 
 async function setInputBit(page, nodeId, value) {
   const target = String(value);
-  const inputCodeSelector = `[data-testid="ide-design-live-input-${nodeId}"] code`;
-  const current = await text(page.locator(inputCodeSelector));
-  assert(current === '0' || current === '1', `expected binary input value for ${nodeId}, got "${current}"`);
+  const toggleSelector = `[data-testid="ide-design-input-toggle-${nodeId}"]`;
+  const currentPressed = await page
+    .locator(toggleSelector)
+    .first()
+    .getAttribute('aria-pressed');
+  const current = currentPressed === 'true' ? '1' : currentPressed === 'false' ? '0' : null;
+  assert(current === '0' || current === '1', `expected binary input toggle state for ${nodeId}, got "${currentPressed}"`);
   if (current === target) return;
 
   const tickBefore = await readTick(page);
-  await page.locator(`[data-testid="ide-design-input-toggle-${nodeId}"]`).click();
+  await page.locator(toggleSelector).first().click();
 
   await page.waitForFunction(
     ({ selector, expected }) => {
       const element = document.querySelector(selector);
       if (!element) return false;
-      return (element.textContent || '').trim() === expected;
+      const pressed = element.getAttribute('aria-pressed');
+      return (pressed === 'true' ? '1' : pressed === 'false' ? '0' : '') === expected;
     },
-    { selector: inputCodeSelector, expected: target },
+    { selector: toggleSelector, expected: target },
     { timeout: UPDATE_TIMEOUT_MS },
   );
 
@@ -139,17 +163,17 @@ async function setInputBit(page, nodeId, value) {
 }
 
 async function assertOutputBit(page, nodeId, expected) {
-  const selector = `[data-testid="ide-design-live-output-${nodeId}"] code`;
+  const selector = `[data-testid="node-OUTPUT-${nodeId}"]`;
   await page.waitForFunction(
     ({ outputSelector, expectedValue }) => {
       const element = document.querySelector(outputSelector);
       if (!element) return false;
-      return (element.textContent || '').trim() === expectedValue;
+      return (element.getAttribute('data-sim-value') || '').trim() === expectedValue;
     },
     { outputSelector: selector, expectedValue: String(expected) },
     { timeout: UPDATE_TIMEOUT_MS },
   );
-  const actual = await text(page.locator(selector));
+  const actual = await page.locator(selector).first().getAttribute('data-sim-value');
   assert(actual === String(expected), `expected ${nodeId}=${expected}, got "${actual}"`);
 }
 
@@ -157,6 +181,35 @@ async function readTick(page) {
   const value = Number.parseInt(await text(page.locator('[data-testid="ide-design-sim-tick"]')), 10);
   assert(Number.isFinite(value), 'expected numeric sim tick');
   return value;
+}
+
+async function assertUniqueBoardAlias(page, alias, selector) {
+  const before = await readBoardAliasNodeCount(page, alias);
+  const button = page.locator(selector).first();
+  const disabledBefore = await button.isDisabled().catch(() => false);
+  if (!disabledBefore) {
+    await button.click();
+  }
+  const disabledAfter = await button.isDisabled().catch(() => false);
+  assert(disabledAfter, `${alias} palette entry should become disabled once placed`);
+  const after = await readBoardAliasNodeCount(page, alias);
+  const expected = disabledBefore ? before : before + 1;
+  assert(
+    after === expected,
+    `${alias} should be unique (expected ${expected} node(s), got ${after})`
+  );
+  assert(after >= 1, `${alias} should resolve to a visible node after placement`);
+  assert(after <= 1, `${alias} should never appear more than once (got ${after})`);
+}
+
+async function readBoardAliasNodeCount(page, alias) {
+  return page.evaluate((targetAlias) => {
+    const store = window.__RB_CIRCUIT_STORE__;
+    if (!store?.getState) return 0;
+    const normalized = String(targetAlias || '').trim().toUpperCase();
+    const nodes = store.getState().circuit?.nodes ?? [];
+    return nodes.filter((node) => String(node.label || '').trim().toUpperCase() === normalized).length;
+  }, alias);
 }
 
 async function text(locator) {

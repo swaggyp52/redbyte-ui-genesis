@@ -3,6 +3,8 @@
 import { assert, runIdeGate } from './_gateHarness.mjs';
 
 await runIdeGate('IDE design wire interaction contract satisfied', async ({ page, baseUrl }) => {
+  // Use a deterministic desktop viewport so wire hit targets remain in-frame.
+  await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto(`${baseUrl}/?mode=project`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
