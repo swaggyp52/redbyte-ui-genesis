@@ -1,5 +1,191 @@
 # AI State
 
+## Change Log 2026-02-27 (Designer UX Contract Sprint: Interaction Clarity + Palette Build Gate)
+
+**Status**: COMPLETE - Upgraded core Design interactions for selection clarity/predictable wire editing, hardened keyboard focus behavior to canvas-active workflows, and extended correctness coverage with full-adder plus palette-built XOR gate assertions.
+
+### What Changed
+- Interaction and rendering polish (no workflow contract changes):
+  - Updated `packages/rb-logic-view/src/LogicCanvas.tsx`:
+    - added selected-wire reconnect handles (`logic-wire-reconnect-from|to`) for predictable endpoint rewiring without store seeding shortcuts.
+    - rewiring now replaces the original connection atomically after a valid endpoint pick.
+    - added canvas-active undo/redo hooks (`onUndo`, `onRedo`) to keep keyboard edits inside focused canvas context.
+  - Updated `packages/rb-logic-view/src/components/WireView.tsx`:
+    - increased wire hit target bands for easier student wire selection.
+  - Updated `packages/rb-logic-view/src/components/NodeView.tsx`:
+    - added explicit per-node output-state indicators (`logic-node-output-indicator-*`) for immediate correctness cues.
+    - strengthened standard-port hover halos for clearer wiring affordances.
+    - replaced heavy `JSON.stringify` memo checks with shallow/state-aware comparators to reduce render pressure in larger designs.
+  - Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+    - removed duplicate global keyboard delete/wire listeners; keyboard edits now route through focused canvas host behavior.
+    - wired `handleUndo/handleRedo` into `LogicCanvas` keyboard callbacks.
+  - Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+    - added focused-canvas ring and stronger selected-wire/node visual reinforcement.
+
+- Correctness and student-flow gate expansion:
+  - Updated `scripts/gates/ide-design-correctness-contract.mjs`:
+    - added full-adder truth-table assertions (all 8 combinations) through student-visible live rows.
+  - Added `scripts/gates/ide-design-palette-build-contract.mjs`:
+    - builds XOR circuit from palette placement + real port wiring interactions,
+    - verifies combinational truth table without Run/Step requirements,
+    - asserts stable tick during input toggles.
+  - Updated runner wiring:
+    - `package.json`: added `ide:gate:design-palette-build-contract`.
+    - `scripts/classroom-gate.mjs`: added `ide:gate:design-palette-build-contract` step.
+
+### Validation Executed
+- `pnpm build` -> PASS
+- `pnpm -s ide:gate:design-correctness-contract` -> PASS
+- `pnpm -s ide:gate:design-palette-build-contract` -> PASS
+- `pnpm -s classroom:gate` -> PASS
+
+### Attribution
+- Connor Angiel
+
+## Change Log 2026-02-27 (Designer Stop-the-Line Recovery: Combinational Authority + Design Correctness Gate)
+
+**Status**: COMPLETE - Restored synchronous combinational input recompute semantics in IDE runtime, hardened wire interaction behavior via real UI flow, and added a new end-to-end design correctness contract gate plus XOR sim oracle coverage.
+
+### What Changed
+- Runtime sim authority and semantics:
+  - Updated `packages/rb-apps/src/apps/ide/projectRuntime.ts`:
+    - `sim.run/pause/step/reset/setInput/toggleInput` now stamps `sim.lastAction` (`run|pause|step|reset|input`).
+    - `setInput` and `toggleInput` now use synchronous recompute without tick advance (no implicit step on combinational input changes).
+  - Updated `packages/rb-apps/src/apps/ide/sim/simTypes.ts`:
+    - added `lastAction?: 'run' | 'pause' | 'step' | 'input' | 'reset'` to `RuntimeSimState`.
+  - Updated `packages/rb-apps/src/apps/ide/sim/simEngine.ts`:
+    - `resetSimulationState` now preserves prior `lastAction`.
+    - added `recomputeSimulationState(...)` for immediate input-driven recompute without advancing `tick`.
+- Design metadata parity + stop-the-line diagnostics:
+  - Added `packages/rb-apps/src/apps/ide/designChipMetadata.ts` as canonical Design metadata map and accessor (`getDesignChipMetadata`).
+  - Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+    - now sources `getChipMetadata` from shared `designChipMetadata`.
+    - added stop-the-line debug path:
+      - query toggle `?designDebug=1`
+      - runtime toggle `Shift+D`
+      - per-input triage logs for:
+        - A: UI live input value
+        - B: runtime sim input snapshot
+        - C: downstream runtime signal sample
+      - branch classification logs for UI→store, recompute, and render/subscription-path diagnostics.
+- Wire interaction hardening:
+  - Updated `packages/rb-logic-view/src/LogicCanvas.tsx`:
+    - added robust connection endpoint normalization helpers for mixed legacy/new connection shapes.
+    - delete flow now correctly handles string/object connection refs for node/wire delete.
+    - wire IDs now derived from normalized endpoints consistently.
+    - delete guard expanded to include contenteditable focus.
+  - Existing earlier wire-selection fixes in `useCanvasInput`/`NodeView` remain active.
+- New/updated gates and tests:
+  - Added `scripts/gates/ide-design-correctness-contract.mjs`:
+    - real Project→Design example flow (no store seeding),
+    - logic-gates XOR/AND/OR truth-table assertions through student-visible live rows,
+    - half-adder SUM/CARRY truth-table assertions through student-visible live rows,
+    - asserts combinational input toggles update within bounded time (`250ms`) and do not require Run/Step,
+    - asserts sim tick stability for combinational toggles.
+  - Hardened `scripts/gates/ide-design-wire-interaction-contract.mjs`:
+    - removed workspace store-reset seeding as primary setup,
+    - now uses real Project example load flow before wire selection/delete/undo assertions.
+  - Added pure oracle test:
+    - `packages/rb-logic-core/src/__tests__/xor-truth-oracle.test.ts`.
+  - Gate runner wiring:
+    - `package.json`: added `ide:gate:design-correctness-contract` (and retained wire interaction gate script entry).
+    - `scripts/classroom-gate.mjs`: added `ide:gate:design-correctness-contract` step.
+
+### Validation Executed
+- `pnpm build` -> PASS
+- `pnpm exec vitest run packages/rb-logic-core/src/__tests__/xor-truth-oracle.test.ts` -> PASS
+- `pnpm -s ide:gate:design-wire-interaction-contract` -> PASS
+- `pnpm -s ide:gate:design-correctness-contract` -> PASS
+- `pnpm -s classroom:gate` -> PASS
+- Pre-fix worktree known-bad proof attempt:
+  - attempted against `C:\Users\conno\redbyte-ui-prefix-20260227` (`bf69fe66`)
+  - blocked by snapshot environment dependency/build resolution issues (old worktree not fully buildable with current local module graph), so direct behavioral fail capture on that snapshot was not executable in this environment.
+
+### Attribution
+- Connor Angiel
+
+## Change Log 2026-02-26 (Designer Core Interaction Hardening: Port Metadata + Wire Selection Contract)
+
+**Status**: COMPLETE - Restored reliable multi-input gate wiring/render behavior in IDE Design and closed a wire-selection regression where wire clicks were treated as background marquee interactions.
+
+### What Changed
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - Design `LogicCanvas` now receives deterministic chip metadata for multi-input/multi-output logic nodes (AND/OR/XOR/XNOR/NAND/NOR/NOT/FullAdder), enabling correct port rendering and wiring targets in the IDE path.
+- Updated `packages/rb-logic-view/src/LogicCanvas.tsx`:
+  - added built-in port schema fallback map used when metadata is absent (including INPUT/OUTPUT/Switch/Lamp and common sequential/composite node types) to prevent generic `in/out` fallback from silently corrupting connection semantics.
+- Updated `packages/rb-logic-view/src/useCanvasInput.ts`:
+  - wire hits (`[data-wire-id]`) are now excluded from background pointer-down flow so wire clicks are not converted into pending box-select/clear-selection on pointer-up.
+- Updated `packages/rb-logic-view/src/components/NodeView.tsx`:
+  - custom-chip branch now preserves canonical node test IDs (`data-testid="node-<type>-<id>"`) for gate compatibility.
+  - memo signal-port comparison now derives relevant ports from chip metadata when present and falls back to expanded built-in schemas, reducing stale render risk on non-`in/out` ports.
+- Added/updated regression coverage:
+  - `packages/rb-logic-view/src/__tests__/canvas-input-controller.test.ts`:
+    - new wire-click guard test ensuring wire pointer events do not trigger background selection-clear path.
+    - pointer-event mock now includes `hasPointerCapture` for complete panning pointer-up behavior coverage.
+  - `scripts/gates/ide-design-wire-interaction-contract.mjs` (new):
+    - validates AND node exposes `a`/`b` ports in IDE Design.
+    - validates real wire click selects a wire.
+    - validates empty-canvas click clears wire selection.
+    - validates Delete removes selected wire and port-click reconnect restores it.
+    - validates undo returns previous wire count.
+- Gate runner wiring:
+  - `package.json`: added `ide:gate:design-wire-interaction-contract`.
+  - `scripts/classroom-gate.mjs`: added new design wire interaction gate step.
+
+### Validation Executed
+- `pnpm exec vitest run packages/rb-logic-view/src/__tests__/canvas-input-controller.test.ts` -> PASS (12/12)
+- `pnpm -s ide:gate:design-wire-interaction-contract` -> PASS
+- `pnpm -s ide:gate:design-build-contract` -> PASS
+- `pnpm -s ide:gate:design-live-sim-contract` -> PASS
+- `pnpm build` -> PASS
+- `pnpm -s classroom:gate` -> PASS
+
+### Attribution
+- Connor Angiel
+
+## Change Log 2026-02-26 (IDE Project Gutter Treatment: Background Unification + Edge Rails)
+
+**Status**: COMPLETE - Removed the "floating island in dark void" look in Project mode by unifying shell/background treatment around centered hide-right-dock content and adding subtle workspace edge rails.
+
+### What Changed
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - project-mode workbench shell now uses workspace background token (`--rb-elevation-workspace`) so outer gutter no longer reads as dead void,
+  - project hide-right-dock main region now uses a wider centered cap (`1600px` max) and subtle inset left/right edge rails to anchor content intentionally.
+- Kept existing fixed project dock width policy:
+  - left dock remains fixed at `320px`,
+  - no splitter controls reintroduced.
+
+### Validation Executed
+- `pnpm build` -> PASS
+- `pnpm -s classroom:gate` -> PASS
+
+### Attribution
+- Connor Angiel
+
+## Change Log 2026-02-26 (IDE Shell Fixed Dock + Right-Space Cleanup)
+
+**Status**: COMPLETE - Removed vertical dock splitters, locked dock widths by mode, and fixed project-mode hidden-right layout so shell dead space is not reserved.
+
+### What Changed
+- Updated `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`:
+  - removed left/right resize controls and vertical resize mechanics,
+  - kept bottom console resize handle,
+  - removed inline left/right CSS variable overrides so responsive CSS controls non-project dock widths.
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - base dock variables returned to `220px` (left) and `240px` (right),
+  - project shell now overrides dock vars to fixed `320px` width,
+  - workbench grid removed vertical splitter tracks (3-column fixed grid),
+  - `hide-right-dock` now uses a two-column grid plus centered max width (`1440px`) to prevent far-right dead shell space,
+  - docks now scroll internally via `overflow-y: auto`.
+
+### Validation Executed
+- `pnpm build` -> PASS
+- `pnpm -s ide:gate:export-e2e-contract` -> PASS
+- `pnpm -s classroom:gate` -> PASS
+
+### Attribution
+- Connor Angiel
+
 ## Change Log 2026-02-26 (PR22 IDE Export E2E Contract Gate)
 
 **Status**: COMPLETE - Added a gate-only export contract that proves Generated HDL preview parity with the downloaded Vivado Kit ZIP and validates XDC mapping coverage from project state.
