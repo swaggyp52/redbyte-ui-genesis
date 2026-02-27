@@ -488,7 +488,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [paletteQuery]);
   const boardIoRowByAlias = useMemo(() => {
     const index = new Map<string, { nodeId: string }>();
+    const nodeIds = new Set(
+      (editorCircuit.nodes ?? [])
+        .map((node) => normalizeAlias(node.id))
+        .filter((value) => value.length > 0)
+    );
     for (const row of ioRows) {
+      const rowNodeId = normalizeAlias(row.nodeId);
+      if (rowNodeId.length === 0 || !nodeIds.has(rowNodeId)) continue;
       const direction = row.direction === 'in' ? 'in' : 'out';
       const candidates = [row.pin, row.label, row.id]
         .map((value) => normalizeAlias(value))
@@ -498,7 +505,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
     }
     return index;
-  }, [ioRows]);
+  }, [editorCircuit.nodes, ioRows]);
   const isBoardAliasPlaced = useCallback(
     (entry: BoardIoPaletteItem) =>
       boardIoRowByAlias.has(`${entry.direction}:${normalizeAlias(entry.alias)}`),

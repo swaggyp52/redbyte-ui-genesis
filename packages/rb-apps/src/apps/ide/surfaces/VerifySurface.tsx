@@ -1361,7 +1361,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
         {status === 'idle' && runState !== 'complete' ? (
           <div className="ide-empty-stack" data-testid="ide-verify-empty-state">
-            <div className="ide-empty-illustration ide-empty-illustration-verify" aria-hidden="true" />
+            <div className="ide-verify-empty-message" data-testid="ide-verify-empty-message">
+              <span className="ide-verify-empty-label">No verification run yet</span>
+              <span className="ide-verify-empty-hint">Add test vectors in the panel on the right, then click Run.</span>
+            </div>
             {authoredVectors.length === 0 ? (
               <IdeCallout tone="info" title="No vectors yet">
                 <p className="ide-copy">Generate a basic set to get started, then click Run.</p>

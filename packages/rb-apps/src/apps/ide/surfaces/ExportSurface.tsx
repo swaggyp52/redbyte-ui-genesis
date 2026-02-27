@@ -1303,7 +1303,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     {gateRows.find((g) => g.tone === 'error' || g.tone === 'warn')?.label ?? 'blockers'} must pass
                   </span>
                 )}
-                {rebuildSteps.some((s) => s.state !== 'idle') && (
+                <details className="ide-export-pipeline-details" data-testid="ide-export-pipeline-details" style={{ marginTop: 'var(--ide-space-1)' }}>
+                  <summary>Build pipeline</summary>
                   <ol className="ide-export-buildSteps" data-testid="ide-export-rebuild-steps">
                     {rebuildSteps.map((s) => (
                       <li
@@ -1323,7 +1324,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       </li>
                     ))}
                   </ol>
-                )}
+                </details>
               </SurfacePanel>
 
               <SurfacePanel className="ide-export-determinismChecks" testId="ide-export-determinism-checks">
@@ -1367,10 +1368,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 })}
               </SurfacePanel>
 
-              <details style={{ marginTop: 'var(--ide-space-2)' }} data-testid="ide-export-capsule-slab">
-                <summary style={{ cursor: 'pointer', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', userSelect: 'none' }}>
-                  Advanced
-                </summary>
+              <details className="ide-export-evidence-details" data-testid="ide-export-evidence-details" style={{ marginTop: 'var(--ide-space-2)' }}>
+                <summary>Determinism evidence</summary>
                 <div className="ide-export-capsuleSlab" style={{ marginTop: 'var(--ide-space-1)' }}>
                   <div
                     className={`ide-export-capsuleTop ide-export-capsuleState--${capsuleSealState}`}

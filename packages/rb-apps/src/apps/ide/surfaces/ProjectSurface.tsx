@@ -439,14 +439,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       hideRightDock
       dock={
         <section className="ide-workbench-placeholder" data-testid="ide-project-start-dock">
-          <header className="ide-workbench-placeholder-header">
-            <h3>Start Here</h3>
-            <IdeStatusPill tone={activeExampleId ? 'ok' : 'idle'}>
-              {activeExampleId ? 'EXAMPLE' : 'CUSTOM'}
-            </IdeStatusPill>
-          </header>
+          {/* Quick surface navigation */}
+          <div className="ide-project-dock-nav" data-testid="ide-project-dock-nav">
+            <IdeButton tone="ghost" onClick={onOpenDesign} testId="ide-project-dock-nav-design">Design</IdeButton>
+            <IdeButton tone="ghost" onClick={onOpenVerify} testId="ide-project-dock-nav-verify">Verify</IdeButton>
+            <IdeButton tone="ghost" onClick={onOpenExport} testId="ide-project-dock-nav-export">Export</IdeButton>
+            <IdeButton tone="ghost" onClick={onOpenHardware} testId="ide-project-dock-nav-hardware">Hardware</IdeButton>
+          </div>
 
-          {/* Readiness checklist — hero of left dock */}
+          {/* Readiness status — gate contract preserved */}
           <div data-testid="ide-project-panel-readiness">
             <IdeDataTable
               columns={['Check', 'State', 'Action']}
@@ -455,34 +456,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             />
           </div>
 
-          {/* Examples compact list — full cards are in the main workspace */}
-          {examples.length > 0 && (
-            <div className="ide-surface-block-stack">
-              <p className="ide-surface-block-label">
-                Examples
-              </p>
-              <div className="ide-signal-list" data-testid="ide-project-example-groups">
-                {examples.map((example) => (
-                  <button
-                    key={example.id}
-                    type="button"
-                    className={`ide-signal-row ${activeExampleId === example.id ? 'is-active' : ''}`}
-                    onClick={() => onOpenExample(example.id)}
-                    data-testid={`ide-project-open-example-${example.id}`}
-                  >
-                    <span>{example.name}</span>
-                    <span
-                      className="ide-project-example-meta"
-                      data-testid={`ide-project-example-meta-${example.id}`}
-                    >
-                      {example.concept}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
+          {/* Primary action — gate contract preserved */}
           <div className="ide-inline-actions">
             {unmappedRequiredCount > 0 ? (
               <span data-testid="ide-project-auto-suggest">
@@ -508,9 +482,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             <span style={{ display: 'none' }} data-testid="ide-project-continue-target">
               {unmappedRequiredCount > 0 ? 'Design' : 'Verify'}
             </span>
-            <IdeButton tone="secondary" onClick={onOpenImport}>
-              Import HDL/XDC
-            </IdeButton>
           </div>
 
           {/* Student identity + submission export */}
@@ -627,42 +598,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         description="Map circuit ports to Basys3 pins to enable export."
         testId="ide-project-panel"
       >
-        <section className="ide-export-section" data-testid="ide-project-panel-identity">
-          <div className="ide-kv-list">
-            <div className="ide-kv-row">
-              <span>Determinism hash</span>
-              <code data-testid="ide-project-hash-short">{determinismHash.slice(0, 12)}</code>
-            </div>
-            <div className="ide-kv-row">
-              <span>Last verify</span>
-              <span data-testid="ide-project-last-verify-status">
-                {(health.lastVerify?.status ?? 'none').toUpperCase()}
-              </span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Verify hash</span>
-              <code data-testid="ide-project-last-verify-hash">
-                {health.lastVerify?.hash?.slice(0, 12) ?? '—'}
-              </code>
-            </div>
-            <div className="ide-kv-row">
-              <span>Dirty since verify</span>
-              <span data-testid="ide-project-dirty-since-verify">
-                {health.dirtySinceVerify ? 'DIRTY' : 'CLEAN'}
-              </span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Dirty since export</span>
-              <span data-testid="ide-project-dirty-since-export">
-                {health.dirtySinceExport ? 'DIRTY' : 'CLEAN'}
-              </span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Unmapped required</span>
-              <span data-testid="ide-project-unmapped-count">{unmappedRequiredCount} unmapped</span>
-            </div>
-          </div>
-        </section>
+        <div className="ide-project-identity-strip" data-testid="ide-project-identity-strip">
+          <span className="ide-project-identity-name">{projectName}</span>
+          {studentName && (
+            <span className="ide-project-identity-student">{studentName}</span>
+          )}
+          <IdeStatusPill tone={verifyPass ? 'ok' : 'idle'}>
+            {verifyPass ? 'VERIFIED' : 'UNVERIFIED'}
+          </IdeStatusPill>
+        </div>
         {/* ── Hero Onboarding Panel ── */}
         <SurfacePanel className="ide-project-hero" testId="ide-project-hero">
           <p className="ide-project-hero-status" data-testid="ide-project-hero-status">
@@ -675,7 +619,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               className={`ide-launchpad-card ${designCardDone ? 'ide-launchpad-card--done' : 'ide-launchpad-card--active'}`}
               data-testid="ide-launchpad-design"
             >
-              <span className="ide-launchpad-card__label" aria-hidden="true">{designCardDone ? '✓' : '1'}</span>
+              <span className="ide-launchpad-card__label" aria-hidden="true">{designCardDone ? <code>DONE</code> : <code>STEP 1</code>}</span>
               <span className="ide-launchpad-card__title">Design</span>
               <span className="ide-launchpad-card__sub">Build your circuit</span>
               <span className="ide-launchpad-card__badge">{designPinStatus}</span>
@@ -695,7 +639,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               className={`ide-launchpad-card ${verifyCardDone ? 'ide-launchpad-card--done' : verifyCardLocked ? 'ide-launchpad-card--locked' : 'ide-launchpad-card--active'}`}
               data-testid="ide-launchpad-verify"
             >
-              <span className="ide-launchpad-card__label" aria-hidden="true">{verifyCardDone ? '✓' : '2'}</span>
+              <span className="ide-launchpad-card__label" aria-hidden="true">{verifyCardDone ? <code>DONE</code> : <code>STEP 2</code>}</span>
               <span className="ide-launchpad-card__title">Verify</span>
               <span className="ide-launchpad-card__sub">Run test vectors</span>
               {!verifyCardLocked && (
@@ -716,7 +660,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               className={`ide-launchpad-card ${hardwareCardDone ? 'ide-launchpad-card--done' : hardwareCardLocked ? 'ide-launchpad-card--locked' : 'ide-launchpad-card--active'}`}
               data-testid="ide-launchpad-hardware"
             >
-              <span className="ide-launchpad-card__label" aria-hidden="true">{hardwareCardDone ? '✓' : '3'}</span>
+              <span className="ide-launchpad-card__label" aria-hidden="true">{hardwareCardDone ? <code>DONE</code> : <code>STEP 3</code>}</span>
               <span className="ide-launchpad-card__title">Hardware</span>
               <span className="ide-launchpad-card__sub">Flash the board</span>
               {!hardwareCardLocked && (
@@ -742,62 +686,109 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 
         {/* ── Quick-start example cards ── */}
         {examples.length > 0 && (
-          <SurfacePanel className="ide-project-quickstart" testId="ide-project-quickstart">
-            <p className="ide-project-quickstart-title">
-              {readiness.hasCircuit ? 'Explore Examples' : 'Launch an Example'}
-            </p>
-            <p className="ide-project-quickstart-sub">
-              {readiness.hasCircuit
-                ? 'Load a showcase kit to explore circuit concepts end-to-end.'
-                : 'Load a pre-built example to see the full workflow from Design → Verify → Export.'}
-            </p>
-            <div className="ide-project-example-card-row">
-              {examples.slice(0, 3).map((ex) => (
-                <div
-                  key={ex.id}
-                  className={`ide-project-example-btn ${activeExampleId === ex.id ? 'is-active' : ''}`}
-                  data-testid={`ide-project-example-${ex.id}`}
-                  data-example-id={ex.id}
-                >
-                  <span data-testid="ide-project-example-card" data-example-id={ex.id} />
-                  <span className="ide-project-example-btn-name">{ex.name}</span>
-                  <span className="ide-project-example-btn-concept">{ex.concept}</span>
-                  {ex.expectedBehavior && (
-                    <>
-                      <span className="ide-project-example-btn-learn-label">You'll learn</span>
-                      <span className="ide-project-example-btn-summary">{ex.expectedBehavior}</span>
-                    </>
-                  )}
+          <details
+            className="ide-project-examples-disclosure"
+            open={!readiness.hasCircuit}
+            data-testid="ide-project-examples-disclosure"
+          >
+            <summary className="ide-project-examples-disclosure-summary">
+              {readiness.hasCircuit ? 'Explore examples' : 'Start with an example'}
+            </summary>
+            <SurfacePanel className="ide-project-quickstart" testId="ide-project-quickstart">
+              <p className="ide-project-quickstart-title">
+                {readiness.hasCircuit ? 'Explore Examples' : 'Launch an Example'}
+              </p>
+              <p className="ide-project-quickstart-sub">
+                {readiness.hasCircuit
+                  ? 'Load a showcase kit to explore circuit concepts end-to-end.'
+                  : 'Load a pre-built example to see the full workflow from Design → Verify → Export.'}
+              </p>
+              <div className="ide-project-example-card-row">
+                {examples.slice(0, 3).map((ex) => (
                   <div
-                    className="ide-project-example-btn-actions"
-                    data-testid="ide-project-example-load"
+                    key={ex.id}
+                    className={`ide-project-example-btn ${activeExampleId === ex.id ? 'is-active' : ''}`}
+                    data-testid={`ide-project-example-${ex.id}`}
                     data-example-id={ex.id}
                   >
-                    <button
-                      type="button"
-                      className="ide-button ide-button-primary"
-                      style={{ fontSize: 11, padding: '4px 12px', minHeight: 26 }}
-                      onClick={() => { onOpenExample(ex.id); onOpenDesign(); }}
-                      data-testid={`ide-project-load-start-${ex.id}`}
+                    <span data-testid="ide-project-example-card" data-example-id={ex.id} />
+                    <span className="ide-project-example-btn-name">{ex.name}</span>
+                    <span className="ide-project-example-btn-concept">{ex.concept}</span>
+                    {ex.expectedBehavior && (
+                      <>
+                        <span className="ide-project-example-btn-learn-label">You'll learn</span>
+                        <span className="ide-project-example-btn-summary">{ex.expectedBehavior}</span>
+                      </>
+                    )}
+                    <div
+                      className="ide-project-example-btn-actions"
+                      data-testid="ide-project-example-load"
+                      data-example-id={ex.id}
                     >
-                      Load &amp; Design →
-                    </button>
+                      <button
+                        type="button"
+                        className="ide-button ide-button-primary"
+                        style={{ fontSize: 11, padding: '4px 12px', minHeight: 26 }}
+                        onClick={() => { onOpenExample(ex.id); onOpenDesign(); }}
+                        data-testid={`ide-project-load-start-${ex.id}`}
+                      >
+                        Load &amp; Design →
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-            <p className="ide-copy" style={{ margin: 0, fontSize: 11 }}>
-              Or{' '}
-              <button type="button" className="ide-project-quickstart-import-link" onClick={onOpenImport}>
-                import HDL / Vivado ZIP
-              </button>{' '}
-              from an existing project.
-            </p>
-          </SurfacePanel>
+                ))}
+              </div>
+              <p className="ide-copy" style={{ margin: 0, fontSize: 11 }}>
+                Or{' '}
+                <button type="button" className="ide-project-quickstart-import-link" onClick={onOpenImport}>
+                  import HDL / Vivado ZIP
+                </button>{' '}
+                from an existing project.
+              </p>
+            </SurfacePanel>
+          </details>
         )}
 
         {/* ── Mapping section — collapsed by default ── */}
         <section className="ide-export-section" data-testid="ide-project-panel-mapping">
+          {/* Identity details — KV rows moved here; test IDs preserved */}
+          <details className="ide-project-identity-details" data-testid="ide-project-panel-identity">
+            <summary>Project details</summary>
+            <div className="ide-kv-list" style={{ marginTop: 'var(--rb-space-2)' }}>
+              <div className="ide-kv-row">
+                <span>Determinism hash</span>
+                <code data-testid="ide-project-hash-short">{determinismHash.slice(0, 12)}</code>
+              </div>
+              <div className="ide-kv-row">
+                <span>Last verify</span>
+                <span data-testid="ide-project-last-verify-status">
+                  {(health.lastVerify?.status ?? 'none').toUpperCase()}
+                </span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Verify hash</span>
+                <code data-testid="ide-project-last-verify-hash">
+                  {health.lastVerify?.hash?.slice(0, 12) ?? '—'}
+                </code>
+              </div>
+              <div className="ide-kv-row">
+                <span>Dirty since verify</span>
+                <span data-testid="ide-project-dirty-since-verify">
+                  {health.dirtySinceVerify ? 'DIRTY' : 'CLEAN'}
+                </span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Dirty since export</span>
+                <span data-testid="ide-project-dirty-since-export">
+                  {health.dirtySinceExport ? 'DIRTY' : 'CLEAN'}
+                </span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Unmapped required</span>
+                <span data-testid="ide-project-unmapped-count">{unmappedRequiredCount} unmapped</span>
+              </div>
+            </div>
+          </details>
           <div
             className={`ide-project-mapping-summary${unmappedRequiredCount > 0 ? ' has-error' : ''}`}
             data-testid="ide-project-mapping-summary-strip"

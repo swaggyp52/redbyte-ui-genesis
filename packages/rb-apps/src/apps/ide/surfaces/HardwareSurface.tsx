@@ -296,8 +296,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     <SurfacePanel className="ide-workbench-placeholder" testId="ide-hw-live-dock">
       <header className="ide-workbench-placeholder-header">
         <h3>Live Monitor</h3>
-        <IdeStatusPill tone={sim.running ? 'ok' : 'idle'}>
-          {sim.running ? 'RUNNING' : 'STOPPED'}
+        <IdeStatusPill tone={sim.running ? 'ok' : 'warn'}>
+          {sim.running ? 'Board ready' : 'No board detected'}
         </IdeStatusPill>
       </header>
       <div className="ide-kv-list">
@@ -627,15 +627,14 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         {/* ── Mode toggle bar ── */}
         <div className="ide-hw-mode-toggle" data-testid="ide-hw-mode-toggle">
           {(['live', 'bringup', 'proof'] as const).map((m) => (
-            <button
+            <IdeButton
               key={m}
-              type="button"
-              className={`ide-hw-mode-btn ${hwMode === m ? 'is-active' : ''}`}
+              tone={hwMode === m ? 'primary' : 'ghost'}
               onClick={() => setHwMode(m)}
-              data-testid={`ide-hw-mode-btn-${m}`}
+              testId={`ide-hw-mode-btn-${m}`}
             >
               {m === 'live' ? 'Live Monitor' : m === 'bringup' ? 'Bring-Up' : 'Proof'}
-            </button>
+            </IdeButton>
           ))}
           {sim.tick > 0 && (
             <span className="ide-hw-tick-badge" data-testid="ide-hw-tick-badge">

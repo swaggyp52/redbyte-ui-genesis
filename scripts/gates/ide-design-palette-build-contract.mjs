@@ -99,6 +99,12 @@ await runIdeGate('IDE design palette build contract satisfied', async ({ page, b
     await setInputBit(page, inputB, scenario.b);
     await assertOutputBit(page, outputNodeId, scenario.out);
   }
+
+  await assertBoardAliasCanDeleteAndReadd(
+    page,
+    'SW0',
+    '[data-testid="ide-design-board-input-sw0"]'
+  );
 });
 
 async function clickPort(page, nodeId, portName) {
@@ -202,6 +208,62 @@ async function assertUniqueBoardAlias(page, alias, selector) {
   assert(after <= 1, `${alias} should never appear more than once (got ${after})`);
 }
 
+async function assertBoardAliasCanDeleteAndReadd(page, alias, selector) {
+  const button = page.locator(selector).first();
+  const aliasNodeId = await readBoardAliasNodeId(page, alias);
+  assert(aliasNodeId, `${alias} should resolve to a node before delete/re-add check`);
+
+  await page.locator(`[data-node-id="${aliasNodeId}"] .logic-node-body`).first().click({ force: true });
+  await page.waitForFunction(
+    (nodeId) => {
+      const store = window.__RB_LOGIC_VIEW_STORE__;
+      if (!store?.getState) return false;
+      const selected = store.getState().selection?.nodes;
+      return selected instanceof Set ? selected.has(nodeId) : false;
+    },
+    aliasNodeId,
+    { timeout: 1000 }
+  );
+  await page.waitForSelector('[data-testid="ide-design-tool-delete"]:not([disabled])', {
+    timeout: 1000,
+  });
+  await page.locator('[data-testid="ide-design-tool-delete"]').first().click();
+
+  await page.waitForFunction(
+    (targetAlias) => {
+      const store = window.__RB_CIRCUIT_STORE__;
+      if (!store?.getState) return false;
+      const normalized = String(targetAlias || '').trim().toUpperCase();
+      const nodes = store.getState().circuit?.nodes ?? [];
+      const count = nodes.filter((node) => String(node.label || '').trim().toUpperCase() === normalized).length;
+      return count === 0;
+    },
+    alias,
+    { timeout: 1000 }
+  );
+
+  const enabledAfterDelete = !(await button.isDisabled().catch(() => true));
+  assert(enabledAfterDelete, `${alias} palette entry should re-enable after deleting its node`);
+
+  await button.click();
+
+  await page.waitForFunction(
+    (targetAlias) => {
+      const store = window.__RB_CIRCUIT_STORE__;
+      if (!store?.getState) return false;
+      const normalized = String(targetAlias || '').trim().toUpperCase();
+      const nodes = store.getState().circuit?.nodes ?? [];
+      const count = nodes.filter((node) => String(node.label || '').trim().toUpperCase() === normalized).length;
+      return count === 1;
+    },
+    alias,
+    { timeout: 1000 }
+  );
+
+  const disabledAfterReadd = await button.isDisabled().catch(() => false);
+  assert(disabledAfterReadd, `${alias} palette entry should disable again after re-placement`);
+}
+
 async function readBoardAliasNodeCount(page, alias) {
   return page.evaluate((targetAlias) => {
     const store = window.__RB_CIRCUIT_STORE__;
@@ -209,6 +271,17 @@ async function readBoardAliasNodeCount(page, alias) {
     const normalized = String(targetAlias || '').trim().toUpperCase();
     const nodes = store.getState().circuit?.nodes ?? [];
     return nodes.filter((node) => String(node.label || '').trim().toUpperCase() === normalized).length;
+  }, alias);
+}
+
+async function readBoardAliasNodeId(page, alias) {
+  return page.evaluate((targetAlias) => {
+    const store = window.__RB_CIRCUIT_STORE__;
+    if (!store?.getState) return null;
+    const normalized = String(targetAlias || '').trim().toUpperCase();
+    const nodes = store.getState().circuit?.nodes ?? [];
+    const hit = nodes.find((node) => String(node.label || '').trim().toUpperCase() === normalized);
+    return hit?.id ?? null;
   }, alias);
 }
 

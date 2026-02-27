@@ -247,7 +247,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
         onClick={() => setFocusMode((previous) => !previous)}
         aria-label={focusMode ? 'Exit focus mode' : 'Enter focus mode'}
       >
-        {focusMode ? '\u229e Restore' : '\u22a1 Focus'}
+        {focusMode ? 'Done' : 'Focus'}
       </button>
     </section>
   );

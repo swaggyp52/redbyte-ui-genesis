@@ -9777,3 +9777,375 @@ details[open] summary .details-arrow {
   color: rgba(174, 196, 220, 0.7);
   background: rgba(15, 26, 40, 0.75);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHASE SRF-REFORM — Serious Lab Tool for Students
+   Single new phase block. All rules appended here win by cascade position.
+   Steps 0–9 in order. Signal-feedback animations are preserved.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Step 0: Global Frame Contract ─────────────────────────────────────── */
+
+.ide-surface-content-frame {
+  padding: var(--rb-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--rb-space-3);
+}
+
+/* Panel primitive enforcement — uniform border + background */
+.ide-panel,
+.ide-card {
+  border: 1px solid rgba(41, 68, 94, 0.55);
+  border-radius: var(--ide-radius-s);
+  background: var(--rb-panel-bg);
+  padding: var(--rb-space-4);
+}
+
+/* Override ide-export-section hard-coded bg/border */
+.ide-export-section {
+  border-color: rgba(41, 68, 94, 0.55);
+  background: var(--rb-panel-bg);
+}
+
+/* Section header primitive */
+.ide-panel h3,
+.ide-card h3,
+.ide-inspector-section-title {
+  font-size: var(--rb-font-size-2);
+  font-weight: var(--rb-font-weight-semibold);
+  color: var(--rb-text-1);
+  margin: 0 0 var(--rb-space-2);
+}
+
+/* Section separator — use token instead of hard-coded value */
+.ide-section-flat + .ide-section-flat {
+  border-top-color: var(--ide-border);
+}
+
+/* Dock width clamping */
+.ide-workbench-dock-left  { min-width: 180px; max-width: 420px; }
+.ide-workbench-dock-right { min-width: 240px; max-width: 480px; }
+
+/* ── Step 1: Project Surface — Zone hierarchy ───────────────────────────── */
+
+/* Identity strip */
+.ide-project-identity-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--rb-space-3);
+  padding: var(--rb-space-2) 0 var(--rb-space-3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: var(--rb-space-3);
+}
+.ide-project-identity-name {
+  font-size: var(--rb-font-size-3);
+  font-weight: var(--rb-font-weight-semibold);
+  color: var(--rb-text-1);
+}
+.ide-project-identity-student {
+  font-size: var(--rb-font-size-2);
+  color: var(--rb-text-2);
+  font-family: var(--rb-font-mono);
+}
+
+/* Launchpad card visual hardening */
+.ide-launchpad-card--active {
+  animation: none;
+  border-left: 3px solid var(--rb-accent);
+  box-shadow: var(--rb-shadow-panel);
+}
+.ide-launchpad-card--done {
+  opacity: 0.80;
+  border-left: 3px solid rgba(46, 196, 182, 0.3);
+}
+.ide-launchpad-card--locked {
+  opacity: 0.32;
+  pointer-events: none;
+}
+.ide-launchpad-card__title {
+  font-weight: var(--rb-font-weight-semibold);
+  font-size: var(--rb-font-size-3);
+}
+.ide-launchpad-card {
+  padding: var(--rb-space-5) var(--rb-space-4);
+}
+
+/* Examples disclosure */
+.ide-project-examples-disclosure {
+  margin: var(--rb-space-3) 0;
+}
+.ide-project-examples-disclosure-summary {
+  cursor: pointer;
+  font-size: var(--rb-font-size-2);
+  font-weight: var(--rb-font-weight-medium);
+  color: var(--rb-text-2);
+  padding: var(--rb-space-2) 0;
+  list-style: none;
+}
+.ide-project-examples-disclosure-summary::before {
+  content: '▶ ';
+  font-size: 9px;
+  color: var(--rb-text-3);
+}
+details[open].ide-project-examples-disclosure > .ide-project-examples-disclosure-summary::before {
+  content: '▼ ';
+}
+
+/* Identity details (KV rows) inside mapping section */
+.ide-project-identity-details {
+  margin: var(--rb-space-2) 0;
+}
+.ide-project-identity-details > summary {
+  cursor: pointer;
+  font-size: var(--rb-font-size-1);
+  color: var(--rb-text-3);
+  padding: var(--rb-space-1) 0;
+  list-style: none;
+}
+.ide-project-identity-details > summary::before { content: '▶ '; font-size: 9px; }
+details[open].ide-project-identity-details > summary::before { content: '▼ '; }
+
+/* ── Step 2: Chrome system — left rail, pipeline strip, console ──────────── */
+
+/* Active rail button: solid left accent */
+.ide-mode-button.is-active {
+  background: rgba(46, 196, 182, 0.08);
+  border-left: 2px solid var(--rb-accent);
+  color: var(--rb-text-1);
+  font-weight: var(--rb-font-weight-semibold);
+}
+.ide-mode-button:not(.is-active) {
+  border-left: 2px solid transparent;
+}
+
+/* Step numbers: monospace, muted */
+.ide-step-num {
+  font-family: var(--rb-font-mono);
+  font-size: 10px;
+  color: var(--rb-text-3);
+  min-width: 18px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Label: consistent weight + size */
+.ide-mode-label {
+  font-size: var(--rb-font-size-2);
+  font-weight: var(--rb-font-weight-medium);
+}
+
+/* Rail width transition — no jitter */
+.ide-left-rail {
+  transition: width 150ms ease;
+}
+
+/* Pipeline stage pills: minimum tap target */
+.ide-pipeline-stage {
+  min-width: 32px;
+  min-height: 32px;
+}
+.ide-pipeline-stage--active {
+  background: rgba(46, 196, 182, 0.12);
+}
+.ide-pipeline-stage--pass {
+  background: rgba(36, 211, 145, 0.08);
+}
+.ide-pipeline-stage--blocked {
+  background: rgba(248, 113, 113, 0.08);
+}
+.ide-pipeline-stage--pending {
+  opacity: 0.4;
+}
+
+/* Console divider grab handle */
+.ide-workbench-divider-horizontal {
+  background: rgba(255, 255, 255, 0.03);
+}
+.ide-workbench-divider-horizontal:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Step 3: Motion — remove passive infinite animations ─────────────────── */
+
+/* Launchpad active card was using lp-pulse 2.4s infinite */
+.ide-launchpad-card--active {
+  animation: none;
+}
+
+/* Primary CTA glow pulse — removed (gamification) */
+.ide-button-primary.is-pulsing {
+  animation: none;
+}
+
+/* ── Step 4: Export — pipeline + evidence <details> summaries ─────────────── */
+
+details.ide-export-pipeline-details > summary,
+details.ide-export-evidence-details > summary {
+  cursor: pointer;
+  font-size: var(--rb-font-size-1);
+  color: var(--rb-text-3);
+  padding: var(--rb-space-2) 0;
+  list-style: none;
+  font-weight: var(--rb-font-weight-medium);
+}
+details.ide-export-pipeline-details > summary::before {
+  content: '▶  ';
+  font-size: 9px;
+}
+details[open].ide-export-pipeline-details > summary::before,
+details[open].ide-export-evidence-details > summary::before {
+  content: '▼  ';
+}
+
+/* ── Step 5: Hardware Surface ──────────────────────────────────────────────── */
+
+.ide-hw-board-wrap {
+  background: var(--rb-elevation-workspace);
+}
+.rb-board-led--on {
+  filter: brightness(1.8) drop-shadow(0 0 4px currentColor);
+}
+.rb-board-led--off {
+  opacity: 0.22;
+  filter: none;
+}
+.rb-board-switch {
+  cursor: pointer;
+}
+.rb-board-switch:hover {
+  filter: brightness(1.3);
+}
+.ide-hw-mode-btn {
+  min-height: 28px;
+  font-size: var(--rb-font-size-2);
+  font-weight: var(--rb-font-weight-medium);
+}
+.ide-hw-mode-btn.is-active {
+  background: rgba(46, 196, 182, 0.14);
+  border-color: rgba(46, 196, 182, 0.5);
+  color: var(--rb-text-1);
+}
+
+/* ── Step 6: Palette chips — placed state ──────────────────────────────────── */
+
+.ide-palette-chip.is-placed {
+  opacity: 0.38;
+  cursor: not-allowed;
+  text-decoration: none;
+  position: relative;
+}
+/* PLACED badge: small chip in the corner, not strikethrough */
+.ide-palette-chip.is-placed::after {
+  content: 'PLACED';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 8px;
+  font-family: var(--rb-font-mono);
+  font-weight: var(--rb-font-weight-semibold);
+  letter-spacing: 0.03em;
+  color: var(--rb-text-3);
+  background: rgba(41, 68, 94, 0.55);
+  border-radius: 3px;
+  padding: 1px 3px;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+/* ── Step 7: Verify Surface — empty state ─────────────────────────────────── */
+
+.ide-empty-illustration {
+  border: none;
+  background: transparent;
+}
+.ide-verify-empty-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--rb-space-2);
+  padding: var(--rb-space-6) var(--rb-space-4);
+  text-align: center;
+}
+.ide-verify-empty-label {
+  font-size: var(--rb-font-size-3);
+  font-weight: var(--rb-font-weight-medium);
+  color: var(--rb-text-2);
+}
+.ide-verify-empty-hint {
+  font-size: var(--rb-font-size-2);
+  color: var(--rb-text-3);
+  max-width: 360px;
+  line-height: 1.5;
+}
+.ide-verify-waveform-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--rb-space-2);
+  flex: 1 1 auto;
+  padding: var(--rb-space-6);
+  color: var(--rb-text-3);
+  font-size: var(--rb-font-size-2);
+}
+
+/* ── Step 8: Design Surface — panel unification + palette ─────────────────── */
+
+.ide-design-input-panel,
+.ide-design-palette {
+  background: var(--rb-elevation-dock);
+  border: 1px solid rgba(41, 68, 94, 0.55);
+  border-radius: var(--rb-radius-1);
+}
+.ide-palette-group h4 {
+  font-size: var(--rb-font-size-1);
+  font-weight: var(--rb-font-weight-semibold);
+  color: var(--rb-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: var(--rb-space-3) 0 var(--rb-space-1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: var(--rb-space-1);
+}
+.ide-palette-group {
+  margin-bottom: var(--rb-space-2);
+}
+.ide-design-palette .ide-palette-groups {
+  max-height: none;
+  overflow: visible;
+}
+
+/* ── Step 9: Global typography pass ───────────────────────────────────────── */
+
+.ide-panel h3,
+.ide-card h3,
+.ide-inspector-section-title,
+.ide-export-section-header h3 {
+  font-weight: var(--rb-font-weight-semibold);
+  font-size: var(--rb-font-size-2);
+}
+.ide-launchpad-card__badge,
+.ide-project-hero-status,
+.ide-project-example-btn-concept {
+  font-weight: var(--rb-font-weight-medium);
+  font-size: var(--rb-font-size-1);
+  color: var(--rb-text-3);
+}
+.ide-project-example-btn-learn-label,
+.ide-project-example-btn-summary {
+  font-size: var(--rb-font-size-1);
+}
+.ide-launchpad-card__title {
+  font-weight: var(--rb-font-weight-semibold);
+}
+
+/* Project dock: quick surface navigation grid */
+.ide-project-dock-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 8px 8px 0;
+}
+
+/* ═══ END PHASE SRF-REFORM ══════════════════════════════════════════════════ */
