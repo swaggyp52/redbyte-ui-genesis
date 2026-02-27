@@ -25,6 +25,7 @@ export interface VerifyReport {
   rows: VerifyReportRow[];
   vectors: VerifyReportVector[];
   inputsAtTick: Record<number, Record<string, 0 | 1>>;
+  signalRoles: Record<string, 'clock' | 'reset' | 'input' | 'output'>;
   generatedAtIso: string;
   reportHash: string;
 }
@@ -65,6 +66,7 @@ interface BuildVerifyReportInput {
   }>;
   vectors: VerifyReportVector[];
   generatedAtIso: string;
+  signalRoles?: Record<string, 'clock' | 'reset' | 'input' | 'output'>;
 }
 
 export function buildVerifyReport(input: BuildVerifyReportInput): VerifyReport {
@@ -102,6 +104,7 @@ export function buildVerifyReport(input: BuildVerifyReportInput): VerifyReport {
     inputsAtTick[vector.tick] = { ...vector.inputs };
   }
 
+  const signalRoles = input.signalRoles ?? {};
   const firstFailingTick = normalizedRows.find((row) => row.status === 'fail')?.tick;
   const hashSeed = {
     schemaVersion: 'rb.verify-report.v1',
@@ -124,6 +127,7 @@ export function buildVerifyReport(input: BuildVerifyReportInput): VerifyReport {
     rows: normalizedRows,
     vectors: normalizedVectors,
     inputsAtTick,
+    signalRoles,
     generatedAtIso: input.generatedAtIso,
     reportHash: `vrf_${digestValue(hashSeed)}`,
   };

@@ -630,6 +630,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const status: 'pass' | 'fail' = failedRows.length > 0 ? 'fail' : 'pass';
           const ranAtIso = input.ranAtIso ?? new Date().toISOString();
           const vectors = toVerifyVectors(state.projectVectors);
+          const scheduleContract = deriveVerifySchedule(
+            state.circuit,
+            toIoMapping(state.projectIoRows)
+          );
+          const signalRoles = deriveSignalRoles(state.projectIoRows, scheduleContract);
           const report = buildVerifyReport({
             scenarioId: effectiveScenarioId,
             scenarioName: effectiveScenarioName,
@@ -638,11 +643,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             rows: normalizedRows,
             vectors,
             generatedAtIso: ranAtIso,
+            signalRoles,
           });
-          const scheduleContract = deriveVerifySchedule(
-            state.circuit,
-            toIoMapping(state.projectIoRows)
-          );
           runtimeRun = {
             scenarioId: report.scenarioId,
             scenarioName: report.scenarioName,
@@ -753,6 +755,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       recordVerification: (result) => {
         set((state) => {
           const scheduleContract = deriveVerifySchedule(state.circuit, toIoMapping(state.projectIoRows));
+          const signalRoles = deriveSignalRoles(state.projectIoRows, scheduleContract);
           const nextRun =
             result.report
               ? ({
@@ -768,7 +771,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                   generatedAtIso: result.ranAtIso,
                   schedule: scheduleContract.schedule,
                   meta: buildVerifyRunMeta(scheduleContract),
-                  report: result.report,
+                  report: { ...result.report, signalRoles },
                   waveform: buildVerifyWaveSamples(result.report),
                 } satisfies RuntimeVerifyRun)
               : state.verifyLastRun;
@@ -960,6 +963,7 @@ function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
       inputsAtTick: Object.fromEntries(
         Object.entries(run.report.inputsAtTick).map(([tick, inputs]) => [tick, { ...inputs }])
       ),
+      signalRoles: { ...run.report.signalRoles },
     },
     waveform: run.waveform.map((sample) => ({
       tick: sample.tick,
@@ -1045,6 +1049,45 @@ function toIoMapping(rows: ProjectIoRow[]): IoMapping {
         pin: row.pin,
       })),
   };
+}
+
+function deriveSignalRoles(
+  ioRows: ProjectIoRow[],
+  scheduleContract: VerifyScheduleContract
+): Record<string, 'clock' | 'reset' | 'input' | 'output'> {
+  const roles: Record<string, 'clock' | 'reset' | 'input' | 'output'> = {};
+  const clockName = scheduleContract.clockSignalName?.toLowerCase() ?? '';
+
+  for (const row of ioRows) {
+    const label = row.label.trim();
+    if (!label) continue;
+    const lower = label.toLowerCase();
+
+    if (
+      clockName &&
+      (lower === clockName ||
+        lower === 'clk' ||
+        lower === 'clock' ||
+        lower === 'clk100mhz' ||
+        lower.startsWith('clk_') ||
+        lower.startsWith('clock_'))
+    ) {
+      roles[label] = 'clock';
+    } else if (
+      lower === 'rst' ||
+      lower === 'reset' ||
+      lower === 'btnc' ||
+      lower.startsWith('rst_') ||
+      lower.startsWith('reset_')
+    ) {
+      roles[label] = 'reset';
+    } else if (row.direction === 'in') {
+      roles[label] = 'input';
+    } else {
+      roles[label] = 'output';
+    }
+  }
+  return roles;
 }
 
 function buildVerifyRunMeta(scheduleContract: VerifyScheduleContract): VerifyRunMeta {
