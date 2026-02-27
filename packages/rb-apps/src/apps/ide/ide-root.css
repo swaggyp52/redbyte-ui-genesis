@@ -10926,6 +10926,39 @@ details[open].ide-export-evidence-details > summary::before {
   color: rgba(132, 154, 178, 0.72);
 }
 
+.ide-truth-table-th-inputs {
+  width: 180px;
+}
+
+.ide-truth-table-td-inputs {
+  width: 180px;
+  min-width: 180px;
+  vertical-align: top;
+}
+
+.ide-truth-table-input-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 180px;
+}
+
+.ide-truth-table-input-chip {
+  font-family: var(--rb-font-mono);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.12);
+  background: rgba(56, 189, 248, 0.08);
+  color: rgba(220, 236, 250, 0.92);
+}
+
+.ide-truth-table-input-overflow,
+.ide-truth-table-input-empty {
+  font-size: 10px;
+  color: rgba(160, 185, 215, 0.66);
+}
+
 @media (max-width: 980px) {
   .ide-verify-run-context__grid {
     grid-template-columns: 1fr;

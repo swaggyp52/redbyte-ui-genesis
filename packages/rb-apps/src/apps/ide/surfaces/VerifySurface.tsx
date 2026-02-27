@@ -21,6 +21,7 @@ import type {
   TruthTableKMap,
   TruthTableMode,
   TruthTableRow,
+  TruthTableTraceInput,
 } from './TruthTablePane';
 
 interface VerifyRow {
@@ -708,6 +709,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       lastRun?.meta?.circuitKind === 'sequential' ||
       lastRun?.schedule === 'clocked_macro'
   );
+  const signalRoleLookup = useMemo(
+    () => normalizeSignalRoles(lastRun?.report.signalRoles ?? {}),
+    [lastRun?.report.signalRoles]
+  );
+  const orderedTraceInputs = useMemo(
+    () =>
+      buildTraceInputDescriptors(
+        inputFields,
+        lastRun?.report.inputsAtTick ?? {},
+        signalRoleLookup
+      ),
+    [inputFields, lastRun?.report.inputsAtTick, signalRoleLookup]
+  );
+  const traceInputsByTick = useMemo<Record<number, TruthTableTraceInput[]>>(
+    () => buildTraceInputsByTick(lastRun?.report.inputsAtTick ?? {}, orderedTraceInputs),
+    [lastRun?.report.inputsAtTick, orderedTraceInputs]
+  );
   const truthTableEmptyReason = useMemo(() => {
     if (!lastRun) return 'Run verification to populate tick-by-tick expected and observed values.';
     if (runRows.length > 0) return '';
@@ -723,35 +741,37 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const firstFailureTick = firstFailure?.tick ?? lastRun?.firstFailingTick;
   const firstFailureInputs = useMemo(() => {
     if (!firstFailure) return null;
-    const reportInputs = lastRun?.report.inputsAtTick?.[firstFailure.tick];
-    if (reportInputs) {
-      const snapshot = inputFields.map((field) => ({
-        label: field.label,
-        value: String(reportInputs[field.id] ?? reportInputs[normalizeFieldId(field.id)] ?? '-'),
-      }));
-      const hasKnownInput = snapshot.some((entry) => entry.value !== '-');
-      if (hasKnownInput) return snapshot;
+    const traceInputs = traceInputsByTick[firstFailure.tick];
+    if (traceInputs && traceInputs.length > 0) {
+      return traceInputs;
     }
     const vector = authoredVectors.find((entry) => entry.tick === firstFailure.tick);
+    const fallbackInputOrder =
+      orderedTraceInputs.length > 0
+        ? orderedTraceInputs
+        : inputFields.map((field) => ({ key: normalizeFieldId(field.id), label: field.label }));
     const snapshot: Array<{ label: string; value: string }> = [];
     if (vector) {
-      for (const field of inputFields) {
-        snapshot.push({ label: field.label, value: String(vector.inputs[field.id] ?? '-') });
+      for (const field of fallbackInputOrder) {
+        snapshot.push({
+          label: field.label,
+          value: String(vector.inputs[field.key] ?? vector.inputs[normalizeFieldId(field.label)] ?? '-'),
+        });
       }
       return snapshot;
     }
 
     const waveformSample = lastRun?.waveform.find((sample) => sample.tick === firstFailure.tick);
     if (!waveformSample) return null;
-    for (const field of inputFields) {
-      const normalizedField = normalizeFieldId(field.id);
+    for (const field of fallbackInputOrder) {
+      const normalizedField = field.key;
       const signalEntry = Object.entries(waveformSample.signals).find(
         ([signal]) => normalizeFieldId(signal) === normalizedField
       );
       snapshot.push({ label: field.label, value: signalEntry?.[1] ?? '-' });
     }
     return snapshot;
-  }, [authoredVectors, firstFailure, inputFields, lastRun?.report.inputsAtTick, lastRun?.waveform]);
+  }, [authoredVectors, firstFailure, inputFields, lastRun?.waveform, orderedTraceInputs, traceInputsByTick]);
   const inputSignalKeys = useMemo(
     () => new Set(inputFields.map((field) => normalizeFieldId(field.id))),
     [inputFields]
@@ -2234,6 +2254,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               combosUnavailableReason={combosUnavailableReason ?? undefined}
               kmaps={kmapRows}
               kmapUnavailableReason={kmapUnavailableReason ?? undefined}
+              traceInputsByTick={traceInputsByTick}
               onFixPath={onFixPath ? (row) => onFixPath({ signal: row.signal, tick: row.tick, expected: row.expected, actual: row.actual }) : undefined}
             />
             </div>{/* /ide-verify-instrument-deck */}
@@ -2750,4 +2771,94 @@ function formatVerifyTickZero(run: RuntimeVerifyRun): string {
   if (run.meta.tick0Meaning === 'initial-state') return 'Initial state before the first clock pulse';
   if (run.meta.tick0Meaning === 'reset-phase') return 'Reset phase before normal stepping begins';
   return 'First evaluated case';
+}
+
+interface TraceInputDescriptor {
+  key: string;
+  label: string;
+  role?: 'clock' | 'reset' | 'input' | 'output';
+}
+
+function normalizeSignalRoles(
+  roles: Record<string, 'clock' | 'reset' | 'input' | 'output'>
+): Record<string, 'clock' | 'reset' | 'input' | 'output'> {
+  const normalized: Record<string, 'clock' | 'reset' | 'input' | 'output'> = {};
+  for (const [key, role] of Object.entries(roles)) {
+    normalized[normalizeFieldId(key)] = role;
+  }
+  return normalized;
+}
+
+function buildTraceInputDescriptors(
+  inputFields: VerifyVectorDraftInput[],
+  inputsAtTick: Record<number, Record<string, 0 | 1>>,
+  signalRoles: Record<string, 'clock' | 'reset' | 'input' | 'output'>
+): TraceInputDescriptor[] {
+  const descriptors = new Map<string, TraceInputDescriptor>();
+  for (const field of inputFields) {
+    const key = normalizeFieldId(field.id);
+    if (!key) continue;
+    descriptors.set(key, {
+      key,
+      label: field.label,
+      role: signalRoles[key],
+    });
+  }
+  for (const snapshot of Object.values(inputsAtTick)) {
+    for (const rawKey of Object.keys(snapshot)) {
+      const key = normalizeFieldId(rawKey);
+      if (!key || descriptors.has(key)) continue;
+      descriptors.set(key, {
+        key,
+        label: rawKey,
+        role: signalRoles[key],
+      });
+    }
+  }
+  return Array.from(descriptors.values()).sort(compareTraceInputDescriptors);
+}
+
+function buildTraceInputsByTick(
+  inputsAtTick: Record<number, Record<string, 0 | 1>>,
+  descriptors: TraceInputDescriptor[]
+): Record<number, TruthTableTraceInput[]> {
+  const byTick: Record<number, TruthTableTraceInput[]> = {};
+  for (const [tickKey, snapshot] of Object.entries(inputsAtTick)) {
+    const tick = Number.parseInt(tickKey, 10);
+    if (!Number.isFinite(tick)) continue;
+    const normalizedSnapshot = new Map<string, string>();
+    for (const [rawKey, value] of Object.entries(snapshot)) {
+      normalizedSnapshot.set(normalizeFieldId(rawKey), String(value));
+    }
+    byTick[tick] = descriptors
+      .map((descriptor) => ({
+        label: descriptor.label,
+        value: normalizedSnapshot.get(descriptor.key) ?? '-',
+      }))
+      .filter((entry) => entry.value !== '-');
+  }
+  return byTick;
+}
+
+function compareTraceInputDescriptors(left: TraceInputDescriptor, right: TraceInputDescriptor): number {
+  const leftKey = buildTraceInputSortKey(left);
+  const rightKey = buildTraceInputSortKey(right);
+  if (leftKey.group !== rightKey.group) return leftKey.group - rightKey.group;
+  if (leftKey.index !== rightKey.index) return leftKey.index - rightKey.index;
+  return compareText(leftKey.name, rightKey.name);
+}
+
+function buildTraceInputSortKey(input: TraceInputDescriptor): { group: number; index: number; name: string } {
+  const name = normalizeFieldId(input.label || input.key);
+  if (input.role === 'clock') return { group: 0, index: 0, name };
+  if (input.role === 'reset') return { group: 1, index: 0, name };
+  const switchMatch = /^(sw|switch)(\d+)$/i.exec(name);
+  if (switchMatch) return { group: 2, index: Number.parseInt(switchMatch[2], 10), name };
+  const buttonMatch = /^(btn|button)(\d+)$/i.exec(name);
+  if (buttonMatch) return { group: 3, index: Number.parseInt(buttonMatch[2], 10), name };
+  const buttonNameMatch = /^(btn|button)([a-z]+)$/i.exec(name);
+  if (buttonNameMatch) {
+    return { group: 3, index: buttonNameMatch[2].charCodeAt(0), name };
+  }
+  return { group: 4, index: 0, name };
 }

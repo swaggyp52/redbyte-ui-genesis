@@ -1,5 +1,36 @@
 # AI State
 
+## Change Log 2026-02-27 (Verify Batch A.5: Sequential Trace Inputs In-Row)
+
+**Status**: COMPLETE - Sequential trace rows now carry their input context inline, so students can read the tick ledger without hunting through the failure explainer.
+
+### What Changed
+- Updated `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`:
+  - derives a shared ordered trace-input model from `report.inputsAtTick` + `report.signalRoles`.
+  - orders input display as:
+    - clock
+    - reset
+    - `SW*` ascending
+    - `BTN*` / buttons
+    - remaining inputs alphabetically
+  - reuses the same ordered input list in the failure explainer before any vector/waveform fallback.
+  - passes per-tick ordered trace inputs into `TruthTablePane`.
+- Updated `packages/rb-apps/src/apps/ide/surfaces/TruthTablePane.tsx`:
+  - sequential `TRACE TABLE (TICK LOG)` now adds an `Inputs` column.
+  - each tick group shows up to 4 compact chips inline (`NAME=0/1`) with `+N` overflow when more inputs exist.
+  - the full ordered input list is preserved in the cell `title` for hover inspection without widening the table.
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - added compact trace-input chip styles and fixed input-column sizing for sequential rows.
+- Updated `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`:
+  - sequential workstation coverage now asserts the trace input cell contains ordered clock/reset chips and overflow text.
+
+### Validation Executed
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx` -> PASS (2 files, 6 tests)
+- `pnpm --filter rb-apps test` -> PASS (`115 passed`, `5 skipped` test files; `558 passed`, `42 skipped` tests)
+
+### Attribution
+- Connor Angiel
+
 ## Change Log 2026-02-27 (Verify Batch A: Run Context + Tick Window Legibility)
 
 **Status**: COMPLETE - Verify now explains what the current ticks mean, why a window is shown, and presents sequential runs as a trace log instead of a truth-table clone.

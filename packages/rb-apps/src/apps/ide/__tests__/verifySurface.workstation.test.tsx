@@ -187,6 +187,21 @@ describe('VerifySurface workstation controls', () => {
         tick0Meaning: 'initial-state',
         clockSignalName: 'CLK',
       },
+      report: {
+        ...makePassRun().report,
+        inputsAtTick: {
+          0: { clk: 0, rst: 1, sw0: 0, sw1: 1, sw2: 0, sw3: 1 },
+        },
+        signalRoles: {
+          clk: 'clock',
+          rst: 'reset',
+          sw0: 'input',
+          sw1: 'input',
+          sw2: 'input',
+          sw3: 'input',
+          ld0: 'output',
+        },
+      },
     };
 
     const { getByTestId, queryByTestId } = render(
@@ -196,11 +211,28 @@ describe('VerifySurface workstation controls', () => {
         hasDff={true}
         lastRun={sequentialRun}
         vectors={[
-          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          {
+            id: 'vec-01',
+            tick: 0,
+            inputs: { clk: 0, rst: 1, sw0: 0, sw1: 1, sw2: 0, sw3: 1 },
+            expected: { ld0: 0 },
+          },
         ]}
-        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedInputs={[
+          { id: 'clk', label: 'CLK' },
+          { id: 'rst', label: 'RST' },
+          { id: 'sw0', label: 'SW0' },
+          { id: 'sw1', label: 'SW1' },
+          { id: 'sw2', label: 'SW2' },
+          { id: 'sw3', label: 'SW3' },
+        ]}
         mappedSignals={[
+          { id: 'clk', direction: 'in' },
+          { id: 'rst', direction: 'in' },
           { id: 'sw0', direction: 'in' },
+          { id: 'sw1', direction: 'in' },
+          { id: 'sw2', direction: 'in' },
+          { id: 'sw3', direction: 'in' },
           { id: 'ld0', direction: 'out' },
         ]}
         onOpenProjectVectors={vi.fn()}
@@ -211,5 +243,8 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-truth-table-mode-combos')).toBeNull();
     expect(getByTestId('ide-verify-run-context-protocol').textContent).toContain('Clocked macro');
     expect(getByTestId('ide-verify-run-context-tick_0').textContent).toContain('Initial state');
+    expect(getByTestId('ide-truth-table-inputs-0').textContent).toContain('CLK=0');
+    expect(getByTestId('ide-truth-table-inputs-0').textContent).toContain('RST=1');
+    expect(getByTestId('ide-truth-table-inputs-0').textContent).toContain('+2');
   });
 });

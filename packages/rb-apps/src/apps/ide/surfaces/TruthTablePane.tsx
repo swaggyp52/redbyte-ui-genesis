@@ -38,6 +38,11 @@ export type TruthTableKMap = {
   rows: TruthTableKMapRow[];
 };
 
+export type TruthTableTraceInput = {
+  label: string;
+  value: string;
+};
+
 export interface TruthTablePaneProps {
   mode: TruthTableMode;
   rows: TruthTableRow[];
@@ -52,6 +57,7 @@ export interface TruthTablePaneProps {
   combosUnavailableReason?: string;
   kmaps?: TruthTableKMap[];
   kmapUnavailableReason?: string;
+  traceInputsByTick?: Record<number, TruthTableTraceInput[]>;
   onFixPath?: (row: TruthTableRow) => void;
 }
 
@@ -69,6 +75,7 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
   combosUnavailableReason,
   kmaps = [],
   kmapUnavailableReason,
+  traceInputsByTick = {},
   onFixPath,
 }) => {
   const grouped = useMemo(() => {
@@ -247,6 +254,7 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
               <thead className="ide-truth-table-thead">
                 <tr>
                   <th className="ide-truth-table-th ide-truth-table-th-tick">Tick</th>
+                  {isSequential && <th className="ide-truth-table-th ide-truth-table-th-inputs">Inputs</th>}
                   <th className="ide-truth-table-th">Signal</th>
                   <th className="ide-truth-table-th">Exp</th>
                   <th className="ide-truth-table-th">Act</th>
@@ -257,6 +265,13 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
                 {grouped.map(([tick, tickRows]) =>
                   tickRows.map((row, rowIndex) => {
                     const isTickSelected = selectedTick === tick;
+                    const traceInputs = traceInputsByTick[tick] ?? [];
+                    const compactTraceInputs = traceInputs.slice(0, 4);
+                    const hiddenTraceCount = Math.max(0, traceInputs.length - compactTraceInputs.length);
+                    const fullTraceLabel =
+                      traceInputs.length > 0
+                        ? traceInputs.map((entry) => `${entry.label}=${entry.value}`).join(' ')
+                        : 'No input snapshot';
                     return (
                       <tr
                         key={`${tick}-${row.signal}`}
@@ -286,6 +301,29 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
                             >
                               t{tick}
                             </button>
+                          </td>
+                        ) : null}
+                        {isSequential && rowIndex === 0 ? (
+                          <td
+                            className="ide-truth-table-td ide-truth-table-td-inputs"
+                            rowSpan={tickRows.length}
+                            data-testid={`ide-truth-table-inputs-${tick}`}
+                            title={fullTraceLabel}
+                          >
+                            {traceInputs.length > 0 ? (
+                              <div className="ide-truth-table-input-chips">
+                                {compactTraceInputs.map((entry) => (
+                                  <code key={`${tick}-${entry.label}`} className="ide-truth-table-input-chip">
+                                    {entry.label}={entry.value}
+                                  </code>
+                                ))}
+                                {hiddenTraceCount > 0 && (
+                                  <span className="ide-truth-table-input-overflow">+{hiddenTraceCount}</span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="ide-truth-table-input-empty">-</span>
+                            )}
                           </td>
                         ) : null}
                         <td className="ide-truth-table-td">
