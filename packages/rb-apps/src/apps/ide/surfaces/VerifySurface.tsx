@@ -16,7 +16,12 @@ import {
 } from '../components/IdePrimitives';
 import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import { TruthTablePane } from './TruthTablePane';
-import type { TruthTableMode, TruthTableRow } from './TruthTablePane';
+import type {
+  TruthTableComboRow,
+  TruthTableKMap,
+  TruthTableMode,
+  TruthTableRow,
+} from './TruthTablePane';
 
 interface VerifyRow {
   tick: number;
@@ -85,11 +90,27 @@ const WaveformViewer: React.FC<{
   failTicks: Set<number>;
   failingSignalKeys: Set<string>;
   selectedTick: number | null;
+  cursorA: number | null;
+  cursorB: number | null;
+  pinnedSignals: Set<string>;
   onSelectTick: (tick: number) => void;
   onSelectSignal: (signal: string) => void;
   rowHeight?: number;
   emptyMessage?: string;
-}> = ({ signals, ticks, failTicks, failingSignalKeys, selectedTick, onSelectTick, onSelectSignal, rowHeight = 38, emptyMessage = 'Run verification to see waveforms' }) => {
+}> = ({
+  signals,
+  ticks,
+  failTicks,
+  failingSignalKeys,
+  selectedTick,
+  cursorA,
+  cursorB,
+  pinnedSignals,
+  onSelectTick,
+  onSelectSignal,
+  rowHeight = 38,
+  emptyMessage = 'Run verification to see waveforms',
+}) => {
   const LABEL_W = 88;
   const ROW_H = rowHeight;
   const ROW_HI = Math.round(ROW_H * 0.24);
@@ -136,6 +157,19 @@ const WaveformViewer: React.FC<{
           stroke="rgba(56,189,248,0.12)" strokeWidth="1" />
       ) : null)}
 
+      {/* Fail markers in header rail */}
+      {ticks.map((tick, i) => failTicks.has(tick) ? (
+        <line
+          key={`fail-marker-${tick}`}
+          x1={LABEL_W + i * TICK_W + TICK_W / 2}
+          y1={2}
+          x2={LABEL_W + i * TICK_W + TICK_W / 2}
+          y2={HEADER_H}
+          stroke="rgba(255,98,98,0.92)"
+          strokeWidth="2"
+        />
+      ) : null)}
+
       {/* Fail column full-height overlay — drawn before signal rows so it sits behind traces */}
       {ticks.map((tick, i) => failTicks.has(tick) ? (
         <rect
@@ -177,6 +211,7 @@ const WaveformViewer: React.FC<{
         const y = HEADER_H + rowIndex * ROW_H;
         const normalizedKey = signalRow.signal.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
         const isFailing = failingSignalKeys.has(normalizedKey);
+        const isPinned = pinnedSignals.has(signalRow.signal);
 
         return (
           <g key={signalRow.signal}>
@@ -201,7 +236,9 @@ const WaveformViewer: React.FC<{
             >
               <>
                 <title>{signalRow.signal}</title>
-                {signalRow.signal.length > 13 ? `${signalRow.signal.slice(0, 12)}…` : signalRow.signal}
+                {`${isPinned ? '* ' : ''}${
+                  signalRow.signal.length > 13 ? `${signalRow.signal.slice(0, 12)}...` : signalRow.signal
+                }`}
               </>
             </text>
 
@@ -269,6 +306,42 @@ const WaveformViewer: React.FC<{
                 </g>
               );
             })}
+          </g>
+        );
+      })}
+
+      {/* A/B cursors */}
+      {([
+        { id: 'A', tick: cursorA, stroke: 'rgba(251,191,36,0.95)', fill: 'rgba(251,191,36,0.16)' },
+        { id: 'B', tick: cursorB, stroke: 'rgba(248,113,113,0.92)', fill: 'rgba(248,113,113,0.14)' },
+      ] as const).map((cursor) => {
+        if (cursor.tick === null) return null;
+        const i = ticks.indexOf(cursor.tick);
+        if (i < 0) return null;
+        const cx = LABEL_W + i * TICK_W + TICK_W / 2;
+        return (
+          <g key={`cursor-${cursor.id}`} style={{ pointerEvents: 'none' }}>
+            <line
+              x1={cx}
+              y1={HEADER_H}
+              x2={cx}
+              y2={height}
+              stroke={cursor.stroke}
+              strokeWidth="1.25"
+              strokeDasharray="4 3"
+            />
+            <rect x={cx - 9} y={2} width={18} height={12} rx={2} fill={cursor.fill} />
+            <text
+              x={cx}
+              y={8}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill={cursor.stroke}
+              fontSize={9}
+              fontWeight="700"
+            >
+              {cursor.id}
+            </text>
           </g>
         );
       })}
@@ -385,6 +458,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showAllVectorTicks, setShowAllVectorTicks] = useState(false);
   const [oracleApplied, setOracleApplied] = useState(false);
+  const [pinnedSignalOrder, setPinnedSignalOrder] = useState<string[]>([]);
+  const [cursorA, setCursorA] = useState<number | null>(null);
+  const [cursorB, setCursorB] = useState<number | null>(null);
+  const [sweepPreset, setSweepPreset] = useState<'binary-count' | 'toggle-sw0' | 'walk-one-hot'>('binary-count');
+  const [sweepSeed, setSweepSeed] = useState('0');
+  const [sweepHoldTicks, setSweepHoldTicks] = useState(1);
 
   const ROW_H_MAP: Record<string, number> = { small: 26, normal: 38, large: 52 };
 
@@ -434,6 +513,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     () => runRows.filter((row) => row.status === 'fail'),
     [runRows]
   );
+  const firstFailTickFromRows = failingRows[0]?.tick ?? null;
 
   const mappedSignalKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -462,8 +542,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return filtered.length > 0 ? filtered : signalTimeline;
   }, [failingSignalKeys, mappedSignalKeys, signalTimeline]);
   const [showAllSignals, setShowAllSignals] = useState(false);
+  const [showMismatchOnlySignals, setShowMismatchOnlySignals] = useState(false);
   const [selectedFailureSignal, setSelectedFailureSignal] = useState<string | null>(null);
-  const visibleSignalTimeline = showAllSignals ? signalTimeline : relevantSignalTimeline;
+  const mismatchOnlyTimeline = useMemo(() => {
+    const filtered = signalTimeline.filter((entry) =>
+      failingSignalKeys.has(normalizeFieldId(entry.signal))
+    );
+    return filtered.length > 0 ? filtered : relevantSignalTimeline;
+  }, [failingSignalKeys, relevantSignalTimeline, signalTimeline]);
+  const visibleSignalTimelineBase = showMismatchOnlySignals
+    ? mismatchOnlyTimeline
+    : showAllSignals
+      ? signalTimeline
+      : relevantSignalTimeline;
+  const pinnedSignals = useMemo(() => new Set(pinnedSignalOrder), [pinnedSignalOrder]);
+  const visibleSignalTimeline = useMemo(() => {
+    if (visibleSignalTimelineBase.length <= 1) return visibleSignalTimelineBase;
+    const pinned: WaveformSignalRow[] = [];
+    const normal: WaveformSignalRow[] = [];
+    for (const row of visibleSignalTimelineBase) {
+      if (pinnedSignals.has(row.signal)) pinned.push(row);
+      else normal.push(row);
+    }
+    return [...pinned, ...normal];
+  }, [pinnedSignals, visibleSignalTimelineBase]);
   const selectedTickRows = useMemo(() => {
     if (selectedTick === null) return [];
     const keyed = tickIndex.rowsByTick[String(selectedTick)] ?? [];
@@ -488,6 +590,27 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [lastRun?.firstFailingTick, timelineTicks]);
 
   useEffect(() => {
+    if (timelineTicks.length === 0) {
+      setCursorA(null);
+      setCursorB(null);
+      return;
+    }
+
+    setCursorA((previous) =>
+      previous !== null && timelineTicks.includes(previous)
+        ? previous
+        : selectedTick ?? timelineTicks[0]
+    );
+    setCursorB((previous) => {
+      if (previous !== null && timelineTicks.includes(previous)) return previous;
+      if (typeof firstFailTickFromRows === 'number' && timelineTicks.includes(firstFailTickFromRows)) {
+        return firstFailTickFromRows;
+      }
+      return timelineTicks[timelineTicks.length - 1] ?? timelineTicks[0];
+    });
+  }, [firstFailTickFromRows, selectedTick, timelineTicks]);
+
+  useEffect(() => {
     if (visibleSignalTimeline.length === 0) {
       setSelectedSignal(null);
       return;
@@ -499,6 +622,24 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       return visibleSignalTimeline[0]?.signal ?? null;
     });
   }, [failingRows, visibleSignalTimeline]);
+
+  useEffect(() => {
+    if (failingRows.length === 0 && showMismatchOnlySignals) {
+      setShowMismatchOnlySignals(false);
+    }
+  }, [failingRows.length, showMismatchOnlySignals]);
+
+  useEffect(() => {
+    setPinnedSignalOrder((previous) => {
+      const next = previous.filter((signal) =>
+        visibleSignalTimeline.some((entry) => entry.signal === signal)
+      );
+      if (next.length === previous.length && next.every((entry, index) => entry === previous[index])) {
+        return previous;
+      }
+      return next;
+    });
+  }, [visibleSignalTimeline]);
 
   useEffect(() => {
     if (lastRun) {
@@ -554,20 +695,159 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const hasResults = runRows.length > 0;
 
   const truthRows = useMemo<TruthTableRow[]>(() => {
-    if (status === 'fail') {
-      return failingRows.map((row) => ({
-        tick: row.tick,
-        signal: row.signal,
-        expected: row.expected,
-        actual: row.actual,
-        isFail: true,
-      }));
+    return runRows.map((row) => ({
+      tick: row.tick,
+      signal: row.signal,
+      expected: row.expected,
+      actual: row.actual,
+      isFail: row.status === 'fail',
+    }));
+  }, [runRows]);
+  const truthTableEmptyReason = useMemo(() => {
+    if (!lastRun) return 'Run verification to populate tick-by-tick expected and observed values.';
+    if (runRows.length > 0) return '';
+    if (waveformTicks.length > 0) {
+      return 'Verification ran without expectations. Capture observed outputs as expected, then run again.';
     }
-    return [];
-  }, [status, failingRows]);
+    if (hasDff || lastRun.schedule === 'clocked_macro') {
+      return 'No evaluable rows yet. Add vectors with expected outputs for this sequential circuit.';
+    }
+    return 'No deterministic rows were produced for this run. Verify vectors and expected outputs.';
+  }, [hasDff, lastRun, runRows.length, waveformTicks.length]);
   const firstFailure = failingRows[0];
   const firstFailureTick = firstFailure?.tick ?? lastRun?.firstFailingTick;
+  const firstFailureInputs = useMemo(() => {
+    if (!firstFailure) return null;
+    const vector = authoredVectors.find((entry) => entry.tick === firstFailure.tick);
+    const snapshot: Array<{ label: string; value: string }> = [];
+    if (vector) {
+      for (const field of inputFields) {
+        snapshot.push({ label: field.label, value: String(vector.inputs[field.id] ?? '-') });
+      }
+      return snapshot;
+    }
+
+    const waveformSample = lastRun?.waveform.find((sample) => sample.tick === firstFailure.tick);
+    if (!waveformSample) return null;
+    for (const field of inputFields) {
+      const normalizedField = normalizeFieldId(field.id);
+      const signalEntry = Object.entries(waveformSample.signals).find(
+        ([signal]) => normalizeFieldId(signal) === normalizedField
+      );
+      snapshot.push({ label: field.label, value: signalEntry?.[1] ?? '-' });
+    }
+    return snapshot;
+  }, [authoredVectors, firstFailure, inputFields, lastRun?.waveform]);
+  const inputSignalKeys = useMemo(
+    () => new Set(inputFields.map((field) => normalizeFieldId(field.id))),
+    [inputFields]
+  );
+  const outputSignalOrder = useMemo(() => {
+    const ordered = new Map<string, string>();
+    for (const signal of mappedSignals ?? []) {
+      if (signal.direction !== 'out') continue;
+      const key = normalizeFieldId(signal.id);
+      const label = (signal.label ?? signal.id).trim() || signal.id;
+      if (key && !ordered.has(key)) ordered.set(key, label);
+    }
+    if (ordered.size === 0) {
+      for (const row of runRows) {
+        const key = normalizeFieldId(row.signal);
+        if (!key || inputSignalKeys.has(key) || ordered.has(key)) continue;
+        ordered.set(key, row.signal);
+      }
+    }
+    return Array.from(ordered.entries()).map(([, label]) => label);
+  }, [mappedSignals, runRows, inputSignalKeys]);
+  const runRowLookup = useMemo(() => {
+    const lookup = new Map<string, typeof runRows[number]>();
+    for (const row of runRows) {
+      lookup.set(`${row.tick}|${normalizeFieldId(row.signal)}`, row);
+    }
+    return lookup;
+  }, [runRows]);
+  const combosUnavailableReason = useMemo(() => {
+    if (!lastRun) return 'Run verification first to build combinational combinations.';
+    if (hasDff || lastRun.schedule === 'clocked_macro') {
+      return 'Combinational combos unavailable for sequential behavior (clocked circuit).';
+    }
+    if (inputFields.length === 0) return 'No mapped input signals are available.';
+    if (inputFields.length > 6) return 'Combinational combos support up to 6 inputs.';
+    if (runRows.length === 0) return 'No verify rows were generated for this run.';
+    if (outputSignalOrder.length === 0) return 'No output signals were found in verification results.';
+    return null;
+  }, [hasDff, inputFields.length, lastRun, outputSignalOrder.length, runRows.length]);
+  const comboRows = useMemo<TruthTableComboRow[]>(() => {
+    if (combosUnavailableReason) return [];
+    const comboMap = new Map<string, TruthTableComboRow>();
+    const inputsInOrder = inputFields.map((field) => field.id);
+    for (const vector of authoredVectors) {
+      const bits = inputsInOrder.map((id) => String(vector.inputs[id] ?? 0)).join('');
+      if (comboMap.has(bits)) continue;
+      const outputs = outputSignalOrder.map((signal) => {
+        const row = runRowLookup.get(`${vector.tick}|${normalizeFieldId(signal)}`);
+        return {
+          signal,
+          value: row?.actual ?? '-',
+          isFail: row?.status === 'fail',
+        };
+      });
+      comboMap.set(bits, {
+        tick: vector.tick,
+        inputBits: bits,
+        outputs,
+      });
+    }
+    return Array.from(comboMap.values()).sort((left, right) => {
+      const leftValue = Number.parseInt(left.inputBits || '0', 2);
+      const rightValue = Number.parseInt(right.inputBits || '0', 2);
+      if (leftValue !== rightValue) return leftValue - rightValue;
+      return left.tick - right.tick;
+    });
+  }, [authoredVectors, combosUnavailableReason, inputFields, outputSignalOrder, runRowLookup]);
+  const kmapUnavailableReason = useMemo(() => {
+    if (combosUnavailableReason) return combosUnavailableReason;
+    if (inputFields.length < 2) return 'K-map requires at least 2 mapped inputs.';
+    if (inputFields.length > 6) return 'K-map supports up to 6 mapped inputs.';
+    if (outputSignalOrder.length === 0) return 'No output signals available for K-map generation.';
+    if (comboRows.length === 0) return 'No combinational rows available to populate K-map cells.';
+    return null;
+  }, [comboRows.length, combosUnavailableReason, inputFields.length, outputSignalOrder.length]);
+  const kmapRows = useMemo<TruthTableKMap[]>(() => {
+    if (kmapUnavailableReason) return [];
+    const inputCount = inputFields.length;
+    const rowBitCount = Math.floor(inputCount / 2);
+    const colBitCount = inputCount - rowBitCount;
+    const rowCodes = grayCodes(rowBitCount);
+    const colCodes = grayCodes(colBitCount);
+    const comboByBits = new Map(comboRows.map((row) => [row.inputBits, row]));
+    return outputSignalOrder.map((outputSignal) => ({
+      outputSignal,
+      rowCodes,
+      colCodes,
+      rows: rowCodes.map((rowCode) => ({
+        rowCode,
+        cells: colCodes.map((colCode) => {
+          const bits = `${rowCode}${colCode}`;
+          const combo = comboByBits.get(bits);
+          const output = combo?.outputs.find((entry) => entry.signal === outputSignal);
+          return {
+            bits,
+            value: output?.value ?? '-',
+            isFail: output?.isFail ?? false,
+          };
+        }),
+      })),
+    }));
+  }, [comboRows, inputFields.length, kmapUnavailableReason, outputSignalOrder]);
   const canExportTestbench = status === 'pass';
+
+  // Auto-switch to Combos view when a combinational run completes and combos are available.
+  // Only switches if the user is still on the default 'ticks' view (preserves manual choice).
+  useEffect(() => {
+    if (!lastRun || combosUnavailableReason !== null) return;
+    setTruthTableMode((prev) => (prev === 'ticks' ? 'combos' : prev));
+  }, [lastRun?.reportHash, combosUnavailableReason]);
 
   // Compute verify hint (only shown in FAIL state)
   const verifyHint = useMemo((): string | null => {
@@ -624,6 +904,70 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     const idx = currentFailIndex < failTicksSorted.length - 1 ? currentFailIndex + 1 : 0;
     setSelectedTick(failTicksSorted[idx]);
   };
+  const focusMismatchLanes = () => {
+    setShowAllSignals(false);
+    setShowMismatchOnlySignals(true);
+    if (firstFailure?.signal) setSelectedSignal(firstFailure.signal);
+  };
+  const clearMismatchLaneFilter = () => {
+    setShowMismatchOnlySignals(false);
+  };
+  const togglePinnedSignal = (signal: string) => {
+    setPinnedSignalOrder((previous) => {
+      if (previous.includes(signal)) return previous.filter((entry) => entry !== signal);
+      return [...previous, signal];
+    });
+  };
+  const setCursorFromSelected = (cursor: 'A' | 'B') => {
+    if (selectedTick === null) return;
+    if (cursor === 'A') setCursorA(selectedTick);
+    else setCursorB(selectedTick);
+  };
+  const jumpToCursor = (cursor: 'A' | 'B') => {
+    const target = cursor === 'A' ? cursorA : cursorB;
+    if (target === null) return;
+    setSelectedTick(target);
+  };
+  const clearCursors = () => {
+    setCursorA(null);
+    setCursorB(null);
+  };
+  const signalValueLookup = useMemo(() => {
+    const lookup = new Map<string, Map<number, string>>();
+    for (const row of visibleSignalTimeline) {
+      const perTick = new Map<number, string>();
+      for (const value of row.values) perTick.set(value.tick, value.value);
+      lookup.set(row.signal, perTick);
+    }
+    return lookup;
+  }, [visibleSignalTimeline]);
+  const cursorReadoutRows = useMemo(
+    () =>
+      visibleSignalTimeline.map((row) => {
+        const ticks = signalValueLookup.get(row.signal);
+        const valueA = cursorA !== null ? ticks?.get(cursorA) ?? '-' : '-';
+        const valueB = cursorB !== null ? ticks?.get(cursorB) ?? '-' : '-';
+        const delta = valueA === '-' || valueB === '-' ? '--' : valueA === valueB ? 'steady' : 'toggle';
+        return {
+          signal: row.signal,
+          valueA,
+          valueB,
+          delta,
+        };
+      }),
+    [cursorA, cursorB, signalValueLookup, visibleSignalTimeline]
+  );
+  const cursorDeltaTicks =
+    cursorA !== null && cursorB !== null ? Math.abs(cursorB - cursorA) : null;
+  const busReadouts = useMemo(() => {
+    const buses = deriveSignalBuses(visibleSignalTimeline.map((row) => row.signal));
+    return buses.map((bus) => ({
+      name: `${bus.prefix.toUpperCase()}[${bus.maxIndex}:${bus.minIndex}]`,
+      selected: selectedTick !== null ? formatBusValue(bus, signalValueLookup, selectedTick) : null,
+      cursorA: cursorA !== null ? formatBusValue(bus, signalValueLookup, cursorA) : null,
+      cursorB: cursorB !== null ? formatBusValue(bus, signalValueLookup, cursorB) : null,
+    }));
+  }, [cursorA, cursorB, selectedTick, signalValueLookup, visibleSignalTimeline]);
 
   // Phase 8.1: Zoomed tick window
   const allWaveformTicks = useMemo(
@@ -715,7 +1059,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       rows,
       useRuntimeTrace: true,
     });
-    setRunState('complete');
   };
 
   // Run Deterministic: always simulates from the circuit — ignores interactive runtime trace.
@@ -737,7 +1080,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       rows,
       useRuntimeTrace: false,
     });
-    setRunState('complete');
   };
 
   const clearResults = () => {
@@ -791,6 +1133,72 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     ];
     onVectorsChange?.(vectors);
     setDraftTick(templateFields.length + 2);
+    setOracleApplied(false);
+  };
+  const handleGenerateSweepVectors = () => {
+    const templateFields = inputFields.length > 0 ? inputFields : [{ id: 'in_a', label: 'in_a' }];
+    const hold = Math.max(1, Math.min(64, Math.floor(sweepHoldTicks || 1)));
+    const seed = parseSeed(sweepSeed);
+    const vectors: VerifyAuthorVector[] = [];
+    let nextTick = 0;
+    const pushTick = (inputs: Record<string, 0 | 1>) => {
+      for (let index = 0; index < hold; index += 1) {
+        vectors.push({
+          id: `vec-${String(vectors.length + 1).padStart(2, '0')}`,
+          tick: nextTick,
+          inputs: { ...inputs },
+          expected: {},
+        });
+        nextTick += 1;
+      }
+    };
+    const zeroInputs = templateFields.reduce<Record<string, 0 | 1>>((acc, field) => {
+      acc[field.id] = 0;
+      return acc;
+    }, {});
+
+    if (sweepPreset === 'binary-count') {
+      const swFields = templateFields
+        .filter((field) => /^sw\d+$/i.test(field.id))
+        .sort((left, right) => {
+          const leftN = Number.parseInt(left.id.replace(/[^0-9]/g, ''), 10);
+          const rightN = Number.parseInt(right.id.replace(/[^0-9]/g, ''), 10);
+          return leftN - rightN;
+        });
+      const countFields = (swFields.length > 0 ? swFields : templateFields).slice(0, Math.min(4, templateFields.length));
+      const width = countFields.length;
+      const total = Math.max(1, 1 << width);
+      for (let count = 0; count < total; count += 1) {
+        const value = (count + seed) % total;
+        const inputs = { ...zeroInputs };
+        for (let bit = 0; bit < width; bit += 1) {
+          inputs[countFields[bit].id] = ((value >> bit) & 1) === 1 ? 1 : 0;
+        }
+        pushTick(inputs);
+      }
+    } else if (sweepPreset === 'toggle-sw0') {
+      const target =
+        templateFields.find((field) => normalizeFieldId(field.id) === 'sw0') ??
+        templateFields[0];
+      const phase = seed % 2;
+      for (let step = 0; step < 16; step += 1) {
+        const inputs = { ...zeroInputs };
+        inputs[target.id] = ((step + phase) % 2) === 0 ? 0 : 1;
+        pushTick(inputs);
+      }
+    } else {
+      const start = templateFields.length > 0 ? seed % templateFields.length : 0;
+      pushTick({ ...zeroInputs });
+      for (let hot = 0; hot < templateFields.length; hot += 1) {
+        const inputs = { ...zeroInputs };
+        const field = templateFields[(hot + start) % templateFields.length];
+        inputs[field.id] = 1;
+        pushTick(inputs);
+      }
+    }
+
+    onVectorsChange?.(vectors);
+    setDraftTick(vectors.length);
     setOracleApplied(false);
   };
 
@@ -862,16 +1270,21 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           <header className="ide-design-subheader">
             <h3>Signals</h3>
             <span className="ide-copy" data-testid="ide-verify-signal-filter-state">
-              {showAllSignals
-                ? `${signalTimeline.length} all`
-                : `${visibleSignalTimeline.length} relevant`}
+              {showMismatchOnlySignals
+                ? `${visibleSignalTimeline.length} mismatches`
+                : showAllSignals
+                  ? `${signalTimeline.length} all`
+                  : `${visibleSignalTimeline.length} relevant`}
             </span>
           </header>
           {signalTimeline.length > relevantSignalTimeline.length ? (
             <div className="ide-inline-actions">
               <IdeButton
                 tone="ghost"
-                onClick={() => setShowAllSignals((previous) => !previous)}
+                onClick={() => {
+                  setShowMismatchOnlySignals(false);
+                  setShowAllSignals((previous) => !previous);
+                }}
                 testId="ide-verify-show-all-signals"
               >
                 {showAllSignals ? 'Show relevant signals' : 'Show all signals'}
@@ -887,15 +1300,25 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </p>
             ) : (
               visibleSignalTimeline.map((signalRow) => (
-                <button
-                  key={signalRow.signal}
-                  className={`ide-signal-row ${selectedSignal === signalRow.signal ? 'is-active' : ''}`}
-                  type="button"
-                  onClick={() => setSelectedSignal(signalRow.signal)}
-                  data-testid={`ide-verify-signal-${toTestId(signalRow.signal)}`}
-                >
-                  {signalRow.signal}
-                </button>
+                <div key={signalRow.signal} className="ide-verify-signal-row-wrap">
+                  <button
+                    className={`ide-signal-row ${selectedSignal === signalRow.signal ? 'is-active' : ''}`}
+                    type="button"
+                    onClick={() => setSelectedSignal(signalRow.signal)}
+                    data-testid={`ide-verify-signal-${toTestId(signalRow.signal)}`}
+                  >
+                    {signalRow.signal}
+                  </button>
+                  <button
+                    type="button"
+                    className={`ide-verify-signal-pin-btn ${pinnedSignals.has(signalRow.signal) ? 'is-pinned' : ''}`}
+                    onClick={() => togglePinnedSignal(signalRow.signal)}
+                    data-testid={`ide-verify-pin-signal-${toTestId(signalRow.signal)}`}
+                    aria-label={pinnedSignals.has(signalRow.signal) ? `Unpin ${signalRow.signal}` : `Pin ${signalRow.signal}`}
+                  >
+                    {pinnedSignals.has(signalRow.signal) ? 'Pinned' : 'Pin'}
+                  </button>
+                </div>
               ))
             )}
           </div>
@@ -1035,6 +1458,54 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </IdeButton>
                 <IdeButton tone="ghost" onClick={onOpenProjectVectors}>
                   Open Project vectors
+                </IdeButton>
+              </div>
+              <div className="ide-verify-sweep-controls" data-testid="ide-verify-sweep-controls">
+                <label className="ide-verify-field">
+                  Sweep preset
+                  <select
+                    className="ide-export-pin-input"
+                    value={sweepPreset}
+                    onChange={(event) =>
+                      setSweepPreset(
+                        event.target.value === 'toggle-sw0'
+                          ? 'toggle-sw0'
+                          : event.target.value === 'walk-one-hot'
+                            ? 'walk-one-hot'
+                            : 'binary-count'
+                      )
+                    }
+                    data-testid="ide-verify-sweep-preset"
+                  >
+                    <option value="binary-count">Binary count SW[3:0]</option>
+                    <option value="toggle-sw0">Toggle SW0</option>
+                    <option value="walk-one-hot">One-hot walk</option>
+                  </select>
+                </label>
+                <label className="ide-verify-field">
+                  Seed
+                  <input
+                    type="number"
+                    className="ide-export-pin-input"
+                    value={sweepSeed}
+                    onChange={(event) => setSweepSeed(event.target.value)}
+                    data-testid="ide-verify-sweep-seed"
+                  />
+                </label>
+                <label className="ide-verify-field">
+                  Hold ticks
+                  <input
+                    type="number"
+                    className="ide-export-pin-input"
+                    min={1}
+                    step={1}
+                    value={sweepHoldTicks}
+                    onChange={(event) => setSweepHoldTicks(Math.max(1, Number(event.target.value || '1')))}
+                    data-testid="ide-verify-sweep-hold"
+                  />
+                </label>
+                <IdeButton tone="secondary" onClick={handleGenerateSweepVectors} testId="ide-verify-generate-sweep-vectors">
+                  Generate Sweep
                 </IdeButton>
               </div>
             </div>
@@ -1189,7 +1660,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   <span className="ide-verify-strip-meta ide-verify-strip-fail" data-testid="ide-verify-strip-fail-count">
                     {failingRows.length} fail
                     {typeof firstFailureTick === 'number' && (
-                      <> at t{firstFailureTick}
+                      <> · first mismatch t{firstFailureTick}
                         {failingRows.slice(0, 2).length > 0 && (
                           <> ({failingRows.slice(0, 2).map((r) => r.signal).join(', ')}
                             {failingRows.length > 2 ? ` +${failingRows.length - 2} more` : ''}
@@ -1220,7 +1691,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             ) : failingRows.length > 0 ? (
               <span data-testid="ide-primary-cta">
                 <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-jump-first-failure">
-                  Jump to fail
+                  Jump to first failing tick
                 </IdeButton>
               </span>
             ) : (
@@ -1261,29 +1732,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             )}
           </div>
         </div>
-
-        {displayStatus === 'FAIL' && (
-          <SurfacePanel className="ide-verify-fail-summary" testId="ide-verify-fail-card">
-            <span className="ide-verify-fail-summary__status">FAIL</span>
-            <span className="ide-verify-fail-summary__count">
-              {failingRows.length} of {runRows.length} vectors failing
-            </span>
-            {firstFailure && (
-              <span className="ide-verify-fail-summary__first">
-                First failure: <code>{firstFailure.signal}</code> at tick <code>{firstFailure.tick}</code>
-              </span>
-            )}
-            {firstFailure && onFixPath && (
-              <IdeButton
-                tone="danger"
-                onClick={() => { onFixPath(firstFailure); onGoToDesign?.(); }}
-                testId="ide-verify-jump-to-failure-card"
-              >
-                Jump to failing node →
-              </IdeButton>
-            )}
-          </SurfacePanel>
-        )}
 
         {hasDff && (
           <IdeCallout tone="info" testId="ide-verify-clocked-banner">
@@ -1418,6 +1866,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   {selectedTick !== null && (
                     <code className="ide-verify-scope-tick">t{selectedTick}</code>
                   )}
+                  {cursorA !== null && (
+                    <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-a-value">A t{cursorA}</code>
+                  )}
+                  {cursorB !== null && (
+                    <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-b-value">B t{cursorB}</code>
+                  )}
+                  {cursorDeltaTicks !== null && (
+                    <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-delta">
+                      Delta {cursorDeltaTicks} ticks
+                    </code>
+                  )}
                   {failTicksSorted.length > 0 && currentFailIndex >= 0 && (
                     <span className="ide-verify-scope-fail-index">
                       fail {currentFailIndex + 1}/{failTicksSorted.length}
@@ -1425,19 +1884,31 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   )}
                 </span>
               </div>
+              {busReadouts.length > 0 && (
+                <div className="ide-verify-scope-bus-strip" data-testid="ide-verify-bus-strip">
+                  {busReadouts.slice(0, 3).map((bus) => (
+                    <span key={bus.name} className="ide-verify-scope-bus-chip">
+                      {bus.name}
+                      {bus.selected ? ` T=${bus.selected}` : ''}
+                      {bus.cursorA ? ` A=${bus.cursorA}` : ''}
+                      {bus.cursorB ? ` B=${bus.cursorB}` : ''}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="ide-verify-waveform-bar" data-testid="ide-verify-waveform-bar">
                 {/* Left: Fail navigator */}
                 <div className="ide-verify-wfbar-group ide-verify-wfbar-left" data-testid="ide-verify-fail-nav">
                   {failTicksSorted.length > 0 ? (
                     <>
                       <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-fail-nav-first">
-                        First
+                        First mismatch
                       </IdeButton>
                       <IdeButton tone="secondary" onClick={goToPrevFail} testId="ide-verify-fail-nav-prev">
-                        ‹ Prev
+                        Prev mismatch
                       </IdeButton>
                       <IdeButton tone="secondary" onClick={goToNextFail} testId="ide-verify-fail-nav-next">
-                        Next ›
+                        Next mismatch
                       </IdeButton>
                       <span className="ide-verify-fail-nav-position ide-copy">
                         {currentFailIndex >= 0
@@ -1499,6 +1970,52 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       <code data-testid="ide-verify-selected-tick" style={{ minWidth: 24 }}>t{selectedTick}</code>
                     </label>
                   ) : null}
+                  {selectedTick !== null ? (
+                    <div className="ide-verify-cursor-controls" data-testid="ide-verify-cursor-controls">
+                      <button
+                        type="button"
+                        className="ide-verify-zoom-btn"
+                        onClick={() => setCursorFromSelected('A')}
+                        data-testid="ide-verify-set-cursor-a"
+                      >
+                        Set A
+                      </button>
+                      <button
+                        type="button"
+                        className="ide-verify-zoom-btn"
+                        onClick={() => setCursorFromSelected('B')}
+                        data-testid="ide-verify-set-cursor-b"
+                      >
+                        Set B
+                      </button>
+                      <button
+                        type="button"
+                        className="ide-verify-zoom-btn"
+                        onClick={() => jumpToCursor('A')}
+                        disabled={cursorA === null}
+                        data-testid="ide-verify-jump-cursor-a"
+                      >
+                        Jump A
+                      </button>
+                      <button
+                        type="button"
+                        className="ide-verify-zoom-btn"
+                        onClick={() => jumpToCursor('B')}
+                        disabled={cursorB === null}
+                        data-testid="ide-verify-jump-cursor-b"
+                      >
+                        Jump B
+                      </button>
+                      <button
+                        type="button"
+                        className="ide-verify-zoom-btn"
+                        onClick={clearCursors}
+                        data-testid="ide-verify-clear-cursors"
+                      >
+                        Clear AB
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -1553,12 +2070,39 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </span>
                   </div>
                 )}
+                {cursorReadoutRows.length > 0 && (
+                  <div className="ide-verify-cursor-readout" data-testid="ide-verify-cursor-readout">
+                    <table className="ide-verify-cursor-readout-table">
+                      <thead>
+                        <tr>
+                          <th>Signal</th>
+                          <th>A</th>
+                          <th>B</th>
+                          <th>Delta</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cursorReadoutRows.slice(0, 8).map((row) => (
+                          <tr key={row.signal}>
+                            <td><code>{row.signal}</code></td>
+                            <td><code>{row.valueA}</code></td>
+                            <td><code>{row.valueB}</code></td>
+                            <td>{row.delta}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
                 <WaveformViewer
                   signals={visibleSignalTimeline}
                   ticks={zoomedTicks}
                   failTicks={new Set(failingRows.map((row) => row.tick))}
                   failingSignalKeys={failingSignalKeys}
                   selectedTick={selectedTick}
+                  cursorA={cursorA}
+                  cursorB={cursorB}
+                  pinnedSignals={pinnedSignals}
                   onSelectTick={setSelectedTick}
                   onSelectSignal={setSelectedSignal}
                   rowHeight={ROW_H_MAP[waveformDensity]}
@@ -1574,13 +2118,103 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <TruthTablePane
               mode={truthTableMode}
               rows={truthRows}
+              isSequential={Boolean(hasDff || lastRun?.schedule === 'clocked_macro')}
               selectedTick={selectedTick}
               onSelectTick={setSelectedTick}
               onModeChange={setTruthTableMode}
+              emptyReason={truthTableEmptyReason}
+              combosRows={comboRows}
+              combosInputs={inputFields.map((field) => field.label)}
+              combosOutputs={outputSignalOrder}
+              combosUnavailableReason={combosUnavailableReason ?? undefined}
+              kmaps={kmapRows}
+              kmapUnavailableReason={kmapUnavailableReason ?? undefined}
               onFixPath={onFixPath ? (row) => onFixPath({ signal: row.signal, tick: row.tick, expected: row.expected, actual: row.actual }) : undefined}
             />
             </div>{/* /ide-verify-instrument-deck */}
             </div>{/* /ide-verify-console-frame */}
+
+            {/* Failure analysis — below oscilloscope so waveform is the primary instrument */}
+            {displayStatus === 'FAIL' && (
+              <SurfacePanel className="ide-verify-fail-summary" testId="ide-verify-fail-card">
+                <span className="ide-verify-fail-summary__status">FAIL</span>
+                <span className="ide-verify-fail-summary__count">
+                  {failingRows.length} of {runRows.length} vectors failing
+                </span>
+                {firstFailure && (
+                  <span className="ide-verify-fail-summary__first">
+                    First failure: <code>{firstFailure.signal}</code> at tick <code>{firstFailure.tick}</code>
+                  </span>
+                )}
+                {firstFailure && onFixPath && (
+                  <IdeButton
+                    tone="danger"
+                    onClick={() => { onFixPath(firstFailure); onGoToDesign?.(); }}
+                    testId="ide-verify-jump-to-failure-card"
+                  >
+                    Jump to failing node →
+                  </IdeButton>
+                )}
+              </SurfacePanel>
+            )}
+            {displayStatus === 'FAIL' && firstFailure && (
+              <SurfacePanel className="ide-verify-failure-explainer" testId="ide-verify-failure-explainer">
+                <header className="ide-verify-failure-explainer__header">
+                  <strong>Failure explainer</strong>
+                </header>
+                <div className="ide-verify-failure-explainer__grid">
+                  <div>
+                    <span>First mismatch tick</span>
+                    <code data-testid="ide-verify-explainer-first-tick">t{firstFailure.tick}</code>
+                  </div>
+                  <div>
+                    <span>Signal</span>
+                    <code data-testid="ide-verify-explainer-signal">{firstFailure.signal}</code>
+                  </div>
+                  <div>
+                    <span>Expected</span>
+                    <code data-testid="ide-verify-explainer-expected">{firstFailure.expected}</code>
+                  </div>
+                  <div>
+                    <span>Observed</span>
+                    <code data-testid="ide-verify-explainer-observed">{firstFailure.actual}</code>
+                  </div>
+                </div>
+                <div className="ide-verify-failure-explainer__inputs" data-testid="ide-verify-explainer-inputs">
+                  <span>Inputs at tick</span>
+                  {firstFailureInputs && firstFailureInputs.length > 0 ? (
+                    <div className="ide-verify-failure-explainer__chips">
+                      {firstFailureInputs.map((entry) => (
+                        <code key={entry.label}>{entry.label}={entry.value}</code>
+                      ))}
+                    </div>
+                  ) : (
+                    <code>no input snapshot available</code>
+                  )}
+                </div>
+                <div className="ide-inline-actions">
+                  <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-explainer-jump">
+                    Jump to tick
+                  </IdeButton>
+                  <IdeButton
+                    tone="secondary"
+                    onClick={focusMismatchLanes}
+                    testId="ide-verify-explainer-show-mismatches"
+                  >
+                    Show only mismatches
+                  </IdeButton>
+                  {showMismatchOnlySignals && (
+                    <IdeButton
+                      tone="ghost"
+                      onClick={clearMismatchLaneFilter}
+                      testId="ide-verify-explainer-show-all-lanes"
+                    >
+                      Show all lanes
+                    </IdeButton>
+                  )}
+                </div>
+              </SurfacePanel>
+            )}
 
             <div className={`ide-verify-supporting-strip ${drawerOpen ? 'is-open' : ''}`}>
             {/* Drawer toggle header */}
@@ -1860,4 +2494,75 @@ function compareText(left: string, right: string): number {
   if (left < right) return -1;
   if (left > right) return 1;
   return 0;
+}
+
+function parseSeed(value: string): number {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.abs(parsed);
+}
+
+function grayCodes(bitCount: number): string[] {
+  if (bitCount <= 0) return [''];
+  const size = 1 << bitCount;
+  const codes: string[] = [];
+  for (let index = 0; index < size; index += 1) {
+    const gray = index ^ (index >> 1);
+    codes.push(gray.toString(2).padStart(bitCount, '0'));
+  }
+  return codes;
+}
+
+interface SignalBusDescriptor {
+  prefix: string;
+  minIndex: number;
+  maxIndex: number;
+  indices: number[];
+}
+
+function deriveSignalBuses(signals: string[]): SignalBusDescriptor[] {
+  const grouped = new Map<string, Set<number>>();
+  for (const signal of signals) {
+    const match = /^([a-z_]+)(\d+)$/i.exec(signal.trim());
+    if (!match) continue;
+    const prefix = match[1].toLowerCase();
+    const index = Number.parseInt(match[2], 10);
+    if (!Number.isFinite(index)) continue;
+    const next = grouped.get(prefix) ?? new Set<number>();
+    next.add(index);
+    grouped.set(prefix, next);
+  }
+
+  const buses: SignalBusDescriptor[] = [];
+  for (const [prefix, values] of grouped.entries()) {
+    const indices = Array.from(values).sort((left, right) => left - right);
+    if (indices.length < 2) continue;
+    buses.push({
+      prefix,
+      minIndex: indices[0],
+      maxIndex: indices[indices.length - 1],
+      indices,
+    });
+  }
+  buses.sort((left, right) => compareText(left.prefix, right.prefix));
+  return buses;
+}
+
+function formatBusValue(
+  bus: SignalBusDescriptor,
+  signalValueLookup: Map<string, Map<number, string>>,
+  tick: number
+): string | null {
+  let value = 0;
+  let hasValue = false;
+  for (const bit of bus.indices) {
+    const signalName = `${bus.prefix}${bit}`;
+    const signalTicks = signalValueLookup.get(signalName);
+    const raw = signalTicks?.get(tick);
+    if (raw !== '0' && raw !== '1') continue;
+    hasValue = true;
+    if (raw === '1') value |= 1 << (bit - bus.minIndex);
+  }
+  if (!hasValue) return null;
+  return `0x${value.toString(16).toUpperCase()}`;
 }
