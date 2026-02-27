@@ -20,6 +20,21 @@ const STEPS = [
     args: ['-s', 'ide:gate:student-loop-contract'],
   },
   {
+    name: 'ide:gate:design-wire-interaction-contract',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:design-wire-interaction-contract'],
+  },
+  {
+    name: 'ide:gate:design-correctness-contract',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:design-correctness-contract'],
+  },
+  {
+    name: 'ide:gate:design-palette-build-contract',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:design-palette-build-contract'],
+  },
+  {
     name: 'ide:gate:verify-reality-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:verify-reality-contract'],
