@@ -1,5 +1,35 @@
 # AI State
 
+## Change Log 2026-02-27 (Verify Runtime Schema Hardening + Test Inclusion)
+
+**Status**: COMPLETE - Verify runtime now carries explicit sequential/report metadata, and the default `rb-apps` suite includes the new schema regression coverage.
+
+### What Changed
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - sequential gating for Verify now derives from `verifyLastRun?.schedule === 'clocked_macro'` instead of the stale `DFlipFlop`-only proxy.
+- Updated `packages/rb-apps/src/apps/ide/projectRuntime.ts`:
+  - added exported `VerifyRunMeta` and `meta` on `RuntimeVerifyRun`.
+  - derive runtime meta from `VerifyScheduleContract` (`circuitKind`, `clockingProtocol`, `samplePoint`, `tick0Meaning`, `clockSignalName`).
+  - derive and persist `signalRoles` from project I/O rows + schedule contract.
+  - clone `meta`, `inputsAtTick`, and `signalRoles` in persisted runtime copies.
+- Updated `packages/rb-apps/src/apps/ide/verifyReport.ts`:
+  - added `inputsAtTick` join data keyed by tick.
+  - added optional `signalRoles` passthrough on report construction.
+  - kept `inputsAtTick` and `signalRoles` out of `hashSeed` so `reportHash` semantics remain stable.
+- Added schema/runtime tests under `packages/rb-apps/src/__tests__/`:
+  - `verifyRunMeta.test.ts`
+  - `verifyReport.test.ts`
+  - `signalRoles.test.ts`
+  - these live under the default `src/__tests__` tree so `pnpm --filter rb-apps test` exercises them.
+
+### Validation Executed
+- `pnpm --filter rb-apps test` -> PASS (`115 passed`, `5 skipped` test files; `558 passed`, `42 skipped` tests)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/verifyRunMeta.test.ts packages/rb-apps/src/__tests__/verifyReport.test.ts packages/rb-apps/src/__tests__/signalRoles.test.ts` -> PASS (3 files, 11 tests)
+- `pnpm repo:status` -> TIMEOUT (timed out in this environment)
+
+### Attribution
+- Connor Angiel
+
 ## Change Log 2026-02-27 (IDE Blob Overlay Hard-Kill: Divider Pill Removal)
 
 **Status**: COMPLETE - Enforced blob removal at both markup and CSS layers so oversized rounded overlays cannot render even if stale style state exists.
