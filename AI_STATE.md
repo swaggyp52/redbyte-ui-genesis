@@ -1,5 +1,42 @@
 # AI State
 
+## Change Log 2026-02-27 (IDE Blob Overlay Hard-Kill: Divider Pill Removal)
+
+**Status**: COMPLETE - Enforced blob removal at both markup and CSS layers so oversized rounded overlays cannot render even if stale style state exists.
+
+### What Changed
+- Updated `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`:
+  - marked both vertical divider buttons as `hidden` + `aria-hidden="true"` so they do not participate in grid layout or rendering.
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - removed divider pseudo-pill rendering globally by setting `.ide-workbench-divider::after { content: none; }`.
+  - moved horizontal resize affordance to the actual element background (`.ide-workbench-divider-horizontal`) so no pseudo-element can stretch into page overlays.
+
+### Validation Executed
+- `pnpm build` -> PASS
+
+### Attribution
+- Connor Angiel
+
+## Change Log 2026-02-27 (IDE Workbench Blob Overlay Hotfix)
+
+**Status**: COMPLETE - Removed oversized rounded "blob" overlays caused by vertical workbench divider rendering/stretch in the fixed-grid shell.
+
+### What Changed
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - disabled vertical divider layout/pointer impact globally (`.ide-workbench-divider-vertical { display: none; width: 0; pointer-events: none; }`).
+  - this preserves existing divider nodes/test IDs while preventing stretched `::after` pills from occupying grid tracks as visible overlays.
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - removed decorative root backdrop node (`.ide-backdrop-gradient`) from render tree.
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - hardened IDE body background to a flat base (`#070d16`) instead of radial shell fog.
+
+### Validation Executed
+- `pnpm build` -> PASS
+- `pnpm -s classroom:gate` -> PASS
+
+### Attribution
+- Connor Angiel
+
 ## Change Log 2026-02-27 (Designer UX Contract Sprint: Interaction Clarity + Palette Build Gate)
 
 **Status**: COMPLETE - Upgraded core Design interactions for selection clarity/predictable wire editing, hardened keyboard focus behavior to canvas-active workflows, and extended correctness coverage with full-adder plus palette-built XOR gate assertions.
