@@ -72,9 +72,10 @@ export const IdePanel: React.FC<{
   right?: React.ReactNode;
   actions?: React.ReactNode;
   testId?: string;
-}> = ({ title, description, children, right, actions, testId }) => {
+  className?: string;
+}> = ({ title, description, children, right, actions, testId, className }) => {
   return (
-    <section className="ide-panel" data-testid={testId}>
+    <section className={`ide-panel${className ? ` ${className}` : ''}`} data-testid={testId}>
       <header className="ide-panel-header" data-testid="ide-panel-title-row">
         <div className="ide-surface-header" data-testid="ide-surface-header">
           <div>

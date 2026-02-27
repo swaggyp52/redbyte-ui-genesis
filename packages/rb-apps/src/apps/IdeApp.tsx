@@ -884,8 +884,6 @@ export const IdeApp: React.FC = () => {
   return (
     <BoardSignalProvider>
     <div className="ide-root" data-testid="ide-root" data-redbyte-mode="ide">
-      <div className="ide-backdrop-gradient" aria-hidden="true" />
-
       <IdeTopBar
         projectName={projectName}
         projectId={projectId}

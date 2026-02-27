@@ -154,7 +154,7 @@
   margin: 0;
   overflow: hidden;
   font-family: var(--ide-font-ui);
-  background: radial-gradient(circle at 22% 0%, #18314b 0%, #091018 58%);
+  background: #070d16;
   color: var(--ide-text-strong);
 }
 
@@ -175,13 +175,7 @@
 }
 
 .ide-backdrop-gradient {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 82% 12%, rgba(46, 196, 182, 0.13) 0, transparent 34%),
-    radial-gradient(circle at 12% 100%, rgba(249, 199, 79, 0.12) 0, transparent 32%);
-  z-index: 0;
+  display: none;
 }
 
 .ide-top-bar,
@@ -597,26 +591,31 @@
 }
 
 .ide-workbench-divider::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 999px;
-  background: rgba(95, 128, 158, 0.18);
-  transition: background 180ms ease;
+  content: none;
 }
 
 .ide-workbench-divider:hover::after,
 .ide-workbench-divider:focus-visible::after {
-  background: rgba(142, 199, 255, 0.44);
+  content: none;
 }
 
 .ide-workbench-divider-vertical {
-  cursor: col-resize;
+  /* Vertical splitters are disabled; keeping node/test-id but removing layout impact. */
+  display: none;
+  width: 0;
+  pointer-events: none;
 }
 
 .ide-workbench-divider-horizontal {
   height: 6px;
   cursor: row-resize;
+  background: rgba(95, 128, 158, 0.18);
+  transition: background 180ms ease;
+}
+
+.ide-workbench-divider-horizontal:hover,
+.ide-workbench-divider-horizontal:focus-visible {
+  background: rgba(142, 199, 255, 0.44);
 }
 
 .ide-workbench-console {
@@ -7585,6 +7584,12 @@ details[open] summary .details-arrow {
 .ide-verify-panel .ide-panel-body > .ide-verify-workbench {
   flex: 1 1 auto;
   min-height: 0;
+}
+
+/* Keep waveform workbench measurable even when fail callouts stack above it. */
+.ide-verify-panel .ide-panel-body > .ide-verify-workbench {
+  flex: 1 0 320px;
+  min-height: 320px;
 }
 
 /* ══════════════════════════════════════════════════════════════════

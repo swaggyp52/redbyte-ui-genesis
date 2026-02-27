@@ -173,6 +173,8 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
           className="ide-workbench-divider ide-workbench-divider-vertical"
           data-testid="ide-workbench-resize-left"
           aria-label="Resize left dock"
+          aria-hidden="true"
+          hidden
           onPointerDown={(event) => beginResize('left', event)}
         />
 
@@ -187,6 +189,8 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
               className="ide-workbench-divider ide-workbench-divider-vertical"
               data-testid="ide-workbench-resize-right"
               aria-label="Resize right dock"
+              aria-hidden="true"
+              hidden
               onPointerDown={(event) => beginResize('right', event)}
             />
 

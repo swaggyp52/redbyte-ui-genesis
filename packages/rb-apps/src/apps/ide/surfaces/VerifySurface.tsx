@@ -1130,6 +1130,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
     >
       <IdePanel
+        className="ide-verify-panel"
         testId="ide-verify-panel"
       >
         {isShowcaseKit && kitGoals.length > 0 && (
