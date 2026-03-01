@@ -13235,3 +13235,50 @@ details[open].ide-export-evidence-details > summary::before {
   padding: 1px 6px;
   border-radius: 3px;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   Phase 35 — Sprint 13: Pipeline tab visual differentiation
+   All rules here placed last to win over prior phases without !important.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Active: bottom-border accent */
+.ide-pipeline-stage--active {
+  background: rgba(46, 196, 182, 0.12);
+  box-shadow: inset 0 -2px 0 rgba(46, 196, 182, 0.75);
+}
+
+/* Pass: subtle completion marker */
+.ide-pipeline-stage--pass {
+  box-shadow: inset 0 -2px 0 rgba(46, 196, 182, 0.35);
+}
+
+/* Blocked: amber bg + bottom border */
+.ide-pipeline-stage--blocked {
+  background: rgba(244, 185, 66, 0.08);
+  box-shadow: inset 0 -2px 0 rgba(244, 185, 66, 0.6);
+}
+.ide-pipeline-stage--blocked .ide-pipeline-badge {
+  background: rgba(244, 185, 66, 0.18);
+  color: rgba(244, 185, 66, 0.95);
+  border-color: rgba(244, 185, 66, 0.4);
+}
+.ide-pipeline-stage--blocked .ide-pipeline-label {
+  color: rgba(244, 185, 66, 0.9);
+}
+
+/* Pending: undo opacity collapse, keep dim but readable */
+.ide-pipeline-stage--pending { opacity: 1; }
+.ide-pipeline-stage--pending .ide-pipeline-badge {
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(120, 150, 175, 0.55);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+.ide-pipeline-stage--pending .ide-pipeline-label {
+  color: rgba(100, 130, 160, 0.5);
+}
+
+/* Connector traces — bump visibility */
+.ide-pipeline-trace--pass    { color: rgba(46, 196, 182, 0.6); }
+.ide-pipeline-trace--active  { color: rgba(46, 196, 182, 0.8); }
+.ide-pipeline-trace--blocked { color: rgba(244, 185, 66, 0.55); }
+.ide-pipeline-trace--pending { color: rgba(41, 68, 94, 0.5); }

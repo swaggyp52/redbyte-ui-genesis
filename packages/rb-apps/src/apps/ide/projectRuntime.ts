@@ -611,11 +611,28 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         set((state) => {
           const scenarioId = input.scenarioId.trim() || 'runtime-verify';
           const scenarioName = input.scenarioName.trim() || 'Runtime verification';
+          // Ensure trace is populated before building rows (O3 fix):
+          // If the user never ran sim in Design, state.sim.trace is empty.
+          // Run advanceSimulationState inline to cover all test vector ticks.
+          let simForTrace = state.sim;
+          if (input.useRuntimeTrace && state.sim.trace.length === 0 && state.circuit) {
+            const maxVectorTick = state.projectVectors.reduce(
+              (m, v) => Math.max(m, v.tick),
+              0
+            );
+            const ticksNeeded = Math.min(512, maxVectorTick + 8);
+            simForTrace = advanceSimulationState(
+              state.circuit,
+              state.projectIoRows,
+              { ...state.sim, lastAction: 'step' },
+              ticksNeeded
+            );
+          }
           const runtimeRows = input.useRuntimeTrace
             ? buildVerifyRowsFromRuntimeTrace(
                 state.projectVectors,
                 state.projectIoRows,
-                state.sim
+                simForTrace
               )
             : [];
           const normalizedRows =
@@ -671,8 +688,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             meta: buildVerifyRunMeta(scheduleContract),
             report,
             waveform: buildVerifyWaveSamples(report),
-            traceWaveform: state.sim.trace.length > 0
-              ? state.sim.trace.map((sample) => ({
+            traceWaveform: simForTrace.trace.length > 0
+              ? simForTrace.trace.map((sample) => ({
                   tick: sample.tick,
                   signals: Object.fromEntries(
                     Object.entries(sample.signals).map(([k, v]) => [k, String(v)])

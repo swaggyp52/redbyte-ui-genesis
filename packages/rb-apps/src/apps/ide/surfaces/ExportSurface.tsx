@@ -35,6 +35,7 @@ export interface ExportSurfaceProps {
   example?: IdeExampleDefinition | null;
   onGoToHardware?: () => void;
   onGoToProject?: () => void;
+  onGoToDesign?: () => void;
 }
 
 const ARTIFACT_PLAN_FILES = [
@@ -96,6 +97,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   example,
   onGoToHardware,
   onGoToProject,
+  onGoToDesign,
 }) => {
   const viewModel = useMemo(
     () => buildExportViewModel(project, verifyLastRun),
@@ -1013,6 +1015,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                               {portKey && mappingRow && hasSuggestion && (
                                 <IdeButton tone="ghost" onClick={() => applySuggestion(portKey)}>
                                   Apply suggestion
+                                </IdeButton>
+                              )}
+                              {onGoToDesign && (
+                                <IdeButton
+                                  tone="ghost"
+                                  onClick={onGoToDesign}
+                                  testId="ide-export-go-design"
+                                >
+                                  Fix in Design →
                                 </IdeButton>
                               )}
                             </div>

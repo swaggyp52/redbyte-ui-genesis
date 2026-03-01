@@ -1163,6 +1163,7 @@ export const IdeApp: React.FC = () => {
               example={activeExample ?? null}
               onGoToHardware={() => setCurrentMode('hardware')}
               onGoToProject={() => setCurrentMode('project')}
+              onGoToDesign={() => setCurrentMode('design')}
             />
           </ErrorBoundary>
         ) : (
