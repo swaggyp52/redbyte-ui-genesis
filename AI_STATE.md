@@ -17281,3 +17281,24 @@ Targeted readability improvements across surfaces (no layout or logic changes):
 - No TSX changes — pure CSS override placed last in cascade.
 
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-03-01 (Sprint 17 — CI unblock: lab3-webapp KMapState cast + vitest timeout)
+
+### Sprint 17 — Fix lab3-webapp build error + vitest timeout
+
+**Problem 1 — CI fully blocked**: `pnpm verify:gates` runs `pnpm -r build` first; all 25 gates were unreachable because `apps/lab3-webapp` failed to compile.
+
+Root cause: `apps/lab3-webapp/src/kmap-viewer-interactive.tsx:38` accessed `s.doc.kMaps` (typed `Record<string, unknown>` in `LabDocV2` for schema-flexibility/backward-compat) and passed the result directly to the `kmap` prop which expects `KMapState[string] | undefined`. TypeScript reported `Type '{}' is missing properties: grid, groups, simplifiedExpr, minTerms`.
+
+**Fix (commit `311bd08c`)**:
+- `apps/lab3-webapp/src/kmap-viewer-interactive.tsx:38`: added `as KMapState` cast at use-site. `KMapState` was already imported at line 5. `LabDocV2.kMaps` kept as `Record<string, unknown>` to preserve serialization flexibility.
+
+**Problem 2 — sim:repeatability-gate skipping**: After fixing the build, `sim:repeatability-gate` timed out. The global `vitest.setup.ts` `beforeAll` block dynamically imports the full `rb-apps` bundle (`registerAllApps()`). On slower CI machines this exceeded the 30 s timeout, causing all 2 tests to be skipped.
+
+**Fix**:
+- `vitest.setup.ts:148`: bumped `beforeAll` timeout from `30000` → `90000` ms.
+
+### Result
+All 25 `pnpm verify:gates` gates now pass (exit 0).
+
+- **Attribution**: Connor Angiel
