@@ -546,6 +546,7 @@
     var(--ide-workbench-left-width)
     minmax(0, 1fr)
     var(--ide-workbench-right-width);
+  grid-template-rows: minmax(0, 1fr);
   gap: 0;
   min-height: 0;
 }
@@ -7152,6 +7153,11 @@ details[open] summary .details-arrow {
   overflow: auto;
   border-color: rgba(20,40,68,0.8) !important;
 }
+/* Sprint 11: named scroll wrapper for the SVG waveform — handles horizontal overflow */
+.ide-verify-waveform-scroll {
+  overflow: auto;
+  min-height: 0;
+}
 
 /* ── supporting strip (tab bar + panels below deck) ── */
 .ide-verify-supporting-strip {
@@ -7442,14 +7448,18 @@ details[open] summary .details-arrow {
 .ide-verify-console-frame > .ide-verify-instrument-deck {
   flex: 1 1 auto;
   min-height: 0;
+  /* ── Sprint 11 height fix: explicit row so the grid fills its flex-allocated height ── */
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
 }
 
-/* ── 70/30 deck + taller scope ── */
+/* ── 70/30 deck + reasonable scope min ── */
 .ide-verify-instrument-deck {
   grid-template-columns: minmax(0, 2.35fr) minmax(260px, 1fr);
 }
 .ide-verify-oscilloscope-stage {
-  min-height: 480px;
+  /* Sprint 11: removed 480px hard floor — grid row now fills available height */
+  min-height: 160px;
 }
 
 /* ── Oscilloscope instrument header (OSCILLOSCOPE label + chips) ── */
@@ -7501,6 +7511,88 @@ details[open] summary .details-arrow {
   font-size: 10px;
   color: rgba(252,107,107,0.7);
   font-weight: 600;
+}
+.ide-verify-scope-debug-btn {
+  font-size: 10px;
+  padding: 2px 8px;
+  color: rgba(46,196,182,0.85);
+  background: rgba(46,196,182,0.07);
+  border: 1px solid rgba(46,196,182,0.22);
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s;
+}
+.ide-verify-scope-debug-btn:hover {
+  background: rgba(46,196,182,0.14);
+  border-color: rgba(46,196,182,0.45);
+}
+
+/* ── Sprint 11: Signal digest strip — per-signal pass/fail row ── */
+.ide-verify-signal-digest {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 5px var(--ide-space-2);
+  background: rgba(2,6,14,0.82);
+  border-bottom: 1px solid rgba(255,255,255,0.055);
+  flex-shrink: 0;
+  min-height: 32px;
+}
+.ide-verify-signal-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px 2px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: var(--rb-font-mono);
+  border: 1px solid transparent;
+  cursor: default;
+  transition: border-color 0.1s;
+}
+.ide-verify-signal-chip--pass {
+  background: rgba(46,196,182,0.07);
+  border-color: rgba(46,196,182,0.18);
+  color: rgba(46,196,182,0.85);
+}
+.ide-verify-signal-chip--fail {
+  background: rgba(255,80,80,0.09);
+  border-color: rgba(255,80,80,0.35);
+  color: rgba(255,130,130,0.95);
+}
+.ide-verify-signal-chip--idle {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.08);
+  color: rgba(160,180,210,0.5);
+}
+.ide-verify-signal-chip-dir {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+.ide-verify-signal-chip-pin {
+  font-size: 9px;
+  opacity: 0.5;
+  margin-left: 2px;
+}
+.ide-verify-signal-chip-status {
+  font-size: 9px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+/* Digest label before chips */
+.ide-verify-signal-digest-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(100,160,220,0.45);
+  flex-shrink: 0;
+  margin-right: 2px;
 }
 
 /* ── Supporting strip drawer ── */

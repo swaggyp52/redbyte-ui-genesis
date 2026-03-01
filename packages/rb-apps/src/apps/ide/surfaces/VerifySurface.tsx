@@ -102,6 +102,7 @@ const WaveformViewer: React.FC<{
   onSelectSignal: (signal: string) => void;
   rowHeight?: number;
   emptyMessage?: string;
+  signalMeta?: Map<string, { direction: 'in' | 'out'; pin?: string }>;
 }> = ({
   signals,
   ticks,
@@ -115,8 +116,9 @@ const WaveformViewer: React.FC<{
   onSelectSignal,
   rowHeight = 38,
   emptyMessage = 'Run verification to see waveforms',
+  signalMeta,
 }) => {
-  const LABEL_W = 88;
+  const LABEL_W = 112;
   const ROW_H = rowHeight;
   const ROW_HI = Math.round(ROW_H * 0.24);
   const ROW_LO = Math.round(ROW_H * 0.76);
@@ -229,23 +231,40 @@ const WaveformViewer: React.FC<{
               fill={rowIndex % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent'}
             />
 
-            {/* Signal label */}
-            <text
-              x={LABEL_W - 8}
-              y={y + Math.round(ROW_H / 2) + 4}
-              textAnchor="end"
-              fontSize="11"
-              fill={isFailing ? '#ff9090' : 'rgba(180,200,220,0.72)'}
-              style={{ cursor: 'pointer' }}
-              onClick={() => onSelectSignal(signalRow.signal)}
-            >
-              <>
-                <title>{signalRow.signal}</title>
-                {`${isPinned ? '* ' : ''}${
-                  signalRow.signal.length > 13 ? `${signalRow.signal.slice(0, 12)}...` : signalRow.signal
+          {/* Signal label column */}
+            <g style={{ cursor: 'pointer' }} onClick={() => onSelectSignal(signalRow.signal)}>
+              <title>{signalRow.signal}</title>
+              {/* Name */}
+              <text
+                x={LABEL_W - 8}
+                y={y + (signalMeta?.has(signalRow.signal) ? Math.round(ROW_H * 0.38) : Math.round(ROW_H / 2) + 4)}
+                textAnchor="end"
+                fontSize="11"
+                fill={isFailing ? '#ff9090' : 'rgba(180,200,220,0.85)'}
+              >
+                {`${isPinned ? '★ ' : ''}${
+                  signalRow.signal.length > 14 ? `${signalRow.signal.slice(0, 13)}…` : signalRow.signal
                 }`}
-              </>
-            </text>
+              </text>
+              {/* Direction + pin sub-line */}
+              {(() => {
+                const meta = signalMeta?.get(signalRow.signal);
+                if (!meta) return null;
+                const dirLabel = meta.direction === 'in' ? '▲ IN' : '▼ OUT';
+                const pinLabel = meta.pin ? ` · ${meta.pin}` : '';
+                return (
+                  <text
+                    x={LABEL_W - 8}
+                    y={y + Math.round(ROW_H * 0.7)}
+                    textAnchor="end"
+                    fontSize="9"
+                    fill={isFailing ? 'rgba(255,130,130,0.65)' : 'rgba(46,196,182,0.45)'}
+                  >
+                    {`${dirLabel}${pinLabel}`}
+                  </text>
+                );
+              })()}
+            </g>
 
             {/* Signal trace */}
             {signalRow.values.map((point, i) => {
@@ -564,6 +583,26 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return keys;
   }, [failingRows]);
+
+  // Sprint 11: per-signal digest — direction, pin, pass/fail status
+  const signalDigestRows = useMemo(() => {
+    if (!mappedSignals?.length) return [];
+    return mappedSignals.map((sig) => {
+      const norm = normalizeFieldId(sig.label ?? sig.id);
+      const isFailing = lastRun ? failingSignalKeys.has(norm) : null;
+      return { id: sig.id, label: sig.label, direction: sig.direction, pin: sig.pin, isFailing };
+    });
+  }, [mappedSignals, failingSignalKeys, lastRun]);
+
+  // Sprint 11: signalMeta map keyed by display name for WaveformViewer
+  const signalMetaMap = useMemo(() => {
+    const map = new Map<string, { direction: 'in' | 'out'; pin?: string }>();
+    for (const sig of mappedSignals ?? []) {
+      map.set(sig.label ?? sig.id, { direction: sig.direction, pin: sig.pin });
+      map.set(sig.id, { direction: sig.direction, pin: sig.pin });
+    }
+    return map;
+  }, [mappedSignals]);
   const relevantSignalTimeline = useMemo(() => {
     const filtered = signalTimeline.filter((entry) => {
       const normalized = normalizeFieldId(entry.signal);
@@ -2183,8 +2222,57 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       fail {currentFailIndex + 1}/{failTicksSorted.length}
                     </span>
                   )}
+                  {/* Sprint 11: Debug in Design — jump to selected tick in Design canvas */}
+                  {onDebugTickSelected && selectedTick !== null && (
+                    <button
+                      type="button"
+                      className="ide-verify-scope-debug-btn"
+                      data-testid="ide-verify-debug-in-design"
+                      onClick={() => {
+                        const tickSignals: Record<string, 0 | 1> = {};
+                        for (const row of visibleSignalTimeline) {
+                          const pt = row.values.find((v) => v.tick === selectedTick);
+                          if (pt?.value === '1') tickSignals[row.signal] = 1;
+                          else if (pt?.value === '0') tickSignals[row.signal] = 0;
+                        }
+                        onDebugTickSelected(selectedTick, tickSignals);
+                        onGoToDesign?.();
+                      }}
+                    >
+                      Debug t{selectedTick} in Design →
+                    </button>
+                  )}
                 </span>
               </div>
+              {/* Sprint 11: Signal digest — per-signal direction/pin/status row */}
+              {signalDigestRows.length > 0 && (
+                <div className="ide-verify-signal-digest" data-testid="ide-verify-signal-digest">
+                  <span className="ide-verify-signal-digest-label">Signals</span>
+                  {signalDigestRows.map((sig) => {
+                    const tone = sig.isFailing === null ? 'idle' : sig.isFailing ? 'fail' : 'pass';
+                    return (
+                      <span
+                        key={sig.id}
+                        className={`ide-verify-signal-chip ide-verify-signal-chip--${tone}`}
+                        title={sig.pin ? `${sig.id} → FPGA pin ${sig.pin}` : sig.id}
+                      >
+                        <span className="ide-verify-signal-chip-dir">
+                          {sig.direction === 'in' ? '▲' : '▼'}
+                        </span>
+                        {sig.label ?? sig.id}
+                        {sig.pin && (
+                          <span className="ide-verify-signal-chip-pin">{sig.pin}</span>
+                        )}
+                        {sig.isFailing !== null && (
+                          <span className="ide-verify-signal-chip-status">
+                            {sig.isFailing ? '✗' : '✓'}
+                          </span>
+                        )}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
               {busReadouts.length > 0 && (
                 <div className="ide-verify-scope-bus-strip" data-testid="ide-verify-bus-strip">
                   {busReadouts.slice(0, 3).map((bus) => (
@@ -2444,7 +2532,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </table>
                   </div>
                 )}
-                <div style={{ overflow: 'auto' }}>
+                <div className="ide-verify-waveform-scroll">
                 <WaveformViewer
                   signals={visibleSignalTimeline}
                   ticks={zoomedTicks}
@@ -2457,6 +2545,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   onSelectTick={setSelectedTick}
                   onSelectSignal={setSelectedSignal}
                   rowHeight={ROW_H_MAP[waveformDensity]}
+                  signalMeta={signalMetaMap}
                   emptyMessage={
                     lastRun
                       ? 'No waveform data in this run — check I/O mapping in Design'
