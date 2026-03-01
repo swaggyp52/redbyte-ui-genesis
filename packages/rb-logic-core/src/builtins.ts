@@ -31,12 +31,14 @@ export const SwitchBehavior: NodeBehavior = {
 
 /**
  * Lamp - Displays input state (passive)
+ * Returns `out` so the signal propagates into the cache and is visible
+ * in the Design surface output dock even on user-built (unmapped) circuits.
  */
 export const LampBehavior: NodeBehavior = {
   evaluate(inputs) {
     const input = inputs.in ?? 0;
     return {
-      outputs: {},
+      outputs: { out: input as Signal },
       state: { isOn: input },
     };
   },

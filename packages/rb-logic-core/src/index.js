@@ -44,5 +44,7 @@ registerCompositeNode(FullAdderDef);
 registerCompositeNode(Counter4BitDef);
 // Register analog nodes
 registerAnalogNodes();
+// Signal path analysis
+export { getFaninCone } from './pathTrace';
 // Share utilities
 export * from './share/encoding';

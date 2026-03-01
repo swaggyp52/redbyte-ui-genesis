@@ -9,7 +9,7 @@ import {
   BASYS3_SWITCH_PINS,
   resolveBasys3PackagePin,
 } from '../../../fpga/boards/basys3/basys3Pins';
-import type { ProjectHealth, ProjectPrimaryCta } from '../projectHealth';
+import type { ProjectHealth, ProjectHealthMode, ProjectPrimaryCta } from '../projectHealth';
 import type { IdeDiagnosticRouteRequest } from '../diagnostics';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -112,9 +112,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   examples,
   activeExampleId,
   onOpenExample,
-  primaryCtaLabel: _primaryCtaLabel,
-  primaryCta: _primaryCta,
-  onPrimaryCta: _onPrimaryCta,
+  primaryCtaLabel,
+  primaryCta,
+  onPrimaryCta,
   onUpdateMappingPin,
   onAutoSuggestMapping,
   onOpenDesign,
@@ -138,6 +138,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const [highlightedMappingKey, setHighlightedMappingKey] = useState<string | null>(null);
   const [mappingExpanded, setMappingExpanded] = useState(false);
   const mappingInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const mappingSectionRef = useRef<HTMLElement | null>(null);
+  const examplesSectionRef = useRef<HTMLElement | null>(null);
   const highlightResetTimer = useRef<number | null>(null);
   const { activeBoardSignal } = useBoardSignal();
 
@@ -205,6 +207,30 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   );
 
   const verifyPass = health.lastVerify?.status === 'pass' && !health.dirtySinceVerify;
+  const blockingIssue = health.blockingIssues[0] ?? null;
+  const activeExample = useMemo(
+    () => examples.find((example) => example.id === activeExampleId) ?? null,
+    [activeExampleId, examples]
+  );
+  const missingRequiredRows = useMemo(
+    () =>
+      sortedMappingRows.filter((row) => row.required && row.pin.trim().length === 0).slice(0, 4),
+    [sortedMappingRows]
+  );
+
+  const inputCount = useMemo(() => mappingRows.filter((r) => r.direction === 'in').length, [mappingRows]);
+  const outputCount = useMemo(() => mappingRows.filter((r) => r.direction === 'out').length, [mappingRows]);
+  const savedAgoLabel = useMemo(() => {
+    if (!lastSavedAt) return null;
+    try {
+      const ts = new Date(lastSavedAt).getTime();
+      if (isNaN(ts)) return null;
+      const mins = Math.floor((Date.now() - ts) / 60000);
+      if (mins < 1) return 'just now';
+      if (mins < 60) return `${mins} min ago`;
+      return `${Math.floor(mins / 60)}h ago`;
+    } catch { return null; }
+  }, [lastSavedAt]);
   const exportReady =
     readiness.hasCircuit &&
     readiness.hasIoMapping &&
@@ -232,6 +258,160 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     exportReady,
     hardwareReady,
   ]);
+
+  const projectSummary = useMemo(() => {
+    const trimmedDescription = description.trim();
+    if (trimmedDescription.length > 0) return trimmedDescription;
+    if (activeExample?.summary) return activeExample.summary;
+    if (!readiness.hasCircuit) return 'Start from an example or import HDL to begin the project flow.';
+    return `Top module ${topModuleName || 'top'} is loaded and ready for setup.`;
+  }, [activeExample?.summary, description, readiness.hasCircuit, topModuleName]);
+
+  const nextActionTitle = useMemo(
+    () => getNextActionTitle(primaryCta.mode, primaryCtaLabel),
+    [primaryCta.mode, primaryCtaLabel]
+  );
+  const nextActionSummary = useMemo(
+    () =>
+      getNextActionSummary({
+        primaryCta,
+        heroStatusMessage,
+        blockingIssue,
+        verifyPass,
+        exportReady,
+        hardwareReady,
+        unmappedRequiredCount,
+      }),
+    [
+      blockingIssue,
+      exportReady,
+      hardwareReady,
+      heroStatusMessage,
+      primaryCta,
+      unmappedRequiredCount,
+      verifyPass,
+    ]
+  );
+  const verifySummary = useMemo(
+    () => getVerifySummary(health, verifyPass),
+    [health, verifyPass]
+  );
+  const exportSummary = useMemo(
+    () => getExportSummary(health, exportReady, hardwareReady),
+    [exportReady, hardwareReady, health]
+  );
+  const submissionSummary = useMemo(
+    () =>
+      getSubmissionSummary({
+        studentName,
+        hasVerifyRun,
+        submissionPreview,
+        onExportSubmission,
+        onStudentNameChange,
+      }),
+    [hasVerifyRun, onExportSubmission, onStudentNameChange, studentName, submissionPreview]
+  );
+  const showcaseInputSignals = useMemo(
+    () => getShowcaseSignals(sortedMappingRows, 'in'),
+    [sortedMappingRows]
+  );
+  const showcaseOutputSignals = useMemo(
+    () => getShowcaseSignals(sortedMappingRows, 'out'),
+    [sortedMappingRows]
+  );
+  const showcaseRows = useMemo(() => {
+    const rowCount = Math.max(showcaseInputSignals.length, showcaseOutputSignals.length, 3);
+    return Array.from({ length: rowCount }, (_, index) => ({
+      input: showcaseInputSignals[index] ?? `IN${index}`,
+      output: showcaseOutputSignals[index] ?? `OUT${index}`,
+    }));
+  }, [showcaseInputSignals, showcaseOutputSignals]);
+  const heroStatusTone = blockingIssue ? 'warn' : hardwareReady ? 'ok' : 'idle';
+  const heroStatusLabel = blockingIssue
+    ? 'Action needed'
+    : hardwareReady
+      ? 'Hardware ready'
+      : verifyPass
+        ? 'Ready to export'
+        : 'In progress';
+  const heroAssistAction = useMemo(() => {
+    if (!readiness.hasCircuit) {
+      return {
+        label: 'Import HDL',
+        onClick: onOpenImport,
+      };
+    }
+    if (examples.length > 0) {
+      return {
+        label: 'Explore examples',
+        onClick: () => examplesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      };
+    }
+    return {
+      label: 'Open Design',
+      onClick: onOpenDesign,
+    };
+  }, [examples.length, onOpenDesign, onOpenImport, readiness.hasCircuit]);
+  const heroChecklistItems = useMemo(
+    () => [
+      {
+        label: 'Pins mapped',
+        value: readiness.hasIoMapping
+          ? `${mappedRequiredCount}/${requiredCount || mappedRequiredCount} assigned`
+          : `${unmappedRequiredCount} remaining`,
+        tone: readiness.hasIoMapping ? 'ok' : 'warn',
+      },
+      {
+        label: 'Verify',
+        value: verifyPass ? 'Current run passed' : blockingIssue?.code === 'RBP1004' ? 'Run again after changes' : 'Still needed',
+        tone: verifyPass ? 'ok' : 'warn',
+      },
+      {
+        label: 'Export',
+        value: hardwareReady ? 'Board handoff ready' : exportReady ? 'Build package next' : 'Blocked by earlier stages',
+        tone: hardwareReady || exportReady ? 'ok' : 'idle',
+      },
+    ],
+    [
+      blockingIssue?.code,
+      exportReady,
+      hardwareReady,
+      mappedRequiredCount,
+      readiness.hasIoMapping,
+      requiredCount,
+      unmappedRequiredCount,
+      verifyPass,
+    ]
+  );
+
+  const handleProjectModeAction = useCallback(
+    (mode: ProjectHealthMode) => {
+      switch (mode) {
+        case 'design':
+          onOpenDesign();
+          return;
+        case 'verify':
+          onOpenVerify();
+          return;
+        case 'export':
+          onOpenExport();
+          return;
+        case 'hardware':
+          onOpenHardware();
+          return;
+        case 'import':
+          onOpenImport();
+          return;
+        case 'project':
+          setMappingExpanded(true);
+          mappingSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        default:
+          return;
+      }
+    },
+    [onOpenDesign, onOpenExport, onOpenHardware, onOpenImport, onOpenVerify]
+  );
 
   const readinessRows = useMemo(
     () =>
@@ -401,10 +581,68 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 
   const designCardDone = readiness.hasCircuit && readiness.hasIoMapping;
   const designInProgress = readiness.hasCircuit && !designCardDone;
-  const verifyCardDone = readiness.verifyPass;
+  const verifyCardDone = verifyPass;
   const verifyCardLocked = !designCardDone;
   const hardwareCardDone = hardwareReady;
   const hardwareCardLocked = !verifyCardDone;
+  const completedMilestoneCount = [
+    designCardDone,
+    verifyCardDone,
+    exportReady,
+    hardwareReady,
+  ].filter(Boolean).length;
+  const dockStageItems = useMemo(
+    () => [
+      {
+        id: 'design',
+        step: '1',
+        label: 'Design',
+        meta: designCardDone ? 'Mapped' : readiness.hasCircuit ? 'In progress' : 'Start here',
+        state: designCardDone ? 'done' : primaryCta.mode === 'design' ? 'active' : 'idle',
+        onClick: onOpenDesign,
+        testId: 'ide-project-dock-nav-design',
+      },
+      {
+        id: 'verify',
+        step: '2',
+        label: 'Verify',
+        meta: verifyPass ? 'Passed' : primaryCta.mode === 'verify' ? 'Run now' : 'Waiting',
+        state: verifyPass ? 'done' : primaryCta.mode === 'verify' ? 'active' : 'idle',
+        onClick: onOpenVerify,
+        testId: 'ide-project-dock-nav-verify',
+      },
+      {
+        id: 'export',
+        step: '3',
+        label: 'Export',
+        meta: exportReady ? 'Bundle ready' : primaryCta.mode === 'export' ? 'Next up' : 'Blocked',
+        state: exportReady ? 'done' : primaryCta.mode === 'export' ? 'active' : 'idle',
+        onClick: onOpenExport,
+        testId: 'ide-project-dock-nav-export',
+      },
+      {
+        id: 'hardware',
+        step: '4',
+        label: 'Hardware',
+        meta: hardwareReady ? 'Board ready' : primaryCta.mode === 'hardware' ? 'Go live' : 'Later',
+        state: hardwareReady ? 'done' : primaryCta.mode === 'hardware' ? 'active' : 'idle',
+        onClick: onOpenHardware,
+        testId: 'ide-project-dock-nav-hardware',
+      },
+    ],
+    [
+      designCardDone,
+      exportReady,
+      hardwareReady,
+      onOpenDesign,
+      onOpenExport,
+      onOpenHardware,
+      onOpenVerify,
+      primaryCta.mode,
+      readiness.hasCircuit,
+      verifyPass,
+    ]
+  );
   const designPinStatus = readiness.hasIoMapping
     ? `${mappedRequiredCount}/${requiredCount} pins mapped`
     : unmappedRequiredCount > 0
@@ -441,10 +679,22 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         <section className="ide-workbench-placeholder" data-testid="ide-project-start-dock">
           {/* Quick surface navigation */}
           <div className="ide-project-dock-nav" data-testid="ide-project-dock-nav">
-            <IdeButton tone="ghost" onClick={onOpenDesign} testId="ide-project-dock-nav-design">Design</IdeButton>
-            <IdeButton tone="ghost" onClick={onOpenVerify} testId="ide-project-dock-nav-verify">Verify</IdeButton>
-            <IdeButton tone="ghost" onClick={onOpenExport} testId="ide-project-dock-nav-export">Export</IdeButton>
-            <IdeButton tone="ghost" onClick={onOpenHardware} testId="ide-project-dock-nav-hardware">Hardware</IdeButton>
+            <p className="ide-surface-block-label">Jump to stage</p>
+            <div className="ide-project-dock-stage-grid">
+              {dockStageItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`ide-project-dock-stage is-${item.state}`}
+                  onClick={item.onClick}
+                  data-testid={item.testId}
+                >
+                  <span className="ide-project-dock-stage-step">{item.step}</span>
+                  <span className="ide-project-dock-stage-label">{item.label}</span>
+                  <span className="ide-project-dock-stage-meta">{item.meta}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Student identity + submission export */}
@@ -569,10 +819,121 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             {verifyPass ? 'VERIFIED' : 'UNVERIFIED'}
           </IdeStatusPill>
         </div>
+        {/* Quick-stats strip — circuit summary at a glance */}
+        {readiness.hasCircuit && (inputCount > 0 || outputCount > 0 || savedAgoLabel) && (
+          <div className="ide-project-quick-stats" data-testid="ide-project-quick-stats">
+            {inputCount > 0 && (
+              <span>{inputCount} input{inputCount !== 1 ? 's' : ''}</span>
+            )}
+            {outputCount > 0 && (
+              <><span className="ide-qstat-sep" aria-hidden="true">·</span>
+              <span>{outputCount} output{outputCount !== 1 ? 's' : ''}</span></>
+            )}
+            {verifyPass && (
+              <><span className="ide-qstat-sep" aria-hidden="true">·</span>
+              <span className="ide-qstat-ok">✓ Verified</span></>
+            )}
+            {savedAgoLabel && (
+              <><span className="ide-qstat-sep" aria-hidden="true">·</span>
+              <span>Saved {savedAgoLabel}</span></>
+            )}
+          </div>
+        )}
         {/* ── Hero Onboarding Panel ── */}
         <SurfacePanel className="ide-project-hero" testId="ide-project-hero">
-          <p className="ide-project-hero-status" data-testid="ide-project-hero-status">
-            {heroStatusMessage}
+          <div className="ide-project-showcase" data-testid="ide-project-showcase">
+            <div className="ide-project-showcase-copy">
+              <div className="ide-project-showcase-headline">
+                <span className="ide-project-showcase-eyebrow">RedByte classroom flow</span>
+                <h2 className="ide-project-showcase-title">
+                  Build it, prove it, and light it up on the board.
+                </h2>
+                <p className="ide-project-showcase-body">{projectSummary}</p>
+              </div>
+              <div className="ide-project-showcase-status-row">
+                <IdeStatusPill tone={heroStatusTone}>{heroStatusLabel.toUpperCase()}</IdeStatusPill>
+                <span className="ide-project-showcase-status-copy" data-testid="ide-project-hero-status">
+                  {heroStatusMessage}
+                </span>
+              </div>
+              <div className="ide-project-showcase-chip-row">
+                <span className="ide-project-context-tag">Basys3</span>
+                <span className="ide-project-context-tag">{inputCount} in / {outputCount} out</span>
+                <span className="ide-project-context-tag">{completedMilestoneCount}/4 milestones</span>
+                {activeExample?.concept && (
+                  <span className="ide-project-context-tag">{activeExample.concept}</span>
+                )}
+              </div>
+              <div className="ide-project-showcase-actions">
+                <span data-testid="ide-project-continue-cta">
+                  <IdeButton
+                    tone="primary"
+                    onClick={onPrimaryCta}
+                    testId="ide-project-showcase-primary-cta"
+                  >
+                    Continue to {primaryCtaLabel} →
+                  </IdeButton>
+                </span>
+                <IdeButton
+                  tone="secondary"
+                  onClick={heroAssistAction.onClick}
+                  testId="ide-project-showcase-secondary-cta"
+                >
+                  {heroAssistAction.label}
+                </IdeButton>
+              </div>
+              <div className="ide-project-showcase-checklist">
+                {heroChecklistItems.map((item) => (
+                  <div
+                    key={item.label}
+                    className={`ide-project-showcase-checkpoint is-${item.tone}`}
+                  >
+                    <span className="ide-project-showcase-checkpoint-dot" aria-hidden="true" />
+                    <div>
+                      <strong>{item.label}</strong>
+                      <span>{item.value}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="ide-project-showcase-visual">
+              <div className="ide-project-board-preview" data-testid="ide-project-board-preview">
+                <div className="ide-project-board-preview-header">
+                  <span>Signal preview</span>
+                  <span>{mappedRequiredCount}/{requiredCount || mappingRows.length || showcaseRows.length} mapped</span>
+                </div>
+                <div className="ide-project-board-traces">
+                  {showcaseRows.map((row, index) => {
+                    const rowMapped =
+                      index < showcaseInputSignals.length &&
+                      index < showcaseOutputSignals.length &&
+                      readiness.hasIoMapping;
+                    const rowVerified = rowMapped && verifyPass;
+                    return (
+                      <div
+                        key={`${row.input}-${row.output}-${index}`}
+                        className={`ide-project-board-trace-row${
+                          rowVerified ? ' is-verified' : rowMapped ? ' is-mapped' : ''
+                        }`}
+                      >
+                        <span className="ide-project-board-trace-node is-input">{row.input}</span>
+                        <span className="ide-project-board-trace-line" aria-hidden="true" />
+                        <span className="ide-project-board-trace-node is-output">{row.output}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="ide-project-board-preview-note">
+                  {activeExample?.expectedBehavior || 'Map the pins, run Verify, then export to hardware.'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <p className="ide-project-hero-status">
+            Next stage map
           </p>
 
           <div data-testid="ide-project-panel-readiness">
@@ -615,15 +976,13 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 </IdeButton>
               )}
               {!verifyCardLocked && !verifyCardDone && (
-                <span data-testid="ide-project-continue-cta">
-                  <IdeButton
-                    tone="primary"
-                    onClick={onOpenVerify}
-                    testId="ide-launchpad-verify-cta"
-                  >
-                    Continue to Verify →
-                  </IdeButton>
-                </span>
+                <IdeButton
+                  tone="primary"
+                  onClick={onOpenVerify}
+                  testId="ide-launchpad-verify-cta"
+                >
+                  Continue to Verify →
+                </IdeButton>
               )}
             </div>
 
@@ -650,81 +1009,251 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </div>
           </div>{/* end ide-project-panel-readiness */}
 
-          {/* Fallback continue CTA: shown when verify card is locked or already done */}
-          {(verifyCardLocked || verifyCardDone) && (
-            <span data-testid="ide-project-continue-cta">
-              <IdeButton
-                tone="secondary"
-                onClick={onOpenVerify}
-                testId="ide-project-cta-continue"
-              >
-                Continue to Verify →
-              </IdeButton>
-            </span>
-          )}
           {/* Gate sentinel — text content only, not displayed */}
-          <span style={{ display: 'none' }} data-testid="ide-project-continue-target">Verify</span>
+          <span style={{ display: 'none' }} data-testid="ide-project-continue-target">{primaryCtaLabel}</span>
 
-          {health.blockingIssues.length > 0 && health.blockingIssues[0] && (
+          {blockingIssue && (
             <IdeCallout tone="warn" title="Next blocker" testId="ide-project-hero-blocker">
-              {health.blockingIssues[0].message}
+              {blockingIssue.message}
             </IdeCallout>
           )}
         </SurfacePanel>
 
-        {/* ── Quick-start example cards ── */}
+        {/* Project overview + examples */}
+        <div className="ide-project-flightdeck" data-testid="ide-project-flightdeck">
+          <SurfacePanel className="ide-project-spotlight ide-project-spotlight-primary" testId="ide-project-next-action">
+            <div className="ide-project-spotlight-header">
+              <span className="ide-project-spotlight-eyebrow">Next action</span>
+              <span className="ide-project-spotlight-code" data-testid="ide-project-next-action-code">
+                {primaryCta.code}
+              </span>
+            </div>
+            <div className="ide-project-spotlight-copy">
+              <h3 className="ide-project-spotlight-title">{nextActionTitle}</h3>
+              <p className="ide-project-spotlight-body">{nextActionSummary}</p>
+            </div>
+            <div className="ide-project-spotlight-meta">
+              <span>{completedMilestoneCount}/4 milestones complete</span>
+              <span>{verifyPass ? 'Verification is current' : 'Verification still needed'}</span>
+            </div>
+            {blockingIssue && (
+              <div className="ide-project-spotlight-note" data-testid="ide-project-next-action-blocker">
+                <strong>{blockingIssue.code}</strong>
+                <span>{blockingIssue.message}</span>
+              </div>
+            )}
+            <div className="ide-project-spotlight-actions">
+              <IdeButton
+                tone="primary"
+                onClick={onPrimaryCta}
+                testId="ide-project-next-action-cta"
+              >
+                Continue to {primaryCtaLabel}
+              </IdeButton>
+              {blockingIssue?.fixPath && blockingIssue.fixPath.mode !== primaryCta.mode && (
+                <IdeButton
+                  tone="ghost"
+                  onClick={() => handleProjectModeAction(blockingIssue.fixPath!.mode)}
+                  testId="ide-project-next-action-fix-path"
+                >
+                  {blockingIssue.fixPath.actionLabel}
+                </IdeButton>
+              )}
+            </div>
+          </SurfacePanel>
+
+          <SurfacePanel className="ide-project-spotlight" testId="ide-project-context">
+            <div className="ide-project-spotlight-header">
+              <span className="ide-project-spotlight-eyebrow">Project context</span>
+              <IdeStatusPill tone={simRunning ? 'ok' : 'idle'}>
+                {simRunning ? 'SIM RUNNING' : 'SIM IDLE'}
+              </IdeStatusPill>
+            </div>
+            <div className="ide-project-spotlight-copy">
+              <h3 className="ide-project-spotlight-title">
+                {activeExample?.name ?? projectName}
+              </h3>
+              <p className="ide-project-spotlight-body">{projectSummary}</p>
+            </div>
+            <div className="ide-project-context-tags">
+              <span className="ide-project-context-tag">Basys3</span>
+              <span className="ide-project-context-tag">
+                {inputCount} in / {outputCount} out
+              </span>
+              {activeExample?.concept && (
+                <span className="ide-project-context-tag">{activeExample.concept}</span>
+              )}
+              {activeExample?.lab && (
+                <span className="ide-project-context-tag">{activeExample.lab}</span>
+              )}
+            </div>
+            <dl className="ide-project-glance-list">
+              <div>
+                <dt>Top module</dt>
+                <dd>{topModuleName || 'top'}</dd>
+              </div>
+              <div>
+                <dt>Expected behavior</dt>
+                <dd>
+                  {activeExample?.expectedBehavior || 'Use Verify to define the expected outputs.'}
+                </dd>
+              </div>
+              <div>
+                <dt>Last saved</dt>
+                <dd>{lastSavedAt ? formatSavedAt(lastSavedAt) : 'No local snapshot yet'}</dd>
+              </div>
+            </dl>
+          </SurfacePanel>
+
+          <SurfacePanel className="ide-project-spotlight" testId="ide-project-readiness-summary">
+            <div className="ide-project-spotlight-header">
+              <span className="ide-project-spotlight-eyebrow">Readiness</span>
+              <IdeStatusPill tone={hardwareReady ? 'ok' : blockingIssue ? 'warn' : 'idle'}>
+                {hardwareReady ? 'BOARD READY' : blockingIssue ? 'ACTION NEEDED' : 'IN PROGRESS'}
+              </IdeStatusPill>
+            </div>
+            <div className="ide-project-readiness-list">
+              <div className="ide-project-readiness-item">
+                <div className="ide-project-readiness-item-head">
+                  <span>Mapping</span>
+                  <IdeStatusPill tone={readiness.hasIoMapping ? 'ok' : 'warn'}>
+                    {readiness.hasIoMapping ? 'READY' : 'BLOCKED'}
+                  </IdeStatusPill>
+                </div>
+                <p>
+                  {readiness.hasIoMapping
+                    ? `${mappedRequiredCount}/${requiredCount} required pins assigned.`
+                    : `${unmappedRequiredCount} required pin${unmappedRequiredCount !== 1 ? 's are' : ' is'} still missing.`}
+                </p>
+              </div>
+              <div className="ide-project-readiness-item">
+                <div className="ide-project-readiness-item-head">
+                  <span>Verify</span>
+                  <IdeStatusPill tone={verifyPass ? 'ok' : 'warn'}>
+                    {verifyPass ? 'READY' : 'NEEDS RUN'}
+                  </IdeStatusPill>
+                </div>
+                <p>{verifySummary}</p>
+              </div>
+              <div className="ide-project-readiness-item">
+                <div className="ide-project-readiness-item-head">
+                  <span>Export</span>
+                  <IdeStatusPill tone={exportReady ? 'ok' : 'warn'}>
+                    {exportReady ? 'READY' : 'BLOCKED'}
+                  </IdeStatusPill>
+                </div>
+                <p>{exportSummary}</p>
+              </div>
+              <div className="ide-project-readiness-item">
+                <div className="ide-project-readiness-item-head">
+                  <span>{submissionSummary.label}</span>
+                  <IdeStatusPill tone={submissionSummary.tone}>
+                    {submissionSummary.status}
+                  </IdeStatusPill>
+                </div>
+                <p>{submissionSummary.summary}</p>
+              </div>
+            </div>
+            {unmappedRequiredCount > 0 && (
+              <div className="ide-project-spotlight-actions">
+                <IdeButton
+                  tone="secondary"
+                  onClick={() => handleProjectModeAction('project')}
+                  testId="ide-project-open-mapping-inline"
+                >
+                  Review missing pins
+                </IdeButton>
+                <IdeButton
+                  tone="ghost"
+                  onClick={onAutoSuggestMapping}
+                  testId="ide-project-auto-map-inline"
+                >
+                  Auto-suggest pins
+                </IdeButton>
+              </div>
+            )}
+          </SurfacePanel>
+        </div>
+
         {examples.length > 0 && (
           <details
+            ref={examplesSectionRef}
             className="ide-project-examples-disclosure"
-            open={!readiness.hasCircuit}
+            open
             data-testid="ide-project-examples-disclosure"
           >
             <summary className="ide-project-examples-disclosure-summary">
-              {readiness.hasCircuit ? 'Explore examples' : 'Start with an example'}
+              {readiness.hasCircuit ? 'Try another starter' : 'Start with an example'}
             </summary>
             <SurfacePanel className="ide-project-quickstart" testId="ide-project-quickstart">
               <p className="ide-project-quickstart-title">
-                {readiness.hasCircuit ? 'Explore Examples' : 'Launch an Example'}
+                {readiness.hasCircuit ? 'Starter Projects' : 'Launch an Example'}
               </p>
               <p className="ide-project-quickstart-sub">
                 {readiness.hasCircuit
-                  ? 'Load a showcase kit to explore circuit concepts end-to-end.'
+                  ? 'Swap into a different starter to compare mappings, verify flows, and hardware outcomes.'
                   : 'Load a pre-built example to see the full workflow from Design → Verify → Export.'}
               </p>
               <div className="ide-project-example-card-row">
-                {examples.slice(0, 3).map((ex) => (
-                  <div
-                    key={ex.id}
-                    className={`ide-project-example-btn ${activeExampleId === ex.id ? 'is-active' : ''}`}
-                    data-testid={`ide-project-example-${ex.id}`}
-                    data-example-id={ex.id}
-                  >
-                    <span data-testid="ide-project-example-card" data-example-id={ex.id} />
-                    <span className="ide-project-example-btn-name">{ex.name}</span>
-                    <span className="ide-project-example-btn-concept">{ex.concept}</span>
-                    {ex.expectedBehavior && (
-                      <>
-                        <span className="ide-project-example-btn-learn-label">You'll learn</span>
-                        <span className="ide-project-example-btn-summary">{ex.expectedBehavior}</span>
-                      </>
-                    )}
+                {examples.slice(0, 3).map((ex) => {
+                  const preview = getExamplePreview(ex.id);
+                  return (
                     <div
-                      className="ide-project-example-btn-actions"
-                      data-testid="ide-project-example-load"
+                      key={ex.id}
+                      className={`ide-project-example-btn ${activeExampleId === ex.id ? 'is-active' : ''}`}
+                      data-testid={`ide-project-example-${ex.id}`}
                       data-example-id={ex.id}
                     >
-                      <button
-                        type="button"
-                        className="ide-button ide-button-primary"
-                        style={{ fontSize: 11, padding: '4px 12px', minHeight: 26 }}
-                        onClick={() => { onOpenExample(ex.id); onOpenDesign(); }}
-                        data-testid={`ide-project-load-start-${ex.id}`}
+                      <span data-testid="ide-project-example-card" data-example-id={ex.id} />
+                      <div className="ide-project-example-visual" aria-hidden="true" data-example-id={ex.id}>
+                        <div className="ide-project-example-visual-head">
+                          <span className="ide-project-example-visual-badge">
+                            {preview.eyebrow}
+                          </span>
+                          <span className="ide-project-example-visual-pill">
+                            {preview.pill}
+                          </span>
+                        </div>
+                        <div className="ide-project-example-visual-grid">
+                          {preview.rows.map((row) => (
+                            <div key={`${ex.id}-${row.left}-${row.right}`} className="ide-project-example-visual-row">
+                              <span className="ide-project-example-visual-node is-input">{row.left}</span>
+                              <span className="ide-project-example-visual-link" />
+                              <span className="ide-project-example-visual-node is-output">{row.right}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <span className="ide-project-example-btn-name">{ex.name}</span>
+                      <span className="ide-project-example-btn-concept">{ex.concept}</span>
+                      <div className="ide-project-example-meta-row">
+                        <span>{ex.course || 'Starter'}</span>
+                        <span>{ex.lab || preview.pill}</span>
+                      </div>
+                      {ex.expectedBehavior && (
+                        <>
+                          <span className="ide-project-example-btn-learn-label">You'll learn</span>
+                          <span className="ide-project-example-btn-summary">{ex.expectedBehavior}</span>
+                        </>
+                      )}
+                      <div
+                        className="ide-project-example-btn-actions"
+                        data-testid="ide-project-example-load"
+                        data-example-id={ex.id}
                       >
-                        Load &amp; Design →
-                      </button>
+                        <button
+                          type="button"
+                          className="ide-button ide-button-primary"
+                          style={{ fontSize: 11, padding: '4px 12px', minHeight: 26 }}
+                          onClick={() => { onOpenExample(ex.id); onOpenDesign(); }}
+                          data-testid={`ide-project-load-start-${ex.id}`}
+                        >
+                          Load &amp; Design →
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <p className="ide-copy" style={{ margin: 0, fontSize: 11 }}>
                 Or{' '}
@@ -738,7 +1267,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         )}
 
         {/* ── Mapping section — collapsed by default ── */}
-        <section className="ide-export-section" data-testid="ide-project-panel-mapping">
+        <section
+          ref={mappingSectionRef}
+          className="ide-export-section"
+          data-testid="ide-project-panel-mapping"
+        >
           {/* Identity details — KV rows moved here; test IDs preserved */}
           <details className="ide-project-identity-details" data-testid="ide-project-panel-identity">
             <summary>Project details</summary>
@@ -790,6 +1323,23 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <span className="ide-chip ide-chip-warn" data-testid="ide-project-mapping-warn-chip">
                 {unmappedRequiredCount} unmapped
               </span>
+            )}
+            {missingRequiredRows.length > 0 && (
+              <div
+                className="ide-project-mapping-preview"
+                data-testid="ide-project-mapping-missing-list"
+              >
+                {missingRequiredRows.map((row) => (
+                  <span key={row.id} className="ide-project-mapping-preview-chip">
+                    {row.port || row.label || row.id}
+                  </span>
+                ))}
+                {unmappedRequiredCount > missingRequiredRows.length && (
+                  <span className="ide-project-mapping-preview-more">
+                    +{unmappedRequiredCount - missingRequiredRows.length} more
+                  </span>
+                )}
+              </div>
             )}
             <button
               type="button"
@@ -913,6 +1463,231 @@ function suggestBasys3Pin(signal: { id: string; direction: 'in' | 'out' }, index
 function formatSavedAt(value: string): string {
   if (!value) return 'not saved';
   return value.replace('T', ' ').replace('.000Z', 'Z');
+}
+
+function getShowcaseSignals(
+  rows: Array<Pick<ProjectMappingRow, 'label' | 'port' | 'direction'>>,
+  direction: 'in' | 'out'
+): string[] {
+  const filtered = rows
+    .filter((row) => row.direction === direction)
+    .slice(0, 4)
+    .map((row) => row.port || row.label)
+    .filter((value): value is string => value.trim().length > 0);
+
+  if (filtered.length > 0) return filtered;
+
+  return direction === 'in'
+    ? ['SW0', 'SW1', 'SW2', 'SW3']
+    : ['LD0', 'LD1', 'LD2', 'LD3'];
+}
+
+function getExamplePreview(exampleId: string): {
+  eyebrow: string;
+  pill: string;
+  rows: Array<{ left: string; right: string }>;
+} {
+  switch (exampleId) {
+    case 'signal-tour':
+      return {
+        eyebrow: 'Switch map',
+        pill: '1:1 flow',
+        rows: [
+          { left: 'SW0', right: 'LD0' },
+          { left: 'SW1', right: 'LD1' },
+          { left: 'SW2', right: 'LD2' },
+        ],
+      };
+    case 'logic-gates':
+      return {
+        eyebrow: 'Truth table',
+        pill: '3 outputs',
+        rows: [
+          { left: 'A,B', right: 'AND' },
+          { left: 'A,B', right: 'OR' },
+          { left: 'A!=B', right: 'XOR' },
+        ],
+      };
+    case 'two-bit-counter':
+      return {
+        eyebrow: 'Clocked',
+        pill: 'Sequential',
+        rows: [
+          { left: 'CLK', right: 'Q0' },
+          { left: 'Q0', right: 'Q1' },
+          { left: 'RST', right: 'CLR' },
+        ],
+      };
+    default:
+      return {
+        eyebrow: 'Starter',
+        pill: 'Preview',
+        rows: [
+          { left: 'IN0', right: 'OUT0' },
+          { left: 'IN1', right: 'OUT1' },
+          { left: 'IN2', right: 'OUT2' },
+        ],
+      };
+  }
+}
+
+function getNextActionTitle(mode: ProjectHealthMode, label: string): string {
+  switch (mode) {
+    case 'import':
+      return 'Load a starting point';
+    case 'design':
+      return 'Finish the design setup';
+    case 'verify':
+      return 'Verify the latest circuit';
+    case 'export':
+      return 'Build the export bundle';
+    case 'hardware':
+      return 'Bring the board online';
+    case 'project':
+      return `Continue to ${label}`;
+    default:
+      return label;
+  }
+}
+
+function getNextActionSummary(input: {
+  primaryCta: ProjectPrimaryCta;
+  heroStatusMessage: string;
+  blockingIssue: ProjectHealth['blockingIssues'][number] | null;
+  verifyPass: boolean;
+  exportReady: boolean;
+  hardwareReady: boolean;
+  unmappedRequiredCount: number;
+}): string {
+  const {
+    primaryCta,
+    heroStatusMessage,
+    blockingIssue,
+    verifyPass,
+    exportReady,
+    hardwareReady,
+    unmappedRequiredCount,
+  } = input;
+  if (blockingIssue) return blockingIssue.message;
+  if (primaryCta.mode === 'project' && unmappedRequiredCount > 0) {
+    return `${unmappedRequiredCount} required pin assignments still need package pins before the project can move forward.`;
+  }
+  if (primaryCta.mode === 'verify' && !verifyPass) {
+    return 'Run the authored vectors against the current circuit so export and submission use current evidence.';
+  }
+  if (primaryCta.mode === 'export' && !exportReady) {
+    return 'Verify has passed, but you still need a fresh export bundle before the board handoff is current.';
+  }
+  if (primaryCta.mode === 'hardware' && !hardwareReady) {
+    return 'The export bundle is ready, but the project still needs a current hardware handoff.';
+  }
+  return heroStatusMessage;
+}
+
+function getVerifySummary(health: ProjectHealth, verifyPass: boolean): string {
+  if (!health.lastVerify) return 'No verify run has been recorded yet.';
+  if (verifyPass) return 'Latest verify run passed and still matches the current design.';
+  if (health.lastVerify.status === 'fail') return 'Latest verify run failed. Review mismatches and rerun.';
+  if (health.dirtySinceVerify) return 'Verify previously passed, but the design changed afterward.';
+  return 'Verify still needs attention before export.';
+}
+
+function getExportSummary(
+  health: ProjectHealth,
+  exportReady: boolean,
+  hardwareReady: boolean
+): string {
+  if (!health.lastExport) {
+    return exportReady
+      ? 'Ready for the first export build.'
+      : 'Export stays blocked until mapping and verify are current.';
+  }
+  if (health.lastExport.status === 'blocked') {
+    return 'Latest export attempt was blocked. Open Export diagnostics before hardware.';
+  }
+  if (hardwareReady) return 'Latest export bundle is current and ready for hardware.';
+  if (health.dirtySinceExport) {
+    return 'A previous export exists, but the project changed since then.';
+  }
+  return 'Export can be opened for artifact review or rebuild.';
+}
+
+function getSubmissionSummary(input: {
+  studentName: string;
+  hasVerifyRun: boolean;
+  submissionPreview: ProjectSurfaceProps['submissionPreview'];
+  onExportSubmission?: ProjectSurfaceProps['onExportSubmission'];
+  onStudentNameChange?: ProjectSurfaceProps['onStudentNameChange'];
+}): {
+  label: string;
+  tone: 'idle' | 'ok' | 'warn' | 'error';
+  status: string;
+  summary: string;
+} {
+  const { studentName, hasVerifyRun, submissionPreview, onExportSubmission, onStudentNameChange } = input;
+  const submissionEnabled = Boolean(onExportSubmission || onStudentNameChange || submissionPreview);
+  if (!submissionEnabled) {
+    return {
+      label: 'Session',
+      tone: 'idle',
+      status: 'LOCAL',
+      summary: 'Submission export is not enabled for this project snapshot.',
+    };
+  }
+  if (studentName.trim().length === 0) {
+    return {
+      label: 'Submission',
+      tone: 'warn',
+      status: 'NAME NEEDED',
+      summary: 'Add your name before export so the submission is tied to more than a device ID.',
+    };
+  }
+  if (!hasVerifyRun) {
+    return {
+      label: 'Submission',
+      tone: 'warn',
+      status: 'VERIFY FIRST',
+      summary: 'Run Verify before exporting so the submission includes current correctness evidence.',
+    };
+  }
+  if (!submissionPreview) {
+    return {
+      label: 'Submission',
+      tone: 'idle',
+      status: 'READY',
+      summary: 'Submission export is available with the current student identity and verify run.',
+    };
+  }
+  if (submissionPreview.overallGateVerdict === 'block') {
+    return {
+      label: 'Submission',
+      tone: 'error',
+      status: 'BLOCKED',
+      summary: 'Submission gate is blocked. Resolve the current verify or export issues before handoff.',
+    };
+  }
+  if (submissionPreview.overallGateVerdict === 'warn') {
+    return {
+      label: 'Submission',
+      tone: 'warn',
+      status: 'WARN',
+      summary: `Submission export is available, but ${submissionPreview.fails} verify failure${submissionPreview.fails === 1 ? '' : 's'} remain in the preview.`,
+    };
+  }
+  if (submissionPreview.overallGateVerdict === 'pass') {
+    return {
+      label: 'Submission',
+      tone: 'ok',
+      status: 'READY',
+      summary: `Submission preview is clean for ${submissionPreview.assignmentId ?? 'the current assignment'}.`,
+    };
+  }
+  return {
+    label: 'Submission',
+    tone: 'idle',
+    status: 'UNVERIFIED',
+    summary: 'Submission export is available, but the preview has not been graded yet.',
+  };
 }
 
 function toMappingKey(value: string): string {

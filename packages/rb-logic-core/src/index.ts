@@ -18,6 +18,9 @@ export { runReplay, validateEventLog } from './determinism/replay';
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
+// Signal path analysis
+export { getFaninCone } from './pathTrace';
+
 // Types
 export type * from './types';
 

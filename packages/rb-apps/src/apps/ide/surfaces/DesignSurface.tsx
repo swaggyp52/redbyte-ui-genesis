@@ -13,10 +13,12 @@ import { useLayoutStore } from '../../../stores/layoutStore';
 import { digestValue } from '../../../utils/digest';
 import { parseWireId } from '../../../utils/wireId';
 import type { IdeDiagnostic, IdeDiagnosticRouteRequest } from '../diagnostics';
+import { getFaninCone } from '../pathTrace';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
   IdeCallout,
+  IdeEmptyState,
   IdeInspectorAccordion,
   IdeInspectorSection,
   IdePanel,
@@ -291,9 +293,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         vhd: vhdlResult.vhd,
         verilog: verilogResult.topModule,
         warnings: vhdlResult.warnings,
+        error: null as string | null,
       };
-    } catch {
-      return { vhd: '', verilog: '', warnings: [] };
+    } catch (err) {
+      return {
+        vhd: '',
+        verilog: '',
+        warnings: [],
+        error: err instanceof Error ? err.message : 'HDL generation failed',
+      };
     }
   }, [circuit, topEntityName, ioRows]);
 
@@ -315,6 +323,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const setSplitRatio = useLayoutStore((state) => state.setSplitRatio);
   const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
   const paneRowRef = useRef<HTMLDivElement>(null);
+
+  // V-2: Fanin path tracer — highlights all wires/nodes feeding the clicked port
+  const [faninWireHighlights, setFaninWireHighlights] = useState<Map<string, string[]> | null>(null);
+  const lastTracedPortRef = useRef<string | null>(null);
+
+  const handlePortClick = useCallback((nodeId: string, portName: string) => {
+    const portKey = `${nodeId}.${portName}`;
+    if (lastTracedPortRef.current === portKey) {
+      // Toggle off — clicking the same port again clears the trace
+      lastTracedPortRef.current = null;
+      setFaninWireHighlights(null);
+      return;
+    }
+    lastTracedPortRef.current = portKey;
+    const { wireIds } = getFaninCone(editorCircuit, nodeId);
+    if (wireIds.size === 0) {
+      setFaninWireHighlights(null);
+      return;
+    }
+    const highlights = new Map<string, string[]>();
+    wireIds.forEach((wid) => highlights.set(wid, ['#a78bfa'])); // violet-400
+    setFaninWireHighlights(highlights);
+  }, [editorCircuit]);
 
   // Force canvas host to recompute its size when view mode changes.
   // Double-rAF: first frame applies display changes, second measures new dims.
@@ -667,6 +698,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     (nextCircuit: Circuit) => {
       updateCircuit(normalizeCircuitForCanvas(nextCircuit), { skipHistory: false, enforceLimits: true });
       onCircuitMutated?.();
+      // Clear fanin trace when circuit topology changes
+      lastTracedPortRef.current = null;
+      setFaninWireHighlights(null);
     },
     [onCircuitMutated, updateCircuit]
   );
@@ -1244,6 +1278,19 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               );
             })}
           </div>
+          {/* Palette empty state — all lists empty under the current search */}
+          {filteredPalette.length === 0 && filteredBasysInputs.length === 0 && filteredBasysOutputs.length === 0 && paletteQuery.trim() && (
+            <IdeEmptyState
+              title={`No results for "${paletteQuery}"`}
+              body="Try searching for AND, DFF, clock, or a Basys3 pin like SW0."
+              primaryAction={
+                <IdeButton tone="ghost" onClick={() => setPaletteQuery('')}>
+                  Clear search
+                </IdeButton>
+              }
+              testId="ide-design-palette-empty"
+            />
+          )}
         </SurfacePanel>
         </>
       }
@@ -2032,6 +2079,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       presentationZoomMode={presentationZoom}
                       onUndo={handleUndo}
                       onRedo={handleRedo}
+                      onPortClick={handlePortClick}
+                      probeWireHighlights={faninWireHighlights ?? undefined}
                     />
                     {/* Canvas interaction hint — fades after first interaction */}
                     <div
@@ -2177,6 +2226,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     )}
                   </div>
                 </div>
+                {liveHdlResult.error && (
+                  <IdeCallout tone="error" title="HDL generation failed">
+                    {liveHdlResult.error}
+                  </IdeCallout>
+                )}
                 <textarea
                   className="ide-code-textarea ide-design-hdl-textarea"
                   data-testid="ide-design-hdl-textarea"

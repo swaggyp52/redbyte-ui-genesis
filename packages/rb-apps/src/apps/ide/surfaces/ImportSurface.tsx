@@ -239,16 +239,30 @@ function classifyPort(name: string): { kind: SuggestionKind; signalLabel: string
 // STOP-SHIP: Any process/always/rising_edge construct must produce a hard blocker,
 // not a quiet warning, before the import is committed.
 
+/**
+ * Strips VHDL and Verilog comments from HDL source so comment text does not
+ * trigger false-positive behavioral construct detection.
+ *   VHDL:    -- line comment
+ *   Verilog: // line comment  and  block comments (slash-star ... star-slash)
+ */
+function stripHdlComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')  // Verilog block comments
+    .replace(/\/\/[^\n]*/g, '')          // Verilog line comments
+    .replace(/--[^\n]*/g, '');           // VHDL line comments
+}
+
 /** Scans HDL source text for behavioral/sequential constructs that RedByte cannot import. */
 function scanBehavioralConstructs(source: string): string[] {
+  const stripped = stripHdlComments(source);
   const found: string[] = [];
-  if (/\bprocess\b/i.test(source)) found.push('process (VHDL sequential)');
-  if (/\balways\b/i.test(source)) found.push('always (Verilog behavioral)');
-  if (/\binitial\b/i.test(source)) found.push('initial (Verilog test-bench/sequential init)');
-  if (/\brising_edge\b/i.test(source)) found.push('rising_edge (clocked logic)');
-  if (/\bposedge\b/i.test(source)) found.push('posedge (clock edge sensitivity)');
-  if (/\bnegedge\b/i.test(source)) found.push('negedge (clock edge sensitivity)');
-  if (/\bgenerate\b/i.test(source)) found.push('generate (structural generate — unsupported)');
+  if (/\bprocess\b/i.test(stripped)) found.push('process (VHDL sequential)');
+  if (/\balways\b/i.test(stripped)) found.push('always (Verilog behavioral)');
+  if (/\binitial\b/i.test(stripped)) found.push('initial (Verilog test-bench/sequential init)');
+  if (/\brising_edge\b/i.test(stripped)) found.push('rising_edge (clocked logic)');
+  if (/\bposedge\b/i.test(stripped)) found.push('posedge (clock edge sensitivity)');
+  if (/\bnegedge\b/i.test(stripped)) found.push('negedge (clock edge sensitivity)');
+  if (/\bgenerate\b/i.test(stripped)) found.push('generate (structural generate — unsupported)');
   return found;
 }
 

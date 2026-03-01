@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "playground",
+      "runtimeExecutable": "C:\\Windows\\System32\\cmd.exe",
+      "runtimeArgs": ["/c", "pnpm", "--filter", "@redbyte/playground", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "lab3-webapp",
+      "runtimeExecutable": "C:\\Windows\\System32\\cmd.exe",
+      "runtimeArgs": ["/c", "pnpm", "--filter", "@redbyte/lab3-webapp", "dev"],
+      "port": 5174
+    },
+    {
+      "name": "manual-site",
+      "runtimeExecutable": "C:\\Windows\\System32\\cmd.exe",
+      "runtimeArgs": ["/c", "pnpm", "--filter", "@redbyte/manual-site", "dev"],
+      "port": 5175
+    },
+    {
+      "name": "ops-server",
+      "runtimeExecutable": "C:\\Windows\\System32\\cmd.exe",
+      "runtimeArgs": ["/c", "node", "api/server.mjs"],
+      "port": 3001
+    }
+  ]
+}

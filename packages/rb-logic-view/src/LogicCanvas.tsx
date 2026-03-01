@@ -54,6 +54,8 @@ export interface LogicCanvasProps {
   presentationZoomMode?: 'dense' | 'classroom';
   onUndo?: () => void;
   onRedo?: () => void;
+  /** Fired when the user clicks a port (after internal wiring logic). Use for path-tracing / fanin highlight. */
+  onPortClick?: (nodeId: string, portName: string) => void;
 }
 
 const BUILTIN_PORT_NAMES: Record<string, string[]> = {
@@ -149,6 +151,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   presentationZoomMode = 'dense',
   onUndo,
   onRedo,
+  onPortClick,
 }) => {
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
@@ -699,7 +702,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       setWireRewireDraft(null);
       startWire({ nodeId, portName }); // This sets interactionMode to 'wiring'
     }
-  }, [circuit, editingState.wireStartPort, commitCircuit, endWire, startWire, getChipMetadata, isReplayMode, interactionMode, wireRewireDraft]);
+
+    // Notify parent after internal handling (used for fanin path tracing)
+    onPortClick?.(nodeId, portName);
+  }, [circuit, editingState.wireStartPort, commitCircuit, endWire, startWire, getChipMetadata, isReplayMode, interactionMode, wireRewireDraft, onPortClick]);
 
   const beginWireReconnect = React.useCallback(
     (wireId: string, endpoint: 'from' | 'to') => {

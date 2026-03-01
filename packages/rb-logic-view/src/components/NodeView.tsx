@@ -113,6 +113,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const [hoveredPort, setHoveredPort] = React.useState<string | null>(null);
   const [isHovered, setIsHovered] = React.useState(false);
   const [hoveredProbePort, setHoveredProbePort] = React.useState<{ portName: string; x: number; y: number } | null>(null);
+  const [flashState, setFlashState] = React.useState<{ key: number; color: string } | null>(null);
+  const prevOutputRef = React.useRef<number>(-1);
 
   const getPortValue = React.useCallback(
     (portName: string) => {
@@ -245,6 +247,20 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const isActive =
     node.type === 'OUTPUT' || node.type === 'Lamp' ? inputSignal === 1 : outputSignal === 1;
   const nodeOutputValue = node.type === 'OUTPUT' || node.type === 'Lamp' ? inputSignal : outputSignal;
+
+  // Gate flash: briefly overlay green on rising edge, orange on falling edge
+  React.useEffect(() => {
+    const prev = prevOutputRef.current;
+    const curr = nodeOutputValue;
+    if (prev !== -1 && prev !== curr) {
+      setFlashState({
+        key: Date.now(),
+        color: curr === 1 ? 'rgba(34,197,94,0.55)' : 'rgba(249,115,22,0.4)',
+      });
+    }
+    prevOutputRef.current = curr;
+  }, [nodeOutputValue]);
+
   const ioKind = ioPresentation?.kind ?? inferDefaultIoKind(node.type);
   const ioDisplayLabel = (ioPresentation?.label?.trim() || node.label || node.type).toUpperCase();
   const ioPinAlias = ioPresentation?.pinAlias?.trim();
@@ -341,6 +357,22 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           strokeWidth={isSelected ? 3 : isHovered ? 2.5 : 2}
           rx={nodeCornerRadius}
         />
+        {/* Edge-triggered flash overlay */}
+        {flashState && (
+          <rect
+            key={flashState.key}
+            x={-size / 2}
+            y={-chipHeight / 2}
+            width={size}
+            height={chipHeight}
+            rx={nodeCornerRadius}
+            fill={flashState.color}
+            opacity={0}
+            style={{ pointerEvents: 'none' }}
+          >
+            <animate attributeName="opacity" values="1;0" dur="0.4s" fill="freeze" />
+          </rect>
+        )}
         <rect
           className="logic-node-header"
           x={-size / 2}
@@ -850,6 +882,22 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         strokeWidth={isSelected ? 3 : 1}
         rx={nodeCornerRadius}
       />
+      {/* Edge-triggered flash overlay */}
+      {flashState && (
+        <rect
+          key={flashState.key}
+          x={-size / 2}
+          y={-size / 2}
+          width={size}
+          height={size}
+          rx={nodeCornerRadius}
+          fill={flashState.color}
+          opacity={0}
+          style={{ pointerEvents: 'none' }}
+        >
+          <animate attributeName="opacity" values="1;0" dur="0.4s" fill="freeze" />
+        </rect>
+      )}
       <rect
         className="logic-node-header"
         x={-size / 2}

@@ -1,5 +1,126 @@
 # AI State
 
+## Change Log 2026-02-28 (Project Hero Height Fix: Overflow Collapse Removal)
+
+**Status**: COMPLETE - Fixed the project showcase hero collapsing to a thin strip while still rendering its children off-screen.
+
+### What Changed
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - changed the project hero container from `overflow: hidden` to `overflow: visible`.
+  - this restores the hero's natural block height inside the project workspace grid so the `RedByte classroom flow` header, headline, CTA row, checklist, and launchpad cards all render at full height instead of being clipped into a top bar.
+
+### Validation Executed
+- Live browser inspection at `http://[::1]:5173/` via Playwright confirmed:
+  - before fix: `.ide-project-hero` rendered at ~38px tall with `scrollHeight` ~647px.
+  - after fix: `.ide-project-hero` rendered at ~648px tall and the following sections were pushed down correctly.
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` -> PASS (4 tests)
+
+### Attribution
+- Connor Angiel
+
+## Change Log 2026-02-28 (Project Surface Layout Conflict Cleanup: Hero Restore + Wider Dock Rail)
+
+**Status**: COMPLETE - Removed the remaining project-mode CSS conflicts that were collapsing the showcase hero and squeezing the left dock into an unreadable top-left cluster.
+
+### What Changed
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - removed the stale `.ide-project-hero` flattening rule that was stripping the new showcase card with `!important` resets.
+  - removed the stale `.ide-project-dock-nav` two-column rule that was forcing the `Jump to stage` label and stage tiles into the same cramped row.
+  - widened the project left dock rail so the submission/sidebar information has enough room to read.
+  - converted the dock stage tiles to a full-width stacked list with larger step badges, taller cards, and readable meta text.
+  - raised the showcase hero into its own stacking context so the board-preview/header treatment no longer appears as a floating fragment at the top of the workspace.
+
+### Validation Executed
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` -> PASS (4 tests)
+- `git status -sb` -> PASS (worktree still contains unrelated pre-existing changes outside this polish pass)
+- `pnpm repo:status` -> TIMEOUT (timed out in this environment)
+
+### Attribution
+- Connor Angiel
+
+## Change Log 2026-02-28 (Project Surface Visual Polish: Dock Stage Tiles + Starter Mini-Previews)
+
+**Status**: COMPLETE - Cleaned up the two remaining visually unfinished areas on the Project front door: the left-dock stage switcher and the starter-card top previews.
+
+### What Changed
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`:
+  - replaced the plain `Design / Verify / Export / Hardware` dock button cluster with stage tiles that show step number plus short state text (`Mapped`, `Run now`, `Blocked`, etc.).
+  - replaced generic starter-card top bars with example-specific mini previews:
+    - `signal-tour` -> switch-to-LED mappings,
+    - `logic-gates` -> AND / OR / XOR logic preview,
+    - `two-bit-counter` -> clock / Q0 / Q1 sequential preview.
+  - added stable fallback meta labels so starter cards no longer render empty header chips when course/lab strings are blank.
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - styled the new dock stage tiles with clear active/done states.
+  - styled the starter mini-preview rows, pills, and per-example accent treatments so the top of each card reads as intentional content rather than placeholder chrome.
+- Updated `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`:
+  - added coverage that the starter card now exposes the example-specific preview label (`Switch map`) in the rendered project view.
+
+### Validation Executed
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` -> PASS (4 tests)
+- `pnpm repo:status` -> TIMEOUT (timed out in this environment)
+- `git status -sb` -> PASS (worktree still contains unrelated pre-existing changes outside this polish pass)
+
+### Attribution
+- Connor Angiel
+
+## Change Log 2026-02-28 (Project Surface Front Door Visual Refresh: Full-Width Shell + Showcase Hero)
+
+**Status**: COMPLETE - Project mode now uses the full workspace width, leads with a visual showcase instead of a wall of text, and keeps starter examples visible as part of the first-visit experience.
+
+### What Changed
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`:
+  - added a new showcase hero with:
+    - large landing headline,
+    - primary/secondary actions,
+    - compact checklist chips for mapping/verify/export state,
+    - a board-style signal preview that visualizes input-to-output flow.
+  - moved the canonical `Continue` CTA into the showcase so the primary next step is visually obvious above the fold.
+  - expanded starter examples into a permanently open visual gallery with course/lab metadata and richer card content.
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - removed the narrow centered project-width treatment by overriding project mode to fill the available workbench width.
+  - added layered workspace gradients/grid texture so the outer shell reads as intentional composition instead of empty blue void.
+  - rebuilt project hero, launchpad, overview cards, board preview, and example cards for stronger hierarchy and visual density.
+  - reduced effective left-dock width in project mode to return more horizontal space to the main workspace.
+- Updated `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`:
+  - added assertions for the showcase hero and board preview content while keeping existing submission/mapping coverage.
+
+### Validation Executed
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` -> PASS (4 tests)
+- `pnpm repo:status` -> TIMEOUT (timed out in this environment)
+- `git status -sb` -> PASS (worktree still contains unrelated pre-existing changes outside this project-surface pass)
+
+### Attribution
+- Connor Angiel
+
+## Change Log 2026-02-28 (Project Surface Mission Control: Next Action + Context + Readiness)
+
+**Status**: COMPLETE - Project mode now explains what to do next, what the loaded project is supposed to do, and what is still blocking export/submission without making students hunt through separate sections.
+
+### What Changed
+- Updated `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`:
+  - replaced the hard-coded fallback `Continue to Verify` behavior with the current computed primary CTA label/action.
+  - added a new project overview "flightdeck" under the hero with:
+    - `Next action` card showing CTA code, blocker context, milestone progress, and direct actions.
+    - `Project context` card showing active example/current project intent, expected behavior, top module, save state, and I/O scale.
+    - `Readiness` card summarizing Mapping, Verify, Export, and Submission/Session state in plain language.
+  - added inline required-pin preview chips in the collapsed mapping summary so missing ports are visible before opening the full table.
+  - added an inline mapping shortcut that opens the mapping section directly from the new readiness area.
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - added responsive styling for the new project overview cards, context tags, readiness rows, and missing-pin preview chips.
+- Updated `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`:
+  - added coverage for the new next-action/context cards.
+  - added coverage for dynamic continue-target labeling and inline missing-pin previews.
+  - refreshed the student-name warning assertion to match the current warning copy.
+
+### Validation Executed
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` -> PASS (4 tests)
+- `pnpm repo:status` -> TIMEOUT (timed out in this environment)
+- `git status -sb` -> PASS (worktree remains dirty with pre-existing unrelated changes alongside this project-surface change)
+
+### Attribution
+- Connor Angiel
+
 ## Change Log 2026-02-27 (Verify Batch A.5: Sequential Trace Inputs In-Row)
 
 **Status**: COMPLETE - Sequential trace rows now carry their input context inline, so students can read the tick ledger without hunting through the failure explainer.

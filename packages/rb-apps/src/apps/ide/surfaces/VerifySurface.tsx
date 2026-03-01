@@ -516,6 +516,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
   const firstFailTickFromRows = failingRows[0]?.tick ?? null;
 
+  // Coverage: unique input combinations tested vs. total possible (2^N), capped at 6 inputs
+  const inputCoverage = useMemo(() => {
+    const n = inputFields.length;
+    if (n === 0 || n > 6 || authoredVectors.length === 0) return null;
+    const seen = new Set(
+      authoredVectors.map((v) => inputFields.map((f) => (v.inputs[f.id] ?? 0)).join(''))
+    );
+    const total = 1 << n;
+    return { seen: seen.size, total, pct: Math.round((100 * seen.size) / total) };
+  }, [authoredVectors, inputFields]);
+
   const mappedSignalKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const signal of mappedSignals ?? []) {
@@ -1769,6 +1780,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               )}
             </>
           )}
+          {/* Coverage meter: unique input combos tested vs. 2^N possible */}
+          {inputCoverage && (
+            <>
+              <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
+              <span
+                className="ide-verify-strip-meta"
+                title={`${inputCoverage.seen} of ${inputCoverage.total} possible input combinations tested`}
+                data-testid="ide-verify-coverage-meter"
+              >
+                {inputCoverage.seen}/{inputCoverage.total} combos ({inputCoverage.pct}%)
+              </span>
+            </>
+          )}
           <div className="ide-verify-strip-actions">
             {/* Primary CTA varies by state */}
             {status === 'pass' && !isRunStale ? (
@@ -2219,6 +2243,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </table>
                   </div>
                 )}
+                <div style={{ overflowX: 'auto', overflowY: 'visible' }}>
                 <WaveformViewer
                   signals={visibleSignalTimeline}
                   ticks={zoomedTicks}
@@ -2237,6 +2262,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       : 'Run verification to see waveforms'
                   }
                 />
+                </div>
               </div>
             </section>
 
