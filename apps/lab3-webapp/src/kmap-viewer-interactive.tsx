@@ -35,7 +35,7 @@ function grayCodeToDecimal(grayCode: string): number {
 
 export const KMapViewerInteractive: React.FC = () => {
   const [expandedSegment, setExpandedSegment] = useState<string>('a');
-  const kMaps = useLabStore((s) => s.doc.kMaps);
+  const kMaps = useLabStore((s) => s.doc.kMaps as KMapState);
   const setBooleanExpr = useLabStore((s) => s.setBooleanExpr);
   const booleanExpressions = useLabStore((s) => s.doc.expressions);
 

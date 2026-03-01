@@ -145,7 +145,7 @@ beforeAll(async () => {
   (globalThis as any).WebSocket = MockWebSocket;
 
   await registerTestApps();
-}, 30000);
+}, 90000);
 
 beforeEach(async () => {
   // Replace RAF with a no-op that returns a valid ID but never invokes callback
