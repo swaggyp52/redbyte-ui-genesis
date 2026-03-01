@@ -18,6 +18,7 @@ import {
   IdeCallout,
   IdeInspectorSection,
   IdePanel,
+  IdeSpinner,
   IdeStatusPill,
 } from '../components/IdePrimitives';
 import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
@@ -703,7 +704,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               disabled={hasBlockingErrors || isRebuilding}
               testId="ide-export-dock-download"
             >
-              {isRebuilding ? 'Building…' : 'Download Vivado Kit'}
+              {isRebuilding ? <><IdeSpinner size="sm" testId="ide-export-rebuild-spinner" /> Building&hellip;</> : 'Download Vivado Kit'}
             </IdeButton>
           </div>
           <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>

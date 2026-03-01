@@ -13282,3 +13282,339 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-pipeline-trace--active  { color: rgba(46, 196, 182, 0.8); }
 .ide-pipeline-trace--blocked { color: rgba(244, 185, 66, 0.55); }
 .ide-pipeline-trace--pending { color: rgba(41, 68, 94, 0.5); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Phase 36 — Sprint 14: SubmissionViewerSurface Design System
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Hero score panel ── */
+.ide-sub-hero {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: var(--ide-space-3);
+  background: rgba(3, 8, 18, 0.98);
+  border: 1px solid rgba(30, 60, 110, 0.5);
+  border-radius: var(--ide-radius, 6px);
+  margin-bottom: var(--ide-space-2);
+}
+.ide-sub-hero-identity { display: flex; flex-direction: column; gap: 2px; }
+.ide-sub-hero-name {
+  font-size: 1.1rem; font-weight: 700;
+  color: rgba(200, 225, 255, 0.92);
+}
+.ide-sub-hero-assignment {
+  font-size: 11px; color: rgba(56, 150, 200, 0.75);
+  font-family: var(--rb-font-mono);
+}
+.ide-sub-hero-project { font-size: 11px; color: rgba(80, 120, 160, 0.6); }
+.ide-sub-hero-stats {
+  display: flex; gap: var(--ide-space-3);
+  align-items: flex-start; flex-wrap: wrap;
+}
+.ide-sub-hero-stat {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.ide-sub-hero-stat-value {
+  font-size: 1.6rem; font-weight: 800;
+  font-family: var(--rb-font-mono);
+  color: rgba(46, 196, 182, 0.9); line-height: 1;
+}
+.ide-sub-hero-stat--fail .ide-sub-hero-stat-value { color: rgba(255, 100, 100, 0.9); }
+.ide-sub-hero-stat-label {
+  font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(80, 120, 160, 0.6); font-weight: 700;
+}
+.ide-sub-hero-meta {
+  display: flex; gap: var(--ide-space-2);
+  font-size: 10px; color: rgba(80, 120, 160, 0.55); flex-wrap: wrap;
+}
+.ide-sub-hero-bundle code {
+  font-family: var(--rb-font-mono); color: rgba(56, 150, 200, 0.6);
+}
+
+/* ── Collapsible section ── */
+.ide-sub-section {
+  border: 1px solid rgba(18, 44, 80, 0.4);
+  border-radius: var(--ide-radius, 6px);
+  overflow: hidden; margin-bottom: var(--ide-space-2);
+}
+.ide-sub-section-header {
+  display: flex; align-items: center; gap: 8px;
+  list-style: none;
+  padding: 9px var(--ide-space-3);
+  background: rgba(3, 8, 19, 0.97);
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgba(80, 130, 180, 0.8);
+  cursor: pointer; user-select: none;
+  border-bottom: 1px solid rgba(18, 44, 80, 0.35);
+}
+.ide-sub-section-header::-webkit-details-marker { display: none; }
+.ide-sub-section-header::before {
+  content: '▶'; font-size: 8px; color: rgba(56, 120, 200, 0.5);
+  transition: transform 0.12s; flex-shrink: 0;
+}
+details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
+.ide-sub-section-badge {
+  font-size: 9px; font-weight: 800;
+  padding: 1px 6px; border-radius: 9px; margin-left: auto;
+}
+.ide-sub-section-badge--fail {
+  background: rgba(255, 80, 80, 0.18);
+  color: rgba(255, 130, 130, 1.0);
+  border: 1px solid rgba(255, 80, 80, 0.35);
+}
+.ide-sub-section-badge--pass {
+  background: rgba(46, 196, 182, 0.12);
+  color: rgba(46, 196, 182, 0.9);
+  border: 1px solid rgba(46, 196, 182, 0.3);
+}
+
+/* ── Gate results table ── */
+.ide-sub-gate-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+.ide-sub-gate-table thead th {
+  background: rgba(3, 8, 18, 0.97);
+  padding: 7px 10px; font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.09em; color: rgba(80, 130, 190, 0.75);
+  font-weight: 700; border-bottom: 1px solid rgba(18, 44, 80, 0.55);
+  text-align: left;
+}
+.ide-sub-gate-row td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.035);
+  color: rgba(160, 195, 230, 0.8); vertical-align: top;
+}
+.ide-sub-gate-row[data-verdict="block"] td {
+  background: rgba(255, 80, 80, 0.05); color: rgba(255, 160, 160, 0.9);
+}
+.ide-sub-gate-row[data-verdict="warn"] td { background: rgba(244, 185, 66, 0.04); }
+.ide-sub-gate-id {
+  font-family: var(--rb-font-mono); font-size: 10px;
+  color: rgba(56, 150, 200, 0.8); white-space: nowrap;
+}
+.ide-sub-gate-detail {
+  font-size: 11px; color: rgba(120, 155, 195, 0.7); max-width: 320px;
+}
+
+/* ── Dock panel ── */
+.ide-sub-dock {
+  display: flex; flex-direction: column; gap: 12px; padding: var(--ide-space-3);
+}
+.ide-sub-dock-identity { display: flex; align-items: center; gap: 8px; }
+.ide-sub-dock-label {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; color: rgba(80, 120, 160, 0.6);
+  font-family: var(--rb-font-mono);
+}
+.ide-sub-dock-fields { display: flex; flex-direction: column; gap: 4px; }
+.ide-sub-dock-hint {
+  font-size: 11px; color: rgba(80, 120, 160, 0.55); margin: 0; line-height: 1.5;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Phase 37 — Sprint 15: IDE Loading Primitives
+   (IdeSpinner, IdeSkeleton, IdeTag)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Spinner ── */
+@keyframes ide-spin {
+  to { transform: rotate(360deg); }
+}
+.ide-spinner {
+  display: inline-block; border-radius: 50%;
+  border: 2px solid rgba(56, 150, 200, 0.15);
+  border-top-color: rgba(56, 150, 200, 0.8);
+  animation: ide-spin 0.65s linear infinite;
+  vertical-align: middle; flex-shrink: 0;
+}
+.ide-spinner--sm { width: 12px; height: 12px; }
+.ide-spinner--md { width: 18px; height: 18px; }
+.ide-spinner--lg { width: 28px; height: 28px; }
+
+/* ── Skeleton ── */
+@keyframes ide-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.ide-skeleton {
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: ide-shimmer 1.4s ease-in-out infinite;
+}
+
+/* ── Tag ── */
+.ide-tag {
+  display: inline-flex; align-items: center;
+  font-size: 10px; font-weight: 600;
+  padding: 2px 7px; border-radius: 4px;
+  letter-spacing: 0.04em; white-space: nowrap;
+  border: 1px solid transparent;
+}
+.ide-tag--neutral {
+  background: rgba(255,255,255,0.05); color: rgba(140,170,200,0.75);
+  border-color: rgba(255,255,255,0.08);
+}
+.ide-tag--accent {
+  background: rgba(56,150,200,0.12); color: rgba(100,180,240,0.9);
+  border-color: rgba(56,150,200,0.28);
+}
+.ide-tag--ok {
+  background: rgba(46,196,182,0.1); color: rgba(46,196,182,0.9);
+  border-color: rgba(46,196,182,0.28);
+}
+.ide-tag--warn {
+  background: rgba(244,185,66,0.1); color: rgba(244,185,66,0.9);
+  border-color: rgba(244,185,66,0.3);
+}
+.ide-tag--error {
+  background: rgba(255,80,80,0.1); color: rgba(255,130,130,0.95);
+  border-color: rgba(255,80,80,0.28);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Phase 38 — Sprint 16: HardwareSurface Phase 26C Alignment
+   Placed last to win over prior hardware phase rules without !important.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Callout header strip */
+.ide-hw-callout {
+  background: rgba(3, 8, 19, 0.98);
+  border-bottom: 1px solid rgba(18, 44, 80, 0.5);
+  padding: 8px 14px; display: flex; align-items: center; gap: 8px;
+}
+.ide-hw-callout-label {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; color: rgba(80, 120, 160, 0.65);
+  font-family: var(--rb-font-mono);
+}
+.ide-hw-callout-name { font-size: 13px; font-weight: 700; color: rgba(200,225,255,0.9); }
+.ide-hw-callout-pass { color: rgba(46, 196, 182, 0.9); font-weight: 700; }
+.ide-hw-callout-fail { color: rgba(255, 100, 100, 0.9); font-weight: 700; }
+
+/* Proof verdict overlay */
+.ide-hw-proof-verdict {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 4px; padding: var(--ide-space-3);
+  border-radius: var(--ide-radius, 6px); text-align: center;
+}
+.ide-hw-proof-verdict.is-valid {
+  background: rgba(8, 28, 22, 0.97);
+  border: 1px solid rgba(46, 196, 182, 0.38);
+  box-shadow: 0 0 32px rgba(46, 196, 182, 0.08);
+}
+.ide-hw-proof-verdict.is-invalid {
+  background: rgba(20, 8, 8, 0.97);
+  border: 1px solid rgba(255, 80, 80, 0.38);
+  box-shadow: 0 0 32px rgba(255, 80, 80, 0.08);
+}
+.ide-hw-proof-verdict.is-pending { border: 1px solid rgba(30, 60, 110, 0.4); }
+.ide-hw-proof-verdict-label {
+  font-size: 1.1rem; font-weight: 800; letter-spacing: 0.05em;
+}
+.ide-hw-proof-verdict.is-valid .ide-hw-proof-verdict-label { color: rgba(46,196,182,0.95); }
+.ide-hw-proof-verdict.is-invalid .ide-hw-proof-verdict-label { color: rgba(255,100,100,0.95); }
+.ide-hw-proof-verdict-meta { font-size: 11px; color: rgba(120,160,200,0.6); }
+
+/* Cert slab */
+.ide-hw-cert-slab {
+  background: rgba(3, 8, 18, 0.97);
+  border: 1px solid rgba(30, 60, 110, 0.4);
+  border-radius: var(--ide-radius, 6px);
+  padding: var(--ide-space-2) var(--ide-space-3);
+  font-family: var(--rb-font-mono);
+}
+.ide-hw-cert-row { display: flex; gap: 10px; padding: 3px 0; font-size: 11px; }
+.ide-hw-cert-key { color: rgba(80, 120, 160, 0.6); white-space: nowrap; }
+.ide-hw-cert-val { color: rgba(160, 200, 240, 0.85); word-break: break-all; }
+
+/* Assert formal rows */
+.ide-hw-assert-formal {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 12px;
+}
+.ide-hw-assert-formal.is-pass { color: rgba(46, 196, 182, 0.85); }
+.ide-hw-assert-formal.is-fail {
+  color: rgba(255, 120, 120, 0.9); background: rgba(255,80,80,0.05);
+}
+.ide-hw-assert-formal.is-nodata { color: rgba(80, 120, 160, 0.5); }
+
+/* Event log */
+.ide-hw-event-log {
+  background: rgba(2, 6, 14, 0.97);
+  border: 1px solid rgba(18, 44, 80, 0.35);
+  border-radius: 4px; overflow-y: auto; max-height: 280px;
+}
+.ide-hw-event-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  font-size: 11px; font-family: var(--rb-font-mono);
+}
+.ide-hw-event-tick {
+  font-size: 10px; color: rgba(56, 189, 248, 0.7);
+  background: rgba(56, 189, 248, 0.07);
+  padding: 1px 5px; border-radius: 3px;
+}
+.ide-hw-event-dir.is-input  { color: rgba(100, 180, 230, 0.75); }
+.ide-hw-event-dir.is-output { color: rgba(46, 196, 182, 0.75); }
+.ide-hw-event-label { color: rgba(160, 195, 230, 0.8); }
+.ide-hw-event-change { color: rgba(244, 185, 66, 0.85); margin-left: auto; }
+
+/* Bringup step */
+.ide-hw-step-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px var(--ide-space-3);
+  background: rgba(3, 8, 19, 0.98);
+  border-bottom: 1px solid rgba(18, 44, 80, 0.45);
+}
+.ide-hw-step-counter {
+  font-size: 9px; font-weight: 800; color: rgba(80, 120, 160, 0.6);
+  letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--rb-font-mono);
+}
+.ide-hw-step-tick {
+  font-size: 11px; font-family: var(--rb-font-mono);
+  color: rgba(56, 189, 248, 0.8); background: rgba(56, 189, 248, 0.08);
+  padding: 1px 6px; border-radius: 3px; margin-left: auto;
+}
+.ide-hw-step-instruction {
+  padding: 10px var(--ide-space-3);
+  font-size: 13px; color: rgba(180, 210, 240, 0.85); line-height: 1.5;
+}
+.ide-hw-step-nav {
+  display: flex; gap: 8px; padding: var(--ide-space-2) var(--ide-space-3);
+  border-top: 1px solid rgba(18, 44, 80, 0.35);
+}
+
+/* Confidence checklist */
+.ide-hw-confidence-list {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: var(--ide-space-2) var(--ide-space-3);
+}
+.ide-hw-confidence-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 0; font-size: 12px;
+}
+.ide-hw-confidence-row.is-pass .ide-hw-confidence-icon { color: rgba(46,196,182,0.9); }
+.ide-hw-confidence-row.is-pending .ide-hw-confidence-icon { color: rgba(80,120,160,0.5); }
+.ide-hw-confidence-label { color: rgba(160,195,230,0.8); }
+
+/* Workbench placeholder header — used in all 3 Hardware dock panels */
+.ide-workbench-placeholder-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px var(--ide-space-3);
+  background: rgba(3, 8, 19, 0.98);
+  border-bottom: 1px solid rgba(18, 44, 80, 0.5);
+}
+.ide-workbench-placeholder-header h3 {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgba(80, 130, 180, 0.8); margin: 0;
+}

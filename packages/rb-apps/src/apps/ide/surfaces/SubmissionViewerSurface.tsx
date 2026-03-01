@@ -3,7 +3,6 @@ import type { RBProject } from '../../../export/projectFormat';
 import type { ParsedIdeSubmission } from '../../../export/parseIdeSubmission';
 import {
   IdeButton,
-  IdeCallout,
   IdeDataTable,
   IdePanel,
   IdeStatusPill,
@@ -66,15 +65,6 @@ export const SubmissionViewerSurface: React.FC<SubmissionViewerSurfaceProps> = (
     ['App commit', gradeSummary.appCommitSha || '—'],
   ], [gradeSummary]);
 
-  const gateRows = useMemo(() =>
-    gradeSummary.gateResults.map((g) => [
-      g.gateId,
-      verdictPill(g.verdict as 'pass' | 'warn' | 'block'),
-      g.title,
-      g.detail,
-    ]),
-  [gradeSummary.gateResults]);
-
   const ledgerRows = useMemo(() =>
     verifyRunHistory.map((entry, i) => [
       String(i + 1),
@@ -130,6 +120,8 @@ export const SubmissionViewerSurface: React.FC<SubmissionViewerSurfaceProps> = (
     ]);
   }, [project.vectors]);
 
+  const blockedGateCount = gradeSummary.gateResults.filter(g => g.verdict === 'block').length;
+
   return (
     <IdeSurfaceLayout
       mode="import"
@@ -138,23 +130,28 @@ export const SubmissionViewerSurface: React.FC<SubmissionViewerSurfaceProps> = (
       inspector={null}
       hideRightDock
       dock={
-        <section className="ide-workbench-placeholder" data-testid="ide-submission-viewer-dock">
-          <header className="ide-workbench-placeholder-header">
-            <h3>Submission</h3>
+        <div className="ide-sub-dock" data-testid="ide-submission-viewer-dock">
+          <div className="ide-sub-dock-identity">
+            <span className="ide-sub-dock-label">SUBMISSION</span>
             <IdeStatusPill tone="warn">READ-ONLY</IdeStatusPill>
-          </header>
-
-          <IdeCallout tone="warn" title="Viewing student submission" testId="ide-submission-viewer-banner">
-            This project cannot be edited. Edits are disabled. Use "Load into IDE" to make it active.
-          </IdeCallout>
-          <IdeCallout tone="success" title="Submission detected" testId="ide-submission-integrity-ok">
-            Submission integrity check passed. Manifest and bundle metadata are consistent.
-          </IdeCallout>
-          <IdeCallout tone="info" title="Safe load behavior" testId="ide-submission-safe-load-hint">
-            Loading this submission creates a backup of your current IDE project first. You can restore it from
-            "Load Saved Project".
-          </IdeCallout>
-
+          </div>
+          <div className="ide-sub-dock-fields">
+            <div className="ide-kv-row">
+              <span className="ide-kv-key">Student</span>
+              <span className="ide-kv-val">{gradeSummary.studentName ?? '—'}</span>
+            </div>
+            <div className="ide-kv-row">
+              <span className="ide-kv-key">Assignment</span>
+              <span className="ide-kv-val">{gradeSummary.assignmentId ?? '—'}</span>
+            </div>
+            <div className="ide-kv-row">
+              <span className="ide-kv-key">Verdict</span>
+              <span className="ide-kv-val">{verdictPill(gradeSummary.overallGateVerdict)}</span>
+            </div>
+          </div>
+          <p className="ide-sub-dock-hint">
+            Editing disabled. &ldquo;Load into IDE&rdquo; copies this into a new project.
+          </p>
           <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
             <IdeButton
               tone="primary"
@@ -164,10 +161,10 @@ export const SubmissionViewerSurface: React.FC<SubmissionViewerSurfaceProps> = (
               Load into IDE
             </IdeButton>
             <IdeButton tone="ghost" onClick={onClose} testId="ide-submission-close">
-              Close viewer
+              Close
             </IdeButton>
           </div>
-        </section>
+        </div>
       }
       console={
         <section className="ide-workbench-console-content" data-testid="ide-submission-viewer-console">
@@ -175,109 +172,167 @@ export const SubmissionViewerSurface: React.FC<SubmissionViewerSurfaceProps> = (
             <h3>Submission Viewer</h3>
             <span className="ide-workbench-console-mode">Read-Only</span>
           </header>
-          {gradeSummary.overallGateVerdict === 'block' ? (
-            <IdeCallout tone="warn" title="Gate check blocked">
-              One or more gate checks are blocking. Review the Gate Results table.
-            </IdeCallout>
-          ) : gradeSummary.overallGateVerdict === 'ungraded' ? (
-            <IdeCallout tone="info" title="Freeplay submission">
-              No lab ID — no gate checks applied.
-            </IdeCallout>
-          ) : (
-            <IdeCallout tone="success" title="Gate checks passed">
-              All submission gates passed.
-            </IdeCallout>
-          )}
         </section>
       }
     >
       <IdePanel testId="ide-submission-viewer-panel" description="Read-only view of a student submission ZIP.">
 
-        {/* Grade Summary */}
-        <section data-testid="ide-submission-grade-summary">
-          <h3 style={{ margin: '0 0 var(--ide-space-2)', fontSize: 'var(--rb-font-size-2)' }}>
-            Grade Summary
-          </h3>
+        {/* ── Hero: score at a glance ── */}
+        <div className="ide-sub-hero" data-testid="ide-submission-hero">
+          <div className="ide-sub-hero-identity">
+            <span className="ide-sub-hero-name">
+              {gradeSummary.studentName ?? 'Unknown Student'}
+            </span>
+            <span className="ide-sub-hero-assignment">
+              {gradeSummary.assignmentId ?? gradeSummary.labCode ?? 'No assignment ID'}
+            </span>
+            <span className="ide-sub-hero-project">{gradeSummary.projectName}</span>
+          </div>
+          <div className="ide-sub-hero-stats">
+            <div className="ide-sub-hero-stat">
+              <span className="ide-sub-hero-stat-value">
+                {gradeSummary.lastRun?.passedRows ?? 0}
+              </span>
+              <span className="ide-sub-hero-stat-label">PASS</span>
+            </div>
+            <div className="ide-sub-hero-stat ide-sub-hero-stat--fail">
+              <span className="ide-sub-hero-stat-value">
+                {gradeSummary.lastRun?.failedRows ?? 0}
+              </span>
+              <span className="ide-sub-hero-stat-label">FAIL</span>
+            </div>
+            <div className="ide-sub-hero-stat">
+              {verdictPill(gradeSummary.overallGateVerdict)}
+              <span className="ide-sub-hero-stat-label">GATES</span>
+            </div>
+          </div>
+          <div className="ide-sub-hero-meta">
+            <span>Submitted {formatIso(gradeSummary.submittedAt)}</span>
+            <span className="ide-sub-hero-bundle">
+              Bundle <code>{gradeSummary.bundleId.slice(0, 12)}&hellip;</code>
+            </span>
+          </div>
+        </div>
+
+        {/* ── Grade Details (collapsible) ── */}
+        <details className="ide-sub-section" open data-testid="ide-submission-grade-summary">
+          <summary className="ide-sub-section-header">Grade Details</summary>
           <IdeDataTable
             columns={['Field', 'Value']}
             rows={gradeSummaryRows}
             testId="ide-submission-grade-summary-table"
           />
-        </section>
+        </details>
 
-        {/* Gate Results */}
-        {gateRows.length > 0 && (
-          <section style={{ marginTop: 'var(--ide-space-3)' }} data-testid="ide-submission-gate-results">
-            <h3 style={{ margin: '0 0 var(--ide-space-2)', fontSize: 'var(--rb-font-size-2)' }}>
+        {/* ── Gate Results (collapsible) ── */}
+        {gradeSummary.gateResults.length > 0 && (
+          <details className="ide-sub-section" open data-testid="ide-submission-gate-results">
+            <summary className="ide-sub-section-header">
               Gate Results
-            </h3>
-            <IdeDataTable
-              columns={['Gate ID', 'Verdict', 'Title', 'Detail']}
-              rows={gateRows}
-              testId="ide-submission-gate-table"
-            />
-          </section>
+              {blockedGateCount > 0 && (
+                <span className="ide-sub-section-badge ide-sub-section-badge--fail">
+                  {blockedGateCount} blocked
+                </span>
+              )}
+            </summary>
+            <table className="ide-sub-gate-table" data-testid="ide-submission-gate-table">
+              <thead>
+                <tr>
+                  <th>Gate ID</th>
+                  <th>Verdict</th>
+                  <th>Title</th>
+                  <th>Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gradeSummary.gateResults.map((g) => (
+                  <tr
+                    key={g.gateId}
+                    data-verdict={g.verdict}
+                    className="ide-sub-gate-row"
+                  >
+                    <td><code className="ide-sub-gate-id">{g.gateId}</code></td>
+                    <td>{verdictPill(g.verdict as 'pass' | 'warn' | 'block')}</td>
+                    <td>{g.title}</td>
+                    <td className="ide-sub-gate-detail">{g.detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </details>
         )}
 
-        {/* Run Ledger */}
+        {/* ── Run Ledger (collapsible) ── */}
         {ledgerRows.length > 0 && (
-          <section style={{ marginTop: 'var(--ide-space-3)' }} data-testid="ide-submission-run-ledger">
-            <h3 style={{ margin: '0 0 var(--ide-space-2)', fontSize: 'var(--rb-font-size-2)' }}>
+          <details className="ide-sub-section" open data-testid="ide-submission-run-ledger">
+            <summary className="ide-sub-section-header">
               Verify Run Ledger
-            </h3>
+              <span className="ide-sub-section-badge ide-sub-section-badge--pass">
+                {ledgerRows.length} run{ledgerRows.length !== 1 ? 's' : ''}
+              </span>
+            </summary>
             <IdeDataTable
               columns={['#', 'Time', 'Status', 'Pass', 'Fail', 'Circuit Δ', 'Vectors Δ', 'Mapping Δ']}
               rows={ledgerRows}
               testId="ide-submission-ledger-table"
             />
-          </section>
+          </details>
         )}
 
-        {/* Verify Mismatch Table */}
+        {/* ── Verify Results (collapsible) ── */}
         {allMismatchRows.length > 0 && (
-          <section style={{ marginTop: 'var(--ide-space-3)' }} data-testid="ide-submission-verify-rows">
-            <h3 style={{ margin: '0 0 var(--ide-space-2)', fontSize: 'var(--rb-font-size-2)' }}>
+          <details className="ide-sub-section" open data-testid="ide-submission-verify-rows">
+            <summary className="ide-sub-section-header">
               Verify Results
               {failureRows.length > 0 && (
-                <span style={{ marginLeft: 8, fontSize: 'var(--rb-font-size-1)', color: 'var(--rb-error, #e55)' }}>
-                  ({failureRows.length} failure{failureRows.length !== 1 ? 's' : ''})
+                <span className="ide-sub-section-badge ide-sub-section-badge--fail">
+                  {failureRows.length} fail{failureRows.length !== 1 ? 's' : ''}
                 </span>
               )}
-            </h3>
+              {failureRows.length === 0 && allMismatchRows.length > 0 && (
+                <span className="ide-sub-section-badge ide-sub-section-badge--pass">ALL PASS</span>
+              )}
+            </summary>
             <IdeDataTable
               columns={['Tick', 'Signal', 'Expected', 'Actual', 'Status']}
               rows={allMismatchRows}
               testId="ide-submission-verify-table"
             />
-          </section>
+          </details>
         )}
 
-        {/* IO Mapping */}
+        {/* ── IO Mapping (collapsible) ── */}
         {ioMappingRows.length > 0 && (
-          <section style={{ marginTop: 'var(--ide-space-3)' }} data-testid="ide-submission-io-mapping">
-            <h3 style={{ margin: '0 0 var(--ide-space-2)', fontSize: 'var(--rb-font-size-2)' }}>
+          <details className="ide-sub-section" open data-testid="ide-submission-io-mapping">
+            <summary className="ide-sub-section-header">
               IO Mapping
-            </h3>
+              <span className="ide-sub-section-badge ide-sub-section-badge--pass">
+                {ioMappingRows.length} signal{ioMappingRows.length !== 1 ? 's' : ''}
+              </span>
+            </summary>
             <IdeDataTable
               columns={['ID', 'Label', 'Dir', 'Pin']}
               rows={ioMappingRows}
               testId="ide-submission-mapping-table"
             />
-          </section>
+          </details>
         )}
 
-        {/* Vectors */}
+        {/* ── Test Vectors (collapsible, closed by default) ── */}
         {vectorRows.length > 0 && (
-          <section style={{ marginTop: 'var(--ide-space-3)' }} data-testid="ide-submission-vectors">
-            <h3 style={{ margin: '0 0 var(--ide-space-2)', fontSize: 'var(--rb-font-size-2)' }}>
-              Test Vectors ({vectorRows.length})
-            </h3>
+          <details className="ide-sub-section" data-testid="ide-submission-vectors">
+            <summary className="ide-sub-section-header">
+              Test Vectors
+              <span className="ide-sub-section-badge ide-sub-section-badge--pass">
+                {vectorRows.length}
+              </span>
+            </summary>
             <IdeDataTable
               columns={['Tick', 'Inputs', 'Expected']}
               rows={vectorRows}
               testId="ide-submission-vectors-table"
             />
-          </section>
+          </details>
         )}
 
       </IdePanel>

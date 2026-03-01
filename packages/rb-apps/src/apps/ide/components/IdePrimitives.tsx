@@ -292,3 +292,54 @@ export const IdeDataTable: React.FC<{
     </div>
   );
 };
+
+// ─── IdeSpinner ──────────────────────────────────────────────────────────────
+
+interface IdeSpinnerProps {
+  size?: 'sm' | 'md' | 'lg';
+  testId?: string;
+}
+
+export const IdeSpinner: React.FC<IdeSpinnerProps> = ({ size = 'md', testId }) => (
+  <span
+    className={`ide-spinner ide-spinner--${size}`}
+    data-testid={testId}
+    aria-label="Loading"
+    role="status"
+  />
+);
+
+// ─── IdeSkeleton ─────────────────────────────────────────────────────────────
+
+interface IdeSkeletonProps {
+  width?: string;
+  height?: string;
+  testId?: string;
+}
+
+export const IdeSkeleton: React.FC<IdeSkeletonProps> = ({
+  width = '100%',
+  height = '16px',
+  testId,
+}) => (
+  <span
+    className="ide-skeleton"
+    style={{ width, height, display: 'block' }}
+    data-testid={testId}
+    aria-hidden="true"
+  />
+);
+
+// ─── IdeTag ──────────────────────────────────────────────────────────────────
+
+interface IdeTagProps {
+  tone?: 'neutral' | 'accent' | 'ok' | 'warn' | 'error';
+  children: React.ReactNode;
+  testId?: string;
+}
+
+export const IdeTag: React.FC<IdeTagProps> = ({ tone = 'neutral', children, testId }) => (
+  <span className={`ide-tag ide-tag--${tone}`} data-testid={testId}>
+    {children}
+  </span>
+);
