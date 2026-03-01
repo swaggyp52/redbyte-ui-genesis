@@ -34,7 +34,9 @@ export const KMapViewerInteractive = () => {
     return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "bg-slate-900/50 border border-slate-700 rounded-xl p-6", children: [_jsx("div", { className: "flex items-start justify-between mb-4", children: _jsxs("div", { children: [_jsx("h2", { className: "font-tech-display text-2xl font-bold text-cyan-400 neon-cyan mb-2", children: "Interactive Karnaugh Maps" }), _jsx("p", { className: "font-digital text-sm text-slate-400", children: "Group minterms to simplify boolean expressions" })] }) }), _jsxs("div", { className: "bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 flex items-start gap-3", children: [_jsx(Lightbulb, { size: 20, className: "text-cyan-400 flex-shrink-0 mt-0.5" }), _jsxs("div", { className: "font-digital text-sm text-cyan-300", children: [_jsx("strong", { children: "How to use:" }), " Click and drag to create rectangular groups of 1s. Groups must be power-of-2 sized (1, 2, 4, 8, or 16 cells). Larger groups = simpler expressions! Groups can wrap around edges."] })] })] }), _jsx("div", { className: "space-y-3", children: SEGMENT_NAMES.map((segName) => (_jsx(KMapSegmentInteractive, { segmentName: segName, isExpanded: expandedSegment === segName, onToggle: () => setExpandedSegment(expandedSegment === segName ? '' : segName), kmap: kMaps[segName], expr: booleanExpressions[segName], onExprChange: (newExpr) => setBooleanExpr(segName, newExpr) }, segName))) })] }));
 };
 const KMapSegmentInteractive = ({ segmentName, isExpanded, onToggle, kmap, expr, onExprChange, }) => {
-    const [groups, setGroups] = useState([]);
+    const groups = useLabStore(s => s.kMapGroups[segmentName] || []);
+    const setKMapGroupsInStore = useLabStore(s => s.setKMapGroups);
+    const setGroups = (g) => setKMapGroupsInStore(segmentName, g);
     const [selecting, setSelecting] = useState(null);
     const [hoveredCells, setHoveredCells] = useState([]);
     const [editingExpr, setEditingExpr] = useState(false);

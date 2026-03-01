@@ -3,6 +3,10 @@ const GATE_TYPE_INPUTS = {
     OR: 2,
     NOT: 1,
     XOR: 2,
+    NAND: 2,
+    NOR: 2,
+    XNOR: 2,
+    BUF: 1,
     INPUT: 0,
     OUTPUT: 1,
     CONST_0: 0,
@@ -112,6 +116,18 @@ export function evaluateCircuit(circuit) {
             case 'XOR':
                 output = inputValues.filter(v => v).length % 2 === 1;
                 break;
+            case 'NAND':
+                output = inputValues.length > 0 ? !inputValues.every(v => v) : undefined;
+                break;
+            case 'NOR':
+                output = inputValues.length > 0 ? !inputValues.some(v => v) : undefined;
+                break;
+            case 'XNOR':
+                output = inputValues.length > 0 ? inputValues.filter(v => v).length % 2 === 0 : undefined;
+                break;
+            case 'BUF':
+                output = inputValues.length > 0 ? inputValues[0] : undefined;
+                break;
             default:
                 output = undefined;
         }
@@ -197,7 +213,7 @@ export function setNodeValue(circuit, nodeId, value) {
  * Excludes INPUT/OUTPUT which are structural
  */
 export function getGateTypes() {
-    return ['AND', 'OR', 'NOT', 'XOR', 'CONST_0', 'CONST_1'];
+    return ['AND', 'OR', 'NOT', 'XOR', 'NAND', 'NOR', 'XNOR', 'BUF', 'CONST_0', 'CONST_1'];
 }
 /**
  * Change gate type of a node to next in cycle

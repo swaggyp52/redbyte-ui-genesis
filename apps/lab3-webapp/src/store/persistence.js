@@ -2,6 +2,8 @@ import { validateSnapshotV1, serializeStoreSnapshot } from './labStore';
 const STORAGE_KEY = 'rb.lab3.session.v1';
 const DEBOUNCE_MS = 350;
 let debounceTimer = null;
+/** True when the last save attempt hit a QuotaExceededError */
+export let persistenceQuotaExceeded = false;
 /**
  * Load snapshot from localStorage
  * Returns parsed snapshot if valid, null otherwise (silent failures)
@@ -35,9 +37,16 @@ export function saveSnapshotDebounced(snapshot) {
     debounceTimer = setTimeout(() => {
         try {
             localStorage.setItem(STORAGE_KEY, snapshot);
+            persistenceQuotaExceeded = false; // clear on success
         }
         catch (err) {
-            console.error('[persistence] Failed to save snapshot:', err);
+            if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+                persistenceQuotaExceeded = true;
+                console.error('[persistence] localStorage quota exceeded — auto-save disabled');
+            }
+            else {
+                console.error('[persistence] Failed to save snapshot:', err);
+            }
         }
     }, DEBOUNCE_MS);
 }

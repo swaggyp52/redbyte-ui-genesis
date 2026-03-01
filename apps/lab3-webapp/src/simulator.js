@@ -10,10 +10,15 @@ export const Simulator = () => {
     const runAllVectors = useLabStore((s) => s.runAllVectors);
     const evalSeg = useLabStore((s) => s.evalSeg);
     const validationResults = useLabStore((s) => s.validationResults);
+    const autoRunning = useLabStore((s) => s.simAutoRunning);
+    const setAutoRunning = useLabStore((s) => s.setSimAutoRunning);
+    const multiDigitMode = useLabStore((s) => s.simMultiDigitMode);
+    const setMultiDigitMode = useLabStore((s) => s.setSimMultiDigitMode);
+    const showFailures = useLabStore((s) => s.simShowFailures);
+    const setShowFailures = useLabStore((s) => s.setSimShowFailures);
+    // isAnimating is purely a 200ms visual flash — OK to lose on tab switch
     const [isAnimating, setIsAnimating] = useState(false);
-    const [autoRunning, setAutoRunning] = useState(false);
-    const [multiDigitMode, setMultiDigitMode] = useState(false);
-    const [showFailures, setShowFailures] = useState(false);
+    const [isRunning, setIsRunning] = useState(false);
     const currentOutput = evalSeg(simulationInput);
     const currentSeg = [
         ((currentOutput >> 0) & 1),
@@ -49,27 +54,35 @@ export const Simulator = () => {
         setSimulationInput(0);
         setTimeout(() => setIsAnimating(false), 200);
     };
-    // Auto-run functionality
+    // Auto-run functionality — reads from store.getState() inside the callback so no stale closure
     useEffect(() => {
-        if (autoRunning) {
-            const interval = setInterval(() => {
-                setSimulationInput((simulationInput + 1) % 16);
-            }, 800);
-            return () => clearInterval(interval);
-        }
-    }, [autoRunning, setSimulationInput, simulationInput]);
+        if (!autoRunning)
+            return;
+        const interval = setInterval(() => {
+            const current = useLabStore.getState().simulationInput;
+            useLabStore.getState().setSimulationInput((current + 1) % 16);
+        }, 800);
+        return () => clearInterval(interval);
+    }, [autoRunning]);
     const requiredResults = validationResults.filter((r) => r.input < 10);
     const passCount = requiredResults.filter((r) => r.pass).length;
     const failedResults = requiredResults.filter((r) => !r.pass);
     const hasRun = validationResults.length > 0;
     const allPassed = hasRun && requiredResults.length > 0 && passCount === requiredResults.length;
-    return (_jsxs("div", { className: "space-y-6", children: [_jsx("div", { className: "bg-slate-900/50 border border-slate-700 rounded-xl p-6", children: _jsxs("div", { className: "flex items-start justify-between", children: [_jsxs("div", { children: [_jsx("h2", { className: "font-tech-display text-2xl font-bold text-cyan-400 neon-cyan mb-2", children: "Interactive Simulator" }), _jsx("p", { className: "font-digital text-sm text-slate-400", children: "Test your seven-segment logic with animated signal propagation" })] }), _jsxs("button", { onClick: () => setMultiDigitMode(!multiDigitMode), className: `px-4 py-2 rounded-lg font-tech font-semibold transition-all duration-200 flex items-center gap-2 ${multiDigitMode
+    return (_jsxs("div", { className: "space-y-6", children: [_jsx("div", { className: "bg-slate-900/50 border border-slate-700 rounded-xl p-6", children: _jsxs("div", { className: "flex items-start justify-between", children: [_jsxs("div", { children: [_jsx("h2", { className: "font-tech-display text-2xl font-bold text-cyan-400 neon-cyan mb-2", children: "Interactive Simulator" }), _jsx("p", { className: "font-digital text-sm text-slate-400", children: "Apply each 4-bit input vector and verify the combinational output" })] }), _jsxs("button", { onClick: () => setMultiDigitMode(!multiDigitMode), className: `px-4 py-2 rounded-lg font-tech font-semibold transition-all duration-200 flex items-center gap-2 ${multiDigitMode
                                 ? 'bg-gradient-to-r from-cyan-600 to-cyan-700 text-white glow-box-cyan'
                                 : 'bg-slate-800 hover:bg-slate-700 text-slate-300'}`, title: "Toggle 4-digit multiplexed display", children: [_jsx(LayoutGrid, { size: 18 }), multiDigitMode ? '4-Digit Mode' : 'Single Digit'] })] }) }), multiDigitMode ? (_jsx(BasysBoardMulti, { switches: switches, segments: currentSeg, onSwitchToggle: handleSwitchToggle, inputValue: simulationInput, enableMultiplexing: true })) : (_jsx(BasysBoard, { switches: switches, segments: currentSeg, onSwitchToggle: handleSwitchToggle, inputValue: simulationInput })), _jsxs("div", { className: "bg-slate-900/50 border border-slate-700 rounded-xl p-6", children: [_jsxs("h3", { className: "font-tech font-semibold text-emerald-400 mb-4 flex items-center gap-2", children: [_jsx("span", { className: "w-2 h-2 rounded-full bg-emerald-400 animate-pulse" }), "Simulation Controls"] }), _jsxs("div", { className: "grid md:grid-cols-2 gap-4", children: [_jsxs("div", { className: "space-y-3", children: [_jsx("div", { className: "text-sm font-digital text-slate-400 mb-2", children: "Manual Control:" }), _jsxs("div", { className: "flex gap-2", children: [_jsx("button", { onClick: () => setAutoRunning(!autoRunning), className: `flex-1 py-3 px-4 rounded-lg font-tech font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${autoRunning
                                                     ? 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white glow-box-amber'
-                                                    : 'bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white glow-box-cyan'}`, title: autoRunning ? 'Pause auto-increment' : 'Auto-increment through inputs', children: autoRunning ? _jsxs(_Fragment, { children: [_jsx(Pause, { size: 18 }), " Pause"] }) : _jsxs(_Fragment, { children: [_jsx(Play, { size: 18 }), " Auto Run"] }) }), _jsx("button", { onClick: handleNext, disabled: autoRunning, className: "py-3 px-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-tech font-semibold transition-all duration-200 flex items-center gap-2", title: "Next input (+1)", children: _jsx(SkipForward, { size: 18 }) }), _jsx("button", { onClick: handleReset, disabled: autoRunning, className: "py-3 px-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-tech font-semibold transition-all duration-200 flex items-center gap-2", title: "Reset to 0", children: _jsx(RotateCcw, { size: 18 }) })] })] }), _jsxs("div", { className: "space-y-3", children: [_jsx("div", { className: "text-sm font-digital text-slate-400 mb-2", children: "Full Validation:" }), _jsxs("button", { onClick: runAllVectors, className: "w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-tech font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 glow-box-emerald", title: "Test all 16 input combinations", children: [_jsx(Play, { size: 18 }), "Run All 16 Tests"] })] })] })] }), hasRun && (_jsxs("div", { className: `border rounded-xl p-6 ${allPassed
+                                                    : 'bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white glow-box-cyan'}`, title: autoRunning ? 'Pause auto-increment' : 'Auto-increment through inputs', children: autoRunning ? _jsxs(_Fragment, { children: [_jsx(Pause, { size: 18 }), " Pause"] }) : _jsxs(_Fragment, { children: [_jsx(Play, { size: 18 }), " Auto Run"] }) }), _jsx("button", { onClick: handleNext, disabled: autoRunning, className: "py-3 px-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-tech font-semibold transition-all duration-200 flex items-center gap-2", title: "Next input (+1)", children: _jsx(SkipForward, { size: 18 }) }), _jsx("button", { onClick: handleReset, disabled: autoRunning, className: "py-3 px-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-tech font-semibold transition-all duration-200 flex items-center gap-2", title: "Reset to 0", children: _jsx(RotateCcw, { size: 18 }) })] })] }), _jsxs("div", { className: "space-y-3", children: [_jsx("div", { className: "text-sm font-digital text-slate-400 mb-2", children: "Full Validation:" }), _jsxs("button", { onClick: () => {
+                                            if (isRunning)
+                                                return;
+                                            setIsRunning(true);
+                                            runAllVectors();
+                                            // runAllVectors is synchronous; clear guard after one event loop tick
+                                            setTimeout(() => setIsRunning(false), 0);
+                                        }, disabled: isRunning, className: "w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-tech font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 glow-box-emerald", title: "Test all 16 input combinations", children: [_jsx(Play, { size: 18 }), isRunning ? 'Running…' : 'Run All 16 Tests'] })] })] })] }), hasRun && (_jsxs("div", { className: `border rounded-xl p-6 ${allPassed
                     ? 'bg-emerald-950/30 border-emerald-500/30'
-                    : 'bg-red-950/30 border-red-500/30'}`, children: [_jsxs("div", { className: "flex items-center justify-between gap-3 mb-4", children: [allPassed ? (_jsxs(_Fragment, { children: [_jsx(CheckCircle2, { size: 24, className: "text-emerald-400" }), _jsxs("div", { children: [_jsxs("h3", { className: "font-tech-display text-lg font-bold text-emerald-400", children: ["\u2713 ", passCount, "/", requiredResults.length, " vectors correct"] }), _jsx("p", { className: "font-digital text-sm text-emerald-300", children: "All required vectors (0-9) are correct" })] })] })) : (_jsxs(_Fragment, { children: [_jsx(AlertCircle, { size: 24, className: "text-red-400" }), _jsxs("div", { children: [_jsxs("h3", { className: "font-tech-display text-lg font-bold text-red-400", children: ["\u2713 ", passCount, "/", requiredResults.length, " vectors correct \u2014 ", failedResults.length, " failed"] }), _jsx("p", { className: "font-digital text-sm text-red-300", children: "Click to view failed cases" })] })] })), !allPassed && failedResults.length > 0 && (_jsx("button", { onClick: () => setShowFailures((prev) => !prev), className: "px-3 py-1.5 rounded-md text-xs font-tech font-semibold bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 transition-all", children: showFailures ? 'Hide failures' : 'View failures' }))] }), failedResults.length > 0 && showFailures && (_jsx("div", { className: "mb-4 space-y-2", children: failedResults.map((r) => {
+                    : 'bg-red-950/30 border-red-500/30'}`, children: [_jsxs("div", { className: "flex items-center justify-between gap-3 mb-4", children: [allPassed ? (_jsxs(_Fragment, { children: [_jsx(CheckCircle2, { size: 24, className: "text-emerald-400" }), _jsxs("div", { children: [_jsxs("h3", { className: "font-tech-display text-lg font-bold text-emerald-400", children: ["\u2713 ", passCount, "/", requiredResults.length, " vectors correct"] }), _jsx("p", { className: "font-digital text-sm text-emerald-300", children: "All required vectors (0-9) are correct" })] })] })) : (_jsxs(_Fragment, { children: [_jsx(AlertCircle, { size: 24, className: "text-red-400" }), _jsxs("div", { children: [_jsxs("h3", { className: "font-tech-display text-lg font-bold text-red-400", children: ["\u2713 ", passCount, "/", requiredResults.length, " vectors correct \u2014 ", failedResults.length, " failed"] }), _jsx("p", { className: "font-digital text-sm text-red-300", children: "Click to view failed cases" })] })] })), !allPassed && failedResults.length > 0 && (_jsx("button", { onClick: () => setShowFailures(!showFailures), className: "px-3 py-1.5 rounded-md text-xs font-tech font-semibold bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 transition-all", children: showFailures ? 'Hide failures' : 'View failures' }))] }), failedResults.length > 0 && showFailures && (_jsx("div", { className: "mb-4 space-y-2", children: failedResults.map((r) => {
                             const inputBits = r.input.toString(2).padStart(4, '0');
                             const expectedBits = r.expected.toString(2).padStart(7, '0');
                             const actualBits = r.actual.toString(2).padStart(7, '0');
