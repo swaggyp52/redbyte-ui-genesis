@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { Circuit, Node } from '@redbyte/rb-logic-core';
+import type { Circuit, CompositeNodeDef, Node } from '@redbyte/rb-logic-core';
 import { TickEngine } from '@redbyte/rb-logic-core';
 import {
   LogicCanvas,
@@ -79,6 +79,12 @@ export interface DesignSurfaceProps {
   topHdl?: string;
   onApplyHdl?: (hdl: string) => void;
   topEntityName?: string;
+  onSaveAsComponent?: (def: CompositeNodeDef) => void;
+  customComponentTypes?: Array<{ type: string; title: string; description: string }>;
+  // C-5: External debug state from verification bridge
+  externalDebugSignals?: Map<string, 0 | 1> | null;
+  externalDebugTick?: number | null;
+  onClearExternalDebug?: () => void;
 }
 
 export interface DesignCompilerStatus {
@@ -92,7 +98,7 @@ export interface DesignCompilerStatus {
 interface PaletteItem {
   type: string;
   title: string;
-  category: 'IO' | 'Logic' | 'Sequential';
+  category: 'IO' | 'Logic' | 'Sequential' | 'Components';
 }
 
 interface BoardIoPaletteItem {
@@ -113,6 +119,14 @@ const PALETTE_ITEMS: PaletteItem[] = [
   { type: 'XNOR', title: 'XNOR Gate', category: 'Logic' },
   { type: 'DFlipFlop', title: 'DFF', category: 'Sequential' },
   { type: 'Clock', title: 'Clock', category: 'Sequential' },
+];
+
+const COMPOSITE_PALETTE_ITEMS: PaletteItem[] = [
+  { type: 'RSLatch',     title: 'RS Latch',      category: 'Components' },
+  { type: 'DLatch',      title: 'D Latch',        category: 'Components' },
+  { type: 'JKFlipFlop',  title: 'JK Flip-Flop',  category: 'Components' },
+  { type: 'FullAdder',   title: 'Full Adder',     category: 'Components' },
+  { type: 'Counter4Bit', title: '4-Bit Counter',  category: 'Components' },
 ];
 
 const BASYS3_INPUT_ITEMS: BoardIoPaletteItem[] = [
@@ -232,6 +246,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   topHdl,
   onApplyHdl,
   topEntityName,
+  onSaveAsComponent,
+  customComponentTypes,
+  externalDebugSignals,
+  externalDebugTick,
+  onClearExternalDebug,
 }) => {
   const circuit = useCircuitStore((state) => state.circuit);
   const addNode = useCircuitStore((state) => state.addNode);
@@ -242,6 +261,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const redo = useCircuitStore((state) => state.redo);
   const setEngine = useCircuitStore((state) => state.setEngine);
   const setTickEngine = useCircuitStore((state) => state.setTickEngine);
+  const updateNode = useCircuitStore((state) => state.updateNode);
   const undoDepth = useCircuitStore((state) => state.past.length);
   const redoDepth = useCircuitStore((state) => state.future.length);
 
@@ -323,6 +343,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const setSplitRatio = useLayoutStore((state) => state.setSplitRatio);
   const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
   const paneRowRef = useRef<HTMLDivElement>(null);
+  // N-1: Save as Component modal state
+  const [saveComponentOpen, setSaveComponentOpen] = useState(false);
+  const [saveComponentName, setSaveComponentName] = useState('');
+  const [savedComponentToast, setSavedComponentToast] = useState<string | null>(null);
+  const savedToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (savedToastTimerRef.current) clearTimeout(savedToastTimerRef.current); }, []);
+
+  // A-2: Inline node label editor state
+  const [editingLabelNodeId, setEditingLabelNodeId] = useState<string | null>(null);
+  const [labelDraft, setLabelDraft] = useState('');
 
   // V-2: Fanin path tracer — highlights all wires/nodes feeding the clicked port
   const [faninWireHighlights, setFaninWireHighlights] = useState<Map<string, string[]> | null>(null);
@@ -499,8 +529,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   const filteredPalette = useMemo(() => {
     const query = paletteQuery.trim().toLowerCase();
-    if (!query) return PALETTE_ITEMS;
-    return PALETTE_ITEMS.filter(
+    const all = [...PALETTE_ITEMS, ...COMPOSITE_PALETTE_ITEMS];
+    if (!query) return all;
+    return all.filter(
       (item) =>
         item.title.toLowerCase().includes(query) ||
         item.type.toLowerCase().includes(query) ||
@@ -906,12 +937,117 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [onRuntimeSimReset]);
 
   const selectedNodeIds = useMemo(() => Array.from(selection.nodes).slice(0, 5), [selection.nodes]);
+  const selectedNodeIdsAll = useMemo(() => Array.from(selection.nodes), [selection.nodes]);
   const selectedWireIds = useMemo(() => Array.from(selection.wires).slice(0, 5), [selection.wires]);
   const selectedNode = useMemo(
     () =>
       selectedNodeIds.length > 0 ? editorCircuit.nodes.find((node) => node.id === selectedNodeIds[0]) : undefined,
     [editorCircuit.nodes, selectedNodeIds]
   );
+
+  // ── N-1: resolve a raw connection endpoint to { nodeId, portName } ──────────
+  const resolveConnectionEndpoint = useCallback(
+    (raw: import('@redbyte/rb-logic-core').Connection['from'] | import('@redbyte/rb-logic-core').Connection['to']): { nodeId: string; portName: string } => {
+      if (typeof raw === 'string') return { nodeId: raw, portName: 'out' };
+      return {
+        nodeId: (raw as { nodeId: string }).nodeId,
+        portName:
+          (raw as { portName?: string }).portName ??
+          (raw as { port?: string }).port ??
+          'out',
+      };
+    },
+    []
+  );
+
+  // ── N-1: build a CompositeNodeDef from the current multi-node selection ─────
+  const buildCompositeDefFromSelection = useCallback(
+    (name: string): CompositeNodeDef | null => {
+      if (selectedNodeIdsAll.length < 2) return null;
+
+      const selectedSet = new Set(selectedNodeIdsAll);
+
+      const subcircuitNodes = editorCircuit.nodes.filter((n) => selectedSet.has(n.id));
+      const subcircuitConnections = editorCircuit.connections.filter((conn) => {
+        const from = resolveConnectionEndpoint(conn.from);
+        const to = resolveConnectionEndpoint(conn.to);
+        return selectedSet.has(from.nodeId) && selectedSet.has(to.nodeId);
+      });
+
+      // Incoming: from outside → to inside (become input ports)
+      const incomingConns = editorCircuit.connections.filter((conn) => {
+        const from = resolveConnectionEndpoint(conn.from);
+        const to = resolveConnectionEndpoint(conn.to);
+        return !selectedSet.has(from.nodeId) && selectedSet.has(to.nodeId);
+      });
+
+      // Outgoing: from inside → to outside (become output ports)
+      const outgoingConns = editorCircuit.connections.filter((conn) => {
+        const from = resolveConnectionEndpoint(conn.from);
+        const to = resolveConnectionEndpoint(conn.to);
+        return selectedSet.has(from.nodeId) && !selectedSet.has(to.nodeId);
+      });
+
+      // Build input mapping: port name → "toNodeId.toPortName"
+      const inputMapping: Record<string, string> = {};
+      incomingConns.forEach((conn, i) => {
+        const to = resolveConnectionEndpoint(conn.to);
+        const portName = to.portName !== 'out' ? to.portName : `in${i}`;
+        inputMapping[portName === 'isOn' ? `in${i}` : portName] = `${to.nodeId}.${to.portName}`;
+      });
+
+      // If no incoming connections, use INPUT/Switch nodes in selection
+      if (Object.keys(inputMapping).length === 0) {
+        subcircuitNodes
+          .filter((n) => n.type === 'INPUT' || n.type === 'Switch')
+          .forEach((n, i) => {
+            const label = (n.config as Record<string, unknown>)?.['label'] as string | undefined ?? `in${i}`;
+            inputMapping[label] = `${n.id}.isOn`;
+          });
+      }
+
+      // Build output mapping: port name → "fromNodeId.fromPortName"
+      const outputMapping: Record<string, string> = {};
+      outgoingConns.forEach((conn, i) => {
+        const from = resolveConnectionEndpoint(conn.from);
+        const portName = from.portName !== 'isOn' ? from.portName : `out${i}`;
+        outputMapping[portName] = `${from.nodeId}.${from.portName}`;
+      });
+
+      // If no outgoing connections, use OUTPUT/Lamp nodes in selection
+      if (Object.keys(outputMapping).length === 0) {
+        subcircuitNodes
+          .filter((n) => n.type === 'OUTPUT' || n.type === 'Lamp')
+          .forEach((n, i) => {
+            const label = (n.config as Record<string, unknown>)?.['label'] as string | undefined ?? `out${i}`;
+            outputMapping[label] = `${n.id}.out`;
+          });
+      }
+
+      return {
+        name,
+        description: `Custom component with ${subcircuitNodes.length} gates`,
+        subcircuit: { nodes: subcircuitNodes, connections: subcircuitConnections },
+        inputMapping,
+        outputMapping,
+      };
+    },
+    [selectedNodeIdsAll, editorCircuit, resolveConnectionEndpoint]
+  );
+
+  const handleSaveComponent = useCallback(() => {
+    const trimmed = saveComponentName.trim();
+    if (!trimmed || !onSaveAsComponent) return;
+    const def = buildCompositeDefFromSelection(trimmed);
+    if (!def) return;
+    onSaveAsComponent(def);
+    setSaveComponentOpen(false);
+    setSaveComponentName('');
+    // Show "Saved" toast for 3 seconds
+    setSavedComponentToast(trimmed);
+    if (savedToastTimerRef.current) clearTimeout(savedToastTimerRef.current);
+    savedToastTimerRef.current = setTimeout(() => setSavedComponentToast(null), 3000);
+  }, [saveComponentName, onSaveAsComponent, buildCompositeDefFromSelection]);
 
   useEffect(() => {
     if (!selectedNode) return;
@@ -926,6 +1062,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => deriveNodePins(selectedNode, editorCircuit),
     [editorCircuit, selectedNode]
   );
+  const selectedNodeSignals = useMemo(() => {
+    if (!selectedNode) return null;
+    const pins = deriveNodePins(selectedNode, editorCircuit);
+    return pins.map((port) => ({
+      port,
+      value: liveSignals.get(`${selectedNode.id}.${port}`) ?? null,
+    }));
+  }, [selectedNode, editorCircuit, liveSignals]);
   const selectedNodeProperties = useMemo(
     () => (selectedNode ? describeNodeProperties(selectedNode) : []),
     [selectedNode]
@@ -1007,6 +1151,26 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const clearDiagnosticFilter = useCallback(() => {
     setDiagnosticFilterNodeId(null);
   }, []);
+
+  // A-3/A-4: Node label editor callbacks
+  const commitNodeLabel = useCallback(() => {
+    if (!editingLabelNodeId) return;
+    const trimmed = labelDraft.trim();
+    updateNode(editingLabelNodeId, { label: trimmed.length > 0 ? trimmed : undefined });
+    onCircuitMutated?.();
+    setEditingLabelNodeId(null);
+    setLabelDraft('');
+  }, [editingLabelNodeId, labelDraft, updateNode, onCircuitMutated]);
+
+  const cancelNodeLabel = useCallback(() => {
+    setEditingLabelNodeId(null);
+    setLabelDraft('');
+  }, []);
+
+  const handleLabelKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') { e.preventDefault(); commitNodeLabel(); }
+    if (e.key === 'Escape') { e.preventDefault(); cancelNodeLabel(); }
+  }, [commitNodeLabel, cancelNodeLabel]);
   const liveIoSignals = useMemo(() => {
     const inputRows = editorCircuit.nodes
       .filter((node) => node.type === 'INPUT' || node.type === 'Switch')
@@ -1255,7 +1419,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           </div>
           <div className="ide-palette-groups">
-            {(['IO', 'Logic', 'Sequential'] as const).map((category) => {
+            {(['IO', 'Logic', 'Sequential', 'Components'] as const).map((category) => {
               const items = filteredPalette.filter((item) => item.category === category);
               if (items.length === 0) return null;
               return (
@@ -1291,6 +1455,35 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               testId="ide-design-palette-empty"
             />
           )}
+          {/* Custom components — user-saved macros */}
+          {customComponentTypes && customComponentTypes.length > 0 && (() => {
+            const q = paletteQuery.trim().toLowerCase();
+            const filtered = !q
+              ? customComponentTypes
+              : customComponentTypes.filter(
+                  (c) => c.title.toLowerCase().includes(q) || c.type.toLowerCase().includes(q)
+                );
+            if (filtered.length === 0) return null;
+            return (
+              <div className="ide-palette-group ide-palette-group--custom" data-testid="ide-palette-group-custom">
+                <h4>Custom</h4>
+                <div className="ide-palette-chips">
+                  {filtered.map((item) => (
+                    <button
+                      key={item.type}
+                      className="ide-palette-chip ide-palette-chip--custom"
+                      type="button"
+                      title={item.description || item.title}
+                      onClick={() => spawnAtCanvasCenter(item.type)}
+                      data-testid={`ide-design-palette-custom-${item.type.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                    >
+                      {item.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </SurfacePanel>
         </>
       }
@@ -1561,12 +1754,51 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </span>
                   </div>
                 </div>
+                {/* A-5: Inline node label editor */}
+                <div className="ide-design-label-editor" data-testid="ide-design-label-editor">
+                  {editingLabelNodeId === selectedNode.id ? (
+                    <div className="ide-design-label-editor-row">
+                      <input
+                        className="ide-text-input ide-design-label-input"
+                        type="text"
+                        value={labelDraft}
+                        onChange={(e) => setLabelDraft(e.target.value)}
+                        onKeyDown={handleLabelKeyDown}
+                        onBlur={commitNodeLabel}
+                        autoFocus
+                        placeholder="Enter label…"
+                        data-testid="ide-design-label-input"
+                        maxLength={32}
+                      />
+                      <IdeButton tone="ghost" onClick={cancelNodeLabel} testId="ide-design-label-cancel">✕</IdeButton>
+                    </div>
+                  ) : (
+                    <IdeButton
+                      tone="ghost"
+                      onClick={() => {
+                        setEditingLabelNodeId(selectedNode.id);
+                        setLabelDraft(selectedNode.label ?? '');
+                      }}
+                      testId="ide-design-label-edit-btn"
+                    >
+                      {selectedNode.label ? `Label: ${selectedNode.label}` : 'Add label…'}
+                    </IdeButton>
+                  )}
+                </div>
                 <div className="ide-design-selection-pins" data-testid="ide-design-selection-pins">
-                  {selectedNodePins.map((pin) => (
-                    <span key={`${selectedNode.id}-${pin}`} className="ide-design-pin-pill">
-                      {pin}
-                    </span>
-                  ))}
+                  {selectedNodePins.map((pin) => {
+                    const val = liveSignals.get(`${selectedNode.id}.${pin}`) ?? null;
+                    const valStr = val === 1 ? '1' : val === 0 ? '0' : '?';
+                    return (
+                      <span
+                        key={`${selectedNode.id}-${pin}`}
+                        className={`ide-design-pin-pill ide-design-pin-pill--val${val === 1 ? '-hi' : val === 0 ? '-lo' : '-unk'}`}
+                        data-testid={`ide-design-pin-pill-${selectedNode.id}-${pin}`}
+                      >
+                        {pin}<span className="ide-design-pin-pill-value">{valStr}</span>
+                      </span>
+                    );
+                  })}
                 </div>
                 <div className="ide-design-selection-properties" data-testid="ide-design-selection-properties">
                   <p className="ide-copy">IR Properties</p>
@@ -1626,6 +1858,38 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
                   Delete selected nodes
                 </IdeButton>
+                {onSaveAsComponent && selectedNodeIdsAll.length >= 2 && (
+                  <div className="ide-design-save-component-form" data-testid="ide-design-save-component-form" style={{ marginTop: 8 }}>
+                    {saveComponentOpen ? (
+                      <>
+                        <input
+                          className="ide-text-input"
+                          type="text"
+                          placeholder="Component name…"
+                          value={saveComponentName}
+                          onChange={(e) => setSaveComponentName(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleSaveComponent(); }}
+                          data-testid="ide-design-save-component-input"
+                        />
+                        <IdeButton tone="primary" onClick={handleSaveComponent} testId="ide-design-save-component-confirm">
+                          Save
+                        </IdeButton>
+                        <IdeButton tone="ghost" onClick={() => { setSaveComponentOpen(false); setSaveComponentName(''); }} testId="ide-design-save-component-cancel">
+                          Cancel
+                        </IdeButton>
+                      </>
+                    ) : (
+                      <IdeButton tone="secondary" onClick={() => setSaveComponentOpen(true)} testId="ide-design-save-component-open">
+                        Save as Component…
+                      </IdeButton>
+                    )}
+                    {savedComponentToast && (
+                      <IdeCallout tone="success" testId="ide-design-save-component-toast">
+                        Saved "{savedComponentToast}" — available in Custom palette.
+                      </IdeCallout>
+                    )}
+                  </div>
+                )}
               </div>
             ) : null}
             {selectedWireIds.length > 0 && (
@@ -2050,6 +2314,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         {presentationZoom === 'classroom' ? 'Classroom' : 'Dense'}
                       </IdeButton>
                     </div>
+                    {/* C-7: Debug overlay banner — shown when externally frozen at a verify tick */}
+                    {externalDebugTick != null && (
+                      <div className="ide-design-debug-overlay-banner" data-testid="ide-design-debug-banner" role="status">
+                        <span aria-hidden="true">⏸</span>
+                        <strong>Debug mode — tick {externalDebugTick}</strong>
+                        <span className="ide-design-debug-banner-hint">
+                          Canvas frozen at verification tick {externalDebugTick}.
+                        </span>
+                        {onClearExternalDebug && (
+                          <IdeButton tone="ghost" onClick={onClearExternalDebug} testId="ide-design-debug-clear">
+                            Exit debug view
+                          </IdeButton>
+                        )}
+                      </div>
+                    )}
                     <LogicCanvas
                       engine={tickEngine}
                       circuit={editorCircuit}
@@ -2071,8 +2350,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       isRunning={simRunning}
                       tickRate={simSpeed}
                       tickCount={simTick}
-                      debugSignals={liveSignals}
-                      debugTick={simTick}
+                      debugSignals={externalDebugSignals ?? liveSignals}
+                      debugTick={externalDebugTick ?? simTick}
+                      isReplayMode={externalDebugTick != null ? true : undefined}
                       nodeDiagnosticBadges={nodeDiagnosticBadges}
                       onNodeDiagnosticBadgeClick={handleNodeDiagnosticBadgeClick}
                       ioPresentationMap={ioPresentationMap}
@@ -2124,6 +2404,40 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     {actionToast && (
                       <div className="ide-design-toast" role="status" data-testid="ide-design-action-toast">
                         {actionToast}
+                      </div>
+                    )}
+                    {selectedNode && (
+                      <div className="ide-node-inspector" data-testid="ide-node-inspector">
+                        <div className="ide-node-inspector-header">
+                          <span className="ide-node-inspector-type">{selectedNode.type}</span>
+                          <button
+                            className="ide-node-inspector-close"
+                            onClick={() => clearSelection()}
+                            aria-label="Close inspector"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <div className="ide-node-inspector-body">
+                          {selectedNodeSignals && selectedNodeSignals.length > 0 ? (
+                            selectedNodeSignals.map(({ port, value }) => {
+                              const valStr = value === 1 ? '1' : value === 0 ? '0' : '?';
+                              return (
+                                <div key={port} className="ide-node-inspector-port">
+                                  <span className="ide-node-inspector-port-name">{port}</span>
+                                  <span
+                                    className="ide-node-inspector-port-value"
+                                    data-val={valStr}
+                                  >
+                                    {valStr}
+                                  </span>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <span className="ide-node-inspector-port-name">No ports</span>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

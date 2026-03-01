@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import type { Circuit } from '@redbyte/rb-logic-core';
+import type { Circuit, CompositeNodeDef } from '@redbyte/rb-logic-core';
 import type { RunRecord } from '../recording/runRecord';
 import type { Probe } from '../stores/probeStore';
 import type { ToolchainProjectInput } from '../fpga/toolchainBackend';
@@ -66,6 +66,7 @@ export interface RBProject {
   traceMetadata?: TraceMetadata;
   submodules?: SubmoduleEntry[];
   labSpec?: LabSpecV1;
+  customComponents?: CompositeNodeDef[];
   meta?: {
     appVersion?: string;
     gitCommit?: string;

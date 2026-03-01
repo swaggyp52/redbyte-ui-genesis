@@ -139,7 +139,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const [mappingExpanded, setMappingExpanded] = useState(false);
   const mappingInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const mappingSectionRef = useRef<HTMLElement | null>(null);
-  const examplesSectionRef = useRef<HTMLElement | null>(null);
+  const examplesSectionRef = useRef<HTMLDetailsElement | null>(null);
   const highlightResetTimer = useRef<number | null>(null);
   const { activeBoardSignal } = useBoardSignal();
 

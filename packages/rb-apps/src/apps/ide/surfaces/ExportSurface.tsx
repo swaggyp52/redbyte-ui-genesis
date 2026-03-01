@@ -136,6 +136,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     pins?: string;
     ts?: string;
   }>({});
+  // Phase 2: track which port keys have invalid (non-Basys3) pin values
+  const [invalidPins, setInvalidPins] = useState<Set<string>>(new Set());
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   const pinInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const mapSectionRef = useRef<HTMLElement>(null);
@@ -1062,6 +1064,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         const pinValue = pinOverrides[portKey] ?? '';
                         const status = resolveRowStatus(row.status, pinValue);
                         const conf = getPinConfidence(row.suggestedPin, pinValue);
+                        const isPinInvalid = invalidPins.has(portKey);
                         return (
                           <tr
                             key={row.port}
@@ -1089,14 +1092,29 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                                 }}
                                 className="ide-export-pin-input"
                                 value={pinValue}
-                                onChange={(event) =>
+                                onChange={(event) => {
+                                  const newVal = event.target.value.toUpperCase();
                                   setPinOverrides((prev) => ({
                                     ...prev,
-                                    [portKey]: event.target.value.toUpperCase(),
-                                  }))
-                                }
+                                    [portKey]: newVal,
+                                  }));
+                                  // Phase 2: validate against known Basys3 pins
+                                  const trimmed = newVal.trim();
+                                  setInvalidPins((prev) => {
+                                    const next = new Set(prev);
+                                    if (trimmed.length > 0 && !BASYS3_VALID_PINS.has(trimmed)) {
+                                      next.add(portKey);
+                                    } else {
+                                      next.delete(portKey);
+                                    }
+                                    return next;
+                                  });
+                                }}
                                 placeholder={row.suggestedPin ?? 'PIN'}
                               />
+                              {isPinInvalid && (
+                                <span className="ide-pin-warn">&#9888; Unknown pin — check Basys3 reference</span>
+                              )}
                             </td>
                             <td>
                               <IdeStatusPill tone={statusTone(status)}>
@@ -1184,9 +1202,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                           </div>
                         </div>
                         {selectedArtifact.preview.trim().length > 0 ? (
-                          <pre className="ide-export-artifact-code" data-testid="ide-export-preview-code">
-                            {selectedArtifact.preview}
-                          </pre>
+                          <pre
+                            className="ide-export-artifact-code"
+                            data-testid="ide-export-preview-code"
+                            dangerouslySetInnerHTML={{ __html: syntaxHighlight(selectedArtifact.preview ?? '', selectedArtifact.kind ?? '') }}
+                          />
                         ) : (
                           <p className="ide-export-artifact-empty">
                             File content will appear once the circuit and pin mapping are complete.
@@ -1557,3 +1577,150 @@ function getPinConfidence(
   if (pinValue.trim().toUpperCase() === suggestedPin.toUpperCase()) return 'exact';
   return 'likely';
 }
+
+// ─── Phase 2: Syntax Highlighting ──────────────────────────────────────────
+
+const VHDL_KEYWORDS = new Set([
+  'library','use','entity','architecture','is','begin','end','port','map',
+  'signal','component','generic','process','if','then','else','elsif','case',
+  'when','others','not','and','or','nor','nand','xor','xnor',
+  'std_logic','std_logic_vector','downto','to','in','out','inout','buffer',
+  'all','of','type','subtype','constant','variable','integer','boolean',
+  'true','false',
+]);
+
+const VERILOG_KEYWORDS = new Set([
+  'module','endmodule','input','output','inout','wire','reg','assign',
+  'always','begin','end','if','else','case','endcase','posedge','negedge',
+  'parameter','localparam','and','or','not','nand','nor','xor','xnor',
+]);
+
+const XDC_PROPS = new Set([
+  'set_property','get_ports','create_clock','set_input_delay','set_output_delay',
+]);
+
+const TCL_COMMANDS = new Set([
+  'proc','set','if','else','foreach','while','return','puts','source','package',
+]);
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function highlightKeywords(code: string, keywords: Set<string>): string {
+  return code.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\b/g, (match) => {
+    return keywords.has(match.toLowerCase()) || keywords.has(match)
+      ? `<span class="hl-kw">${match}</span>`
+      : match;
+  });
+}
+
+function wrapComment(text: string): string {
+  return `<span class="hl-comment">${text}</span>`;
+}
+
+function syntaxHighlight(code: string, kind: string): string {
+  const lines = code.split('\n');
+
+  if (kind === 'vhd' || kind === 'tb') {
+    // VHDL / testbench: line comments start with --
+    return lines.map((line) => {
+      const escaped = escapeHtml(line);
+      const commentIdx = escaped.indexOf('--');
+      if (commentIdx === -1) {
+        return highlightKeywords(escaped, VHDL_KEYWORDS);
+      }
+      const codePart = escaped.slice(0, commentIdx);
+      const commentPart = escaped.slice(commentIdx);
+      return highlightKeywords(codePart, VHDL_KEYWORDS) + wrapComment(commentPart);
+    }).join('\n');
+  }
+
+  if (kind === 'verilog') {
+    // Verilog: // line comments and /* */ block comments (single-line only)
+    return lines.map((line) => {
+      const escaped = escapeHtml(line);
+      const lineCommentIdx = escaped.indexOf('//');
+      if (lineCommentIdx !== -1) {
+        const codePart = escaped.slice(0, lineCommentIdx);
+        const commentPart = escaped.slice(lineCommentIdx);
+        return highlightKeywords(codePart, VERILOG_KEYWORDS) + wrapComment(commentPart);
+      }
+      const blockStart = escaped.indexOf('/*');
+      if (blockStart !== -1) {
+        const blockEnd = escaped.indexOf('*/', blockStart + 2);
+        if (blockEnd !== -1) {
+          const before = escaped.slice(0, blockStart);
+          const comment = escaped.slice(blockStart, blockEnd + 2);
+          const after = escaped.slice(blockEnd + 2);
+          return (
+            highlightKeywords(before, VERILOG_KEYWORDS)
+            + wrapComment(comment)
+            + highlightKeywords(after, VERILOG_KEYWORDS)
+          );
+        }
+      }
+      return highlightKeywords(escaped, VERILOG_KEYWORDS);
+    }).join('\n');
+  }
+
+  if (kind === 'xdc') {
+    // XDC: # line comments; property-name keywords
+    return lines.map((line) => {
+      const escaped = escapeHtml(line);
+      const commentIdx = escaped.indexOf('#');
+      if (commentIdx !== -1) {
+        const codePart = escaped.slice(0, commentIdx);
+        const commentPart = escaped.slice(commentIdx);
+        return highlightKeywords(codePart, XDC_PROPS) + wrapComment(commentPart);
+      }
+      return highlightKeywords(escaped, XDC_PROPS);
+    }).join('\n');
+  }
+
+  if (kind === 'tcl') {
+    // TCL: # line comments; command keywords
+    return lines.map((line) => {
+      const escaped = escapeHtml(line);
+      const commentIdx = escaped.indexOf('#');
+      if (commentIdx !== -1) {
+        const codePart = escaped.slice(0, commentIdx);
+        const commentPart = escaped.slice(commentIdx);
+        return highlightKeywords(codePart, TCL_COMMANDS) + wrapComment(commentPart);
+      }
+      return highlightKeywords(escaped, TCL_COMMANDS);
+    }).join('\n');
+  }
+
+  // Passthrough for unrecognized kinds (readme, md, json, etc.)
+  return escapeHtml(code);
+}
+
+// ─── Phase 2: Pin Validation ────────────────────────────────────────────────
+
+const BASYS3_VALID_PINS = new Set([
+  // Switches
+  'V17','V16','W16','W17','W15','V15','W14','W13','V2','T3','T2','R3','W2','U1','T1','R2',
+  // LEDs
+  'U16','E19','U19','V19','W18','U15','U14','V14','V13','V3','W3','U3','P3','N3','P1','L1',
+  // Buttons
+  'W19','T17','T18','U17','U18',
+  // Clock
+  'W5',
+  // PMOD (JA, JB, JC, JXADC)
+  'J1','L2','J2','G2','H1','K2','H2','G3',
+  'A14','A16','B15','B16','A15','A17','C15','C16',
+  'K17','M18','N17','P18','L17','M19','P17','R18',
+  'J3','L3','M2','N2','K3','M3','M1','N1',
+  // VGA
+  'G19','H19','J19','N19','N18','L18','K18','J18','J17','H17','G17','D17',
+  // USB-UART
+  'B18','A18',
+  // QSPI
+  'D18','D19','G18','F18','K19',
+  // SDSPI
+  'E2','A1','B1','C1',
+]);
