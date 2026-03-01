@@ -17327,3 +17327,22 @@ All 25 `pnpm verify:gates` gates now pass (exit 0).
 `pnpm --filter @redbyte/lab3-webapp build` passes. All 25 `pnpm verify:gates` gates pass.
 
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-03-01 (Sprint 19 — TS type-safety cleanup + N2 oscilloscope persistence)
+
+### Sprint 19 — 4 files, 2 concerns (commit `5c4c085c`)
+
+**TS fixes (3 pre-existing type errors in rb-shell/rb-apps):**
+
+- `packages/rb-apps/src/fpga/toolchainBackend.ts:4708` — Removed redundant `?? diagnostics?.lastErrorCode` fallback. TypeScript narrows `diagnostics` to `null` inside the `catch { diagnostics = null }` branch, making the second `diagnostics?.lastErrorCode` access resolve to `never`. The fallback was also logically redundant (same value already passed to `mapHardwareErrorCode` as first arg). Fixed to `?? null`.
+- `packages/rb-apps/src/apps/InstructorRunDetailApp.tsx:73` — Added explicit `run_id: data?.run_id ?? runId` field to the `normalized: RunDetail` object. Spreading `...(data || {})` doesn't satisfy TypeScript's required `run_id: string` field in the `RunDetail` interface.
+- `packages/rb-shell/src/Shell.tsx:129–132` — Updated `ShellWindowEntryProps` handler interfaces to match actual implementations. Old interface was a stale stub from an earlier API (`(payload: StarterInstructionsPayload) => Promise<void>` / `(projectFile: File) => Promise<void>` / `(evidenceFile: File) => Promise<void>`). Actual handlers take richer object payloads.
+
+**N2 — oscilloscope UI state persistence:**
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` — Added 2 `useEffect` hooks after the `useState` declarations (line 504). Mount-only effect restores `selectedTick`, `cursorA`, `cursorB`, `drawerOpen` from `sessionStorage` key `rb.verify-ui.v1`. Change-effect persists those 4 fields on update. `sessionStorage` semantics: survives surface switches within a session, clears on browser tab close (no stale state from old runs).
+
+### Result
+`pnpm -r build` — all packages `✓ built`, zero `error TS` lines. All 25 `pnpm verify:gates` gates pass.
+
+- **Attribution**: Connor Angiel
