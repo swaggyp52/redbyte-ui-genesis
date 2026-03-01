@@ -7148,7 +7148,7 @@ details[open] summary .details-arrow {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-height: 360px;
+  min-height: 120px;
   border-right: 1px solid rgba(24,44,72,0.7);
   background: rgba(8, 16, 30, 0.92);
 }
@@ -12542,4 +12542,696 @@ details[open].ide-export-evidence-details > summary::before {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--ide-text, #c0cfe0);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Phase 26C — Sprint 12: Verify Surface Visual + Functional Overhaul
+   All rules here use canonical selectors from the layout chain.
+   Place last so they win over prior phases without !important.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── B2.1: Status strip → 48px instrument header ── */
+.ide-verify-panel .ide-panel-body > .ide-verify-status-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 var(--ide-space-3, 16px);
+  min-height: 48px;
+  background: rgba(3, 8, 18, 0.98);
+  border-bottom: 1px solid rgba(30, 60, 110, 0.45);
+  flex-shrink: 0;
+}
+.ide-verify-strip-sep { color: rgba(80,120,160,0.45); }
+.ide-verify-strip-pass { color: rgba(46, 196, 182, 0.9); font-weight: 600; font-size: 13px; }
+.ide-verify-strip-fail { color: rgba(255, 100, 100, 0.9); font-weight: 600; font-size: 13px; }
+.ide-verify-strip-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* ── B2.2: Scope header → instrument-style ── */
+.ide-verify-oscilloscope-stage > .ide-verify-scope-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  min-height: 34px;
+  background: rgba(3, 8, 19, 0.98);
+  border-bottom: 1px solid rgba(18, 44, 80, 0.6);
+  flex-shrink: 0;
+}
+.ide-verify-scope-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: rgba(100, 180, 230, 0.9);
+  text-transform: uppercase;
+  font-family: var(--rb-font-mono, monospace);
+  flex-shrink: 0;
+}
+.ide-verify-scope-tick {
+  font-size: 11px;
+  color: rgba(56, 189, 248, 0.85);
+  background: rgba(56, 189, 248, 0.09);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: var(--rb-font-mono);
+}
+.ide-verify-scope-fail-index {
+  font-size: 10px;
+  color: rgba(255, 100, 100, 0.9);
+  font-weight: 700;
+  background: rgba(255, 80, 80, 0.1);
+  padding: 1px 7px;
+  border-radius: 3px;
+}
+.ide-verify-scope-debug-btn {
+  font-size: 10px;
+  padding: 2px 9px;
+  color: rgba(46, 196, 182, 0.9);
+  background: rgba(46, 196, 182, 0.09);
+  border: 1px solid rgba(46, 196, 182, 0.28);
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: auto;
+  transition: background 0.12s, border-color 0.12s;
+}
+.ide-verify-scope-debug-btn:hover {
+  background: rgba(46, 196, 182, 0.18);
+  border-color: rgba(46, 196, 182, 0.5);
+}
+
+/* ── B2.3: Signal digest strip ── */
+.ide-verify-oscilloscope-stage > .ide-verify-signal-digest {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 5px 12px;
+  background: rgba(2, 6, 15, 0.96);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  flex-shrink: 0;
+  min-height: 30px;
+}
+.ide-verify-signal-digest-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(80, 120, 160, 0.6);
+  font-family: var(--rb-font-mono);
+  margin-right: 2px;
+}
+.ide-verify-signal-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 5px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-family: var(--rb-font-mono);
+  border: 1px solid transparent;
+  cursor: default;
+}
+.ide-verify-signal-chip--pass {
+  background: rgba(46, 196, 182, 0.09);
+  border-color: rgba(46, 196, 182, 0.25);
+  color: rgba(46, 196, 182, 0.9);
+}
+.ide-verify-signal-chip--fail {
+  background: rgba(255, 80, 80, 0.1);
+  border-color: rgba(255, 80, 80, 0.35);
+  color: rgba(255, 130, 130, 1.0);
+}
+.ide-verify-signal-chip--idle {
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(140, 170, 200, 0.55);
+}
+.ide-verify-signal-chip-dir { opacity: 0.7; font-size: 9px; }
+.ide-verify-signal-chip-pin {
+  color: rgba(56, 150, 200, 0.7);
+  font-size: 9px;
+  margin-left: 2px;
+}
+.ide-verify-signal-chip-status { margin-left: 3px; font-size: 9px; font-weight: 700; }
+
+/* ── B2.4: Waveform outer fill ── */
+.ide-verify-oscilloscope-stage > .ide-waveform-outer {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.ide-verify-waveform-scroll {
+  display: block;
+}
+
+/* ── B2.5: Oscilloscope ambient state coloring ── */
+.ide-verify-oscilloscope-stage[data-state="pass"] {
+  border-bottom: 2px solid rgba(46, 196, 182, 0.4);
+  box-shadow: inset 0 -2px 24px rgba(46, 196, 182, 0.04);
+}
+.ide-verify-oscilloscope-stage[data-state="fail"] {
+  border-bottom: 2px solid rgba(255, 80, 80, 0.4);
+  box-shadow: inset 0 -2px 24px rgba(255, 80, 80, 0.04);
+}
+
+/* ── B2.6: Waveform control bar ── */
+.ide-verify-waveform-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 5px var(--ide-space-2, 8px);
+  background: rgba(3, 8, 18, 0.97);
+  border-bottom: 1px solid rgba(18, 44, 80, 0.5);
+  flex-shrink: 0;
+  min-height: 36px;
+}
+.ide-verify-zoom-btn {
+  padding: 3px 9px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(120, 160, 205, 0.7);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(40, 80, 130, 0.28);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.ide-verify-zoom-btn:hover:not(.is-active) {
+  background: rgba(56, 120, 200, 0.12);
+  color: rgba(160, 200, 240, 0.9);
+  border-color: rgba(56, 120, 200, 0.35);
+}
+.ide-verify-zoom-btn.is-active {
+  background: rgba(56, 130, 210, 0.2);
+  color: rgba(100, 180, 240, 1.0);
+  border-color: rgba(56, 130, 210, 0.55);
+}
+.ide-verify-zoom-label {
+  font-size: 10px;
+  color: rgba(80, 120, 160, 0.65);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.ide-verify-fail-nav-position {
+  font-size: 10px;
+  color: rgba(255, 120, 120, 0.85);
+  font-family: var(--rb-font-mono);
+}
+
+/* ── B2.7: Pass hero ── */
+.ide-verify-pass-hero {
+  background: linear-gradient(110deg, rgba(8, 28, 22, 0.97) 0%, rgba(5, 18, 14, 0.97) 100%);
+  border: 1px solid rgba(46, 196, 182, 0.38);
+  border-radius: var(--ide-radius, 6px);
+  box-shadow: 0 0 32px rgba(46, 196, 182, 0.08), 0 0 0 1px rgba(46, 196, 182, 0.06);
+  padding: var(--ide-space-3, 12px);
+  margin: var(--ide-space-2, 8px);
+}
+.ide-verify-pass-hero-body {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-3);
+}
+.ide-verify-pass-hero-icon {
+  font-size: 2rem;
+  color: rgba(46, 196, 182, 0.9);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.ide-verify-pass-hero-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: rgba(46, 196, 182, 0.95);
+  display: block;
+}
+.ide-verify-pass-hero-meta {
+  font-size: 12px;
+  color: rgba(140, 200, 180, 0.65);
+  display: block;
+  margin-top: 2px;
+}
+.ide-verify-pass-hero-hash {
+  font-size: 10px;
+  color: rgba(46, 196, 182, 0.4);
+  font-family: var(--rb-font-mono);
+  margin-top: var(--ide-space-1);
+  display: block;
+}
+.ide-verify-oracle-badge {
+  font-size: 10px;
+  background: rgba(46, 196, 182, 0.12);
+  color: rgba(46, 196, 182, 0.75);
+  border: 1px solid rgba(46, 196, 182, 0.25);
+  border-radius: 4px;
+  padding: 1px 7px;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+/* ── B2.8: Stale banner ── */
+.ide-verify-stale-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px var(--ide-space-3);
+  background: rgba(180, 130, 0, 0.1);
+  border-top: none;
+  border-bottom: 2px solid rgba(200, 160, 0, 0.35);
+  flex-shrink: 0;
+}
+.ide-verify-stale-banner-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: rgba(220, 180, 0, 0.9);
+  background: rgba(220, 180, 0, 0.12);
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+
+/* ── B2.9: Bottom drawer ── */
+.ide-verify-supporting-strip {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 2px solid rgba(30, 60, 110, 0.5);
+  max-height: 40px;
+  overflow: hidden;
+  transition: max-height 0.18s ease;
+}
+.ide-verify-supporting-strip.is-open {
+  max-height: 360px;
+}
+.ide-verify-drawer-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 var(--ide-space-3, 16px);
+  min-height: 38px;
+  background: rgba(4, 9, 20, 0.97);
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  color: rgba(140, 180, 220, 0.85);
+  font-size: 12px;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+.ide-verify-drawer-toggle:hover {
+  background: rgba(8, 18, 38, 0.98);
+  color: rgba(180, 210, 240, 1.0);
+}
+.ide-verify-drawer-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: rgba(80, 120, 160, 0.7);
+}
+.ide-verify-drawer-badge {
+  background: rgba(255, 80, 80, 0.85);
+  color: white;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  line-height: 1.4;
+}
+.ide-verify-drawer-hint {
+  font-size: 10px;
+  color: rgba(255, 130, 130, 0.8);
+  font-family: var(--rb-font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+.ide-verify-drawer-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-left: auto;
+}
+.ide-verify-drawer-tab {
+  font-size: 11px;
+  color: rgba(100, 150, 200, 0.6);
+  padding: 4px 12px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  font-weight: 600;
+  transition: color 0.1s, border-color 0.1s;
+}
+.ide-verify-drawer-tab:hover { color: rgba(160, 200, 240, 0.85); }
+.ide-verify-drawer-tab.is-active {
+  color: rgba(100, 180, 230, 0.95);
+  border-bottom-color: rgba(100, 180, 230, 0.8);
+}
+.ide-verify-drawer-chevron {
+  font-size: 12px;
+  color: rgba(80, 120, 160, 0.6);
+  margin-left: 6px;
+}
+.ide-verify-drawer-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  background: rgba(3, 8, 16, 0.97);
+}
+
+/* ── B2.10: Tab bar ── */
+.ide-verify-workbench-v2 .ide-verify-tab-bar,
+.ide-verify-drawer-body .ide-verify-tab-bar {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--ide-space-2);
+  border-bottom: 1px solid rgba(18, 44, 80, 0.45);
+  background: rgba(3, 8, 18, 0.97);
+  flex-shrink: 0;
+}
+.ide-verify-tab-btn {
+  padding: 7px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(100, 145, 195, 0.6);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+.ide-verify-tab-btn:hover:not(.is-active) {
+  color: rgba(140, 185, 235, 0.85);
+}
+.ide-verify-tab-btn.is-active {
+  color: rgba(100, 180, 230, 0.98);
+  border-bottom-color: rgba(100, 180, 230, 0.85);
+}
+.ide-verify-tab-badge {
+  display: inline-block;
+  background: rgba(255, 80, 80, 0.9);
+  color: white;
+  border-radius: 9px;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  margin-left: 4px;
+  vertical-align: middle;
+  line-height: 1.4;
+}
+
+/* ── B2.11: Fail summary ── */
+.ide-verify-fail-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px var(--ide-space-3);
+  background: rgba(255, 50, 50, 0.07);
+  border-bottom: 1px solid rgba(255, 80, 80, 0.18);
+  flex-shrink: 0;
+}
+.ide-verify-fail-summary__status {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: rgba(255, 110, 110, 1.0);
+  background: rgba(255, 80, 80, 0.12);
+  padding: 2px 8px;
+  border-radius: 3px;
+  align-self: flex-start;
+}
+.ide-verify-fail-summary__count {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 150, 150, 0.9);
+}
+.ide-verify-fail-summary__first {
+  font-size: 11px;
+  color: rgba(200, 180, 180, 0.75);
+  font-family: var(--rb-font-mono);
+}
+.ide-verify-fail-summary__first code {
+  color: rgba(255, 150, 150, 0.9);
+  font-family: var(--rb-font-mono);
+}
+
+/* ── B2.12: Failure explainer ── */
+.ide-verify-failure-explainer {
+  padding: 10px var(--ide-space-3);
+  border-bottom: 1px solid rgba(255, 80, 80, 0.12);
+}
+.ide-verify-failure-explainer__header {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(200, 180, 180, 0.9);
+  margin-bottom: 8px;
+}
+.ide-verify-failure-explainer__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ide-verify-failure-explainer__grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+  color: rgba(120, 160, 200, 0.7);
+}
+.ide-verify-failure-explainer__grid code {
+  font-size: 11px;
+  color: rgba(220, 200, 200, 0.9);
+  font-family: var(--rb-font-mono);
+  font-weight: 600;
+}
+.ide-verify-failure-explainer__inputs {
+  font-size: 11px;
+  color: rgba(120, 160, 200, 0.7);
+  margin-bottom: 6px;
+}
+.ide-verify-failure-explainer__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.ide-verify-failure-explainer__chips code {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 11px;
+  color: rgba(200, 220, 240, 0.8);
+  font-family: var(--rb-font-mono);
+}
+
+/* ── B2.13: Mismatch table ── */
+.ide-verify-mismatch-list {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.ide-verify-mismatch-list thead th {
+  background: rgba(3, 8, 18, 0.97);
+  padding: 7px 10px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: rgba(80, 130, 190, 0.75);
+  font-weight: 700;
+  border-bottom: 1px solid rgba(18, 44, 80, 0.55);
+  position: sticky;
+  top: 0;
+}
+.ide-verify-mismatch-row td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+}
+.ide-verify-mismatch-row:hover td {
+  background: rgba(56, 89, 140, 0.14);
+}
+.ide-verify-mismatch-tick-btn {
+  font-size: 11px;
+  color: rgba(56, 189, 248, 0.85);
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 3px;
+  padding: 1px 6px;
+  cursor: pointer;
+  font-family: var(--rb-font-mono);
+}
+.ide-verify-mismatch-tick-btn:hover {
+  background: rgba(56, 189, 248, 0.16);
+  border-color: rgba(56, 189, 248, 0.4);
+}
+.ide-verify-mismatch-signal { color: rgba(160, 195, 230, 0.85); }
+.ide-verify-mismatch-expected { color: rgba(100, 180, 230, 0.75); }
+.ide-verify-mismatch-actual--fail {
+  color: rgba(255, 120, 120, 1.0);
+  font-weight: 700;
+}
+.ide-verify-mismatch-fix-btn {
+  font-size: 10px;
+  color: rgba(255, 130, 130, 0.85);
+  background: rgba(255, 80, 80, 0.09);
+  border: 1px solid rgba(255, 80, 80, 0.25);
+  border-radius: 3px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.ide-verify-mismatch-fix-btn:hover {
+  background: rgba(255, 80, 80, 0.18);
+  border-color: rgba(255, 80, 80, 0.45);
+  color: rgba(255, 160, 160, 1.0);
+}
+
+/* ── B2.14: Truth table panel header ── */
+.ide-truth-table-title {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(100, 180, 230, 0.82);
+}
+.ide-truth-table-header {
+  background: rgba(3, 8, 19, 0.97);
+  border-bottom: 1px solid rgba(18, 44, 80, 0.55);
+}
+
+/* ── B2.15: Run context ── */
+.ide-verify-run-context {
+  padding: 10px var(--ide-space-3);
+  border-bottom: 1px solid rgba(18, 44, 80, 0.35);
+}
+.ide-verify-run-context__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ide-verify-run-context__title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: rgba(80, 130, 180, 0.75);
+}
+.ide-verify-run-context__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 6px;
+}
+.ide-verify-run-context__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ide-verify-run-context__item dt {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(80, 120, 160, 0.6);
+}
+.ide-verify-run-context__item dd {
+  font-size: 11px;
+  font-family: var(--rb-font-mono);
+  color: rgba(160, 200, 240, 0.85);
+  margin: 0;
+}
+
+/* ── B2.16: Empty state ── */
+.ide-verify-empty-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: var(--ide-space-4);
+  text-align: center;
+}
+.ide-verify-empty-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: rgba(160, 195, 230, 0.8);
+}
+.ide-verify-empty-hint {
+  font-size: 13px;
+  color: rgba(100, 140, 180, 0.6);
+  max-width: 400px;
+  line-height: 1.5;
+}
+
+/* ── B2.17: Tick explainer ── */
+.ide-verify-tick-explainer-summary {
+  font-size: 11px;
+  color: rgba(80, 140, 200, 0.7);
+  cursor: pointer;
+  padding: 4px 0;
+  user-select: none;
+}
+.ide-verify-tick-explainer-copy {
+  font-size: 11px;
+  color: rgba(140, 175, 215, 0.7);
+  line-height: 1.5;
+  padding: 4px 0 6px;
+}
+
+/* ── B2.18: Waveform legend ── */
+.ide-verify-waveform-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-3);
+  padding: 4px 10px;
+  font-size: 10px;
+  background: rgba(2, 6, 14, 0.9);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  flex-shrink: 0;
+}
+.ide-verify-legend-pass { color: rgba(46, 196, 182, 0.82); }
+.ide-verify-legend-fail { color: rgba(252, 107, 107, 0.9); }
+.ide-verify-legend-select { color: rgba(56, 189, 248, 0.88); }
+.ide-verify-legend-item::before {
+  content: '●';
+  margin-right: 4px;
+  font-size: 8px;
+}
+
+/* ── B2.19: Cursor readout table ── */
+.ide-verify-cursor-readout {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  flex-shrink: 0;
+}
+.ide-verify-cursor-readout-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  font-family: var(--rb-font-mono);
+}
+.ide-verify-cursor-readout-table th {
+  font-size: 9px;
+  text-transform: uppercase;
+  color: rgba(80, 130, 180, 0.7);
+  padding: 2px 6px;
+  text-align: left;
+}
+.ide-verify-cursor-readout-table td {
+  padding: 2px 6px;
+  color: rgba(160, 200, 240, 0.85);
+}
+
+/* ── B2.20: Scrubber ── */
+.ide-verify-scrubber-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ide-verify-scrubber-field code {
+  font-size: 11px;
+  font-family: var(--rb-font-mono);
+  color: rgba(56, 189, 248, 0.85);
+  background: rgba(56, 189, 248, 0.08);
+  padding: 1px 6px;
+  border-radius: 3px;
 }

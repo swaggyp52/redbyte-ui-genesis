@@ -150,18 +150,22 @@ const WaveformViewer: React.FC<{
         </filter>
       </defs>
       {/* Dark PCB-style background */}
-      <rect width={width} height={height} fill="#030810" />
+      <rect width={width} height={height} fill="#020b18" />
+      {/* Header strip — distinct background */}
+      <rect width={width} height={HEADER_H} fill="rgba(3,8,18,0.98)" />
+      {/* Label column background */}
+      <rect x={0} y={HEADER_H} width={LABEL_W} height={height - HEADER_H} fill="rgba(4,10,22,0.9)" />
 
       {/* Minor + major vertical grid lines (steel-blue, not teal) */}
       {ticks.map((tick, i) => (
         <line key={`grid-${tick}`}
           x1={LABEL_W + i * TICK_W} y1={HEADER_H} x2={LABEL_W + i * TICK_W} y2={height}
-          stroke="rgba(56,189,248,0.04)" strokeWidth="1" />
+          stroke="rgba(56,189,248,0.07)" strokeWidth="1" />
       ))}
       {ticks.map((tick, i) => i % 5 === 0 ? (
         <line key={`grid-major-${tick}`}
           x1={LABEL_W + i * TICK_W} y1={HEADER_H} x2={LABEL_W + i * TICK_W} y2={height}
-          stroke="rgba(56,189,248,0.12)" strokeWidth="1" />
+          stroke="rgba(56,189,248,0.2)" strokeWidth="1" />
       ) : null)}
 
       {/* Fail markers in header rail */}
@@ -185,7 +189,7 @@ const WaveformViewer: React.FC<{
           y={HEADER_H}
           width={TICK_W}
           height={height - HEADER_H}
-          fill="rgba(255,85,85,0.07)"
+          fill="rgba(255,55,55,0.13)"
         />
       ) : null)}
 
@@ -230,6 +234,9 @@ const WaveformViewer: React.FC<{
               height={ROW_H}
               fill={rowIndex % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent'}
             />
+            {/* Row separator */}
+            <line x1={0} y1={y + ROW_H - 1} x2={width} y2={y + ROW_H - 1}
+              stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
 
           {/* Signal label column */}
             <g style={{ cursor: 'pointer' }} onClick={() => onSelectSignal(signalRow.signal)}>
@@ -279,7 +286,7 @@ const WaveformViewer: React.FC<{
                 <g key={`${signalRow.signal}-${point.tick}`}>
                   {/* Fail segment highlight */}
                   {isFail && (
-                    <rect x={tickX} y={y} width={TICK_W} height={ROW_H} fill="rgba(255,107,107,0.18)" />
+                    <rect x={tickX} y={y} width={TICK_W} height={ROW_H} fill="rgba(255,80,80,0.26)" />
                   )}
 
                   {/* Selected tick column highlight */}
@@ -407,8 +414,8 @@ const WaveformViewer: React.FC<{
         y1={0}
         x2={LABEL_W}
         y2={height}
-        stroke="rgba(255,255,255,0.1)"
-        strokeWidth="1"
+        stroke="rgba(30,80,140,0.7)"
+        strokeWidth="1.5"
       />
     </svg>
   );
@@ -2193,7 +2200,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           >
             <div className="ide-verify-console-frame">
             <div className="ide-verify-instrument-deck">
-            <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform">
+            <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={displayStatus === 'PASS' ? 'pass' : displayStatus === 'FAIL' ? 'fail' : 'idle'}>
               {/* ── Oscilloscope instrument header ── */}
               <div className="ide-verify-scope-header" data-testid="ide-verify-scope-header">
                 <span className="ide-verify-scope-label">OSCILLOSCOPE</span>
@@ -2427,36 +2434,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </div>
               </div>
 
-              {runContextRows.length > 0 && (
-                <section className="ide-verify-run-context" data-testid="ide-verify-run-context">
-                  <div className="ide-verify-run-context__header">
-                    <span className="ide-verify-run-context__title">Run context</span>
-                    {lastRun?.status === 'fail' && allWaveformTicks.length > zoomedTicks.length && (
-                      <button
-                        type="button"
-                        className="ide-verify-run-context__toggle"
-                        onClick={() => setTickZoom((previous) => (previous === 'all' ? 'fail' : 'all'))}
-                        data-testid="ide-verify-tick-window-toggle"
-                      >
-                        {tickZoom === 'all' ? 'View fail window' : 'View all ticks'}
-                      </button>
-                    )}
-                  </div>
-                  <dl className="ide-verify-run-context__grid">
-                    {runContextRows.map((row) => (
-                      <div
-                        key={row.label}
-                        className="ide-verify-run-context__item"
-                        data-testid={`ide-verify-run-context-${toTestId(row.label)}`}
-                      >
-                        <dt>{row.label}</dt>
-                        <dd>{row.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </section>
-              )}
-
               {/* No-trace diagnostic — shown when run produced no waveform data */}
               {hasNoTrace && (
                 <IdeCallout tone="error" title="No trace generated" testId="ide-verify-no-trace-guard">
@@ -2600,88 +2577,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </div>{/* /ide-verify-instrument-deck */}
             </div>{/* /ide-verify-console-frame */}
 
-            {/* Failure analysis — below oscilloscope so waveform is the primary instrument */}
-            {displayStatus === 'FAIL' && (
-              <SurfacePanel className="ide-verify-fail-summary" testId="ide-verify-fail-card">
-                <span className="ide-verify-fail-summary__status">FAIL</span>
-                <span className="ide-verify-fail-summary__count">
-                  {failingRows.length} of {runRows.length} vectors failing
-                </span>
-                {firstFailure && (
-                  <span className="ide-verify-fail-summary__first">
-                    First failure: <code>{firstFailure.signal}</code> at tick <code>{firstFailure.tick}</code>
-                  </span>
-                )}
-                {firstFailure && onFixPath && (
-                  <IdeButton
-                    tone="danger"
-                    onClick={() => { onFixPath(firstFailure); onGoToDesign?.(); }}
-                    testId="ide-verify-jump-to-failure-card"
-                  >
-                    Jump to failing node →
-                  </IdeButton>
-                )}
-              </SurfacePanel>
-            )}
-            {displayStatus === 'FAIL' && firstFailure && (
-              <SurfacePanel className="ide-verify-failure-explainer" testId="ide-verify-failure-explainer">
-                <header className="ide-verify-failure-explainer__header">
-                  <strong>Failure explainer</strong>
-                </header>
-                <div className="ide-verify-failure-explainer__grid">
-                  <div>
-                    <span>First mismatch tick</span>
-                    <code data-testid="ide-verify-explainer-first-tick">t{firstFailure.tick}</code>
-                  </div>
-                  <div>
-                    <span>Signal</span>
-                    <code data-testid="ide-verify-explainer-signal">{firstFailure.signal}</code>
-                  </div>
-                  <div>
-                    <span>Expected</span>
-                    <code data-testid="ide-verify-explainer-expected">{firstFailure.expected}</code>
-                  </div>
-                  <div>
-                    <span>Observed</span>
-                    <code data-testid="ide-verify-explainer-observed">{firstFailure.actual}</code>
-                  </div>
-                </div>
-                <div className="ide-verify-failure-explainer__inputs" data-testid="ide-verify-explainer-inputs">
-                  <span>Inputs at tick</span>
-                  {firstFailureInputs && firstFailureInputs.length > 0 ? (
-                    <div className="ide-verify-failure-explainer__chips">
-                      {firstFailureInputs.map((entry) => (
-                        <code key={entry.label}>{entry.label}={entry.value}</code>
-                      ))}
-                    </div>
-                  ) : (
-                    <code>no input snapshot available</code>
-                  )}
-                </div>
-                <div className="ide-inline-actions">
-                  <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-explainer-jump">
-                    Jump to tick
-                  </IdeButton>
-                  <IdeButton
-                    tone="secondary"
-                    onClick={focusMismatchLanes}
-                    testId="ide-verify-explainer-show-mismatches"
-                  >
-                    Show only mismatches
-                  </IdeButton>
-                  {showMismatchOnlySignals && (
-                    <IdeButton
-                      tone="ghost"
-                      onClick={clearMismatchLaneFilter}
-                      testId="ide-verify-explainer-show-all-lanes"
-                    >
-                      Show all lanes
-                    </IdeButton>
-                  )}
-                </div>
-              </SurfacePanel>
-            )}
-
             <div className={`ide-verify-supporting-strip ${drawerOpen ? 'is-open' : ''}`}>
             {/* Drawer toggle header */}
             <button
@@ -2752,6 +2647,90 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <div className="ide-verify-tab-panel">
               {verifyTab === 'mismatches' && (
                 <section className="ide-verify-mismatch-panel" data-testid="ide-verify-mismatch-table">
+                  {/* Fail summary — compact first-failure header */}
+                  {displayStatus === 'FAIL' && failingRows.length > 0 && (
+                    <div className="ide-verify-fail-summary" data-testid="ide-verify-fail-summary-inline">
+                      <span className="ide-verify-fail-summary__status">FAIL</span>
+                      <span className="ide-verify-fail-summary__count">
+                        {failingRows.length} of {runRows.length} vectors failing
+                      </span>
+                      {firstFailure && (
+                        <span className="ide-verify-fail-summary__first">
+                          First: <code>{firstFailure.signal}</code> at t{firstFailure.tick}
+                          {' '}exp <code>{firstFailure.expected}</code> got <code>{firstFailure.actual}</code>
+                        </span>
+                      )}
+                      {firstFailure && onFixPath && (
+                        <IdeButton
+                          tone="danger"
+                          onClick={() => { onFixPath(firstFailure); onGoToDesign?.(); }}
+                          testId="ide-verify-jump-to-failure-card"
+                        >
+                          Jump to failing node →
+                        </IdeButton>
+                      )}
+                    </div>
+                  )}
+                  {/* Failure explainer */}
+                  {displayStatus === 'FAIL' && firstFailure && (
+                    <div className="ide-verify-failure-explainer" data-testid="ide-verify-failure-explainer">
+                      <header className="ide-verify-failure-explainer__header">
+                        <strong>Failure explainer</strong>
+                      </header>
+                      <div className="ide-verify-failure-explainer__grid">
+                        <div>
+                          <span>First mismatch tick</span>
+                          <code data-testid="ide-verify-explainer-first-tick">t{firstFailure.tick}</code>
+                        </div>
+                        <div>
+                          <span>Signal</span>
+                          <code data-testid="ide-verify-explainer-signal">{firstFailure.signal}</code>
+                        </div>
+                        <div>
+                          <span>Expected</span>
+                          <code data-testid="ide-verify-explainer-expected">{firstFailure.expected}</code>
+                        </div>
+                        <div>
+                          <span>Observed</span>
+                          <code data-testid="ide-verify-explainer-observed">{firstFailure.actual}</code>
+                        </div>
+                      </div>
+                      <div className="ide-verify-failure-explainer__inputs" data-testid="ide-verify-explainer-inputs">
+                        <span>Inputs at tick</span>
+                        {firstFailureInputs && firstFailureInputs.length > 0 ? (
+                          <div className="ide-verify-failure-explainer__chips">
+                            {firstFailureInputs.map((entry) => (
+                              <code key={entry.label}>{entry.label}={entry.value}</code>
+                            ))}
+                          </div>
+                        ) : (
+                          <code>no input snapshot available</code>
+                        )}
+                      </div>
+                      <div className="ide-inline-actions">
+                        <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-explainer-jump">
+                          Jump to tick
+                        </IdeButton>
+                        <IdeButton
+                          tone="secondary"
+                          onClick={focusMismatchLanes}
+                          testId="ide-verify-explainer-show-mismatches"
+                        >
+                          Show only mismatches
+                        </IdeButton>
+                        {showMismatchOnlySignals && (
+                          <IdeButton
+                            tone="ghost"
+                            onClick={clearMismatchLaneFilter}
+                            testId="ide-verify-explainer-show-all-lanes"
+                          >
+                            Show all lanes
+                          </IdeButton>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {/* Mismatch table */}
                   {failingRows.length === 0 ? (
                     <IdeCallout tone="success" title="No mismatches in current run">
                       PASS evidence is ready for export.
@@ -2819,6 +2798,36 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
               {verifyTab === 'details' && (
                 <>
+                  {/* Run context — scenario, protocol, sampling, tick range */}
+                  {runContextRows.length > 0 && (
+                    <section className="ide-verify-run-context" data-testid="ide-verify-run-context">
+                      <div className="ide-verify-run-context__header">
+                        <span className="ide-verify-run-context__title">Run context</span>
+                        {lastRun?.status === 'fail' && allWaveformTicks.length > zoomedTicks.length && (
+                          <button
+                            type="button"
+                            className="ide-verify-run-context__toggle"
+                            onClick={() => setTickZoom((previous) => (previous === 'all' ? 'fail' : 'all'))}
+                            data-testid="ide-verify-tick-window-toggle"
+                          >
+                            {tickZoom === 'all' ? 'View fail window' : 'View all ticks'}
+                          </button>
+                        )}
+                      </div>
+                      <dl className="ide-verify-run-context__grid">
+                        {runContextRows.map((row) => (
+                          <div
+                            key={row.label}
+                            className="ide-verify-run-context__item"
+                            data-testid={`ide-verify-run-context-${toTestId(row.label)}`}
+                          >
+                            <dt>{row.label}</dt>
+                            <dd>{row.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </section>
+                  )}
                   {/* Advanced run actions */}
                   <div className="ide-verify-details-actions" data-testid="ide-verify-details-actions">
                     {authoredVectors.length > 0 && onRunVerification && (
