@@ -1503,21 +1503,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           <IdeInspectorAccordion defaultOpenId="live-sim">
           <IdeInspectorSection title="Authoring Mode" accordionId="authoring-mode" testId="ide-design-authoring-mode">
             <p className="ide-copy">
-              You can build your circuit here using logic blocks. HDL editing happens in <b>Import</b>.
+              Build your circuit using logic gates and wires. Switch to <b>Split</b> view to see live-generated VHDL alongside the canvas.
             </p>
             <ul className="ide-bullets">
-              <li><b>Design</b>: place gates / flip-flops / wires.</li>
-              <li><b>Import</b>: edit VHDL/Verilog text and apply pins (or replace the project).</li>
+              <li><b>Canvas</b>: place gates, flip-flops, and wires.</li>
+              <li><b>Split</b>: canvas + live VHDL side by side.</li>
+              <li><b>Import</b>: bring in an existing Vivado/HDL project.</li>
             </ul>
             <div className="ide-inline-actions">
-              {onGoToImport && (
-                <IdeButton tone="secondary" onClick={onGoToImport} testId="ide-design-go-import">
-                  Edit HDL in Import →
-                </IdeButton>
-              )}
               {onGoToProject && (
                 <IdeButton tone="ghost" onClick={onGoToProject} testId="ide-design-go-project">
-                  Go to Mapping →
+                  I/O Mapping →
                 </IdeButton>
               )}
             </div>
@@ -2139,7 +2135,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             >
               <div
                 className="ide-design-pane ide-design-pane--canvas"
-                style={designView === 'split' ? { flex: `0 0 ${splitRatio * 100}%`, minWidth: 0 } : undefined}
+                style={designView === 'split' ? { flex: `0 0 ${splitRatio * 100}%`, minWidth: '240px' } : undefined}
               >
 
             {/* ── Canvas title strip ── */}
@@ -2459,7 +2455,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 onPointerMove={(e) => {
                   if (!isDraggingSplitter || !paneRowRef.current) return;
                   const rect = paneRowRef.current.getBoundingClientRect();
-                  setSplitRatio((e.clientX - rect.left) / rect.width);
+                  const ratio = Math.max(0.25, Math.min(0.75, (e.clientX - rect.left) / rect.width));
+                  setSplitRatio(ratio);
                 }}
                 onPointerUp={(e) => {
                   (e.target as HTMLElement).releasePointerCapture(e.pointerId);
@@ -2473,7 +2470,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div
                 className="ide-design-pane ide-design-pane--hdl"
                 data-testid="ide-design-hdl-pane"
-                style={designView === 'split' ? { flex: `0 0 ${(1 - splitRatio) * 100}%`, minWidth: 0 } : undefined}
+                style={designView === 'split' ? { flex: `0 0 ${(1 - splitRatio) * 100}%`, minWidth: '240px' } : undefined}
               >
                 {/* VHDL section */}
                 <div className="ide-design-hdl-header" data-testid="ide-design-hdl-header">

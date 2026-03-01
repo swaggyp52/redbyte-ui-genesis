@@ -2444,7 +2444,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </table>
                   </div>
                 )}
-                <div style={{ overflowX: 'auto', overflowY: 'visible' }}>
+                <div style={{ overflow: 'auto' }}>
                 <WaveformViewer
                   signals={visibleSignalTimeline}
                   ticks={zoomedTicks}

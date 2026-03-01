@@ -6391,6 +6391,10 @@ details[open] summary .details-arrow {
   color: rgba(200,230,220,0.88);
   padding: 10px 14px;
   caret-color: #38bdf8;
+  white-space: pre;
+  overflow-x: auto;
+  overflow-y: auto;
+  word-wrap: normal;
 }
 .ide-design-hdl-textarea:focus {
   outline: none;
@@ -7024,14 +7028,14 @@ details[open] summary .details-arrow {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  height: clamp(440px, 55vh, 560px);
-  min-height: 440px;
+  min-height: 360px;
   border-right: 1px solid rgba(24,44,72,0.7);
   background: rgba(8, 16, 30, 0.92);
 }
 .ide-verify-oscilloscope-stage .ide-waveform-outer {
   flex: 1 1 auto;
   min-height: 0;
+  overflow: auto;
   border-color: rgba(20,40,68,0.8) !important;
 }
 
@@ -7331,8 +7335,7 @@ details[open] summary .details-arrow {
   grid-template-columns: minmax(0, 2.35fr) minmax(260px, 1fr);
 }
 .ide-verify-oscilloscope-stage {
-  height: clamp(520px, 62vh, 720px);
-  min-height: 520px;
+  min-height: 480px;
 }
 
 /* ── Oscilloscope instrument header (OSCILLOSCOPE label + chips) ── */
@@ -7351,7 +7354,7 @@ details[open] summary .details-arrow {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: rgba(56,150,200,0.45);
+  color: rgba(100, 180, 230, 0.82);
   flex-shrink: 0;
 }
 .ide-verify-scope-signal-chip {
@@ -7594,10 +7597,9 @@ details[open] summary .details-arrow {
    Drawer hint · Inspector calm
    ══════════════════════════════════════════════════════════════════ */
 
-/* ── Phase 25A: Scope height — taller, claims more vertical real estate ── */
+/* ── Phase 25A: Scope — fills available vertical space, scrolls internally ── */
 .ide-verify-oscilloscope-stage {
-  height: clamp(560px, 66vh, 760px);
-  min-height: 560px;
+  min-height: 400px;
 }
 
 /* ── Phase 25B: Waveform control bar — tighter, less "dashboard" ── */
