@@ -238,6 +238,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     verifyPass &&
     health.lastExport?.status !== 'blocked';
   const hardwareReady = exportReady && !health.dirtySinceExport;
+  const submissionReady =
+    verifyPass && exportReady &&
+    Boolean(onExportSubmission || onStudentNameChange);
 
   const heroStatusMessage = useMemo((): string => {
     if (!readiness.hasCircuit) return 'No circuit loaded — start with an example or import HDL';
@@ -819,26 +822,117 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             {verifyPass ? 'VERIFIED' : 'UNVERIFIED'}
           </IdeStatusPill>
         </div>
-        {/* Quick-stats strip — circuit summary at a glance */}
-        {readiness.hasCircuit && (inputCount > 0 || outputCount > 0 || savedAgoLabel) && (
-          <div className="ide-project-quick-stats" data-testid="ide-project-quick-stats">
-            {inputCount > 0 && (
-              <span>{inputCount} input{inputCount !== 1 ? 's' : ''}</span>
-            )}
-            {outputCount > 0 && (
-              <><span className="ide-qstat-sep" aria-hidden="true">·</span>
-              <span>{outputCount} output{outputCount !== 1 ? 's' : ''}</span></>
-            )}
-            {verifyPass && (
-              <><span className="ide-qstat-sep" aria-hidden="true">·</span>
-              <span className="ide-qstat-ok">✓ Verified</span></>
-            )}
-            {savedAgoLabel && (
-              <><span className="ide-qstat-sep" aria-hidden="true">·</span>
-              <span>Saved {savedAgoLabel}</span></>
-            )}
+        {/* ── Sprint 10: 3-state layout — landing / loaded / submit ── */}
+        {!readiness.hasCircuit ? (
+          /* STATE A: No circuit — clean 3-option landing */
+          <div className="ide-project-landing" data-testid="ide-project-landing">
+            <div className="ide-project-landing-header">
+              <h2 className="ide-project-landing-title">Start your lab</h2>
+              <p className="ide-project-landing-sub">
+                Pick a starting point to begin the full Design → Verify → Export flow.
+              </p>
+            </div>
+            <div className="ide-project-landing-options">
+              {examples.slice(0, 3).map((ex) => {
+                const preview = getExamplePreview(ex.id);
+                return (
+                  <button
+                    key={ex.id}
+                    type="button"
+                    className="ide-project-landing-option"
+                    onClick={() => { onOpenExample(ex.id); onOpenDesign(); }}
+                    data-testid={`ide-project-landing-example-${ex.id}`}
+                  >
+                    <span className="ide-project-landing-option-eyebrow">{preview.eyebrow}</span>
+                    <span className="ide-project-landing-option-title">{ex.name}</span>
+                    <span className="ide-project-landing-option-sub">{ex.concept}</span>
+                    {ex.expectedBehavior && (
+                      <span className="ide-project-landing-option-learn">{ex.expectedBehavior}</span>
+                    )}
+                    <span className="ide-project-landing-option-cta">Load &amp; Design →</span>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                className="ide-project-landing-option ide-project-landing-option--fresh"
+                onClick={onOpenDesign}
+                data-testid="ide-project-landing-fresh"
+              >
+                <span className="ide-project-landing-option-eyebrow">Empty canvas</span>
+                <span className="ide-project-landing-option-title">Build Fresh</span>
+                <span className="ide-project-landing-option-sub">Start with gates and wires from scratch</span>
+                <span className="ide-project-landing-option-cta">Open Design →</span>
+              </button>
+              <button
+                type="button"
+                className="ide-project-landing-option ide-project-landing-option--import"
+                onClick={onOpenImport}
+                data-testid="ide-project-landing-import"
+              >
+                <span className="ide-project-landing-option-eyebrow">Vivado / HDL</span>
+                <span className="ide-project-landing-option-title">Import Project</span>
+                <span className="ide-project-landing-option-sub">Bring in an existing VHDL or Vivado ZIP</span>
+                <span className="ide-project-landing-option-cta">Open Import →</span>
+              </button>
+            </div>
           </div>
-        )}
+        ) : (
+          /* STATE B/C — circuit loaded */
+          <>
+            {/* Quick-stats strip */}
+            {(inputCount > 0 || outputCount > 0 || savedAgoLabel) && (
+              <div className="ide-project-quick-stats" data-testid="ide-project-quick-stats">
+                {inputCount > 0 && (
+                  <span>{inputCount} input{inputCount !== 1 ? 's' : ''}</span>
+                )}
+                {outputCount > 0 && (
+                  <><span className="ide-qstat-sep" aria-hidden="true">·</span>
+                  <span>{outputCount} output{outputCount !== 1 ? 's' : ''}</span></>
+                )}
+                {verifyPass && (
+                  <><span className="ide-qstat-sep" aria-hidden="true">·</span>
+                  <span className="ide-qstat-ok">✓ Verified</span></>
+                )}
+                {savedAgoLabel && (
+                  <><span className="ide-qstat-sep" aria-hidden="true">·</span>
+                  <span>Saved {savedAgoLabel}</span></>
+                )}
+              </div>
+            )}
+            {/* STATE C: Submit CTA banner — shown when verify passed + export ready */}
+            {submissionReady && (onExportSubmission || onStudentNameChange) && (
+              <div className="ide-project-submit-hero" data-testid="ide-project-submit-hero">
+                <div className="ide-project-submit-hero-copy">
+                  <h2 className="ide-project-submit-hero-title">Ready to submit</h2>
+                  <p className="ide-project-submit-hero-body">
+                    Verify passed and export is current. Add your name and export the submission.
+                  </p>
+                </div>
+                <div className="ide-project-submit-hero-form">
+                  {onStudentNameChange && (
+                    <input
+                      id="ide-submit-hero-name"
+                      type="text"
+                      className="ide-export-pin-input ide-project-submit-hero-name"
+                      value={studentName}
+                      onChange={(e) => onStudentNameChange(e.target.value)}
+                      placeholder="Your full name"
+                      data-testid="ide-submit-hero-name"
+                    />
+                  )}
+                  {onExportSubmission && (
+                    <IdeButton
+                      tone="primary"
+                      onClick={onExportSubmission}
+                      testId="ide-submit-hero-export-btn"
+                    >
+                      {submissionExportPending ? 'Exporting…' : 'Export Submission →'}
+                    </IdeButton>
+                  )}
+                </div>
+              </div>
+            )}
         {/* ── Hero Onboarding Panel ── */}
         <SurfacePanel className="ide-project-hero" testId="ide-project-hero">
           <div className="ide-project-showcase" data-testid="ide-project-showcase">
@@ -1183,16 +1277,14 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             data-testid="ide-project-examples-disclosure"
           >
             <summary className="ide-project-examples-disclosure-summary">
-              {readiness.hasCircuit ? 'Try another starter' : 'Start with an example'}
+              Try another starter
             </summary>
             <SurfacePanel className="ide-project-quickstart" testId="ide-project-quickstart">
               <p className="ide-project-quickstart-title">
-                {readiness.hasCircuit ? 'Starter Projects' : 'Launch an Example'}
+                Starter Projects
               </p>
               <p className="ide-project-quickstart-sub">
-                {readiness.hasCircuit
-                  ? 'Swap into a different starter to compare mappings, verify flows, and hardware outcomes.'
-                  : 'Load a pre-built example to see the full workflow from Design → Verify → Export.'}
+                Swap into a different starter to compare mappings, verify flows, and hardware outcomes.
               </p>
               <div className="ide-project-example-card-row">
                 {examples.slice(0, 3).map((ex) => {
@@ -1265,8 +1357,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             </SurfacePanel>
           </details>
         )}
+          </>
+        )}
 
-        {/* ── Mapping section — collapsed by default ── */}
+        {readiness.hasCircuit && (
         <section
           ref={mappingSectionRef}
           className="ide-export-section"
@@ -1378,6 +1472,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             </div>
           )}
         </section>
+        )}
       </IdePanel>
     </IdeSurfaceLayout>
   );

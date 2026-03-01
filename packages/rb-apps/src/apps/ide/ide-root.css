@@ -5870,6 +5870,120 @@ details[open] summary .details-arrow {
 }
 
 /* ════════════════════════════════════════════════════════════════
+   Sprint 10 — Project Surface: Landing (State A) + Submit Hero (State C)
+   ════════════════════════════════════════════════════════════════ */
+
+/* Landing container — shown when no circuit is loaded */
+.ide-project-landing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ide-space-4, 20px);
+  padding: var(--ide-space-4, 20px);
+}
+.ide-project-landing-header { text-align: center; }
+.ide-project-landing-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0 0 var(--ide-space-1, 4px);
+  color: var(--ide-text, #e2e8f0);
+}
+.ide-project-landing-sub {
+  color: var(--ide-text-subtle, rgba(160,190,220,0.65));
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* Option card grid */
+.ide-project-landing-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--ide-space-3, 12px);
+}
+.ide-project-landing-option {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--ide-space-3, 12px);
+  background: var(--ide-surface-raised, rgba(255,255,255,0.04));
+  border: 1px solid var(--ide-border, rgba(255,255,255,0.1));
+  border-radius: var(--ide-radius, 6px);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  color: inherit;
+}
+.ide-project-landing-option:hover {
+  border-color: var(--rb-accent, #2ec4b6);
+  background: rgba(46,196,182,0.06);
+}
+.ide-project-landing-option-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ide-text-subtle, rgba(160,190,220,0.65));
+}
+.ide-project-landing-option-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--ide-text, #e2e8f0);
+}
+.ide-project-landing-option-sub {
+  font-size: 0.82rem;
+  color: var(--ide-text-subtle, rgba(160,190,220,0.65));
+  line-height: 1.4;
+}
+.ide-project-landing-option-learn {
+  font-size: 11px;
+  color: var(--ide-text-subtle, rgba(160,190,220,0.65));
+  font-style: italic;
+  line-height: 1.35;
+}
+.ide-project-landing-option-cta {
+  font-size: 12px;
+  color: var(--rb-accent, #2ec4b6);
+  font-weight: 500;
+  margin-top: auto;
+  padding-top: 6px;
+}
+.ide-project-landing-option--fresh,
+.ide-project-landing-option--import {
+  border-style: dashed;
+}
+
+/* Submission hero banner — shown in State C (verify passed + export ready) */
+.ide-project-submit-hero {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--ide-space-3, 12px);
+  padding: var(--ide-space-3, 12px);
+  background: color-mix(in srgb, var(--rb-ok, #22c55e) 8%, var(--ide-surface, #1a202c));
+  border: 1px solid color-mix(in srgb, var(--rb-ok, #22c55e) 40%, transparent);
+  border-radius: var(--ide-radius, 6px);
+  margin-bottom: var(--ide-space-3, 12px);
+}
+.ide-project-submit-hero-copy { flex: 1 1 220px; }
+.ide-project-submit-hero-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 2px;
+  color: var(--ide-text, #e2e8f0);
+}
+.ide-project-submit-hero-body {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ide-text-subtle, rgba(160,190,220,0.65));
+}
+.ide-project-submit-hero-form {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2, 8px);
+  flex-wrap: wrap;
+  flex: 1 1 280px;
+}
+.ide-project-submit-hero-name { min-width: 180px; }
+
+/* ════════════════════════════════════════════════════════════════
    Phase 13 — Design Surface: Lab Instrument Authority
    ════════════════════════════════════════════════════════════════ */
 
