@@ -1,5 +1,70 @@
 # AI State
 
+## Change Log 2026-03-01 (Sprint 7: Node Label Editor + Vector Delete + Live Pin Values)
+
+**Status**: COMPLETE — Three student-facing UX improvements targeting the circuit editing loop.
+
+### What Changed
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - Added `updateNode` store binding from `useCircuitStore`.
+  - Added `editingLabelNodeId` / `labelDraft` state for inline rename flow.
+  - Added `commitNodeLabel`, `cancelNodeLabel`, `handleLabelKeyDown` callbacks; commit writes to `node.label` via `updateNode(nodeId, { label })`.
+  - Added inline label editor UI in the single-node Selection inspector (after Node ID kv-row): "Add label…" button → autoFocus input → Enter commits, Escape or blur cancels.
+  - Replaced static pin pills with live-value pills that pull from `liveSignals` map; green border on HIGH pins, neutral on LOW, faded on unknown/unsampled.
+- Updated `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`:
+  - Added `onDeleteVector?: (vectorId: string) => void` prop to `VerifySurfaceProps`.
+  - Added delete `✕` button cell to every vector row in the `vectorRows` useMemo.
+  - Updated `IdeDataTable` columns array to include the trailing empty header when `onDeleteVector` is wired.
+  - Added `onDeleteVector` to the useMemo dependency array.
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - Wired `onDeleteVector` on `<VerifySurface>` as `setVectors(projectVectors.filter(v => v.id !== vectorId))`.
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - Added `.ide-design-label-editor`, `.ide-design-label-editor-row`, `.ide-design-label-input` for label editor layout.
+  - Added `.ide-verify-vector-delete-btn` (red, opacity 0.6, full on hover).
+  - Added `.ide-design-pin-pill--val-hi/lo/unk` and `.ide-design-pin-pill-value` for live pin signal display.
+
+### Validation Executed
+- TypeScript: `updateNode` signature confirmed `(nodeId: string, updates: Partial<Node>) => void`; `node.label?: string` confirmed in `rb-logic-core/src/types.ts:65`.
+- `IdeApp.js` confirmed as thin re-export; no mirror update needed.
+
+### Attribution
+- Connor Angiel
+
+---
+
+## Change Log 2026-03-01 (Sprint 6: Step-Through Verify + Composites Palette + Debug Bridge)
+
+**Status**: COMPLETE — Three educational features closing the verify→understand→fix loop.
+
+### What Changed
+- Updated `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`:
+  - Added `onDebugTickSelected` prop for cross-surface debug bridge.
+  - Added `isStepMode` state, step nav derived values (`stepIndex`, `totalSteps`, `goToPrevStep`, `goToNextStep`), `stepSnapshotRows` useMemo, `handleDebugInDesign` callback.
+  - Added "Step Through" toggle button in verify status strip.
+  - Added step navigation bar (← Prev / tick counter / Next → / Show in Design) inside waveform bar.
+  - Added signal snapshot panel below waveform (per-signal PASS/FAIL color-coded left border).
+- Updated `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - Added `COMPOSITE_PALETTE_ITEMS` (RSLatch, DLatch, JKFlipFlop, FullAdder, Counter4Bit) and 'Components' category.
+  - `filteredPalette` now merges `PALETTE_ITEMS` + `COMPOSITE_PALETTE_ITEMS`.
+  - Added Custom palette section rendering user-saved macros with dashed chip styling.
+  - Added `savedComponentToast` state + 3-second timer on handleSaveComponent.
+  - Added `externalDebugSignals`, `externalDebugTick`, `onClearExternalDebug` props; wired to LogicCanvas `debugSignals`/`debugTick`/`isReplayMode` overrides.
+  - Added amber debug banner when `externalDebugTick != null`.
+- Updated `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - Added `debugState` state (`{ tick, signals: Map<string, 0|1> } | null`).
+  - Added `handleDebugTickSelected` (sets debug state + navigates to design) and `handleClearDebugState`.
+  - Wired both handlers to `<VerifySurface>` and `<DesignSurface>` respectively.
+- Updated `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - Added step-bar, snapshot-panel, snapshot-row pass/fail, palette-chip custom, debug-overlay-banner CSS.
+
+### Validation Executed
+- All CSS classes and TSX items confirmed present via file inspection.
+
+### Attribution
+- Connor Angiel
+
+---
+
 ## Change Log 2026-02-28 (Project Hero Height Fix: Overflow Collapse Removal)
 
 **Status**: COMPLETE - Fixed the project showcase hero collapsing to a thin strip while still rendering its children off-screen.
@@ -17135,4 +17200,50 @@ Notes:
 
 - **Build Verification**:
   - ✅ 48/48 pass: 25 golden-examples + 23 stopship (V16/W16/W17 are valid Basys3 pins, bundle.valid stays true)
+- **Attribution**: Connor Angiel
+## Change Log 2026-03-01 (Sprint 8 — Agent Infrastructure + Core Bug Fixes)
+
+### A. Specialized Claude Agents (.claude/agents/)
+Created 8 domain-specific context files so future sprints can invoke specialized subagents with deep codebase knowledge:
+
+- **surface-design.md**: Owns `DesignSurface.tsx`, `circuitStore.ts`, `LogicCanvas.tsx`, `NodeView.tsx`, `useLogicViewStore`. Includes: Circuit IR schema, `CircuitStore` API, `PALETTE_ITEMS`, live signals flow from TickEngine → canvas, compiler status, debug bridge, diagnostic route request.
+- **surface-verify.md**: Owns `VerifySurface.tsx`, `verifyReport.ts`, `WaveformViewer`. Includes: `RuntimeVerifyRun` type, `timelineTicks`, `tickIndex.rowsByTick`, bring-up vector flow, `buildVerifyRowsFromRuntimeTrace` internals.
+- **surface-project.md**: Owns `ProjectSurface.tsx`, `useProjectRuntime`, `LabProjectDefinition`, stage progression, submission flow.
+- **surface-hardware.md**: Owns `HardwareSurface.tsx`, `Lab3DScene`, FPGA bridge endpoints, 3-mode layout (live/bringup/proof), `BoardProfile`.
+- **surface-export.md**: Owns `ExportSurface.tsx`, VHDL/Verilog generation pipeline, export checks dock, `buildVhdl()`, XDC constraint format.
+- **surface-import.md**: Owns `ImportSurface.tsx`, pin autocomplete, `.rbsub.zip` parsing, `decodeRBProject()`, HDL/XDC tab parsing.
+- **frontend-designer.md**: Owns `ide-root.css`, `rb-theme` tokens, cross-surface visual consistency. Includes: full CSS token reference, design language (dark PCB `#030810`, teal `#2ec4b6`, amber accents), `IdeButton` tones, `IdeCallout` tones (note: `"ok"` is invalid; use `"success"`), layout grid.
+- **sim-engine.md**: Owns `simEngine.ts`, `projectRuntime.ts`, `bringupArtifacts.ts`, `verifyReport.ts`. Includes: `SIM_TRACE_CAPACITY = 256`, `RuntimeSimState`, bring-up vector auto-generation, `RuntimeVerifyRun` type, determinism constraints.
+
+### B.1 — Waveform Visibility CSS (ide-root.css)
+- Increased low-signal opacity so waveform traces are legible on the dark PCB background.
+- Removed `.ide-waveform-outer::after` watermark overlay that was washing out signal colors.
+- Set explicit `min-height` on waveform scroll container to prevent collapse when data is sparse.
+
+### B.2 — Full Sim Trace in Verify Waveform
+**Problem**: Verify waveform only showed 7 ticks (the auto-generated bring-up vector positions) even when the simulation had run 300+ ticks in Design.
+**Root cause**: `buildVerifyWaveSamples()` only iterates `report.rows` (vector positions), not the full simulator trace.
+
+**Fix**:
+- Added `traceWaveform?: VerifyWaveSample[]` to the `RuntimeVerifyRun` interface (`projectRuntime.ts:89`).
+- In `runVerification()`, populated `traceWaveform` from `state.sim.trace` (up to 256 ticks from the ring buffer), converting `RuntimeSimTraceSample` → `VerifyWaveSample` with `mismatches: []`.
+- Updated `cloneVerifyRun()` to deep-copy `traceWaveform`.
+- In `VerifySurface.tsx`, `waveformTicks` and `signalTimeline` now use `lastRun.traceWaveform ?? lastRun.waveform` so all simulation ticks appear in the oscilloscope view, not just vector positions.
+
+### B.3 — Auto-Generated Vector Disclosure Banner
+**Problem**: Bring-up vectors silently auto-filled the vector table when the user hadn't authored any, with no indication they were system-generated.
+
+**Fix**:
+- Added `vectorsAreAutoGenerated: boolean` local state in `IdeApp.tsx` (not persisted — transient UI flag).
+- Set `true` in `handleGenerateBringUpVectors()` callback; cleared to `false` on any manual vector edit via `handleVectorsChange()`.
+- Passed flag as `vectorsAreAutoGenerated` prop to `VerifySurface`.
+- Added dismissible `IdeCallout tone="info"` in the Vectors inspector section when `vectorsAreAutoGenerated && !autoVectorBannerDismissed`. Dismiss state resets when a fresh set of auto-generated vectors arrives.
+
+### B.4 — Visual Audit CSS Pass
+Targeted readability improvements across surfaces (no layout or logic changes):
+- **DesignSurface palette chips**: Increased border opacity `0.45 → 0.60` for clearer chip delineation.
+- **ExportSurface + generic section headers** (`.ide-export-section-header h3`, `.ide-section-header h3`): Changed from `var(--ide-text-muted)` → `var(--ide-text-strong)` so section names read clearly against the dark surface.
+- **ImportSurface pipeline stage active indicator**: Increased active background `rgba(46,196,182,0.07) → rgba(46,196,182,0.12)` (two locations + responsive override) for a more visible selected-stage highlight.
+- **HardwareSurface mode toggle inactive buttons** (`.ide-hw-mode-btn`): Increased inactive color from `rgba(160,190,210,0.55) → rgba(180,208,228,0.70)` so Live/Bring-Up/Proof labels are readable when not selected.
+
 - **Attribution**: Connor Angiel

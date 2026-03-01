@@ -1195,7 +1195,7 @@
   border: 1px solid transparent;
 }
 .ide-pipeline-stage--active .ide-pipeline-label { color: var(--rb-text-1); font-weight: var(--rb-font-weight-semibold); }
-.ide-pipeline-stage--active { background: rgba(46, 196, 182, 0.07); }
+.ide-pipeline-stage--active { background: rgba(46, 196, 182, 0.12); border-radius: var(--ide-radius-s); }
 
 .ide-pipeline-stage--blocked .ide-pipeline-badge {
   background: rgba(244, 185, 66, 0.14);
@@ -2246,7 +2246,7 @@
 }
 
 .ide-palette-chip {
-  border: 1px solid rgba(130, 160, 188, 0.45);
+  border: 1px solid rgba(130, 160, 188, 0.6);
   border-radius: 999px;
   background: rgba(24, 42, 60, 0.7);
   color: #d7e6f6;
@@ -2897,8 +2897,8 @@
 /* LOW signal: dark base with faint number */
 .ide-verify-waveform-point[data-value="0"],
 .ide-verify-waveform-point.sig-low {
-  background: rgba(20, 40, 58, 0.6);
-  color: rgba(90, 130, 165, 0.6);
+  background: rgba(20, 40, 58, 0.7);
+  color: rgba(90, 160, 220, 0.85);
   align-items: flex-end;
   height: 100%;
 }
@@ -3589,7 +3589,7 @@
   font-size: var(--rb-font-size-4);
   line-height: var(--rb-line-height-3);
   font-weight: var(--rb-font-weight-semibold);
-  color: var(--ide-text-muted);
+  color: var(--ide-text-strong);
 }
 
 .ide-section-header {
@@ -3604,7 +3604,7 @@
   font-size: var(--rb-font-size-4);
   line-height: var(--rb-line-height-3);
   font-weight: var(--rb-font-weight-semibold);
-  color: var(--ide-text-muted);
+  color: var(--ide-text-strong);
 }
 
 .ide-section-header-meta {
@@ -6955,10 +6955,7 @@ details[open] summary .details-arrow {
   border-color: rgba(24,44,72,0.8) !important;
   background: #020810;
 }
-/* Scope label color — match steel-blue instrument theme */
-.ide-waveform-outer::after {
-  color: rgba(56,150,200,0.22) !important;
-}
+/* Scope watermark — keep at low opacity, no override needed */
 
 /* ── Phase 20E: Status strip breathing room ── */
 .ide-verify-status-strip {
@@ -7233,7 +7230,7 @@ details[open] summary .details-arrow {
   justify-content: center;
   flex: 1 1 auto;
   padding: var(--ide-space-3);
-  color: rgba(140,165,200,0.35);
+  color: rgba(200,220,255,0.72);
   font-size: 12px;
 }
 
@@ -7790,7 +7787,7 @@ details[open] summary .details-arrow {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: rgba(160,190,210,0.55);
+  color: rgba(180, 208, 228, 0.7);
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
@@ -9281,7 +9278,7 @@ details[open] summary .details-arrow {
 
 /* Pipeline strip stages: remove letter-glyph box shadow */
 .ide-pipeline-stage--active {
-  background: rgba(46, 196, 182, 0.09);
+  background: rgba(46, 196, 182, 0.12);
   border-radius: 6px;
 }
 
@@ -12016,4 +12013,319 @@ details[open].ide-export-evidence-details > summary::before {
   [data-ide-mode-marker='project'] .ide-project-spotlight-title {
     font-size: 18px;
   }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Phase 2 — Auto-save restore banner
+   ───────────────────────────────────────────────────────────────────────────── */
+.ide-autosave-banner { display:flex; align-items:center; gap:8px; padding:6px 16px; background:rgba(167,139,250,0.12); border-bottom:1px solid rgba(167,139,250,0.25); font-size:12px; color:rgba(200,220,240,0.9); }
+.ide-autosave-banner button { padding:2px 10px; border-radius:4px; border:1px solid rgba(167,139,250,0.4); background:transparent; color:rgba(167,139,250,0.9); cursor:pointer; font-size:11px; }
+.ide-autosave-banner button:hover { background:rgba(167,139,250,0.18); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Phase 2 — HardwareSurface connection callout
+   ───────────────────────────────────────────────────────────────────────────── */
+.ide-hw-callout { display:flex; align-items:center; gap:6px; padding:8px 20px; background:rgba(30,50,80,0.6); border-bottom:1px solid rgba(60,90,140,0.3); font-size:12px; color:rgba(180,210,240,0.85); flex-wrap:wrap; }
+.ide-hw-callout-label { color:rgba(120,160,210,0.7); font-size:11px; text-transform:uppercase; letter-spacing:0.05em; }
+.ide-hw-callout-name { font-weight:600; color:rgba(210,230,255,0.95); }
+.ide-hw-callout-sep { color:rgba(100,130,165,0.5); }
+.ide-hw-callout-pass { color:#34d399; }
+.ide-hw-callout-fail { color:#f87171; }
+
+/* Phase 2 — Syntax highlighting */
+.ide-export-artifact-code .hl-kw      { color: #7dd3fc; font-weight: 600; }
+.ide-export-artifact-code .hl-comment { color: #86efac; font-style: italic; opacity: 0.85; }
+
+/* Phase 2 — Pin validation warning */
+.ide-pin-warn { display: block; font-size: 10px; color: #fbbf24; margin-top: 2px; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Phase 2 — Global CSS polish
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Surface switch transitions — smooth cross-fade between surfaces */
+.ide-surface-content {
+  animation: ide-surface-fadein 0.15s ease-out both;
+}
+@keyframes ide-surface-fadein {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Status pill glows */
+.ide-status-pill.ide-status-ok {
+  box-shadow: 0 0 0 1px rgba(52,211,153,0.3), 0 0 8px rgba(52,211,153,0.12);
+}
+.ide-status-pill.ide-status-warn {
+  box-shadow: 0 0 0 1px rgba(251,191,36,0.35), 0 0 8px rgba(251,191,36,0.12);
+}
+.ide-status-pill.ide-status-error {
+  box-shadow: 0 0 0 1px rgba(248,113,113,0.35), 0 0 8px rgba(248,113,113,0.12);
+}
+.ide-status-pill.ide-status-idle {
+  box-shadow: 0 0 0 1px rgba(96,165,250,0.3), 0 0 8px rgba(96,165,250,0.1);
+}
+
+/* Smooth IdeButton transitions */
+.ide-btn {
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+/* Panel content padding normalization — all surface panels get consistent inner padding */
+.ide-panel-body {
+  padding: var(--rb-space-4, 16px);
+}
+
+/* Left rail hover transitions */
+.ide-left-rail-btn {
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   V-3 — 3D Board viewport
+   ───────────────────────────────────────────────────────────────────────────── */
+.ide-hw-3d-wrap {
+  height: 480px;
+  margin: 0 0 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #060e1a;
+  border: 1px solid rgba(46,196,182,0.18);
+  box-shadow: 0 0 24px rgba(46,196,182,0.06);
+}
+
+.ide-hw-mode-divider {
+  display: inline-block;
+  width: 1px;
+  height: 18px;
+  background: rgba(80,110,160,0.35);
+  margin: 0 4px;
+  vertical-align: middle;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Step-through verify preview
+   ───────────────────────────────────────────────────────────────────────────── */
+.ide-verify-preview-btn {
+  background: none;
+  border: 1px solid rgba(96,165,250,0.3);
+  border-radius: 4px;
+  color: rgba(96,165,250,0.8);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 1px 5px;
+  line-height: 1.4;
+  transition: background 0.1s, border-color 0.1s;
+}
+.ide-verify-preview-btn:hover {
+  background: rgba(96,165,250,0.12);
+  border-color: rgba(96,165,250,0.6);
+  color: #93c5fd;
+}
+.ide-verify-preview-btn.is-active {
+  background: rgba(96,165,250,0.18);
+  border-color: rgba(96,165,250,0.7);
+  color: #bfdbfe;
+}
+.ide-verify-preview-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: rgba(96,165,250,0.1);
+  border-bottom: 1px solid rgba(96,165,250,0.2);
+  font-size: 12px;
+  color: rgba(180,210,250,0.9);
+}
+.ide-verify-preview-link {
+  color: #93c5fd;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.ide-verify-preview-link:hover { color: #bfdbfe; }
+.ide-verify-preview-clear {
+  background: none;
+  border: none;
+  color: rgba(120,160,210,0.6);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  margin-left: auto;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Node Inspector Panel
+   ───────────────────────────────────────────────────────────────────────────── */
+.ide-node-inspector {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  width: 200px;
+  background: rgba(14,22,38,0.95);
+  border: 1px solid rgba(60,90,140,0.5);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  z-index: 10;
+  backdrop-filter: blur(8px);
+  font-size: 12px;
+  color: rgba(190,210,240,0.9);
+}
+.ide-node-inspector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid rgba(60,90,140,0.3);
+}
+.ide-node-inspector-type {
+  font-weight: 700;
+  font-size: 13px;
+  color: rgba(220,235,255,0.95);
+  letter-spacing: 0.02em;
+}
+.ide-node-inspector-close {
+  background: none;
+  border: none;
+  color: rgba(120,150,190,0.7);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.ide-node-inspector-close:hover { color: rgba(220,235,255,0.9); }
+.ide-node-inspector-body {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ide-node-inspector-port {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ide-node-inspector-port-name {
+  color: rgba(140,170,210,0.8);
+  font-size: 11px;
+}
+.ide-node-inspector-port-value {
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.ide-node-inspector-port-value[data-val="1"] { color: #34d399; background: rgba(52,211,153,0.1); }
+.ide-node-inspector-port-value[data-val="0"] { color: rgba(120,150,190,0.7); background: rgba(60,90,140,0.15); }
+
+/* ═══ Sprint 6: Step-Through Verify (Track A) ═══════════════════════════════ */
+.ide-verify-step-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  flex-wrap: wrap;
+}
+.ide-verify-step-position {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--ide-text, #c0cfe0);
+  min-width: 120px;
+  text-align: center;
+}
+.ide-verify-snapshot-panel {
+  padding: 8px 12px;
+  border-top: 1px solid var(--ide-border, rgba(255,255,255,0.08));
+}
+.ide-verify-snapshot-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.ide-verify-snapshot-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  border-left: 3px solid transparent;
+}
+.ide-verify-snapshot-row--pass  { border-left-color: #34d399; }
+.ide-verify-snapshot-row--fail  { border-left-color: #f87171; }
+.ide-verify-snapshot-signal     { color: var(--ide-text, #c0cfe0); font-size: 11px; }
+.ide-verify-snapshot-actual     { font-weight: 700; font-variant-numeric: tabular-nums; }
+.ide-verify-snapshot-expected   { color: rgba(160,180,210,0.65); font-size: 10px; }
+
+/* ═══ Sprint 6: Pre-built Composites Palette (Track B) ══════════════════════ */
+.ide-palette-chip--custom {
+  border-style: dashed;
+  opacity: 0.88;
+}
+.ide-palette-chip--custom:hover { opacity: 1; }
+
+/* ═══ Sprint 6: Debug Bridge Banner (Track C) ═══════════════════════════════ */
+.ide-design-debug-overlay-banner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.45);
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: auto;
+  color: var(--ide-text, #c0cfe0);
+}
+.ide-design-debug-banner-hint {
+  color: rgba(160, 180, 210, 0.7);
+  font-size: 11px;
+}
+.ide-node-inspector-port-value[data-val="?"] { color: rgba(100,130,170,0.5); background: transparent; }
+
+/* ═══ Sprint 7: Node Label Editor (Track A) ══════════════════════════════════ */
+.ide-design-label-editor {
+  margin-top: var(--ide-space-1, 4px);
+}
+.ide-design-label-editor-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-1, 4px);
+}
+.ide-design-label-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ═══ Sprint 7: Vector Delete Button (Track B) ══════════════════════════════ */
+.ide-verify-vector-delete-btn {
+  background: none;
+  border: none;
+  color: var(--rb-color-error, #f87171);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--rb-radius-sm, 4px);
+  font-size: var(--rb-font-size-1, 11px);
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.ide-verify-vector-delete-btn:hover { opacity: 1; }
+
+/* ═══ Sprint 7: Live Pin Value Pills (Track C) ═══════════════════════════════ */
+.ide-design-pin-pill--val-hi  { border-color: var(--rb-color-ok, #34d399); }
+.ide-design-pin-pill--val-lo  { border-color: var(--ide-border, rgba(255,255,255,0.08)); }
+.ide-design-pin-pill--val-unk { opacity: 0.55; }
+.ide-design-pin-pill-value {
+  margin-left: 4px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ide-text, #c0cfe0);
 }

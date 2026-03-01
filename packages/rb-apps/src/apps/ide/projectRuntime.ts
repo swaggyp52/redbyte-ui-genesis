@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Circuit } from '@redbyte/rb-logic-core';
+import type { Circuit, CompositeNodeDef } from '@redbyte/rb-logic-core';
+import { registerCompositeNode } from '@redbyte/rb-logic-core';
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
 import { encodeRBProject, type RBProject } from '../../export/projectFormat';
 import { stableSerialize } from '../../utils/stableSerialize';
@@ -85,6 +86,7 @@ export interface RuntimeVerifyRun {
   meta: VerifyRunMeta;
   report: VerifyReport;
   waveform: VerifyWaveSample[];
+  traceWaveform?: VerifyWaveSample[];
 }
 
 export interface RunVerificationInput {
@@ -168,6 +170,8 @@ export interface ProjectRuntimeState {
   setLastSavedAt: (label: string) => void;
   resetToActiveExample: () => void;
   clearUnsavedState: (label?: string) => void;
+  customComponents: CompositeNodeDef[];
+  addCustomComponent: (def: CompositeNodeDef) => void;
 }
 
 interface PersistedRuntimeState {
@@ -183,6 +187,7 @@ interface PersistedRuntimeState {
   verifyRunHistory: VerifyRunLedgerEntry[];
   sim: RuntimeSimState;
   projectHealthCore: ProjectHealthCore;
+  customComponents: CompositeNodeDef[];
 }
 
 export const useProjectRuntime = create<ProjectRuntimeState>()(
@@ -346,6 +351,14 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         const projectIoRows = ioRowsFromProject(project);
         const circuit = cloneCircuit(project.circuit);
         const incomingProjectId = (project.meta?.projectId ?? '').trim();
+        // Register any custom components from the project
+        for (const def of (project.customComponents ?? [])) {
+          try {
+            registerCompositeNode(def);
+          } catch (e) {
+            console.warn('Failed to register custom component:', def.name, e);
+          }
+        }
         set({
           projectId:
             incomingProjectId.length > 0
@@ -365,6 +378,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             dirtySinceVerify: true,
             dirtySinceExport: true,
           },
+          customComponents: project.customComponents ?? [],
         });
       },
       setMappingPin: (rowId, pin) => {
@@ -657,6 +671,15 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             meta: buildVerifyRunMeta(scheduleContract),
             report,
             waveform: buildVerifyWaveSamples(report),
+            traceWaveform: state.sim.trace.length > 0
+              ? state.sim.trace.map((sample) => ({
+                  tick: sample.tick,
+                  signals: Object.fromEntries(
+                    Object.entries(sample.signals).map(([k, v]) => [k, String(v)])
+                  ),
+                  mismatches: [],
+                }))
+              : undefined,
           };
 
           // Build ledger entry (synchronous hashes via digestValue + stableSerialize)
@@ -845,6 +868,16 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           },
         }));
       },
+      customComponents: [],
+      addCustomComponent: (def) => {
+        registerCompositeNode(def);
+        set((state) => ({
+          customComponents: [
+            ...state.customComponents.filter((c) => c.name !== def.name),
+            def,
+          ],
+        }));
+      },
     }),
     {
       name: STORAGE_KEY,
@@ -869,6 +902,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           dirtySinceVerify: state.projectHealthCore.dirtySinceVerify,
           dirtySinceExport: state.projectHealthCore.dirtySinceExport,
         },
+        customComponents: state.customComponents,
       }),
     }
   )
@@ -903,6 +937,7 @@ function stateFromExample(
       dirtySinceVerify: false,
       dirtySinceExport: false,
     },
+    customComponents: [],
   };
 }
 
@@ -969,6 +1004,11 @@ function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
       tick: sample.tick,
       signals: { ...sample.signals },
       mismatches: sample.mismatches.map((entry) => ({ ...entry })),
+    })),
+    traceWaveform: run.traceWaveform?.map((sample) => ({
+      tick: sample.tick,
+      signals: { ...sample.signals },
+      mismatches: [],
     })),
   };
 }
