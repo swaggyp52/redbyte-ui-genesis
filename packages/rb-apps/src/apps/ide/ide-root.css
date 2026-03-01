@@ -582,6 +582,11 @@
   overflow: auto;
 }
 
+/* Verify panel-body must clip (not scroll) so the workbench + oscilloscope fill the viewport */
+.ide-workbench-workspace > .ide-verify-panel .ide-panel-body {
+  overflow: hidden;
+}
+
 .ide-workbench-divider {
   appearance: none;
   border: 0;
@@ -7792,10 +7797,10 @@ details[open] summary .details-arrow {
   min-height: 0;
 }
 
-/* Keep waveform workbench measurable even when fail callouts stack above it. */
+/* Workbench fills remaining flex space — oscilloscope owns height internally. */
 .ide-verify-panel .ide-panel-body > .ide-verify-workbench {
-  flex: 1 0 320px;
-  min-height: 320px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -7803,9 +7808,9 @@ details[open] summary .details-arrow {
    Drawer hint · Inspector calm
    ══════════════════════════════════════════════════════════════════ */
 
-/* ── Phase 25A: Scope — fills available vertical space, scrolls internally ── */
+/* ── Phase 25A: Scope — fills available flex space, scrolls internally ── */
 .ide-verify-oscilloscope-stage {
-  min-height: 400px;
+  min-height: 0;
 }
 
 /* ── Phase 25B: Waveform control bar — tighter, less "dashboard" ── */
@@ -10935,9 +10940,10 @@ details[open].ide-export-evidence-details > summary::before {
   overflow-y: auto;
 }
 
-/* Console-frame must not shrink — it owns the oscilloscope (explicit clamped height) */
+/* Console-frame fills available height — oscilloscope scrolls internally */
 .ide-verify-panel .ide-panel-body > .ide-verify-workbench > .ide-verify-console-frame {
-  flex-shrink: 0;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* Phase 26B — Project: horizontal pipeline + compact metrics */
