@@ -4705,7 +4705,7 @@ function makeStubBackend(id: ToolchainBackendId): ToolchainBackend {
 
       const board = detectBoardsResult?.boards[0];
       const boardError = detectBoardsResult?.ok ? null : detectBoardsResult?.tools?.openFPGALoader?.error ?? 'board_missing';
-      const lastErrorCode = mapHardwareErrorCode(diagnostics?.lastErrorCode ?? boardError ?? '') ?? diagnostics?.lastErrorCode;
+      const lastErrorCode = mapHardwareErrorCode(diagnostics?.lastErrorCode ?? boardError ?? '') ?? null;
 
       return buildDoctorReportV2({
         backendId: id,

@@ -72,6 +72,7 @@ export const InstructorRunDetailAppContent: React.FC<InstructorRunDetailAppProps
 
         const normalized: RunDetail = {
           ...(data || {}),
+          run_id: data?.run_id ?? runId,
           timestamp: data?.timestamp ?? data?.created_at,
           exit_code: data?.exit_code ?? data?.grade_json?.exit_code,
           artifacts: data?.artifacts ?? inferredArtifacts,

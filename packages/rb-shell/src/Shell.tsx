@@ -126,10 +126,10 @@ interface ShellWindowEntryProps {
   unregisterWindowStateAccessor: (windowId: string) => void;
   determinismRecorder: ReturnType<typeof useDeterminismRecorder>;
   getCurrentCircuit: () => Circuit | null;
-  handleOpenStarterProject: (payload: StarterInstructionsPayload) => Promise<void>;
-  handleOpenInstructorPackProject: (projectFile: File) => Promise<void>;
+  handleOpenStarterProject: (starter: { exampleId: ExampleId; targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace'; starterId?: string; instructions?: StarterInstructionsPayload; }) => void;
+  handleOpenInstructorPackProject: (starter: { starterId: string; targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace'; packId: string; projectArchiveBase64: string; instructions: StarterInstructionsPayload; }) => Promise<void>;
   handleOpenRecentProject: (payload: { projectId: string; targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace' }) => Promise<void>;
-  handleOpenSubmissionProject: (evidenceFile: File) => Promise<void>;
+  handleOpenSubmissionProject: (payload: { project: RBProject; targetAppId: 'logic-playground' | 'ece-lab' | 'lab-workspace'; }) => Promise<void>;
   recentAppIds: string[];
   pinnedAppIds: string[];
   runningAppIds: string[];
