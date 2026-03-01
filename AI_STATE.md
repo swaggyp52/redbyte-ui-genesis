@@ -17247,3 +17247,37 @@ Targeted readability improvements across surfaces (no layout or logic changes):
 - **HardwareSurface mode toggle inactive buttons** (`.ide-hw-mode-btn`): Increased inactive color from `rgba(160,190,210,0.55) → rgba(180,208,228,0.70)` so Live/Bring-Up/Proof labels are readable when not selected.
 
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-03-01 (Sprint 14-16 — SubmissionViewer, IDE Primitives, Hardware Polish)
+
+### Sprint 14 — SubmissionViewerSurface full visual overhaul
+
+**Problem**: SubmissionViewerSurface had zero dedicated CSS. All 6 data sections looked identical (plain `<h3>` + `IdeDataTable`). Dock had 3 stacked callouts. Critical fields (student name, score, verdict) were buried in a 19-row table. Blocked gates had no visual distinction.
+
+**Fix** (commit `f3edecde`):
+- Added score hero above fold: student name, pass/fail row counts (large mono), gate verdict pill at a glance.
+- Replaced all 6 sections with `<details className="ide-sub-section">` collapsible panels with chevron toggle and count badges.
+- Gate Results: custom `<table>` with `data-verdict` attribute on rows — blocked gates render with red tint, warn gates with amber tint.
+- Dock: replaced 3 stacked callouts with compact kv-field identity panel (student/assignment/verdict rows).
+- Phase 36 CSS: `.ide-sub-hero*`, `.ide-sub-section*`, `.ide-sub-gate-*`, `.ide-sub-dock*` (appended to `ide-root.css`).
+
+### Sprint 15 — IDE primitive components
+
+**Problem**: `IdePrimitives.tsx` had no loading/spinner/skeleton/tag primitives. ExportSurface showed "Building…" text with no visual loading indicator.
+
+**Fix**:
+- Added `IdeSpinner` (3 sizes: sm/md/lg, CSS `@keyframes ide-spin` border-top animation) to `IdePrimitives.tsx`.
+- Added `IdeSkeleton` (shimmer `@keyframes ide-shimmer` gradient animation) to `IdePrimitives.tsx`.
+- Added `IdeTag` (5 tones: neutral/accent/ok/warn/error) to `IdePrimitives.tsx`.
+- Wired `<IdeSpinner size="sm" />` into `ExportSurface.tsx`'s `isRebuilding` button state (dock download button).
+- Phase 37 CSS: `@keyframes`, `.ide-spinner--{sm,md,lg}`, `.ide-skeleton`, `.ide-tag--*` (appended to `ide-root.css`).
+
+### Sprint 16 — HardwareSurface Phase 26C visual alignment (CSS-only)
+
+**Problem**: HardwareSurface's 62 CSS classes predated the Phase 26C instrument aesthetic (dark blues, teal accents, amber warnings). The proof verdict overlay, event log, cert slab, and step headers used lighter/inconsistent colors.
+
+**Fix**:
+- Phase 38 CSS aligned 7 visual areas: callout header strip, proof verdict (teal glow on valid, red on invalid), cert slab (dark mono with border), `ide-hw-assert-formal` pass/fail coloring, event log (dark bg + row separators), bringup step header (instrument-style), `ide-workbench-placeholder-header` (consistent across all 3 dock panels).
+- No TSX changes — pure CSS override placed last in cascade.
+
+- **Attribution**: Connor Angiel
