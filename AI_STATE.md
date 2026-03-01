@@ -17302,3 +17302,28 @@ Root cause: `apps/lab3-webapp/src/kmap-viewer-interactive.tsx:38` accessed `s.do
 All 25 `pnpm verify:gates` gates now pass (exit 0).
 
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-03-01 (Sprint 18 — lab3-webapp: VHDL/XDC export, lab templates, error boundary, sim UX)
+
+### Sprint 18 — lab3-webapp feature expansion (commit `3565fe7d`)
+
+**New files:**
+
+- `AppErrorBoundary.js` — React error boundary wrapping root render. On uncaught render error: "Something went wrong" recovery UI + Reload button. Wired in `main.js`.
+- `labTemplates.js` — `LAB_TEMPLATES` array for Overview tab template gallery (blank, AND gate, passthrough, parity generator, standard digits). Each entry has `id`, `name`, `description`, `difficulty`, `concept`, `hint`, `basys3Io`, `storeAction`.
+- `circuit-designer-pro/circuitToVhdl.js` (407 lines) — Circuit-to-VHDL generator: self-contained topo-sort + cycle detection, gate → VHDL signal assignment, full entity + architecture output, XDC inclusion via `generateXdcString`. Exports `parseVhdlEntity` for import round-trip.
+- `xdcPins.js` — Single source of truth for Basys3 XDC pin constants (`BASYS3_SWITCH_PINS`, `BASYS3_SEG_PINS`, `BASYS3_ANODE_PINS`) + `generateXdcString()`. Used by `verilog.js` and `circuitToVhdl.js`.
+
+**Modified files:**
+
+- `labStore.js`: `fillHexDigits`, `fillParityBit`, `fillAndGate`, `fillPassthrough` actions; `canvasView`, `kMapGroups`, `simAutoRunning`, `simMultiDigitMode`, `simShowFailures` state; verilog import zero-match guard (0-row parse no longer silently wipes truth table).
+- `verilog.js`: VHDL auto-detect + `parseVhdlEntity` port preview; `generateXdcString` delegated to `xdcPins.js`; NOT precedence fix (`B0'` → `~B0` before `·`/`+`); mutation fix (`[...row.seg].reverse()`).
+- `App.js`: `applyTemplate(t)` handler; storage quota warning banner via `persistenceQuotaExceeded` flag.
+- `persistence.js`: `persistenceQuotaExceeded` export flag; `QuotaExceededError` branch in `saveSnapshotDebounced`.
+- `pdf-exporter.js`: PDF cover includes `studentName`, `section`, `studentId` from `doc.meta`.
+- `main.js`: Root render wrapped in `<AppErrorBoundary>`.
+
+### Result
+`pnpm --filter @redbyte/lab3-webapp build` passes. All 25 `pnpm verify:gates` gates pass.
+
+- **Attribution**: Connor Angiel
