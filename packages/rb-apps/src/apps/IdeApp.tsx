@@ -19,6 +19,8 @@ import { HardwareSurface } from './ide/surfaces/HardwareSurface';
 import { ExportSurface } from './ide/surfaces/ExportSurface';
 import { ImportSurface } from './ide/surfaces/ImportSurface';
 import { PipelineStrip } from './ide/components/PipelineStrip';
+import { KeyboardShortcutsModal } from './ide/components/KeyboardShortcutsModal';
+import { OnboardingOverlay } from './ide/components/OnboardingOverlay';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ThrowOnce } from '../components/ThrowOnce';
 import { buildExportViewModel } from './ide/viewmodels/buildExportViewModel';
@@ -68,6 +70,7 @@ export const IdeApp: React.FC = () => {
   const hasRestoredRef = useRef(false);
   const [autosaveAvailable, setAutosaveAvailable] = useState(false);
   const isRestoringRef = useRef(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   // C-1: Debug bridge — frozen circuit state from a verification tick
   const [debugState, setDebugState] = useState<{
     tick: number;
@@ -856,8 +859,11 @@ export const IdeApp: React.FC = () => {
         onResetToExample={handleResetToExample}
         onRunVerify={() => setCurrentMode('verify')}
         onExport={() => setCurrentMode('export')}
-        onHelp={() => setCurrentMode('project')}
+        onHelp={() => setShowShortcuts(true)}
       />
+
+      <OnboardingOverlay />
+      {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
       <div className="ide-layout-shell">
         <IdeLeftRail currentMode={currentMode} onModeChange={setCurrentMode} />

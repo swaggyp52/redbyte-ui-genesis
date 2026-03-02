@@ -101,6 +101,17 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
         <span className="ide-save-label" aria-live="polite">
           {saveState === 'saved' ? 'Saved' : saveState === 'autosaving' ? 'Saving…' : 'Unsaved'}
         </span>
+        {onHelp && (
+          <button
+            className="ide-topbar-help-btn"
+            onClick={onHelp}
+            title="Keyboard shortcuts (?)"
+            aria-label="Keyboard shortcuts"
+            data-testid="ide-topbar-help-btn"
+          >
+            ?
+          </button>
+        )}
       </div>
     </header>
   );
