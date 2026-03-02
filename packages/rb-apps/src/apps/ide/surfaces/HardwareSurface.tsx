@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import type { ProjectHealth } from '../projectHealth';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -92,6 +92,26 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     () => mappingRows.some((row) => row.direction === 'out' && row.pin.trim().length > 0),
     [mappingRows]
   );
+
+  const SSD_PINS = /^(CA|CB|CC|CD|CE|CF|CG|DP|AN[0-3])$/i;
+  const hasSsdMapping = useMemo(
+    () => mappingRows.some((row) => SSD_PINS.test(row.label.trim())),
+    [mappingRows]
+  );
+
+  const hasButtonMapping = useMemo(
+    () => mappingRows.some((row) => row.direction === 'in' && /^btn(c|u|d|l|r)/i.test(row.label)),
+    [mappingRows]
+  );
+
+  const [debounceDismissed, setDebounceDismissed] = useState(() => {
+    try { return localStorage.getItem('rb-debounce-tip-dismissed') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    if (debounceDismissed) {
+      try { localStorage.setItem('rb-debounce-tip-dismissed', '1'); } catch { /* ignore */ }
+    }
+  }, [debounceDismissed]);
 
   const ioBusIoRows = useMemo(
     () =>
@@ -662,6 +682,37 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             </span>
           )}
         </div>
+
+        {/* ── SSD guidance callout ── */}
+        {hasSsdMapping && (
+          <IdeCallout tone="info" title="7-Segment Display" testId="ide-hw-ssd-callout">
+            <p className="ide-copy" style={{ margin: 0 }}>
+              Your circuit uses 7-segment display outputs. The Basys3 uses <strong>active-low</strong> segment
+              lines (0 = segment ON). Digit select (AN0–AN3) are also active-low; AN0 controls the rightmost
+              digit. Segment order: CA=seg[0], CB=seg[1], CC=seg[2], CD=seg[3], CE=seg[4], CF=seg[5],
+              CG=seg[6], DP=decimal point.
+            </p>
+          </IdeCallout>
+        )}
+
+        {/* ── Debounce guidance callout ── */}
+        {hasButtonMapping && !debounceDismissed && (
+          <IdeCallout tone="warn" title="Physical buttons bounce" testId="ide-hw-debounce-callout">
+            <p className="ide-copy" style={{ margin: 0 }}>
+              Physical push buttons produce multiple signal transitions when pressed or released. Add
+              synchronizer flip-flops or a debounce delay to ensure reliable edge detection.
+            </p>
+            <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
+              <IdeButton
+                tone="ghost"
+                onClick={() => setDebounceDismissed(true)}
+                testId="ide-hw-debounce-dismiss"
+              >
+                Got it
+              </IdeButton>
+            </div>
+          </IdeCallout>
+        )}
 
         {/* ── Board ── */}
         <div className={`ide-hw-board-wrap ${hwMode === 'proof' ? 'is-proof' : ''}`}>
