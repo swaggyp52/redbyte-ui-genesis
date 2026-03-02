@@ -18,11 +18,6 @@ import { VerifySurface, type VerifyFailureTarget } from './ide/surfaces/VerifySu
 import { HardwareSurface } from './ide/surfaces/HardwareSurface';
 import { ExportSurface } from './ide/surfaces/ExportSurface';
 import { ImportSurface } from './ide/surfaces/ImportSurface';
-import { SubmissionViewerSurface } from './ide/surfaces/SubmissionViewerSurface';
-import { generateIdeSubmissionBundle } from '../export/ideSubmissionBundle';
-import type { ParsedIdeSubmission } from '../export/parseIdeSubmission';
-import { deriveProofRunFlags } from '../labs/proofRunFlags';
-import { validateSubmissionForLab } from '../labs/submissionGates';
 import { PipelineStrip } from './ide/components/PipelineStrip';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ThrowOnce } from '../components/ThrowOnce';
@@ -61,15 +56,6 @@ import { netlistFromCircuit } from '../export/netlistExport';
 import { vhdlFromNetlist } from '../export/vhdlExport';
 import { buildVhdlTopLevelBindings } from '../fpga/boards/basys3/basys3Bundle';
 
-interface ProjectSubmissionPreview {
-  lastStatus: 'pass' | 'fail' | 'none';
-  passes: number;
-  fails: number;
-  overallGateVerdict: 'pass' | 'warn' | 'block' | 'ungraded';
-  assignmentId: string | null;
-  labCode: string | null;
-}
-
 export const IdeApp: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<IdeMode>(() => resolveInitialIdeMode());
   const [pendingExampleId, setPendingExampleId] = useState<string | null>(null);
@@ -78,17 +64,7 @@ export const IdeApp: React.FC = () => {
   const [savedProjects, setSavedProjects] = useState<PersistedIdeProjectIndexEntry[]>([]);
   const [savedProjectHash, setSavedProjectHash] = useState<string | null>(null);
   const [isAutosaving, setIsAutosaving] = useState(false);
-  const [submissionViewData, setSubmissionViewData] = useState<ParsedIdeSubmission | null>(null);
-  const [submissionExportPending, setSubmissionExportPending] = useState(false);
   const [studentName, setStudentName] = useState<string>('');
-  const [submissionPreview, setSubmissionPreview] = useState<ProjectSubmissionPreview>({
-    lastStatus: 'none',
-    passes: 0,
-    fails: 0,
-    overallGateVerdict: 'ungraded',
-    assignmentId: null,
-    labCode: null,
-  });
   const hasRestoredRef = useRef(false);
   const [autosaveAvailable, setAutosaveAvailable] = useState(false);
   const isRestoringRef = useRef(false);
@@ -343,13 +319,6 @@ export const IdeApp: React.FC = () => {
     [setMappingPin, setCurrentMode]
   );
 
-  const handleImportSubmission = useCallback(
-    (submission: ParsedIdeSubmission) => {
-      setSubmissionViewData(submission);
-    },
-    []
-  );
-
   const handleSafeLoadIntoIde = useCallback(
     (project: RBProject) => {
       // Auto-backup current project before replacing
@@ -371,40 +340,10 @@ export const IdeApp: React.FC = () => {
         refreshSavedProjects();
       }
       loadFromProject(project);
-      setSubmissionViewData(null);
       setCurrentMode('project');
     },
     [hasCircuit, projectId, projectName, loadFromProject, refreshSavedProjects, setLastSavedAt]
   );
-
-  const handleExportSubmission = useCallback(async () => {
-    if (!exportProjectRef.current) return;
-    setSubmissionExportPending(true);
-    try {
-      const appCommitSha = (import.meta.env.VITE_GIT_COMMIT ?? '').slice(0, 12) || 'dev';
-      const result = await generateIdeSubmissionBundle({
-        project: exportProjectRef.current,
-        verifyLastRun: verifyLastRun ?? null,
-        verifyRunHistory,
-        submittedAt: new Date().toISOString(),
-        appCommitSha,
-      });
-      // Trigger download
-      const blob = new Blob([result.bytes.buffer as ArrayBuffer], { type: 'application/zip' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = result.downloadFilename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Submission export failed:', err);
-    } finally {
-      setSubmissionExportPending(false);
-    }
-  }, [verifyLastRun, verifyRunHistory]);
 
   const topEntityName = useMemo(() => buildTopEntityName(projectName), [projectName]);
   const mappedIoSignals = useMemo(
@@ -509,49 +448,6 @@ export const IdeApp: React.FC = () => {
       xdcText,
     ]
   );
-  useEffect(() => {
-    if (currentMode !== 'project') return;
-    let canceled = false;
-    const computePreview = async () => {
-      const passes = verifyRunHistory.filter((entry) => entry.status === 'pass').length;
-      const fails = verifyRunHistory.filter((entry) => entry.status === 'fail').length;
-      const lastStatus: 'pass' | 'fail' | 'none' =
-        verifyRunHistory.length === 0
-          ? 'none'
-          : verifyRunHistory[verifyRunHistory.length - 1]!.status;
-      const assignmentId = normalizeMetaValue(exportProject.meta?.labId);
-      const labCode = normalizeMetaValue(exportProject.meta?.labCode);
-      let overallGateVerdict: ProjectSubmissionPreview['overallGateVerdict'] = 'ungraded';
-
-      if (assignmentId) {
-        try {
-          const proofRuns = await deriveProofRunFlags(exportProject, assignmentId);
-          const gateResult = validateSubmissionForLab(assignmentId, {
-            projectSnapshot: exportProject,
-            doctorReport: null,
-            recentRuns: proofRuns,
-          });
-          overallGateVerdict = gateResult.verdict;
-        } catch {
-          overallGateVerdict = 'block';
-        }
-      }
-
-      if (canceled) return;
-      setSubmissionPreview({
-        lastStatus,
-        passes,
-        fails,
-        overallGateVerdict,
-        assignmentId,
-        labCode,
-      });
-    };
-    void computePreview();
-    return () => {
-      canceled = true;
-    };
-  }, [currentMode, exportProject, verifyRunHistory]);
   const projectHash = useMemo(() => digestValue(exportProject), [exportProject]);
   const determinismHash = projectHash;
   exportProjectRef.current = exportProject;
@@ -912,7 +808,6 @@ export const IdeApp: React.FC = () => {
     }
     installFatalCapture({ force: true });
     pushMount('IdeApp: mounted');
-    console.log('RB_IDE_APP_BOOT');
     return () => {
       if (typeof document !== 'undefined' && document.documentElement.dataset.redbyteMode === 'ide') {
         delete document.documentElement.dataset.redbyteMode;
@@ -973,15 +868,7 @@ export const IdeApp: React.FC = () => {
             primaryCta={primaryProjectCta}
             onNavigate={(mode) => setCurrentMode(mode as IdeMode)}
           />
-        {submissionViewData !== null ? (
-          <ErrorBoundary fallbackTitle="Submission viewer crashed">
-            <SubmissionViewerSurface
-              submission={submissionViewData}
-              onLoadIntoIde={handleSafeLoadIntoIde}
-              onClose={() => setSubmissionViewData(null)}
-            />
-          </ErrorBoundary>
-        ) : currentMode === 'project' ? (
+        {currentMode === 'project' ? (
           <ErrorBoundary fallbackTitle="Project editor crashed">
             <ProjectSurface
               projectName={projectName}
@@ -1021,9 +908,6 @@ export const IdeApp: React.FC = () => {
               studentName={studentName}
               onStudentNameChange={setStudentName}
               hasVerifyRun={verifyLastRun !== undefined}
-              submissionPreview={submissionPreview}
-              onExportSubmission={() => { void handleExportSubmission(); }}
-              submissionExportPending={submissionExportPending}
               onSaveNow={() => {
                 if (!exportProjectRef.current) return;
                 const snap = saveIdeProjectSnapshot({
@@ -1174,7 +1058,6 @@ export const IdeApp: React.FC = () => {
               onApplySuggestions={handleApplySuggestions}
               onGoToProject={() => setCurrentMode('project')}
               onGoToVerify={() => setCurrentMode('verify')}
-              onImportSubmission={handleImportSubmission}
             />
           </ErrorBoundary>
         )}
@@ -1279,12 +1162,6 @@ function resolveInitialIdeMode(): IdeMode {
     default:
       return 'project';
   }
-}
-
-function normalizeMetaValue(value: string | null | undefined): string | null {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
 }
 
 function normalizeSignalKey(value: string): string {

@@ -4,7 +4,7 @@ import type { RBProject } from '../../../export/projectFormat';
 import { stableStringify } from '../../../export/stableStringify';
 import type { ProjectHealthExportResult, ProjectHealthVerifyResult } from '../projectHealth';
 import { createDiagnosticId, type IdeDiagnostic } from '../diagnostics';
-import { buildEvidenceCapsule, type EvidenceManifest } from '../evidenceCapsule';
+import JSZip from 'jszip';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import {
   buildExportViewModel,
@@ -54,7 +54,6 @@ type RebuildStepId =
   | 'clock'
   | 'bundle'
   | 'manifest'
-  | 'capsule'
   | 'zip';
 
 type RebuildStepState = 'idle' | 'running' | 'done' | 'error' | 'skipped';
@@ -70,10 +69,9 @@ const STEP_ORDER: Array<{ id: RebuildStepId; label: string }> = [
   { id: 'validate', label: 'Validate inputs' },
   { id: 'mapping',  label: 'Validate I/O mapping' },
   { id: 'clock',    label: 'Validate clock domain' },
-  { id: 'bundle',   label: 'Build bundle (sources + constraints)' },
-  { id: 'manifest', label: 'Generate manifest' },
-  { id: 'capsule',  label: 'Seal evidence capsule' },
-  { id: 'zip',      label: 'Package .zip' },
+  { id: 'bundle',   label: 'Build VHDL + constraints' },
+  { id: 'manifest', label: 'Generate README' },
+  { id: 'zip',      label: 'Package Vivado Kit' },
 ];
 
 function makeSteps(): RebuildStep[] {
@@ -115,12 +113,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const [pinOverrides, setPinOverrides] = useState<Record<string, string>>(() =>
     createPinOverrideMap(viewModel.pinTable)
   );
-  const [capsuleManifestHash, setCapsuleManifestHash] = useState<string>('pending');
-  const [capsuleBundleHash, setCapsuleBundleHash] = useState<string>('pending');
-  const [capsuleFileList, setCapsuleFileList] = useState<string[]>([]);
-  const [capsuleBuildError, setCapsuleBuildError] = useState<string>('');
-  const [capsuleBuildState, setCapsuleBuildState] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
-  const [capsuleManifest, setCapsuleManifest] = useState<EvidenceManifest | null>(null);
+  const [downloadError, setDownloadError] = useState<string>('');
+  const [downloadDone, setDownloadDone] = useState(false);
   const [copyState, setCopyState] = useState<'idle' | 'command' | 'report' | 'error'>('idle');
   const [highlightedPort, setHighlightedPort] = useState<string | null>(null);
   const [selectedArtifactPath, setSelectedArtifactPath] = useState<string>(() => {
@@ -131,14 +125,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   // Phase 32: pipeline rebuild state
   const [rebuildSteps, setRebuildSteps] = useState<RebuildStep[]>(() => makeSteps());
   const [isRebuilding, setIsRebuilding] = useState(false);
-  const [capsuleSealState, setCapsuleSealState] = useState<'not_sealed' | 'sealing' | 'sealed'>('not_sealed');
-  const [capsuleSealPayload, setCapsuleSealPayload] = useState<{
-    sig?: string;
-    verifyHash?: string;
-    exportHash?: string;
-    pins?: string;
-    ts?: string;
-  }>({});
   // Phase 2: track which port keys have invalid (non-Basys3) pin values
   const [invalidPins, setInvalidPins] = useState<Set<string>>(new Set());
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
@@ -207,104 +193,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     [viewModel.pinTable, pinOverrides]
   );
 
-  // Version constants — defined here so handleBuildEvidenceCapsule can reference them
-  // before the gateRows useMemo that depends on handleBuildEvidenceCapsule.
   const appEnv = (import.meta as ImportMeta & {
     env?: { VITE_APP_VERSION?: string; VITE_GIT_SHA?: string };
   }).env;
   const redbyteVersion = (appEnv?.VITE_APP_VERSION ?? 'dev').trim() || 'dev';
   const redbyteCommit = (appEnv?.VITE_GIT_SHA ?? 'local').trim() || 'local';
-
-  // Must be defined before gateRows useMemo because gateRows references it in
-  // the Evidence Capsule gate's onAction. Defining it after gateRows causes a
-  // temporal dead zone ReferenceError on first render.
-  const handleBuildEvidenceCapsule = useCallback(async () => {
-    const ranAtIso = new Date().toISOString();
-    setCapsuleBuildError('');
-    setCapsuleBuildState('running');
-    setCapsuleManifest(null);
-    if (hasBlockingErrors) {
-      setCapsuleBuildError('Resolve blocking diagnostics before downloading the Vivado Kit.');
-      setCapsuleBuildState('error');
-      onExportResult?.({
-        status: 'blocked',
-        hash: viewModel.exportHash,
-        artifacts: viewModel.artifacts.map((artifact) => artifact.path),
-        ranAtIso,
-      });
-      return;
-    }
-    if (!verifyResult || verifyResult.status !== 'pass' || dirtySinceVerify) {
-      setCapsuleBuildError('Download requires a passing verification with no pending design changes.');
-      setCapsuleBuildState('error');
-      onExportResult?.({
-        status: 'blocked',
-        hash: viewModel.exportHash,
-        artifacts: viewModel.artifacts.map((artifact) => artifact.path),
-        ranAtIso,
-      });
-      return;
-    }
-
-    try {
-      const capsule = await buildEvidenceCapsule({
-        project,
-        exportViewModel: viewModel,
-        verifyResult,
-        deterministicHash: determinismHash,
-        toolVersion: redbyteVersion,
-        toolCommit: redbyteCommit,
-        createdAtIso: ranAtIso,
-      });
-      if (typeof window !== 'undefined') {
-        const blob = new Blob([capsule.zipBytes as BlobPart], { type: 'application/zip' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'redbyte-vivado-kit.zip';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.setTimeout(() => URL.revokeObjectURL(url), 0);
-      }
-
-      setCapsuleManifestHash(capsule.manifest.manifestHash);
-      setCapsuleBundleHash(capsule.bundleHash);
-      setCapsuleFileList(capsule.filePaths);
-      setCapsuleManifest(capsule.manifest);
-      setCapsuleBuildState('done');
-      onExportBundle?.(viewModel.artifacts);
-      onExportResult?.({
-        status: 'ok',
-        hash: viewModel.exportHash,
-        manifestHash: capsule.manifest.manifestHash,
-        bundleHash: capsule.bundleHash,
-        artifacts: capsule.filePaths,
-        ranAtIso,
-      });
-    } catch (error) {
-      const reason =
-        error instanceof Error && error.message.trim().length > 0
-          ? error.message.trim()
-          : 'unknown build error';
-      setCapsuleBuildError(
-        `Export failed: ${reason}. Check diagnostics and artifact readiness.`
-      );
-      setCapsuleBuildState('error');
-      onExportResult?.({
-        status: 'blocked',
-        hash: viewModel.exportHash,
-        artifacts: viewModel.artifacts.map((artifact) => artifact.path),
-        ranAtIso,
-      });
-    }
-  }, [
-    hasBlockingErrors, viewModel, verifyResult, dirtySinceVerify,
-    determinismHash, redbyteVersion, redbyteCommit,
-    project, onExportResult, onExportBundle,
-    setCapsuleBuildError, setCapsuleBuildState, setCapsuleManifest,
-    setCapsuleManifestHash, setCapsuleBundleHash, setCapsuleFileList,
-  ]);
 
   const gateRows = useMemo(() => {
     const verifyTone = hasVerifyPass
@@ -330,8 +223,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         ? `${mappedCount}/${viewModel.pinTable.length} mapped`
         : `${requiredMappedCount}/${requiredCount} required`;
     const clockTone = clockDiag ? 'error' as const : 'ok' as const;
-    const capsuleTone = !hasBlockingErrors && hasVerifyPass ? 'ok' as const : 'error' as const;
-    const gateBlockCount = diagnosticsList.filter((d) => d.severity === 'error').length;
     return [
       {
         id: 'verify',
@@ -359,17 +250,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           ? () => setOpenFixPathId((prev) => (prev === clockDiag.id ? null : clockDiag.id))
           : undefined,
       },
-      {
-        id: 'capsule',
-        label: 'Vivado Kit',
-        tone: capsuleTone,
-        detail:
-          capsuleTone === 'ok'
-            ? 'Ready to download'
-            : `${gateBlockCount} blocker${gateBlockCount !== 1 ? 's' : ''}`,
-        actionLabel: 'Download',
-        onAction: capsuleTone === 'ok' ? handleBuildEvidenceCapsule : undefined,
-      },
     ];
   }, [
     hasVerifyPass,
@@ -383,7 +263,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     hasBlockingErrors,
     diagnosticsList,
     onOpenVerify,
-    handleBuildEvidenceCapsule,
   ]);
 
   const deterministicChecks = useMemo(() => [
@@ -424,8 +303,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       })
       .sort((left, right) => left.localeCompare(right));
 
-    const manifestBlock = capsuleManifest ? stableStringify(capsuleManifest) : 'pending';
-
     return [
       'RedByte Vivado Quick Debug Report',
       `project=${project.name}`,
@@ -434,19 +311,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       `redbyteCommit=${redbyteCommit}`,
       `exportHash=${viewModel.exportHash ?? 'pending'}`,
       `verifyHash=${verifyResult?.hash ?? 'pending'}`,
-      `manifestHash=${capsuleManifestHash}`,
-      `bundleHash=${capsuleBundleHash}`,
       '',
       'mapping:',
       ...mappingLines,
-      '',
-      'manifest:',
-      manifestBlock,
     ].join('\n');
   }, [
-    capsuleBundleHash,
-    capsuleManifest,
-    capsuleManifestHash,
     pinOverrides,
     project.name,
     redbyteCommit,
@@ -502,8 +371,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const resetSteps = useCallback(() => {
     setRebuildSteps(makeSteps());
     setIsRebuilding(false);
-    setCapsuleSealState('not_sealed');
-    setCapsuleSealPayload({});
   }, []);
 
   const handleRebuildExport = useCallback(async () => {
@@ -521,8 +388,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       await tick();
       if (hasBlockingErrors) {
         markStep('validate', 'error', 'Blocking diagnostics present');
-        setCapsuleBuildError('Resolve blocking diagnostics before downloading the Vivado Kit.');
-        setCapsuleBuildState('error');
+        setDownloadError('Resolve blocking diagnostics before downloading the Vivado Kit.');
         setIsRebuilding(false);
         return;
       }
@@ -533,8 +399,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       await tick();
       if (requiredMappedCount < requiredCount) {
         markStep('mapping', 'error', `${requiredCount - requiredMappedCount} required pin${requiredCount - requiredMappedCount !== 1 ? 's' : ''} unmapped`);
-        setCapsuleBuildError(`${requiredCount - requiredMappedCount} required pin${requiredCount - requiredMappedCount !== 1 ? 's' : ''} unmapped.`);
-        setCapsuleBuildState('error');
+        setDownloadError(`${requiredCount - requiredMappedCount} required pin${requiredCount - requiredMappedCount !== 1 ? 's' : ''} unmapped.`);
         setIsRebuilding(false);
         return;
       }
@@ -545,54 +410,27 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       await tick();
       if (!verifyResult || verifyResult.status !== 'pass' || dirtySinceVerify) {
         markStep('clock', 'error', 'Verify PASS required');
-        setCapsuleBuildError('Download requires a passing verification with no pending design changes.');
-        setCapsuleBuildState('error');
+        setDownloadError('Download requires a passing verification with no pending design changes.');
         setIsRebuilding(false);
         return;
       }
       markStep('clock', 'done');
 
-      // STEPS: bundle + manifest run together inside buildEvidenceCapsule
+      // STEP: bundle — assemble VHDL + constraints
       markStep('bundle', 'running');
-      markStep('manifest', 'running');
-      setCapsuleBuildState('running');
-      setCapsuleManifest(null);
-
-      const capsule = await buildEvidenceCapsule({
-        project,
-        exportViewModel: viewModel,
-        verifyResult,
-        deterministicHash: determinismHash,
-        toolVersion: redbyteVersion,
-        toolCommit: redbyteCommit,
-        createdAtIso: ranAtIso,
-      });
-
+      await tick();
       markStep('bundle', 'done');
+
+      // STEP: manifest — build README
+      markStep('manifest', 'running');
+      await tick();
       markStep('manifest', 'done');
 
-      // STEP: seal capsule
-      markStep('capsule', 'running');
-      setCapsuleSealState('sealing');
-      await tick(80);
-      setCapsuleManifestHash(capsule.manifest.manifestHash);
-      setCapsuleBundleHash(capsule.bundleHash);
-      setCapsuleFileList(capsule.filePaths);
-      setCapsuleManifest(capsule.manifest);
-      setCapsuleSealState('sealed');
-      setCapsuleSealPayload({
-        sig:        capsule.manifest.manifestHash.slice(0, 12),
-        verifyHash: capsule.manifest.hashes.verifyHash.slice(0, 12),
-        exportHash: (capsule.manifest.hashes.exportHash ?? '').slice(0, 12) || 'n/a',
-        pins:       String(capsule.manifest.mappingSummary.length),
-        ts:         ranAtIso.slice(0, 19).replace('T', ' '),
-      });
-      markStep('capsule', 'done');
-
-      // STEP: zip — download
+      // STEP: zip — package and download
       markStep('zip', 'running');
+      const zipBytes = await buildVivadoKitZip(viewModel.artifacts);
       if (typeof window !== 'undefined') {
-        const blob = new Blob([capsule.zipBytes.buffer as ArrayBuffer], { type: 'application/zip' });
+        const blob = new Blob([zipBytes], { type: 'application/zip' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -603,15 +441,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         window.setTimeout(() => URL.revokeObjectURL(url), 0);
       }
       markStep('zip', 'done');
-      setCapsuleBuildState('done');
+      setDownloadDone(true);
 
       onExportBundle?.(viewModel.artifacts);
       onExportResult?.({
         status: 'ok',
         hash: viewModel.exportHash,
-        manifestHash: capsule.manifest.manifestHash,
-        bundleHash: capsule.bundleHash,
-        artifacts: capsule.filePaths,
+        artifacts: viewModel.artifacts.map((a) => a.path),
         ranAtIso,
       });
     } catch (error) {
@@ -619,9 +455,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         error instanceof Error && error.message.trim().length > 0
           ? error.message.trim()
           : 'unknown build error';
-      setCapsuleBuildError(`Build failed: ${reason}`);
-      setCapsuleBuildState('error');
-      setCapsuleSealState('not_sealed');
+      setDownloadError(`Build failed: ${reason}`);
       setRebuildSteps((prev) =>
         prev.map((s) => (s.state === 'running' ? { ...s, state: 'error', detail: reason } : s))
       );
@@ -636,8 +470,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     }
   }, [
     resetSteps, markStep, hasBlockingErrors, requiredMappedCount, requiredCount,
-    verifyResult, dirtySinceVerify, project, viewModel, determinismHash,
-    redbyteVersion, redbyteCommit, onExportBundle, onExportResult,
+    verifyResult, dirtySinceVerify, viewModel, onExportBundle, onExportResult,
   ]);
 
   const handleDownloadArtifact = (artifact: ExportArtifactView) => {
@@ -676,9 +509,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     <IdeSurfaceLayout
       mode="export"
       consoleHasBlocking={hasBlockingErrors}
-      consoleHasEntries={
-        diagnosticsList.length > 0 || capsuleBuildState === 'error' || capsuleBuildState === 'done'
-      }
+      consoleHasEntries={diagnosticsList.length > 0}
       dock={
         <section className="ide-workbench-placeholder" data-testid="ide-export-checks-dock">
           <header className="ide-workbench-placeholder-header">
@@ -769,11 +600,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               </div>
               <div className="ide-kv-row" data-testid="ide-export-capsule-build-state">
                 <span>Export State</span>
-                <span>{capsuleBuildState === 'done' ? 'Downloaded' : capsuleBuildState === 'running' ? 'Building…' : capsuleBuildState === 'error' ? 'Error' : 'Ready'}</span>
-              </div>
-              <div className="ide-kv-row ide-kv-row-hidden" data-testid="ide-export-capsule-files">
-                <span>File List</span>
-                <code>{capsuleFileList.join(',')}</code>
+                <span>{isRebuilding ? 'Building…' : downloadDone ? 'Downloaded' : 'Ready'}</span>
               </div>
             </div>
             <details style={{ marginTop: 'var(--ide-space-2)' }}>
@@ -792,20 +619,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <span className="ide-status-mono" data-testid="ide-export-context-verify-hash">
                     {verifyResult?.hash ? verifyResult.hash.slice(0, 16) : 'pending'}
                   </span>
-                </div>
-                <div className="ide-kv-row">
-                  <span>Manifest Hash</span>
-                  <span className="ide-status-mono" data-testid="ide-export-context-manifest-hash">
-                    {capsuleManifestHash.slice(0, 16)}
-                  </span>
-                </div>
-                <div className="ide-kv-row">
-                  <span>Bundle Hash</span>
-                  <span className="ide-status-mono">{capsuleBundleHash.slice(0, 16)}</span>
-                </div>
-                <div className="ide-kv-row">
-                  <span>Files</span>
-                  <span>{capsuleFileList.length > 0 ? capsuleFileList.length : 'pending'}</span>
                 </div>
               </div>
             </details>
@@ -852,7 +665,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   onClick={() => void handleRebuildExport()}
                   disabled={hasBlockingErrors || isRebuilding}
                 >
-                  {isRebuilding ? 'Building…' : capsuleBuildState === 'done' ? 'Re-download' : 'Download Vivado Kit'}
+                  {isRebuilding ? 'Building…' : downloadDone ? 'Re-download' : 'Download Vivado Kit'}
                 </IdeButton>
               </span>
             </>
@@ -931,9 +744,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   </IdeCallout>
                 )}
 
-                {capsuleBuildError.length > 0 && (
+                {downloadError.length > 0 && (
                   <IdeCallout tone="error" title="Export Error" testId="ide-export-capsule-error">
-                    {capsuleBuildError}
+                    {downloadError}
                   </IdeCallout>
                 )}
 
@@ -1323,7 +1136,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       disabled={hasBlockingErrors || isRebuilding}
                       testId="ide-export-rebuild-btn"
                     >
-                      {isRebuilding ? 'Building…' : capsuleBuildState === 'done' ? 'Re-download' : 'Download Vivado Kit'}
+                      {isRebuilding ? 'Building…' : downloadDone ? 'Re-download' : 'Download Vivado Kit'}
                     </IdeButton>
                   </span>
                 </div>
@@ -1401,44 +1214,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               </SurfacePanel>
 
               <details className="ide-export-evidence-details" data-testid="ide-export-evidence-details" style={{ marginTop: 'var(--ide-space-2)' }}>
-                <summary>Determinism evidence</summary>
+                <summary>Debug report</summary>
                 <div className="ide-export-capsuleSlab" style={{ marginTop: 'var(--ide-space-1)' }}>
-                  <div
-                    className={`ide-export-capsuleTop ide-export-capsuleState--${capsuleSealState}`}
-                    data-testid="ide-export-seal-bar"
-                  >
-                    <span className="ide-export-capsuleSealIcon">
-                      {capsuleSealState === 'sealed' ? '◉' : capsuleSealState === 'sealing' ? '◌' : '○'}
-                    </span>
-                    <span className="ide-export-capsuleSealLabel">
-                      {capsuleSealState === 'sealed' ? 'SEALED'
-                       : capsuleSealState === 'sealing' ? 'SEALING…'
-                       : 'NOT SEALED'}
-                    </span>
-                  </div>
-                  {capsuleSealPayload.sig ? (
-                    <div className="ide-export-capsuleRows" data-testid="ide-export-capsule-payload">
-                      {([
-                        { key: 'SIG',    val: capsuleSealPayload.sig },
-                        { key: 'VERIFY', val: capsuleSealPayload.verifyHash ?? 'n/a' },
-                        { key: 'EXPORT', val: capsuleSealPayload.exportHash ?? 'n/a' },
-                        { key: 'PINS',   val: capsuleSealPayload.pins ?? 'n/a' },
-                        { key: 'TS',     val: capsuleSealPayload.ts ?? 'n/a' },
-                      ] as const).map(({ key, val }) => (
-                        <div key={key} className="ide-export-context-row" data-testid={`ide-export-capsule-${key.toLowerCase()}`}>
-                          <span className="ide-export-context-key">{key}</span>
-                          <span className="ide-export-context-val">{val}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="ide-export-capsuleHint">
-                      {capsuleBuildState === 'error'
-                        ? 'Seal failed — resolve errors and try again.'
-                        : 'Download the kit to see integrity details.'}
-                    </p>
-                  )}
-                  <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-1)' }}>
+                  <div className="ide-inline-actions">
                     <IdeButton
                       tone="ghost"
                       onClick={() => void copyToClipboard(quickDebugReport, 'report')}
@@ -1456,7 +1234,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       ? 'Copied.'
                       : copyState === 'error'
                         ? 'Clipboard error.'
-                        : 'Hashes + mapping for TA handoff.'}
+                        : 'Export hash + mapping for debugging.'}
                   </p>
                 </div>
               </details>
@@ -1709,6 +1487,17 @@ function syntaxHighlight(code: string, kind: string): string {
 
   // Passthrough for unrecognized kinds (readme, md, json, etc.)
   return escapeHtml(code);
+}
+
+async function buildVivadoKitZip(artifacts: ExportArtifactView[]): Promise<Uint8Array> {
+  const zip = new JSZip();
+  const ZIP_DATE = new Date('2026-01-01T00:00:00.000Z');
+  for (const artifact of artifacts) {
+    if (artifact.content.trim().length > 0) {
+      zip.file(artifact.path, artifact.content, { date: ZIP_DATE });
+    }
+  }
+  return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', compressionOptions: { level: 6 } });
 }
 
 // ─── Phase 2: Pin Validation ────────────────────────────────────────────────

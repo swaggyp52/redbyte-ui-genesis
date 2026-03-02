@@ -1260,7 +1260,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       event.preventDefault();
       setDesignDebugEnabled((previous) => {
         const next = !previous;
-        console.info(`[DesignDebug] ${next ? 'enabled' : 'disabled'} (Shift+D)`);
         return next;
       });
     };
@@ -1298,23 +1297,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       branchMessage = 'B changed but A did not: live input row source is stale.';
     }
 
-    console.groupCollapsed(
-      `[DesignDebug] triage ${pending.nodeId} -> ${pending.requestedValue} (${pending.source})`
-    );
-    console.info('[A] UI live input', { before: pending.uiBefore, after: uiAfter });
-    console.info('[B] runtime sim input', { before: pending.simInputBefore, after: simInputAfter });
-    console.info('[C] runtime downstream sample', {
-      before: pending.downstreamBefore,
-      after: downstreamAfter,
-    });
-    console.info('[tick/action]', {
-      tick: runtimeSim.tick,
-      lastAction: runtimeSim.lastAction ?? null,
-      requestedAt: pending.requestedAtIso,
-    });
-    console.info('[classification]', classification);
-    console.info('[branch]', branchMessage);
-    console.groupEnd();
 
     pendingDebugToggleRef.current = null;
   }, [

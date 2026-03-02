@@ -78,20 +78,9 @@ export interface ProjectSurfaceProps {
   onSaveNow?: () => void;
   onRestoreLastSave?: () => void;
   onResetProject?: () => void;
-  // PR15: student identity + submission export
   studentName?: string;
   onStudentNameChange?: (name: string) => void;
   hasVerifyRun?: boolean;
-  onExportSubmission?: () => void;
-  submissionExportPending?: boolean;
-  submissionPreview?: {
-    lastStatus: 'pass' | 'fail' | 'none';
-    passes: number;
-    fails: number;
-    overallGateVerdict: 'pass' | 'warn' | 'block' | 'ungraded';
-    assignmentId: string | null;
-    labCode: string | null;
-  } | null;
 }
 
 const PROJECT_EMPTY_SIM: RuntimeSimState = {
@@ -131,9 +120,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   studentName = '',
   onStudentNameChange,
   hasVerifyRun = false,
-  onExportSubmission,
-  submissionExportPending = false,
-  submissionPreview = null,
 }) => {
   const [highlightedMappingKey, setHighlightedMappingKey] = useState<string | null>(null);
   const [mappingExpanded, setMappingExpanded] = useState(false);
@@ -238,9 +224,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     verifyPass &&
     health.lastExport?.status !== 'blocked';
   const hardwareReady = exportReady && !health.dirtySinceExport;
-  const submissionReady =
-    verifyPass && exportReady &&
-    Boolean(onExportSubmission || onStudentNameChange);
 
   const heroStatusMessage = useMemo((): string => {
     if (!readiness.hasCircuit) return 'No circuit loaded — start with an example or import HDL';
@@ -302,17 +285,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const exportSummary = useMemo(
     () => getExportSummary(health, exportReady, hardwareReady),
     [exportReady, hardwareReady, health]
-  );
-  const submissionSummary = useMemo(
-    () =>
-      getSubmissionSummary({
-        studentName,
-        hasVerifyRun,
-        submissionPreview,
-        onExportSubmission,
-        onStudentNameChange,
-      }),
-    [hasVerifyRun, onExportSubmission, onStudentNameChange, studentName, submissionPreview]
   );
   const showcaseInputSignals = useMemo(
     () => getShowcaseSignals(sortedMappingRows, 'in'),
@@ -653,24 +625,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       : readiness.hasCircuit
         ? 'No pins required'
         : 'No circuit loaded';
-  const submissionPreviewRows = useMemo(() => {
-    if (!submissionPreview) return [];
-    return [
-      [
-        'Last verify status',
-        submissionRunStatusPill(submissionPreview.lastStatus),
-      ],
-      ['Verify passes', String(submissionPreview.passes)],
-      ['Verify fails', String(submissionPreview.fails)],
-      [
-        'Gate verdict',
-        submissionVerdictPill(submissionPreview.overallGateVerdict),
-      ],
-      ['Assignment ID', submissionPreview.assignmentId ?? '—'],
-      ['Lab code', submissionPreview.labCode ?? '—'],
-    ];
-  }, [submissionPreview]);
-
   return (
     <IdeSurfaceLayout
       mode="project"
@@ -700,63 +654,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             </div>
           </div>
 
-          {/* Student identity + submission export */}
-          {(onExportSubmission || onStudentNameChange) && (
-            <section className="ide-surface-dock-section" data-testid="ide-submission-section">
-              <p className="ide-surface-block-label">
-                Submission
-              </p>
-              {onStudentNameChange && (
-                <div className="ide-surface-field-stack">
-                  <label htmlFor="ide-student-name-input" className="ide-surface-field-label">
-                    Your name
-                  </label>
-                  <input
-                    id="ide-student-name-input"
-                    type="text"
-                    className="ide-export-pin-input"
-                    value={studentName}
-                    onChange={(e) => onStudentNameChange(e.target.value)}
-                    placeholder="First Last"
-                    data-testid="ide-student-name-input"
-                    style={{ width: '100%' }}
-                  />
-                </div>
-              )}
-              {onStudentNameChange && studentName.trim().length === 0 && (
-                <IdeCallout tone="warn" title="Name required" testId="ide-submission-student-name-warning">
-                  Your submission will only have a device ID without a name. Add your name before exporting.
-                </IdeCallout>
-              )}
-              {onExportSubmission && (
-                <div>
-                  {!hasVerifyRun && (
-                    <IdeCallout tone="info" title="Run Verify first" testId="ide-submission-no-verify-hint">
-                      Verify your circuit before exporting for a complete submission.
-                    </IdeCallout>
-                  )}
-                  {submissionPreviewRows.length > 0 && (
-                    <div className="ide-surface-block-stack" data-testid="ide-submission-preview">
-                      <IdeDataTable
-                        columns={['Submission field', 'Current value']}
-                        rows={submissionPreviewRows}
-                        testId="ide-submission-preview-table"
-                      />
-                    </div>
-                  )}
-                  <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-1)' }}>
-                    <IdeButton
-                      tone="primary"
-                      onClick={onExportSubmission}
-                      testId="ide-export-submission-btn"
-                    >
-                      {submissionExportPending ? 'Exporting…' : 'Export Submission'}
-                    </IdeButton>
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
 
           {/* Session controls */}
           <section className="ide-surface-dock-section" data-testid="ide-session-controls">
@@ -898,39 +795,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   <><span className="ide-qstat-sep" aria-hidden="true">·</span>
                   <span>Saved {savedAgoLabel}</span></>
                 )}
-              </div>
-            )}
-            {/* STATE C: Submit CTA banner — shown when verify passed + export ready */}
-            {submissionReady && (onExportSubmission || onStudentNameChange) && (
-              <div className="ide-project-submit-hero" data-testid="ide-project-submit-hero">
-                <div className="ide-project-submit-hero-copy">
-                  <h2 className="ide-project-submit-hero-title">Ready to submit</h2>
-                  <p className="ide-project-submit-hero-body">
-                    Verify passed and export is current. Add your name and export the submission.
-                  </p>
-                </div>
-                <div className="ide-project-submit-hero-form">
-                  {onStudentNameChange && (
-                    <input
-                      id="ide-submit-hero-name"
-                      type="text"
-                      className="ide-export-pin-input ide-project-submit-hero-name"
-                      value={studentName}
-                      onChange={(e) => onStudentNameChange(e.target.value)}
-                      placeholder="Your full name"
-                      data-testid="ide-submit-hero-name"
-                    />
-                  )}
-                  {onExportSubmission && (
-                    <IdeButton
-                      tone="primary"
-                      onClick={onExportSubmission}
-                      testId="ide-submit-hero-export-btn"
-                    >
-                      {submissionExportPending ? 'Exporting…' : 'Export Submission →'}
-                    </IdeButton>
-                  )}
-                </div>
               </div>
             )}
         {/* ── Hero Onboarding Panel ── */}
@@ -1237,15 +1101,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   </IdeStatusPill>
                 </div>
                 <p>{exportSummary}</p>
-              </div>
-              <div className="ide-project-readiness-item">
-                <div className="ide-project-readiness-item-head">
-                  <span>{submissionSummary.label}</span>
-                  <IdeStatusPill tone={submissionSummary.tone}>
-                    {submissionSummary.status}
-                  </IdeStatusPill>
-                </div>
-                <p>{submissionSummary.summary}</p>
               </div>
             </div>
             {unmappedRequiredCount > 0 && (
@@ -1707,84 +1562,6 @@ function getExportSummary(
   return 'Export can be opened for artifact review or rebuild.';
 }
 
-function getSubmissionSummary(input: {
-  studentName: string;
-  hasVerifyRun: boolean;
-  submissionPreview: ProjectSurfaceProps['submissionPreview'];
-  onExportSubmission?: ProjectSurfaceProps['onExportSubmission'];
-  onStudentNameChange?: ProjectSurfaceProps['onStudentNameChange'];
-}): {
-  label: string;
-  tone: 'idle' | 'ok' | 'warn' | 'error';
-  status: string;
-  summary: string;
-} {
-  const { studentName, hasVerifyRun, submissionPreview, onExportSubmission, onStudentNameChange } = input;
-  const submissionEnabled = Boolean(onExportSubmission || onStudentNameChange || submissionPreview);
-  if (!submissionEnabled) {
-    return {
-      label: 'Session',
-      tone: 'idle',
-      status: 'LOCAL',
-      summary: 'Submission export is not enabled for this project snapshot.',
-    };
-  }
-  if (studentName.trim().length === 0) {
-    return {
-      label: 'Submission',
-      tone: 'warn',
-      status: 'NAME NEEDED',
-      summary: 'Add your name before export so the submission is tied to more than a device ID.',
-    };
-  }
-  if (!hasVerifyRun) {
-    return {
-      label: 'Submission',
-      tone: 'warn',
-      status: 'VERIFY FIRST',
-      summary: 'Run Verify before exporting so the submission includes current correctness evidence.',
-    };
-  }
-  if (!submissionPreview) {
-    return {
-      label: 'Submission',
-      tone: 'idle',
-      status: 'READY',
-      summary: 'Submission export is available with the current student identity and verify run.',
-    };
-  }
-  if (submissionPreview.overallGateVerdict === 'block') {
-    return {
-      label: 'Submission',
-      tone: 'error',
-      status: 'BLOCKED',
-      summary: 'Submission gate is blocked. Resolve the current verify or export issues before handoff.',
-    };
-  }
-  if (submissionPreview.overallGateVerdict === 'warn') {
-    return {
-      label: 'Submission',
-      tone: 'warn',
-      status: 'WARN',
-      summary: `Submission export is available, but ${submissionPreview.fails} verify failure${submissionPreview.fails === 1 ? '' : 's'} remain in the preview.`,
-    };
-  }
-  if (submissionPreview.overallGateVerdict === 'pass') {
-    return {
-      label: 'Submission',
-      tone: 'ok',
-      status: 'READY',
-      summary: `Submission preview is clean for ${submissionPreview.assignmentId ?? 'the current assignment'}.`,
-    };
-  }
-  return {
-    label: 'Submission',
-    tone: 'idle',
-    status: 'UNVERIFIED',
-    summary: 'Submission export is available, but the preview has not been graded yet.',
-  };
-}
-
 function toMappingKey(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -1795,20 +1572,3 @@ function compareText(left: string, right: string): number {
   return 0;
 }
 
-function submissionRunStatusPill(status: 'pass' | 'fail' | 'none'): React.ReactNode {
-  const tone = status === 'pass' ? 'ok' : status === 'fail' ? 'error' : 'idle';
-  return <IdeStatusPill tone={tone}>{status.toUpperCase()}</IdeStatusPill>;
-}
-
-function submissionVerdictPill(
-  verdict: 'pass' | 'warn' | 'block' | 'ungraded'
-): React.ReactNode {
-  const tone = verdict === 'pass'
-    ? 'ok'
-    : verdict === 'warn'
-      ? 'warn'
-      : verdict === 'block'
-        ? 'error'
-        : 'idle';
-  return <IdeStatusPill tone={tone}>{verdict.toUpperCase()}</IdeStatusPill>;
-}
