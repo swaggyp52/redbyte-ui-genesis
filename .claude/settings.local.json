@@ -142,7 +142,8 @@
       "Bash(claude mcp add playwright -- npx -y @playwright/mcp@latest)",
       "mcp__Claude_Preview__preview_start",
       "Bash(Start-Sleep -Seconds 5)",
-      "Bash(Write-Host \"done\")"
+      "Bash(Write-Host \"done\")",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []
