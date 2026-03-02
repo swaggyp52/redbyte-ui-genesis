@@ -1,1 +1,0 @@
-export * from './labDefinitions.ts';

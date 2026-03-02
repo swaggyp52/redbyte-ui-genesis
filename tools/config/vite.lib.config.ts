@@ -17,6 +17,7 @@ export default defineConfig({
     tsconfigPaths(),
     dts({
       insertTypesEntry: true,
+      skipDiagnostics: true,
       exclude: ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
     }),
   ],

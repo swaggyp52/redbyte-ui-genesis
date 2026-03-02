@@ -2,7 +2,6 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import { useWindowStore } from '@redbyte/rb-windowing';
 import { digestValue, stableStringify } from './digest';
 import { getAppInvariants } from './appInvariants';
 
@@ -34,13 +33,7 @@ export const isAuditMode = (): boolean => {
 
 const resolveActor = (explicit?: string): string => {
   if (explicit) return explicit;
-  if (typeof window === 'undefined') return 'system';
-  try {
-    const focused = useWindowStore.getState().getFocusedWindow?.();
-    return focused?.contentId ?? 'system';
-  } catch {
-    return 'system';
-  }
+  return 'system';
 };
 
 export const recordAuditTransition = (input: {

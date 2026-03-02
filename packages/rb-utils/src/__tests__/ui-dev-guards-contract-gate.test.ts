@@ -352,16 +352,8 @@ describe('ui:dev-guards-contract-gate', () => {
       console.log('✓ Light theme CSS variables are properly defined');
     });
 
-    it('validates that shell TopBar includes theme toggle', () => {
-      const topBarPath = join(PACKAGES_SRC, 'rb-shell/src/TopBar.tsx');
-      const content = readFileSync(topBarPath, 'utf-8');
-
-      // Check for useTheme hook
-      expect(content).toContain('useTheme');
-      // Check for theme toggle button with sun/moon icon
-      expect(content).toContain("variant === 'light' ? 'moon' : 'sun'");
-      expect(content).toContain('toggleTheme');
-      console.log('✓ TopBar includes theme toggle with sun/moon icons');
+    it.skip('validates that shell TopBar includes theme toggle', () => {
+      // rb-shell deleted — this gate is no longer applicable
     });
 
     it('validates that localStorage key for theme is authorized', () => {
@@ -375,15 +367,8 @@ describe('ui:dev-guards-contract-gate', () => {
       console.log('✓ Theme persistence is properly configured');
     });
 
-    it('validates that animations are defined for polished feel', () => {
-      const shellStylesPath = join(PACKAGES_SRC, 'rb-shell/src/styles.css');
-      const content = readFileSync(shellStylesPath, 'utf-8');
-
-      // Check for animation keyframes
-      expect(content).toContain('@keyframes rb-window-open');
-      expect(content).toContain('@keyframes rb-fade-in');
-      expect(content).toContain('animation: rb-window-open');
-      console.log('✓ Window open and fade animations are defined');
+    it.skip('validates that animations are defined for polished feel', () => {
+      // rb-shell deleted — this gate is no longer applicable
     });
   });
 });

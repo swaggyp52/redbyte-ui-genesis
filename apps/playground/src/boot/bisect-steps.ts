@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 
-// Bisect steps 0-5: progressively import modules (from the original implementation)
+// Bisect steps for boot diagnostics
 export async function runBisect(step: number) {
   const root = document.getElementById('root')!;
   const renderMarker = (n: number, children?: React.ReactNode) => {
@@ -17,79 +17,12 @@ export async function runBisect(step: number) {
   try {
     switch (step) {
       case 0: {
-        // Minimal React only (no CSS import)
         renderMarker(0);
         break;
       }
       case 1: {
-        // Import Shell module ONLY (no render)
-        await import('@redbyte/rb-shell');
-        renderMarker(1);
-        break;
-      }
-      case 2: {
-        // Render Shell (routing/window manager) without any instrumentation
-        const shell = await import('@redbyte/rb-shell');
-        const shellEl = React.createElement(shell.Shell);
-        renderMarker(2, React.createElement('div', { style: { marginTop: 8 } }, shellEl));
-        break;
-      }
-      case 3: {
-        // Import LogicPlaygroundApp module ONLY (no render)
         await import('@redbyte/rb-apps');
-        renderMarker(3);
-        break;
-      }
-      case 4: {
-        // Step 4: Apps are now registered dynamically, so can't render component directly
-        // This step is now a no-op (apps are loaded via registerAllApps in normal bootstrap)
-        renderMarker(4);
-        break;
-      }
-      case 5: {
-        // Control: render Shell without instrumentation
-        const shell = await import('@redbyte/rb-shell');
-        const shellEl = React.createElement(shell.Shell);
-        renderMarker(5, React.createElement('div', { style: { marginTop: 8 } }, shellEl));
-        break;
-      }
-      case 10: {
-        // Dual Canvas Test: Verify Gate 4 (active state switching)
-        const { CanvasHost } = await import('@redbyte/rb-viewport');
-
-        const TestCanvas = ({ id, color }: { id: string; color: string }) => {
-          return React.createElement(
-            CanvasHost as any,
-            {
-              id,
-              className: "border-2 rounded-md transition-colors border-gray-700 active:border-rb-accent"
-            },
-            React.createElement(
-              'div',
-              {
-                'data-testid': `canvas-${id}`,
-                style: {
-                  width: 300,
-                  height: 200,
-                  backgroundColor: color,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontWeight: 'bold'
-                }
-              },
-              `Canvas: ${id}`
-            )
-          );
-        };
-
-        renderMarker(10, React.createElement(
-          'div',
-          { style: { display: 'flex', gap: 20, marginTop: 20 } },
-          React.createElement(TestCanvas, { id: 'left', color: '#1e293b' }),
-          React.createElement(TestCanvas, { id: 'right', color: '#334155' })
-        ));
+        renderMarker(1);
         break;
       }
       default:

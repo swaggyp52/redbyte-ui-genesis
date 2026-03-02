@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Lab3DScene } from '@redbyte/rb-logic-3d';
 import type { ProjectHealth } from '../projectHealth';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -77,8 +76,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const { activeBoardSignal, setActiveBoardSignal } = useBoardSignal();
   const [hwMode, setHwMode] = useState<HwMode>('live');
   const [bringupStepIndex, setBringupStepIndex] = useState(0);
-  const [show3D, setShow3D] = useState(false);
-
   const sim = runtimeSim ?? HARDWARE_EMPTY_SIM;
 
   const hasClockMapping = useMemo(
@@ -118,21 +115,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
 
   const hasBlocking = health.blockingIssues.length > 0;
-
-  // ── 3D board bitmasks ────────────────────────────────────────────────
-  const ledsBitmask   = useMemo(() => ioBus.state.ld.reduce<number>((m, b, i) => m | (b << i), 0), [ioBus.state.ld]);
-  const switchesBitmask = useMemo(() => ioBus.state.sw.reduce<number>((m, b, i) => m | (b << i), 0), [ioBus.state.sw]);
-  const buttonsBitmask  = useMemo(() => ioBus.state.btn.reduce<number>((m, b, i) => m | (b << i), 0), [ioBus.state.btn]);
-  const mappedPinNames  = useMemo(
-    () => mappingRows.filter((r) => r.pin.trim().length > 0).map((r) => r.label),
-    [mappingRows],
-  );
-  const handle3dSwitchToggle = useCallback(
-    (index: number, newValue: boolean) => ioBus.actions.setSwitch(index, newValue ? 1 : 0),
-    [ioBus.actions],
-  );
-  const handle3dButtonPress   = useCallback((index: number) => ioBus.actions.setButton(index, 1), [ioBus.actions]);
-  const handle3dButtonRelease = useCallback((index: number) => ioBus.actions.setButton(index, 0), [ioBus.actions]);
 
   // ── Verify status for callout ────────────────────────────────────────
   const verifyStatus = health.lastVerify?.status
@@ -667,44 +649,19 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           {(['live', 'bringup', 'proof'] as const).map((m) => (
             <IdeButton
               key={m}
-              tone={hwMode === m && !show3D ? 'primary' : 'ghost'}
-              onClick={() => { setShow3D(false); setHwMode(m); }}
+              tone={hwMode === m ? 'primary' : 'ghost'}
+              onClick={() => setHwMode(m)}
               testId={`ide-hw-mode-btn-${m}`}
             >
               {m === 'live' ? 'Live Monitor' : m === 'bringup' ? 'Bring-Up' : 'Proof'}
             </IdeButton>
           ))}
-          <span className="ide-hw-mode-divider" aria-hidden="true" />
-          <IdeButton
-            tone={show3D ? 'primary' : 'ghost'}
-            onClick={() => setShow3D((v) => !v)}
-            testId="ide-hw-mode-btn-3d"
-          >
-            3D Board
-          </IdeButton>
           {sim.tick > 0 && (
             <span className="ide-hw-tick-badge" data-testid="ide-hw-tick-badge">
               t{sim.tick}
             </span>
           )}
         </div>
-
-        {/* ── 3D Board view ── */}
-        {show3D && (
-          <div className="ide-hw-3d-wrap" data-testid="ide-hw-3d-viewport">
-            <Lab3DScene
-              leds={ledsBitmask}
-              switches={switchesBitmask}
-              buttons={buttonsBitmask}
-              mappedPins={mappedPinNames}
-              onSwitchToggle={handle3dSwitchToggle}
-              onButtonPress={handle3dButtonPress}
-              onButtonRelease={handle3dButtonRelease}
-              width="100%"
-              height="100%"
-            />
-          </div>
-        )}
 
         {/* ── Board ── */}
         <div className={`ide-hw-board-wrap ${hwMode === 'proof' ? 'is-proof' : ''}`}>
