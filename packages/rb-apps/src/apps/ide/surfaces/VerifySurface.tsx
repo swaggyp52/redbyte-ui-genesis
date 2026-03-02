@@ -103,6 +103,7 @@ const WaveformViewer: React.FC<{
   rowHeight?: number;
   emptyMessage?: string;
   signalMeta?: Map<string, { direction: 'in' | 'out'; pin?: string }>;
+  isSequential?: boolean;
 }> = ({
   signals,
   ticks,
@@ -117,6 +118,7 @@ const WaveformViewer: React.FC<{
   rowHeight = 38,
   emptyMessage = 'Run verification to see waveforms',
   signalMeta,
+  isSequential = false,
 }) => {
   const LABEL_W = 112;
   const ROW_H = rowHeight;
@@ -192,6 +194,21 @@ const WaveformViewer: React.FC<{
           fill="rgba(255,55,55,0.13)"
         />
       ) : null)}
+
+      {/* Clock edge markers — small ↑ glyphs for sequential circuits */}
+      {isSequential && ticks.map((tick, i) => (
+        <text
+          key={`clk-${tick}`}
+          x={LABEL_W + i * TICK_W + TICK_W / 2}
+          y={HEADER_H - 4}
+          textAnchor="middle"
+          fontSize={7}
+          fill="rgba(46,196,182,0.5)"
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
+        >
+          ↑
+        </text>
+      ))}
 
       {/* Tick labels in header — number every 5th, dot otherwise */}
       {ticks.map((tick, i) => i % 5 === 0 ? (
@@ -2543,6 +2560,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   onSelectSignal={setSelectedSignal}
                   rowHeight={ROW_H_MAP[waveformDensity]}
                   signalMeta={signalMetaMap}
+                  isSequential={isSequentialRun}
                   emptyMessage={
                     lastRun
                       ? 'No waveform data in this run — check I/O mapping in Design'
