@@ -1251,23 +1251,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!event.shiftKey || event.key.toLowerCase() !== 'd') return;
       const activeEl = document.activeElement as HTMLElement | null;
       const tagName = activeEl?.tagName?.toLowerCase();
-      if (tagName === 'input' || tagName === 'textarea' || activeEl?.isContentEditable) {
+      const isTextInput = tagName === 'input' || tagName === 'textarea' || activeEl?.isContentEditable;
+
+      // Shift+D: toggle design debug overlay
+      if (event.shiftKey && event.key.toLowerCase() === 'd' && !isTextInput) {
+        event.preventDefault();
+        setDesignDebugEnabled((previous) => !previous);
         return;
       }
-      event.preventDefault();
-      setDesignDebugEnabled((previous) => {
-        const next = !previous;
-        return next;
-      });
+
+      // G: toggle grid snap
+      if (!event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey
+          && (event.key === 'g' || event.key === 'G') && !isTextInput) {
+        event.preventDefault();
+        toggleSnapToGrid();
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, []);
+  }, [toggleSnapToGrid]);
 
   useEffect(() => {
     const pending = pendingDebugToggleRef.current;
@@ -1999,8 +2005,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     onClick={setSelectMode}
                     data-testid="ide-design-tool-select"
                     aria-pressed={toolMode === 'select'}
+                    title="Select tool (S)"
                   >
-                    <span className="ide-design-tool-icon" aria-hidden="true">SEL</span>
+                    <span className="ide-design-tool-icon" aria-hidden="true">↖</span>
                     <span className="ide-design-tool-text"><strong>Select</strong><kbd>S</kbd></span>
                   </button>
                   <button
@@ -2009,8 +2016,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     onClick={setWireMode}
                     data-testid="ide-design-tool-wire"
                     aria-pressed={toolMode === 'wire'}
+                    title="Wire tool (W)"
                   >
-                    <span className="ide-design-tool-icon" aria-hidden="true">WIR</span>
+                    <span className="ide-design-tool-icon" aria-hidden="true">⌀</span>
                     <span className="ide-design-tool-text"><strong>Wire</strong><kbd>W</kbd></span>
                   </button>
                 </div>
@@ -2046,17 +2054,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       {v === 'canvas' ? 'Canvas' : v === 'hdl' ? 'HDL' : 'Split'}
                     </button>
                   ))}
-                </div>
-                {/* Primary CTAs — right-aligned actions */}
-                <div className="ide-toolbar-cta-group" data-testid="ide-design-cta-group">
-                  <span data-testid="ide-primary-cta">
-                    <IdeButton tone="primary" onClick={addIoPins} testId="ide-design-add-io-pins" className="is-sm">
-                      IO Pins
-                    </IdeButton>
-                  </span>
-                  <IdeButton tone="secondary" onClick={addAndGateStarter} testId="ide-design-add-and-starter" className="is-sm">
-                    AND Demo
-                  </IdeButton>
                 </div>
                 <button
                   type="button"
@@ -2358,23 +2355,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <ol className="ide-design-empty-steps" data-testid="ide-design-empty-checklist">
                           <li>
                             <span className="ide-design-empty-step-index">1</span>
-                            <span>Add Inputs/Outputs</span>
+                            <span>Pick a gate from the palette on the left</span>
                           </li>
                           <li>
                             <span className="ide-design-empty-step-index">2</span>
-                            <span>Place Gates</span>
+                            <span>Click the canvas to place it</span>
                           </li>
                           <li>
                             <span className="ide-design-empty-step-index">3</span>
-                            <span>Wire and Verify</span>
+                            <span>Drag from an output port to an input port to wire it</span>
                           </li>
                         </ol>
                         <div className="ide-design-empty-actions">
                           <IdeButton tone="secondary" onClick={addIoPins} testId="ide-design-empty-add-io">
                             Add Inputs/Outputs
-                          </IdeButton>
-                          <IdeButton tone="primary" onClick={addAndGateStarter} testId="ide-design-empty-add-and">
-                            Add an AND example
                           </IdeButton>
                         </div>
                       </div>
@@ -2456,8 +2450,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               >
                 {/* VHDL section */}
                 <div className="ide-design-hdl-header" data-testid="ide-design-hdl-header">
-                  <span className="ide-design-hdl-header-title">top.vhd</span>
-                  <span className="ide-design-hdl-header-lang">VHDL</span>
+                  <span className="ide-design-hdl-header-title">Generated VHDL</span>
+                  <span className="ide-design-hdl-header-lang">top.vhd</span>
                   {!hdlDraftText && !topHdl && liveHdlResult.vhd && (
                     <span className="ide-design-sync-badge ide-design-sync-badge-live" data-testid="ide-design-live-badge">
                       Live
