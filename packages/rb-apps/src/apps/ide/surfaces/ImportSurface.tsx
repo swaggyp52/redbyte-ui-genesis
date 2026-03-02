@@ -1556,16 +1556,13 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
             {/* ── STOP-SHIP: Behavioral / empty-circuit blocker ── */}
             {hasImportBlocker && (
-              <div
-                className="ide-import-behavioral-blocker"
-                data-testid="ide-import-behavioral-blocker"
-                role="alert"
+              <IdeCallout
+                tone="error"
+                title="Cannot commit this import"
+                testId="ide-import-behavioral-blocker"
               >
-                <strong className="ide-import-behavioral-blocker-title">
-                  BLOCKED — Cannot commit this import
-                </strong>
                 {importBlockerReasons.map((reason, i) => (
-                  <p key={i} className="ide-import-behavioral-blocker-reason">
+                  <p key={i} className="ide-copy" style={{ margin: 0 }}>
                     {reason}
                   </p>
                 ))}
@@ -1590,7 +1587,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     </p>
                   </details>
                 )}
-              </div>
+              </IdeCallout>
             )}
 
             <div className="ide-inline-actions ide-import-commit-actions">
@@ -1787,23 +1784,17 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
                 {/* Live behavioral warning banner — shows immediately as user types */}
                 {detectedBehavioralConstructs.length > 0 && (
-                  <div
-                    className="ide-import-behavioral-warning"
-                    data-testid="ide-import-behavioral-warning"
-                    role="alert"
-                    style={{
-                      marginBottom: 'var(--ide-space-2)',
-                      padding: 'var(--ide-space-1) var(--ide-space-2)',
-                      border: '1px solid var(--rb-warning, #fa0)',
-                      borderRadius: 'var(--ide-radius-s)',
-                      background: 'color-mix(in srgb, var(--rb-warning, #fa0) 10%, transparent)',
-                      fontSize: 'var(--rb-font-size-1)',
-                    }}
+                  <IdeCallout
+                    tone="error"
+                    title="Behavioral HDL cannot be imported"
+                    testId="ide-import-behavioral-warning"
                   >
-                    <strong>Behavioral/sequential constructs detected</strong> — this design uses{' '}
-                    {detectedBehavioralConstructs.join(', ')}. RedByte supports structural/combinational
-                    HDL only. Importing will block at the commit step.
-                  </div>
+                    <p className="ide-copy" style={{ margin: 0 }}>
+                      RedByte supports structural/combinational HDL only. The following constructs were
+                      detected and will block the commit step:{' '}
+                      <strong>{detectedBehavioralConstructs.join(', ')}</strong>.
+                    </p>
+                  </IdeCallout>
                 )}
 
                 <div className="ide-import-language-row">
@@ -1818,6 +1809,13 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     <option value="vhdl">VHDL</option>
                     <option value="verilog">Verilog</option>
                   </select>
+                  <IdeButton
+                    tone="ghost"
+                    onClick={() => setHdlText('')}
+                    testId="ide-import-clear-hdl"
+                  >
+                    Clear
+                  </IdeButton>
                 </div>
                 {detectedEntityNames.length >= 2 && (
                   <div className="ide-import-entity-chooser" data-testid="ide-import-entity-chooser">
@@ -1866,7 +1864,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     onChange={(e) => setHdlText(e.target.value)}
                     onScroll={handleHdlScroll}
                     onKeyDown={handleHdlKeyDown}
-                    placeholder="Paste module/entity source here."
+                    placeholder={"-- Paste your VHDL or Verilog here\n-- Structural VHDL and Verilog only (behavioral/process blocks not supported)\n-- Try one of the sample templates below ↓"}
                     spellCheck={false}
                     autoCapitalize="off"
                     autoCorrect="off"
