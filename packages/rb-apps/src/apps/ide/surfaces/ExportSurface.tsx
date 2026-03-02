@@ -722,6 +722,22 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   </span>
                 </header>
 
+                {hasBlockingErrors && requiredMappedCount < requiredCount && onGoToHardware && (
+                  <IdeCallout
+                    tone="error"
+                    title="IO mapping incomplete"
+                    testId="ide-export-io-incomplete-callout"
+                  >
+                    <p className="ide-copy" style={{ margin: 0 }}>
+                      All required input/output ports must be assigned Basys3 pin identifiers before downloading the Vivado kit.
+                    </p>
+                    <div style={{ marginTop: 'var(--ide-space-2)' }}>
+                      <IdeButton tone="primary" onClick={onGoToHardware} testId="ide-export-go-map-pins">
+                        Map Pins in Hardware →
+                      </IdeButton>
+                    </div>
+                  </IdeCallout>
+                )}
                 {hasBlockingErrors && (
                   <IdeCallout
                     tone="error"
