@@ -17346,3 +17346,35 @@ All 25 `pnpm verify:gates` gates now pass (exit 0).
 `pnpm -r build` — all packages `✓ built`, zero `error TS` lines. All 25 `pnpm verify:gates` gates pass.
 
 - **Attribution**: Connor Angiel
+
+
+## Change Log 2026-03-01 to 2026-03-02 (Sprint 20 — Full IDE Completion Pass)
+
+### Sprint 20 — Sprints A–J (commits covering 10+ sprints)
+
+**Deleted:**
+- Dead apps: lab3-webapp, manual-site, studio, playground_bak2
+- Dead packages: rb-shell, rb-analog-sim, rb-windowing, rb-logic-3d, all non-IDE app components
+- All `tmpclaude-*` temp directories from repo root
+- `SubmissionViewerSurface`, `evidenceCapsule.ts`, submission dock from ProjectSurface
+- `proofRunFlags`, `onExportSubmission`, `submissionExportPending`, `submissionPreview` from IdeApp
+
+**Added:**
+- Lab starters gallery (Labs 1–8) in ProjectSurface landing state
+- Lab starters: `labStarters.ts` with 8 `IdeExampleDefinition`s loaded via `examplesCatalog.ts`
+- G hotkey for grid snap in DesignSurface; improved tool labels (SEL→↖, WIR→⌀)
+- Sequential clock tick markers (↑) in WaveformViewer when `isSequential`
+- Export IO-incomplete callout in ExportSurface with "Map Pins in Hardware →" CTA
+- Import behavioral blocker converted from custom div to `IdeCallout tone="error"`; Clear button added to HDL textarea
+- HardwareSurface: 7-segment display guidance callout when SSD pins mapped (CA/CB/.../AN0-AN3)
+- HardwareSurface: Dismissable debounce guidance callout for physical button mappings
+- KeyboardShortcutsModal: 16-shortcut table, opened via ? button in top bar
+- OnboardingOverlay: 3-step first-use tour, localStorage `rb-onboarding-v1-seen` guard
+- Quality gates: `console-budget-gate` (≤140 non-test console calls), `lab-starter-load-gate` (all 8 labs)
+
+**Gates:**
+- `pnpm verify:gates`: ALL PASS (27 gates total)
+- Console budget: 125/140 ✅
+- Lab starter load: 8/8 ✅
+
+- **Attribution**: Connor Angiel
