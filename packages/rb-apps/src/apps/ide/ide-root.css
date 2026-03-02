@@ -13618,3 +13618,88 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   letter-spacing: 0.08em; text-transform: uppercase;
   color: rgba(80, 130, 180, 0.8); margin: 0;
 }
+
+/* ── Lab Starters Gallery (Sprint C-2) ── */
+.ide-project-lab-gallery-disclosure {
+  margin-top: var(--rb-space-5, 24px);
+}
+.ide-project-lab-gallery-summary {
+  cursor: pointer;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: rgba(80, 130, 180, 0.7);
+  padding: 6px 0;
+  list-style: none;
+  user-select: none;
+}
+.ide-project-lab-gallery-summary::-webkit-details-marker { display: none; }
+.ide-project-lab-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.ide-project-lab-card {
+  display: flex; flex-direction: column; gap: 4px;
+  text-align: left;
+  background: rgba(3, 12, 30, 0.7);
+  border: 1px solid rgba(18, 44, 80, 0.5);
+  border-radius: var(--ide-radius-m, 6px);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ide-project-lab-card:hover {
+  border-color: rgba(42, 103, 189, 0.7);
+  background: rgba(10, 25, 55, 0.85);
+}
+.ide-project-lab-card-number {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgba(42, 103, 189, 0.8);
+}
+.ide-project-lab-card-title {
+  font-size: 13px; font-weight: 600;
+  color: rgba(190, 215, 245, 0.95);
+  line-height: 1.3;
+}
+.ide-project-lab-card-desc {
+  font-size: 11px;
+  color: rgba(130, 165, 205, 0.75);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+.ide-project-lab-card-meta {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 6px;
+}
+.ide-project-lab-card-badge {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.ide-project-lab-card-badge--intro {
+  background: rgba(46, 196, 182, 0.12);
+  color: rgba(46, 196, 182, 0.85);
+  border: 1px solid rgba(46, 196, 182, 0.25);
+}
+.ide-project-lab-card-badge--intermediate {
+  background: rgba(253, 197, 58, 0.1);
+  color: rgba(253, 197, 58, 0.8);
+  border: 1px solid rgba(253, 197, 58, 0.2);
+}
+.ide-project-lab-card-badge--advanced {
+  background: rgba(240, 80, 90, 0.1);
+  color: rgba(240, 100, 110, 0.8);
+  border: 1px solid rgba(240, 80, 90, 0.2);
+}
+.ide-project-lab-card-time {
+  font-size: 10px;
+  color: rgba(80, 120, 160, 0.7);
+}
+.ide-project-lab-card-cta {
+  font-size: 11px; font-weight: 600;
+  color: rgba(42, 103, 189, 0.8);
+  margin-top: 6px;
+}

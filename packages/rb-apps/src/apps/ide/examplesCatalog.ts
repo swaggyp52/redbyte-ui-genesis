@@ -1,5 +1,6 @@
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { TestVector } from '@redbyte/rb-utils';
+import { LAB_STARTERS } from './labStarters';
 
 export interface IdeExampleIoRow {
   id: string;
@@ -391,6 +392,7 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
       ],
     },
   },
+  ...LAB_STARTERS.map((s) => s.example),
 ];
 
 export function getIdeExampleById(id: string): IdeExampleDefinition | undefined {

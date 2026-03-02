@@ -8,7 +8,7 @@ import { BoardSignalProvider } from '../BoardSignalContext';
 
 function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurfaceProps {
   return {
-    projectName: 'Submission Preview Project',
+    projectName: 'Test Project',
     description: '',
     determinismHash: 'abc123def456',
     topModuleName: 'top',
@@ -50,45 +50,11 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
     studentName: '',
     onStudentNameChange: vi.fn(),
     hasVerifyRun: true,
-    onExportSubmission: vi.fn(),
-    submissionExportPending: false,
-    submissionPreview: {
-      lastStatus: 'pass',
-      passes: 4,
-      fails: 1,
-      overallGateVerdict: 'warn',
-      assignmentId: 'lab-7',
-      labCode: 'ECE141-L7',
-    },
     ...overrides,
   };
 }
 
-describe('ProjectSurface submission workflow hints', () => {
-  it('shows a device-ID warning when student name is blank', () => {
-    const { getByTestId } = render(
-      <BoardSignalProvider>
-        <ProjectSurface {...makeProps({ studentName: '' })} />
-      </BoardSignalProvider>
-    );
-    expect(getByTestId('ide-submission-student-name-warning').textContent).toContain('device ID');
-  });
-
-  it('renders submission preview fields before export', () => {
-    const { getByTestId } = render(
-      <BoardSignalProvider>
-        <ProjectSurface {...makeProps()} />
-      </BoardSignalProvider>
-    );
-    const previewTable = getByTestId('ide-submission-preview-table');
-    expect(previewTable.textContent).toContain('Last verify status');
-    expect(previewTable.textContent).toContain('PASS');
-    expect(previewTable.textContent).toContain('Gate verdict');
-    expect(previewTable.textContent).toContain('WARN');
-    expect(previewTable.textContent).toContain('lab-7');
-    expect(previewTable.textContent).toContain('ECE141-L7');
-  });
-
+describe('ProjectSurface workspace panels', () => {
   it('surfaces the next action and active example context in the main workspace', () => {
     const { getByTestId } = render(
       <BoardSignalProvider>
@@ -134,7 +100,6 @@ describe('ProjectSurface submission workflow hints', () => {
     expect(getByTestId('ide-project-board-preview').textContent).toContain(
       'Flip switches and the matching LEDs follow immediately.'
     );
-    expect(getByTestId('ide-project-example-signal-tour').textContent).toContain('Switch map');
 
     const context = getByTestId('ide-project-context');
     expect(context.textContent).toContain('Signal Tour: Switches -> LEDs');

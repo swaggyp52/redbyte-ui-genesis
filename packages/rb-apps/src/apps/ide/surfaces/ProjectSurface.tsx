@@ -23,6 +23,7 @@ import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useIoBus } from '../ioBus';
 import { useBoardSignal } from '../BoardSignalContext';
+import { LAB_STARTERS } from '../labStarters';
 
 export interface ProjectMappingRow {
   id: string;
@@ -773,6 +774,37 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 <span className="ide-project-landing-option-cta">Open Import →</span>
               </button>
             </div>
+
+            {/* ── Lab Starters Gallery ── */}
+            <details
+              className="ide-project-lab-gallery-disclosure"
+              open
+              data-testid="ide-project-lab-gallery-disclosure"
+            >
+              <summary className="ide-project-lab-gallery-summary">All lab starters (8 labs)</summary>
+              <div className="ide-project-lab-gallery" data-testid="ide-project-lab-gallery">
+                {LAB_STARTERS.map((starter) => (
+                  <button
+                    key={starter.id}
+                    type="button"
+                    className="ide-project-lab-card"
+                    onClick={() => { onOpenExample(starter.id); onOpenDesign(); }}
+                    data-testid={`ide-project-lab-card-${starter.id}`}
+                  >
+                    <span className="ide-project-lab-card-number">Lab {starter.labNumber}</span>
+                    <span className="ide-project-lab-card-title">{starter.title.replace(/Lab \d+ — /, '')}</span>
+                    <span className="ide-project-lab-card-desc">{starter.description}</span>
+                    <div className="ide-project-lab-card-meta">
+                      <span className={`ide-project-lab-card-badge ide-project-lab-card-badge--${starter.difficulty}`}>
+                        {starter.difficulty}
+                      </span>
+                      <span className="ide-project-lab-card-time">{starter.estimatedMinutes} min</span>
+                    </div>
+                    <span className="ide-project-lab-card-cta">Start →</span>
+                  </button>
+                ))}
+              </div>
+            </details>
           </div>
         ) : (
           /* STATE B/C — circuit loaded */
