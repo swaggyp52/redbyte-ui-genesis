@@ -17,12 +17,12 @@ function check(condition, message) {
 check(fs.existsSync(DIST), 'dist/ exists');
 check(fs.existsSync(path.join(DIST, 'index.html')), 'dist/index.html exists');
 check(fs.existsSync(path.join(DIST, 'build.json')), 'dist/build.json exists');
-check(fs.existsSync(path.join(DIST, 'assets')), 'dist/assets/ exists');
+// Note: dist/assets/ is not required — root is a redirect stub with no assets of its own.
 
-// 2. Marketing Content Check
+// 2. Root index content check (redirect stub or full marketing page)
 const rootIndex = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8');
-check(rootIndex.includes('RedByte OS'), 'dist/index.html is the Marketing site');
-check(rootIndex.includes('src="/assets/') || rootIndex.includes('href="/assets/'), 'dist/index.html uses root assets');
+check(rootIndex.includes('RedByte OS'), 'dist/index.html references RedByte OS');
+check(rootIndex.includes('REDBYTE_MARKETING_ROOT'), 'dist/index.html has REDBYTE_MARKETING_ROOT marker');
 
 // 3. OS Structure
 const OS = path.join(DIST, 'os');
@@ -67,8 +67,8 @@ if (shellChunk) {
     check(shellJs.includes('1.0.0') || shellJs.includes('v1.'), 'rb-shell chunk contains version stamp');
 }
 
-// 8. No source maps leaked in production (if strict mode)
-if (process.env.RB_STRICT_DIST === '1') {
+// 8. No source maps leaked in production (if strict mode, only if root assets/ exists)
+if (process.env.RB_STRICT_DIST === '1' && fs.existsSync(path.join(DIST, 'assets'))) {
     const allAssets = fs.readdirSync(path.join(DIST, 'assets'));
     const mapFiles = allAssets.filter(f => f.endsWith('.map'));
     check(mapFiles.length === 0, 'No .map files in production dist/assets/');

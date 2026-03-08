@@ -27,9 +27,9 @@ const REQUIRED_FILES = [
   'os/version.json',
 ];
 
-// Required directories with at least one file
+// Required directories with at least one file.
+// Note: root 'assets/' is not required — root is a redirect stub with no compiled assets.
 const REQUIRED_DIRS = [
-  'assets',
   'os/assets',
 ];
 

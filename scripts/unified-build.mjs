@@ -21,8 +21,6 @@ try {
     console.log('0. Pre-building workspace packages...');
     const packagesToBuild = [
         'rb-apps',
-        'rb-shell',
-        'rb-windowing',
         'rb-theme',
         'rb-icons',
         'rb-utils',
@@ -39,16 +37,13 @@ try {
         }
     }
 
-    console.log('1. Building manual site...');
-    execSync('pnpm --filter @redbyte/manual-site build', { stdio: 'inherit', env });
-
-    console.log('2. Building playground OS...');
+    console.log('1. Building playground OS...');
     execSync('pnpm --filter @redbyte/playground build', { stdio: 'inherit', env });
 
-    console.log('3. Merging artifacts...');
+    console.log('2. Merging artifacts...');
     execSync('node scripts/merge-dist.mjs', { stdio: 'inherit', env });
 
-    console.log('4. Verifying distribution...');
+    console.log('3. Verifying distribution...');
     execSync('node scripts/verify-dist.mjs', { stdio: 'inherit', env });
 
     console.log('✨ Unified Build Succeeded!');

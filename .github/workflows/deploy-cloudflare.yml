@@ -47,7 +47,7 @@ jobs:
         if: steps.cf_secrets.outputs.has_secrets == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: '24.13.0'
+          node-version: '20.19.0'
           cache: 'pnpm'
 
       - name: Install dependencies

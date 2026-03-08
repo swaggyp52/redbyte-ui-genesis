@@ -1,5 +1,10 @@
 # Cloudflare Pages Deployment Setup
 
+> **⚠️ PARTIALLY STALE** — References to `lab3-webapp` below are incorrect.
+> The actual build is `pnpm build:unified` → `dist/` (not `apps/lab3-webapp/dist`).
+> The deploy workflow is `.github/workflows/deploy-cloudflare.yml` using Node 20.19.0.
+> Disable automatic Cloudflare builds; use GitHub Actions Direct Upload only.
+
 ## CRITICAL: Disable Automatic Builds
 
 The `redbyte-ui-genesis` Cloudflare Pages project **MUST** have automatic builds disabled.

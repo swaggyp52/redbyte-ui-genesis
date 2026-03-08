@@ -182,14 +182,22 @@ gate verdicts, and submission details. Not student-facing.
 
 ---
 
-## Legacy Packages (not used by current IDE)
+## Legacy / Non-Existent Packages (not part of the active IDE)
 
-These packages exist in the monorepo but are not imported by any active surface:
-- `rb-analog-sim` — analog simulation prototype
-- `rb-logic-3d` — 3D voxel logic visualizer
-- `rb-windowing` — OS-era window manager
-- `rb-bridge-agent` — hardware bridge agent (replaced by `rb-fpga-bridge`)
-- `ops-server` — ops backend, standalone service
+These names appear in historical configs (tsconfig paths, vitest aliases) but the packages **do not exist** as source trees:
+- `rb-analog-sim` — analog simulation prototype (never built)
+- `rb-logic-3d` — 3D voxel logic visualizer (removed)
+- `rb-windowing` — OS-era window manager (removed; a minimal stub exists at `packages/rb-windowing/src/index.ts` for vitest alias resolution only)
+- `rb-shell` — OS-era app shell (removed)
+
+These exist as standalone services, not part of the student IDE:
+- `rb-fpga-bridge` — hardware bridge agent (standalone service)
+- `ops-server` — ops backend (standalone service)
+
+**Dead code quarantined** to `archive/dead-legacy-components/`:
+- `OscilloscopeView.tsx`, `OscilloscopePanel.jsx`, `SplitViewLayout.tsx` — OS-era visualizer components
+- `BoardIOPanel.js`, `TestVectorPanel.js`, `TruthTableAnalyzer.js` — legacy JS panels
+- 31 OS-era test files that referenced deleted apps/components
 
 ---
 

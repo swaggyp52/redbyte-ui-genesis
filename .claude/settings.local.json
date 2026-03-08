@@ -143,7 +143,9 @@
       "mcp__Claude_Preview__preview_start",
       "Bash(Start-Sleep -Seconds 5)",
       "Bash(Write-Host \"done\")",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(/c/Users/conno/redbyte-ui/AI_STATE.md:*)",
+      "Bash(do:*)"
     ],
     "deny": [],
     "ask": []

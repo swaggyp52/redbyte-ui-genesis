@@ -1,5 +1,19 @@
 # RedByte OS Live Preview Deployment Guide
 
+> **⚠️ STALE DOCUMENT** — This file was written for the OS-era v0.1.0-preview (window manager, Files app, etc.).
+> The canonical v1 deployment is described below. The OS-era smoke checklist lower in this file is not applicable.
+>
+> **Canonical v1 Build + Deploy:**
+> - Build command: `pnpm build:unified` (node scripts/unified-build.mjs)
+> - Output: `dist/` — root stub (redirects to /os) + `/os/` (IDE playground)
+> - Deploy workflow: `.github/workflows/deploy-cloudflare.yml` (Node 20.19.0, pnpm 10.24.0)
+> - Verify: `https://redbyteapps.dev/os/version.json` → `{ sha, builtAt }`
+> - Node version: 20.19.0 (per CI_CONTRACT.md)
+
+---
+
+## [Legacy] RedByte OS Live Preview Deployment Guide
+
 This document outlines the deployment procedure for RedByte OS live preview (v0.1.0-preview) to redbyteapps.dev or any static hosting provider.
 
 ## Build Process
@@ -7,7 +21,7 @@ This document outlines the deployment procedure for RedByte OS live preview (v0.
 ### 1. Build Command
 
 ```bash
-pnpm -w build
+pnpm build:unified
 ```
 
 This builds all workspace packages and creates the production bundle for the playground app.

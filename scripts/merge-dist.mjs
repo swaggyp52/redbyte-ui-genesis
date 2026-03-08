@@ -27,14 +27,26 @@ async function merge() {
     }
     fs.mkdirSync(FINAL_DIST, { recursive: true });
 
-    // 2. Copy Marketing to root
-    if (fs.existsSync(MANUAL_DIST)) {
-        console.log(`📦 Copying Marketing site from ${MANUAL_DIST} to root...`);
-        fs.cpSync(MANUAL_DIST, FINAL_DIST, { recursive: true });
-    } else {
-        console.error('❌ Marketing build not found at', MANUAL_DIST);
-        process.exit(1);
-    }
+    // 2. Root index: generate minimal redirect stub (no marketing site in this repo).
+    // The stub satisfies the REDBYTE_MARKETING_ROOT contract and redirects users to the IDE.
+    console.log('⚠️  No marketing site found — writing canonical root redirect stub...');
+    const stubHtml = [
+        '<!DOCTYPE html>',
+        '<html lang="en">',
+        '  <head>',
+        '    <meta charset="UTF-8" />',
+        '    <!-- REDBYTE_MARKETING_ROOT: canonical root stub — the IDE lives at /os/ -->',
+        '    <meta http-equiv="refresh" content="0; url=/os/" />',
+        '    <title>RedByte OS</title>',
+        '  </head>',
+        '  <body>',
+        '    <p>RedByte OS — <a href="/os/">Open the IDE</a></p>',
+        '  </body>',
+        '</html>',
+        '',
+    ].join('\n');
+    fs.writeFileSync(path.join(FINAL_DIST, 'index.html'), stubHtml, 'utf8');
+    console.log('✅ Root redirect stub written to dist/index.html');
 
     // 3. Copy OS to /os subpath
     const osTarget = path.join(FINAL_DIST, 'os');
@@ -53,6 +65,13 @@ async function merge() {
             'utf8',
         );
         console.log('✅ Wrote /os/version.json for deploy verification.');
+
+        // Copy playground's build.json to dist/ root (required by verify-dist-manifest)
+        const playgroundBuildJson = path.join(PLAYGROUND_DIST, 'build.json');
+        if (fs.existsSync(playgroundBuildJson)) {
+            fs.copyFileSync(playgroundBuildJson, path.join(FINAL_DIST, 'build.json'));
+            console.log('✅ Copied build.json to dist/build.json');
+        }
     } else {
         console.error('❌ OS build not found at', PLAYGROUND_DIST);
         process.exit(1);

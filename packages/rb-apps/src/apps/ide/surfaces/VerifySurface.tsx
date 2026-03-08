@@ -89,6 +89,10 @@ interface WaveformSignalRow {
   values: Array<{ tick: number; value: string }>;
 }
 
+// WaveformViewer is intentionally defined inline in VerifySurface (not a separate component file).
+// It is an SVG-based pure function that renders waveform data from the last verify run.
+// Data flows: projectRuntime.ts → buildVerifyReport() → buildVerifyWaveSamples() → this viewer.
+// Do NOT split this into a separate file — it is co-located with VerifySurface by design.
 const WaveformViewer: React.FC<{
   signals: WaveformSignalRow[];
   ticks: number[];
