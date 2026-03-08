@@ -17513,6 +17513,48 @@ All 25 `pnpm verify:gates` gates now pass (exit 0).
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-03-08 (IDE Boot Shadow contract fix)
+
+### Build/boot contract batch - restore required boot mirror wrappers
+
+**Problem**
+
+- `pnpm repo:status` failed immediately at `IDE Boot Shadow Contract`, blocking the repo health check before it could reach later contracts.
+- The failure was not in the canonical IDE boot path itself; it was in the required boot mirror layer that protects against stale JS shadowing around the playground boot entrypoints.
+
+**Cause**
+
+- The canonical TypeScript boot sources in `apps/playground/src/boot/` existed, but the allowlisted `.js` mirror wrappers required by `scripts/gates/ide-boot-shadow-contract.mjs` were missing.
+- That violated the static anti-shadow contract used by `repo:status`.
+
+**Files changed**
+
+- `apps/playground/src/boot/full-bootstrap.js`
+- `apps/playground/src/boot/audit-guards.js`
+- `apps/playground/src/boot/bisect-steps.js`
+- `apps/playground/src/boot/boot-bisect-entry.js`
+
+**What changed**
+
+- Added the four missing `.js` mirror wrappers as exact thin re-exports of the canonical `.ts/.tsx` boot sources required by the Boot Shadow contract.
+- Preserved the existing IDE boot implementation and deploy/runtime truth; only the anti-shadow wrapper layer was restored.
+
+**Why minimal**
+
+- This batch touches only the missing boot wrapper files required by the existing contract.
+- No runtime logic, build pipeline logic, or student-facing IDE behavior was changed.
+
+**Validation**
+
+- `pnpm gates:ide-boot-shadow-contract`
+- `pnpm repo:status`
+
+**Remaining concern**
+
+- `pnpm repo:status` now passes `IDE Boot Shadow Contract` and advances to the next independent failure: `IDE Vivado Pack Contract`.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-08 (Verify waveform lane priority and selected-failure anchoring)
 
 ### Verify waveform batch - failure-aware lane ordering + selected-failure fail zoom
