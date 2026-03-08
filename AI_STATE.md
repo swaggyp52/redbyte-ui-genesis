@@ -17567,6 +17567,52 @@ All 25 `pnpm verify:gates` gates now pass (exit 0).
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-03-08 (IDE Export Includes RBProject contract fix)
+
+### Export/build contract batch - restore RBProject inclusion contract against current export pack
+
+**Problem**
+
+- `pnpm repo:status` failed at `IDE Export Includes RBProject Contract`.
+- The direct gate script pointed to `packages/rb-apps/src/__tests__/ide-export-includes-rbproj-contract.test.ts`, but that test file was missing from the tree.
+
+**Cause**
+
+- The contract intent remained valid and documented in prior `AI_STATE.md` entries: export packs must include the canonical `project.rbproj.json`.
+- The failure was a stale/missing contract target, not a broken export pipeline or environment issue.
+
+**Files changed**
+
+- `packages/rb-apps/src/__tests__/ide-export-includes-rbproj-contract.test.ts`
+
+**What changed**
+
+- Restored `ide-export-includes-rbproj-contract.test.ts` as a current unit-level contract over the canonical export authority.
+- The restored test now asserts:
+  - `buildExportViewModel(project)` includes a ready `project.rbproj.json` artifact
+  - the artifact content exactly matches `encodeRBProject(project)`
+  - the current export ZIP includes `project.rbproj.json`
+  - the ZIP entry text matches the canonical encoded project
+  - repeated ZIP builds are deterministic for the same export artifact set
+  - the decoded `project.rbproj.json` preserves the expected fixture name, project ID, IO mapping, and vectors
+
+**Why minimal**
+
+- No export product code changed.
+- The batch restores the missing contract file against current export/build truth instead of weakening the gate or changing UI behavior.
+
+**Validation**
+
+- `pnpm exec vitest run packages/rb-apps/src/__tests__/ide-export-includes-rbproj-contract.test.ts`
+- `pnpm -s ide:gate:export-includes-rbproj-contract`
+- `pnpm repo:status`
+
+**Remaining concern**
+
+- `pnpm repo:status` now passes `IDE Export Includes RBProject Contract` and advances to the next independent failure: `IDE Bring-Up Contract`.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-08 (IDE Boot Shadow contract fix)
 
 ### Build/boot contract batch - restore required boot mirror wrappers
