@@ -42,7 +42,8 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
         onFixPath={vi.fn()}
       />
     );
-    expect(getByTestId('ide-verify-fail-card')).toBeTruthy();
+    expect(getByTestId('ide-verify-summary-status').textContent).toContain('FAIL');
+    expect(getByTestId('ide-verify-fail-summary-inline')).toBeTruthy();
   });
 
   it('has exactly one Jump CTA: in fail card, not in strip', () => {

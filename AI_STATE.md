@@ -1,5 +1,31 @@
 # AI State
 
+## Change Log 2026-03-08 (Verify Phase 1: Tick-scoped failure context)
+
+### Selected failure context now stays anchored to tick + signal
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` - Replaced signal-only failure selection with a deterministic `tick + signal` failure key, added a single `applyFailureSelection(...)` path used by the failure list, mismatch rows, and fail navigator controls, and drove the mismatch detail + failure explainer from the selected failure case instead of the global first mismatch. The explainer and inspector now show other failing outputs at the same tick and let the student pivot between them without losing the selected case.
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.failure-context.test.tsx` - Added focused regression coverage for repeated failures on the same signal across multiple ticks, plus multi-output failure at the same tick.
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` - Updated the assertions to open the existing Verify drawer before checking run-context surfaces, matching the current drawer-based Verify UI without weakening the test intent.
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx` - Replaced the stale `ide-verify-fail-card` assertion with assertions against the current fail summary strip + inline fail summary surface.
+
+### Why this was minimal
+
+- Kept all state inside `VerifySurface`; no new store, no new runtime schema, no new persistence.
+- Derived everything from the existing sorted `RuntimeVerifyRun.report.rows`, `inputsAtTick`, and waveform data.
+- Preserved the canonical first-failure default while making later student selections stable and case-accurate.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.failure-context.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx` - PASS (`3` files, `7` tests)
+- `pnpm --filter @redbyte/rb-apps test` - PASS (`90` files passed, `1` skipped)
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`; still prints pre-existing unrelated repo type diagnostics outside this Verify batch
+
+- **Attribution**: Connor Angiel
+
+
 ## Change Log 2026-03-01 (Sprint 7: Node Label Editor + Vector Delete + Live Pin Values)
 
 **Status**: COMPLETE — Three student-facing UX improvements targeting the circuit editing loop.
@@ -3722,6 +3748,76 @@ RedByte transformed from multi-window OS environment to focused Vivado companion
   - Finish TopBar scaling (buttons, icons, determinism badge)
   - Add wiring hover feedback (valid target highlights, port glow)
   - Run gates to verify no regressions
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-03-08 (Cross-platform console budget gate)
+
+### Console budget gate: remove Unix shell dependency without changing scope
+
+**Modified files:**
+
+- `packages/rb-apps/src/__tests__/console-budget-gate.test.ts` — Replaced the `grep -rn ... | wc -l` pipeline with a Node-native recursive filesystem walk and per-line `console\.` match counter. The gate still scans only `packages/rb-apps/src`, still includes only `.ts`/`.tsx` files, still skips any `__tests__` directory, still counts matching lines rather than total occurrences, and still enforces the same `BUDGET = 140` threshold. File traversal is sorted lexicographically for deterministic behavior across Windows, macOS, and Linux.
+
+### Validation
+
+- `pnpm -s ui:console-budget-gate` — PASS
+- `pnpm --filter @redbyte/rb-apps test` — PASS (`90` files passed, `1` skipped)
+- `pnpm verify:gates` — PASS; the chain now advances through `ui:console-budget-gate` and completes
+
+- **Attribution**: Connor Angiel
+
+
+## Change Log 2026-03-08 (Hardware freshness readiness + import verify reset clarity)
+
+### Classroom-ready trust pass: hardware export freshness and import verify guidance
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/IdeApp.tsx` — Added pure freshness helpers used by the component, derived `verifyCurrent` from the current project hash versus the latest verification ledger entry, derived `exportCurrent` from the current export hash versus `projectHealthCore.lastExport.hash`, passed both booleans into `HardwareSurface`, and stopped forcing `setCurrentMode('project')` after import so the import confirmation notice can remain visible in the Import surface.
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` — Hardware readiness now distinguishes `ready`, `export-stale`, `export-needed`, and `verify-needed`; readiness/proof actions require both current verification and current export evidence; the hardware console and proof CTA now explicitly warn when the bundle is stale and direct the student to re-export before board programming.
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` — Added a post-import informational callout: "Verification results are not restored from imports. Please run verification again to regenerate waveforms and test results."; kept the notice non-blocking with an `Open Verify` shortcut; reset the notice when starting a new import flow; hardened `parseHdl`/`parseXdc` so button clicks no longer pass a DOM event into `.trim()`.
+
+**Added tests:**
+
+- `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx` — Verifies both the hash-based freshness detection path (project changes, verification reruns, export stays stale) and the surface warning/CTA state (`Export: STALE`, re-export CTA).
+- `packages/rb-apps/src/apps/ide/__tests__/importSurface.verify-reset.test.tsx` — Verifies that importing a project clears `verifyLastRun`/`verifyRunHistory` and shows the explicit verify-reset notice.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.verify-reset.test.tsx` — PASS
+- `pnpm --filter @redbyte/rb-apps build` — exits 0; command still prints pre-existing repo type diagnostics outside this batch
+- `pnpm --filter @redbyte/rb-apps test` — FAIL, but only in pre-existing Windows-incompatible `packages/rb-apps/src/__tests__/console-budget-gate.test.ts` because it shells out to `grep ... | wc -l`
+- `pnpm verify:gates` — FAIL, but only at the same pre-existing `ui:console-budget-gate` after earlier gates pass
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-03-08 (Verify/export trust bridge)
+
+### Classroom trust fixes (working tree)
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/IdeApp.tsx` — compute verify hint inputs from real project state (`missingRequiredCount`, export diagnostics) and pass them into `VerifySurface`.
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` — accept `mappingComplete` and `hasFloatingOutputWarning` props so FAIL hints reflect the current mapped/exportable circuit instead of hard-coded assumptions.
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` — rebuild a derived export project from local pin overrides so the visible mapping table, diagnostics, export hash, previewed artifacts, and downloaded Vivado kit all use the same mapping; disable pin entry on diagnostic-only rows that do not yet exist in project IO mapping; replace stray `setCapsuleBuildError` call with `setDownloadError`; normalize zip bytes to an `ArrayBuffer` before constructing the download blob.
+
+**Added files:**
+
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.hints-bridge.test.tsx` — regression coverage for unmapped-pin and floating-output hint wiring.
+- `packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx` — regression coverage that edited export pins change `top.xdc` preview and export hash.
+
+**Why this was minimal:**
+
+- Kept the canonical surfaces and runtime flow intact.
+- Reused the existing `buildExportViewModel()` authority instead of adding a second export pipeline.
+- Passed two grounded booleans into Verify rather than introducing new stores or diagnostic plumbing.
+
+**Validation:**
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifyHints.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.hints-bridge.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx`
+- `pnpm --filter @redbyte/rb-apps build`
+- Filtered build check for `src/apps/IdeApp.tsx`, `src/apps/ide/surfaces/VerifySurface.tsx`, and `src/apps/ide/surfaces/ExportSurface.tsx` returned no diagnostics. The broader `rb-apps` build still emits unrelated pre-existing type diagnostics in other files/packages outside this batch.
 
 - **Attribution**: Connor Angiel
 
@@ -17376,5 +17472,129 @@ All 25 `pnpm verify:gates` gates now pass (exit 0).
 - `pnpm verify:gates`: ALL PASS (27 gates total)
 - Console budget: 125/140 ✅
 - Lab starter load: 8/8 ✅
+
+- **Attribution**: Connor Angiel
+## Change Log 2026-03-08 (Verify Phase 2 - actionable combos and K-map provenance)
+
+### Verify Phase 2 - combinational provenance wired into canonical failure selection
+
+**Problem**
+
+- Combinational combo rows and K-map cells showed fail state, but they did not preserve enough provenance to answer which concrete verify case failed or jump back into the main Verify failure flow.
+
+**Cause**
+
+- `comboRows` / `kmapRows` were derived from the current run without carrying the originating fail row metadata (`tick`, `signal`, `expected`, `actual`), and `TruthTablePane` only selected by tick.
+
+**Files changed**
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/TruthTablePane.tsx`
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.combo-kmap-provenance.test.tsx`
+
+**What changed**
+
+- Enriched combinational `comboRows` outputs with fail provenance derived from existing `runRows`, including a deterministic `primaryFailure` per combo row.
+- Carried the same failure provenance into K-map cells without changing `RuntimeVerifyRun` or adding persistence.
+- Routed combo row clicks and failing K-map cell clicks through the same selected-failure path introduced in Verify Phase 1.
+- Added compact fail annotations in combo/K-map cells so students can see observed value plus expected value before jumping to the detailed explainer.
+
+**Why minimal**
+
+- No new state layer, schema, or runtime truth source was introduced.
+- Sequential behavior remains unchanged because the richer interactions only apply in combinational combos/K-map mode.
+
+**Validation**
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.combo-kmap-provenance.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.failure-context.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx`
+- `pnpm --filter @redbyte/rb-apps test`
+- `pnpm --filter @redbyte/rb-apps build`
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-03-08 (Verify waveform lane priority and selected-failure anchoring)
+
+### Verify waveform batch - failure-aware lane ordering + selected-failure fail zoom
+
+**Problem**
+
+- Waveform lanes stayed mostly neutral once a failure was selected, so students still had to scan for the failing output, same-tick peer failures, and any probe context that might explain the bug.
+- Fail zoom also stayed anchored to the first failure in the run, even after the student selected a different failing case later in time.
+
+**Cause**
+
+- `VerifySurface` only separated pinned lanes from non-pinned lanes and then kept the remaining order neutral.
+- Verify did not reuse runtime probe context to promote already-present waveform lanes.
+- Fail-window derivation used the global `firstFailureTick` instead of the canonical selected failure case from Verify Phase 1.
+
+**Files changed**
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx`
+
+**What changed**
+
+- Passed runtime probe definitions from `IdeApp` into `VerifySurface` without changing runtime schema or persistence.
+- Re-ranked unpinned waveform lanes deterministically around the selected failure case: selected failing signal, same-tick peer failing outputs, matching probe lanes already present in the waveform, other mapped outputs, mapped inputs, then everything else with lexical fallback.
+- Used that same derived order for both the Verify signal list and waveform lanes so students see one coherent priority model.
+- Changed fail zoom and the "why these ticks" explanation to follow the selected failure case tick while preserving first-failure default behavior on initial load.
+- Added focused regression coverage for waveform lane priority, manual pin precedence, probe carryover, and selected-later-failure fail-window anchoring.
+
+**Why minimal**
+
+- The batch stays entirely inside the existing Verify architecture and canonical `RuntimeVerifyRun` data flow.
+- No new store, persistence layer, schema, or secondary selection system was introduced.
+- Sequential and combinational verification data remain unchanged; only derived lane ordering and fail-window focus were updated.
+
+**Validation**
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.failure-context.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+- `pnpm --filter @redbyte/rb-apps test`
+- `pnpm --filter @redbyte/rb-apps build`
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-03-08 (Verify failure-pattern explanations)
+
+### Verify interpretation batch - selected-case pattern summary plus pattern-aware top-level hints
+
+**Problem**
+
+- Verify had become good at locating the right failure case, waveform lanes, and tick window, but it still did not help students understand what kind of bug shape they were looking at.
+- The failure explainer and top-level hint callout could drift because they were not drawing from one shared interpretation model.
+
+**Cause**
+
+- `VerifySurface` only exposed raw mismatch facts plus a first-match hint ladder.
+- Existing hint logic could not distinguish repeated single-output failure, grouped same-tick failures, delayed divergence, startup-oriented failure, and broad all-run failure from the same canonical verify data.
+
+**Files changed**
+
+- `packages/rb-apps/src/apps/ide/verifyHints.ts`
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/verifyHints.test.ts`
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.hints-bridge.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.failure-patterns.test.tsx`
+
+**What changed**
+
+- Added one derived failure-pattern helper that classifies selected-case failures from existing report rows, same-tick peer failures, fail distribution over time, run meta, and signal roles.
+- The failure explainer now shows a deterministic "Likely bug shape" summary plus a next-inspect suggestion without hiding the raw mismatch evidence.
+- The top-level hint callout now consumes the same shared pattern model, while still preserving mapping-complete and floating-output override priority.
+- Added regression coverage for repeated single-output failure, grouped same-tick failure, delayed divergence, startup/reset-aware failure, PASS no-op behavior, and UI bridge coverage for pattern-aware hint text.
+
+**Why minimal**
+
+- The batch is derived-only: no schema change, no persistence change, no new runtime store, and no detached analysis pipeline.
+- It stays inside the existing Verify architecture and canonical `RuntimeVerifyRun` data flow.
+
+**Validation**
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.failure-context.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.failure-patterns.test.tsx`
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifyHints.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.hints-bridge.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.failure-patterns.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.failure-context.test.tsx`
+- `pnpm --filter @redbyte/rb-apps test`
+- `pnpm --filter @redbyte/rb-apps build`
 
 - **Attribution**: Connor Angiel

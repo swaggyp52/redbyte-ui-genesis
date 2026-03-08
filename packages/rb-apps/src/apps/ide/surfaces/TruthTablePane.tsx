@@ -10,13 +10,23 @@ export type TruthTableRow = {
 
 export type TruthTableMode = 'ticks' | 'combos';
 
+export type TruthTableFailureCase = {
+  tick: number;
+  signal: string;
+  expected: string;
+  actual: string;
+};
+
 export type TruthTableComboRow = {
   tick: number;
   inputBits: string;
+  primaryFailure?: TruthTableFailureCase;
   outputs: Array<{
     signal: string;
     value: string;
+    expected?: string;
     isFail: boolean;
+    failureCase?: TruthTableFailureCase;
   }>;
 };
 
@@ -24,6 +34,7 @@ export type TruthTableKMapCell = {
   bits: string;
   value: string;
   isFail: boolean;
+  failureCase?: TruthTableFailureCase;
 };
 
 export type TruthTableKMapRow = {
@@ -59,6 +70,7 @@ export interface TruthTablePaneProps {
   kmapUnavailableReason?: string;
   traceInputsByTick?: Record<number, TruthTableTraceInput[]>;
   onFixPath?: (row: TruthTableRow) => void;
+  onSelectFailureCase?: (failure: TruthTableFailureCase) => void;
 }
 
 export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
@@ -77,6 +89,7 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
   kmapUnavailableReason,
   traceInputsByTick = {},
   onFixPath,
+  onSelectFailureCase,
 }) => {
   const grouped = useMemo(() => {
     const map = new Map<number, TruthTableRow[]>();
@@ -92,6 +105,22 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
   const isEmpty = rows.length === 0;
   const hasFixAction = Boolean(onFixPath);
   const title = isSequential ? 'TRACE TABLE (TICK LOG)' : 'TRUTH TABLE';
+  const selectComboRow = (row: TruthTableComboRow) => {
+    if (row.primaryFailure) {
+      onSelectFailureCase?.(row.primaryFailure);
+      return;
+    }
+    onSelectTick?.(row.tick);
+  };
+  const selectFailureCase = (failureCase?: TruthTableFailureCase, fallbackTick?: number) => {
+    if (failureCase) {
+      onSelectFailureCase?.(failureCase);
+      return;
+    }
+    if (typeof fallbackTick === 'number') {
+      onSelectTick?.(fallbackTick);
+    }
+  };
   const note =
     effectiveMode === 'ticks'
       ? isSequential
@@ -152,8 +181,15 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
                   {combosRows.map((row) => (
                     <tr
                       key={`${row.tick}-${row.inputBits}`}
-                      className={`ide-truth-table-tr ${selectedTick === row.tick ? 'is-selected' : ''}`}
-                      onClick={() => onSelectTick?.(row.tick)}
+                      className={[
+                        'ide-truth-table-tr',
+                        selectedTick === row.tick ? 'is-selected' : '',
+                        row.primaryFailure ? 'is-fail' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      onClick={() => selectComboRow(row)}
+                      data-testid={`ide-truth-table-combo-row-${toTestId(row.inputBits || String(row.tick))}`}
                     >
                       <td className="ide-truth-table-td ide-truth-table-td-tick">
                         <button
@@ -161,7 +197,7 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
                           className={`ide-truth-table-tick-btn ${selectedTick === row.tick ? 'is-active' : ''}`}
                           onClick={(event) => {
                             event.stopPropagation();
-                            onSelectTick?.(row.tick);
+                            selectComboRow(row);
                           }}
                         >
                           t{row.tick}
@@ -175,7 +211,19 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
                         return (
                           <td key={`${row.tick}-${signal}`} className="ide-truth-table-td ide-truth-table-td-value">
                             {output?.isFail ? (
-                              <span className="ide-truth-table-actual-pill">{output.value}</span>
+                              <button
+                                type="button"
+                                className="ide-truth-table-failure-btn"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  selectFailureCase(output.failureCase, row.tick);
+                                }}
+                                data-testid={`ide-truth-table-combo-fail-${toTestId(`${signal}-${row.inputBits}`)}`}
+                                title={`${signal} expected ${output.expected ?? '-'} observed ${output.value} at t${row.tick}`}
+                              >
+                                <span className="ide-truth-table-actual-pill">{output.value}</span>
+                                <span className="ide-truth-table-failure-note">exp {output.expected ?? '-'}</span>
+                              </button>
                             ) : (
                               output?.value ?? '-'
                             )}
@@ -212,9 +260,29 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
                                 <code>{row.rowCode || '-'}</code>
                               </td>
                               {row.cells.map((cell) => (
-                                <td key={cell.bits} className="ide-truth-table-td ide-truth-table-td-value">
+                                <td
+                                  key={cell.bits}
+                                  className={`ide-truth-table-td ide-truth-table-td-value ${
+                                    cell.isFail ? 'ide-truth-table-kmap-cell is-fail' : ''
+                                  }`}
+                                  data-testid={`ide-truth-table-kmap-cell-${toTestId(`${kmap.outputSignal}-${cell.bits}`)}`}
+                                  onClick={cell.isFail ? () => selectFailureCase(cell.failureCase) : undefined}
+                                >
                                   {cell.isFail ? (
-                                    <span className="ide-truth-table-actual-pill">{cell.value}</span>
+                                    <button
+                                      type="button"
+                                      className="ide-truth-table-failure-btn"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        selectFailureCase(cell.failureCase);
+                                      }}
+                                      title={`${kmap.outputSignal} expected ${cell.failureCase?.expected ?? '-'} observed ${cell.value} at t${cell.failureCase?.tick ?? '-'}`}
+                                    >
+                                      <span className="ide-truth-table-actual-pill">{cell.value}</span>
+                                      <span className="ide-truth-table-failure-note">
+                                        exp {cell.failureCase?.expected ?? '-'}
+                                      </span>
+                                    </button>
                                   ) : (
                                     cell.value
                                   )}

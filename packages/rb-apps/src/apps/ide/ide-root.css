@@ -7714,6 +7714,41 @@ details[open] summary .details-arrow {
   color: rgba(255,130,130,0.95);
 }
 
+.ide-truth-table-failure-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.ide-truth-table-failure-btn:hover {
+  background: rgba(255,107,107,0.08);
+  border-color: rgba(255,107,107,0.2);
+}
+
+.ide-truth-table-failure-btn:focus-visible {
+  outline: 1px solid rgba(255,107,107,0.45);
+  outline-offset: 1px;
+}
+
+.ide-truth-table-failure-note {
+  font-size: 10px;
+  line-height: 1.2;
+  color: rgba(255,210,210,0.78);
+  font-family: var(--rb-font-mono);
+}
+
+.ide-truth-table-kmap-cell.is-fail {
+  background: rgba(255,107,107,0.05);
+}
+
 /* ── Mismatch redirect message ── */
 .ide-verify-mismatch-redirect {
   padding: var(--ide-space-2) var(--ide-space-3);

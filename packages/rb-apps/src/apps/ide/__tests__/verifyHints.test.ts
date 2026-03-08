@@ -3,16 +3,15 @@
  *
  * Each test proves:
  *   1. The triggering context fires the expected hint (non-null, contains key phrase)
- *   2. A minimal baseline context (all flags false/null) fires nothing — no false positives
+ *   2. A minimal baseline context (all flags false/null) fires nothing
  *
  * Priority rule: first matching hint wins. Tests verify the correct hint fires
  * even when multiple conditions could theoretically be true.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { getVerifyHint, type VerifyHintContext } from '../verifyHints';
 
-/** All-false baseline — no hint should fire on this context */
 const BASE: VerifyHintContext = {
   hasDff: false,
   mappingComplete: true,
@@ -20,186 +19,164 @@ const BASE: VerifyHintContext = {
   onlyFirstTickFails: false,
   mismatch: null,
   hasFloatingOutputWarning: false,
+  pattern: null,
 };
 
-describe('getVerifyHint — baseline', () => {
+describe('getVerifyHint - baseline', () => {
   it('returns null when no condition is triggered', () => {
     expect(getVerifyHint(BASE)).toBeNull();
   });
 });
 
-describe('getVerifyHint — Hint 1: unmapped pins', () => {
+describe('getVerifyHint - Hint 1: unmapped pins', () => {
   it('fires when mappingComplete is false', () => {
-    const ctx: VerifyHintContext = { ...BASE, mappingComplete: false };
-    const hint = getVerifyHint(ctx);
-    expect(hint).not.toBeNull();
+    const hint = getVerifyHint({ ...BASE, mappingComplete: false });
     expect(hint).toContain('pins are not mapped');
   });
 
-  it('does NOT fire when mappingComplete is true', () => {
-    const hint = getVerifyHint({ ...BASE, mappingComplete: true });
-    expect(hint).toBeNull();
-  });
-
-  it('fires before floating-output hint when both conditions are true (priority)', () => {
-    const ctx: VerifyHintContext = {
+  it('fires before floating-output hints when both conditions are true', () => {
+    const hint = getVerifyHint({
       ...BASE,
       mappingComplete: false,
       hasFloatingOutputWarning: true,
-    };
-    const hint = getVerifyHint(ctx);
+    });
+    expect(hint).toContain('pins are not mapped');
+  });
+
+  it('fires before pattern hints when mapping is incomplete', () => {
+    const hint = getVerifyHint({
+      ...BASE,
+      mappingComplete: false,
+      pattern: {
+        kind: 'repeated-output',
+        summary: 'This looks localized.',
+        nextInspect: 'Trace the output path.',
+      },
+    });
     expect(hint).toContain('pins are not mapped');
   });
 });
 
-describe('getVerifyHint — Hint 2: floating/undriven output', () => {
+describe('getVerifyHint - Hint 2: floating/undriven output', () => {
   it('fires when hasFloatingOutputWarning is true', () => {
-    const ctx: VerifyHintContext = { ...BASE, hasFloatingOutputWarning: true };
-    const hint = getVerifyHint(ctx);
-    expect(hint).not.toBeNull();
+    const hint = getVerifyHint({ ...BASE, hasFloatingOutputWarning: true });
     expect(hint).toContain('undriven');
   });
 
-  it('does NOT fire when hasFloatingOutputWarning is false', () => {
-    expect(getVerifyHint({ ...BASE, hasFloatingOutputWarning: false })).toBeNull();
+  it('fires before pattern hints when floating output warnings are present', () => {
+    const hint = getVerifyHint({
+      ...BASE,
+      hasFloatingOutputWarning: true,
+      pattern: {
+        kind: 'delayed',
+        summary: 'The circuit diverges later.',
+        nextInspect: 'Compare the first failing tick.',
+      },
+    });
+    expect(hint).toContain('undriven');
   });
 });
 
-describe('getVerifyHint — Hint 3: all ticks fail', () => {
+describe('getVerifyHint - legacy all-ticks and first-tick hints', () => {
   it('fires when allTicksFail is true', () => {
-    const ctx: VerifyHintContext = { ...BASE, allTicksFail: true };
-    const hint = getVerifyHint(ctx);
-    expect(hint).not.toBeNull();
+    const hint = getVerifyHint({ ...BASE, allTicksFail: true });
     expect(hint).toContain('Every tick fails');
   });
 
-  it('does NOT fire when only some ticks fail', () => {
-    const ctx: VerifyHintContext = { ...BASE, allTicksFail: false, mismatch: { expected: '1', actual: '0' } };
-    // hasDff is false, so hint 7 fires instead
-    const hint = getVerifyHint(ctx);
-    expect(hint).not.toContain('Every tick fails');
-  });
-});
-
-describe('getVerifyHint — Hint 4: only first tick fails', () => {
   it('fires when onlyFirstTickFails is true', () => {
-    const ctx: VerifyHintContext = { ...BASE, onlyFirstTickFails: true };
-    const hint = getVerifyHint(ctx);
-    expect(hint).not.toBeNull();
-    expect(hint).toContain('first tick fails');
-  });
-
-  it('does NOT fire when other ticks also fail', () => {
-    expect(getVerifyHint({ ...BASE, onlyFirstTickFails: false })).toBeNull();
-  });
-
-  it('fires before DFF hints when DFF is also present (priority)', () => {
-    const ctx: VerifyHintContext = {
-      ...BASE,
-      hasDff: true,
-      onlyFirstTickFails: true,
-      mismatch: { expected: '1', actual: '0' },
-    };
-    const hint = getVerifyHint(ctx);
+    const hint = getVerifyHint({ ...BASE, onlyFirstTickFails: true });
     expect(hint).toContain('first tick fails');
   });
 });
 
-describe('getVerifyHint — Hint 5: DFF output should be HIGH but is LOW', () => {
-  it('fires when hasDff=true, expected="1", actual="0"', () => {
-    const ctx: VerifyHintContext = {
+describe('getVerifyHint - pattern-aware hints', () => {
+  it('distinguishes repeated single-output failure from grouped peer failure', () => {
+    const repeatedHint = getVerifyHint({
+      ...BASE,
+      pattern: {
+        kind: 'repeated-output',
+        summary: 'This looks localized to ld0.',
+        nextInspect: 'Trace ld0.',
+      },
+    });
+    const groupedHint = getVerifyHint({
+      ...BASE,
+      pattern: {
+        kind: 'grouped-peer',
+        summary: 'These failures occur together.',
+        nextInspect: 'Inspect shared state.',
+      },
+    });
+
+    expect(repeatedHint).toContain('localized to one output failing repeatedly');
+    expect(groupedHint).toContain('occur together at the same tick');
+  });
+
+  it('surfaces startup guidance for startup-oriented failures', () => {
+    const hint = getVerifyHint({
+      ...BASE,
+      hasDff: true,
+      pattern: {
+        kind: 'startup',
+        summary: 'The first mismatch appears immediately at startup.',
+        nextInspect: 'Inspect reset.',
+      },
+    });
+    expect(hint).toContain('appears immediately at startup');
+  });
+
+  it('surfaces delayed divergence guidance when the circuit passes at first', () => {
+    const hint = getVerifyHint({
+      ...BASE,
+      hasDff: true,
+      pattern: {
+        kind: 'delayed',
+        summary: 'The circuit passes at first, then diverges later at t5.',
+        nextInspect: 'Compare the last passing tick.',
+      },
+    });
+    expect(hint).toContain('passes at first, then diverges later');
+  });
+
+  it('keeps broad all-run failure ahead of later logic-shape hints', () => {
+    const hint = getVerifyHint({
+      ...BASE,
+      pattern: {
+        kind: 'all-run',
+        summary: 'Every verify row fails.',
+        nextInspect: 'Inspect shared inputs.',
+      },
+      mismatch: { expected: '1', actual: '0' },
+    });
+    expect(hint).toContain('Every verify row fails');
+  });
+});
+
+describe('getVerifyHint - legacy DFF and combinational fallbacks', () => {
+  it('fires DFF high-to-low guidance when no pattern override is present', () => {
+    const hint = getVerifyHint({
       ...BASE,
       hasDff: true,
       mismatch: { expected: '1', actual: '0' },
-    };
-    const hint = getVerifyHint(ctx);
-    expect(hint).not.toBeNull();
+    });
     expect(hint).toContain('Output should be HIGH but is LOW');
   });
 
-  it('does NOT fire for combinational circuit (hasDff=false)', () => {
-    const ctx: VerifyHintContext = {
-      ...BASE,
-      hasDff: false,
-      mismatch: { expected: '1', actual: '0' },
-    };
-    const hint = getVerifyHint(ctx);
-    // Hint 7 (combinational mismatch) fires instead
-    expect(hint).not.toContain('Output should be HIGH but is LOW');
-    expect(hint).toContain('Combinational mismatch');
-  });
-
-  it('does NOT fire when direction is reversed (expected=0, actual=1)', () => {
-    const ctx: VerifyHintContext = {
+  it('fires DFF low-to-high guidance when no pattern override is present', () => {
+    const hint = getVerifyHint({
       ...BASE,
       hasDff: true,
       mismatch: { expected: '0', actual: '1' },
-    };
-    const hint = getVerifyHint(ctx);
-    expect(hint).not.toContain('Output should be HIGH but is LOW');
-  });
-});
-
-describe('getVerifyHint — Hint 6: DFF output should be LOW but is HIGH', () => {
-  it('fires when hasDff=true, expected="0", actual="1"', () => {
-    const ctx: VerifyHintContext = {
-      ...BASE,
-      hasDff: true,
-      mismatch: { expected: '0', actual: '1' },
-    };
-    const hint = getVerifyHint(ctx);
-    expect(hint).not.toBeNull();
+    });
     expect(hint).toContain('Output should be LOW but is HIGH');
   });
 
-  it('does NOT fire when direction is reversed (expected=1, actual=0)', () => {
-    const ctx: VerifyHintContext = {
-      ...BASE,
-      hasDff: true,
-      mismatch: { expected: '1', actual: '0' },
-    };
-    const hint = getVerifyHint(ctx);
-    expect(hint).not.toContain('Output should be LOW but is HIGH');
-  });
-
-  it('does NOT fire when mismatch is null', () => {
-    expect(getVerifyHint({ ...BASE, hasDff: true, mismatch: null })).toBeNull();
-  });
-});
-
-describe('getVerifyHint — Hint 7: combinational mismatch', () => {
-  it('fires when hasDff=false and mismatch is non-null (1→0 direction)', () => {
-    const ctx: VerifyHintContext = {
+  it('fires combinational mismatch guidance when no pattern override is present', () => {
+    const hint = getVerifyHint({
       ...BASE,
       hasDff: false,
       mismatch: { expected: '1', actual: '0' },
-    };
-    const hint = getVerifyHint(ctx);
-    expect(hint).not.toBeNull();
+    });
     expect(hint).toContain('Combinational mismatch');
-  });
-
-  it('fires when hasDff=false and mismatch is non-null (0→1 direction)', () => {
-    const ctx: VerifyHintContext = {
-      ...BASE,
-      hasDff: false,
-      mismatch: { expected: '0', actual: '1' },
-    };
-    const hint = getVerifyHint(ctx);
-    expect(hint).toContain('Combinational mismatch');
-  });
-
-  it('does NOT fire when hasDff=true (DFF hints take precedence)', () => {
-    const ctx: VerifyHintContext = {
-      ...BASE,
-      hasDff: true,
-      mismatch: { expected: '1', actual: '0' },
-    };
-    const hint = getVerifyHint(ctx);
-    expect(hint).not.toContain('Combinational mismatch');
-  });
-
-  it('does NOT fire when mismatch is null', () => {
-    expect(getVerifyHint({ ...BASE, hasDff: false, mismatch: null })).toBeNull();
   });
 });

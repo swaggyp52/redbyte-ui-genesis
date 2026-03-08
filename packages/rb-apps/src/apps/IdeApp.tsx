@@ -2,11 +2,14 @@
 // IdeApp - IDE-first shell surface with deterministic mode markers.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Circuit } from '@redbyte/rb-logic-core';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { installFatalCapture, pushMount } from '@redbyte/rb-utils';
+import type { TestVector } from '@redbyte/rb-utils';
 import { decodeRBProject, type RBProject } from '../export/projectFormat';
 import { useCircuitStore } from '../stores/circuitStore';
 import { digestValue } from '../utils/digest';
+import { stableSerialize } from '../utils/stableSerialize';
 import './ide/ide-root.css';
 import { IdeLeftRail, type IdeMode } from './ide/components/IdeLeftRail';
 import { IdeTopBar } from './ide/components/IdeTopBar';
@@ -39,7 +42,7 @@ import {
   type ProjectHealthExportResult,
   type ProjectHealthMode,
 } from './ide/projectHealth';
-import { useProjectRuntime } from './ide/projectRuntime';
+import { useProjectRuntime, type ProjectIoRow, type VerifyRunLedgerEntry } from './ide/projectRuntime';
 import {
   decodePersistedIdeProject,
   listIdeProjectSnapshots,
@@ -307,7 +310,6 @@ export const IdeApp: React.FC = () => {
       loadFromProject(project);
       setSavedProjectHash(null);
       refreshSavedProjects();
-      setCurrentMode('project');
     },
     [loadFromProject, refreshSavedProjects]
   );
@@ -714,6 +716,41 @@ export const IdeApp: React.FC = () => {
     }),
     [exportViewModel.diagnostics, projectHealthCore.dirtySinceExport, projectHealthCore.dirtySinceVerify]
   );
+  const verifyMappingComplete = missingRequiredCount === 0;
+  const verifyHasFloatingOutputWarning = useMemo(
+    () =>
+      exportViewModel.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.code === 'RBEX4103' ||
+          /floating output detected|has no driver|undriven output/i.test(diagnostic.message)
+      ),
+    [exportViewModel.diagnostics]
+  );
+  const currentVerifyProjectHash = useMemo(
+    () => buildCurrentVerifyProjectHash({ circuit, projectVectors, projectIoRows }),
+    [circuit, projectIoRows, projectVectors]
+  );
+  const latestVerifyLedgerEntry = verifyRunHistory[verifyRunHistory.length - 1];
+  const verifyIsCurrent = useMemo(() => deriveVerifyCurrent({
+    hasVerifyRun: Boolean(verifyLastRun),
+    latestVerifyLedgerEntry,
+    currentVerifyProjectHash,
+    dirtySinceVerify: projectHealthCore.dirtySinceVerify,
+  }), [
+    currentVerifyProjectHash,
+    latestVerifyLedgerEntry,
+    projectHealthCore.dirtySinceVerify,
+    verifyLastRun,
+  ]);
+  const exportIsCurrent = useMemo(() => deriveExportCurrent({
+    lastExport: projectHealthCore.lastExport,
+    currentExportHash: exportViewModel.exportHash,
+    dirtySinceExport: projectHealthCore.dirtySinceExport,
+  }), [
+    exportViewModel.exportHash,
+    projectHealthCore.dirtySinceExport,
+    projectHealthCore.lastExport,
+  ]);
 
   const verifyMappedInputs = useMemo(
     () =>
@@ -994,6 +1031,9 @@ export const IdeApp: React.FC = () => {
               hasVectors={projectVectors.length > 0}
               vectors={projectVectors}
               lastRun={verifyLastRun}
+              mappingComplete={verifyMappingComplete}
+              hasFloatingOutputWarning={verifyHasFloatingOutputWarning}
+              probeSignals={runtimeSim.probes}
               mappedInputs={verifyMappedInputs}
               mappedSignals={mappedIoSignals}
               onVectorsChange={handleVectorsChange}
@@ -1031,6 +1071,8 @@ export const IdeApp: React.FC = () => {
               expectedIoRows={hardwareExpectedIoRows}
               vectorsCount={projectVectors.length}
               health={projectHealth}
+              verifyCurrent={verifyIsCurrent}
+              exportCurrent={exportIsCurrent}
               runtimeSim={runtimeSim}
               onSimSetInput={setRuntimeSimInput}
               onGenerateBringUpVectors={handleGenerateBringUpVectors}
@@ -1263,6 +1305,71 @@ function extractExpectedIoRows(
   } catch {
     return [];
   }
+}
+
+function toProjectIoMapping(projectIoRows: ProjectIoRow[]): {
+  inputs: Array<{ id: string; nodeId: string; port: string; label: string; pin: string }>;
+  outputs: Array<{ id: string; nodeId: string; port: string; label: string; pin: string }>;
+} {
+  return {
+    inputs: projectIoRows
+      .filter((row) => row.direction === 'in')
+      .map((row) => ({
+        id: row.id,
+        nodeId: row.nodeId ?? '',
+        port: row.port ?? '',
+        label: row.label,
+        pin: row.pin,
+      })),
+    outputs: projectIoRows
+      .filter((row) => row.direction === 'out')
+      .map((row) => ({
+        id: row.id,
+        nodeId: row.nodeId ?? '',
+        port: row.port ?? '',
+        label: row.label,
+        pin: row.pin,
+      })),
+  };
+}
+
+export function buildCurrentVerifyProjectHash(input: {
+  circuit: Circuit;
+  projectVectors: TestVector[];
+  projectIoRows: ProjectIoRow[];
+}): string {
+  return digestValue(
+    stableSerialize({
+      circuit: input.circuit,
+      vectors: input.projectVectors,
+      mapping: toProjectIoMapping(input.projectIoRows),
+    })
+  );
+}
+
+export function deriveVerifyCurrent(input: {
+  hasVerifyRun: boolean;
+  latestVerifyLedgerEntry?: Pick<VerifyRunLedgerEntry, 'projectHash'> | null;
+  currentVerifyProjectHash: string;
+  dirtySinceVerify: boolean;
+}): boolean {
+  if (!input.hasVerifyRun) return false;
+  if (input.latestVerifyLedgerEntry) {
+    return input.latestVerifyLedgerEntry.projectHash === input.currentVerifyProjectHash;
+  }
+  return !input.dirtySinceVerify;
+}
+
+export function deriveExportCurrent(input: {
+  lastExport?: ProjectHealthExportResult;
+  currentExportHash?: string | null;
+  dirtySinceExport: boolean;
+}): boolean {
+  if (input.lastExport?.status !== 'ok') return false;
+  if (input.lastExport.hash && input.currentExportHash) {
+    return input.lastExport.hash === input.currentExportHash;
+  }
+  return !input.dirtySinceExport;
 }
 
 function formatSavedAtLabel(savedAtIso: string): string {

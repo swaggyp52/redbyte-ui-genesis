@@ -1,16 +1,46 @@
 /**
  * Fact-grounded verification hints.
  * Each hint is triggered by one specific condition derived from real run data.
- * First matching hint wins — at most one hint is shown per FAIL run.
+ * First matching hint wins - at most one hint is shown per FAIL run.
  */
 
 export interface VerifyHintContext {
   hasDff: boolean;
   mappingComplete: boolean;
-  allTicksFail: boolean;        // failCount === totalRows
+  allTicksFail: boolean; // failCount === totalRows
   onlyFirstTickFails: boolean;
   mismatch: { expected: string; actual: string } | null;
   hasFloatingOutputWarning: boolean;
+  pattern?: VerifyFailurePatternSummary | null;
+}
+
+export type VerifyFailurePatternKind =
+  | 'all-run'
+  | 'startup'
+  | 'repeated-output'
+  | 'grouped-peer'
+  | 'delayed'
+  | 'selected-case';
+
+export interface VerifyFailurePatternInput {
+  totalRows: number;
+  failCount: number;
+  selectedFailure: { tick: number; signal: string } | null;
+  selectedPeerFailCount: number;
+  selectedSignalFailTickCount: number;
+  selectedSignalFirstFailTick: number | null;
+  firstFailureTick: number | null;
+  firstRunTick: number | null;
+  isSequentialRun: boolean;
+  hasResetSignalRole: boolean;
+  tick0Meaning: 'reset-phase' | 'initial-state' | null;
+  samplePoint: 'post-rising-edge' | 'steady-state' | null;
+}
+
+export interface VerifyFailurePatternSummary {
+  kind: VerifyFailurePatternKind;
+  summary: string;
+  nextInspect: string;
 }
 
 const HINTS: Array<{
@@ -19,11 +49,31 @@ const HINTS: Array<{
 }> = [
   {
     condition: (ctx) => !ctx.mappingComplete,
-    text: 'Some pins are not mapped. Unmapped outputs always read 0. Open Project → Mapping to assign all pins.',
+    text: 'Some pins are not mapped. Unmapped outputs always read 0. Open Project -> Mapping to assign all pins.',
   },
   {
     condition: (ctx) => ctx.hasFloatingOutputWarning,
-    text: 'One or more outputs are undriven (floating). Trace back from the failing output — it may have no wire connected.',
+    text: 'One or more outputs are undriven (floating). Trace back from the failing output - it may have no wire connected.',
+  },
+  {
+    condition: (ctx) => ctx.pattern?.kind === 'all-run',
+    text: 'Every verify row fails, so this looks broad rather than localized. Check shared inputs, mapping, and common control before chasing one output.',
+  },
+  {
+    condition: (ctx) => ctx.pattern?.kind === 'startup',
+    text: 'The first mismatch appears immediately at startup. Check reset or initialization expectations before the first sampled update.',
+  },
+  {
+    condition: (ctx) => ctx.pattern?.kind === 'repeated-output',
+    text: 'This looks localized to one output failing repeatedly. Trace that output path across the failing ticks before broad rewiring.',
+  },
+  {
+    condition: (ctx) => ctx.pattern?.kind === 'grouped-peer',
+    text: 'These failures occur together at the same tick. Inspect shared control, state, or decode logic before focusing on one output.',
+  },
+  {
+    condition: (ctx) => ctx.pattern?.kind === 'delayed',
+    text: 'The circuit passes at first, then diverges later. Compare the last passing tick to the first failing tick and inspect what changes there.',
   },
   {
     condition: (ctx) => ctx.allTicksFail,
@@ -49,8 +99,146 @@ const HINTS: Array<{
   },
 ];
 
+export function deriveVerifyFailurePattern(
+  input: VerifyFailurePatternInput
+): VerifyFailurePatternSummary | null {
+  if (!input.selectedFailure || input.failCount === 0) {
+    return null;
+  }
+
+  const allRunFailure = input.totalRows > 0 && input.failCount === input.totalRows;
+  const startupSupported =
+    input.tick0Meaning !== null ||
+    input.hasResetSignalRole ||
+    (input.isSequentialRun && input.samplePoint === 'post-rising-edge');
+  const firstFailureAtStart =
+    input.firstFailureTick !== null &&
+    input.firstRunTick !== null &&
+    input.firstFailureTick === input.firstRunTick;
+  const delayedDivergence =
+    input.firstFailureTick !== null &&
+    input.firstRunTick !== null &&
+    input.firstFailureTick > input.firstRunTick;
+  const selectedStartsAtStartup =
+    startupSupported &&
+    input.selectedSignalFirstFailTick !== null &&
+    input.firstRunTick !== null &&
+    input.selectedSignalFirstFailTick === input.firstRunTick;
+  const repeatedSelectedOutput = input.selectedSignalFailTickCount >= 2;
+  const groupedPeerFailure = input.selectedPeerFailCount > 0;
+
+  let kind: VerifyFailurePatternKind = 'selected-case';
+  if (allRunFailure) {
+    kind = 'all-run';
+  } else if (startupSupported && input.selectedFailure.tick === input.firstRunTick) {
+    kind = 'startup';
+  } else if (repeatedSelectedOutput) {
+    kind = 'repeated-output';
+  } else if (groupedPeerFailure) {
+    kind = 'grouped-peer';
+  } else if (delayedDivergence) {
+    kind = 'delayed';
+  }
+
+  const startupSentence = input.hasResetSignalRole
+    ? 'The first mismatch appears immediately at startup, so reset or initialization may be involved.'
+    : 'The first mismatch appears on the initial sampled tick, so initialization may be involved.';
+
+  switch (kind) {
+    case 'all-run':
+      return {
+        kind,
+        summary: `${allRunFailureSummary(input.selectedFailure.signal)}${
+          startupSupported && firstFailureAtStart ? ` ${startupSentence}` : ''
+        }`,
+        nextInspect:
+          'Inspect shared inputs, output mapping, and the main control path before chasing one output.',
+      };
+    case 'startup':
+      return {
+        kind,
+        summary: startupSentence,
+        nextInspect: input.hasResetSignalRole
+          ? 'Inspect reset level/polarity and the expected tick 0 state before the first clocked update.'
+          : 'Inspect the expected initial state before the first sampled clock edge.',
+      };
+    case 'repeated-output':
+      return {
+        kind,
+        summary: `${repeatedOutputSummary(input.selectedFailure.signal, input.selectedSignalFailTickCount)}${
+          groupedPeerFailure
+            ? ` At t${input.selectedFailure.tick}, ${pluralizePeerFailures(input.selectedPeerFailCount)} also fail with it, so shared control may still matter.`
+            : ''
+        }${
+          selectedStartsAtStartup
+            ? ` ${startupSentence}`
+            : delayedDivergence && input.firstFailureTick !== null
+              ? ` The circuit passes at first, then diverges later at t${input.firstFailureTick}.`
+              : ''
+        }`,
+        nextInspect: selectedStartsAtStartup && input.hasResetSignalRole
+          ? `Inspect reset/initialization for ${input.selectedFailure.signal}, then trace the logic driving it across the later failing ticks.`
+          : delayedDivergence && input.firstFailureTick !== null
+            ? `Trace the logic driving ${input.selectedFailure.signal} and compare the last passing tick to t${input.firstFailureTick}.`
+            : `Trace the logic driving ${input.selectedFailure.signal} across the repeated failing ticks.`,
+      };
+    case 'grouped-peer':
+      return {
+        kind,
+        summary: `${groupedPeerSummary(input.selectedFailure.tick)}${
+          startupSupported && input.selectedFailure.tick === input.firstRunTick ? ` ${startupSentence}` : ''
+        }${
+          delayedDivergence && input.firstFailureTick !== null
+            ? ` The circuit passes at first, then diverges later at t${input.firstFailureTick}.`
+            : ''
+        }`,
+        nextInspect:
+          startupSupported && input.selectedFailure.tick === input.firstRunTick && input.hasResetSignalRole
+            ? 'Inspect reset, enable, and shared state feeding the outputs that fail together at startup.'
+            : 'Inspect signals shared by the failing outputs, such as enable, clocked state, or a common decode path.',
+      };
+    case 'delayed':
+      return {
+        kind,
+        summary:
+          input.firstFailureTick !== null
+            ? `The circuit passes at first, then diverges later at t${input.firstFailureTick}. This looks more like a later state/control transition than an immediate startup issue.`
+            : 'The circuit passes at first, then diverges later. This looks more like a later state/control transition than an immediate startup issue.',
+        nextInspect:
+          input.firstFailureTick !== null
+            ? `Compare the last passing tick to t${input.firstFailureTick} and inspect what state or control signal changes there.`
+            : 'Compare the last passing tick to the first failing tick and inspect what state or control signal changes there.',
+      };
+    case 'selected-case':
+    default:
+      return {
+        kind: 'selected-case',
+        summary: `This currently looks localized to ${input.selectedFailure.signal} at t${input.selectedFailure.tick}.`,
+        nextInspect: `Trace the logic driving ${input.selectedFailure.signal} under the selected input conditions.`,
+      };
+  }
+}
+
 /** Returns the first matching hint text, or null if no condition fires. */
 export function getVerifyHint(ctx: VerifyHintContext): string | null {
-  const hint = HINTS.find((h) => h.condition(ctx));
+  const hint = HINTS.find((entry) => entry.condition(ctx));
   return hint?.text ?? null;
+}
+
+function allRunFailureSummary(signal: string): string {
+  return `Every verify row fails, so this looks broad rather than localized to ${signal}.`;
+}
+
+function repeatedOutputSummary(signal: string, failTickCount: number): string {
+  return `This looks localized to ${signal}: it fails repeatedly across ${failTickCount} tick${
+    failTickCount === 1 ? '' : 's'
+  }.`;
+}
+
+function groupedPeerSummary(tick: number): string {
+  return `These failures occur together at t${tick}, which suggests a shared control, state, or decode path rather than one isolated output.`;
+}
+
+function pluralizePeerFailures(count: number): string {
+  return `${count} other output${count === 1 ? '' : 's'}`;
 }

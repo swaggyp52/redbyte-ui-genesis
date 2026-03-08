@@ -10,6 +10,7 @@ import {
   buildExportViewModel,
   type ExportDiagnosticView,
   type ExportArtifactView,
+  type ExportPinTableRow,
   type ExportPinStatus,
 } from '../viewmodels/buildExportViewModel';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
@@ -98,9 +99,20 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   onGoToProject,
   onGoToDesign,
 }) => {
-  const viewModel = useMemo(
+  const baseViewModel = useMemo(
     () => buildExportViewModel(project, verifyLastRun),
     [project, verifyLastRun]
+  );
+  const [pinOverrides, setPinOverrides] = useState<Record<string, string>>(() =>
+    createPinOverrideMap(baseViewModel.pinTable)
+  );
+  const effectiveProject = useMemo(
+    () => applyPinOverridesToProject(project, pinOverrides),
+    [pinOverrides, project]
+  );
+  const viewModel = useMemo(
+    () => buildExportViewModel(effectiveProject, verifyLastRun),
+    [effectiveProject, verifyLastRun]
   );
   const evidenceDiagnostics = useMemo(
     () => buildEvidenceDiagnostics(verifyResult, dirtySinceVerify),
@@ -110,16 +122,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     () => [...evidenceDiagnostics, ...viewModel.errors, ...viewModel.warnings],
     [evidenceDiagnostics, viewModel.errors, viewModel.warnings]
   );
-  const [pinOverrides, setPinOverrides] = useState<Record<string, string>>(() =>
-    createPinOverrideMap(viewModel.pinTable)
-  );
   const [downloadError, setDownloadError] = useState<string>('');
   const [downloadDone, setDownloadDone] = useState(false);
   const [copyState, setCopyState] = useState<'idle' | 'command' | 'report' | 'error'>('idle');
   const [highlightedPort, setHighlightedPort] = useState<string | null>(null);
   const [selectedArtifactPath, setSelectedArtifactPath] = useState<string>(() => {
-    const readme = viewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'readme.txt');
-    return readme?.path ?? viewModel.artifacts[0]?.path ?? '';
+    const readme = baseViewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'readme.txt');
+    return readme?.path ?? baseViewModel.artifacts[0]?.path ?? '';
   });
   const [openFixPathId, setOpenFixPathId] = useState<string | null>(null);
   // Phase 32: pipeline rebuild state
@@ -132,10 +141,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const mapSectionRef = useRef<HTMLElement>(null);
   const highlightResetTimer = useRef<number | null>(null);
   const copyResetTimer = useRef<number | null>(null);
+  const editablePortKeys = useMemo(() => collectMappedProjectPortKeys(project), [project]);
 
   useEffect(() => {
-    setPinOverrides(createPinOverrideMap(viewModel.pinTable));
-  }, [viewModel.pinTable]);
+    const nextOverrides = createPinOverrideMap(baseViewModel.pinTable);
+    setPinOverrides(nextOverrides);
+    setInvalidPins(buildInvalidPinSet(nextOverrides, editablePortKeys));
+  }, [baseViewModel.pinTable, editablePortKeys]);
 
   useEffect(() => {
     if (viewModel.artifacts.length === 0) {
@@ -188,9 +200,16 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const applySuggestionCount = useMemo(
     () =>
       viewModel.pinTable.filter(
-        (r) => r.suggestedPin && (pinOverrides[toPortKey(r.port)] ?? '').trim().length === 0
+        (r) =>
+          editablePortKeys.has(toPortKey(r.port)) &&
+          r.suggestedPin &&
+          (pinOverrides[toPortKey(r.port)] ?? '').trim().length === 0
       ).length,
-    [viewModel.pinTable, pinOverrides]
+    [editablePortKeys, viewModel.pinTable, pinOverrides]
+  );
+  const projectMappingMissingRows = useMemo(
+    () => viewModel.pinTable.filter((row) => row.required && !editablePortKeys.has(toPortKey(row.port))),
+    [editablePortKeys, viewModel.pinTable]
   );
 
   const appEnv = (import.meta as ImportMeta & {
@@ -340,6 +359,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   };
 
   const applySuggestion = (portKey: string) => {
+    if (!editablePortKeys.has(portKey)) return;
     const row = mappingIndex.get(portKey);
     if (!row?.suggestedPin) return;
     setPinOverrides((prev) => ({
@@ -353,8 +373,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     setPinOverrides((prev) => {
       const next = { ...prev };
       for (const row of viewModel.pinTable) {
-        if (!row.suggestedPin) continue;
         const key = toPortKey(row.port);
+        if (!editablePortKeys.has(key)) continue;
+        if (!row.suggestedPin) continue;
         if ((next[key] ?? '').trim().length === 0) next[key] = row.suggestedPin;
       }
       return next;
@@ -376,7 +397,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const handleRebuildExport = useCallback(async () => {
     setIsRebuilding(true);
     resetSteps();
-    setCapsuleBuildError('');
+    setDownloadError('');
     const ranAtIso = new Date().toISOString();
 
     // re-init steps
@@ -430,7 +451,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       markStep('zip', 'running');
       const zipBytes = await buildVivadoKitZip(viewModel.artifacts);
       if (typeof window !== 'undefined') {
-        const blob = new Blob([zipBytes], { type: 'application/zip' });
+        const zipBuffer = Uint8Array.from(zipBytes).buffer;
+        const blob = new Blob([zipBuffer], { type: 'application/zip' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -887,6 +909,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     </IdeButton>
                   </div>
                 )}
+                {projectMappingMissingRows.length > 0 && (
+                  <IdeCallout tone="warn" title="Add missing project mappings before binding pins">
+                    {projectMappingMissingRows.length} required port
+                    {projectMappingMissingRows.length === 1 ? '' : 's'} appear in the top entity
+                    but not in the project mapping yet. Add them in Project or Design before assigning a
+                    Basys3 pin here.
+                  </IdeCallout>
+                )}
                 <div className="ide-table-wrap ide-export-table-wrap">
                   <table className="ide-table ide-export-table">
                     <thead>
@@ -906,6 +936,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         const status = resolveRowStatus(row.status, pinValue);
                         const conf = getPinConfidence(row.suggestedPin, pinValue);
                         const isPinInvalid = invalidPins.has(portKey);
+                        const isEditable = editablePortKeys.has(portKey);
                         return (
                           <tr
                             key={row.port}
@@ -933,6 +964,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                                 }}
                                 className="ide-export-pin-input"
                                 value={pinValue}
+                                disabled={!isEditable}
                                 onChange={(event) => {
                                   const newVal = event.target.value.toUpperCase();
                                   setPinOverrides((prev) => ({
@@ -951,7 +983,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                                     return next;
                                   });
                                 }}
-                                placeholder={row.suggestedPin ?? 'PIN'}
+                                placeholder={isEditable ? row.suggestedPin ?? 'PIN' : 'Add mapping first'}
                               />
                               {isPinInvalid && (
                                 <span className="ide-pin-warn">&#9888; Unknown pin — check Basys3 reference</span>
@@ -973,6 +1005,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                             </td>
                             <td className="ide-export-notes-cell">
                               {row.notes && <div>{row.notes}</div>}
+                              {!isEditable && (
+                                <div className="ide-export-suggestion">
+                                  Add this mapping in Project or Design before assigning a pin.
+                                </div>
+                              )}
                               {row.suggestedPin && (
                                 <div className="ide-export-suggestion">Suggested: {row.suggestedPin}</div>
                               )}
@@ -1264,13 +1301,48 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 };
 
 function createPinOverrideMap(
-  rows: ReturnType<typeof buildExportViewModel>['pinTable']
+  rows: ExportPinTableRow[]
 ): Record<string, string> {
   const overrides: Record<string, string> = {};
   for (const row of rows) {
     overrides[toPortKey(row.port)] = row.pin ?? '';
   }
   return overrides;
+}
+
+function collectMappedProjectPortKeys(project: RBProject): Set<string> {
+  const keys = new Set<string>();
+  for (const entry of project.ioMapping?.inputs ?? []) {
+    keys.add(toMappingEntryKey(entry));
+  }
+  for (const entry of project.ioMapping?.outputs ?? []) {
+    keys.add(toMappingEntryKey(entry));
+  }
+  return keys;
+}
+
+function applyPinOverridesToProject(
+  project: RBProject,
+  overrides: Record<string, string>
+): RBProject {
+  if (!project.ioMapping) return project;
+
+  const applyEntries = (entries: NonNullable<RBProject['ioMapping']>['inputs']) =>
+    entries.map((entry) => {
+      const override = (overrides[toMappingEntryKey(entry)] ?? entry.pin ?? '').trim();
+      return {
+        ...entry,
+        pin: override.length > 0 ? override : undefined,
+      };
+    });
+
+  return {
+    ...project,
+    ioMapping: {
+      inputs: applyEntries(project.ioMapping.inputs ?? []),
+      outputs: applyEntries(project.ioMapping.outputs ?? []),
+    },
+  };
 }
 
 function buildEvidenceDiagnostics(
@@ -1364,6 +1436,19 @@ function toPortKey(value: string): string {
   return value.trim().toLowerCase();
 }
 
+function toMappingEntryKey(entry: {
+  id: string;
+  nodeId: string;
+  port: string;
+  label?: string;
+}): string {
+  const label = (entry.label ?? '').trim();
+  if (label.length > 0) return toPortKey(label);
+  const id = (entry.id ?? '').trim();
+  if (id.length > 0) return toPortKey(id);
+  return toPortKey(`${entry.nodeId}.${entry.port}`);
+}
+
 function statusTone(status: ExportPinStatus): 'ok' | 'error' | 'warn' {
   if (status === 'mapped') return 'ok';
   if (status === 'missing') return 'error';
@@ -1382,6 +1467,21 @@ function getPinConfidence(
   if (!suggestedPin) return 'unknown';
   if (pinValue.trim().toUpperCase() === suggestedPin.toUpperCase()) return 'exact';
   return 'likely';
+}
+
+function buildInvalidPinSet(
+  overrides: Record<string, string>,
+  editablePortKeys: Set<string>
+): Set<string> {
+  const invalid = new Set<string>();
+  for (const [portKey, pin] of Object.entries(overrides)) {
+    if (!editablePortKeys.has(portKey)) continue;
+    const trimmed = pin.trim();
+    if (trimmed.length > 0 && !BASYS3_VALID_PINS.has(trimmed)) {
+      invalid.add(portKey);
+    }
+  }
+  return invalid;
 }
 
 // ─── Phase 2: Syntax Highlighting ──────────────────────────────────────────

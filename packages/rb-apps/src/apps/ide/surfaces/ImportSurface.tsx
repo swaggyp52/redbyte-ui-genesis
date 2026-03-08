@@ -340,6 +340,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const [pipelineSteps, setPipelineSteps] = useState<ImportPipelineStep[]>(() => makePipelineSteps());
   const [pipelineActive, setPipelineActive] = useState(false);
   const [showBehavioralSamples, setShowBehavioralSamples] = useState(false);
+  const [showVerifyResetNotice, setShowVerifyResetNotice] = useState(false);
 
   const lineCount = useMemo(() => Math.max(1, hdlText.split('\n').length), [hdlText]);
   const xdcLineCount = useMemo(() => Math.max(1, xdcText.split('\n').length), [xdcText]);
@@ -399,8 +400,8 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     [overrides]
   );
 
-  const parseHdl = useCallback((sourceOverride?: string) => {
-    const source = (sourceOverride ?? hdlText).trim();
+  const parseHdl = useCallback((sourceOverride?: unknown) => {
+    const source = (typeof sourceOverride === 'string' ? sourceOverride : hdlText).trim();
     if (!source) {
       setStatusMessage('Paste HDL before parsing.');
       return;
@@ -408,6 +409,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     try {
       setZipInspection(null);
       setPendingApplyProject(null);
+      setShowVerifyResetNotice(false);
       const effectiveLang =
         language === 'auto' ? detectHdlLanguage(source) : (language as 'vhdl' | 'verilog');
 
@@ -723,8 +725,8 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     [mapping, ports]
   );
 
-  const parseXdc = (sourceOverride?: string) => {
-    const source = (sourceOverride ?? xdcText).trim();
+  const parseXdc = (sourceOverride?: unknown) => {
+    const source = (typeof sourceOverride === 'string' ? sourceOverride : xdcText).trim();
     if (!source) {
       setStatusMessage('Paste XDC before parsing.');
       return;
@@ -732,6 +734,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     try {
       setZipInspection(null);
       setPendingApplyProject(null);
+      setShowVerifyResetNotice(false);
       const parsed = parseXdcPins(source);
       setXdcResult(parsed);
       setMapping((previous) => {
@@ -810,6 +813,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     setPipelineActive(true);
     setPipelineSteps(makePipelineSteps());
     setPendingApplyProject(null);
+    setShowVerifyResetNotice(false);
     setStatusMessage('Processing design…');
 
     try {
@@ -968,6 +972,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     const nextProject = buildCurrentProject();
     if (!nextProject) return;
     setPendingApplyProject(nextProject);
+    setShowVerifyResetNotice(false);
     setStatusMessage('Confirm applying import to replace the active project.');
   };
 
@@ -975,6 +980,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     if (!pendingApplyProject) return;
     onImportProject?.(pendingApplyProject);
     setPendingApplyProject(null);
+    setShowVerifyResetNotice(true);
     setStatusMessage(
       `RBProject ready: ${pendingApplyProject.circuit.nodes.length} nodes, ${pendingApplyProject.circuit.connections.length} connections.`
     );
@@ -982,6 +988,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
   const cancelApplyProject = () => {
     setPendingApplyProject(null);
+    setShowVerifyResetNotice(false);
     setStatusMessage('Import apply canceled.');
   };
 
@@ -989,6 +996,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     if (!pendingApplyProject) return;
     onImportProject?.(pendingApplyProject);
     setPendingApplyProject(null);
+    setShowVerifyResetNotice(true);
     setStatusMessage('Project imported. Opening Verify…');
     onGoToVerify?.();
   };
@@ -1020,6 +1028,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     zipFileRef.current = file;
     setZipBusy(true);
     setPendingApplyProject(null);
+    setShowVerifyResetNotice(false);
 
     try {
       const inspection = await importVivadoZipFile(file);
@@ -1057,6 +1066,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     if (!file) return;
     setZipBusy(true);
     setPendingApplyProject(null);
+    setShowVerifyResetNotice(false);
     try {
       const inspection = await reimportZipWithCandidates(file, hdlPath, xdcPath);
       setZipInspection(inspection);
@@ -1497,6 +1507,24 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         >
           Import can fill pins on your current project, or replace the whole project.
         </p>
+        {showVerifyResetNotice && (
+          <IdeCallout
+            tone="info"
+            title="Run Verify Again"
+            testId="ide-import-verify-reset-notice"
+          >
+            <p className="ide-copy" style={{ margin: 0 }}>
+              Verification results are not restored from imports. Please run verification again to regenerate waveforms and test results.
+            </p>
+            {onGoToVerify && (
+              <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
+                <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-import-open-verify-after-import">
+                  Open Verify
+                </IdeButton>
+              </div>
+            )}
+          </IdeCallout>
+        )}
         {pendingApplyProject && commitPreview ? (
           <SurfacePanel className="ide-import-commitPreview" testId="ide-import-commit-preview">
             <div className="ide-import-commitPreview-header">

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import type { ProjectHealth } from '../projectHealth';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -35,6 +35,8 @@ export interface HardwareSurfaceProps {
   }>;
   vectorsCount: number;
   health: ProjectHealth;
+  verifyCurrent: boolean;
+  exportCurrent: boolean;
   runtimeSim?: RuntimeSimState;
   onSimSetInput?: (nodeId: string, v: 0 | 1) => void;
   onGenerateBringUpVectors: () => void;
@@ -66,6 +68,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   expectedIoRows,
   vectorsCount,
   health,
+  verifyCurrent,
+  exportCurrent,
   runtimeSim,
   onSimSetInput,
   onGenerateBringUpVectors,
@@ -134,12 +138,74 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     [ioBus.meta.ldNodeIds]
   );
 
-  const hasBlocking = health.blockingIssues.length > 0;
+  const verifyPassed = health.lastVerify?.status === 'pass';
+  const verifyReady = verifyPassed && verifyCurrent;
+  const exportReady = health.lastExport?.status === 'ok' && exportCurrent;
+  const effectiveBlockingIssues = useMemo(
+    () =>
+      health.blockingIssues.filter((issue) => {
+        if (issue.code === 'RBP1004' && verifyCurrent) return false;
+        if (issue.code === 'RBP2002' && exportCurrent) return false;
+        return true;
+      }),
+    [exportCurrent, health.blockingIssues, verifyCurrent]
+  );
+  const hardwareState = verifyReady
+    ? exportReady
+      ? 'ready'
+      : health.lastExport?.status === 'ok'
+        ? 'export-stale'
+        : 'export-needed'
+    : 'verify-needed';
+  const hasBlocking = effectiveBlockingIssues.length > 0 || hardwareState !== 'ready';
 
   // ── Verify status for callout ────────────────────────────────────────
-  const verifyStatus = health.lastVerify?.status
-    ? String(health.lastVerify.status).toUpperCase()
-    : undefined;
+  const verifyStatus = !health.lastVerify
+    ? 'NOT RUN'
+    : !verifyPassed
+      ? 'FAIL'
+      : verifyReady
+        ? 'PASS'
+        : 'STALE';
+  const exportStatus = health.lastExport?.status === 'ok'
+    ? exportReady
+      ? 'CURRENT'
+      : 'STALE'
+    : health.lastExport?.status === 'blocked'
+      ? 'BLOCKED'
+      : 'MISSING';
+  const readinessCallout = useMemo(() => {
+    if (!verifyReady) {
+      return {
+        tone: 'warn' as const,
+        title: 'Bring-up blocked',
+        message:
+          effectiveBlockingIssues[0]?.message ??
+          'Resolve verification blockers before building the hardware bundle.',
+      };
+    }
+    if (hardwareState === 'export-stale') {
+      return {
+        tone: 'warn' as const,
+        title: 'Re-export required',
+        message:
+          'Your circuit verified successfully, but the hardware bundle was generated from an older version of this project. Re-export before programming the board.',
+      };
+    }
+    if (hardwareState === 'export-needed') {
+      return {
+        tone: 'warn' as const,
+        title: 'Export required',
+        message:
+          'Your circuit verified successfully, but no current hardware bundle has been generated yet. Export before programming the board.',
+      };
+    }
+    return {
+      tone: 'success' as const,
+      title: 'Ready for hardware',
+      message: 'Proof and export evidence are current for this project state.',
+    };
+  }, [effectiveBlockingIssues, hardwareState, verifyReady]);
 
   // ── Bring-Up: group expectedIoRows by tick ──────────────────────────
   const bringupTickGroups = useMemo(() => {
@@ -277,8 +343,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     { label: 'Outputs mapped',      pass: hasOutputMapping },
     { label: 'Vectors generated',   pass: vectorsCount > 0 },
     { label: 'All assertions pass', pass: hasAssertionData && assertionFailCount === 0 },
-    { label: 'Verify passed',       pass: health.lastVerify?.status === 'pass' },
-  ], [hasClockMapping, hasOutputMapping, vectorsCount, hasAssertionData, assertionFailCount, health.lastVerify?.status]);
+    { label: 'Verify current',      pass: verifyReady },
+    { label: 'Export current',      pass: exportReady },
+  ], [hasClockMapping, hasOutputMapping, vectorsCount, hasAssertionData, assertionFailCount, verifyReady, exportReady]);
 
   const confidenceScore = useMemo(
     () => Math.round((confidenceChecks.filter((c) => c.pass).length / confidenceChecks.length) * 100),
@@ -481,14 +548,14 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           <code className="ide-hw-cert-val">{hasAssertionData ? `${assertionPassCount}P ${assertionFailCount}F` : '—'}</code>
         </div>
         <div className="ide-hw-cert-row">
-          <span className="ide-hw-cert-key">DIRTY</span>
-          <code className="ide-hw-cert-val">{health.dirtySinceVerify ? 'YES' : 'NO'}</code>
+          <span className="ide-hw-cert-key">STATUS</span>
+          <code className="ide-hw-cert-val">{verifyStatus}/{exportStatus}</code>
         </div>
       </div>
       <div className="ide-inline-actions">
-        {health.lastVerify?.status === 'pass' ? (
+        {verifyReady ? (
           <IdeButton tone="primary" onClick={onOpenExport} testId="ide-hardware-build-export">
-            Build + Export
+            {exportReady ? 'Open Export Bundle' : 'Re-export Current Bundle'}
           </IdeButton>
         ) : (
           <IdeButton tone="primary" onClick={onOpenVerify} testId="ide-hardware-run-verify">
@@ -626,15 +693,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             <h3>Hardware Console</h3>
             <span className="ide-workbench-console-mode">Hardware</span>
           </header>
-          {hasBlocking ? (
-            <IdeCallout tone="warn" title="Bring-up blocked">
-              {health.blockingIssues[0]?.message ?? 'Resolve blockers before building hardware bundle.'}
-            </IdeCallout>
-          ) : (
-            <IdeCallout tone="success" title="Bring-up ready">
-              Ready to export.
-            </IdeCallout>
-          )}
+          <IdeCallout
+            tone={readinessCallout.tone}
+            title={readinessCallout.title}
+            testId="ide-hardware-readiness-callout"
+          >
+            {readinessCallout.message}
+          </IdeCallout>
         </section>
       }
     >
@@ -642,8 +707,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         title="Hardware"
         description="Basys3 hardware proof."
         right={
-          <IdeStatusPill tone={hasBlocking ? 'warn' : 'ok'}>
-            {hasBlocking ? 'Needs Action' : 'Ready'}
+          <IdeStatusPill tone={hardwareState === 'ready' ? 'ok' : 'warn'}>
+            {hardwareState === 'ready' ? 'Ready' : 'Needs Action'}
           </IdeStatusPill>
         }
         testId="ide-hardware-panel"
@@ -659,6 +724,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               <span className="ide-hw-callout-sep" aria-hidden="true">·</span>
               <span className={verifyStatus === 'PASS' ? 'ide-hw-callout-pass' : verifyStatus === 'FAIL' ? 'ide-hw-callout-fail' : ''}>
                 Verify: {verifyStatus}
+              </span>
+              <span className="ide-hw-callout-sep" aria-hidden="true">|</span>
+              <span data-testid="ide-hardware-export-status">
+                Export: {exportStatus}
               </span>
             </>
           )}
@@ -776,9 +845,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   </code>
                 </div>
                 <div className="ide-hw-proof-verdict-row">
-                  <span className="ide-hw-cert-key">DIRTY</span>
+                  <span className="ide-hw-cert-key">STATUS</span>
                   <code className="ide-hw-cert-val">
-                    {health.dirtySinceVerify ? 'YES' : 'NO'}
+                    {verifyStatus}/{exportStatus}
                   </code>
                 </div>
               </div>

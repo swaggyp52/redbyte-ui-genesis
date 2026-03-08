@@ -84,7 +84,7 @@ function makeFailRun(): RuntimeVerifyRun {
 
 describe('VerifySurface workstation controls', () => {
   it('populates truth table rows for a passing run', () => {
-    const { getByTestId, queryByTestId } = render(
+    const { getAllByText, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -103,6 +103,8 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(queryByTestId('ide-truth-table-empty')).toBeNull();
+    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getAllByText('Details')[0]);
     expect(getByTestId('ide-verify-run-context')).toBeTruthy();
     expect(getByTestId('ide-verify-run-context-sampling').textContent).toContain('steady state');
     expect(getByTestId('ide-verify-run-context-ticks_shown').textContent).toContain('Showing all 2 ticks');
@@ -204,7 +206,7 @@ describe('VerifySurface workstation controls', () => {
       },
     };
 
-    const { getByTestId, queryByTestId } = render(
+    const { getAllByText, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -241,6 +243,8 @@ describe('VerifySurface workstation controls', () => {
 
     expect(getByTestId('ide-verify-truth-table-title').textContent).toContain('TRACE TABLE (TICK LOG)');
     expect(queryByTestId('ide-truth-table-mode-combos')).toBeNull();
+    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getAllByText('Details')[0]);
     expect(getByTestId('ide-verify-run-context-protocol').textContent).toContain('Clocked macro');
     expect(getByTestId('ide-verify-run-context-tick_0').textContent).toContain('Initial state');
     expect(getByTestId('ide-truth-table-inputs-0').textContent).toContain('CLK=0');
