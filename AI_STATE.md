@@ -17513,6 +17513,60 @@ All 25 `pnpm verify:gates` gates now pass (exit 0).
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-03-08 (IDE Vivado Pack contract fix)
+
+### Export/build contract batch - restore Vivado pack contract test against current export authority
+
+**Problem**
+
+- `pnpm repo:status` failed at `IDE Vivado Pack Contract` before the contract could validate any export artifacts.
+- The direct gate script pointed to `packages/rb-apps/src/__tests__/ide-vivado-pack-contract.test.ts`, but that test file was missing from the current tree.
+
+**Cause**
+
+- The contract intent was still real and documented in earlier `AI_STATE.md` history, but the unit-level test file had drifted out of the repo.
+- The failure was therefore a stale/missing contract target, not a broken Vivado export pipeline.
+
+**Files changed**
+
+- `packages/rb-apps/src/__tests__/ide-vivado-pack-contract.test.ts`
+
+**What changed**
+
+- Restored `ide-vivado-pack-contract.test.ts` as a current unit-level contract over the canonical export authority (`buildExportViewModel` + the current Vivado kit ZIP shape).
+- The restored contract now asserts:
+  - deterministic ZIP bytes for the same export artifact set
+  - exact current Vivado kit contents:
+    - `BRINGUP.md`
+    - `EXPECTED_IO.json`
+    - `README.txt`
+    - `program_and_test.tcl`
+    - `project.rbproj.json`
+    - `testbench.vhd`
+    - `top.vhd`
+    - `top.xdc`
+    - `vivado_import.tcl`
+  - Vivado TCL contains required project/import commands and part string
+  - referenced HDL/XDC files named in `vivado_import.tcl` are present in the ZIP
+  - `project.rbproj.json`, `EXPECTED_IO.json`, `testbench.vhd`, `top.vhd`, `top.xdc`, `BRINGUP.md`, and `program_and_test.tcl` all contain the expected canonical export data
+
+**Why minimal**
+
+- No export pipeline code changed.
+- The batch restores the missing contract file against the current export/build truth instead of weakening or bypassing the gate.
+
+**Validation**
+
+- `pnpm exec vitest run packages/rb-apps/src/__tests__/ide-vivado-pack-contract.test.ts`
+- `pnpm -s ide:gate:vivado-pack-contract`
+- `pnpm repo:status`
+
+**Remaining concern**
+
+- `pnpm repo:status` now passes `IDE Vivado Pack Contract` and advances to the next independent failure: `IDE Export Includes RBProject Contract`.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-08 (IDE Boot Shadow contract fix)
 
 ### Build/boot contract batch - restore required boot mirror wrappers
