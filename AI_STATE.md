@@ -17553,6 +17553,47 @@ All 25 `pnpm verify:gates` gates now pass (exit 0).
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-03-08 (IDE Project Overview contract repair)
+
+### Project overview contract batch - restore canonical /os gate targeting and fix project boot crash
+
+**Problem**
+
+- `pnpm repo:status` advanced to `IDE Project Overview Contract` and failed before the Project surface contract could run to completion.
+- The gate first missed the canonical IDE path, then surfaced a real IDE boot crash (`ReferenceError: onHelp is not defined`), and finally hit the intentional first-load onboarding overlay when trying to open the mapping section.
+
+**Cause**
+
+- The shared gate harness only trusted root-path redirects to resolve `/os`, which is brittle against the current root-stub + built preview setup.
+- `packages/rb-apps/src/apps/ide/components/IdeTopBar.tsx` rendered `onHelp` without destructuring it from props, crashing the IDE before Project mode could mount.
+- `scripts/gates/ide-project-overview-contract.mjs` assumed first-load Project interactions were immediately clickable, but the current product intentionally shows a dismissible onboarding overlay on fresh load.
+
+**Files changed**
+
+- `scripts/gates/_gateHarness.mjs`
+- `packages/rb-apps/src/apps/ide/components/IdeTopBar.tsx`
+- `scripts/gates/ide-project-overview-contract.mjs`
+
+**What changed**
+
+- Updated the shared gate harness to probe `/os/` directly when root does not already resolve there, keeping gate navigation aligned with canonical deploy truth.
+- Fixed the real top-bar boot regression by destructuring `onHelp` correctly in `IdeTopBar`.
+- Updated the Project Overview gate to dismiss the intentional onboarding overlay before clicking into the mapping table, preserving the contract’s actual project-overview assertions instead of weakening them.
+
+**Why minimal**
+
+- The batch stayed in the Project/build gate path only.
+- No Project surface logic or classroom workflow behavior changed.
+- The gate still verifies the same overview contract: identity, readiness, mapping, primary CTA visibility, and unmapped-count updates after editing mapping.
+
+**Validation**
+
+- `pnpm --filter @redbyte/playground build`
+- `pnpm -s ide:gate:project-overview-contract`
+- `pnpm repo:status`
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-08 (IDE Vivado Pack contract fix)
 
 ### Export/build contract batch - restore Vivado pack contract test against current export authority

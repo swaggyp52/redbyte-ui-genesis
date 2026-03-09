@@ -78,6 +78,21 @@ async function resolveIdeBaseUrl(rootBaseUrl) {
   } catch {
     // fall through to root URL
   }
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const osCandidate = `${normalizedRoot}/os/`;
+    const response = await fetch(osCandidate, {
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (response.ok) {
+      return `${normalizedRoot}/os`;
+    }
+  } catch {
+    // fall through to root URL
+  }
   return normalizedRoot;
 }
 

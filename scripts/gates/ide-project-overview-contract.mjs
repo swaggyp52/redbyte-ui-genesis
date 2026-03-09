@@ -6,10 +6,20 @@ async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
 }
 
+async function dismissOnboardingIfPresent(page) {
+  const skipButton = page.locator('[data-testid="ide-onboarding-skip"]').first();
+  const overlay = page.locator('[data-testid="ide-onboarding-overlay"]').first();
+  const visible = await skipButton.isVisible().catch(() => false);
+  if (!visible) return;
+  await skipButton.click();
+  await overlay.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => null);
+}
+
 await runIdeGate('IDE project overview contract satisfied', async ({ page, baseUrl }) => {
   await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
+  await dismissOnboardingIfPresent(page);
 
   const identityVisible = await page
     .locator('[data-testid="ide-project-panel-identity"]')

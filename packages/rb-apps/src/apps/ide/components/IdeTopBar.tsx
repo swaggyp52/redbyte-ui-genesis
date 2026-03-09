@@ -53,6 +53,7 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
   projectId,
   saveState,
   currentMode,
+  onHelp,
 }) => {
   const saveDotClass =
     saveState === 'saved'
