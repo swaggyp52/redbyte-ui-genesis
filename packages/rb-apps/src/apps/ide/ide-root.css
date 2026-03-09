@@ -9256,6 +9256,45 @@ details[open] summary .details-arrow {
   flex-shrink: 0;
 }
 
+.ide-build-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(115, 193, 255, 0.22);
+  background: rgba(115, 193, 255, 0.08);
+  color: rgba(214, 234, 255, 0.92);
+  white-space: nowrap;
+}
+
+.ide-build-badge-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(214, 234, 255, 0.72);
+}
+
+.ide-build-badge-sha {
+  font-family: var(--rb-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: inherit;
+}
+
+.ide-build-badge--dev {
+  border-color: rgba(244, 191, 117, 0.28);
+  background: rgba(244, 191, 117, 0.08);
+  color: rgba(255, 234, 204, 0.92);
+}
+
+.ide-build-badge--prod {
+  border-color: rgba(82, 210, 115, 0.3);
+  background: rgba(82, 210, 115, 0.1);
+  color: rgba(225, 255, 229, 0.92);
+}
+
 /* Pipeline strip: visually unified with topbar */
 .ide-surface-column > .ide-pipeline-strip {
   background: #0a1220;

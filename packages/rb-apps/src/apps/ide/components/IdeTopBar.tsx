@@ -1,11 +1,13 @@
 import React from 'react';
 import type { IdeMode } from './IdeLeftRail';
+import type { IdeBuildIdentity } from '../buildIdentity';
 
 export interface IdeTopBarProps {
   projectName: string;
   projectId?: string;
   saveState: 'saved' | 'unsaved' | 'autosaving';
   currentMode?: IdeMode;
+  buildIdentity?: IdeBuildIdentity;
   // Legacy toolbar props — kept optional for backward compat; no longer rendered.
   onSave?: () => void;
   onSaveAs?: () => void;
@@ -53,6 +55,7 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
   projectId,
   saveState,
   currentMode,
+  buildIdentity,
   onHelp,
 }) => {
   const saveDotClass =
@@ -93,6 +96,17 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
       </div>
 
       <div className="ide-top-right">
+        {buildIdentity && (
+          <span
+            className={`ide-build-badge ide-build-badge--${buildIdentity.envLabel}`}
+            data-testid="ide-build-badge"
+            title={buildIdentity.title}
+            aria-label={buildIdentity.title}
+          >
+            <span className="ide-build-badge-label">Build</span>
+            <code className="ide-build-badge-sha">{buildIdentity.shortSha}</code>
+          </span>
+        )}
         <span
           className={`ide-save-dot ${saveDotClass}`}
           data-testid="ide-save-state"

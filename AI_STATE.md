@@ -1,5 +1,34 @@
 # AI State
 
+## Change Log 2026-03-09 (Classroom release candidate: visible build truth)
+
+### IDE chrome now exposes the real build identity and the Export surface clearly leads with Open Project
+
+**Modified files:**
+
+- `apps/playground/vite.config.ts` - Aligned the Vite-injected `__GIT_SHA__` fallback with the same git commit source used by deploy metadata so the in-app build badge and generated `build.json` / `/os/version.json` agree on commit identity.
+- `packages/rb-apps/src/apps/ide/buildIdentity.ts` - Added a focused build-identity helper that resolves the deploy/build SHA, short SHA, env label, and tooltip text from the canonical build-time metadata path.
+- `packages/rb-apps/src/apps/IdeApp.tsx` - Resolved the build identity once per mount and passed it into the IDE top bar.
+- `packages/rb-apps/src/apps/ide/components/IdeTopBar.tsx` - Added a visible `Build <sha>` badge so TAs and students can confirm the deployed build without confusing it with project state.
+- `packages/rb-apps/src/apps/ide/components/IdeStatusBar.tsx` - Relabeled the footer hash as `Project Hash` to remove deploy/build ambiguity.
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` - Tightened the release-candidate export wording so the primary path reads `Vivado Project (Open Project)` and the legacy pack reads `Vivado Kit (Fallback)`.
+- `packages/rb-apps/src/apps/ide/ide-root.css` - Added compact styling for the new top-bar build badge.
+- `packages/rb-apps/src/apps/ide/__tests__/buildIdentity.test.ts` - Added regression coverage for release badge SHA selection and dev fallback behavior.
+
+### Why this was minimal
+
+- The batch stayed entirely in release-truth and export-labeling scope.
+- No project-home hierarchy, mode-restore behavior, onboarding flow, or blocked-state logic changed here.
+- The project determinism hash remains available, but it is now explicitly labeled as project state instead of implied build identity.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/buildIdentity.test.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx` - PASS (`2` files, `3` tests)
+- `pnpm --filter @redbyte/playground build` - PASS; `apps/playground/dist/build.json` now records short SHA `fb5063a8` in this workspace
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`; still prints the same extensive pre-existing repo-wide TypeScript diagnostics outside this batch
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-09 (Classroom hardening: Vivado project-folder contract lock)
 
 ### Deterministic Open Project export now has round-trip and golden-hash contract coverage

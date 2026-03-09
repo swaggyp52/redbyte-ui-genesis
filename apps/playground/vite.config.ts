@@ -34,7 +34,7 @@ export default defineConfig({
   envPrefix: ['VITE_', 'RB_'],
   publicDir: path.resolve(__dirname, '../../public'),
   define: {
-    __GIT_SHA__: JSON.stringify(process.env.GIT_SHA ?? process.env.CF_PAGES_COMMIT_SHA ?? 'dev'),
+    __GIT_SHA__: JSON.stringify(process.env.GIT_SHA ?? process.env.CF_PAGES_COMMIT_SHA ?? getGitSha()),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
     __RB_VITE_CONFIG__: JSON.stringify('vite.config.ts'),
   },

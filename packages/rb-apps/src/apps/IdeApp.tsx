@@ -24,6 +24,7 @@ import { ImportSurface } from './ide/surfaces/ImportSurface';
 import { PipelineStrip } from './ide/components/PipelineStrip';
 import { KeyboardShortcutsModal } from './ide/components/KeyboardShortcutsModal';
 import { OnboardingOverlay } from './ide/components/OnboardingOverlay';
+import { resolveIdeBuildIdentity } from './ide/buildIdentity';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ThrowOnce } from '../components/ThrowOnce';
 import { buildExportViewModel } from './ide/viewmodels/buildExportViewModel';
@@ -185,6 +186,7 @@ export const IdeApp: React.FC = () => {
     () => (pendingExampleId ? getIdeExampleById(pendingExampleId) : undefined),
     [pendingExampleId]
   );
+  const buildIdentity = useMemo(() => resolveIdeBuildIdentity(), []);
   const activeExample = useMemo(
     () => (activeExampleId ? getIdeExampleById(activeExampleId) : undefined),
     [activeExampleId]
@@ -980,6 +982,7 @@ export const IdeApp: React.FC = () => {
         projectId={projectId}
         saveState={saveState}
         currentMode={currentMode}
+        buildIdentity={buildIdentity}
         onSave={handleSaveProject}
         onSaveAs={handleSaveAsProject}
         onLoad={handleOpenLoadModal}

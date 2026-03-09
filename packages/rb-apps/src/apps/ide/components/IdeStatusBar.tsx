@@ -14,7 +14,7 @@ export const IdeStatusBar: React.FC<IdeStatusBarProps> = ({ mode, determinismHas
   return (
     <footer className="ide-status-bar" data-testid="ide-status-bar">
       <span className="ide-status-item">Mode: {mode}</span>
-      <span className="ide-status-item ide-status-mono">Hash: {determinismHash}</span>
+      <span className="ide-status-item ide-status-mono">Project Hash: {determinismHash}</span>
       <IdeStatusPill tone={gateTone}>{gateLabel}</IdeStatusPill>
     </footer>
   );

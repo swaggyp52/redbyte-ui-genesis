@@ -1214,7 +1214,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
               <SurfacePanel className="ide-export-buildCard" testId="ide-export-download-block">
                 <div className="ide-export-buildCardTop">
-                  <span className="ide-export-buildTitle">Vivado Project</span>
+                  <span className="ide-export-buildTitle">Vivado Project (Open Project)</span>
                   <span data-testid="ide-primary-cta">
                     <IdeButton
                       tone="primary"
@@ -1284,7 +1284,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
               <SurfacePanel className="ide-export-artifact-plan" testId="ide-export-artifact-plan">
                 <div className="ide-export-artifact-plan-header">
-                  <span className="ide-export-artifact-plan-title">PACK CONTENTS</span>
+                  <span className="ide-export-artifact-plan-title">Vivado Kit (Fallback)</span>
                   <span style={{ fontSize: 10, color: 'var(--ide-text-muted)' }}>
                     {viewModel.artifacts.length}/5 ready
                   </span>
