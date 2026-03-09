@@ -9,6 +9,8 @@ endmodule
 `;
 
 await runIdeGate('IDE import renders schematic contract satisfied', async ({ page, baseUrl }) => {
+  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
+  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });

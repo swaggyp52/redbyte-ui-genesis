@@ -13,6 +13,8 @@ const FIXTURE_PATH = path.resolve(
 
 await runIdeGate('IDE professor import reality contract', async ({ page, baseUrl }) => {
   // 1. Navigate to Import mode
+  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
+  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${baseUrl}/?mode=import`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 15000 });

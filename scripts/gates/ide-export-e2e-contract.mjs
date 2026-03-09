@@ -30,6 +30,8 @@ const VIVADO_IMPORT_TCL_PATTERN = /(^|\/)vivado_import\.tcl$/i;
 const PROJECT_RBPROJ_PATTERN = /(^|\/)project\.rbproj\.json$/i;
 
 await runIdeGate('IDE export e2e contract satisfied', async ({ page, baseUrl }) => {
+  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
+  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${baseUrl}/?mode=project`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });

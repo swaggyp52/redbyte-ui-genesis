@@ -3,6 +3,8 @@
 import { assert, runIdeGate } from './_gateHarness.mjs';
 
 await runIdeGate('IDE console autocollapse contract satisfied', async ({ page, baseUrl }) => {
+  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
+  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${baseUrl}/?mode=verify`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });

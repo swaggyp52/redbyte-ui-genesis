@@ -8,12 +8,14 @@ function parsePercent(value) {
 }
 
 await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, baseUrl }) => {
+  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
+  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
   await page.locator('[data-testid="mode-button-project"]').click();
-  await page.locator('[data-testid="ide-project-load-start-logic-gates"]').click();
+  await page.locator('[data-testid="ide-project-load-start-signal-tour"]').click();
   const confirmVisible = await page
     .locator('[data-testid="ide-example-confirm-modal"]')
     .first()

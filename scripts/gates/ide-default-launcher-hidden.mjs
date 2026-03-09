@@ -17,6 +17,8 @@ async function main() {
 
   try {
     const baseUrl = process.env.BASE_URL || 'http://localhost:5173';
+  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
+  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
     await page.goto(baseUrl, { waitUntil: 'networkidle' });
 
     // Give UI time to settle

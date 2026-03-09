@@ -7,6 +7,8 @@ const UPDATE_TIMEOUT_MS = 250;
 await runIdeGate('IDE design palette build contract satisfied', async ({ page, baseUrl }) => {
   // Deterministic desktop viewport keeps design controls in-frame for interaction.
   await page.setViewportSize({ width: 1920, height: 1080 });
+  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
+  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${baseUrl}/?mode=design`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });

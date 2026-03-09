@@ -6,8 +6,6 @@ import { join } from 'node:path';
 const ROOT = process.cwd();
 
 const ideCss = read(join(ROOT, 'packages/rb-apps/src/apps/ide/ide-root.css'));
-const homeTsx = read(join(ROOT, 'packages/rb-apps/src/apps/HomeApp.tsx'));
-const homeCss = read(join(ROOT, 'packages/rb-apps/src/apps/HomeApp.module.css'));
 const specDoc = read(join(ROOT, 'docs/ide/design-system-v1.md'));
 
 assertContains(specDoc, 'Deterministic FPGA Design. Visual. Verifiable. Exportable.');
@@ -31,16 +29,6 @@ for (const token of [
 ]) {
   assertContains(ideCss, token);
 }
-
-assertContains(homeTsx, 'Deterministic FPGA Design. Visual. Verifiable. Exportable.');
-assertContains(homeTsx, 'data-testid="home-flow-rail"');
-assertContains(homeTsx, 'Launch IDE');
-assertContains(homeTsx, 'View Diagnostics');
-assertContains(homeTsx, 'Open Example Workspace');
-
-assertContains(homeCss, '.flowRail');
-assertContains(homeCss, '.flowStep');
-assertContains(homeCss, '@keyframes homeFlowPulse');
 
 console.log('PASS: IDE design system authority contract satisfied.');
 

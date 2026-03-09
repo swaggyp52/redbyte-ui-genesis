@@ -28,6 +28,8 @@ async function verifyDefaultIdeRoute(page) {
     consoleLines.push(message.text());
   });
 
+  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
+  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
 

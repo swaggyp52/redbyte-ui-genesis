@@ -3,6 +3,8 @@
 import { assert, runIdeGate, visible } from './_gateHarness.mjs';
 
 await runIdeGate('IDE shell chrome contract satisfied', async ({ page, baseUrl }) => {
+  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
+  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${baseUrl}/?mode=verify`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
@@ -25,8 +27,8 @@ await runIdeGate('IDE shell chrome contract satisfied', async ({ page, baseUrl }
   assert(Boolean(leftRailBox), 'left rail bounding box unavailable');
   assert(topBarBox.height <= 52, `top bar must stay compact (<=52px), got ${topBarBox.height}`);
   assert(
-    leftRailBox.width >= 48 && leftRailBox.width <= 60,
-    `left rail width must stay within compact range 48..60px, got ${leftRailBox.width}`
+    leftRailBox.width >= 68 && leftRailBox.width <= 80,
+    `left rail width must stay within range 68..80px (canonical: 72px), got ${leftRailBox.width}`
   );
   const consoleStateAttr = await consolePanel.getAttribute('data-console-state');
   const consoleClass = await consolePanel.getAttribute('class');

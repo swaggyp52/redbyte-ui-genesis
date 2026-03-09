@@ -25,6 +25,8 @@ async function clickVerifyRun(page) {
 }
 
 await runIdeGate('IDE evidence capsule contract satisfied', async ({ page, baseUrl }) => {
+  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
+  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
@@ -43,7 +45,6 @@ await runIdeGate('IDE evidence capsule contract satisfied', async ({ page, baseU
 
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
-  await page.locator('[data-testid="ide-verify-generate-basic-vectors"]').click();
   await clickVerifyRun(page);
   await page.waitForFunction(
     () => /PASS|FAIL|TRACE/i.test(document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent ?? ''),

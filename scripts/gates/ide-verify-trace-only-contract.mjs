@@ -4,6 +4,8 @@ import { assert, runIdeGate, visible } from './_gateHarness.mjs';
 
 await runIdeGate('IDE verify trace-only contract', async ({ page, baseUrl }) => {
   // 1. Load the default IDE directly in verify mode — no vectors authored
+  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
+  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${baseUrl}/?mode=verify`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 15000 });
