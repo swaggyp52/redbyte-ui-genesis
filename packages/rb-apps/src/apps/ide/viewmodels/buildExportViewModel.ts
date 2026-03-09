@@ -503,7 +503,7 @@ function buildRuntimeBackedTestbench(
 
 function resolveTopEntity(project: RBProject): string {
   const top =
-    (project.fpga?.top ?? project.hdl?.top ?? '')
+    (project.hdl?.top ?? project.fpga?.top ?? '')
       .trim()
       .replace(/[^A-Za-z0-9_]+/g, '_');
   return top.length > 0 ? top : 'top';

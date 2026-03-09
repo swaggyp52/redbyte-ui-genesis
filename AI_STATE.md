@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-03-09 (Classroom hardening: deterministic Vivado Open Project export)
+
+### Export now produces a deterministic Vivado Project Mode folder for direct `.xpr` open
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` - Repointed the primary export CTA to a deterministic `Download Vivado Project (Open Project)` flow, kept the flat Vivado Kit as a secondary fallback, updated the student-facing Vivado instructions to the unzip -> Open Project -> select `.xpr` path, and routed both ZIP downloads through deterministic packaging helpers instead of ad hoc ZIP writing.
+- `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts` - Made export-side top-module resolution prefer `hdl.top` before `fpga.top` so the exported HDL entity, Tcl, and new `.xpr` stay aligned when a project carries both fields.
+- `packages/rb-apps/src/export/deterministicZip.ts` - Made the deterministic ZIP helper browser-safe so the IDE export surface can use the canonical stable-entry ZIP path directly.
+- `packages/rb-apps/src/fpga/vivado/vivadoProjectFolder.ts` - Added the deterministic Vivado Project Mode folder generator: stable slugging, stable `.xpr`, nested `<slug>.srcs` layout, fallback Tcl generation against the nested sources tree, and the Open Project README content.
+
+### Why this was minimal
+
+- The batch stayed entirely in the export lane.
+- `buildExportViewModel(...)` remains the single source of HDL/XDC/testbench/support artifact truth.
+- The old Vivado Kit path was preserved as a fallback instead of being refactored away.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/ide-vivado-pack-contract.test.ts packages/rb-apps/src/__tests__/ide-export-includes-rbproj-contract.test.ts` - PASS (`2` files, `2` tests)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx` - PASS (`1` file, `1` test)
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`; still prints extensive pre-existing unrelated repo type diagnostics outside this export batch
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-09 (Classroom hardening: safe project load + persisted-state guards)
 
 ### Project load, import, and reload now fail safe instead of poisoning the IDE

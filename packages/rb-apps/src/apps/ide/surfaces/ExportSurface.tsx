@@ -1,10 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { IdeExampleDefinition } from '../examplesCatalog';
 import type { RBProject } from '../../../export/projectFormat';
-import { stableStringify } from '../../../export/stableStringify';
+import { buildDeterministicZip } from '../../../export/deterministicZip';
 import type { ProjectHealthExportResult, ProjectHealthVerifyResult } from '../projectHealth';
 import { createDiagnosticId, type IdeDiagnostic } from '../diagnostics';
-import JSZip from 'jszip';
+import {
+  buildVivadoProjectFolderZip,
+  deriveVivadoProjectSlug,
+  resolveVivadoPart,
+} from '../../../fpga/vivado/vivadoProjectFolder';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import {
   buildExportViewModel,
@@ -72,7 +76,7 @@ const STEP_ORDER: Array<{ id: RebuildStepId; label: string }> = [
   { id: 'clock',    label: 'Validate clock domain' },
   { id: 'bundle',   label: 'Build VHDL + constraints' },
   { id: 'manifest', label: 'Generate README' },
-  { id: 'zip',      label: 'Package Vivado Kit' },
+  { id: 'zip',      label: 'Package Vivado Project' },
 ];
 
 function makeSteps(): RebuildStep[] {
@@ -124,6 +128,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   );
   const [downloadError, setDownloadError] = useState<string>('');
   const [downloadDone, setDownloadDone] = useState(false);
+  const [lastDownloadKind, setLastDownloadKind] = useState<'project' | 'kit' | null>(null);
   const [copyState, setCopyState] = useState<'idle' | 'command' | 'report' | 'error'>('idle');
   const [highlightedPort, setHighlightedPort] = useState<string | null>(null);
   const [selectedArtifactPath, setSelectedArtifactPath] = useState<string>(() => {
@@ -217,6 +222,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   }).env;
   const redbyteVersion = (appEnv?.VITE_APP_VERSION ?? 'dev').trim() || 'dev';
   const redbyteCommit = (appEnv?.VITE_GIT_SHA ?? 'local').trim() || 'local';
+  const topModule = useMemo(() => resolveTopEntity(project), [project]);
+  const projectSlug = useMemo(
+    () => deriveVivadoProjectSlug((project.meta?.projectId ?? project.name ?? '').trim()),
+    [project.meta?.projectId, project.name]
+  );
+  const vivadoPart = resolveVivadoPart();
 
   const gateRows = useMemo(() => {
     const verifyTone = hasVerifyPass
@@ -311,6 +322,16 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     viewModel.artifacts[0];
   const vivadoCommand =
     'vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log';
+  const projectDownloadLabel = isRebuilding
+    ? 'Building…'
+    : downloadDone && lastDownloadKind === 'project'
+      ? 'Re-download'
+      : 'Download Vivado Project (Open Project)';
+  const kitDownloadLabel = isRebuilding
+    ? 'Building…'
+    : downloadDone && lastDownloadKind === 'kit'
+      ? 'Re-download'
+      : 'Download Vivado Kit';
   const quickDebugReport = useMemo(() => {
     const mappingLines = [...viewModel.pinTable]
       .map((row) => {
@@ -394,7 +415,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     setIsRebuilding(false);
   }, []);
 
-  const handleRebuildExport = useCallback(async () => {
+  const handleDownloadExport = useCallback(async (kind: 'project' | 'kit') => {
     setIsRebuilding(true);
     resetSteps();
     setDownloadError('');
@@ -409,7 +430,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       await tick();
       if (hasBlockingErrors) {
         markStep('validate', 'error', 'Blocking diagnostics present');
-        setDownloadError('Resolve blocking diagnostics before downloading the Vivado Kit.');
+        setDownloadError(
+          kind === 'project'
+            ? 'Resolve blocking diagnostics before downloading the Vivado Project.'
+            : 'Resolve blocking diagnostics before downloading the Vivado Kit.'
+        );
         setIsRebuilding(false);
         return;
       }
@@ -449,21 +474,26 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
       // STEP: zip — package and download
       markStep('zip', 'running');
-      const zipBytes = await buildVivadoKitZip(viewModel.artifacts);
-      if (typeof window !== 'undefined') {
-        const zipBuffer = Uint8Array.from(zipBytes).buffer;
-        const blob = new Blob([zipBuffer], { type: 'application/zip' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'redbyte-vivado-kit.zip';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.setTimeout(() => URL.revokeObjectURL(url), 0);
-      }
+      const zipBytes =
+        kind === 'project'
+          ? await buildVivadoProjectFolderZip({
+              artifacts: viewModel.artifacts.map((artifact) => ({
+                path: artifact.path,
+                content: artifact.content,
+              })),
+              projectName: project.name,
+              projectSlug,
+              topModule,
+              part: vivadoPart,
+            })
+          : await buildVivadoKitZip(viewModel.artifacts);
+      downloadZipBytes(
+        zipBytes,
+        kind === 'project' ? `${projectSlug}-vivado-project.zip` : 'redbyte-vivado-kit.zip'
+      );
       markStep('zip', 'done');
       setDownloadDone(true);
+      setLastDownloadKind(kind);
 
       onExportBundle?.(viewModel.artifacts);
       onExportResult?.({
@@ -493,6 +523,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   }, [
     resetSteps, markStep, hasBlockingErrors, requiredMappedCount, requiredCount,
     verifyResult, dirtySinceVerify, viewModel, onExportBundle, onExportResult,
+    project.name, projectSlug, topModule, vivadoPart,
   ]);
 
   const handleDownloadArtifact = (artifact: ExportArtifactView) => {
@@ -553,11 +584,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
             <IdeButton
               tone="secondary"
-              onClick={() => void handleRebuildExport()}
+              onClick={() => void handleDownloadExport('project')}
               disabled={hasBlockingErrors || isRebuilding}
               testId="ide-export-dock-download"
             >
-              {isRebuilding ? <><IdeSpinner size="sm" testId="ide-export-rebuild-spinner" /> Building&hellip;</> : 'Download Vivado Kit'}
+              {isRebuilding ? <><IdeSpinner size="sm" testId="ide-export-rebuild-spinner" /> Building&hellip;</> : projectDownloadLabel}
             </IdeButton>
           </div>
           <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
@@ -684,10 +715,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <span data-testid="ide-primary-cta">
                 <IdeButton
                   tone="primary"
-                  onClick={() => void handleRebuildExport()}
+                  onClick={() => void handleDownloadExport('project')}
                   disabled={hasBlockingErrors || isRebuilding}
                 >
-                  {isRebuilding ? 'Building…' : downloadDone ? 'Re-download' : 'Download Vivado Kit'}
+                  {projectDownloadLabel}
                 </IdeButton>
               </span>
             </>
@@ -1108,7 +1139,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 {!hasBlockingErrors && hasVerifyPass ? (
                   <IdeCallout tone="success" title="Ready to program your Basys3" testId="ide-export-vivado-ready-callout">
                     <p className="ide-copy" style={{ margin: '0 0 var(--ide-space-1) 0' }}>
-                      Download the Vivado Kit above, then follow these steps.
+                      Download the Vivado Project above, then follow these steps.
                     </p>
                   </IdeCallout>
                 ) : (
@@ -1129,14 +1160,18 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       <div className="ide-kv-row">
                         <span>Part</span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--ide-space-1)' }}>
-                          <code data-testid="ide-export-part-number">xc7a35t-1cpg236-1</code>
+                          <code data-testid="ide-export-part-number">{vivadoPart}</code>
                           <IdeButton
                             tone="ghost"
-                            onClick={() => void copyToClipboard('xc7a35t-1cpg236-1', 'command')}
+                            onClick={() => void copyToClipboard(vivadoPart, 'command')}
                           >
                             Copy
                           </IdeButton>
                         </span>
+                      </div>
+                      <div className="ide-kv-row">
+                        <span>Top Module</span>
+                        <span><code data-testid="ide-export-top-module">{topModule}</code></span>
                       </div>
                       <div className="ide-kv-row">
                         <span>Tool</span>
@@ -1144,16 +1179,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       </div>
                     </div>
                     <ol className="ide-export-checklist">
-                      <li>Open Vivado → <strong>Create Project</strong></li>
-                      <li>Select <strong>RTL Project</strong> → Next</li>
-                      <li>Add <code>top.vhd</code> from the ZIP as a <strong>Design Source</strong></li>
-                      <li>Add <code>top.xdc</code> from the ZIP as a <strong>Constraints</strong> file</li>
-                      <li>Search part <code>xc7a35t-1cpg236-1</code> (or use Boards tab → Basys3)</li>
-                      <li>Click <strong>Finish</strong></li>
+                      <li>Unzip the download and keep the <code>{projectSlug}</code> folder intact</li>
+                      <li>Open Vivado → <strong>Open Project</strong></li>
+                      <li>Select <code>{projectSlug}.xpr</code> inside the unzipped folder</li>
+                      <li>Confirm the design sources and constraints load from <code>{projectSlug}.srcs</code></li>
                       <li>Run Synthesis → Implementation → Generate Bitstream → Program Device</li>
                     </ol>
                     <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', marginTop: 'var(--ide-space-2)' }}>
-                      Simulation: add <code>testbench.vhd</code> as Simulation Source → Run Behavioral Simulation.
+                      Fallback: run <code>{vivadoCommand}</code> from the extracted folder if Open Project is unavailable.
                     </p>
                   </div>
                   {/* Gate contract compatibility: vivado command/readme must be findable */}
@@ -1181,17 +1214,27 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
               <SurfacePanel className="ide-export-buildCard" testId="ide-export-download-block">
                 <div className="ide-export-buildCardTop">
-                  <span className="ide-export-buildTitle">Vivado Kit</span>
+                  <span className="ide-export-buildTitle">Vivado Project</span>
                   <span data-testid="ide-primary-cta">
                     <IdeButton
-                      tone="secondary"
-                      onClick={() => void handleRebuildExport()}
+                      tone="primary"
+                      onClick={() => void handleDownloadExport('project')}
                       disabled={hasBlockingErrors || isRebuilding}
                       testId="ide-export-rebuild-btn"
                     >
-                      {isRebuilding ? 'Building…' : downloadDone ? 'Re-download' : 'Download Vivado Kit'}
+                      {projectDownloadLabel}
                     </IdeButton>
                   </span>
+                </div>
+                <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
+                  <IdeButton
+                    tone="secondary"
+                    onClick={() => void handleDownloadExport('kit')}
+                    disabled={hasBlockingErrors || isRebuilding}
+                    testId="ide-export-download-kit-btn"
+                  >
+                    {kitDownloadLabel}
+                  </IdeButton>
                 </div>
                 {hasBlockingErrors && (
                   <span
@@ -1455,6 +1498,13 @@ function statusTone(status: ExportPinStatus): 'ok' | 'error' | 'warn' {
   return 'warn';
 }
 
+function resolveTopEntity(project: RBProject): string {
+  const top = (project.hdl?.top ?? project.fpga?.top ?? '')
+    .trim()
+    .replace(/[^A-Za-z0-9_]+/g, '_');
+  return top.length > 0 ? top : 'top';
+}
+
 function resolveRowStatus(baseStatus: ExportPinStatus, pinValue: string): ExportPinStatus {
   if (baseStatus === 'unused') return 'unused';
   return pinValue.trim().length > 0 ? 'mapped' : 'missing';
@@ -1605,15 +1655,29 @@ function syntaxHighlight(code: string, kind: string): string {
   return escapeHtml(code);
 }
 
+function downloadZipBytes(bytes: Uint8Array, fileName: string): void {
+  if (typeof window === 'undefined') return;
+  const zipBuffer = Uint8Array.from(bytes).buffer;
+  const blob = new Blob([zipBuffer], { type: 'application/zip' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
 async function buildVivadoKitZip(artifacts: ExportArtifactView[]): Promise<Uint8Array> {
-  const zip = new JSZip();
-  const ZIP_DATE = new Date('2026-01-01T00:00:00.000Z');
-  for (const artifact of artifacts) {
-    if (artifact.content.trim().length > 0) {
-      zip.file(artifact.path, artifact.content, { date: ZIP_DATE });
-    }
-  }
-  return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+  return buildDeterministicZip(
+    artifacts
+      .filter((artifact) => artifact.content.trim().length > 0)
+      .map((artifact) => ({
+        name: artifact.path,
+        text: artifact.content,
+      }))
+  );
 }
 
 // ─── Phase 2: Pin Validation ────────────────────────────────────────────────

@@ -1,5 +1,4 @@
 import JSZip from 'jszip';
-import { createHash } from 'node:crypto';
 import { compareCodepoint } from './codepointSort';
 
 export interface DeterministicZipEntry {
@@ -40,6 +39,12 @@ export async function buildDeterministicZip(entries: DeterministicZipEntry[]): P
   });
 }
 
-export function sha256Hex(bytes: Uint8Array): string {
-  return createHash('sha256').update(bytes).digest('hex');
+export async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error('WebCrypto SHA-256 is unavailable.');
+  }
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((value) => value.toString(16).padStart(2, '0'))
+    .join('');
 }
