@@ -113,4 +113,122 @@ describe('mergePersistedRuntimeState', () => {
     expect(merged.sim.speedHz).toBe(120);
     expect(merged.sim.probes).toEqual([{ key: 'ld0.in', label: 'ld0.in' }]);
   });
+
+  it('invalidates legacy runtime-backed verify trust on restore', () => {
+    const current = useProjectRuntime.getState();
+
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-legacy-verify',
+        projectName: 'Legacy Verify Project',
+        activeExampleId: null,
+        projectIoRows: [
+          {
+            id: 'sw0',
+            nodeId: 'sw0_node',
+            port: 'out',
+            label: 'sw0',
+            direction: 'in',
+            pin: 'SW0',
+            required: true,
+          },
+          {
+            id: 'ld0',
+            nodeId: 'ld0_node',
+            port: 'in',
+            label: 'ld0',
+            direction: 'out',
+            pin: 'LD0',
+            required: true,
+          },
+        ],
+        projectVectors: [
+          {
+            tick: 0,
+            inputs: { sw0: 0 },
+            expected: { ld0: 0 },
+          },
+        ],
+        circuit: {
+          nodes: [
+            { id: 'sw0_node', type: 'INPUT', x: 0, y: 0 },
+            { id: 'ld0_node', type: 'OUTPUT', x: 10, y: 5 },
+          ],
+          connections: [
+            {
+              from: 'sw0_node',
+              fromPort: 'out',
+              to: 'ld0_node',
+              toPort: 'in',
+            },
+          ],
+        },
+        verifyLastRun: {
+          scenarioId: 'runtime-trace',
+          scenarioName: 'Runtime trace verification',
+          status: 'pass',
+          deterministicHash: 'sim_legacy_hash',
+          reportHash: 'vrf_legacy',
+          generatedAtIso: '2026-03-09T00:00:00.000Z',
+          schedule: 'combinational',
+          meta: {
+            circuitKind: 'combinational',
+            clockingProtocol: null,
+            samplePoint: 'steady-state',
+            tick0Meaning: null,
+            clockSignalName: null,
+          },
+          report: {
+            schemaVersion: 'rb.verify-report.v1',
+            scenarioId: 'runtime-trace',
+            scenarioName: 'Runtime trace verification',
+            status: 'pass',
+            deterministicHash: 'sim_legacy_hash',
+            rows: [{ tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass' }],
+            vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } }],
+            inputsAtTick: { 0: { sw0: 0 } },
+            signalRoles: { sw0: 'input', ld0: 'output' },
+            generatedAtIso: '2026-03-09T00:00:00.000Z',
+            reportHash: 'vrf_legacy',
+          },
+          waveform: [{ tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] }],
+          traceWaveform: [{ tick: 0, signals: { sw0: '0', ld0: '0', tap: '1' }, mismatches: [] }],
+        },
+        verifyRunHistory: [
+          {
+            runId: 'legacy-run',
+            ranAtIso: '2026-03-09T00:00:00.000Z',
+            status: 'pass',
+            passedRows: 1,
+            failedRows: 0,
+            firstFailure: null,
+            circuitHash: 'c1',
+            vectorsHash: 'v1',
+            mappingHash: 'm1',
+            projectHash: 'p1',
+            didCircuitChangeSinceLast: false,
+            didVectorsChangeSinceLast: false,
+            didMappingChangeSinceLast: false,
+          },
+        ],
+        projectHealthCore: {
+          lastVerify: {
+            status: 'pass',
+            hash: 'sim_legacy_hash',
+            reportHash: 'vrf_legacy',
+            ranAtIso: '2026-03-09T00:00:00.000Z',
+          },
+          dirtySinceVerify: false,
+          dirtySinceExport: false,
+        },
+      },
+      current
+    );
+
+    expect(merged.verifyLastRun).toBeUndefined();
+    expect(merged.verifyRunHistory).toEqual([]);
+    expect(merged.projectHealthCore.lastVerify).toBeUndefined();
+    expect(merged.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(merged.projectHealthCore.dirtySinceExport).toBe(false);
+  });
 });

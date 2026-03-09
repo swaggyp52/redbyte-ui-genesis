@@ -585,14 +585,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const timelineTicks = tickIndex.ticks;
   const waveformTicks = useMemo(() => {
     const ticks = new Set<number>();
-    const source = lastRun?.traceWaveform ?? lastRun?.waveform ?? [];
+    const source = lastRun?.waveform ?? [];
     for (const sample of source) ticks.add(sample.tick);
     return Array.from(ticks).sort((a, b) => a - b);
-  }, [lastRun?.traceWaveform, lastRun?.waveform]);
+  }, [lastRun?.waveform]);
 
   const signalTimeline = useMemo(() => {
     const signalValueMap = new Map<string, Map<number, string>>();
-    const waveformSource = lastRun?.traceWaveform ?? lastRun?.waveform ?? [];
+    const waveformSource = lastRun?.waveform ?? [];
     for (const sample of waveformSource) {
       for (const [signal, value] of Object.entries(sample.signals)) {
         const values = signalValueMap.get(signal) ?? new Map<number, string>();
@@ -611,7 +611,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           value: values.get(tick) ?? '-',
         })),
       }));
-  }, [lastRun?.traceWaveform, lastRun?.waveform, timelineTicks, waveformTicks]);
+  }, [lastRun?.waveform, timelineTicks, waveformTicks]);
 
   const failingRows = useMemo(
     () => runRows.filter((row) => row.status === 'fail'),
@@ -1570,28 +1570,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       scenarioName: 'Project Vectors',
       deterministicHash,
       rows,
-      useRuntimeTrace: true,
-    });
-  };
-
-  // Run Deterministic: always simulates from the circuit — ignores interactive runtime trace.
-  // Use when the user hasn't stepped the simulation manually or wants reproducible results.
-  const runDeterministicVerification = () => {
-    setRunState('running');
-    const rows = authoredVectors.flatMap((vector) =>
-      Object.entries(vector.expected).map(([signal, expected]) => ({
-        tick: vector.tick,
-        signal,
-        expected: String(expected),
-        actual: '0',
-      }))
-    );
-    onRunVerification?.({
-      scenarioId: `project-verify-det-${deterministicHash.slice(0, 8)}`,
-      scenarioName: 'Project Vectors (deterministic)',
-      deterministicHash,
-      rows,
-      useRuntimeTrace: false,
     });
   };
 
@@ -2373,6 +2351,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </IdeCallout>
         )}
 
+        {!isFirstRunState && (
+          <IdeCallout tone="info" title="Verification Result (Authoritative)" testId="ide-verify-authority-note">
+            Design trace is for debug only and does not affect pass/fail.
+          </IdeCallout>
+        )}
+
         {displayStatus === 'FAIL' && oracleApplied && (
           <IdeCallout tone="info" testId="ide-verify-oracle-applied-note">
             Expected values updated — re-run to confirm.
@@ -2434,7 +2418,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {isTraceOnly && canSetOracle && (
           <IdeCallout tone="info" title="Trace captured — no expectations set" testId="ide-verify-trace-oracle-callout">
             <p className="ide-copy">
-              The simulation ran and produced {waveformTicks.length} tick{waveformTicks.length !== 1 ? 's' : ''} of waveform data,
+              Verification ran and produced {waveformTicks.length} tick{waveformTicks.length !== 1 ? 's' : ''} of waveform data,
               but no expected outputs were defined so nothing was verified.
             </p>
             <p className="ide-copy">
@@ -3173,20 +3157,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       </dl>
                     </section>
                   )}
-                  {/* Advanced run actions */}
-                  <div className="ide-verify-details-actions" data-testid="ide-verify-details-actions">
-                    {authoredVectors.length > 0 && onRunVerification && (
-                      <IdeButton
-                        tone="secondary"
-                        onClick={runDeterministicVerification}
-                        disabled={runState === 'running'}
-                        testId="ide-verify-run-deterministic"
-                        title="Always simulates from the circuit, ignoring the interactive runtime trace. Use for reproducible results."
-                      >
-                        Run Deterministic
-                      </IdeButton>
-                    )}
-                  </div>
                   <section data-testid="ide-verify-signal-table">
                     <IdeDataTable
                       columns={['Signal', `Tick ${selectedTick ?? '-'}`, 'Expected', 'Actual']}

@@ -135,6 +135,20 @@ export function buildVerifyReport(input: BuildVerifyReportInput): VerifyReport {
 
 export function buildVerifyWaveSamples(report: VerifyReport): VerifyWaveSample[] {
   const index = new Map<number, VerifyWaveSample>();
+  for (const [tickKey, inputs] of Object.entries(report.inputsAtTick)) {
+    const tick = Number.parseInt(tickKey, 10);
+    if (!Number.isFinite(tick)) continue;
+    const current = index.get(tick) ?? {
+      tick,
+      signals: {},
+      mismatches: [],
+    };
+    for (const [signal, value] of Object.entries(inputs)) {
+      current.signals[signal] = String(value);
+    }
+    index.set(tick, current);
+  }
+
   for (const row of report.rows) {
     const current = index.get(row.tick) ?? {
       tick: row.tick,

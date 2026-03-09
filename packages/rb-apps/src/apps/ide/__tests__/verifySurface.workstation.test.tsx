@@ -126,11 +126,13 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(queryByTestId('ide-truth-table-empty')).toBeNull();
+    expect(getByTestId('ide-verify-authority-note').textContent).toContain('Design trace is for debug only');
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     fireEvent.click(getAllByText('Details')[0]);
     expect(getByTestId('ide-verify-run-context')).toBeTruthy();
     expect(getByTestId('ide-verify-run-context-sampling').textContent).toContain('steady state');
     expect(getByTestId('ide-verify-run-context-ticks_shown').textContent).toContain('Showing all 2 ticks');
+    expect(queryByTestId('ide-verify-run-deterministic')).toBeNull();
     fireEvent.click(getByTestId('ide-truth-table-mode-ticks'));
     expect(getByTestId('ide-truth-table-row-0-ld0')).toBeTruthy();
     expect(getByTestId('ide-truth-table-row-1-ld0')).toBeTruthy();

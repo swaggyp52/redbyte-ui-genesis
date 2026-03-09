@@ -169,6 +169,25 @@ describe('generateIdeSubmissionBundle — required files', () => {
     expect(summary.rbSubmissionVersion).toBe('ide-submission-v1');
     expect(summary.bundleId).toBe(manifest.bundleId);
   });
+
+  it('exports deterministic verify artifacts without debug-only trace fields', async () => {
+    const project = makeProject();
+    const result = await generateIdeSubmissionBundle({
+      project,
+      verifyLastRun: makeLastRun('pass'),
+      verifyRunHistory: [makeLedgerEntry(1, 'pass')],
+      submittedAt: '2026-01-15T12:00:00.000Z',
+      appCommitSha: 'abc123',
+    });
+
+    const zip = await JSZip.loadAsync(result.bytes);
+    const lastRunText = await zip.file('verify/last-run.json')!.async('text');
+    const lastRun = JSON.parse(lastRunText) as RuntimeVerifyRun;
+
+    expect(lastRun.scenarioId).toBe('test');
+    expect(lastRun.traceWaveform).toBeUndefined();
+    expect(lastRunText.includes('traceWaveform')).toBe(false);
+  });
 });
 
 describe('generateIdeSubmissionBundle — determinism', () => {

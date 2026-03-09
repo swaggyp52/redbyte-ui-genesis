@@ -30,7 +30,6 @@ import { generateBringUpVectors } from './bringupArtifacts';
 import {
   DEFAULT_SIM_SPEED_HZ,
   advanceSimulationState,
-  buildVerifyRowsFromRuntimeTrace,
   buildVerifyRowsDeterministicFromCircuit,
   recomputeSimulationState,
   resetSimulationState,
@@ -100,6 +99,7 @@ export interface RunVerificationInput {
     actual: string;
   }>;
   ranAtIso?: string;
+  // Legacy no-op: authoritative verification always uses deterministic circuit evaluation.
   useRuntimeTrace?: boolean;
 }
 
@@ -611,52 +611,14 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         set((state) => {
           const scenarioId = input.scenarioId.trim() || 'runtime-verify';
           const scenarioName = input.scenarioName.trim() || 'Runtime verification';
-          // Ensure trace is populated before building rows (O3 fix):
-          // If the user never ran sim in Design, state.sim.trace is empty.
-          // Run advanceSimulationState inline to cover all test vector ticks.
-          let simForTrace = state.sim;
-          if (input.useRuntimeTrace && state.sim.trace.length === 0 && state.circuit) {
-            const maxVectorTick = state.projectVectors.reduce(
-              (m, v) => Math.max(m, v.tick),
-              0
-            );
-            const ticksNeeded = Math.min(512, maxVectorTick + 8);
-            simForTrace = advanceSimulationState(
-              state.circuit,
-              state.projectIoRows,
-              { ...state.sim, lastAction: 'step' },
-              ticksNeeded
-            );
-          }
-          const runtimeRows = input.useRuntimeTrace
-            ? buildVerifyRowsFromRuntimeTrace(
-                state.projectVectors,
-                state.projectIoRows,
-                simForTrace
-              )
-            : [];
           const normalizedRows =
-            runtimeRows.length > 0
-              ? runtimeRows
-              : state.projectVectors.length > 0
-                ? buildVerifyRowsDeterministicFromCircuit(
-                    state.circuit,
-                    state.projectIoRows,
-                    state.projectVectors
-                  )
-                : normalizeVerifyRows(input.rows);
-          const useRuntimeRows = runtimeRows.length > 0;
-          const effectiveScenarioId = useRuntimeRows ? 'runtime-trace' : scenarioId;
-          const effectiveScenarioName = useRuntimeRows
-            ? 'Runtime trace verification'
-            : scenarioName;
-          const deterministicHash = useRuntimeRows
-            ? `sim_${digestValue({
-                irHash: state.sim.irHash,
-                traceHash: state.sim.traceHash,
-                vectors: toVerifyVectors(state.projectVectors),
-              })}`
-            : input.deterministicHash;
+            state.projectVectors.length > 0
+              ? buildVerifyRowsDeterministicFromCircuit(
+                  state.circuit,
+                  state.projectIoRows,
+                  state.projectVectors
+                )
+              : normalizeVerifyRows(input.rows);
           const failedRows = normalizedRows.filter((row) => row.expected !== row.actual);
           const status: 'pass' | 'fail' = failedRows.length > 0 ? 'fail' : 'pass';
           const ranAtIso = input.ranAtIso ?? new Date().toISOString();
@@ -667,10 +629,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           );
           const signalRoles = deriveSignalRoles(state.projectIoRows, scheduleContract);
           const report = buildVerifyReport({
-            scenarioId: effectiveScenarioId,
-            scenarioName: effectiveScenarioName,
+            scenarioId,
+            scenarioName,
             status,
-            deterministicHash,
+            deterministicHash: input.deterministicHash,
             rows: normalizedRows,
             vectors,
             generatedAtIso: ranAtIso,
@@ -688,15 +650,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             meta: buildVerifyRunMeta(scheduleContract),
             report,
             waveform: buildVerifyWaveSamples(report),
-            traceWaveform: simForTrace.trace.length > 0
-              ? simForTrace.trace.map((sample) => ({
-                  tick: sample.tick,
-                  signals: Object.fromEntries(
-                    Object.entries(sample.signals).map(([k, v]) => [k, String(v)])
-                  ),
-                  mismatches: [],
-                }))
-              : undefined,
+            traceWaveform: undefined,
           };
 
           // Build ledger entry (synchronous hashes via digestValue + stableSerialize)
@@ -988,8 +942,10 @@ export function mergePersistedRuntimeState(
   const projectIoRows = ioRowsFromProject(normalizedProject);
   const circuit = cloneCircuit(normalizedProject.circuit);
   const projectVectors = cloneVectors(normalizedProject.vectors ?? []);
-  const verifyLastRun = tryCloneVerifyRun(candidate.verifyLastRun);
-  const verifyRunHistory = normalizeVerifyRunHistory(candidate.verifyRunHistory);
+  const rawVerifyLastRun = tryCloneVerifyRun(candidate.verifyLastRun);
+  const invalidateVerifyTrust = hasLegacyVerifyTrust(rawVerifyLastRun, candidate.projectHealthCore);
+  const verifyLastRun = invalidateVerifyTrust ? undefined : rawVerifyLastRun;
+  const verifyRunHistory = invalidateVerifyTrust ? [] : normalizeVerifyRunHistory(candidate.verifyRunHistory);
   const sim = normalizePersistedSimState(candidate.sim, circuit, projectIoRows);
 
   return {
@@ -1017,7 +973,8 @@ export function mergePersistedRuntimeState(
     projectHealthCore: normalizePersistedProjectHealth(
       candidate.projectHealthCore,
       verifyLastRun,
-      currentState.projectHealthCore
+      currentState.projectHealthCore,
+      invalidateVerifyTrust
     ),
     customComponents: normalizedProject.customComponents ?? [],
   };
@@ -1126,6 +1083,34 @@ function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
       mismatches: [],
     })),
   };
+}
+
+function isAuthoritativeVerifyHash(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0 && !value.startsWith('sim_');
+}
+
+function isAuthoritativeVerifyRun(run: RuntimeVerifyRun | undefined | null): run is RuntimeVerifyRun {
+  if (!run) return false;
+  if (run.scenarioId.trim().length === 0 || run.scenarioId === 'runtime-trace') return false;
+  if (!isAuthoritativeVerifyHash(run.deterministicHash)) return false;
+  if (typeof run.reportHash !== 'string' || run.reportHash.trim().length === 0) return false;
+  return !Array.isArray(run.traceWaveform);
+}
+
+function isLegacyRuntimeTraceVerifyRun(run: RuntimeVerifyRun | undefined | null): boolean {
+  return Boolean(run) && !isAuthoritativeVerifyRun(run);
+}
+
+function hasLegacyVerifyTrust(
+  verifyLastRun: RuntimeVerifyRun | undefined,
+  projectHealthCore: unknown
+): boolean {
+  if (isLegacyRuntimeTraceVerifyRun(verifyLastRun)) return true;
+  if (!projectHealthCore || typeof projectHealthCore !== 'object') return false;
+  const candidate = projectHealthCore as Partial<ProjectHealthCore>;
+  const lastVerify = candidate.lastVerify;
+  if (!lastVerify || typeof lastVerify !== 'object') return false;
+  return !isAuthoritativeVerifyHash(lastVerify.hash);
 }
 
 function cloneSimState(sim: RuntimeSimState): RuntimeSimState {
@@ -1340,8 +1325,22 @@ function normalizeVerifyRunLedgerEntry(value: unknown): VerifyRunLedgerEntry | n
 function normalizePersistedProjectHealth(
   value: unknown,
   verifyLastRun: RuntimeVerifyRun | undefined,
-  fallback: ProjectHealthCore
+  fallback: ProjectHealthCore,
+  invalidateVerifyTrust = false
 ): ProjectHealthCore {
+  if (invalidateVerifyTrust) {
+    const candidate = value && typeof value === 'object' ? (value as Partial<ProjectHealthCore>) : undefined;
+    return {
+      lastVerify: undefined,
+      lastExport: candidate ? normalizePersistedLastExport(candidate.lastExport) : fallback.lastExport,
+      dirtySinceVerify: true,
+      dirtySinceExport:
+        candidate && typeof candidate.dirtySinceExport === 'boolean'
+          ? candidate.dirtySinceExport
+          : true,
+    };
+  }
+
   if (!value || typeof value !== 'object') {
     return {
       lastVerify: verifyLastRun
@@ -1394,7 +1393,7 @@ function normalizePersistedLastVerify(
   const candidate = value as Partial<NonNullable<ProjectHealthCore['lastVerify']>>;
   if (
     (candidate.status !== 'pass' && candidate.status !== 'fail') ||
-    typeof candidate.hash !== 'string' ||
+    !isAuthoritativeVerifyHash(candidate.hash) ||
     typeof candidate.ranAtIso !== 'string'
   ) {
     return undefined;

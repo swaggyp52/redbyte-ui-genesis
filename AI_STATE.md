@@ -1,5 +1,38 @@
 # AI State
 
+## Change Log 2026-03-09 (Classroom release candidate: authoritative verify only)
+
+### Verify now has one deterministic authority path, and legacy runtime-trace trust is invalidated on restore
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts` - Removed runtime-trace authority from `runVerification(...)`, made fresh verify runs explicitly deterministic-only (`scenarioId`, `deterministicHash`, `waveform` authoritative; `traceWaveform` cleared), and invalidated persisted legacy runtime-backed verify state by clearing `verifyLastRun`, `verifyRunHistory`, and trusted verify health when restore data still smells like old runtime authority.
+- `packages/rb-apps/src/apps/ide/verifyReport.ts` - Added deterministic input snapshots into verify waveform samples so Verify keeps vector-input context without falling back to interactive Design trace.
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` - Removed the second `Run Deterministic` truth path from the UI, made the Verify oscilloscope read only the authoritative verify waveform, and added short copy clarifying that Verify is authoritative while Design trace is debug-only.
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` - Added regression coverage proving Verify hashes, mismatch metadata, and waveform shape stay stable even after interactive simulation activity.
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts` - Added restore coverage proving legacy runtime-trace verify trust is invalidated and rerun-required state is restored instead of stale trust.
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` - Updated the Verify workstation contract to assert the new authoritative-copy cue and absence of the second deterministic CTA.
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx` - Updated waveform-lane expectations to use deterministic verify inputs/outputs instead of the removed runtime-trace fallback.
+- `packages/rb-apps/src/export/__tests__/ideSubmissionBundle.test.ts` - Added coverage proving fresh `verify/last-run.json` artifacts do not leak `traceWaveform`.
+
+### Why this was minimal
+
+- The batch stayed in verify authority, restore invalidation, and small copy scope only.
+- No Design runtime architecture rewrite, waveform redesign, or project/export/hardware logic refactor landed here.
+- Downstream surfaces (`Project`, `Hardware`, `Export`, submission bundle generation) still consume `verifyLastRun` as before; the source verify object is now deterministic-only.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` - PASS (`1` file, `1` test)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts` - PASS (`1` file, `3` tests)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` - PASS (`1` file, `5` tests)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx` - PASS (`1` file, `1` test)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/importSurface.verify-reset.test.tsx` - PASS (`1` file, `1` test)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/export/__tests__/ideSubmissionBundle.test.ts` - PASS (`1` file, `12` tests)
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`; still prints the same broad pre-existing TypeScript diagnostics in unrelated files/packages outside this verify-authority batch
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-09 (Classroom release candidate: blocked-state CTA simplification)
 
 ### Verify, Hardware, and Import now lead with one clearer next step, and onboarding matches the current surface
