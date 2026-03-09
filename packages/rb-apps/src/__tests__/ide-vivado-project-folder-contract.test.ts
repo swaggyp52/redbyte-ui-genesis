@@ -1,0 +1,140 @@
+import { describe, expect, it } from 'vitest';
+import JSZip from 'jszip';
+import type { RBProject } from '../export/projectFormat';
+import { decodeRBProject, encodeRBProject } from '../export/projectFormat';
+import { sha256Hex } from '../export/deterministicZip';
+import {
+  buildVivadoProjectFolderZip,
+  deriveVivadoProjectSlug,
+  resolveVivadoPart,
+} from '../fpga/vivado/vivadoProjectFolder';
+import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewModel';
+import { importVivadoZipBytes } from '../apps/ide/zipImport';
+
+function buildFixtureProject(): RBProject {
+  return {
+    kind: 'rb-project',
+    version: 1,
+    createdAt: '2026-03-09T00:00:00.000Z',
+    updatedAt: '2026-03-09T00:00:00.000Z',
+    name: 'Vivado Project Folder Fixture',
+    description: 'Deterministic Open Project export contract fixture.',
+    circuit: {
+      nodes: [
+        { id: 'g1', type: 'AND', x: 240, y: 160, label: 'and0', config: {}, state: {} },
+      ],
+      connections: [],
+    },
+    ioMapping: {
+      inputs: [
+        { id: 'sw0', nodeId: 'g1', port: 'in1', label: 'sw0', pin: 'V17' },
+        { id: 'sw1', nodeId: 'g1', port: 'in2', label: 'sw1', pin: 'V16' },
+      ],
+      outputs: [
+        { id: 'ld0', nodeId: 'g1', port: 'out', label: 'ld0', pin: 'U16' },
+      ],
+    },
+    vectors: [],
+    hdl: {
+      top: 'top',
+      sources: [
+        {
+          path: 'top.vhd',
+          language: 'vhdl',
+          text: [
+            'library IEEE;',
+            'use IEEE.STD_LOGIC_1164.ALL;',
+            '',
+            'entity top is',
+            '  port (',
+            '    sw0 : in std_logic;',
+            '    sw1 : in std_logic;',
+            '    ld0 : out std_logic',
+            '  );',
+            'end top;',
+            '',
+            'architecture rtl of top is',
+            'begin',
+            '  ld0 <= sw0 and sw1;',
+            'end rtl;',
+          ].join('\n'),
+        },
+      ],
+    },
+    fpga: { board: 'basys3', top: 'top' },
+    meta: {
+      projectId: 'rb-project-folder-fixture',
+      tags: ['contract', 'vivado-project-folder'],
+    },
+  };
+}
+
+async function buildProjectFolderZip(project: RBProject): Promise<Uint8Array> {
+  const viewModel = buildExportViewModel(project);
+  expect(viewModel.status).toBe('ok');
+  expect(viewModel.errors).toEqual([]);
+  return buildVivadoProjectFolderZip({
+    artifacts: viewModel.artifacts.map((artifact) => ({
+      path: artifact.path,
+      content: artifact.content,
+    })),
+    projectName: project.name,
+    projectSlug: deriveVivadoProjectSlug(project.meta?.projectId ?? project.name),
+    topModule: project.hdl?.top ?? project.fpga?.top ?? 'top',
+    part: resolveVivadoPart(),
+  });
+}
+
+describe('IDE Vivado project folder contract', () => {
+  it('builds a deterministic Open Project ZIP with the expected Vivado folder layout', async () => {
+    const project = buildFixtureProject();
+    const slug = deriveVivadoProjectSlug(project.meta?.projectId ?? project.name);
+
+    const zipA = await buildProjectFolderZip(project);
+    const zipB = await buildProjectFolderZip(project);
+
+    expect(await sha256Hex(zipA)).toBe(await sha256Hex(zipB));
+
+    const loaded = await JSZip.loadAsync(zipA);
+    const fileNames = Object.keys(loaded.files)
+      .filter((name) => !loaded.files[name]?.dir)
+      .sort();
+
+    expect(fileNames).toEqual(
+      [
+        `${slug}/${slug}.srcs/constrs_1/new/top.xdc`,
+        `${slug}/${slug}.srcs/sources_1/new/top.vhd`,
+        `${slug}/${slug}.xpr`,
+        `${slug}/BRINGUP.md`,
+        `${slug}/EXPECTED_IO.json`,
+        `${slug}/README.txt`,
+        `${slug}/program_and_test.tcl`,
+        `${slug}/project.rbproj.json`,
+        `${slug}/vivado_import.tcl`,
+      ].sort()
+    );
+
+    const xprText = await loaded.file(`${slug}/${slug}.xpr`)!.async('string');
+    expect(xprText).toContain('Option Name="Part" Val="xc7a35tcpg236-1"');
+    expect(xprText).toContain('Option Name="TopModule" Val="top"');
+    expect(xprText).toContain('$PSRCDIR/sources_1/new/top.vhd');
+    expect(xprText).toContain('$PSRCDIR/constrs_1/new/top.xdc');
+
+    const readmeText = await loaded.file(`${slug}/README.txt`)!.async('string');
+    expect(readmeText).toContain('Open Project');
+    expect(readmeText).toContain(`${slug}.xpr`);
+  });
+
+  it('round-trips the exported project folder back into the same normalized RBProject', async () => {
+    const project = buildFixtureProject();
+    const normalizedProject = decodeRBProject(encodeRBProject(project));
+    const zipBytes = await buildProjectFolderZip(project);
+
+    const imported = await importVivadoZipBytes(zipBytes, {
+      sourceName: 'rb-project-folder-fixture-vivado-project.zip',
+    });
+
+    expect(imported.importMode).toBe('manifest');
+    expect(encodeRBProject(imported.project)).toBe(encodeRBProject(normalizedProject));
+  });
+});

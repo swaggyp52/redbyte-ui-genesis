@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-03-09 (Classroom hardening: Vivado project-folder contract lock)
+
+### Deterministic Open Project export now has round-trip and golden-hash contract coverage
+
+**Modified files:**
+
+- `packages/rb-apps/src/__tests__/ide-vivado-project-folder-contract.test.ts` - Added a focused contract over the new Open Project export path: deterministic ZIP bytes, exact expected folder layout under `<slug>/...`, `.xpr` part/top/file-reference assertions, and manifest-based round-trip equality back into `RBProject`.
+- `packages/rb-apps/src/__tests__/classroom-golden-basys3-export-gate.test.ts` - Updated the classroom golden ZIP gate to await the now-async deterministic SHA helper.
+- `packages/rb-apps/src/__tests__/classroom-golden-basys3-alu-export-gate.test.ts` - Updated the ALU golden ZIP gate to await the same async deterministic SHA helper.
+
+### Why this was minimal
+
+- The batch touched only export/import contract tests and one test-callsite repair required by the deterministic ZIP helper change.
+- Export artifact generation stayed on the existing canonical path: `buildExportViewModel(...)` plus the new Vivado project-folder packer.
+- No product runtime, persistence, or UI logic changed in this batch.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/ide-vivado-project-folder-contract.test.ts packages/rb-apps/src/__tests__/classroom-golden-basys3-export-gate.test.ts packages/rb-apps/src/__tests__/classroom-golden-basys3-alu-export-gate.test.ts packages/rb-apps/src/apps/ide/__tests__/zipImport.manifest.test.ts` - PASS (`4` files, `6` tests)
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`; still prints the same extensive pre-existing repo-wide TypeScript diagnostics outside this contract batch
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-09 (Classroom hardening: safe Vivado ZIP import contract)
 
 ### Vivado ZIP import now restores RedByte manifests safely and ignores generated Vivado noise

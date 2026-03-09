@@ -70,8 +70,8 @@ describe('RC E1 classroom golden Basys3 ALU export gate', () => {
       { name: 'README.txt', text: bundle.readme },
     ]);
 
-    const hash1 = sha256Hex(zipBytes1);
-    const hash2 = sha256Hex(zipBytes2);
+    const hash1 = await sha256Hex(zipBytes1);
+    const hash2 = await sha256Hex(zipBytes2);
     expect(hash2).toBe(hash1);
 
     if (UPDATE_GOLDEN) {
