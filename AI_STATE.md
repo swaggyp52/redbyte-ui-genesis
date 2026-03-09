@@ -17513,6 +17513,60 @@ All 25 `pnpm verify:gates` gates now pass (exit 0).
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-03-08 (IDE Project Health Live contract repair)
+
+### Project/runtime contract batch - align live project-health gate with current Verify and Design controls
+
+**Problem**
+
+- `pnpm repo:status` advanced to `IDE Project Health Live Contract` and failed before it could validate the live project-health loop.
+- The gate first hit the intentional onboarding overlay, then waited on a brittle Verify status assumption, and finally tried to mutate Design through a removed starter selector.
+
+**Cause**
+
+- `scripts/gates/ide-project-health-live-contract.mjs` was written against older live UI selectors instead of the current canonical student path:
+  - it started from `/` rather than forcing `?mode=project`
+  - it treated the Verify status pill as the sole completion signal even though current Verify can legitimately surface freshness-driven states while still producing canonical verify evidence
+  - it used the removed `ide-design-add-and-starter` selector for the post-verify circuit mutation step
+- The underlying product contract in `projectHealthCore` and `ProjectSurface` was still working; the failure was in the gate assumptions.
+
+**Files changed**
+
+- `scripts/gates/ide-project-health-live-contract.mjs`
+
+**What changed**
+
+- Forced the gate to start on the canonical Project mode route (`?mode=project`) and dismiss the intentional onboarding overlay when present.
+- Reused the current Verify run-button ladder (`ide-verify-run`, secondary run, empty run, stale rerun) so the gate works against the present Verify state model.
+- Replaced the stale PASS/FAIL-only wait with a wait for canonical Verify evidence materialization:
+  - non-idle Verify status
+  - populated `ide-verify-console-hash`
+- Moved the authoritative live contract check to the Project health source of truth by waiting for:
+  - `ide-project-last-verify-status` = `PASS` or `FAIL`
+  - populated `ide-project-last-verify-hash`
+  - `ide-project-dirty-since-verify` = `CLEAN`
+- Replaced the removed design-starter selector with a live canonical circuit mutation path:
+  - first available unplaced Basys3 input
+  - else first available unplaced Basys3 output
+  - else `ide-design-palette-and`
+
+**Why minimal**
+
+- No product/runtime/UI code changed.
+- The batch stayed entirely inside the stale gate path and updated it to observe the current canonical Project → Verify → Design → Project health loop.
+- The gate still verifies the same contract intent: project health reflects a real verify run, then becomes dirty again after a real design mutation.
+
+**Validation**
+
+- `pnpm -s ide:gate:project-health-live-contract`
+- `pnpm repo:status`
+
+**Remaining concern**
+
+- `pnpm repo:status` now passes `IDE Project Health Live Contract` and advances to the next independent failure: `IDE Project Continue CTA Contract`.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-08 (IDE bring-up contract restoration)
 
 ### Bring-up contract batch - restore missing IDE bring-up gate target
