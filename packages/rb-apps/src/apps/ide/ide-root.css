@@ -11525,6 +11525,75 @@ details[open].ide-export-evidence-details > summary::before {
   box-shadow: 0 10px 24px rgba(46, 196, 182, 0.22);
 }
 
+[data-ide-mode-marker='project'] .ide-project-recent-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(67, 107, 139, 0.3);
+  background: linear-gradient(180deg, rgba(12, 26, 40, 0.94), rgba(8, 18, 30, 0.96));
+}
+
+[data-ide-mode-marker='project'] .ide-project-recent-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+[data-ide-mode-marker='project'] .ide-project-recent-title,
+[data-ide-mode-marker='project'] .ide-project-recent-sub {
+  margin: 0;
+}
+
+[data-ide-mode-marker='project'] .ide-project-recent-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(240, 247, 255, 0.96);
+}
+
+[data-ide-mode-marker='project'] .ide-project-recent-sub {
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(176, 198, 219, 0.82);
+}
+
+[data-ide-mode-marker='project'] .ide-project-recent-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+[data-ide-mode-marker='project'] .ide-project-recent-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  text-align: left;
+  border-radius: 12px;
+  border: 1px solid rgba(79, 112, 142, 0.34);
+  background: rgba(10, 20, 31, 0.82);
+  color: inherit;
+  cursor: pointer;
+}
+
+[data-ide-mode-marker='project'] .ide-project-recent-card:hover {
+  border-color: rgba(46, 196, 182, 0.55);
+  background: rgba(13, 28, 42, 0.92);
+}
+
+[data-ide-mode-marker='project'] .ide-project-recent-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(240, 247, 255, 0.96);
+}
+
+[data-ide-mode-marker='project'] .ide-project-recent-card-meta {
+  font-size: 11px;
+  color: rgba(166, 189, 211, 0.82);
+}
+
 [data-ide-mode-marker='project'] .ide-project-showcase-checklist {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

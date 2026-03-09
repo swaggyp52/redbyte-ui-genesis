@@ -47,6 +47,9 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
     onOpenExport: vi.fn(),
     onOpenHardware: vi.fn(),
     onOpenImport: vi.fn(),
+    recentProjects: [],
+    onOpenSavedProjects: vi.fn(),
+    onOpenRecentProject: vi.fn(),
     studentName: '',
     onStudentNameChange: vi.fn(),
     hasVerifyRun: true,
@@ -55,7 +58,7 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
 }
 
 describe('ProjectSurface workspace panels', () => {
-  it('surfaces the next action and active example context in the main workspace', () => {
+  it('keeps the hero CTA dominant while surfacing the active example context', () => {
     const { getByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
@@ -91,12 +94,9 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    const nextAction = getByTestId('ide-project-next-action');
-    expect(nextAction.textContent).toContain('RBP1004');
-    expect(nextAction.textContent).toContain('Design changed since last verification run.');
-
     const showcase = getByTestId('ide-project-showcase');
     expect(showcase.textContent).toContain('Build it, prove it, and light it up on the board.');
+    expect(getByTestId('ide-project-showcase-primary-cta').textContent).toContain('Continue to Verify');
     expect(getByTestId('ide-project-board-preview').textContent).toContain(
       'Flip switches and the matching LEDs follow immediately.'
     );
@@ -104,6 +104,40 @@ describe('ProjectSurface workspace panels', () => {
     const context = getByTestId('ide-project-context');
     expect(context.textContent).toContain('Signal Tour: Switches -> LEDs');
     expect(context.textContent).toContain('Flip switches and the matching LEDs follow immediately.');
+  });
+
+  it('shows open-existing and recent-work entry points on the empty project home', () => {
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            readiness: {
+              hasCircuit: false,
+              hasIoMapping: false,
+              hasVectors: false,
+              verifyPass: false,
+              missingRequiredCount: 0,
+            },
+            health: {
+              ...makeProps().health,
+              lastVerify: undefined,
+              blockingIssues: [],
+            },
+            recentProjects: [
+              {
+                projectId: 'rb-counter',
+                projectName: 'Counter Lab',
+                savedAtIso: '2026-03-09T00:00:00.000Z',
+                projectHash: 'saved-hash',
+              },
+            ],
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-project-open-existing').textContent).toContain('Open existing project');
+    expect(getByTestId('ide-project-recent-rb-counter').textContent).toContain('Counter Lab');
   });
 
   it('shows the current primary target and missing pins inline when mapping is incomplete', () => {

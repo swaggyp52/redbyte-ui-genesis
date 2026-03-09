@@ -1,5 +1,31 @@
 # AI State
 
+## Change Log 2026-03-09 (Classroom release candidate: deterministic startup + clearer project home)
+
+### Startup intent now wins over silent session-mode restore, and Project home visibly exposes saved work
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/startupMode.ts` - Added a small, testable startup-mode resolver so explicit `?mode=` requests are treated as the authority and restored sessions default back to `project` when no explicit mode is requested.
+- `packages/rb-apps/src/apps/ide/__tests__/startupMode.test.ts` - Added regression coverage for explicit mode resolution, invalid mode rejection, and restore-to-project-home behavior.
+- `packages/rb-apps/src/apps/IdeApp.tsx` - Rewired initial mode and session restore through the new startup helper, added recent-project open support from the Project surface, and renamed the load modal to `Open Existing Project` with clearer `.rbproj` wording.
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` - Added visible `Open existing project` and `Continue recent work` affordances on the empty Project home, exposed `Open existing` in the Project dock session controls, and removed the duplicate Project launchpad / next-action stack so the hero CTA is the single dominant next-step region.
+- `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` - Updated the Project-home contract to assert the hero CTA stays primary and the empty-state surface exposes saved-project entry points.
+- `packages/rb-apps/src/apps/ide/ide-root.css` - Added compact styling for the new recent-work panel on Project home.
+
+### Why this was minimal
+
+- The batch stayed strictly in startup/resume/project-home scope.
+- No Verify, Hardware, or Import blocked-state cleanup landed here.
+- No broad visual redesign or navigation refactor was introduced; the main structural change was removing duplicate Project guidance so the existing hero CTA can do its job.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/startupMode.test.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` - PASS (`2` files, `7` tests)
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`; still prints the same broad pre-existing TypeScript diagnostics in unrelated packages/components outside this batch
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-09 (Classroom release candidate: visible build truth)
 
 ### IDE chrome now exposes the real build identity and the Export surface clearly leads with Open Project

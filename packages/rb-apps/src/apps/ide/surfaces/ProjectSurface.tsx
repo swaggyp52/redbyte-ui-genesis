@@ -73,6 +73,14 @@ export interface ProjectSurfaceProps {
   onOpenExport: () => void;
   onOpenHardware: () => void;
   onOpenImport: () => void;
+  recentProjects?: Array<{
+    projectId: string;
+    projectName: string;
+    savedAtIso: string;
+    projectHash: string;
+  }>;
+  onOpenSavedProjects?: () => void;
+  onOpenRecentProject?: (projectId: string) => void;
   diagnosticRouteRequest?: IdeDiagnosticRouteRequest | null;
   runtimeSim?: RuntimeSimState;
   onGoToHardware?: () => void;
@@ -112,6 +120,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onOpenExport,
   onOpenHardware,
   onOpenImport,
+  recentProjects = [],
+  onOpenSavedProjects,
+  onOpenRecentProject,
   diagnosticRouteRequest,
   runtimeSim,
   onGoToHardware,
@@ -254,31 +265,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     return `Top module ${topModuleName || 'top'} is loaded and ready for setup.`;
   }, [activeExample?.summary, description, readiness.hasCircuit, topModuleName]);
 
-  const nextActionTitle = useMemo(
-    () => getNextActionTitle(primaryCta.mode, primaryCtaLabel),
-    [primaryCta.mode, primaryCtaLabel]
-  );
-  const nextActionSummary = useMemo(
-    () =>
-      getNextActionSummary({
-        primaryCta,
-        heroStatusMessage,
-        blockingIssue,
-        verifyPass,
-        exportReady,
-        hardwareReady,
-        unmappedRequiredCount,
-      }),
-    [
-      blockingIssue,
-      exportReady,
-      hardwareReady,
-      heroStatusMessage,
-      primaryCta,
-      unmappedRequiredCount,
-      verifyPass,
-    ]
-  );
   const verifySummary = useMemo(
     () => getVerifySummary(health, verifyPass),
     [health, verifyPass]
@@ -556,14 +542,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   );
 
   const designCardDone = readiness.hasCircuit && readiness.hasIoMapping;
-  const designInProgress = readiness.hasCircuit && !designCardDone;
-  const verifyCardDone = verifyPass;
-  const verifyCardLocked = !designCardDone;
-  const hardwareCardDone = hardwareReady;
-  const hardwareCardLocked = !verifyCardDone;
   const completedMilestoneCount = [
     designCardDone,
-    verifyCardDone,
+    verifyPass,
     exportReady,
     hardwareReady,
   ].filter(Boolean).length;
@@ -619,13 +600,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       verifyPass,
     ]
   );
-  const designPinStatus = readiness.hasIoMapping
-    ? `${mappedRequiredCount}/${requiredCount} pins mapped`
-    : unmappedRequiredCount > 0
-      ? `${unmappedRequiredCount} pin${unmappedRequiredCount !== 1 ? 's' : ''} unmapped`
-      : readiness.hasCircuit
-        ? 'No pins required'
-        : 'No circuit loaded';
   return (
     <IdeSurfaceLayout
       mode="project"
@@ -671,6 +645,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               {onSaveNow && (
                 <IdeButton tone="secondary" onClick={onSaveNow} testId="ide-session-save-now">
                   Save now
+                </IdeButton>
+              )}
+              {onOpenSavedProjects && (
+                <IdeButton tone="ghost" onClick={onOpenSavedProjects} testId="ide-session-open-existing">
+                  Open existing
                 </IdeButton>
               )}
               {onRestoreLastSave && (
@@ -730,6 +709,45 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 Pick a starting point to begin the full Design → Verify → Export flow.
               </p>
             </div>
+            {(recentProjects.length > 0 || onOpenSavedProjects) && (
+              <div className="ide-project-recent-panel" data-testid="ide-project-recent-panel">
+                <div className="ide-project-recent-head">
+                  <div>
+                    <p className="ide-project-recent-title">Continue recent work</p>
+                    <p className="ide-project-recent-sub">
+                      Reopen a saved project or browse the full local project list.
+                    </p>
+                  </div>
+                  {onOpenSavedProjects && (
+                    <IdeButton
+                      tone="secondary"
+                      onClick={onOpenSavedProjects}
+                      testId="ide-project-open-existing"
+                    >
+                      Open existing project…
+                    </IdeButton>
+                  )}
+                </div>
+                {recentProjects.length > 0 && (
+                  <div className="ide-project-recent-list">
+                    {recentProjects.map((project) => (
+                      <button
+                        key={project.projectId}
+                        type="button"
+                        className="ide-project-recent-card"
+                        onClick={() => onOpenRecentProject?.(project.projectId)}
+                        data-testid={`ide-project-recent-${project.projectId}`}
+                      >
+                        <span className="ide-project-recent-card-title">{project.projectName}</span>
+                        <span className="ide-project-recent-card-meta">
+                          Saved {formatSavedAt(project.savedAtIso)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="ide-project-landing-options">
               {examples.slice(0, 3).map((ex) => {
                 const preview = getExamplePreview(ex.id);
@@ -922,83 +940,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             </div>
           </div>
 
-          <p className="ide-project-hero-status">
-            Next stage map
-          </p>
-
-          <div data-testid="ide-project-panel-readiness">
-          <div className="ide-project-launchpad" data-testid="ide-project-launchpad">
-            {/* Card 1: Design */}
-            <div
-              className={`ide-launchpad-card ${designCardDone ? 'ide-launchpad-card--done' : 'ide-launchpad-card--active'}`}
-              data-testid="ide-launchpad-design"
-            >
-              <span className="ide-launchpad-card__label" aria-hidden="true">{designCardDone ? <code>DONE</code> : <code>STEP 1</code>}</span>
-              <span className="ide-launchpad-card__title">Design</span>
-              <span className="ide-launchpad-card__sub">Build your circuit</span>
-              <span className="ide-launchpad-card__badge">{designPinStatus}</span>
-              <div data-testid="ide-project-cta-design">
-                <IdeButton
-                  tone={designCardDone ? 'ghost' : 'primary'}
-                  onClick={onOpenDesign}
-                  testId="ide-launchpad-design-cta"
-                >
-                  {designCardDone ? 'Revisit' : designInProgress ? 'Continue Design →' : 'Start Design →'}
-                </IdeButton>
-              </div>
-            </div>
-
-            {/* Card 2: Verify */}
-            <div
-              className={`ide-launchpad-card ${verifyCardDone ? 'ide-launchpad-card--done' : verifyCardLocked ? 'ide-launchpad-card--locked' : 'ide-launchpad-card--active'}`}
-              data-testid="ide-launchpad-verify"
-            >
-              <span className="ide-launchpad-card__label" aria-hidden="true">{verifyCardDone ? <code>DONE</code> : <code>STEP 2</code>}</span>
-              <span className="ide-launchpad-card__title">Verify</span>
-              <span className="ide-launchpad-card__sub">Run test vectors</span>
-              {!verifyCardLocked && verifyCardDone && (
-                <IdeButton
-                  tone="ghost"
-                  onClick={onOpenVerify}
-                  testId="ide-launchpad-verify-cta"
-                >
-                  Revisit
-                </IdeButton>
-              )}
-              {!verifyCardLocked && !verifyCardDone && (
-                <IdeButton
-                  tone="primary"
-                  onClick={onOpenVerify}
-                  testId="ide-launchpad-verify-cta"
-                >
-                  Continue to Verify →
-                </IdeButton>
-              )}
-            </div>
-
-            {/* Card 3: Hardware */}
-            <div
-              className={`ide-launchpad-card ${hardwareCardDone ? 'ide-launchpad-card--done' : hardwareCardLocked ? 'ide-launchpad-card--locked' : 'ide-launchpad-card--active'}`}
-              data-testid="ide-launchpad-hardware"
-            >
-              <span className="ide-launchpad-card__label" aria-hidden="true">{hardwareCardDone ? <code>DONE</code> : <code>STEP 3</code>}</span>
-              <span className="ide-launchpad-card__title">Hardware</span>
-              <span className="ide-launchpad-card__sub">Flash the board</span>
-              {!hardwareCardLocked && (
-                <div data-testid="ide-project-cta-hardware">
-                  <IdeButton
-                    tone={hardwareCardDone ? 'ghost' : 'primary'}
-                    onClick={onOpenHardware}
-                    testId="ide-launchpad-hardware-cta"
-                  >
-                    {hardwareCardDone ? 'Revisit' : 'Start Hardware →'}
-                  </IdeButton>
-                </div>
-              )}
-            </div>
-          </div>
-          </div>{/* end ide-project-panel-readiness */}
-
           {/* Gate sentinel — text content only, not displayed */}
           <span style={{ display: 'none' }} data-testid="ide-project-continue-target">{primaryCtaLabel}</span>
 
@@ -1011,47 +952,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 
         {/* Project overview + examples */}
         <div className="ide-project-flightdeck" data-testid="ide-project-flightdeck">
-          <SurfacePanel className="ide-project-spotlight ide-project-spotlight-primary" testId="ide-project-next-action">
-            <div className="ide-project-spotlight-header">
-              <span className="ide-project-spotlight-eyebrow">Next action</span>
-              <span className="ide-project-spotlight-code" data-testid="ide-project-next-action-code">
-                {primaryCta.code}
-              </span>
-            </div>
-            <div className="ide-project-spotlight-copy">
-              <h3 className="ide-project-spotlight-title">{nextActionTitle}</h3>
-              <p className="ide-project-spotlight-body">{nextActionSummary}</p>
-            </div>
-            <div className="ide-project-spotlight-meta">
-              <span>{completedMilestoneCount}/4 milestones complete</span>
-              <span>{verifyPass ? 'Verification is current' : 'Verification still needed'}</span>
-            </div>
-            {blockingIssue && (
-              <div className="ide-project-spotlight-note" data-testid="ide-project-next-action-blocker">
-                <strong>{blockingIssue.code}</strong>
-                <span>{blockingIssue.message}</span>
-              </div>
-            )}
-            <div className="ide-project-spotlight-actions">
-              <IdeButton
-                tone="primary"
-                onClick={onPrimaryCta}
-                testId="ide-project-next-action-cta"
-              >
-                Continue to {primaryCtaLabel}
-              </IdeButton>
-              {blockingIssue?.fixPath && blockingIssue.fixPath.mode !== primaryCta.mode && (
-                <IdeButton
-                  tone="ghost"
-                  onClick={() => handleProjectModeAction(blockingIssue.fixPath!.mode)}
-                  testId="ide-project-next-action-fix-path"
-                >
-                  {blockingIssue.fixPath.actionLabel}
-                </IdeButton>
-              )}
-            </div>
-          </SurfacePanel>
-
           <SurfacePanel className="ide-project-spotlight" testId="ide-project-context">
             <div className="ide-project-spotlight-header">
               <span className="ide-project-spotlight-eyebrow">Project context</span>
@@ -1513,59 +1413,6 @@ function getExamplePreview(exampleId: string): {
   }
 }
 
-function getNextActionTitle(mode: ProjectHealthMode, label: string): string {
-  switch (mode) {
-    case 'import':
-      return 'Load a starting point';
-    case 'design':
-      return 'Finish the design setup';
-    case 'verify':
-      return 'Verify the latest circuit';
-    case 'export':
-      return 'Build the export bundle';
-    case 'hardware':
-      return 'Bring the board online';
-    case 'project':
-      return `Continue to ${label}`;
-    default:
-      return label;
-  }
-}
-
-function getNextActionSummary(input: {
-  primaryCta: ProjectPrimaryCta;
-  heroStatusMessage: string;
-  blockingIssue: ProjectHealth['blockingIssues'][number] | null;
-  verifyPass: boolean;
-  exportReady: boolean;
-  hardwareReady: boolean;
-  unmappedRequiredCount: number;
-}): string {
-  const {
-    primaryCta,
-    heroStatusMessage,
-    blockingIssue,
-    verifyPass,
-    exportReady,
-    hardwareReady,
-    unmappedRequiredCount,
-  } = input;
-  if (blockingIssue) return blockingIssue.message;
-  if (primaryCta.mode === 'project' && unmappedRequiredCount > 0) {
-    return `${unmappedRequiredCount} required pin assignments still need package pins before the project can move forward.`;
-  }
-  if (primaryCta.mode === 'verify' && !verifyPass) {
-    return 'Run the authored vectors against the current circuit so export and submission use current evidence.';
-  }
-  if (primaryCta.mode === 'export' && !exportReady) {
-    return 'Verify has passed, but you still need a fresh export bundle before the board handoff is current.';
-  }
-  if (primaryCta.mode === 'hardware' && !hardwareReady) {
-    return 'The export bundle is ready, but the project still needs a current hardware handoff.';
-  }
-  return heroStatusMessage;
-}
-
 function getVerifySummary(health: ProjectHealth, verifyPass: boolean): string {
   if (!health.lastVerify) return 'No verify run has been recorded yet.';
   if (verifyPass) return 'Latest verify run passed and still matches the current design.';
@@ -1603,4 +1450,3 @@ function compareText(left: string, right: string): number {
   if (left > right) return 1;
   return 0;
 }
-

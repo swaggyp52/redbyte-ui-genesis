@@ -25,6 +25,11 @@ import { PipelineStrip } from './ide/components/PipelineStrip';
 import { KeyboardShortcutsModal } from './ide/components/KeyboardShortcutsModal';
 import { OnboardingOverlay } from './ide/components/OnboardingOverlay';
 import { resolveIdeBuildIdentity } from './ide/buildIdentity';
+import {
+  resolveInitialIdeModeFromSearch,
+  resolveRequestedIdeMode,
+  resolveRestoredIdeMode,
+} from './ide/startupMode';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ThrowOnce } from '../components/ThrowOnce';
 import { buildExportViewModel } from './ide/viewmodels/buildExportViewModel';
@@ -631,6 +636,19 @@ export const IdeApp: React.FC = () => {
     [handleSafeLoadIntoIde, refreshSavedProjects, setLastSavedAt]
   );
 
+  const handleOpenRecentProject = useCallback(
+    (projectIdToOpen: string) => {
+      const entry = savedProjects.find((candidate) => candidate.projectId === projectIdToOpen);
+      if (!entry) {
+        refreshSavedProjects();
+        setLastSavedAt(`Could not find the saved project "${projectIdToOpen}". Refresh the saved list and try again.`);
+        return;
+      }
+      handleLoadSavedProject(entry);
+    },
+    [handleLoadSavedProject, refreshSavedProjects, savedProjects, setLastSavedAt]
+  );
+
   const handleOpenProjectFile = useCallback(() => {
     importFileInputRef.current?.click();
   }, []);
@@ -684,19 +702,26 @@ export const IdeApp: React.FC = () => {
       setLastSavedAt('Previous session was invalid and could not be restored.');
       return;
     }
-    const validModes = ['project', 'design', 'verify', 'hardware', 'export', 'import'] as const;
+    const requestedMode = resolveRequestedIdeMode(window.location.search);
+    const restoredMode = resolveRestoredIdeMode(window.location.search);
     isRestoringRef.current = true;
     const restored = handleSafeLoadIntoIde(project, {
       sourceLabel: `previous session "${project.name}"`,
       savedProjectHash: snapshot.projectHash,
-      nextMode: (validModes as readonly string[]).includes(meta.currentMode)
-        ? (meta.currentMode as typeof validModes[number])
-        : 'project',
+      nextMode: restoredMode,
       backupCurrent: false,
     });
     isRestoringRef.current = false;
     if (!restored) {
       clearLabSessionMeta();
+      return;
+    }
+    if (requestedMode) {
+      setLastSavedAt(`Resumed "${project.name}" and opened ${requestedMode}.`);
+      return;
+    }
+    if (meta.currentMode !== 'project') {
+      setLastSavedAt(`Resumed "${project.name}" on Project so you can continue from the home view.`);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run once on mount only
@@ -1039,6 +1064,9 @@ export const IdeApp: React.FC = () => {
               onOpenExport={() => setCurrentMode('export')}
               onOpenHardware={() => setCurrentMode('hardware')}
               onOpenImport={() => setCurrentMode('import')}
+              recentProjects={savedProjects.slice(0, 3)}
+              onOpenSavedProjects={handleOpenLoadModal}
+              onOpenRecentProject={handleOpenRecentProject}
               diagnosticRouteRequest={diagnosticRouteRequest}
               onGoToHardware={() => setCurrentMode('hardware')}
               studentName={studentName}
@@ -1230,7 +1258,7 @@ export const IdeApp: React.FC = () => {
 
       {loadModalOpen ? (
         <IdeModal
-          title="Load Saved Project"
+          title="Open Existing Project"
           body={
             <div className="ide-load-project-modal" data-testid="ide-load-project-modal">
               {savedProjects.length > 0 ? (
@@ -1252,7 +1280,7 @@ export const IdeApp: React.FC = () => {
                 <p className="ide-copy">No local saved projects found yet.</p>
               )}
               <p className="ide-copy">
-                You can also load a <code>.rbproj.json</code> file from disk.
+                You can also open a <code>.rbproj.json</code> file from disk.
               </p>
             </div>
           }
@@ -1262,7 +1290,7 @@ export const IdeApp: React.FC = () => {
                 Close
               </IdeButton>
               <IdeButton tone="secondary" onClick={handleOpenProjectFile} testId="ide-load-file">
-                Load File
+                Open .rbproj File
               </IdeButton>
             </>
           }
@@ -1303,18 +1331,7 @@ export const IdeApp: React.FC = () => {
 
 function resolveInitialIdeMode(): IdeMode {
   if (typeof window === 'undefined') return 'project';
-  const requestedMode = new URLSearchParams(window.location.search).get('mode')?.trim().toLowerCase();
-  switch (requestedMode) {
-    case 'project':
-    case 'design':
-    case 'verify':
-    case 'hardware':
-    case 'export':
-    case 'import':
-      return requestedMode;
-    default:
-      return 'project';
-  }
+  return resolveInitialIdeModeFromSearch(window.location.search);
 }
 
 function normalizeSignalKey(value: string): string {
