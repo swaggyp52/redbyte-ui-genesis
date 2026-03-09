@@ -2,7 +2,13 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import type { Circuit, CompositeNodeDef } from '@redbyte/rb-logic-core';
+import type {
+  Circuit,
+  CompositeNodeDef,
+  Connection,
+  Node,
+  PortRef,
+} from '@redbyte/rb-logic-core';
 import type { RunRecord } from '../recording/runRecord';
 import type { Probe } from '../stores/probeStore';
 import type { ToolchainProjectInput } from '../fpga/toolchainBackend';
@@ -90,18 +96,32 @@ export const createRBProject = (input: Omit<RBProject, 'kind' | 'version' | 'upd
 
 const normalizeProjectCircuit = (circuit: Circuit): Circuit => {
   const nodes = [...circuit.nodes]
-    .map((node) => ({
-      ...node,
-      config: node.config ?? {},
-      state: node.state ?? {},
-    }))
+    .map((node, index) => normalizeProjectNode(node, index))
     .sort((a, b) => compareCodepoint(a.id, b.id));
 
+  const nodeIds = new Set<string>();
+  for (const node of nodes) {
+    if (nodeIds.has(node.id)) {
+      throw new Error(`Invalid project: duplicate node id "${node.id}"`);
+    }
+    nodeIds.add(node.id);
+  }
+
   const connections = [...circuit.connections]
-    .map((connection) => ({
-      from: { nodeId: connection.from.nodeId, portName: connection.from.portName },
-      to: { nodeId: connection.to.nodeId, portName: connection.to.portName },
-    }))
+    .map((connection, index) => normalizeProjectConnection(connection, index))
+    .map((connection) => {
+      if (!nodeIds.has(connection.from.nodeId)) {
+        throw new Error(
+          `Invalid project: connection references missing node "${connection.from.nodeId}"`
+        );
+      }
+      if (!nodeIds.has(connection.to.nodeId)) {
+        throw new Error(
+          `Invalid project: connection references missing node "${connection.to.nodeId}"`
+        );
+      }
+      return connection;
+    })
     .sort((a, b) => {
       const left = `${a.from.nodeId}.${a.from.portName}->${a.to.nodeId}.${a.to.portName}`;
       const right = `${b.from.nodeId}.${b.from.portName}->${b.to.nodeId}.${b.to.portName}`;
@@ -140,16 +160,34 @@ const normalizeHdl = (hdl?: ToolchainProjectInput): ToolchainProjectInput | unde
 
 const normalizeIoMapping = (ioMapping?: IoMapping): IoMapping | undefined => {
   if (!ioMapping) return ioMapping;
-  const normalizeEntry = (entry: any) => ({ ...entry });
+  const normalizeEntry = (
+    entry: unknown,
+    direction: 'in' | 'out',
+    index: number
+  ) => {
+    if (!isRecord(entry)) return null;
+    const id = readRequiredString(entry.id) ?? `io_${direction}_${index + 1}`;
+    const label = readRequiredString(entry.label) ?? id;
+    return {
+      ...entry,
+      id,
+      nodeId: readOptionalString(entry.nodeId) ?? '',
+      port: readOptionalString(entry.port) ?? (direction === 'in' ? 'out' : 'in'),
+      label,
+      pin: readOptionalString(entry.pin)?.toUpperCase() ?? '',
+    };
+  };
   const inputs = [...(ioMapping.inputs ?? [])]
-    .map(normalizeEntry)
+    .map((entry, index) => normalizeEntry(entry, 'in', index))
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
     .sort((a, b) => {
       const left = `${a.nodeId}.${a.port}.${a.id}`;
       const right = `${b.nodeId}.${b.port}.${b.id}`;
       return compareCodepoint(left, right);
     });
   const outputs = [...(ioMapping.outputs ?? [])]
-    .map(normalizeEntry)
+    .map((entry, index) => normalizeEntry(entry, 'out', index))
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
     .sort((a, b) => {
       const left = `${a.nodeId}.${a.port}.${a.id}`;
       const right = `${b.nodeId}.${b.port}.${b.id}`;
@@ -161,7 +199,8 @@ const normalizeIoMapping = (ioMapping?: IoMapping): IoMapping | undefined => {
 const normalizeVectors = (vectors?: TestVector[]): TestVector[] | undefined => {
   if (!vectors) return vectors;
   return [...vectors]
-    .map((vector) => ({ ...vector }))
+    .map((vector, index) => normalizeProjectVector(vector, index))
+    .filter((vector): vector is NonNullable<typeof vector> => vector !== null)
     .sort((a, b) => a.tick - b.tick);
 };
 
@@ -192,13 +231,253 @@ export const encodeRBProject = (project: RBProject) => {
   return stableStringify(normalized);
 };
 
-export const decodeRBProject = (raw: string): RBProject => {
-  const parsed = JSON.parse(raw) as RBProject;
-  if (!parsed || typeof parsed !== 'object') {
+export const normalizeRBProject = (value: unknown): RBProject => {
+  if (!isRecord(value)) {
     throw new Error('Invalid project: not an object');
   }
-  if (parsed.kind !== 'rb-project' || parsed.version !== 1) {
+  if (value.kind !== 'rb-project' || value.version !== 1) {
     throw new Error('Invalid project: unsupported kind or version');
   }
-  return parsed;
+
+  const name = readRequiredString(value.name);
+  if (!name) {
+    throw new Error('Invalid project: name is required');
+  }
+
+  if (!isRecord(value.circuit)) {
+    throw new Error('Invalid project: circuit is missing');
+  }
+  if (!Array.isArray(value.circuit.nodes) || !Array.isArray(value.circuit.connections)) {
+    throw new Error('Invalid project: circuit must include nodes and connections arrays');
+  }
+
+  return {
+    ...value,
+    kind: 'rb-project',
+    version: 1,
+    createdAt: readOptionalString(value.createdAt) ?? '1970-01-01T00:00:00.000Z',
+    updatedAt: readOptionalString(value.updatedAt) ?? '1970-01-01T00:00:00.000Z',
+    name,
+    description: readOptionalString(value.description) ?? undefined,
+    circuit: normalizeProjectCircuit(value.circuit as Circuit),
+    probes: normalizeProbes(Array.isArray(value.probes) ? value.probes : undefined),
+    hdl: normalizeHdl(isRecord(value.hdl) ? (value.hdl as ToolchainProjectInput) : undefined),
+    fpga: isRecord(value.fpga) ? { ...(value.fpga as RBFpgaConfig) } : undefined,
+    layout: isRecord(value.layout)
+      ? {
+          ...(value.layout as NonNullable<RBProject['layout']>),
+          dock: isRecord(value.layout.dock)
+            ? { ...(value.layout.dock as NonNullable<NonNullable<RBProject['layout']>['dock']>) }
+            : undefined,
+        }
+      : undefined,
+    oscilloscope: isRecord(value.oscilloscope)
+      ? { ...(value.oscilloscope as NonNullable<RBProject['oscilloscope']>) }
+      : undefined,
+    recorder: isRecord(value.recorder)
+      ? { ...(value.recorder as NonNullable<RBProject['recorder']>) }
+      : undefined,
+    ioMapping: normalizeIoMapping(isRecord(value.ioMapping) ? (value.ioMapping as IoMapping) : undefined),
+    vectors: normalizeVectors(Array.isArray(value.vectors) ? value.vectors as TestVector[] : undefined),
+    traceMetadata: isRecord(value.traceMetadata)
+      ? { ...(value.traceMetadata as TraceMetadata) }
+      : undefined,
+    submodules: normalizeSubmodules(Array.isArray(value.submodules) ? value.submodules as SubmoduleEntry[] : undefined),
+    labSpec: isRecord(value.labSpec) ? { ...(value.labSpec as LabSpecV1) } : undefined,
+    customComponents: Array.isArray(value.customComponents)
+      ? value.customComponents.filter(isCompositeNodeDef)
+      : undefined,
+    meta: isRecord(value.meta) ? { ...(value.meta as NonNullable<RBProject['meta']>) } : undefined,
+  };
 };
+
+export const decodeRBProject = (raw: string): RBProject => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error('Invalid project: malformed JSON');
+  }
+  return normalizeRBProject(parsed);
+};
+
+function normalizeProjectNode(node: Node | Record<string, unknown>, index: number): Node {
+  if (!isRecord(node)) {
+    throw new Error(`Invalid project: node ${index + 1} is not an object`);
+  }
+
+  const id = readRequiredString(node.id);
+  if (!id) {
+    throw new Error(`Invalid project: node ${index + 1} is missing an id`);
+  }
+
+  const type = readRequiredString(node.type);
+  if (!type) {
+    throw new Error(`Invalid project: node "${id}" is missing a type`);
+  }
+
+  const rawPosition = isRecord(node.position) ? node.position : null;
+  const x = readFiniteNumber(rawPosition?.x ?? node.x, 0);
+  const y = readFiniteNumber(rawPosition?.y ?? node.y, 0);
+
+  const normalized: Node = {
+    ...(node as Node),
+    id,
+    type,
+    position: { x, y },
+    x,
+    y,
+    rotation: readFiniteNumber(node.rotation, 0),
+    config: cloneRecord(node.config ?? node.params),
+    state: cloneRecord(node.state),
+  };
+
+  const label = readOptionalString(node.label);
+  if (label) {
+    normalized.label = label;
+  } else {
+    delete normalized.label;
+  }
+
+  const inputs = cloneRecord(node.inputs);
+  if (inputs) {
+    normalized.inputs = inputs;
+  } else {
+    delete normalized.inputs;
+  }
+
+  const outputs = cloneRecord(node.outputs);
+  if (outputs) {
+    normalized.outputs = outputs;
+  } else {
+    delete normalized.outputs;
+  }
+
+  return normalized;
+}
+
+function normalizeProjectConnection(
+  connection: Connection | Record<string, unknown>,
+  index: number
+): Connection {
+  if (!isRecord(connection)) {
+    throw new Error(`Invalid project: connection ${index + 1} is not an object`);
+  }
+
+  const normalized: Connection = {
+    from: normalizePortRef(
+      connection.from,
+      'out',
+      connection.fromPort,
+      connection.fromPin,
+      `connection ${index + 1} source`
+    ),
+    to: normalizePortRef(
+      connection.to,
+      'in',
+      connection.toPort,
+      connection.toPin,
+      `connection ${index + 1} destination`
+    ),
+  };
+
+  const id = readOptionalString(connection.id);
+  if (id) {
+    normalized.id = id;
+  }
+
+  return normalized;
+}
+
+function normalizePortRef(
+  value: unknown,
+  fallbackPortName: string,
+  legacyPort: unknown,
+  legacyPin: unknown,
+  label: string
+): PortRef {
+  if (typeof value === 'string') {
+    const nodeId = value.trim();
+    if (!nodeId) {
+      throw new Error(`Invalid project: ${label} is missing a node id`);
+    }
+    return {
+      nodeId,
+      portName:
+        readOptionalString(legacyPort) ??
+        readOptionalString(legacyPin) ??
+        fallbackPortName,
+    };
+  }
+
+  if (!isRecord(value)) {
+    throw new Error(`Invalid project: ${label} is missing`);
+  }
+
+  const nodeId = readRequiredString(value.nodeId);
+  if (!nodeId) {
+    throw new Error(`Invalid project: ${label} is missing a node id`);
+  }
+
+  return {
+    nodeId,
+    portName:
+      readOptionalString(value.portName) ??
+      readOptionalString(value.port) ??
+      readOptionalString(legacyPort) ??
+      readOptionalString(legacyPin) ??
+      fallbackPortName,
+  };
+}
+
+function normalizeProjectVector(
+  vector: TestVector | Record<string, unknown>,
+  index: number
+): TestVector | null {
+  if (!isRecord(vector)) return null;
+  return {
+    ...(vector as TestVector),
+    tick: readFiniteNumber(vector.tick, index),
+    inputs: normalizeBitRecord(vector.inputs),
+    expected: normalizeBitRecord(vector.expected),
+  };
+}
+
+function normalizeBitRecord(value: unknown): Record<string, 0 | 1> {
+  if (!isRecord(value)) return {};
+  const normalized: Record<string, 0 | 1> = {};
+  for (const [key, bit] of Object.entries(value)) {
+    const nextKey = key.trim();
+    if (!nextKey) continue;
+    normalized[nextKey] = bit === true || bit === 1 || bit === '1' ? 1 : 0;
+  }
+  return normalized;
+}
+
+function isRecord(value: unknown): value is Record<string, any> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readRequiredString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function readOptionalString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function readFiniteNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function cloneRecord(value: unknown): Record<string, any> | undefined {
+  return isRecord(value) ? { ...value } : undefined;
+}
+
+function isCompositeNodeDef(value: unknown): value is CompositeNodeDef {
+  return isRecord(value) && readRequiredString(value.name) !== null;
+}

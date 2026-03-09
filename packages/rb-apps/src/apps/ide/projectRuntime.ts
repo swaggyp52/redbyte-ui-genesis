@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { Circuit, CompositeNodeDef } from '@redbyte/rb-logic-core';
 import { registerCompositeNode } from '@redbyte/rb-logic-core';
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
-import { encodeRBProject, type RBProject } from '../../export/projectFormat';
+import { normalizeRBProject, type RBProject } from '../../export/projectFormat';
 import { stableSerialize } from '../../utils/stableSerialize';
 import { deriveVerifySchedule, type VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
 import { digestValue } from '../../utils/digest';
@@ -899,6 +899,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
     {
       name: STORAGE_KEY,
       version: 4,
+      merge: (persistedState, currentState) =>
+        mergePersistedRuntimeState(persistedState, currentState as ProjectRuntimeState),
       partialize: (state): PersistedRuntimeState => ({
         projectId: state.projectId,
         projectName: state.projectName,
@@ -924,6 +926,102 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
     }
   )
 );
+
+export function mergePersistedRuntimeState(
+  persistedState: unknown,
+  currentState: ProjectRuntimeState
+): ProjectRuntimeState {
+  if (!persistedState || typeof persistedState !== 'object') {
+    return currentState;
+  }
+
+  const candidate = persistedState as Partial<PersistedRuntimeState>;
+  if (
+    !candidate.circuit ||
+    typeof candidate.circuit !== 'object' ||
+    !Array.isArray((candidate.circuit as Circuit).nodes) ||
+    !Array.isArray((candidate.circuit as Circuit).connections)
+  ) {
+    return currentState;
+  }
+  const normalizedRows = normalizePersistedIoRows(
+    candidate.projectIoRows,
+    []
+  );
+  const normalizedVectors = normalizePersistedVectors(
+    candidate.projectVectors,
+    []
+  );
+
+  let normalizedProject: RBProject;
+  try {
+    normalizedProject = normalizeRBProject({
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '1970-01-01T00:00:00.000Z',
+      updatedAt: '1970-01-01T00:00:00.000Z',
+      name:
+        typeof candidate.projectName === 'string' && candidate.projectName.trim().length > 0
+          ? candidate.projectName
+          : currentState.projectName,
+      description:
+        typeof candidate.projectDescription === 'string'
+          ? candidate.projectDescription
+          : currentState.projectDescription,
+      circuit: candidate.circuit,
+      ioMapping: toIoMapping(normalizedRows),
+      vectors: normalizedVectors,
+      customComponents: Array.isArray(candidate.customComponents)
+        ? candidate.customComponents
+        : currentState.customComponents,
+      meta: {
+        projectId:
+          typeof candidate.projectId === 'string' && candidate.projectId.trim().length > 0
+            ? candidate.projectId
+            : currentState.projectId,
+      },
+    });
+  } catch {
+    return currentState;
+  }
+
+  const projectIoRows = ioRowsFromProject(normalizedProject);
+  const circuit = cloneCircuit(normalizedProject.circuit);
+  const projectVectors = cloneVectors(normalizedProject.vectors ?? []);
+  const verifyLastRun = tryCloneVerifyRun(candidate.verifyLastRun);
+  const verifyRunHistory = normalizeVerifyRunHistory(candidate.verifyRunHistory);
+  const sim = normalizePersistedSimState(candidate.sim, circuit, projectIoRows);
+
+  return {
+    ...currentState,
+    projectId:
+      normalizedProject.meta?.projectId?.trim() || currentState.projectId,
+    projectName: normalizedProject.name,
+    projectDescription: normalizedProject.description ?? '',
+    lastSavedAt:
+      typeof candidate.lastSavedAt === 'string' && candidate.lastSavedAt.trim().length > 0
+        ? candidate.lastSavedAt.trim()
+        : currentState.lastSavedAt,
+    activeExampleId:
+      typeof candidate.activeExampleId === 'string'
+        ? candidate.activeExampleId
+        : candidate.activeExampleId === null
+          ? null
+          : currentState.activeExampleId,
+    projectIoRows,
+    projectVectors,
+    circuit,
+    verifyLastRun,
+    verifyRunHistory,
+    sim,
+    projectHealthCore: normalizePersistedProjectHealth(
+      candidate.projectHealthCore,
+      verifyLastRun,
+      currentState.projectHealthCore
+    ),
+    customComponents: normalizedProject.customComponents ?? [],
+  };
+}
 
 function stateFromExample(
   example: IdeExampleDefinition,
@@ -1043,6 +1141,297 @@ function cloneSimState(sim: RuntimeSimState): RuntimeSimState {
   };
 }
 
+function normalizePersistedIoRows(
+  value: unknown,
+  fallback: ProjectIoRow[]
+): ProjectIoRow[] {
+  if (!Array.isArray(value)) return cloneIoRows(fallback);
+  const normalized = value
+    .map((entry, index) => normalizePersistedIoRow(entry, index))
+    .filter((entry): entry is ProjectIoRow => entry !== null);
+  return normalized.length > 0 ? normalized : cloneIoRows(fallback);
+}
+
+function normalizePersistedIoRow(
+  value: unknown,
+  index: number
+): ProjectIoRow | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<ProjectIoRow>;
+  const direction =
+    candidate.direction === 'in' || candidate.direction === 'out'
+      ? candidate.direction
+      : null;
+  const id = typeof candidate.id === 'string' ? candidate.id.trim() : '';
+  const label = typeof candidate.label === 'string' ? candidate.label.trim() : '';
+  if (!direction || !id || !label) return null;
+  return {
+    id,
+    nodeId:
+      typeof candidate.nodeId === 'string' && candidate.nodeId.trim().length > 0
+        ? candidate.nodeId.trim()
+        : '',
+    port:
+      typeof candidate.port === 'string' && candidate.port.trim().length > 0
+        ? candidate.port.trim()
+        : direction === 'in'
+          ? 'out'
+          : 'in',
+    label,
+    direction,
+    pin: typeof candidate.pin === 'string' ? candidate.pin.trim().toUpperCase() : '',
+    required: candidate.required !== false,
+  };
+}
+
+function normalizePersistedVectors(
+  value: unknown,
+  fallback: TestVector[]
+): TestVector[] {
+  if (!Array.isArray(value)) return cloneVectors(fallback);
+  return value
+    .map((entry, index) => normalizePersistedVector(entry, index))
+    .filter((entry): entry is TestVector => entry !== null);
+}
+
+function normalizePersistedVector(
+  value: unknown,
+  index: number
+): TestVector | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<TestVector>;
+  return {
+    tick: Number.isFinite(candidate.tick) ? Math.max(0, Math.floor(Number(candidate.tick))) : index,
+    inputs: normalizeBitRecord(candidate.inputs as Record<string, unknown> | undefined),
+    expected: normalizeBitRecord(candidate.expected as Record<string, unknown> | undefined),
+  };
+}
+
+function normalizePersistedSimState(
+  value: unknown,
+  circuit: Circuit,
+  ioRows: ProjectIoRow[]
+): RuntimeSimState {
+  const fallback = resetSimulationState(circuit, ioRows);
+  if (!value || typeof value !== 'object') return fallback;
+  const candidate = value as Partial<RuntimeSimState>;
+  return {
+    ...fallback,
+    tick: Number.isFinite(candidate.tick) ? Math.max(0, Math.floor(Number(candidate.tick))) : fallback.tick,
+    running: candidate.running === true,
+    lastAction:
+      candidate.lastAction === 'run' ||
+      candidate.lastAction === 'pause' ||
+      candidate.lastAction === 'step' ||
+      candidate.lastAction === 'input' ||
+      candidate.lastAction === 'reset'
+        ? candidate.lastAction
+        : fallback.lastAction,
+    speedHz: clampSimSpeed(Number(candidate.speedHz)),
+    irHash: typeof candidate.irHash === 'string' ? candidate.irHash : fallback.irHash,
+    traceHash: typeof candidate.traceHash === 'string' ? candidate.traceHash : fallback.traceHash,
+    inputs: normalizeBitRecord(candidate.inputs as Record<string, unknown> | undefined),
+    signals: normalizeBitRecord(candidate.signals as Record<string, unknown> | undefined),
+    trace: Array.isArray(candidate.trace)
+      ? candidate.trace
+          .map((entry, index) => normalizePersistedTraceSample(entry, index))
+          .filter((entry): entry is RuntimeSimState['trace'][number] => entry !== null)
+      : fallback.trace,
+    selectedSignalKey:
+      typeof candidate.selectedSignalKey === 'string'
+        ? candidate.selectedSignalKey.trim()
+        : null,
+    probes: Array.isArray(candidate.probes)
+      ? candidate.probes
+          .map((probe) => normalizePersistedProbe(probe))
+          .filter((probe): probe is RuntimeSignalProbe => probe !== null)
+      : fallback.probes,
+  };
+}
+
+function normalizePersistedTraceSample(
+  value: unknown,
+  index: number
+): RuntimeSimState['trace'][number] | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as RuntimeSimState['trace'][number];
+  return {
+    tick: Number.isFinite(candidate.tick) ? Math.max(0, Math.floor(Number(candidate.tick))) : index,
+    signals: normalizeBitRecord(candidate.signals as Record<string, unknown> | undefined),
+  };
+}
+
+function normalizePersistedProbe(value: unknown): RuntimeSignalProbe | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<RuntimeSignalProbe>;
+  const key = typeof candidate.key === 'string' ? candidate.key.trim() : '';
+  if (!key) return null;
+  return {
+    key,
+    label: typeof candidate.label === 'string' && candidate.label.trim().length > 0
+      ? candidate.label.trim()
+      : key,
+  };
+}
+
+function tryCloneVerifyRun(value: unknown): RuntimeVerifyRun | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  try {
+    return cloneVerifyRun(value as RuntimeVerifyRun);
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeVerifyRunHistory(value: unknown): VerifyRunLedgerEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => normalizeVerifyRunLedgerEntry(entry))
+    .filter((entry): entry is VerifyRunLedgerEntry => entry !== null)
+    .slice(-50);
+}
+
+function normalizeVerifyRunLedgerEntry(value: unknown): VerifyRunLedgerEntry | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<VerifyRunLedgerEntry>;
+  if (
+    typeof candidate.runId !== 'string' ||
+    typeof candidate.ranAtIso !== 'string' ||
+    (candidate.status !== 'pass' && candidate.status !== 'fail') ||
+    typeof candidate.circuitHash !== 'string' ||
+    typeof candidate.vectorsHash !== 'string' ||
+    typeof candidate.mappingHash !== 'string' ||
+    typeof candidate.projectHash !== 'string'
+  ) {
+    return null;
+  }
+
+  const firstFailure = candidate.firstFailure;
+  return {
+    runId: candidate.runId,
+    ranAtIso: candidate.ranAtIso,
+    status: candidate.status,
+    passedRows: Number.isFinite(candidate.passedRows) ? Math.max(0, Math.floor(Number(candidate.passedRows))) : 0,
+    failedRows: Number.isFinite(candidate.failedRows) ? Math.max(0, Math.floor(Number(candidate.failedRows))) : 0,
+    firstFailure:
+      firstFailure &&
+      typeof firstFailure === 'object' &&
+      Number.isFinite(firstFailure.tick) &&
+      typeof firstFailure.signal === 'string' &&
+      typeof firstFailure.expected === 'string' &&
+      typeof firstFailure.actual === 'string'
+        ? {
+            tick: Math.max(0, Math.floor(Number(firstFailure.tick))),
+            signal: firstFailure.signal,
+            expected: firstFailure.expected,
+            actual: firstFailure.actual,
+          }
+        : null,
+    circuitHash: candidate.circuitHash,
+    vectorsHash: candidate.vectorsHash,
+    mappingHash: candidate.mappingHash,
+    projectHash: candidate.projectHash,
+    didCircuitChangeSinceLast: candidate.didCircuitChangeSinceLast === true,
+    didVectorsChangeSinceLast: candidate.didVectorsChangeSinceLast === true,
+    didMappingChangeSinceLast: candidate.didMappingChangeSinceLast === true,
+  };
+}
+
+function normalizePersistedProjectHealth(
+  value: unknown,
+  verifyLastRun: RuntimeVerifyRun | undefined,
+  fallback: ProjectHealthCore
+): ProjectHealthCore {
+  if (!value || typeof value !== 'object') {
+    return {
+      lastVerify: verifyLastRun
+        ? {
+            status: verifyLastRun.status,
+            hash: verifyLastRun.deterministicHash,
+            reportHash: verifyLastRun.reportHash,
+            report: verifyLastRun.report,
+            failingTick: verifyLastRun.firstFailingTick,
+            ranAtIso: verifyLastRun.generatedAtIso,
+          }
+        : fallback.lastVerify,
+      lastExport: fallback.lastExport,
+      dirtySinceVerify: fallback.dirtySinceVerify,
+      dirtySinceExport: fallback.dirtySinceExport,
+    };
+  }
+
+  const candidate = value as Partial<ProjectHealthCore>;
+  const lastVerify = normalizePersistedLastVerify(candidate.lastVerify, verifyLastRun);
+  return {
+    lastVerify,
+    lastExport: normalizePersistedLastExport(candidate.lastExport),
+    dirtySinceVerify:
+      typeof candidate.dirtySinceVerify === 'boolean'
+        ? candidate.dirtySinceVerify
+        : lastVerify ? false : true,
+    dirtySinceExport:
+      typeof candidate.dirtySinceExport === 'boolean'
+        ? candidate.dirtySinceExport
+        : true,
+  };
+}
+
+function normalizePersistedLastVerify(
+  value: unknown,
+  verifyLastRun: RuntimeVerifyRun | undefined
+): ProjectHealthCore['lastVerify'] {
+  if (!value || typeof value !== 'object') {
+    if (!verifyLastRun) return undefined;
+    return {
+      status: verifyLastRun.status,
+      hash: verifyLastRun.deterministicHash,
+      reportHash: verifyLastRun.reportHash,
+      report: verifyLastRun.report,
+      failingTick: verifyLastRun.firstFailingTick,
+      ranAtIso: verifyLastRun.generatedAtIso,
+    };
+  }
+  const candidate = value as Partial<NonNullable<ProjectHealthCore['lastVerify']>>;
+  if (
+    (candidate.status !== 'pass' && candidate.status !== 'fail') ||
+    typeof candidate.hash !== 'string' ||
+    typeof candidate.ranAtIso !== 'string'
+  ) {
+    return undefined;
+  }
+  return {
+    status: candidate.status,
+    hash: candidate.hash,
+    reportHash: typeof candidate.reportHash === 'string' ? candidate.reportHash : undefined,
+    report: verifyLastRun?.report,
+    failingTick: Number.isFinite(candidate.failingTick) ? Number(candidate.failingTick) : verifyLastRun?.firstFailingTick,
+    ranAtIso: candidate.ranAtIso,
+  };
+}
+
+function normalizePersistedLastExport(
+  value: unknown
+): ProjectHealthCore['lastExport'] {
+  if (!value || typeof value !== 'object') return undefined;
+  const candidate = value as Partial<NonNullable<ProjectHealthCore['lastExport']>>;
+  if (
+    (candidate.status !== 'ok' && candidate.status !== 'blocked') ||
+    typeof candidate.ranAtIso !== 'string'
+  ) {
+    return undefined;
+  }
+  return {
+    status: candidate.status,
+    hash: typeof candidate.hash === 'string' ? candidate.hash : undefined,
+    manifestHash: typeof candidate.manifestHash === 'string' ? candidate.manifestHash : undefined,
+    bundleHash: typeof candidate.bundleHash === 'string' ? candidate.bundleHash : undefined,
+    artifacts: Array.isArray(candidate.artifacts)
+      ? candidate.artifacts.filter((artifact): artifact is string => typeof artifact === 'string')
+      : undefined,
+    ranAtIso: candidate.ranAtIso,
+  };
+}
+
 function normalizeBit(value: unknown): 0 | 1 {
   if (value === true || value === 1 || value === '1') return 1;
   return 0;
@@ -1076,11 +1465,12 @@ function toVerifyVectors(vectors: TestVector[]): VerifyReportVector[] {
 }
 
 function normalizeBitRecord(
-  record: Record<string, boolean | number | string | undefined>
+  record: Record<string, unknown> | undefined
 ): Record<string, 0 | 1> {
+  const source = record ?? {};
   const normalized: Record<string, 0 | 1> = {};
-  for (const key of Object.keys(record).sort()) {
-    normalized[key] = record[key] === true || record[key] === 1 || record[key] === '1' ? 1 : 0;
+  for (const key of Object.keys(source).sort()) {
+    normalized[key] = source[key] === true || source[key] === 1 || source[key] === '1' ? 1 : 0;
   }
   return normalized;
 }

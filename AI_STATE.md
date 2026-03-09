@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-03-09 (Classroom hardening: safe project load + persisted-state guards)
+
+### Project load, import, and reload now fail safe instead of poisoning the IDE
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/IdeApp.tsx` - Routed saved-project load, file load, autosave restore, session restore, restore-last-save, import apply, and reset-to-example through guarded recovery logic. The new path creates a local backup before destructive replacement when current work is unsaved, keeps the current project intact on load failure, clears invalid autosave/session restore state, and reports plain status messages instead of silent no-ops.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts` - Added `mergePersistedRuntimeState(...)` to sanitize `rb.ide.project-runtime.v1` rehydration before it reaches the IDE surface. Malformed persisted runtime state now falls back to the current safe project instead of replacing it with broken circuit/mapping/sim state, and valid persisted state is normalized before reuse.
+- `packages/rb-apps/src/export/projectFormat.ts` - Hardened `decodeRBProject(...)` with structural validation and normalization for nodes, connections, mappings, vectors, and legacy string connection refs so malformed `.rbproj` payloads fail early and valid legacy-ish payloads are normalized into a safe runtime shape.
+- `packages/rb-apps/src/export/__tests__/projectFormat.decode.test.ts` - Added regression coverage for legacy connection normalization and malformed circuit rejection.
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts` - Added regression coverage for malformed persisted runtime fallback and valid persisted project recovery.
+
+### Why this was minimal
+
+- The batch stays entirely in the project/runtime/persistence lane.
+- No broad refactor, visual churn, or repo-health work was added.
+- Existing project/import UX was preserved, but destructive replacement paths now route through one guarded recovery path.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/export/__tests__/projectFormat.decode.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts packages/rb-apps/src/apps/ide/__tests__/importSurface.verify-reset.test.tsx` - PASS (`3` files, `5` tests)
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`; still prints pre-existing unrelated repo type diagnostics outside this classroom-hardening batch
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-08 (Verify Phase 1: Tick-scoped failure context)
 
 ### Selected failure context now stays anchored to tick + signal

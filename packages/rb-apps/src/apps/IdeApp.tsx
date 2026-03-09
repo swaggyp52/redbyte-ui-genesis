@@ -281,21 +281,6 @@ export const IdeApp: React.FC = () => {
 
   const handleClearDebugState = useCallback(() => setDebugState(null), []);
 
-  const handleRestoreAutosave = useCallback(() => {
-    try {
-      const saved = localStorage.getItem('rb-autosave-circuit');
-      if (saved) {
-        const parsed: RBProject = JSON.parse(saved);
-        loadFromProject(parsed);
-        setAutosaveAvailable(false);
-        localStorage.removeItem('rb-autosave-circuit');
-      }
-    } catch (e) {
-      console.warn('Failed to restore autosave:', e);
-      setAutosaveAvailable(false);
-    }
-  }, [loadFromProject]);
-
   const handleDesignMutation = useCallback(() => {
     markDesignMutated(useCircuitStore.getState().circuit);
     setDiagnosticRouteRequest(null);
@@ -304,15 +289,6 @@ export const IdeApp: React.FC = () => {
   const refreshSavedProjects = useCallback(() => {
     setSavedProjects(listIdeProjectSnapshots());
   }, []);
-
-  const handleImportProject = useCallback(
-    (project: RBProject) => {
-      loadFromProject(project);
-      setSavedProjectHash(null);
-      refreshSavedProjects();
-    },
-    [loadFromProject, refreshSavedProjects]
-  );
 
   const handleApplySuggestions = useCallback(
     (items: Array<{ rowId: string; pin: string }>) => {
@@ -324,31 +300,118 @@ export const IdeApp: React.FC = () => {
     [setMappingPin, setCurrentMode]
   );
 
+  const createRecoveryBackup = useCallback(() => {
+    if (!hasCircuit || !exportProjectRef.current) {
+      return { name: null as string | null, failed: false };
+    }
+    if (savedProjectHash && savedProjectHash === projectHashRef.current) {
+      return { name: null as string | null, failed: false };
+    }
+
+    const backupTimestamp = new Date().toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, 'Z');
+    const backupName = `Backup - ${projectName} - ${backupTimestamp}`;
+    const backupProject: RBProject = {
+      ...exportProjectRef.current,
+      name: backupName,
+    };
+    const backupId = `backup-${projectId}-${Date.now().toString(36)}`;
+    const snapshot = saveIdeProjectSnapshot({
+      projectId: backupId,
+      projectName: backupName,
+      projectHash: digestValue(backupProject),
+      project: backupProject,
+    });
+
+    if (!snapshot) {
+      return { name: null as string | null, failed: true };
+    }
+
+    return { name: backupName, failed: false };
+  }, [hasCircuit, projectId, projectName, savedProjectHash]);
+
   const handleSafeLoadIntoIde = useCallback(
-    (project: RBProject) => {
-      // Auto-backup current project before replacing
-      if (hasCircuit && exportProjectRef.current) {
-        const backupTimestamp = new Date().toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, 'Z');
-        const backupName = `Backup - ${projectName} - ${backupTimestamp}`;
-        const backupProject: RBProject = {
-          ...exportProjectRef.current,
-          name: backupName,
-        };
-        const backupId = `backup-${projectId}-${Date.now().toString(36)}`;
-        saveIdeProjectSnapshot({
-          projectId: backupId,
-          projectName: backupName,
-          projectHash: digestValue(backupProject),
-          project: backupProject,
-        });
-        setLastSavedAt(`Previous project backed up as "${backupName}". Open Load Saved Project to restore it.`);
-        refreshSavedProjects();
+    (
+      project: RBProject,
+      options?: {
+        sourceLabel?: string;
+        savedProjectHash?: string | null;
+        closeLoadModal?: boolean;
+        nextMode?: IdeMode | null;
+        backupCurrent?: boolean;
       }
-      loadFromProject(project);
-      setCurrentMode('project');
+    ) => {
+      const sourceLabel = options?.sourceLabel ?? project.name ?? 'project';
+      const backup = options?.backupCurrent === false
+        ? { name: null as string | null, failed: false }
+        : createRecoveryBackup();
+
+      try {
+        loadFromProject(project);
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : 'unknown project error';
+        setLastSavedAt(`Could not load ${sourceLabel}: ${reason}`);
+        refreshSavedProjects();
+        return false;
+      }
+
+      setSavedProjectHash(options?.savedProjectHash ?? null);
+      refreshSavedProjects();
+
+      let statusMessage = `Loaded ${sourceLabel}.`;
+      if (backup.name) {
+        statusMessage = `Loaded ${sourceLabel}. Previous work backed up as "${backup.name}".`;
+      } else if (backup.failed) {
+        statusMessage = `Loaded ${sourceLabel}. Previous work could not be backed up.`;
+      }
+      setLastSavedAt(statusMessage);
+
+      if (options?.closeLoadModal) {
+        setLoadModalOpen(false);
+      }
+      if (options?.nextMode) {
+        setCurrentMode(options.nextMode);
+      }
+      return true;
     },
-    [hasCircuit, projectId, projectName, loadFromProject, refreshSavedProjects, setLastSavedAt]
+    [createRecoveryBackup, loadFromProject, refreshSavedProjects, setLastSavedAt]
   );
+
+  const handleImportProject = useCallback(
+    (project: RBProject) => {
+      void handleSafeLoadIntoIde(project, {
+        sourceLabel: `import "${project.name || 'project'}"`,
+        savedProjectHash: null,
+        backupCurrent: true,
+      });
+    },
+    [handleSafeLoadIntoIde]
+  );
+
+  const handleRestoreAutosave = useCallback(() => {
+    try {
+      const saved = localStorage.getItem('rb-autosave-circuit');
+      if (!saved) {
+        setAutosaveAvailable(false);
+        return;
+      }
+      const parsed = decodeRBProject(saved);
+      const restored = handleSafeLoadIntoIde(parsed, {
+        sourceLabel: 'autosaved project',
+        savedProjectHash: null,
+        nextMode: 'project',
+        backupCurrent: false,
+      });
+      if (restored) {
+        localStorage.removeItem('rb-autosave-circuit');
+      }
+      setAutosaveAvailable(false);
+    } catch (error) {
+      console.warn('Failed to restore autosave:', error);
+      localStorage.removeItem('rb-autosave-circuit');
+      setAutosaveAvailable(false);
+      setLastSavedAt('Autosave restore failed. The saved draft was invalid and was cleared.');
+    }
+  }, [handleSafeLoadIntoIde, setLastSavedAt]);
 
   const topEntityName = useMemo(() => buildTopEntityName(projectName), [projectName]);
   const mappedIoSignals = useMemo(
@@ -544,16 +607,26 @@ export const IdeApp: React.FC = () => {
   const handleLoadSavedProject = useCallback(
     (entry: PersistedIdeProjectIndexEntry) => {
       const snapshot = loadIdeProjectSnapshot(entry.projectId);
-      if (!snapshot) return;
+      if (!snapshot) {
+        setLastSavedAt(`Could not load saved project "${entry.projectName}". The snapshot was missing.`);
+        refreshSavedProjects();
+        return;
+      }
       const project = decodePersistedIdeProject(snapshot);
-      if (!project) return;
-      loadFromProject(project);
-      setSavedProjectHash(snapshot.projectHash);
-      setLastSavedAt(`Loaded ${entry.projectName}`);
-      refreshSavedProjects();
-      setLoadModalOpen(false);
+      if (!project) {
+        setLastSavedAt(`Could not load saved project "${entry.projectName}". The snapshot was invalid.`);
+        refreshSavedProjects();
+        return;
+      }
+      void handleSafeLoadIntoIde(project, {
+        sourceLabel: `saved project "${entry.projectName}"`,
+        savedProjectHash: snapshot.projectHash,
+        closeLoadModal: true,
+        nextMode: 'project',
+        backupCurrent: true,
+      });
     },
-    [loadFromProject, refreshSavedProjects, setLastSavedAt]
+    [handleSafeLoadIntoIde, refreshSavedProjects, setLastSavedAt]
   );
 
   const handleOpenProjectFile = useCallback(() => {
@@ -568,16 +641,19 @@ export const IdeApp: React.FC = () => {
       try {
         const raw = await file.text();
         const parsed = decodeRBProject(raw);
-        loadFromProject(parsed);
-        setSavedProjectHash(null);
-        setLastSavedAt(`Loaded file ${file.name}`);
-        refreshSavedProjects();
-        setLoadModalOpen(false);
-      } catch {
-        setLastSavedAt(`Load failed for ${file.name}`);
+        void handleSafeLoadIntoIde(parsed, {
+          sourceLabel: `file ${file.name}`,
+          savedProjectHash: null,
+          closeLoadModal: true,
+          nextMode: 'project',
+          backupCurrent: true,
+        });
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : 'unknown project error';
+        setLastSavedAt(`Load failed for ${file.name}: ${reason}`);
       }
     },
-    [loadFromProject, refreshSavedProjects, setLastSavedAt]
+    [handleSafeLoadIntoIde, setLastSavedAt]
   );
 
   const handleResetToExample = useCallback(() => {
@@ -595,16 +671,30 @@ export const IdeApp: React.FC = () => {
     const meta = loadLabSessionMeta();
     if (!meta) return;
     const snapshot = loadIdeProjectSnapshot(meta.projectId);
-    if (!snapshot) return;
+    if (!snapshot) {
+      clearLabSessionMeta();
+      setLastSavedAt('Previous session could not be restored. Starting from the current project.');
+      return;
+    }
     const project = decodePersistedIdeProject(snapshot);
-    if (!project) return;
-    isRestoringRef.current = true;
-    loadFromProject(project);
-    setSavedProjectHash(snapshot.projectHash);
-    isRestoringRef.current = false;
+    if (!project) {
+      clearLabSessionMeta();
+      setLastSavedAt('Previous session was invalid and could not be restored.');
+      return;
+    }
     const validModes = ['project', 'design', 'verify', 'hardware', 'export', 'import'] as const;
-    if ((validModes as readonly string[]).includes(meta.currentMode)) {
-      setCurrentMode(meta.currentMode as typeof validModes[number]);
+    isRestoringRef.current = true;
+    const restored = handleSafeLoadIntoIde(project, {
+      sourceLabel: `previous session "${project.name}"`,
+      savedProjectHash: snapshot.projectHash,
+      nextMode: (validModes as readonly string[]).includes(meta.currentMode)
+        ? (meta.currentMode as typeof validModes[number])
+        : 'project',
+      backupCurrent: false,
+    });
+    isRestoringRef.current = false;
+    if (!restored) {
+      clearLabSessionMeta();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run once on mount only
@@ -676,13 +766,13 @@ export const IdeApp: React.FC = () => {
     try {
       const saved = localStorage.getItem('rb-autosave-circuit');
       if (saved) {
-        const parsed = JSON.parse(saved);
+        const parsed = decodeRBProject(saved);
         if (parsed && Array.isArray(parsed.circuit?.nodes) && parsed.circuit.nodes.length > 0) {
           setAutosaveAvailable(true);
         }
       }
     } catch {
-      // ignore
+      localStorage.removeItem('rb-autosave-circuit');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -973,17 +1063,29 @@ export const IdeApp: React.FC = () => {
                 const proj = decodePersistedIdeProject(snap);
                 if (!proj) { window.alert('Saved session could not be decoded.'); return; }
                 isRestoringRef.current = true;
-                loadFromProject(proj);
-                setSavedProjectHash(snap.projectHash);
+                handleSafeLoadIntoIde(proj, {
+                  sourceLabel: 'last saved project',
+                  savedProjectHash: snap.projectHash,
+                  nextMode: 'project',
+                  backupCurrent: true,
+                });
                 isRestoringRef.current = false;
-                setLastSavedAt('Restored from last save');
               }}
               onResetProject={() => {
                 if (!window.confirm('Reset to the default example? All unsaved work will be lost.')) return;
+                const backup = createRecoveryBackup();
                 clearLabSessionMeta();
                 resetToActiveExample();
                 setCurrentMode('project');
-                setLastSavedAt('Reset to example');
+                setSavedProjectHash(null);
+                if (backup.name) {
+                  setLastSavedAt(`Reset to example. Previous work backed up as "${backup.name}".`);
+                } else if (backup.failed) {
+                  setLastSavedAt('Reset to example. Previous work could not be backed up.');
+                } else {
+                  setLastSavedAt('Reset to example');
+                }
+                refreshSavedProjects();
               }}
             />
           </ErrorBoundary>
