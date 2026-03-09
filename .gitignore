@@ -88,3 +88,6 @@ playwright-report/
 /fac_jung002_*.pdf
 /Labs.zip
 /FullAdderHDL.txt
+
+# Claude Code IDE local settings
+.claude/settings.local.json
