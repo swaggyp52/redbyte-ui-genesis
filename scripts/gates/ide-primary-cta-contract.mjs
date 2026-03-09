@@ -9,6 +9,8 @@ async function text(locator) {
 }
 
 await runIdeGate('IDE primary CTA contract satisfied', async ({ page, baseUrl }) => {
+  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
+  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
@@ -43,8 +45,10 @@ await runIdeGate('IDE primary CTA contract satisfied', async ({ page, baseUrl })
       continue;
     }
     if (mode === 'design') {
-      const cta = modeRoot.locator('[data-testid="ide-primary-cta"]').first();
-      assert(await cta.isVisible().catch(() => false), 'mode=design ide-primary-cta must be visible');
+      // ide-primary-cta was removed from the DesignSurface toolbar; the Wire tool is the
+      // always-visible primary action CTA in the current product.
+      const cta = modeRoot.locator('[data-testid="ide-design-tool-wire"]').first();
+      assert(await cta.isVisible().catch(() => false), 'mode=design wire tool (primary CTA) must be visible');
       continue;
     }
     if (mode === 'verify') {
