@@ -206,6 +206,29 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       message: 'Proof and export evidence are current for this project state.',
     };
   }, [effectiveBlockingIssues, hardwareState, verifyReady]);
+  const blockedHero = useMemo(() => {
+    if (!hasBlocking) return null;
+    if (!verifyReady) {
+      return {
+        title: 'Run Verify before using Hardware',
+        body:
+          'Hardware is blocked until this project has a current passing verification run. Start there, then come back once the evidence is current.',
+        primaryLabel: 'Open Verify',
+        primaryAction: onOpenVerify,
+        primaryTestId: 'ide-hardware-blocked-primary',
+      };
+    }
+    return {
+      title: hardwareState === 'export-stale' ? 'Re-export this project now' : 'Build the hardware bundle first',
+      body:
+        hardwareState === 'export-stale'
+          ? 'Your last hardware bundle is stale for the current circuit. Re-export before programming the board.'
+          : 'Verification is current, but no current hardware bundle exists yet. Export once before programming the board.',
+      primaryLabel: hardwareState === 'export-stale' ? 'Re-export Current Bundle' : 'Open Export',
+      primaryAction: onOpenExport,
+      primaryTestId: 'ide-hardware-blocked-primary',
+    };
+  }, [hasBlocking, hardwareState, onOpenExport, onOpenVerify, verifyReady]);
 
   // ── Bring-Up: group expectedIoRows by tick ──────────────────────────
   const bringupTickGroups = useMemo(() => {
@@ -734,6 +757,26 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         </div>
 
         {/* ── Mode toggle bar ── */}
+        {blockedHero && (
+          <SurfacePanel className="ide-hardware-blocked-hero" testId="ide-hardware-blocked-hero">
+            <div className="ide-hardware-blocked-hero__copy">
+              <strong className="ide-hardware-blocked-hero__title">{blockedHero.title}</strong>
+              <p className="ide-copy" style={{ margin: 0 }}>
+                {blockedHero.body}
+              </p>
+            </div>
+            <div className="ide-hardware-blocked-hero__actions">
+              <IdeButton tone="primary" onClick={blockedHero.primaryAction} testId={blockedHero.primaryTestId}>
+                {blockedHero.primaryLabel}
+              </IdeButton>
+              {onGoToDesign && (
+                <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-hardware-blocked-secondary">
+                  Open Design
+                </IdeButton>
+              )}
+            </div>
+          </SurfacePanel>
+        )}
         <div className="ide-hw-mode-toggle" data-testid="ide-hw-mode-toggle">
           {(['live', 'bringup', 'proof'] as const).map((m) => (
             <IdeButton

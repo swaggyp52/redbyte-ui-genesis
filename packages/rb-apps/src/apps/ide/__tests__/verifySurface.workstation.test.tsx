@@ -83,6 +83,29 @@ function makeFailRun(): RuntimeVerifyRun {
 }
 
 describe('VerifySurface workstation controls', () => {
+  it('shows a single first-run CTA before any verification evidence exists', () => {
+    const { getByTestId, queryByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-empty-state').textContent).toContain('Verify before trusting the circuit');
+    expect(getByTestId('ide-verify-empty-run').textContent).toContain('Run Verification');
+    expect(getByTestId('ide-verify-empty-open-vectors').textContent).toContain('Open Project vectors');
+    expect(queryByTestId('ide-verify-run')).toBeNull();
+  });
+
   it('populates truth table rows for a passing run', () => {
     const { getAllByText, getByTestId, queryByTestId } = render(
       <VerifySurface

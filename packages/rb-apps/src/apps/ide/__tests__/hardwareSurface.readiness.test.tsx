@@ -112,9 +112,46 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain(
       'hardware bundle was generated from an older version of this project'
     );
+    expect(getByTestId('ide-hardware-blocked-hero').textContent).toContain('Re-export this project now');
+    expect(getByTestId('ide-hardware-blocked-primary').textContent).toContain('Re-export Current Bundle');
     expect(getByTestId('ide-hardware-build-export').textContent).toContain(
       'Re-export Current Bundle'
     );
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
+  });
+
+  it('points students to Verify first when hardware is blocked before any current pass', () => {
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Needs Verify"
+          expectedBehavior="LED0 follows SW0."
+          mappingRows={[]}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={makeHealth({
+            lastVerify: undefined,
+            dirtySinceVerify: false,
+            blockingIssues: [
+              {
+                code: 'RBP1004',
+                message: 'Run Verify before programming the board.',
+                fixPath: { mode: 'verify', actionLabel: 'Run Verify' },
+              },
+            ],
+          })}
+          verifyCurrent={false}
+          exportCurrent={false}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+          onGoToDesign={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-hardware-blocked-hero').textContent).toContain('Run Verify before using Hardware');
+    expect(getByTestId('ide-hardware-blocked-primary').textContent).toContain('Open Verify');
+    expect(getByTestId('ide-hardware-blocked-secondary').textContent).toContain('Open Design');
   });
 });

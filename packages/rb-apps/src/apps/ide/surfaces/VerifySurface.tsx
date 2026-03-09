@@ -1648,6 +1648,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setDraftTick(templateFields.length + 2);
     setOracleApplied(false);
   };
+  const isFirstRunState = status === 'idle' && runState !== 'complete';
+  const firstRunPrimaryLabel = authoredVectors.length === 0 ? 'Generate Basics' : 'Run Verification';
+  const firstRunPrimaryAction = authoredVectors.length === 0 ? handleGenerateBasicVectors : runVerification;
+  const firstRunTitle =
+    authoredVectors.length === 0 ? 'Start with a small vector set' : 'Run Verify on the current vectors';
+  const firstRunBody =
+    authoredVectors.length === 0
+      ? 'Verify compares expected and observed outputs. Generate starter vectors now, or open your saved vectors if you already have a plan.'
+      : `${authoredVectors.length} vector${authoredVectors.length !== 1 ? 's are' : ' is'} ready. Run verification first, then use the waveform and mismatch tools only if you need them.`;
   const handleAutoGenerateVectors = useCallback(() => {
     const n = inputFields.length;
     if (n === 0 || n > 6) return;
@@ -1846,6 +1855,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   : 'Run verification to populate waveform lanes.'}
               </p>
             ) : (
+            
               visibleSignalTimeline.map((signalRow) => (
                 <div key={signalRow.signal} className="ide-verify-signal-row-wrap">
                   <button
@@ -2278,7 +2288,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </span>
             </>
           )}
-          <div className="ide-verify-strip-actions">
+          {!isFirstRunState && (
+            <div className="ide-verify-strip-actions">
             {/* Primary CTA varies by state */}
             {status === 'pass' && !isRunStale ? (
               <span data-testid="ide-primary-cta">
@@ -2322,7 +2333,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 Run
               </IdeButton>
             )}
-            <IdeButton tone="ghost" onClick={clearResults} testId="ide-verify-clear">Clear</IdeButton>
+            {(hasResults || Boolean(lastRun)) && (
+              <IdeButton tone="ghost" onClick={clearResults} testId="ide-verify-clear">Clear</IdeButton>
+            )}
             {hasResults && totalSteps > 0 && (
               <IdeButton
                 tone={isStepMode ? 'secondary' : 'ghost'}
@@ -2343,7 +2356,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </IdeButton>
               </span>
             )}
-          </div>
+            </div>
+          )}
         </div>
 
         {isSequentialRun && (
@@ -2440,43 +2454,33 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </IdeCallout>
         )}
 
-        {status === 'idle' && runState !== 'complete' ? (
-          <div className="ide-empty-stack" data-testid="ide-verify-empty-state">
+        {isFirstRunState ? (
+          <SurfacePanel className="ide-verify-first-run-hero" testId="ide-verify-empty-state">
             <div className="ide-verify-empty-message" data-testid="ide-verify-empty-message">
-              <span className="ide-verify-empty-label">No verification run yet</span>
-              <span className="ide-verify-empty-hint">Add test vectors in the panel on the right, then click Run.</span>
+              <span className="ide-verify-empty-label">Verify before trusting the circuit</span>
+              <span className="ide-verify-empty-hint">{firstRunBody}</span>
             </div>
-            {authoredVectors.length === 0 ? (
-              <IdeCallout tone="info" title="No vectors yet">
-                <p className="ide-copy">Generate a basic set to get started, then click Run.</p>
-                <div className="ide-inline-actions">
-                  <IdeButton
-                    tone="primary"
-                    onClick={handleGenerateBasicVectors}
-                    testId="ide-verify-empty-generate-basics"
-                  >
-                    Generate Basics
-                  </IdeButton>
-                </div>
-              </IdeCallout>
-            ) : (
-              <IdeCallout tone="info" title="Vectors loaded — ready to run">
-                <p className="ide-copy">
-                  {authoredVectors.length} vector{authoredVectors.length !== 1 ? 's' : ''} ready.
-                  Click Run verification to produce deterministic waveform evidence.
-                </p>
-                <div className="ide-inline-actions">
-                  <IdeButton
-                    tone="primary"
-                    onClick={runVerification}
-                    testId="ide-verify-empty-run"
-                  >
-                    Run verification
-                  </IdeButton>
-                </div>
-              </IdeCallout>
-            )}
-          </div>
+            <div className="ide-verify-first-run-hero__actions">
+              <IdeButton
+                tone="primary"
+                onClick={firstRunPrimaryAction}
+                testId={authoredVectors.length === 0 ? 'ide-verify-empty-generate-basics' : 'ide-verify-empty-run'}
+              >
+                {firstRunPrimaryLabel}
+              </IdeButton>
+              <IdeButton tone="secondary" onClick={onOpenProjectVectors} testId="ide-verify-empty-open-vectors">
+                Open Project vectors
+              </IdeButton>
+            </div>
+            <IdeCallout tone="info" title={firstRunTitle} testId="ide-verify-first-run-callout">
+              <p className="ide-copy" style={{ margin: 0 }}>
+                {authoredVectors.length === 0
+                  ? 'Generate a starter set now, then edit expected outputs only if you need a custom test plan.'
+                  : 'Run verification first. Step-through, waveform inspection, and oracle tools stay available after you have real evidence.'}
+              </p>
+            </IdeCallout>
+            
+          </SurfacePanel>
         ) : (
           <div
             className="ide-verify-workbench ide-verify-workbench-v2"

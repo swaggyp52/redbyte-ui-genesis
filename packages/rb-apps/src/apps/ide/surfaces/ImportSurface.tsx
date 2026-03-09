@@ -317,7 +317,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const [zipBusy, setZipBusy] = useState(false);
   const [pendingApplyProject, setPendingApplyProject] = useState<RBProject | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
-  const [statusMessage, setStatusMessage] = useState<string>('Paste HDL to begin import.');
+  const [statusMessage, setStatusMessage] = useState<string>('Start with a Vivado ZIP or paste HDL.');
   const [zipImportError, setZipImportError] = useState<string>('');
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'failed'>('idle');
   const zipInputRef = useRef<HTMLInputElement | null>(null);
@@ -1006,6 +1006,88 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const handleOpenZipPicker = () => {
     zipInputRef.current?.click();
   };
+  const importEntryAction = useMemo(() => {
+    if (pendingApplyProject) return null;
+    if (!hasParsedHdl && !hdlText.trim() && !hasZipInspection) {
+      return {
+        id: 'zip',
+        title: 'Start with a Vivado ZIP or paste HDL',
+        body:
+          'Recommended: load a Vivado ZIP. You can also paste structural HDL manually. Nothing replaces your current project until you review the import.',
+        primaryLabel: 'Select Vivado ZIP',
+        primaryAction: () => {
+          setTab('upload');
+          handleOpenZipPicker();
+        },
+        secondaryLabel: 'Paste HDL',
+        secondaryAction: () => setTab('hdl'),
+      } as const;
+    }
+    if (!hasParsedHdl && hdlText.trim().length > 0) {
+      return {
+        id: 'parse-hdl',
+        title: 'Parse the HDL first',
+        body:
+          'RedByte needs to detect ports and supported structure before it can build the import preview.',
+        primaryLabel: 'Parse HDL',
+        primaryAction: parseHdl,
+        secondaryLabel: 'Select Vivado ZIP',
+        secondaryAction: () => {
+          setTab('upload');
+          handleOpenZipPicker();
+        },
+      } as const;
+    }
+    if (hasParsedHdl && !canImport) {
+      if (!hasParsedXdc && xdcText.trim().length > 0) {
+        return {
+          id: 'parse-xdc',
+          title: 'Parse constraints or map pins next',
+          body:
+            'Your ports are parsed. Parse the XDC now, or use Basys3 suggestions before reviewing the import.',
+          primaryLabel: 'Parse XDC',
+          primaryAction: () => parseXdc(),
+          secondaryLabel: canApplySuggestions ? 'Apply Pins Only' : 'Open XDC',
+          secondaryAction: canApplySuggestions ? applySuggestions : () => setTab('xdc'),
+        } as const;
+      }
+      return {
+        id: 'apply-pins',
+        title: 'Finish mapping before import',
+        body: canApplySuggestions
+          ? 'Apply Basys3 pin suggestions or add pins manually, then review the import.'
+          : 'Map the required ports before replacing the current project.',
+        primaryLabel: canApplySuggestions ? 'Apply Pins Only' : 'Open XDC',
+        primaryAction: canApplySuggestions ? applySuggestions : () => setTab('xdc'),
+        secondaryLabel: 'Back to HDL',
+        secondaryAction: () => setTab('hdl'),
+      } as const;
+    }
+    return {
+      id: 'review-import',
+      title: 'Review the import before replacing anything',
+      body:
+        'RedByte has enough information to build the project. Review the import first, then confirm the replacement only if it looks correct.',
+      primaryLabel: 'Review Import...',
+      primaryAction: requestApplyProject,
+      secondaryLabel: 'Back to HDL',
+      secondaryAction: () => setTab('hdl'),
+    } as const;
+  }, [
+    applySuggestions,
+    canApplySuggestions,
+    canImport,
+    handleOpenZipPicker,
+    hdlText,
+    hasParsedHdl,
+    hasParsedXdc,
+    hasZipInspection,
+    parseHdl,
+    parseXdc,
+    pendingApplyProject,
+    requestApplyProject,
+    xdcText,
+  ]);
 
   const handleZipInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1467,35 +1549,10 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       }
     >
       <IdePanel
-        title="Import HDL"
-        description="Paste or upload VHDL/Verilog and XDC constraints to load a design into the circuit editor."
+        title="Import Design"
+        description="Start with a Vivado ZIP or paste HDL/XDC. RedByte will let you review changes before replacing the active project."
         actions={
           <>
-            <IdeButton tone="secondary" onClick={parseHdl} testId="ide-import-parse">
-              Parse HDL
-            </IdeButton>
-            <IdeButton tone="secondary" onClick={parseXdc} testId="ide-import-parse-xdc">
-              Parse XDC
-            </IdeButton>
-            <IdeButton
-              tone="secondary"
-              onClick={applySuggestions}
-              disabled={!canApplySuggestions}
-              testId="ide-import-apply-pins-only"
-            >
-              Apply Pins Only
-            </IdeButton>
-            <IdeButton tone="ghost" onClick={copyDiagnostics} testId="ide-import-copy-diagnostics">
-              Copy report
-            </IdeButton>
-            <IdeButton
-              tone="secondary"
-              onClick={() => void handleProcessDesign()}
-              disabled={pipelineActive || (!hdlText.trim() && !zipInspection)}
-              testId="ide-import-process-design"
-            >
-              {pipelineActive ? 'Processing…' : 'Process Design'}
-            </IdeButton>
             <span data-testid="ide-primary-cta">
               <IdeButton
                 tone="primary"
@@ -1503,7 +1560,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 disabled={!canImport}
                 testId="ide-import-replace-project"
               >
-                Replace Project…
+                Review Import...
               </IdeButton>
             </span>
             {!canImport && hasParsedHdl && (
@@ -1517,20 +1574,68 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         }
         right={
           canImport ? (
-            <IdeStatusPill tone="ok">Ready</IdeStatusPill>
+            <IdeStatusPill tone="ok">Ready to Review</IdeStatusPill>
           ) : (
             <IdeStatusPill tone="warn">Needs Mapping</IdeStatusPill>
           )
         }
         testId="ide-import-panel"
       >
+        {importEntryAction && (
+          <SurfacePanel className="ide-import-start-hero" testId="ide-import-start-hero">
+            <div className="ide-import-start-hero__copy">
+              <strong className="ide-import-start-hero__title">{importEntryAction.title}</strong>
+              <p className="ide-copy" style={{ margin: 0 }}>
+                {importEntryAction.body}
+              </p>
+            </div>
+            <div className="ide-import-start-hero__actions">
+              <IdeButton tone="primary" onClick={importEntryAction.primaryAction} testId="ide-import-start-primary">
+                {importEntryAction.primaryLabel}
+              </IdeButton>
+              <IdeButton tone="secondary" onClick={importEntryAction.secondaryAction} testId="ide-import-start-secondary">
+                {importEntryAction.secondaryLabel}
+              </IdeButton>
+            </div>
+          </SurfacePanel>
+        )}
         <p
           className="ide-copy"
           style={{ color: 'var(--ide-text-soft)', marginBottom: 'var(--ide-space-2)' }}
           data-testid="ide-import-mode-hint"
         >
-          Import can fill pins on your current project, or replace the whole project.
+          Recommended: start with a Vivado ZIP. RedByte only replaces the project after you review the import.
         </p>
+        <div className="ide-import-secondary-tools" data-testid="ide-import-secondary-tools">
+          <span className="ide-import-secondary-tools-label">Secondary tools</span>
+          <div className="ide-inline-actions">
+            <IdeButton tone="secondary" onClick={parseHdl} testId="ide-import-parse">
+              Parse HDL
+            </IdeButton>
+            <IdeButton tone="ghost" onClick={() => parseXdc()} testId="ide-import-parse-xdc">
+              Parse XDC
+            </IdeButton>
+            <IdeButton
+              tone="ghost"
+              onClick={applySuggestions}
+              disabled={!canApplySuggestions}
+              testId="ide-import-apply-pins-only"
+            >
+              Apply Pins Only
+            </IdeButton>
+            <IdeButton tone="ghost" onClick={copyDiagnostics} testId="ide-import-copy-diagnostics">
+              Copy report
+            </IdeButton>
+            <IdeButton
+              tone="ghost"
+              onClick={() => void handleProcessDesign()}
+              disabled={pipelineActive || (!hdlText.trim() && !zipInspection)}
+              testId="ide-import-process-design"
+            >
+              {pipelineActive ? 'Processing…' : 'Process Design'}
+            </IdeButton>
+          </div>
+        </div>
         {showVerifyResetNotice && (
           <IdeCallout
             tone="info"
@@ -2193,15 +2298,14 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
           <section className="ide-import-stage-col" data-testid="ide-import-diagnostics-panel">
             <IdeSectionHeader title="Diagnostics + Preview" meta="Stage 2/3" />
             {!hasParsedHdl && !hdlText.trim() && (
-              <IdeCallout tone="info" title="Paste HDL to begin" testId="ide-import-empty-state">
-                Paste a VHDL entity or Verilog module in the editor, then click{' '}
-                <strong>Parse HDL</strong> — or upload a Vivado project ZIP to auto-extract.
+              <IdeCallout tone="info" title="Start with a ZIP or HDL" testId="ide-import-empty-state">
+                Load a Vivado ZIP for the fastest path, or paste a VHDL entity / Verilog module and then click{' '}
+                <strong>Parse HDL</strong>.
               </IdeCallout>
             )}
             {!hasParsedHdl && hdlText.trim().length > 0 && (
-              <IdeCallout tone="warn" title="HDL detected — not yet parsed" testId="ide-import-needs-parse">
-                Your HDL is ready. Click <strong>Parse HDL</strong> above to analyse ports and
-                reconstruct the circuit.
+              <IdeCallout tone="warn" title="HDL ready — parse next" testId="ide-import-needs-parse">
+                Your HDL is ready. Click <strong>Parse HDL</strong> to inspect ports and build the import preview.
               </IdeCallout>
             )}
             <div className="ide-kv-list">

@@ -1,5 +1,35 @@
 # AI State
 
+## Change Log 2026-03-09 (Classroom release candidate: blocked-state CTA simplification)
+
+### Verify, Hardware, and Import now lead with one clearer next step, and onboarding matches the current surface
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` - Simplified the no-run Verify state into a single first-run hero with one dominant CTA (`Generate Basics` or `Run Verification`), demoted strip actions until real evidence exists, and kept vectors as a clear secondary path instead of a competing primary action.
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` - Added a blocked-state hero that explains in plain language whether the student needs to rerun Verify or rebuild the hardware bundle, with one dominant primary action and one secondary `Open Design` escape hatch.
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` - Reframed Import around one start card, renamed the destructive-feeling top-level action to `Review Import...`, grouped parse/report/manual tools into a visibly secondary tools area, and simplified first-look copy so ZIP import is the recommended starting path.
+- `packages/rb-apps/src/apps/ide/components/OnboardingOverlay.tsx` - Made onboarding copy mode-aware so Import, Verify, Hardware, Project, Design, and Export each explain the correct student action instead of reusing design-specific instructions everywhere.
+- `packages/rb-apps/src/apps/IdeApp.tsx` - Passed the active IDE mode into the onboarding overlay so the mode-specific guidance is driven by the real current surface.
+- `packages/rb-apps/src/apps/ide/ide-root.css` - Added small, targeted hierarchy styles for the new first-run/blocked-state hero cards and the Import secondary-tools tray.
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` - Added regression coverage for the no-run Verify CTA hierarchy.
+- `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx` - Added regression coverage for the new Hardware blocked-state hero on stale export and verify-needed paths.
+- `packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx` - Added a focused first-look contract for the new Import start hero and `Review Import...` wording.
+- `packages/rb-apps/src/apps/ide/__tests__/OnboardingOverlay.test.tsx` - Added coverage proving Import onboarding no longer shows design-only instructions.
+
+### Why this was minimal
+
+- The batch stayed strictly in blocked/first-run CTA hierarchy and onboarding copy.
+- Startup/project-home logic, deployment work, and broader Verify/Hardware/Import functionality were left untouched.
+- Existing power tools and recovery behavior remain available; they are just no longer the first thing students have to parse.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.verify-reset.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx packages/rb-apps/src/apps/ide/__tests__/OnboardingOverlay.test.tsx` - PASS (`5` files, `11` tests)
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`; still prints the same broad pre-existing TypeScript diagnostics in unrelated packages/components outside this classroom batch
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-09 (Classroom release candidate: deterministic startup + clearer project home)
 
 ### Startup intent now wins over silent session-mode restore, and Project home visibly exposes saved work
