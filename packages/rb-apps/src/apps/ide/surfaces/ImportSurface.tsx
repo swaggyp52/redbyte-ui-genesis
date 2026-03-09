@@ -318,6 +318,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const [pendingApplyProject, setPendingApplyProject] = useState<RBProject | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [statusMessage, setStatusMessage] = useState<string>('Paste HDL to begin import.');
+  const [zipImportError, setZipImportError] = useState<string>('');
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'failed'>('idle');
   const zipInputRef = useRef<HTMLInputElement | null>(null);
   const zipFileRef = useRef<File | null>(null);
@@ -607,6 +608,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const hdlWarningCount = hdlParseWarnings.length;
   const hasParsedXdc = xdcResult !== null;
   const hasZipInspection = zipInspection !== null;
+  const isManifestZipImport = zipInspection?.importMode === 'manifest';
   const canApplySuggestions = useMemo(
     () => unmappedPorts.some((port) => Boolean(suggestBasys3Alias(port.name, port.direction))),
     [unmappedPorts]
@@ -1029,6 +1031,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     setZipBusy(true);
     setPendingApplyProject(null);
     setShowVerifyResetNotice(false);
+    setZipImportError('');
 
     try {
       const inspection = await importVivadoZipFile(file);
@@ -1047,15 +1050,23 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         (pin) => pin.trim().length > 0
       ).length;
       setStatusMessage(
-        `ZIP parsed: ${inspection.detectedTopPath}${inspection.detectedXdcPath ? ` + ${inspection.detectedXdcPath}` : ''} (${mappedPins}/${inspection.parsedHdl.ports.length} mapped).`
+        inspection.importMode === 'manifest'
+          ? `ZIP parsed from RedByte manifest: ${inspection.manifestPath ?? inspection.detectedFiles[0]}.`
+          : `ZIP parsed: ${inspection.detectedTopPath}${inspection.detectedXdcPath ? ` + ${inspection.detectedXdcPath}` : ''} (${mappedPins}/${inspection.parsedHdl.ports.length} mapped).`
       );
     } catch (error) {
+      zipFileRef.current = null;
       setZipInspection(null);
       setParsedHdl(null);
       setXdcResult(null);
-      setStatusMessage(
-        `ZIP import failed: ${error instanceof Error ? error.message : 'unknown error'}`
-      );
+      setHdlText('');
+      setXdcText('');
+      setMapping({});
+      setSelectedZipHdl(null);
+      setSelectedZipXdc(null);
+      const message = error instanceof Error ? error.message : 'unknown error';
+      setZipImportError(message);
+      setStatusMessage(`ZIP import failed: ${message}`);
     } finally {
       setZipBusy(false);
     }
@@ -1067,6 +1078,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     setZipBusy(true);
     setPendingApplyProject(null);
     setShowVerifyResetNotice(false);
+    setZipImportError('');
     try {
       const inspection = await reimportZipWithCandidates(file, hdlPath, xdcPath);
       setZipInspection(inspection);
@@ -1083,10 +1095,22 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         (pin) => pin.trim().length > 0
       ).length;
       setStatusMessage(
-        `Re-extracted: ${hdlPath}${xdcPath ? ` + ${xdcPath}` : ''} (${mappedPins}/${inspection.parsedHdl.ports.length} mapped).`
+        inspection.importMode === 'manifest'
+          ? `ZIP parsed from RedByte manifest: ${inspection.manifestPath ?? inspection.detectedFiles[0]}.`
+          : `Re-extracted: ${hdlPath}${xdcPath ? ` + ${xdcPath}` : ''} (${mappedPins}/${inspection.parsedHdl.ports.length} mapped).`
       );
     } catch (error) {
-      setStatusMessage(`Re-extract failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+      setZipInspection(null);
+      setSelectedZipHdl(null);
+      setSelectedZipXdc(null);
+      setParsedHdl(null);
+      setXdcResult(null);
+      setHdlText('');
+      setXdcText('');
+      setMapping({});
+      const message = error instanceof Error ? error.message : 'unknown error';
+      setZipImportError(message);
+      setStatusMessage(`Re-extract failed: ${message}`);
     } finally {
       setZipBusy(false);
     }
@@ -1555,7 +1579,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               <div className="ide-import-commitPreview-row">
                 <span className="ide-import-commitPreview-key">GRAPH</span>
                 <span className="ide-import-commitPreview-val">
-                  {commitPreview.reconstructionLevel === 'full'
+                  {isManifestZipImport
+                    ? `manifest restore · ${commitPreview.nodeCount} nodes`
+                    : commitPreview.reconstructionLevel === 'full'
                     ? `full · ${commitPreview.nodeCount} nodes`
                     : commitPreview.reconstructionLevel === 'ports-only'
                       ? `ports only (behavioral) · ${commitPreview.nodeCount} nodes`
@@ -1963,6 +1989,11 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     {zipBusy ? 'Importing ZIP...' : 'Select ZIP'}
                   </IdeButton>
                 </div>
+                {zipImportError && (
+                  <IdeCallout tone="error" title="ZIP import failed" testId="ide-import-zip-error">
+                    <p className="ide-copy" style={{ margin: 0 }}>{zipImportError}</p>
+                  </IdeCallout>
+                )}
 
                 {zipInspection ? (
                   <section className="ide-export-section" data-testid="ide-import-zip-inspection">
@@ -1970,6 +2001,15 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                       title="ZIP Inspection"
                       meta={`${zipInspection.detectedFiles.length} detected / ${zipInspection.ignoredFiles.length} ignored`}
                     />
+                    {isManifestZipImport && (
+                      <IdeCallout tone="success" title="RedByte export detected" testId="ide-import-zip-manifest-mode">
+                        <p className="ide-copy" style={{ margin: 0 }}>
+                          Using <code>{zipInspection.manifestPath ?? 'project.rbproj.json'}</code> as the source of truth.
+                          HDL/XDC candidate override is disabled for this ZIP.
+                        </p>
+                      </IdeCallout>
+                    )}
+                    {!isManifestZipImport && (
                     <div className="ide-import-zip-chooser" data-testid="ide-import-zip-chooser">
                       <div className="ide-import-zip-chooser-col">
                         <div className="ide-import-zip-chooser-label">
@@ -2054,8 +2094,15 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                         </div>
                       )}
                     </div>
+                    )}
 
                     <div className="ide-kv-list">
+                      <div className="ide-kv-row">
+                        <span>Mode</span>
+                        <span data-testid="ide-import-zip-mode">
+                          {zipInspection.importMode === 'manifest' ? 'RedByte manifest' : 'HDL/XDC reconstruction'}
+                        </span>
+                      </div>
                       <div className="ide-kv-row">
                         <span>Language</span>
                         <span data-testid="ide-import-zip-top-language">
@@ -2116,7 +2163,19 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                         </p>
                       </div>
                     )}
-                    {zipInspection?.reconstructionLevel === 'full' && (
+                    {isManifestZipImport && (
+                      <div
+                        className="ide-import-recon-callout ide-import-recon-callout--full"
+                        data-testid="ide-import-recon-manifest"
+                      >
+                        <strong>RedByte project restored</strong>
+                        <p>
+                          RedByte restored the project directly from the embedded manifest. Extra HDL, XDC,
+                          and Vivado files in the ZIP were treated as reference material only.
+                        </p>
+                      </div>
+                    )}
+                    {!isManifestZipImport && zipInspection?.reconstructionLevel === 'full' && (
                       <div
                         className="ide-import-recon-callout ide-import-recon-callout--full"
                         data-testid="ide-import-recon-full"

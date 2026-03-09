@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-03-09 (Classroom hardening: safe Vivado ZIP import contract)
+
+### Vivado ZIP import now restores RedByte manifests safely and ignores generated Vivado noise
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/zipImport.ts` - Switched ZIP ingestion to a selective text-file read path, added manifest-first import mode metadata, hard-stopped corrupted `project.rbproj.json` manifests without falling back to HDL/XDC reconstruction, ignored generated/binary Vivado noise, surfaced part/board mismatch warnings, and kept manifest restore truthful even when external HDL/XDC files disagree.
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` - Added plain-English ZIP import failure callouts, surfaced whether a ZIP is being restored from a RedByte manifest or reconstructed from HDL/XDC, disabled HDL/XDC candidate overrides for manifest-driven imports, and updated commit/reconstruction messaging so manifest restores do not pretend to be structural HDL reconstruction.
+- `packages/rb-apps/src/apps/ide/__tests__/zipImport.manifest.test.ts` - Added regression coverage for manifest-first restore over conflicting Vivado HDL/XDC content and for the hard-stop path when `project.rbproj.json` is malformed.
+
+### Why this was minimal
+
+- The batch stayed entirely in the ZIP import/recovery lane.
+- Existing HDL/XDC reconstruction scoring was preserved for generic Vivado ZIPs with no RedByte manifest.
+- The guarded project-replacement path in `IdeApp.tsx` remained the authority for keeping the current project intact on import failure.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/zipImport.manifest.test.ts packages/rb-apps/src/apps/ide/__tests__/zipImport.nestedfolder.test.ts packages/rb-apps/src/apps/ide/__tests__/zipImport.roundtrip.test.ts packages/rb-apps/src/apps/ide/__tests__/importSurface.verify-reset.test.tsx` - PASS (`4` files, `15` tests)
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`; still prints the same extensive pre-existing repo-wide TypeScript diagnostics outside this ZIP import batch
+- `pnpm repo:status` - TIMED OUT after about `154s` in this environment
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-09 (Classroom hardening: deterministic Vivado Open Project export)
 
 ### Export now produces a deterministic Vivado Project Mode folder for direct `.xpr` open

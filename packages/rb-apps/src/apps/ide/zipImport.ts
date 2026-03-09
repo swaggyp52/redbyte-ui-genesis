@@ -1,13 +1,21 @@
 import JSZip from 'jszip';
 import type { IoMapping } from '@redbyte/rb-utils';
 import type { RBProject } from '../../export/projectFormat';
+import { decodeRBProject } from '../../export/projectFormat';
 import { compareCodepoint } from '../../export/codepointSort';
-import { parsedHdlToCircuit, type ParsedHDL, type ParsedPort, type ReconstructionLevel } from '../../import/hdlToCircuit';
+import {
+  parsedHdlToCircuit,
+  type ParsedHDL,
+  type ParsedPort,
+  type ReconstructionLevel,
+} from '../../import/hdlToCircuit';
 import { parseVerilog } from '../../import/verilogImport';
 import { parseVhdl } from '../../import/vhdlImport';
 import { parseXdcPins, type XdcParseResult } from '../../import/xdcImport';
 
 const IMPORT_TIMESTAMP = '2026-02-20T00:00:00.000Z';
+const CLASSROOM_BOARD = 'basys3';
+const CLASSROOM_PART = 'xc7a35tcpg236-1';
 
 interface ZipTextEntry {
   path: string;
@@ -16,13 +24,15 @@ interface ZipTextEntry {
 
 export interface ZipImportInspection {
   sourceName: string;
+  importMode: 'manifest' | 'reconstructed';
+  manifestPath?: string;
   detectedTopPath: string;
   detectedTopLanguage: 'vhdl' | 'verilog';
   detectedXdcPath?: string;
   detectedFiles: string[];
   ignoredFiles: string[];
-  hdlCandidates: string[];      // all HDL files found, sorted by score (best first)
-  xdcCandidates: string[];      // all XDC files found, in preference order
+  hdlCandidates: string[];
+  xdcCandidates: string[];
   parsedHdl: ParsedHDL;
   xdcResult?: XdcParseResult;
   weakPinPorts: string[];
@@ -36,10 +46,6 @@ export async function importVivadoZipFile(file: File): Promise<ZipImportInspecti
   return importVivadoZipBytes(bytes, { sourceName: file.name });
 }
 
-/**
- * Re-runs ZIP inspection using caller-specified HDL and XDC paths.
- * Used when the user overrides the auto-selected candidates in the UI.
- */
 export async function reimportZipWithCandidates(
   file: File,
   hdlPath: string,
@@ -63,9 +69,26 @@ export async function importVivadoZipBytes(
 ): Promise<ZipImportInspection> {
   const sourceName = (options?.sourceName ?? 'vivado-import.zip').trim() || 'vivado-import.zip';
   const zip = await JSZip.loadAsync(bytes);
-  const files = await collectTextEntries(zip);
+  const { entries, allPaths } = await collectReadableZipEntries(zip);
+  if (allPaths.length === 0) {
+    throw new Error('ZIP is empty.');
+  }
+
+  const manifestEntry = chooseManifestEntry(entries);
+  if (manifestEntry) {
+    return buildManifestInspection({
+      sourceName,
+      manifestEntry,
+      entries,
+      allPaths,
+    });
+  }
+
+  const files = entries.filter((entry) => isImportSourcePath(entry.path));
   if (files.length === 0) {
-    throw new Error('ZIP contains no readable source files.');
+    throw new Error(
+      'ZIP contains no readable project files. Expected project.rbproj.json or HDL/XDC sources.'
+    );
   }
 
   const autoTopEntry = chooseTopHdlEntry(files);
@@ -73,9 +96,8 @@ export async function importVivadoZipBytes(
     throw new Error('No HDL source found in ZIP (expected .vhd, .vhdl, .v, or .sv).');
   }
 
-  // Use caller-specified overrides if provided; otherwise use auto-scored candidates
   const topEntry = options?.overrideTopPath
-    ? (files.find((f) => f.path === options.overrideTopPath) ?? autoTopEntry)
+    ? files.find((file) => file.path === options.overrideTopPath) ?? autoTopEntry
     : autoTopEntry;
 
   const detectedTopLanguage = detectHdlLanguage(topEntry.path, topEntry.text);
@@ -85,15 +107,13 @@ export async function importVivadoZipBytes(
   const autoXdcEntry = chooseXdcEntry(files);
   const xdcEntry =
     options?.overrideXdcPath !== undefined
-      ? (options.overrideXdcPath !== null
-          ? (files.find((f) => f.path === options.overrideXdcPath) ?? undefined)
-          : undefined) // null → explicit "no XDC"
+      ? options.overrideXdcPath !== null
+        ? files.find((file) => file.path === options.overrideXdcPath) ?? undefined
+        : undefined
       : autoXdcEntry;
   const xdcResult = xdcEntry ? parseXdcPins(xdcEntry.text) : undefined;
 
-  const mappedPortNames = new Set(
-    parsedHdl.ports.map((port) => normalizeToken(port.name))
-  );
+  const mappedPortNames = new Set(parsedHdl.ports.map((port) => normalizeToken(port.name)));
   const xdcPortWarnings =
     xdcResult?.pinMap
       ? Object.keys(xdcResult.pinMap)
@@ -113,38 +133,28 @@ export async function importVivadoZipBytes(
   });
 
   const selectedPaths = new Set<string>([topEntry.path, ...(xdcEntry ? [xdcEntry.path] : [])]);
-  const ignoredFiles = files
-    .map((entry) => entry.path)
+  const ignoredFiles = allPaths
     .filter((path) => !selectedPaths.has(path))
     .sort(compareCodepoint);
 
   const converted = parsedHdlToCircuit(parsedHdl);
   const warnings = uniqueWarnings([
-    ...(parsedHdl.warnings ?? []).map((w) => w.message),
+    ...(parsedHdl.warnings ?? []).map((warning) => warning.message),
     ...converted.warnings,
     ...(xdcResult?.warnings ?? []),
     ...xdcPortWarnings,
+    ...collectXprWarnings(entries),
   ]);
 
   const hdlEntries = files.filter((entry) => isHdlPath(entry.path));
-  const hdlCandidates = [...hdlEntries]
-    .sort(compareHdlEntry)
-    .map((entry) => entry.path);
-
+  const hdlCandidates = [...hdlEntries].sort(compareHdlEntry).map((entry) => entry.path);
   const xdcEntries = files.filter((entry) => entry.path.toLowerCase().endsWith('.xdc'));
-  const xdcCandidates = [...xdcEntries]
-    .sort(compareXdcEntry)
-    .map((entry) => entry.path);
-
-  const weakPinPorts = xdcResult?.pinEntries
-    ? Object.entries(xdcResult.pinEntries)
-        .filter(([, entry]) => entry.confidence === 'weak')
-        .map(([portName]) => portName)
-        .sort(compareCodepoint)
-    : [];
+  const xdcCandidates = [...xdcEntries].sort(compareXdcEntry).map((entry) => entry.path);
+  const weakPinPorts = collectWeakPinPorts(xdcResult);
 
   return {
     sourceName,
+    importMode: 'reconstructed',
     detectedTopPath: autoTopEntry.path,
     detectedTopLanguage,
     detectedXdcPath: autoXdcEntry?.path,
@@ -197,7 +207,7 @@ export function buildImportedProject(input: {
       ],
     },
     fpga: {
-      board: 'basys3',
+      board: CLASSROOM_BOARD,
       top: topEntity,
       constraints:
         input.xdcText && input.xdcText.trim().length > 0
@@ -212,25 +222,304 @@ export function buildImportedProject(input: {
     meta: {
       appSurface: 'ide-import',
       projectId,
-      tags: ['import', 'vivado', 'basys3'],
+      tags: ['import', 'vivado', CLASSROOM_BOARD],
     },
   };
 }
 
-async function collectTextEntries(zip: JSZip): Promise<ZipTextEntry[]> {
+async function buildManifestInspection(input: {
+  sourceName: string;
+  manifestEntry: ZipTextEntry;
+  entries: ZipTextEntry[];
+  allPaths: string[];
+}): Promise<ZipImportInspection> {
+  let project: RBProject;
+  try {
+    project = decodeRBProject(input.manifestEntry.text);
+  } catch (error) {
+    const detail =
+      error instanceof Error && error.message.trim().length > 0
+        ? error.message.trim()
+        : 'invalid manifest';
+    throw new Error(
+      `RedByte project manifest "${input.manifestEntry.path}" is corrupted or unsupported (${detail}). No files were changed.`
+    );
+  }
+
+  const manifestTopSource = selectManifestTopSource(project);
+  const manifestPreview = parseManifestHdl(project, manifestTopSource);
+  const parsedHdl = manifestPreview.parsedHdl;
+  const xdcText = project.fpga?.constraints?.text?.trim() ?? '';
+  const xdcResult = xdcText.length > 0 ? parseXdcPins(xdcText) : undefined;
+  const zipTopEntry = chooseTopHdlEntry(input.entries.filter((entry) => isHdlPath(entry.path)));
+  const zipXdcEntry = chooseXdcEntry(input.entries);
+  const detectedFiles = [input.manifestEntry.path];
+  const warnings = uniqueWarnings([
+    `Imported from RedByte project manifest "${input.manifestEntry.path}".`,
+    ...(project.fpga?.board && project.fpga.board !== CLASSROOM_BOARD
+      ? [`Manifest targets board "${project.fpga.board}". Classroom target is "${CLASSROOM_BOARD}".`]
+      : []),
+    ...(zipTopEntry && manifestTopSource && normalizeNewlines(zipTopEntry.text) !== normalizeNewlines(manifestTopSource.text)
+      ? [`ZIP HDL "${zipTopEntry.path}" differs from the embedded RedByte manifest. RedByte restored the manifest version.`]
+      : []),
+    ...(zipXdcEntry && xdcText.length > 0 && normalizeNewlines(zipXdcEntry.text) !== normalizeNewlines(xdcText)
+      ? [`ZIP constraints "${zipXdcEntry.path}" differ from the embedded RedByte manifest. RedByte restored the manifest version.`]
+      : []),
+    ...(manifestPreview.previewWarnings.length > 0
+      ? manifestPreview.previewWarnings
+      : manifestTopSource
+      ? [`Restored HDL source "${manifestTopSource.path}" from the manifest.`]
+      : ['Manifest does not include a top HDL source; the preview is using project IO metadata only.']),
+    ...(xdcText.length > 0 ? ['Restored XDC constraints from the manifest.'] : []),
+    ...(parsedHdl.warnings ?? []).map((warning) => warning.message),
+    ...(xdcResult?.warnings ?? []),
+    ...collectXprWarnings(input.entries),
+  ]);
+
+  return {
+    sourceName: input.sourceName,
+    importMode: 'manifest',
+    manifestPath: input.manifestEntry.path,
+    detectedTopPath: manifestTopSource?.path ?? input.manifestEntry.path,
+    detectedTopLanguage: parsedHdl.lang,
+    detectedXdcPath: xdcText.length > 0 ? zipXdcEntry?.path ?? 'embedded constraints' : undefined,
+    detectedFiles,
+    ignoredFiles: input.allPaths
+      .filter((path) => !detectedFiles.includes(path))
+      .sort(compareCodepoint),
+    hdlCandidates: manifestTopSource ? [manifestTopSource.path] : [],
+    xdcCandidates: zipXdcEntry ? [zipXdcEntry.path] : [],
+    parsedHdl,
+    xdcResult,
+    weakPinPorts: collectWeakPinPorts(xdcResult),
+    warnings,
+    reconstructionLevel: 'full',
+    project,
+  };
+}
+
+async function collectReadableZipEntries(zip: JSZip): Promise<{
+  entries: ZipTextEntry[];
+  allPaths: string[];
+}> {
   const entries: ZipTextEntry[] = [];
-  const paths = Object.keys(zip.files)
+  const allPaths = Object.keys(zip.files)
     .filter((path) => !zip.files[path]?.dir)
     .map(normalizePath)
     .sort(compareCodepoint);
 
-  for (const path of paths) {
+  for (const path of allPaths) {
+    if (!shouldReadZipText(path)) {
+      continue;
+    }
     const file = zip.file(path);
     if (!file) continue;
     const text = await file.async('string');
     entries.push({ path, text });
   }
-  return entries;
+
+  return { entries, allPaths };
+}
+
+function chooseManifestEntry(entries: ZipTextEntry[]): ZipTextEntry | undefined {
+  return [...entries]
+    .filter((entry) => baseName(entry.path) === 'project.rbproj.json')
+    .sort((left, right) => {
+      const lengthDelta = left.path.length - right.path.length;
+      if (lengthDelta !== 0) return lengthDelta;
+      return compareCodepoint(left.path, right.path);
+    })[0];
+}
+
+function shouldReadZipText(path: string): boolean {
+  const lower = path.toLowerCase();
+  if (
+    lower.endsWith('.vhd') ||
+    lower.endsWith('.vhdl') ||
+    lower.endsWith('.v') ||
+    lower.endsWith('.sv') ||
+    lower.endsWith('.xdc') ||
+    lower.endsWith('.tcl') ||
+    lower.endsWith('.xpr')
+  ) {
+    return true;
+  }
+  const fileName = baseName(lower);
+  return (
+    fileName === 'project.rbproj.json' ||
+    fileName === 'expected_io.json' ||
+    fileName === 'readme.txt'
+  );
+}
+
+function isImportSourcePath(path: string): boolean {
+  const lower = path.toLowerCase();
+  return isHdlPath(lower) || lower.endsWith('.xdc') || lower.endsWith('.xpr');
+}
+
+function parseManifestHdl(
+  project: RBProject,
+  source:
+    | {
+        path: string;
+        text: string;
+        language: 'vhdl' | 'verilog';
+      }
+    | undefined
+): {
+  parsedHdl: ParsedHDL;
+  previewWarnings: string[];
+} {
+  if (source && source.text.trim().length > 0) {
+    try {
+      return {
+        parsedHdl: source.language === 'vhdl' ? parseVhdl(source.text) : parseVerilog(source.text),
+        previewWarnings: [],
+      };
+    } catch (error) {
+      const detail =
+        error instanceof Error && error.message.trim().length > 0
+          ? error.message.trim()
+          : 'parse failed';
+      return {
+        parsedHdl: buildManifestFallbackParsedHdl(project, source.language),
+        previewWarnings: [
+          `Manifest HDL source "${source.path}" could not be parsed for preview (${detail}). RedByte restored the manifest project and derived ports from project IO metadata.`,
+        ],
+      };
+    }
+  }
+
+  return {
+    parsedHdl: buildManifestFallbackParsedHdl(project, 'vhdl'),
+    previewWarnings: ['Manifest does not include a top HDL source; the preview is using project IO metadata only.'],
+  };
+}
+
+function buildManifestFallbackParsedHdl(
+  project: RBProject,
+  language: 'vhdl' | 'verilog'
+): ParsedHDL {
+  const topEntity = sanitizeIdentifier(project.hdl?.top ?? project.fpga?.top ?? 'top');
+  const ports = collectManifestPreviewPorts(project);
+  return {
+    entityName: topEntity,
+    ports,
+    instances: [],
+    signals: [],
+    warnings:
+      ports.length === 0
+        ? [{ message: 'Manifest preview could not derive top-level ports.' }]
+        : [],
+    lang: language,
+  };
+}
+
+function collectManifestPreviewPorts(project: RBProject): ParsedPort[] {
+  const ports: ParsedPort[] = [
+    ...(project.ioMapping?.inputs ?? []).map((entry) => ({
+      name: (entry.label ?? entry.id).trim() || entry.id,
+      direction: 'in' as const,
+      typeName: 'STD_LOGIC',
+    })),
+    ...(project.ioMapping?.outputs ?? []).map((entry) => ({
+      name: (entry.label ?? entry.id).trim() || entry.id,
+      direction: 'out' as const,
+      typeName: 'STD_LOGIC',
+    })),
+  ];
+
+  if (ports.length > 0) {
+    return dedupePreviewPorts(ports);
+  }
+
+  const circuitPorts: ParsedPort[] = (project.circuit?.nodes ?? [])
+    .filter((node) => node.type === 'INPUT' || node.type === 'OUTPUT')
+    .map((node) => ({
+      name: String(node.label ?? node.id).trim() || node.id,
+      direction: node.type === 'INPUT' ? ('in' as const) : ('out' as const),
+      typeName: 'STD_LOGIC',
+    }));
+
+  return dedupePreviewPorts(circuitPorts);
+}
+
+function dedupePreviewPorts(ports: ParsedPort[]): ParsedPort[] {
+  const seen = new Set<string>();
+  const deduped: ParsedPort[] = [];
+  for (const port of [...ports].sort((left, right) => compareCodepoint(left.name, right.name))) {
+    const key = `${port.direction}:${normalizeToken(port.name)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(port);
+  }
+  return deduped;
+}
+
+function selectManifestTopSource(project: RBProject):
+  | { path: string; text: string; language: 'vhdl' | 'verilog' }
+  | undefined {
+  const sources = project.hdl?.sources ?? [];
+  if (sources.length === 0) return undefined;
+
+  const targetTop = normalizeToken(project.hdl?.top ?? project.fpga?.top ?? '');
+  const ranked = [...sources]
+    .filter((source) => typeof source.text === 'string' && source.text.trim().length > 0)
+    .sort((left, right) => {
+      const leftScore = manifestTopSourceScore(left.path, targetTop);
+      const rightScore = manifestTopSourceScore(right.path, targetTop);
+      if (leftScore !== rightScore) return leftScore - rightScore;
+      return compareCodepoint(left.path, right.path);
+    });
+
+  const selected = ranked[0];
+  if (!selected) return undefined;
+
+  return {
+    path: normalizePath(selected.path),
+    text: selected.text,
+    language: selected.language === 'verilog' ? 'verilog' : 'vhdl',
+  };
+}
+
+function manifestTopSourceScore(path: string, targetTop: string): number {
+  const normalizedPath = normalizePath(path);
+  const file = baseName(normalizedPath);
+  const stem = file.replace(/\.[^.]+$/, '');
+  if (targetTop.length > 0 && stem.toLowerCase() === targetTop) return 0;
+  if (file === 'top.vhd' || file === 'top.vhdl' || file === 'top.v' || file === 'top.sv') return 1;
+  if (stem.toLowerCase().includes(targetTop) && targetTop.length > 0) return 2;
+  return 3;
+}
+
+function collectWeakPinPorts(xdcResult: XdcParseResult | undefined): string[] {
+  return xdcResult?.pinEntries
+    ? Object.entries(xdcResult.pinEntries)
+        .filter(([, entry]) => entry.confidence === 'weak')
+        .map(([portName]) => portName)
+        .sort(compareCodepoint)
+    : [];
+}
+
+function collectXprWarnings(entries: ZipTextEntry[]): string[] {
+  const xprParts = entries
+    .filter((entry) => entry.path.toLowerCase().endsWith('.xpr'))
+    .map((entry) => ({
+      path: entry.path,
+      part: extractVivadoPart(entry.text),
+    }))
+    .filter((entry): entry is { path: string; part: string } => typeof entry.part === 'string');
+
+  return xprParts
+    .filter((entry) => normalizeToken(entry.part) !== CLASSROOM_PART)
+    .map((entry) => `Vivado project "${entry.path}" targets part "${entry.part}". RedByte import assumes ${CLASSROOM_PART}.`)
+    .sort(compareCodepoint);
+}
+
+function extractVivadoPart(text: string): string | undefined {
+  const match = text.match(/<Option\s+Name="Part"\s+Val="([^"]+)"/i);
+  const part = match?.[1]?.trim();
+  return part && part.length > 0 ? part : undefined;
 }
 
 function chooseTopHdlEntry(files: ZipTextEntry[]): ZipTextEntry | null {
@@ -322,15 +611,12 @@ function compareHdlEntry(left: ZipTextEntry, right: ZipTextEntry): number {
 function compareXdcEntry(left: ZipTextEntry, right: ZipTextEntry): number {
   const leftPath = left.path.toLowerCase();
   const rightPath = right.path.toLowerCase();
-  // Prefer files in Vivado constrs_* directories
   const leftConstrs = /(^|\/)constrs_\d+\//.test(leftPath);
   const rightConstrs = /(^|\/)constrs_\d+\//.test(rightPath);
   if (leftConstrs !== rightConstrs) return leftConstrs ? -1 : 1;
-  // Then prefer top.xdc by name
   const leftTop = leftPath.endsWith('/top.xdc') || leftPath === 'top.xdc';
   const rightTop = rightPath.endsWith('/top.xdc') || rightPath === 'top.xdc';
   if (leftTop !== rightTop) return leftTop ? -1 : 1;
-  // Then prefer basys3.xdc by name
   const leftBasys = leftPath.endsWith('/basys3.xdc') || leftPath === 'basys3.xdc';
   const rightBasys = rightPath.endsWith('/basys3.xdc') || rightPath === 'basys3.xdc';
   if (leftBasys !== rightBasys) return leftBasys ? -1 : 1;
@@ -350,7 +636,6 @@ function topHdlScore(path: string): number {
         : file.includes('top')
           ? 2
           : 3;
-  // Files in sources_* dirs (Vivado project structure) sort before non-sources files at same level
   const inSourcesDir = /(^|\/)sources?_\d+\//.test(lower);
   return inSourcesDir ? fileScore : fileScore + 4;
 }
@@ -387,8 +672,16 @@ function normalizePath(path: string): string {
   return path.replace(/\\/g, '/').trim();
 }
 
+function normalizeNewlines(text: string): string {
+  return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+}
+
 function normalizeToken(value: string): string {
   return value.trim().toLowerCase();
+}
+
+function baseName(path: string): string {
+  return normalizePath(path).split('/').pop()?.toLowerCase() ?? '';
 }
 
 function toMappingId(value: string): string {
@@ -439,4 +732,3 @@ function uniqueWarnings(rows: string[]): string[] {
   }
   return Array.from(deduped).sort(compareCodepoint);
 }
-
