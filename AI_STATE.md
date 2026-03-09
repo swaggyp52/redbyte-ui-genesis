@@ -17513,6 +17513,46 @@ All 25 `pnpm verify:gates` gates now pass (exit 0).
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-03-08 (IDE bring-up contract restoration)
+
+### Bring-up contract batch - restore missing IDE bring-up gate target
+
+**Problem**
+
+- `pnpm repo:status` was blocked at `IDE Bring-Up Contract`, preventing further repo-health validation.
+- The direct bring-up gate script failed before checking product behavior because its target test file was missing from the tree.
+
+**Cause**
+
+- `scripts/gates/ide-bringup-contract.mjs` still pointed at `packages/rb-apps/src/__tests__/ide-bringup-contract.test.ts`, but that contract file had drifted out of the repo.
+- The current bring-up/export pipeline still generated `BRINGUP.md`, `EXPECTED_IO.json`, and `program_and_test.tcl`; the failure was a stale missing contract target, not evidence of a broken bring-up product path.
+
+**Files changed**
+
+- `packages/rb-apps/src/__tests__/ide-bringup-contract.test.ts`
+
+**What changed**
+
+- Restored the missing bring-up contract test against the current canonical export/bring-up authority.
+- The restored contract verifies deterministic bring-up vector generation for the Basys3 clocked fixture and confirms the export artifact set and deterministic ZIP include the bring-up proof files:
+  - `BRINGUP.md`
+  - `EXPECTED_IO.json`
+  - `program_and_test.tcl`
+- The test asserts current grounded bring-up content, including `EXPECTED_IO.json` schema/source and the current Vivado hardware-manager scaffold commands.
+
+**Why minimal**
+
+- No product pipeline code changed.
+- The batch restored the missing contract against the current export/bring-up truth instead of weakening the gate or reviving removed evidence-capsule paths.
+
+**Validation**
+
+- `pnpm exec vitest run packages/rb-apps/src/__tests__/ide-bringup-contract.test.ts`
+- `pnpm -s ide:gate:bringup-contract`
+- `pnpm repo:status`
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-08 (IDE Vivado Pack contract fix)
 
 ### Export/build contract batch - restore Vivado pack contract test against current export authority
