@@ -17875,3 +17875,48 @@ All 25 `pnpm verify:gates` gates now pass (exit 0).
 - `pnpm --filter @redbyte/rb-apps build`
 
 - **Attribution**: Connor Angiel
+
+---
+
+## Batch: IDE Persistence Contract Fix (2026-03-08)
+
+**Subsystem**: gate/contract enforcement — IDE Persistence
+
+**Canonical files**
+- `scripts/gates/ide-persistence-contract.mjs` (changed)
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts` (read-only — STORAGE_KEY, version, Circuit type)
+- `packages/rb-logic-core/src/types.ts` (read-only — Circuit interface: nodes/connections)
+- `packages/rb-apps/src/apps/ide/components/OnboardingOverlay.tsx` (read-only)
+
+**Diagnosis**
+
+Two compounding issues:
+1. `OnboardingOverlay` (aria-modal) intercepted pointer events — same root cause as CTA gate. Fixed with `addInitScript` → `rb-onboarding-v1-seen=1`.
+2. `ide-design-add-io-pins` testId was removed from current source. Only `ide-design-empty-add-io` remains, and it only renders when `circuit.nodes.length === 0`. The default state (`signal-tour` example) pre-populates 8 nodes, so the empty state never showed. Fixed by seeding `rb.ide.project-runtime.v1` (key=`rb.ide.project-runtime.v1`, version=4, Circuit uses `connections` not `wires`) with an empty circuit via `addInitScript`.
+
+Key details:
+- Gate preview serves `apps/playground/dist/` (NOT root `dist/`)
+- `Circuit` type: `{ nodes: Node[], connections: Connection[] }` (not `wires`)
+- zustand-persist format: `{"state": {...}, "version": 4}`
+- STORAGE_KEY = `rb.ide.project-runtime.v1`, persist version = 4
+
+**What changed**
+
+- `ide-persistence-contract.mjs`: Replaced `ide-design-add-io-pins` (removed from source) with `ide-design-empty-add-io`. Added compound `addInitScript` that (1) suppresses onboarding overlay and (2) seeds empty circuit in projectRuntime localStorage so the empty-state button is always visible.
+
+**Why minimal**
+
+- Gate script only — no product code touched.
+- Seeds exactly what the gate needs: empty canvas → empty-state button visible → mutation → persistence verified.
+
+**Validation**
+
+- `node scripts/gates/ide-persistence-contract.mjs` → PASS
+- `pnpm repo:status` → passes through `IDE Persistence Contract`; next red blocker is `IDE Workbench Layout Contract`
+
+**Remaining concern**
+
+- `pnpm repo:status` now passes `IDE Persistence Contract` and advances to the next independent failure: `IDE Workbench Layout Contract`.
+- `origin/gates-track` exists at `fdfbc684`; persistence fix `929b4b3c` is 1 ahead — not pushed.
+
+- **Attribution**: Connor Angiel
