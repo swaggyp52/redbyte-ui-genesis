@@ -7,15 +7,41 @@ await runIdeGate('IDE design multiselect contract satisfied', async ({ page, bas
 });
 
 async function runDeterministicPass(page, baseUrl) {
-  await page.goto(`${baseUrl}/?mode=design`, { waitUntil: 'domcontentloaded' });
+  // Suppress the first-visit onboarding overlay and seed an empty circuit so board
+  // palette chips are unplaced and available to click.
+  await page.addInitScript(() => {
+    localStorage.setItem('rb-onboarding-v1-seen', '1');
+    const empty = {
+      state: {
+        projectId: 'gate-multiselect-test', projectName: 'Gate Test', projectDescription: '',
+        lastSavedAt: new Date().toISOString(), activeExampleId: null,
+        projectIoRows: [], projectVectors: [], circuit: { nodes: [], connections: [] },
+        verifyRunHistory: [],
+        sim: { tick: 0, running: false, speedHz: 1, irHash: '', traceHash: '',
+               inputs: {}, signals: {}, trace: [], selectedSignalKey: null, probes: [] },
+        projectHealthCore: { lastVerify: null, lastExport: null,
+                             dirtySinceVerify: false, dirtySinceExport: false },
+        customComponents: [],
+      },
+      version: 4,
+    };
+    localStorage.setItem('rb.ide.project-runtime.v1', JSON.stringify(empty));
+  });
+  await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
-
-  await resetWorkspace(page);
+  await page.locator('[data-testid="mode-button-design"]').click();
+  await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
 
   await ensureSnapEnabled(page);
-  await page.locator('[data-testid="ide-design-add-and-starter"]').click();
+
+  // Board-first palette: clicking board chips adds Switch/Lamp nodes to the circuit.
+  // We need ≥4 nodes for a meaningful marquee-select test.
+  await page.locator('[data-testid="ide-design-board-input-sw0"]').click();
+  await page.locator('[data-testid="ide-design-board-input-sw1"]').click();
+  await page.locator('[data-testid="ide-design-board-input-sw2"]').click();
+  await page.locator('[data-testid="ide-design-board-output-ld0"]').click();
 
   await page.waitForFunction(() => {
     const store = window.__RB_CIRCUIT_STORE__;
