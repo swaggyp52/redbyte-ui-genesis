@@ -7,6 +7,35 @@ async function text(locator) {
 }
 
 await runIdeGate('IDE persistence contract satisfied', async ({ page, baseUrl }) => {
+  // Suppress the first-visit onboarding overlay and seed an empty circuit so the
+  // empty-state "Add IO Pins" button is always visible regardless of default example.
+  await page.addInitScript(() => {
+    localStorage.setItem('rb-onboarding-v1-seen', '1');
+    const empty = {
+      state: {
+        projectId: 'gate-persistence-test',
+        projectName: 'Gate Test',
+        projectDescription: '',
+        lastSavedAt: new Date().toISOString(),
+        activeExampleId: null,
+        projectIoRows: [],
+        projectVectors: [],
+        circuit: { nodes: [], connections: [] },
+        verifyRunHistory: [],
+        sim: {
+          tick: 0, running: false, speedHz: 1, irHash: '', traceHash: '',
+          inputs: {}, signals: {}, trace: [], selectedSignalKey: null, probes: [],
+        },
+        projectHealthCore: {
+          lastVerify: null, lastExport: null,
+          dirtySinceVerify: false, dirtySinceExport: false,
+        },
+        customComponents: [],
+      },
+      version: 4,
+    };
+    localStorage.setItem('rb.ide.project-runtime.v1', JSON.stringify(empty));
+  });
   await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
@@ -18,7 +47,7 @@ await runIdeGate('IDE persistence contract satisfied', async ({ page, baseUrl })
     const store = window.__RB_CIRCUIT_STORE__;
     return store?.getState?.().circuit?.nodes?.length ?? 0;
   });
-  await page.locator('[data-testid="ide-design-add-io-pins"]').click();
+  await page.locator('[data-testid="ide-design-empty-add-io"]').click();
   await page.waitForSelector('[data-testid="ide-design-action-toast"]', { timeout: 10000 });
   await page.waitForFunction(
     (before) => {
