@@ -51,12 +51,15 @@ export interface NodeViewProps {
   validWireTargets?: Set<string> | null;
   hoveredWireTargetState?: 'valid' | 'invalid' | null;
   highlightedPort?: { nodeId: string; portName: string } | null;
+  highlightedPortKeys?: Set<string> | null;
   debugTick?: number | null;
   /** When provided by CanvasInputController, overrides node.position for rendering during drag. */
   dragPosition?: { x: number; y: number } | null;
   diagnosticBadge?: { error: number; warn: number; total: number };
   onDiagnosticBadgeClick?: (nodeId: string) => void;
   ioPresentation?: NodeIoPresentation;
+  /** B1: Eval order step number (1-based). Shown as #N badge when node is hovered. */
+  evalSequence?: number | null;
 }
 
 const NODE_COLORS: Record<string, string> = {
@@ -100,11 +103,13 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   validWireTargets,
   hoveredWireTargetState,
   highlightedPort,
+  highlightedPortKeys,
   debugTick,
   dragPosition: externalDragPosition,
   diagnosticBadge,
   onDiagnosticBadgeClick,
   ioPresentation,
+  evalSequence,
 }) => {
   // Safe rotation: default to 0 if undefined to prevent rotate(undefined) SVG errors
   const safeRotation = Number.isFinite(node.rotation) ? node.rotation : 0;
@@ -205,7 +210,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
 
 
   const isIssueHighlighted = (portName: string) =>
-    highlightedPort?.nodeId === node.id && highlightedPort.portName === portName;
+    (highlightedPort?.nodeId === node.id && highlightedPort.portName === portName) ||
+    highlightedPortKeys?.has(`${node.id}:${portName}`) === true;
 
   const isValidWireTarget = React.useCallback(
     (portName: string) => {
@@ -343,6 +349,16 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             className="animate-pulse"
             style={{ pointerEvents: 'none' }}
           />
+        )}
+
+        {/* B1: Eval sequence badge — shown on hover when eval order is active */}
+        {isHovered && evalSequence != null && (
+          <g data-testid={`logic-node-eval-badge-${node.id}`} style={{ pointerEvents: 'none' }}>
+            <rect x={-size / 2} y={-chipHeight / 2 - 14} width={28} height={13} rx={3} fill="#0f172a" stroke="#38bdf8" strokeWidth={1} />
+            <text x={-size / 2 + 14} y={-chipHeight / 2 - 7} textAnchor="middle" dominantBaseline="middle" fill="#38bdf8" fontSize={8} fontWeight="700">
+              {`#${evalSequence}`}
+            </text>
+          </g>
         )}
 
         {/* Chip body - black box appearance */}
@@ -870,6 +886,16 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         />
       )}
 
+      {/* B1: Eval sequence badge — shown on hover when eval order is active */}
+      {isHovered && evalSequence != null && (
+        <g data-testid={`logic-node-eval-badge-${node.id}`} style={{ pointerEvents: 'none' }}>
+          <rect x={-size / 2} y={-size / 2 - 14} width={28} height={13} rx={3} fill="#0f172a" stroke="#38bdf8" strokeWidth={1} />
+          <text x={-size / 2 + 14} y={-size / 2 - 7} textAnchor="middle" dominantBaseline="middle" fill="#38bdf8" fontSize={8} fontWeight="700">
+            {`#${evalSequence}`}
+          </text>
+        </g>
+      )}
+
       {/* Node body */}
       <rect
         className="logic-node-body"
@@ -1336,7 +1362,8 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
         if (prevSignal !== nextSignal) return false;
       }
       return true;
-    })()
+    })() &&
+    prevProps.evalSequence === nextProps.evalSequence
   );
 });
 

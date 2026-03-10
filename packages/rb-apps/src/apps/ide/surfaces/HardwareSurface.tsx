@@ -77,7 +77,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   onOpenVerify,
   onGoToDesign,
 }) => {
-  const { activeBoardSignal, setActiveBoardSignal } = useBoardSignal();
+  const { activeBoardSignal, hoverBoardSignal, setActiveBoardSignal, setHoverBoardSignal } = useBoardSignal();
   const [hwMode, setHwMode] = useState<HwMode>('live');
   const [bringupStepIndex, setBringupStepIndex] = useState(0);
   const sim = runtimeSim ?? HARDWARE_EMPTY_SIM;
@@ -137,6 +137,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     () => Array.from({ length: 16 }, (_, i) => ioBus.meta.ldNodeIds[i] != null),
     [ioBus.meta.ldNodeIds]
   );
+  const effectiveBoardSignal = hoverBoardSignal ?? activeBoardSignal;
 
   const verifyPassed = health.lastVerify?.status === 'pass';
   const verifyReady = verifyPassed && verifyCurrent;
@@ -702,6 +703,17 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       : hwMode === 'bringup'
         ? bringupInspector
         : proofInspector;
+  const liveHardwareRows = useMemo(
+    () => [
+      ...Array.from({ length: 8 }, (_, index) => [`SW${index}`, String(ioBus.state.sw[index] ?? 0)]),
+      ...Array.from({ length: 5 }, (_, index) => [
+        ['BTNC', 'BTNU', 'BTND', 'BTNL', 'BTNR'][index],
+        String(ioBus.state.btn[index] ?? 0),
+      ]),
+      ...Array.from({ length: 8 }, (_, index) => [`LD${index}`, String(ioBus.state.ld[index] ?? 0)]),
+    ],
+    [ioBus.state.btn, ioBus.state.ld, ioBus.state.sw]
+  );
 
   return (
     <IdeSurfaceLayout
@@ -709,7 +721,18 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       consoleHasBlocking={hasBlocking}
       consoleHasEntries={hasBlocking}
       dock={activeDock}
-      inspector={activeInspector}
+      inspector={
+        <>
+          <IdeInspectorSection title="Live Hardware State" defaultOpen>
+            <IdeDataTable
+              columns={['Signal', 'Value']}
+              rows={liveHardwareRows}
+              testId="ide-hardware-live-state-table"
+            />
+          </IdeInspectorSection>
+          {activeInspector}
+        </>
+      }
       console={
         <section className="ide-workbench-console-content" data-testid="ide-hardware-console">
           <header className="ide-workbench-console-header">
@@ -838,10 +861,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               mismatchedLd={mismatchedLd}
               highlightedSw={currentStepHighlights.sw}
               highlightedLd={currentStepHighlights.ld}
-              activeSignal={activeBoardSignal}
+              activeSignal={effectiveBoardSignal}
               onSelectSignal={(sig) => setActiveBoardSignal(sig)}
+              onHoverSignal={(sig) => setHoverBoardSignal(sig)}
               onToggleSwitch={(i) => {
                 ioBus.actions.toggleSwitch(i);
+                setActiveBoardSignal({ type: 'sw', index: i });
+              }}
+              onSetSwitch={(i, value) => {
+                ioBus.actions.setSwitch(i, value);
                 setActiveBoardSignal({ type: 'sw', index: i });
               }}
               onPressButton={(i, down) => {

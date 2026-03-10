@@ -1,5 +1,201 @@
 # AI State
 
+## Change Log 2026-03-09 (Surface redesign pass: Design authoring workstation)
+
+### Design is now composed as a real authoring workspace with a contextual inspector, trace tools, and safer split behavior
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` - Re-composed the Design surface around the canvas as the dominant work area, added split-to-stacked auto-demotion when pane widths would become unusable, rebuilt the right inspector into a contextual node/wire/signal inspector, promoted trace/pin actions into first-class design tools, added a compact live simulation state table, and wired a right-click wire context menu without changing runtime semantics.
+- `packages/rb-logic-view/src/LogicCanvas.tsx` - Added UI-only traced-node/highlighted-port inputs and surfaced wire right-click context events back to the Design surface so tracing and pinning can start from the canvas instead of only from side panels.
+- `packages/rb-logic-view/src/components/NodeView.tsx` - Allowed multi-port highlight input so traced nets can emphasize every attached port instead of one single highlighted pin.
+- `packages/rb-logic-view/src/components/WireView.tsx` - Added a bounded `onContextMenu(...)` hook so Design can open trace/pin actions on the selected wire without changing the wire model.
+- `packages/rb-apps/src/apps/ide/ide-root.css` - Added Design-only layout overrides for the shortcut strip, stacked split fallback, HDL pane overflow, contextual live-state table, trace badge styling, and wire context menu while hiding the now-redundant floating node overlay.
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx` - Added focused regression coverage for the new contextual inspector, trace actions, compact live state table, and stacked split fallback.
+- `packages/rb-logic-view/src/__tests__/wire-context-menu.test.tsx` - Added focused regression coverage proving right-click on a wire emits the correct wire id through the new canvas context-menu hook.
+
+### Why this was bounded
+
+- The batch stayed inside the Design tab, LogicCanvas interaction affordances, and Design-only CSS/layout.
+- Verify authority, runtime truth semantics, export truth, import behavior, and the wire data model were not rewritten.
+- No Manhattan routing, no new probe model, and no decorative animation system landed here.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-logic-view/src/__tests__/wire-context-menu.test.tsx packages/rb-logic-view/src/__tests__/circuit-hud.test.tsx` - PASS (`3` files, `4` tests)
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`; still prints the repo's broad pre-existing declaration/type diagnostics outside this batch, but this Design workstation slice did not turn the package build red
+
+- **Attribution**: Connor Angiel
+
+---
+
+## Batch: IDE Final Consistency Sweep (2026-03-09)
+
+**Subsystem**: IDE surfaces — Project, Design, Verify, Hardware, Export, Import, shared shell/layout
+
+**Canonical files**
+- `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx` (changed)
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` (changed)
+- `packages/rb-apps/src/apps/ide/ide-root.css` (changed)
+- `packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx` (new)
+
+**Diagnosis**
+
+The redesign batches had made each major surface stronger, but the whole IDE still had final product-quality inconsistencies that showed up in real desktop/laptop screenshots:
+- Project could retain stale internal scroll state when switching tabs or responsive modes, leaving the page visually stranded mid-surface.
+- Shared shell spacing and dock density still varied too much across tabs, especially at shorter laptop heights.
+- Verify still emitted duplicate-key console noise and had some compact-mode density pressure in the waveform support areas.
+- Hardware board composition was cramped on shorter heights.
+- Export summary/preview composition could still compress awkwardly or waste space in narrower desktop layouts.
+
+**What changed**
+
+- `IdeWorkbenchShell.tsx`
+  - Added a workbench scroll reset on mode/layout transitions so dock, workspace, panel-body, and console scroll positions return to the top when the user changes tabs or responsive layout bands.
+- `VerifySurface.tsx`
+  - Removed duplicate React-key conditions in signal digest, vector, and run-context rows by switching to stable composite keys and deduplicated digest row generation.
+- `ide-root.css`
+  - Added a final cross-surface consistency block to normalize dock spacing, panel padding, heading rhythm, console height, and responsive density across wide/standard/compact layouts.
+  - Tightened Project hero/checklist rhythm for shorter heights.
+  - Cleaned remaining Design/Verify/Hardware/Export/Import overflow pressure points, including waveform drawer height, hardware board wrap sizing, export hero/action wrapping, and short-height panel spacing.
+- `ideWorkbenchShell.test.tsx`
+  - Added regression coverage for compact layout selection and scroll reset behavior on mode changes.
+
+**Why minimal**
+
+- The batch is layout-only and UI-consistency-only.
+- No runtime, verification, export, import, persistence, or wire-model semantics changed.
+- Fixes were driven by actual screenshot review and viewport behavior, not speculative redesign.
+
+**Validation**
+
+- Screenshot-driven review using the live IDE surfaces at desktop/laptop sizes via Playwright on a local Vite preview.
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+- `pnpm --filter @redbyte/rb-apps build`
+- `pnpm ide:gate:workbench-layout-contract`
+- `pnpm ide:gate:viewport-overflow-contract`
+
+**Remaining limitation intentionally deferred**
+
+- Verify first-run still leaves more empty lower-deck space than ideal before a full verification workstation is active. It is visually acceptable after the consistency pass and was left alone to avoid reopening Verify composition or semantics late in RC.
+
+- **Attribution**: Connor Angiel
+
+---
+
+## Batch: IDE Import Workflow Redesign (2026-03-09)
+
+**Subsystem**: IDE Workbench - Import Surface
+
+**Canonical files**
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+- `packages/rb-apps/src/apps/ide/__tests__/importSurface.workstation.test.tsx`
+
+**Diagnosis**
+
+- Import still behaved like a flat parsing form instead of a staged review-and-apply workflow.
+- HDL/XDC review, schematic preview, mapping clarity, and status/diagnostics were present, but the page composition buried them and made laptop-height use harder than it needed to be.
+- ZIP handling did not distinguish trusted RedByte submission bundles from generic Vivado ZIPs at the surface level, and the page was missing a simple board-detection summary even when the parsed XDC strongly implied Basys3.
+
+**What changed**
+
+- Rebuilt the Import surface around a fixed workflow rail:
+  1. `Upload ZIP`
+  2. `Parse HDL`
+  3. `Map ports`
+  4. `Review schematic`
+  5. `Apply import`
+- Replaced the flat content stack with a three-region workbench:
+  - left dock for workflow state, entry actions, and parsing tools
+  - center workbench for the active source stage plus promoted review workspace
+  - right inspector for diagnostics, blockers, commit summary, and next-step context
+- Promoted schematic review into a first-class review shell that appears as soon as HDL is parsed, with summary stats for entity, ports, mapping coverage, reconstruction mode, and detected board.
+- Reworked the mapping table so it reads explicitly as `entity port -> board pin`, including direction, width, confidence, and mapped/unmapped state.
+- Added display-only board detection derived from parsed XDC/ZIP inspection, currently surfacing `Basys3` with `High/Medium/Low` confidence.
+- Added submission-aware ZIP intake:
+  - trusted RedByte submission ZIPs route through `parseIdeSubmissionZip(...)` and hand off via `onImportSubmission`
+  - integrity failures stop at the surface with a status callout
+  - non-submission ZIPs still fall back to the existing Vivado import path
+- Added import-specific layout and overflow CSS so the review shell, mapping table, and schematic preview scroll cleanly without nested trap behavior.
+- Added a workstation regression that verifies the workflow rail, promoted review shell, mapping wording, schematic visibility, and board detection.
+- Cleared batch-local ImportSurface type noise caused by the dead hidden legacy JSX path; remaining build diagnostics are pre-existing outside this batch.
+
+**Why minimal**
+
+- No import semantics changed: manifest-first truth, blockers, verify-reset notice, and apply-import behavior remain unchanged.
+- No parser, mapping, or project replacement behavior was broadened; the batch is layout, workflow, and surface-trust focused.
+- Submission ZIP support reused existing parsing utilities instead of introducing a second import pipeline.
+
+**Validation**
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.verify-reset.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.submission.test.tsx`
+- `pnpm --filter @redbyte/rb-apps build`
+
+- **Attribution**: Connor Angiel
+ 
+---
+
+## Batch: Surface Redesign Pass - Export Handoff Workspace (2026-03-09)
+
+**Subsystem**: IDE surfaces - Export
+
+**Files changed**
+
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+- `packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx`
+
+**What changed**
+
+- Reworked Export into a handoff-oriented workspace with a top summary hero that answers readiness, board, top module, mapped pins, design summary, and the next action immediately.
+- Replaced the flat artifact strip with grouped artifact navigation (`HDL`, `Constraints`, `Testbench`, `Project`) while keeping the same artifact preview semantics and existing artifact-tab test IDs.
+- Added one-click copy actions for `top.vhd`, `top.xdc`, `vivado_import.tcl`, and the currently selected artifact.
+- Reframed Vivado guidance into a three-step top-level handoff with a collapsible advanced checklist.
+- Added CSS for the new artifact workspace so preview scrolling is the primary scroll owner inside the code preview, with responsive stacking on narrower widths.
+- Added a focused workstation regression test for the summary hero, grouped artifact sections, key copy actions, and compact Vivado checklist.
+
+**Why minimal**
+
+- Export generation, artifact contents, verify/export trust logic, and project health semantics were left unchanged.
+- The batch stays inside the Export surface and styling layer plus one UI regression test.
+
+**Validation**
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx`
+- `pnpm --filter @redbyte/rb-apps build` (build succeeds; existing unrelated repo-wide TypeScript diagnostics still print afterward)
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-03-09 (Surface redesign pass: shared shell + Verify workstation + board hover context)
+
+### The workbench shell is now responsive by width, Verify is re-composed as a waveform-first workstation, and board-linked hover state is available across surfaces
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx` - Added responsive surface layout-mode detection (`wide` / `standard` / `compact`) via `ResizeObserver` and exposed it through `data-layout-mode` so surfaces can recompose by real workspace width instead of one fixed dock layout.
+- `packages/rb-apps/src/apps/ide/ide-root.css` - Added shared shell overflow/padding overrides so docks, workspace panels, and the console have clearer scroll ownership, then layered a Verify-specific workstation override block for the waveform hero, lower deck, grouped signal rail, and compact-layout behavior.
+- `packages/rb-apps/src/apps/ide/BoardSignalContext.tsx` - Extended board-signal state with transient hover support (`hoverBoardSignal`, `setHoverBoardSignal`), added `resolveBoardSignal(...)`, and made the hook safe in standalone tests by returning a no-op fallback when no provider is mounted.
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` - Rebuilt Verify into a waveform-first workstation: grouped signal-lane controls, per-lane hide/reset state, manual lane reordering, waveform fit/zoom width control, `J/K/F` keyboard navigation, wheel scroll/zoom, hover-to-board linking, lower-deck tabs (`Mismatches`, `Truth Table`, `K-Map`, `Details`, conditional `Vectors`), and relocation of truth/K-map content out of the side-by-side instrument deck.
+- `packages/rb-apps/src/apps/ide/surfaces/TruthTablePane.tsx` - Added UI-only section targeting so the same deterministic truth-table component can render truth-only or K-map-only views in the Verify lower deck without creating a second results system.
+- `packages/rb-apps/src/apps/ide/components/HardwareBoard2D.tsx` - Added switch drag-up/drag-down interaction, signal hover callbacks, and cleaned button hover/leave handling so the board can participate in cross-surface signal linking.
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` - Wired board hover state into the live board, added explicit `setSwitch(...)` support for drag-set switches, and added a `Live Hardware State` inspector table for current SW / BTN / LD values.
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` - Updated board-linked mapping emphasis to honor hover state as well as pinned selection so mapping review follows transient signal inspection.
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` - Updated the Verify workstation contract for the new lower-deck truth-table workflow.
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx` - Updated expectations so grouped dock lanes and waveform-first failure ordering are both asserted under the redesigned Verify surface.
+
+### Why this was bounded
+
+- The batch stayed in shell/layout composition, Verify UX, and board-hover UX only.
+- Deterministic verify authority, project health, export truth, and import behavior were not changed here.
+- Design, Export, Import, and broader page-level redesign work remain outside this completed slice.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx` - PASS (`3` files, `7` tests)
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-09 (Classroom release candidate: authoritative verify only)
 
 ### Verify now has one deterministic authority path, and legacy runtime-trace trust is invalidated on restore

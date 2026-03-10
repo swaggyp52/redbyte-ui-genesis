@@ -221,6 +221,49 @@ Student downloads ZIP → imports into Vivado
 
 ---
 
+---
+
+## Import Fidelity
+
+RedByte defines three fidelity levels for project import. These are set on `project.meta.importFidelity` and surfaced in the Project panel.
+
+### Level 1 — Full (`'full'`)
+
+**Source:** `project.rbproj.json` manifest inside a RedByte-exported ZIP.
+
+The manifest is the canonical authority. All circuit state, node positions, IO mapping, test vectors, and metadata are fully restored.
+
+**Automated test:** `src/__tests__/rbproject-roundtrip-gate.test.ts`
+
+### Level 2 — Reconstructed (`'reconstructed'`)
+
+**Source:** Structural VHDL with component instantiation (`U1: AND2 port map (...)`), optionally with an `.xdc` constraint file.
+
+RedByte's `parsedHdlToCircuit` maps HDL component names through `COMPONENT_MAP` (26 types). Node layout is auto-assigned. Test vectors must be re-authored.
+
+**Documented limitation:** Structural VHDL imported this way will reconstruct topology correctly but will NOT have saved node positions or test vectors.
+
+**Automated test:** `src/__tests__/export-reimport-roundtrip.test.ts` — "Reconstructed fidelity" suite.
+
+### Level 3 — Partial (`'partial'`)
+
+**Sources:**
+
+- Behavioral VHDL (`process` blocks, `rising_edge`, `always_ff`)
+- RedByte's own exported `top.vhd` (uses concurrent signal assignments, not component instantiation)
+
+Only I/O port names and directions are extracted. Internal logic cannot be reconstructed.
+
+> **Important:** RedByte's `vhdlFromNetlist` export generates concurrent signal assignments
+> (`and_0 <= SW0 and SW1`), not component instantiation blocks. This is correct for Vivado
+> synthesis but means the generated VHDL **cannot be re-imported** through the HDL import
+> pipeline. Use `project.rbproj.json` (always included in the exported ZIP) for full-fidelity
+> re-import.
+
+**Automated test:** `src/__tests__/export-reimport-roundtrip.test.ts` — "Partial fidelity" suite.
+
+---
+
 ## See Also
 
 - `docs/STUDENT_UX_LAYER.md` — student/instructor content rules per surface

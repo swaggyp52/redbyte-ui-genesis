@@ -100,6 +100,7 @@ export interface WireViewProps {
   isNetHighlighted?: boolean;
   onSelect: (wireId: string, addToSelection: boolean) => void;
   onHover?: (wireId: string | null) => void;
+  onContextMenu?: (wireId: string, event: React.MouseEvent<SVGGElement>) => void;
   signal?: 0 | 1;
   probeColors?: string[];
   mismatchColors?: string[];
@@ -115,6 +116,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
   isNetHighlighted = false,
   onSelect,
   onHover,
+  onContextMenu,
   signal,
   probeColors,
   mismatchColors,
@@ -168,6 +170,11 @@ const WireViewComponent: React.FC<WireViewProps> = ({
       data-wire-selected={isSelected ? '1' : '0'}
       data-wire-zoom-band={zoomBand}
       onClick={handleClick}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onContextMenu?.(wireId, event);
+      }}
       onMouseEnter={() => onHover?.(wireId)}
       onMouseLeave={() => onHover?.(null)}
       style={{ cursor: 'pointer' }}

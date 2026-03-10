@@ -71,6 +71,8 @@ export interface TruthTablePaneProps {
   traceInputsByTick?: Record<number, TruthTableTraceInput[]>;
   onFixPath?: (row: TruthTableRow) => void;
   onSelectFailureCase?: (failure: TruthTableFailureCase) => void;
+  showModeToggle?: boolean;
+  displaySection?: 'auto' | 'truth' | 'combos' | 'kmap';
 }
 
 export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
@@ -90,6 +92,8 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
   traceInputsByTick = {},
   onFixPath,
   onSelectFailureCase,
+  showModeToggle = true,
+  displaySection = 'auto',
 }) => {
   const grouped = useMemo(() => {
     const map = new Map<number, TruthTableRow[]>();
@@ -102,9 +106,24 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
   }, [rows]);
 
   const effectiveMode: TruthTableMode = isSequential ? 'ticks' : mode;
+  const sectionMode =
+    displaySection === 'auto'
+      ? effectiveMode === 'combos'
+        ? 'combos'
+        : 'truth'
+      : displaySection;
+  const showCombosSection = !isSequential && (sectionMode === 'combos' || sectionMode === 'kmap');
+  const showKmapOnly = sectionMode === 'kmap';
   const isEmpty = rows.length === 0;
   const hasFixAction = Boolean(onFixPath);
-  const title = isSequential ? 'TRACE TABLE (TICK LOG)' : 'TRUTH TABLE';
+  const title =
+    showKmapOnly
+      ? 'K-MAP'
+      : isSequential
+        ? 'TRACE TABLE (TICK LOG)'
+        : sectionMode === 'combos'
+          ? 'COMBO TABLE'
+          : 'TRUTH TABLE';
   const selectComboRow = (row: TruthTableComboRow) => {
     if (row.primaryFailure) {
       onSelectFailureCase?.(row.primaryFailure);
@@ -122,7 +141,9 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
     }
   };
   const note =
-    effectiveMode === 'ticks'
+    showKmapOnly
+      ? 'K-map groups repeated input patterns in Gray-code order so adjacent logic regions are easier to inspect.'
+      : sectionMode === 'truth'
       ? isSequential
         ? 'Trace table shows inputs and outputs over time. Outputs are sampled after the rising edge for each case.'
         : 'Truth table rows show expected and observed outputs for each evaluated case.'
@@ -138,32 +159,108 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
         <span className="ide-truth-table-title" data-testid="ide-verify-truth-table-title">
           {title}
         </span>
-        <div className="ide-truth-table-mode-toggle" data-testid="ide-truth-table-mode-toggle">
-          <button
-            type="button"
-            className={`ide-truth-table-mode-btn ${effectiveMode === 'ticks' ? 'is-active' : ''}`}
-            onClick={() => onModeChange?.('ticks')}
-            data-testid="ide-truth-table-mode-ticks"
-          >
-            {isSequential ? 'Trace' : 'Ticks'}
-          </button>
-          {!isSequential && (
+        {showModeToggle ? (
+          <div className="ide-truth-table-mode-toggle" data-testid="ide-truth-table-mode-toggle">
             <button
               type="button"
-              className={`ide-truth-table-mode-btn ${effectiveMode === 'combos' ? 'is-active' : ''}`}
-              onClick={() => onModeChange?.('combos')}
-              data-testid="ide-truth-table-mode-combos"
+              className={`ide-truth-table-mode-btn ${effectiveMode === 'ticks' ? 'is-active' : ''}`}
+              onClick={() => onModeChange?.('ticks')}
+              data-testid="ide-truth-table-mode-ticks"
             >
-              Combos
+              {isSequential ? 'Trace' : 'Ticks'}
             </button>
-          )}
-        </div>
+            {!isSequential && (
+              <button
+                type="button"
+                className={`ide-truth-table-mode-btn ${effectiveMode === 'combos' ? 'is-active' : ''}`}
+                onClick={() => onModeChange?.('combos')}
+                data-testid="ide-truth-table-mode-combos"
+              >
+                Combos
+              </button>
+            )}
+          </div>
+        ) : null}
       </div>
       <p className="ide-truth-table-clock-note">{note}</p>
 
       <div className="ide-truth-table-body">
-        {effectiveMode === 'combos' ? (
-          combosRows.length > 0 ? (
+        {showCombosSection ? (
+          showKmapOnly ? (
+            kmaps.length > 0 ? (
+              <div className="ide-truth-table-combos-scroll" data-testid="ide-truth-table-kmap-scroll">
+                <div className="ide-truth-table-kmap-stack" data-testid="ide-truth-table-kmap-stack">
+                  {kmaps.map((kmap) => (
+                    <section key={kmap.outputSignal} className="ide-truth-table-kmap">
+                      <header className="ide-truth-table-kmap-header">
+                        <span>K-map</span>
+                        <code>{kmap.outputSignal}</code>
+                      </header>
+                      <table className="ide-truth-table" data-testid={`ide-truth-table-kmap-${toTestId(kmap.outputSignal)}`}>
+                        <thead className="ide-truth-table-thead">
+                          <tr>
+                            <th className="ide-truth-table-th">Row</th>
+                            {kmap.colCodes.map((colCode) => (
+                              <th key={colCode} className="ide-truth-table-th">
+                                {colCode || '-'}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {kmap.rows.map((row) => (
+                            <tr key={row.rowCode} className="ide-truth-table-tr">
+                              <td className="ide-truth-table-td">
+                                <code>{row.rowCode || '-'}</code>
+                              </td>
+                              {row.cells.map((cell) => (
+                                <td
+                                  key={cell.bits}
+                                  className={`ide-truth-table-td ide-truth-table-td-value ${
+                                    cell.isFail ? 'ide-truth-table-kmap-cell is-fail' : ''
+                                  }`}
+                                  data-testid={`ide-truth-table-kmap-cell-${toTestId(`${kmap.outputSignal}-${cell.bits}`)}`}
+                                  onClick={cell.isFail ? () => selectFailureCase(cell.failureCase) : undefined}
+                                >
+                                  {cell.isFail ? (
+                                    <button
+                                      type="button"
+                                      className="ide-truth-table-failure-btn"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        selectFailureCase(cell.failureCase);
+                                      }}
+                                      title={`${kmap.outputSignal} expected ${cell.failureCase?.expected ?? '-'} observed ${cell.value} at t${cell.failureCase?.tick ?? '-'}`}
+                                    >
+                                      <span className="ide-truth-table-actual-pill">{cell.value}</span>
+                                      <span className="ide-truth-table-failure-note">
+                                        exp {cell.failureCase?.expected ?? '-'}
+                                      </span>
+                                    </button>
+                                  ) : (
+                                    cell.value
+                                  )}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </section>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="ide-truth-table-unavailable" data-testid="ide-truth-table-kmap-na">
+                <span className="ide-truth-table-unavailable-icon" aria-hidden="true">
+                  x
+                </span>
+                <p className="ide-truth-table-unavailable-msg">
+                  {kmapUnavailableReason ?? 'No K-map is available for this run.'}
+                </p>
+              </div>
+            )
+          ) : combosRows.length > 0 ? (
             <div className="ide-truth-table-combos-scroll" data-testid="ide-truth-table-combos-scroll">
               <table className="ide-truth-table" data-testid="ide-truth-table-combos-table">
                 <thead className="ide-truth-table-thead">
@@ -234,7 +331,7 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
                   ))}
                 </tbody>
               </table>
-              {kmaps.length > 0 && (
+              {displaySection === 'auto' && kmaps.length > 0 && (
                 <div className="ide-truth-table-kmap-stack" data-testid="ide-truth-table-kmap-stack">
                   {kmaps.map((kmap) => (
                     <section key={kmap.outputSignal} className="ide-truth-table-kmap">

@@ -90,6 +90,9 @@ export interface ProjectSurfaceProps {
   studentName?: string;
   onStudentNameChange?: (name: string) => void;
   hasVerifyRun?: boolean;
+  fpgaConfig?: { part: string; top: string; board: string };
+  importFidelity?: 'full' | 'reconstructed' | 'partial' | null;
+  onFpgaConfigChange?: (config: { part?: string; top?: string }) => void;
 }
 
 const PROJECT_EMPTY_SIM: RuntimeSimState = {
@@ -132,6 +135,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   studentName = '',
   onStudentNameChange,
   hasVerifyRun = false,
+  fpgaConfig,
+  importFidelity,
+  onFpgaConfigChange,
 }) => {
   const [highlightedMappingKey, setHighlightedMappingKey] = useState<string | null>(null);
   const [mappingExpanded, setMappingExpanded] = useState(false);
@@ -139,7 +145,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const mappingSectionRef = useRef<HTMLElement | null>(null);
   const examplesSectionRef = useRef<HTMLDetailsElement | null>(null);
   const highlightResetTimer = useRef<number | null>(null);
-  const { activeBoardSignal } = useBoardSignal();
+  const { activeBoardSignal, hoverBoardSignal } = useBoardSignal();
+  const effectiveBoardSignal = hoverBoardSignal ?? activeBoardSignal;
 
   useEffect(() => {
     return () => {
@@ -465,10 +472,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         const rowSigType = swM2 ? 'sw' : ldM2 ? 'ld' : null;
         const rowSigIdx = swM2 ? parseInt(swM2[1], 10) : ldM2 ? parseInt(ldM2[1], 10) : -1;
         const isActiveRow =
-          !!activeBoardSignal &&
+          !!effectiveBoardSignal &&
           !!rowSigType &&
-          activeBoardSignal.type === rowSigType &&
-          activeBoardSignal.index === rowSigIdx;
+          effectiveBoardSignal.type === rowSigType &&
+          effectiveBoardSignal.index === rowSigIdx;
         const portCell = (
           <span
             key={`${row.id}-port`}
@@ -538,7 +545,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </span>,
         ];
       }),
-    [activeBoardSignal, highlightedMappingKey, ioBus, onGoToHardware, onUpdateMappingPin, sortedMappingRows]
+    [effectiveBoardSignal, highlightedMappingKey, ioBus, onGoToHardware, onUpdateMappingPin, sortedMappingRows]
   );
 
   const designCardDone = readiness.hasCircuit && readiness.hasIoMapping;
@@ -1191,6 +1198,53 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               </div>
             </div>
           </details>
+
+          {/* FPGA Configuration — collapsed by default */}
+          <details className="ide-project-identity-details" data-testid="ide-project-fpga-config">
+            <summary>FPGA configuration</summary>
+            <div className="ide-kv-list" style={{ marginTop: 'var(--rb-space-2)' }}>
+              <div className="ide-kv-row">
+                <span>Board</span>
+                <span>{fpgaConfig?.board ?? 'Basys3'}</span>
+              </div>
+              <div className="ide-kv-row">
+                <label htmlFor="ide-fpga-top-input">Top module</label>
+                <input
+                  id="ide-fpga-top-input"
+                  type="text"
+                  className="ide-input-inline"
+                  defaultValue={fpgaConfig?.top ?? topModuleName ?? 'top'}
+                  data-testid="ide-project-fpga-top"
+                  onBlur={(event) => onFpgaConfigChange?.({ top: event.currentTarget.value.trim() || 'top' })}
+                  onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+                />
+              </div>
+              <div className="ide-kv-row">
+                <label htmlFor="ide-fpga-part-input">Part number</label>
+                <input
+                  id="ide-fpga-part-input"
+                  type="text"
+                  className="ide-input-inline"
+                  defaultValue={fpgaConfig?.part ?? 'xc7a35tcpg236-1'}
+                  data-testid="ide-project-fpga-part"
+                  onBlur={(event) => onFpgaConfigChange?.({ part: event.currentTarget.value.trim() || 'xc7a35tcpg236-1' })}
+                  onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+                />
+              </div>
+              {importFidelity && (
+                <div className="ide-kv-row">
+                  <span>Import fidelity</span>
+                  <span
+                    data-testid="ide-project-import-fidelity"
+                    className={`ide-chip ${importFidelity === 'full' ? 'ide-chip-ok' : importFidelity === 'reconstructed' ? 'ide-chip-warn' : 'ide-chip-err'}`}
+                  >
+                    {importFidelity === 'full' ? 'Full restore' : importFidelity === 'reconstructed' ? 'Reconstructed' : 'Partial'}
+                  </span>
+                </div>
+              )}
+            </div>
+          </details>
+
           <div
             className={`ide-project-mapping-summary${unmappedRequiredCount > 0 ? ' has-error' : ''}`}
             data-testid="ide-project-mapping-summary-strip"

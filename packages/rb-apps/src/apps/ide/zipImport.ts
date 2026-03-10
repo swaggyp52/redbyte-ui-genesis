@@ -179,8 +179,20 @@ export function buildImportedProject(input: {
   xdcPath?: string;
   xdcText?: string;
   xdcResult?: XdcParseResult;
+  /** Optional: preserve node positions from an existing canvas when re-importing */
+  existingPositions?: Map<string, { x: number; y: number }>;
 }): RBProject {
   const converted = parsedHdlToCircuit(input.parsedHdl);
+  // Apply saved positions where node IDs match (e.g. same VHDL instance names)
+  if (input.existingPositions && input.existingPositions.size > 0) {
+    for (const node of converted.circuit.nodes) {
+      const saved = input.existingPositions.get(node.id);
+      if (saved) {
+        node.x = saved.x;
+        node.y = saved.y;
+      }
+    }
+  }
   const ioMapping = buildIoMapping(input.parsedHdl.ports, converted.circuit, input.xdcResult);
   const topEntity = sanitizeIdentifier(
     input.parsedHdl.entityName.trim() || stemFromPath(input.topPath) || 'top'

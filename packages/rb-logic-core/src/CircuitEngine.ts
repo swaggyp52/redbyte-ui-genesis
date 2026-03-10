@@ -367,9 +367,17 @@ export class CircuitEngine {
   }
 
   /**
+   * Returns node IDs in evaluation order (topological sort, source → sink).
+   * Useful for Design surface eval-order visualization.
+   */
+  getEvaluationOrder(): string[] {
+    return this.topologicalSort().map((n) => n.id);
+  }
+
+  /**
    * Topological sort of nodes (simple forward pass, assumes no cycles)
    */
-  private topologicalSort(): Node[] {
+  topologicalSort(): Node[] {
     const nodes = this.circuit.nodes;
     const edges: Map<string, Set<string>> = new Map();
     const inDegree: Map<string, number> = new Map();

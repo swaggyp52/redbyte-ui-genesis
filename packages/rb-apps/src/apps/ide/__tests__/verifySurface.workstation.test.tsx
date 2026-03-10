@@ -133,7 +133,8 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-run-context-sampling').textContent).toContain('steady state');
     expect(getByTestId('ide-verify-run-context-ticks_shown').textContent).toContain('Showing all 2 ticks');
     expect(queryByTestId('ide-verify-run-deterministic')).toBeNull();
-    fireEvent.click(getByTestId('ide-truth-table-mode-ticks'));
+    fireEvent.click(getAllByText('Truth Table')[0]);
+    expect(getByTestId('ide-verify-truth-table-title').textContent).toContain('TRUTH TABLE');
     expect(getByTestId('ide-truth-table-row-0-ld0')).toBeTruthy();
     expect(getByTestId('ide-truth-table-row-1-ld0')).toBeTruthy();
   });
@@ -266,14 +267,15 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getAllByText('Truth Table')[0]);
     expect(getByTestId('ide-verify-truth-table-title').textContent).toContain('TRACE TABLE (TICK LOG)');
     expect(queryByTestId('ide-truth-table-mode-combos')).toBeNull();
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
-    fireEvent.click(getAllByText('Details')[0]);
-    expect(getByTestId('ide-verify-run-context-protocol').textContent).toContain('Clocked macro');
-    expect(getByTestId('ide-verify-run-context-tick_0').textContent).toContain('Initial state');
     expect(getByTestId('ide-truth-table-inputs-0').textContent).toContain('CLK=0');
     expect(getByTestId('ide-truth-table-inputs-0').textContent).toContain('RST=1');
     expect(getByTestId('ide-truth-table-inputs-0').textContent).toContain('+2');
+    fireEvent.click(getAllByText('Details')[0]);
+    expect(getByTestId('ide-verify-run-context-protocol').textContent).toContain('Clocked macro');
+    expect(getByTestId('ide-verify-run-context-tick_0').textContent).toContain('Initial state');
   });
 });

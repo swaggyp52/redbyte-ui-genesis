@@ -42,6 +42,8 @@ export interface LogicCanvasProps {
   debugSignals?: Map<string, 0 | 1> | null;
   debugTick?: number | null;
   highlightedPort?: { nodeId: string; portName: string } | null;
+  highlightedPortKeys?: Set<string> | null;
+  tracedNodeIds?: Set<string> | null;
   /** Optional callback (dev/advanced) to reflect net highlight across surfaces (e.g., 2D -> 3D). */
   onNetHighlightWiresChanged?: (wireIds: Set<string>) => void;
   isRunning?: boolean;
@@ -56,6 +58,16 @@ export interface LogicCanvasProps {
   onRedo?: () => void;
   /** Fired when the user clicks a port (after internal wiring logic). Use for path-tracing / fanin highlight. */
   onPortClick?: (nodeId: string, portName: string) => void;
+  onWireContextMenu?: (input: {
+    wireId: string;
+    signalKey: string | null;
+    clientX: number;
+    clientY: number;
+  }) => void;
+  /** B1: Node IDs in topological evaluation order. When set, each node gets an evalSequence badge on hover. */
+  nodeEvalOrder?: string[] | null;
+  /** B1: Node IDs whose outputs changed on the last sim tick. Rendered with isHighlighted when set. */
+  changedNodeIds?: Set<string> | null;
 }
 
 const BUILTIN_PORT_NAMES: Record<string, string[]> = {
@@ -140,6 +152,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   debugSignals,
   debugTick,
   highlightedPort,
+  highlightedPortKeys,
+  tracedNodeIds,
   onNetHighlightWiresChanged,
   isRunning = false,
   isReplayMode = false,
@@ -152,6 +166,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   onUndo,
   onRedo,
   onPortClick,
+  onWireContextMenu,
+  nodeEvalOrder,
+  changedNodeIds,
 }) => {
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
@@ -1265,6 +1282,15 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                 isNetHighlighted={isNetHighlighted}
                 onSelect={selectWire}
                 onHover={setHoveredWireId}
+                onContextMenu={(clickedWireId, event) => {
+                  selectWire(clickedWireId, false);
+                  onWireContextMenu?.({
+                    wireId: clickedWireId,
+                    signalKey: `${fromNodeId}.${fromPortName}`,
+                    clientX: event.clientX,
+                    clientY: event.clientY,
+                  });
+                }}
                 signal={signal}
                 probeColors={probeColors}
                 mismatchColors={mismatchColors}
@@ -1384,7 +1410,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               camera={camera}
               presentationZoomMode={presentationZoomMode}
               isSelected={selection.nodes.has(node.id)}
-              isHighlighted={node.id === highlightedNodeId}
+              isHighlighted={node.id === highlightedNodeId || (tracedNodeIds?.has(node.id) ?? false) || (changedNodeIds?.has(node.id) ?? false)}
               isMismatchHighlighted={mismatchNodeIds?.has(node.id) ?? false}
               onSelect={selectNode}
               onMove={handleNodeMove}
@@ -1399,6 +1425,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               onPortLeave={() => setHoveredPort(null)}
               probedPorts={probedPorts}
               highlightedPort={highlightedPort}
+              highlightedPortKeys={highlightedPortKeys}
               debugTick={debugTick}
               mismatchPortKeys={mismatchPortKeys}
               dragPosition={canvasInput.dragState.dragNodeId === node.id ? canvasInput.dragState.dragPosition : undefined}
@@ -1407,6 +1434,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               diagnosticBadge={nodeDiagnosticBadges?.[node.id]}
               onDiagnosticBadgeClick={onNodeDiagnosticBadgeClick}
               ioPresentation={ioPresentationMap?.[node.id]}
+              evalSequence={nodeEvalOrder ? (nodeEvalOrder.indexOf(node.id) >= 0 ? nodeEvalOrder.indexOf(node.id) + 1 : null) : null}
             />
           ))}
         </g>

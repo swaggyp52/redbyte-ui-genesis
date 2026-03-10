@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Bit } from '../ioBus';
 import type { BoardSignal } from '../BoardSignalContext';
 import styles from './HardwareBoard2D.module.css';
@@ -13,9 +13,11 @@ export interface HardwareBoard2DProps {
   highlightedSw?: number[];  // indices to show cyan highlight ring
   highlightedLd?: number[];  // indices to show amber highlight ring
   onToggleSwitch(i: number): void;
+  onSetSwitch?: (i: number, value: Bit) => void;
   onPressButton(i: number, down: boolean): void;
   activeSignal?: BoardSignal | null;
   onSelectSignal?: (sig: BoardSignal) => void;
+  onHoverSignal?: (sig: BoardSignal | null) => void;
 }
 
 const BTN_POSITIONS: [number, number][] = [
@@ -37,10 +39,28 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
   highlightedSw,
   highlightedLd,
   onToggleSwitch,
+  onSetSwitch,
   onPressButton,
   activeSignal,
   onSelectSignal,
+  onHoverSignal,
 }) => {
+  const [draggingSwitch, setDraggingSwitch] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (draggingSwitch === null) return;
+    const stopDrag = () => setDraggingSwitch(null);
+    window.addEventListener('pointerup', stopDrag);
+    return () => window.removeEventListener('pointerup', stopDrag);
+  }, [draggingSwitch]);
+
+  const applyDraggedSwitchValue = (index: number, event: React.PointerEvent<SVGGElement>) => {
+    if (!onSetSwitch) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const nextValue: Bit = event.clientY <= rect.top + rect.height / 2 ? 1 : 0;
+    onSetSwitch(index, nextValue);
+  };
+
   return (
     <svg
       data-testid="ide-hardware-board-2d"
@@ -212,6 +232,8 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               strokeWidth={isOn || isMismatch ? '1.5' : '1'}
               style={{ cursor: 'pointer' }}
               onClick={() => onSelectSignal?.({ type: 'ld', index: idx })}
+              onMouseEnter={() => onHoverSignal?.({ type: 'ld', index: idx })}
+              onMouseLeave={() => onHoverSignal?.(null)}
             />
             {/* Bring-Up highlight ring */}
             {highlightedLd?.includes(idx) && (
@@ -322,7 +344,12 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               cursor="pointer"
               onMouseDown={() => onPressButton(i, true)}
               onMouseUp={() => onPressButton(i, false)}
-              onMouseLeave={() => onPressButton(i, false)}
+              onMouseEnter={() => onHoverSignal?.({ type: 'btn', index: i })}
+              onMouseLeave={() => {
+                onHoverSignal?.(null);
+                onPressButton(i, false);
+              }}
+              onClick={() => onSelectSignal?.({ type: 'btn', index: i })}
             />
             {/* Button highlight */}
             <ellipse cx={cx - 2} cy={cy - 3} rx={3} ry={2}
@@ -369,6 +396,17 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             className={swGroupClassName}
             cursor="pointer"
             onClick={() => onToggleSwitch(idx)}
+            onPointerDown={(event) => {
+              setDraggingSwitch(idx);
+              applyDraggedSwitchValue(idx, event);
+            }}
+            onPointerMove={(event) => {
+              if (draggingSwitch !== idx) return;
+              applyDraggedSwitchValue(idx, event);
+            }}
+            onPointerUp={() => setDraggingSwitch(null)}
+            onMouseEnter={() => onHoverSignal?.({ type: 'sw', index: idx })}
+            onMouseLeave={() => onHoverSignal?.(null)}
             opacity={isMapped ? 1 : 0.32}
           >
             {/* Switch track / housing */}

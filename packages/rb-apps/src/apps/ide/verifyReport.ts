@@ -193,6 +193,14 @@ export function buildVerifyTickSignalIndex(report: VerifyReport): VerifyTickSign
   return { ticks, rowsByTick };
 }
 
+/**
+ * Canonical signal key format is `nodeId.portName` (dot-separated).
+ * Some internal paths emit `nodeId:portName` (colon). Normalise on read.
+ */
+export function normalizeSignalKey(key: string): string {
+  return key.replace(':', '.');
+}
+
 function normalizeBitMap(value: Record<string, unknown>): Record<string, 0 | 1> {
   const keys = Object.keys(value ?? {}).sort();
   const next: Record<string, 0 | 1> = {};

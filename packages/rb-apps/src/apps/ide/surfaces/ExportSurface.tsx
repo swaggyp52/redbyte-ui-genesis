@@ -62,6 +62,22 @@ type RebuildStepId =
   | 'zip';
 
 type RebuildStepState = 'idle' | 'running' | 'done' | 'error' | 'skipped';
+type ExportLayoutMode = 'wide' | 'standard' | 'compact';
+type ExportArtifactGroupId = 'hdl' | 'constraints' | 'testbench' | 'project';
+
+interface ExportArtifactGroup {
+  id: ExportArtifactGroupId;
+  label: string;
+  description: string;
+  artifacts: ExportArtifactView[];
+}
+
+interface ExportDesignSummary {
+  inputs: number;
+  outputs: number;
+  gates: number;
+  clocked: number;
+}
 
 interface RebuildStep {
   id: RebuildStepId;
@@ -103,6 +119,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   onGoToProject,
   onGoToDesign,
 }) => {
+  const surfaceRef = useRef<HTMLElement | null>(null);
   const baseViewModel = useMemo(
     () => buildExportViewModel(project, verifyLastRun),
     [project, verifyLastRun]
@@ -129,7 +146,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const [downloadError, setDownloadError] = useState<string>('');
   const [downloadDone, setDownloadDone] = useState(false);
   const [lastDownloadKind, setLastDownloadKind] = useState<'project' | 'kit' | null>(null);
-  const [copyState, setCopyState] = useState<'idle' | 'command' | 'report' | 'error'>('idle');
+  const [copiedTarget, setCopiedTarget] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState(false);
   const [highlightedPort, setHighlightedPort] = useState<string | null>(null);
   const [selectedArtifactPath, setSelectedArtifactPath] = useState<string>(() => {
     const readme = baseViewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'readme.txt');
@@ -139,6 +157,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   // Phase 32: pipeline rebuild state
   const [rebuildSteps, setRebuildSteps] = useState<RebuildStep[]>(() => makeSteps());
   const [isRebuilding, setIsRebuilding] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<ExportLayoutMode>(() => resolveExportLayoutMode());
   // Phase 2: track which port keys have invalid (non-Basys3) pin values
   const [invalidPins, setInvalidPins] = useState<Set<string>>(new Set());
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
@@ -165,6 +184,22 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       setSelectedArtifactPath(readme?.path ?? viewModel.artifacts[0].path);
     }
   }, [viewModel.artifacts, selectedArtifactPath]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const surface = surfaceRef.current;
+    if (!surface || typeof ResizeObserver === 'undefined') {
+      setLayoutMode(resolveExportLayoutMode());
+      return;
+    }
+    const observer = new ResizeObserver((entries) => {
+      const nextWidth = entries[0]?.contentRect.width ?? surface.clientWidth;
+      setLayoutMode(resolveExportLayoutMode(nextWidth));
+    });
+    observer.observe(surface);
+    setLayoutMode(resolveExportLayoutMode(surface.clientWidth));
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -320,6 +355,37 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const selectedArtifact =
     viewModel.artifacts.find((artifact) => artifact.path === selectedArtifactPath) ??
     viewModel.artifacts[0];
+  const artifactGroups = useMemo(
+    () => buildArtifactGroups(viewModel.artifacts),
+    [viewModel.artifacts]
+  );
+  const designSummary = useMemo(
+    () => buildDesignSummary(project),
+    [project]
+  );
+  const keyArtifacts = useMemo(
+    () => ({
+      topVhd: artifactMap.get('top.vhd'),
+      topXdc: artifactMap.get('top.xdc'),
+      vivadoImport: artifactMap.get('vivado_import.tcl'),
+    }),
+    [artifactMap]
+  );
+  const readyArtifactCount = useMemo(
+    () => viewModel.artifacts.filter((artifact) => artifact.status === 'ready').length,
+    [viewModel.artifacts]
+  );
+  const exportReady = !hasBlockingErrors && hasVerifyPass;
+  const nextActionTitle = exportReady
+    ? 'Open Vivado and import the generated project.'
+    : hasBlockingErrors
+      ? 'Resolve blockers before downloading the build package.'
+      : 'Run Verify to seal this export package.';
+  const nextActionDetail = exportReady
+    ? 'Download the Vivado Project, unzip it, then run the import script or open the project directly.'
+    : hasBlockingErrors
+      ? 'Use the blocker list and pin review below to clear mapping or clock issues before export.'
+      : 'A passing deterministic Verify run is required before the artifacts become trusted.';
   const vivadoCommand =
     'vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log';
   const projectDownloadLabel = isRebuilding
@@ -539,22 +605,28 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
-  const copyToClipboard = async (payload: string, target: 'command' | 'report') => {
+  const copyToClipboard = async (payload: string, targetId: string) => {
     if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
-      setCopyState('error');
+      setCopiedTarget(null);
+      setCopyError(true);
       return;
     }
     try {
       await navigator.clipboard.writeText(payload);
-      setCopyState(target);
+      setCopiedTarget(targetId);
+      setCopyError(false);
       if (copyResetTimer.current !== null && typeof window !== 'undefined') {
         window.clearTimeout(copyResetTimer.current);
       }
       if (typeof window !== 'undefined') {
-        copyResetTimer.current = window.setTimeout(() => setCopyState('idle'), 1600);
+        copyResetTimer.current = window.setTimeout(() => {
+          setCopiedTarget(null);
+          setCopyError(false);
+        }, 1600);
       }
     } catch {
-      setCopyState('error');
+      setCopiedTarget(null);
+      setCopyError(true);
     }
   };
 
@@ -564,28 +636,37 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       consoleHasBlocking={hasBlockingErrors}
       consoleHasEntries={diagnosticsList.length > 0}
       dock={
-        <section className="ide-workbench-placeholder" data-testid="ide-export-checks-dock">
+        <section className="ide-workbench-placeholder ide-export-sidecard" data-testid="ide-export-checks-dock">
           <header className="ide-workbench-placeholder-header">
-            <h3>Export</h3>
-            <IdeStatusPill tone={hasBlockingErrors ? 'error' : 'ok'}>
-              {hasBlockingErrors ? 'BLOCKED' : 'READY'}
+            <h3>Handoff</h3>
+            <IdeStatusPill tone={exportReady ? 'ok' : hasBlockingErrors ? 'error' : 'warn'}>
+              {exportReady ? 'READY' : hasBlockingErrors ? 'BLOCKED' : 'VERIFY'}
             </IdeStatusPill>
           </header>
           <div className="ide-kv-list">
             <div className="ide-kv-row">
-              <span>Errors</span>
-              <span>{diagnosticsList.filter((d) => d.severity === 'error').length}</span>
+              <span>Board</span>
+              <span>Basys3</span>
             </div>
             <div className="ide-kv-row">
-              <span>Warnings</span>
-              <span>{diagnosticsList.filter((d) => d.severity === 'warning').length}</span>
+              <span>Top</span>
+              <span className="ide-status-mono">{topModule}</span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Mapped I/O</span>
+              <span>{mappedCount}/{viewModel.pinTable.length}</span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Artifacts</span>
+              <span>{readyArtifactCount}/{viewModel.artifacts.length}</span>
             </div>
           </div>
+          <p className="ide-copy ide-export-sidecard-copy">{nextActionTitle}</p>
           <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
             <IdeButton
-              tone="secondary"
+              tone="primary"
               onClick={() => void handleDownloadExport('project')}
-              disabled={hasBlockingErrors || isRebuilding}
+              disabled={!exportReady || isRebuilding}
               testId="ide-export-dock-download"
             >
               {isRebuilding ? <><IdeSpinner size="sm" testId="ide-export-rebuild-spinner" /> Building&hellip;</> : projectDownloadLabel}
@@ -641,11 +722,19 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </>
           )}
 
-          <IdeInspectorSection title="Export Status" defaultOpen>
+          <IdeInspectorSection title="Package Context" defaultOpen>
             <div className="ide-kv-list">
               <div className="ide-kv-row">
                 <span>Board</span>
                 <span>Basys3</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Part</span>
+                <span><code>{vivadoPart}</code></span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Top Module</span>
+                <span><code>{topModule}</code></span>
               </div>
               <div className="ide-kv-row">
                 <span>Blocking Errors</span>
@@ -708,15 +797,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       }
     >
       <IdePanel
-          title={hasBlockingErrors ? 'Export Blocked' : 'Export Ready'}
-          description="Generate VHDL, pin constraints, and testbench for your Basys3 board."
+          title={exportReady ? 'Export Handoff Ready' : hasBlockingErrors ? 'Export Handoff Blocked' : 'Export Waiting on Verify'}
+          description="Review the generated package, confirm readiness, and prepare the project for Vivado."
           actions={
             <>
               <span data-testid="ide-primary-cta">
                 <IdeButton
                   tone="primary"
                   onClick={() => void handleDownloadExport('project')}
-                  disabled={hasBlockingErrors || isRebuilding}
+                  disabled={!exportReady || isRebuilding}
                 >
                   {projectDownloadLabel}
                 </IdeButton>
@@ -724,14 +813,63 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </>
           }
           right={
-            hasBlockingErrors ? (
+            exportReady ? (
+              <IdeStatusPill tone="ok">Ready</IdeStatusPill>
+            ) : hasBlockingErrors ? (
               <IdeStatusPill tone="error">Blocked</IdeStatusPill>
             ) : (
-              <IdeStatusPill tone="ok">Ready</IdeStatusPill>
+              <IdeStatusPill tone="warn">Verify</IdeStatusPill>
             )
           }
           testId="ide-export-panel"
         >
+          <section
+            ref={surfaceRef}
+            className="ide-export-summary-hero"
+            data-layout-mode={layoutMode}
+            data-testid="ide-export-summary-card"
+          >
+            <div className="ide-export-summary-hero-main">
+              <div className="ide-export-summary-copy">
+                <div className="ide-export-summary-eyebrow">
+                  <IdeStatusPill tone={exportReady ? 'ok' : hasBlockingErrors ? 'error' : 'warn'}>
+                    {exportReady ? 'READY FOR VIVADO' : hasBlockingErrors ? 'BLOCKED' : 'VERIFY REQUIRED'}
+                  </IdeStatusPill>
+                  <span>Engineering handoff</span>
+                </div>
+                <h3>{nextActionTitle}</h3>
+                <p>{nextActionDetail}</p>
+              </div>
+              <div className="ide-export-summary-actions">
+                <IdeButton
+                  tone="primary"
+                  onClick={() => void handleDownloadExport('project')}
+                  disabled={!exportReady || isRebuilding}
+                  testId="ide-export-rebuild-btn"
+                >
+                  {projectDownloadLabel}
+                </IdeButton>
+                <IdeButton
+                  tone="secondary"
+                  onClick={() => void handleDownloadExport('kit')}
+                  disabled={!exportReady || isRebuilding}
+                  testId="ide-export-download-kit-btn"
+                >
+                  {kitDownloadLabel}
+                </IdeButton>
+              </div>
+            </div>
+            <div className="ide-export-summary-grid" data-testid="ide-export-design-summary">
+              <SummaryStat label="Board" value="Basys3" />
+              <SummaryStat label="Top Module" value={topModule} mono />
+              <SummaryStat label="Mapped Pins" value={`${mappedCount}/${viewModel.pinTable.length}`} />
+              <SummaryStat label="Artifacts" value={`${readyArtifactCount}/${viewModel.artifacts.length}`} />
+              <SummaryStat label="Inputs" value={`${designSummary.inputs}`} />
+              <SummaryStat label="Outputs" value={`${designSummary.outputs}`} />
+              <SummaryStat label="Gates" value={`${designSummary.gates}`} />
+              <SummaryStat label="Clocked" value={`${designSummary.clocked}`} />
+            </div>
+          </section>
           <div className="ide-export-gate-stack" data-testid="ide-export-gate-stack">
             {gateRows.map((gate) => (
               <div
@@ -1055,9 +1193,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
               <section className="ide-export-section" data-testid="ide-export-artifact-preview">
                 <header className="ide-export-section-header">
-                  <h3>Generated HDL</h3>
+                  <div>
+                    <h3>Generated Artifacts</h3>
+                    <p className="ide-export-section-subcopy">
+                      Grouped by handoff role so you can inspect, copy, and download the exact file Vivado needs next.
+                    </p>
+                  </div>
                   <span className="ide-export-section-meta">
-                    {viewModel.artifacts.length > 0 ? `${viewModel.artifacts.length} files` : 'pending'}
+                    {readyArtifactCount}/{viewModel.artifacts.length || 0} ready
                   </span>
                 </header>
 
@@ -1071,88 +1214,192 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
                 {viewModel.artifacts.length > 0 && (
                   <>
-                    <div className="ide-export-artifact-tabs" data-testid="ide-export-artifact-tabs">
-                      {viewModel.artifacts.map((artifact) => (
-                        <button
-                          key={artifact.path}
-                          type="button"
-                          className={`ide-export-artifact-tab ${
-                            selectedArtifact?.path === artifact.path ? 'is-active' : ''
-                          }`}
-                          onClick={() => setSelectedArtifactPath(artifact.path)}
-                          data-testid={`ide-export-artifact-tab-${artifact.path
-                            .toLowerCase()
-                            .replace(/[^a-z0-9]+/g, '-')
-                            .replace(/^-+|-+$/g, '')}`}
-                        >
-                          {artifact.path}
-                        </button>
-                      ))}
+                    <div className="ide-export-key-actions">
+                      <IdeButton
+                        tone="ghost"
+                        onClick={() => void copyToClipboard(keyArtifacts.topVhd?.content ?? '', 'key:top-vhd')}
+                        disabled={!keyArtifacts.topVhd}
+                        testId="ide-export-copy-top-vhd"
+                      >
+                        {copiedTarget === 'key:top-vhd' ? 'Copied!' : 'Copy top.vhd'}
+                      </IdeButton>
+                      <IdeButton
+                        tone="ghost"
+                        onClick={() => void copyToClipboard(keyArtifacts.topXdc?.content ?? '', 'key:top-xdc')}
+                        disabled={!keyArtifacts.topXdc}
+                        testId="ide-export-copy-top-xdc"
+                      >
+                        {copiedTarget === 'key:top-xdc' ? 'Copied!' : 'Copy top.xdc'}
+                      </IdeButton>
+                      <IdeButton
+                        tone="ghost"
+                        onClick={() => void copyToClipboard(keyArtifacts.vivadoImport?.content ?? '', 'key:vivado-import')}
+                        disabled={!keyArtifacts.vivadoImport}
+                        testId="ide-export-copy-vivado-import"
+                      >
+                        {copiedTarget === 'key:vivado-import' ? 'Copied!' : 'Copy vivado_import.tcl'}
+                      </IdeButton>
+                      <IdeButton
+                        tone="ghost"
+                        onClick={() =>
+                          selectedArtifact &&
+                          void copyToClipboard(selectedArtifact.content, `current:${selectedArtifact.path}`)
+                        }
+                        disabled={!selectedArtifact || selectedArtifact.content.trim().length === 0}
+                        testId="ide-export-copy-current"
+                      >
+                        {selectedArtifact && copiedTarget === `current:${selectedArtifact.path}`
+                          ? 'Copied!'
+                          : 'Copy current file'}
+                      </IdeButton>
                     </div>
-                    {selectedArtifact && (
-                      <div className="ide-export-artifact-preview">
-                        <div className="ide-export-artifact-preview-header">
-                          <span data-testid="ide-export-preview-path">{selectedArtifact.path}</span>
-                          <div style={{ display: 'flex', gap: 'var(--ide-space-1)' }}>
-                            <IdeButton
-                              tone="ghost"
-                              onClick={() => void copyToClipboard(selectedArtifact.content, 'command')}
-                              disabled={selectedArtifact.content.trim().length === 0}
-                            >
-                              {copyState === 'command' ? 'Copied!' : 'Copy'}
-                            </IdeButton>
-                            <IdeButton
-                              tone="secondary"
-                              onClick={() => handleDownloadArtifact(selectedArtifact)}
-                              disabled={selectedArtifact.preview.trim().length === 0}
-                            >
-                              Download
-                            </IdeButton>
+                    <div
+                      className="ide-export-artifact-workspace"
+                      data-layout-mode={layoutMode}
+                      data-testid="ide-export-artifact-tabs"
+                    >
+                      <div className="ide-export-artifact-groups">
+                        {artifactGroups.map((group) => (
+                          <section
+                            key={group.id}
+                            className="ide-export-artifact-group"
+                            data-testid={`ide-export-artifact-group-${group.id}`}
+                          >
+                            <header className="ide-export-artifact-group-header">
+                              <div>
+                                <h4>{group.label}</h4>
+                                <p>{group.description}</p>
+                              </div>
+                              <span>{group.artifacts.length}</span>
+                            </header>
+                            <div className="ide-export-artifact-group-list">
+                              {group.artifacts.map((artifact) => (
+                                <button
+                                  key={artifact.path}
+                                  type="button"
+                                  className={`ide-export-artifact-tab ${
+                                    selectedArtifact?.path === artifact.path ? 'is-active' : ''
+                                  }`}
+                                  onClick={() => setSelectedArtifactPath(artifact.path)}
+                                  data-testid={`ide-export-artifact-tab-${artifact.path
+                                    .toLowerCase()
+                                    .replace(/[^a-z0-9]+/g, '-')
+                                    .replace(/^-+|-+$/g, '')}`}
+                                >
+                                  <span className="ide-export-artifact-tab-name">{artifact.path}</span>
+                                  <span className="ide-export-artifact-tab-note">{artifact.note}</span>
+                                  <IdeStatusPill
+                                    tone={
+                                      artifact.status === 'ready'
+                                        ? 'ok'
+                                        : artifact.status === 'blocked'
+                                          ? 'error'
+                                          : 'warn'
+                                    }
+                                  >
+                                    {artifact.status === 'ready'
+                                      ? 'Ready'
+                                      : artifact.status === 'blocked'
+                                        ? 'Blocked'
+                                        : 'Pending'}
+                                  </IdeStatusPill>
+                                </button>
+                              ))}
+                            </div>
+                          </section>
+                        ))}
+                      </div>
+                      {selectedArtifact && (
+                        <div className="ide-export-artifact-preview ide-export-artifact-preview-v2">
+                          <div className="ide-export-artifact-preview-header">
+                            <div className="ide-export-artifact-preview-title">
+                              <span data-testid="ide-export-preview-path">{selectedArtifact.path}</span>
+                              <span>{selectedArtifact.note}</span>
+                            </div>
+                            <div style={{ display: 'flex', gap: 'var(--ide-space-1)' }}>
+                              <IdeButton
+                                tone="ghost"
+                                onClick={() =>
+                                  void copyToClipboard(
+                                    selectedArtifact.content,
+                                    `current:${selectedArtifact.path}`
+                                  )
+                                }
+                                disabled={selectedArtifact.content.trim().length === 0}
+                              >
+                                {copiedTarget === `current:${selectedArtifact.path}` ? 'Copied!' : 'Copy'}
+                              </IdeButton>
+                              <IdeButton
+                                tone="secondary"
+                                onClick={() => handleDownloadArtifact(selectedArtifact)}
+                                disabled={selectedArtifact.preview.trim().length === 0}
+                              >
+                                Download
+                              </IdeButton>
+                            </div>
+                          </div>
+                          <div className="ide-export-artifact-preview-body">
+                            {selectedArtifact.preview.trim().length > 0 ? (
+                              <pre
+                                className="ide-export-artifact-code"
+                                data-testid="ide-export-preview-code"
+                                dangerouslySetInnerHTML={{
+                                  __html: syntaxHighlight(
+                                    selectedArtifact.preview ?? '',
+                                    selectedArtifact.kind ?? ''
+                                  ),
+                                }}
+                              />
+                            ) : (
+                              <p className="ide-export-artifact-empty">
+                                File content will appear once the circuit and pin mapping are complete.
+                              </p>
+                            )}
                           </div>
                         </div>
-                        {selectedArtifact.preview.trim().length > 0 ? (
-                          <pre
-                            className="ide-export-artifact-code"
-                            data-testid="ide-export-preview-code"
-                            dangerouslySetInnerHTML={{ __html: syntaxHighlight(selectedArtifact.preview ?? '', selectedArtifact.kind ?? '') }}
-                          />
-                        ) : (
-                          <p className="ide-export-artifact-empty">
-                            File content will appear once the circuit and pin mapping are complete.
-                          </p>
-                        )}
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </>
                 )}
               </section>
 
               <section className="ide-export-section" data-testid="ide-export-vivado-ready">
                 <header className="ide-export-section-header">
-                  <h3>Open in Vivado</h3>
-                  {!hasBlockingErrors && hasVerifyPass
+                  <div>
+                    <h3>Next in Vivado</h3>
+                    <p className="ide-export-section-subcopy">
+                      Keep the handoff short at the top level. The full checklist is still available when you need it.
+                    </p>
+                  </div>
+                  {exportReady
                     ? <IdeStatusPill tone="ok">Ready</IdeStatusPill>
                     : <IdeStatusPill tone="error">Blocked</IdeStatusPill>
                   }
                 </header>
 
-                {!hasBlockingErrors && hasVerifyPass ? (
+                {exportReady ? (
                   <IdeCallout tone="success" title="Ready to program your Basys3" testId="ide-export-vivado-ready-callout">
-                    <p className="ide-copy" style={{ margin: '0 0 var(--ide-space-1) 0' }}>
-                      Download the Vivado Project above, then follow these steps.
+                    <p className="ide-copy" style={{ margin: 0 }}>
+                      Download the Vivado Project, unzip it, and follow the three-step handoff below.
                     </p>
                   </IdeCallout>
                 ) : (
                   <IdeCallout tone="warn" title="Resolve issues first" testId="ide-export-vivado-blocked-callout">
                     <p className="ide-copy" style={{ margin: 0 }} data-testid="ide-export-vivado-command">
-                      Fix the blockers listed above before opening in Vivado.
+                      Fix the blockers listed here before opening the project in Vivado.
                     </p>
                   </IdeCallout>
                 )}
 
-                <div data-testid="ide-export-vivado-steps" style={{ marginTop: 'var(--ide-space-2)' }}>
-                  <div data-testid="ide-export-vivado-checklist">
-                    <div className="ide-kv-list" style={{ marginBottom: 'var(--ide-space-2)' }}>
+                <div className="ide-export-next-steps" data-testid="ide-export-vivado-steps">
+                  <ol className="ide-export-checklist" data-testid="ide-export-vivado-checklist">
+                    <li>Open Vivado.</li>
+                    <li>Run <code>vivado_import.tcl</code> from the extracted project folder.</li>
+                    <li>Generate bitstream and program the Basys3.</li>
+                  </ol>
+                  <details className="ide-export-advanced-steps">
+                    <summary>Advanced / full checklist</summary>
+                    <div className="ide-kv-list" style={{ marginTop: 'var(--ide-space-2)', marginBottom: 'var(--ide-space-2)' }}>
                       <div className="ide-kv-row">
                         <span>Board</span>
                         <span><code>Basys3</code></span>
@@ -1163,9 +1410,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                           <code data-testid="ide-export-part-number">{vivadoPart}</code>
                           <IdeButton
                             tone="ghost"
-                            onClick={() => void copyToClipboard(vivadoPart, 'command')}
+                            onClick={() => void copyToClipboard(vivadoPart, 'part-number')}
                           >
-                            Copy
+                            {copiedTarget === 'part-number' ? 'Copied!' : 'Copy'}
                           </IdeButton>
                         </span>
                       </div>
@@ -1178,7 +1425,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         <span><code>Vivado 2024.1+</code></span>
                       </div>
                     </div>
-                    <ol className="ide-export-checklist">
+                    <ol className="ide-export-checklist ide-export-checklist--advanced">
                       <li>Unzip the download and keep the <code>{projectSlug}</code> folder intact</li>
                       <li>Open Vivado → <strong>Open Project</strong></li>
                       <li>Select <code>{projectSlug}.xpr</code> inside the unzipped folder</li>
@@ -1188,9 +1435,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', marginTop: 'var(--ide-space-2)' }}>
                       Fallback: run <code>{vivadoCommand}</code> from the extracted folder if Open Project is unavailable.
                     </p>
-                  </div>
+                  </details>
                   {/* Gate contract compatibility: vivado command/readme must be findable */}
-                  {!hasBlockingErrors && hasVerifyPass ? (
+                  {exportReady ? (
                     <div data-testid="ide-export-readme-preview" style={{ marginTop: 'var(--ide-space-1)' }}>
                       <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-muted)', margin: 0 }}
                          data-testid="ide-export-vivado-command">
@@ -1219,7 +1466,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     <IdeButton
                       tone="primary"
                       onClick={() => void handleDownloadExport('project')}
-                      disabled={hasBlockingErrors || isRebuilding}
+                      disabled={!exportReady || isRebuilding}
                       testId="ide-export-rebuild-btn"
                     >
                       {projectDownloadLabel}
@@ -1230,13 +1477,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <IdeButton
                     tone="secondary"
                     onClick={() => void handleDownloadExport('kit')}
-                    disabled={hasBlockingErrors || isRebuilding}
+                    disabled={!exportReady || isRebuilding}
                     testId="ide-export-download-kit-btn"
                   >
                     {kitDownloadLabel}
                   </IdeButton>
                 </div>
-                {hasBlockingErrors && (
+                {!exportReady && (
                   <span
                     className="ide-export-download-gate-note"
                     data-testid="ide-export-download-gate-note"
@@ -1326,11 +1573,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     style={{ fontSize: 10, marginTop: 0 }}
                     data-testid="ide-export-copy-state"
                   >
-                    {copyState === 'report'
+                    {copiedTarget === 'report'
                       ? 'Copied.'
-                      : copyState === 'error'
+                      : copyError
                         ? 'Clipboard error.'
-                        : 'Export hash + mapping for debugging.'}
+                        : 'Export hash and mapping snapshot for debugging.'}
                   </p>
                 </div>
               </details>
@@ -1342,6 +1589,88 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     </IdeSurfaceLayout>
   );
 };
+
+const LOGIC_INPUT_TYPES = new Set(['INPUT', 'Switch', 'Button', 'Clock', 'CLOCK']);
+const LOGIC_OUTPUT_TYPES = new Set(['OUTPUT', 'Lamp']);
+const CLOCKED_NODE_TYPES = new Set(['DFlipFlop', 'DLatch', 'TFlipFlop', 'JKFlipFlop', 'Counter4Bit', 'Delay']);
+
+const SummaryStat: React.FC<{ label: string; value: string; mono?: boolean }> = ({
+  label,
+  value,
+  mono = false,
+}) => (
+  <div className="ide-export-summary-stat">
+    <span className="ide-export-summary-stat-label">{label}</span>
+    <span className={`ide-export-summary-stat-value${mono ? ' is-mono' : ''}`}>{value}</span>
+  </div>
+);
+
+function buildArtifactGroups(artifacts: ExportArtifactView[]): ExportArtifactGroup[] {
+  const groups: ExportArtifactGroup[] = [
+    { id: 'hdl', label: 'HDL', description: 'Top-level design source files.', artifacts: [] },
+    { id: 'constraints', label: 'Constraints', description: 'Pin constraints and board bindings.', artifacts: [] },
+    { id: 'testbench', label: 'Testbench', description: 'Simulation fixtures and expected behavior.', artifacts: [] },
+    { id: 'project', label: 'Project', description: 'Scripts, manifests, and handoff metadata.', artifacts: [] },
+  ];
+  const index = new Map(groups.map((group) => [group.id, group]));
+  for (const artifact of artifacts) {
+    const groupId = classifyArtifactGroup(artifact);
+    index.get(groupId)?.artifacts.push(artifact);
+  }
+  return groups.filter((group) => group.artifacts.length > 0);
+}
+
+function classifyArtifactGroup(artifact: ExportArtifactView): ExportArtifactGroupId {
+  if (artifact.kind === 'xdc') return 'constraints';
+  if (artifact.kind === 'tb') return 'testbench';
+  if (artifact.kind === 'vhd' && /testbench/i.test(artifact.path)) return 'testbench';
+  if (artifact.kind === 'vhd') return 'hdl';
+  return 'project';
+}
+
+function buildDesignSummary(project: RBProject): ExportDesignSummary {
+  const nodes = project.circuit?.nodes ?? [];
+  let inputs = 0;
+  let outputs = 0;
+  let gates = 0;
+  let clocked = 0;
+
+  for (const node of nodes) {
+    if (LOGIC_INPUT_TYPES.has(node.type)) {
+      inputs += 1;
+      continue;
+    }
+    if (LOGIC_OUTPUT_TYPES.has(node.type)) {
+      outputs += 1;
+      continue;
+    }
+    if (CLOCKED_NODE_TYPES.has(node.type)) {
+      clocked += 1;
+      gates += 1;
+      continue;
+    }
+    gates += 1;
+  }
+
+  return {
+    inputs: Math.max(inputs, project.ioMapping?.inputs?.length ?? 0),
+    outputs: Math.max(outputs, project.ioMapping?.outputs?.length ?? 0),
+    gates,
+    clocked,
+  };
+}
+
+function resolveExportLayoutMode(width?: number): ExportLayoutMode {
+  const nextWidth =
+    typeof width === 'number'
+      ? width
+      : typeof window !== 'undefined'
+        ? window.innerWidth
+        : 1440;
+  if (nextWidth >= 1440) return 'wide';
+  if (nextWidth >= 1280) return 'standard';
+  return 'compact';
+}
 
 function createPinOverrideMap(
   rows: ExportPinTableRow[]

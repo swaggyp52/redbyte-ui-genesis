@@ -8,6 +8,7 @@ type IdeSurfaceMode =
   | 'export'
   | 'import';
 type ResizeEdge = 'left' | 'right' | 'bottom';
+type WorkbenchLayoutMode = 'wide' | 'standard' | 'compact';
 
 const LAYOUT_STORAGE_KEY = 'rb.ide.workbench.layout.v3';
 const DEFAULT_LAYOUT = {
@@ -55,9 +56,11 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   consoleHasEntries = false,
   hideRightDock = false,
 }) => {
+  const shellRef = useRef<HTMLElement | null>(null);
   const [layout, setLayout] = useState<WorkbenchLayoutState>(DEFAULT_LAYOUT);
   const resizeRef = useRef<ActiveResizeState | null>(null);
   const [consolePinnedOpen, setConsolePinnedOpen] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<WorkbenchLayoutMode>(() => detectLayoutMode());
   const [focusMode, setFocusMode] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(`rb.ide.workbench.focus.${mode}`) === '1';
@@ -84,6 +87,30 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
   }, [layout]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const shell = shellRef.current;
+    if (!shell || typeof ResizeObserver === 'undefined') {
+      setLayoutMode(detectLayoutMode());
+      return;
+    }
+    const observer = new ResizeObserver((entries) => {
+      const nextWidth = entries[0]?.contentRect.width ?? shell.clientWidth;
+      setLayoutMode(detectLayoutMode(nextWidth));
+    });
+    observer.observe(shell);
+    setLayoutMode(detectLayoutMode(shell.clientWidth));
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const frame = window.requestAnimationFrame(() => {
+      resetWorkbenchScrollPositions(shellRef.current);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [hideRightDock, layoutMode, mode]);
 
   const onPointerMove = useCallback((event: PointerEvent) => {
     const active = resizeRef.current;
@@ -157,13 +184,20 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
 
   return (
     <section
+      ref={shellRef}
       className={`ide-surface-shell ide-workbench-shell${focusMode ? ' is-focus-mode' : ''}`}
       data-testid={`ide-mode-${mode}`}
       data-ide-mode-marker={mode}
       data-focus-mode={focusMode ? '1' : '0'}
+      data-layout-mode={layoutMode}
       style={shellStyle}
     >
-      <div className={`ide-workbench-main${hideRightDock ? ' hide-right-dock' : ''}`} data-testid="ide-surface-grid" data-grid-columns="12">
+      <div
+        className={`ide-workbench-main${hideRightDock ? ' hide-right-dock' : ''}`}
+        data-testid="ide-surface-grid"
+        data-grid-columns="12"
+        data-layout-mode={layoutMode}
+      >
         <aside className="ide-workbench-dock ide-workbench-dock-left" data-testid="ide-left-dock">
           {leftDock ?? <DefaultDock mode={mode} side="left" />}
         </aside>
@@ -215,6 +249,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
         }`}
         data-testid="ide-workbench-console"
         data-console-state={consoleState}
+        data-layout-mode={layoutMode}
       >
         <button
           type="button"
@@ -297,4 +332,27 @@ function clampValue(value: number, range: { min: number; max: number }): number 
 function capitalize(value: string): string {
   if (!value) return value;
   return `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`;
+}
+
+function detectLayoutMode(width?: number): WorkbenchLayoutMode {
+  const effectiveWidth =
+    typeof width === 'number' && Number.isFinite(width)
+      ? width
+      : typeof window !== 'undefined'
+        ? window.innerWidth
+        : 1366;
+  if (effectiveWidth >= 1440) return 'wide';
+  if (effectiveWidth >= 1280) return 'standard';
+  return 'compact';
+}
+
+function resetWorkbenchScrollPositions(shell: HTMLElement | null): void {
+  if (!shell) return;
+  const scrollTargets = shell.querySelectorAll<HTMLElement>(
+    '.ide-workbench-dock, .ide-workbench-workspace, .ide-panel-body, .ide-workbench-console'
+  );
+  scrollTargets.forEach((target) => {
+    target.scrollTop = 0;
+    target.scrollLeft = 0;
+  });
 }

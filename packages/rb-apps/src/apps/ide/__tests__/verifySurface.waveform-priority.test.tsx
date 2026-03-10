@@ -194,15 +194,15 @@ describe('VerifySurface waveform lane priority', () => {
     expect(getByTestId('ide-verify-run-context-ticks_shown').textContent).toContain('Showing t0-t6 (fail window)');
     expect(getByTestId('ide-verify-run-context-why_these_ticks').textContent).toContain('t1');
 
-    expect(getSignalListOrder(container)).toEqual(['carry', 'sum', 'flag', 'sw0', 'sw1']);
+    expect(getSignalListOrder(container)).toEqual(['sw0', 'sw1', 'carry', 'sum', 'flag']);
     expect(getWaveformOrder(container).slice(0, 5)).toEqual(['carry', 'sum', 'flag', 'sw0', 'sw1']);
 
     fireEvent.click(getByTestId('ide-verify-pin-signal-flag'));
-    expect(getSignalListOrder(container)).toEqual(['flag', 'carry', 'sum', 'sw0', 'sw1']);
+    expect(getSignalListOrder(container)).toEqual(['sw0', 'sw1', 'flag', 'carry', 'sum']);
     expect(getWaveformOrder(container).slice(0, 5)).toEqual(['flag', 'carry', 'sum', 'sw0', 'sw1']);
 
     fireEvent.click(getByTestId('ide-verify-failure-sum_8'));
-    expect(getSignalListOrder(container)).toEqual(['flag', 'sum', 'carry', 'sw0', 'sw1']);
+    expect(getSignalListOrder(container)).toEqual(['sw0', 'sw1', 'flag', 'sum', 'carry']);
     expect(getWaveformOrder(container).slice(0, 5)).toEqual(['flag', 'sum', 'carry', 'sw0', 'sw1']);
     expect(getByTestId('ide-verify-run-context-ticks_shown').textContent).toContain('Showing t2-t8 (fail window)');
     expect(getByTestId('ide-verify-run-context-why_these_ticks').textContent).toContain('t8');

@@ -85,6 +85,8 @@ export const IdeApp: React.FC = () => {
     tick: number;
     signals: Map<string, 0 | 1>;
   } | null>(null);
+  // A2: Verify → Design signal linkage
+  const [verifySelectedSignal, setVerifySelectedSignal] = useState<string | null>(null);
   const sessionMetaRef = useRef<LabSessionMeta | null>(null);
   const exportProjectRef = useRef<typeof exportProject | null>(null);
   const projectIdRef = useRef('');
@@ -1155,6 +1157,7 @@ export const IdeApp: React.FC = () => {
               externalDebugSignals={debugState?.signals ?? null}
               externalDebugTick={debugState?.tick ?? null}
               onClearExternalDebug={handleClearDebugState}
+              activeVerifySignal={verifySelectedSignal}
             />
           </ErrorBoundary>
         ) : currentMode === 'verify' ? (
@@ -1185,6 +1188,7 @@ export const IdeApp: React.FC = () => {
                 });
               }}
               onDebugTickSelected={handleDebugTickSelected}
+              onSignalSelected={setVerifySelectedSignal}
               onDeleteVector={(tickStr) => {
                 const tick = Number(tickStr);
                 let removed = false;
