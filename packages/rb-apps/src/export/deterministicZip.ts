@@ -4,12 +4,18 @@ import { compareCodepoint } from './codepointSort';
 export interface DeterministicZipEntry {
   name: string;
   text: string;
+  dir?: boolean;
 }
 
 const FIXED_ZIP_DATE_ISO = '2026-01-01T00:00:00.000Z';
 
 function normalizeEntryPath(name: string): string {
   return name.replace(/\\/g, '/');
+}
+
+function normalizeDirectoryPath(name: string): string {
+  const normalized = normalizeEntryPath(name).replace(/\/+$/g, '');
+  return normalized.length > 0 ? `${normalized}/` : normalized;
 }
 
 export function normalizeNewlines(text: string): string {
@@ -25,9 +31,13 @@ export async function buildDeterministicZip(entries: DeterministicZipEntry[]): P
   );
 
   for (const entry of sortedEntries) {
-    zip.file(normalizeEntryPath(entry.name), normalizeNewlines(entry.text), {
+    const normalizedName = entry.dir
+      ? normalizeDirectoryPath(entry.name)
+      : normalizeEntryPath(entry.name);
+    zip.file(normalizedName, entry.dir ? '' : normalizeNewlines(entry.text), {
       createFolders: false,
       date: fixedDate,
+      dir: entry.dir === true,
     });
   }
 

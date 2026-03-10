@@ -140,7 +140,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     [dirtySinceVerify, verifyResult]
   );
   const diagnosticsList = useMemo(
-    () => [...evidenceDiagnostics, ...viewModel.errors, ...viewModel.warnings],
+    () => [...viewModel.errors, ...evidenceDiagnostics, ...viewModel.warnings],
     [evidenceDiagnostics, viewModel.errors, viewModel.warnings]
   );
   const [downloadError, setDownloadError] = useState<string>('');
@@ -220,8 +220,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     return index;
   }, [viewModel.pinTable]);
 
-  const hasBlockingErrors = diagnosticsList.some((entry) => entry.severity === 'error');
+  const hasBlockingErrors = viewModel.errors.length > 0;
   const hasVerifyPass = verifyResult?.status === 'pass' && !dirtySinceVerify;
+  const hasVerifyEvidenceWarning = evidenceDiagnostics.length > 0;
   const mappedCount = viewModel.pinTable.filter((row) => {
     const key = toPortKey(row.port);
     const pinValue = (pinOverrides[key] ?? '').trim();
@@ -375,17 +376,18 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     () => viewModel.artifacts.filter((artifact) => artifact.status === 'ready').length,
     [viewModel.artifacts]
   );
-  const exportReady = !hasBlockingErrors && hasVerifyPass;
-  const nextActionTitle = exportReady
+  const downloadReady = !hasBlockingErrors;
+  const exportTrusted = downloadReady && hasVerifyPass;
+  const nextActionTitle = exportTrusted
     ? 'Open Vivado and import the generated project.'
     : hasBlockingErrors
       ? 'Resolve blockers before downloading the build package.'
-      : 'Run Verify to seal this export package.';
-  const nextActionDetail = exportReady
+      : 'Artifacts are available. Verify is still recommended.';
+  const nextActionDetail = exportTrusted
     ? 'Download the Vivado Project, unzip it, then run the import script or open the project directly.'
     : hasBlockingErrors
       ? 'Use the blocker list and pin review below to clear mapping or clock issues before export.'
-      : 'A passing deterministic Verify run is required before the artifacts become trusted.';
+      : 'Students can inspect and export the current text files now, but the package is not yet sealed by a passing deterministic Verify run.';
   const vivadoCommand =
     'vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log';
   const projectDownloadLabel = isRebuilding
@@ -644,8 +646,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         <section className="ide-workbench-placeholder ide-export-sidecard" data-testid="ide-export-checks-dock">
           <header className="ide-workbench-placeholder-header">
             <h3>Handoff</h3>
-            <IdeStatusPill tone={exportReady ? 'ok' : hasBlockingErrors ? 'error' : 'warn'}>
-              {exportReady ? 'READY' : hasBlockingErrors ? 'BLOCKED' : 'VERIFY'}
+            <IdeStatusPill tone={exportTrusted ? 'ok' : hasBlockingErrors ? 'error' : 'warn'}>
+              {exportTrusted ? 'READY' : hasBlockingErrors ? 'BLOCKED' : 'UNVERIFIED'}
             </IdeStatusPill>
           </header>
           <div className="ide-kv-list">
@@ -671,7 +673,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             <IdeButton
               tone="primary"
               onClick={() => void handleDownloadExport('project')}
-              disabled={!exportReady || isRebuilding}
+              disabled={!downloadReady || isRebuilding}
               testId="ide-export-dock-download"
             >
               {isRebuilding ? <><IdeSpinner size="sm" testId="ide-export-rebuild-spinner" /> Building&hellip;</> : projectDownloadCompactLabel}
@@ -747,7 +749,17 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               </div>
               <div className="ide-kv-row" data-testid="ide-export-capsule-build-state">
                 <span>Export State</span>
-                <span>{isRebuilding ? 'Building…' : downloadDone ? 'Downloaded' : 'Ready'}</span>
+                <span>
+                  {isRebuilding
+                    ? 'Building…'
+                    : downloadDone
+                      ? 'Downloaded'
+                      : exportTrusted
+                        ? 'Trusted'
+                        : downloadReady
+                          ? 'Unverified'
+                          : 'Blocked'}
+                </span>
               </div>
             </div>
             <details style={{ marginTop: 'var(--ide-space-2)' }}>
@@ -802,7 +814,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       }
     >
       <IdePanel
-          title={exportReady ? 'Export Handoff Ready' : hasBlockingErrors ? 'Export Handoff Blocked' : 'Export Waiting on Verify'}
+          title={
+            exportTrusted
+              ? 'Export Handoff Ready'
+              : hasBlockingErrors
+                ? 'Export Handoff Blocked'
+                : 'Export Handoff Available'
+          }
           description="Review the generated package, confirm readiness, and prepare the project for Vivado."
           actions={
             <>
@@ -810,7 +828,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 <IdeButton
                   tone="primary"
                   onClick={() => void handleDownloadExport('project')}
-                  disabled={!exportReady || isRebuilding}
+                  disabled={!downloadReady || isRebuilding}
                 >
                   {projectDownloadLabel}
                 </IdeButton>
@@ -818,12 +836,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </>
           }
           right={
-            exportReady ? (
+            exportTrusted ? (
               <IdeStatusPill tone="ok">Ready</IdeStatusPill>
             ) : hasBlockingErrors ? (
               <IdeStatusPill tone="error">Blocked</IdeStatusPill>
             ) : (
-              <IdeStatusPill tone="warn">Verify</IdeStatusPill>
+              <IdeStatusPill tone="warn">Unverified</IdeStatusPill>
             )
           }
           testId="ide-export-panel"
@@ -837,8 +855,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             <div className="ide-export-summary-hero-main">
               <div className="ide-export-summary-copy">
                 <div className="ide-export-summary-eyebrow">
-                  <IdeStatusPill tone={exportReady ? 'ok' : hasBlockingErrors ? 'error' : 'warn'}>
-                    {exportReady ? 'READY FOR VIVADO' : hasBlockingErrors ? 'BLOCKED' : 'VERIFY REQUIRED'}
+                  <IdeStatusPill tone={exportTrusted ? 'ok' : hasBlockingErrors ? 'error' : 'warn'}>
+                    {exportTrusted ? 'READY FOR VIVADO' : hasBlockingErrors ? 'BLOCKED' : 'UNVERIFIED'}
                   </IdeStatusPill>
                   <span>Engineering handoff</span>
                 </div>
@@ -849,7 +867,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 <IdeButton
                   tone="primary"
                   onClick={() => void handleDownloadExport('project')}
-                  disabled={!exportReady || isRebuilding}
+                  disabled={!downloadReady || isRebuilding}
                   testId="ide-export-rebuild-btn"
                 >
                   {projectDownloadLabel}
@@ -857,7 +875,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 <IdeButton
                   tone="secondary"
                   onClick={() => void handleDownloadExport('kit')}
-                  disabled={!exportReady || isRebuilding}
+                  disabled={!downloadReady || isRebuilding}
                   testId="ide-export-download-kit-btn"
                 >
                   {kitDownloadLabel}
@@ -937,10 +955,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 {hasBlockingErrors && (
                   <IdeCallout
                     tone="error"
-                    title={`${diagnosticsList.filter((d) => d.severity === 'error').length} blocker${diagnosticsList.filter((d) => d.severity === 'error').length !== 1 ? 's' : ''} — export unavailable`}
+                    title={`${viewModel.errors.length} blocker${viewModel.errors.length !== 1 ? 's' : ''} — download unavailable`}
                     testId="ide-export-blockers-callout"
                   >
-                    <p className="ide-copy" style={{ margin: 0 }}>Resolve all mapping and verification issues before downloading.</p>
+                    <p className="ide-copy" style={{ margin: 0 }}>Resolve all mapping and export issues before downloading.</p>
                     <div style={{ marginTop: 'var(--ide-space-2)', display: 'flex', gap: 'var(--ide-space-2)', flexWrap: 'wrap' }}>
                       {onGoToProject && (
                         <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-export-go-project">
@@ -953,6 +971,20 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         </IdeButton>
                       )}
                     </div>
+                  </IdeCallout>
+                )}
+                {!hasBlockingErrors && hasVerifyEvidenceWarning && (
+                  <IdeCallout tone="warn" title="Verification is advisory here" testId="ide-export-unverified-callout">
+                    <p className="ide-copy" style={{ margin: 0 }}>
+                      The generated text files are available now. A passing Verify run is still recommended before trusting the handoff for final hardware evidence.
+                    </p>
+                    {onOpenVerify && (
+                      <div style={{ marginTop: 'var(--ide-space-2)' }}>
+                        <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-open-verify-advisory">
+                          Open Verify
+                        </IdeButton>
+                      </div>
+                    )}
                   </IdeCallout>
                 )}
 
@@ -1376,16 +1408,22 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       Keep the handoff short at the top level. The full checklist is still available when you need it.
                     </p>
                   </div>
-                  {exportReady
+                {downloadReady
                     ? <IdeStatusPill tone="ok">Ready</IdeStatusPill>
                     : <IdeStatusPill tone="error">Blocked</IdeStatusPill>
                   }
                 </header>
 
-                {exportReady ? (
+                {exportTrusted ? (
                   <IdeCallout tone="success" title="Ready to program your Basys3" testId="ide-export-vivado-ready-callout">
                     <p className="ide-copy" style={{ margin: 0 }}>
                       Download the Vivado Project, unzip it, and follow the three-step handoff below.
+                    </p>
+                  </IdeCallout>
+                ) : downloadReady ? (
+                  <IdeCallout tone="warn" title="Artifacts available, but unverified" testId="ide-export-vivado-unverified-callout">
+                    <p className="ide-copy" style={{ margin: 0 }} data-testid="ide-export-vivado-command">
+                      Students can inspect and export the current text files now. Run Verify before treating the package as trusted hardware evidence.
                     </p>
                   </IdeCallout>
                 ) : (
@@ -1442,7 +1480,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     </p>
                   </details>
                   {/* Gate contract compatibility: vivado command/readme must be findable */}
-                  {exportReady ? (
+                  {downloadReady ? (
                     <div data-testid="ide-export-readme-preview" style={{ marginTop: 'var(--ide-space-1)' }}>
                       <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-muted)', margin: 0 }}
                          data-testid="ide-export-vivado-command">
@@ -1471,7 +1509,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     <IdeButton
                       tone="primary"
                       onClick={() => void handleDownloadExport('project')}
-                      disabled={!exportReady || isRebuilding}
+                      disabled={!downloadReady || isRebuilding}
                       testId="ide-export-rebuild-btn"
                     >
                       {projectDownloadCompactLabel}
@@ -1482,18 +1520,18 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <IdeButton
                     tone="secondary"
                     onClick={() => void handleDownloadExport('kit')}
-                    disabled={!exportReady || isRebuilding}
+                    disabled={!downloadReady || isRebuilding}
                     testId="ide-export-download-kit-btn"
                   >
                     {kitDownloadLabel}
                   </IdeButton>
                 </div>
-                {!exportReady && (
+                {!downloadReady && (
                   <span
                     className="ide-export-download-gate-note"
                     data-testid="ide-export-download-gate-note"
                   >
-                    {gateRows.find((g) => g.tone === 'error' || g.tone === 'warn')?.label ?? 'blockers'} must pass
+                    {gateRows.find((g) => g.tone === 'error')?.label ?? 'Blockers'} must pass
                   </span>
                 )}
                 <details className="ide-export-pipeline-details" data-testid="ide-export-pipeline-details" style={{ marginTop: 'var(--ide-space-1)' }}>
@@ -1731,8 +1769,9 @@ function buildEvidenceDiagnostics(
   if (!verifyResult) {
     diagnostics.push(createEvidenceDiagnostic({
       code: 'RBEV1000',
-      message: 'Evidence Capsule requires a verification run before export.',
-      fix: 'Open Verify and run the deterministic vector suite to generate a PASS report.',
+      message: 'No verification run found. Export files are still available, but the handoff is unverified.',
+      fix: 'Open Verify and run the deterministic vector suite before treating the package as final hardware evidence.',
+      severity: 'warning',
     }));
     return diagnostics;
   }
@@ -1742,17 +1781,19 @@ function buildEvidenceDiagnostics(
       code: 'RBEV1001',
       message:
         typeof verifyResult.failingTick === 'number'
-          ? `Latest verification failed at tick ${verifyResult.failingTick}.`
-          : 'Latest verification failed.',
-      fix: 'Open Verify, inspect the failure diff, then rerun until PASS.',
+          ? `Latest verification failed at tick ${verifyResult.failingTick}. Export files remain viewable.`
+          : 'Latest verification failed. Export files remain viewable.',
+      fix: 'Open Verify, inspect the failure diff, then rerun until PASS before relying on the bundle as trusted evidence.',
+      severity: 'warning',
     }));
   }
 
   if (dirtySinceVerify) {
     diagnostics.push(createEvidenceDiagnostic({
       code: 'RBEV1002',
-      message: 'Design changed since the last PASS verification run.',
-      fix: 'Rerun verification to refresh deterministic evidence before export.',
+      message: 'Design changed since the last PASS verification run. Export files remain available, but trust is stale.',
+      fix: 'Rerun verification to refresh deterministic evidence before using the bundle as your final hardware handoff.',
+      severity: 'warning',
     }));
   }
 
@@ -1763,7 +1804,9 @@ function createEvidenceDiagnostic(input: {
   code: string;
   message: string;
   fix: string;
+  severity?: ExportDiagnosticSeverity;
 }): ExportDiagnosticView {
+  const severity = input.severity ?? 'warning';
   const canonical: IdeDiagnostic = {
     id: createDiagnosticId({
       code: input.code,
@@ -1774,9 +1817,9 @@ function createEvidenceDiagnostic(input: {
       message: input.message,
       hint: [input.fix],
     }),
-    severity: 'error',
+    severity: severity === 'error' ? 'error' : 'warn',
     code: input.code,
-    title: 'Evidence gate blocker',
+    title: severity === 'error' ? 'Evidence gate blocker' : 'Evidence advisory',
     message: input.message,
     hint: [input.fix],
     owner: {
@@ -1802,7 +1845,7 @@ function createEvidenceDiagnostic(input: {
     message: canonical.message,
     hint: canonical.hint,
     fix: input.fix,
-    severity: 'error',
+    severity,
     owner: canonical.owner,
     actions: canonical.actions,
     canonical,

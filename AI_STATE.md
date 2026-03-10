@@ -18527,6 +18527,82 @@ All 25 `pnpm verify:gates` gates now pass (exit 0).
 
 ---
 
+## Change Log 2026-03-10 (Reference-matched Vivado project skeleton)
+
+**Subsystem**: FPGA export/import - Vivado Project Mode fidelity
+
+**Why**
+
+- Real Vivado validation proved the prior export target was still too thin even after the `.xpr` run-schema fix.
+- The exported project could open only after warning dialogs and manual top-file selection, which is not acceptable for lab-day use.
+- `swaggy.zip` is now the canonical working reference: RedByte must emit a project that looks and behaves much more like a Vivado-authored project, not a merely plausible custom bundle.
+
+**Reference findings**
+
+- The working reference uses `basys3.xdc`, not `top.xdc`, inside `constrs_1/new/`.
+- The reference `.xpr` contains richer `Configuration`, `FileSets`, `Simulators`, and `Runs` sections than the prior RedByte emitter.
+- The reference project skeleton includes `utils_1`, `.runs/`, `.cache/`, `.hw/`, `.sim/`, and `.ip_user_files/` directories, even when many generated contents are absent from the archive.
+- The reference `sources_1`, `constrs_1`, `sim_1`, and `utils_1` metadata is more explicit about top-module ownership and Vivado defaults.
+
+**Files changed**
+
+- `packages/rb-apps/src/export/deterministicZip.ts`
+- `packages/rb-apps/src/fpga/vivado/vivadoProjectFolder.ts`
+- `packages/rb-apps/src/__tests__/ide-vivado-project-folder-contract.test.ts`
+
+**What changed**
+
+- Added explicit directory-entry support to the deterministic ZIP builder so exported archives can include empty Vivado skeleton directories without fake build artifacts.
+- Upgraded Vivado Project export to emit a reference-matched folder shape:
+  - `<slug>/<slug>.srcs/sources_1/new/top.vhd`
+  - `<slug>/<slug>.srcs/constrs_1/new/basys3.xdc`
+  - optional `<slug>/<slug>.srcs/sim_1/new/testbench.vhd`
+  - `<slug>/<slug>.srcs/utils_1/`
+  - `<slug>/<slug>.runs/synth_1/`
+  - `<slug>/<slug>.runs/impl_1/`
+  - `<slug>/<slug>.cache/`
+  - `<slug>/<slug>.hw/`
+  - `<slug>/<slug>.sim/`
+  - `<slug>/<slug>.ip_user_files/`
+- Switched the exported constraints filename inside the Vivado project skeleton from `top.xdc` to `basys3.xdc` while continuing to source the constraints text from the canonical export artifact pipeline.
+- Expanded the generated `.xpr` header and configuration to more closely mirror the working Vivado reference:
+  - `Version="7" Minor="68"`
+  - `DefaultLaunch Dir="$PRUNDIR"`
+  - richer simulator/version options
+  - reference-like `sources_1`, `constrs_1`, `sim_1`, and `utils_1` file-set blocks
+  - explicit simulator metadata blocks
+  - richer `Runs Version="1" Minor="22"` attributes for `synth_1` and `impl_1`
+  - `Board/` placeholder instead of the previous custom `Boards` block
+- Stopped trusting only the requested top-module input: export now derives the Vivado top entity from the emitted VHDL entity when possible, so `.xpr`, import Tcl, and project manifest stay aligned to the actual HDL.
+- Updated the export README to refer to `basys3.xdc`.
+- Tightened the contract test so the Vivado Project ZIP must now prove:
+  - `basys3.xdc` path usage
+  - richer `.xpr` structure
+  - `utils_1` presence
+  - directory-entry skeleton presence
+  - portable path macros and top/part propagation
+
+**Why minimal**
+
+- This batch does not invent fake `.runs` contents or fabricated Vivado artifacts.
+- It only moves RedByte from a thin custom project descriptor toward a reference-compatible project skeleton and `.xpr` contract.
+- Import behavior remains manifest-first; generated Vivado noise is still ignored on import.
+
+**Validation**
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/ide-vivado-project-folder-contract.test.ts`
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/ide-zip-import-contract.test.ts`
+- `pnpm --filter @redbyte/rb-apps build`
+
+**Notes**
+
+- The package build still prints many broad pre-existing TypeScript diagnostics outside this batch, but it exits `0` and the Vivado project-folder and ZIP-import contracts pass.
+- A fresh export ZIP is required for any real Vivado retest; older RedByte exports remain structurally outdated.
+
+- **Attribution**: Connor Angiel
+
+---
+
 ## Batch: IDE Persistence Contract Fix (2026-03-08)
 
 **Subsystem**: gate/contract enforcement — IDE Persistence

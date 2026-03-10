@@ -84,4 +84,19 @@ describe('ExportSurface workstation redesign', () => {
     expect(checklist[0].textContent).toContain('Open Vivado');
     expect(getByText('Advanced / full checklist')).toBeTruthy();
   });
+
+  it('keeps project export available when verify has not run yet', () => {
+    const { getByTestId, queryByTestId } = render(
+      <ExportSurface project={buildProject()} determinismHash="ide-hash" />
+    );
+
+    expect(getByTestId('ide-export-dock-download').hasAttribute('disabled')).toBe(false);
+    expect(getByTestId('ide-export-vivado-unverified-callout').textContent).toContain(
+      'Artifacts available'
+    );
+    expect(getByTestId('ide-export-unverified-callout').textContent).toContain(
+      'generated text files are available now'
+    );
+    expect(queryByTestId('ide-export-vivado-blocked-callout')).toBeNull();
+  });
 });

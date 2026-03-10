@@ -18,9 +18,16 @@ export interface BuildVivadoProjectFolderInput {
 }
 
 const BASYS3_PART = 'xc7a35tcpg236-1';
-const BASYS3_BOARD_PART = 'digilentinc.com:basys3:part0:1.2';
 const READABLE_TOOL_VERSION = 'Vivado 2024.1+';
 const TESTBENCH_TOP_MODULE = 'tb_top';
+const VIVADO_PROJECT_VERSION_MINOR = '68';
+const VIVADO_FILESETS_MINOR = '32';
+const VIVADO_RUNS_MINOR = '22';
+const VIVADO_XSIM_VERSION = '2024.2';
+const VIVADO_MODELSIM_VERSION = '2024.1';
+const VIVADO_QUESTA_VERSION = '2024.1';
+const VIVADO_XCELIUM_VERSION = '24.03.003';
+const REFERENCE_CONSTRAINTS_FILE_NAME = 'basys3.xdc';
 
 export function deriveVivadoProjectSlug(value: string): string {
   const normalized = value
@@ -46,7 +53,6 @@ export async function buildVivadoProjectFolderEntries(
   input: BuildVivadoProjectFolderInput
 ): Promise<DeterministicZipEntry[]> {
   const slug = deriveVivadoProjectSlug(input.projectSlug ?? input.projectName);
-  const topModule = sanitizeIdentifier(input.topModule, 'top');
   const part = resolveVivadoPart(input.part);
   const artifactMap = new Map(
     input.artifacts.map((artifact) => [artifact.path.trim().toLowerCase(), artifact.content])
@@ -62,8 +68,17 @@ export async function buildVivadoProjectFolderEntries(
 
   const projectSourcesDir = `${slug}/${slug}.srcs`;
   const sourcePath = `${projectSourcesDir}/sources_1/new/top.vhd`;
-  const constraintsPath = `${projectSourcesDir}/constrs_1/new/top.xdc`;
+  const constraintsPath = `${projectSourcesDir}/constrs_1/new/${REFERENCE_CONSTRAINTS_FILE_NAME}`;
   const simulationPath = `${projectSourcesDir}/sim_1/new/testbench.vhd`;
+  const utilsDirPath = `${projectSourcesDir}/utils_1/`;
+  const runsDirPath = `${slug}/${slug}.runs/`;
+  const synthRunDirPath = `${slug}/${slug}.runs/synth_1/`;
+  const implRunDirPath = `${slug}/${slug}.runs/impl_1/`;
+  const cacheDirPath = `${slug}/${slug}.cache/`;
+  const hwDirPath = `${slug}/${slug}.hw/`;
+  const simDirPath = `${slug}/${slug}.sim/`;
+  const ipUserFilesDirPath = `${slug}/${slug}.ip_user_files/`;
+  const topModule = resolveVivadoTopModule(sourceText, input.topModule);
   const xprId = await buildVivadoProjectId(manifestText);
   const xprText = buildVivadoXpr({
     projectFileName: `${slug}.xpr`,
@@ -84,11 +99,19 @@ export async function buildVivadoProjectFolderEntries(
     topEntity: topModule,
     part,
     sourcePaths: [`${slug}.srcs/sources_1/new/top.vhd`],
-    constraintsPath: `${slug}.srcs/constrs_1/new/top.xdc`,
+    constraintsPath: `${slug}.srcs/constrs_1/new/${REFERENCE_CONSTRAINTS_FILE_NAME}`,
     simulationPath: testbenchText.length > 0 ? `${slug}.srcs/sim_1/new/testbench.vhd` : undefined,
   });
 
   const entries: DeterministicZipEntry[] = [
+    { name: utilsDirPath, text: '', dir: true },
+    { name: runsDirPath, text: '', dir: true },
+    { name: synthRunDirPath, text: '', dir: true },
+    { name: implRunDirPath, text: '', dir: true },
+    { name: cacheDirPath, text: '', dir: true },
+    { name: hwDirPath, text: '', dir: true },
+    { name: simDirPath, text: '', dir: true },
+    { name: ipUserFilesDirPath, text: '', dir: true },
     { name: `${slug}/${slug}.xpr`, text: xprText },
     { name: `${slug}/project.rbproj.json`, text: manifestText },
     { name: `${slug}/README.txt`, text: readmeText },
@@ -145,69 +168,147 @@ export function buildVivadoXpr(input: BuildVivadoXprInput): string {
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    `<Project Version="7" Minor="65" Path="${xmlAttr(`$PPRDIR/${projectFileName}`)}">`,
-    '  <DefaultLaunch Dir="$PPRDIR/.Xil" Mode="default"/>',
+    `<Project Product="Vivado" Version="7" Minor="${VIVADO_PROJECT_VERSION_MINOR}" Path="${xmlAttr(`$PPRDIR/${projectFileName}`)}">`,
+    '  <DefaultLaunch Dir="$PRUNDIR"/>',
     '  <Configuration>',
     `    <Option Name="Id" Val="${xmlAttr(input.xprId)}"/>`,
     `    <Option Name="Part" Val="${xmlAttr(part)}"/>`,
-    `    <Option Name="BoardPart" Val="${xmlAttr(BASYS3_BOARD_PART)}"/>`,
+    '    <Option Name="CompiledLibDir" Val="$PCACHEDIR/compile_simlib"/>',
+    '    <Option Name="CompiledLibDirXSim" Val=""/>',
+    '    <Option Name="CompiledLibDirModelSim" Val="$PCACHEDIR/compile_simlib/modelsim"/>',
+    '    <Option Name="CompiledLibDirQuesta" Val="$PCACHEDIR/compile_simlib/questa"/>',
+    '    <Option Name="CompiledLibDirXcelium" Val="$PCACHEDIR/compile_simlib/xcelium"/>',
+    '    <Option Name="CompiledLibDirVCS" Val="$PCACHEDIR/compile_simlib/vcs"/>',
+    '    <Option Name="CompiledLibDirRiviera" Val="$PCACHEDIR/compile_simlib/riviera"/>',
+    '    <Option Name="CompiledLibDirActivehdl" Val="$PCACHEDIR/compile_simlib/activehdl"/>',
+    '    <Option Name="SimulatorInstallDirModelSim" Val=""/>',
+    '    <Option Name="SimulatorInstallDirQuesta" Val=""/>',
+    '    <Option Name="SimulatorInstallDirXcelium" Val=""/>',
+    '    <Option Name="SimulatorInstallDirVCS" Val=""/>',
+    '    <Option Name="SimulatorInstallDirRiviera" Val=""/>',
+    '    <Option Name="SimulatorInstallDirActiveHdl" Val=""/>',
+    '    <Option Name="SimulatorGccInstallDirModelSim" Val=""/>',
+    '    <Option Name="SimulatorGccInstallDirQuesta" Val=""/>',
+    '    <Option Name="SimulatorGccInstallDirXcelium" Val=""/>',
+    '    <Option Name="SimulatorGccInstallDirVCS" Val=""/>',
+    '    <Option Name="SimulatorGccInstallDirRiviera" Val=""/>',
+    '    <Option Name="SimulatorGccInstallDirActiveHdl" Val=""/>',
+    `    <Option Name="SimulatorVersionXsim" Val="${VIVADO_XSIM_VERSION}"/>`,
+    `    <Option Name="SimulatorVersionModelSim" Val="${VIVADO_MODELSIM_VERSION}"/>`,
+    `    <Option Name="SimulatorVersionQuesta" Val="${VIVADO_QUESTA_VERSION}"/>`,
+    `    <Option Name="SimulatorVersionXcelium" Val="${VIVADO_XCELIUM_VERSION}"/>`,
     '    <Option Name="ActiveSimSet" Val="sim_1"/>',
     '    <Option Name="DefaultLib" Val="xil_defaultlib"/>',
     '    <Option Name="EnableVHDL2008" Val="1"/>',
     '    <Option Name="ProjectType" Val="Default"/>',
     '    <Option Name="TargetLanguage" Val="VHDL"/>',
+    '    <Option Name="EnableBDX" Val="FALSE"/>',
+    '    <Option Name="WTXSimLaunchSim" Val="0"/>',
+    '    <Option Name="WTModelSimLaunchSim" Val="0"/>',
+    '    <Option Name="WTQuestaLaunchSim" Val="0"/>',
+    '    <Option Name="WTIesLaunchSim" Val="0"/>',
+    '    <Option Name="WTVcsLaunchSim" Val="0"/>',
+    '    <Option Name="WTRivieraLaunchSim" Val="0"/>',
+    '    <Option Name="WTActivehdlLaunchSim" Val="0"/>',
+    '    <Option Name="WTXSimExportSim" Val="0"/>',
+    '    <Option Name="WTModelSimExportSim" Val="0"/>',
+    '    <Option Name="WTQuestaExportSim" Val="0"/>',
+    '    <Option Name="WTIesExportSim" Val="0"/>',
+    '    <Option Name="WTVcsExportSim" Val="0"/>',
+    '    <Option Name="WTRivieraExportSim" Val="0"/>',
+    '    <Option Name="WTActivehdlExportSim" Val="0"/>',
+    '    <Option Name="GenerateIPUpgradeLog" Val="TRUE"/>',
+    '    <Option Name="XSimRadix" Val="hex"/>',
+    '    <Option Name="XSimTimeUnit" Val="ns"/>',
+    '    <Option Name="XSimArrayDisplayLimit" Val="1024"/>',
+    '    <Option Name="XSimTraceLimit" Val="65536"/>',
+    '    <Option Name="SimTypes" Val="rtl"/>',
+    '    <Option Name="SimTypes" Val="bfm"/>',
+    '    <Option Name="SimTypes" Val="tlm"/>',
+    '    <Option Name="SimTypes" Val="tlm_dpi"/>',
+    '    <Option Name="MEMEnableMemoryMapGeneration" Val="TRUE"/>',
+    '    <Option Name="DcpsUptoDate" Val="TRUE"/>',
+    '    <Option Name="UseInlineHdlIP" Val="TRUE"/>',
+    '    <Option Name="LocalIPRepoLeafDirName" Val="ip_repo"/>',
     '  </Configuration>',
-    '  <FileSets Version="1" Minor="31">',
+    `  <FileSets Version="1" Minor="${VIVADO_FILESETS_MINOR}">`,
     '    <FileSet Name="sources_1" Type="DesignSrcs" RelSrcDir="$PSRCDIR/sources_1" RelGenDir="$PGENDIR/sources_1">',
     '      <Filter Type="Srcs"/>',
     '      <File Path="$PSRCDIR/sources_1/new/top.vhd">',
-    '        <FileInfo>',
-    '          <Attr Name="UsedIn" Val="synthesis"/>',
-    '          <Attr Name="UsedIn" Val="implementation"/>',
-    '          <Attr Name="UsedIn" Val="simulation"/>',
-    '          <Attr Name="OrigSrcFilePath" Val="$PSRCDIR/sources_1/new/top.vhd"/>',
-    '          <Attr Name="OrigSrcFileType" Val="FILE_SET"/>',
-    '        </FileInfo>',
-    '      </File>',
-    '      <Config>',
-    '        <Option Name="DesignMode" Val="RTL"/>',
-    `        <Option Name="TopModule" Val="${xmlAttr(topModule)}"/>`,
-    '        <Option Name="TopAutoSet" Val="FALSE"/>',
-    '      </Config>',
-    '    </FileSet>',
+      '        <FileInfo>',
+      '          <Attr Name="UsedIn" Val="synthesis"/>',
+      '          <Attr Name="UsedIn" Val="simulation"/>',
+      '        </FileInfo>',
+      '      </File>',
+      '      <Config>',
+      '        <Option Name="DesignMode" Val="RTL"/>',
+      `        <Option Name="TopModule" Val="${xmlAttr(topModule)}"/>`,
+      '        <Option Name="TopAutoSet" Val="TRUE"/>',
+      '      </Config>',
+      '    </FileSet>',
     '    <FileSet Name="constrs_1" Type="Constrs" RelSrcDir="$PSRCDIR/constrs_1" RelGenDir="$PGENDIR/constrs_1">',
-    '      <File Path="$PSRCDIR/constrs_1/new/top.xdc">',
-    '        <FileInfo>',
-    '          <Attr Name="UsedIn" Val="synthesis"/>',
-    '          <Attr Name="UsedIn" Val="implementation"/>',
-    '          <Attr Name="OrigSrcFilePath" Val="$PSRCDIR/constrs_1/new/top.xdc"/>',
-    '          <Attr Name="OrigSrcFileType" Val="FILE_SET"/>',
-    '        </FileInfo>',
-    '      </File>',
-    '      <Config>',
-    '        <Option Name="TargetConstrsFile" Val="$PSRCDIR/constrs_1/new/top.xdc"/>',
-    '      </Config>',
-    '    </FileSet>',
+    '      <Filter Type="Constrs"/>',
+    `      <File Path="$PSRCDIR/constrs_1/new/${REFERENCE_CONSTRAINTS_FILE_NAME}">`,
+      '        <FileInfo>',
+      '          <Attr Name="UsedIn" Val="synthesis"/>',
+      '          <Attr Name="UsedIn" Val="implementation"/>',
+      '        </FileInfo>',
+      '      </File>',
+      '      <Config>',
+      '        <Option Name="ConstrsType" Val="XDC"/>',
+      '      </Config>',
+      '    </FileSet>',
     '    <FileSet Name="sim_1" Type="SimulationSrcs" RelSrcDir="$PSRCDIR/sim_1" RelGenDir="$PGENDIR/sim_1">',
-    '      <Filter Type="Srcs"/>',
+    ...(includeSimulation ? ['      <Filter Type="Srcs"/>'] : []),
     ...simulationFileBlock,
     '      <Config>',
-    `        <Option Name="TopModule" Val="${xmlAttr(simulationConfigTop)}"/>`,
-    '        <Option Name="TopAutoSet" Val="FALSE"/>',
+    '        <Option Name="DesignMode" Val="RTL"/>',
+      `        <Option Name="TopModule" Val="${xmlAttr(simulationConfigTop)}"/>`,
+    '        <Option Name="TopLib" Val="xil_defaultlib"/>',
+    '        <Option Name="TopAutoSet" Val="TRUE"/>',
+    '        <Option Name="TransportPathDelay" Val="0"/>',
+    '        <Option Name="TransportIntDelay" Val="0"/>',
+    '        <Option Name="SelectedSimModel" Val="rtl"/>',
+    '        <Option Name="PamDesignTestbench" Val=""/>',
+    '        <Option Name="PamDutBypassFile" Val="xil_dut_bypass"/>',
+    '        <Option Name="PamSignalDriverFile" Val="xil_bypass_driver"/>',
+    '        <Option Name="PamPseudoTop" Val="pseudo_tb"/>',
+    '        <Option Name="SrcSet" Val="sources_1"/>',
+    '        <Option Name="CosimPdi" Val=""/>',
+    '        <Option Name="CosimPlatform" Val=""/>',
+    '        <Option Name="CosimElf" Val=""/>',
     '      </Config>',
     '    </FileSet>',
-    '    <FileSet Name="utils_1" Type="Utils" RelSrcDir="$PSRCDIR/utils_1" RelGenDir="$PGENDIR/utils_1"/>',
+    '    <FileSet Name="utils_1" Type="Utils" RelSrcDir="$PSRCDIR/utils_1" RelGenDir="$PGENDIR/utils_1">',
+    '      <Filter Type="Utils"/>',
+    '      <Config>',
+    '        <Option Name="TopAutoSet" Val="TRUE"/>',
+    '      </Config>',
+    '    </FileSet>',
     '  </FileSets>',
     '  <Simulators>',
-    '    <Simulator Name="XSim"/>',
+    '    <Simulator Name="XSim">',
+    '      <Option Name="Description" Val="Vivado Simulator"/>',
+    '      <Option Name="CompiledLib" Val="0"/>',
+    '    </Simulator>',
+    '    <Simulator Name="ModelSim">',
+    '      <Option Name="Description" Val="ModelSim Simulator"/>',
+    '    </Simulator>',
+    '    <Simulator Name="Questa">',
+    '      <Option Name="Description" Val="Questa Advanced Simulator"/>',
+    '    </Simulator>',
+    '    <Simulator Name="Riviera">',
+    '      <Option Name="Description" Val="Riviera-PRO Simulator"/>',
+    '    </Simulator>',
+    '    <Simulator Name="ActiveHDL">',
+    '      <Option Name="Description" Val="Active-HDL Simulator"/>',
+    '    </Simulator>',
     '  </Simulators>',
-    '  <Runs Version="1" Minor="28">',
+    `  <Runs Version="1" Minor="${VIVADO_RUNS_MINOR}">`,
     ...synthRunBlock,
     ...implRunBlock,
     '  </Runs>',
-    '  <Boards>',
-    `    <Board Id="basys3" Spec="1.2" Part="${xmlAttr(part)}"/>`,
-    '  </Boards>',
+    '  <Board/>',
     '</Project>',
     '',
   ].join('\n');
@@ -244,7 +345,7 @@ function buildVivadoProjectFolderReadme(input: BuildVivadoProjectFolderReadmeInp
     '  vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log',
     '',
     'Important:',
-    '- The exported constraints assume top-level HDL port names match the generated XDC get_ports names.',
+    `- The exported constraints file is "${REFERENCE_CONSTRAINTS_FILE_NAME}" and assumes top-level HDL port names match the generated XDC get_ports names.`,
     '- RedByte generated this folder deterministically from the project manifest.',
   ];
 
@@ -301,6 +402,16 @@ function sanitizeFileName(value: string, fallback: string): string {
   return normalized.length > 0 ? normalized : fallback;
 }
 
+function resolveVivadoTopModule(sourceText: string, requestedTopModule: string): string {
+  const detected = detectVhdlTopEntity(sourceText);
+  return sanitizeIdentifier(detected ?? requestedTopModule, 'top');
+}
+
+function detectVhdlTopEntity(sourceText: string): string | null {
+  const match = sourceText.match(/\bentity\s+([A-Za-z_][A-Za-z0-9_]*)\s+is\b/i);
+  return match?.[1]?.trim() || null;
+}
+
 function xmlAttr(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -311,7 +422,7 @@ function xmlAttr(value: string): string {
 
 function buildVivadoSynthRunBlock(part: string): string[] {
   return [
-    `    <Run Id="synth_1" Type="Ft3:Synth" SrcSet="sources_1" Part="${xmlAttr(part)}" ConstrsSet="constrs_1" Description="Vivado Synthesis Defaults" AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" State="current" Dir="$PRUNDIR/synth_1" IncludeInArchive="true" IsChild="false">`,
+    `    <Run Id="synth_1" Type="Ft3:Synth" SrcSet="sources_1" Part="${xmlAttr(part)}" ConstrsSet="constrs_1" Description="Vivado Synthesis Defaults" AutoIncrementalCheckpoint="true" WriteIncrSynthDcp="false" State="current" Dir="$PRUNDIR/synth_1" IncludeInArchive="true" IsChild="false" AutoIncrementalDir="$PSRCDIR/utils_1/imports/synth_1" AutoRQSDir="$PSRCDIR/utils_1/imports/synth_1" ParallelReportGen="true">`,
     '      <Strategy Version="1" Minor="2">',
     '        <StratHandle Name="Vivado Synthesis Defaults" Flow="Vivado Synthesis 2024">',
     '          <Desc>Vivado Synthesis Defaults</Desc>',
@@ -328,7 +439,7 @@ function buildVivadoSynthRunBlock(part: string): string[] {
 
 function buildVivadoImplRunBlock(part: string): string[] {
   return [
-    `    <Run Id="impl_1" Type="Ft2:EntireDesign" Part="${xmlAttr(part)}" ConstrsSet="constrs_1" Description="Default settings for Implementation." AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" State="current" Dir="$PRUNDIR/impl_1" SynthRun="synth_1" IncludeInArchive="true" IsChild="false" GenFullBitstream="true">`,
+    `    <Run Id="impl_1" Type="Ft2:EntireDesign" Part="${xmlAttr(part)}" ConstrsSet="constrs_1" Description="Default settings for Implementation." AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" State="current" Dir="$PRUNDIR/impl_1" SynthRun="synth_1" IncludeInArchive="true" IsChild="false" GenFullBitstream="true" AutoIncrementalDir="$PSRCDIR/utils_1/imports/impl_1" LaunchOptions="-jobs 4 " AutoRQSDir="$PSRCDIR/utils_1/imports/impl_1" ParallelReportGen="true">`,
     '      <Strategy Version="1" Minor="2">',
     '        <StratHandle Name="Vivado Implementation Defaults" Flow="Vivado Implementation 2024">',
     '          <Desc>Default settings for Implementation.</Desc>',

@@ -102,7 +102,7 @@ describe('IDE Vivado project folder contract', () => {
 
     expect(fileNames).toEqual(
       [
-        `${slug}/${slug}.srcs/constrs_1/new/top.xdc`,
+        `${slug}/${slug}.srcs/constrs_1/new/basys3.xdc`,
         `${slug}/${slug}.srcs/sources_1/new/top.vhd`,
         `${slug}/${slug}.xpr`,
         `${slug}/BRINGUP.md`,
@@ -115,20 +115,29 @@ describe('IDE Vivado project folder contract', () => {
     );
 
     const xprText = await loaded.file(`${slug}/${slug}.xpr`)!.async('string');
+    expect(xprText).toContain('<Project Product="Vivado" Version="7" Minor="68"');
+    expect(xprText).toContain('<DefaultLaunch Dir="$PRUNDIR"/>');
     expect(xprText).toContain('Option Name="Part" Val="xc7a100tcsg324-1"');
+    expect(xprText).toContain('Option Name="SimulatorVersionXsim" Val="2024.2"');
     expect(xprText).toContain('Option Name="TopModule" Val="student_top"');
     expect(xprText).toContain('$PSRCDIR/sources_1/new/top.vhd');
-    expect(xprText).toContain('$PSRCDIR/constrs_1/new/top.xdc');
+    expect(xprText).toContain('$PSRCDIR/constrs_1/new/basys3.xdc');
+    expect(xprText).toContain('<Option Name="ConstrsType" Val="XDC"/>');
+    expect(xprText).toContain('<Option Name="TopAutoSet" Val="TRUE"/>');
+    expect(xprText).toContain('<Simulator Name="ModelSim">');
+    expect(xprText).toContain('<FileSet Name="utils_1" Type="Utils"');
     expect(xprText).toContain('<StratHandle Name="Vivado Synthesis Defaults" Flow="Vivado Synthesis 2024">');
     expect(xprText).toContain('<Step Id="synth_design"/>');
     expect(xprText).toContain('<GeneratedRun Dir="$PRUNDIR" File="gen_run.xml"/>');
     expect(xprText).toContain('<StratHandle Name="Vivado Implementation Defaults" Flow="Vivado Implementation 2024">');
     expect(xprText).toContain('<Step Id="write_bitstream"/>');
     expect(xprText).not.toContain('<Strategy Version="1" Minor="1">Vivado Synthesis Defaults</Strategy>');
+    expect(xprText).toContain('<Board/>');
 
     const importTclText = await loaded.file(`${slug}/vivado_import.tcl`)!.async('string');
     expect(importTclText).toContain('set part "xc7a100tcsg324-1"');
     expect(importTclText).toContain('set top_module "student_top"');
+    expect(importTclText).toContain(`${slug}.srcs/constrs_1/new/basys3.xdc`);
 
     const manifestText = await loaded.file(`${slug}/project.rbproj.json`)!.async('string');
     const manifestProject = JSON.parse(manifestText) as RBProject;
@@ -138,6 +147,16 @@ describe('IDE Vivado project folder contract', () => {
     const readmeText = await loaded.file(`${slug}/README.txt`)!.async('string');
     expect(readmeText).toContain('Open Project');
     expect(readmeText).toContain(`${slug}.xpr`);
+    expect(readmeText).toContain('basys3.xdc');
+
+    expect(loaded.files[`${slug}/${slug}.srcs/utils_1/`]?.dir).toBe(true);
+    expect(loaded.files[`${slug}/${slug}.runs/`]?.dir).toBe(true);
+    expect(loaded.files[`${slug}/${slug}.runs/synth_1/`]?.dir).toBe(true);
+    expect(loaded.files[`${slug}/${slug}.runs/impl_1/`]?.dir).toBe(true);
+    expect(loaded.files[`${slug}/${slug}.cache/`]?.dir).toBe(true);
+    expect(loaded.files[`${slug}/${slug}.hw/`]?.dir).toBe(true);
+    expect(loaded.files[`${slug}/${slug}.sim/`]?.dir).toBe(true);
+    expect(loaded.files[`${slug}/${slug}.ip_user_files/`]?.dir).toBe(true);
   });
 
   it('round-trips the exported project folder back into the same normalized RBProject', async () => {
