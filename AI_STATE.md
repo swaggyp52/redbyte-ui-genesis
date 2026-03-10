@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-03-10 (Waveform oscilloscope visibility - CRITICAL FIX)
+
+### Fixed cascading CSS conflicts that were collapsing the waveform viewer
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/ide-root.css` - Applied `!important` rules and increased minimum heights across ALL conflicting CSS rules for `.ide-verify-waveform-scroll`, `.ide-verify-oscilloscope-stage`, and `.ide-waveform-outer`. Set waveform scroll min-height to 480px with !important, oscilloscope stage min-height from 120px/160px → 500px, waveform-outer min-height from 0 → 400px/440px, and updated clamp rule from 420px/54vh → 500px/60vh.
+
+### Why this aggressive fix was required
+
+- Multiple conflicting CSS rules were scattered throughout the 16,000+ line stylesheet at different responsive breakpoints and specificity levels
+- Previous incremental fixes were being overridden by lower-specificity rules with higher cascade precedence
+- The waveform viewer was completely invisible/collapsed in production, making lab work impossible
+- `!important` flags were necessary to override the deep cascade conflicts
+
+### Validation
+
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`
+- Verified CSS bundle builds successfully with new rules
+
+- **Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-03-10 (Waveform oscilloscope visibility and sizing improvements)
 
 ### Fixed waveform/oscilloscope visibility issues for lab-day readiness
