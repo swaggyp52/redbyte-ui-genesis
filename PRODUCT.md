@@ -77,13 +77,13 @@
 **IDE Endpoint:**
 - Serves `dist/os/index.html` (IDE)
 - Asset prefix: `/os/assets/`
-- Fallback: `_redirects` routes `/os/*` requests to `/os/index.html`
+- Entry path is normalized to `/os/`
 
 **Routing Rules:**
 ```
 # _redirects (in dist/ root)
-/os/* /os/index.html 200
-/* /index.html 200
+/ /os/ 302
+/os /os/ 302
 ```
 
 **Cache Headers:**

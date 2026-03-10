@@ -1,5 +1,5 @@
-# SPA fallback for IDE at /os/
-/os/*  /os/index.html  200
+# Canonical root redirect to the IDE
+/      /os/  302
 
-# Root SPA fallback for marketing/home page and all other routes
-/*     /index.html     200
+# Normalize /os without trailing slash
+/os    /os/  302

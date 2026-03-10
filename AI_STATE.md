@@ -1,5 +1,41 @@
 # AI State
 
+## Change Log 2026-03-10 (Cloudflare Pages redirect-loop cleanup)
+
+### Deploy artifact no longer emits invalid `_redirects` rules that Cloudflare Pages ignores as infinite loops
+
+**Modified files:**
+
+- `public/_redirects` - Replaced the old SPA-style rewrites (`/os/* /os/index.html 200` and `/* /index.html 200`) with exact canonical redirects only: `/ -> /os/` and `/os -> /os/`. This matches the current product reality: the IDE is served from a real `dist/os/index.html` file and uses query-parameter mode switching rather than deep client-side path routing.
+- `scripts/verify-dist.mjs` - Updated the dist verifier to assert the new non-looping redirect contract instead of the old invalid fallback rules.
+- `PRODUCT.md` - Updated the deploy/routing contract to document the canonical root redirect and `/os` normalization rather than the previous Cloudflare-incompatible fallback examples.
+
+### Why this was needed
+
+- Real Cloudflare Pages deploy logs showed both redirect rules were being ignored:
+  - `/os/* /os/index.html 200`
+  - `/* /index.html 200`
+- Cloudflare flagged them as infinite loops, parsed `0 valid redirect rules`, and still deployed only because the real files existed.
+- This created unnecessary deploy noise and made the production routing contract look brittle even when the site happened to work.
+
+### Validation
+
+- `pnpm -s build:unified` - PASS
+- `dist/_redirects` now emits:
+  - `/      /os/  302`
+  - `/os    /os/  302`
+- `scripts/verify-dist.mjs` now passes with the new redirect contract
+- Focused sanity check:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/pipelineStrip.test.tsx` - PASS
+
+### Remaining note
+
+- The duplicate `pnpm install --frozen-lockfile && pnpm build:unified` seen in Cloudflare deploy logs is not controlled by repo code; the first install is Cloudflare Pages itself, while the second install comes from the Pages dashboard build command and should be simplified there to `pnpm build:unified`.
+
+- **Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-03-10 (Project/export workflow unblocked from untrusted Verify)
 
 ### Project and pipeline no longer overstate missing or stale Verify as a hard export blocker
