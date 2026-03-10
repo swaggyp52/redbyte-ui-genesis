@@ -1090,7 +1090,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     const key = lastRun.reportHash ?? lastRun.generatedAtIso ?? '';
     if (autoOpenedRunRef.current === key) return;
     autoOpenedRunRef.current = key;
-    setSidePanelTab('mismatches');
+    setVerifyTab('mismatches');
+    setDrawerOpen(true);
   }, [lastRun?.reportHash, lastRun?.status]);
 
   // Reset step mode whenever a new run completes
@@ -1641,15 +1642,24 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       container.scrollLeft += Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
     }
   }, []);
+  useEffect(() => {
+    const container = waveformScrollRef.current;
+    if (!container) return;
+    container.scrollTop = 0;
+    container.scrollLeft = 0;
+  }, [lastRun?.reportHash, displaySignalTimeline.length]);
   const handleSignalHover = useCallback(
     (signal: string | null) => {
       setHoverBoardSignal(resolveLaneBoardSignal(signal));
     },
     [resolveLaneBoardSignal, setHoverBoardSignal]
   );
-  // Bottom drawer only holds Truth Table and K-Map; Mismatches/Vectors/Details moved to side panel
   const drawerTabs = useMemo<VerifyDrawerTab[]>(
-    () => (isSequentialRun ? ['truth'] : ['truth', 'kmap']),
+    () => (
+      isSequentialRun
+        ? ['mismatches', 'vectors', 'truth', 'details']
+        : ['mismatches', 'vectors', 'truth', 'kmap', 'details']
+    ),
     [isSequentialRun]
   );
   useEffect(() => {
@@ -1787,10 +1797,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     authoredVectors.length > 0 || hasVectors ? 'Project vectors loaded' : 'No vectors saved yet';
 
   useEffect(() => {
-    if (displayStatus === 'PASS' && failingRows.length === 0 && sidePanelTab === 'mismatches') {
-      setSidePanelTab('vectors');
+    if (displayStatus === 'PASS' && failingRows.length === 0 && verifyTab === 'mismatches') {
+      setVerifyTab('truth');
     }
-  }, [displayStatus, failingRows.length, sidePanelTab]);
+  }, [displayStatus, failingRows.length, verifyTab]);
 
   const runVerification = () => {
     setRunState('running');
@@ -3144,6 +3154,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </section>
 
             {/* ── Side panel: Mismatches / Vectors / Details ── */}
+            {false && (
             <aside className="ide-verify-side-panel">
               <div className="ide-verify-side-panel-tabs" role="tablist">
                 {(['mismatches', 'vectors', 'details'] as const).map((tab) => (
@@ -3180,7 +3191,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         {selectedFailureCase && onFixPath && (
                           <IdeButton
                             tone="danger"
-                            onClick={() => { onFixPath(selectedFailureCase); onGoToDesign?.(); }}
+                            onClick={() => { onFixPath?.(selectedFailureCase); onGoToDesign?.(); }}
                             testId="ide-verify-jump-to-failure-card"
                           >
                             Jump to failing node →
@@ -3213,9 +3224,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         </div>
                         <div className="ide-verify-failure-explainer__inputs" data-testid="ide-verify-explainer-inputs">
                           <span>Inputs at tick</span>
-                          {selectedFailureInputs && selectedFailureInputs.length > 0 ? (
+                          {selectedFailureInputs?.length ? (
                             <div className="ide-verify-failure-explainer__chips">
-                              {selectedFailureInputs.map((entry, index) => (
+                              {selectedFailureInputs?.map((entry, index) => (
                                 <code key={`${entry.label || 'input'}-${index}`}>{entry.label}={entry.value}</code>
                               ))}
                             </div>
@@ -3227,10 +3238,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           <div className="ide-verify-failure-explainer__inputs" data-testid="ide-verify-explainer-pattern">
                             <span>Likely bug shape</span>
                             <div className="ide-verify-failure-explainer__chips">
-                              <span data-testid="ide-verify-explainer-pattern-summary">{selectedFailurePattern.summary}</span>
+                              <span data-testid="ide-verify-explainer-pattern-summary">{selectedFailurePattern?.summary ?? ''}</span>
                             </div>
                             <div className="ide-verify-failure-explainer__chips">
-                              <span data-testid="ide-verify-explainer-pattern-next">Next inspect: {selectedFailurePattern.nextInspect}</span>
+                              <span data-testid="ide-verify-explainer-pattern-next">Next inspect: {selectedFailurePattern?.nextInspect ?? ''}</span>
                             </div>
                           </div>
                         )}
@@ -3420,6 +3431,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 )}
               </div>
             </aside>
+            )}
 
             </div>{/* /ide-verify-instrument-deck */}
             </div>{/* /ide-verify-console-frame */}

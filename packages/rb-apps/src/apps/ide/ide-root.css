@@ -10111,8 +10111,11 @@ details[open] summary .details-arrow {
 }
 
 /* Dock width clamping */
-.ide-workbench-dock-left  { min-width: 180px; max-width: 420px; }
-.ide-workbench-dock-right { min-width: 240px; max-width: 480px; }
+.ide-workbench-dock-left,
+.ide-workbench-dock-right {
+  min-width: 0;
+  max-width: none;
+}
 
 /* ── Step 1: Project Surface — Zone hierarchy ───────────────────────────── */
 
@@ -14540,7 +14543,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 /* Surface redesign v2: verify workstation hierarchy, lane controls, and lower-deck tabs */
 .ide-verify-workbench-v2 {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(500px, 1fr) auto;
   gap: 14px;
   min-height: 0;
   height: 100%;
@@ -14563,7 +14566,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 .ide-verify-oscilloscope-stage {
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(420px, 1fr);
   gap: 10px;
   padding: 12px;
   border: 1px solid rgba(45, 84, 122, 0.45);
@@ -14585,8 +14588,8 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 
 .ide-verify-waveform-scroll {
-  min-height: 340px;
-  max-height: min(60vh, 620px);
+  min-height: 480px;
+  max-height: min(75vh, 900px);
   overflow: auto;
   padding: 8px 10px 10px;
   border-radius: 14px;
@@ -14597,7 +14600,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 
 .ide-verify-waveform-scroll[data-layout-mode='compact'] {
-  max-height: min(50vh, 520px);
+  max-height: min(65vh, 750px);
 }
 
 .ide-verify-supporting-strip {
@@ -14613,8 +14616,8 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 .ide-verify-drawer-body {
   display: grid;
   gap: 12px;
-  min-height: 220px;
-  max-height: 38vh;
+  min-height: 200px;
+  max-height: 32vh;
   overflow: hidden;
 }
 
@@ -15877,6 +15880,312 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 [data-layout-mode='standard'] .ide-verify-instrument-deck,
 [data-layout-mode='compact'] .ide-verify-instrument-deck {
   grid-template-columns: minmax(0, 1fr);
+}
+
+/* Live viewport unblock, final authority:
+   when browser zoom shrinks the effective workspace, keep the center tool readable.
+   The right inspector must yield vertical space before it steals horizontal space. */
+.ide-workbench-shell[data-layout-mode='standard'] .ide-workbench-main:not(.hide-right-dock),
+.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock) {
+  grid-template-columns: var(--ide-workbench-left-width) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(220px, auto);
+}
+
+.ide-workbench-shell[data-layout-mode='standard'] .ide-workbench-main:not(.hide-right-dock) .ide-workbench-dock-left,
+.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock) .ide-workbench-dock-left {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+.ide-workbench-shell[data-layout-mode='standard'] .ide-workbench-main:not(.hide-right-dock) .ide-workbench-workspace,
+.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock) .ide-workbench-workspace {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.ide-workbench-shell[data-layout-mode='standard'] .ide-workbench-main:not(.hide-right-dock) .ide-workbench-dock-right,
+.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock) .ide-workbench-dock-right {
+  grid-column: 2;
+  grid-row: 2;
+  border-left: 0;
+  border-top: 1px solid rgba(52, 86, 118, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  max-height: 32vh;
+}
+
+.ide-workbench-shell[data-layout-mode='standard'] .ide-workbench-dock,
+.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-dock {
+  scrollbar-gutter: stable both-edges;
+}
+
+.ide-workbench-shell[data-layout-mode='standard'] .ide-workbench-dock-right .ide-inline-actions,
+.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-dock-right .ide-inline-actions,
+.ide-workbench-shell[data-layout-mode='standard'] .ide-workbench-dock-right .ide-surface-actions,
+.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-dock-right .ide-surface-actions {
+  flex-wrap: wrap;
+}
+
+.ide-workbench-shell[data-layout-mode='standard'] .ide-workbench-dock-right .ide-button,
+.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-dock-right .ide-button,
+.ide-workbench-shell[data-layout-mode='standard'] .ide-workbench-dock-left .ide-button,
+.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-dock-left .ide-button {
+  max-width: 100%;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-console-frame > .ide-verify-instrument-deck {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
+  min-height: clamp(540px, 64vh, 860px) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='standard'] .ide-verify-waveform-scroll,
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='compact'] .ide-verify-waveform-scroll {
+  min-height: clamp(400px, 54vh, 680px) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-body,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-tab-panel,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-truth-table-pane {
+  min-height: 320px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-truth-table-body,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-truth-table-scroll,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-truth-table-combos-scroll {
+  min-height: 280px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-status-strip,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-authority-note-inline,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-pass-summary {
+  margin-bottom: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-summary-hero-main,
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-buildCardTop {
+  flex-wrap: wrap;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-summary-actions,
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-buildCardTop [data-testid='ide-primary-cta'] {
+  width: 100%;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-summary-actions > *,
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-buildCardTop [data-testid='ide-primary-cta'] > * {
+  max-width: 100%;
+}
+
+/* Live lab-day unblock:
+   the inline Verify side panel was still crushing the oscilloscope and clipping
+   the lower-right analysis region on real 1920x1080 screenshots. The lower deck
+   now owns the analysis workflow, so the instrument deck must stay single-column. */
+.ide-verify-console-frame > .ide-verify-instrument-deck,
+.ide-verify-instrument-deck {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.ide-verify-workbench-v2,
+.ide-verify-console-frame,
+.ide-verify-instrument-deck,
+.ide-verify-oscilloscope-stage,
+.ide-verify-supporting-strip,
+.ide-verify-drawer-body,
+.ide-verify-tab-panel,
+.ide-verify-waveform-frame,
+.ide-verify-waveform-scroll {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ide-verify-side-panel {
+  display: none !important;
+}
+
+.ide-verify-waveform-scroll {
+  min-height: clamp(520px, 62vh, 860px) !important;
+}
+
+.ide-verify-supporting-strip {
+  overflow: visible;
+}
+
+.ide-verify-supporting-strip.is-open {
+  min-height: 320px;
+  max-height: none !important;
+}
+
+.ide-verify-drawer-toggle {
+  min-height: 48px;
+}
+
+.ide-verify-drawer-summary,
+.ide-verify-drawer-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  align-items: center;
+}
+
+.ide-verify-drawer-body {
+  min-height: 320px;
+  max-height: none !important;
+  overflow: auto;
+}
+
+.ide-verify-tab-panel,
+.ide-truth-table-pane,
+.ide-truth-table-body,
+.ide-truth-table-scroll,
+.ide-truth-table-combos-scroll {
+  min-width: 0;
+}
+
+/* Final live usability sweep:
+   reclaim center width, stop double-sidebar squeeze in Verify,
+   and prevent left/right handoff docks from clipping their own content. */
+
+.ide-workbench-shell[data-layout-mode='wide'] .ide-workbench-dock {
+  padding: 8px 8px 12px;
+}
+
+.ide-workbench-shell[data-layout-mode='wide'] .ide-panel-header {
+  padding: 10px 12px 8px;
+}
+
+.ide-workbench-shell[data-layout-mode='wide'] .ide-panel-actions {
+  padding: 0 12px 8px;
+}
+
+.ide-workbench-shell[data-layout-mode='wide'] .ide-panel-body {
+  padding: 0 12px 12px;
+}
+
+.ide-verify-instrument-deck {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, auto) auto;
+  gap: 14px;
+}
+
+.ide-verify-side-panel {
+  min-height: 210px;
+  max-height: 280px;
+  border-left: 0;
+  border-top: 1px solid rgba(40, 72, 106, 0.42);
+  border-radius: 14px;
+  background: rgba(6, 14, 24, 0.9);
+}
+
+.ide-verify-side-panel-body {
+  max-height: 224px;
+}
+
+.ide-verify-oscilloscope-stage {
+  min-height: 0;
+}
+
+.ide-verify-waveform-scroll {
+  min-height: clamp(460px, 56vh, 720px);
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.ide-verify-drawer-body,
+.ide-verify-tab-panel,
+.ide-truth-table-pane {
+  min-height: 340px;
+}
+
+.ide-truth-table-body,
+.ide-truth-table-scroll,
+.ide-truth-table-combos-scroll {
+  min-height: 300px;
+}
+
+.ide-truth-table-th,
+.ide-truth-table-td {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.ide-export-sidecard .ide-inline-actions {
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.ide-export-sidecard .ide-inline-actions > .ide-button,
+.ide-export-buildCardTop [data-testid='ide-primary-cta'] .ide-button {
+  width: 100%;
+  justify-content: center;
+}
+
+.ide-export-buildCardTop {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ide-export-artifact-workspace {
+  grid-template-columns: minmax(240px, 0.62fr) minmax(0, 1fr);
+}
+
+.ide-export-artifact-preview-body {
+  min-height: 420px;
+}
+
+.ide-import-dock-v2 {
+  gap: 10px;
+}
+
+.ide-import-workflow-step-btn {
+  padding: 8px 10px;
+}
+
+.ide-import-workflow-step-copy strong {
+  font-size: 11px;
+}
+
+.ide-import-workflow-step-copy span {
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.ide-hw-board-wrap {
+  min-height: clamp(360px, 54vh, 680px);
+}
+
+@media (max-height: 860px) {
+  .ide-verify-waveform-scroll {
+    min-height: clamp(360px, 48vh, 560px);
+  }
+
+  .ide-verify-side-panel {
+    min-height: 180px;
+    max-height: 240px;
+  }
+
+  .ide-verify-drawer-body,
+  .ide-verify-tab-panel,
+  .ide-truth-table-pane {
+    min-height: 260px;
+  }
+
+  .ide-truth-table-body,
+  .ide-truth-table-scroll,
+  .ide-truth-table-combos-scroll {
+    min-height: 220px;
+  }
+
+  .ide-export-artifact-preview-body {
+    min-height: 320px;
+  }
+
+  .ide-hw-board-wrap {
+    min-height: clamp(280px, 44vh, 480px);
+  }
 }
 
 [data-layout-mode='standard'] .ide-verify-oscilloscope-stage,

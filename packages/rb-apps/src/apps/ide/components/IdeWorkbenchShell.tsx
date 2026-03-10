@@ -10,15 +10,15 @@ type IdeSurfaceMode =
 type ResizeEdge = 'left' | 'right' | 'bottom';
 type WorkbenchLayoutMode = 'wide' | 'standard' | 'compact';
 
-const LAYOUT_STORAGE_KEY = 'rb.ide.workbench.layout.v3';
+const LAYOUT_STORAGE_KEY = 'rb.ide.workbench.layout.v6';
 const DEFAULT_LAYOUT = {
-  leftWidth: 200,
-  rightWidth: 260,
+  leftWidth: 164,
+  rightWidth: 212,
   consoleHeight: 0,
 };
 
-const LEFT_WIDTH_RANGE = { min: 180, max: 420 };
-const RIGHT_WIDTH_RANGE = { min: 240, max: 480 };
+const LEFT_WIDTH_RANGE = { min: 136, max: 240 };
+const RIGHT_WIDTH_RANGE = { min: 180, max: 280 };
 const CONSOLE_HEIGHT_RANGE = { min: 0, max: 320 };
 const COLLAPSED_CONSOLE_HEIGHT = 0;
 
@@ -167,13 +167,22 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   };
 
   const shellStyle = useMemo(
-    () =>
-      ({
-        '--ide-workbench-left-width': `${layout.leftWidth}px`,
-        '--ide-workbench-right-width': `${layout.rightWidth}px`,
+    () => {
+      const widthCaps =
+        layoutMode === 'wide'
+          ? { left: { min: 152, max: 172 }, right: { min: 196, max: 220 } }
+          : layoutMode === 'standard'
+            ? { left: { min: 144, max: 160 }, right: { min: 184, max: 208 } }
+            : { left: { min: 136, max: 152 }, right: { min: 176, max: 196 } };
+      const effectiveLeftWidth = clampValue(layout.leftWidth, widthCaps.left);
+      const effectiveRightWidth = hideRightDock ? 0 : clampValue(layout.rightWidth, widthCaps.right);
+      return ({
+        '--ide-workbench-left-width': `${effectiveLeftWidth}px`,
+        '--ide-workbench-right-width': `${effectiveRightWidth}px`,
         '--ide-workbench-console-height': `${layout.consoleHeight}px`,
-      }) as React.CSSProperties,
-    [layout.consoleHeight, layout.leftWidth, layout.rightWidth]
+      }) as React.CSSProperties;
+    },
+    [hideRightDock, layout.consoleHeight, layout.leftWidth, layout.rightWidth, layoutMode]
   );
 
   const consoleState = consoleHasBlocking
@@ -341,8 +350,8 @@ function detectLayoutMode(width?: number): WorkbenchLayoutMode {
       : typeof window !== 'undefined'
         ? window.innerWidth
         : 1366;
-  if (effectiveWidth >= 1440) return 'wide';
-  if (effectiveWidth >= 1280) return 'standard';
+  if (effectiveWidth >= 1600) return 'wide';
+  if (effectiveWidth >= 1320) return 'standard';
   return 'compact';
 }
 

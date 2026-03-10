@@ -43,6 +43,93 @@
 
 ---
 
+## Batch: Viewport Compression Unblock Sweep (2026-03-10)
+
+**Subsystem**: IDE shell/layout responsiveness — Verify, Hardware, Export, Import usability under browser zoom and narrower effective widths
+
+**Files changed**
+
+- `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+
+**What changed**
+
+- Bumped the stored workbench layout key to `rb.ide.workbench.layout.v6` so stale dock widths from earlier layout experiments do not keep squeezing the center workspace.
+- Tightened the app-shell default dock widths and added mode-specific width caps in `IdeWorkbenchShell` so the left and right docks cannot silently reclaim too much horizontal space even if a prior stored layout was wider.
+- Raised the `wide` layout threshold so zoom-compressed windows fall back to `standard` sooner instead of pretending they still have desktop-wide room.
+- Removed the old hard CSS dock minimum widths (`180px` / `240px`) that were overriding the narrower shell widths and forcing the workspace to crop.
+- Added a final responsive fallback in `ide-root.css` for `standard` and `compact` layouts:
+  - left dock stays on the left
+  - workspace keeps the top row
+  - right dock drops below the workspace instead of stealing horizontal width
+- Added final Verify-specific overrides so the oscilloscope stage stays single-column and the waveform keeps real vertical height when the viewport is compressed.
+- Added final Export-specific wrapping overrides so the handoff action buttons and summary actions do not spill out of their cards when the available width shrinks.
+
+**Why**
+
+- Real screenshots showed a classroom-blocking failure: browser zoom or narrower effective width could crop the bottom-right of Verify and make the oscilloscope or lower analysis region unreadable.
+- The core cause was not one widget. It was the shell still spending too much width on fixed docks while also keeping the right inspector beside the main workspace.
+- This batch fixes the shell behavior first, then lets the heavy surfaces degrade vertically instead of cropping horizontally.
+
+**Validation**
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.workstation.test.tsx` — PASS
+- `pnpm --filter @redbyte/rb-apps build` — completes, still reports the repo’s broad pre-existing TypeScript diagnostics outside this batch
+- Real browser checks with Playwright on:
+  - `http://localhost:5173/os/?mode=verify`
+  - `http://localhost:5173/os/?mode=hardware`
+  - `http://localhost:5173/os/?mode=export`
+  - `http://localhost:5173/os/?mode=import`
+- Compressed-layout browser check confirmed the shell now flips to a stacked right-inspector layout and keeps the center workspace fully visible instead of cropping it.
+
+**Notes**
+
+- This is a local/live-preview fix until a new build is deployed; it does not itself prove `redbyteapps.dev` changed.
+- The package build still emits long-standing repo-wide diagnostics that predate this batch and are outside the shell/layout files changed here.
+
+- **Attribution**: Connor Angiel
+
+---
+
+## Batch: Verify Workspace Unblock Sweep (2026-03-10)
+
+**Subsystem**: IDE surfaces â€” Verify usability / workbench layout
+
+**Files changed**
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+- `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+
+**What changed**
+
+- Bumped the stored workbench layout key to `rb.ide.workbench.layout.v5` and tightened default left/right dock widths so old oversized dock layouts do not keep choking the center workspace.
+- Redirected fail/pass auto-focus behavior onto the lower Verify drawer (`verifyTab`) instead of the inline side panel.
+- Expanded the lower Verify drawer tab set so it now owns `Mismatches`, `Vectors`, `Truth Table`, `K-Map`, and `Details`.
+- Removed the inline Verify side panel from active render flow and forced the instrument deck to a single-column layout.
+- Added final high-specificity CSS overrides so the oscilloscope stage stays full-width, the side panel stays out of layout, the waveform scroll area is substantially taller, and the lower analysis strip gets real readable height.
+- Reset waveform scroll position on new runs so the oscilloscope does not reopen mid-scroll with hidden top lanes.
+
+**Why**
+
+- Real browser screenshots at `1920x1080` still showed the oscilloscope crushed into a two-column layout with the lower-right analysis region cropped off-screen.
+- The Verify page had duplicate analysis surfaces: an inline side panel plus a lower drawer. That duplication was the main reason the waveform never got the width it needed.
+
+**Validation**
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx`
+- Real browser check with Playwright on `http://localhost:5173/os/?mode=verify` at `1920x1080`
+- Real browser follow-up checks on `?mode=hardware`, `?mode=export`, and `?mode=import`
+
+**Notes**
+
+- The Verify workspace is materially improved in the browser: the waveform is no longer cropped by the inline side panel and the lower-right analysis region is visible again.
+- This is still a local/live-preview fix until a new build is deployed; it does not by itself prove `redbyteapps.dev` changed.
+
+- **Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-03-09 (Surface redesign pass: Design authoring workstation)
 
 ### Design is now composed as a real authoring workspace with a contextual inspector, trace tools, and safer split behavior

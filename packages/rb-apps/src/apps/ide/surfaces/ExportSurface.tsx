@@ -393,6 +393,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     : downloadDone && lastDownloadKind === 'project'
       ? 'Re-download'
       : 'Download Vivado Project (Open Project)';
+  const projectDownloadCompactLabel = isRebuilding
+    ? 'Building…'
+    : downloadDone && lastDownloadKind === 'project'
+      ? 'Re-download'
+      : 'Download Project ZIP';
   const kitDownloadLabel = isRebuilding
     ? 'Building…'
     : downloadDone && lastDownloadKind === 'kit'
@@ -669,7 +674,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               disabled={!exportReady || isRebuilding}
               testId="ide-export-dock-download"
             >
-              {isRebuilding ? <><IdeSpinner size="sm" testId="ide-export-rebuild-spinner" /> Building&hellip;</> : projectDownloadLabel}
+              {isRebuilding ? <><IdeSpinner size="sm" testId="ide-export-rebuild-spinner" /> Building&hellip;</> : projectDownloadCompactLabel}
             </IdeButton>
           </div>
           <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
@@ -1469,7 +1474,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       disabled={!exportReady || isRebuilding}
                       testId="ide-export-rebuild-btn"
                     >
-                      {projectDownloadLabel}
+                      {projectDownloadCompactLabel}
                     </IdeButton>
                   </span>
                 </div>
