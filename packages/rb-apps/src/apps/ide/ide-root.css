@@ -7148,20 +7148,20 @@ details[open] summary .details-arrow {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-height: 120px;
+  min-height: 500px;
   border-right: 1px solid rgba(24,44,72,0.7);
   background: rgba(8, 16, 30, 0.92);
 }
 .ide-verify-oscilloscope-stage .ide-waveform-outer {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 400px;
   overflow: auto;
   border-color: rgba(20,40,68,0.8) !important;
 }
 /* Sprint 11: named scroll wrapper for the SVG waveform — handles horizontal overflow */
 .ide-verify-waveform-scroll {
   overflow: auto;
-  min-height: 0;
+  min-height: 420px;
 }
 
 /* ── supporting strip (tab bar + panels below deck) ── */
@@ -7464,7 +7464,7 @@ details[open] summary .details-arrow {
 }
 .ide-verify-oscilloscope-stage {
   /* Sprint 11: removed 480px hard floor — grid row now fills available height */
-  min-height: 160px;
+  min-height: 500px;
 }
 
 /* ── Oscilloscope instrument header (OSCILLOSCOPE label + chips) ── */
@@ -15480,12 +15480,13 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 /* --- A1: Waveform scroll: let it fill available space --- */
 .ide-verify-waveform-scroll {
-  min-height: 240px;
+  min-height: 480px !important;
   max-height: none;
   flex: 1 1 auto;
 }
 .ide-verify-oscilloscope-stage .ide-waveform-outer {
   flex: 1 1 auto;
+  min-height: 440px;
   overflow: auto;
 }
 
@@ -15785,7 +15786,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 
 .ide-verify-waveform-scroll {
-  min-height: clamp(420px, 54vh, 760px);
+  min-height: clamp(500px, 60vh, 880px) !important;
   max-height: none;
   overflow-x: auto;
   overflow-y: visible;
