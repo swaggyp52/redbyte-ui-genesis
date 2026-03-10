@@ -100,6 +100,24 @@ const PROJECT_EMPTY_SIM: RuntimeSimState = {
   inputs: {}, signals: {}, trace: [], selectedSignalKey: null, probes: [],
 };
 
+const PROJECT_INPUT_ALIAS_OPTIONS = [
+  'CLK100MHZ',
+  ...Array.from({ length: 16 }, (_, index) => `SW${index}`),
+  'BTNC',
+  'BTNU',
+  'BTND',
+  'BTNL',
+  'BTNR',
+];
+
+const PROJECT_OUTPUT_ALIAS_OPTIONS = [
+  ...Array.from({ length: 16 }, (_, index) => `LD${index}`),
+  ...Array.from({ length: 16 }, (_, index) => `LED${index}`),
+  ...Array.from({ length: 7 }, (_, index) => `SEG${index}`),
+  'DP',
+  ...Array.from({ length: 4 }, (_, index) => `AN${index}`),
+];
+
 export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   projectName,
   description,
@@ -467,6 +485,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       sortedMappingRows.map((row, index) => {
         const mappingView = toMappingView(row, index);
         const mappingKey = toMappingKey(row.label || row.id);
+        const quickPins = getProjectQuickPickPins(row, index);
         const swM2 = /^SW(\d+)$/i.exec(row.label);
         const ldM2 = /^LD(\d+)$/i.exec(row.label);
         const rowSigType = swM2 ? 'sw' : ldM2 ? 'ld' : null;
@@ -493,25 +512,50 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             </code>
           </span>
         );
+        const pinCell = (
+          <div className="ide-project-pin-field" data-testid={`ide-project-pin-field-${mappingKey}`}>
+            <input
+              ref={(node) => {
+                mappingInputRefs.current[mappingKey] = node;
+              }}
+              className={`ide-export-pin-input ${
+                highlightedMappingKey === mappingKey ? 'is-highlighted' : ''
+              }`}
+              value={row.pin}
+              list={row.direction === 'in' ? 'ide-project-input-pin-options' : 'ide-project-output-pin-options'}
+              onChange={(event) => onUpdateMappingPin(row.id, event.target.value.toUpperCase().trim())}
+              placeholder={suggestBasys3Pin(row, index)}
+              aria-label={`pin-${row.id}`}
+              data-testid={`ide-project-map-input-${mappingKey}`}
+            />
+            {quickPins.length > 0 && (
+              <div className="ide-project-pin-quick-picks">
+                {quickPins.map((pin) => {
+                  const isActive =
+                    resolveBasys3PackagePin(row.pin) === resolveBasys3PackagePin(pin) &&
+                    row.pin.trim().length > 0;
+                  return (
+                    <button
+                      key={`${row.id}-${pin}`}
+                      type="button"
+                      className={`ide-project-pin-quick-pick${isActive ? ' is-active' : ''}`}
+                      onClick={() => onUpdateMappingPin(row.id, pin)}
+                      data-testid={`ide-project-map-quick-${mappingKey}-${toMappingKey(pin)}`}
+                    >
+                      {pin}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
         return [
           portCell,
           <span key={`${row.id}-alias`} data-testid={`ide-project-alias-${mappingKey}`}>
             {mappingView.aliasDisplay}
           </span>,
-          <input
-            key={`${row.id}-pin`}
-            ref={(node) => {
-              mappingInputRefs.current[mappingKey] = node;
-            }}
-            className={`ide-export-pin-input ${
-              highlightedMappingKey === mappingKey ? 'is-highlighted' : ''
-            }`}
-            value={row.pin}
-            onChange={(event) => onUpdateMappingPin(row.id, event.target.value.toUpperCase().trim())}
-            placeholder={suggestBasys3Pin(row, index)}
-            aria-label={`pin-${row.id}`}
-            data-testid={`ide-project-map-input-${mappingKey}`}
-          />,
+          pinCell,
           row.direction.toUpperCase(),
           <span key={`${row.id}-status`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <IdeStatusPill tone={mappingView.statusTone}>
@@ -1213,10 +1257,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   id="ide-fpga-top-input"
                   type="text"
                   className="ide-input-inline"
-                  defaultValue={fpgaConfig?.top ?? topModuleName ?? 'top'}
+                  value={fpgaConfig?.top ?? topModuleName ?? 'top'}
                   data-testid="ide-project-fpga-top"
-                  onBlur={(event) => onFpgaConfigChange?.({ top: event.currentTarget.value.trim() || 'top' })}
-                  onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+                  onChange={(event) => onFpgaConfigChange?.({ top: event.currentTarget.value })}
                 />
               </div>
               <div className="ide-kv-row">
@@ -1225,10 +1268,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   id="ide-fpga-part-input"
                   type="text"
                   className="ide-input-inline"
-                  defaultValue={fpgaConfig?.part ?? 'xc7a35tcpg236-1'}
+                  value={fpgaConfig?.part ?? 'xc7a35tcpg236-1'}
                   data-testid="ide-project-fpga-part"
-                  onBlur={(event) => onFpgaConfigChange?.({ part: event.currentTarget.value.trim() || 'xc7a35tcpg236-1' })}
-                  onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+                  onChange={(event) => onFpgaConfigChange?.({ part: event.currentTarget.value })}
                 />
               </div>
               {importFidelity && (
@@ -1244,6 +1286,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               )}
             </div>
           </details>
+
+          <IdeCallout tone="info" title="Lab-day proven export subset" testId="ide-project-supported-scope-callout">
+            RedByte is frozen today for Basys3 + Vivado Project Mode using IO, gates, <code>FullAdder</code>,{' '}
+            <code>MUX4</code>, and <code>DFlipFlop</code>. Hierarchy, bus-heavy builds, and behavioral HDL still need
+            shipped starters or manual validation.
+          </IdeCallout>
 
           <div
             className={`ide-project-mapping-summary${unmappedRequiredCount > 0 ? ' has-error' : ''}`}
@@ -1294,6 +1342,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 
           {mappingExpanded && (
             <div className="ide-project-mapping-table-wrap" data-testid="ide-project-mapping-table-wrap">
+              <div className="ide-project-mapping-quick-hint" data-testid="ide-project-mapping-quick-hint">
+                Use Basys3 aliases directly: inputs <code>CLK100MHZ</code>, <code>SW0-SW15</code>,{' '}
+                <code>BTNC-BTNR</code>; outputs <code>LD0-LD15</code>, <code>SEG0-SEG6</code>,{' '}
+                <code>DP</code>, <code>AN0-AN3</code>.
+              </div>
               <div
                 className={`ide-project-mapping-status ${unmappedRequiredCount > 0 ? 'is-error' : 'is-complete'}`}
                 data-testid="ide-project-mapping-banner"
@@ -1310,6 +1363,16 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 rows={mappingRowsUi}
                 testId="ide-project-mapping-table"
               />
+              <datalist id="ide-project-input-pin-options">
+                {PROJECT_INPUT_ALIAS_OPTIONS.map((pin) => (
+                  <option key={pin} value={pin} />
+                ))}
+              </datalist>
+              <datalist id="ide-project-output-pin-options">
+                {PROJECT_OUTPUT_ALIAS_OPTIONS.map((pin) => (
+                  <option key={pin} value={pin} />
+                ))}
+              </datalist>
             </div>
           )}
         </section>
@@ -1394,6 +1457,35 @@ function suggestBasys3Pin(signal: { id: string; direction: 'in' | 'out' }, index
     return `SW${Math.min(index, 15)}`;
   }
   return `LD${Math.min(index, 15)}`;
+}
+
+function getProjectQuickPickPins(
+  row: Pick<ProjectMappingRow, 'label' | 'port' | 'direction'>,
+  index: number
+): string[] {
+  const raw = (row.port || row.label || '').trim().toUpperCase();
+  const suggestions = new Set<string>();
+  const exactMatch = /^(CLK100MHZ|CLK|SW\d{1,2}|LD\d{1,2}|LED\d{1,2}|BTN[CUDLR]|\bDP\b|SEG\d|AN\d)$/i.exec(raw);
+  if (exactMatch) {
+    suggestions.add(raw === 'CLK' ? 'CLK100MHZ' : raw);
+  }
+
+  if (row.direction === 'in') {
+    if (!exactMatch && /RESET|RST/.test(raw)) suggestions.add('BTNC');
+    suggestions.add(suggestBasys3Pin({ id: raw || `IN${index}`, direction: row.direction }, index));
+    if (!suggestions.has('CLK100MHZ')) suggestions.add('CLK100MHZ');
+    suggestions.add('SW0');
+    suggestions.add('BTNC');
+  } else {
+    suggestions.add(suggestBasys3Pin({ id: raw || `OUT${index}`, direction: row.direction }, index));
+    suggestions.add('SEG0');
+    suggestions.add('AN0');
+    suggestions.add('DP');
+  }
+
+  return Array.from(suggestions)
+    .filter((pin) => resolveBasys3PackagePin(pin) !== null)
+    .slice(0, 4);
 }
 
 function formatSavedAt(value: string): string {

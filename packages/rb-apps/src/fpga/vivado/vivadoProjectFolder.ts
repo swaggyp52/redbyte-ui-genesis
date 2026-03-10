@@ -239,7 +239,7 @@ function buildVivadoProjectFolderReadme(input: BuildVivadoProjectFolderReadmeInp
     `1. Unzip the download so the folder "${input.projectSlug}" is visible.`,
     '2. Open Vivado.',
     `3. Click "Open Project" and select "${input.projectSlug}.xpr".`,
-    '4. Confirm the design sources and constraints are loaded.',
+    '4. Confirm the part, top module, design sources, and constraints are loaded.',
     '5. Run Synthesis, Run Implementation, then Generate Bitstream.',
     '6. Open Hardware Manager and program the Basys3.',
     '',

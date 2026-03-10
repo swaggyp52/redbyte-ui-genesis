@@ -36,7 +36,7 @@ function buildFixtureProject(): RBProject {
     },
     vectors: [],
     hdl: {
-      top: 'top',
+      top: 'student_top',
       sources: [
         {
           path: 'top.vhd',
@@ -45,15 +45,15 @@ function buildFixtureProject(): RBProject {
             'library IEEE;',
             'use IEEE.STD_LOGIC_1164.ALL;',
             '',
-            'entity top is',
+            'entity student_top is',
             '  port (',
             '    sw0 : in std_logic;',
             '    sw1 : in std_logic;',
             '    ld0 : out std_logic',
             '  );',
-            'end top;',
+            'end student_top;',
             '',
-            'architecture rtl of top is',
+            'architecture rtl of student_top is',
             'begin',
             '  ld0 <= sw0 and sw1;',
             'end rtl;',
@@ -61,7 +61,7 @@ function buildFixtureProject(): RBProject {
         },
       ],
     },
-    fpga: { board: 'basys3', top: 'top' },
+    fpga: { board: 'basys3', part: 'xc7a100tcsg324-1', top: 'student_top' },
     meta: {
       projectId: 'rb-project-folder-fixture',
       tags: ['contract', 'vivado-project-folder'],
@@ -73,7 +73,7 @@ async function buildProjectFolderZip(project: RBProject): Promise<Uint8Array> {
   const viewModel = buildExportViewModel(project);
   expect(viewModel.status).toBe('ok');
   expect(viewModel.errors).toEqual([]);
-  return buildVivadoProjectFolderZip({
+    return buildVivadoProjectFolderZip({
     artifacts: viewModel.artifacts.map((artifact) => ({
       path: artifact.path,
       content: artifact.content,
@@ -81,7 +81,7 @@ async function buildProjectFolderZip(project: RBProject): Promise<Uint8Array> {
     projectName: project.name,
     projectSlug: deriveVivadoProjectSlug(project.meta?.projectId ?? project.name),
     topModule: project.hdl?.top ?? project.fpga?.top ?? 'top',
-    part: resolveVivadoPart(),
+    part: resolveVivadoPart(project.fpga?.part),
   });
 }
 
@@ -115,10 +115,19 @@ describe('IDE Vivado project folder contract', () => {
     );
 
     const xprText = await loaded.file(`${slug}/${slug}.xpr`)!.async('string');
-    expect(xprText).toContain('Option Name="Part" Val="xc7a35tcpg236-1"');
-    expect(xprText).toContain('Option Name="TopModule" Val="top"');
+    expect(xprText).toContain('Option Name="Part" Val="xc7a100tcsg324-1"');
+    expect(xprText).toContain('Option Name="TopModule" Val="student_top"');
     expect(xprText).toContain('$PSRCDIR/sources_1/new/top.vhd');
     expect(xprText).toContain('$PSRCDIR/constrs_1/new/top.xdc');
+
+    const importTclText = await loaded.file(`${slug}/vivado_import.tcl`)!.async('string');
+    expect(importTclText).toContain('set part "xc7a100tcsg324-1"');
+    expect(importTclText).toContain('set top_module "student_top"');
+
+    const manifestText = await loaded.file(`${slug}/project.rbproj.json`)!.async('string');
+    const manifestProject = JSON.parse(manifestText) as RBProject;
+    expect(manifestProject.fpga?.part).toBe('xc7a100tcsg324-1');
+    expect(manifestProject.fpga?.top).toBe('student_top');
 
     const readmeText = await loaded.file(`${slug}/README.txt`)!.async('string');
     expect(readmeText).toContain('Open Project');

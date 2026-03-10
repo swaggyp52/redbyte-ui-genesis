@@ -34,4 +34,19 @@ describe('ImportSurface workstation redesign', () => {
 
     expect(view.getByTestId('ide-import-board-detection').textContent).toContain('High');
   });
+
+  it('keeps the ports-only rescue path wired through to Export', async () => {
+    const onGoToExport = vi.fn();
+    const view = render(<ImportSurface onImportProject={vi.fn()} onGoToExport={onGoToExport} />);
+
+    fireEvent.click(view.getByTestId('ide-import-toggle-behavioral-samples'));
+    fireEvent.click(view.getByTestId('ide-import-load-sample-edge-detect'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-import-ports-only-warning')).toBeTruthy();
+    });
+
+    fireEvent.click(view.getByTestId('ide-import-go-to-export'));
+    expect(onGoToExport).toHaveBeenCalledTimes(1);
+  });
 });

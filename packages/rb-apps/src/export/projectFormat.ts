@@ -24,6 +24,7 @@ export interface RBFpgaConstraints {
 export interface RBFpgaConfig {
   board: 'basys3';
   constraints?: RBFpgaConstraints;
+  part?: string;
   preset?: string;
   top?: string;
 }

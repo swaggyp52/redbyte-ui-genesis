@@ -37,6 +37,12 @@ type HdlLanguage = 'auto' | 'vhdl' | 'verilog';
 
 export interface ImportSurfaceProps {
   onImportProject?: (project: RBProject) => void;
+  onImportCommitted?: (meta: {
+    fidelity: 'full' | 'reconstructed' | 'partial';
+    importMode: 'manifest' | 'reconstructed';
+    reconstructionLevel: ReconstructionLevel;
+    sourceName: string;
+  }) => void;
   onImportSubmission?: (submission: ParsedIdeSubmission) => void;
   projectIoRows?: IdeExampleIoRow[];
   onApplySuggestions?: (items: Array<{ rowId: string; pin: string }>) => void;
@@ -327,6 +333,7 @@ function importTick(ms = 40): Promise<void> {
 
 export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   onImportProject,
+  onImportCommitted,
   onImportSubmission,
   projectIoRows,
   onApplySuggestions,
@@ -1167,6 +1174,19 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
   const confirmApplyProject = () => {
     if (!pendingApplyProject) return;
+    onImportCommitted?.({
+      fidelity:
+        zipInspection?.importMode === 'manifest'
+          ? 'full'
+          : effectiveReconstructionLevel === 'full'
+            ? 'reconstructed'
+            : 'partial',
+      importMode: zipInspection?.importMode ?? 'reconstructed',
+      reconstructionLevel: effectiveReconstructionLevel,
+      sourceName:
+        zipInspection?.sourceName ??
+        `${parsedHdl?.entityName.trim() || 'imported-design'}.${parsedHdl?.lang === 'verilog' ? 'v' : 'vhd'}`,
+    });
     onImportProject?.(pendingApplyProject);
     setPendingApplyProject(null);
     setShowVerifyResetNotice(true);
@@ -1183,6 +1203,19 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
   const confirmAndVerify = () => {
     if (!pendingApplyProject) return;
+    onImportCommitted?.({
+      fidelity:
+        zipInspection?.importMode === 'manifest'
+          ? 'full'
+          : effectiveReconstructionLevel === 'full'
+            ? 'reconstructed'
+            : 'partial',
+      importMode: zipInspection?.importMode ?? 'reconstructed',
+      reconstructionLevel: effectiveReconstructionLevel,
+      sourceName:
+        zipInspection?.sourceName ??
+        `${parsedHdl?.entityName.trim() || 'imported-design'}.${parsedHdl?.lang === 'verilog' ? 'v' : 'vhd'}`,
+    });
     onImportProject?.(pendingApplyProject);
     setPendingApplyProject(null);
     setShowVerifyResetNotice(true);

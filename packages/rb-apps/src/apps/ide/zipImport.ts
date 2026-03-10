@@ -220,6 +220,7 @@ export function buildImportedProject(input: {
     },
     fpga: {
       board: CLASSROOM_BOARD,
+      part: CLASSROOM_PART,
       top: topEntity,
       constraints:
         input.xdcText && input.xdcText.trim().length > 0

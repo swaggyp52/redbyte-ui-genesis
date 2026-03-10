@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { ProjectSurface, type ProjectSurfaceProps } from '../surfaces/ProjectSurface';
 import { BoardSignalProvider } from '../BoardSignalContext';
 
@@ -193,5 +193,58 @@ describe('ProjectSurface workspace panels', () => {
     const missingPins = getByTestId('ide-project-mapping-missing-list');
     expect(missingPins.textContent).toContain('SW0');
     expect(missingPins.textContent).toContain('LD0');
+  });
+
+  it('surfaces FPGA config, fidelity, and Project-side quick picks for lab-day export prep', () => {
+    const onFpgaConfigChange = vi.fn();
+    const onUpdateMappingPin = vi.fn();
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            mappingRows: [
+              {
+                id: 'clk',
+                label: 'clk',
+                direction: 'in',
+                pin: '',
+                required: true,
+                port: 'clk',
+              },
+              {
+                id: 'seg0',
+                label: 'seg0',
+                direction: 'out',
+                pin: '',
+                required: true,
+                port: 'seg0',
+              },
+            ],
+            fpgaConfig: {
+              board: 'basys3',
+              top: 'student_top',
+              part: 'xc7a35tcpg236-1',
+            },
+            importFidelity: 'reconstructed',
+            onFpgaConfigChange,
+            onUpdateMappingPin,
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    fireEvent.click(getByTestId('ide-project-mapping-expand-btn'));
+
+    expect(getByTestId('ide-project-import-fidelity').textContent).toContain('Reconstructed');
+    fireEvent.change(getByTestId('ide-project-fpga-top'), { target: { value: 'lab_top' } });
+    fireEvent.change(getByTestId('ide-project-fpga-part'), { target: { value: 'xc7a100tcsg324-1' } });
+    fireEvent.click(getByTestId('ide-project-map-quick-clk-clk100mhz'));
+    fireEvent.click(getByTestId('ide-project-map-quick-seg0-seg0'));
+
+    expect(onFpgaConfigChange).toHaveBeenCalledWith({ top: 'lab_top' });
+    expect(onFpgaConfigChange).toHaveBeenCalledWith({ part: 'xc7a100tcsg324-1' });
+    expect(onUpdateMappingPin).toHaveBeenCalledWith('clk', 'CLK100MHZ');
+    expect(onUpdateMappingPin).toHaveBeenCalledWith('seg0', 'SEG0');
+    expect(getByTestId('ide-project-supported-scope-callout').textContent).toContain('FullAdder');
   });
 });

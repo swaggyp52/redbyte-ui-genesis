@@ -1,5 +1,48 @@
 # AI State
 
+## Change Log 2026-03-10 (Lab-day Vivado + Basys3 finish pass)
+
+### Lab-day project orchestration, export/import fidelity, and Verify usability were finished for the Vivado + Basys3 student loop
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/IdeApp.tsx` - Added app-level FPGA config ownership (`board`, `top`, `part`), threaded `onGoToExport`, `fpgaConfig`, `onFpgaConfigChange`, and session-scoped import fidelity through the IDE shell, cleared stale import-fidelity state on non-import loads, and made export use the effective top/part truth instead of the prior derived-only defaults.
+- `packages/rb-apps/src/export/projectFormat.ts` - Extended `RBFpgaConfig` with additive `part?: string` so the chosen FPGA part can round-trip cleanly through project/export state.
+- `packages/rb-apps/src/apps/ide/zipImport.ts` - Made reconstructed Vivado imports set the Basys3 classroom FPGA part explicitly so imported projects do not lose part identity.
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` - Added an import-commit callback that reports manifest-vs-reconstructed fidelity back to the app shell only when the user actually applies an import, preserving manifest-first truth while surfacing trustworthy fidelity status.
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` - Completed the Project tab as the operational control surface for lab day by wiring controlled top/part editing, import-fidelity display, Basys3 alias quick-picks for mapping, and a supported-scope callout so students see the real supported subset before export.
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` - Made the Export handoff summary use the effective FPGA part from project state so `.xpr`/Tcl export truth matches the student-facing Project controls.
+- `packages/rb-apps/src/fpga/vivado/vivadoProjectFolder.ts` - Tightened the generated README handoff checklist to explicitly tell students to confirm the part, top module, sources, and constraints when opening the exported Vivado project.
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` - Finished the lab-day Verify correction by increasing waveform emphasis, shrinking low-value chrome, defaulting the lower analysis deck open, defaulting its tab to Truth Table, and routing PASS/no-fail runs to the Vectors support panel instead of leaving students in an empty mismatches view.
+- `packages/rb-apps/src/apps/ide/ide-root.css` - Added the lab-day Project and Verify layout overrides for mapping quick-picks, supported-scope messaging, taller waveform/readout space, larger lower analysis deck, and tighter but more legible top-of-page proportions.
+- `packages/rb-apps/src/__tests__/project-format.test.ts` - Added regression coverage for `fpga.part`.
+- `packages/rb-apps/src/__tests__/ide-vivado-project-folder-contract.test.ts` - Extended the Vivado folder contract to prove overridden top/part values reach `.xpr`, `vivado_import.tcl`, and the exported manifest.
+- `packages/rb-apps/src/__tests__/ide-zip-import-contract.test.ts` - Updated the expected reconstructed-import digest after explicit FPGA part preservation changed the canonical project hash.
+- `packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx` - Added focused integration coverage for Import -> Export rescue navigation and Project top/part edits propagating into the Export handoff summary.
+- `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` - Added coverage for Project-side top/part controls, fidelity messaging, and Basys3 quick-pick hints.
+- `packages/rb-apps/src/apps/ide/__tests__/importSurface.workstation.test.tsx` - Extended workstation coverage to keep the ports-only rescue workflow intact after the new app-shell import callback.
+- `docs/lab-day-vivado-basys3-readiness.md` - Added the explicit supported-scope contract, `swaggy.zip` structural comparison, lab capability matrix, execution order, and manual proof checklist for the lab-day Vivado + Basys3 release bar.
+
+### Why this was bounded
+
+- The batch stayed inside lab-day orchestration, export/import truth surfacing, Project management visibility, and Verify usability for the existing deterministic workflow.
+- Verify authority semantics, `projectRuntime` behavior, import manifest behavior, export artifact contents, simulation semantics, and the wire data model were not rewritten.
+- No claim of real Vivado or Basys3 success was added here; that still requires manual proof on the actual lab machine.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx packages/rb-apps/src/__tests__/project-format.test.ts packages/rb-apps/src/__tests__/ide-vivado-project-folder-contract.test.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/zipImport.manifest.test.ts packages/rb-apps/src/apps/ide/__tests__/zipImport.nestedfolder.test.ts packages/rb-apps/src/apps/ide/__tests__/zipImport.roundtrip.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` - PASS
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` - PASS after the final Verify-state fix
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.workstation.test.tsx` - PASS
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/ide-vivado-project-folder-contract.test.ts packages/rb-apps/src/__tests__/ide-zip-import-contract.test.ts packages/rb-apps/src/apps/ide/__tests__/zipImport.manifest.test.ts packages/rb-apps/src/apps/ide/__tests__/zipImport.nestedfolder.test.ts packages/rb-apps/src/apps/ide/__tests__/zipImport.roundtrip.test.ts` - PASS
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`; still prints the repo's broad pre-existing TypeScript diagnostics outside this batch
+- Real browser validation on `http://localhost:5173/os/?mode=verify` confirmed the lab-day Verify layout is materially improved: the waveform is visible at first glance, the lower analysis deck is open/readable by default, and PASS runs no longer strand the user in an empty mismatches side panel
+- `pnpm repo:status` - timed out in this environment after approximately 124s
+
+- **Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-03-09 (Surface redesign pass: Design authoring workstation)
 
 ### Design is now composed as a real authoring workspace with a contextual inspector, trace tools, and safer split behavior

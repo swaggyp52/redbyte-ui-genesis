@@ -262,7 +262,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     () => deriveVivadoProjectSlug((project.meta?.projectId ?? project.name ?? '').trim()),
     [project.meta?.projectId, project.name]
   );
-  const vivadoPart = resolveVivadoPart();
+  const vivadoPart = resolveVivadoPart(project.fpga?.part);
 
   const gateRows = useMemo(() => {
     const verifyTone = hasVerifyPass

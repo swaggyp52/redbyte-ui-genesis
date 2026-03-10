@@ -85,6 +85,7 @@ describe('project format', () => {
       circuit: { nodes: [], connections: [] },
       fpga: {
         board: 'basys3',
+        part: 'xc7a35tcpg236-1',
         preset: 'basys3-minimal-leds',
         top: 'top',
         constraints: {
@@ -100,6 +101,7 @@ describe('project format', () => {
 
     const parsed = decodeRBProject(encodedA);
     expect(parsed.fpga?.board).toBe('basys3');
+    expect(parsed.fpga?.part).toBe('xc7a35tcpg236-1');
     expect(parsed.fpga?.preset).toBe('basys3-minimal-leds');
     expect(parsed.fpga?.constraints?.type).toBe('xdc');
     expect(parsed.fpga?.constraints?.text).toContain('PACKAGE_PIN U16');
