@@ -873,7 +873,8 @@
   justify-content: space-between;
   gap: var(--ide-space-2);
   min-height: var(--ide-title-row-height);
-  min-height: 30px; /* PR14: tighter header — override */
+  min-height: 24px; /* PR14: tighter header — override */
+  max-height: 28px;
 }
 
 .ide-surface-header {
@@ -4267,6 +4268,7 @@ details[open] summary .details-arrow {
   border-radius: 8px;
   overflow: auto;
   background: #030810;
+  min-height: 450px !important;
 }
 .ide-waveform-outer::after {
   content: 'WAVEFORM';
@@ -4835,10 +4837,11 @@ details[open] summary .details-arrow {
   display: flex;
   align-items: center;
   gap: var(--ide-space-2);
-  padding: var(--ide-space-1) var(--ide-space-2);
+  padding: 4px var(--ide-space-2);
   border-bottom: 1px solid rgba(255,255,255,0.06);
   flex-wrap: wrap;
-  min-height: 40px;
+  min-height: 28px;
+  max-height: 32px;
 }
 .ide-verify-status-strip .ide-copy {
   flex: 1 1 auto;
@@ -13114,11 +13117,12 @@ details[open].ide-export-evidence-details > summary::before {
 /* ── B2.4: Waveform outer fill ── */
 .ide-verify-oscilloscope-stage > .ide-waveform-outer {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 450px !important;
   overflow: auto;
 }
 .ide-verify-waveform-scroll {
   display: block;
+  min-height: 450px !important;
 }
 
 /* ── B2.5: Oscilloscope ambient state coloring ── */
@@ -14543,7 +14547,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 /* Surface redesign v2: verify workstation hierarchy, lane controls, and lower-deck tabs */
 .ide-verify-workbench-v2 {
   display: grid;
-  grid-template-rows: minmax(500px, 1fr) auto;
+  grid-template-rows: minmax(650px, 1fr) auto;
   gap: 14px;
   min-height: 0;
   height: 100%;
@@ -14566,7 +14570,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 .ide-verify-oscilloscope-stage {
   display: grid;
-  grid-template-rows: auto auto auto minmax(420px, 1fr);
+  grid-template-rows: auto auto auto minmax(600px, 1fr);
   gap: 10px;
   padding: 12px;
   border: 1px solid rgba(45, 84, 122, 0.45);
@@ -14616,8 +14620,8 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 .ide-verify-drawer-body {
   display: grid;
   gap: 12px;
-  min-height: 200px;
-  max-height: 32vh;
+  min-height: 180px;
+  max-height: 25vh;
   overflow: hidden;
 }
 
@@ -15486,7 +15490,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 .ide-verify-oscilloscope-stage .ide-waveform-outer {
   flex: 1 1 auto;
-  min-height: 440px;
+  min-height: 600px !important;
   overflow: auto;
 }
 
@@ -15774,19 +15778,20 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 .ide-verify-waveform-frame {
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(450px, 1fr);
   gap: 12px;
-  min-height: 0;
+  min-height: 550px !important;
   overflow: visible;
 }
 
 .ide-verify-oscilloscope-stage .ide-waveform-outer,
 .ide-verify-waveform-frame {
   overflow: visible;
+  min-height: 500px !important;
 }
 
 .ide-verify-waveform-scroll {
-  min-height: clamp(500px, 60vh, 880px) !important;
+  min-height: clamp(600px, 70vh, 1100px) !important;
   max-height: none;
   overflow-x: auto;
   overflow-y: visible;
