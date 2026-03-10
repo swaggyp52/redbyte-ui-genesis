@@ -1,5 +1,37 @@
 # AI State
 
+## Change Log 2026-03-10 (Waveform viewport proportion fix - DOMINANCE UPDATE)
+
+### Made waveform occupy 70% of viewport by compressing UI chrome
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/ide-root.css` - Compressed status strip from 40px min → 28px min/32px max with reduced padding. Reduced panel headers from 30px → 24px min/28px max. Increased all waveform minimums dramatically: waveform-outer 440px → 600px, workbench grid 500px → 650px, oscilloscope stage grid 420px → 600px minimum, waveform scroll clamp(500px, 60vh, 880px) → clamp(600px, 70vh, 1100px). Reduced drawer body from 200px min/32vh max → 180px min/25vh max.
+
+### Why this was needed
+
+- Previous fixes made the waveform VISIBLE but it was still too small, requiring browser zoom-out to use effectively
+- User confirmed "I FOUND IT BUT ITS VERY SMALL AND I HAD TO ZOOM ALL THE WAY OUT. THIS IS A PORBLEM ON ALL OF THE PAGES"
+- The waveform needs to be the DOMINANT element in the viewport at normal zoom, not competing with headers/status strips for space
+- Lab students need to see signal traces clearly without hunting or zooming
+
+### Changes made
+
+- Status strip now takes only 28-32px instead of 40px+
+- Panel headers compressed from 30px → 24px
+- Waveform minimum increased to 600px with 70vh target (was 500px/60vh)
+- Bottom drawer constrained to maximum 25% of viewport (was 32%)
+- Workbench grid ensures waveform area gets at least 650px (was 500px)
+
+### Validation
+
+- Build completes successfully
+- Deployed via commit bb604c93
+
+- **Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-03-10 (Waveform oscilloscope visibility - CRITICAL FIX)
 
 ### Fixed cascading CSS conflicts that were collapsing the waveform viewer
