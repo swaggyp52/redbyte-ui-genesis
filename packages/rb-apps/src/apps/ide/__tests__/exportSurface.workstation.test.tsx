@@ -20,7 +20,11 @@ function buildProject(): RBProject {
         { id: 'g1', type: 'AND', x: 320, y: 180, label: 'and0', config: {}, state: {} },
         { id: 'ld0_node', type: 'OUTPUT', x: 520, y: 180, label: 'ld0', config: {}, state: {} },
       ],
-      connections: [],
+      connections: [
+        { from: { nodeId: 'sw0_node', portName: 'out' }, to: { nodeId: 'g1', portName: 'a' } },
+        { from: { nodeId: 'sw1_node', portName: 'out' }, to: { nodeId: 'g1', portName: 'b' } },
+        { from: { nodeId: 'g1', portName: 'out' }, to: { nodeId: 'ld0_node', portName: 'in' } },
+      ],
     },
     ioMapping: {
       inputs: [

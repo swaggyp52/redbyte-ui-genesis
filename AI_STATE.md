@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-03-10 (Export files unblocked from Verify)
+
+### Export now treats Verify as advisory for file visibility and Vivado handoff downloads
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` - Changed Export gating so only actual export/mapping errors block downloads, while missing/failing/stale Verify evidence is surfaced as an advisory warning. The surface now keeps generated text artifacts and the Vivado project ZIP available when export diagnostics are clean, marks the handoff as `UNVERIFIED` instead of `BLOCKED`, and shows explicit callouts telling students the files are available now but not yet trusted as final hardware evidence.
+- `packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx` - Updated the workstation fixture to be structurally export-valid and added coverage proving Export remains downloadable when Verify has not run.
+
+### Why this was needed
+
+- Real classroom feedback showed a product blocker: students could not get to generated files or export a project if Verify was broken or simply not run yet.
+- For lab-day usability, Verify must remain observable truth, but it cannot hide or disable the generated text artifacts when the export pack itself is otherwise valid.
+- The correct contract is:
+  - mapping/export problems block download
+  - Verify problems downgrade trust and show warnings
+  - file visibility remains available
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx` - PASS
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`; still prints the repo's broad pre-existing TypeScript diagnostics outside this batch
+
+- **Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-03-10 (Vivado `.xpr` run schema fix)
 
 ### Fixed the real Open Project XML bug in generated Vivado project folders

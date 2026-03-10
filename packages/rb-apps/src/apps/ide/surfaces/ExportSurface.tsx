@@ -12,6 +12,7 @@ import {
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import {
   buildExportViewModel,
+  type ExportDiagnosticSeverity,
   type ExportDiagnosticView,
   type ExportArtifactView,
   type ExportPinTableRow,
