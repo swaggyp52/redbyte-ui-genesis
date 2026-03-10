@@ -119,6 +119,12 @@ describe('IDE Vivado project folder contract', () => {
     expect(xprText).toContain('Option Name="TopModule" Val="student_top"');
     expect(xprText).toContain('$PSRCDIR/sources_1/new/top.vhd');
     expect(xprText).toContain('$PSRCDIR/constrs_1/new/top.xdc');
+    expect(xprText).toContain('<StratHandle Name="Vivado Synthesis Defaults" Flow="Vivado Synthesis 2024">');
+    expect(xprText).toContain('<Step Id="synth_design"/>');
+    expect(xprText).toContain('<GeneratedRun Dir="$PRUNDIR" File="gen_run.xml"/>');
+    expect(xprText).toContain('<StratHandle Name="Vivado Implementation Defaults" Flow="Vivado Implementation 2024">');
+    expect(xprText).toContain('<Step Id="write_bitstream"/>');
+    expect(xprText).not.toContain('<Strategy Version="1" Minor="1">Vivado Synthesis Defaults</Strategy>');
 
     const importTclText = await loaded.file(`${slug}/vivado_import.tcl`)!.async('string');
     expect(importTclText).toContain('set part "xc7a100tcsg324-1"');

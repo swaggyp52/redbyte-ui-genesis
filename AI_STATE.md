@@ -1,5 +1,35 @@
 # AI State
 
+## Change Log 2026-03-10 (Vivado `.xpr` run schema fix)
+
+### Fixed the real Open Project XML bug in generated Vivado project folders
+
+**Modified files:**
+
+- `packages/rb-apps/src/fpga/vivado/vivadoProjectFolder.ts` - Replaced the invalid text-only `<Strategy>` nodes in the generated `.xpr` run section with Vivado-style structured run metadata for `synth_1` and `impl_1`, including `StratHandle`, required `Step` elements, `GeneratedRun`, `ReportStrategy`, and `RQSFiles`. Also aligned run `Type` values with real Vivado project conventions (`Ft3:Synth`, `Ft2:EntireDesign`) instead of the prior underspecified custom strings.
+- `packages/rb-apps/src/__tests__/ide-vivado-project-folder-contract.test.ts` - Extended the Open Project contract to assert the new structured run metadata exists and the old invalid text-only strategy form is gone.
+
+### Why this was needed
+
+- Real Vivado validation surfaced a concrete XML parser failure in the exported `.xpr` at line 66.
+- The ZIP folder structure itself was valid; the fault was the run schema inside the `.xpr`.
+- The previous generator emitted:
+  - `<Strategy Version="1" Minor="1">Vivado Synthesis Defaults</Strategy>`
+- Real Vivado-generated projects require a structured `Strategy` element with child nodes like `StratHandle` and `Step`, which is what the parser was complaining about.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/ide-vivado-project-folder-contract.test.ts` - PASS
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/ide-zip-import-contract.test.ts` - PASS
+- Direct emit check of `buildVivadoXpr(...)` confirms line 66 is now:
+  - `<Strategy Version="1" Minor="2">`
+  - followed by `StratHandle` and `Step` children instead of the old invalid text node
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`; still prints the repo's broad pre-existing TypeScript diagnostics outside this batch
+
+- **Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-03-10 (Waveform viewport proportion fix - DOMINANCE UPDATE)
 
 ### Made waveform occupy 70% of viewport by compressing UI chrome

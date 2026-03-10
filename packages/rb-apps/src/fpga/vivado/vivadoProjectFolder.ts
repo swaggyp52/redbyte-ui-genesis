@@ -140,6 +140,8 @@ export function buildVivadoXpr(input: BuildVivadoXprInput): string {
     : [];
 
   const simulationConfigTop = includeSimulation ? TESTBENCH_TOP_MODULE : topModule;
+  const synthRunBlock = buildVivadoSynthRunBlock(part);
+  const implRunBlock = buildVivadoImplRunBlock(part);
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -200,14 +202,8 @@ export function buildVivadoXpr(input: BuildVivadoXprInput): string {
     '    <Simulator Name="XSim"/>',
     '  </Simulators>',
     '  <Runs Version="1" Minor="28">',
-    `    <Run Id="synth_1" Type="Ft3:Synth:Vivado Synthesis 2022" SrcSet="sources_1" Part="${xmlAttr(part)}" ConstrsSet="constrs_1" Description="" AutoIncrementalCheckpoint="false">`,
-    '      <Strategy Version="1" Minor="1">Vivado Synthesis Defaults</Strategy>',
-    '      <ReportStrategy Name="Vivado Synthesis Default Reports"/>',
-    '    </Run>',
-    `    <Run Id="impl_1" Type="Ft4:Imp:Vivado Implementation 2022" SrcSet="sources_1" Part="${xmlAttr(part)}" ConstrsSet="constrs_1" SynthRun="synth_1" Description="" AutoIncrementalCheckpoint="false">`,
-    '      <Strategy Version="1" Minor="1">Vivado Implementation Defaults</Strategy>',
-    '      <ReportStrategy Name="Vivado Implementation Default Reports"/>',
-    '    </Run>',
+    ...synthRunBlock,
+    ...implRunBlock,
     '  </Runs>',
     '  <Boards>',
     `    <Board Id="basys3" Spec="1.2" Part="${xmlAttr(part)}"/>`,
@@ -311,4 +307,46 @@ function xmlAttr(value: string): string {
     .replace(/"/g, '&quot;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
+
+function buildVivadoSynthRunBlock(part: string): string[] {
+  return [
+    `    <Run Id="synth_1" Type="Ft3:Synth" SrcSet="sources_1" Part="${xmlAttr(part)}" ConstrsSet="constrs_1" Description="Vivado Synthesis Defaults" AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" State="current" Dir="$PRUNDIR/synth_1" IncludeInArchive="true" IsChild="false">`,
+    '      <Strategy Version="1" Minor="2">',
+    '        <StratHandle Name="Vivado Synthesis Defaults" Flow="Vivado Synthesis 2024">',
+    '          <Desc>Vivado Synthesis Defaults</Desc>',
+    '        </StratHandle>',
+    '        <Step Id="synth_design"/>',
+    '      </Strategy>',
+    '      <GeneratedRun Dir="$PRUNDIR" File="gen_run.xml"/>',
+    '      <ReportStrategy Name="Vivado Synthesis Default Reports" Flow="Vivado Synthesis 2024"/>',
+    '      <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>',
+    '      <RQSFiles/>',
+    '    </Run>',
+  ];
+}
+
+function buildVivadoImplRunBlock(part: string): string[] {
+  return [
+    `    <Run Id="impl_1" Type="Ft2:EntireDesign" Part="${xmlAttr(part)}" ConstrsSet="constrs_1" Description="Default settings for Implementation." AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" State="current" Dir="$PRUNDIR/impl_1" SynthRun="synth_1" IncludeInArchive="true" IsChild="false" GenFullBitstream="true">`,
+    '      <Strategy Version="1" Minor="2">',
+    '        <StratHandle Name="Vivado Implementation Defaults" Flow="Vivado Implementation 2024">',
+    '          <Desc>Default settings for Implementation.</Desc>',
+    '        </StratHandle>',
+    '        <Step Id="init_design"/>',
+    '        <Step Id="opt_design"/>',
+    '        <Step Id="power_opt_design"/>',
+    '        <Step Id="place_design"/>',
+    '        <Step Id="post_place_power_opt_design"/>',
+    '        <Step Id="phys_opt_design"/>',
+    '        <Step Id="route_design"/>',
+    '        <Step Id="post_route_phys_opt_design"/>',
+    '        <Step Id="write_bitstream"/>',
+    '      </Strategy>',
+    '      <GeneratedRun Dir="$PRUNDIR" File="gen_run.xml"/>',
+    '      <ReportStrategy Name="Vivado Implementation Default Reports" Flow="Vivado Implementation 2024"/>',
+    '      <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>',
+    '      <RQSFiles/>',
+    '    </Run>',
+  ];
 }
