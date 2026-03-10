@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-03-10 (Waveform oscilloscope visibility and sizing improvements)
+
+### Fixed waveform/oscilloscope visibility issues for lab-day readiness
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/ide-root.css` - Increased waveform scroll area min-height from 340px to 480px and max-height from 60vh/620px to 75vh/900px, set oscilloscope stage min-height to 420px (was 0), adjusted workbench grid to prioritize waveform area (500px minimum), and reduced drawer body max-height from 38vh to 32vh to allocate more vertical space to the waveform viewer.
+
+### Why this was needed
+
+- The waveform/oscilloscope viewer was severely constrained with insufficient visibility, making it difficult for students to see signal traces during verification runs.
+- The previous layout gave too much space to the lower drawer and not enough to the critical waveform display.
+- Lab-day readiness requires the oscilloscope to be prominently visible without excessive scrolling.
+
+### Validation
+
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`
+
+- **Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-03-10 (Lab-day Vivado + Basys3 finish pass)
 
 ### Lab-day project orchestration, export/import fidelity, and Verify usability were finished for the Vivado + Basys3 student loop
