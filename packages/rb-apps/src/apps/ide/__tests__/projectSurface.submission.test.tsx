@@ -247,4 +247,42 @@ describe('ProjectSurface workspace panels', () => {
     expect(onUpdateMappingPin).toHaveBeenCalledWith('seg0', 'SEG0');
     expect(getByTestId('ide-project-supported-scope-callout').textContent).toContain('FullAdder');
   });
+
+  it('keeps export available on Project even when Verify has not been trusted yet', () => {
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            readiness: {
+              hasCircuit: true,
+              hasIoMapping: true,
+              hasVectors: false,
+              verifyPass: false,
+              missingRequiredCount: 0,
+            },
+            health: {
+              ...makeProps().health,
+              lastVerify: undefined,
+              dirtySinceVerify: false,
+              blockingIssues: [
+                {
+                  code: 'RBP1002',
+                  message: 'No verification vectors defined.',
+                  fixPath: { mode: 'verify', actionLabel: 'Add Test Vectors' },
+                },
+              ],
+            },
+            primaryCtaLabel: 'Verify',
+            primaryCta: { label: 'Verify', mode: 'verify', code: 'RBP1002' },
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-project-readiness-summary').textContent).toContain('EXPORT AVAILABLE');
+    expect(getByTestId('ide-project-readiness-summary').textContent).toContain(
+      'Export can be opened now for file review'
+    );
+    expect(getByTestId('ide-project-dock-nav-export').textContent).toContain('Open now');
+  });
 });

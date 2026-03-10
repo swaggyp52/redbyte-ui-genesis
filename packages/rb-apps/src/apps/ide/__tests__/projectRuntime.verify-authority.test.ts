@@ -107,4 +107,22 @@ describe('projectRuntime verify authority', () => {
     expect(runB.traceWaveform).toBeUndefined();
     expect(useProjectRuntime.getState().verifyLastRun?.traceWaveform).toBeUndefined();
   });
+
+  it('keeps the default signal-tour showcase example passing deterministically', () => {
+    localStorage.clear();
+    useProjectRuntime.getState().resetToActiveExample();
+
+    const run = useProjectRuntime.getState().runVerification({
+      scenarioId: 'signal-tour-smoke',
+      scenarioName: 'Signal Tour Smoke',
+      deterministicHash: 'signal-tour-hash',
+      rows: [],
+      ranAtIso: '2026-03-10T00:00:00.000Z',
+      useRuntimeTrace: false,
+    });
+
+    expect(run.status).toBe('pass');
+    expect(run.report.rows.every((row) => row.status === 'pass')).toBe(true);
+    expect(run.firstFailingTick).toBeUndefined();
+  });
 });

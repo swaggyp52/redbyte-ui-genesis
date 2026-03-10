@@ -931,7 +931,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
               <section className="ide-export-section" data-testid="ide-export-build-output">
                 <header className="ide-export-section-header">
-                  <h3>Blockers</h3>
+                  <h3>{hasBlockingErrors ? 'Blockers' : hasVerifyEvidenceWarning ? 'Advisories' : 'Checks'}</h3>
                   <span className="ide-export-section-meta">
                     {diagnosticsList.length} diagnostics
                   </span>

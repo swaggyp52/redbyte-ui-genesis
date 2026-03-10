@@ -1,5 +1,38 @@
 # AI State
 
+## Change Log 2026-03-10 (Project/export workflow unblocked from untrusted Verify)
+
+### Project and pipeline no longer overstate missing or stale Verify as a hard export blocker
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/components/PipelineStrip.tsx` - Narrowed hard blocker handling so missing vectors (`RBP1002`) and stale export trust (`RBP2002`) are treated as pending/advisory states instead of being surfaced as the primary pipeline blocker. The guided blocker banner now only appears for true structural stop conditions like no circuit, no mapping, explicit verify failure, or an actually blocked export.
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` - Split export state into `available` versus `trusted`, so students can see when files are ready for review even if Verify is not yet current. Updated the hero, spotlight, readiness table, dock navigation, and export summary copy to show `EXPORT AVAILABLE`, `AVAILABLE`, and `TRUSTED` states instead of collapsing everything into `BLOCKED`.
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` - Renamed the diagnostics section heading dynamically to `Advisories` when only Verify-evidence warnings are present, instead of labeling the page as hard `Blockers`.
+- `packages/rb-apps/src/apps/ide/__tests__/pipelineStrip.test.tsx` - Added focused regression coverage proving stale or missing Verify no longer marks Verify/Export as blocked and no guided blocker banner is rendered.
+- `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` - Added regression coverage proving the Project tab still advertises export availability when Verify has not yet been trusted.
+- `packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx` - Extended the existing export-available-without-verify test to assert the page now shows `Advisories` rather than `Blockers`.
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` - Added a smoke regression proving the default Signal Tour showcase example still passes deterministically, so the classroom complaint about needless Verify failure is at least guarded on the shipped example path.
+
+### Why this was needed
+
+- Real classroom feedback showed students were still reading the Project/Pipeline workflow as blocked even though the Export surface itself already exposed generated files and download actions.
+- For lab-day reliability, Verify must remain authoritative when it actually runs, but unrun/stale Verify cannot suppress students from seeing their generated handoff files.
+- The product now distinguishes:
+  - structural blockers that truly prevent export
+  - advisory Verify trust issues
+  - export availability for file review and Vivado handoff
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/pipelineStrip.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` - PASS
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`; still prints the repo's broad pre-existing TypeScript diagnostics outside this batch
+- Live student-facing build inspection on `https://redbyteapps.dev/os/` showed build `23ec4eb`, which does not yet include this local workflow-unblock batch
+
+- **Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-03-10 (Export files unblocked from Verify)
 
 ### Export now treats Verify as advisory for file visibility and Vivado handoff downloads

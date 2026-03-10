@@ -90,7 +90,7 @@ describe('ExportSurface workstation redesign', () => {
   });
 
   it('keeps project export available when verify has not run yet', () => {
-    const { getByTestId, queryByTestId } = render(
+    const { getByTestId, getByText, queryByTestId } = render(
       <ExportSurface project={buildProject()} determinismHash="ide-hash" />
     );
 
@@ -101,6 +101,7 @@ describe('ExportSurface workstation redesign', () => {
     expect(getByTestId('ide-export-unverified-callout').textContent).toContain(
       'generated text files are available now'
     );
+    expect(getByText('Advisories')).toBeTruthy();
     expect(queryByTestId('ide-export-vivado-blocked-callout')).toBeNull();
   });
 });

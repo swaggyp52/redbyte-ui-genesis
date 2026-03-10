@@ -27,9 +27,9 @@ interface StageConfig {
 
 const STAGES: StageConfig[] = [
   { key: 'design', mode: 'design', letter: 'D', label: 'Design', blockerCodes: ['RBP1000', 'RBP1001'] },
-  { key: 'verify', mode: 'verify', letter: 'V', label: 'Verify', blockerCodes: ['RBP1002', 'RBP1003', 'RBP1004'] },
+  { key: 'verify', mode: 'verify', letter: 'V', label: 'Verify', blockerCodes: ['RBP1003'] },
   { key: 'hardware', mode: 'hardware', letter: 'H', label: 'Hardware', blockerCodes: [] },
-  { key: 'export', mode: 'export', letter: 'E', label: 'Export', blockerCodes: ['RBP2001', 'RBP2002'] },
+  { key: 'export', mode: 'export', letter: 'E', label: 'Export', blockerCodes: ['RBP2001'] },
 ];
 
 function deriveStageStatus(
@@ -85,6 +85,10 @@ export const PipelineStrip: React.FC<PipelineStripProps> = ({
   primaryCta,
   onNavigate,
 }) => {
+  const hardBlockerCodes = useMemo(
+    () => new Set(STAGES.flatMap((stage) => stage.blockerCodes)),
+    []
+  );
   const stageStatuses = useMemo(
     () =>
       STAGES.map((stage) => ({
@@ -94,7 +98,7 @@ export const PipelineStrip: React.FC<PipelineStripProps> = ({
     [health, currentMode]
   );
 
-  const primaryBlocker = health.blockingIssues[0];
+  const primaryBlocker = health.blockingIssues.find((issue) => hardBlockerCodes.has(issue.code)) ?? null;
   // Only show CTA when the recommended destination is different from current page
   const showCta = primaryCta.mode !== currentMode;
 

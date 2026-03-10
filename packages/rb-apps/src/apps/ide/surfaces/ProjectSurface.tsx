@@ -254,6 +254,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       return `${Math.floor(mins / 60)}h ago`;
     } catch { return null; }
   }, [lastSavedAt]);
+  const exportAvailable =
+    readiness.hasCircuit &&
+    readiness.hasIoMapping &&
+    health.lastExport?.status !== 'blocked';
   const exportReady =
     readiness.hasCircuit &&
     readiness.hasIoMapping &&
@@ -261,15 +265,21 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     verifyPass &&
     health.lastExport?.status !== 'blocked';
   const hardwareReady = exportReady && !health.dirtySinceExport;
+  const hardBlockingIssue = health.blockingIssues.find((issue) =>
+    issue.code === 'RBP1000' ||
+    issue.code === 'RBP1001' ||
+    issue.code === 'RBP1003' ||
+    issue.code === 'RBP2001'
+  ) ?? null;
 
   const heroStatusMessage = useMemo((): string => {
     if (!readiness.hasCircuit) return 'No circuit loaded — start with an example or import HDL';
     if (unmappedRequiredCount > 0)
       return `Circuit loaded — ${unmappedRequiredCount} pin${unmappedRequiredCount !== 1 ? 's' : ''} unmapped`;
     if (!readiness.hasIoMapping) return 'Circuit loaded — map pins or open Design';
-    if (!readiness.hasVectors) return 'Mapping complete — add test vectors in Verify';
-    if (!verifyPass) return 'Vectors defined — run Verify to confirm correctness';
-    if (!exportReady) return 'Verify passed — ready to export bitstream';
+    if (!readiness.hasVectors) return 'Mapping complete — Export is available now. Verify is still recommended.';
+    if (!verifyPass) return 'Verify is not yet trusted, but Export is still available for file review and handoff.';
+    if (!exportReady) return 'Verify passed — open Export to build the bitstream handoff.';
     if (!hardwareReady) return 'Export ready — build bitstream and flash hardware';
     return 'All stages complete — bring up on hardware';
   }, [
@@ -278,6 +288,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     readiness.hasVectors,
     unmappedRequiredCount,
     verifyPass,
+    exportAvailable,
     exportReady,
     hardwareReady,
   ]);
@@ -295,8 +306,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [health, verifyPass]
   );
   const exportSummary = useMemo(
-    () => getExportSummary(health, exportReady, hardwareReady),
-    [exportReady, hardwareReady, health]
+    () => getExportSummary(health, exportAvailable, exportReady, hardwareReady),
+    [exportAvailable, exportReady, hardwareReady, health]
   );
   const showcaseInputSignals = useMemo(
     () => getShowcaseSignals(sortedMappingRows, 'in'),
@@ -313,13 +324,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       output: showcaseOutputSignals[index] ?? `OUT${index}`,
     }));
   }, [showcaseInputSignals, showcaseOutputSignals]);
-  const heroStatusTone = blockingIssue ? 'warn' : hardwareReady ? 'ok' : 'idle';
-  const heroStatusLabel = blockingIssue
+  const heroStatusTone = hardBlockingIssue ? 'warn' : hardwareReady ? 'ok' : exportAvailable ? 'warn' : 'idle';
+  const heroStatusLabel = hardBlockingIssue
     ? 'Action needed'
     : hardwareReady
       ? 'Hardware ready'
-      : verifyPass
-        ? 'Ready to export'
+      : exportAvailable
+        ? verifyPass
+          ? 'Ready to export'
+          : 'Export available'
         : 'In progress';
   const heroAssistAction = useMemo(() => {
     if (!readiness.hasCircuit) {
@@ -355,12 +368,19 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       },
       {
         label: 'Export',
-        value: hardwareReady ? 'Board handoff ready' : exportReady ? 'Build package next' : 'Blocked by earlier stages',
-        tone: hardwareReady || exportReady ? 'ok' : 'idle',
+        value: hardwareReady
+          ? 'Board handoff ready'
+          : exportReady
+            ? 'Trusted handoff ready'
+            : exportAvailable
+              ? 'Files available now'
+              : 'Map pins first',
+        tone: hardwareReady || exportReady ? 'ok' : exportAvailable ? 'warn' : 'idle',
       },
     ],
     [
       blockingIssue?.code,
+      exportAvailable,
       exportReady,
       hardwareReady,
       mappedRequiredCount,
@@ -426,9 +446,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         },
         {
           id: 'export',
-          label: 'Export ready',
-          ready: exportReady,
-          actionLabel: exportReady ? 'Open Export' : 'Fix export',
+          label: 'Export available',
+          ready: exportAvailable,
+          actionLabel: 'Open Export',
           onAction: onOpenExport,
         },
         {
@@ -440,12 +460,23 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         },
       ].map((item) => [
         item.label,
-        <IdeStatusPill key={`${item.id}-status`} tone={item.ready ? 'ok' : 'warn'}>
-          {item.ready ? 'READY' : 'BLOCKED'}
+        <IdeStatusPill
+          key={`${item.id}-status`}
+          tone={item.id === 'export' ? (exportReady ? 'ok' : item.ready ? 'warn' : 'warn') : item.ready ? 'ok' : 'warn'}
+        >
+          {item.id === 'export'
+            ? exportReady
+              ? 'TRUSTED'
+              : item.ready
+                ? 'AVAILABLE'
+                : 'BLOCKED'
+            : item.ready
+              ? 'READY'
+              : 'BLOCKED'}
         </IdeStatusPill>,
         <IdeButton
           key={`${item.id}-action`}
-          tone={item.ready ? 'ghost' : 'secondary'}
+          tone={item.id === 'export' || item.ready ? 'ghost' : 'secondary'}
           onClick={item.onAction}
           testId={`ide-project-readiness-action-${item.id}`}
         >
@@ -453,6 +484,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         </IdeButton>,
       ]),
     [
+      exportAvailable,
       exportReady,
       hardwareReady,
       onAutoSuggestMapping,
@@ -623,8 +655,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         id: 'export',
         step: '3',
         label: 'Export',
-        meta: exportReady ? 'Bundle ready' : primaryCta.mode === 'export' ? 'Next up' : 'Blocked',
-        state: exportReady ? 'done' : primaryCta.mode === 'export' ? 'active' : 'idle',
+        meta: exportReady ? 'Trusted' : exportAvailable ? 'Open now' : primaryCta.mode === 'export' ? 'Next up' : 'Map pins',
+        state: exportReady ? 'done' : exportAvailable && primaryCta.mode === 'export' ? 'active' : 'idle',
         onClick: onOpenExport,
         testId: 'ide-project-dock-nav-export',
       },
@@ -640,6 +672,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     ],
     [
       designCardDone,
+      exportAvailable,
       exportReady,
       hardwareReady,
       onOpenDesign,
@@ -1049,8 +1082,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           <SurfacePanel className="ide-project-spotlight" testId="ide-project-readiness-summary">
             <div className="ide-project-spotlight-header">
               <span className="ide-project-spotlight-eyebrow">Readiness</span>
-              <IdeStatusPill tone={hardwareReady ? 'ok' : blockingIssue ? 'warn' : 'idle'}>
-                {hardwareReady ? 'BOARD READY' : blockingIssue ? 'ACTION NEEDED' : 'IN PROGRESS'}
+              <IdeStatusPill tone={hardwareReady ? 'ok' : hardBlockingIssue ? 'warn' : exportAvailable ? 'warn' : 'idle'}>
+                {hardwareReady ? 'BOARD READY' : hardBlockingIssue ? 'ACTION NEEDED' : exportAvailable ? 'EXPORT AVAILABLE' : 'IN PROGRESS'}
               </IdeStatusPill>
             </div>
             <div className="ide-project-readiness-list">
@@ -1079,8 +1112,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <div className="ide-project-readiness-item">
                 <div className="ide-project-readiness-item-head">
                   <span>Export</span>
-                  <IdeStatusPill tone={exportReady ? 'ok' : 'warn'}>
-                    {exportReady ? 'READY' : 'BLOCKED'}
+                  <IdeStatusPill tone={exportReady ? 'ok' : exportAvailable ? 'warn' : 'warn'}>
+                    {exportReady ? 'TRUSTED' : exportAvailable ? 'AVAILABLE' : 'BLOCKED'}
                   </IdeStatusPill>
                 </div>
                 <p>{exportSummary}</p>
@@ -1569,22 +1602,28 @@ function getVerifySummary(health: ProjectHealth, verifyPass: boolean): string {
 
 function getExportSummary(
   health: ProjectHealth,
+  exportAvailable: boolean,
   exportReady: boolean,
   hardwareReady: boolean
 ): string {
   if (!health.lastExport) {
+    if (!exportAvailable) return 'Export stays blocked until mapping is complete.';
     return exportReady
       ? 'Ready for the first export build.'
-      : 'Export stays blocked until mapping and verify are current.';
+      : 'Export can be opened now for file review. Verify is still recommended before trusting the handoff.';
   }
   if (health.lastExport.status === 'blocked') {
     return 'Latest export attempt was blocked. Open Export diagnostics before hardware.';
   }
   if (hardwareReady) return 'Latest export bundle is current and ready for hardware.';
   if (health.dirtySinceExport) {
-    return 'A previous export exists, but the project changed since then.';
+    return exportReady
+      ? 'A previous export exists, but the project changed since then.'
+      : 'A previous export exists, and Export can still be reopened while Verify catches up.';
   }
-  return 'Export can be opened for artifact review or rebuild.';
+  return exportReady
+    ? 'Export can be opened for artifact review or rebuild.'
+    : 'Export is available for artifact review, but Verify is still advisory.';
 }
 
 function toMappingKey(value: string): string {
