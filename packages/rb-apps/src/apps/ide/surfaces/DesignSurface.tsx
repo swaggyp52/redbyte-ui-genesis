@@ -220,12 +220,28 @@ interface DesignSignalSnapshot {
   previousValue: 0 | 1 | null;
   transition: 'rising' | 'falling' | 'stable' | '—';
   samples: number;
+  lastTransitionTick: number | null;
 }
 
 interface DesignNodeConnectionSummary {
   fanIn: number;
   fanOut: number;
   incomingLabel: string;
+}
+
+interface DesignLiveIoValueRow {
+  id: string;
+  label: string;
+  pinAlias?: string;
+  value: 0 | 1;
+  signalKey: string;
+  kind: 'input' | 'output';
+}
+
+interface DesignSimulationStory {
+  summary: string;
+  clockEvent: 'rising' | 'falling' | null;
+  clockLabel: string | null;
 }
 
 function resolveDesignDebugSample(
@@ -1244,6 +1260,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           label: ioPresentation.label ?? `${node.type} ${node.id}`,
           pinAlias: ioPresentation.pinAlias,
           value: liveSignals.get(`${node.id}.out`) ?? 0,
+          signalKey: `${node.id}.out`,
+          kind: 'input' as const,
         };
       });
     const outputRows = editorCircuit.nodes
@@ -1256,13 +1274,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           label: ioPresentation.label ?? `${node.type} ${node.id}`,
           pinAlias: ioPresentation.pinAlias,
           value: liveSignals.get(`${node.id}.in`) ?? liveSignals.get(`${node.id}.out`) ?? 0,
+          signalKey: liveSignals.has(`${node.id}.in`) ? `${node.id}.in` : `${node.id}.out`,
+          kind: 'output' as const,
         };
       });
     return { inputRows, outputRows };
   }, [editorCircuit.nodes, ioRowByNodeId, liveSignals]);
-  const liveChangeSummary = useMemo(
-    () => summarizeLiveChange(liveIoSignals.inputRows, liveIoSignals.outputRows),
-    [liveIoSignals.inputRows, liveIoSignals.outputRows]
+  const simulationStory = useMemo(
+    () => describeSimulationStory(liveIoSignals.inputRows, liveIoSignals.outputRows, runtimeSim.trace, simRunning),
+    [liveIoSignals.inputRows, liveIoSignals.outputRows, runtimeSim.trace, simRunning]
   );
   const ioPresentationMap = useMemo(() => {
     const map: Record<string, NodeIoPresentation> = {};
@@ -1286,7 +1306,34 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (!parsed) return null;
     return `${parsed.fromNodeId}.${parsed.fromPort}`;
   }, [selectedWireIds]);
-  const selectedSignalKey = runtimeSim.selectedSignalKey ?? selectedWireSignalKey;
+  const verifyLinkedSignalKey = useMemo(
+    () => resolveVerifyLinkedSignalKey(activeVerifySignal, ioRows, liveSignals, runtimeSim.signals),
+    [activeVerifySignal, ioRows, liveSignals, runtimeSim.signals]
+  );
+  const selectedSignalKey = runtimeSim.selectedSignalKey ?? verifyLinkedSignalKey ?? selectedWireSignalKey;
+  useEffect(() => {
+    if (!verifyLinkedSignalKey) return;
+    onRuntimeSimSetSelectedSignal?.(verifyLinkedSignalKey);
+    const [nodeId, portName = 'out'] = verifyLinkedSignalKey.split('.');
+    if (!nodeId) return;
+    const { wireIds, nodeIds } = getFaninCone(editorCircuit, nodeId);
+    const highlights = new Map<string, string[]>();
+    wireIds.forEach((wireId) => highlights.set(wireId, ['#a78bfa']));
+    const highlightedNodes = new Set(nodeIds);
+    highlightedNodes.add(nodeId);
+    const portKeys = buildTracePortKeySet(wireIds);
+    portKeys.add(`${nodeId}:${portName}`);
+    setTraceState({
+      kind: 'fanin-port',
+      sourceKey: `verify:${verifyLinkedSignalKey}`,
+      label: `Verify focus ${verifyLinkedSignalKey}`,
+      signalKey: verifyLinkedSignalKey,
+      wireHighlights: highlights,
+      nodeIds: highlightedNodes,
+      portKeys,
+    });
+    lastTracedPortRef.current = `${nodeId}.${portName}`;
+  }, [editorCircuit, onRuntimeSimSetSelectedSignal, verifyLinkedSignalKey]);
   const selectedSignalValue = selectedSignalKey ? runtimeSim.signals[selectedSignalKey] ?? 0 : 0;
   const selectedSignalHistory = useMemo(() => {
     if (!selectedSignalKey) return [];
@@ -1753,6 +1800,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <span data-testid="ide-design-context-transition">{selectedNodeSignalSnapshot?.transition ?? 'stable'}</span>
                   </div>
                   <div className="ide-kv-row">
+                    <span>Last transition</span>
+                    <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
+                  </div>
+                  <div className="ide-kv-row">
                     <span>Driver / Source</span>
                     <span>{selectedNodeConnectionSummary?.incomingLabel ?? 'Primary source'}</span>
                   </div>
@@ -1811,6 +1862,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <span data-testid="ide-design-context-transition">{selectedWireContext.snapshot?.transition ?? 'stable'}</span>
                   </div>
                   <div className="ide-kv-row">
+                    <span>Last transition</span>
+                    <span data-testid="ide-design-context-last-transition">{selectedWireContext.snapshot?.lastTransitionTick ?? '—'}</span>
+                  </div>
+                  <div className="ide-kv-row">
                     <span>Driver / Source</span>
                     <span>{selectedWireContext.sourceLabel}.{selectedWireContext.sourcePort}</span>
                   </div>
@@ -1863,6 +1918,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <div className="ide-kv-row">
                     <span>Transition</span>
                     <span>{activeInspectorSignalSnapshot?.transition ?? 'stable'}</span>
+                  </div>
+                  <div className="ide-kv-row">
+                    <span>Last transition</span>
+                    <span data-testid="ide-design-context-last-transition">{activeInspectorSignalSnapshot?.lastTransitionTick ?? '—'}</span>
                   </div>
                   <div className="ide-kv-row">
                     <span>Samples</span>
@@ -2038,7 +2097,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
               <div className="ide-kv-row">
                 <span>Last change</span>
-                <span data-testid="ide-design-last-change">{liveChangeSummary}</span>
+                <span data-testid="ide-design-last-change">{simulationStory.summary}</span>
               </div>
             </div>
             <div className="ide-design-live-state-table" data-testid="ide-design-live-state-table">
@@ -2080,6 +2139,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <div className="ide-kv-row">
                     <span>Current</span>
                     <code data-testid="ide-design-signal-current-value">{selectedSignalValue}</code>
+                  </div>
+                  <div className="ide-kv-row">
+                    <span>Previous</span>
+                    <code>{activeInspectorSignalSnapshot?.previousValue ?? selectedSignalValue}</code>
+                  </div>
+                  <div className="ide-kv-row">
+                    <span>Transition</span>
+                    <span>{activeInspectorSignalSnapshot?.transition ?? 'stable'}</span>
+                  </div>
+                  <div className="ide-kv-row">
+                    <span>Last transition</span>
+                    <span>{activeInspectorSignalSnapshot?.lastTransitionTick ?? '—'}</span>
                   </div>
                   <div className="ide-kv-row">
                     <span>Samples</span>
@@ -2504,7 +2575,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </div>
                 {activeVerifySignal && (
                   <span className="ide-design-verify-link-badge" data-testid="ide-design-verify-link-badge">
-                    Linked to Verify
+                    Verify focus {activeVerifySignal}
                   </span>
                 )}
                 <button
@@ -2599,6 +2670,33 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
 
             {/* ── Canvas area (fills remaining height) ── */}
+            <div className="ide-design-sim-story-strip" data-testid="ide-design-sim-story-strip">
+              <div className="ide-design-sim-story-main">
+                <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-tick">
+                  Tick {simTick}
+                </span>
+                <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-mode">
+                  {simRunning ? 'Running' : 'Paused'}
+                </span>
+                {simulationStory.clockEvent ? (
+                  <span
+                    className={`ide-design-sim-story-pill is-clock is-${simulationStory.clockEvent}`}
+                    data-testid="ide-design-sim-story-clock"
+                  >
+                    {simulationStory.clockLabel} {simulationStory.clockEvent} edge
+                  </span>
+                ) : null}
+                {activeVerifySignal ? (
+                  <span className="ide-design-sim-story-pill is-verify" data-testid="ide-design-verify-focus">
+                    Verify linked to {activeVerifySignal}
+                  </span>
+                ) : null}
+              </div>
+              <p className="ide-design-sim-story-summary" data-testid="ide-design-sim-story-summary">
+                {simulationStory.summary}
+              </p>
+            </div>
+
             <div
               ref={canvasViewportRef}
               className="ide-design-canvasWrap"
@@ -2807,7 +2905,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       changedNodeIds={changedNodeIds}
                       probeWireHighlights={traceState?.wireHighlights}
                       tracedNodeIds={(() => {
-                        const verifyNodeId = activeVerifySignal ? activeVerifySignal.split('.')[0] : null;
+                        const verifyNodeId = verifyLinkedSignalKey ? verifyLinkedSignalKey.split('.')[0] : null;
                         if (!verifyNodeId) return traceState?.nodeIds ?? null;
                         const base = traceState?.nodeIds ? new Set(traceState.nodeIds) : new Set<string>();
                         base.add(verifyNodeId);
@@ -3171,26 +3269,106 @@ function normalizeAlias(value: string): string {
   return value.trim().toUpperCase();
 }
 
-function summarizeLiveChange(
-  inputRows: Array<{ id: string; label: string; value: 0 | 1 }>,
-  outputRows: Array<{ id: string; label: string; value: 0 | 1 }>
-): string {
-  const primaryOutput = outputRows[0];
-  if (!primaryOutput) {
-    return 'No output probes yet. Add a Basys3 output pin to observe live state.';
+function describeSimulationStory(
+  inputRows: DesignLiveIoValueRow[],
+  outputRows: DesignLiveIoValueRow[],
+  trace: RuntimeSimState['trace'],
+  running: boolean
+): DesignSimulationStory {
+  const latest = trace[trace.length - 1];
+  const previous = trace.length >= 2 ? trace[trace.length - 2] : null;
+  const storySource = [...inputRows, ...outputRows];
+  const changedRows = previous
+    ? storySource.filter((row) => (previous.signals[row.signalKey] ?? row.value) !== row.value)
+    : [];
+  const changedInputs = changedRows.filter((row) => row.kind === 'input');
+  const changedOutputs = changedRows.filter((row) => row.kind === 'output');
+  const clockRow = inputRows.find((row) => /clk|clock/i.test(row.label));
+  const previousClockValue = clockRow && previous ? previous.signals[clockRow.signalKey] ?? null : null;
+  const clockEvent =
+    clockRow && previousClockValue != null && previousClockValue !== clockRow.value
+      ? clockRow.value === 1
+        ? 'rising'
+        : 'falling'
+      : null;
+
+  if (!latest) {
+    return {
+      summary: 'No runtime samples yet. Run or step simulation to observe cause and effect.',
+      clockEvent: null,
+      clockLabel: clockRow?.label ?? null,
+    };
   }
 
-  if (inputRows.length === 0) {
-    return `${primaryOutput.label} = ${primaryOutput.value} (no mapped inputs yet)`;
+  if (changedRows.length === 0) {
+    const primaryOutput = outputRows[0];
+    return {
+      summary: primaryOutput
+        ? `${primaryOutput.label} held at ${primaryOutput.value} on tick ${latest.tick}.`
+        : `Tick ${latest.tick} recorded with no mapped outputs yet.`,
+      clockEvent,
+      clockLabel: clockRow?.label ?? null,
+    };
   }
 
-  const normalizedInputs = inputRows.slice(0, 2);
-  const sourceText =
-    normalizedInputs.length >= 2
-      ? `${normalizedInputs[0].label} & ${normalizedInputs[1].label}`
-      : normalizedInputs[0].label;
+  const inputSummary =
+    changedInputs.length > 0
+      ? `Inputs ${changedInputs.map((row) => `${row.label}→${row.value}`).join(', ')}`
+      : running
+        ? 'Inputs steady'
+        : 'No input change';
+  const outputSummary =
+    changedOutputs.length > 0
+      ? `outputs ${changedOutputs.map((row) => `${row.label}→${row.value}`).join(', ')}`
+      : 'outputs steady';
 
-  return `${primaryOutput.label} = ${primaryOutput.value} (from ${sourceText})`;
+  return {
+    summary: `${inputSummary}; ${outputSummary} at tick ${latest.tick}.`,
+    clockEvent,
+    clockLabel: clockRow?.label ?? null,
+  };
+}
+
+function normalizeSignalLookup(value: string): string {
+  return value.trim().toLowerCase().replace(/\[[^\]]+\]/g, '');
+}
+
+function resolveVerifyLinkedSignalKey(
+  activeVerifySignal: string | null | undefined,
+  ioRows: Array<{ nodeId: string; label: string; port: string; direction: 'in' | 'out' }>,
+  liveSignals: Map<string, 0 | 1>,
+  runtimeSignals: Record<string, 0 | 1>
+): string | null {
+  const raw = (activeVerifySignal ?? '').trim();
+  if (raw.length === 0) return null;
+  const normalized = normalizeSignalLookup(raw);
+  const availableSignalKeys = new Set<string>([
+    ...liveSignals.keys(),
+    ...Object.keys(runtimeSignals),
+  ]);
+
+  for (const key of availableSignalKeys) {
+    if (normalizeSignalLookup(key) === normalized) return key;
+  }
+
+  const matchedRow = ioRows.find((row) => normalizeSignalLookup(row.label) === normalized);
+  if (matchedRow) {
+    const preferredKey = `${matchedRow.nodeId}.${matchedRow.port}`;
+    if (availableSignalKeys.has(preferredKey)) return preferredKey;
+    const fallbackKeys = matchedRow.direction === 'out'
+      ? [`${matchedRow.nodeId}.in`, `${matchedRow.nodeId}.out`]
+      : [`${matchedRow.nodeId}.out`, `${matchedRow.nodeId}.in`];
+    const fallback = fallbackKeys.find((candidate) => availableSignalKeys.has(candidate));
+    if (fallback) return fallback;
+    return preferredKey;
+  }
+
+  for (const key of availableSignalKeys) {
+    const [nodeId] = key.split('.');
+    if (normalizeSignalLookup(nodeId) === normalized) return key;
+  }
+
+  return null;
 }
 
 function normalizeCircuitForCanvas(circuit: Circuit): Circuit {
@@ -3280,12 +3458,23 @@ function describeSignalSnapshot(
     if (previousValue === currentValue) transition = 'stable';
     else transition = currentValue > previousValue ? 'rising' : 'falling';
   }
+  let lastTransitionTick: number | null = null;
+  for (let index = matchingSamples.length - 1; index > 0; index -= 1) {
+    const currentSample = matchingSamples[index]?.signals[signalKey];
+    const previousSample = matchingSamples[index - 1]?.signals[signalKey];
+    if (currentSample == null || previousSample == null) continue;
+    if (currentSample !== previousSample) {
+      lastTransitionTick = matchingSamples[index]?.tick ?? null;
+      break;
+    }
+  }
 
   return {
     currentValue: currentValue ?? null,
     previousValue,
     transition,
     samples: matchingSamples.length,
+    lastTransitionTick,
   };
 }
 

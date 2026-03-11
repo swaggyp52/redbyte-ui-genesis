@@ -4784,6 +4784,93 @@ details[open] summary .details-arrow {
   transform: translateY(-1px);
 }
 
+/* ==========================================================================
+   Classroom Phase 2: Design simulation story + Verify bridge
+   ========================================================================== */
+
+.ide-design-sim-story-strip {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(56, 189, 248, 0.16);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(7, 20, 34, 0.94), rgba(5, 12, 22, 0.88));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.ide-design-sim-story-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.ide-design-sim-story-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(88, 131, 166, 0.34);
+  background: rgba(8, 16, 28, 0.84);
+  color: rgba(214, 234, 255, 0.88);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ide-design-sim-story-pill.is-clock {
+  border-color: rgba(244, 185, 66, 0.38);
+  color: #fcd34d;
+  background: rgba(251, 191, 36, 0.12);
+}
+
+.ide-design-sim-story-pill.is-clock.is-rising::before,
+.ide-design-sim-story-pill.is-clock.is-falling::before,
+.ide-design-sim-story-pill.is-verify::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.9;
+}
+
+.ide-design-sim-story-pill.is-verify {
+  border-color: rgba(46, 196, 182, 0.32);
+  color: #82fff3;
+  background: rgba(46, 196, 182, 0.1);
+}
+
+.ide-design-sim-story-summary {
+  margin: 0;
+  color: rgba(224, 238, 255, 0.9);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ide-design-verify-link-badge {
+  flex-shrink: 0;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-layout-mode='compact'] .ide-design-sim-story-strip,
+[data-layout-mode='standard'] .ide-design-sim-story-strip {
+  gap: 6px;
+  padding: 8px 10px;
+}
+
+[data-layout-mode='compact'] .ide-design-sim-story-summary {
+  font-size: 13px;
+}
+
 /* ════════════════════════════════════════════════════════════════
    Phase H — Global Text Size Floor
    ════════════════════════════════════════════════════════════════ */

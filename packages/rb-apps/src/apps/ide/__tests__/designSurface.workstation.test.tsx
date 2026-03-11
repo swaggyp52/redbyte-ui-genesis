@@ -107,7 +107,9 @@ function installResizeObserver(width: number, height = 720) {
   vi.stubGlobal('ResizeObserver', ImmediateResizeObserver);
 }
 
-function renderSurface() {
+function renderSurface(
+  overrides: Partial<React.ComponentProps<typeof DesignSurface>> = {}
+) {
   return render(
     <DesignSurface
       runtimeSim={makeRuntimeSim()}
@@ -123,6 +125,7 @@ function renderSurface() {
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}
+      {...overrides}
     />
   );
 }
@@ -164,8 +167,12 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-context-current').textContent).toBe('1');
     expect(view.getByTestId('ide-design-context-previous').textContent).toBe('0');
     expect(view.getByTestId('ide-design-context-transition').textContent).toContain('rising');
+    expect(view.getByTestId('ide-design-context-last-transition').textContent).toBe('6');
     expect(view.getByTestId('ide-design-context-inspector').textContent).toContain('LD0 -> U16');
     expect(view.getByTestId('ide-design-shortcut-strip').textContent).toContain('Ctrl + wheel');
+    expect(view.getByTestId('ide-design-sim-story-strip').textContent).toContain('Tick 6');
+    expect(view.getByTestId('ide-design-sim-story-summary').textContent).toContain('SW0');
+    expect(view.getByTestId('ide-design-sim-story-summary').textContent).toContain('LD0');
 
     fireEvent.click(view.getByTestId('ide-design-context-trace'));
 
@@ -181,6 +188,22 @@ describe('DesignSurface workstation redesign', () => {
 
     expect(view.getByTestId('ide-design-live-state-table').textContent).toContain('Inputs');
     expect(view.getByTestId('ide-design-live-state-table').textContent).toContain('Outputs');
+  });
+
+  it('bridges verify-selected signals back into Design focus and trace state', async () => {
+    const setSelectedSignal = vi.fn();
+    const view = renderSurface({
+      activeVerifySignal: 'LD0',
+      onRuntimeSimSetSelectedSignal: setSelectedSignal,
+    });
+
+    await waitFor(() => {
+      expect(setSelectedSignal).toHaveBeenCalledWith('ld0_node.in');
+    });
+
+    expect(view.getByTestId('ide-design-verify-link-badge').textContent).toContain('LD0');
+    expect(view.getByTestId('ide-design-verify-focus').textContent).toContain('LD0');
+    expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Verify focus ld0_node.in');
   });
 
   it('auto-demotes cramped split view into stacked mode', async () => {

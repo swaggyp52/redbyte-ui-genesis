@@ -1,5 +1,33 @@
 # AI State
 
+## Change Log 2026-03-10 (Design Phase 2: simulation story + Verify-linked signal focus)
+
+### Design now explains what changed each tick and visibly links Verify-selected signals back to the circuit
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` - Promoted live simulation into a real cause→effect strip above the canvas, added deterministic Verify→Design signal resolution from student-facing signal names back to runtime signal keys, and reused the existing trace/fan-in plumbing so a Verify-selected signal now pins the related runtime signal and highlights its path in Design. Extended signal snapshots with `lastTransitionTick` and surfaced that truth in the contextual inspector and signal probe panels.
+- `packages/rb-apps/src/apps/ide/ide-root.css` - Added Design simulation story strip styling, clock-edge and Verify-focus pills, and width-safe badge treatment so the new Design explanation layer reads clearly without overwhelming the canvas.
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx` - Extended the workstation contract to prove the new simulation story is visible, last-transition timing is surfaced, and a Verify-selected signal resolves back to the expected runtime signal/traced path inside Design.
+
+### Why this was needed
+
+- Phase 1 made Verify failures more truthful, but Design still did not tell a student a clear “what changed and why” story after running or stepping the simulation.
+- The existing Verify→Design bridge changed tabs, but it did not visibly bind the selected Verify signal back to the actual runtime signal path the student built.
+- Students need current/previous/last-transition truth at the point of inspection, not only a raw value dump.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx` - PASS
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-logic-view/src/__tests__/wire-context-menu.test.tsx` - PASS
+- `pnpm --filter @redbyte/rb-apps build` - exits `0`; still prints the repo's broad pre-existing TypeScript diagnostics outside this batch
+
+### Remaining note
+
+- This completes Phase 2 of the classroom upgrade plan. Port naming, copy/paste, saved blocks/macros, board clickability hardening, and final Vivado/deploy trust still remain for later phases.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-10 (Verify Phase 1: deterministic case truth + explicit failure evidence)
 
 ### Verify now evaluates repeated truth-table cases independently and stops inventing fake `actual=0` failures
