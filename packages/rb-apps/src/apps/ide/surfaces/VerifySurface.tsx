@@ -34,6 +34,8 @@ interface VerifyRow {
   signal: string;
   expected: string;
   actual: string;
+  vectorId?: string;
+  caseIndex?: number;
 }
 
 interface VerifyVectorDraftInput {
@@ -54,10 +56,23 @@ export interface VerifyFailureTarget {
   tick: number;
   expected: string;
   actual: string;
+  vectorId?: string;
+  caseIndex?: number;
 }
 
-function buildFailureCaseKey(tick: number, signal: string): string {
-  return `${tick}:${normalizeFieldId(signal)}:${signal}`;
+function buildFailureCaseKey(
+  tick: number,
+  signal: string,
+  vectorId?: string,
+  caseIndex?: number
+): string {
+  return [
+    tick,
+    normalizeFieldId(signal),
+    signal,
+    vectorId?.trim() || 'no-vector',
+    Number.isFinite(caseIndex) ? String(caseIndex) : 'no-case',
+  ].join(':');
 }
 
 interface VerifyMappedSignal {
@@ -706,18 +721,49 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const selectedFailure = useMemo(
     () =>
       selectedFailureKey
-        ? failingRows.find((row) => buildFailureCaseKey(row.tick, row.signal) === selectedFailureKey) ?? null
+        ? failingRows.find(
+            (row) =>
+              buildFailureCaseKey(row.tick, row.signal, row.vectorId, row.caseIndex) ===
+                selectedFailureKey
+          ) ?? null
         : null,
     [failingRows, selectedFailureKey]
   );
   const selectedFailureCase = selectedFailure ?? firstFailure;
   const selectedFailurePeers = useMemo(() => {
     if (!selectedFailureCase) return [];
-    const selectedKey = buildFailureCaseKey(selectedFailureCase.tick, selectedFailureCase.signal);
+    const selectedKey = buildFailureCaseKey(
+      selectedFailureCase.tick,
+      selectedFailureCase.signal,
+      selectedFailureCase.vectorId,
+      selectedFailureCase.caseIndex
+    );
     return (failuresByTick.get(selectedFailureCase.tick) ?? []).filter(
-      (row) => buildFailureCaseKey(row.tick, row.signal) !== selectedKey
+      (row) =>
+        buildFailureCaseKey(row.tick, row.signal, row.vectorId, row.caseIndex) !== selectedKey
     );
   }, [failuresByTick, selectedFailureCase]);
+  const verifyPreflightIssues = useMemo(
+    () => lastRun?.evidence?.preflight ?? [],
+    [lastRun?.evidence?.preflight]
+  );
+  const selectedFailureEvidence = useMemo(() => {
+    if (!selectedFailureCase) return null;
+    const failures = lastRun?.evidence?.failures ?? [];
+    return (
+      failures.find(
+        (entry) =>
+          entry.vectorId === selectedFailureCase.vectorId &&
+          entry.signal === selectedFailureCase.signal &&
+          entry.caseIndex === selectedFailureCase.caseIndex
+      ) ??
+      failures.find(
+        (entry) =>
+          entry.tick === selectedFailureCase.tick && entry.signal === selectedFailureCase.signal
+      ) ??
+      null
+    );
+  }, [lastRun?.evidence?.failures, selectedFailureCase]);
   const firstFailTickFromRows = failingRows[0]?.tick ?? null;
   const failTicksBySignal = useMemo(() => {
     const grouped = new Map<string, number[]>();
@@ -963,7 +1009,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
   const applyFailureSelection = useCallback((target: VerifyFailureTarget | VerifyRow | null) => {
     if (!target) return;
-    setSelectedFailureKey(buildFailureCaseKey(target.tick, target.signal));
+    setSelectedFailureKey(
+      buildFailureCaseKey(target.tick, target.signal, target.vectorId, target.caseIndex)
+    );
     setSelectedTick(target.tick);
     handleSignalSelect(target.signal);
   }, [handleSignalSelect]);
@@ -1046,9 +1094,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       return;
     }
     setSelectedFailureKey((previous) =>
-      previous && failingRows.some((row) => buildFailureCaseKey(row.tick, row.signal) === previous)
+      previous &&
+      failingRows.some(
+        (row) =>
+          buildFailureCaseKey(row.tick, row.signal, row.vectorId, row.caseIndex) === previous
+      )
         ? previous
-        : buildFailureCaseKey(failingRows[0].tick, failingRows[0].signal)
+        : buildFailureCaseKey(
+            failingRows[0].tick,
+            failingRows[0].signal,
+            failingRows[0].vectorId,
+            failingRows[0].caseIndex
+          )
     );
   }, [failingRows]);
 
@@ -1236,6 +1293,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
   const truthTableEmptyReason = useMemo(() => {
     if (!lastRun) return 'Run verification to populate tick-by-tick expected and observed values.';
+    if (verifyPreflightIssues.length > 0) {
+      return 'Verification is blocked by missing mapped or undriven outputs. Fix the listed issues, then run again.';
+    }
     if (runRows.length > 0) return '';
     if (waveformTicks.length > 0) {
       return 'Verification ran without expectations. Capture observed outputs as expected, then run again.';
@@ -1244,15 +1304,31 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       return 'No evaluable rows yet. Add vectors with expected outputs for this sequential circuit.';
     }
     return 'No deterministic rows were produced for this run. Verify vectors and expected outputs.';
-  }, [isSequentialRun, lastRun, runRows.length, waveformTicks.length]);
+  }, [isSequentialRun, lastRun, runRows.length, verifyPreflightIssues.length, waveformTicks.length]);
   const firstFailureTick = firstFailure?.tick ?? lastRun?.firstFailingTick;
   const selectedFailureInputs = useMemo(() => {
     if (!selectedFailureCase) return null;
+    const vectorInputSnapshot =
+      selectedFailureEvidence?.vectorId
+        ? lastRun?.report.inputsByVectorId?.[selectedFailureEvidence.vectorId]
+        : undefined;
+    if (vectorInputSnapshot) {
+      const snapshot = orderedTraceInputs
+        .map((field) => ({
+          label: field.label,
+          value: String(vectorInputSnapshot[field.key] ?? '-'),
+        }))
+        .filter((entry) => entry.value !== '-');
+      if (snapshot.length > 0) return snapshot;
+    }
     const traceInputs = traceInputsByTick[selectedFailureCase.tick];
     if (traceInputs && traceInputs.length > 0) {
       return traceInputs;
     }
-    const vector = authoredVectors.find((entry) => entry.tick === selectedFailureCase.tick);
+    const vector =
+      selectedFailureCase.vectorId
+        ? authoredVectors.find((entry) => entry.id === selectedFailureCase.vectorId)
+        : authoredVectors.find((entry) => entry.tick === selectedFailureCase.tick);
     const fallbackInputOrder =
       orderedTraceInputs.length > 0
         ? orderedTraceInputs
@@ -1278,7 +1354,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       snapshot.push({ label: field.label, value: signalEntry?.[1] ?? '-' });
     }
     return snapshot;
-  }, [authoredVectors, inputFields, lastRun?.waveform, orderedTraceInputs, selectedFailureCase, traceInputsByTick]);
+  }, [
+    authoredVectors,
+    inputFields,
+    lastRun?.report.inputsByVectorId,
+    lastRun?.waveform,
+    orderedTraceInputs,
+    selectedFailureCase,
+    selectedFailureEvidence?.vectorId,
+    traceInputsByTick,
+  ]);
   const inputSignalKeys = useMemo(
     () => new Set(inputFields.map((field) => normalizeFieldId(field.id))),
     [inputFields]
@@ -2174,7 +2259,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   key={`${row.tick}-${row.signal}`}
                   type="button"
                   className={`ide-signal-row ${
-                    selectedFailureKey === buildFailureCaseKey(row.tick, row.signal) ? 'is-active' : ''
+                    selectedFailureKey ===
+                    buildFailureCaseKey(row.tick, row.signal, row.vectorId, row.caseIndex)
+                      ? 'is-active'
+                      : ''
                   }`}
                   onClick={() => applyFailureSelection(row)}
                   onMouseEnter={() => handleSignalHover(row.signal)}
@@ -2211,6 +2299,32 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     <span>Tick</span>
                     <span>{selectedFailureCase.tick}</span>
                   </div>
+                  {selectedFailureEvidence && (
+                    <>
+                      <div className="ide-kv-row" data-testid="ide-verify-mismatch-case-id">
+                        <span>Case</span>
+                        <code>{selectedFailureEvidence.vectorId}</code>
+                      </div>
+                      <div className="ide-kv-row" data-testid="ide-verify-mismatch-sampled-key">
+                        <span>Sampled key</span>
+                        <code>{selectedFailureEvidence.actualSourceKey ?? 'missing'}</code>
+                      </div>
+                      <div className="ide-kv-row" data-testid="ide-verify-mismatch-expected-key">
+                        <span>Expected key</span>
+                        <code>{selectedFailureEvidence.expectedSourceKey ?? 'missing'}</code>
+                      </div>
+                      <div className="ide-kv-row" data-testid="ide-verify-mismatch-reason">
+                        <span>Why</span>
+                        <span style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+                          {selectedFailureEvidence.actualReason === 'missing-output-sample'
+                            ? 'The expected output could not be sampled from the circuit trace. Check mapping, drivers, and output wiring.'
+                            : selectedFailureEvidence.actualReason === 'missing-output-node'
+                              ? 'The expected output is not mapped to a concrete design node.'
+                              : 'The sampled output did not match the expected value for this case.'}
+                        </span>
+                      </div>
+                    </>
+                  )}
                   {selectedFailureCase.expected !== selectedFailureCase.actual && (
                     <div className="ide-kv-row" data-testid="ide-verify-mismatch-hint">
                       <span>Hint</span>
@@ -3024,6 +3138,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </div>
 
               {/* No-trace diagnostic — shown when run produced no waveform data */}
+              {verifyPreflightIssues.length > 0 && (
+                <IdeCallout tone="error" title="Cannot verify current expectations" testId="ide-verify-preflight-guard">
+                  <p className="ide-copy">
+                    Fix these structural issues before treating this as a logic mismatch.
+                  </p>
+                  <ul className="ide-list">
+                    {verifyPreflightIssues.slice(0, 4).map((issue, index) => (
+                      <li key={`${issue.kind}-${issue.signal}-${issue.vectorId ?? index}`}>
+                        {issue.message}
+                      </li>
+                    ))}
+                  </ul>
+                </IdeCallout>
+              )}
               {hasNoTrace && (
                 <IdeCallout tone="error" title="No trace generated" testId="ide-verify-no-trace-guard">
                   <p className="ide-copy">The run completed but produced no waveform data.</p>
@@ -3234,6 +3362,35 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                             <code>no input snapshot available</code>
                           )}
                         </div>
+                        {selectedFailureEvidence && (
+                          <div className="ide-verify-failure-explainer__inputs">
+                            <span>Resolved comparison</span>
+                            <div className="ide-verify-failure-explainer__chips">
+                              <div className="ide-kv-row" data-testid="ide-verify-mismatch-case-id">
+                                <span>Vector case</span>
+                                <code>{selectedFailureEvidence?.vectorId ?? 'unknown'}</code>
+                              </div>
+                              <div className="ide-kv-row" data-testid="ide-verify-mismatch-sampled-key">
+                                <span>Sampled signal key</span>
+                                <code>{selectedFailureEvidence?.actualSourceKey ?? 'missing'}</code>
+                              </div>
+                              <div className="ide-kv-row" data-testid="ide-verify-mismatch-expected-key">
+                                <span>Expected signal key</span>
+                                <code>{selectedFailureEvidence?.expectedSourceKey ?? 'missing'}</code>
+                              </div>
+                              <div className="ide-kv-row" data-testid="ide-verify-mismatch-reason">
+                                <span>Reason</span>
+                                <code>
+                                  {selectedFailureEvidence?.actualReason === 'missing-output-sample'
+                                    ? 'No sampled output matched this expected signal.'
+                                    : selectedFailureEvidence?.actualReason === 'missing-output-node'
+                                      ? 'The expected output row is not connected to a concrete design node.'
+                                      : 'Compared expected and sampled signals directly.'}
+                                </code>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         {selectedFailurePattern && (
                           <div className="ide-verify-failure-explainer__inputs" data-testid="ide-verify-explainer-pattern">
                             <span>Likely bug shape</span>
@@ -3300,7 +3457,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                             <tr
                               key={`${row.tick}-${row.signal}`}
                               className={`ide-verify-mismatch-row ${
-                                selectedFailureKey === buildFailureCaseKey(row.tick, row.signal) ? 'is-selected' : ''
+                                selectedFailureKey ===
+                                buildFailureCaseKey(row.tick, row.signal, row.vectorId, row.caseIndex)
+                                  ? 'is-selected'
+                                  : ''
                               }`}
                               onClick={() => applyFailureSelection(row)}
                               onMouseEnter={() => handleSignalHover(row.signal)}
@@ -3546,6 +3706,35 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           <code>no input snapshot available</code>
                         )}
                       </div>
+                      {selectedFailureEvidence && (
+                        <div className="ide-verify-failure-explainer__inputs">
+                          <span>Resolved comparison</span>
+                          <div className="ide-verify-failure-explainer__chips">
+                            <div className="ide-kv-row" data-testid="ide-verify-mismatch-case-id">
+                              <span>Vector case</span>
+                              <code>{selectedFailureEvidence?.vectorId ?? 'unknown'}</code>
+                            </div>
+                            <div className="ide-kv-row" data-testid="ide-verify-mismatch-sampled-key">
+                              <span>Sampled signal key</span>
+                              <code>{selectedFailureEvidence?.actualSourceKey ?? 'missing'}</code>
+                            </div>
+                            <div className="ide-kv-row" data-testid="ide-verify-mismatch-expected-key">
+                              <span>Expected signal key</span>
+                              <code>{selectedFailureEvidence?.expectedSourceKey ?? 'missing'}</code>
+                            </div>
+                            <div className="ide-kv-row" data-testid="ide-verify-mismatch-reason">
+                              <span>Reason</span>
+                              <code>
+                                {selectedFailureEvidence?.actualReason === 'missing-output-sample'
+                                  ? 'No sampled output matched this expected signal.'
+                                  : selectedFailureEvidence?.actualReason === 'missing-output-node'
+                                    ? 'The expected output row is not connected to a concrete design node.'
+                                    : 'Compared expected and sampled signals directly.'}
+                              </code>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       {selectedFailurePattern && (
                         <div
                           className="ide-verify-failure-explainer__inputs"
@@ -3632,7 +3821,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           <tr
                             key={`${row.tick}-${row.signal}`}
                             className={`ide-verify-mismatch-row ${
-                              selectedFailureKey === buildFailureCaseKey(row.tick, row.signal) ? 'is-selected' : ''
+                              selectedFailureKey ===
+                              buildFailureCaseKey(row.tick, row.signal, row.vectorId, row.caseIndex)
+                                ? 'is-selected'
+                                : ''
                             }`}
                             onClick={() => applyFailureSelection(row)}
                             onMouseEnter={() => handleSignalHover(row.signal)}

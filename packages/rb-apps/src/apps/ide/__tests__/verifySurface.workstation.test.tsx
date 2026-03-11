@@ -23,17 +23,21 @@ function makePassRun(): RuntimeVerifyRun {
     },
     report: {
       vectors: [
-        { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
-        { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 }, caseIndex: 0 },
+        { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 }, caseIndex: 1 },
       ],
       inputsAtTick: {
         0: { sw0: 0 },
         1: { sw0: 1 },
       },
+      inputsByVectorId: {
+        'vec-01': { sw0: 0 },
+        'vec-02': { sw0: 1 },
+      },
       signalRoles: { sw0: 'input', ld0: 'output' },
       rows: [
-        { tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass' },
-        { tick: 1, signal: 'ld0', expected: '1', actual: '1', status: 'pass' },
+        { tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass', vectorId: 'vec-01', caseIndex: 0 },
+        { tick: 1, signal: 'ld0', expected: '1', actual: '1', status: 'pass', vectorId: 'vec-02', caseIndex: 1 },
       ],
     } as RuntimeVerifyRun['report'],
     waveform: [
@@ -62,23 +66,57 @@ function makeFailRun(): RuntimeVerifyRun {
     },
     report: {
       vectors: [
-        { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
-        { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 }, caseIndex: 0 },
+        { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 }, caseIndex: 1 },
       ],
       inputsAtTick: {
         0: { sw0: 0 },
         1: { sw0: 1 },
       },
+      inputsByVectorId: {
+        'vec-01': { sw0: 0 },
+        'vec-02': { sw0: 1 },
+      },
       signalRoles: { sw0: 'input', ld0: 'output' },
       rows: [
-        { tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass' },
-        { tick: 1, signal: 'ld0', expected: '1', actual: '0', status: 'fail' },
+        { tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass', vectorId: 'vec-01', caseIndex: 0 },
+        { tick: 1, signal: 'ld0', expected: '1', actual: '0', status: 'fail', vectorId: 'vec-02', caseIndex: 1 },
       ],
     } as RuntimeVerifyRun['report'],
     waveform: [
       { tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] },
       { tick: 1, signals: { sw0: '1', ld0: '0' }, mismatches: [{ signal: 'ld0', expected: '1', actual: '0' }] },
     ],
+    evidence: {
+      circuitHash: 'circuit-hash',
+      ioRows: [
+        { id: 'sw0', label: 'sw0', direction: 'in', nodeId: 'sw0_node' },
+        { id: 'ld0', label: 'ld0', direction: 'out', nodeId: 'ld0_node' },
+      ],
+      vectors: [
+        { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 }, caseIndex: 0 },
+        { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 }, caseIndex: 1 },
+      ],
+      normalizationMap: [
+        { role: 'expected', rawKey: 'ld0', normalizedKey: 'ld0', matchedSignal: 'ld0' },
+        { role: 'output', rawKey: 'ld0', normalizedKey: 'ld0', matchedSignal: 'ld0_node.in' },
+      ],
+      preflight: [],
+      failures: [
+        {
+          tick: 1,
+          signal: 'ld0',
+          expected: '1',
+          actual: '0',
+          vectorId: 'vec-02',
+          caseIndex: 1,
+          expectedSourceKey: 'ld0',
+          expectedMatchedSignal: 'ld0',
+          actualSourceKey: 'ld0_node.in',
+          actualReason: 'matched',
+        },
+      ],
+    },
   };
 }
 
@@ -165,8 +203,58 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-cursor-readout')).toBeTruthy();
     expect(getByTestId('ide-verify-failure-explainer')).toBeTruthy();
     expect(getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t1');
+    expect(getByTestId('ide-verify-mismatch-case-id').textContent).toContain('vec-02');
+    expect(getByTestId('ide-verify-mismatch-sampled-key').textContent).toContain('ld0_node.in');
+    expect(getByTestId('ide-verify-mismatch-expected-key').textContent).toContain('ld0');
     fireEvent.click(getByTestId('ide-verify-explainer-show-mismatches'));
     expect(getByTestId('ide-verify-signal-filter-state').textContent).toContain('mismatches');
+  });
+
+  it('shows explicit preflight diagnostics when outputs cannot be verified', () => {
+    const preflightRun: RuntimeVerifyRun = {
+      ...makeFailRun(),
+      reportHash: 'rep-preflight',
+      status: 'fail',
+      report: {
+        ...makeFailRun().report,
+        rows: [],
+      },
+      waveform: [],
+      evidence: {
+        ...makeFailRun().evidence!,
+        preflight: [
+          {
+            kind: 'missing-output-node',
+            signal: 'ld0',
+            tick: 1,
+            vectorId: 'vec-02',
+            caseIndex: 1,
+            message: 'Cannot verify: output ld0 is not mapped to a concrete design node.',
+          },
+        ],
+        failures: [],
+      },
+    };
+
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={preflightRun}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-preflight-guard').textContent).toContain('Cannot verify: output ld0');
   });
 
   it('generates deterministic sweep vectors from presets', () => {

@@ -1,5 +1,40 @@
 # AI State
 
+## Change Log 2026-03-10 (Verify Phase 1: deterministic case truth + explicit failure evidence)
+
+### Verify now evaluates repeated truth-table cases independently and stops inventing fake `actual=0` failures
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/sim/simEngine.ts` - Added `runDeterministicVerifyFromCircuit(...)` so deterministic verify evaluates vector rows as ordered cases instead of collapsing everything through a `tick -> sample` map. Missing output rows, unmapped output nodes, and unsamplable outputs now become explicit preflight issues instead of silent `0` mismatches.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts` - `RuntimeVerifyRun` now carries an additive `evidence` capsule for deterministic runs, and verify status now treats structural preflight problems as a real verify failure state instead of pretending they are normal logic mismatches.
+- `packages/rb-apps/src/apps/ide/verifyReport.ts` - Added additive evidence/report fields (`vectorId`, `caseIndex`, `inputsByVectorId`, `VerifyEvidenceCapsule` and related types). Report generation now preserves repeated same-tick cases honestly instead of lying through a single `inputsAtTick` snapshot.
+- `packages/rb-apps/src/apps/ide/sim/simTypes.ts` - Added optional `vectorId` and `caseIndex` to runtime verify rows so UI selection can distinguish repeated same-tick cases.
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` - Failure selection keys now include `vectorId/caseIndex`, Verify shows an explicit preflight guard for unresolved outputs, and the visible failure explainer now exposes the resolved vector case, sampled key, expected key, and mismatch reason instead of only showing a raw value mismatch.
+- `packages/rb-apps/src/apps/ide/__tests__/simEngine.verify-diagnostics.test.ts` (new) - Added targeted regressions for repeated same-tick combinational cases, missing-output-row preflight, and missing-output-node preflight.
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` - Extended workstation coverage to prove failure evidence is visible in the student-facing failure explainer and that preflight issues render as an explicit “cannot verify” diagnostic.
+
+### Why this was needed
+
+- Students were reporting that Verify failed when there was “no reason” for it to fail.
+- The deterministic verify path still treated repeated same-tick truth-table cases as if one tick could only have one input snapshot.
+- Missing mappings or unresolved outputs were being flattened into fake logic mismatches by defaulting the sampled value to `0`.
+- Even when Verify had enough internal information to explain the failure, the visible UI did not tell the student what signal was actually sampled or why the comparison failed.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/simEngine.verify-diagnostics.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` - PASS
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts packages/rb-apps/src/export/__tests__/golden-examples.test.ts` - PASS
+- `pnpm --filter @redbyte/rb-apps build` - bundles successfully, but still prints the repo’s broad pre-existing TypeScript diagnostics outside this batch
+
+### Remaining note
+
+- This is only Phase 1 of the classroom upgrade plan. It fixes deterministic case evaluation and failure explainability, but it does not yet address the later phases for simulation storytelling, canonical student-controlled port naming, copy/paste, macros, board clickability, or full Vivado/Basys3 manual proof.
+
+- **Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-03-10 (Cloudflare Pages redirect-loop cleanup)
 
 ### Deploy artifact no longer emits invalid `_redirects` rules that Cloudflare Pages ignores as infinite loops

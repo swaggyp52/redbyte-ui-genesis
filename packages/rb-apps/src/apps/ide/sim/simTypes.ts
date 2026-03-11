@@ -34,6 +34,8 @@ export interface RuntimeVerifyTraceRow {
   signal: string;
   expected: string;
   actual: string;
+  vectorId?: string;
+  caseIndex?: number;
 }
 
 export interface SimulatedExpectedIoRow {

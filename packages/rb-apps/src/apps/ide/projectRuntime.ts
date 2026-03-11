@@ -22,6 +22,7 @@ import type {
 import {
   buildVerifyReport,
   buildVerifyWaveSamples,
+  type VerifyEvidenceCapsule,
   type VerifyReport,
   type VerifyReportVector,
   type VerifyWaveSample,
@@ -33,6 +34,7 @@ import {
   buildVerifyRowsDeterministicFromCircuit,
   recomputeSimulationState,
   resetSimulationState,
+  runDeterministicVerifyFromCircuit,
 } from './sim/simEngine';
 import type { RuntimeSignalProbe, RuntimeSimState } from './sim/simTypes';
 
@@ -86,6 +88,7 @@ export interface RuntimeVerifyRun {
   report: VerifyReport;
   waveform: VerifyWaveSample[];
   traceWaveform?: VerifyWaveSample[];
+  evidence?: VerifyEvidenceCapsule;
 }
 
 export interface RunVerificationInput {
@@ -611,16 +614,20 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         set((state) => {
           const scenarioId = input.scenarioId.trim() || 'runtime-verify';
           const scenarioName = input.scenarioName.trim() || 'Runtime verification';
-          const normalizedRows =
+          const circuitHash = digestValue(stableSerialize(state.circuit));
+          const deterministicResult =
             state.projectVectors.length > 0
-              ? buildVerifyRowsDeterministicFromCircuit(
+              ? runDeterministicVerifyFromCircuit(
                   state.circuit,
                   state.projectIoRows,
                   state.projectVectors
                 )
-              : normalizeVerifyRows(input.rows);
+              : null;
+          const normalizedRows = deterministicResult?.rows ?? normalizeVerifyRows(input.rows);
           const failedRows = normalizedRows.filter((row) => row.expected !== row.actual);
-          const status: 'pass' | 'fail' = failedRows.length > 0 ? 'fail' : 'pass';
+          const preflightIssues = deterministicResult?.evidence.preflight ?? [];
+          const status: 'pass' | 'fail' =
+            failedRows.length > 0 || preflightIssues.length > 0 ? 'fail' : 'pass';
           const ranAtIso = input.ranAtIso ?? new Date().toISOString();
           const vectors = toVerifyVectors(state.projectVectors);
           const scheduleContract = deriveVerifySchedule(
@@ -638,6 +645,13 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             generatedAtIso: ranAtIso,
             signalRoles,
           });
+          const evidence =
+            deterministicResult !== null
+              ? ({
+                  ...deterministicResult.evidence,
+                  circuitHash,
+                } satisfies VerifyEvidenceCapsule)
+              : undefined;
           runtimeRun = {
             scenarioId: report.scenarioId,
             scenarioName: report.scenarioName,
@@ -651,10 +665,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             report,
             waveform: buildVerifyWaveSamples(report),
             traceWaveform: undefined,
+            evidence,
           };
 
           // Build ledger entry (synchronous hashes via digestValue + stableSerialize)
-          const circuitHash = digestValue(stableSerialize(state.circuit));
           const vectorsHash = digestValue(stableSerialize(state.projectVectors));
           const mappingHash = digestValue(stableSerialize(toIoMapping(state.projectIoRows)));
           const projectSnap = {
@@ -767,6 +781,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                   meta: buildVerifyRunMeta(scheduleContract),
                   report: { ...result.report, signalRoles },
                   waveform: buildVerifyWaveSamples(result.report),
+                  evidence: state.verifyLastRun?.evidence,
                 } satisfies RuntimeVerifyRun)
               : state.verifyLastRun;
 
@@ -1070,6 +1085,12 @@ function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
       inputsAtTick: Object.fromEntries(
         Object.entries(run.report.inputsAtTick).map(([tick, inputs]) => [tick, { ...inputs }])
       ),
+      inputsByVectorId: Object.fromEntries(
+        Object.entries(run.report.inputsByVectorId ?? {}).map(([vectorId, inputs]) => [
+          vectorId,
+          { ...inputs },
+        ])
+      ),
       signalRoles: { ...run.report.signalRoles },
     },
     waveform: run.waveform.map((sample) => ({
@@ -1082,6 +1103,20 @@ function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
       signals: { ...sample.signals },
       mismatches: [],
     })),
+    evidence: run.evidence
+      ? {
+          circuitHash: run.evidence.circuitHash,
+          ioRows: run.evidence.ioRows.map((row) => ({ ...row })),
+          vectors: run.evidence.vectors.map((vector) => ({
+            ...vector,
+            inputs: { ...vector.inputs },
+            expected: { ...vector.expected },
+          })),
+          normalizationMap: run.evidence.normalizationMap.map((entry) => ({ ...entry })),
+          preflight: run.evidence.preflight.map((entry) => ({ ...entry })),
+          failures: run.evidence.failures.map((entry) => ({ ...entry })),
+        }
+      : undefined,
   };
 }
 
@@ -1459,8 +1494,13 @@ function toVerifyVectors(vectors: TestVector[]): VerifyReportVector[] {
       tick: Number.isFinite(vector.tick) ? Math.max(0, Math.floor(vector.tick)) : index,
       inputs: normalizeBitRecord(vector.inputs ?? {}),
       expected: normalizeBitRecord(vector.expected ?? {}),
+      caseIndex: index,
     }))
-    .sort((left, right) => left.tick - right.tick);
+    .sort((left, right) =>
+      left.tick === right.tick
+        ? (left.caseIndex ?? 0) - (right.caseIndex ?? 0)
+        : left.tick - right.tick
+    );
 }
 
 function normalizeBitRecord(

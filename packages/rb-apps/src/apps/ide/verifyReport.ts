@@ -6,6 +6,8 @@ export interface VerifyReportRow {
   expected: string;
   actual: string;
   status: 'pass' | 'fail';
+  vectorId?: string;
+  caseIndex?: number;
 }
 
 export interface VerifyReportVector {
@@ -13,6 +15,56 @@ export interface VerifyReportVector {
   tick: number;
   inputs: Record<string, 0 | 1>;
   expected: Record<string, 0 | 1>;
+  caseIndex?: number;
+}
+
+export interface VerifyEvidenceIoRow {
+  id: string;
+  label: string;
+  nodeId?: string;
+  direction: 'in' | 'out';
+}
+
+export interface VerifyEvidenceResolutionEntry {
+  role: 'input' | 'expected' | 'output';
+  rawKey: string;
+  normalizedKey: string;
+  matchedSignal: string | null;
+}
+
+export interface VerifyEvidencePreflightIssue {
+  kind:
+    | 'missing-output-row'
+    | 'missing-output-node'
+    | 'missing-expected-binding'
+    | 'missing-output-sample';
+  signal: string;
+  message: string;
+  tick?: number;
+  vectorId?: string;
+  caseIndex?: number;
+}
+
+export interface VerifyEvidenceFailure {
+  tick: number;
+  signal: string;
+  expected: string;
+  actual: string;
+  vectorId: string;
+  caseIndex: number;
+  expectedSourceKey: string | null;
+  expectedMatchedSignal: string | null;
+  actualSourceKey: string | null;
+  actualReason: string;
+}
+
+export interface VerifyEvidenceCapsule {
+  circuitHash: string;
+  ioRows: VerifyEvidenceIoRow[];
+  vectors: VerifyReportVector[];
+  normalizationMap: VerifyEvidenceResolutionEntry[];
+  preflight: VerifyEvidencePreflightIssue[];
+  failures: VerifyEvidenceFailure[];
 }
 
 export interface VerifyReport {
@@ -25,6 +77,7 @@ export interface VerifyReport {
   rows: VerifyReportRow[];
   vectors: VerifyReportVector[];
   inputsAtTick: Record<number, Record<string, 0 | 1>>;
+  inputsByVectorId?: Record<string, Record<string, 0 | 1>>;
   signalRoles: Record<string, 'clock' | 'reset' | 'input' | 'output'>;
   generatedAtIso: string;
   reportHash: string;
@@ -63,6 +116,8 @@ interface BuildVerifyReportInput {
     signal: string;
     expected: string;
     actual: string;
+    vectorId?: string;
+    caseIndex?: number;
   }>;
   vectors: VerifyReportVector[];
   generatedAtIso: string;
@@ -77,9 +132,20 @@ export function buildVerifyReport(input: BuildVerifyReportInput): VerifyReport {
       expected: String(row.expected),
       actual: String(row.actual),
       status: row.expected === row.actual ? ('pass' as const) : ('fail' as const),
+      vectorId:
+        typeof row.vectorId === 'string' && row.vectorId.trim().length > 0
+          ? row.vectorId.trim()
+          : undefined,
+      caseIndex:
+        Number.isFinite(row.caseIndex) && Number(row.caseIndex) >= 0
+          ? Math.floor(Number(row.caseIndex))
+          : undefined,
     }))
     .sort((left, right) => {
       if (left.tick !== right.tick) return left.tick - right.tick;
+      const leftCaseIndex = left.caseIndex ?? Number.MAX_SAFE_INTEGER;
+      const rightCaseIndex = right.caseIndex ?? Number.MAX_SAFE_INTEGER;
+      if (leftCaseIndex !== rightCaseIndex) return leftCaseIndex - rightCaseIndex;
       if (left.signal < right.signal) return -1;
       if (left.signal > right.signal) return 1;
       return 0;
@@ -91,17 +157,36 @@ export function buildVerifyReport(input: BuildVerifyReportInput): VerifyReport {
       tick: Number.isFinite(vector.tick) ? Math.max(0, Math.floor(vector.tick)) : index,
       inputs: normalizeBitMap(vector.inputs),
       expected: normalizeBitMap(vector.expected),
+      caseIndex:
+        Number.isFinite(vector.caseIndex) && Number(vector.caseIndex) >= 0
+          ? Math.floor(Number(vector.caseIndex))
+          : index,
     }))
     .sort((left, right) => {
       if (left.tick !== right.tick) return left.tick - right.tick;
+      const leftCaseIndex = left.caseIndex ?? Number.MAX_SAFE_INTEGER;
+      const rightCaseIndex = right.caseIndex ?? Number.MAX_SAFE_INTEGER;
+      if (leftCaseIndex !== rightCaseIndex) return leftCaseIndex - rightCaseIndex;
       if (left.id < right.id) return -1;
       if (left.id > right.id) return 1;
       return 0;
     });
 
   const inputsAtTick: Record<number, Record<string, 0 | 1>> = {};
+  const inputsByVectorId: Record<string, Record<string, 0 | 1>> = {};
+  const conflictedTicks = new Set<number>();
   for (const vector of normalizedVectors) {
-    inputsAtTick[vector.tick] = { ...vector.inputs };
+    inputsByVectorId[vector.id] = { ...vector.inputs };
+    if (conflictedTicks.has(vector.tick)) continue;
+    const previous = inputsAtTick[vector.tick];
+    if (!previous) {
+      inputsAtTick[vector.tick] = { ...vector.inputs };
+      continue;
+    }
+    if (!bitMapsEqual(previous, vector.inputs)) {
+      conflictedTicks.add(vector.tick);
+      delete inputsAtTick[vector.tick];
+    }
   }
 
   const signalRoles = input.signalRoles ?? {};
@@ -127,6 +212,7 @@ export function buildVerifyReport(input: BuildVerifyReportInput): VerifyReport {
     rows: normalizedRows,
     vectors: normalizedVectors,
     inputsAtTick,
+    inputsByVectorId,
     signalRoles,
     generatedAtIso: input.generatedAtIso,
     reportHash: `vrf_${digestValue(hashSeed)}`,
@@ -213,4 +299,20 @@ function normalizeBitMap(value: Record<string, unknown>): Record<string, 0 | 1> 
 function normalizeBit(value: unknown): 0 | 1 {
   if (value === true || value === 1 || value === '1') return 1;
   return 0;
+}
+
+function bitMapsEqual(
+  left: Record<string, 0 | 1>,
+  right: Record<string, 0 | 1>
+): boolean {
+  const leftKeys = Object.keys(left).sort();
+  const rightKeys = Object.keys(right).sort();
+  if (leftKeys.length !== rightKeys.length) return false;
+  for (let index = 0; index < leftKeys.length; index += 1) {
+    const leftKey = leftKeys[index];
+    const rightKey = rightKeys[index];
+    if (leftKey !== rightKey) return false;
+    if (left[leftKey] !== right[rightKey]) return false;
+  }
+  return true;
 }

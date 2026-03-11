@@ -3,6 +3,13 @@ import type { Circuit } from '@redbyte/rb-logic-core';
 import type { TestVector } from '@redbyte/rb-utils';
 import { digestValue } from '../../../utils/digest';
 import type {
+  VerifyEvidenceCapsule,
+  VerifyEvidenceFailure,
+  VerifyEvidencePreflightIssue,
+  VerifyEvidenceResolutionEntry,
+  VerifyReportVector,
+} from '../verifyReport';
+import type {
   RuntimeSimState,
   RuntimeSimTraceSample,
   RuntimeVerifyTraceRow,
@@ -15,6 +22,11 @@ const SIM_TRACE_CAPACITY = 256;
 
 let runtimeSimEngine: CircuitEngine | null = null;
 let runtimeSimIrHash = '';
+
+export interface DeterministicVerifyResult {
+  rows: RuntimeVerifyTraceRow[];
+  evidence: Omit<VerifyEvidenceCapsule, 'circuitHash'>;
+}
 
 export function resetSimulationState(
   circuit: Circuit,
@@ -158,33 +170,153 @@ export function buildVerifyRowsDeterministicFromCircuit(
   ioRows: SimulationIoRow[],
   vectors: TestVector[]
 ): RuntimeVerifyTraceRow[] {
-  if (vectors.length === 0) return [];
-  const trace = simulateTraceFromVectors(circuit, ioRows, vectors);
-  const traceByTick = new Map<number, RuntimeSimTraceSample>();
-  for (const entry of trace) {
-    traceByTick.set(entry.tick, entry);
-  }
+  return runDeterministicVerifyFromCircuit(circuit, ioRows, vectors).rows;
+}
+
+export function runDeterministicVerifyFromCircuit(
+  circuit: Circuit,
+  ioRows: SimulationIoRow[],
+  vectors: TestVector[]
+): DeterministicVerifyResult {
+  const cases = simulateVectorCases(circuit, ioRows, vectors);
   const outputRows = ioRows.filter((row) => row.direction === 'out');
   const rows: RuntimeVerifyTraceRow[] = [];
-  for (const vector of vectors) {
-    const tick = Number.isFinite(vector.tick) ? Math.max(0, Math.floor(vector.tick)) : 0;
-    // simulateTraceFromVectors pushes after engine.tick() so the post-vector tick is tick+1
-    const sample = traceByTick.get(tick + 1) ?? traceByTick.get(tick);
-    for (const outputRow of outputRows) {
-      const expected = resolveVectorBitSymbol(vector.expected ?? {}, outputRow);
-      const actual = resolveOutputSymbolFromTrace(sample, outputRow);
-      rows.push({
-        tick,
-        signal: normalizeSignalName(outputRow.label || outputRow.id),
-        expected,
-        actual,
+  const normalizationMap: VerifyEvidenceResolutionEntry[] = [];
+  const preflight = new Map<string, VerifyEvidencePreflightIssue>();
+  const failures: VerifyEvidenceFailure[] = [];
+
+  for (const entry of cases) {
+    for (const rawKey of Object.keys(entry.inputs)) {
+      const match = resolveIoRowByKey(rawKey, ioRows.filter((row) => row.direction === 'in'));
+      normalizationMap.push({
+        role: 'input',
+        rawKey,
+        normalizedKey: normalizeSignalName(rawKey),
+        matchedSignal: match?.signal ?? null,
       });
     }
+
+    for (const [rawExpectedKey, rawExpectedValue] of Object.entries(entry.expected)) {
+      const expectedMatch = resolveIoRowByKey(rawExpectedKey, outputRows);
+      normalizationMap.push({
+        role: 'expected',
+        rawKey: rawExpectedKey,
+        normalizedKey: normalizeSignalName(rawExpectedKey),
+        matchedSignal: expectedMatch?.signal ?? null,
+      });
+
+      if (!expectedMatch) {
+        const signal = normalizeSignalName(rawExpectedKey) || rawExpectedKey;
+        const key = `missing-output-row:${entry.vectorId}:${signal}`;
+        if (!preflight.has(key)) {
+          preflight.set(key, {
+            kind: 'missing-output-row',
+            signal,
+            tick: entry.tick,
+            vectorId: entry.vectorId,
+            caseIndex: entry.caseIndex,
+            message: `Cannot verify: expected output ${signal} does not match any mapped output row.`,
+          });
+        }
+        continue;
+      }
+
+      if (!expectedMatch.row.nodeId) {
+        const key = `missing-output-node:${entry.vectorId}:${expectedMatch.signal}`;
+        if (!preflight.has(key)) {
+          preflight.set(key, {
+            kind: 'missing-output-node',
+            signal: expectedMatch.signal,
+            tick: entry.tick,
+            vectorId: entry.vectorId,
+            caseIndex: entry.caseIndex,
+            message: `Cannot verify: output ${expectedMatch.signal} is not mapped to a concrete design node.`,
+          });
+        }
+        continue;
+      }
+
+      const actualResolution = resolveOutputSymbolFromTraceDetailed(entry.sample, expectedMatch.row);
+      normalizationMap.push({
+        role: 'output',
+        rawKey: expectedMatch.signal,
+        normalizedKey: normalizeSignalName(expectedMatch.signal),
+        matchedSignal: actualResolution.sourceKey,
+      });
+
+      if (actualResolution.reason !== 'matched') {
+        const key = `missing-output-sample:${entry.vectorId}:${expectedMatch.signal}`;
+        if (!preflight.has(key)) {
+          preflight.set(key, {
+            kind: 'missing-output-sample',
+            signal: expectedMatch.signal,
+            tick: entry.tick,
+            vectorId: entry.vectorId,
+            caseIndex: entry.caseIndex,
+            message:
+              actualResolution.reason === 'missing-output-node'
+                ? `Cannot verify: output ${expectedMatch.signal} is not mapped to a design node.`
+                : `Cannot verify: output ${expectedMatch.signal} is not driven or could not be sampled from the circuit trace.`,
+          });
+        }
+      }
+
+      const expected = normalizeBit(rawExpectedValue) === 1 ? '1' : '0';
+      const row: RuntimeVerifyTraceRow = {
+        tick: entry.tick,
+        signal: normalizeSignalName(expectedMatch.signal),
+        expected,
+        actual: actualResolution.symbol,
+        vectorId: entry.vectorId,
+        caseIndex: entry.caseIndex,
+      };
+      rows.push(row);
+      if (row.expected !== row.actual) {
+        failures.push({
+          tick: row.tick,
+          signal: row.signal,
+          expected: row.expected,
+          actual: row.actual,
+          vectorId: entry.vectorId,
+          caseIndex: entry.caseIndex,
+          expectedSourceKey: rawExpectedKey,
+          expectedMatchedSignal: expectedMatch.signal,
+          actualSourceKey: actualResolution.sourceKey,
+          actualReason: actualResolution.reason,
+        });
+      }
+    }
   }
-  return rows.sort((left, right) => {
-    if (left.tick !== right.tick) return left.tick - right.tick;
-    return compareText(left.signal, right.signal);
-  });
+
+  const evidenceVectors: VerifyReportVector[] = cases.map((entry) => ({
+    id: entry.vectorId,
+    tick: entry.tick,
+    inputs: { ...entry.inputs },
+    expected: { ...entry.expected },
+    caseIndex: entry.caseIndex,
+  }));
+
+  return {
+    rows: rows.sort((left, right) => {
+      if (left.tick !== right.tick) return left.tick - right.tick;
+      const leftCaseIndex = left.caseIndex ?? Number.MAX_SAFE_INTEGER;
+      const rightCaseIndex = right.caseIndex ?? Number.MAX_SAFE_INTEGER;
+      if (leftCaseIndex !== rightCaseIndex) return leftCaseIndex - rightCaseIndex;
+      return compareText(left.signal, right.signal);
+    }),
+    evidence: {
+      ioRows: ioRows.map((row) => ({
+        id: row.id,
+        label: row.label,
+        nodeId: row.nodeId,
+        direction: row.direction,
+      })),
+      vectors: evidenceVectors,
+      normalizationMap,
+      preflight: Array.from(preflight.values()),
+      failures,
+    },
+  };
 }
 
 export function simulateExpectedIoRows(params: {
@@ -195,25 +327,17 @@ export function simulateExpectedIoRows(params: {
   if (params.vectors.length === 0) {
     return [];
   }
-  const trace = simulateTraceFromVectors(params.circuit, params.ioRows, params.vectors);
-  if (trace.length === 0) {
-    return [];
-  }
-  const traceByTick = new Map<number, RuntimeSimTraceSample>();
-  for (const entry of trace) {
-    traceByTick.set(entry.tick, entry);
-  }
+  const cases = simulateVectorCases(params.circuit, params.ioRows, params.vectors);
   const outputRows = params.ioRows.filter((row) => row.direction === 'out');
   const rows: SimulatedExpectedIoRow[] = [];
-  for (const vector of params.vectors) {
-    const tick = Number.isFinite(vector.tick) ? Math.max(0, Math.floor(vector.tick)) : 0;
-    const sample = traceByTick.get(tick) ?? traceByTick.get(tick + 1);
+  for (const entry of cases) {
     for (const row of outputRows) {
-      const value = resolveOutputSymbolFromTrace(sample, row);
+      const value = resolveOutputSymbolFromTraceDetailed(entry.sample, row);
+      if (value.reason !== 'matched') continue;
       rows.push({
-        tick,
+        tick: entry.tick,
         signal: normalizeSignalName(row.label || row.id),
-        expected: value === '1' ? '1' : '0',
+        expected: value.symbol === '1' ? '1' : '0',
       });
     }
   }
@@ -223,11 +347,18 @@ export function simulateExpectedIoRows(params: {
   });
 }
 
-function simulateTraceFromVectors(
+function simulateVectorCases(
   circuit: Circuit,
   ioRows: SimulationIoRow[],
   vectors: TestVector[]
-): RuntimeSimTraceSample[] {
+): Array<{
+  vectorId: string;
+  caseIndex: number;
+  tick: number;
+  inputs: Record<string, 0 | 1>;
+  expected: Record<string, 0 | 1>;
+  sample: RuntimeSimTraceSample;
+}> {
   const engine = new CircuitEngine(cloneCircuit(circuit));
   const inputs = deriveSimulationInputs(circuit);
   const resetNodeId = resolveResetNodeId(ioRows, circuit);
@@ -243,15 +374,24 @@ function simulateTraceFromVectors(
   }
 
   const inputBindings = buildInputBindings(ioRows, circuit);
-  const trace: RuntimeSimTraceSample[] = [];
   let tick = 0;
   const sortedVectors = [...vectors]
     .map((vector, index) => ({
       vector,
+      vectorId: `vec-${String(index + 1).padStart(2, '0')}`,
+      caseIndex: index,
       tick: Number.isFinite(vector.tick) ? Math.max(0, Math.floor(vector.tick)) : index,
       order: index,
     }))
     .sort((left, right) => (left.tick === right.tick ? left.order - right.order : left.tick - right.tick));
+  const samples: Array<{
+    vectorId: string;
+    caseIndex: number;
+    tick: number;
+    inputs: Record<string, 0 | 1>;
+    expected: Record<string, 0 | 1>;
+    sample: RuntimeSimTraceSample;
+  }> = [];
 
   for (const entry of sortedVectors) {
     const vectorInputs = normalizeVectorInputMap(entry.vector.inputs ?? {});
@@ -264,17 +404,32 @@ function simulateTraceFromVectors(
     const targetTick = entry.tick;
     const steps = Math.max(1, targetTick - tick);
     applyInputsToEngine(engine, inputs);
+    let sample: RuntimeSimTraceSample | null = null;
     for (let index = 0; index < steps; index += 1) {
       engine.tick();
       tick += 1;
-      trace.push({
+      sample = {
         tick,
         signals: normalizeSignalMap(engine, circuit),
-      });
+      };
     }
+    if (!sample) {
+      sample = {
+        tick,
+        signals: normalizeSignalMap(engine, circuit),
+      };
+    }
+    samples.push({
+      vectorId: entry.vectorId,
+      caseIndex: entry.caseIndex,
+      tick: entry.tick,
+      inputs: { ...vectorInputs },
+      expected: normalizeVectorInputMap(entry.vector.expected ?? {}),
+      sample,
+    });
   }
 
-  return trace;
+  return samples;
 }
 
 function normalizeVectorInputMap(
@@ -325,16 +480,32 @@ function resolveBoundInputValue(
   return undefined;
 }
 
+function resolveIoRowByKey(
+  rawKey: string,
+  rows: SimulationIoRow[]
+): { row: SimulationIoRow; signal: string } | null {
+  const normalizedKey = normalizeSignalName(rawKey);
+  for (const row of rows) {
+    const candidates = [row.id, row.label, row.nodeId ?? '']
+      .map((entry) => normalizeSignalName(entry))
+      .filter(Boolean);
+    if (candidates.includes(normalizedKey)) {
+      return {
+        row,
+        signal: normalizeSignalName(row.label || row.id),
+      };
+    }
+  }
+  return null;
+}
+
 function resolveVectorBitSymbol(
   expected: Record<string, boolean | number | string | undefined>,
   row: SimulationIoRow
 ): string {
-  const candidates = [row.id, row.label, row.nodeId ?? '']
-    .map((entry) => normalizeSignalName(entry))
-    .filter(Boolean);
-  for (const [key, value] of Object.entries(expected)) {
-    const normalizedKey = normalizeSignalName(key);
-    if (candidates.includes(normalizedKey)) {
+  for (const [rawKey, value] of Object.entries(expected)) {
+    const match = resolveIoRowByKey(rawKey, [row]);
+    if (match) {
       return normalizeBit(value) === 1 ? '1' : '0';
     }
   }
@@ -345,7 +516,19 @@ function resolveOutputSymbolFromTrace(
   sample: RuntimeSimTraceSample | undefined,
   row: SimulationIoRow
 ): string {
-  if (!sample) return '0';
+  return resolveOutputSymbolFromTraceDetailed(sample, row).symbol;
+}
+
+function resolveOutputSymbolFromTraceDetailed(
+  sample: RuntimeSimTraceSample | undefined,
+  row: SimulationIoRow
+): { symbol: string; sourceKey: string | null; reason: 'matched' | 'missing-output-node' | 'missing-output-sample' } {
+  if (!row.nodeId) {
+    return { symbol: '-', sourceKey: null, reason: 'missing-output-node' };
+  }
+  if (!sample) {
+    return { symbol: '-', sourceKey: null, reason: 'missing-output-sample' };
+  }
   const candidates = [
     row.nodeId ? `${row.nodeId}.in` : '',
     row.nodeId ? `${row.nodeId}.out` : '',
@@ -356,16 +539,28 @@ function resolveOutputSymbolFromTrace(
     if (!candidate) continue;
     const direct = sample.signals[candidate];
     if (direct === 0 || direct === 1) {
-      return direct === 1 ? '1' : '0';
+      return {
+        symbol: direct === 1 ? '1' : '0',
+        sourceKey: candidate,
+        reason: 'matched',
+      };
     }
     const normalizedCandidate = normalizeSignalName(candidate);
     for (const [key, value] of Object.entries(sample.signals)) {
       if (normalizeSignalName(key) === normalizedCandidate) {
-        return value === 1 ? '1' : '0';
+        return {
+          symbol: value === 1 ? '1' : '0',
+          sourceKey: key,
+          reason: 'matched',
+        };
       }
     }
   }
-  return '0';
+  return {
+    symbol: '-',
+    sourceKey: null,
+    reason: 'missing-output-sample',
+  };
 }
 
 function deriveSimulationInputs(
