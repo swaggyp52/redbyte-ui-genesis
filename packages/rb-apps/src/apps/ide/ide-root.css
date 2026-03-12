@@ -16666,3 +16666,79 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   gap: 2px;
   margin-top: var(--rb-space-1);
 }
+
+/* ─── Export Trust Clarity Banner (Batch 8) ──────────────────────────────── */
+.ide-export-trust-banner {
+  margin: var(--rb-space-3) 0;
+  border-radius: var(--rb-radius-2);
+  overflow: hidden;
+}
+
+.ide-export-trust-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rb-space-2);
+  padding: var(--rb-space-3) var(--rb-space-4);
+  border-left: 3px solid transparent;
+}
+
+.ide-export-trust-row--trusted {
+  background: rgba(61, 186, 110, 0.06);
+  border-left-color: var(--rb-green-6, #3dba6e);
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ide-export-trust-row--available {
+  background: rgba(234, 179, 8, 0.06);
+  border-left-color: var(--rb-yellow-6, #ca8a04);
+}
+
+.ide-export-trust-row--blocked {
+  background: rgba(252, 165, 165, 0.06);
+  border-left-color: var(--rb-red-6, #dc2626);
+}
+
+.ide-export-trust-header {
+  display: flex;
+  align-items: center;
+  gap: var(--rb-space-2);
+}
+
+.ide-export-trust-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rb-space-1);
+}
+
+.ide-export-trust-message {
+  font-size: var(--rb-font-size-1);
+  color: var(--ide-text-soft);
+}
+
+.ide-export-trust-reason {
+  font-size: var(--rb-font-size-1);
+  color: var(--ide-text);
+  margin: 0;
+}
+
+.ide-export-trust-consequence {
+  font-size: var(--rb-font-size-1);
+  color: var(--ide-text-muted);
+  margin: 0;
+  font-style: italic;
+}
+
+.ide-export-trust-blocker-list {
+  margin: 0;
+  padding-left: var(--rb-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ide-export-trust-blocker-list li {
+  font-size: var(--rb-font-size-1);
+  color: var(--ide-text);
+}

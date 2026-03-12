@@ -253,6 +253,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     () => viewModel.pinTable.filter((row) => row.required && !editablePortKeys.has(toPortKey(row.port))),
     [editablePortKeys, viewModel.pinTable]
   );
+  const unmappedRequiredPorts = useMemo(
+    () =>
+      viewModel.pinTable.filter(
+        (r) => r.required && (pinOverrides[toPortKey(r.port)] ?? '').trim().length === 0
+      ),
+    [viewModel.pinTable, pinOverrides]
+  );
 
   const appEnv = (import.meta as ImportMeta & {
     env?: { VITE_APP_VERSION?: string; VITE_GIT_SHA?: string };
@@ -928,6 +935,76 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               </div>
             ))}
           </div>
+          <section className="ide-export-trust-banner" data-testid="ide-export-trust-banner">
+            {exportTrusted ? (
+              <div className="ide-export-trust-row ide-export-trust-row--trusted">
+                <IdeStatusPill tone="ok">TRUSTED</IdeStatusPill>
+                <span className="ide-export-trust-message" data-testid="ide-export-trust-consequence">
+                  Verification passed and all required pins are mapped. This export is ready for Vivado.
+                </span>
+              </div>
+            ) : downloadReady ? (
+              <div className="ide-export-trust-row ide-export-trust-row--available">
+                <div className="ide-export-trust-header">
+                  <IdeStatusPill tone="warn">AVAILABLE — NOT TRUSTED</IdeStatusPill>
+                </div>
+                <div className="ide-export-trust-body">
+                  <p className="ide-export-trust-reason" data-testid="ide-export-trust-reason">
+                    {evidenceDiagnostics[0]?.message ?? 'Verification has not passed.'}
+                  </p>
+                  <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
+                    This export may open, but it may fail in Vivado or on the board until these blockers are resolved.
+                  </p>
+                </div>
+                {onOpenVerify && (
+                  <div className="ide-inline-actions">
+                    <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-trust-go-verify">
+                      Open Verify →
+                    </IdeButton>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="ide-export-trust-row ide-export-trust-row--blocked">
+                <div className="ide-export-trust-header">
+                  <IdeStatusPill tone="error">BLOCKED</IdeStatusPill>
+                </div>
+                <div className="ide-export-trust-body">
+                  <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
+                    This export may open, but it may fail in Vivado or on the board until these blockers are resolved.
+                  </p>
+                  {(unmappedRequiredPorts.length > 0 || viewModel.errors.length > 0) && (
+                    <ul className="ide-export-trust-blocker-list" data-testid="ide-export-trust-blocker-list">
+                      {unmappedRequiredPorts.length > 0 && (
+                        <li>
+                          {unmappedRequiredPorts.map((r) => r.port).join(', ')}{' '}
+                          {unmappedRequiredPorts.length === 1 ? 'is' : 'are'} not mapped
+                        </li>
+                      )}
+                      {viewModel.errors
+                        .filter((e) => e.code !== 'RBEX1001' && e.code !== 'RBEX1002')
+                        .slice(0, 2)
+                        .map((e) => (
+                          <li key={e.id}>{e.title}</li>
+                        ))}
+                    </ul>
+                  )}
+                </div>
+                <div className="ide-inline-actions">
+                  {onGoToHardware && unmappedRequiredPorts.length > 0 && (
+                    <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-export-trust-go-hardware">
+                      Map Pins in Hardware →
+                    </IdeButton>
+                  )}
+                  {onOpenVerify && (
+                    <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-trust-go-verify">
+                      Open Verify →
+                    </IdeButton>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
           <div className="ide-export-layout">
             <div className="ide-export-left-col">
 
