@@ -2087,13 +2087,19 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           <IdeInspectorSection title="Context Inspector" accordionId="design-context" testId="ide-design-context-inspector">
             {selectedNode && selection.nodes.size === 1 ? (
               <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
+                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+                  {selectedNode.label
+                    ? <><strong>{selectedNode.label}</strong><span className="ide-design-identity-sep"> — </span>{nodeTypeLabel(selectedNode.type)}</>
+                    : <strong>{nodeTypeLabel(selectedNode.type)}</strong>
+                  }
+                </div>
                 <div className="ide-kv-list">
                   <div className="ide-kv-row">
                     <span>Type</span>
-                    <span data-testid="ide-design-selection-type">{selectedNode.type}</span>
+                    <span data-testid="ide-design-selection-type">{nodeTypeLabel(selectedNode.type)}</span>
                   </div>
                   <div className="ide-kv-row">
-                    <span>Label</span>
+                    <span>Name</span>
                     <code data-testid="ide-design-selection-id">{selectedNode.label ?? selectedNode.id}</code>
                   </div>
                   <div className="ide-kv-row">
@@ -2577,7 +2583,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <div className="ide-kv-list">
                   <div className="ide-kv-row">
                     <span>Type</span>
-                    <span data-testid="ide-design-selection-type">{selectedNode.type}</span>
+                    <span data-testid="ide-design-selection-type">{nodeTypeLabel(selectedNode.type)}</span>
                   </div>
                   <div className="ide-kv-row">
                     <span>Node ID</span>
@@ -2687,14 +2693,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             ) : selection.nodes.size > 1 ? (
               <div className="ide-design-selection-inspector" data-testid="ide-design-multiselect-summary">
-                <div className="ide-kv-row">
-                  <span>Selected</span>
-                  <span data-testid="ide-design-multiselect-count">{selection.nodes.size} nodes</span>
+                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+                  <strong data-testid="ide-design-multiselect-count">{selection.nodes.size} nodes selected</strong>
                 </div>
                 <div className="ide-design-selection-pins" data-testid="ide-design-multiselect-types">
                   {selectedTypeSummary.map((entry) => (
                     <span key={entry.type} className="ide-design-pin-pill">
-                      {entry.type}: {entry.count}
+                      {nodeTypeLabel(entry.type)}: {entry.count}
                     </span>
                   ))}
                 </div>

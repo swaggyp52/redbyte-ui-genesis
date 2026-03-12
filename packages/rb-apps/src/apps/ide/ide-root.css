@@ -16825,3 +16825,16 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 .ide-mode-button.is-complete:focus-visible {
   opacity: 1;
 }
+
+/* ── Design — selection identity heading ─────────────────────────────────────── */
+.ide-design-selection-identity {
+  padding-bottom: var(--rb-space-2);
+  border-bottom: 1px solid var(--ide-border);
+  margin-bottom: var(--rb-space-2);
+  font-size: var(--ide-font-size-sm);
+  line-height: 1.4;
+}
+.ide-design-identity-sep {
+  color: var(--ide-text-muted);
+  font-weight: 400;
+}
