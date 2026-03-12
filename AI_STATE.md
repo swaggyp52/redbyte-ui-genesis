@@ -1,5 +1,285 @@
 # AI State
 
+## Change Log 2026-03-11 (Hardware UX interaction reliability)
+
+### Basys3 board hit targets now stay clickable under rapid use and label overlap
+
+Tightened the hardware-board interaction layer so board text no longer intercepts clicks, the visible controls have larger hit targets, and the hardware regression suite now enforces the rapid-click and hover paths that were previously only checked manually.
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/components/HardwareBoard2D.tsx`
+  - Added non-intercepting board labels (`pointer-events: none`) so silkscreen text cannot steal switch, LED, or button clicks.
+  - Added enlarged invisible hitboxes for LEDs, switches, and buttons while preserving the existing visual board layout.
+  - Routed hover/select handlers through the expanded hitboxes so interaction feedback stays stable at the control edges.
+- `packages/rb-apps/src/apps/ide/components/HardwareBoard2D.module.css`
+  - Added hover affordances for the expanded hitboxes and student-facing label feedback states.
+- `packages/rb-apps/src/apps/ide/__tests__/hardwareBoard2D.interaction.test.tsx` (new)
+  - Added rapid-click stress coverage for SW0 (`20` repeated clicks).
+  - Added border-hitbox click proof and label non-intercept coverage.
+  - Added hover callback regression checks for switch and LED paths.
+  - Added immediate LED lens-state update coverage.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/hardwareBoard2D.interaction.test.tsx` - PASS
+- Manual 30-second click sanity check on the rendered board is still recommended before merge.
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-03-11 (Vivado full-project artifact consistency guard)
+
+### Export integrity hardening: cross-artifact truth check before ZIP emission
+
+Added a project-folder-level consistency validator that checks the generated Vivado artifact set as one contract, not just `top.vhd` in isolation.
+
+**Modified files:**
+
+- `packages/rb-apps/src/fpga/vivado/vivadoProjectFolder.ts`
+  - Added `validateVivadoArtifactConsistency(...)` and `VivadoArtifactConsistencyInput`.
+  - New checks cover:
+    - top module identity parity (`top.vhd` entity, `.xpr` `sources_1` `TopModule`, `vivado_import.tcl` `top_module`, testbench component/DUT target).
+    - top-level port naming parity (`top.vhd` entity ports, `top.xdc` `get_ports`, testbench component ports, testbench DUT `port map` keys).
+    - `.xpr` source/constraints references (`$PSRCDIR/sources_1/new/top.vhd`, `$PSRCDIR/constrs_1/new/basys3.xdc`).
+    - `vivado_import.tcl` source/constraints/simulation path references.
+  - `buildVivadoProjectFolderEntries(...)` now aborts export with an explicit error when any consistency issue is detected (prevents emitting a broken ZIP).
+
+- `packages/rb-apps/src/__tests__/ide-vivado-artifact-consistency.test.ts` (new)
+  - Added pass-through full artifact consistency contract test.
+  - Added richer logic full artifact consistency contract test.
+  - Added negative guard test proving export aborts when artifact naming drifts.
+  - Added explicit structural check for unresolved identifiers in `top.vhd` assignments.
+
+**Validation:**
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/ide-vivado-artifact-consistency.test.ts` ✓ (3/3)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/ide-vivado-project-folder-contract.test.ts` ✓ (2/2)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/export/__tests__/vhdlExport.test.ts packages/rb-apps/src/__tests__/basys3-bundle-gate.test.ts` ✓ (13/13)
+- `pnpm -s ide:gate:verify-workbench-contract` ✓ PASS
+- `pnpm -s ide:gate:student-loop-contract` ✓ PASS
+
+---
+
+## Change Log (Export pipeline correctness: synthesizable Vivado bundle)
+
+### Root causes fixed
+
+Three independent bugs combined to produce the Vivado [Synth 8-285] "LED is not declared" failure:
+
+1. **`vhdlExport.ts` Bug 1** — Guard `if (!nodeIdToSignal.has(binding.toNodeId))` prevented `topInputBindings` from overriding `buildPortGroups` vector names (`SW(0)`, `LED(0)`). Removed; topPort names now always win.
+2. **`vhdlExport.ts` Bug 2** — `topOutputBindings` resolved `fromNodeId` via `nodeIdToSignal.get(fromNodeId)`, returning `LED(0)` from portGroups for Lamp nodes. Now uses two-step resolution: direct `fromNodeId:fromPort` lookup first (handles directly-pinned logic gates), then traces through netlist input nets (handles Switch→Lamp pass-through and multi-gate paths).
+3. **`testbenchGenerator.ts`** — `collectSignals` mixed node labels (`SW0`) with ioMapping canonical names (`sw0_node_out`), producing testbench ports that didn't match entity ports. Rewrote to use canonical `toVhdlIdentifier(nodeId_port)` names exclusively; added `logicalToCanonical: Map<string, string>` for stimulus vector key translation.
+
+### Files modified
+
+- `packages/rb-apps/src/export/vhdlExport.ts` — Two patches (input guard removal + output binding trace)
+- `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts` — Canonical signal names + `logicalToCanonical` map + `vhdlNameByLogical` alias extension
+- `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts` — Added `extractVhdlEntityPorts` / `extractXdcPortNames` helpers + VHDL vs XDC parity check; `valid` flag gates on parity mismatch count
+
+### Tests added
+
+- `packages/rb-apps/src/export/__tests__/vhdlExport.test.ts` — 4 new tests in `describe('vhdlFromNetlist — topPorts mode')`: pass-through entity port names, AND gate assignment, no unresolved driver warning, 4-switch pass-through
+- `packages/rb-apps/src/__tests__/basys3-bundle-gate.test.ts` — 1 new test: pass-through Switch→Lamp asserts `valid`, no `LED(` or `SW(` in architecture, correct assignments, VHDL/XDC port parity
+
+### Gate status
+
+- `ide:gate:verify-workbench-contract` ✓ PASS
+- `ide:gate:student-loop-contract` ✓ PASS
+
+---
+
+## Change Log (Deterministic copy/paste for Design editor)
+
+### TDD copy/paste: serialize + paste helpers + keyboard shortcuts + inspector UI buttons
+
+**New files:**
+
+- `packages/rb-apps/src/apps/ide/designClipboard.ts` — Pure serialization/paste helpers (`serializeCluster`, `pasteCluster`). No React, no store. Foundation for macro v1 / Save as Block.
+- `packages/rb-apps/src/apps/ide/__tests__/designClipboard.copy-paste.test.ts` — 13 regression tests (all GREEN): single/multi-node serialize, relative positions, config/label preservation, deterministic new IDs, connection remapping, paste offset, no dangling wires.
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`:
+  - Added `designClipboard` import
+  - Added `clipboard` local state (`useState<ClipboardCluster | null>`)
+  - Added `handleCopy` + `handlePaste` callbacks (after `deleteSelection`)
+  - Added Ctrl+C/Ctrl+V keyboard branches to existing `onKeyDown` useEffect
+  - Added Copy/Paste buttons in both single-node and multi-select inspector sections
+
+**Behavior:** Select nodes → Ctrl+C (or Copy button) → serializes cluster with relative positions. Ctrl+V (or Paste button) → pastes with +40/+40 offset, deterministic new IDs, pasted cluster becomes selection. Internal connections only — no dangling wires.
+
+**Validation:** All 13 clipboard tests GREEN. Both `ide:gate:verify-workbench-contract` and `ide:gate:student-loop-contract` PASS.
+
+---
+
+## Change Log (Canonical naming propagation: simEngine slice + trailing-dot guard)
+
+### simEngine.ts local normalizeSignalName removed; unified with shared normalizeIoSignalKey
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/sim/simEngine.ts` - Deleted local `normalizeSignalName` function (was identical to `normalizeIoSignalKey`). Added `import { normalizeIoSignalKey } from '../ioLabels'`. Renamed all ~20 call sites.
+- `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts` - Fixed trailing-dot guard in `resolveMappingPortName`: when `entry.port` is empty, fallback is now `entry.id` instead of `nodeId.` (was: `\`${entry.nodeId}.${entry.port}\``).
+
+**New test file:**
+
+- `packages/rb-apps/src/apps/ide/__tests__/simEngine.canonical-naming.test.ts` - Regression proof that `simulateExpectedIoRows` and `runDeterministicVerifyFromCircuit` both produce signal keys matching `normalizeIoSignalKey` (bracket-stripping).
+
+**Validation:** All 9 canonical naming tests GREEN. Both `ide:gate:verify-workbench-contract` and `ide:gate:student-loop-contract` PASS.
+
+---
+
+## Change Log 2026-03-11 (Canonical naming propagation: export/bring-up/hardware path)
+
+### Canonical student-facing naming now propagates from mapping into export pin table, bring-up artifacts, and hardware detection
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/ioLabels.ts` - Added `normalizeIoSignalKey(...)` and kept `getStudentFacingIoLabel(...)` as the canonical label resolver (`label -> port -> id -> fallback`).
+- `packages/rb-apps/src/apps/ide/bringupArtifacts.ts` - Switched signal derivation, sorting, and expected-value matching to canonical helpers so `EXPECTED_IO.json` and `BRINGUP.md` use one normalization path.
+- `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts` - Switched mapping port display fallback to canonical helper and propagated mapping `port` into bring-up row construction.
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` - Updated clock/SSD/button detection and IO-bus labels to use canonical student-facing names.
+- `packages/rb-apps/src/apps/IdeApp.tsx` - Updated generated clock-constraint signal selection to canonical label resolution.
+- `packages/rb-apps/src/apps/ide/__tests__/bringupArtifacts.canonical-naming.test.ts` - Added regression test proving bring-up signal output uses canonical normalization.
+- `packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts` - Added regression test proving export pin table uses mapped `port` when labels are blank.
+- `packages/rb-apps/src/apps/ide/__tests__/ioLabels.test.ts` - Added direct unit coverage for canonical label fallback and IO signal normalization.
+
+### Why this was needed
+
+- The prior label-first helper was only applied in Project/Design UI paths; export and bring-up generation could still drift to internal IDs.
+- Students could see inconsistent names between mapping, hardware checks, and generated Vivado-facing artifacts.
+- This batch establishes a single naming truth across one full propagation path without spending time on non-student editor warnings.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ioLabels.test.ts packages/rb-apps/src/apps/ide/__tests__/bringupArtifacts.canonical-naming.test.ts packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/simEngine.verify-diagnostics.test.ts` - PASS
+- `pnpm -s ide:gate:verify-workbench-contract` - PASS
+- `pnpm -s ide:gate:student-loop-contract` - PASS
+
+### Remaining note
+
+- This batch completes one canonical naming propagation path (Project mapping -> Export view model -> Bring-up artifacts -> Hardware surface detection). Broader propagation into additional import/runtime surfaces can continue in a subsequent slice.
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-03-11 (Phase 2A audit, Verify->Design failure brief, and label-first mapping)
+
+### Verify debug now carries mismatch meaning into Design, and Project mapping uses student-facing names first
+
+**Modified files:**
+
+- `docs/plans/2026-03-11-phase-2a-usability-audit.md` - Added the requested five-step Phase 2A usability audit focused on student understanding rather than feature presence.
+- `packages/rb-apps/src/apps/ide/verifyDebug.ts` - Added a shared `VerifyDebugContext` type for the Verify->Design handoff.
+- `packages/rb-apps/src/apps/ide/ioLabels.ts` - Added a shared helper that resolves student-facing IO labels with label-first precedence.
+- `packages/rb-apps/src/apps/IdeApp.tsx` - Extended debug bridge state so Verify can pass mismatch context into Design.
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` - Propagates selected mismatch context (signal, expected/actual, input snapshot, next inspect hint) when opening Design debug.
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` - Shows a compact mismatch brief inside frozen debug mode and switches the story summary to mismatch-specific language during Verify-linked debug.
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` - Switched visible mapping labels, missing-mapping chips, quick-pick seed text, and showcase signal lists to label-first naming.
+- `packages/rb-apps/src/apps/ide/ide-root.css` - Added wrapping/typography rules for the new Design debug mismatch brief.
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx` - Added coverage for the mismatch brief in frozen Design debug mode.
+- `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` - Added coverage proving Project mapping uses student-facing labels over raw `in`/`out` ports.
+
+### Why this was needed
+
+- The student loop was reachable, but the Verify->Design transition still forced students to carry mismatch details in memory instead of seeing them restated in Design.
+- Project mapping could still show raw port names in places where students need stable board-facing labels.
+- This batch is the smallest follow-up from the Phase 2A audit that improves comprehension immediately without broad architectural churn.
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx` - PASS
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` - PASS
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` - PASS
+- `pnpm -s ide:gate:verify-reality-contract` - PASS
+- `pnpm -s ide:gate:verify-workbench-contract` - PASS
+- `pnpm -s ide:gate:design-live-sim-contract` - PASS
+- `pnpm -s ide:gate:student-loop-contract` - PASS
+
+### Remaining note
+
+- This is the first canonical naming slice. Additional naming normalization across import/export and deeper runtime signal keys is still pending.
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-03-11 (Student-loop stabilization: reachable live sim, truthful verify workbench, and export trust blocker)
+
+### The core classroom loop now stays usable from Design through Verify to Export
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` - Exposed the canonical `ide-verify-run` control during first-run states, delegated "Generate Basics" to runtime bring-up vectors when available, and restored the `ide-verify-tab-bar` hook expected by the student-loop workbench contract.
+- `packages/rb-apps/src/apps/IdeApp.tsx` - Wired Verify starter-vector generation through `generateBringUpVectors()` so the real IDE path produces meaningful expected outputs instead of leaving starter vectors structurally incomplete.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts` - Added a trace-derived waveform fallback so Verify still renders useful waveform evidence when the report rows alone would otherwise collapse to an empty instrument view.
+- `packages/rb-apps/src/apps/ide/sim/simEngine.ts` - Extended deterministic verify results to carry ordered runtime trace samples for downstream waveform fallback.
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` - Kept Live Simulation independently reachable instead of burying it behind shared inspector accordion state.
+- `packages/rb-apps/src/apps/ide/ide-root.css` - Added verify-mode height guards so the workbench and oscilloscope reserve visible space instead of collapsing to zero-height in real student flows.
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` - Surfaced an explicit blocker callout when Verify evidence is not yet trusted so export trust is communicated as blocked-for-handoff rather than a vague advisory.
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` - Updated workstation coverage to expect the canonical first-run Verify action.
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx` - Made the live-sim test resilient to the section already being open by design.
+- `packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx` - Updated export expectations to assert the stronger verification-required trust messaging.
+
+### Why this was needed
+
+- Behavior-level student-loop gates showed that students could not reliably complete the expected sequence even though lower-level tests were passing.
+- Verify's primary run action was not consistently exposed under the canonical selector during first-run states.
+- Design live simulation controls were present in code but could be hidden by shared accordion state.
+- Verify sometimes had real trace data while the rendered workbench still collapsed vertically or showed no meaningful waveform evidence.
+- Export needed to distinguish "files are visible" from "handoff is trusted" in a way the student loop could detect and students could understand.
+
+### Validation
+
+- `pnpm --filter @redbyte/playground build` - PASS
+  - Verify and Export surfaces still bundle successfully after the runtime and layout changes.
+- `pnpm -s ide:gate:verify-reality-contract` - PASS
+- `pnpm -s ide:gate:verify-workbench-contract` - PASS
+- `pnpm -s ide:gate:design-live-sim-contract` - PASS
+- `pnpm -s ide:gate:student-loop-contract` - PASS
+
+### Remaining note
+
+- This batch stabilizes the end-to-end student loop, but it does not yet complete the later roadmap work for canonical naming and copy/paste.
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-03-11 (Build smoothness: Cloudflare command, single verification pass, and IDE chunk split)
+
+### Unified production build is now quieter and the oversized entry chunk is materially reduced
+
+**Modified files:**
+
+- `.cfpages` - Updated canonical Cloudflare Pages build guidance to `pnpm build:unified` with `dist/` output and no redundant install prefix.
+- `CLOUDFLARE_PAGES_SETUP.md` - Rewrote setup instructions to the current deploy contract (`pnpm build:unified` only, `dist/` output, direct-upload workflow alignment).
+- `PRODUCT.md` - Updated build/deploy contract language to reflect `scripts/unified-build.mjs`, single-phase dist verification via `scripts/verify-dist.mjs`, and canonical Pages build command guidance.
+- `scripts/merge-dist.mjs` - Removed embedded `verify-dist-manifest` invocation so merge no longer triggers an overlapping second verifier pass; merge now only assembles artifacts.
+- `scripts/verify-dist.mjs` - Strengthened verification to cover marker/non-empty-asset checks previously split across manifest checks (`REDBYTE_OS_IDE` marker and `os/assets` non-empty assertion).
+- `packages/rb-apps/src/apps/IdeApp.tsx` - Added safe lazy-loading boundaries for heavy IDE surfaces (`Design`, `Verify`, `Hardware`, `Export`, `Import`) via `React.lazy` + `Suspense`, preserving mode routing while reducing initial bundle pressure.
+- `packages/rb-apps/src/utils/computeWorker.ts` - Replaced lazy fallback import with static fallback module wiring to eliminate the recurring Vite dynamic-import warning noise in production builds.
+
+### Why this was needed
+
+- Cloudflare deploy logs were noisy due to dashboard command drift (`pnpm install --frozen-lockfile && pnpm build:unified`) and should use only the canonical build command.
+- Unified build had overlapping verification phases (`merge-dist` manifest pass + explicit dist verifier), creating avoidable repetition.
+- Vite output had a large main chunk (`index-*.js` ~933 kB minified), increasing startup payload and warning noise.
+
+### Validation
+
+- `pnpm --filter @redbyte/playground build` - PASS
+  - Entry chunk reduced from `index-BnnIBInt.js` `933.23 kB` to `index-Dw3SffmG.js` `491.10 kB` minified.
+  - Heavy surfaces now emitted as dedicated lazy chunks (`DesignSurface`, `VerifySurface`, `ImportSurface`, `ExportSurface`, `HardwareSurface`).
+  - Previous `stableSerialize` dynamic-import warning no longer appears.
+- `pnpm build:unified` - PASS
+  - Pipeline now runs one intentional dist verification pass (`scripts/verify-dist.mjs`).
+  - Dist redirect contract still passes with canonical rules only.
+- `dist/_redirects` contains only:
+  - `/      /os/  302`
+  - `/os    /os/  302`
+- Build identity truth preserved:
+  - `dist/build.json.sha` = `ab002b8f`
+  - `dist/os/version.json.sha` = `ab002b8f59d7c7cde9e3a66e4a0f40d5102bafce`
+  - short SHA matches full SHA prefix.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-10 (Design Phase 2: simulation story + Verify-linked signal focus)
 
 ### Design now explains what changed each tick and visibly links Verify-selected signals back to the circuit

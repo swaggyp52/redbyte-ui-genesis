@@ -6,6 +6,60 @@
   height: auto;
 }
 
+/* LED hitbox and label - enhanced hover feedback */
+.ledHitbox {
+  transition: opacity 100ms ease;
+}
+
+.ledHitbox:hover {
+  opacity: 0.15;
+}
+
+.ledLabel {
+  transition: fill 150ms ease;
+  cursor: pointer;
+}
+
+.ledLabel:hover {
+  fill: rgba(46, 196, 182, 0.7) !important;
+}
+
+/* Button hitbox and label - enhanced hover feedback */
+.btnHitbox {
+  transition: opacity 100ms ease;
+}
+
+.btnHitbox:hover {
+  opacity: 0.12;
+}
+
+.btnLabel {
+  transition: fill 150ms ease;
+  cursor: pointer;
+}
+
+.btnLabel:hover {
+  fill: rgba(46, 196, 182, 0.65) !important;
+}
+
+/* Switch hitbox and label - enhanced hover feedback */
+.swHitbox {
+  transition: opacity 80ms ease;
+}
+
+.swHitbox:hover {
+  opacity: 0.08;
+}
+
+.swLabel {
+  transition: fill 150ms ease;
+  cursor: pointer;
+}
+
+.swLabel:hover {
+  fill: rgba(46, 196, 182, 0.7) !important;
+}
+
 .swGroup {
   cursor: pointer;
 }

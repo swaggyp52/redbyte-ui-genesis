@@ -184,11 +184,11 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
 
       {/* === Silkscreen labels === */}
       <text x="18" y="14" fontFamily="IBM Plex Mono, monospace" fontSize="7"
-        fill="rgba(210,220,240,0.18)" letterSpacing="1">LD15{'                                                    '}LD0</text>
+        fill="rgba(210,220,240,0.18)" letterSpacing="1" style={{ pointerEvents: 'none' }}>LD15{'                                                    '}LD0</text>
       <text x="18" y="192" fontFamily="IBM Plex Mono, monospace" fontSize="7"
-        fill="rgba(210,220,240,0.18)" letterSpacing="1">SW15{'                                                    '}SW0</text>
+        fill="rgba(210,220,240,0.18)" letterSpacing="1" style={{ pointerEvents: 'none' }}>SW15{'                                                    '}SW0</text>
       <text x="18" y="118" fontFamily="IBM Plex Mono, monospace" fontSize="7"
-        fill="rgba(210,220,240,0.18)">BTN</text>
+        fill="rgba(210,220,240,0.18)" style={{ pointerEvents: 'none' }}>BTN</text>
 
       {/* === LEDs row === */}
       {Array.from({ length: 16 }, (_, i) => {
@@ -260,6 +260,18 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
                 style={{ pointerEvents: 'none' }}
               />
             )}
+            {/* Expanded LED hitbox (invisible, pointer-catching) */}
+            <circle
+              cx={cx}
+              cy={cy}
+              r={20}
+              fill="transparent"
+              style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+              className={styles.ledHitbox}
+              onClick={() => onSelectSignal?.({ type: 'ld', index: idx })}
+              onMouseEnter={() => onHoverSignal?.({ type: 'ld', index: idx })}
+              onMouseLeave={() => onHoverSignal?.(null)}
+            />
             <text
               x={cx}
               y={58}
@@ -267,6 +279,8 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               fontFamily="IBM Plex Mono, monospace"
               fill={isMapped ? 'rgba(180,230,220,0.4)' : 'rgba(255,255,255,0.15)'}
               textAnchor="middle"
+              className={styles.ledLabel}
+              style={{ pointerEvents: 'none' }}
             >
               {`LD${idx}`}
             </text>
@@ -310,11 +324,11 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
 
         {/* Chip marking — engraved style */}
         <text x="310" y="117" fontFamily="IBM Plex Mono, monospace" fontSize="8"
-          fill="rgba(0,180,150,0.35)" textAnchor="middle" letterSpacing="0.06em">
+          fill="rgba(0,180,150,0.35)" textAnchor="middle" letterSpacing="0.06em" style={{ pointerEvents: 'none' }}>
           ARTIX-7
         </text>
         <text x="310" y="130" fontFamily="IBM Plex Mono, monospace" fontSize="6.5"
-          fill="rgba(0,180,150,0.22)" textAnchor="middle" letterSpacing="0.04em">
+          fill="rgba(0,180,150,0.22)" textAnchor="middle" letterSpacing="0.04em" style={{ pointerEvents: 'none' }}>
           XC7A35T-1CPG236C
         </text>
         {/* Orientation marker */}
@@ -324,13 +338,32 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
       {/* === Push buttons === */}
       {BTN_POSITIONS.map(([cx, cy], i) => {
         const isPressed = btn[i] === 1;
+        const handleBtnInteraction = (isDown: boolean) => {
+          onPressButton(i, isDown);
+          if (!isDown) onHoverSignal?.(null);
+        };
         return (
           <g key={`btn-${i}`}>
+            {/* Expanded button hitbox (invisible, pointer-catching) */}
+            <circle
+              cx={cx}
+              cy={cy}
+              r={20}
+              fill="transparent"
+              style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+              className={styles.btnHitbox}
+              onMouseDown={() => handleBtnInteraction(true)}
+              onMouseUp={() => handleBtnInteraction(false)}
+              onMouseEnter={() => onHoverSignal?.({ type: 'btn', index: i })}
+              onMouseLeave={() => onHoverSignal?.(null)}
+              onClick={() => onSelectSignal?.({ type: 'btn', index: i })}
+            />
             {/* Button outer ring */}
             <circle cx={cx} cy={cy} r={12}
               fill={isPressed ? 'rgba(229,62,62,0.25)' : 'rgba(0,0,0,0.3)'}
               stroke={isPressed ? 'rgba(229,62,62,0.6)' : 'rgba(255,255,255,0.1)'}
-              strokeWidth="1" />
+              strokeWidth="1"
+              style={{ pointerEvents: 'none' }} />
             {/* Button cap */}
             <circle
               data-testid={`ide-hw-btn-${i}`}
@@ -341,15 +374,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               fill={isPressed ? 'url(#btnGradOn)' : 'url(#btnGradOff)'}
               stroke={isPressed ? 'rgba(229,62,62,0.8)' : 'rgba(255,255,255,0.12)'}
               strokeWidth="1"
-              cursor="pointer"
-              onMouseDown={() => onPressButton(i, true)}
-              onMouseUp={() => onPressButton(i, false)}
-              onMouseEnter={() => onHoverSignal?.({ type: 'btn', index: i })}
-              onMouseLeave={() => {
-                onHoverSignal?.(null);
-                onPressButton(i, false);
-              }}
-              onClick={() => onSelectSignal?.({ type: 'btn', index: i })}
+              style={{ pointerEvents: 'none' }}
             />
             {/* Button highlight */}
             <ellipse cx={cx - 2} cy={cy - 3} rx={3} ry={2}
@@ -362,6 +387,8 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               fontFamily="IBM Plex Mono, monospace"
               fill="rgba(180,230,220,0.35)"
               textAnchor="middle"
+              className={styles.btnLabel}
+              style={{ pointerEvents: 'none' }}
             >
               {BTN_LABELS[i]}
             </text>
@@ -394,21 +421,31 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             data-testid={`ide-hw-sw-${idx}`}
             data-active={isActiveSw ? 'true' : undefined}
             className={swGroupClassName}
-            cursor="pointer"
-            onClick={() => onToggleSwitch(idx)}
-            onPointerDown={(event) => {
-              setDraggingSwitch(idx);
-              applyDraggedSwitchValue(idx, event);
-            }}
-            onPointerMove={(event) => {
-              if (draggingSwitch !== idx) return;
-              applyDraggedSwitchValue(idx, event);
-            }}
-            onPointerUp={() => setDraggingSwitch(null)}
-            onMouseEnter={() => onHoverSignal?.({ type: 'sw', index: idx })}
-            onMouseLeave={() => onHoverSignal?.(null)}
             opacity={isMapped ? 1 : 0.32}
           >
+            {/* Expanded switch hitbox (invisible, pointer-catching) */}
+            <rect
+              x={trackX - 8}
+              y={trackY - 8}
+              width={trackW + 16}
+              height={trackH + 16}
+              rx={6}
+              fill="transparent"
+              style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+              className={styles.swHitbox}
+              onClick={() => onToggleSwitch(idx)}
+              onPointerDown={(event) => {
+                setDraggingSwitch(idx);
+                applyDraggedSwitchValue(idx, event);
+              }}
+              onPointerMove={(event) => {
+                if (draggingSwitch !== idx) return;
+                applyDraggedSwitchValue(idx, event);
+              }}
+              onPointerUp={() => setDraggingSwitch(null)}
+              onMouseEnter={() => onHoverSignal?.({ type: 'sw', index: idx })}
+              onMouseLeave={() => onHoverSignal?.(null)}
+            />
             {/* Switch track / housing */}
             <rect
               x={trackX}
@@ -420,6 +457,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               stroke={isMapped ? (isOn ? 'rgba(46,196,182,0.7)' : 'rgba(46,196,182,0.3)') : 'rgba(255,255,255,0.08)'}
               strokeWidth="1"
               className={styles.switchTrack}
+              style={{ pointerEvents: 'none' }}
             />
             {/* Bring-Up highlight ring */}
             {highlightedSw?.includes(idx) && (
@@ -447,6 +485,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               fill={isOn ? '#2ec4b6' : '#1c2e42'}
               stroke={isOn ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.06)'}
               strokeWidth="0.5"
+              style={{ pointerEvents: 'none' }}
             />
             {/* Handle highlight */}
             <rect
@@ -465,6 +504,8 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               fontFamily="IBM Plex Mono, monospace"
               textAnchor="middle"
               fill={isMapped ? 'rgba(180,230,220,0.4)' : 'rgba(255,255,255,0.12)'}
+              className={styles.swLabel}
+              style={{ pointerEvents: 'none' }}
             >
               {`SW${idx}`}
             </text>
