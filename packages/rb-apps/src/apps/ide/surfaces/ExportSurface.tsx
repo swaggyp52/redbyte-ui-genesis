@@ -270,10 +270,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     const verifyTone = hasVerifyPass
       ? 'ok' as const
       : verifyResult?.status === 'pass' && dirtySinceVerify
-        ? 'warn' as const
+        ? 'error' as const
         : verifyResult
           ? 'error' as const
-          : 'idle' as const;
+          : 'error' as const;
     const verifyDetail = hasVerifyPass
       ? `PASS · ${verifyResult?.hash?.slice(0, 8) ?? ''}`
       : verifyResult?.status === 'pass' && dirtySinceVerify
@@ -383,12 +383,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     ? 'Open Vivado and import the generated project.'
     : hasBlockingErrors
       ? 'Resolve blockers before downloading the build package.'
-      : 'Artifacts are available. Verify is still recommended.';
+      : '⚠ Verify first — this export may fail in Vivado.';
   const nextActionDetail = exportTrusted
     ? 'Download the Vivado Project, unzip it, then run the import script or open the project directly.'
     : hasBlockingErrors
       ? 'Use the blocker list and pin review below to clear mapping or clock issues before export.'
-      : 'Students can inspect and export the current text files now, but the package is not yet sealed by a passing deterministic Verify run.';
+      : 'This package has not been sealed by a passing Verify run. Downloading it may produce bitstream errors or hardware failures. Run Verify first.';
   const vivadoCommand =
     'vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log';
   const projectDownloadLabel = isRebuilding
@@ -400,7 +400,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     ? 'Building…'
     : downloadDone && lastDownloadKind === 'project'
       ? 'Re-download'
-      : 'Download Project ZIP';
+      : exportTrusted
+        ? 'Download Project ZIP'
+        : '⚠ Verify first — this may fail in Vivado';
   const kitDownloadLabel = isRebuilding
     ? 'Building…'
     : downloadDone && lastDownloadKind === 'kit'
