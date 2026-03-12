@@ -88,6 +88,10 @@ export interface RuntimeVerifyRun {
   scenarioId: string;
   scenarioName: string;
   status: 'pass' | 'fail';
+  /** Set when status is 'pass' but the result has a known limitation.
+   *  'incomplete-mapping': some output IO rows have no FPGA pin assigned.
+   *  The logic is correct, but hardware tests may fail until mapping is complete. */
+  qualification?: 'incomplete-mapping';
   deterministicHash: string;
   reportHash: string;
   firstFailingTick?: number;
@@ -98,6 +102,22 @@ export interface RuntimeVerifyRun {
   waveform: VerifyWaveSample[];
   traceWaveform?: VerifyWaveSample[];
   evidence?: VerifyEvidenceCapsule;
+}
+
+/**
+ * Returns 'incomplete-mapping' when a passing run has at least one output IO row
+ * with no FPGA pin assigned, indicating the result cannot be fully trusted for hardware.
+ * Returns undefined for fail runs or when all output rows are pinned.
+ */
+export function detectIncompleteMappingQualification(
+  ioRows: ProjectIoRow[],
+  status: 'pass' | 'fail'
+): 'incomplete-mapping' | undefined {
+  if (status !== 'pass') return undefined;
+  const hasUnmappedOutput = ioRows.some(
+    (row) => row.direction === 'out' && (!row.pin || row.pin.trim() === '')
+  );
+  return hasUnmappedOutput ? 'incomplete-mapping' : undefined;
 }
 
 export interface RunVerificationInput {
@@ -683,6 +703,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             scenarioId: report.scenarioId,
             scenarioName: report.scenarioName,
             status: report.status,
+            qualification: detectIncompleteMappingQualification(state.projectIoRows, report.status),
             deterministicHash: report.deterministicHash,
             reportHash: report.reportHash,
             firstFailingTick: report.firstFailingTick,

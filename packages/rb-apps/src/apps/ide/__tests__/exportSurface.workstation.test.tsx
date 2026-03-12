@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, expect, it } from 'vitest';
-import { render, within } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, render, within } from '@testing-library/react';
 import type { RBProject } from '../../../export/projectFormat';
 import { ExportSurface } from '../surfaces/ExportSurface';
 
@@ -65,6 +65,8 @@ function buildProject(): RBProject {
 }
 
 describe('ExportSurface workstation redesign', () => {
+  afterEach(() => { cleanup(); });
+
   it('shows the summary hero, grouped artifacts, key copy actions, and compact Vivado guidance', () => {
     const { getByTestId, getByText } = render(
       <ExportSurface project={buildProject()} determinismHash="ide-hash" />
@@ -104,5 +106,50 @@ describe('ExportSurface workstation redesign', () => {
     );
     expect(getByText('Advisories')).toBeTruthy();
     expect(queryByTestId('ide-export-vivado-blocked-callout')).toBeNull();
+  });
+
+  // ─── Commit 1: pass-incomplete is not trusted ────────────────────────────
+
+  it('treats pass-with-incomplete-mapping as unverified: export is NOT trusted', () => {
+    const incompletePassRun: Parameters<typeof ExportSurface>[0]['verifyLastRun'] = {
+      scenarioId: 'pass-scenario',
+      scenarioName: 'Pass Scenario',
+      status: 'pass',
+      qualification: 'incomplete-mapping',
+      deterministicHash: 'abc123',
+      reportHash: 'rep-pass',
+      generatedAtIso: '2026-02-27T00:00:00.000Z',
+      schedule: 'combinational',
+      meta: {
+        circuitKind: 'combinational',
+        clockingProtocol: null,
+        samplePoint: 'steady-state',
+        tick0Meaning: null,
+        clockSignalName: null,
+      },
+      report: {
+        vectors: [],
+        inputsAtTick: {},
+        inputsByVectorId: {},
+        signalRoles: {},
+        rows: [],
+      } as Parameters<typeof ExportSurface>[0]['verifyLastRun']['report'],
+      waveform: [],
+    };
+
+    const { getByTestId } = render(
+      <ExportSurface
+        project={buildProject()}
+        determinismHash="ide-hash"
+        verifyLastRun={incompletePassRun}
+        verifyResult={{ status: 'pass', hash: 'abc123', reportHash: 'rep-pass' }}
+        dirtySinceVerify={false}
+      />
+    );
+
+    // Handoff sidecard should NOT show READY — pass-incomplete is not a trusted export
+    const pill = getByTestId('ide-export-checks-dock').querySelector('[data-testid]');
+    const dockText = getByTestId('ide-export-checks-dock').textContent ?? '';
+    expect(dockText).not.toContain('READY');
   });
 });

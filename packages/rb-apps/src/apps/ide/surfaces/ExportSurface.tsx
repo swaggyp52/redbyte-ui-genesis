@@ -222,7 +222,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   }, [viewModel.pinTable]);
 
   const hasBlockingErrors = viewModel.errors.length > 0;
-  const hasVerifyPass = verifyResult?.status === 'pass' && !dirtySinceVerify;
+  const hasVerifyPass = verifyResult?.status === 'pass' && !dirtySinceVerify && !verifyLastRun?.qualification;
   const hasVerifyEvidenceWarning = evidenceDiagnostics.length > 0;
   const mappedCount = viewModel.pinTable.filter((row) => {
     const key = toPortKey(row.port);
@@ -528,7 +528,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       // STEP: clock — check verify pass
       markStep('clock', 'running');
       await tick();
-      if (!verifyResult || verifyResult.status !== 'pass' || dirtySinceVerify) {
+      if (!verifyResult || verifyResult.status !== 'pass' || dirtySinceVerify || verifyLastRun?.qualification === 'incomplete-mapping') {
         markStep('clock', 'error', 'Verify PASS required');
         setDownloadError('Download requires a passing verification with no pending design changes.');
         setIsRebuilding(false);

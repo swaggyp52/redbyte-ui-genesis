@@ -1960,7 +1960,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 : 'READY';
   const displayTone: 'ok' | 'warn' | 'error' | 'idle' =
     displayStatus === 'PASS'
-      ? 'ok'
+      ? lastRun?.qualification === 'incomplete-mapping' ? 'warn' : 'ok'
       : displayStatus === 'FAIL'
         ? 'error'
         : displayStatus === 'STALE' || displayStatus === 'BLOCKED'
@@ -1968,7 +1968,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           : 'idle';
   const displayStatusLabel =
     displayStatus === 'PASS'
-      ? 'PASS — deterministic agreement'
+      ? lastRun?.qualification === 'incomplete-mapping'
+        ? 'PASS (INCOMPLETE) — some outputs not mapped to board pins'
+        : 'PASS — deterministic agreement'
       : displayStatus === 'FAIL'
         ? hasNoTrace
           ? 'No trace — run completed with empty waveform'
@@ -2740,6 +2742,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
+        {/* Pre-flight: incomplete pin mapping banner.
+            Shown whenever outputs are not fully mapped to board pins, regardless of run state.
+            Informs the student BEFORE they run that results may not reflect hardware behavior. */}
+        {!mappingComplete && (
+          <div
+            className="ide-verify-incomplete-banner ide-surface-panel"
+            data-testid="ide-verify-incomplete-mapping-banner"
+            role="note"
+          >
+            <span>Some outputs are not mapped to board pins. Verification will run, but results may not match hardware.</span>
+          </div>
+        )}
+
         {/* STOP-SHIP: Stale verify result banner.
             If the circuit changed since the last run, the result is outdated.
             The badge must never show PASS/FAIL for a circuit that has since changed. */}
@@ -2760,7 +2775,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {/* Status strip — status-first, one primary CTA */}
         <div className="ide-verify-status-strip" data-testid="ide-verify-banner">
           <IdeStatusPill tone={displayTone} testId="ide-verify-summary-status">
-            {displayStatus}
+            {displayStatus === 'PASS' && lastRun?.qualification === 'incomplete-mapping'
+              ? 'PASS (INCOMPLETE)'
+              : displayStatus}
           </IdeStatusPill>
           {lastRun && (
             <>
@@ -2800,6 +2817,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 {inputCoverage.seen}/{inputCoverage.total} combos ({inputCoverage.pct}%)
               </span>
             </>
+          )}
+          {status === 'pass' && lastRun?.qualification === 'incomplete-mapping' && (
+            <div
+              className="ide-verify-incomplete-notice ide-surface-panel"
+              data-testid="ide-verify-incomplete-mapping-notice"
+              role="note"
+            >
+              <span>Your logic works, but some outputs are not mapped to board pins. Export and hardware tests may fail until mapping is complete.</span>
+            </div>
           )}
           {!isFirstRunState && (
             <div className="ide-verify-strip-actions">

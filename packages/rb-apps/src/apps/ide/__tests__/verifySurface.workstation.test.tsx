@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -121,6 +121,8 @@ function makeFailRun(): RuntimeVerifyRun {
 }
 
 describe('VerifySurface workstation controls', () => {
+  afterEach(() => { cleanup(); });
+
   it('shows a single first-run CTA before any verification evidence exists', () => {
     const { getAllByText, getByTestId } = render(
       <VerifySurface
@@ -372,5 +374,109 @@ describe('VerifySurface workstation controls', () => {
     fireEvent.click(getAllByText('Details')[0]);
     expect(getByTestId('ide-verify-run-context-protocol').textContent).toContain('Clocked macro');
     expect(getByTestId('ide-verify-run-context-tick_0').textContent).toContain('Initial state');
+  });
+
+  // ─── PASS (INCOMPLETE) — Commit 1 trust-model tests ─────────────────────
+
+  it('shows incomplete-mapping pre-flight banner when mappingComplete is false and no run exists', () => {
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        vectors={[{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } }]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        mappingComplete={false}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    const banner = getByTestId('ide-verify-incomplete-mapping-banner');
+    expect(banner.textContent).toContain('not mapped to board pins');
+  });
+
+  it('shows PASS (INCOMPLETE) status label when pass run has incomplete-mapping qualification', () => {
+    const incompletePassRun: RuntimeVerifyRun = {
+      ...makePassRun(),
+      qualification: 'incomplete-mapping',
+    };
+
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={incompletePassRun}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        mappingComplete={false}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    const statusPill = getByTestId('ide-verify-summary-status');
+    expect(statusPill.textContent).toContain('PASS (INCOMPLETE)');
+  });
+
+  it('shows post-run incomplete-mapping notice when pass has qualification', () => {
+    const incompletePassRun: RuntimeVerifyRun = {
+      ...makePassRun(),
+      qualification: 'incomplete-mapping',
+    };
+
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={incompletePassRun}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        mappingComplete={false}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    const notice = getByTestId('ide-verify-incomplete-mapping-notice');
+    expect(notice.textContent).toContain('Export and hardware tests may fail');
+  });
+
+  it('does NOT show incomplete-mapping banner or notice on a normal PASS with mappingComplete true', () => {
+    const { queryByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={makePassRun()}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        mappingComplete={true}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(queryByTestId('ide-verify-incomplete-mapping-banner')).toBeNull();
+    expect(queryByTestId('ide-verify-incomplete-mapping-notice')).toBeNull();
   });
 });
