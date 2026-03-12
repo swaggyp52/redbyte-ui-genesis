@@ -1378,6 +1378,7 @@ export const IdeApp: React.FC = () => {
               onGoToHardware={() => setCurrentMode('hardware')}
               onGoToProject={() => setCurrentMode('project')}
               onGoToDesign={() => setCurrentMode('design')}
+              onUpdateMappingPin={handleMappingPinChange}
             />
           </ErrorBoundary>
         ) : (

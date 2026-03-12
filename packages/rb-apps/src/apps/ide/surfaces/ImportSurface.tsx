@@ -2757,6 +2757,13 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     </ul>
                   </details>
                 ) : null}
+                {onGoToProject && (
+                  <div style={{ marginTop: 'var(--ide-space-2)' }}>
+                    <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-import-blocker-go-design">
+                      Start fresh in Design →
+                    </IdeButton>
+                  </div>
+                )}
               </IdeCallout>
             ) : null}
             <div className="ide-inline-actions ide-import-commit-actions" ref={applySectionRef}>
@@ -2935,6 +2942,13 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                       RedByte supports structural/combinational HDL only. Behavioral constructs are detected and reported but their logic is not imported.
                     </p>
                   </details>
+                )}
+                {onGoToProject && (
+                  <div style={{ marginTop: 'var(--ide-space-2)' }}>
+                    <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-import-blocker-go-design">
+                      Start fresh in Design →
+                    </IdeButton>
+                  </div>
                 )}
               </IdeCallout>
             )}

@@ -38,6 +38,7 @@ export interface ExportDiagnosticView {
 
 export interface ExportPinTableRow {
   port: string;
+  rowId?: string;
   direction: ExportPinDirection;
   pin?: string;
   required: boolean;
@@ -215,6 +216,7 @@ function buildPinTable(
     if (!existing) {
       rows.set(portKey, {
         port: portName,
+        rowId: entry.id,
         direction,
         pin,
         required,

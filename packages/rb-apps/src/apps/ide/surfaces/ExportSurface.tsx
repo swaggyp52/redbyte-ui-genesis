@@ -43,6 +43,7 @@ export interface ExportSurfaceProps {
   onGoToHardware?: () => void;
   onGoToProject?: () => void;
   onGoToDesign?: () => void;
+  onUpdateMappingPin?: (rowId: string, pin: string) => void;
 }
 
 const ARTIFACT_PLAN_FILES = [
@@ -119,6 +120,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   onGoToHardware,
   onGoToProject,
   onGoToDesign,
+  onUpdateMappingPin,
 }) => {
   const surfaceRef = useRef<HTMLElement | null>(null);
   const baseViewModel = useMemo(
@@ -462,28 +464,42 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     pinInputRefs.current[portKey]?.focus();
   };
 
+  const handlePinOverrideChange = useCallback(
+    (portKey: string, newVal: string) => {
+      if (!editablePortKeys.has(portKey)) return;
+      const row = mappingIndex.get(portKey);
+      setPinOverrides((prev) => ({ ...prev, [portKey]: newVal }));
+      if (row?.rowId) {
+        onUpdateMappingPin?.(row.rowId, newVal.trim());
+      }
+    },
+    [editablePortKeys, mappingIndex, onUpdateMappingPin]
+  );
+
   const applySuggestion = (portKey: string) => {
     if (!editablePortKeys.has(portKey)) return;
     const row = mappingIndex.get(portKey);
     if (!row?.suggestedPin) return;
-    setPinOverrides((prev) => ({
-      ...prev,
-      [portKey]: row.suggestedPin ?? '',
-    }));
+    handlePinOverrideChange(portKey, row.suggestedPin);
     jumpToMapping(portKey);
   };
 
   const applyAllSuggestions = () => {
-    setPinOverrides((prev) => {
-      const next = { ...prev };
-      for (const row of viewModel.pinTable) {
-        const key = toPortKey(row.port);
-        if (!editablePortKeys.has(key)) continue;
-        if (!row.suggestedPin) continue;
-        if ((next[key] ?? '').trim().length === 0) next[key] = row.suggestedPin;
+    const toApply: Array<{ key: string; rowId?: string; pin: string }> = [];
+    for (const row of viewModel.pinTable) {
+      const key = toPortKey(row.port);
+      if (!editablePortKeys.has(key)) continue;
+      if (!row.suggestedPin) continue;
+      if ((pinOverrides[key] ?? '').trim().length === 0) {
+        toApply.push({ key, rowId: row.rowId, pin: row.suggestedPin });
       }
-      return next;
-    });
+    }
+    if (toApply.length === 0) return;
+    const overridePatch = Object.fromEntries(toApply.map(({ key, pin }) => [key, pin]));
+    setPinOverrides((prev) => ({ ...prev, ...overridePatch }));
+    for (const { rowId, pin } of toApply) {
+      if (rowId) onUpdateMappingPin?.(rowId, pin);
+    }
   };
 
   // ─── Phase 32: Pipeline helpers ────────────────────────────────────────────
@@ -890,6 +906,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 >
                   {kitDownloadLabel}
                 </IdeButton>
+                {onGoToDesign && (
+                  <IdeButton
+                    tone="ghost"
+                    onClick={onGoToDesign}
+                    testId="ide-export-go-design-header"
+                  >
+                    ← Design
+                  </IdeButton>
+                )}
               </div>
             </div>
             <div className="ide-export-summary-grid" data-testid="ide-export-design-summary">
@@ -1255,10 +1280,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                                 disabled={!isEditable}
                                 onChange={(event) => {
                                   const newVal = event.target.value.toUpperCase();
-                                  setPinOverrides((prev) => ({
-                                    ...prev,
-                                    [portKey]: newVal,
-                                  }));
+                                  handlePinOverrideChange(portKey, newVal);
                                   // Phase 2: validate against known Basys3 pins
                                   const trimmed = newVal.trim();
                                   setInvalidPins((prev) => {
