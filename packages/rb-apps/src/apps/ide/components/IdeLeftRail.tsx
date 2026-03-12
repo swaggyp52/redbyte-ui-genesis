@@ -112,6 +112,7 @@ export interface IdeLeftRailProps {
   onModeChange: (mode: IdeMode) => void;
   labStepCurrent?: number;
   labStepTotal?: number;
+  stepsCompleted?: Partial<Record<IdeMode, boolean>>;
 }
 
 export const IdeLeftRail: React.FC<IdeLeftRailProps> = ({
@@ -119,6 +120,7 @@ export const IdeLeftRail: React.FC<IdeLeftRailProps> = ({
   onModeChange,
   labStepCurrent,
   labStepTotal,
+  stepsCompleted,
 }) => {
   const [expanded, setExpanded] = useState<boolean>(() => {
     try { return localStorage.getItem(STORAGE_KEY) === 'true'; } catch { return false; }
@@ -162,18 +164,22 @@ export const IdeLeftRail: React.FC<IdeLeftRailProps> = ({
 
   const renderStep = (step: WorkflowStep) => {
     const isActive = step.id === currentMode;
+    const isDone = Boolean(stepsCompleted?.[step.id]);
     return (
       <button
         key={step.id}
         type="button"
         onClick={() => onModeChange(step.id)}
-        className={`ide-mode-button ide-mode-button--step ${isActive ? 'is-active' : ''}`}
+        className={`ide-mode-button ide-mode-button--step ${isActive ? 'is-active' : ''} ${isDone && !isActive ? 'is-complete' : ''}`}
         data-testid={`mode-button-${step.id}`}
         data-active={isActive ? 'true' : 'false'}
+        data-complete={isDone ? 'true' : 'false'}
         aria-current={isActive ? 'page' : undefined}
         title={expanded ? undefined : `Step ${step.step}: ${step.label}`}
       >
-        <span className="ide-step-num" aria-hidden="true">{step.step}</span>
+        <span className="ide-step-num" aria-hidden="true">
+          {isDone && !isActive ? '✓' : step.step}
+        </span>
         <span className="ide-mode-icon">{step.icon}</span>
         <span className="ide-mode-label">{step.label}</span>
       </button>

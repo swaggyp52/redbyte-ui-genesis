@@ -624,7 +624,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [collapsedGroups, setCollapsedGroups] = useState<Record<SignalLaneGroup, boolean>>({
     Inputs: false,
     Outputs: false,
-    Internal: false,
+    Internal: true,
   });
   const [cursorA, setCursorA] = useState<number | null>(null);
   const [cursorB, setCursorB] = useState<number | null>(null);
@@ -2697,6 +2697,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 >
                   Generate Basics
                 </IdeButton>
+              </div>
+              <details className="ide-verify-more-actions-details">
+                <summary className="ide-verify-more-actions-summary">More options</summary>
                 {inputFields.length > 0 && inputFields.length <= 6 && (
                   <IdeButton
                     tone="ghost"
@@ -2709,7 +2712,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <IdeButton tone="ghost" onClick={onOpenProjectVectors}>
                   Open Project vectors
                 </IdeButton>
-              </div>
+              </details>
               <details className="ide-verify-sweep-details">
                 <summary className="ide-verify-sweep-summary">Sweep generator</summary>
               <div className="ide-verify-sweep-controls" data-testid="ide-verify-sweep-controls">

@@ -1182,7 +1182,11 @@ export const IdeApp: React.FC = () => {
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
       <div className="ide-layout-shell">
-        <IdeLeftRail currentMode={currentMode} onModeChange={setCurrentMode} />
+        <IdeLeftRail
+          currentMode={currentMode}
+          onModeChange={setCurrentMode}
+          stepsCompleted={{ design: hasCircuit, verify: Boolean(latestVerifyPass), export: exportIsCurrent }}
+        />
         <div className="ide-surface-column">
           <PipelineStrip
             currentMode={currentMode as ProjectHealthMode}

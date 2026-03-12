@@ -16793,3 +16793,35 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   letter-spacing: 0.05em;
   margin-bottom: var(--rb-space-1);
 }
+
+/* ── Verify test panel — More options collapsible ───────────────────────────── */
+.ide-verify-more-actions-details {
+  margin-top: var(--rb-space-1);
+}
+.ide-verify-more-actions-summary {
+  cursor: pointer;
+  font-size: var(--ide-font-size-sm);
+  color: var(--ide-text-muted);
+  padding: var(--rb-space-1) 0;
+  list-style: none;
+  user-select: none;
+}
+.ide-verify-more-actions-summary::before {
+  content: '▸ ';
+}
+.ide-verify-more-actions-details[open] > .ide-verify-more-actions-summary::before {
+  content: '▾ ';
+}
+
+/* ── Left rail — pipeline completion indicators ──────────────────────────────── */
+.ide-mode-button.is-complete .ide-step-num {
+  color: var(--rb-color-success, #22c55e);
+  font-weight: 700;
+}
+.ide-mode-button.is-complete {
+  opacity: 0.85;
+}
+.ide-mode-button.is-complete:hover,
+.ide-mode-button.is-complete:focus-visible {
+  opacity: 1;
+}
