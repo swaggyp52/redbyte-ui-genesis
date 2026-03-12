@@ -136,8 +136,8 @@ function buildExportTrustBlockers(
     if (!hasRbp1005) {
       issues.push({
         code: 'RBP1005',
-        message: 'Verify passed, but some output pins remain unmapped — hardware results may not match.',
-        fixPath: { mode: 'project', actionLabel: 'Map Missing Pins' },
+        message: 'Verify passed, but some output pins remain unmapped — hardware results may not reflect all outputs.',
+        fixPath: { mode: 'hardware', actionLabel: 'Open Hardware' },
       });
     }
   }
@@ -1107,8 +1107,17 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             >
               <ol data-testid="ide-project-blockers-list" style={{ margin: '0 0 0 1.25rem', paddingLeft: 0 }}>
                 {topBlockingIssues.map((issue, idx) => (
-                  <li key={issue.code} data-testid={`ide-project-blocker-${idx}`}>
-                    {issue.message}
+                  <li key={issue.code} data-testid={`ide-project-blocker-${idx}`} style={{ marginBottom: '0.35rem' }}>
+                    <span>{issue.message}</span>
+                    {issue.fixPath && (
+                      <IdeButton
+                        tone="ghost"
+                        onClick={() => handleProjectModeAction(issue.fixPath!.mode)}
+                        testId={`ide-project-blocker-${idx}-action`}
+                      >
+                        {issue.fixPath.actionLabel} →
+                      </IdeButton>
+                    )}
                   </li>
                 ))}
               </ol>
@@ -1195,6 +1204,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   </IdeStatusPill>
                 </div>
                 <p>{verifySummary}</p>
+                {!verifyTrusted && (
+                  <IdeButton
+                    tone="ghost"
+                    onClick={onOpenVerify}
+                    testId="ide-project-readiness-goto-verify"
+                  >
+                    Go to Verify →
+                  </IdeButton>
+                )}
               </div>
               <div className="ide-project-readiness-item">
                 <div className="ide-project-readiness-item-head">
@@ -1204,7 +1222,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   </IdeStatusPill>
                 </div>
                 <p>{exportSummary}</p>
-                <p 
+                <p
                   className="ide-project-export-explanation"
                   data-testid="ide-project-export-explanation"
                   style={{ fontSize: 'var(--font-size-sm)', marginTop: '0.5rem', opacity: 0.85, fontStyle: 'italic' }}
@@ -1212,9 +1230,18 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   {exportReady
                     ? 'TRUSTED — Verify passed and matches current design. Safe for hardware handoff.'
                     : exportAvailable
-                      ? 'AVAILABLE — Export files can be reviewed, but Verify has not confirmed correctness. Not a trusted handoff.'
+                      ? 'AVAILABLE — Export files can be reviewed, but Verify has not confirmed correctness. Not a trusted handoff. Run Verify first to make this export trusted.'
                       : 'Export is blocked until circuit and mapping are complete.'}
                 </p>
+                {exportAvailable && !exportReady && (
+                  <IdeButton
+                    tone="ghost"
+                    onClick={onOpenVerify}
+                    testId="ide-project-readiness-goto-verify-for-export"
+                  >
+                    Go to Verify →
+                  </IdeButton>
+                )}
               </div>
             </div>
             {unmappedRequiredCount > 0 && (
@@ -1691,11 +1718,11 @@ function getExamplePreview(exampleId: string): {
 }
 
 function getVerifySummary(health: ProjectHealth, verifyPass: boolean): string {
-  if (!health.lastVerify) return 'No verify run has been recorded yet.';
+  if (!health.lastVerify) return 'No verify run yet — open Verify to define test vectors and confirm your circuit is correct.';
   if (verifyPass) return 'Latest verify run passed and still matches the current design.';
-  if (health.lastVerify.status === 'fail') return 'Latest verify run failed. Review mismatches and rerun.';
-  if (health.dirtySinceVerify) return 'Verify previously passed, but the design changed afterward.';
-  return 'Verify still needs attention before export.';
+  if (health.lastVerify.status === 'fail') return 'Verify failed — go to Verify to see which outputs mismatched and fix the circuit.';
+  if (health.dirtySinceVerify) return 'Design changed since last verify — re-run Verify to restore export trust.';
+  return 'Verify still needs attention before export can be trusted.';
 }
 
 function getExportSummary(
