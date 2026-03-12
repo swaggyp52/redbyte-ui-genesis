@@ -115,6 +115,7 @@ export interface VerifySurfaceProps {
   onGoToDesign?: () => void;
   onGoToHardware?: () => void;
   hasDff?: boolean;
+  unmappedOutputLabels?: string[];
   onPreviewVector?: (inputs: Record<string, number>) => void;
   onDebugTickSelected?: (
     tick: number,
@@ -531,6 +532,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   onGoToDesign,
   onGoToHardware,
   hasDff = false,
+  unmappedOutputLabels = [],
   onPreviewVector,
   onDebugTickSelected,
   onDeleteVector,
@@ -2890,7 +2892,22 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               data-testid="ide-verify-incomplete-mapping-notice"
               role="note"
             >
-              <span>Your logic works, but some outputs are not mapped to board pins. Export and hardware tests may fail until mapping is complete.</span>
+              {unmappedOutputLabels.length > 0 ? (
+                <>
+                  <span className="ide-verify-incomplete-outputs" data-testid="ide-verify-incomplete-output-names">
+                    {(() => {
+                      const shown = unmappedOutputLabels.slice(0, 3);
+                      const overflow = unmappedOutputLabels.length - shown.length;
+                      const nameList = shown.join(', ') + (overflow > 0 ? ` (+${overflow} more)` : '');
+                      return `Your logic passed, but ${nameList} ${unmappedOutputLabels.length === 1 ? 'is' : 'are'} not mapped to board pins.`;
+                    })()}
+                  </span>
+                  {' '}
+                  <span className="ide-verify-incomplete-action">Finish mapping these outputs in Hardware before trusting export or bring-up.</span>
+                </>
+              ) : (
+                <span>Your logic works, but some outputs are not mapped to board pins. Finish mapping these outputs in Hardware before trusting export or bring-up.</span>
+              )}
             </div>
           )}
           {!isFirstRunState && (

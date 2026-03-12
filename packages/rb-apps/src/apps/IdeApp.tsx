@@ -954,6 +954,13 @@ export const IdeApp: React.FC = () => {
     [exportViewModel.diagnostics, projectHealthCore.dirtySinceExport, projectHealthCore.dirtySinceVerify]
   );
   const verifyMappingComplete = missingRequiredCount === 0;
+  const unmappedOutputLabels = useMemo(
+    () =>
+      projectIoRows
+        .filter((entry) => entry.direction === 'out' && entry.pin.trim().length === 0)
+        .map((entry) => entry.label || entry.id),
+    [projectIoRows]
+  );
   const verifyHasFloatingOutputWarning = useMemo(
     () =>
       exportViewModel.diagnostics.some(
@@ -1304,6 +1311,7 @@ export const IdeApp: React.FC = () => {
               vectors={projectVectors}
               lastRun={verifyLastRun}
               mappingComplete={verifyMappingComplete}
+              unmappedOutputLabels={unmappedOutputLabels}
               hasFloatingOutputWarning={verifyHasFloatingOutputWarning}
               probeSignals={runtimeSim.probes}
               mappedInputs={verifyMappedInputs}
