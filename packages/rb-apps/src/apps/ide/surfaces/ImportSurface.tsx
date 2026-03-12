@@ -681,7 +681,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     if (effectiveReconstructionLevel === 'empty') {
       reasons.push('No circuit was reconstructed — the schematic is empty. Check entity/module syntax.');
     } else if (effectiveReconstructionLevel === 'ports-only') {
-      reasons.push('Only I/O ports were reconstructed — no gate logic found. RedByte supports structural HDL only.');
+      reasons.push('Only input/output ports were recovered — the circuit is empty. Rebuild the internal logic in Design, or re-import from a RedByte project export.');
     }
     return reasons;
   }, [pendingApplyProject, detectedBehavioralConstructs, effectiveReconstructionLevel]);
@@ -757,7 +757,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     : effectiveReconstructionLevel === 'full'
       ? 'Structural reconstruction'
       : effectiveReconstructionLevel === 'ports-only'
-        ? 'Ports-only reconstruction'
+        ? 'Ports only — no circuit'
         : 'No reconstruction';
   const currentWorkflowStepId = useMemo<ImportWorkflowStepId>(() => {
     if (showVerifyResetNotice) return 'apply';
@@ -2199,13 +2199,20 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
             <p>RedByte restored the project directly from the embedded manifest. HDL, XDC, and Vivado files are reference-only.</p>
           </div>
         ) : effectiveReconstructionLevel === 'ports-only' ? (
-          <IdeCallout tone="warn" title="Behavioural HDL — partial import" testId="ide-import-ports-only-warning">
-            RedByte supports structural HDL only. I/O ports were extracted but internal logic was not reconstructed.
-            To get fully round-trippable VHDL, export your design from the Design surface using Export → Generate HDL.
+          <IdeCallout tone="warn" title="Ports only — no circuit reconstructed" testId="ide-import-ports-only-warning">
+            <p className="ide-copy" style={{ margin: '0 0 var(--ide-space-1)' }}>
+              Only input/output ports were recovered. Internal logic was not reconstructed.
+            </p>
+            <p className="ide-copy" style={{ margin: '0 0 var(--ide-space-1)' }}>
+              Your project will have the correct port names, but the circuit is empty — no gates or connections exist.
+            </p>
+            <p className="ide-copy" style={{ margin: 0 }}>
+              Rebuild the internal circuit in Design, or re-import from a RedByte project export.
+            </p>
             {onGoToExport && (
               <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
                 <IdeButton tone="secondary" onClick={onGoToExport} testId="ide-import-go-to-export">
-                  Get structural VHDL →
+                  Export structural VHDL from Design →
                 </IdeButton>
               </div>
             )}
@@ -2872,7 +2879,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     : commitPreview!.reconstructionLevel === 'full'
                     ? `full · ${commitPreview!.nodeCount} nodes`
                     : commitPreview!.reconstructionLevel === 'ports-only'
-                      ? `ports only (behavioral) · ${commitPreview!.nodeCount} nodes`
+                      ? 'Ports only — no circuit reconstructed'
                       : `empty`}
                 </span>
               </div>
@@ -3439,17 +3446,19 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                       </div>
                     )}
                     {zipInspection?.reconstructionLevel === 'ports-only' && (
-                      <div
-                        className="ide-import-recon-callout ide-import-recon-callout--partial"
-                        data-testid="ide-import-recon-partial"
+                      <IdeCallout
+                        tone="warn"
+                        title="Ports only — no circuit reconstructed"
+                        testId="ide-import-recon-partial"
                       >
-                        <strong>Behavioural HDL detected</strong>
-                        <p>
-                          This module uses process/always blocks. RedByte extracted I/O ports only — gates were
-                          not reconstructed. The project will have the correct I/O mapping but an empty circuit.
-                          You can wire the circuit manually in Design mode.
+                        <p className="ide-copy" style={{ margin: '0 0 var(--ide-space-1)' }}>
+                          Only input/output ports were recovered. Internal logic was not reconstructed.
                         </p>
-                      </div>
+                        <p className="ide-copy" style={{ margin: 0 }}>
+                          Your project will have the correct port names but an empty circuit.
+                          Rebuild the gates manually in Design, or re-import from a RedByte project export.
+                        </p>
+                      </IdeCallout>
                     )}
                     {isManifestZipImport && (
                       <div
