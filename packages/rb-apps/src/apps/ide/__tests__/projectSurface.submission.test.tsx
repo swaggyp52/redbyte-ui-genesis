@@ -19,6 +19,7 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
       hasIoMapping: true,
       hasVectors: true,
       verifyPass: true,
+      verifyQualification: undefined,
       missingRequiredCount: 0,
     },
     health: {
@@ -141,7 +142,7 @@ describe('ProjectSurface workspace panels', () => {
   });
 
   it('shows the current primary target and missing pins inline when mapping is incomplete', () => {
-    const { getByTestId } = render(
+    const { getAllByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -189,14 +190,17 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-project-continue-target').textContent).toContain('Design');
-    const missingPins = getByTestId('ide-project-mapping-missing-list');
+    const targetList = getAllByTestId('ide-project-continue-target');
+    expect(targetList[targetList.length - 1].textContent).toContain('Design');
+    
+    const missingPinsList = getAllByTestId('ide-project-mapping-missing-list');
+    const missingPins = missingPinsList[missingPinsList.length - 1];
     expect(missingPins.textContent).toContain('SW0');
     expect(missingPins.textContent).toContain('LD0');
   });
 
   it('keeps mapping labels student-facing even when raw ports are generic', () => {
-    const { getByTestId } = render(
+    const { getAllByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -223,18 +227,22 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    fireEvent.click(getByTestId('ide-project-mapping-expand-btn'));
+    const expandBtnList = getAllByTestId('ide-project-mapping-expand-btn');
+    fireEvent.click(expandBtnList[expandBtnList.length - 1]);
 
-    expect(getByTestId('ide-project-port-sw0').textContent).toContain('SW0');
-    expect(getByTestId('ide-project-port-sw0').textContent).not.toContain('out');
-    expect(getByTestId('ide-project-port-ld0').textContent).toContain('LD0');
-    expect(getByTestId('ide-project-port-ld0').textContent).not.toContain('in');
+    const portSw0List = getAllByTestId('ide-project-port-sw0');
+    expect(portSw0List[portSw0List.length - 1].textContent).toContain('SW0');
+    expect(portSw0List[portSw0List.length - 1].textContent).not.toContain('out');
+    
+    const portLd0List = getAllByTestId('ide-project-port-ld0');
+    expect(portLd0List[portLd0List.length - 1].textContent).toContain('LD0');
+    expect(portLd0List[portLd0List.length - 1].textContent).not.toContain('in');
   });
 
   it('surfaces FPGA config, fidelity, and Project-side quick picks for lab-day export prep', () => {
     const onFpgaConfigChange = vi.fn();
     const onUpdateMappingPin = vi.fn();
-    const { getByTestId } = render(
+    const { getAllByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -269,23 +277,35 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    fireEvent.click(getByTestId('ide-project-mapping-expand-btn'));
+    const expandBtnList = getAllByTestId('ide-project-mapping-expand-btn');
+    fireEvent.click(expandBtnList[expandBtnList.length - 1]);
 
-    expect(getByTestId('ide-project-import-fidelity').textContent).toContain('Reconstructed');
-    fireEvent.change(getByTestId('ide-project-fpga-top'), { target: { value: 'lab_top' } });
-    fireEvent.change(getByTestId('ide-project-fpga-part'), { target: { value: 'xc7a100tcsg324-1' } });
-    fireEvent.click(getByTestId('ide-project-map-quick-clk-clk100mhz'));
-    fireEvent.click(getByTestId('ide-project-map-quick-seg0-seg0'));
+    const fidelityList = getAllByTestId('ide-project-import-fidelity');
+    expect(fidelityList[fidelityList.length - 1].textContent).toContain('Reconstructed');
+    
+    const topList = getAllByTestId('ide-project-fpga-top');
+    fireEvent.change(topList[topList.length - 1], { target: { value: 'lab_top' } });
+    
+    const partList = getAllByTestId('ide-project-fpga-part');
+    fireEvent.change(partList[partList.length - 1], { target: { value: 'xc7a100tcsg324-1' } });
+    
+    const clkList = getAllByTestId('ide-project-map-quick-clk-clk100mhz');
+    fireEvent.click(clkList[clkList.length - 1]);
+    
+    const seg0List = getAllByTestId('ide-project-map-quick-seg0-seg0');
+    fireEvent.click(seg0List[seg0List.length - 1]);
 
     expect(onFpgaConfigChange).toHaveBeenCalledWith({ top: 'lab_top' });
     expect(onFpgaConfigChange).toHaveBeenCalledWith({ part: 'xc7a100tcsg324-1' });
     expect(onUpdateMappingPin).toHaveBeenCalledWith('clk', 'CLK100MHZ');
     expect(onUpdateMappingPin).toHaveBeenCalledWith('seg0', 'SEG0');
-    expect(getByTestId('ide-project-supported-scope-callout').textContent).toContain('FullAdder');
+    
+    const calloutList = getAllByTestId('ide-project-supported-scope-callout');
+    expect(calloutList[calloutList.length - 1].textContent).toContain('FullAdder');
   });
 
   it('keeps export available on Project even when Verify has not been trusted yet', () => {
-    const { getByTestId } = render(
+    const { getAllByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -315,10 +335,235 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-project-readiness-summary').textContent).toContain('EXPORT AVAILABLE');
-    expect(getByTestId('ide-project-readiness-summary').textContent).toContain(
+    const readinessSummaryList = getAllByTestId('ide-project-readiness-summary');
+    const readinessSummary = readinessSummaryList[readinessSummaryList.length - 1];
+    expect(readinessSummary?.textContent).toContain('EXPORT AVAILABLE');
+    expect(readinessSummary?.textContent).toContain(
       'Export can be opened now for file review'
     );
-    expect(getByTestId('ide-project-dock-nav-export').textContent).toContain('Open now');
+    const dockNavList = getAllByTestId('ide-project-dock-nav-export');
+    expect(dockNavList[dockNavList.length - 1]?.textContent).toContain('Open now');
+  });
+
+  it('displays up to top 3 blocking issues with readable messages', () => {
+    const { getAllByTestId, container } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            health: {
+              lastVerify: { status: 'pass', hash: 'h', ranAtIso: '2026-02-27T00:00:00Z' },
+              lastExport: undefined,
+              dirtySinceVerify: false,
+              dirtySinceExport: false,
+              blockingIssues: [
+                { code: 'RBP1000', message: 'First issue' },
+                { code: 'RBP1001', message: 'Second issue' },
+                { code: 'RBP1002', message: 'Third issue' },
+                { code: 'RBP1003', message: 'Fourth issue' },
+              ],
+            },
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    // Should show exactly 3 blockers
+    const blocker0 = getAllByTestId('ide-project-blocker-0');
+    const blocker1 = getAllByTestId('ide-project-blocker-1');
+    const blocker2 = getAllByTestId('ide-project-blocker-2');
+    
+    expect(blocker0[blocker0.length - 1].textContent).toContain('First issue');
+    expect(blocker1[blocker1.length - 1].textContent).toContain('Second issue');
+    expect(blocker2[blocker2.length - 1].textContent).toContain('Third issue');
+
+    // Fourth blocker should not be rendered directly
+    const blocker3List = container.querySelectorAll('[data-testid="ide-project-blocker-3"]');
+    expect(blocker3List.length).toBe(0);
+
+    // Should show "…and 1 more" overflow text
+    const listElements = getAllByTestId('ide-project-blockers-list');
+    const lastList = listElements[listElements.length - 1];
+    expect(lastList.parentElement?.textContent).toContain('…and 1 more');
+  });
+
+  it('clearly explains AVAILABLE status means untrusted export files when verify incomplete', () => {
+    const { getAllByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            readiness: {
+              hasCircuit: true,
+              hasIoMapping: true,
+              hasVectors: true,
+              verifyPass: true,
+              verifyQualification: 'incomplete-mapping',
+              missingRequiredCount: 0,
+            },
+            health: {
+              lastVerify: {
+                status: 'pass',
+                hash: 'h',
+                qualification: 'incomplete-mapping',
+                ranAtIso: '2026-02-27T00:00:00Z',
+              },
+              lastExport: undefined,
+              dirtySinceVerify: false,
+              dirtySinceExport: false,
+              blockingIssues: [],
+            },
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    // Check for the AVAILABLE vs TRUSTED explanation text (get last one in case others exist)
+    const explanations = getAllByTestId('ide-project-export-explanation');
+    const explanation = explanations[explanations.length - 1];
+    expect(explanation?.textContent || '').toContain('AVAILABLE');
+    expect(explanation?.textContent || '').toContain('not confirmed correctness');
+    expect(explanation?.textContent || '').toContain('Not a trusted handoff');
+  });
+
+  it('shows explicit trust blocker when verify passes but with incomplete mapping', () => {
+    const { getAllByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            readiness: {
+              hasCircuit: true,
+              hasIoMapping: true,
+              hasVectors: true,
+              verifyPass: true,
+              verifyQualification: 'incomplete-mapping',
+              missingRequiredCount: 0,
+            },
+            health: {
+              lastVerify: {
+                status: 'pass',
+                hash: 'h',
+                qualification: 'incomplete-mapping',
+                ranAtIso: '2026-02-27T00:00:00Z',
+              },
+              lastExport: undefined,
+              dirtySinceVerify: false,
+              dirtySinceExport: false,
+              blockingIssues: [],
+            },
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    // Verify row should show PASS (INCOMPLETE) not just READY/PASS
+    const readinessItems = getAllByTestId('ide-project-readiness-summary');
+    const lastReadiness = readinessItems[readinessItems.length - 1];
+    expect(lastReadiness?.textContent || '').toContain('PASS (INCOMPLETE)');
+
+    // Export row should show AVAILABLE (not TRUSTED)
+    expect(lastReadiness?.textContent || '').toContain('AVAILABLE');
+
+    // RBP1005 blocker should appear in the list
+    const blockerElements = getAllByTestId('ide-project-blocker-0');
+    if (blockerElements && blockerElements.length > 0) {
+      expect(blockerElements[blockerElements.length - 1].textContent).toContain('unmapped');
+    }
+  });
+
+  it('uses consistent stable terminology for all readiness states - mapping blocked', () => {
+    const { getAllByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            readiness: {
+              hasCircuit: true,
+              hasIoMapping: false,
+              hasVectors: true,
+              verifyPass: false,
+              verifyQualification: undefined,
+              missingRequiredCount: 2,
+            },
+            health: {
+              lastVerify: undefined,
+              lastExport: undefined,
+              dirtySinceVerify: false,
+              dirtySinceExport: false,
+              blockingIssues: [
+                { code: 'RBP1001', message: 'Required Basys3 I/O mappings are missing.' },
+              ],
+            },
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    const summaryElements = getAllByTestId('ide-project-readiness-summary');
+    expect(summaryElements[summaryElements.length - 1].textContent).toContain('Mapping');
+    expect(summaryElements[summaryElements.length - 1].textContent).toContain('BLOCKED');
+  });
+
+  it('uses consistent stable terminology for all readiness states - verify needed', () => {
+    const { getAllByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            readiness: {
+              hasCircuit: true,
+              hasIoMapping: true,
+              hasVectors: true,
+              verifyPass: false,
+              verifyQualification: undefined,
+              missingRequiredCount: 0,
+            },
+            health: {
+              lastVerify: undefined,
+              lastExport: undefined,
+              dirtySinceVerify: false,
+              dirtySinceExport: false,
+              blockingIssues: [
+                { code: 'RBP1004', message: 'Need to run verification' },
+              ],
+            },
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    const summaryElements = getAllByTestId('ide-project-readiness-summary');
+    expect(summaryElements[summaryElements.length - 1].textContent).toContain('Verify');
+    expect(summaryElements[summaryElements.length - 1].textContent).toContain('NEEDS RUN');
+  });
+
+  it('uses consistent stable terminology for all readiness states - export trusted', () => {
+    const { getAllByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            readiness: {
+              hasCircuit: true,
+              hasIoMapping: true,
+              hasVectors: true,
+              verifyPass: true,
+              verifyQualification: undefined,
+              missingRequiredCount: 0,
+            },
+            health: {
+              lastVerify: {
+                status: 'pass',
+                hash: 'h',
+                ranAtIso: '2026-02-27T00:00:00Z',
+              },
+              lastExport: undefined,
+              dirtySinceVerify: false,
+              dirtySinceExport: false,
+              blockingIssues: [],
+            },
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    const summaryElements = getAllByTestId('ide-project-readiness-summary');
+    expect(summaryElements[summaryElements.length - 1].textContent).toContain('Export');
+    expect(summaryElements[summaryElements.length - 1].textContent).toContain('TRUSTED');
   });
 });

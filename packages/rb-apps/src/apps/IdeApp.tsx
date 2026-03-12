@@ -211,9 +211,10 @@ export const IdeApp: React.FC = () => {
       hasIoMapping,
       hasVectors,
       verifyPass: latestVerifyPass,
+      verifyQualification: verifyLastRun?.qualification,
       missingRequiredCount,
     }),
-    [hasCircuit, hasIoMapping, hasVectors, latestVerifyPass, missingRequiredCount]
+    [hasCircuit, hasIoMapping, hasVectors, latestVerifyPass, missingRequiredCount, verifyLastRun?.qualification]
   );
 
   const projectHealth = useMemo(

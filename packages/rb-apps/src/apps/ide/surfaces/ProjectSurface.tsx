@@ -9,7 +9,7 @@ import {
   BASYS3_SWITCH_PINS,
   resolveBasys3PackagePin,
 } from '../../../fpga/boards/basys3/basys3Pins';
-import type { ProjectHealth, ProjectHealthMode, ProjectPrimaryCta } from '../projectHealth';
+import type { ProjectHealth, ProjectHealthIssue, ProjectHealthMode, ProjectPrimaryCta } from '../projectHealth';
 import type { IdeDiagnosticRouteRequest } from '../diagnostics';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -48,6 +48,7 @@ export interface ProjectSurfaceProps {
     hasIoMapping: boolean;
     hasVectors: boolean;
     verifyPass: boolean;
+    verifyQualification?: 'incomplete-mapping';
     missingRequiredCount: number;
   };
   health: ProjectHealth;
@@ -118,6 +119,31 @@ const PROJECT_OUTPUT_ALIAS_OPTIONS = [
   'DP',
   ...Array.from({ length: 4 }, (_, index) => `AN${index}`),
 ];
+
+/**
+ * Synthesizes the complete list of export trust blockers, including:
+ * - All existing health.blockingIssues
+ * - RBP1005 when verify passes but has incomplete mapping
+ */
+function buildExportTrustBlockers(
+  health: ProjectHealth,
+  verifyPassIncomplete: boolean
+): ProjectHealthIssue[] {
+  const issues = [...health.blockingIssues];
+  
+  if (verifyPassIncomplete) {
+    const hasRbp1005 = issues.some((issue) => issue.code === 'RBP1005');
+    if (!hasRbp1005) {
+      issues.push({
+        code: 'RBP1005',
+        message: 'Verify passed, but some output pins remain unmapped — hardware results may not match.',
+        fixPath: { mode: 'project', actionLabel: 'Map Missing Pins' },
+      });
+    }
+  }
+  
+  return issues;
+}
 
 export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   projectName,
@@ -230,8 +256,17 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [sortedMappingRows]
   );
 
-  const verifyPass = health.lastVerify?.status === 'pass' && !health.dirtySinceVerify;
-  const blockingIssue = health.blockingIssues[0] ?? null;
+  const verifyPassCurrent = health.lastVerify?.status === 'pass' && !health.dirtySinceVerify;
+  const verifyPassIncomplete =
+    verifyPassCurrent && readiness.verifyQualification === 'incomplete-mapping';
+  const verifyTrusted = verifyPassCurrent && !verifyPassIncomplete;
+  const verifyPass = readiness.verifyPass; // Keep for backward compatibility in display
+  const blockingIssues = useMemo(
+    () => buildExportTrustBlockers(health, verifyPassIncomplete),
+    [health, verifyPassIncomplete]
+  );
+  const topBlockingIssues = useMemo(() => blockingIssues.slice(0, 3), [blockingIssues]);
+  const blockingIssue = topBlockingIssues[0] ?? null;
   const activeExample = useMemo(
     () => examples.find((example) => example.id === activeExampleId) ?? null,
     [activeExampleId, examples]
@@ -263,33 +298,37 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     readiness.hasCircuit &&
     readiness.hasIoMapping &&
     readiness.hasVectors &&
-    verifyPass &&
+    verifyTrusted &&
     health.lastExport?.status !== 'blocked';
   const hardwareReady = exportReady && !health.dirtySinceExport;
-  const hardBlockingIssue = health.blockingIssues.find((issue) =>
+  const hardBlockingIssue = blockingIssues.find((issue) =>
     issue.code === 'RBP1000' ||
     issue.code === 'RBP1001' ||
     issue.code === 'RBP1003' ||
+    issue.code === 'RBP1005' ||
     issue.code === 'RBP2001'
   ) ?? null;
 
   const heroStatusMessage = useMemo((): string => {
-    if (!readiness.hasCircuit) return 'No circuit loaded — start with an example or import HDL';
+    if (!readiness.hasCircuit) return 'No circuit loaded — start with an example or import HDL.';
     if (unmappedRequiredCount > 0)
-      return `Circuit loaded — ${unmappedRequiredCount} pin${unmappedRequiredCount !== 1 ? 's' : ''} unmapped`;
-    if (!readiness.hasIoMapping) return 'Circuit loaded — map pins or open Design';
-    if (!readiness.hasVectors) return 'Mapping complete — Export is available now. Verify is still recommended.';
-    if (!verifyPass) return 'Verify is not yet trusted, but Export is still available for file review and handoff.';
-    if (!exportReady) return 'Verify passed — open Export to build the bitstream handoff.';
-    if (!hardwareReady) return 'Export ready — build bitstream and flash hardware';
-    return 'All stages complete — bring up on hardware';
+      return `Circuit loaded — ${unmappedRequiredCount} required pin${unmappedRequiredCount !== 1 ? 's are' : ' is'} unmapped.`;
+    if (!readiness.hasIoMapping) return 'Circuit loaded — map pins before hardware trust is possible.';
+    if (!readiness.hasVectors)
+      return 'Mapping complete — Export is AVAILABLE for review, but not TRUSTED until Verify evidence is current.';
+    if (verifyPassIncomplete)
+      return 'Verify passed, but some outputs are still unmapped. Export is AVAILABLE, not TRUSTED.';
+    if (!verifyTrusted) return 'Verify is not trusted yet. Export files are AVAILABLE for review only.';
+    if (!exportReady) return 'Verify is trusted — open Export to build the hardware handoff bundle.';
+    if (!hardwareReady) return 'Export trusted — build bitstream and flash hardware.';
+    return 'All stages complete — bring up on hardware.';
   }, [
     readiness.hasCircuit,
     readiness.hasIoMapping,
     readiness.hasVectors,
     unmappedRequiredCount,
-    verifyPass,
-    exportAvailable,
+    verifyPassIncomplete,
+    verifyTrusted,
     exportReady,
     hardwareReady,
   ]);
@@ -303,8 +342,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   }, [activeExample?.summary, description, readiness.hasCircuit, topModuleName]);
 
   const verifySummary = useMemo(
-    () => getVerifySummary(health, verifyPass),
-    [health, verifyPass]
+    () => getVerifySummary(health, verifyTrusted),
+    [health, verifyTrusted]
   );
   const exportSummary = useMemo(
     () => getExportSummary(health, exportAvailable, exportReady, hardwareReady),
@@ -331,9 +370,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     : hardwareReady
       ? 'Hardware ready'
       : exportAvailable
-        ? verifyPass
-          ? 'Ready to export'
-          : 'Export available'
+        ? verifyTrusted
+          ? 'Trusted export'
+          : 'Available export'
         : 'In progress';
   const heroAssistAction = useMemo(() => {
     if (!readiness.hasCircuit) {
@@ -364,8 +403,14 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       },
       {
         label: 'Verify',
-        value: verifyPass ? 'Current run passed' : blockingIssue?.code === 'RBP1004' ? 'Run again after changes' : 'Still needed',
-        tone: verifyPass ? 'ok' : 'warn',
+        value: verifyTrusted
+          ? 'Trusted pass'
+          : verifyPassIncomplete
+            ? 'PASS (INCOMPLETE)'
+            : blockingIssue?.code === 'RBP1004'
+              ? 'Run again after changes'
+              : 'Still needed',
+        tone: verifyTrusted ? 'ok' : 'warn',
       },
       {
         label: 'Export',
@@ -374,7 +419,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           : exportReady
             ? 'Trusted handoff ready'
             : exportAvailable
-              ? 'Files available now'
+              ? 'Available (not trusted yet)'
               : 'Map pins first',
         tone: hardwareReady || exportReady ? 'ok' : exportAvailable ? 'warn' : 'idle',
       },
@@ -388,7 +433,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       readiness.hasIoMapping,
       requiredCount,
       unmappedRequiredCount,
-      verifyPass,
+      verifyPassIncomplete,
+      verifyTrusted,
     ]
   );
 
@@ -441,8 +487,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         {
           id: 'verify',
           label: 'Verify passed',
-          ready: verifyPass,
-          actionLabel: verifyPass ? 'Review verify' : 'Run Verify',
+          ready: verifyTrusted,
+          actionLabel: verifyTrusted ? 'Review verify' : 'Run Verify',
           onAction: onOpenVerify,
         },
         {
@@ -463,7 +509,17 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         item.label,
         <IdeStatusPill
           key={`${item.id}-status`}
-          tone={item.id === 'export' ? (exportReady ? 'ok' : item.ready ? 'warn' : 'warn') : item.ready ? 'ok' : 'warn'}
+          tone={item.id === 'export'
+            ? exportReady
+              ? 'ok'
+              : 'warn'
+            : item.id === 'verify'
+              ? verifyTrusted
+                ? 'ok'
+                : 'warn'
+              : item.ready
+                ? 'ok'
+                : 'warn'}
         >
           {item.id === 'export'
             ? exportReady
@@ -471,9 +527,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               : item.ready
                 ? 'AVAILABLE'
                 : 'BLOCKED'
-            : item.ready
-              ? 'READY'
-              : 'BLOCKED'}
+            : item.id === 'verify'
+              ? verifyTrusted
+                ? 'TRUSTED'
+                : verifyPassIncomplete
+                  ? 'PASS (INCOMPLETE)'
+                  : 'NEEDS RUN'
+              : item.ready
+                ? 'READY'
+                : 'BLOCKED'}
         </IdeStatusPill>,
         <IdeButton
           key={`${item.id}-action`}
@@ -496,7 +558,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       onOpenVerify,
       readiness.hasCircuit,
       readiness.hasIoMapping,
-      verifyPass,
+      verifyPassIncomplete,
+      verifyTrusted,
     ]
   );
 
@@ -629,7 +692,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const designCardDone = readiness.hasCircuit && readiness.hasIoMapping;
   const completedMilestoneCount = [
     designCardDone,
-    verifyPass,
+    verifyTrusted,
     exportReady,
     hardwareReady,
   ].filter(Boolean).length;
@@ -648,8 +711,14 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         id: 'verify',
         step: '2',
         label: 'Verify',
-        meta: verifyPass ? 'Passed' : primaryCta.mode === 'verify' ? 'Run now' : 'Waiting',
-        state: verifyPass ? 'done' : primaryCta.mode === 'verify' ? 'active' : 'idle',
+        meta: verifyTrusted
+          ? 'Trusted'
+          : verifyPassIncomplete
+            ? 'Pass incomplete'
+            : primaryCta.mode === 'verify'
+              ? 'Run now'
+              : 'Waiting',
+        state: verifyTrusted ? 'done' : primaryCta.mode === 'verify' ? 'active' : 'idle',
         onClick: onOpenVerify,
         testId: 'ide-project-dock-nav-verify',
       },
@@ -683,7 +752,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       onOpenVerify,
       primaryCta.mode,
       readiness.hasCircuit,
-      verifyPass,
+      verifyPassIncomplete,
+      verifyTrusted,
     ]
   );
   return (
@@ -1029,9 +1099,24 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           {/* Gate sentinel — text content only, not displayed */}
           <span style={{ display: 'none' }} data-testid="ide-project-continue-target">{primaryCtaLabel}</span>
 
-          {blockingIssue && (
-            <IdeCallout tone="warn" title="Next blocker" testId="ide-project-hero-blocker">
-              {blockingIssue.message}
+          {topBlockingIssues.length > 0 && (
+            <IdeCallout 
+              tone="warn" 
+              title={`${topBlockingIssues.length} blocker${topBlockingIssues.length > 1 ? 's' : ''}`} 
+              testId="ide-project-hero-blocker"
+            >
+              <ol data-testid="ide-project-blockers-list" style={{ margin: '0 0 0 1.25rem', paddingLeft: 0 }}>
+                {topBlockingIssues.map((issue, idx) => (
+                  <li key={issue.code} data-testid={`ide-project-blocker-${idx}`}>
+                    {issue.message}
+                  </li>
+                ))}
+              </ol>
+              {blockingIssues.length > 3 && (
+                <p style={{ margin: '0.75rem 0 0 0', fontSize: 'var(--font-size-sm)', opacity: 0.8 }}>
+                  …and {blockingIssues.length - 3} more
+                </p>
+              )}
             </IdeCallout>
           )}
         </SurfacePanel>
@@ -1105,8 +1190,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <div className="ide-project-readiness-item">
                 <div className="ide-project-readiness-item-head">
                   <span>Verify</span>
-                  <IdeStatusPill tone={verifyPass ? 'ok' : 'warn'}>
-                    {verifyPass ? 'READY' : 'NEEDS RUN'}
+                  <IdeStatusPill tone={verifyTrusted ? 'ok' : 'warn'}>
+                    {verifyTrusted ? 'TRUSTED' : verifyPassIncomplete ? 'PASS (INCOMPLETE)' : 'NEEDS RUN'}
                   </IdeStatusPill>
                 </div>
                 <p>{verifySummary}</p>
@@ -1119,6 +1204,17 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   </IdeStatusPill>
                 </div>
                 <p>{exportSummary}</p>
+                <p 
+                  className="ide-project-export-explanation"
+                  data-testid="ide-project-export-explanation"
+                  style={{ fontSize: 'var(--font-size-sm)', marginTop: '0.5rem', opacity: 0.85, fontStyle: 'italic' }}
+                >
+                  {exportReady
+                    ? 'TRUSTED — Verify passed and matches current design. Safe for hardware handoff.'
+                    : exportAvailable
+                      ? 'AVAILABLE — Export files can be reviewed, but Verify has not confirmed correctness. Not a trusted handoff.'
+                      : 'Export is blocked until circuit and mapping are complete.'}
+                </p>
               </div>
             </div>
             {unmappedRequiredCount > 0 && (
