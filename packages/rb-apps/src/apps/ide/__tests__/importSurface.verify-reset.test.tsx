@@ -73,9 +73,9 @@ describe('ImportSurface verify reset notice', () => {
     fireEvent.click(getByTestId('ide-import-apply-confirm'));
 
     await waitFor(() => {
-      expect(getByTestId('ide-import-verify-reset-notice').textContent).toContain(
-        'Verification results are not restored from imports.'
-      );
+      const notice = getByTestId('ide-import-verify-reset-notice');
+      expect(notice.textContent).toContain('Verification results are not restored during import.');
+      expect(notice.textContent).toContain('Open Test');
     });
 
     expect(useProjectRuntime.getState().verifyLastRun).toBeUndefined();

@@ -110,7 +110,7 @@ describe('HardwareSurface readiness', () => {
     fireEvent.click(getByTestId('ide-hw-mode-btn-proof'));
 
     expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain(
-      'hardware bundle was generated from an older version of this project'
+      'bundle was built from an older version'
     );
     expect(getByTestId('ide-hardware-blocked-hero').textContent).toContain('Re-export this project now');
     expect(getByTestId('ide-hardware-blocked-primary').textContent).toContain('Re-export Current Bundle');
@@ -120,7 +120,7 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
   });
 
-  it('points students to Verify first when hardware is blocked before any current pass', () => {
+  it('points students to Test first when hardware is blocked before any current pass', () => {
     const { getByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
@@ -150,8 +150,9 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hardware-blocked-hero').textContent).toContain('Run Verify before using Hardware');
-    expect(getByTestId('ide-hardware-blocked-primary').textContent).toContain('Open Verify');
+    expect(getByTestId('ide-hardware-blocked-hero').textContent).toContain('Pass Test before programming');
+    expect(getByTestId('ide-hardware-blocked-hero').textContent).toContain('return here to program the board');
+    expect(getByTestId('ide-hardware-blocked-primary').textContent).toContain('Open Test');
     expect(getByTestId('ide-hardware-blocked-secondary').textContent).toContain('Open Design');
   });
 });

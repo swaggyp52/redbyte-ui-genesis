@@ -230,7 +230,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         tone: 'warn' as const,
         title: 'Re-export required',
         message:
-          'Your circuit verified successfully, but the hardware bundle was generated from an older version of this project. Re-export before programming the board.',
+          'Your circuit verified, but the bundle was built from an older version. Re-export from Export, then return here to program the board.',
       };
     }
     if (hardwareState === 'export-needed') {
@@ -238,7 +238,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         tone: 'warn' as const,
         title: 'Export required',
         message:
-          'Your circuit verified successfully, but no current hardware bundle has been generated yet. Export before programming the board.',
+          'Your circuit passed verification. Build the hardware bundle in Export once, then return here to program the board.',
       };
     }
     return {
@@ -251,9 +251,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     if (!hasBlocking) return null;
     if (!verifyReady) {
       return {
-        title: 'Run Verify before using Hardware',
+        title: 'Pass Test before programming',
         body:
-          'Hardware is blocked until this project has a current passing verification run. Start there, then come back once the evidence is current.',
+          'Your design hasn\'t passed verification yet. Open Test, run your vectors, and get a PASS — then return here to program the board.',
         primaryLabel: 'Open Verify',
         primaryAction: onOpenVerify,
         primaryTestId: 'ide-hardware-blocked-primary',
@@ -263,8 +263,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       title: hardwareState === 'export-stale' ? 'Re-export this project now' : 'Build the hardware bundle first',
       body:
         hardwareState === 'export-stale'
-          ? 'Your last hardware bundle is stale for the current circuit. Re-export before programming the board.'
-          : 'Verification is current, but no current hardware bundle exists yet. Export once before programming the board.',
+          ? 'Your circuit changed since the last bundle was built. Re-export from Export, then return here to program the board.'
+          : 'Your design passed verification. Open Export, build the bundle once, then return here to program the board.',
       primaryLabel: hardwareState === 'export-stale' ? 'Re-export Current Bundle' : 'Open Export',
       primaryAction: onOpenExport,
       primaryTestId: 'ide-hardware-blocked-primary',

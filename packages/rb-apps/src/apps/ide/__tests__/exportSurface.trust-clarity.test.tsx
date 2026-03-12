@@ -210,9 +210,9 @@ describe('ExportSurface trust clarity', () => {
     expect(banner.textContent).toContain('AVAILABLE');
     expect(banner.textContent).toContain('NOT TRUSTED');
     expect(banner.textContent).not.toContain('BLOCKED');
-    // Consequence language must be present
+    // Consequence language must guide student to next action
     const consequence = getByTestId('ide-export-trust-consequence');
-    expect(consequence.textContent).toMatch(/fail|incorrect|not trusted/i);
+    expect(consequence.textContent).toMatch(/Test|PASS|trusted/i);
     // Download button must remain enabled (not disabled) in AVAILABLE state
     expect(getByTestId('ide-export-dock-download').hasAttribute('disabled')).toBe(false);
   });

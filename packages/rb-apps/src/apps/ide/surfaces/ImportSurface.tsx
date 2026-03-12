@@ -681,7 +681,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     if (effectiveReconstructionLevel === 'empty') {
       reasons.push('No circuit was reconstructed — the schematic is empty. Check entity/module syntax.');
     } else if (effectiveReconstructionLevel === 'ports-only') {
-      reasons.push('Only input/output ports were recovered — the circuit is empty. Rebuild the internal logic in Design, or re-import from a RedByte project export.');
+      reasons.push('Only the port names were saved — no internal logic was captured. Switch to Build and wire the gates manually, or re-import from a full RedByte project export.');
     }
     return reasons;
   }, [pendingApplyProject, detectedBehavioralConstructs, effectiveReconstructionLevel]);
@@ -2700,12 +2700,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         {showVerifyResetNotice ? (
           <IdeCallout tone="info" title="Run Verify Again" testId="ide-import-verify-reset-notice">
             <p className="ide-copy" style={{ margin: 0 }}>
-              Verification results are not restored from imports. Please run verification again to regenerate waveforms and test results.
+              Verification results are not restored during import. Open Test and re-run your vectors — once you get a PASS, the export becomes trusted and ready.
             </p>
             {onGoToVerify ? (
               <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
                 <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-import-open-verify-after-import">
-                  Open Verify
+                  Open Test
                 </IdeButton>
               </div>
             ) : null}
@@ -2840,12 +2840,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
             testId="ide-import-verify-reset-notice"
           >
             <p className="ide-copy" style={{ margin: 0 }}>
-              Verification results are not restored from imports. Please run verification again to regenerate waveforms and test results.
+              Verification results are not restored during import. Open Test and re-run your vectors — once you get a PASS, the export becomes trusted and ready.
             </p>
             {onGoToVerify && (
               <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
                 <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-import-open-verify-after-import">
-                  Open Verify
+                  Open Test
                 </IdeButton>
               </div>
             )}

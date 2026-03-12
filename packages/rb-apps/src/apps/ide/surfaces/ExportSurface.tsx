@@ -397,7 +397,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     ? 'Download the Vivado Project, unzip it, then run the import script or open the project directly.'
     : hasBlockingErrors
       ? 'Use the blocker list and pin review below to clear mapping or clock issues before export.'
-      : 'This package has not been sealed by a passing Verify run. Downloading it may produce bitstream errors or hardware failures. Run Verify first.';
+      : 'This package has not been sealed by a passing Test run. Open Test, get a PASS result — then this export becomes trusted and safe to submit.';
   const vivadoCommand =
     'vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log';
   const projectDownloadLabel = isRebuilding
@@ -978,13 +978,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     {evidenceDiagnostics[0]?.message ?? 'Verification has not passed.'}
                   </p>
                   <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
-                    This export may open, but it may fail in Vivado or on the board until these blockers are resolved.
+                    Run Test with your vectors and get a PASS — then this export becomes trusted and safe to submit.
                   </p>
                 </div>
                 {onOpenVerify && (
                   <div className="ide-inline-actions">
                     <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-trust-go-verify">
-                      Open Verify →
+                      Open Test →
                     </IdeButton>
                   </div>
                 )}
@@ -996,7 +996,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 </div>
                 <div className="ide-export-trust-body">
                   <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
-                    This export may open, but it may fail in Vivado or on the board until these blockers are resolved.
+                    Fix the blockers below, then run Test to get a PASS — after that, this export will be trusted and ready to submit.
                   </p>
                   {(unmappedRequiredPorts.length > 0 || viewModel.errors.length > 0) && (
                     <ul className="ide-export-trust-blocker-list" data-testid="ide-export-trust-blocker-list">
@@ -1023,7 +1023,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   )}
                   {onOpenVerify && (
                     <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-trust-go-verify">
-                      Open Verify →
+                      Open Test →
                     </IdeButton>
                   )}
                 </div>
@@ -1082,12 +1082,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <div data-testid="ide-export-blockers-callout">
                     <IdeCallout tone="warn" title="Verification is required before trusted handoff" testId="ide-export-unverified-callout">
                       <p className="ide-copy" style={{ margin: 0 }}>
-                        The generated text files are available now, but the Vivado handoff is not trustworthy until Verify has a current PASS/FAIL result.
+                        Your VHDL files are ready to inspect. Open Test and run your vectors — once you get a PASS, this export becomes trusted and safe to submit.
                       </p>
                       {onOpenVerify && (
                         <div style={{ marginTop: 'var(--ide-space-2)' }}>
                           <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-open-verify-advisory">
-                            Open Verify
+                            Open Test
                           </IdeButton>
                         </div>
                       )}
@@ -1527,7 +1527,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 ) : downloadReady ? (
                   <IdeCallout tone="warn" title="Artifacts available, but unverified" testId="ide-export-vivado-unverified-callout">
                     <p className="ide-copy" style={{ margin: 0 }} data-testid="ide-export-vivado-command">
-                      Students can inspect and export the current text files now. Run Verify before treating the package as trusted hardware evidence.
+                      Your VHDL is ready to inspect. Open Test to confirm the logic — after a PASS, this kit is trusted for hardware bring-up.
                     </p>
                   </IdeCallout>
                 ) : (
