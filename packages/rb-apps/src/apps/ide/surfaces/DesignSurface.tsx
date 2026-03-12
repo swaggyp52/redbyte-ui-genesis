@@ -682,6 +682,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     onCircuitMutated?.();
   }, [circuit, clipboard, updateCircuit, selectMultipleNodes, onCircuitMutated]);
 
+  // CP-2: Duplicate selected nodes in-place — copy+paste without touching clipboard state
+  const handleDuplicate = useCallback(() => {
+    if (selection.nodes.size === 0) return;
+    const cluster = serializeCluster(circuit, selection.nodes);
+    if (cluster.nodes.length === 0) return;
+    const result = pasteCluster(circuit, cluster, PASTE_OFFSET);
+    const next = {
+      nodes: [...circuit.nodes, ...result.pastedNodes],
+      connections: [...circuit.connections, ...result.pastedConnections],
+    };
+    updateCircuit(next);
+    selectMultipleNodes(result.pastedNodes.map((n) => n.id));
+    const count = result.pastedNodes.length;
+    setActionToast(`Duplicated ${count} node${count !== 1 ? 's' : ''}.`);
+    onCircuitMutated?.();
+  }, [circuit, selection.nodes, updateCircuit, selectMultipleNodes, onCircuitMutated]);
+
   useEffect(() => {
     if (!actionToast) return;
     const timeout = window.setTimeout(() => {
@@ -1762,13 +1779,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       if ((event.ctrlKey || event.metaKey) && event.key === 'v' && !isTextInput) {
         event.preventDefault();
         handlePaste();
+        return;
+      }
+
+      // Ctrl+D / Cmd+D: duplicate selection in-place
+      if ((event.ctrlKey || event.metaKey) && event.key === 'd' && !isTextInput) {
+        event.preventDefault();
+        handleDuplicate();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [handleCopy, handlePaste, toggleSnapToGrid]);
+  }, [handleCopy, handleDuplicate, handlePaste, toggleSnapToGrid]);
 
   useEffect(() => {
     const pending = pendingDebugToggleRef.current;
@@ -2061,6 +2085,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </IdeButton>
                   <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
                     Clear trace
+                  </IdeButton>
+                </div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                  <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
+                    Copy
+                  </IdeButton>
+                  <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
+                    Duplicate
                   </IdeButton>
                 </div>
               </div>
@@ -2535,6 +2567,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
                     Copy
                   </IdeButton>
+                  <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
+                    Duplicate
+                  </IdeButton>
                   {clipboard && (
                     <IdeButton tone="secondary" onClick={handlePaste} testId="ide-design-paste-btn">
                       Paste
@@ -2564,6 +2599,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
                   <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
                     Copy ({selection.nodes.size})
+                  </IdeButton>
+                  <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
+                    Duplicate ({selection.nodes.size})
                   </IdeButton>
                   {clipboard && (
                     <IdeButton tone="secondary" onClick={handlePaste} testId="ide-design-paste-btn">
