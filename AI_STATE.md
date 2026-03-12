@@ -1,5 +1,49 @@
 # AI State
 
+## Change Log 2026-03-11 (Saved block templates for reusable logic)
+
+### Design now supports saved macros, deterministic insertion, and flatten-on-export handoff
+
+Added the first saved-block workflow for the Design surface: copy/paste foundations, a reusable macro library, deterministic insertion into the circuit, project persistence for macro definitions, and export flattening so hardware handoff still emits plain logic only.
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/designClipboard.ts` (new)
+  - Added deterministic cluster serialization and paste helpers for copy/paste and macro instantiation.
+- `packages/rb-apps/src/apps/ide/macros/MacroLibrary.ts` (new)
+  - Added macro save/update/delete logic, boundary analysis, and deterministic instance generation.
+- `packages/rb-apps/src/apps/ide/macros/macroFlattener.ts` (new)
+  - Added flatten-on-export removal of macro-library metadata.
+- `packages/rb-apps/src/apps/ide/surfaces/MacroLibraryPanel.tsx` (new)
+- `packages/rb-apps/src/apps/ide/surfaces/MacroSaveDialog.tsx` (new)
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Added copy/paste actions, save-as-macro flow, macro insertion overlay, and macro library panel wiring.
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Wired macro persistence and Design-surface macro actions into the runtime-backed IDE shell.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Added macro library state, persistence, deletion, and instantiation support.
+- `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`
+  - Flattened macros before Basys3 export generation.
+- `packages/rb-apps/src/export/projectFormat.ts`
+  - Added project-level macro serialization and normalization.
+- `packages/rb-apps/src/apps/ide/modeGuards.ts`
+  - Allowed macro state in the relevant Design and Import mutation paths.
+- `packages/rb-logic-view/src/useCanvasInput.ts`
+  - Added Ctrl/Cmd additive selection support used by the saved-block selection flow.
+- `packages/rb-apps/src/apps/ide/__tests__/designClipboard.copy-paste.test.ts` (new)
+- `packages/rb-apps/src/apps/ide/__tests__/macroLibrary.test.ts` (new)
+- `packages/rb-apps/src/apps/ide/__tests__/macroFlattener.test.ts` (new)
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.macros.test.ts` (new)
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+- `packages/rb-apps/src/__tests__/export/rbproject-roundtrip-ide.test.ts`
+- `packages/rb-logic-view/src/__tests__/canvas-input-controller.test.ts`
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designClipboard.copy-paste.test.ts packages/rb-apps/src/apps/ide/__tests__/macroLibrary.test.ts packages/rb-apps/src/apps/ide/__tests__/macroFlattener.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.macros.test.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/__tests__/export/rbproject-roundtrip-ide.test.ts packages/rb-logic-view/src/__tests__/canvas-input-controller.test.ts` - PASS
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-11 (Verify workspace failure-clarity redesign)
 
 ### Verify now opens as a three-panel debugging workstation with synchronized failure context

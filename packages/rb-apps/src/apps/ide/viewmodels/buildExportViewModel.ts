@@ -15,6 +15,7 @@ import {
   type IdeDiagnosticSeverity,
 } from '../diagnostics';
 import { buildBringUpArtifacts } from '../bringupArtifacts';
+import { flattenProjectMacros } from '../macros/macroFlattener';
 
 export type ExportDiagnosticSeverity = 'error' | 'warning';
 export type ExportPinDirection = 'in' | 'out' | 'inout';
@@ -72,14 +73,15 @@ export function buildExportViewModel(
   project: RBProject,
   runtimeVerifyRun?: RuntimeVerifyRun
 ): ExportViewModel {
-  const exportResult = exportProjectAsBasys3(project);
-  const diagnostics = collectDiagnostics(project, exportResult.errors, exportResult.warnings);
+  const flattenedProject = flattenProjectMacros(project);
+  const exportResult = exportProjectAsBasys3(flattenedProject);
+  const diagnostics = collectDiagnostics(flattenedProject, exportResult.errors, exportResult.warnings);
   const canonicalDiagnostics = diagnostics.map((entry) => entry.canonical);
   const errors = diagnostics.filter((entry) => entry.severity === 'error');
   const warnings = diagnostics.filter((entry) => entry.severity === 'warning');
   const requiredPorts = collectRequiredPorts(diagnostics);
-  const pinTable = buildPinTable(project, diagnostics, requiredPorts);
-  const artifacts = buildArtifacts(project, exportResult, errors.length > 0, runtimeVerifyRun);
+  const pinTable = buildPinTable(flattenedProject, diagnostics, requiredPorts);
+  const artifacts = buildArtifacts(flattenedProject, exportResult, errors.length > 0, runtimeVerifyRun);
 
   return {
     status: errors.length > 0 ? 'blocked' : 'ok',

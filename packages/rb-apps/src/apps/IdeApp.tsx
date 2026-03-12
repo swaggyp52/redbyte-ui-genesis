@@ -158,9 +158,7 @@ export const IdeApp: React.FC = () => {
   const resetRuntimeSim = useProjectRuntime((state) => state.actions.sim.reset);
   const setRuntimeSimSpeed = useProjectRuntime((state) => state.actions.sim.setSpeed);
   const setRuntimeSimInput = useProjectRuntime((state) => state.actions.sim.setInput);
-  const setRuntimeSimSelectedSignal = useProjectRuntime(
-    (state) => state.actions.sim.setSelectedSignal
-  );
+  const setRuntimeSimSelectedSignal = useProjectRuntime((state) => state.actions.sim.setSelectedSignal);
   const toggleRuntimeSimProbe = useProjectRuntime((state) => state.actions.sim.toggleProbe);
   const recordExport = useProjectRuntime((state) => state.recordExport);
   const setProjectIdentity = useProjectRuntime((state) => state.setProjectIdentity);
@@ -168,6 +166,10 @@ export const IdeApp: React.FC = () => {
   const resetToActiveExample = useProjectRuntime((state) => state.resetToActiveExample);
   const customComponents = useProjectRuntime((state) => state.customComponents);
   const addCustomComponent = useProjectRuntime((state) => state.addCustomComponent);
+  const macros = useProjectRuntime((state) => state.macros);
+  const saveMacro = useProjectRuntime((state) => state.saveMacro);
+  const deleteMacro = useProjectRuntime((state) => state.deleteMacro);
+  const instantiateMacro = useProjectRuntime((state) => state.instantiateMacro);
   const hasCircuit = circuit.nodes.length > 0;
   const hasDff = verifyLastRun?.schedule === 'clocked_macro';
   const missingRequiredCount = useMemo(
@@ -613,6 +615,7 @@ export const IdeApp: React.FC = () => {
     savedAt: Date.now(),
     projectId,
     currentMode,
+    macros: macros.length > 0 ? macros : undefined,
     activeExampleId: activeExampleId ?? null,
     probedKeys: runtimeSim.probes.map((p) => p.key),
   };
@@ -1242,6 +1245,10 @@ export const IdeApp: React.FC = () => {
               externalDebugTick={debugState?.tick ?? null}
               onClearExternalDebug={handleClearDebugState}
               activeVerifySignal={verifySelectedSignal}
+              macros={macros}
+              onSaveMacro={saveMacro}
+              onDeleteMacro={deleteMacro}
+              onInstantiateMacro={instantiateMacro}
             />
           </ErrorBoundary>
         ) : currentMode === 'verify' ? (

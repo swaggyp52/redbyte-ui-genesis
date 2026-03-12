@@ -8,6 +8,15 @@ import { stableSerialize } from '../../utils/stableSerialize';
 import { deriveVerifySchedule, type VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
 import { digestValue } from '../../utils/digest';
 import {
+  deleteMacro as deleteMacroFromLibrary,
+  instantiateMacroIntoCircuit,
+  saveMacro as saveMacroToLibrary,
+  updateMacro as updateMacroInLibrary,
+  type MacroDefinition,
+  type MacroInstantiationResult,
+  type SaveMacroInput,
+} from './macros/MacroLibrary';
+import {
   IDE_DEFAULT_EXAMPLE_ID,
   IDE_EXAMPLES,
   getIdeExampleById,
@@ -173,6 +182,18 @@ export interface ProjectRuntimeState {
   setLastSavedAt: (label: string) => void;
   resetToActiveExample: () => void;
   clearUnsavedState: (label?: string) => void;
+  macros: MacroDefinition[];
+  macroInsertionCounts: Record<string, number>;
+  saveMacro: (input: Omit<SaveMacroInput, 'circuit'>) => MacroDefinition | null;
+  deleteMacro: (macroId: string) => void;
+  updateMacro: (
+    macroId: string,
+    updated: Partial<Pick<MacroDefinition, 'name' | 'description' | 'inputs' | 'outputs'>>
+  ) => void;
+  instantiateMacro: (
+    macroId: string,
+    position: { x: number; y: number }
+  ) => MacroInstantiationResult | null;
   customComponents: CompositeNodeDef[];
   addCustomComponent: (def: CompositeNodeDef) => void;
 }
@@ -190,6 +211,8 @@ interface PersistedRuntimeState {
   verifyRunHistory: VerifyRunLedgerEntry[];
   sim: RuntimeSimState;
   projectHealthCore: ProjectHealthCore;
+  macros: MacroDefinition[];
+  macroInsertionCounts: Record<string, number>;
   customComponents: CompositeNodeDef[];
 }
 
@@ -381,6 +404,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             dirtySinceVerify: true,
             dirtySinceExport: true,
           },
+          macros: project.macros ?? [],
+          macroInsertionCounts: {},
           customComponents: project.customComponents ?? [],
         });
       },
@@ -854,6 +879,66 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           },
         }));
       },
+      saveMacro: (input) => {
+        let macro: MacroDefinition | null = null;
+        set((state) => {
+          const result = saveMacroToLibrary(state.macros, {
+            ...input,
+            circuit: state.circuit,
+          });
+          macro = result.macro;
+          return {
+            macros: result.library,
+          };
+        });
+        return macro;
+      },
+      deleteMacro: (macroId) => {
+        set((state) => {
+          const nextCounts = { ...state.macroInsertionCounts };
+          delete nextCounts[macroId];
+          return {
+            macros: deleteMacroFromLibrary(state.macros, macroId),
+            macroInsertionCounts: nextCounts,
+          };
+        });
+      },
+      updateMacro: (macroId, updated) => {
+        set((state) => ({
+          macros: updateMacroInLibrary(state.macros, macroId, updated),
+        }));
+      },
+      instantiateMacro: (macroId, position) => {
+        let result: MacroInstantiationResult | null = null;
+        set((state) => {
+          try {
+            const nextInstanceIndex = (state.macroInsertionCounts[macroId] ?? 0) + 1;
+            result = instantiateMacroIntoCircuit(state.macros, macroId, state.circuit, position, {
+              nextInstanceIndex,
+            });
+
+            return {
+              circuit: cloneCircuit(result.circuit),
+              sim: resetSimulationState(result.circuit, state.projectIoRows, state.sim),
+              projectHealthCore: {
+                ...state.projectHealthCore,
+                dirtySinceVerify: true,
+                dirtySinceExport: true,
+              },
+              macroInsertionCounts: {
+                ...state.macroInsertionCounts,
+                [macroId]: nextInstanceIndex,
+              },
+            };
+          } catch {
+            result = null;
+            return state;
+          }
+        });
+        return result;
+      },
+      macros: [],
+      macroInsertionCounts: {},
       customComponents: [],
       addCustomComponent: (def) => {
         registerCompositeNode(def);
@@ -891,6 +976,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           dirtySinceExport: state.projectHealthCore.dirtySinceExport,
         },
         customComponents: state.customComponents,
+        macros: state.macros,
+        macroInsertionCounts: state.macroInsertionCounts,
       }),
     }
   )
@@ -940,6 +1027,7 @@ export function mergePersistedRuntimeState(
       circuit: candidate.circuit,
       ioMapping: toIoMapping(normalizedRows),
       vectors: normalizedVectors,
+      macros: Array.isArray(candidate.macros) ? candidate.macros : currentState.macros,
       customComponents: Array.isArray(candidate.customComponents)
         ? candidate.customComponents
         : currentState.customComponents,
@@ -991,6 +1079,8 @@ export function mergePersistedRuntimeState(
       currentState.projectHealthCore,
       invalidateVerifyTrust
     ),
+    macros: normalizedProject.macros ?? [],
+    macroInsertionCounts: normalizeMacroInsertionCounts(candidate.macroInsertionCounts),
     customComponents: normalizedProject.customComponents ?? [],
   };
 }
@@ -1024,8 +1114,25 @@ function stateFromExample(
       dirtySinceVerify: false,
       dirtySinceExport: false,
     },
+    macros: [],
+    macroInsertionCounts: {},
     customComponents: [],
   };
+}
+
+function normalizeMacroInsertionCounts(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  const normalized: Record<string, number> = {};
+  for (const [key, raw] of Object.entries(value)) {
+    const macroId = key.trim();
+    if (macroId.length === 0) continue;
+    const numeric = typeof raw === 'number' && Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : 0;
+    normalized[macroId] = numeric;
+  }
+  return normalized;
 }
 
 function ioRowsFromProject(project: RBProject): ProjectIoRow[] {

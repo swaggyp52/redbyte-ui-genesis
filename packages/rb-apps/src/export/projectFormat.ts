@@ -9,6 +9,7 @@ import type {
   Node,
   PortRef,
 } from '@redbyte/rb-logic-core';
+import type { MacroDefinition } from '../apps/ide/macros/MacroLibrary';
 import type { RunRecord } from '../recording/runRecord';
 import type { Probe } from '../stores/probeStore';
 import type { ToolchainProjectInput } from '../fpga/toolchainBackend';
@@ -72,6 +73,7 @@ export interface RBProject {
   vectors?: TestVector[];
   traceMetadata?: TraceMetadata;
   submodules?: SubmoduleEntry[];
+  macros?: MacroDefinition[];
   labSpec?: LabSpecV1;
   customComponents?: CompositeNodeDef[];
   meta?: {
@@ -212,6 +214,81 @@ const normalizeSubmodules = (submodules?: SubmoduleEntry[]): SubmoduleEntry[] | 
     .sort((a, b) => compareCodepoint(a.id, b.id));
 };
 
+const normalizeMacros = (macros?: MacroDefinition[]): MacroDefinition[] | undefined => {
+  if (!macros) return macros;
+  return [...macros]
+    .filter(isMacroDefinition)
+    .map((macro) => ({
+      ...macro,
+      description: readOptionalString(macro.description) ?? undefined,
+      inputs: [...macro.inputs]
+        .filter(isMacroPort)
+        .map((entry) => ({
+          ...entry,
+          label: readRequiredString(entry.label) ?? entry.id,
+          nodeId: readRequiredString(entry.nodeId) ?? '',
+          portName: readRequiredString(entry.portName) ?? '',
+        }))
+        .sort((left, right) => {
+          const labelDelta = compareCodepoint(left.label, right.label);
+          if (labelDelta !== 0) return labelDelta;
+          const nodeDelta = compareCodepoint(left.nodeId, right.nodeId);
+          if (nodeDelta !== 0) return nodeDelta;
+          return compareCodepoint(left.portName, right.portName);
+        }),
+      outputs: [...macro.outputs]
+        .filter(isMacroPort)
+        .map((entry) => ({
+          ...entry,
+          label: readRequiredString(entry.label) ?? entry.id,
+          nodeId: readRequiredString(entry.nodeId) ?? '',
+          portName: readRequiredString(entry.portName) ?? '',
+        }))
+        .sort((left, right) => {
+          const labelDelta = compareCodepoint(left.label, right.label);
+          if (labelDelta !== 0) return labelDelta;
+          const nodeDelta = compareCodepoint(left.nodeId, right.nodeId);
+          if (nodeDelta !== 0) return nodeDelta;
+          return compareCodepoint(left.portName, right.portName);
+        }),
+      cluster: {
+        nodes: [...macro.cluster.nodes]
+          .map((node) => ({
+            ...node,
+            label: readOptionalString(node.label) ?? undefined,
+            originalId: readRequiredString(node.originalId) ?? '',
+            type: readRequiredString(node.type) ?? '',
+            x: readFiniteNumber(node.x, 0),
+            y: readFiniteNumber(node.y, 0),
+            config: cloneRecord(node.config) ?? {},
+            state: cloneRecord(node.state) ?? {},
+          }))
+          .sort((left, right) => compareCodepoint(left.originalId, right.originalId)),
+        connections: [...macro.cluster.connections]
+          .map((connection) => ({
+            ...connection,
+            fromOriginalId: readRequiredString(connection.fromOriginalId) ?? '',
+            fromPort: readRequiredString(connection.fromPort) ?? 'out',
+            toOriginalId: readRequiredString(connection.toOriginalId) ?? '',
+            toPort: readRequiredString(connection.toPort) ?? 'in',
+          }))
+          .sort((left, right) => {
+            const leftKey = `${left.fromOriginalId}.${left.fromPort}->${left.toOriginalId}.${left.toPort}`;
+            const rightKey = `${right.fromOriginalId}.${right.fromPort}->${right.toOriginalId}.${right.toPort}`;
+            return compareCodepoint(leftKey, rightKey);
+          }),
+      },
+      createdAt: readFiniteNumber(macro.createdAt, 0),
+    }))
+    .sort((left, right) => {
+      const createdDelta = left.createdAt - right.createdAt;
+      if (createdDelta !== 0) return createdDelta;
+      const nameDelta = compareCodepoint(left.name, right.name);
+      if (nameDelta !== 0) return nameDelta;
+      return compareCodepoint(left.id, right.id);
+    });
+};
+
 export const encodeRBProject = (project: RBProject) => {
   const sortedTags = project.meta?.tags ? [...project.meta.tags].sort((a, b) => compareCodepoint(a, b)) : undefined;
   const normalized = {
@@ -222,6 +299,7 @@ export const encodeRBProject = (project: RBProject) => {
     ioMapping: normalizeIoMapping(project.ioMapping),
     vectors: normalizeVectors(project.vectors),
     submodules: normalizeSubmodules(project.submodules),
+    macros: normalizeMacros(project.macros),
     meta: project.meta
       ? {
           ...project.meta,
@@ -284,6 +362,7 @@ export const normalizeRBProject = (value: unknown): RBProject => {
       ? { ...(value.traceMetadata as TraceMetadata) }
       : undefined,
     submodules: normalizeSubmodules(Array.isArray(value.submodules) ? value.submodules as SubmoduleEntry[] : undefined),
+    macros: normalizeMacros(Array.isArray(value.macros) ? value.macros as MacroDefinition[] : undefined),
     labSpec: isRecord(value.labSpec) ? { ...(value.labSpec as LabSpecV1) } : undefined,
     customComponents: Array.isArray(value.customComponents)
       ? value.customComponents.filter(isCompositeNodeDef)
@@ -481,4 +560,27 @@ function cloneRecord(value: unknown): Record<string, any> | undefined {
 
 function isCompositeNodeDef(value: unknown): value is CompositeNodeDef {
   return isRecord(value) && readRequiredString(value.name) !== null;
+}
+
+function isMacroPort(value: unknown): value is MacroDefinition['inputs'][number] {
+  return (
+    isRecord(value) &&
+    readRequiredString(value.id) !== null &&
+    readRequiredString(value.label) !== null &&
+    readRequiredString(value.nodeId) !== null &&
+    readRequiredString(value.portName) !== null
+  );
+}
+
+function isMacroDefinition(value: unknown): value is MacroDefinition {
+  return (
+    isRecord(value) &&
+    readRequiredString(value.id) !== null &&
+    readRequiredString(value.name) !== null &&
+    Array.isArray(value.inputs) &&
+    Array.isArray(value.outputs) &&
+    isRecord(value.cluster) &&
+    Array.isArray(value.cluster.nodes) &&
+    Array.isArray(value.cluster.connections)
+  );
 }

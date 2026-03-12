@@ -32,6 +32,16 @@ import { vhdlFromNetlist } from '../../../export/vhdlExport';
 import { synthesizableVerilogFromNetlist } from '../../../export/verilogExport';
 import { buildVhdlTopLevelBindings } from '../../../fpga/boards/basys3/basys3Bundle';
 import { getDesignChipMetadata } from '../designChipMetadata';
+import { serializeCluster, pasteCluster, type ClipboardCluster } from '../designClipboard';
+import {
+  analyzeMacroBoundary,
+  type MacroBoundaryAnalysis,
+  type MacroDefinition,
+  type MacroInstantiationResult,
+  type SaveMacroInput,
+} from '../macros/MacroLibrary';
+import { MacroLibraryPanel } from './MacroLibraryPanel';
+import { MacroSaveDialog } from './MacroSaveDialog';
 
 export interface DesignSurfaceProps {
   onOpenPalette?: () => void;
@@ -83,6 +93,13 @@ export interface DesignSurfaceProps {
   customComponentTypes?: Array<{ type: string; title: string; description: string }>;
   // C-5: External debug state from verification bridge
   externalDebugSignals?: Map<string, 0 | 1> | null;
+  macros?: MacroDefinition[];
+  onSaveMacro?: (input: Omit<SaveMacroInput, 'circuit'>) => MacroDefinition | null;
+  onDeleteMacro?: (macroId: string) => void;
+  onInstantiateMacro?: (
+    macroId: string,
+    position: { x: number; y: number }
+  ) => MacroInstantiationResult | null;
   externalDebugTick?: number | null;
   onClearExternalDebug?: () => void;
   // A2: Verify → Design signal linkage
@@ -215,6 +232,12 @@ interface DesignWireContextMenuState {
   signalKey: string | null;
 }
 
+interface DesignMacroDialogState {
+  analysis: MacroBoundaryAnalysis;
+  selectedNodeIds: Set<string>;
+  suggestedName: string;
+}
+
 interface DesignSignalSnapshot {
   currentValue: 0 | 1 | null;
   previousValue: 0 | 1 | null;
@@ -299,6 +322,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   externalDebugSignals,
   externalDebugTick,
   onClearExternalDebug,
+  macros = [],
+  onSaveMacro,
+  onDeleteMacro,
+  onInstantiateMacro,
   activeVerifySignal,
 }) => {
   const circuit = useCircuitStore((state) => state.circuit);
@@ -405,6 +432,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   // A-2: Inline node label editor state
   const [editingLabelNodeId, setEditingLabelNodeId] = useState<string | null>(null);
   const [labelDraft, setLabelDraft] = useState('');
+
+  // CP-1: Clipboard state for deterministic copy/paste
+  const [clipboard, setClipboard] = useState<ClipboardCluster | null>(null);
+  const [macroDialogState, setMacroDialogState] = useState<DesignMacroDialogState | null>(null);
+  const [activeMacroInsertionId, setActiveMacroInsertionId] = useState<string | null>(null);
 
   // V-2: Fanin path tracer — highlights all wires/nodes feeding the clicked port
   const [traceState, setTraceState] = useState<DesignTraceState | null>(null);
@@ -518,6 +550,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     };
   }, [setEngine, setTickEngine, tickEngine]);
 
+  const activeInsertionMacro = useMemo(
+    () => macros.find((entry) => entry.id === activeMacroInsertionId) ?? null,
+    [activeMacroInsertionId, macros]
+  );
+
   useEffect(() => {
     tickEngine.setCircuit(editorCircuit);
   }, [editorCircuit, tickEngine]);
@@ -588,6 +625,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }, 1800);
     return () => window.clearTimeout(timeout);
   }, [actionToast]);
+
+  // CP-1: Copy selected nodes into in-memory clipboard
+  const PASTE_OFFSET = { x: 40, y: 40 };
+  const handleCopy = useCallback(() => {
+    if (selection.nodes.size === 0) return;
+    const cluster = serializeCluster(circuit, selection.nodes);
+    setClipboard(cluster);
+    setActionToast(`Copied ${cluster.nodes.length} node${cluster.nodes.length !== 1 ? 's' : ''}.`);
+  }, [circuit, selection.nodes]);
+
+  // CP-1: Paste clipboard cluster into circuit, then select all new nodes
+  const handlePaste = useCallback(() => {
+    if (!clipboard || clipboard.nodes.length === 0) return;
+    const result = pasteCluster(circuit, clipboard, PASTE_OFFSET);
+    const next = {
+      nodes: [...circuit.nodes, ...result.pastedNodes],
+      connections: [...circuit.connections, ...result.pastedConnections],
+    };
+    updateCircuit(next);
+    selectMultipleNodes(result.pastedNodes.map((n) => n.id));
+    setActionToast(`Pasted ${result.pastedNodes.length} node${result.pastedNodes.length !== 1 ? 's' : ''}.`);
+    onCircuitMutated?.();
+  }, [circuit, clipboard, updateCircuit, selectMultipleNodes, onCircuitMutated]);
 
   useEffect(() => {
     if (!diagnosticRouteRequest) return;
@@ -1022,6 +1082,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       selectedNodeIds.length > 0 ? editorCircuit.nodes.find((node) => node.id === selectedNodeIds[0]) : undefined,
     [editorCircuit.nodes, selectedNodeIds]
   );
+  const suggestedMacroName = useMemo(
+    () => (selectedNodeIdsAll.length > 0 ? `Macro_${selectedNodeIdsAll.length}` : 'My Macro'),
+    [selectedNodeIdsAll.length]
+  );
 
   // ── N-1: resolve a raw connection endpoint to { nodeId, portName } ──────────
   const resolveConnectionEndpoint = useCallback(
@@ -1127,6 +1191,91 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     savedToastTimerRef.current = setTimeout(() => setSavedComponentToast(null), 3000);
   }, [saveComponentName, onSaveAsComponent, buildCompositeDefFromSelection]);
 
+  const openMacroDialog = useCallback(() => {
+    const selectedIds = new Set(selectedNodeIdsAll);
+    setMacroDialogState({
+      analysis: analyzeMacroBoundary(circuit, selectedIds),
+      selectedNodeIds: selectedIds,
+      suggestedName: suggestedMacroName,
+    });
+  }, [circuit, selectedNodeIdsAll, suggestedMacroName]);
+
+  const handleSaveMacro = useCallback(
+    (input: {
+      name: string;
+      description?: string;
+      selectedInputIds: string[];
+      selectedOutputIds: string[];
+    }) => {
+      if (!onSaveMacro || !macroDialogState) return;
+      try {
+        const macro = onSaveMacro({
+          selectedNodeIds: macroDialogState.selectedNodeIds,
+          name: input.name,
+          description: input.description,
+          selectedInputIds: input.selectedInputIds,
+          selectedOutputIds: input.selectedOutputIds,
+        });
+        if (!macro) return;
+        clearSelection();
+        setMacroDialogState(null);
+        setActionToast(`Saved macro "${macro.name}".`);
+      } catch (error) {
+        setActionToast(error instanceof Error ? error.message : 'Failed to save macro.');
+      }
+    },
+    [clearSelection, macroDialogState, onSaveMacro]
+  );
+
+  const handleSelectMacro = useCallback(
+    (macroId: string) => {
+      if (!onInstantiateMacro) return;
+      setToolMode('select');
+      setActiveMacroInsertionId((previous) => (previous === macroId ? null : macroId));
+    },
+    [onInstantiateMacro, setToolMode]
+  );
+
+  const handleDeleteMacro = useCallback(
+    (macroId: string) => {
+      onDeleteMacro?.(macroId);
+      setActiveMacroInsertionId((previous) => (previous === macroId ? null : previous));
+      setActionToast('Deleted macro from library.');
+    },
+    [onDeleteMacro]
+  );
+
+  const handleInsertMacroOnCanvas = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (!activeInsertionMacro || !onInstantiateMacro || !canvasHostRef.current) return;
+      const rect = canvasHostRef.current.getBoundingClientRect();
+      const localX = event.clientX - rect.left;
+      const localY = event.clientY - rect.top;
+      const position = {
+        x: (localX - camera.x) / camera.zoom,
+        y: (localY - camera.y) / camera.zoom,
+      };
+      const result = onInstantiateMacro(activeInsertionMacro.id, position);
+      if (result?.insertedNodeIds.length) {
+        selectMultipleNodes(result.insertedNodeIds);
+      }
+      if (result) {
+        setActionToast(`Inserted ${result.instanceLabel}.`);
+        onCircuitMutated?.();
+      }
+      setActiveMacroInsertionId(null);
+    },
+    [
+      activeInsertionMacro,
+      camera.x,
+      camera.y,
+      camera.zoom,
+      onCircuitMutated,
+      onInstantiateMacro,
+      selectMultipleNodes,
+    ]
+  );
+
   useEffect(() => {
     if (!selectedNode) return;
     const row = ioRowByNodeId.get(selectedNode.id) ?? ioRowByNodeId.get(`${selectedNode.id}.out`);
@@ -1212,7 +1361,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             : 'Idle';
   const toolHint =
     interactionMode === 'boxSelecting'
-      ? 'Drag to marquee-select multiple nodes. Hold Shift to add to selection.'
+      ? 'Drag to marquee-select multiple nodes. Hold Ctrl/Cmd or Shift to add to selection.'
       : toolMode === 'wire'
         ? wireStartPort
           ? 'Hover valid sinks in green, then click to connect. Esc cancels the wire.'
@@ -1543,13 +1692,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           && (event.key === 'g' || event.key === 'G') && !isTextInput) {
         event.preventDefault();
         toggleSnapToGrid();
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key === 'c' && !isTextInput) {
+        event.preventDefault();
+        handleCopy();
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key === 'v' && !isTextInput) {
+        event.preventDefault();
+        handlePaste();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [toggleSnapToGrid]);
+  }, [handleCopy, handlePaste, toggleSnapToGrid]);
 
   useEffect(() => {
     const pending = pendingDebugToggleRef.current;
@@ -1591,6 +1752,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   ]);
 
   return (
+    <>
     <IdeSurfaceLayout
       mode="design"
       consoleHasBlocking={compilerErrorCount > 0}
@@ -1774,6 +1936,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <span className="ide-design-inspector-hint">No selection</span>
             )}
           </div>
+          <MacroLibraryPanel
+            macros={macros}
+            activeMacroId={activeMacroInsertionId}
+            onSelectMacro={handleSelectMacro}
+            onDeleteMacro={onDeleteMacro ? handleDeleteMacro : undefined}
+          />
           <IdeInspectorAccordion defaultOpenId="design-context">
           <IdeInspectorSection title="Context Inspector" accordionId="design-context" testId="ide-design-context-inspector">
             {selectedNode && selection.nodes.size === 1 ? (
@@ -2323,6 +2491,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <p className="ide-copy">
                   Bulk actions: drag to move as a unit, press Delete to remove selection, Ctrl+Z to restore.
                 </p>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
+                    Copy ({selection.nodes.size})
+                  </IdeButton>
+                  {clipboard && (
+                    <IdeButton tone="secondary" onClick={handlePaste} testId="ide-design-paste-btn">
+                      Paste
+                    </IdeButton>
+                  )}
+                  {onSaveMacro && selectedNodeIdsAll.length >= 2 && (
+                    <IdeButton tone="secondary" onClick={openMacroDialog} testId="ide-design-save-macro-open">
+                      Save as Macro...
+                    </IdeButton>
+                  )}
+                </div>
                 <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
                   Delete selected nodes
                 </IdeButton>
@@ -2964,6 +3147,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         {actionToast}
                       </div>
                     )}
+                    {activeInsertionMacro ? (
+                      <button
+                        type="button"
+                        className="ide-macro-insertion-overlay"
+                        data-testid="ide-macro-insertion-overlay"
+                        onClick={handleInsertMacroOnCanvas}
+                      >
+                        <span className="ide-macro-insertion-overlay-card">
+                          Click to place {activeInsertionMacro.name}
+                        </span>
+                      </button>
+                    ) : null}
                     {wireContextMenu ? (
                       <div
                         className="ide-design-wire-context-menu"
@@ -3199,7 +3394,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
           </div>
         </IdePanel>
-    </IdeSurfaceLayout>
+      </IdeSurfaceLayout>
+      <MacroSaveDialog
+        isOpen={macroDialogState !== null}
+        analysis={macroDialogState?.analysis ?? null}
+        defaultName={macroDialogState?.suggestedName}
+        onClose={() => setMacroDialogState(null)}
+        onSave={handleSaveMacro}
+      />
+    </>
   );
 };
 

@@ -5,6 +5,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { DesignSurface } from '../surfaces/DesignSurface';
 import type { RuntimeSimState } from '../projectRuntime';
+import type { MacroDefinition } from '../macros/MacroLibrary';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
@@ -130,6 +131,30 @@ function renderSurface(
   );
 }
 
+const FIXTURE_MACRO: MacroDefinition = {
+  id: 'macro-and-gate',
+  name: 'AND Gate',
+  createdAt: 1710000000000,
+  inputs: [
+    { id: 'input:node-v2-1.a', label: 'A', nodeId: 'node-v2-1', portName: 'a' },
+    { id: 'input:node-v2-1.b', label: 'B', nodeId: 'node-v2-1', portName: 'b' },
+  ],
+  outputs: [{ id: 'output:node-v2-1.out', label: 'Q', nodeId: 'node-v2-1', portName: 'out' }],
+  cluster: {
+    nodes: [
+      {
+        originalId: 'node-v2-1',
+        type: 'AND',
+        x: 0,
+        y: 0,
+        config: {},
+        state: {},
+      },
+    ],
+    connections: [],
+  },
+};
+
 beforeEach(() => {
   vi.restoreAllMocks();
   installResizeObserver(1320);
@@ -219,3 +244,46 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-shortcut-strip').textContent).toContain('Split stacked');
   });
 });
+  it('shows the save-as-macro action and dialog when multiple nodes are selected', async () => {
+    const onSaveMacro = vi.fn();
+    const view = renderSurface({
+      macros: [],
+      onSaveMacro,
+    });
+
+    act(() => {
+      useLogicViewStore.getState().selectMultipleNodes(['sw0_node', 'ld0_node']);
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-save-macro-open')).toBeTruthy();
+    });
+
+    fireEvent.click(view.getByTestId('ide-design-save-macro-open'));
+
+    expect(view.getByTestId('ide-macro-save-dialog')).toBeTruthy();
+    expect(view.getByTestId('ide-macro-save-name')).toBeTruthy();
+  });
+
+  it('enters macro insertion mode from the library and instantiates on canvas click', async () => {
+    const onInstantiateMacro = vi.fn(() => ({
+      instanceLabel: 'AND_Gate_1',
+      insertedNodeIds: ['node-v2-5'],
+    }));
+
+    const view = renderSurface({
+      macros: [FIXTURE_MACRO],
+      onInstantiateMacro,
+    });
+
+    fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
+
+    const overlay = view.getByTestId('ide-macro-insertion-overlay');
+    expect(overlay.textContent).toContain('AND Gate');
+
+    fireEvent.click(overlay, { clientX: 600, clientY: 320 });
+
+    await waitFor(() => {
+      expect(onInstantiateMacro).toHaveBeenCalledWith('macro-and-gate', expect.any(Object));
+    });
+  });

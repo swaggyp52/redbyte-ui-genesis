@@ -79,6 +79,51 @@ describe('RBProject roundtrip serialization (IDE)', () => {
     expect(decoded.vectors?.[2].expected.cout).toBe(1);
   });
 
+  it('should preserve macros through roundtrip', () => {
+    const now = new Date().toISOString();
+    const project = createRBProject({
+      name: 'macro-project',
+      circuit: { nodes: [], connections: [] },
+      createdAt: now,
+      macros: [
+        {
+          id: 'macro-majority',
+          name: 'Majority Vote',
+          description: 'Reusable three-input majority cluster',
+          createdAt: 1710000000000,
+          inputs: [
+            { id: 'in-a', label: 'A', nodeId: 'node-v2-1', portName: 'a' },
+            { id: 'in-b', label: 'B', nodeId: 'node-v2-1', portName: 'b' },
+            { id: 'in-c', label: 'C', nodeId: 'node-v2-2', portName: 'a' },
+          ],
+          outputs: [{ id: 'out-q', label: 'Q', nodeId: 'node-v2-3', portName: 'out' }],
+          cluster: {
+            nodes: [
+              {
+                originalId: 'node-v2-1',
+                type: 'AND',
+                x: 0,
+                y: 0,
+                config: {},
+                state: {},
+              },
+            ],
+            connections: [],
+          },
+        },
+      ],
+    });
+
+    const encoded = encodeRBProject(project);
+    const decoded = decodeRBProject(encoded);
+
+    expect(decoded.macros).toHaveLength(1);
+    expect(decoded.macros?.[0].name).toBe('Majority Vote');
+    expect(decoded.macros?.[0].inputs).toHaveLength(3);
+    expect(decoded.macros?.[0].outputs[0].label).toBe('Q');
+    expect(decoded.macros?.[0].cluster.nodes[0].type).toBe('AND');
+  });
+
   it('should preserve trace metadata through roundtrip', () => {
     const now = new Date().toISOString();
     const project = createRBProject({

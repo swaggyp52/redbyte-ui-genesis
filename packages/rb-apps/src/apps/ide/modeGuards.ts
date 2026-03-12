@@ -22,6 +22,7 @@ const PROJECT_FIELDS: readonly ProjectField[] = [
   'vectors',
   'traceMetadata',
   'submodules',
+  'macros',
   'meta',
 ] as const;
 
@@ -30,10 +31,10 @@ const ALWAYS_ALLOWED_FIELDS: readonly ProjectField[] = ['updatedAt'];
 
 export const MODE_MUTATION_ALLOWLIST: Readonly<Record<IDEMode, readonly ProjectField[]>> = {
   project: ['name', 'description', 'meta', 'layout'],
-  design: ['circuit', 'layout', 'submodules'],
+  design: ['circuit', 'layout', 'submodules', 'macros'],
   verify: ['vectors', 'traceMetadata', 'recorder', 'probes', 'oscilloscope'],
   export: ['hdl', 'fpga', 'ioMapping', 'meta'],
-  import: ['name', 'description', 'circuit', 'hdl', 'fpga', 'ioMapping', 'vectors', 'submodules', 'layout', 'meta', 'probes', 'oscilloscope', 'recorder', 'traceMetadata'],
+  import: ['name', 'description', 'circuit', 'hdl', 'fpga', 'ioMapping', 'vectors', 'submodules', 'macros', 'layout', 'meta', 'probes', 'oscilloscope', 'recorder', 'traceMetadata'],
 };
 
 const serializeValue = (value: unknown): string => {

@@ -143,6 +143,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
       // ---- Left-click (not space) ----
       if (e.button === 0 && !isSpacePressed) {
         const target = e.target as Element;
+        const addToSelection = e.shiftKey || e.ctrlKey || e.metaKey;
 
         // If a port was clicked, let the port handler deal with it.
         if (target.closest('[data-port-id]')) return;
@@ -165,9 +166,9 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
           setDragDelta({ x: 0, y: 0 });
 
           const isAlreadySelected = selectedNodeIds.has(nodeId);
-          const preserveMultiSelection = isAlreadySelected && selectedNodeIds.size > 1 && !e.shiftKey;
+          const preserveMultiSelection = isAlreadySelected && selectedNodeIds.size > 1 && !addToSelection;
           if (!preserveMultiSelection) {
-            onNodeSelect(nodeId, e.shiftKey);
+            onNodeSelect(nodeId, addToSelection);
           }
           e.currentTarget.setPointerCapture(e.pointerId);
           return;
@@ -337,7 +338,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
               })
               .map((node) => node.id);
 
-            onMarqueeCommit?.(selectedIds, e.shiftKey);
+            onMarqueeCommit?.(selectedIds, e.shiftKey || e.ctrlKey || e.metaKey);
           }
         }
 

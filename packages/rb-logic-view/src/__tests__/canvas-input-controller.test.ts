@@ -37,6 +37,8 @@ function makePointerEvent(
     clientX?: number;
     clientY?: number;
     shiftKey?: boolean;
+    ctrlKey?: boolean;
+    metaKey?: boolean;
     target?: Element;
     currentTarget?: any;
   } = {},
@@ -48,6 +50,8 @@ function makePointerEvent(
     clientX: opts.clientX ?? 0,
     clientY: opts.clientY ?? 0,
     shiftKey: opts.shiftKey ?? false,
+    ctrlKey: opts.ctrlKey ?? false,
+    metaKey: opts.metaKey ?? false,
     pointerId: 1,
     target: opts.target ?? document.createElement('div'),
     currentTarget: opts.currentTarget ?? {
@@ -154,6 +158,26 @@ describe('useCanvasInput — state machine', () => {
     });
 
     expect(onNodeSelect).toHaveBeenCalledWith('node-1', false);
+  });
+
+  it('ctrl/cmd click on node adds it to the current selection', () => {
+    const onNodeSelect = vi.fn();
+    const nodeEl = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    nodeEl.setAttribute('data-node-id', 'node-1');
+    const target = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    nodeEl.appendChild(target);
+
+    const { result } = renderHook(() =>
+      useCanvasInput(makeOptions({ onNodeSelect })),
+    );
+
+    act(() => {
+      result.current.onPointerDown(
+        makePointerEvent('pointerdown', { button: 0, ctrlKey: true, target }),
+      );
+    });
+
+    expect(onNodeSelect).toHaveBeenCalledWith('node-1', true);
   });
 
   it('does not start drag until 3px threshold exceeded', () => {
