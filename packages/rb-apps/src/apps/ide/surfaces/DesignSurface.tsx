@@ -142,6 +142,11 @@ export interface DesignSurfaceProps {
   externalDebugTick?: number | null;
   externalDebugContext?: VerifyDebugContext | null;
   onClearExternalDebug?: () => void;
+  // C-5b: Tick navigation within the debug waveform
+  onPrevDebugTick?: () => void;
+  onNextDebugTick?: () => void;
+  debugTickIndex?: number;
+  debugTickCount?: number;
   // A2: Verify → Design signal linkage
   activeVerifySignal?: string | null;
 }
@@ -367,6 +372,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   externalDebugTick,
   externalDebugContext,
   onClearExternalDebug,
+  onPrevDebugTick,
+  onNextDebugTick,
+  debugTickIndex,
+  debugTickCount,
   activeVerifySignal,
 }) => {
   const circuit = useCircuitStore((state) => state.circuit);
@@ -3161,6 +3170,32 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <span className="ide-design-debug-banner-hint">
                           Canvas frozen at verification tick {externalDebugTick}.
                         </span>
+                        {/* C-5b: Tick navigation controls */}
+                        {(onPrevDebugTick || onNextDebugTick) && (
+                          <div className="ide-design-debug-nav" data-testid="ide-design-debug-nav">
+                            <IdeButton
+                              tone="ghost"
+                              onClick={onPrevDebugTick}
+                              disabled={debugTickIndex === 0 || debugTickIndex == null}
+                              testId="ide-design-debug-prev"
+                            >
+                              ← Prev
+                            </IdeButton>
+                            {debugTickIndex != null && debugTickCount != null && (
+                              <span data-testid="ide-design-debug-tick-position">
+                                {debugTickIndex + 1} / {debugTickCount}
+                              </span>
+                            )}
+                            <IdeButton
+                              tone="ghost"
+                              onClick={onNextDebugTick}
+                              disabled={debugTickIndex == null || debugTickCount == null || debugTickIndex >= debugTickCount - 1}
+                              testId="ide-design-debug-next"
+                            >
+                              Next →
+                            </IdeButton>
+                          </div>
+                        )}
                         {activeDebugContext && (
                           <div className="ide-design-failure-brief" data-testid="ide-design-failure-brief">
                             <span className="ide-design-failure-brief-summary">

@@ -123,6 +123,8 @@ export const IdeApp: React.FC = () => {
     signals: Map<string, 0 | 1>;
     context: VerifyDebugContext | null;
   } | null>(null);
+  // C-1b: Index into verifyLastRun.waveform for tick navigation
+  const [debugTickIndex, setDebugTickIndex] = useState<number | null>(null);
   // A2: Verify → Design signal linkage
   const [verifySelectedSignal, setVerifySelectedSignal] = useState<string | null>(null);
   const sessionMetaRef = useRef<LabSessionMeta | null>(null);
@@ -370,10 +372,42 @@ export const IdeApp: React.FC = () => {
       signals: new Map(Object.entries(signals) as [string, 0 | 1][]),
       context: context ?? null,
     });
+    const waveform = verifyLastRun?.waveform ?? [];
+    const idx = waveform.findIndex((s) => s.tick === tick);
+    setDebugTickIndex(idx >= 0 ? idx : null);
     setCurrentMode('design');
+  }, [verifyLastRun]);
+
+  const handleClearDebugState = useCallback(() => {
+    setDebugState(null);
+    setDebugTickIndex(null);
   }, []);
 
-  const handleClearDebugState = useCallback(() => setDebugState(null), []);
+  const handlePrevDebugTick = useCallback(() => {
+    if (debugTickIndex == null || !verifyLastRun) return;
+    const newIndex = debugTickIndex - 1;
+    if (newIndex < 0) return;
+    const sample = verifyLastRun.waveform[newIndex];
+    if (!sample) return;
+    const signals = new Map<string, 0 | 1>(
+      Object.entries(sample.signals).map(([k, v]) => [k, v === '1' ? 1 : 0])
+    );
+    setDebugState({ tick: sample.tick, signals, context: null });
+    setDebugTickIndex(newIndex);
+  }, [debugTickIndex, verifyLastRun]);
+
+  const handleNextDebugTick = useCallback(() => {
+    if (debugTickIndex == null || !verifyLastRun) return;
+    const newIndex = debugTickIndex + 1;
+    if (newIndex >= verifyLastRun.waveform.length) return;
+    const sample = verifyLastRun.waveform[newIndex];
+    if (!sample) return;
+    const signals = new Map<string, 0 | 1>(
+      Object.entries(sample.signals).map(([k, v]) => [k, v === '1' ? 1 : 0])
+    );
+    setDebugState({ tick: sample.tick, signals, context: null });
+    setDebugTickIndex(newIndex);
+  }, [debugTickIndex, verifyLastRun]);
 
   const handleDesignMutation = useCallback(() => {
     markDesignMutated(useCircuitStore.getState().circuit);
@@ -1300,6 +1334,10 @@ export const IdeApp: React.FC = () => {
               externalDebugTick={debugState?.tick ?? null}
               externalDebugContext={debugState?.context ?? null}
               onClearExternalDebug={handleClearDebugState}
+              onPrevDebugTick={handlePrevDebugTick}
+              onNextDebugTick={handleNextDebugTick}
+              debugTickIndex={debugTickIndex ?? undefined}
+              debugTickCount={verifyLastRun?.waveform.length}
               activeVerifySignal={verifySelectedSignal}
             />
           </ErrorBoundary>
