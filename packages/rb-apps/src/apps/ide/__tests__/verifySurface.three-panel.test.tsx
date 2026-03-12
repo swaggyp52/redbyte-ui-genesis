@@ -100,4 +100,56 @@ describe('VerifySurface three-panel workstation', () => {
     expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld1');
     expect(getByTestId('ide-verify-right-tick').textContent).toContain('t5');
   });
+
+  it('marks the selected waveform lane so signal selection is visually coupled', () => {
+    const run = makeFailRun();
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="three-panel-hash"
+        hasVectors={true}
+        lastRun={run}
+        vectors={run.report.vectors as never}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', label: 'SW0', direction: 'in' },
+          { id: 'ld0', label: 'LD0', direction: 'out' },
+          { id: 'ld1', label: 'LD1', direction: 'out' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    fireEvent.click(getByTestId('ide-verify-vector-row-5-ld1-ld1-vec-03-1'));
+
+    expect(getByTestId('ide-verify-waveform-row-ld1').getAttribute('data-selected')).toBe('true');
+    expect(getByTestId('ide-verify-waveform-row-ld0').getAttribute('data-selected')).toBe('false');
+  });
+
+  it('supports arrow-key tick navigation from the waveform viewport', () => {
+    const run = makeFailRun();
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="three-panel-hash"
+        hasVectors={true}
+        lastRun={run}
+        vectors={run.report.vectors as never}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', label: 'SW0', direction: 'in' },
+          { id: 'ld0', label: 'LD0', direction: 'out' },
+          { id: 'ld1', label: 'LD1', direction: 'out' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    const waveformViewport = getByTestId('ide-verify-waveform-scroll');
+    waveformViewport.focus();
+
+    fireEvent.keyDown(waveformViewport, { key: 'ArrowRight' });
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t3');
+
+    fireEvent.keyDown(waveformViewport, { key: 'ArrowLeft' });
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
+  });
 });

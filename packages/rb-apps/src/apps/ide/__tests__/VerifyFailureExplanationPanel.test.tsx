@@ -20,10 +20,13 @@ describe('VerifyFailureExplanationPanel', () => {
       />
     );
 
+    expect(getByTestId('ide-verify-right-summary').textContent).toContain('At t5');
+    expect(getByTestId('ide-verify-right-summary').textContent).toContain('LED0');
     expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('LED0');
     expect(getByTestId('ide-verify-right-expected').textContent).toContain('1');
     expect(getByTestId('ide-verify-right-actual').textContent).toContain('0');
     expect(getByTestId('ide-verify-right-likely-reason').textContent).toContain('expected 1, got 0');
+    expect(getByTestId('ide-verify-right-next-step').textContent).toContain('LED0');
   });
 
   it('shows an empty-state message when no failure is selected', () => {

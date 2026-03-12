@@ -42,6 +42,9 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
           <p className="ide-copy">Select a failing vector row to inspect expected vs actual output.</p>
         ) : (
           <div className="ide-kv-list">
+            <p className="ide-verify-right-summary-text" data-testid="ide-verify-right-summary">
+              At t{failure.tick} — {failure.signal} is {failure.actual}, expected {failure.expected}
+            </p>
             <div className="ide-kv-row">
               <span>Signal key</span>
               <code data-testid="ide-verify-right-signal-key">{failure.signal}</code>
@@ -62,6 +65,12 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
               <span>Likely reason</span>
               <span data-testid="ide-verify-right-likely-reason">
                 {classification?.message ?? 'Output driver mismatch - check expected vs actual signals'}
+              </span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Next step</span>
+              <span data-testid="ide-verify-right-next-step">
+                Check the gate driving {failure.signal} in Design
               </span>
             </div>
 

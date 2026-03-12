@@ -32,6 +32,16 @@ describe('VerifyVectorListPanel', () => {
     expect(onSelectFailureKey).toHaveBeenCalledWith(rows[1].key);
   });
 
+  it('marks only the selected row as current for assistive technology', () => {
+    const onSelectFailureKey = vi.fn();
+    const { getByTestId } = render(
+      <VerifyVectorListPanel rows={rows} selectedKey={rows[0].key} onSelectFailureKey={onSelectFailureKey} />
+    );
+
+    expect(getByTestId('ide-verify-vector-row-1-ld0-ld0-vec-01-0').getAttribute('aria-current')).toBe('true');
+    expect(getByTestId('ide-verify-vector-row-5-ld1-ld1-vec-02-1').getAttribute('aria-current')).toBeNull();
+  });
+
   it('supports Arrow and J/K keyboard navigation', () => {
     const onSelectFailureKey = vi.fn();
     const { getByTestId } = render(

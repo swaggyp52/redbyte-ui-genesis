@@ -160,6 +160,7 @@ const WaveformViewer: React.FC<{
   signalMeta?: Map<string, { direction: 'in' | 'out'; pin?: string }>;
   isSequential?: boolean;
   onHoverSignal?: (signal: string | null) => void;
+  selectedSignal?: string | null;
 }> = ({
   signals,
   ticks,
@@ -177,6 +178,7 @@ const WaveformViewer: React.FC<{
   signalMeta,
   isSequential = false,
   onHoverSignal,
+  selectedSignal = null,
 }) => {
   const LABEL_W = 140;
   const ROW_H = rowHeight;
@@ -303,6 +305,7 @@ const WaveformViewer: React.FC<{
           <g
             key={signalRow.signal}
             data-testid={`ide-verify-waveform-row-${toTestId(signalRow.signal)}`}
+            data-selected={selectedSignal === signalRow.signal ? 'true' : 'false'}
           >
             {/* Alternating row background */}
             <rect
@@ -3367,6 +3370,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   ref={waveformScrollRef}
                   onWheel={handleWaveformWheel}
                   data-layout-mode={layoutMode}
+                  data-testid="ide-verify-waveform-scroll"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+                    if (timelineTicks.length === 0) return;
+                    e.preventDefault();
+                    setSelectedTick((prev) => {
+                      const idx = prev !== null ? timelineTicks.indexOf(prev) : -1;
+                      if (e.key === 'ArrowRight') {
+                        return timelineTicks[Math.min(timelineTicks.length - 1, idx + 1)] ?? timelineTicks[0];
+                      }
+                      return timelineTicks[Math.max(0, idx - 1)] ?? timelineTicks[0];
+                    });
+                  }}
                 >
                 <WaveformViewer
                   signals={displaySignalTimeline}
@@ -3384,6 +3401,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   signalMeta={signalMetaMap}
                   isSequential={isSequentialRun}
                   onHoverSignal={handleSignalHover}
+                  selectedSignal={selectedSignal}
                   emptyMessage={
                     lastRun
                       ? 'No waveform data in this run — check I/O mapping in Design'

@@ -97,6 +97,7 @@ export const VerifyVectorListPanel: React.FC<VerifyVectorListPanelProps> = ({
                 className={`ide-verify-vector-row${isSelected ? ' is-selected' : ''}`}
                 onClick={() => onSelectFailureKey(row.key)}
                 data-testid={`ide-verify-vector-row-${toTestId(row.key)}`}
+                aria-current={isSelected ? 'true' : undefined}
               >
                 <span className="ide-verify-vector-row-primary">
                   <code>{row.signal}</code>
