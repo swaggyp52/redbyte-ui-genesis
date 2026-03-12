@@ -975,18 +975,20 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   </IdeCallout>
                 )}
                 {!hasBlockingErrors && hasVerifyEvidenceWarning && (
-                  <IdeCallout tone="warn" title="Verification is advisory here" testId="ide-export-unverified-callout">
-                    <p className="ide-copy" style={{ margin: 0 }}>
-                      The generated text files are available now. A passing Verify run is still recommended before trusting the handoff for final hardware evidence.
-                    </p>
-                    {onOpenVerify && (
-                      <div style={{ marginTop: 'var(--ide-space-2)' }}>
-                        <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-open-verify-advisory">
-                          Open Verify
-                        </IdeButton>
-                      </div>
-                    )}
-                  </IdeCallout>
+                  <div data-testid="ide-export-blockers-callout">
+                    <IdeCallout tone="warn" title="Verification is required before trusted handoff" testId="ide-export-unverified-callout">
+                      <p className="ide-copy" style={{ margin: 0 }}>
+                        The generated text files are available now, but the Vivado handoff is not trustworthy until Verify has a current PASS/FAIL result.
+                      </p>
+                      {onOpenVerify && (
+                        <div style={{ marginTop: 'var(--ide-space-2)' }}>
+                          <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-open-verify-advisory">
+                            Open Verify
+                          </IdeButton>
+                        </div>
+                      )}
+                    </IdeCallout>
+                  </div>
                 )}
 
                 {downloadError.length > 0 && (

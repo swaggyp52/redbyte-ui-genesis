@@ -15,6 +15,7 @@ import {
   type IdeDiagnosticSeverity,
 } from '../diagnostics';
 import { buildBringUpArtifacts } from '../bringupArtifacts';
+import { getStudentFacingIoLabel } from '../ioLabels';
 import { flattenProjectMacros } from '../macros/macroFlattener';
 
 export type ExportDiagnosticSeverity = 'error' | 'warning';
@@ -515,6 +516,7 @@ function collectBringUpIoRows(project: RBProject): Array<{
   id: string;
   nodeId?: string;
   label: string;
+  port?: string;
   direction: 'in' | 'out';
   pin: string;
   required: boolean;
@@ -523,6 +525,7 @@ function collectBringUpIoRows(project: RBProject): Array<{
     id: string;
     nodeId?: string;
     label: string;
+    port?: string;
     direction: 'in' | 'out';
     pin: string;
     required: boolean;
@@ -532,7 +535,8 @@ function collectBringUpIoRows(project: RBProject): Array<{
     rows.push({
       id: input.id,
       nodeId: input.nodeId,
-      label: (input.label ?? input.id).trim() || input.id,
+      label: (input.label ?? '').trim(),
+      port: input.port,
       direction: 'in',
       pin: input.pin ?? '',
       required: true,
@@ -543,7 +547,8 @@ function collectBringUpIoRows(project: RBProject): Array<{
     rows.push({
       id: output.id,
       nodeId: output.nodeId,
-      label: (output.label ?? output.id).trim() || output.id,
+      label: (output.label ?? '').trim(),
+      port: output.port,
       direction: 'out',
       pin: output.pin ?? '',
       required: true,
@@ -731,11 +736,10 @@ function resolveMappingPortName(entry: {
   port: string;
   label?: string;
 }): string {
-  const label = (entry.label ?? '').trim();
-  if (label.length > 0) return label;
-  const id = (entry.id ?? '').trim();
-  if (id.length > 0) return id;
-  return `${entry.nodeId}.${entry.port}`;
+  const fallback = entry.port.trim()
+    ? `${entry.nodeId}.${entry.port}`
+    : entry.id;
+  return getStudentFacingIoLabel(entry, fallback);
 }
 
 function normalizePin(value?: string): string | undefined {

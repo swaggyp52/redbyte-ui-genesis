@@ -361,6 +361,14 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
     result.bundle.testbench = generateTestbenchVhdl(project, project.vectors);
   }
 
+  // Cross-artifact consistency guard: testbench component ports must agree with entity ports.
+  if (result.bundle.testbench) {
+    const inconsistencies = validateArtifactConsistency(result.bundle.topVhd, result.bundle.testbench);
+    for (const msg of inconsistencies) {
+      result.errors.push({ type: 'unknown', severity: 'error', message: msg });
+    }
+  }
+
   // Step 4: Compute determinism hash
   // Use the encoded project + bundle to detect any non-determinism
   const projectJson = JSON.stringify(project, Object.keys(project).sort());
@@ -370,6 +378,77 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
   result.success = result.errors.length === 0;
 
   return result;
+}
+
+/**
+ * Cross-artifact consistency check: verifies that the generated testbench's
+ * component declaration agrees with the top-level entity declaration in top.vhd.
+ *
+ * Returns error messages for any disagreement found; empty array = consistent.
+ * Exported for direct unit testing.
+ */
+export function validateArtifactConsistency(topVhd: string, testbenchVhd: string): string[] {
+  const inconsistencies: string[] = [];
+
+  const entityNameMatch = topVhd.match(/\bentity\s+([A-Za-z_][A-Za-z0-9_]*)\s+is\b/i);
+  const entityName = entityNameMatch?.[1]?.trim();
+  if (!entityName) {
+    inconsistencies.push('Artifact consistency: could not extract entity name from top.vhd.');
+    return inconsistencies;
+  }
+
+  const entityPorts = extractVhdlEntityPortNames(topVhd);
+
+  // Locate component block; if absent (empty testbench / no vectors) there is nothing to check.
+  const componentMatch = testbenchVhd.match(
+    /\bcomponent\s+([A-Za-z_][A-Za-z0-9_]*)\s+is[\s\S]*?port\s*\(([^]*?)\)\s*;\s*end\s+component/i
+  );
+  if (!componentMatch) return inconsistencies;
+
+  const componentName = componentMatch[1].trim();
+  if (componentName.toLowerCase() !== entityName.toLowerCase()) {
+    inconsistencies.push(
+      `Artifact consistency: testbench component "${componentName}" does not match top.vhd entity "${entityName}". Fix: regenerate both artifacts from the same project state.`
+    );
+  }
+
+  const componentPorts = componentMatch[2]
+    .split(';')
+    .map((e) => e.trim())
+    .filter((e) => e.length > 0)
+    .map((e) => e.split(':')[0]?.trim() ?? '')
+    .filter((e) => e.length > 0);
+
+  const entityPortSet = new Set(entityPorts.map((p) => p.toLowerCase()));
+  const componentPortSet = new Set(componentPorts.map((p) => p.toLowerCase()));
+
+  for (const port of componentPorts) {
+    if (!entityPortSet.has(port.toLowerCase())) {
+      inconsistencies.push(
+        `Artifact consistency: testbench component port "${port}" not found in top.vhd entity ports [${entityPorts.join(', ')}].`
+      );
+    }
+  }
+  for (const port of entityPorts) {
+    if (!componentPortSet.has(port.toLowerCase())) {
+      inconsistencies.push(
+        `Artifact consistency: top.vhd entity port "${port}" missing from testbench component declaration.`
+      );
+    }
+  }
+
+  return inconsistencies;
+}
+
+function extractVhdlEntityPortNames(vhdlText: string): string[] {
+  const portBlock = vhdlText.match(/Port\s*\(([^]*?)\)\s*;\s*end\s+entity/i);
+  if (!portBlock) return [];
+  return portBlock[1]
+    .split(';')
+    .map((e) => e.trim())
+    .filter((e) => e.length > 0)
+    .map((e) => e.split(':')[0]?.trim() ?? '')
+    .filter((e) => e.length > 0);
 }
 
 function normalizeMappings(project: RBProject, direction: MappingDirection): MappingRecord[] {

@@ -330,9 +330,10 @@ export function vhdlFromNetlist(
   // so map explicit binding targets directly to VHDL port expressions.
   for (const binding of topInputBindings ?? []) {
     const direct = binding.portName;
-    if (!nodeIdToSignal.has(binding.toNodeId)) {
+      // Always override: topPort names take precedence over buildPortGroups vector names
+      // (e.g. 'sw0_node_out' must override 'SW(0)' otherwise architecture body uses
+      //  the undeclared portGroup expression instead of the declared entity port name).
       nodeIdToSignal.set(binding.toNodeId, direct);
-    }
     nodeIdToSignal.set(`${binding.toNodeId}:${binding.toPort}`, direct);
   }
 
@@ -653,18 +654,46 @@ export function vhdlFromNetlist(
   // ---- Drive output ports from internal signals or direct input connections --
   if ((topOutputBindings?.length ?? 0) > 0) {
     topOutputBindings?.forEach((binding) => {
-      const resolvedDriverSig =
-        nodeIdToSignal.get(`${binding.fromNodeId}:${binding.fromPort}`) ??
-        nodeIdToSignal.get(binding.fromNodeId) ??
-        null;
-      if (!resolvedDriverSig) {
+        // First: direct signal lookup — works for directly-pinned logic gate outputs
+        // (e.g. AND gate output port 'out' → signal 'and_0').
+        const directSig =
+          nodeIdToSignal.get(`${binding.fromNodeId}:${binding.fromPort}`) ??
+          null;
+        if (directSig) {
+          lines.push(`  ${binding.portName} <= ${directSig};`);
+          return;
+        }
+
+        // Second: for output IO nodes (Lamp/OUTPUT), binding.fromPort is the node's
+        // INPUT port ('in'). The entity output is driven by whoever drives that
+        // input net — trace through the netlist to find the actual driver signal.
+        // This fixes: entity declares 'ld0_node_in' but architecture body was
+        // referencing undeclared 'LED(0)' from buildPortGroups.
+        const driverNet =
+          netlist.nets.find(
+            (n) => n.to.nodeId === binding.fromNodeId && n.to.port === binding.fromPort,
+          ) ?? netlist.nets.find((n) => n.to.nodeId === binding.fromNodeId);
+
+        if (!driverNet) {
         warnings.push(
-          `Top output port "${binding.portName}" has unresolved driver ${binding.fromNodeId}.${binding.fromPort}`,
+            `Top output port "${binding.portName}" has no driver — output will be tied low`,
         );
-        lines.push(`  ${binding.portName} <= '0'; -- unresolved driver`);
+          lines.push(`  ${binding.portName} <= '0'; -- undriven output`);
         return;
       }
-      lines.push(`  ${binding.portName} <= ${resolvedDriverSig};`);
+
+        const resolvedDriverSig =
+          nodeIdToSignal.get(`${driverNet.from.nodeId}:${driverNet.from.port}`) ??
+          nodeIdToSignal.get(driverNet.from.nodeId) ??
+          null;
+        if (!resolvedDriverSig) {
+          warnings.push(
+            `Top output port "${binding.portName}" has unresolved driver ${driverNet.from.nodeId}.${driverNet.from.port}`,
+          );
+          lines.push(`  ${binding.portName} <= '0'; -- unresolved driver`);
+          return;
+        }
+        lines.push(`  ${binding.portName} <= ${resolvedDriverSig};`);
     });
   } else {
     outputNodes.forEach((outNode) => {

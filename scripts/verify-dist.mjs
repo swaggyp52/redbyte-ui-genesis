@@ -29,10 +29,12 @@ const OS = path.join(DIST, 'os');
 check(fs.existsSync(OS), 'dist/os/ exists');
 check(fs.existsSync(path.join(OS, 'index.html')), 'dist/os/index.html exists');
 check(fs.existsSync(path.join(OS, 'assets')), 'dist/os/assets/ exists');
+check(fs.readdirSync(path.join(OS, 'assets')).length > 0, 'dist/os/assets/ contains files');
 
 // 4. OS Content Check
 const osIndex = fs.readFileSync(path.join(OS, 'index.html'), 'utf8');
 check(osIndex.includes('RedByte Playground'), 'dist/os/index.html is the OS');
+check(osIndex.includes('REDBYTE_OS_IDE'), 'dist/os/index.html has REDBYTE_OS_IDE marker');
 check(osIndex.includes('src="/os/assets/'), 'dist/os/index.html uses /os assets');
 check(fs.existsSync(path.join(OS, 'version.json')), 'dist/os/version.json exists');
 const versionJson = JSON.parse(fs.readFileSync(path.join(OS, 'version.json'), 'utf8'));

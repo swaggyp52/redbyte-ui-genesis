@@ -1,12 +1,10 @@
 import fs from 'fs';
 import path from 'path';
-import { execSync, spawn } from 'child_process';
-import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
 const ROOT = process.cwd();
 const FINAL_DIST = path.join(ROOT, 'dist');
 const PLAYGROUND_DIST = path.join(ROOT, 'apps/playground/dist');
-const MANUAL_DIST = path.join(ROOT, 'apps/manual-site/dist');
 
 function resolveGitSha() {
     if (process.env.GIT_SHA) return process.env.GIT_SHA;
@@ -66,7 +64,7 @@ async function merge() {
         );
         console.log('✅ Wrote /os/version.json for deploy verification.');
 
-        // Copy playground's build.json to dist/ root (required by verify-dist-manifest)
+        // Copy playground's build.json to dist/ root for unified dist verification.
         const playgroundBuildJson = path.join(PLAYGROUND_DIST, 'build.json');
         if (fs.existsSync(playgroundBuildJson)) {
             fs.copyFileSync(playgroundBuildJson, path.join(FINAL_DIST, 'build.json'));
@@ -123,25 +121,6 @@ async function merge() {
     }
 
     console.log('✨ Merge complete! Deploy the root /dist directory.');
-
-    // 7. Verify dist manifest before declaring success
-    console.log('\n4. Verifying distribution...');
-    return new Promise((resolve, reject) => {
-        const verifyProcess = spawn('node', [path.join(ROOT, 'scripts/verify-dist-manifest.mjs')], {
-            stdio: 'inherit',
-        });
-
-        verifyProcess.on('exit', (code) => {
-            if (code !== 0) {
-                reject(new Error(`Manifest verification failed with code ${code}`));
-            } else {
-                console.log('✨ Unified Build Succeeded!');
-                resolve();
-            }
-        });
-
-        verifyProcess.on('error', reject);
-    });
 }
 
 merge().catch(err => {

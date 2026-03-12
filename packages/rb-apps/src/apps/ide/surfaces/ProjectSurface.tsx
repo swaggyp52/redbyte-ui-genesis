@@ -23,6 +23,7 @@ import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useIoBus } from '../ioBus';
 import { useBoardSignal } from '../BoardSignalContext';
+import { getStudentFacingIoLabel } from '../ioLabels';
 import { LAB_STARTERS } from '../labStarters';
 
 export interface ProjectMappingRow {
@@ -517,6 +518,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       sortedMappingRows.map((row, index) => {
         const mappingView = toMappingView(row, index);
         const mappingKey = toMappingKey(row.label || row.id);
+        const displayLabel = getStudentFacingIoLabel(row);
         const quickPins = getProjectQuickPickPins(row, index);
         const swM2 = /^SW(\d+)$/i.exec(row.label);
         const ldM2 = /^LD(\d+)$/i.exec(row.label);
@@ -540,7 +542,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             onClick={isActiveRow && onGoToHardware ? () => onGoToHardware() : undefined}
           >
             <code style={{ fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>
-              {row.port || row.label || row.id}
+              {displayLabel}
             </code>
           </span>
         );
@@ -1347,7 +1349,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               >
                 {missingRequiredRows.map((row) => (
                   <span key={row.id} className="ide-project-mapping-preview-chip">
-                    {row.port || row.label || row.id}
+                    {getStudentFacingIoLabel(row)}
                   </span>
                 ))}
                 {unmappedRequiredCount > missingRequiredRows.length && (
@@ -1496,7 +1498,7 @@ function getProjectQuickPickPins(
   row: Pick<ProjectMappingRow, 'label' | 'port' | 'direction'>,
   index: number
 ): string[] {
-  const raw = (row.port || row.label || '').trim().toUpperCase();
+  const raw = getStudentFacingIoLabel(row).trim().toUpperCase();
   const suggestions = new Set<string>();
   const exactMatch = /^(CLK100MHZ|CLK|SW\d{1,2}|LD\d{1,2}|LED\d{1,2}|BTN[CUDLR]|\bDP\b|SEG\d|AN\d)$/i.exec(raw);
   if (exactMatch) {
@@ -1533,7 +1535,7 @@ function getShowcaseSignals(
   const filtered = rows
     .filter((row) => row.direction === direction)
     .slice(0, 4)
-    .map((row) => row.port || row.label)
+    .map((row) => getStudentFacingIoLabel(row))
     .filter((value): value is string => value.trim().length > 0);
 
   if (filtered.length > 0) return filtered;

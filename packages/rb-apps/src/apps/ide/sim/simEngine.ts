@@ -2,6 +2,7 @@ import { CircuitEngine } from '@redbyte/rb-logic-core';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { TestVector } from '@redbyte/rb-utils';
 import { digestValue } from '../../../utils/digest';
+import { normalizeIoSignalKey } from '../ioLabels';
 import type {
   VerifyEvidenceCapsule,
   VerifyEvidenceFailure,
@@ -25,6 +26,7 @@ let runtimeSimIrHash = '';
 
 export interface DeterministicVerifyResult {
   rows: RuntimeVerifyTraceRow[];
+  trace: RuntimeSimTraceSample[];
   evidence: Omit<VerifyEvidenceCapsule, 'circuitHash'>;
 }
 
@@ -149,7 +151,7 @@ export function buildVerifyRowsFromRuntimeTrace(
       const actual = resolveOutputSymbolFromTrace(sample, outputRow);
       rows.push({
         tick,
-        signal: normalizeSignalName(outputRow.label || outputRow.id),
+        signal: normalizeIoSignalKey(outputRow.label || outputRow.id),
         expected,
         actual,
       });
@@ -179,6 +181,14 @@ export function runDeterministicVerifyFromCircuit(
   vectors: TestVector[]
 ): DeterministicVerifyResult {
   const cases = simulateVectorCases(circuit, ioRows, vectors);
+  const traceByTick = new Map<number, RuntimeSimTraceSample>();
+  for (const entry of cases) {
+    traceByTick.set(entry.sample.tick, {
+      tick: entry.sample.tick,
+      signals: { ...entry.sample.signals },
+    });
+  }
+  const trace = Array.from(traceByTick.values()).sort((left, right) => left.tick - right.tick);
   const outputRows = ioRows.filter((row) => row.direction === 'out');
   const rows: RuntimeVerifyTraceRow[] = [];
   const normalizationMap: VerifyEvidenceResolutionEntry[] = [];
@@ -191,7 +201,7 @@ export function runDeterministicVerifyFromCircuit(
       normalizationMap.push({
         role: 'input',
         rawKey,
-        normalizedKey: normalizeSignalName(rawKey),
+        normalizedKey: normalizeIoSignalKey(rawKey),
         matchedSignal: match?.signal ?? null,
       });
     }
@@ -201,12 +211,12 @@ export function runDeterministicVerifyFromCircuit(
       normalizationMap.push({
         role: 'expected',
         rawKey: rawExpectedKey,
-        normalizedKey: normalizeSignalName(rawExpectedKey),
+        normalizedKey: normalizeIoSignalKey(rawExpectedKey),
         matchedSignal: expectedMatch?.signal ?? null,
       });
 
       if (!expectedMatch) {
-        const signal = normalizeSignalName(rawExpectedKey) || rawExpectedKey;
+        const signal = normalizeIoSignalKey(rawExpectedKey) || rawExpectedKey;
         const key = `missing-output-row:${entry.vectorId}:${signal}`;
         if (!preflight.has(key)) {
           preflight.set(key, {
@@ -240,7 +250,7 @@ export function runDeterministicVerifyFromCircuit(
       normalizationMap.push({
         role: 'output',
         rawKey: expectedMatch.signal,
-        normalizedKey: normalizeSignalName(expectedMatch.signal),
+        normalizedKey: normalizeIoSignalKey(expectedMatch.signal),
         matchedSignal: actualResolution.sourceKey,
       });
 
@@ -264,7 +274,7 @@ export function runDeterministicVerifyFromCircuit(
       const expected = normalizeBit(rawExpectedValue) === 1 ? '1' : '0';
       const row: RuntimeVerifyTraceRow = {
         tick: entry.tick,
-        signal: normalizeSignalName(expectedMatch.signal),
+        signal: normalizeIoSignalKey(expectedMatch.signal),
         expected,
         actual: actualResolution.symbol,
         vectorId: entry.vectorId,
@@ -304,6 +314,7 @@ export function runDeterministicVerifyFromCircuit(
       if (leftCaseIndex !== rightCaseIndex) return leftCaseIndex - rightCaseIndex;
       return compareText(left.signal, right.signal);
     }),
+    trace,
     evidence: {
       ioRows: ioRows.map((row) => ({
         id: row.id,
@@ -336,7 +347,7 @@ export function simulateExpectedIoRows(params: {
       if (value.reason !== 'matched') continue;
       rows.push({
         tick: entry.tick,
-        signal: normalizeSignalName(row.label || row.id),
+        signal: normalizeIoSignalKey(row.label || row.id),
         expected: value.symbol === '1' ? '1' : '0',
       });
     }
@@ -437,7 +448,7 @@ function normalizeVectorInputMap(
 ): Record<string, 0 | 1> {
   const normalized: Record<string, 0 | 1> = {};
   for (const [key, value] of Object.entries(record)) {
-    normalized[normalizeSignalName(key)] = normalizeBit(value);
+    normalized[normalizeIoSignalKey(key)] = normalizeBit(value);
   }
   return normalized;
 }
@@ -450,8 +461,8 @@ function buildInputBindings(
   const inputNodes = circuit.nodes.filter((node) => isSimulationInputNode(node.type));
   for (const row of ioRows.filter((entry) => entry.direction === 'in')) {
     const fallbackNode = inputNodes.find((node) => {
-      const candidateKeys = [node.id, node.label ?? ''].map((entry) => normalizeSignalName(entry));
-      const rowKeys = [row.id, row.label, row.nodeId ?? ''].map((entry) => normalizeSignalName(entry));
+      const candidateKeys = [node.id, node.label ?? ''].map((entry) => normalizeIoSignalKey(entry));
+      const rowKeys = [row.id, row.label, row.nodeId ?? ''].map((entry) => normalizeIoSignalKey(entry));
       return rowKeys.some((key) => key.length > 0 && candidateKeys.includes(key));
     });
     const nodeId = row.nodeId?.trim() || fallbackNode?.id;
@@ -460,7 +471,7 @@ function buildInputBindings(
     bindings.push({
       nodeId,
       lookupKeys: [row.id, row.label, row.nodeId ?? '']
-        .map((entry) => normalizeSignalName(entry))
+        .map((entry) => normalizeIoSignalKey(entry))
         .filter((entry, index, source) => entry.length > 0 && source.indexOf(entry) === index),
     });
   }
@@ -484,15 +495,15 @@ function resolveIoRowByKey(
   rawKey: string,
   rows: SimulationIoRow[]
 ): { row: SimulationIoRow; signal: string } | null {
-  const normalizedKey = normalizeSignalName(rawKey);
+  const normalizedKey = normalizeIoSignalKey(rawKey);
   for (const row of rows) {
     const candidates = [row.id, row.label, row.nodeId ?? '']
-      .map((entry) => normalizeSignalName(entry))
+      .map((entry) => normalizeIoSignalKey(entry))
       .filter(Boolean);
     if (candidates.includes(normalizedKey)) {
       return {
         row,
-        signal: normalizeSignalName(row.label || row.id),
+        signal: normalizeIoSignalKey(row.label || row.id),
       };
     }
   }
@@ -532,8 +543,8 @@ function resolveOutputSymbolFromTraceDetailed(
   const candidates = [
     row.nodeId ? `${row.nodeId}.in` : '',
     row.nodeId ? `${row.nodeId}.out` : '',
-    normalizeSignalName(row.id),
-    normalizeSignalName(row.label),
+    normalizeIoSignalKey(row.id),
+    normalizeIoSignalKey(row.label),
   ];
   for (const candidate of candidates) {
     if (!candidate) continue;
@@ -545,9 +556,9 @@ function resolveOutputSymbolFromTraceDetailed(
         reason: 'matched',
       };
     }
-    const normalizedCandidate = normalizeSignalName(candidate);
+    const normalizedCandidate = normalizeIoSignalKey(candidate);
     for (const [key, value] of Object.entries(sample.signals)) {
-      if (normalizeSignalName(key) === normalizedCandidate) {
+      if (normalizeIoSignalKey(key) === normalizedCandidate) {
         return {
           symbol: value === 1 ? '1' : '0',
           sourceKey: key,
@@ -583,11 +594,11 @@ function deriveSimulationInputs(
 function resolveResetNodeId(ioRows: SimulationIoRow[], circuit: Circuit): string | undefined {
   const rows = ioRows.filter((row) => row.direction === 'in');
   for (const row of rows) {
-    const normalized = normalizeSignalName(row.label || row.id);
+    const normalized = normalizeIoSignalKey(row.label || row.id);
     if (normalized === 'rst' || normalized === 'reset' || normalized === 'reset_n') {
       const fallback = circuit.nodes.find((node) => {
         if (!isSimulationInputNode(node.type)) return false;
-        return normalizeSignalName(node.label ?? node.id) === normalized;
+        return normalizeIoSignalKey(node.label ?? node.id) === normalized;
       });
       const nodeId = row.nodeId?.trim() || fallback?.id;
       if (nodeId && circuit.nodes.some((node) => node.id === nodeId)) {
@@ -698,14 +709,6 @@ function computeSimIrHash(circuit: Circuit): string {
   return `ir_${digestValue({ nodes, connections })}`;
 }
 
-function normalizeSignalName(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/\[[^\]]*\]/g, '')
-    .replace(/[^a-z0-9_.]/g, '');
-}
-
 function normalizeBit(value: unknown): 0 | 1 {
   if (value === true || value === 1 || value === '1') return 1;
   return 0;
@@ -732,3 +735,4 @@ function compareText(left: string, right: string): number {
   if (left > right) return 1;
   return 0;
 }
+

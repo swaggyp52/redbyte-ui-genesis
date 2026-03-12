@@ -17,6 +17,20 @@ export interface BuildVivadoProjectFolderInput {
   part?: string;
 }
 
+export interface VivadoArtifactConsistencyInput {
+  topVhd: string;
+  topXdc: string;
+  xprText: string;
+  vivadoImportTcl: string;
+  testbenchVhd?: string;
+  expectedTopModule?: string;
+  expectedXprSourceRef?: string;
+  expectedXprConstraintsRef?: string;
+  expectedTclSourcePath?: string;
+  expectedTclConstraintsPath?: string;
+  expectedTclSimulationPath?: string;
+}
+
 const BASYS3_PART = 'xc7a35tcpg236-1';
 const READABLE_TOOL_VERSION = 'Vivado 2024.1+';
 const TESTBENCH_TOP_MODULE = 'tb_top';
@@ -102,6 +116,28 @@ export async function buildVivadoProjectFolderEntries(
     constraintsPath: `${slug}.srcs/constrs_1/new/${REFERENCE_CONSTRAINTS_FILE_NAME}`,
     simulationPath: testbenchText.length > 0 ? `${slug}.srcs/sim_1/new/testbench.vhd` : undefined,
   });
+
+  const artifactConsistencyIssues = validateVivadoArtifactConsistency({
+    topVhd: sourceText,
+    topXdc: constraintsText,
+    testbenchVhd: testbenchText,
+    xprText,
+    vivadoImportTcl: importTclText,
+    expectedTopModule: topModule,
+    expectedXprSourceRef: 'sources_1/new/top.vhd',
+    expectedXprConstraintsRef: `constrs_1/new/${REFERENCE_CONSTRAINTS_FILE_NAME}`,
+    expectedTclSourcePath: `${slug}.srcs/sources_1/new/top.vhd`,
+    expectedTclConstraintsPath: `${slug}.srcs/constrs_1/new/${REFERENCE_CONSTRAINTS_FILE_NAME}`,
+    expectedTclSimulationPath: testbenchText.length > 0 ? `${slug}.srcs/sim_1/new/testbench.vhd` : undefined,
+  });
+  if (artifactConsistencyIssues.length > 0) {
+    throw new Error(
+      [
+        'Vivado export aborted: artifact naming/top-module consistency check failed.',
+        ...artifactConsistencyIssues.map((issue) => `- ${issue}`),
+      ].join('\n')
+    );
+  }
 
   const entries: DeterministicZipEntry[] = [
     { name: utilsDirPath, text: '', dir: true },
@@ -402,6 +438,116 @@ function sanitizeFileName(value: string, fallback: string): string {
   return normalized.length > 0 ? normalized : fallback;
 }
 
+export function validateVivadoArtifactConsistency(input: VivadoArtifactConsistencyInput): string[] {
+  const issues: string[] = [];
+
+  const entityName = detectVhdlTopEntity(input.topVhd);
+  if (!entityName) {
+    issues.push('Could not extract top entity name from top.vhd.');
+    return issues;
+  }
+  const entityPorts = extractVhdlEntityPorts(input.topVhd);
+  if (entityPorts.length === 0) {
+    issues.push('Could not extract entity port list from top.vhd.');
+    return issues;
+  }
+
+  const xdcPorts = extractXdcPorts(input.topXdc);
+  if (xdcPorts.length === 0) {
+    issues.push('Could not extract any [get_ports {...}] names from top.xdc.');
+  }
+  compareNameSets(entityPorts, xdcPorts, 'top.vhd entity ports', 'top.xdc get_ports', issues);
+
+  const xprTopModule = extractXprSourcesTopModule(input.xprText);
+  if (!xprTopModule) {
+    issues.push('Could not extract sources_1 TopModule from .xpr.');
+  } else {
+    assertSameIdentifier(entityName, xprTopModule, 'top.vhd entity', '.xpr sources_1 TopModule', issues);
+  }
+
+  const tclTopModule = extractTclTopModule(input.vivadoImportTcl);
+  if (!tclTopModule) {
+    issues.push('Could not extract top_module from vivado_import.tcl.');
+  } else {
+    assertSameIdentifier(entityName, tclTopModule, 'top.vhd entity', 'vivado_import.tcl top_module', issues);
+  }
+
+  if (input.expectedTopModule && input.expectedTopModule.trim().length > 0) {
+    const expectedTop = input.expectedTopModule.trim();
+    assertSameIdentifier(entityName, expectedTop, 'top.vhd entity', 'requested topModule', issues);
+  }
+
+  if (
+    input.expectedXprSourceRef &&
+    !input.xprText.toLowerCase().includes(`$psrcdir/${input.expectedXprSourceRef}`.toLowerCase())
+  ) {
+    issues.push(`.xpr is missing expected design-source reference "$PSRCDIR/${input.expectedXprSourceRef}".`);
+  }
+  if (
+    input.expectedXprConstraintsRef &&
+    !input.xprText.toLowerCase().includes(`$psrcdir/${input.expectedXprConstraintsRef}`.toLowerCase())
+  ) {
+    issues.push(`.xpr is missing expected constraints reference "$PSRCDIR/${input.expectedXprConstraintsRef}".`);
+  }
+
+  if (
+    input.expectedTclSourcePath &&
+    !input.vivadoImportTcl.toLowerCase().includes(`"${input.expectedTclSourcePath}"`.toLowerCase())
+  ) {
+    issues.push(`vivado_import.tcl is missing expected source path "${input.expectedTclSourcePath}".`);
+  }
+  if (
+    input.expectedTclConstraintsPath &&
+    !input.vivadoImportTcl.toLowerCase().includes(`"${input.expectedTclConstraintsPath}"`.toLowerCase())
+  ) {
+    issues.push(`vivado_import.tcl is missing expected constraints path "${input.expectedTclConstraintsPath}".`);
+  }
+
+  if (input.expectedTclSimulationPath) {
+    if (!input.vivadoImportTcl.toLowerCase().includes(`"${input.expectedTclSimulationPath}"`.toLowerCase())) {
+      issues.push(`vivado_import.tcl is missing expected simulation path "${input.expectedTclSimulationPath}".`);
+    }
+    if (!input.vivadoImportTcl.includes('add_files -fileset sim_1 -norecurse [list $tb_file]')) {
+      issues.push('vivado_import.tcl is missing add_files for sim_1 testbench.');
+    }
+  }
+
+  const testbenchText = (input.testbenchVhd ?? '').trim();
+  if (testbenchText.length > 0) {
+    const tbComponent = extractTestbenchComponent(testbenchText);
+    if (!tbComponent) {
+      issues.push('Could not extract DUT component declaration from testbench.vhd.');
+    } else {
+      assertSameIdentifier(entityName, tbComponent.name, 'top.vhd entity', 'testbench component name', issues);
+      compareNameSets(
+        entityPorts,
+        tbComponent.ports,
+        'top.vhd entity ports',
+        'testbench component ports',
+        issues
+      );
+    }
+
+    const tbDutMap = extractTestbenchDutPortMap(testbenchText);
+    if (!tbDutMap) {
+      issues.push('Could not extract DUT port map from testbench.vhd.');
+    } else {
+      assertSameIdentifier(entityName, tbDutMap.instanceOf, 'top.vhd entity', 'testbench DUT instance target', issues);
+      if (tbDutMap.usesNamedAssociation) {
+        compareNameSets(
+          entityPorts,
+          tbDutMap.portKeys,
+          'top.vhd entity ports',
+          'testbench DUT port map keys',
+          issues
+        );
+      }
+    }
+  }
+
+  return issues;
+}
+
 function resolveVivadoTopModule(sourceText: string, requestedTopModule: string): string {
   const detected = detectVhdlTopEntity(sourceText);
   return sanitizeIdentifier(detected ?? requestedTopModule, 'top');
@@ -460,4 +606,164 @@ function buildVivadoImplRunBlock(part: string): string[] {
     '      <RQSFiles/>',
     '    </Run>',
   ];
+}
+
+function extractVhdlEntityPorts(sourceText: string): string[] {
+  const match = sourceText.match(/\bentity\s+[A-Za-z_][A-Za-z0-9_]*\s+is[\s\S]*?\bport\s*\(/i);
+  if (!match || typeof match.index !== 'number') return [];
+  const openParenIndex = match.index + match[0].lastIndexOf('(');
+  const portBlock = extractBalancedParenBlock(sourceText, openParenIndex);
+  if (!portBlock) return [];
+  return parsePortNameList(portBlock);
+}
+
+function extractXdcPorts(topXdc: string): string[] {
+  return Array.from(
+    new Set(
+      [...topXdc.matchAll(/\[get_ports\s*\{([^}]+)\}\]/g)]
+        .map((m) => (m[1] ?? '').trim())
+        .filter((name) => name.length > 0)
+    )
+  );
+}
+
+function extractXprSourcesTopModule(xprText: string): string | null {
+  const match = xprText.match(
+    /<FileSet\s+Name="sources_1"[\s\S]*?<Option\s+Name="TopModule"\s+Val="([^"]+)"/i
+  );
+  return match?.[1]?.trim() ?? null;
+}
+
+function extractTclTopModule(vivadoImportTcl: string): string | null {
+  const match = vivadoImportTcl.match(/set\s+top_module\s+"([^"]+)"/i);
+  return match?.[1]?.trim() ?? null;
+}
+
+function extractTestbenchComponent(
+  testbenchVhd: string
+): { name: string; ports: string[] } | null {
+  const match = testbenchVhd.match(/\bcomponent\s+([A-Za-z_][A-Za-z0-9_]*)\s+is[\s\S]*?\bport\s*\(/i);
+  if (!match || typeof match.index !== 'number') return null;
+  const openParenIndex = match.index + match[0].lastIndexOf('(');
+  const portBlock = extractBalancedParenBlock(testbenchVhd, openParenIndex);
+  if (!portBlock) return null;
+
+  const nameMatch = match[0].match(/\bcomponent\s+([A-Za-z_][A-Za-z0-9_]*)\s+is/i);
+  if (!nameMatch) return null;
+
+  return {
+    name: nameMatch[1].trim(),
+    ports: parsePortNameList(portBlock),
+  };
+}
+
+function extractTestbenchDutPortMap(
+  testbenchVhd: string
+): { instanceOf: string; portKeys: string[]; usesNamedAssociation: boolean } | null {
+  const match = testbenchVhd.match(
+    /\bdut\s*:\s*([A-Za-z_][A-Za-z0-9_]*)\s*[\r\n\t ]+port\s+map\s*\(([^]*?)\)\s*;/i
+  );
+  if (!match) return null;
+  const associations = match[2]
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+  const portKeys = Array.from(
+    new Set(
+      associations
+        .map((entry) => (entry.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=>/)?.[1] ?? '').trim())
+        .filter((name) => name.length > 0)
+    )
+  );
+  const usesNamedAssociation = associations.some((entry) => entry.includes('=>'));
+  return {
+    instanceOf: match[1].trim(),
+    portKeys,
+    usesNamedAssociation,
+  };
+}
+
+function parsePortNameList(portBlock: string): string[] {
+  const withoutComments = portBlock
+    .split('\n')
+    .map((line) => line.replace(/--.*$/, '').trim())
+    .join('\n');
+
+  return Array.from(
+    new Set(
+      withoutComments
+        .split(';')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0)
+        .flatMap((entry) => {
+          const left = entry.split(':')[0]?.trim() ?? '';
+          if (left.length === 0) return [];
+          return left
+            .split(',')
+            .map((name) => name.trim())
+            .filter((name) => name.length > 0);
+        })
+    )
+  );
+}
+
+function compareNameSets(
+  leftNames: string[],
+  rightNames: string[],
+  leftLabel: string,
+  rightLabel: string,
+  issues: string[]
+): void {
+  const leftMap = new Map(leftNames.map((name) => [name.toLowerCase(), name]));
+  const rightMap = new Map(rightNames.map((name) => [name.toLowerCase(), name]));
+
+  for (const [normalized, original] of leftMap) {
+    if (!rightMap.has(normalized)) {
+      issues.push(`${leftLabel} contains "${original}" but ${rightLabel} does not.`);
+    }
+  }
+  for (const [normalized, original] of rightMap) {
+    if (!leftMap.has(normalized)) {
+      issues.push(`${rightLabel} contains "${original}" but ${leftLabel} does not.`);
+    }
+  }
+}
+
+function assertSameIdentifier(
+  left: string,
+  right: string,
+  leftLabel: string,
+  rightLabel: string,
+  issues: string[]
+): void {
+  if (left.trim().toLowerCase() === right.trim().toLowerCase()) return;
+  issues.push(`${leftLabel} is "${left}" but ${rightLabel} is "${right}".`);
+}
+
+function extractBalancedParenBlock(sourceText: string, openParenIndex: number): string | null {
+  if (openParenIndex < 0 || sourceText[openParenIndex] !== '(') return null;
+  let depth = 1;
+  let cursor = openParenIndex + 1;
+  const parts: string[] = [];
+  while (cursor < sourceText.length && depth > 0) {
+    const ch = sourceText[cursor];
+    if (ch === '(') {
+      depth += 1;
+      parts.push(ch);
+      cursor += 1;
+      continue;
+    }
+    if (ch === ')') {
+      depth -= 1;
+      if (depth > 0) {
+        parts.push(ch);
+      }
+      cursor += 1;
+      continue;
+    }
+    parts.push(ch);
+    cursor += 1;
+  }
+  if (depth !== 0) return null;
+  return parts.join('');
 }

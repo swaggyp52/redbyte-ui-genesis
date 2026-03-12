@@ -5,11 +5,13 @@ import { stableStringify } from '../../export/stableStringify';
 import { compareCodepoint } from '../../export/codepointSort';
 import { simulateExpectedIoRows } from './sim/simEngine';
 import type { SimulatedExpectedIoRow } from './sim/simTypes';
+import { getStudentFacingIoLabel, normalizeIoSignalKey } from './ioLabels';
 
 export interface BringUpIoRow {
   id: string;
   nodeId?: string;
   label: string;
+  port?: string;
   direction: 'in' | 'out';
   pin: string;
   required: boolean;
@@ -78,13 +80,13 @@ export function generateBringUpVectors(params: {
   const inputSignals = sortSignals(
     params.ioRows
       .filter((row) => row.direction === 'in')
-      .map((row) => normalizeSignalName(row.label || row.id))
+      .map((row) => normalizeIoSignalKey(getStudentFacingIoLabel(row)))
       .filter((value) => value.length > 0)
   );
   const outputSignals = sortSignals(
     params.ioRows
       .filter((row) => row.direction === 'out')
-      .map((row) => normalizeSignalName(row.label || row.id))
+      .map((row) => normalizeIoSignalKey(getStudentFacingIoLabel(row)))
       .filter((value) => value.length > 0)
   );
 
@@ -124,7 +126,10 @@ function buildExpectedIoReport(input: BringUpArtifactsInput): BringUpExpectedIoR
   const outputRows = [...input.ioRows]
     .filter((row) => row.direction === 'out')
     .sort((left, right) =>
-      compareCodepoint(normalizeSignalName(left.label), normalizeSignalName(right.label))
+      compareCodepoint(
+        normalizeIoSignalKey(getStudentFacingIoLabel(left)),
+        normalizeIoSignalKey(getStudentFacingIoLabel(right))
+      )
     );
 
   const verifyRows = input.verifyRows ?? [];
@@ -142,7 +147,7 @@ function buildExpectedIoReport(input: BringUpArtifactsInput): BringUpExpectedIoR
   const ticks = hasVerifyRows ? verifyTicks : vectorTicks;
 
   const signals = outputRows.map((row) => {
-    const signalName = normalizeSignalName(row.label || row.id);
+    const signalName = normalizeIoSignalKey(getStudentFacingIoLabel(row));
     const values = ticks.map((tick) => ({
       tick,
       expected: resolveExpectedValue({
@@ -188,10 +193,13 @@ function buildBringUpMarkdown(input: {
   const mappingLines = [...input.ioRows]
     .filter((row) => row.pin.trim().length > 0)
     .sort((left, right) =>
-      compareCodepoint(normalizeSignalName(left.label), normalizeSignalName(right.label))
+      compareCodepoint(
+        normalizeIoSignalKey(getStudentFacingIoLabel(left)),
+        normalizeIoSignalKey(getStudentFacingIoLabel(right))
+      )
     )
     .slice(0, 6)
-    .map((row) => `- ${normalizeSignalName(row.label)} -> ${row.pin}`);
+    .map((row) => `- ${normalizeIoSignalKey(getStudentFacingIoLabel(row))} -> ${row.pin}`);
 
   const lines = [
     '# Basys3 Bring-Up',
@@ -354,14 +362,14 @@ function resolveExpectedValue(params: {
   const verifyMatch = params.verifyRows.find(
     (row) =>
       row.tick === params.tick &&
-      normalizeSignalName(row.signal) === params.signalName
+      normalizeIoSignalKey(row.signal) === params.signalName
   );
   if (verifyMatch) {
     return normalizeBitSymbol(verifyMatch.expected);
   }
 
   const simulatedMatch = params.simulatedRows.find(
-    (row) => row.tick === params.tick && normalizeSignalName(row.signal) === params.signalName
+    (row) => row.tick === params.tick && normalizeIoSignalKey(row.signal) === params.signalName
   );
   if (simulatedMatch) {
     return simulatedMatch.expected;
@@ -371,7 +379,7 @@ function resolveExpectedValue(params: {
   if (!vectorMatch) return '-';
   const expected = vectorMatch.expected ?? {};
   const key = Object.keys(expected).find(
-    (candidate) => normalizeSignalName(candidate) === params.signalName
+    (candidate) => normalizeIoSignalKey(candidate) === params.signalName
   );
   if (!key) return '-';
   return normalizeBitSymbol(expected[key]);
@@ -389,7 +397,7 @@ function uniqueSortedTicks(rows: Array<{ tick: number }>): number[] {
 function isSequentialDesign(circuit: Circuit, inputSignals: string[]): boolean {
   if (inputSignals.some((signal) => CLOCK_ALIASES.has(signal))) return true;
   return circuit.nodes.some((node) =>
-    SEQUENTIAL_NODE_TYPES.has(normalizeSignalName(node.type ?? ''))
+    SEQUENTIAL_NODE_TYPES.has(normalizeIoSignalKey(node.type ?? ''))
   );
 }
 
@@ -414,7 +422,7 @@ function signatureFromInputs(
 function normalizeBitRecord(values: Record<string, unknown>): Record<string, 0 | 1> {
   const normalized: Record<string, 0 | 1> = {};
   for (const key of Object.keys(values)) {
-    normalized[normalizeSignalName(key)] = normalizeBit(values[key]);
+    normalized[normalizeIoSignalKey(key)] = normalizeBit(values[key]);
   }
   return normalized;
 }
@@ -428,10 +436,6 @@ function normalizeBitSymbol(value: unknown): '0' | '1' | '-' {
   if (value === true || value === 1 || value === '1') return '1';
   if (value === false || value === 0 || value === '0') return '0';
   return '-';
-}
-
-function normalizeSignalName(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_');
 }
 
 function sortSignals(signals: string[]): string[] {

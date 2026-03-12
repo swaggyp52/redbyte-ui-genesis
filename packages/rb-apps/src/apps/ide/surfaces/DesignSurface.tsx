@@ -27,6 +27,8 @@ import {
 import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { RuntimeSimState, RuntimeSignalProbe } from '../projectRuntime';
 import { useBoardSignal } from '../BoardSignalContext';
+import { getStudentFacingIoLabel } from '../ioLabels';
+import type { VerifyDebugContext } from '../verifyDebug';
 import { netlistFromCircuit } from '../../../export/netlistExport';
 import { vhdlFromNetlist } from '../../../export/vhdlExport';
 import { synthesizableVerilogFromNetlist } from '../../../export/verilogExport';
@@ -91,8 +93,6 @@ export interface DesignSurfaceProps {
   topEntityName?: string;
   onSaveAsComponent?: (def: CompositeNodeDef) => void;
   customComponentTypes?: Array<{ type: string; title: string; description: string }>;
-  // C-5: External debug state from verification bridge
-  externalDebugSignals?: Map<string, 0 | 1> | null;
   macros?: MacroDefinition[];
   onSaveMacro?: (input: Omit<SaveMacroInput, 'circuit'>) => MacroDefinition | null;
   onDeleteMacro?: (macroId: string) => void;
@@ -100,7 +100,10 @@ export interface DesignSurfaceProps {
     macroId: string,
     position: { x: number; y: number }
   ) => MacroInstantiationResult | null;
+  // C-5: External debug state from verification bridge
+  externalDebugSignals?: Map<string, 0 | 1> | null;
   externalDebugTick?: number | null;
+  externalDebugContext?: VerifyDebugContext | null;
   onClearExternalDebug?: () => void;
   // A2: Verify → Design signal linkage
   activeVerifySignal?: string | null;
@@ -319,13 +322,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   topEntityName,
   onSaveAsComponent,
   customComponentTypes,
-  externalDebugSignals,
-  externalDebugTick,
-  onClearExternalDebug,
   macros = [],
   onSaveMacro,
   onDeleteMacro,
   onInstantiateMacro,
+  externalDebugSignals,
+  externalDebugTick,
+  externalDebugContext,
+  onClearExternalDebug,
   activeVerifySignal,
 }) => {
   const circuit = useCircuitStore((state) => state.circuit);
@@ -429,14 +433,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const savedToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (savedToastTimerRef.current) clearTimeout(savedToastTimerRef.current); }, []);
 
-  // A-2: Inline node label editor state
-  const [editingLabelNodeId, setEditingLabelNodeId] = useState<string | null>(null);
-  const [labelDraft, setLabelDraft] = useState('');
-
   // CP-1: Clipboard state for deterministic copy/paste
   const [clipboard, setClipboard] = useState<ClipboardCluster | null>(null);
   const [macroDialogState, setMacroDialogState] = useState<DesignMacroDialogState | null>(null);
   const [activeMacroInsertionId, setActiveMacroInsertionId] = useState<string | null>(null);
+
+  // A-2: Inline node label editor state
+  const [editingLabelNodeId, setEditingLabelNodeId] = useState<string | null>(null);
+  const [labelDraft, setLabelDraft] = useState('');
 
   // V-2: Fanin path tracer — highlights all wires/nodes feeding the clicked port
   const [traceState, setTraceState] = useState<DesignTraceState | null>(null);
@@ -541,6 +545,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, []);
 
   const { setActiveBoardSignal } = useBoardSignal();
+  const activeInsertionMacro = useMemo(
+    () => macros.find((entry) => entry.id === activeMacroInsertionId) ?? null,
+    [activeMacroInsertionId, macros]
+  );
 
   useEffect(() => {
     setEngine(tickEngine.getEngine());
@@ -549,11 +557,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       tickEngine.dispose();
     };
   }, [setEngine, setTickEngine, tickEngine]);
-
-  const activeInsertionMacro = useMemo(
-    () => macros.find((entry) => entry.id === activeMacroInsertionId) ?? null,
-    [activeMacroInsertionId, macros]
-  );
 
   useEffect(() => {
     tickEngine.setCircuit(editorCircuit);
@@ -618,14 +621,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
   }, [clearSelection, deleteConnection, deleteNode, onCircuitMutated, selection.nodes, selection.wires]);
 
-  useEffect(() => {
-    if (!actionToast) return;
-    const timeout = window.setTimeout(() => {
-      setActionToast(null);
-    }, 1800);
-    return () => window.clearTimeout(timeout);
-  }, [actionToast]);
-
   // CP-1: Copy selected nodes into in-memory clipboard
   const PASTE_OFFSET = { x: 40, y: 40 };
   const handleCopy = useCallback(() => {
@@ -644,10 +639,19 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       connections: [...circuit.connections, ...result.pastedConnections],
     };
     updateCircuit(next);
+    // Select the pasted nodes so they're visibly highlighted
     selectMultipleNodes(result.pastedNodes.map((n) => n.id));
     setActionToast(`Pasted ${result.pastedNodes.length} node${result.pastedNodes.length !== 1 ? 's' : ''}.`);
     onCircuitMutated?.();
   }, [circuit, clipboard, updateCircuit, selectMultipleNodes, onCircuitMutated]);
+
+  useEffect(() => {
+    if (!actionToast) return;
+    const timeout = window.setTimeout(() => {
+      setActionToast(null);
+    }, 1800);
+    return () => window.clearTimeout(timeout);
+  }, [actionToast]);
 
   useEffect(() => {
     if (!diagnosticRouteRequest) return;
@@ -1077,14 +1081,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const selectedNodeIds = useMemo(() => Array.from(selection.nodes).slice(0, 5), [selection.nodes]);
   const selectedNodeIdsAll = useMemo(() => Array.from(selection.nodes), [selection.nodes]);
   const selectedWireIds = useMemo(() => Array.from(selection.wires).slice(0, 5), [selection.wires]);
+  const suggestedMacroName = useMemo(
+    () => (selectedNodeIdsAll.length > 0 ? `Macro_${selectedNodeIdsAll.length}` : 'My Macro'),
+    [selectedNodeIdsAll.length]
+  );
   const selectedNode = useMemo(
     () =>
       selectedNodeIds.length > 0 ? editorCircuit.nodes.find((node) => node.id === selectedNodeIds[0]) : undefined,
     [editorCircuit.nodes, selectedNodeIds]
-  );
-  const suggestedMacroName = useMemo(
-    () => (selectedNodeIdsAll.length > 0 ? `Macro_${selectedNodeIdsAll.length}` : 'My Macro'),
-    [selectedNodeIdsAll.length]
   );
 
   // ── N-1: resolve a raw connection endpoint to { nodeId, portName } ──────────
@@ -1433,6 +1437,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => describeSimulationStory(liveIoSignals.inputRows, liveIoSignals.outputRows, runtimeSim.trace, simRunning),
     [liveIoSignals.inputRows, liveIoSignals.outputRows, runtimeSim.trace, simRunning]
   );
+  const activeDebugContext = useMemo(
+    () =>
+      externalDebugTick != null && externalDebugContext?.tick === externalDebugTick
+        ? externalDebugContext
+        : null,
+    [externalDebugContext, externalDebugTick]
+  );
+  const debugInputSummary = useMemo(
+    () => formatVerifyDebugInputSnapshot(activeDebugContext?.inputSnapshot ?? []),
+    [activeDebugContext]
+  );
+  const activeSimulationSummary = activeDebugContext
+    ? describeVerifyDebugSummary(activeDebugContext)
+    : simulationStory.summary;
   const ioPresentationMap = useMemo(() => {
     const map: Record<string, NodeIoPresentation> = {};
     for (const node of editorCircuit.nodes) {
@@ -1695,12 +1713,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         return;
       }
 
+      // Ctrl+C / Cmd+C: copy selection
       if ((event.ctrlKey || event.metaKey) && event.key === 'c' && !isTextInput) {
         event.preventDefault();
         handleCopy();
         return;
       }
 
+      // Ctrl+V / Cmd+V: paste clipboard
       if ((event.ctrlKey || event.metaKey) && event.key === 'v' && !isTextInput) {
         event.preventDefault();
         handlePaste();
@@ -1753,7 +1773,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   return (
     <>
-    <IdeSurfaceLayout
+      <IdeSurfaceLayout
       mode="design"
       consoleHasBlocking={compilerErrorCount > 0}
       consoleHasEntries={diagnosticsDrawerRows.length > 0}
@@ -2224,7 +2244,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           </IdeInspectorSection>
 
-          <IdeInspectorSection title="Live Simulation" accordionId="live-sim" testId="ide-design-live-sim-section">
+          {/* Student-loop contract: live simulation must stay directly reachable even when
+              other inspector sections participate in shared accordion behavior. */}
+          <IdeInspectorSection title="Live Simulation" testId="ide-design-live-sim-section">
             <div className="ide-inline-actions">
               {simRunning ? (
                 <IdeButton tone="secondary" onClick={pauseSimulation} testId="ide-design-sim-pause">
@@ -2469,6 +2491,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </ul>
                   ) : (
                     <p className="ide-copy">No diagnostics attached to this node.</p>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+                  <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
+                    Copy
+                  </IdeButton>
+                  {clipboard && (
+                    <IdeButton tone="secondary" onClick={handlePaste} testId="ide-design-paste-btn">
+                      Paste
+                    </IdeButton>
                   )}
                 </div>
                 <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
@@ -2876,7 +2908,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 ) : null}
               </div>
               <p className="ide-design-sim-story-summary" data-testid="ide-design-sim-story-summary">
-                {simulationStory.summary}
+                {activeSimulationSummary}
               </p>
             </div>
 
@@ -3046,6 +3078,24 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <span className="ide-design-debug-banner-hint">
                           Canvas frozen at verification tick {externalDebugTick}.
                         </span>
+                        {activeDebugContext && (
+                          <div className="ide-design-failure-brief" data-testid="ide-design-failure-brief">
+                            <span className="ide-design-failure-brief-summary">
+                              Verify expected <code>{activeDebugContext.signal}</code>=<code>{activeDebugContext.expected}</code>{' '}
+                              but Design sampled <code>{activeDebugContext.actual}</code>.
+                            </span>
+                            {debugInputSummary && (
+                              <span className="ide-design-failure-brief-inputs" data-testid="ide-design-failure-brief-inputs">
+                                Inputs: {debugInputSummary}
+                              </span>
+                            )}
+                            {activeDebugContext.nextInspect && (
+                              <span className="ide-design-failure-brief-next" data-testid="ide-design-failure-brief-next">
+                                Next inspect: {activeDebugContext.nextInspect}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         {onClearExternalDebug && (
                           <IdeButton tone="ghost" onClick={onClearExternalDebug} testId="ide-design-debug-clear">
                             Exit debug view
@@ -3458,7 +3508,7 @@ function resolveNodeIoPresentation(
 
   return {
     kind: isInputNode ? 'switch' : isOutputNode ? 'led' : 'generic',
-    label: (ioRow?.label?.trim() || node.label || node.id).toUpperCase(),
+    label: getStudentFacingIoLabel(ioRow, String(node.label ?? node.id)).toUpperCase(),
     pinAlias: pinAlias.length > 0 ? pinAlias : undefined,
   };
 }
@@ -3530,6 +3580,22 @@ function describeSimulationStory(
     clockEvent,
     clockLabel: clockRow?.label ?? null,
   };
+}
+
+function formatVerifyDebugInputSnapshot(
+  snapshot: Array<{ label: string; value: string }>
+): string {
+  return snapshot
+    .map((entry) => `${entry.label}=${entry.value}`)
+    .join(', ');
+}
+
+function describeVerifyDebugSummary(context: VerifyDebugContext): string {
+  const base = `Verify expected ${context.signal}=${context.expected} but sampled ${context.actual} at tick ${context.tick}.`;
+  if (context.patternSummary) {
+    return `${base} ${context.patternSummary}`;
+  }
+  return base;
 }
 
 function normalizeSignalLookup(value: string): string {

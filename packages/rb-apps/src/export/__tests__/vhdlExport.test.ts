@@ -212,3 +212,180 @@ describe('vhdlFromNetlist', () => {
     expect(result.warnings.length).toBeGreaterThan(0);
   });
 });
+
+  // ---------------------------------------------------------------------------
+  // topPorts mode regression tests
+  // These pin the bug where vhdlFromNetlist with topPorts produced architecture
+  // bodies that referenced undeclared identifiers like LED(0) / SW(0).
+  // ---------------------------------------------------------------------------
+
+  // Pass-through: sw0_node_out ──wire──> ld0_node_in (no logic gates)
+  const passThroughNetlist: Netlist = {
+    kind: 'rb-netlist',
+    version: 1,
+    createdAt: '2025-01-01T00:00:00.000Z',
+    circuitDigest: 'test-digest-passthrough',
+    nodes: [
+      { id: 'sw0_node', type: 'Switch', label: 'SW0', ports: [{ name: 'out', direction: 'out' }] },
+      { id: 'sw1_node', type: 'Switch', label: 'SW1', ports: [{ name: 'out', direction: 'out' }] },
+      { id: 'ld0_node', type: 'Lamp',   label: 'LD0', ports: [{ name: 'in',  direction: 'in'  }] },
+      { id: 'ld1_node', type: 'Lamp',   label: 'LD1', ports: [{ name: 'in',  direction: 'in'  }] },
+    ],
+    nets: [
+      { id: 'sw0->ld0', from: { nodeId: 'sw0_node', port: 'out' }, to: { nodeId: 'ld0_node', port: 'in' } },
+      { id: 'sw1->ld1', from: { nodeId: 'sw1_node', port: 'out' }, to: { nodeId: 'ld1_node', port: 'in' } },
+    ],
+  };
+
+  // AND gate between two switches and one LED
+  const andWithTopPortsNetlist: Netlist = {
+    kind: 'rb-netlist',
+    version: 1,
+    createdAt: '2025-01-01T00:00:00.000Z',
+    circuitDigest: 'test-digest-and-topports',
+    nodes: [
+      { id: 'sw0_node', type: 'Switch', label: 'SW0', ports: [{ name: 'out', direction: 'out' }] },
+      { id: 'sw1_node', type: 'Switch', label: 'SW1', ports: [{ name: 'out', direction: 'out' }] },
+      {
+        id: 'and_gate',
+        type: 'AND',
+        ports: [
+          { name: 'a',   direction: 'in'  },
+          { name: 'b',   direction: 'in'  },
+          { name: 'out', direction: 'out' },
+        ],
+      },
+      { id: 'ld0_node', type: 'Lamp', label: 'LD0', ports: [{ name: 'in', direction: 'in' }] },
+    ],
+    nets: [
+      { id: 'sw0->and.a',  from: { nodeId: 'sw0_node',  port: 'out' }, to: { nodeId: 'and_gate', port: 'a'  } },
+      { id: 'sw1->and.b',  from: { nodeId: 'sw1_node',  port: 'out' }, to: { nodeId: 'and_gate', port: 'b'  } },
+      { id: 'and->ld0',    from: { nodeId: 'and_gate',  port: 'out' }, to: { nodeId: 'ld0_node', port: 'in' } },
+    ],
+  };
+
+  describe('vhdlFromNetlist — topPorts mode (board-aware export)', () => {
+    it('pass-through: entity declares only the canonical port names, not SW/LED vectors', () => {
+      const result = vhdlFromNetlist(passThroughNetlist, {
+        entityName: 'top',
+        topPorts: [
+          { name: 'sw0_node_out', dir: 'in',  vhdlType: 'STD_LOGIC' },
+          { name: 'sw1_node_out', dir: 'in',  vhdlType: 'STD_LOGIC' },
+          { name: 'ld0_node_in',  dir: 'out', vhdlType: 'STD_LOGIC' },
+          { name: 'ld1_node_in',  dir: 'out', vhdlType: 'STD_LOGIC' },
+        ],
+        topInputBindings: [
+          { portName: 'sw0_node_out', toNodeId: 'sw0_node', toPort: 'out' },
+          { portName: 'sw1_node_out', toNodeId: 'sw1_node', toPort: 'out' },
+        ],
+        topOutputBindings: [
+          { portName: 'ld0_node_in', fromNodeId: 'ld0_node', fromPort: 'in' },
+          { portName: 'ld1_node_in', fromNodeId: 'ld1_node', fromPort: 'in' },
+        ],
+      });
+
+      // Entity must declare canonical port names
+      expect(result.vhd).toContain('sw0_node_out : in');
+      expect(result.vhd).toContain('sw1_node_out : in');
+      expect(result.vhd).toContain('ld0_node_in : out');
+      expect(result.vhd).toContain('ld1_node_in : out');
+
+      // Architecture must NOT reference undeclared portGroup identifiers.
+      // Regression: previously the architecture would emit ld0_node_in <= LED(0)
+      // where LED was never declared — exactly what Vivado reported as synthesis error.
+      expect(result.vhd).not.toMatch(/\bLED\s*\(/);
+      expect(result.vhd).not.toMatch(/\bSW\s*\(/);
+
+      // Architecture must connect the canonical port names correctly
+      expect(result.vhd).toContain('ld0_node_in <= sw0_node_out');
+      expect(result.vhd).toContain('ld1_node_in <= sw1_node_out');
+    });
+
+    it('AND gate: architecture assignments reference canonical port names, not portGroup vectors', () => {
+      const result = vhdlFromNetlist(andWithTopPortsNetlist, {
+        entityName: 'top',
+        topPorts: [
+          { name: 'sw0_node_out', dir: 'in',  vhdlType: 'STD_LOGIC' },
+          { name: 'sw1_node_out', dir: 'in',  vhdlType: 'STD_LOGIC' },
+          { name: 'ld0_node_in',  dir: 'out', vhdlType: 'STD_LOGIC' },
+        ],
+        topInputBindings: [
+          { portName: 'sw0_node_out', toNodeId: 'sw0_node', toPort: 'out' },
+          { portName: 'sw1_node_out', toNodeId: 'sw1_node', toPort: 'out' },
+        ],
+        topOutputBindings: [
+          { portName: 'ld0_node_in', fromNodeId: 'ld0_node', fromPort: 'in' },
+        ],
+      });
+
+      expect(result.vhd).not.toMatch(/\bLED\s*\(/);
+      expect(result.vhd).not.toMatch(/\bSW\s*\(/);
+
+      // Internal AND signal driven by canonical input port names
+      expect(result.vhd).toContain('sw0_node_out');
+      expect(result.vhd).toContain('sw1_node_out');
+
+      // Entity output driven by internal AND signal (e.g. 'and_0')
+      expect(result.vhd).toMatch(/ld0_node_in\s*<=\s*\w+;/);
+    });
+
+    it('pass-through: no warnings about unresolved drivers', () => {
+      const result = vhdlFromNetlist(passThroughNetlist, {
+        entityName: 'top',
+        topPorts: [
+          { name: 'sw0_node_out', dir: 'in',  vhdlType: 'STD_LOGIC' },
+          { name: 'ld0_node_in',  dir: 'out', vhdlType: 'STD_LOGIC' },
+          { name: 'ld1_node_in',  dir: 'out', vhdlType: 'STD_LOGIC' },
+        ],
+        topInputBindings: [{ portName: 'sw0_node_out', toNodeId: 'sw0_node', toPort: 'out' }],
+        topOutputBindings: [
+          { portName: 'ld0_node_in', fromNodeId: 'ld0_node', fromPort: 'in' },
+          { portName: 'ld1_node_in', fromNodeId: 'ld1_node', fromPort: 'in' },
+        ],
+      });
+
+      // ld1 is driven by sw1 which is not in topInputBindings → driver will be unresolved
+      // but ld0 must have no warning
+      const ld0Warnings = result.warnings.filter((w) => w.includes('ld0_node_in'));
+      expect(ld0Warnings).toHaveLength(0);
+    });
+
+    it('four-switch pass-through produces 4-port entity matching XDC-ready names', () => {
+      const nodes = [0, 1, 2, 3].flatMap((i) => [
+        { id: `sw${i}_node`, type: 'Switch', label: `SW${i}`, ports: [{ name: 'out', direction: 'out' as const }] },
+        { id: `ld${i}_node`, type: 'Lamp',   label: `LD${i}`, ports: [{ name: 'in',  direction: 'in'  as const }] },
+      ]);
+      const nets = [0, 1, 2, 3].map((i) => ({
+        id: `sw${i}->ld${i}`,
+        from: { nodeId: `sw${i}_node`, port: 'out' },
+        to:   { nodeId: `ld${i}_node`, port: 'in'  },
+      }));
+      const netlist: Netlist = {
+        kind: 'rb-netlist', version: 1,
+        createdAt: '2025-01-01T00:00:00.000Z', circuitDigest: 'test-4sw',
+        nodes, nets,
+      };
+      const topPorts = [
+        ...([0, 1, 2, 3].map((i) => ({ name: `sw${i}_node_out`, dir: 'in'  as const, vhdlType: 'STD_LOGIC' }))),
+        ...([0, 1, 2, 3].map((i) => ({ name: `ld${i}_node_in`,  dir: 'out' as const, vhdlType: 'STD_LOGIC' }))),
+      ];
+      const topInputBindings  = [0, 1, 2, 3].map((i) => ({ portName: `sw${i}_node_out`, toNodeId: `sw${i}_node`, toPort: 'out' }));
+      const topOutputBindings = [0, 1, 2, 3].map((i) => ({ portName: `ld${i}_node_in`, fromNodeId: `ld${i}_node`, fromPort: 'in' }));
+
+      const result = vhdlFromNetlist(netlist, { entityName: 'top', topPorts, topInputBindings, topOutputBindings });
+
+      // All 8 ports declared
+      for (let i = 0; i < 4; i++) {
+        expect(result.vhd).toContain(`sw${i}_node_out : in`);
+        expect(result.vhd).toContain(`ld${i}_node_in : out`);
+      }
+      // No portGroup vector references
+      expect(result.vhd).not.toMatch(/\bLED\s*\(/);
+      expect(result.vhd).not.toMatch(/\bSW\s*\(/);
+      // Each LED assigned from corresponding SW
+      for (let i = 0; i < 4; i++) {
+        expect(result.vhd).toContain(`ld${i}_node_in <= sw${i}_node_out`);
+      }
+      expect(result.warnings).toHaveLength(0);
+    });
+  });

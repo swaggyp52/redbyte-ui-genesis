@@ -14,6 +14,7 @@ import type { RuntimeSimState } from '../projectRuntime';
 import { useIoBus } from '../ioBus';
 import { HardwareBoard2D } from '../components/HardwareBoard2D';
 import { useBoardSignal } from '../BoardSignalContext';
+import { getStudentFacingIoLabel } from '../ioLabels';
 
 export interface HardwareMappingRow {
   id: string;
@@ -87,7 +88,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       mappingRows.some(
         (row) =>
           row.direction === 'in' &&
-          /(^clk$|clock|clk100mhz)/i.test(row.label) &&
+          /(^clk$|clock|clk100mhz)/i.test(getStudentFacingIoLabel(row)) &&
           row.pin.trim().length > 0
       ),
     [mappingRows]
@@ -99,12 +100,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
   const SSD_PINS = /^(CA|CB|CC|CD|CE|CF|CG|DP|AN[0-3])$/i;
   const hasSsdMapping = useMemo(
-    () => mappingRows.some((row) => SSD_PINS.test(row.label.trim())),
+    () => mappingRows.some((row) => SSD_PINS.test(getStudentFacingIoLabel(row))),
     [mappingRows]
   );
 
   const hasButtonMapping = useMemo(
-    () => mappingRows.some((row) => row.direction === 'in' && /^btn(c|u|d|l|r)/i.test(row.label)),
+    () =>
+      mappingRows.some(
+        (row) => row.direction === 'in' && /^btn(c|u|d|l|r)/i.test(getStudentFacingIoLabel(row))
+      ),
     [mappingRows]
   );
 
@@ -121,7 +125,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     () =>
       mappingRows
         .filter((r): r is HardwareMappingRow & { nodeId: string } => Boolean(r.nodeId))
-        .map((r) => ({ nodeId: r.nodeId, label: r.label, direction: r.direction })),
+        .map((r) => ({
+          nodeId: r.nodeId,
+          label: getStudentFacingIoLabel(r, r.id),
+          direction: r.direction,
+        })),
     [mappingRows]
   );
   const ioBus = useIoBus({

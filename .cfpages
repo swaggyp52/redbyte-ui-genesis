@@ -1,7 +1,7 @@
 # Cloudflare Pages Build Configuration
-# Build command: pnpm install && pnpm --filter @redbyte/manual-site build
-# Build output directory: apps/manual-site/dist
+# Build command: pnpm build:unified
+# Build output directory: dist
 # Root directory: /
 
-# This deploys the showcase/documentation site (manual-site), NOT the OS (playground)
-# To deploy the OS instead, use: apps/playground/dist with build command: pnpm install && pnpm --filter @redbyte/playground build
+# Cloudflare Pages installs dependencies automatically; do not prefix the build command with pnpm install.
+# Unified build emits dist/ with a root redirect stub and the IDE at /os/.

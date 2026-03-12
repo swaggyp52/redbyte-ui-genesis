@@ -205,7 +205,10 @@ describe('DesignSurface workstation redesign', () => {
       expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Fanin to ld0_node.in');
     });
 
-    fireEvent.click(view.getByTestId('ide-design-live-sim-section-toggle'));
+    const liveSimSection = view.getByTestId('ide-design-live-sim-section');
+    if (liveSimSection.getAttribute('data-open') === 'false') {
+      fireEvent.click(view.getByTestId('ide-design-live-sim-section-toggle'));
+    }
 
     await waitFor(() => {
       expect(view.getByTestId('ide-design-live-sim-section').textContent).toContain('Tick');
@@ -231,6 +234,33 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Verify focus ld0_node.in');
   });
 
+  it('restates verify mismatch context when opening frozen debug mode', () => {
+    const view = renderSurface({
+      externalDebugTick: 6,
+      externalDebugSignals: new Map([
+        ['sw0_node.out', 1],
+        ['ld0_node.in', 0],
+      ]),
+      externalDebugContext: {
+        signal: 'LD0',
+        tick: 6,
+        expected: '1',
+        actual: '0',
+        inputSnapshot: [{ label: 'SW0', value: '1' }],
+        patternSummary: 'Output stayed low while the selected input was high.',
+        nextInspect: 'Inspect the wire between SW0 and LD0.',
+      },
+    });
+
+    expect(view.getByTestId('ide-design-debug-banner').textContent).toContain('tick 6');
+    expect(view.getByTestId('ide-design-failure-brief').textContent).toContain('LD0');
+    expect(view.getByTestId('ide-design-failure-brief').textContent).toContain('1');
+    expect(view.getByTestId('ide-design-failure-brief').textContent).toContain('0');
+    expect(view.getByTestId('ide-design-failure-brief-inputs').textContent).toContain('SW0=1');
+    expect(view.getByTestId('ide-design-failure-brief-next').textContent).toContain('Inspect the wire between SW0 and LD0.');
+    expect(view.getByTestId('ide-design-sim-story-summary').textContent).toContain('Verify expected LD0=1 but sampled 0 at tick 6.');
+  });
+
   it('auto-demotes cramped split view into stacked mode', async () => {
     installResizeObserver(900);
     const view = renderSurface();
@@ -242,6 +272,50 @@ describe('DesignSurface workstation redesign', () => {
     });
 
     expect(view.getByTestId('ide-design-shortcut-strip').textContent).toContain('Split stacked');
+  });
+
+  it('shows the save-as-macro action and dialog when multiple nodes are selected', async () => {
+    const onSaveMacro = vi.fn();
+    const view = renderSurface({
+      macros: [],
+      onSaveMacro,
+    });
+
+    act(() => {
+      useLogicViewStore.getState().selectMultipleNodes(['sw0_node', 'ld0_node']);
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-save-macro-open')).toBeTruthy();
+    });
+
+    fireEvent.click(view.getByTestId('ide-design-save-macro-open'));
+
+    expect(view.getByTestId('ide-macro-save-dialog')).toBeTruthy();
+    expect(view.getByTestId('ide-macro-save-name')).toBeTruthy();
+  });
+
+  it('enters macro insertion mode from the library and instantiates on canvas click', async () => {
+    const onInstantiateMacro = vi.fn(() => ({
+      instanceLabel: 'AND_Gate_1',
+      insertedNodeIds: ['node-v2-5'],
+    }));
+
+    const view = renderSurface({
+      macros: [FIXTURE_MACRO],
+      onInstantiateMacro,
+    });
+
+    fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
+
+    const overlay = view.getByTestId('ide-macro-insertion-overlay');
+    expect(overlay.textContent).toContain('AND Gate');
+
+    fireEvent.click(overlay, { clientX: 600, clientY: 320 });
+
+    await waitFor(() => {
+      expect(onInstantiateMacro).toHaveBeenCalledWith('macro-and-gate', expect.any(Object));
+    });
   });
 });
   it('shows the save-as-macro action and dialog when multiple nodes are selected', async () => {

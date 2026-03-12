@@ -45,7 +45,7 @@ import {
   resetSimulationState,
   runDeterministicVerifyFromCircuit,
 } from './sim/simEngine';
-import type { RuntimeSignalProbe, RuntimeSimState } from './sim/simTypes';
+import type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
 
 export type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
 
@@ -670,6 +670,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             generatedAtIso: ranAtIso,
             signalRoles,
           });
+          const reportWaveform = buildVerifyWaveSamples(report);
+          const traceWaveform = toVerifyWaveSamplesFromTrace(deterministicResult?.trace ?? []);
           const evidence =
             deterministicResult !== null
               ? ({
@@ -688,8 +690,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             schedule: scheduleContract.schedule,
             meta: buildVerifyRunMeta(scheduleContract),
             report,
-            waveform: buildVerifyWaveSamples(report),
-            traceWaveform: undefined,
+            waveform: reportWaveform.length > 0 ? reportWaveform : traceWaveform,
+            traceWaveform: traceWaveform.length > 0 ? traceWaveform : undefined,
             evidence,
           };
 
@@ -975,9 +977,9 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           dirtySinceVerify: state.projectHealthCore.dirtySinceVerify,
           dirtySinceExport: state.projectHealthCore.dirtySinceExport,
         },
-        customComponents: state.customComponents,
         macros: state.macros,
         macroInsertionCounts: state.macroInsertionCounts,
+        customComponents: state.customComponents,
       }),
     }
   )
@@ -1592,6 +1594,26 @@ function normalizeVerifyRows(
     expected: String(row.expected),
     actual: String(row.actual),
   }));
+}
+
+function toVerifyWaveSamplesFromTrace(trace: RuntimeSimTraceSample[]): VerifyWaveSample[] {
+  if (trace.length === 0) return [];
+  const byTick = new Map<number, VerifyWaveSample>();
+  for (const sample of trace) {
+    if (!Number.isFinite(sample.tick)) continue;
+    const tick = Math.max(0, Math.floor(sample.tick));
+    const signals = Object.fromEntries(
+      Object.entries(sample.signals)
+        .sort(([left], [right]) => compareText(left, right))
+        .map(([key, value]) => [key, String(value === 1 ? 1 : 0)])
+    ) as Record<string, string>;
+    byTick.set(tick, {
+      tick,
+      signals,
+      mismatches: [],
+    });
+  }
+  return Array.from(byTick.values()).sort((left, right) => left.tick - right.tick);
 }
 
 function toVerifyVectors(vectors: TestVector[]): VerifyReportVector[] {

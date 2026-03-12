@@ -13031,6 +13031,38 @@ details[open].ide-export-evidence-details > summary::before {
   color: rgba(160, 180, 210, 0.7);
   font-size: 11px;
 }
+
+.ide-design-debug-overlay-banner {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  max-width: min(920px, calc(100% - 32px));
+  white-space: normal;
+}
+
+.ide-design-failure-brief {
+  display: grid;
+  gap: 4px;
+  flex: 1 1 280px;
+  min-width: 240px;
+}
+
+.ide-design-failure-brief-summary,
+.ide-design-failure-brief-inputs,
+.ide-design-failure-brief-next {
+  color: rgba(224, 238, 255, 0.92);
+  line-height: 1.4;
+}
+
+.ide-design-failure-brief-inputs,
+.ide-design-failure-brief-next {
+  font-size: 11px;
+}
+
+.ide-design-failure-brief-summary code,
+.ide-design-failure-brief-inputs code,
+.ide-design-failure-brief-next code {
+  color: #fef08a;
+}
 .ide-node-inspector-port-value[data-val="?"] { color: rgba(100,130,170,0.5); background: transparent; }
 
 /* ═══ Sprint 7: Node Label Editor (Track A) ══════════════════════════════════ */

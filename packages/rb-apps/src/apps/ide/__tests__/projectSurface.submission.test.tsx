@@ -195,6 +195,42 @@ describe('ProjectSurface workspace panels', () => {
     expect(missingPins.textContent).toContain('LD0');
   });
 
+  it('keeps mapping labels student-facing even when raw ports are generic', () => {
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            mappingRows: [
+              {
+                id: 'sw0',
+                label: 'SW0',
+                direction: 'in',
+                pin: '',
+                required: true,
+                port: 'out',
+              },
+              {
+                id: 'ld0',
+                label: 'LD0',
+                direction: 'out',
+                pin: '',
+                required: true,
+                port: 'in',
+              },
+            ],
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    fireEvent.click(getByTestId('ide-project-mapping-expand-btn'));
+
+    expect(getByTestId('ide-project-port-sw0').textContent).toContain('SW0');
+    expect(getByTestId('ide-project-port-sw0').textContent).not.toContain('out');
+    expect(getByTestId('ide-project-port-ld0').textContent).toContain('LD0');
+    expect(getByTestId('ide-project-port-ld0').textContent).not.toContain('in');
+  });
+
   it('surfaces FPGA config, fidelity, and Project-side quick picks for lab-day export prep', () => {
     const onFpgaConfigChange = vi.fn();
     const onUpdateMappingPin = vi.fn();

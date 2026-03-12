@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-03-11T21:32:00.582Z",
+  "outputDir": "C:\\Users\\conno\\redbyte-ui\\artifacts\\manual-release-proof\\2026-03-11",
+  "bundles": [
+    {
+      "id": "pass-through",
+      "file": "manual-proof-pass-through.zip",
+      "sha256": "523308a8b5dc532040a5ad423f1218f406bb9abbdc2f8e224a90e11c0f8bf539",
+      "expectedTopEntity": "top",
+      "vivadoProjectFile": "manual-proof-pass-through/manual-proof-pass-through.xpr"
+    },
+    {
+      "id": "sequential-clk100mhz",
+      "file": "manual-proof-sequential-clk100mhz.zip",
+      "sha256": "0d0c4ad0e7bb90067f48e52a1c36768f3ad50c9b14812939511fdc0dde1ecce4",
+      "expectedTopEntity": "top",
+      "vivadoProjectFile": "manual-proof-sequential-clk100mhz/manual-proof-sequential-clk100mhz.xpr"
+    }
+  ]
+}

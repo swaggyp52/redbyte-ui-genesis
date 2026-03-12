@@ -17,6 +17,7 @@
  */
 
 import { isFeatureEnabled } from '@redbyte/rb-utils';
+import * as stableSerializeFallback from './stableSerialize';
 
 // ---------------------------------------------------------------------------
 // Worker source (inlined as string, turned into blob URL)
@@ -166,14 +167,9 @@ function useWorker(): boolean {
   return isFeatureEnabled('web-workers');
 }
 
-// Main-thread fallback imports (lazy)
-let mainFallback: typeof import('./stableSerialize') | null = null;
-
+// Main-thread fallback imports are static to avoid dynamic-import chunking warnings.
 async function getFallback() {
-  if (!mainFallback) {
-    mainFallback = await import('./stableSerialize');
-  }
-  return mainFallback;
+  return stableSerializeFallback;
 }
 
 /**

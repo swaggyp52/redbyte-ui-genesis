@@ -123,4 +123,61 @@ describe('RC D2 basys3 bundle gate', () => {
     expect(result.topXdc).toContain('PACKAGE_PIN W4');
     expect(result.warnings.some((warning) => warning.includes('Unsupported Basys3 pin alias'))).toBe(false);
   });
+
+  // Regression: SW→LD direct (no logic gates) previously produced
+  // architecture bodies with undeclared LED(0), causing Vivado synthesis failure.
+  it('pass-through Switch→Lamp circuit: architecture uses only declared entity port names', () => {
+    const circuit: Circuit = {
+      nodes: [
+        { id: 'sw0', type: 'Switch', position: { x: 0,   y: 0 }, config: {}, state: {} },
+        { id: 'sw1', type: 'Switch', position: { x: 0,   y: 80 }, config: {}, state: {} },
+        { id: 'ld0', type: 'Lamp',   position: { x: 200, y: 0 }, config: {}, state: {} },
+        { id: 'ld1', type: 'Lamp',   position: { x: 200, y: 80 }, config: {}, state: {} },
+      ],
+      connections: [
+        { from: { nodeId: 'sw0', portName: 'out' }, to: { nodeId: 'ld0', portName: 'in' } },
+        { from: { nodeId: 'sw1', portName: 'out' }, to: { nodeId: 'ld1', portName: 'in' } },
+      ],
+    };
+
+    const mapping: IoMapping = {
+      inputs: [
+        { id: 'i1', nodeId: 'sw0', port: 'out', pin: 'SW0' },
+        { id: 'i2', nodeId: 'sw1', port: 'out', pin: 'SW1' },
+      ],
+      outputs: [
+        { id: 'o1', nodeId: 'ld0', port: 'in', pin: 'LD0' },
+        { id: 'o2', nodeId: 'ld1', port: 'in', pin: 'LD1' },
+      ],
+    };
+
+    const result = exportBasys3Bundle(circuit, mapping);
+
+    expect(result.valid).toBe(true);
+
+    // Entity must declare canonical port names matching the ioMapping scheme
+    expect(result.topVhd).toContain('sw0_out : in');
+    expect(result.topVhd).toContain('sw1_out : in');
+    expect(result.topVhd).toContain('ld0_in : out');
+    expect(result.topVhd).toContain('ld1_in : out');
+
+    // Architecture body must NOT reference portGroup vector expressions.
+    // This is the regression guard: previously produced 'ld0_in <= LED(0)' where
+    // LED was never declared, causing Vivado [Synth 8-285] build failure.
+    expect(result.topVhd).not.toMatch(/\bLED\s*\(/);
+    expect(result.topVhd).not.toMatch(/\bSW\s*\(/);
+
+    // XDC must contain physical pin assignments for both switches and LEDs
+    expect(result.topXdc).toContain('PACKAGE_PIN V17'); // SW0
+    expect(result.topXdc).toContain('PACKAGE_PIN V16'); // SW1
+    expect(result.topXdc).toContain('PACKAGE_PIN U16'); // LD0
+    expect(result.topXdc).toContain('PACKAGE_PIN E19'); // LD1
+
+    // VHDL entity ports and XDC get_ports must match (parity check)
+    const xdcPorts = extractXdcPorts(result.topXdc);
+    const vhdlPorts = extractVhdlPorts(result.topVhd);
+    xdcPorts.forEach((portName) => {
+      expect(vhdlPorts).toContain(portName);
+    });
+  });
 });

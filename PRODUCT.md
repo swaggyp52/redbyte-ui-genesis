@@ -43,9 +43,9 @@
 
 ---
 
-## Build Contract (`pnpm -w build`)
+## Build Contract (`pnpm build:unified`)
 
-**Unified Build Pipeline** (`scripts/build-unified.mjs`):
+**Unified Build Pipeline** (`scripts/unified-build.mjs`):
 
 1. **Phase 1:** Build marketing site (`vite build` → `apps/manual-site/dist/`)
 2. **Phase 2:** Build IDE (`vite build` → `apps/playground/dist/`)
@@ -54,7 +54,7 @@
    - Copy IDE → `dist/os/`
    - Copy `_redirects`, `_headers` → `dist/`
    - Verify markers present (deterministic check, not heuristic)
-4. **Phase 4:** Verify final artifact structure
+4. **Phase 4:** Verify final artifact structure (`scripts/verify-dist.mjs`)
 
 **Output:** `dist/` ready for deployment.
 
@@ -67,6 +67,9 @@
 ---
 
 ## Deploy Contract (Cloudflare Pages)
+
+**Canonical Pages build command:** `pnpm build:unified`  
+Cloudflare already performs dependency install, so do not prepend `pnpm install`.
 
 **Current Style:** Pages-static, `_redirects` + `_headers` authoritative (Style 1)
 
@@ -217,16 +220,16 @@ These gates prevent common repo degradation patterns. Run before pushing code.
 
 ---
 
-### Lever 2: Dist Manifest Verification
+### Lever 2: Dist Verification
 **Status:** ✅ Deployed  
-**File:** `scripts/verify-dist-manifest.mjs`  
+**File:** `scripts/verify-dist.mjs`  
 **What:** Confirms all required artifact files exist before declaring build success
 - Checks: index.html, build.json, _redirects, _headers, version.json, markers
 - Fails hard if any file missing (not warnings)
 
 **Why:** Accidental CI breaks are caught early, not on deploy
 
-**Run:** Built into `pnpm build` as Phase 4 verification
+**Run:** Built into `pnpm build:unified` as the single Phase 4 verification pass
 
 ---
 

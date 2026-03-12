@@ -187,6 +187,23 @@ export function exportBasys3Bundle(
 
   warnings.push(...vhdl.warnings);
 
+    // ---------------------------------------------------------------------------
+    // VHDL entity port extraction (used for pre-ZIP parity check)
+    // ---------------------------------------------------------------------------
+
+    function extractVhdlEntityPorts(vhdlText: string): string[] {
+      const match = vhdlText.match(/entity\s+\w+\s+is\s+Port\s*\(([^)]+)\)/si);
+      if (!match) return [];
+      return match[1]
+        .split(';')
+        .map((line) => line.trim().split(':')[0]?.trim() ?? '')
+        .filter(Boolean);
+    }
+
+    function extractXdcPortNames(xdcText: string): string[] {
+      return [...xdcText.matchAll(/\[get_ports\s+\{([^}]+)\}\]/g)].map((m) => m[1].trim());
+    }
+
   const verilog = circuitToVerilog(toCircuitV1(circuit), ioMapping, {
     moduleName: options?.entityName ?? 'top',
     targetBoard: 'basys3',
@@ -224,6 +241,24 @@ export function exportBasys3Bundle(
     .map((pin) => `Unknown Basys3 package pin in XDC: ${pin}`);
   warnings.push(...xdcPinWarnings);
 
+    // ---- VHDL entity port vs XDC port parity check ---------------------------
+    // This would have caught the 'LED not declared' bug: entity had 'ld0_node_in'
+    // but XDC also had 'ld0_node_in', so a mismatch would surface immediately.
+    const vhdlEntityPorts = new Set(extractVhdlEntityPorts(vhdl.vhd));
+    const xdcPorts = new Set(extractXdcPortNames(topXdc));
+    const vhdlXdcMismatches: string[] = [];
+    for (const p of vhdlEntityPorts) {
+      if (!xdcPorts.has(p)) {
+        vhdlXdcMismatches.push(`VHDL entity port "${p}" has no XDC constraint`);
+      }
+    }
+    for (const p of xdcPorts) {
+      if (!vhdlEntityPorts.has(p)) {
+        vhdlXdcMismatches.push(`XDC get_ports "${p}" not found in VHDL entity`);
+      }
+    }
+    warnings.push(...vhdlXdcMismatches);
+
   const readme = buildReadme(ioMapping, warnings);
   const uniqueWarnings = Array.from(new Set(warnings)).sort((a, b) => compareCodepoint(a, b));
 
@@ -232,7 +267,8 @@ export function exportBasys3Bundle(
     lint.missingInHdl.length === 0 &&
     lint.missingInXdc.length === 0 &&
     xdcPinWarnings.length === 0 &&
-    verilog.unsupportedNodes.length === 0;
+      verilog.unsupportedNodes.length === 0 &&
+      vhdlXdcMismatches.length === 0;
 
   return {
     topV: verilog.verilog,

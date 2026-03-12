@@ -98,8 +98,9 @@ describe('ExportSurface workstation redesign', () => {
     expect(getByTestId('ide-export-vivado-unverified-callout').textContent).toContain(
       'Artifacts available'
     );
+    expect(getByTestId('ide-export-blockers-callout')).toBeTruthy();
     expect(getByTestId('ide-export-unverified-callout').textContent).toContain(
-      'generated text files are available now'
+      'Vivado handoff is not trustworthy until Verify has a current PASS/FAIL result'
     );
     expect(getByText('Advisories')).toBeTruthy();
     expect(queryByTestId('ide-export-vivado-blocked-callout')).toBeNull();

@@ -11,6 +11,8 @@ interface SignalCatalog {
   inputs: string[];
   outputs: string[];
   clock?: string;
+    /** Maps logical signal names (vector keys, node labels) → canonical entity port names */
+    logicalToCanonical: Map<string, string>;
 }
 
 interface TestbenchGenerationOptions {
@@ -45,6 +47,18 @@ export function generateTestbenchVhdl(
     ...signalCatalog.outputs,
     ...(signalCatalog.clock ? [signalCatalog.clock] : []),
   ]);
+
+    // Extend the name map with logical → canonical aliases so that test vector
+    // keys like 'SW0' resolve to the same VHDL identifier as the canonical
+    // port name 'sw0_node_out' that appears in the component declaration.
+    for (const [logical, canonical] of signalCatalog.logicalToCanonical) {
+      if (!vhdlNameByLogical.has(logical)) {
+        const vhdlCanonical = vhdlNameByLogical.get(canonical);
+        if (vhdlCanonical) {
+          vhdlNameByLogical.set(logical, vhdlCanonical);
+        }
+      }
+    }
 
   const declaredInputs = signalCatalog.clock
     ? uniqueSorted([signalCatalog.clock, ...signalCatalog.inputs])
@@ -158,36 +172,69 @@ function collectSignals(
   const inputNames = new Set<string>();
   const outputNames = new Set<string>();
 
-  for (const vector of vectors) {
-    for (const key of Object.keys(vector.inputs ?? {})) {
-      inputNames.add(key);
-    }
-    for (const key of Object.keys(vector.expected ?? {})) {
-      outputNames.add(key);
-    }
-  }
+    // Build canonical name map: logical name (vector key, node label) → canonical entity port name.
+    // Canonical names use the same nodeId_port scheme as buildVhdlTopLevelBindings / toSignalName,
+    // ensuring testbench component ports match entity ports exactly.
+    const logicalToCanonical = new Map<string, string>();
 
-  for (const node of project.circuit.nodes) {
-    const label = (node.label || node.id || '').trim();
-    if (!label) continue;
-    if (node.type === 'Switch' || node.type === 'InputPin' || node.type === 'INPUT' || node.type === 'Clock') {
-      inputNames.add(label);
-    } else if (node.type === 'Lamp' || node.type === 'OUTPUT') {
-      outputNames.add(label);
+    const hasIoMapping =
+      (project.ioMapping?.inputs?.length ?? 0) > 0 ||
+      (project.ioMapping?.outputs?.length ?? 0) > 0;
+
+    if (hasIoMapping) {
+      // Derive canonical port names from ioMapping (same scheme as basys3Bundle.toSignalName).
+      for (const entry of project.ioMapping?.inputs ?? []) {
+        const canonical = toVhdlIdentifier(`${entry.nodeId}_${entry.port}`);
+        inputNames.add(canonical);
+        logicalToCanonical.set(canonical, canonical);
+        if (entry.label) logicalToCanonical.set(entry.label.trim(), canonical);
+        // Map node label (e.g. 'SW0') → canonical (e.g. 'sw0_node_out')
+        const node = (project.circuit.nodes ?? []).find((n) => n.id === entry.nodeId);
+        if (node?.label) logicalToCanonical.set(node.label.trim(), canonical);
+      }
+      for (const entry of project.ioMapping?.outputs ?? []) {
+        const canonical = toVhdlIdentifier(`${entry.nodeId}_${entry.port}`);
+        outputNames.add(canonical);
+        logicalToCanonical.set(canonical, canonical);
+        if (entry.label) logicalToCanonical.set(entry.label.trim(), canonical);
+        const node = (project.circuit.nodes ?? []).find((n) => n.id === entry.nodeId);
+        if (node?.label) logicalToCanonical.set(node.label.trim(), canonical);
+      }
+    } else {
+      // Legacy fallback: no ioMapping — derive from circuit node labels directly.
+      for (const node of project.circuit.nodes ?? []) {
+        const label = (node.label || node.id || '').trim();
+        if (!label) continue;
+        if (node.type === 'Switch' || node.type === 'InputPin' || node.type === 'INPUT' || node.type === 'Clock') {
+          inputNames.add(label);
+          logicalToCanonical.set(label, label);
+        } else if (node.type === 'Lamp' || node.type === 'OUTPUT') {
+          outputNames.add(label);
+          logicalToCanonical.set(label, label);
+        }
+      }
     }
-  }
 
-  for (const entry of project.ioMapping?.inputs ?? []) {
-    inputNames.add(entry.label || `${entry.nodeId}_${entry.port}`);
-  }
-  for (const entry of project.ioMapping?.outputs ?? []) {
-    outputNames.add(entry.label || `${entry.nodeId}_${entry.port}`);
-  }
+    // Translate test vector keys through the canonical map.
+    // If a key maps to a canonical name (e.g. 'SW0' → 'sw0_node_out'), use the canonical name.
+    // Otherwise keep the key as-is (allows freeform vector-only testbenches).
+    for (const vector of vectors) {
+      for (const key of Object.keys(vector.inputs ?? {})) {
+        const resolved = logicalToCanonical.get(key.trim()) ?? key.trim();
+        if (!outputNames.has(resolved)) inputNames.add(resolved);
+        logicalToCanonical.set(key.trim(), resolved);
+      }
+      for (const key of Object.keys(vector.expected ?? {})) {
+        const resolved = logicalToCanonical.get(key.trim()) ?? key.trim();
+        outputNames.add(resolved);
+        logicalToCanonical.set(key.trim(), resolved);
+      }
+    }
 
-  let clock: string | undefined;
+    let clock: string | undefined;
   if (schedule === 'clocked_macro') {
     if (scheduleClockHint && scheduleClockHint.trim().length > 0) {
-      clock = scheduleClockHint;
+        clock = logicalToCanonical.get(scheduleClockHint.trim()) ?? scheduleClockHint.trim();
       inputNames.add(clock);
     } else if (inputNames.has('clk')) {
       clock = 'clk';
@@ -202,7 +249,7 @@ function collectSignals(
   const inputs = uniqueSorted(Array.from(inputNames).filter((name) => !outputNames.has(name)));
   const outputs = uniqueSorted(Array.from(outputNames));
 
-  return { inputs, outputs, clock };
+    return { inputs, outputs, clock, logicalToCanonical };
 }
 
 function buildNameMap(logicalNames: string[]): Map<string, string> {
