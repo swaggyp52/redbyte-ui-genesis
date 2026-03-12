@@ -122,7 +122,7 @@ function makeFailRun(): RuntimeVerifyRun {
 
 describe('VerifySurface workstation controls', () => {
   it('shows a single first-run CTA before any verification evidence exists', () => {
-    const { getByTestId, queryByTestId } = render(
+    const { getAllByText, getByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -141,7 +141,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-empty-state').textContent).toContain('Verify before trusting the circuit');
     expect(getByTestId('ide-verify-empty-run').textContent).toContain('Run Verification');
     expect(getByTestId('ide-verify-empty-open-vectors').textContent).toContain('Open Project vectors');
-    expect(queryByTestId('ide-verify-run')).toBeNull();
+    expect(getByTestId('ide-verify-run').textContent).toContain('Run Verification');
   });
 
   it('populates truth table rows for a passing run', () => {
@@ -178,7 +178,7 @@ describe('VerifySurface workstation controls', () => {
   });
 
   it('shows mismatch navigation and cursor controls on fail runs', () => {
-    const { getByTestId } = render(
+    const { getAllByText, getByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -202,7 +202,14 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-set-cursor-b')).toBeTruthy();
     expect(getByTestId('ide-verify-cursor-readout')).toBeTruthy();
     expect(getByTestId('ide-verify-failure-explainer')).toBeTruthy();
-    expect(getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t1');
+    expect(getByTestId('ide-verify-right-tick').textContent).toContain('t1');
+    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld0');
+    expect(getByTestId('ide-verify-right-expected').textContent).toContain('1');
+    expect(getByTestId('ide-verify-right-actual').textContent).toContain('0');
+    expect(getByTestId('ide-verify-right-likely-reason').textContent?.length ?? 0).toBeGreaterThan(0);
+
+    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getAllByText('Mismatches')[0]);
     expect(getByTestId('ide-verify-mismatch-case-id').textContent).toContain('vec-02');
     expect(getByTestId('ide-verify-mismatch-sampled-key').textContent).toContain('ld0_node.in');
     expect(getByTestId('ide-verify-mismatch-expected-key').textContent).toContain('ld0');

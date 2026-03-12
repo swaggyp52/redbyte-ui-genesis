@@ -1,5 +1,43 @@
 # AI State
 
+## Change Log 2026-03-11 (Verify workspace failure-clarity redesign)
+
+### Verify now opens as a three-panel debugging workstation with synchronized failure context
+
+Reworked the Verify surface so failure navigation, waveform focus, and the right-side explanation panel stay synchronized in one desktop-first workspace, with keyboard flow and fail-state focus that make the first actionable mismatch obvious.
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Added three-panel workspace composition, fail-row synchronization, right-panel explanation plumbing, and keyboard navigation updates for failure traversal.
+  - Kept waveform as the center workspace while wiring fail selection to the explanation panel and mismatch navigation.
+- `packages/rb-apps/src/apps/ide/surfaces/VerifyThreePanel.tsx` (new)
+  - Added the desktop-first three-panel layout wrapper for vector navigation, waveform center, and failure explanation.
+- `packages/rb-apps/src/apps/ide/surfaces/VerifyVectorListPanel.tsx` (new)
+  - Added focused failing-row navigation with click and keyboard selection.
+- `packages/rb-apps/src/apps/ide/surfaces/VerifyFailureExplanationPanel.tsx` (new)
+  - Added the persistent failure explainer for signal, expected, actual, tick, and likely-reason context.
+- `packages/rb-apps/src/apps/ide/surfaces/verify-failure-classifier.ts` (new)
+  - Added failure classification for output mismatch, undefined output, floating output, and timing mismatch cases.
+- `packages/rb-apps/src/apps/ide/verifyDebug.ts` (new)
+  - Added the shared verify-debug context type used by the synchronized failure-selection flow.
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Added Verify-only three-panel layout, scroll containment, waveform viewport, and height guard rules to avoid nested-scroll regressions.
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - Updated workstation assertions to cover the right-side explainer contract and drawer interaction.
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.three-panel.test.tsx` (new)
+  - Added synchronization coverage for fail-row selection, waveform focus, and right-panel updates.
+- `packages/rb-apps/src/apps/ide/__tests__/VerifyFailureExplanationPanel.test.tsx` (new)
+- `packages/rb-apps/src/apps/ide/__tests__/VerifyThreePanel.test.tsx` (new)
+- `packages/rb-apps/src/apps/ide/__tests__/VerifyVectorListPanel.test.tsx` (new)
+- `packages/rb-apps/src/apps/ide/__tests__/verify-failure-classifier.test.ts` (new)
+
+### Validation
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.three-panel.test.tsx packages/rb-apps/src/apps/ide/__tests__/VerifyFailureExplanationPanel.test.tsx packages/rb-apps/src/apps/ide/__tests__/VerifyThreePanel.test.tsx packages/rb-apps/src/apps/ide/__tests__/VerifyVectorListPanel.test.tsx packages/rb-apps/src/apps/ide/__tests__/verify-failure-classifier.test.ts` - PASS
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-11 (Hardware UX interaction reliability)
 
 ### Basys3 board hit targets now stay clickable under rapid use and label overlap
