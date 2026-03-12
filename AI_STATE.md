@@ -1,5 +1,47 @@
 # AI State
 
+## Change Log 2026-03-11 (Project surface clarity for exports)
+
+### Project surface now clearly distinguishes AVAILABLE vs TRUSTED export readiness with top-3 blockers
+
+Implemented the export-clarity feature (Phase 4A): tristate verify trust logic, RBP1005 blocker synthesis for pass-incomplete, top-3 blocker display in hero callout, and plain-English AVAILABLE/TRUSTED explanation text. Students can now tell in one glance why export is not trusted and what specific issues block it.
+
+**Modified files:**
+
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - Added `buildExportTrustBlockers()` helper to synthesize RBP1005 blocker when verify passes but outputs remain unmapped.
+  - Implement tristate verify trust derivation: `verifyPassCurrent` (pass + not dirty), `verifyPassIncomplete` (pass + incomplete-mapping qualification), `verifyTrusted` (pass + complete).
+  - Hero status message now explicitly shows "AVAILABLE export" vs "TRUSTED export" to clarify the distinction.
+  - Top-3 blockers rendered in hero callout with "+N more" overflow indicator when more than 3 blocking issues exist.
+  - Export readiness row includes plain-English AVAILABLE/TRUSTED/BLOCKED explainer paragraph (testId: `ide-project-export-explanation`).
+  - Verify readiness row now shows tristate status: "TRUSTED" (pass + complete) / "PASS (INCOMPLETE)" (pass + incomplete-mapping) / "NEEDS RUN" (unverified).
+  - Dock stage metadata for verify updates to show "Trusted" / "Pass incomplete" / "Run now" based on tristate.
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Wired `verifyLastRun?.qualification` into readiness prop as `verifyQualification` for ProjectSurface consumption.
+  - Added dependency tracking for qualification changes in readiness useMemo.
+- `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`
+  - Updated `makeProps()` fixture to include `verifyQualification: undefined` default.
+  - Added 4 new test cases for Phase 4A features:
+    1. "displays up to top 3 blocking issues with readable messages" - validates blocker list and overflow indicator.
+    2. "clearly explains AVAILABLE status means untrusted export files when verify incomplete" - validates AVAILABLE explanation text.
+    3. "shows explicit trust blocker when verify passes but with incomplete mapping" - validates RBP1005 synthesis and tristate rendering.
+    4. "uses consistent stable terminology for all readiness states" - validates stable language across mapping-blocked, verify-needed, and export-trusted scenarios.
+  - Updated 4 existing tests to use `getAllByTestId()` pattern for shared testIds to prevent DOM accumulation errors in test suite.
+
+### Validation
+
+- `pnpm --filter rb-apps exec vitest run src/apps/ide/__tests__/projectSurface.submission.test.tsx` - **12 tests passed** (4 Phase 4A new + 8 existing fixed)
+- `pnpm --filter rb-apps exec tsc --noEmit` - Phase 4A code clean (pre-existing errors in other modules not Phase 4A responsibility)
+
+### Technical Decisions
+
+- RBP1005 ("Verify passed, but some outputs remain unmapped") synthesized dynamically in `buildExportTrustBlockers()` rather than back-end, allowing real-time recalculation as qualification changes.
+- Tristate model captures the three distinct verify trust states: current (just-verified, clean), incomplete (passed but has unmapped outputs), and trusted (passed + complete).
+- Top-3 blocker display shows most critical issues to students while "+N more" allows them to discover full list—balances readability with completeness.
+- No changes to VerifySurface, ExportSurface, or prior Stop-Ship features (Commits #1-2); Phase 4A is purely Project-surface focused.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-11 (Saved block templates for reusable logic)
 
 ### Design now supports saved macros, deterministic insertion, and flatten-on-export handoff
