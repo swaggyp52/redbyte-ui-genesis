@@ -2075,12 +2075,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <span className="ide-design-inspector-hint">No selection</span>
             )}
           </div>
+          {macros.length > 0 && (
           <MacroLibraryPanel
             macros={macros}
             activeMacroId={activeMacroInsertionId}
             onSelectMacro={handleSelectMacro}
             onDeleteMacro={onDeleteMacro ? handleDeleteMacro : undefined}
           />
+          )}
           <IdeInspectorAccordion defaultOpenId="design-context">
           <IdeInspectorSection title="Context Inspector" accordionId="design-context" testId="ide-design-context-inspector">
             {selectedNode && selection.nodes.size === 1 ? (

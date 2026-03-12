@@ -20,9 +20,9 @@ export interface IdeTopBarProps {
 
 const MODE_LABELS: Record<IdeMode, string> = {
   project: 'Project',
-  design: 'Design',
-  verify: 'Verify',
-  hardware: 'Hardware',
+  design: 'Build',
+  verify: 'Test',
+  hardware: 'Program',
   export: 'Export',
   import: 'Import',
 };

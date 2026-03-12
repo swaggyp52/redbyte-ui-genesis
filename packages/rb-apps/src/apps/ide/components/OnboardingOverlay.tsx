@@ -16,7 +16,7 @@ const MODE_STEPS: Record<IdeMode, OnboardingStep[]> = {
     },
     {
       title: 'Follow the lab flow',
-      body: 'Project is your home base. Move through Design, Verify, Hardware, and Export as your circuit becomes ready.',
+      body: 'Project is your home base. Move through Build, Test, Program, and Export as your circuit becomes ready.',
     },
     {
       title: 'Keep work safe',
@@ -30,11 +30,11 @@ const MODE_STEPS: Record<IdeMode, OnboardingStep[]> = {
     },
     {
       title: 'Verify correctness',
-      body: 'Switch to Verify to add or generate test vectors, then compare expected and observed outputs.',
+      body: 'Switch to Test to add or generate test vectors, then compare expected and observed outputs.',
     },
     {
       title: 'Export to hardware',
-      body: 'Once verification passes, move to Hardware or Export to build your Basys3 Vivado project.',
+      body: 'Once verification passes, move to Program or Export to build your Basys3 Vivado project.',
     },
   ],
   verify: [
@@ -44,25 +44,25 @@ const MODE_STEPS: Record<IdeMode, OnboardingStep[]> = {
     },
     {
       title: 'Use failures as a guide',
-      body: 'If a run fails, jump to the first mismatch, inspect the failing tick, then return to Design with a concrete fix target.',
+      body: 'If a run fails, jump to the first mismatch, inspect the failing tick, then return to Build with a concrete fix target.',
     },
     {
       title: 'Move forward only when current',
-      body: 'After a passing run, continue to Hardware or Export. If the circuit changes, rerun Verify before trusting the result.',
+      body: 'After a passing run, continue to Program or Export. If the circuit changes, rerun Test before trusting the result.',
     },
   ],
   hardware: [
     {
       title: 'Check readiness first',
-      body: 'Hardware depends on a current passing Verify run and a current export bundle for this project state.',
+      body: 'Program depends on a current passing Test run and a current export bundle for this project state.',
     },
     {
       title: 'Use the board view as proof',
-      body: 'The Hardware screen helps you compare mapped I/O, bring-up vectors, and expected behavior before programming Basys3.',
+      body: 'The Program screen helps you compare mapped I/O, bring-up vectors, and expected behavior before programming Basys3.',
     },
     {
-      title: 'Return to Design when blocked',
-      body: 'If this screen says the project is blocked or stale, go back, fix the circuit, rerun Verify, or rebuild the export bundle.',
+      title: 'Return to Build when blocked',
+      body: 'If this screen says the project is blocked or stale, go back, fix the circuit, rerun Test, or rebuild the export bundle.',
     },
   ],
   export: [
@@ -89,8 +89,8 @@ const MODE_STEPS: Record<IdeMode, OnboardingStep[]> = {
       body: 'Imports do not overwrite your project immediately. RedByte shows a review step before any replacement happens.',
     },
     {
-      title: 'Re-run Verify after import',
-      body: 'Imported projects restore design state, but verification evidence must be regenerated from the Verify screen.',
+      title: 'Re-run Test after import',
+      body: 'Imported projects restore design state, but verification evidence must be regenerated from the Test screen.',
     },
   ],
 };

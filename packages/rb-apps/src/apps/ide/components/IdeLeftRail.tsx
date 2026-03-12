@@ -86,10 +86,10 @@ const ImportIcon = () => (
 // ─── Mode definitions ─────────────────────────────────────────────────────────
 
 const WORKFLOW_STEPS: WorkflowStep[] = [
-  { id: 'design',   label: 'Design',   step: 1, icon: <DesignIcon />   },
-  { id: 'verify',   label: 'Verify',   step: 2, icon: <VerifyIcon />   },
-  { id: 'hardware', label: 'Hardware', step: 3, icon: <HardwareIcon /> },
-  { id: 'export',   label: 'Export',   step: 4, icon: <ExportIcon />   },
+  { id: 'design',   label: 'Build',   step: 1, icon: <DesignIcon />   },
+  { id: 'verify',   label: 'Test',    step: 2, icon: <VerifyIcon />   },
+  { id: 'hardware', label: 'Program', step: 3, icon: <HardwareIcon /> },
+  { id: 'export',   label: 'Export',  step: 4, icon: <ExportIcon />   },
 ];
 
 const PROJECT_ENTRY: UtilityEntry = { id: 'project', label: 'Project', icon: <ProjectIcon /> };
@@ -97,12 +97,12 @@ const IMPORT_ENTRY: UtilityEntry  = { id: 'import',  label: 'Import',  icon: <Im
 
 // Backward-compat export
 export const MODES: IdeModeDefinition[] = [
-  { id: 'project',  label: 'Project',  shortLabel: 'P' },
-  { id: 'design',   label: 'Design',   shortLabel: 'D' },
-  { id: 'verify',   label: 'Verify',   shortLabel: 'V' },
-  { id: 'hardware', label: 'Hardware', shortLabel: 'H' },
-  { id: 'export',   label: 'Export',   shortLabel: 'E' },
-  { id: 'import',   label: 'Import',   shortLabel: 'I' },
+  { id: 'project',  label: 'Project', shortLabel: 'P' },
+  { id: 'design',   label: 'Build',   shortLabel: 'B' },
+  { id: 'verify',   label: 'Test',    shortLabel: 'T' },
+  { id: 'hardware', label: 'Program', shortLabel: 'P' },
+  { id: 'export',   label: 'Export',  shortLabel: 'E' },
+  { id: 'import',   label: 'Import',  shortLabel: 'I' },
 ];
 
 const STORAGE_KEY = 'rb.ide.left-rail.expanded';

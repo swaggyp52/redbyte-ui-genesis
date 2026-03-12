@@ -2710,6 +2710,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   Open Project vectors
                 </IdeButton>
               </div>
+              <details className="ide-verify-sweep-details">
+                <summary className="ide-verify-sweep-summary">Sweep generator</summary>
               <div className="ide-verify-sweep-controls" data-testid="ide-verify-sweep-controls">
                 <label className="ide-verify-field">
                   Sweep preset
@@ -2758,6 +2760,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   Generate Sweep
                 </IdeButton>
               </div>
+              </details>
             </div>
 
             {selectedTick !== null && !showAllVectorTicks ? (

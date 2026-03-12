@@ -16742,3 +16742,26 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   font-size: var(--rb-font-size-1);
   color: var(--ide-text);
 }
+
+/* ── Verify sweep generator collapsible ────────────────────────────────────── */
+.ide-verify-sweep-details {
+  margin-top: var(--rb-space-2);
+  border-top: 1px solid var(--ide-border);
+}
+.ide-verify-sweep-summary {
+  cursor: pointer;
+  font-size: var(--rb-font-size-1);
+  color: var(--ide-text-muted);
+  padding: var(--rb-space-1) 0;
+  list-style: none;
+  user-select: none;
+}
+.ide-verify-sweep-summary::-webkit-details-marker {
+  display: none;
+}
+.ide-verify-sweep-summary::before {
+  content: '▸ ';
+}
+.ide-verify-sweep-details[open] > .ide-verify-sweep-summary::before {
+  content: '▾ ';
+}
