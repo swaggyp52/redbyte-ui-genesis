@@ -481,6 +481,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   // CP-1: Clipboard state for deterministic copy/paste
   const [clipboard, setClipboard] = useState<ClipboardCluster | null>(null);
+  // CP-3: Progressive paste — step resets on new copy, increments each paste
+  const [pasteStep, setPasteStep] = useState(0);
   const [macroDialogState, setMacroDialogState] = useState<DesignMacroDialogState | null>(null);
   const [activeMacroInsertionId, setActiveMacroInsertionId] = useState<string | null>(null);
 
@@ -694,35 +696,47 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [clearSelection, deleteConnection, deleteNode, onCircuitMutated, selection.nodes, selection.wires]);
 
   // CP-1: Copy selected nodes into in-memory clipboard
-  const PASTE_OFFSET = { x: 40, y: 40 };
+  // Each copy resets paste step so fresh pasting starts at origin+step*40
+  const PASTE_STEP_SIZE = 40;
   const handleCopy = useCallback(() => {
     if (selection.nodes.size === 0) return;
     const cluster = serializeCluster(circuit, selection.nodes);
     setClipboard(cluster);
+    setPasteStep(0);
     setActionToast(`Copied ${cluster.nodes.length} node${cluster.nodes.length !== 1 ? 's' : ''}.`);
   }, [circuit, selection.nodes]);
 
-  // CP-1: Paste clipboard cluster into circuit, then select all new nodes
+  // CP-1: Paste clipboard cluster with progressive offset — each paste steps further from origin
   const handlePaste = useCallback(() => {
     if (!clipboard || clipboard.nodes.length === 0) return;
-    const result = pasteCluster(circuit, clipboard, PASTE_OFFSET);
+    const nextStep = pasteStep + 1;
+    const offset = {
+      x: clipboard.originX + nextStep * PASTE_STEP_SIZE,
+      y: clipboard.originY + nextStep * PASTE_STEP_SIZE,
+    };
+    const result = pasteCluster(circuit, clipboard, offset);
     const next = {
       nodes: [...circuit.nodes, ...result.pastedNodes],
       connections: [...circuit.connections, ...result.pastedConnections],
     };
     updateCircuit(next);
-    // Select the pasted nodes so they're visibly highlighted
     selectMultipleNodes(result.pastedNodes.map((n) => n.id));
     setActionToast(`Pasted ${result.pastedNodes.length} node${result.pastedNodes.length !== 1 ? 's' : ''}.`);
+    setPasteStep(nextStep);
     onCircuitMutated?.();
-  }, [circuit, clipboard, updateCircuit, selectMultipleNodes, onCircuitMutated]);
+  }, [circuit, clipboard, pasteStep, updateCircuit, selectMultipleNodes, onCircuitMutated]);
 
-  // CP-2: Duplicate selected nodes in-place — copy+paste without touching clipboard state
+  // CP-2: Duplicate selected nodes — offset from current selection bounding box,
+  // chains naturally because duplicated nodes become the new selection
   const handleDuplicate = useCallback(() => {
     if (selection.nodes.size === 0) return;
     const cluster = serializeCluster(circuit, selection.nodes);
     if (cluster.nodes.length === 0) return;
-    const result = pasteCluster(circuit, cluster, PASTE_OFFSET);
+    const offset = {
+      x: cluster.originX + PASTE_STEP_SIZE,
+      y: cluster.originY + PASTE_STEP_SIZE,
+    };
+    const result = pasteCluster(circuit, cluster, offset);
     const next = {
       nodes: [...circuit.nodes, ...result.pastedNodes],
       connections: [...circuit.connections, ...result.pastedConnections],

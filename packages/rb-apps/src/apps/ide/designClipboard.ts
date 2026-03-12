@@ -39,6 +39,12 @@ export interface ClipboardCluster {
   nodes: ClipboardNode[];
   /** Only connections where both endpoints are in this cluster. */
   connections: ClipboardConnection[];
+  /**
+   * Absolute canvas position of the bounding-box origin of the original selection.
+   * Stored so progressive paste can compute offset = origin + step * stepSize.
+   */
+  originX: number;
+  originY: number;
 }
 
 export interface PasteResult {
@@ -138,7 +144,7 @@ export function serializeCluster(circuit: Circuit, selectedIds: Set<string>): Cl
       toPort: portName(conn, 'to'),
     }));
 
-  return { nodes, connections };
+  return { nodes, connections, originX: minX, originY: minY };
 }
 
 // ── pasteCluster ─────────────────────────────────────────────────────────────
