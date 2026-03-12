@@ -45,6 +45,34 @@ import {
 import { MacroLibraryPanel } from './MacroLibraryPanel';
 import { MacroSaveDialog } from './MacroSaveDialog';
 
+/** Maps internal node type strings to student-readable labels for toast feedback. */
+function nodeTypeLabel(nodeType: string): string {
+  const labels: Record<string, string> = {
+    AND: 'AND gate',
+    OR: 'OR gate',
+    NOT: 'NOT gate',
+    NAND: 'NAND gate',
+    NOR: 'NOR gate',
+    XOR: 'XOR gate',
+    XNOR: 'XNOR gate',
+    BUFFER: 'Buffer',
+    INPUT: 'Input',
+    OUTPUT: 'Output',
+    DFlipFlop: 'D flip-flop',
+    TFlipFlop: 'T flip-flop',
+    JKFlipFlop: 'JK flip-flop',
+    SRLatch: 'SR latch',
+    MUX: 'Multiplexer',
+    DEMUX: 'Demultiplexer',
+    DECODER: 'Decoder',
+    ENCODER: 'Encoder',
+    HALFADDER: 'Half adder',
+    FULLADDER: 'Full adder',
+    CLOCK: 'Clock',
+  };
+  return labels[nodeType] ?? nodeType;
+}
+
 export interface DesignSurfaceProps {
   onOpenPalette?: () => void;
   onCircuitMutated?: () => void;
@@ -733,6 +761,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         addNode(nodeType, position);
         onCircuitMutated?.();
       }
+      setActionToast(`${nodeTypeLabel(nodeType)} placed.`);
     },
     [
       addNode,
@@ -2852,6 +2881,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <span><code>G</code> snap</span>
               {effectiveDesignView === 'stacked' ? <span className="is-accent">Split stacked to preserve scroll + min widths</span> : null}
             </div>
+
+            {/* ── HDL error banner: always visible regardless of view mode ── */}
+            {liveHdlResult.error && (
+              <IdeCallout tone="error" testId="ide-design-hdl-error-canvas">
+                HDL generation failed — {liveHdlResult.error}
+              </IdeCallout>
+            )}
 
             {/* ── Content Pane Row — owns height below toolbar — switches between column/row ── */}
             <div
