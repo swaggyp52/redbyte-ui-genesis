@@ -22,6 +22,36 @@ function wireIdFromConn(conn: Connection): string {
 }
 
 /**
+ * Compute the full combinational fanout cone of a node.
+ * Walks forwards from sourceNodeId through circuit.connections.
+ * Returns every downstream nodeId and wireId driven by the source.
+ */
+export function getFanoutCone(
+  circuit: Circuit,
+  sourceNodeId: string,
+): { nodeIds: Set<string>; wireIds: Set<string> } {
+  const nodeIds = new Set<string>();
+  const wireIds = new Set<string>();
+  const queue: string[] = [sourceNodeId];
+
+  while (queue.length > 0) {
+    const currentId = queue.shift()!;
+    if (nodeIds.has(currentId)) continue;
+    nodeIds.add(currentId);
+
+    for (const conn of circuit.connections) {
+      const from = resolveEndpoint(conn.from);
+      if (from.nodeId !== currentId) continue;
+      wireIds.add(wireIdFromConn(conn));
+      const to = resolveEndpoint(conn.to);
+      if (!nodeIds.has(to.nodeId)) queue.push(to.nodeId);
+    }
+  }
+
+  return { nodeIds, wireIds };
+}
+
+/**
  * Compute the full combinational fanin cone of a node.
  * Walks backwards from targetNodeId through circuit.connections.
  * Returns every upstream nodeId and wireId that feeds into the target.

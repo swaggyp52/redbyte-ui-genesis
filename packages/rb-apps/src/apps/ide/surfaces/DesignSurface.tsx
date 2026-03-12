@@ -13,7 +13,7 @@ import { useLayoutStore } from '../../../stores/layoutStore';
 import { digestValue } from '../../../utils/digest';
 import { parseWireId } from '../../../utils/wireId';
 import type { IdeDiagnostic, IdeDiagnosticRouteRequest } from '../diagnostics';
-import { getFaninCone } from '../pathTrace';
+import { getFaninCone, getFanoutCone } from '../pathTrace';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -261,7 +261,7 @@ interface DesignDebugToggleSample {
 }
 
 interface DesignTraceState {
-  kind: 'wire-net' | 'fanin-port';
+  kind: 'wire-net' | 'fanin-port' | 'fanout-port';
   sourceKey: string;
   label: string;
   signalKey: string | null;
@@ -517,6 +517,32 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       sourceKey: portKey,
       label: `Fanin to ${portKey}`,
       signalKey: `${nodeId}.${portName}`,
+      wireHighlights: highlights,
+      nodeIds: highlightedNodes,
+      portKeys,
+    });
+  }, [clearTrace, editorCircuit]);
+
+  // Fan-out trace — highlights all wires/nodes driven by the selected source node
+  const handleFanoutTrace = useCallback((nodeId: string) => {
+    const fanoutKey = `fanout:${nodeId}`;
+    if (lastTracedPortRef.current === fanoutKey) {
+      clearTrace();
+      return;
+    }
+    lastTracedPortRef.current = fanoutKey;
+    const { wireIds, nodeIds } = getFanoutCone(editorCircuit, nodeId);
+    const highlights = new Map<string, string[]>();
+    wireIds.forEach((wid) => highlights.set(wid, ['#34d399']));
+    const portKeys = buildTracePortKeySet(wireIds);
+    portKeys.add(`${nodeId}:out`);
+    const highlightedNodes = new Set(nodeIds);
+    highlightedNodes.add(nodeId);
+    setTraceState({
+      kind: 'fanout-port',
+      sourceKey: nodeId,
+      label: `Fanout from ${nodeId}`,
+      signalKey: null,
       wireHighlights: highlights,
       nodeIds: highlightedNodes,
       portKeys,
@@ -1654,6 +1680,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (selectedNodePins.includes('out')) return 'out';
     return selectedNodePins[0] ?? null;
   }, [selectedNode, selectedNodePins]);
+
+  const selectedNodeHasFanout = useMemo(() => {
+    if (!selectedNode) return false;
+    return editorCircuit.connections.some((c) => {
+      const fromNodeId = typeof c.from === 'string' ? c.from : (c.from as { nodeId: string }).nodeId;
+      return fromNodeId === selectedNode.id;
+    });
+  }, [selectedNode, editorCircuit.connections]);
   const selectedNodePrimarySignalKey = useMemo(() => {
     if (!selectedNode) return null;
     const candidate = pickPrimaryNodeSignalKey(selectedNode, selectedNodePins, runtimeSim.signals, liveSignals);
@@ -2088,6 +2122,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <div className="ide-inline-actions ide-design-inspector-actions">
                   <IdeButton tone="secondary" onClick={traceSelectedContext} disabled={!preferredNodeTracePort} testId="ide-design-context-trace">
                     Trace net
+                  </IdeButton>
+                  <IdeButton tone="secondary" onClick={() => selectedNode && handleFanoutTrace(selectedNode.id)} disabled={!selectedNodeHasFanout} testId="ide-design-context-trace-fanout">
+                    Trace →
                   </IdeButton>
                   <IdeButton tone="secondary" onClick={pinActiveInspectorSignal} disabled={!activeInspectorSignalKey} testId="ide-design-context-pin">
                     {isActiveInspectorSignalPinned ? 'Unpin signal' : 'Pin signal'}
