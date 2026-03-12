@@ -11,6 +11,7 @@ export interface VerifyHintContext {
   onlyFirstTickFails: boolean;
   mismatch: { expected: string; actual: string } | null;
   hasFloatingOutputWarning: boolean;
+  floatingSignals?: string[];
   pattern?: VerifyFailurePatternSummary | null;
 }
 
@@ -45,7 +46,7 @@ export interface VerifyFailurePatternSummary {
 
 const HINTS: Array<{
   condition: (ctx: VerifyHintContext) => boolean;
-  text: string;
+  text: string | ((ctx: VerifyHintContext) => string);
 }> = [
   {
     condition: (ctx) => !ctx.mappingComplete,
@@ -53,7 +54,18 @@ const HINTS: Array<{
   },
   {
     condition: (ctx) => ctx.hasFloatingOutputWarning,
-    text: 'One or more outputs are undriven (floating). Trace back from the failing output - it may have no wire connected.',
+    text: (ctx) => {
+      const signals = ctx.floatingSignals ?? [];
+      if (signals.length === 1) {
+        return `${signals[0]} is undriven (floating) — no driver found. Trace back from ${signals[0]} and check whether it has a wire connected from a gate output.`;
+      }
+      if (signals.length > 1) {
+        const named = signals.slice(0, 2).join(', ');
+        const extra = signals.length > 2 ? ` (+${signals.length - 2} more)` : '';
+        return `${named}${extra} are undriven (floating). Trace back from each — they may have no wire connected to a gate output.`;
+      }
+      return 'One or more outputs are undriven (floating). Trace back from the failing output — it may have no wire connected to a gate output.';
+    },
   },
   {
     condition: (ctx) => ctx.pattern?.kind === 'all-run',
@@ -222,7 +234,8 @@ export function deriveVerifyFailurePattern(
 /** Returns the first matching hint text, or null if no condition fires. */
 export function getVerifyHint(ctx: VerifyHintContext): string | null {
   const hint = HINTS.find((entry) => entry.condition(ctx));
-  return hint?.text ?? null;
+  if (!hint) return null;
+  return typeof hint.text === 'function' ? hint.text(ctx) : hint.text;
 }
 
 function allRunFailureSummary(signal: string): string {

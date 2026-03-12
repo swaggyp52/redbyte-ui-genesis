@@ -1569,6 +1569,70 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setTruthTableMode((prev) => (prev === 'ticks' ? 'combos' : prev));
   }, [lastRun?.reportHash, combosUnavailableReason]);
 
+  // Derive floating signal names from evidence failures for signal-specific hints
+  const floatingSignals = useMemo(() => {
+    const failures = lastRun?.evidence?.failures ?? [];
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const f of failures) {
+      if (
+        (f.actualReason === 'missing-output-sample' || f.actualReason === 'missing-output-node') &&
+        !seen.has(f.signal)
+      ) {
+        seen.add(f.signal);
+        result.push(f.signal);
+      }
+    }
+    return result;
+  }, [lastRun?.evidence?.failures]);
+
+  // Build per-signal plain-language failure diagnosis for the main viewport
+  const failureDiagnosis = useMemo(() => {
+    if (status !== 'fail' || failingRows.length === 0) return [];
+    const failures = lastRun?.evidence?.failures ?? [];
+
+    // Map each signal to its worst-case reason
+    const reasonMap = new Map<string, { reason: string; expected: string; actual: string }>();
+    for (const f of failures) {
+      const existing = reasonMap.get(f.signal);
+      const isBetter =
+        !existing ||
+        (f.actualReason === 'missing-output-node' && existing.reason !== 'missing-output-node') ||
+        (f.actualReason === 'missing-output-sample' && existing.reason === 'matched');
+      if (isBetter) {
+        reasonMap.set(f.signal, { reason: f.actualReason, expected: f.expected, actual: f.actual });
+      }
+    }
+
+    // Walk failingRows in order to get stable, deduplicated signal list
+    const seen = new Set<string>();
+    const result: Array<{ signal: string; label: string; action: string }> = [];
+    for (const row of failingRows) {
+      if (seen.has(row.signal)) continue;
+      seen.add(row.signal);
+
+      const entry = reasonMap.get(row.signal);
+      const reason = entry?.reason ?? 'matched';
+      const expected = entry?.expected ?? row.expected;
+      const actual = entry?.actual ?? row.actual;
+
+      let label: string;
+      let action: string;
+      if (reason === 'missing-output-node') {
+        label = `${row.signal} is not connected to a design node`;
+        action = `Check that ${row.signal} is mapped in Project → Mapping`;
+      } else if (reason === 'missing-output-sample') {
+        label = `${row.signal} is floating — no driver found`;
+        action = `Check whether ${row.signal} has a wire connected from a gate output`;
+      } else {
+        label = `${row.signal} mismatched — expected ${expected}, observed ${actual}`;
+        action = `Inspect the logic feeding ${row.signal} — trace back from that output`;
+      }
+      result.push({ signal: row.signal, label, action });
+    }
+    return result;
+  }, [status, failingRows, lastRun?.evidence?.failures]);
+
   // Compute verify hint (only shown in FAIL state)
   const verifyHint = useMemo((): string | null => {
     if (status !== 'fail' || failingRows.length === 0) return null;
@@ -1589,6 +1653,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         ? { expected: selectedFailureCase.expected, actual: selectedFailureCase.actual }
         : null,
       hasFloatingOutputWarning,
+      floatingSignals,
     };
     return getVerifyHint({ ...ctx, pattern: selectedFailurePattern });
   }, [
@@ -1599,6 +1664,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     timelineTicks,
     mappingComplete,
     hasFloatingOutputWarning,
+    floatingSignals,
     selectedFailureCase,
     selectedFailurePattern,
   ]);
@@ -2904,6 +2970,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             Clocked circuit: expected outputs are sampled AFTER the rising edge of each clock tick.
             Tick 0 = initial state (no clock pulse yet).
           </IdeCallout>
+        )}
+
+        {displayStatus === 'FAIL' && failureDiagnosis.length > 0 && (
+          <div className="ide-verify-fail-diagnosis" data-testid="ide-verify-fail-diagnosis">
+            {failureDiagnosis.map((item) => (
+              <div key={item.signal} className="ide-verify-fail-diagnosis-row" data-testid="ide-verify-fail-diagnosis-row">
+                <span className="ide-verify-fail-diagnosis-label">{item.label}</span>
+                <span className="ide-verify-fail-diagnosis-action">{item.action}</span>
+              </div>
+            ))}
+          </div>
         )}
 
         {displayStatus === 'FAIL' && verifyHint && (

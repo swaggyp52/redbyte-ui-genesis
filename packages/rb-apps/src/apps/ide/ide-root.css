@@ -16578,3 +16578,39 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 [data-layout-mode='compact'] .ide-verify-instrument-deck {
   grid-template-columns: minmax(0, 1fr);
 }
+
+
+/* ── Verify failure diagnosis block ── */
+.ide-verify-fail-diagnosis {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rb-space-2);
+  padding: var(--rb-space-3) var(--rb-space-4);
+  background: var(--rb-error-bg);
+  border: 1px solid var(--rb-error-border);
+  border-radius: var(--rb-radius-1);
+}
+
+.ide-verify-fail-diagnosis-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ide-verify-fail-diagnosis-row + .ide-verify-fail-diagnosis-row {
+  padding-top: var(--rb-space-2);
+  border-top: 1px solid rgba(255, 107, 107, 0.18);
+}
+
+.ide-verify-fail-diagnosis-label {
+  font-size: var(--rb-font-size-2);
+  font-weight: var(--rb-font-weight-medium);
+  color: var(--rb-error);
+  line-height: var(--rb-line-height-3);
+}
+
+.ide-verify-fail-diagnosis-action {
+  font-size: var(--rb-font-size-1);
+  color: var(--rb-text-3);
+  line-height: var(--rb-line-height-2);
+}
