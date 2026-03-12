@@ -58,6 +58,8 @@ export interface LogicCanvasProps {
   onRedo?: () => void;
   /** Fired when the user clicks a port (after internal wiring logic). Use for path-tracing / fanin highlight. */
   onPortClick?: (nodeId: string, portName: string) => void;
+  /** Fired when a wire attempt is rejected due to an invalid connection. The reason is the raw validation reason. */
+  onConnectionRejected?: (reason: string) => void;
   onWireContextMenu?: (input: {
     wireId: string;
     signalKey: string | null;
@@ -166,6 +168,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   onUndo,
   onRedo,
   onPortClick,
+  onConnectionRejected,
   onWireContextMenu,
   nodeEvalOrder,
   changedNodeIds,
@@ -683,7 +686,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       const validation = isValidConnection(from, to, circuit, getChipMetadata);
 
       if (!validation.valid) {
-        // Invalid connection - just cancel the wire silently
+        onConnectionRejected?.(validation.reason ?? 'Connection not allowed');
         endWire();
         return;
       }
@@ -722,7 +725,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
     // Notify parent after internal handling (used for fanin path tracing)
     onPortClick?.(nodeId, portName);
-  }, [circuit, editingState.wireStartPort, commitCircuit, endWire, startWire, getChipMetadata, isReplayMode, interactionMode, wireRewireDraft, onPortClick]);
+  }, [circuit, editingState.wireStartPort, commitCircuit, endWire, startWire, getChipMetadata, isReplayMode, interactionMode, wireRewireDraft, onPortClick, onConnectionRejected]);
 
   const beginWireReconnect = React.useCallback(
     (wireId: string, endpoint: 'from' | 'to') => {

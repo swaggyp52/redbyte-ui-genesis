@@ -73,6 +73,15 @@ function nodeTypeLabel(nodeType: string): string {
   return labels[nodeType] ?? nodeType;
 }
 
+/** Map raw wire validation reasons to student-readable messages. */
+export function connectionRejectedMessage(reason: string): string {
+  if (reason === 'Cannot connect node to itself') return 'A gate cannot connect to itself.';
+  if (reason === 'Connection already exists') return 'That wire already exists.';
+  if (reason === 'Cannot connect input to input') return 'Inputs cannot be wired directly to each other.';
+  if (reason === 'Cannot connect output to output') return 'Outputs cannot be wired directly to each other.';
+  return 'That connection is not allowed here.';
+}
+
 export interface DesignSurfaceProps {
   onOpenPalette?: () => void;
   onCircuitMutated?: () => void;
@@ -3170,6 +3179,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       onUndo={handleUndo}
                       onRedo={handleRedo}
                       onPortClick={handlePortClick}
+                      onConnectionRejected={(reason) => setActionToast(connectionRejectedMessage(reason))}
                       nodeEvalOrder={evalOrder}
                       changedNodeIds={changedNodeIds}
                       probeWireHighlights={traceState?.wireHighlights}
