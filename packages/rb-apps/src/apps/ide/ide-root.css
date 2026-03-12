@@ -16765,3 +16765,31 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 .ide-verify-sweep-details[open] > .ide-verify-sweep-summary::before {
   content: '▾ ';
 }
+
+/* ── Verify visual hierarchy pass ───────────────────────────────────────────── */
+
+/* Coverage meter — muted so it doesn't compete with pass/fail counts */
+.ide-verify-strip-coverage {
+  color: var(--ide-text-muted);
+}
+
+/* Step Through / Oracle — advanced actions, visually demoted */
+.ide-verify-strip-advanced-actions {
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+.ide-verify-strip-advanced-actions:hover,
+.ide-verify-strip-advanced-actions:focus-within {
+  opacity: 1;
+}
+
+/* Fail diagnosis section header */
+.ide-verify-fail-diagnosis-header {
+  display: block;
+  font-size: var(--rb-font-size-1);
+  font-weight: 600;
+  color: var(--ide-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--rb-space-1);
+}

@@ -2952,11 +2952,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <>
               <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
               <span
-                className="ide-verify-strip-meta"
-                title={`${inputCoverage.seen} of ${inputCoverage.total} possible input combinations tested`}
+                className="ide-verify-strip-meta ide-verify-strip-coverage"
+                title={`Input combinations: ${inputCoverage.seen} of ${inputCoverage.total} unique input patterns tested`}
                 data-testid="ide-verify-coverage-meter"
               >
-                {inputCoverage.seen}/{inputCoverage.total} combos ({inputCoverage.pct}%)
+                {inputCoverage.pct}% coverage
               </span>
             </>
           )}
@@ -3033,6 +3033,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               <IdeButton tone="ghost" onClick={clearResults} testId="ide-verify-clear">Clear</IdeButton>
             )}
             {hasResults && totalSteps > 0 && (
+              <span className="ide-verify-strip-advanced-actions">
               <IdeButton
                 tone={isStepMode ? 'secondary' : 'ghost'}
                 onClick={() => setIsStepMode((v) => !v)}
@@ -3040,9 +3041,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               >
                 {isStepMode ? 'Exit Step-Through' : 'Step Through'}
               </IdeButton>
+              </span>
             )}
             {canSetOracle && (
-              <span title="Updates your truth table expected values to match what the circuit currently produces. Use this once the circuit is behaving correctly.">
+              <span className="ide-verify-strip-advanced-actions" title="Updates your truth table expected values to match what the circuit currently produces. Use this once the circuit is behaving correctly.">
                 <IdeButton
                   tone="ghost"
                   onClick={handleSetOracleExpected}
@@ -3065,6 +3067,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
         {displayStatus === 'FAIL' && failureDiagnosis.length > 0 && (
           <div className="ide-verify-fail-diagnosis" data-testid="ide-verify-fail-diagnosis">
+            <span className="ide-verify-fail-diagnosis-header" data-testid="ide-verify-fail-diagnosis-header">Issues found</span>
             {failureDiagnosis.map((item) => (
               <div key={item.signal} className="ide-verify-fail-diagnosis-row" data-testid="ide-verify-fail-diagnosis-row">
                 <span className="ide-verify-fail-diagnosis-label">{item.label}</span>
@@ -3232,7 +3235,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={displayStatus === 'PASS' ? 'pass' : displayStatus === 'FAIL' ? 'fail' : 'idle'}>
               {/* ── Oscilloscope instrument header ── */}
               <div className="ide-verify-scope-header" data-testid="ide-verify-scope-header">
-                <span className="ide-verify-scope-label">OSCILLOSCOPE</span>
+                <span className="ide-verify-scope-label">Waveform</span>
                 {selectedSignal && (
                   <span className="ide-verify-scope-signal-chip" data-testid="ide-verify-scope-signal">
                     {selectedSignal}
