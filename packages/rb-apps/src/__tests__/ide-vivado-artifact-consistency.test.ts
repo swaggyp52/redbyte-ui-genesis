@@ -124,6 +124,40 @@ function buildProjectFolderInput(project: RBProject): BuildVivadoProjectFolderIn
   };
 }
 
+type VivadoArtifacts = BuildVivadoProjectFolderInput['artifacts'];
+
+function getRequiredArtifactContent(artifacts: VivadoArtifacts, path: string): string {
+  const artifact = artifacts.find((candidate) => candidate.path === path);
+  expect(artifact).toBeDefined();
+  return artifact?.content ?? '';
+}
+
+function getOptionalArtifactContent(artifacts: VivadoArtifacts, path: string): string {
+  return artifacts.find((candidate) => candidate.path === path)?.content ?? '';
+}
+
+function mutateTopXdcArtifacts(
+  artifacts: VivadoArtifacts,
+  mutate: (topXdc: string) => string
+): { artifacts: VivadoArtifacts; mutatedTopXdc: string } {
+  const originalTopXdc = getRequiredArtifactContent(artifacts, 'top.xdc');
+  const mutatedTopXdc = mutate(originalTopXdc);
+  const mutatedArtifacts = artifacts.map((artifact) =>
+    artifact.path === 'top.xdc' ? { ...artifact, content: mutatedTopXdc } : artifact
+  );
+  return { artifacts: mutatedArtifacts, mutatedTopXdc };
+}
+
+function validateConsistencyForArtifacts(artifacts: VivadoArtifacts): string[] {
+  return validateVivadoArtifactConsistency({
+    topVhd: getRequiredArtifactContent(artifacts, 'top.vhd'),
+    topXdc: getRequiredArtifactContent(artifacts, 'top.xdc'),
+    testbenchVhd: getOptionalArtifactContent(artifacts, 'testbench.vhd'),
+    xprText: '',
+    vivadoImportTcl: '',
+  });
+}
+
 function toEntryTextMap(
   entries: Array<{ name: string; text: string; dir?: boolean }>
 ): Map<string, string> {
@@ -280,4 +314,110 @@ describe('IDE Vivado full artifact consistency contract', () => {
       })
     ).rejects.toThrow('Vivado export aborted: artifact naming/top-module consistency check failed.');
   });
+
+  it('rejects XDC with malformed syntax (unmatched brackets)', async () => {
+    const project = buildPassThroughProject();
+    const input = buildProjectFolderInput(project);
+
+    const malformedArtifacts = input.artifacts.map((artifact) => {
+      if (artifact.path !== 'top.xdc') return artifact;
+      // Introduce unmatched bracket in [get_ports
+      return {
+        ...artifact,
+        content: artifact.content.replace(
+          '[get_ports {',
+          '[get_ports {'
+        ),
+      };
+    });
+
+    // Remove closing bracket to create malformed syntax
+    const brokenXdc = malformedArtifacts.find((a) => a.path === 'top.xdc');
+    if (brokenXdc) {
+      // Remove a closing bracket to break syntax
+      brokenXdc.content = brokenXdc.content.replace(
+        /(\[get_ports\s*\{[^}]*)\}/,
+        '$1'
+      );
+    }
+
+    await expect(
+      buildVivadoProjectFolderEntries({
+        ...input,
+        artifacts: malformedArtifacts,
+      })
+    ).rejects.toThrow(/XDC.*unmatched.*bracket|XDC.*syntax/i);
+  });
+
+  it('rejects XDC when pin does not exist on Basys3', async () => {
+    const project = buildPassThroughProject();
+    const input = buildProjectFolderInput(project);
+    const originalTopXdc = getRequiredArtifactContent(input.artifacts, 'top.xdc');
+
+    const { artifacts: invalidPinArtifacts, mutatedTopXdc } = mutateTopXdcArtifacts(
+      input.artifacts,
+      (topXdc) => topXdc.replace(/PACKAGE_PIN\s+[A-Z0-9]+/, 'PACKAGE_PIN AA1')
+    );
+
+    expect(mutatedTopXdc).toContain('PACKAGE_PIN AA1');
+    expect(mutatedTopXdc).not.toEqual(originalTopXdc);
+    expect(getRequiredArtifactContent(invalidPinArtifacts, 'top.xdc')).toEqual(mutatedTopXdc);
+
+    const validatorIssues = validateConsistencyForArtifacts(invalidPinArtifacts);
+    expect(validatorIssues.some((issue) => /AA1.*does not exist on Basys3/i.test(issue))).toBe(true);
+
+    await expect(
+      buildVivadoProjectFolderEntries({
+        ...input,
+        artifacts: invalidPinArtifacts,
+      })
+    ).rejects.toThrow(/AA1.*does not exist on Basys3/i);
+  });
+
+  it('rejects XDC with duplicate PACKAGE_PIN assignments', async () => {
+    const project = buildPassThroughProject();
+    const input = buildProjectFolderInput(project);
+    const originalTopXdc = getRequiredArtifactContent(input.artifacts, 'top.xdc');
+
+    const { artifacts: duplicatePinArtifacts, mutatedTopXdc } = mutateTopXdcArtifacts(
+      input.artifacts,
+      (topXdc) => {
+        const lines = topXdc.split('\n');
+        const firstAssignmentIndex = lines.findIndex((line) => /PACKAGE_PIN\s+[A-Z0-9]+/.test(line));
+        if (firstAssignmentIndex < 0) {
+          throw new Error('Expected at least one PACKAGE_PIN assignment in top.xdc fixture.');
+        }
+        lines.splice(firstAssignmentIndex + 1, 0, lines[firstAssignmentIndex]);
+        return lines.join('\n');
+      }
+    );
+
+    expect(mutatedTopXdc).not.toEqual(originalTopXdc);
+    expect(getRequiredArtifactContent(duplicatePinArtifacts, 'top.xdc')).toEqual(mutatedTopXdc);
+
+    const pinAssignmentLines = mutatedTopXdc
+      .split('\n')
+      .filter((line) => /PACKAGE_PIN\s+[A-Z0-9]+/.test(line));
+    const pinValues = pinAssignmentLines
+      .map((line) => line.match(/PACKAGE_PIN\s+([A-Z0-9]+)/)?.[1] ?? '')
+      .filter((pin) => pin.length > 0);
+    const duplicatePin = pinValues.find((pin, index) => pinValues.indexOf(pin) !== index);
+
+    expect(duplicatePin).toBeDefined();
+    if (!duplicatePin) {
+      throw new Error('Expected duplicated PACKAGE_PIN value in mutated top.xdc.');
+    }
+    expect(pinAssignmentLines.filter((line) => line.includes(`PACKAGE_PIN ${duplicatePin}`)).length).toBeGreaterThanOrEqual(2);
+
+    const validatorIssues = validateConsistencyForArtifacts(duplicatePinArtifacts);
+    expect(validatorIssues.some((issue) => /assigns pin.*multiple ports|duplicate/i.test(issue))).toBe(true);
+
+    await expect(
+      buildVivadoProjectFolderEntries({
+        ...input,
+        artifacts: duplicatePinArtifacts,
+      })
+    ).rejects.toThrow(/assigns pin.*multiple ports|duplicate/i);
+  });
 });
+

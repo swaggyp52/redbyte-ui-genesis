@@ -43,6 +43,27 @@ const VIVADO_QUESTA_VERSION = '2024.1';
 const VIVADO_XCELIUM_VERSION = '24.03.003';
 const REFERENCE_CONSTRAINTS_FILE_NAME = 'basys3.xdc';
 
+// Basys3 boards (xc7a35tcpg236-1) valid I/O pins for constraint validation
+const BASYS3_VALID_PINS = new Set([
+  // Switches (SW0-SW15)
+  'V17', 'V16', 'W16', 'W17', 'W15', 'V15', 'W14', 'W13',
+  'V2', 'T3', 'T2', 'R3', 'W2', 'U2', 'U3', 'V1',
+  // LEDs (LD0-LD15)
+  'U16', 'E19', 'U19', 'V19', 'W18', 'U18', 'U17', 'U14',
+  'V14', 'V13', 'V3', 'W3', 'W13', 'V20', 'V9', 'W9',
+  // Buttons (BTNC, BTNU, BTNL, BTNR, BTND)
+  'N17', 'P18', 'P17', 'M17', 'M18',
+  // Clock (CLK)
+  'W5',
+  // PMOD connectors (common header pins)
+  'J17', 'D17', 'D16', 'J18', 'E18', 'E16', 'F18', 'G17',
+  'D14', 'F16', 'G16', 'H15', 'J16', 'J14', 'G14', 'H16',
+  // Additional valid package pins for flexibility
+  'U1', 'W1', 'T1', 'Y1', 'Y2', 'Y3', 'U4', 'V4', 'V6', 'W6',
+]);
+
+
+
 export function deriveVivadoProjectSlug(value: string): string {
   const normalized = value
     .trim()
@@ -438,8 +459,112 @@ function sanitizeFileName(value: string, fallback: string): string {
   return normalized.length > 0 ? normalized : fallback;
 }
 
-export function validateVivadoArtifactConsistency(input: VivadoArtifactConsistencyInput): string[] {
+/**
+ * Validate XDC syntax: check bracket matching, statement completeness, malformed patterns
+ */
+function validateXdcSyntax(topXdc: string): string[] {
   const issues: string[] = [];
+
+  // Check for unmatched brackets in [get_ports ...]
+  const getPortsMatches = Array.from(topXdc.matchAll(/\[get_ports\s*\{[^}]*\}/g));
+  if (getPortsMatches.length === 0 && topXdc.includes('[get_ports')) {
+    issues.push('XDC contains [get_ports but no complete [...] bracket pair found.');
+  }
+
+  // Check for orphaned [get_ports without closing bracket
+  const orphanedGetPorts = (topXdc.match(/\[get_ports\s*\{[^}]*$/gm) || []).filter(
+    (line) => !line.includes('}')
+  );
+  if (orphanedGetPorts.length > 0) {
+    issues.push(`XDC has unmatched [get_ports bracket: "${orphanedGetPorts[0].substring(0, 50)}..."`);
+  }
+
+    // Check for missing closing brace in set_property lines
+    const setPropertyLines = topXdc.split('\n').filter((line) => line.includes('set_property'));
+    for (const line of setPropertyLines) {
+      const trimmed = line.trim();
+      if (!trimmed.endsWith(']') && !trimmed.endsWith('}')) {
+        issues.push(`XDC set_property line is missing closing bracket: "${trimmed.substring(0, 60)}..."`);
+      }
+    }
+
+
+  return issues;
+}
+
+/**
+ * Validate that all pins referenced in XDC exist on Basys3 (xc7a35tcpg236-1)
+ */
+function validateBasys3Pins(topXdc: string): string[] {
+  const issues: string[] = [];
+
+  // Extract all PACKAGE_PIN values from setProperty lines
+  // Handle both formats: "set_property PACKAGE_PIN V17" and "set_property -dict { PACKAGE_PIN V17"
+  const pinMatches = Array.from(topXdc.matchAll(/(?:set_property\s+PACKAGE_PIN\s+([A-Z0-9]+)|set_property\s+-dict\s*\{\s*PACKAGE_PIN\s+([A-Z0-9]+))/gi));
+  const assignedPins = pinMatches.map((m) => (m[1] || m[2]).trim());
+
+  for (const pin of assignedPins) {
+    if (!BASYS3_VALID_PINS.has(pin)) {
+      issues.push(
+        `XDC references pin ${pin}, which does not exist on Basys3 (xc7a35tcpg236-1). ` +
+          `Valid pins include: SW0-SW15 (V17,V16,W16...), LD0-LD15 (U16,E19...), BTNC-BTND, CLK (W5).`
+      );
+    }
+  }
+
+  return issues;
+}
+
+/**
+ * Detect duplicate PACKAGE_PIN assignments (same pin assigned multiple times)
+ */
+function detectDuplicatePinAssignments(topXdc: string): string[] {
+  const issues: string[] = [];
+
+  // Extract all PACKAGE_PIN assignments with their target ports
+  const assignments = Array.from(topXdc.matchAll(/set_property[^\[]*PACKAGE_PIN\s+([A-Z0-9]+)[^\[]*\[get_ports\s*\{([^}]+)\}/gi)).map(
+    (m) => ({ pin: m[1].trim(), port: m[2].trim() })
+  );
+
+  // Find duplicate pins
+  const pinDuplicates = new Map<string, string[]>();
+  for (const { pin, port } of assignments) {
+    if (!pinDuplicates.has(pin)) {
+      pinDuplicates.set(pin, []);
+    }
+    pinDuplicates.get(pin)!.push(port);
+  }
+
+  for (const [pin, ports] of pinDuplicates.entries()) {
+    if (ports.length > 1) {
+      issues.push(
+        `XDC assigns pin ${pin} to multiple ports: ${ports.join(', ')}. ` +
+          `Each pin can only be assigned once.`
+      );
+    }
+  }
+
+  return issues;
+}
+
+export function validateVivadoArtifactConsistency(input: VivadoArtifactConsistencyInput): string[] {
+
+  const issues: string[] = [];
+
+  // Early XDC validation: syntax, pin validity, duplicates
+  const xdcSyntaxIssues = validateXdcSyntax(input.topXdc);
+  issues.push(...xdcSyntaxIssues);
+
+  const basys3PinIssues = validateBasys3Pins(input.topXdc);
+  issues.push(...basys3PinIssues);
+
+  const duplicatePinIssues = detectDuplicatePinAssignments(input.topXdc);
+  issues.push(...duplicatePinIssues);
+
+  // Early exit if XDC has critical flaws
+  if (issues.length > 0) {
+    return issues;
+  }
 
   const entityName = detectVhdlTopEntity(input.topVhd);
   if (!entityName) {

@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-03-12 (Vivado XDC validator contract completion)
+
+### Failing-flow test instrumentation now proves mutated top.xdc is validated, and export aborts on invalid/duplicate pins
+
+Completed the unfinished Vivado XDC validator contract batch by fixing the real failing test flow (not regex-only checks): tests now mutate the generated `set_property -dict { PACKAGE_PIN ... }` lines, assert the mutated `top.xdc` before validation, assert direct validator issues from the same mutated artifact object, and then assert `buildVivadoProjectFolderEntries(...)` rejects.
+
+**Modified files:**
+
+- `packages/rb-apps/src/__tests__/ide-vivado-artifact-consistency.test.ts`
+  - Added helper utilities for required/optional artifact retrieval, deterministic `top.xdc` mutation, and direct consistency validation over the exact artifact payload used by integration calls.
+  - Updated invalid-pin test to mutate to `PACKAGE_PIN AA1`, assert mutated XDC content, assert direct validator issue, and assert export rejection.
+  - Updated duplicate-pin test to duplicate a real `PACKAGE_PIN` assignment line (dict format), assert duplicate pin appears in multiple assignments, assert direct validator issue, and assert export rejection.
+  - Added malformed-XDC syntax rejection coverage in the same contract suite.
+- `packages/rb-apps/src/fpga/vivado/vivadoProjectFolder.ts`
+  - Added XDC-specific consistency checks: syntax guard, Basys3 pin validity guard, and duplicate `PACKAGE_PIN` assignment detection as part of `validateVivadoArtifactConsistency(...)`.
+
+### Validation
+
+- `pnpm --filter rb-apps exec vitest run src/__tests__/ide-vivado-artifact-consistency.test.ts` - **PASS (6/6)**
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/ide-vivado-project-folder-contract.test.ts packages/rb-apps/src/__tests__/ide-vivado-pack-contract.test.ts packages/rb-apps/src/export/__tests__/vhdlExport.test.ts packages/rb-apps/src/__tests__/basys3-bundle-gate.test.ts` - **PASS (16/16)**
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-11 (Project surface clarity for exports)
 
 ### Project surface now clearly distinguishes AVAILABLE vs TRUSTED export readiness with top-3 blockers
