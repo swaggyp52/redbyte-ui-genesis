@@ -2154,6 +2154,48 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
                     Duplicate
                   </IdeButton>
+                  <IdeButton
+                    tone="secondary"
+                    onClick={() => {
+                      setEditingLabelNodeId(selectedNode.id);
+                      setLabelDraft(selectedNode.label ?? '');
+                    }}
+                    disabled={editingLabelNodeId === selectedNode.id}
+                    testId="ide-design-context-rename"
+                  >
+                    Rename
+                  </IdeButton>
+                </div>
+                <div className="ide-design-label-editor" data-testid="ide-design-label-editor">
+                  {editingLabelNodeId === selectedNode.id ? (
+                    <div className="ide-design-label-editor-row">
+                      <input
+                        className="ide-text-input ide-design-label-input"
+                        type="text"
+                        value={labelDraft}
+                        onChange={(e) => setLabelDraft(e.target.value)}
+                        onKeyDown={handleLabelKeyDown}
+                        onBlur={commitNodeLabel}
+                        autoFocus
+                        placeholder="Enter label…"
+                        data-testid="ide-design-label-input"
+                        maxLength={32}
+                      />
+                      <IdeButton tone="secondary" onClick={commitNodeLabel} testId="ide-design-label-save">✓</IdeButton>
+                      <IdeButton tone="ghost" onClick={cancelNodeLabel} testId="ide-design-label-cancel">✕</IdeButton>
+                    </div>
+                  ) : (
+                    <IdeButton
+                      tone="ghost"
+                      onClick={() => {
+                        setEditingLabelNodeId(selectedNode.id);
+                        setLabelDraft(selectedNode.label ?? '');
+                      }}
+                      testId="ide-design-label-edit-btn"
+                    >
+                      {selectedNode.label ? `Label: ${selectedNode.label}` : 'Add label…'}
+                    </IdeButton>
+                  )}
                 </div>
               </div>
             ) : selectedWireContext ? (
@@ -2558,6 +2600,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         data-testid="ide-design-label-input"
                         maxLength={32}
                       />
+                      <IdeButton tone="secondary" onClick={commitNodeLabel} testId="ide-design-label-save">✓</IdeButton>
                       <IdeButton tone="ghost" onClick={cancelNodeLabel} testId="ide-design-label-cancel">✕</IdeButton>
                     </div>
                   ) : (
