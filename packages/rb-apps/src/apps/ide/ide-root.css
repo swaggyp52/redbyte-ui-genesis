@@ -16614,3 +16614,55 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   color: var(--rb-text-3);
   line-height: var(--rb-line-height-2);
 }
+
+/* ── Hardware bring-up plain-language assertions (Batch 4) ─────────────── */
+.ide-hw-assert-plain-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rb-space-1);
+  padding: var(--rb-space-2) 0;
+}
+
+.ide-hw-assert-plain-row + .ide-hw-assert-plain-row {
+  border-top: 1px solid rgba(255, 107, 107, 0.18);
+}
+
+.ide-hw-assert-plain-fail {
+  font-size: var(--rb-font-size-2);
+  font-weight: var(--rb-font-weight-medium);
+  color: var(--rb-error);
+  line-height: var(--rb-line-height-3);
+}
+
+.ide-hw-assert-plain-action {
+  font-size: var(--rb-font-size-1);
+  color: var(--rb-text-3);
+  line-height: var(--rb-line-height-2);
+}
+
+.ide-hw-assert-all-pass {
+  color: var(--rb-success);
+  font-size: var(--rb-font-size-2);
+  margin: 0;
+}
+
+.ide-hw-assert-raw-details {
+  margin-top: var(--rb-space-2);
+  border-top: 1px solid var(--rb-border-subtle);
+  padding-top: var(--rb-space-2);
+}
+
+.ide-hw-assert-raw-summary {
+  font-size: var(--rb-font-size-1);
+  color: var(--rb-text-3);
+  cursor: pointer;
+  user-select: none;
+  padding: var(--rb-space-1) 0;
+}
+
+.ide-hw-assert-raw-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--rb-space-1);
+}

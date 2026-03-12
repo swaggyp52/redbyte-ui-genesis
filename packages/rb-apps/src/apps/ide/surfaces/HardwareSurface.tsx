@@ -46,6 +46,38 @@ export interface HardwareSurfaceProps {
   onGoToDesign?: () => void;
 }
 
+/** Convert a raw signal key like "ld[5]" or "sw3" into a human label like "LED LD5" / "Switch SW3". */
+export function signalHumanLabel(signal: string): string {
+  const ldMatch = signal.match(/ld\[?(\d+)\]?/i);
+  if (ldMatch) return `LED LD${ldMatch[1]}`;
+  const swMatch = signal.match(/sw\[?(\d+)\]?/i);
+  if (swMatch) return `Switch SW${swMatch[1]}`;
+  const btnMatch = signal.match(/btn([cudlr])/i);
+  if (btnMatch) return `Button BTN${btnMatch[1].toUpperCase()}`;
+  return signal.toUpperCase();
+}
+
+/** Format a single assertion entry as a plain student-readable sentence. */
+export function formatAssertionPlain(a: {
+  tick: number;
+  signal: string;
+  expected: string;
+  actual: string | null;
+  pass: boolean;
+  hasData: boolean;
+}): string {
+  const sigLabel = signalHumanLabel(a.signal);
+  const expectedWord = a.expected === '1' ? 'ON' : 'OFF';
+  if (!a.hasData) {
+    return `${sigLabel} could not be read at step ${a.tick} — no trace data available.`;
+  }
+  if (a.pass) {
+    return `${sigLabel} is ${expectedWord} at step ${a.tick}.`;
+  }
+  const actualWord = a.actual === '1' ? 'ON' : 'OFF';
+  return `${sigLabel} should be ${expectedWord} at step ${a.tick}, but it stayed ${actualWord}.`;
+}
+
 const HARDWARE_EMPTY_SIM: RuntimeSimState = {
   tick: 0, running: false, speedHz: 1, irHash: '', traceHash: '',
   inputs: {}, signals: {}, trace: [], selectedSignalKey: null, probes: [],
@@ -280,12 +312,14 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     const [, signals] = group;
     return signals.map((s) => {
       const ldMatch = s.signal.match(/ld\[?(\d+)\]?/i);
-      const actual = ldMatch ? String(ioBus.state.ld[Number(ldMatch[1])] ?? '—') : '—';
-      const pass = actual === s.expected;
+      const rawActual = ldMatch ? String(ioBus.state.ld[Number(ldMatch[1])] ?? '—') : '—';
+      const pass = rawActual === s.expected;
+      const expectedWord = s.expected === '1' ? 'ON' : 'OFF';
+      const actualWord = rawActual === '—' ? '—' : rawActual === '1' ? 'ON' : 'OFF';
       return [
-        <code key={s.signal}>{s.signal}</code>,
-        s.expected,
-        actual,
+        signalHumanLabel(s.signal),
+        expectedWord,
+        actualWord,
         <IdeStatusPill key={`${s.signal}-pill`} tone={pass ? 'ok' : 'error'}>
           {pass ? 'OK' : 'FAIL'}
         </IdeStatusPill>,
@@ -390,8 +424,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     if (!group) return [];
     const [, signals] = group;
     return signals.map((s) => [
-      <code key={s.signal}>{s.signal}</code>,
-      s.expected,
+      signalHumanLabel(s.signal),
+      s.expected === '1' ? 'ON' : 'OFF',
     ]);
   }, [bringupTickGroups, bringupStepIndex]);
 
@@ -483,8 +517,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         <div className="ide-hw-assert-summary" data-testid="ide-hw-assert-summary">
           <span className={assertionFailCount > 0 ? 'ide-hw-assert-fail-count' : 'ide-hw-assert-pass-count'}>
             {assertionFailCount > 0
-              ? `${assertionFailCount} ASSERTION${assertionFailCount > 1 ? 'S' : ''} FAILED`
-              : `${assertionPassCount} assertions passed`}
+              ? `${assertionFailCount} bring-up check${assertionFailCount > 1 ? 's' : ''} failed`
+              : `${assertionPassCount} bring-up check${assertionPassCount === 1 ? '' : 's'} passed`}
           </span>
         </div>
       )}
@@ -512,9 +546,16 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           {(() => {
             const swSignals = (bringupTickGroups[bringupStepIndex]?.[1] ?? []).filter(s => /sw/i.test(s.signal));
             if (swSignals.length === 0) return null;
+            const instructions = swSignals.map(s => {
+              const label = signalHumanLabel(s.signal);
+              return s.expected === '1' ? `turn ${label} ON` : `turn ${label} OFF`;
+            });
+            const text = instructions.length === 1
+              ? instructions[0].charAt(0).toUpperCase() + instructions[0].slice(1)
+              : `${instructions.slice(0, -1).join(', ')}, then ${instructions[instructions.length - 1]}`;
             return (
               <p className="ide-hw-step-instruction" data-testid="ide-hw-step-instruction">
-                Set {swSignals.map(s => `${s.signal.toUpperCase()}=${s.expected}`).join(', ')}
+                {text}
               </p>
             );
           })()}
@@ -632,32 +673,56 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           <p className="ide-copy">No signals.</p>
         ) : (
           <IdeDataTable
-            columns={['Signal', 'Exp', 'Act', 'Status']}
+            columns={['Output', 'Expected', 'Observed', '']}
             rows={bringupStepRows}
             testId="ide-hw-bringup-result-table"
           />
         )}
       </IdeInspectorSection>
-      <IdeInspectorSection title="Assertion Log" defaultOpen>
+      <IdeInspectorSection title="Bring-Up Results" defaultOpen>
         {!hasAssertionData ? null : (
           <div className="ide-hw-assert-log" data-testid="ide-hw-assert-log">
-            {hardwareAssertions.slice(0, 30).map((a, i) => (
-              <div key={i} className="ide-hw-assert-formal-row">
-                <code
-                  className={`ide-hw-assert-formal ${a.hasData ? (a.pass ? 'is-pass' : 'is-fail') : 'is-nodata'}`}
-                  data-testid={`ide-hw-assert-row-${a.tick}-${a.signal}`}
-                >
-                  {`ASSERT t${a.tick} ${a.signal}=${a.expected} \u2192 ${
-                    !a.hasData ? 'NO_DATA' : a.pass ? 'PASS' : `FAIL(act=${a.actual})`
-                  }`}
-                </code>
+            {hardwareAssertions.filter(a => a.hasData && !a.pass).slice(0, 10).map((a, i) => (
+              <div
+                key={i}
+                className="ide-hw-assert-plain-row"
+                data-testid={`ide-hw-assert-plain-${a.tick}-${a.signal}`}
+              >
+                <span className="ide-hw-assert-plain-fail">
+                  {formatAssertionPlain(a)}
+                </span>
+                <span className="ide-hw-assert-plain-action">
+                  {`Check whether ${signalHumanLabel(a.signal)} is correctly mapped and connected to the circuit output.`}
+                </span>
               </div>
             ))}
-            {hardwareAssertions.length > 30 && (
-              <code className="ide-hw-assert-formal is-nodata">
-                ... +{hardwareAssertions.length - 30} assertions
-              </code>
+            {hardwareAssertions.filter(a => a.hasData && a.pass).length > 0 &&
+              hardwareAssertions.filter(a => a.hasData && !a.pass).length === 0 && (
+              <p className="ide-copy ide-hw-assert-all-pass" data-testid="ide-hw-assert-all-pass">
+                {`All ${assertionPassCount} bring-up check${assertionPassCount === 1 ? '' : 's'} passed.`}
+              </p>
             )}
+            <details className="ide-hw-assert-raw-details">
+              <summary className="ide-hw-assert-raw-summary">Technical details</summary>
+              <div className="ide-hw-assert-raw-list">
+                {hardwareAssertions.slice(0, 30).map((a, i) => (
+                  <code
+                    key={i}
+                    className={`ide-hw-assert-formal ${a.hasData ? (a.pass ? 'is-pass' : 'is-fail') : 'is-nodata'}`}
+                    data-testid={`ide-hw-assert-row-${a.tick}-${a.signal}`}
+                  >
+                    {`ASSERT t${a.tick} ${a.signal}=${a.expected} \u2192 ${
+                      !a.hasData ? 'NO_DATA' : a.pass ? 'PASS' : `FAIL(act=${a.actual})`
+                    }`}
+                  </code>
+                ))}
+                {hardwareAssertions.length > 30 && (
+                  <code className="ide-hw-assert-formal is-nodata">
+                    +{hardwareAssertions.length - 30} more
+                  </code>
+                )}
+              </div>
+            </details>
           </div>
         )}
       </IdeInspectorSection>
@@ -682,15 +747,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               {assertionFailCount} assertion{assertionFailCount > 1 ? 's' : ''} failed
             </p>
             <IdeDataTable
-              columns={['Tick', 'Signal', 'Exp', 'Act']}
+              columns={['Step', 'Output', 'Expected', 'Observed']}
               rows={hardwareAssertions
                 .filter((a) => !a.pass && a.hasData)
                 .slice(0, 10)
                 .map((a) => [
-                  <code key={`t${a.tick}`}>t{a.tick}</code>,
-                  <code key={a.signal}>{a.signal}</code>,
-                  a.expected,
-                  a.actual ?? '—',
+                  `Step ${a.tick}`,
+                  signalHumanLabel(a.signal),
+                  a.expected === '1' ? 'ON' : 'OFF',
+                  a.actual == null ? '—' : a.actual === '1' ? 'ON' : 'OFF',
                 ])}
               testId="ide-hw-proof-fail-table"
             />
