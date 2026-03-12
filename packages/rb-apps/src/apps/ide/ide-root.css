@@ -16838,3 +16838,22 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   color: var(--ide-text-muted);
   font-weight: 400;
 }
+
+/* ── Design — inspector action groups ────────────────────────────────────────── */
+.ide-design-inspector-group {
+  margin-top: var(--rb-space-2);
+  padding-top: var(--rb-space-2);
+  border-top: 1px solid var(--ide-border);
+}
+.ide-design-inspector-group--danger {
+  margin-top: var(--rb-space-3);
+}
+.ide-design-inspector-group-label {
+  display: block;
+  font-size: var(--rb-font-size-1);
+  font-weight: 600;
+  color: var(--ide-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--rb-space-1);
+}

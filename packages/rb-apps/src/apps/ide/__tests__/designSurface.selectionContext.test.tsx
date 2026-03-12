@@ -192,3 +192,86 @@ describe('DesignSurface — multi-node selection context', () => {
     expect(pills.textContent).not.toContain('OUTPUT');
   });
 });
+
+// ─── Single-node inspector action hierarchy ───────────────────────────────────
+
+describe('DesignSurface — single-node inspector action groups', () => {
+  it('trace actions are grouped inside ide-design-trace-group', async () => {
+    const view = renderSurface();
+
+    act(() => { useLogicViewStore.getState().selectNode('sw0_node'); });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-selection-inspector')).toBeTruthy();
+    });
+
+    // Trace group must exist
+    const traceGroup = view.getByTestId('ide-design-trace-group');
+    expect(traceGroup).toBeTruthy();
+
+    // Trace actions must live inside the trace group, not at the top level
+    const traceBtn = view.getByTestId('ide-design-context-trace');
+    expect(traceGroup.contains(traceBtn)).toBe(true);
+  });
+
+  it('trace group label reads "Net tracing"', async () => {
+    const view = renderSurface();
+
+    act(() => { useLogicViewStore.getState().selectNode('sw0_node'); });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-trace-group')).toBeTruthy();
+    });
+
+    expect(view.getByTestId('ide-design-trace-group').textContent).toContain('Net tracing');
+  });
+
+  it('edit actions (Copy, Duplicate, Rename) appear before trace group in DOM', async () => {
+    const view = renderSurface();
+
+    act(() => { useLogicViewStore.getState().selectNode('sw0_node'); });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-selection-inspector')).toBeTruthy();
+    });
+
+    const copyBtn = view.getByTestId('ide-design-copy-btn');
+    const traceGroup = view.getByTestId('ide-design-trace-group');
+
+    // Copy button must come before trace group in document order
+    const position = copyBtn.compareDocumentPosition(traceGroup);
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+// ─── Multi-select inspector action hierarchy ──────────────────────────────────
+
+describe('DesignSurface — multi-select inspector action groups', () => {
+  it('delete button shows node count, not static "selected nodes"', async () => {
+    const view = renderSurface();
+
+    act(() => { useLogicViewStore.getState().selectMultipleNodes(['sw0_node', 'ld0_node']); });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-inspector-delete')).toBeTruthy();
+    });
+
+    const deleteBtn = view.getByTestId('ide-design-inspector-delete');
+    expect(deleteBtn.textContent).toContain('2');
+    expect(deleteBtn.textContent).not.toContain('selected nodes');
+  });
+
+  it('does not show "Bulk actions" instructional text', async () => {
+    const view = renderSurface();
+
+    act(() => { useLogicViewStore.getState().selectMultipleNodes(['sw0_node', 'ld0_node']); });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-multiselect-summary')).toBeTruthy();
+    });
+
+    const summary = view.getByTestId('ide-design-multiselect-summary');
+    expect(summary.textContent).not.toContain('Bulk actions');
+    expect(summary.textContent).not.toContain('drag to move as a unit');
+  });
+});

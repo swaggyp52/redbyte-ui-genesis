@@ -2141,21 +2141,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </span>
                   </div>
                 </div>
-                <div className="ide-inline-actions ide-design-inspector-actions">
-                  <IdeButton tone="secondary" onClick={traceSelectedContext} disabled={!preferredNodeTracePort} testId="ide-design-context-trace">
-                    Trace net
-                  </IdeButton>
-                  <IdeButton tone="secondary" onClick={() => selectedNode && handleFanoutTrace(selectedNode.id)} disabled={!selectedNodeHasFanout} testId="ide-design-context-trace-fanout">
-                    Trace →
-                  </IdeButton>
-                  <IdeButton tone="secondary" onClick={pinActiveInspectorSignal} disabled={!activeInspectorSignalKey} testId="ide-design-context-pin">
-                    {isActiveInspectorSignalPinned ? 'Unpin signal' : 'Pin signal'}
-                  </IdeButton>
-                  <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
-                    Clear trace
-                  </IdeButton>
-                </div>
-                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <div className="ide-inline-actions">
                   <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
                     Copy
                   </IdeButton>
@@ -2204,6 +2190,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       {selectedNode.label ? `Label: ${selectedNode.label}` : 'Add label…'}
                     </IdeButton>
                   )}
+                </div>
+                <div className="ide-design-inspector-group" data-testid="ide-design-trace-group">
+                  <span className="ide-design-inspector-group-label">Net tracing</span>
+                  <div className="ide-inline-actions">
+                    <IdeButton tone="ghost" onClick={traceSelectedContext} disabled={!preferredNodeTracePort} testId="ide-design-context-trace">
+                      Trace net
+                    </IdeButton>
+                    <IdeButton tone="ghost" onClick={() => selectedNode && handleFanoutTrace(selectedNode.id)} disabled={!selectedNodeHasFanout} testId="ide-design-context-trace-fanout">
+                      Trace →
+                    </IdeButton>
+                    <IdeButton tone="ghost" onClick={pinActiveInspectorSignal} disabled={!activeInspectorSignalKey} testId="ide-design-context-pin">
+                      {isActiveInspectorSignalPinned ? 'Unpin' : 'Pin'}
+                    </IdeButton>
+                    <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
+                      Clear
+                    </IdeButton>
+                  </div>
                 </div>
               </div>
             ) : selectedWireContext ? (
@@ -2703,10 +2706,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </span>
                   ))}
                 </div>
-                <p className="ide-copy">
-                  Bulk actions: drag to move as a unit, press Delete to remove selection, Ctrl+Z to restore.
-                </p>
-                <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                <div className="ide-inline-actions" style={{ marginBottom: 6 }}>
                   <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
                     Copy ({selection.nodes.size})
                   </IdeButton>
@@ -2718,15 +2718,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       Paste
                     </IdeButton>
                   )}
-                  {onSaveMacro && selectedNodeIdsAll.length >= 2 && (
-                    <IdeButton tone="secondary" onClick={openMacroDialog} testId="ide-design-save-macro-open">
-                      Save as Macro...
-                    </IdeButton>
-                  )}
                 </div>
-                <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
-                  Delete selected nodes
-                </IdeButton>
+                {onSaveMacro && selectedNodeIdsAll.length >= 2 && (
+                  <div className="ide-design-inspector-group">
+                    <span className="ide-design-inspector-group-label">Compose</span>
+                    <div className="ide-inline-actions">
+                      <IdeButton tone="ghost" onClick={openMacroDialog} testId="ide-design-save-macro-open">
+                        Save as Macro…
+                      </IdeButton>
+                    </div>
+                  </div>
+                )}
+                <div className="ide-design-inspector-group ide-design-inspector-group--danger">
+                  <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
+                    Delete {selection.nodes.size} nodes
+                  </IdeButton>
+                </div>
                 {onSaveAsComponent && selectedNodeIdsAll.length >= 2 && (
                   <div className="ide-design-save-component-form" data-testid="ide-design-save-component-form" style={{ marginTop: 8 }}>
                     {saveComponentOpen ? (
