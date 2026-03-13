@@ -38,7 +38,7 @@ await runIdeGate('IDE project overview contract satisfied', async ({ page, baseU
   assert(mappingVisible, 'project mapping panel must render');
 
   const readinessVisible = await page
-    .locator('[data-testid="ide-project-panel-readiness"]')
+    .locator('[data-testid="ide-project-panel-readiness"], [data-testid="ide-project-readiness-summary"]')
     .first()
     .isVisible()
     .catch(() => false);

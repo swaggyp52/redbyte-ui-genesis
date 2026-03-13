@@ -19331,3 +19331,45 @@ Key details:
 - Repo health is still blocked by the next independent contract: IDE Project Overview Contract.
 
 - **Attribution**: Connor Angiel
+
+---
+
+## Change Log 2026-03-12 (Project Overview contract selector refresh)
+
+**Subsystem**: Repo-health blocker chain - IDE Project overview contract
+
+**Problem**
+
+- pnpm repo:status advanced through import/export checks but failed at IDE Project Overview Contract.
+- Direct gate reproduction failed with project readiness panel must render.
+
+**Root-cause classification**
+
+- Stale contract selector (not product defect, not environment/tooling noise).
+
+**Files changed**
+
+- scripts/gates/ide-project-overview-contract.mjs
+
+**What changed**
+
+- Updated readiness-panel locator to accept both:
+  - legacy ide-project-panel-readiness
+  - current ide-project-readiness-summary
+- Kept assertion intent unchanged: readiness section must render.
+
+**Why minimal**
+
+- Contract-only change; no runtime product code touched.
+- One selector update preserving backward compatibility with legacy id.
+
+**Validation**
+
+- pnpm -s ide:gate:project-overview-contract -> PASS
+- pnpm repo:status now passes IDE Project Overview Contract and advances to next blocker: IDE Workbench Layout Contract.
+
+**Remaining concern**
+
+- Repo health is now blocked by IDE Workbench Layout Contract.
+
+- **Attribution**: Connor Angiel
