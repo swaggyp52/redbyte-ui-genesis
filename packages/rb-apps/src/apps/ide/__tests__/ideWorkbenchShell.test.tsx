@@ -98,4 +98,59 @@ describe('IdeWorkbenchShell', () => {
       expect(console.scrollTop).toBe(0);
     });
   });
+
+  it('restores scroll positions when returning to a previously visited surface', async () => {
+    const { getByTestId, rerender } = render(
+      <IdeWorkbenchShell
+        mode="project"
+        workspace={
+          <div style={{ height: 1200 }}>
+            <div style={{ height: 1200 }}>Workspace</div>
+          </div>
+        }
+        leftDock={<div style={{ height: 1200 }}>Left</div>}
+        rightDock={<div style={{ height: 1200 }}>Right</div>}
+        console={<div style={{ height: 1200 }}>Console</div>}
+        consoleHasEntries
+      />
+    );
+
+    const inspector = getByTestId('ide-inspector');
+
+    // Simulate scrolling: set scrollTop then dispatch scroll event to trigger capture
+    inspector.scrollTop = 72;
+    inspector.dispatchEvent(new Event('scroll', { bubbles: false }));
+
+    // Switch away to verify
+    rerender(
+      <IdeWorkbenchShell
+        mode="verify"
+        workspace={<div style={{ height: 1200 }}>Workspace</div>}
+        leftDock={<div style={{ height: 1200 }}>Left</div>}
+        rightDock={<div style={{ height: 1200 }}>Right</div>}
+        console={<div style={{ height: 1200 }}>Console</div>}
+        consoleHasEntries
+      />
+    );
+
+    await waitFor(() => {
+      expect(inspector.scrollTop).toBe(0); // first visit to verify
+    });
+
+    // Switch back to project
+    rerender(
+      <IdeWorkbenchShell
+        mode="project"
+        workspace={<div style={{ height: 1200 }}>Workspace</div>}
+        leftDock={<div style={{ height: 1200 }}>Left</div>}
+        rightDock={<div style={{ height: 1200 }}>Right</div>}
+        console={<div style={{ height: 1200 }}>Console</div>}
+        consoleHasEntries
+      />
+    );
+
+    await waitFor(() => {
+      expect(inspector.scrollTop).toBe(72); // restored from saved state
+    });
+  });
 });

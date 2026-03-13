@@ -57,6 +57,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   hideRightDock = false,
 }) => {
   const shellRef = useRef<HTMLElement | null>(null);
+  const savedScrollRef = useRef(new Map<string, Record<string, number>>());
   const [layout, setLayout] = useState<WorkbenchLayoutState>(DEFAULT_LAYOUT);
   const resizeRef = useRef<ActiveResizeState | null>(null);
   const [consolePinnedOpen, setConsolePinnedOpen] = useState(false);
@@ -104,10 +105,40 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     return () => observer.disconnect();
   }, []);
 
+  // Continuously capture scroll positions for the current mode
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell || typeof window === 'undefined') return;
+    let raf: number | null = null;
+    const onScroll = () => {
+      if (raf !== null) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = null;
+        const positions: Record<string, number> = {};
+        shell.querySelectorAll<HTMLElement>(SCROLL_SAVE_SELECTORS).forEach((el) => {
+          positions[scrollKey(el)] = el.scrollTop;
+        });
+        savedScrollRef.current.set(mode, positions);
+      });
+    };
+    shell.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    return () => {
+      shell.removeEventListener('scroll', onScroll, { capture: true });
+      if (raf !== null) window.cancelAnimationFrame(raf);
+    };
+  }, [mode]);
+
+  // On mode/layout change: restore saved positions or reset to 0
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const frame = window.requestAnimationFrame(() => {
-      resetWorkbenchScrollPositions(shellRef.current);
+      const shell = shellRef.current;
+      if (!shell) return;
+      const saved = savedScrollRef.current.get(mode);
+      shell.querySelectorAll<HTMLElement>(SCROLL_SAVE_SELECTORS).forEach((el) => {
+        el.scrollTop = saved?.[scrollKey(el)] ?? 0;
+        el.scrollLeft = 0;
+      });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [hideRightDock, layoutMode, mode]);
@@ -353,6 +384,17 @@ function detectLayoutMode(width?: number): WorkbenchLayoutMode {
   if (effectiveWidth >= 1600) return 'wide';
   if (effectiveWidth >= 1320) return 'standard';
   return 'compact';
+}
+
+const SCROLL_SAVE_SELECTORS =
+  '.ide-workbench-dock, .ide-workbench-workspace, .ide-panel-body, .ide-workbench-console';
+
+function scrollKey(el: HTMLElement): string {
+  if (el.classList.contains('ide-workbench-dock-left')) return 'dL';
+  if (el.classList.contains('ide-workbench-dock-right')) return 'dR';
+  if (el.classList.contains('ide-workbench-console')) return 'co';
+  if (el.classList.contains('ide-workbench-workspace')) return 'ws';
+  return 'pb';
 }
 
 function resetWorkbenchScrollPositions(shell: HTMLElement | null): void {
