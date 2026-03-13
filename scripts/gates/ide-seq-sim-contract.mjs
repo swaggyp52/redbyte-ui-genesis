@@ -83,7 +83,7 @@ await runIdeGate('IDE sequential simulation contract satisfied', async ({ page, 
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-design-live-signals"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-design-live-state-table"]', { timeout: 10000 });
 
   await page.locator('[data-testid="ide-design-sim-reset"]').click();
 
@@ -92,7 +92,10 @@ await runIdeGate('IDE sequential simulation contract satisfied', async ({ page, 
       .map((entry) => (entry.getAttribute('data-testid') || '').replace('ide-design-live-input-', ''))
       .filter(Boolean)
   );
-  const dataInputId = inputIds.find((entry) => /dff_data|_data|(^d$)/i.test(entry)) ?? inputIds[0];
+  const dataInputId =
+    inputIds.find((entry) => /dff_data|_data|(^d_in$)|(^d$)/i.test(entry)) ??
+    inputIds.find((entry) => !/clk/i.test(entry)) ??
+    inputIds[0];
   assert(Boolean(dataInputId), 'expected at least one live input for sequential example');
   await setBinaryInput(page, dataInputId, 1);
 
