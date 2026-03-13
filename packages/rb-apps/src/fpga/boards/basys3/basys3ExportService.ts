@@ -561,14 +561,16 @@ function isTopLevelHdlPortProjection(project: RBProject): boolean {
   );
 }
 
-function isHdlProjectionScaffoldWarning(message: string): boolean {
+export function isHdlProjectionScaffoldWarning(message: string): boolean {
   const trimmed = message.trim();
   return (
     /^Node .+ type "INPUT" not supported for synthesis$/i.test(trimmed) ||
     /^Node .+ type "OUTPUT" not supported for synthesis$/i.test(trimmed) ||
     /^Unsupported node: .+ \(INPUT\)$/i.test(trimmed) ||
     /^Unsupported node: .+ \(OUTPUT\)$/i.test(trimmed) ||
-    /^Output ".+" \(id: .+\) has no driver .*$/i.test(trimmed)
+    /^Output ".+" \(id: .+\) has no driver .*$/i.test(trimmed) ||
+    /^Top output port ".+" has no driver .*$/i.test(trimmed) ||
+    /^Top output port ".+" has unresolved driver .+$/i.test(trimmed)
   );
 }
 

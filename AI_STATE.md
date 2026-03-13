@@ -23,6 +23,57 @@ Completed the unfinished Vivado XDC validator contract batch by fixing the real 
 
 - **Attribution**: Connor Angiel
 
+---
+
+## Change Log 2026-03-13 (HDL projection scaffold warning filter)
+
+**Subsystem**: FPGA export diagnostics - Basys3 HDL projection warning hygiene
+
+**Problem**
+
+- `pnpm repo:status` was failing at `IDE Synth Subset Contract`.
+- The failing synth fixture (`03-vivado-ish-clocked`) expected clean Export diagnostics, but `buildExportViewModel(project)` was surfacing four `RBEX9001` warnings:
+  - `Top output port "port_out_q*_in" has no driver — output will be tied low`
+
+**Cause**
+
+- The existing HDL projection scaffold-warning filter in `basys3ExportService.ts` did not recognize the current top-output warning message shape emitted by VHD export.
+- As a result, projection-only scaffold warnings were leaking into student-facing export diagnostics for top-level HDL projection projects.
+
+**Files changed**
+
+- `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`
+
+**What changed**
+
+- Extended `isHdlProjectionScaffoldWarning()` to also classify these warning formats as projection scaffold noise:
+  - `Top output port "..." has no driver ...`
+  - `Top output port "..." has unresolved driver ...`
+- Preserved existing behavior and scope: filtering remains conditional on `isTopLevelHdlPortProjection(project)`.
+
+**Why minimal**
+
+- One-function change in existing warning classification logic.
+- No schema, persistence, export artifact layout, or UI flow changes.
+- No behavior change for non-HDL-projection (normal graph-authored) circuits.
+
+**Validation**
+
+- `pnpm -s ide:gate:synth-subset-contract` -> PASS
+- `pnpm repo:status` now passes:
+  - `IDE Synth Subset Contract`
+  - `IDE Vivado Pack Contract`
+  - `IDE Export Includes RBProject Contract`
+  - `IDE ZIP Import Contract`
+  - `IDE Bring-Up Contract`
+  and advances to `Building`.
+
+**Remaining concern**
+
+- `repo:status` still exits non-zero at the later `Building` check in this environment; this is independent of the synth-subset warning regression fixed here.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-03-11 (Project surface clarity for exports)
 
 ### Project surface now clearly distinguishes AVAILABLE vs TRUSTED export readiness with top-3 blockers
@@ -19229,5 +19280,54 @@ Key details:
 
 - `pnpm repo:status` now passes `IDE Persistence Contract` and advances to the next independent failure: `IDE Workbench Layout Contract`.
 - `origin/gates-track` exists at `fdfbc684`; persistence fix `929b4b3c` is 1 ahead — not pushed.
+
+- **Attribution**: Connor Angiel
+
+---
+
+## Change Log 2026-03-12 (Import roundtrip contract refresh + HDL projection warning filter regression tests)
+
+**Subsystem**: Repo-health blocker chain - import/export parity contracts
+
+**Problem**
+
+- Repo health appeared to fail at Building from truncated output, but full chain reproduction showed Building passing and the first real blocker was Import Pipeline Validation.
+- gates:import-roundtrip failed in ixture03-sequential-parity.test.ts because the test hard-coded clk in the macro schedule regex while generated testbench signal names now use canonical port identifiers.
+
+**Root-cause classification**
+
+- Stale contract/test assertion (not product build defect, not environment noise).
+
+**Files changed**
+
+- packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts
+- packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts
+- packages/rb-apps/src/__tests__/basys3-hdl-projection-warning-filter.test.ts
+
+**What changed**
+
+- Updated fixture03 parity test macro schedule regex to match any valid VHDL signal name consistently via capture/backreference, instead of hard-coding clk.
+- Kept the previously added HDL projection scaffold warning patterns and exported isHdlProjectionScaffoldWarning for direct regression coverage.
+- Added focused regression tests that lock expected scaffold-warning message shapes and explicit non-scaffold negatives.
+
+**Why minimal**
+
+- One stale assertion update for the active repo-health blocker.
+- One targeted hardening test file for warning-pattern drift.
+- No runtime product behavior changes in import/export execution flow.
+
+**Validation**
+
+- pnpm gates:import-roundtrip -> PASS
+- pnpm exec vitest run packages/rb-apps/src/__tests__/basys3-hdl-projection-warning-filter.test.ts packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts -> PASS
+- pnpm -s ide:gate:synth-subset-contract -> PASS
+- pnpm repo:status now passes through:
+  - Building
+  - Import Pipeline Validation
+  and advances to next blocker: IDE Project Overview Contract.
+
+**Remaining concern**
+
+- Repo health is still blocked by the next independent contract: IDE Project Overview Contract.
 
 - **Attribution**: Connor Angiel

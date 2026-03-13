@@ -85,7 +85,7 @@ describe('fixture03 sequential verify/export parity', () => {
     const generatedTestbench = generateTestbenchVhdl(project, vectors);
     expect(generatedTestbench).toContain('-- schedule=clocked_macro');
     expect(generatedTestbench).toContain('-- sequence=0->1->0');
-    const macroSchedulePattern = /clk <= '0';\s+wait for CLK_HALF_PERIOD;\s+clk <= '1';\s+wait for CLK_HALF_PERIOD;\s+clk <= '0';\s+wait for CLK_HALF_PERIOD;\s+wait for 0 ns;/g;
+    const macroSchedulePattern = /([A-Za-z_][A-Za-z0-9_]*) <= '0';\s+wait for CLK_HALF_PERIOD;\s+\1 <= '1';\s+wait for CLK_HALF_PERIOD;\s+\1 <= '0';\s+wait for CLK_HALF_PERIOD;\s+wait for 0 ns;/g;
     const macroScheduleMatches = generatedTestbench.match(macroSchedulePattern) ?? [];
     expect(macroScheduleMatches.length).toBe(vectors.length);
 
