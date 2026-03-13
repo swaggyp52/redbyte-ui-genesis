@@ -19504,3 +19504,55 @@ Key details:
 - Full repo-health proof beyond current environment gate remains pending.
 
 - **Attribution**: Connor Angiel
+
+---
+
+## Change Log 2026-03-13 (Design build-fast contract sampled-summary alignment)
+
+**Subsystem**: Repo-health blocker chain - IDE Design Build Fast contract
+
+**Problem**
+
+- pnpm -s ide:gate:design-build-fast-contract failed with:
+  - last-change line must include computed value summary
+- Observed runtime text during failure was:
+  - No runtime samples yet. Run or step simulation to observe cause and effect.
+
+**Root-cause classification**
+
+- Stale contract sequencing/wording assumption (not product logic defect, not environment noise).
+- The gate asserted post-simulation summary content before creating any runtime sample.
+
+**Files changed**
+
+- scripts/gates/ide-design-build-fast-contract.mjs
+
+**What changed**
+
+- Added explicit simulation step action before asserting Last change summary.
+- Added deterministic tick-advance assertion (no silent wait failure).
+- Replaced stale token checks (= and from) with sampled-story assertions aligned to current product summary formats:
+  - logic-value summary variants (arrow transition, held-at value, or recorded no-mapped-outputs path)
+  - cause/effect phrasing requirement
+  - sampled tick context requirement
+- Improved assertion diagnostics to include observed summary text on failure.
+
+**Why minimal**
+
+- Contract-only update; no runtime product code changes.
+- Maintains original intent (fast feedback summary quality) while matching current simulation-story architecture.
+
+**Validation**
+
+- pnpm -s ide:gate:design-build-fast-contract -> PASS
+- pnpm repo:status now passes:
+  - IDE Design Build Fast Contract
+  - IDE Design Live Sim Contract
+  and advances to next blocker:
+  - IDE Live Sim Contract
+
+**Remaining concern**
+
+- Repo health is now blocked by IDE Live Sim Contract.
+
+- **Attribution**: Connor Angiel

@@ -62,8 +62,37 @@ await runIdeGate('IDE design build-fast contract satisfied', async ({ page, base
   // LD0 (Lamp) creates a live-output entry in the inspector as soon as it is placed.
   await page.waitForSelector('[data-testid^="ide-design-live-output-"]', { timeout: 10000 });
 
+  await page.locator('[data-testid="ide-design-sim-step"]').click();
+  const tickAdvanced = await page
+    .waitForFunction(() => {
+      const tickEl = document.querySelector('[data-testid="ide-design-sim-tick"]');
+      if (!tickEl) return false;
+      const tickValue = Number.parseInt((tickEl.textContent ?? '').trim(), 10);
+      return Number.isFinite(tickValue) && tickValue >= 1;
+    }, { timeout: 10000 })
+    .then(() => true)
+    .catch(() => false);
+  assert(tickAdvanced, 'simulation tick did not advance after step');
+
   const lastChange = await text(page.locator('[data-testid="ide-design-last-change"]'));
-  assert(lastChange.includes('='), 'last-change line must include computed value summary');
-  assert(lastChange.toLowerCase().includes('from'), 'last-change line must include source explanation');
+  const normalizedLastChange = lastChange.toLowerCase();
+  assert(
+    !normalizedLastChange.includes('no runtime samples yet'),
+    `last-change should reflect sampled state after step (actual: "${lastChange}")`
+  );
+  assert(
+    /tick\s+\d+/i.test(lastChange),
+    `last-change line must include sampled tick context (actual: "${lastChange}")`
+  );
+  assert(
+    /→\s*[01]\b|\bheld at\s+[01]\b|\brecorded with no mapped outputs yet\b/i.test(lastChange),
+    `last-change line must include computed logic-value summary (actual: "${lastChange}")`
+  );
+  assert(
+    normalizedLastChange.includes(';') ||
+      normalizedLastChange.includes('held at') ||
+      normalizedLastChange.includes('recorded with no mapped outputs yet'),
+    `last-change line must include cause/effect explanation (actual: "${lastChange}")`
+  );
 });
 
