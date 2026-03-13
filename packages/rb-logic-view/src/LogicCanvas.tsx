@@ -14,6 +14,7 @@ import { renderGrid } from './tools/grid';
 import { isValidConnection, normalizeConnection, isInputPort } from './tools/wireValidation';
 import { computeWireNetIds } from './tools/netHighlight';
 import { findSmartSpawnPosition } from './tools/placement';
+import { computeAlignmentGuides } from './tools/alignmentGuides';
 import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
 import { CanvasHost, snapToGrid as snapPointToGrid, fitToBounds, clientToLocal } from '@redbyte/rb-viewport';
 import { useCanvasInput } from './useCanvasInput';
@@ -1058,6 +1059,15 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
   }, [camera.x, camera.y, camera.zoom, canvasInput.dragState.dragPosition, showSnapGuides]);
 
+  const alignmentGuides = React.useMemo(() => {
+    const dragNodeId = canvasInput.dragState.dragNodeId;
+    const dragPos = canvasInput.dragState.dragPosition;
+    if (!dragNodeId || !dragPos || interactionMode !== 'draggingNode') {
+      return { verticals: [], horizontals: [] };
+    }
+    return computeAlignmentGuides(dragNodeId, dragPos, circuit.nodes);
+  }, [interactionMode, canvasInput.dragState.dragNodeId, canvasInput.dragState.dragPosition, circuit.nodes]);
+
   const selectedWireOverlay = React.useMemo(() => {
     const selectedWireIds = Array.from(selection.wires);
     if (selectedWireIds.length !== 1) return null;
@@ -1627,6 +1637,46 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               opacity={0.92}
               pointerEvents="none"
             />
+          </g>
+        ) : null}
+
+        {/* Alignment guides — amber lines when dragged node aligns with another */}
+        {alignmentGuides.verticals.length > 0 || alignmentGuides.horizontals.length > 0 ? (
+          <g key="alignment-guides-layer">
+            {alignmentGuides.verticals.map((worldX) => {
+              const screenX = worldX * camera.zoom + camera.x;
+              return (
+                <line
+                  key={`align-v-${worldX}`}
+                  data-testid="logic-align-guide-x"
+                  x1={screenX}
+                  y1={0}
+                  x2={screenX}
+                  y2={height}
+                  stroke="rgba(251,146,60,0.65)"
+                  strokeWidth={1}
+                  strokeDasharray="5 3"
+                  pointerEvents="none"
+                />
+              );
+            })}
+            {alignmentGuides.horizontals.map((worldY) => {
+              const screenY = worldY * camera.zoom + camera.y;
+              return (
+                <line
+                  key={`align-h-${worldY}`}
+                  data-testid="logic-align-guide-y"
+                  x1={0}
+                  y1={screenY}
+                  x2={width}
+                  y2={screenY}
+                  stroke="rgba(251,146,60,0.65)"
+                  strokeWidth={1}
+                  strokeDasharray="5 3"
+                  pointerEvents="none"
+                />
+              );
+            })}
           </g>
         ) : null}
 
