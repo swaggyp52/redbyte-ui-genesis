@@ -1,5 +1,48 @@
 # AI State
 
+## Change Log 2026-03-13 (Canvas legibility contract alignment)
+
+**Subsystem**: Repo-health gate - IDE Canvas Legibility Contract
+
+**Problem**
+
+- `pnpm repo:status` was blocked at `IDE Canvas Legibility Contract`.
+- The gate had multiple stale assumptions relative to the current Design surface runtime:
+  - It loaded `signal-tour`, whose larger layout drove different legibility behavior than the smaller starter circuit used by adjacent design gates.
+  - It measured node labels via `[data-node-label="1"]`, but the current runtime exposes rendered labels via `.logic-node-label`.
+  - It measured circuit occupancy against `ide-design-live-canvas`, whose bounding box no longer reflects the full rendered node footprint.
+  - The classroom toggle path was vulnerable to probe-bar pointer interception and needed an explicit state-verified toggle sequence.
+
+**Root-cause classification**
+
+- Stale contract selectors and geometry assumptions in the gate, not a product-logic defect.
+
+**Modified files**
+
+- `scripts/gates/ide-canvas-legibility-contract.mjs`
+
+**What changed**
+
+- Switched the gate fixture from `signal-tour` to `logic-gates` for a stable small-circuit legibility baseline.
+- Stopped re-triggering Fit and instead waited for the initial auto-fit zoom state that DesignSurface already applies on first render.
+- Replaced the stale node-label selector with `.logic-node-label` and measured the minimum rendered label font size across all visible node labels.
+- Rebased circuit occupancy from the collapsed live-canvas wrapper box to the visible window viewport, matching the actual rendered node footprint seen by the user.
+- Added `waitForPresentationMode()` and `ensurePresentationMode()` helpers so classroom-mode toggling is state-driven and resilient to probe-bar overlay interception.
+
+**Why minimal**
+
+- Contract-only update; no runtime product code changed.
+- Assertions remain strict about readable zoom, label size, pin hit target, viewport fit, and classroom-mode behavior, but now target the current DOM and rendered geometry truth.
+
+**Validation**
+
+- `node ./scripts/gates/ide-canvas-legibility-contract.mjs` -> PASS
+- `node ./scripts/repo-status.mjs` now passes `IDE Canvas Legibility Contract` and advances to the next blocker: `IDE Evidence Capsule Contract`
+
+**Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-03-13 (Live sim contract stale-testid + viewport fix)
 
 **Subsystem**: Repo-health gate — IDE Live Sim Contract

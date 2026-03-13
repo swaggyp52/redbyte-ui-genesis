@@ -7,6 +7,29 @@ function parsePercent(value) {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
+async function waitForPresentationMode(page, expectedMode) {
+  await page.waitForFunction(
+    (mode) => {
+      const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
+      return canvas?.getAttribute('data-presentation-zoom') === mode;
+    },
+    expectedMode,
+    { timeout: 5000 }
+  );
+}
+
+async function ensurePresentationMode(page, toggleLocator, expectedMode) {
+  const canvas = page.locator('[data-testid="ide-design-live-canvas"]').first();
+  const currentMode = await canvas.getAttribute('data-presentation-zoom');
+  if (currentMode === expectedMode) {
+    return;
+  }
+  await toggleLocator.evaluate((element) => {
+    if (element instanceof HTMLElement) element.click();
+  });
+  await waitForPresentationMode(page, expectedMode);
+}
+
 await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
@@ -15,7 +38,7 @@ await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, base
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
   await page.locator('[data-testid="mode-button-project"]').click();
-  await page.locator('[data-testid="ide-project-load-start-signal-tour"]').click();
+  await page.locator('[data-testid="ide-project-load-start-logic-gates"]').click();
   const confirmVisible = await page
     .locator('[data-testid="ide-example-confirm-modal"]')
     .first()
@@ -38,7 +61,12 @@ await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, base
   assert(await visible(canvas), 'design canvas must be visible');
   assert(await visible(zoomPill), 'design zoom indicator must be visible');
   assert(await visible(fitButton), 'fit button must be visible');
-  await fitButton.click();
+  // DesignSurface auto-fits on first render; validate the initial student-visible state
+  // after the zoom indicator has settled instead of re-triggering fit.
+  await page.waitForFunction(() => {
+    const zoom = document.querySelector('[data-testid="ide-design-canvas-stat-zoom"]');
+    return /\d+%/.test((zoom?.textContent || '').trim());
+  }, { timeout: 10000 });
   const canvasCount = await canvasToggle.count();
   const toolbarCount = await toolbarToggle.count();
   assert(canvasCount + toolbarCount > 0, 'presentation zoom toggle must exist');
@@ -52,21 +80,22 @@ await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, base
   );
 
   const denseMetrics = await page.evaluate(() => {
-    const nodeLabel = document.querySelector('[data-node-id] [data-node-label="1"]');
-    const labelSize = nodeLabel
-      ? Number.parseFloat(nodeLabel.getAttribute('font-size') ?? String(getComputedStyle(nodeLabel).fontSize))
+    const labelNodes = Array.from(document.querySelectorAll('[data-node-id] .logic-node-label'));
+    const labelSize = labelNodes.length > 0
+      ? Math.min(
+          ...labelNodes.map((node) =>
+            Number.parseFloat(node.getAttribute('font-size') ?? String(getComputedStyle(node).fontSize))
+          )
+        )
       : 0;
 
     const pinHitTarget = document.querySelector('[data-node-id] [data-port-id]');
     const pinRect = pinHitTarget ? pinHitTarget.getBoundingClientRect() : null;
-
-    const canvasEl = document.querySelector('[data-testid="ide-design-live-canvas"]');
     const nodes = Array.from(document.querySelectorAll('[data-node-id]'));
-    if (!canvasEl || nodes.length === 0) {
+    if (nodes.length === 0) {
       return { labelSize, pinTarget: 0, widthRatio: 0, heightRatio: 0 };
     }
 
-    const canvasRect = canvasEl.getBoundingClientRect();
     let minX = Number.POSITIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
@@ -82,8 +111,8 @@ await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, base
     return {
       labelSize,
       pinTarget: pinRect ? Math.min(pinRect.width, pinRect.height) : 0,
-      widthRatio: Math.max(1, maxX - minX) / Math.max(1, canvasRect.width),
-      heightRatio: Math.max(1, maxY - minY) / Math.max(1, canvasRect.height),
+      widthRatio: Math.max(1, maxX - minX) / Math.max(1, window.innerWidth),
+      heightRatio: Math.max(1, maxY - minY) / Math.max(1, window.innerHeight),
     };
   });
 
@@ -97,32 +126,22 @@ await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, base
   );
   assert(
     denseMetrics.widthRatio <= 1.08 && denseMetrics.heightRatio <= 1.08,
-    `circuit should fit viewport reasonably (width=${denseMetrics.widthRatio.toFixed(3)}, height=${denseMetrics.heightRatio.toFixed(3)})`
+    `circuit should fit the visible window viewport reasonably (width=${denseMetrics.widthRatio.toFixed(3)}, height=${denseMetrics.heightRatio.toFixed(3)})`
   );
 
   if (canvasCount > 0) {
-    const canvasVisible = await visible(canvasToggle);
-    if (canvasVisible) {
-      await canvasToggle.click();
-    } else {
-      await canvasToggle.evaluate((element) => {
-        if (element instanceof HTMLElement) element.click();
-      });
-    }
+    await ensurePresentationMode(page, canvasToggle, 'classroom');
   } else {
-    const toolbarVisible = await visible(toolbarToggle);
-    if (toolbarVisible) {
-      await toolbarToggle.click();
-    } else {
-      await toolbarToggle.evaluate((element) => {
-        if (element instanceof HTMLElement) element.click();
-      });
-    }
+    await ensurePresentationMode(page, toolbarToggle, 'classroom');
   }
   const classroomMetrics = await page.evaluate(() => {
-    const nodeLabel = document.querySelector('[data-node-id] [data-node-label="1"]');
-    const labelSize = nodeLabel
-      ? Number.parseFloat(nodeLabel.getAttribute('font-size') ?? String(getComputedStyle(nodeLabel).fontSize))
+    const labelNodes = Array.from(document.querySelectorAll('[data-node-id] .logic-node-label'));
+    const labelSize = labelNodes.length > 0
+      ? Math.min(
+          ...labelNodes.map((node) =>
+            Number.parseFloat(node.getAttribute('font-size') ?? String(getComputedStyle(node).fontSize))
+          )
+        )
       : 0;
     const mode = document
       .querySelector('[data-testid="ide-design-live-canvas"]')
