@@ -1,6 +1,29 @@
 # AI State
 
-## Change Log 2026-03-12 (Vivado XDC validator contract completion)
+## Change Log 2026-03-13 (Live sim contract stale-testid + viewport fix)
+
+**Subsystem**: Repo-health gate — IDE Live Sim Contract
+
+Two stale issues in `scripts/gates/ide-live-sim-contract.mjs`:
+
+1. `waitForSelector('[data-testid="ide-design-live-signals"]')` — testid no longer exists in the DOM. Replaced with `ide-design-live-state-table` which is the live I/O table element currently rendered by DesignSurface.tsx.
+
+2. `page.$$eval('[data-testid^="switch-toggle-"]:not([data-testid$="-container"])')` was run before the circuit canvas had been fit to the viewport. Switch toggle SVG elements are only rendered for `visibleNodes` (viewport-culled in LogicCanvas.tsx), so querying toggles before a Fit produced an empty set, making the `simInputIds` intersection produce zero entries. Added an explicit Fit-circuit button click (`fitButton.evaluate((button) => button.click())`) and a `waitForSelector` for switch containers before querying toggle IDs.
+
+**Modified files:**
+- `scripts/gates/ide-live-sim-contract.mjs`
+  - Line 53: `ide-design-live-signals` → `ide-design-live-state-table`
+  - Added `fitButton.evaluate(...)` click after design mode entry
+  - Added `waitForSelector('[data-testid^="switch-toggle-"][data-testid$="-container"]')` before toggle ID query
+
+**Validation:**
+- `pnpm -s ide:gate:live-sim-contract` → **PASS**
+- `pnpm repo:status` → chain advances through IDE Live Sim Contract; next blocker = IDE Sequential Sim Contract
+
+**Attribution**: Connor Angiel
+
+---
+
 
 ### Failing-flow test instrumentation now proves mutated top.xdc is validated, and export aborts on invalid/duplicate pins
 

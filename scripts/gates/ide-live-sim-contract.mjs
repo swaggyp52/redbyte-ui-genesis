@@ -50,7 +50,11 @@ await runIdeGate('IDE live simulation contract satisfied', async ({ page, baseUr
 
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-design-live-signals"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-design-live-state-table"]', { timeout: 10000 });
+
+  // Fit the circuit into view so that viewport-culled switch nodes become visible.
+  const fitButton = page.locator('[data-testid="ide-design-fit-circuit-canvas"]').first();
+  await fitButton.evaluate((button) => button.click());
 
   const inputIds = await page.$$eval('[data-testid^="ide-design-live-input-"]', (rows) =>
     rows
@@ -58,6 +62,9 @@ await runIdeGate('IDE live simulation contract satisfied', async ({ page, baseUr
       .filter(Boolean)
   );
   assert(inputIds.length >= 2, `expected at least 2 live inputs, found ${inputIds.length}`);
+
+  // Wait for canvas switch widgets to render before querying toggle IDs.
+  await page.waitForSelector('[data-testid^="switch-toggle-"][data-testid$="-container"]', { timeout: 10000 });
 
   const toggleIds = await page.$$eval(
     '[data-testid^="switch-toggle-"]:not([data-testid$="-container"])',
