@@ -1312,6 +1312,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             const startY = startNode.position.y * camera.zoom + camera.y;
 
             let isValid = true;
+            let rejectionReason: string | undefined;
             if (hoveredPort) {
               const validation = isValidConnection(
                 editingState.wireStartPort,
@@ -1320,6 +1321,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                 getChipMetadata
               );
               isValid = validation.valid;
+              if (!isValid) rejectionReason = validation.reason;
             }
 
             return (
@@ -1356,6 +1358,37 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                   <animate attributeName="r" values="2.2;4.8;2.2" dur="0.42s" repeatCount="indefinite" />
                   <animate attributeName="opacity" values="0.52;0.95;0.52" dur="0.42s" repeatCount="indefinite" />
                 </circle>
+                {!isValid && rejectionReason && (() => {
+                  const shortReason = rejectionReason.includes('itself') ? 'Same node'
+                    : rejectionReason.includes('already exists') ? 'Already wired'
+                    : rejectionReason.includes('input to input') ? 'Both inputs'
+                    : rejectionReason.includes('output to output') ? 'Both outputs'
+                    : 'Not allowed';
+                  return (
+                    <g
+                      data-testid="logic-wire-rejection-hint"
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      <rect
+                        x={mousePosition.x + 12}
+                        y={mousePosition.y - 26}
+                        width={100}
+                        height={19}
+                        rx={4}
+                        fill="rgba(239,68,68,0.88)"
+                      />
+                      <text
+                        x={mousePosition.x + 18}
+                        y={mousePosition.y - 12}
+                        fill="white"
+                        fontSize="11"
+                        fontFamily="sans-serif"
+                      >
+                        {shortReason}
+                      </text>
+                    </g>
+                  );
+                })()}
               </>
             );
           })()}

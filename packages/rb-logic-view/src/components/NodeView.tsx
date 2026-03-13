@@ -1062,9 +1062,9 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               <circle
                 cx={-size / 2}
                 cy={0}
-                r={10}
+                r={13}
                 fill="#0ea5e9"
-                opacity={0.2}
+                opacity={0.28}
                 style={{ pointerEvents: 'none' }}
               />
             ) : null}
@@ -1183,9 +1183,9 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               <circle
                 cx={size / 2}
                 cy={0}
-                r={10}
+                r={13}
                 fill="#0ea5e9"
-                opacity={0.2}
+                opacity={0.28}
                 style={{ pointerEvents: 'none' }}
               />
             ) : null}
