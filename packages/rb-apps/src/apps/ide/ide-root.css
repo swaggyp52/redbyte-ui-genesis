@@ -14882,12 +14882,12 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 .ide-design-pane-row[data-design-view='stacked'] .ide-design-pane--canvas {
   flex: 1 1 58%;
-  min-height: 360px;
+  min-height: min(360px, 50%);
 }
 
 .ide-design-pane-row[data-design-view='stacked'] .ide-design-pane--hdl {
   flex: 0 0 42%;
-  min-height: 260px;
+  min-height: min(260px, 40%);
   border-left: none;
   border-top: 1px solid rgba(56, 189, 248, 0.14);
 }
@@ -15027,11 +15027,11 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 
 [data-layout-mode='compact'] .ide-design-pane-row[data-design-view='stacked'] .ide-design-pane--canvas {
-  min-height: 280px;
+  min-height: min(280px, 54%);
 }
 
 [data-layout-mode='compact'] .ide-design-pane-row[data-design-view='stacked'] .ide-design-pane--hdl {
-  min-height: 220px;
+  min-height: min(220px, 40%);
 }
 
 /* Import workflow redesign: guided rail, review-first composition, and laptop-safe overflow */
@@ -16189,26 +16189,23 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 /* Live viewport unblock, final authority:
    when browser zoom shrinks the effective workspace, keep the center tool readable.
-   The right inspector must yield vertical space before it steals horizontal space. */
-.ide-workbench-shell[data-layout-mode='standard'] .ide-workbench-main:not(.hide-right-dock),
+   The right inspector must yield vertical space before it steals horizontal space.
+   Only applies to compact (<1320px) — standard screens keep the side inspector. */
 .ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock) {
   grid-template-columns: var(--ide-workbench-left-width) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) minmax(220px, auto);
 }
 
-.ide-workbench-shell[data-layout-mode='standard'] .ide-workbench-main:not(.hide-right-dock) .ide-workbench-dock-left,
 .ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock) .ide-workbench-dock-left {
   grid-column: 1;
   grid-row: 1 / span 2;
 }
 
-.ide-workbench-shell[data-layout-mode='standard'] .ide-workbench-main:not(.hide-right-dock) .ide-workbench-workspace,
 .ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock) .ide-workbench-workspace {
   grid-column: 2;
   grid-row: 1;
 }
 
-.ide-workbench-shell[data-layout-mode='standard'] .ide-workbench-main:not(.hide-right-dock) .ide-workbench-dock-right,
 .ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock) .ide-workbench-dock-right {
   grid-column: 2;
   grid-row: 2;

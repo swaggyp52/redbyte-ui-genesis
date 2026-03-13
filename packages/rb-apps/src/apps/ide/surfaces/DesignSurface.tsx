@@ -1679,7 +1679,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const effectiveDesignView = useMemo<'canvas' | 'hdl' | 'split' | 'stacked'>(() => {
     if (designView !== 'split') return designView;
     const totalWidth = Math.max(0, paneRowSize.width);
-    if (totalWidth === 0) return 'split';
+    if (totalWidth === 0) return 'stacked';
     const canvasWidth = totalWidth * splitRatio;
     const hdlWidth = totalWidth * (1 - splitRatio);
     return totalWidth < 980 || canvasWidth < 440 || hdlWidth < 440 ? 'stacked' : 'split';
