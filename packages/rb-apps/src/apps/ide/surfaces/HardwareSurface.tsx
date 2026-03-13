@@ -253,7 +253,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       return {
         title: 'Pass Test before programming',
         body:
-          'Your design hasn\'t passed verification yet. Open Test, run your vectors, and get a PASS — then return here to program the board.',
+          'Your design hasn\'t passed verification yet. Open Verify, run your vectors, and get a PASS — then return here to program the board.',
         primaryLabel: 'Open Verify',
         primaryAction: onOpenVerify,
         primaryTestId: 'ide-hardware-blocked-primary',
@@ -454,7 +454,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       <header className="ide-workbench-placeholder-header">
         <h3>Live Monitor</h3>
         <IdeStatusPill tone={sim.running ? 'ok' : 'warn'}>
-          {sim.running ? 'Board ready' : 'No board detected'}
+          {sim.running ? 'Sim running' : 'Sim paused'}
         </IdeStatusPill>
       </header>
       <div className="ide-kv-list">

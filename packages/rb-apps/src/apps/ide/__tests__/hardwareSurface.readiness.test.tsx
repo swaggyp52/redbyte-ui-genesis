@@ -152,7 +152,7 @@ describe('HardwareSurface readiness', () => {
 
     expect(getByTestId('ide-hardware-blocked-hero').textContent).toContain('Pass Test before programming');
     expect(getByTestId('ide-hardware-blocked-hero').textContent).toContain('return here to program the board');
-    expect(getByTestId('ide-hardware-blocked-primary').textContent).toContain('Open Test');
+    expect(getByTestId('ide-hardware-blocked-primary').textContent).toContain('Open Verify');
     expect(getByTestId('ide-hardware-blocked-secondary').textContent).toContain('Open Design');
   });
 });
