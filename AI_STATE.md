@@ -19413,3 +19413,51 @@ Key details:
 - Repo health is now blocked by IDE Design Workbench Contract.
 
 - **Attribution**: Connor Angiel
+
+---
+
+## Change Log 2026-03-12 (Design workbench contract compact-mode geometry refresh)
+
+**Subsystem**: Repo-health blocker chain - IDE Design workbench contract
+
+**Problem**
+
+- pnpm repo:status advanced to IDE Design Workbench Contract and failed with:
+  - canvas should be wider than right inspector
+- After aligning compact inspector geometry, the same gate exposed stale ratio assumptions:
+  - canvas height ratio too small (...)
+
+**Root-cause classification**
+
+- Stale contract geometry/timing assumptions (not product defect, not environment/tooling noise).
+
+**Files changed**
+
+- scripts/gates/ide-design-workbench-contract.mjs
+
+**What changed**
+
+- Added layout-mode validation from data-layout-mode.
+- In compact mode, assert stacked geometry (inspector below canvas) instead of width dominance.
+- Kept non-compact width dominance assertion for inspector.
+- Switched ratio baseline from full mode/root assumptions to ide-design-pane-row geometry.
+- Added explicit non-zero geometry readiness wait/assertion before ratio checks.
+- Kept width ratio threshold and made height ratio mode-aware:
+  - compact:  .12
+  - standard/wide:  .26
+
+**Why minimal**
+
+- Contract-only update; no runtime product code changed.
+- Assertions remain strict but now match responsive design-workbench layout truth.
+
+**Validation**
+
+- pnpm -s ide:gate:design-workbench-contract -> PASS
+- pnpm repo:status now passes IDE Design Workbench Contract and advances to next blocker: IDE Design Fit Contract.
+
+**Remaining concern**
+
+- Repo health is now blocked by IDE Design Fit Contract.
+
+- **Attribution**: Connor Angiel
