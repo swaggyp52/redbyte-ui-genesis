@@ -1,5 +1,61 @@
 # AI State
 
+## Change Log 2026-03-13 (Export-Hardware canonical naming unblock)
+
+**Subsystem**: FPGA export pipeline - testbench canonical signal resolution
+
+**Problem**
+
+- The live `logic-gates` student flow could reach `Verify: PASS`, but Export still showed `Blocked` with `RBEX9000`, and Hardware stayed blocked downstream.
+- The blocker was a false artifact-consistency error, for example:
+  - `Artifact consistency: testbench component port "ld0_node" not found in top.vhd entity ports [sw0_node_out, sw1_node_out, ld0_node_in, ld1_node_in, ld2_node_in].`
+- This created a real classroom dead-end in the core loop: Build -> Test -> Export -> Program.
+
+**Root-cause classification**
+
+- Product-logic defect in testbench signal canonicalization.
+- Verify accepted nodeId-style and lower-case signal keys, but `generateTestbenchVhdl()` only canonicalized exact labels/canonical names.
+- When vectors used nodeIds like `ld0_node` or lower-case label keys like `ld0`, the generated testbench declared phantom component ports that did not exist in `top.vhd`, which correctly triggered strict artifact-consistency validation.
+
+**Modified files**
+
+- `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts`
+- `packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts`
+
+**What changed**
+
+- Added canonical alias registration in `collectSignals()` for each mapped IO entry's:
+  - canonical port name,
+  - mapping id,
+  - nodeId,
+  - display label,
+  - node label,
+  - plus case-insensitive lookups for those aliases.
+- Kept the strict artifact-consistency guard unchanged; the fix aligns naming inputs instead of weakening validation.
+- Added focused regressions covering:
+  - lower-case label-style vector keys,
+  - nodeId-style vector keys,
+  - the real `logic-gates` starter export path.
+
+**Why minimal**
+
+- One product-code change in the testbench signal catalog.
+- No contract/gate maintenance mixed into this batch.
+- No suppression, downgrade, or bypass of `RBEX9000`; the consistency check still fails on real mismatches.
+
+**Validation**
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts` -> PASS (`4/4`)
+- `pnpm exec vitest run packages/rb-apps/src/__tests__/ide-vivado-artifact-consistency.test.ts packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts` -> PASS (`10/10`)
+- `node scripts/tmp/audit-export-pass-check.mjs` -> `{ status: "PASS", evidenceState: "Trusted", hasRBEX9000: false }`
+- Live export proof after clicking the Export CTA recorded persisted runtime state:
+  - `lastExport.status: ok`
+  - `dirtySinceExport: false`
+  - Hardware surface showed `Export: CURRENT`
+  - Hardware blocked hero not visible
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-13 (Evidence capsule contract alignment)
 
 **Subsystem**: Repo-health gate - IDE Evidence Capsule Contract

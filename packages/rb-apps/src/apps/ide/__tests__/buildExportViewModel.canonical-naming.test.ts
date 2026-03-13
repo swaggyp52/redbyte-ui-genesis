@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { RBProject } from '../../../export/projectFormat';
+import { getIdeExampleById } from '../examplesCatalog';
+import { validateArtifactConsistency } from '../../../fpga/boards/basys3/basys3ExportService';
 import { buildExportViewModel } from '../viewmodels/buildExportViewModel';
 
-function createExportFixture(): RBProject {
+function createExportFixture(vectorStyle: 'normalized-label' | 'node-id' = 'normalized-label'): RBProject {
+  const vectors =
+    vectorStyle === 'node-id'
+      ? [{ tick: 0, inputs: { sw0_node: 1 }, expected: { ld0_node: 1 } }]
+      : [{ tick: 0, inputs: { sw0: 1 }, expected: { ld0: 1 } }];
+
   return {
     kind: 'rb-project',
     version: 1,
@@ -81,11 +88,77 @@ function createExportFixture(): RBProject {
         },
       ],
     },
-    vectors: [{ tick: 0, inputs: { sw0: 1 }, expected: { ld0: 1 } }],
+    vectors,
     meta: {
       projectId: 'rb-export-naming-fixture',
     },
   };
+}
+
+function createProjectFromExample(exampleId: string): RBProject {
+  const example = getIdeExampleById(exampleId);
+  if (!example) {
+    throw new Error(`Missing example fixture: ${exampleId}`);
+  }
+
+  return {
+    kind: 'rb-project',
+    version: 1,
+    createdAt: '2026-03-13T00:00:00.000Z',
+    updatedAt: '2026-03-13T00:00:00.000Z',
+    name: example.name,
+    description: example.summary,
+    circuit: {
+      nodes: example.circuit.nodes.map((node) => ({ ...node })),
+      connections: example.circuit.connections.map((connection) => ({
+        ...connection,
+        from: typeof connection.from === 'string' ? connection.from : { ...connection.from },
+        to: typeof connection.to === 'string' ? connection.to : { ...connection.to },
+      })),
+    },
+    ioMapping: {
+      inputs: example.ioRows
+        .filter((row) => row.direction === 'in')
+        .map((row) => ({
+          id: row.id,
+          nodeId: row.nodeId,
+          port: row.port,
+          label: row.label,
+          pin: row.pin,
+        })),
+      outputs: example.ioRows
+        .filter((row) => row.direction === 'out')
+        .map((row) => ({
+          id: row.id,
+          nodeId: row.nodeId,
+          port: row.port,
+          label: row.label,
+          pin: row.pin,
+        })),
+    },
+    vectors: example.vectors.map((vector) => ({
+      tick: vector.tick,
+      inputs: { ...vector.inputs },
+      expected: vector.expected ? { ...vector.expected } : undefined,
+    })),
+    fpga: {
+      board: 'basys3',
+      top: 'top',
+    },
+    meta: {
+      projectId: `example-${example.id}`,
+    },
+  };
+}
+
+function getArtifactContent(project: RBProject, path: string): string {
+  const viewModel = buildExportViewModel(project);
+  expect(viewModel.status).toBe('ok');
+  expect(viewModel.errors).toEqual([]);
+
+  const artifact = viewModel.artifacts.find((candidate) => candidate.path === path);
+  expect(artifact?.content).toBeTruthy();
+  return artifact?.content ?? '';
 }
 
 describe('buildExportViewModel canonical naming', () => {
@@ -97,5 +170,29 @@ describe('buildExportViewModel canonical naming', () => {
 
     expect(inputRow?.port).toBe('SW0');
     expect(outputRow?.port).toBe('LD0');
+  });
+
+  it('accepts normalized label vector keys without creating phantom testbench ports', () => {
+    const project = createExportFixture('normalized-label');
+    const topVhd = getArtifactContent(project, 'top.vhd');
+    const testbenchVhd = getArtifactContent(project, 'testbench.vhd');
+
+    expect(validateArtifactConsistency(topVhd, testbenchVhd)).toEqual([]);
+  });
+
+  it('accepts nodeId vector keys without creating phantom testbench ports', () => {
+    const project = createExportFixture('node-id');
+    const topVhd = getArtifactContent(project, 'top.vhd');
+    const testbenchVhd = getArtifactContent(project, 'testbench.vhd');
+
+    expect(validateArtifactConsistency(topVhd, testbenchVhd)).toEqual([]);
+  });
+
+  it('keeps the logic-gates starter exportable without false RBEX9000 blockers', () => {
+    const project = createProjectFromExample('logic-gates');
+    const topVhd = getArtifactContent(project, 'top.vhd');
+    const testbenchVhd = getArtifactContent(project, 'testbench.vhd');
+
+    expect(validateArtifactConsistency(topVhd, testbenchVhd)).toEqual([]);
   });
 });
