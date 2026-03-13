@@ -14,6 +14,7 @@ const MATCHING_PROJECT_IO_ROWS = [
 
 beforeEach(() => {
   localStorage.clear();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
   useProjectRuntime.getState().resetToActiveExample();
   useProjectRuntime.setState((state) => ({
     verifyLastRun: undefined,

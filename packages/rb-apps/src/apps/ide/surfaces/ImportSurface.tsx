@@ -1174,6 +1174,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
   const confirmApplyProject = () => {
     if (!pendingApplyProject) return;
+    if (!window.confirm('Replace your current project with this import? Unsaved changes will be lost.')) return;
     onImportCommitted?.({
       fidelity:
         zipInspection?.importMode === 'manifest'
@@ -1203,6 +1204,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
   const confirmAndVerify = () => {
     if (!pendingApplyProject) return;
+    if (!window.confirm('Replace your current project with this import? Unsaved changes will be lost.')) return;
     onImportCommitted?.({
       fidelity:
         zipInspection?.importMode === 'manifest'
