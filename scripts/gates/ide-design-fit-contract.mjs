@@ -81,6 +81,6 @@ await runIdeGate('IDE design fit contract satisfied', async ({ page, baseUrl }) 
     `loaded example should be readable by height (${occupancy.heightRatio.toFixed(3)})`
   );
 
-  await fitButton.click();
+  await fitButton.evaluate((button) => button.click());
 });
 

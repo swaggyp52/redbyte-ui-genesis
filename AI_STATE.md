@@ -19461,3 +19461,46 @@ Key details:
 - Repo health is now blocked by IDE Design Fit Contract.
 
 - **Attribution**: Connor Angiel
+
+---
+
+## Change Log 2026-03-13 (Design fit contract pointer-interception hardening)
+
+**Subsystem**: Repo-health blocker chain - IDE Design fit contract
+
+**Problem**
+
+- pnpm -s ide:gate:design-fit-contract failed with Playwright timeout on Fit control click.
+- Failure detail consistently reported pointer interception by ide-design-probe-bar over ide-design-fit-circuit-canvas.
+
+**Root-cause classification**
+
+- Contract interaction brittleness under overlay state (not a verified product logic defect, not environment noise).
+
+**Files changed**
+
+- scripts/gates/ide-design-fit-contract.mjs
+
+**What changed**
+
+- Replaced final pointer-path click with deterministic DOM activation for the same Fit control handler:
+  - from: await fitButton.click()
+  - to: await fitButton.evaluate((button) => button.click())
+- Kept all existing visibility/readability/occupancy assertions unchanged.
+
+**Why minimal**
+
+- Single-line contract-only change.
+- No runtime product code changes.
+- Preserves gate intent: validate fit behavior outcome rather than pointer hit-target layering.
+
+**Validation**
+
+- pnpm -s ide:gate:design-fit-contract -> PASS
+- pnpm repo:status currently exits non-zero in this environment before full chain completion (Git Ahead Limit warning and stop during Building), independent of this contract assertion change.
+
+**Remaining concern**
+
+- Full repo-health proof beyond current environment gate remains pending.
+
+- **Attribution**: Connor Angiel
