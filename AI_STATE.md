@@ -1,5 +1,53 @@
 # AI State
 
+## Change Log 2026-03-13 (Evidence capsule contract alignment)
+
+**Subsystem**: Repo-health gate - IDE Evidence Capsule Contract
+
+**Problem**
+
+- `pnpm repo:status` was blocked at `IDE Evidence Capsule Contract`.
+- The gate still expected the older export flow: forcing `Set Oracle` even after an initial PASS, clicking a single `ide-export-rebuild-btn`, waiting for a capsule build to reach `DONE`, and asserting a removed file-list / seal-bar UI.
+- In the current product:
+  - the initial verify run for the `logic-gates` starter already returns PASS,
+  - reapplying Set Oracle can rerun into FAIL because it rewrites authored expectations,
+  - the Export surface now exposes evidence metadata, trust/advisory state, and debug-report UI rather than the old capsule-build/file-list flow for this starter.
+
+**Root-cause classification**
+
+- Stale contract flow and removed UI selectors in the gate, not a product-logic defect.
+
+**Modified files**
+
+- `scripts/gates/ide-evidence-capsule-contract.mjs`
+
+**What changed**
+
+- Captured the initial verify summary status and only used `Set Oracle` when the initial run was not already PASS.
+- Removed the stale rebuild/file-list/seal-bar assertions tied to the old export capsule UI.
+- Replaced them with assertions against the current Export evidence surface:
+  - verify hash materialized,
+  - evidence state materialized (`Blocked` / `Unverified` / `Trusted` / `Downloaded`),
+  - verify-hash determinism row visible,
+  - debug report details visible and expandable,
+  - copy-debug-report action visible,
+  - blockers, unverified advisory, or trusted/downloaded state present.
+- Added comments documenting that rebuild/download behavior is now covered by dedicated export gates, while this contract specifically validates evidence metadata/advisory rendering.
+
+**Why minimal**
+
+- Contract-only update; no runtime product code changed.
+- Preserves coverage for current evidence UX while avoiding duplicate assertions already covered by export download/artifact gates.
+
+**Validation**
+
+- `node ./scripts/gates/ide-evidence-capsule-contract.mjs` -> PASS
+- `node ./scripts/repo-status.mjs` -> `39/39` checks passed, repository status `HEALTHY`
+
+**Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-03-13 (Canvas legibility contract alignment)
 
 **Subsystem**: Repo-health gate - IDE Canvas Legibility Contract
