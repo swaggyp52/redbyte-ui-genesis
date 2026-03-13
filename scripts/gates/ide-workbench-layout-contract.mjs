@@ -38,10 +38,25 @@ await runIdeGate('IDE workbench layout contract satisfied', async ({ page, baseU
     workspace.boundingBox(),
     rightDock.boundingBox(),
   ]);
+  const layoutMode = await verifyRoot.getAttribute('data-layout-mode');
 
   assert(Boolean(leftBox && workspaceBox && rightBox), 'failed to read workbench geometry');
+  assert(Boolean(layoutMode), 'verify root missing data-layout-mode');
+  assert(
+    layoutMode === 'wide' || layoutMode === 'standard' || layoutMode === 'compact',
+    `unexpected verify layout mode: ${layoutMode}`
+  );
   assert(workspaceBox.width > leftBox.width, 'workspace should be wider than left dock');
-  assert(workspaceBox.width > rightBox.width, 'workspace should be wider than right dock');
+  if (layoutMode === 'compact') {
+    const workspaceBottom = workspaceBox.y + workspaceBox.height;
+    assert(
+      // 2px tolerance accounts for browser sub-pixel layout rounding.
+      rightBox.y >= workspaceBottom - 2,
+      `compact layout should stack right dock below workspace (rightY=${rightBox.y}, workspaceBottom=${workspaceBottom})`
+    );
+  } else {
+    assert(workspaceBox.width > rightBox.width, 'workspace should be wider than right dock');
+  }
   // Note: vertical resize handles are intentionally disabled in the current product
   // (CSS: display:none; pointer-events:none). The resize-drag assertion is omitted
   // to reflect current canonical product truth.

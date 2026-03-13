@@ -19373,3 +19373,43 @@ Key details:
 - Repo health is now blocked by IDE Workbench Layout Contract.
 
 - **Attribution**: Connor Angiel
+
+---
+
+## Change Log 2026-03-12 (Workbench layout contract compact-mode geometry refresh)
+
+**Subsystem**: Repo-health blocker chain - IDE Workbench layout contract
+
+**Problem**
+
+- pnpm repo:status advanced to IDE Workbench Layout Contract and failed with:
+  - workspace should be wider than right dock
+
+**Root-cause classification**
+
+- Stale contract geometry assumption (not product defect, not environment/tooling noise).
+
+**Files changed**
+
+- scripts/gates/ide-workbench-layout-contract.mjs
+
+**What changed**
+
+- Preserved existing width assertions for non-compact layouts.
+- Added compact-mode-specific assertion that the right dock is stacked below workspace (current responsive product truth) instead of requiring workspace width to exceed right-dock width.
+
+**Why minimal**
+
+- Contract-only update; no runtime product code changed.
+- One conditional assertion branch aligned to existing compact layout architecture.
+
+**Validation**
+
+- pnpm -s ide:gate:workbench-layout-contract -> PASS
+- pnpm repo:status now passes IDE Workbench Layout Contract and advances to next blocker: IDE Design Workbench Contract.
+
+**Remaining concern**
+
+- Repo health is now blocked by IDE Design Workbench Contract.
+
+- **Attribution**: Connor Angiel
