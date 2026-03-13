@@ -14323,6 +14323,15 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   color: var(--ide-text, #c8d8e8);
   border-bottom: 1px solid rgba(46,196,182,0.05);
 }
+.ide-shortcuts-section-label {
+  padding: 10px 8px 4px;
+  font-size: var(--rb-font-size-0, 11px);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ide-text-soft, rgba(200,216,232,0.5));
+  border-bottom: 1px solid var(--ide-border, rgba(46,196,182,0.1));
+}
 .ide-kbd {
   font-family: var(--rb-font-mono, ui-monospace, monospace);
   font-size: 11px;

@@ -143,6 +143,18 @@ export const IdeApp: React.FC = () => {
     if (param) (window as any).__RB_THROW_SURFACE__ = param;
   }, []);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== '?') return;
+      const tag = (event.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      event.preventDefault();
+      setShowShortcuts((prev) => !prev);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   const projectId = useProjectRuntime((state) => state.projectId);
   const projectName = useProjectRuntime((state) => state.projectName);
   const projectDescription = useProjectRuntime((state) => state.projectDescription);
