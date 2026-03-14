@@ -2293,6 +2293,36 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const handleSetOracleExpected = () => {
     if (!lastRun?.waveform || lastRun.waveform.length === 0) return;
 
+    const sourceVectors = (vectors && vectors.length > 0 ? vectors : authoredVectors).map(
+      (vector, index): VerifyAuthorVector => {
+        const fallback = authoredVectors[index];
+        const id =
+          typeof vector.id === 'string' && vector.id.trim().length > 0
+            ? vector.id.trim()
+            : fallback?.id ?? `vec-${String(index + 1).padStart(2, '0')}`;
+        const tick = Number.isFinite(vector.tick)
+          ? Math.max(0, Math.floor(vector.tick))
+          : fallback?.tick ?? index;
+
+        const inputs: Record<string, 0 | 1> = {};
+        for (const [key, value] of Object.entries(vector.inputs ?? fallback?.inputs ?? {})) {
+          inputs[key] = normalizeBit(value);
+        }
+
+        const expected: Record<string, 0 | 1> = {};
+        for (const [key, value] of Object.entries(vector.expected ?? fallback?.expected ?? {})) {
+          expected[key] = normalizeBit(value);
+        }
+
+        return {
+          id,
+          tick,
+          inputs,
+          expected,
+        };
+      }
+    );
+
     // Build tick → full signal snapshot map
     const waveformByTick = new Map<number, Record<string, string>>();
     for (const sample of lastRun.waveform) {
@@ -2302,6 +2332,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
     // Input signal keys to exclude
     const inputSignalKeys = new Set(inputFields.map((f) => f.id));
+    for (const vector of sourceVectors) {
+      for (const key of Object.keys(vector.inputs ?? {})) {
+        inputSignalKeys.add(normalizeFieldId(key));
+      }
+    }
+    for (const signal of mappedSignals ?? []) {
+      if (signal.direction !== 'in') continue;
+      inputSignalKeys.add(normalizeFieldId(signal.id));
+      if (signal.label) inputSignalKeys.add(normalizeFieldId(signal.label));
+    }
 
     // Priority 1: explicit output mappings from mappedSignals
     const outputSignalKeys = new Set(
@@ -2317,9 +2357,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         .filter((key) => !inputSignalKeys.has(key))
     );
 
-    const updatedVectors = authoredVectors.map((vector) => {
+    const updatedVectors = sourceVectors.map((vector) => {
       const tickSignals = waveformByTick.get(vector.tick);
       if (!tickSignals) return vector;
+
+      const expectedKeyByNormalized = new Map<string, string>();
+      for (const key of Object.keys(vector.expected ?? {})) {
+        const normalized = normalizeFieldId(key);
+        if (!normalized || expectedKeyByNormalized.has(normalized)) continue;
+        expectedKeyByNormalized.set(normalized, key);
+      }
 
       const expected: Record<string, 0 | 1> = {};
       for (const [signal, rawValue] of Object.entries(tickSignals)) {
@@ -2331,8 +2378,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         // Apply scope filter: explicit outputs → mapped non-inputs → all non-inputs
         if (outputSignalKeys.size > 0 && !outputSignalKeys.has(key)) continue;
         if (outputSignalKeys.size === 0 && mappedNonInputKeys.size > 0 && !mappedNonInputKeys.has(key)) continue;
-        expected[key] = rawValue === '1' ? 1 : 0;
+        const targetKey = expectedKeyByNormalized.get(key) ?? key;
+        expected[targetKey] = rawValue === '1' ? 1 : 0;
       }
+
+      if (Object.keys(expected).length === 0) return vector;
       return { ...vector, expected };
     });
 

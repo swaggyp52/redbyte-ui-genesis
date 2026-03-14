@@ -1,5 +1,53 @@
 # AI State
 
+## Change Log 2026-03-13 (Verify Set Oracle PASS stability)
+
+**Subsystem**: IDE Verify surface - Set Oracle expectation projection
+
+**Problem**
+
+- In the live student flow, Verify could start at `PASS`, then become `FAIL` after `Set Oracle` + rerun.
+- The instability was reproducible in `logic-gates` using the existing audit path.
+
+**Root-cause classification**
+
+- Product-logic defect in `handleSetOracleExpected()` key projection.
+- Oracle projection operated on normalized authored vectors and rebuilt inputs around normalized mapped IDs.
+- For vectors authored with nodeId-style keys, this rewrote input keys (for example `sw0_node` -> `sw0_node_in`) and corrupted per-vector input values, which changed rerun behavior and could flip `PASS` to `FAIL`.
+
+**Modified files**
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+
+**What changed**
+
+- Updated `handleSetOracleExpected()` to build oracle updates from source vectors while preserving:
+  - original vector ids,
+  - original ticks,
+  - original input keys and values.
+- Added broader input-key exclusion for oracle projection by including normalized keys from:
+  - source vector inputs,
+  - mapped input signals,
+  - existing input fields.
+- Preserved expected-key shape by reusing existing expected keys (by normalized match) instead of forcing waveform-derived key drift.
+- Added a guard to keep existing expectations when no output matches are captured, avoiding destructive empty rewrites.
+- Added regression test: `preserves existing input keys when setting oracle expectations`.
+- Updated one stale copy assertion in the same suite to match current UI text.
+
+**Why minimal**
+
+- Scope is limited to Verify Oracle projection behavior and its targeted workstation test coverage.
+- No export, hardware, macro, or gate-contract logic was changed.
+
+**Validation**
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` -> PASS (`11/11`)
+- `node scripts/tmp/audit-check-2.mjs` -> `verifyStatusAfterRerun: "PASS"` after Set Oracle rerun in live flow
+- `pnpm repo:status` -> exit code `0`, `39/39` checks passed, repository status `HEALTHY`
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-13 (Export-Hardware canonical naming unblock)
 
 **Subsystem**: FPGA export pipeline - testbench canonical signal resolution

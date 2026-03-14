@@ -300,6 +300,90 @@ describe('VerifySurface workstation controls', () => {
     expect(generated[0]?.tick).toBe(0);
   });
 
+  it('preserves existing input keys when setting oracle expectations', () => {
+    const onVectorsChange = vi.fn();
+    const nodeKeyRun: RuntimeVerifyRun = {
+      ...makePassRun(),
+      report: {
+        ...makePassRun().report,
+        vectors: [
+          { id: 'vec-01', tick: 0, inputs: { sw0_node: 0 }, expected: {}, caseIndex: 0 },
+          { id: 'vec-02', tick: 1, inputs: { sw0_node: 1 }, expected: {}, caseIndex: 1 },
+        ],
+        inputsAtTick: {
+          0: { sw0_node: 0 },
+          1: { sw0_node: 1 },
+        },
+        inputsByVectorId: {
+          'vec-01': { sw0_node: 0 },
+          'vec-02': { sw0_node: 1 },
+        },
+        signalRoles: { sw0_node: 'input', ld0_node_in: 'output' },
+        rows: [
+          {
+            tick: 0,
+            signal: 'ld0_node_in',
+            expected: '0',
+            actual: '0',
+            status: 'pass',
+            vectorId: 'vec-01',
+            caseIndex: 0,
+          },
+          {
+            tick: 1,
+            signal: 'ld0_node_in',
+            expected: '1',
+            actual: '1',
+            status: 'pass',
+            vectorId: 'vec-02',
+            caseIndex: 1,
+          },
+        ],
+      } as RuntimeVerifyRun['report'],
+      waveform: [
+        { tick: 0, signals: { sw0_node: '0', ld0_node_in: '0' }, mismatches: [] },
+        { tick: 1, signals: { sw0_node: '1', ld0_node_in: '1' }, mismatches: [] },
+      ],
+    };
+
+    const vectors = [
+      { id: 'vec-01', tick: 0, inputs: { sw0_node: 0 }, expected: {} },
+      { id: 'vec-02', tick: 1, inputs: { sw0_node: 1 }, expected: {} },
+    ];
+
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={nodeKeyRun}
+        vectors={vectors}
+        mappedInputs={[{ id: 'sw0_node_in', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0_node_in', direction: 'in' },
+          { id: 'ld0_node_in', direction: 'out' },
+        ]}
+        onVectorsChange={onVectorsChange}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    fireEvent.click(getByTestId('ide-verify-set-oracle'));
+
+    expect(onVectorsChange).toHaveBeenCalledTimes(1);
+    const updatedVectors = onVectorsChange.mock.calls[0]?.[0] as Array<{
+      inputs: Record<string, 0 | 1>;
+      expected: Record<string, 0 | 1>;
+    }>;
+    expect(updatedVectors.map((vector) => vector.inputs)).toEqual([
+      { sw0_node: 0 },
+      { sw0_node: 1 },
+    ]);
+    expect(updatedVectors.map((vector) => vector.expected)).toEqual([
+      { ld0_node_in: 0 },
+      { ld0_node_in: 1 },
+    ]);
+  });
+
   it('shows explicit combos unavailability for sequential circuits', () => {
     const sequentialRun: RuntimeVerifyRun = {
       ...makePassRun(),
@@ -453,7 +537,7 @@ describe('VerifySurface workstation controls', () => {
     );
 
     const notice = getByTestId('ide-verify-incomplete-mapping-notice');
-    expect(notice.textContent).toContain('Export and hardware tests may fail');
+    expect(notice.textContent).toContain('outputs are not mapped to board pins');
   });
 
   it('does NOT show incomplete-mapping banner or notice on a normal PASS with mappingComplete true', () => {
