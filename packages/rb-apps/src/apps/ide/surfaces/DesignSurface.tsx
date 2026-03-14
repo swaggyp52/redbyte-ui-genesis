@@ -1369,7 +1369,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       if (result) {
         setActionToast(`Inserted ${result.instanceLabel}.`);
-        onCircuitMutated?.();
+        // Do NOT call onCircuitMutated here. instantiateMacro already writes the
+        // new circuit (with macro nodes), resets sim, and marks dirtySinceVerify/
+        // dirtySinceExport inside projectRuntime. onCircuitMutated would read
+        // circuitStore, which has not yet been synced from projectRuntime (that
+        // sync is a React effect — async), so it would overwrite projectRuntime
+        // with the pre-insertion circuit, silently dropping the macro.
       }
       setActiveMacroInsertionId(null);
     },
@@ -1378,7 +1383,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       camera.x,
       camera.y,
       camera.zoom,
-      onCircuitMutated,
       onInstantiateMacro,
       selectMultipleNodes,
     ]

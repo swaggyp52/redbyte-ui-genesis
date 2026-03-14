@@ -116,4 +116,43 @@ describe('projectRuntime macros', () => {
     expect(macro?.name).toBe('Saved AND');
     expect(useProjectRuntime.getState().macros.some((entry) => entry.name === 'Saved AND')).toBe(true);
   });
+
+  it('instantiateMacro persists circuit and dirty flags without requiring markDesignMutated', () => {
+    useProjectRuntime.getState().loadFromProject(buildMacroProject());
+
+    const result = useProjectRuntime
+      .getState()
+      .instantiateMacro('macro-and-gate', { x: 520, y: 220 });
+
+    expect(result).toBeTruthy();
+    expect(result?.insertedNodeIds).toEqual(['node-v2-5']);
+    const state = useProjectRuntime.getState();
+    expect(state.circuit.nodes).toHaveLength(5);
+    expect(state.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(state.projectHealthCore.dirtySinceExport).toBe(true);
+  });
+
+  it('calling markDesignMutated with a stale circuit after instantiateMacro wipes the macro (documents the bug)', () => {
+    // This test documents the exact persistence mismatch.
+    // DesignSurface.handleInsertMacroOnCanvas must NOT call onCircuitMutated() after
+    // instantiateMacro, because circuitStore holds the pre-insertion circuit until
+    // the React sync effect fires. Calling markDesignMutated(staleCircuit) reverts
+    // projectRuntime.circuit to the pre-insertion state, dropping the macro silently.
+    useProjectRuntime.getState().loadFromProject(buildMacroProject());
+
+    const staleCircuit = structuredClone(useProjectRuntime.getState().circuit);
+
+    const result = useProjectRuntime
+      .getState()
+      .instantiateMacro('macro-and-gate', { x: 520, y: 220 });
+    expect(result).toBeTruthy();
+    expect(result?.insertedNodeIds).toEqual(['node-v2-5']);
+    expect(useProjectRuntime.getState().circuit.nodes).toHaveLength(5); // macro inserted
+
+    // Simulate what the old onCircuitMutated call did: push stale circuitStore back
+    useProjectRuntime.getState().markDesignMutated(staleCircuit);
+
+    // Macro is now silently gone — this is the trust break the fix prevents
+    expect(useProjectRuntime.getState().circuit.nodes).toHaveLength(4);
+  });
 });

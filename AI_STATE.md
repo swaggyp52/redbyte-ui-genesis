@@ -1,5 +1,49 @@
 # AI State
 
+## Change Log 2026-03-14 (Macro insertion persistence mismatch)
+
+**Subsystem**: IDE Design surface - macro insertion flow and project runtime persistence
+
+**Problem**
+
+- Macro insertion could report success (`Inserted ...`) but the persisted circuit state could silently drop the inserted macro.
+- This created a trust break: a successful design action appeared to complete, but did not stick in project state.
+
+**Root-cause classification**
+
+- Product-logic defect in macro insertion post-action sequencing.
+- `handleInsertMacroOnCanvas()` called `onInstantiateMacro()` (which already writes the updated circuit into project runtime state), then immediately called `onCircuitMutated()`.
+- `onCircuitMutated()` forwarded `circuitStore` state into `markDesignMutated(...)`, but `circuitStore` had not yet synchronized from runtime state (that sync is effect-driven), so stale pre-insertion state overwrote the fresh macro insertion.
+
+**Modified files**
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.macros.test.ts`
+
+**What changed**
+
+- Removed `onCircuitMutated?.()` from the macro insertion success path in `handleInsertMacroOnCanvas()`.
+- Kept insertion success toast and selection behavior unchanged.
+- Added inline rationale documenting why the callback must not run after runtime-owned macro insertion.
+- Added and hardened macro runtime regression coverage:
+  - `instantiateMacro` updates circuit + dirty flags without needing `markDesignMutated`.
+  - stale `markDesignMutated` call after insertion reproduces the old overwrite behavior (documented guard test).
+  - insertion assertions now verify successful instantiation and inserted node IDs.
+
+**Why minimal**
+
+- One behavior change in a single insertion callback.
+- No macro schema redesign, no export/verify/hardware changes, no contract rewrites.
+- Regression coverage is limited to the exact persistence/trust failure path.
+
+**Validation**
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectRuntime.macros.test.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx` -> PASS (`12/12`)
+- `pnpm repo:status` -> PASS (`39/39`), repository status `HEALTHY`
+- Live macro Playwright audit attempts (`scripts/tmp/audit-macro-persist2.mjs`) were executed with multiple local server startup strategies in this environment, but localhost endpoints remained unreachable/timed out from the automation process, so no successful live-flow capture was produced in-session.
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-13 (Verify Set Oracle PASS stability)
 
 **Subsystem**: IDE Verify surface - Set Oracle expectation projection
