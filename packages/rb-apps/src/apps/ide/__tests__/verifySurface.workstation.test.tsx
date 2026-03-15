@@ -208,7 +208,9 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld0');
     expect(getByTestId('ide-verify-right-expected').textContent).toContain('1');
     expect(getByTestId('ide-verify-right-actual').textContent).toContain('0');
-    expect(getByTestId('ide-verify-right-likely-reason').textContent?.length ?? 0).toBeGreaterThan(0);
+    expect(getByTestId('ide-verify-right-likely-reason').textContent).toContain('ld0');
+    expect(getByTestId('ide-verify-right-likely-reason').textContent).toContain('t1');
+    expect(getByTestId('ide-verify-right-next-step').textContent).toContain('ld0');
 
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     fireEvent.click(getAllByText('Mismatches')[0]);

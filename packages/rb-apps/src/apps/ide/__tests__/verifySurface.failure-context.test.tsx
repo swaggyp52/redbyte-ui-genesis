@@ -63,7 +63,7 @@ function makeRepeatedFailureRun(): RuntimeVerifyRun {
 
 describe('VerifySurface failure context', () => {
   it('keeps the selected failure scoped to tick plus signal across failure interactions', () => {
-    const { getByTestId } = render(
+    const { getAllByText, getByTestId } = render(
       <VerifySurface
         deterministicHash="det_repeat_fail"
         hasVectors={true}
@@ -83,24 +83,26 @@ describe('VerifySurface failure context', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t1');
-    expect(getByTestId('ide-verify-explainer-signal').textContent).toContain('ld0');
+    expect(getByTestId('ide-verify-right-tick').textContent).toContain('t1');
+    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld0');
 
+    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getAllByText('Mismatches')[0]);
     fireEvent.click(getByTestId('ide-verify-mismatch-row-ld0_5'));
-    expect(getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t5');
-    expect(getByTestId('ide-verify-explainer-signal').textContent).toContain('ld0');
-    expect(getByTestId('ide-verify-explainer-expected').textContent).toContain('0');
-    expect(getByTestId('ide-verify-explainer-observed').textContent).toContain('1');
+    expect(getByTestId('ide-verify-right-tick').textContent).toContain('t5');
+    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld0');
+    expect(getByTestId('ide-verify-right-expected').textContent).toContain('0');
+    expect(getByTestId('ide-verify-right-actual').textContent).toContain('1');
     expect(getByTestId('ide-verify-related-failure-ld1_5').textContent).toContain('ld1');
 
-    fireEvent.click(getByTestId('ide-verify-failure-ld1_5'));
-    expect(getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t5');
-    expect(getByTestId('ide-verify-explainer-signal').textContent).toContain('ld1');
-    expect(getByTestId('ide-verify-explainer-expected').textContent).toContain('1');
-    expect(getByTestId('ide-verify-explainer-observed').textContent).toContain('0');
+    fireEvent.click(getByTestId('ide-verify-related-failure-ld1_5'));
+    expect(getByTestId('ide-verify-right-tick').textContent).toContain('t5');
+    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld1');
+    expect(getByTestId('ide-verify-right-expected').textContent).toContain('1');
+    expect(getByTestId('ide-verify-right-actual').textContent).toContain('0');
 
     fireEvent.click(getByTestId('ide-verify-fail-nav-first'));
-    expect(getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t1');
-    expect(getByTestId('ide-verify-explainer-signal').textContent).toContain('ld0');
+    expect(getByTestId('ide-verify-right-tick').textContent).toContain('t1');
+    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld0');
   });
 });

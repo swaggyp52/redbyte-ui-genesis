@@ -13,20 +13,141 @@ export interface VerifyFailureExplanationCase {
 export interface VerifyFailureExplanationPanelProps {
   failure: VerifyFailureExplanationCase | null;
   classification: VerifyFailureClassification | null;
+  reasonCode?: string | null;
   peers?: VerifyFailureExplanationCase[];
   inputSnapshot?: Array<{ label: string; value: string }> | null;
   patternSummary?: string | null;
+  patternNextInspect?: string | null;
   onSelectPeer?: (peer: VerifyFailureExplanationCase) => void;
+}
+
+function displayObservedValue(value: string): string {
+  return value === '-' ? 'no sampled value' : value;
+}
+
+function escapeForRegex(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function withFailureContext(message: string, failure: VerifyFailureExplanationCase): string {
+  const normalized = message.trim();
+  const signalPattern = new RegExp(`\\b${escapeForRegex(failure.signal)}\\b`, 'i');
+  const tickPattern = new RegExp(`\\bt${failure.tick}\\b`, 'i');
+  const hasSignal = signalPattern.test(normalized);
+  const hasTick = tickPattern.test(normalized);
+
+  if (hasSignal && hasTick) {
+    return normalized;
+  }
+
+  if (hasSignal) {
+    return `At t${failure.tick}, ${normalized}`;
+  }
+
+  if (hasTick) {
+    return `For ${failure.signal}, ${normalized}`;
+  }
+
+  return `For ${failure.signal} at t${failure.tick}, ${normalized}`;
+}
+
+function buildLikelyReasonText(input: {
+  failure: VerifyFailureExplanationCase;
+  classification: VerifyFailureClassification | null;
+  reasonCode: string | null;
+}): string {
+  const { failure, classification, reasonCode } = input;
+  const observed = displayObservedValue(failure.actual);
+
+  if (reasonCode === 'missing-output-node') {
+    return `${failure.signal} has no mapped output node at t${failure.tick}, so Verify cannot sample a real circuit value.`;
+  }
+
+  if (reasonCode === 'missing-output-sample') {
+    return `${failure.signal} has no sampled value at t${failure.tick}. This usually means the output is floating or undriven.`;
+  }
+
+  if (classification?.reason === 'undefined-output') {
+    return `${failure.signal} is undefined (X) at t${failure.tick}: expected ${failure.expected}, observed ${observed}.`;
+  }
+
+  if (classification?.reason === 'floating-output') {
+    return `${failure.signal} is floating at t${failure.tick}: expected ${failure.expected}, observed ${observed}.`;
+  }
+
+  if (classification?.reason === 'timing-mismatch') {
+    return `${failure.signal} mismatched at t${failure.tick}: expected ${failure.expected}, got ${observed}. Clock or sample timing likely differs from expectation.`;
+  }
+
+  if (classification?.message) {
+    return `${failure.signal} mismatched at t${failure.tick}: ${classification.message}.`;
+  }
+
+  return `${failure.signal} mismatched at t${failure.tick}: expected ${failure.expected}, got ${observed}.`;
+}
+
+function buildNextStepText(input: {
+  failure: VerifyFailureExplanationCase;
+  classification: VerifyFailureClassification | null;
+  reasonCode: string | null;
+  patternNextInspect: string | null;
+}): string {
+  const { failure, classification, reasonCode, patternNextInspect } = input;
+
+  if (reasonCode === 'missing-output-node') {
+    return `In Build or Mapping, map ${failure.signal} to a real output node, then rerun Verify.`;
+  }
+
+  if (reasonCode === 'missing-output-sample' || classification?.reason === 'floating-output') {
+    return `In Build, trace the wire feeding ${failure.signal} and confirm a gate output actively drives it at t${failure.tick}.`;
+  }
+
+  if (classification?.reason === 'undefined-output') {
+    return `Inspect upstream inputs to ${failure.signal} for unknown or floating states, then rerun Verify at t${failure.tick}.`;
+  }
+
+  if (classification?.reason === 'timing-mismatch') {
+    return withFailureContext(
+      patternNextInspect ??
+        `Inspect clock, reset, and enable alignment around t${failure.tick}, then compare expected vs sampled edge timing.`,
+      failure
+    );
+  }
+
+  return withFailureContext(
+    patternNextInspect ??
+      `In Build, trace the gate path driving ${failure.signal} at t${failure.tick} under the shown input snapshot.`,
+    failure
+  );
 }
 
 export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPanelProps> = ({
   failure,
   classification,
+  reasonCode = null,
   peers = [],
   inputSnapshot,
   patternSummary,
+  patternNextInspect = null,
   onSelectPeer,
 }) => {
+  const likelyReasonText = failure
+    ? buildLikelyReasonText({
+        failure,
+        classification,
+        reasonCode,
+      })
+    : '';
+
+  const nextStepText = failure
+    ? buildNextStepText({
+        failure,
+        classification,
+        reasonCode,
+        patternNextInspect,
+      })
+    : '';
+
   return (
     <section className="ide-verify-failure-explanation-panel" data-testid="ide-verify-failure-explanation-panel">
       <header className="ide-design-subheader ide-verify-three-panel-header">
@@ -43,7 +164,7 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
         ) : (
           <div className="ide-kv-list">
             <p className="ide-verify-right-summary-text" data-testid="ide-verify-right-summary">
-              At t{failure.tick} — {failure.signal} is {failure.actual}, expected {failure.expected}
+              At t{failure.tick}, {failure.signal} failed: expected {failure.expected}, got {displayObservedValue(failure.actual)}
             </p>
             <div className="ide-kv-row">
               <span>Signal key</span>
@@ -64,13 +185,13 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
             <div className="ide-kv-row">
               <span>Likely reason</span>
               <span data-testid="ide-verify-right-likely-reason">
-                {classification?.message ?? 'Output driver mismatch - check expected vs actual signals'}
+                {likelyReasonText}
               </span>
             </div>
             <div className="ide-kv-row">
               <span>Next step</span>
               <span data-testid="ide-verify-right-next-step">
-                Check the gate driving {failure.signal} in Design
+                {nextStepText}
               </span>
             </div>
 

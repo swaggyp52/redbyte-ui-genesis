@@ -3731,6 +3731,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <VerifyFailureExplanationPanel
                   failure={selectedFailureExplanationCase}
                   classification={selectedFailureClassification}
+                  reasonCode={selectedFailureEvidence?.actualReason ?? null}
                   peers={selectedFailurePeers.map((row) => ({
                     tick: row.tick,
                     signal: row.signal,
@@ -3741,6 +3742,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   }))}
                   inputSnapshot={selectedFailureInputs}
                   patternSummary={selectedFailurePattern?.summary ?? null}
+                  patternNextInspect={selectedFailurePattern?.nextInspect ?? null}
                   onSelectPeer={(peer) => applyFailureSelection(peer)}
                 />
               )}

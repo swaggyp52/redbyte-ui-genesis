@@ -1,5 +1,49 @@
 # AI State
 
+## Change Log 2026-03-15 (Verify FAIL depth + actionable next-step guidance)
+
+**Subsystem**: IDE Verify surface failure coaching and student actionability
+
+**Problem**
+
+When Verify failed, the explanation was partially generic:
+1. Next-step guidance could omit explicit failing signal/tick context.
+2. Pattern-derived next-inspect text could read like advice without clear target scope.
+3. One failure-context regression test still targeted stale interaction hooks and did not match the current drawer/tab flow.
+
+This weakened the student handoff from “failure detected” to “what exactly to inspect next.”
+
+**What changed**
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifyFailureExplanationPanel.tsx`:
+  - Added `withFailureContext(...)` wrapping so next-step guidance always carries explicit failure scope.
+  - Hardened context detection with regex-safe signal/tick checks (avoids substring false positives).
+  - Ensured timing/default next-step branches preserve pattern guidance while still injecting concrete signal/tick context when missing.
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`:
+  - Passes `reasonCode` and `patternNextInspect` into `VerifyFailureExplanationPanel` so panel guidance can be evidence/pattern-aware.
+- `packages/rb-apps/src/apps/ide/__tests__/VerifyFailureExplanationPanel.test.tsx`:
+  - Added fail-depth assertions for floating/undriven evidence and explicit pattern next-inspect guidance.
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`:
+  - Strengthened fail-run assertions to require signal/tick-aware likely reason and actionable next-step content.
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.failure-context.test.tsx`:
+  - Realigned to current right-panel IDs and current drawer+Mismatches interaction flow.
+  - Uses existing related-failure selector to validate tick+signal-scoped selection behavior.
+
+**Student-visible behavior after fix**
+
+- FAIL explanation now states exactly where mismatch occurred (`signal` at `tick`) with expected vs observed values.
+- Likely reason remains plain-language and evidence-aware.
+- Next step is now explicitly scoped to the failing signal/tick even when pattern guidance text is generic.
+- Selecting related failures keeps context anchored correctly to the chosen tick/signal pair.
+
+**Proof**
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/VerifyFailureExplanationPanel.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.failure-context.test.tsx --reporter=verbose` -> 18/18 passing
+- `pnpm run ide:gate:student-loop-contract` -> PASS
+- `pnpm run ide:gate:verify-summary-contract` -> PASS
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-15 (Import first-run simplification + gate contract realignment)
 
 **Subsystem**: IDE Import surface onboarding and import-gate reliability
