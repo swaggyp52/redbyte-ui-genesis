@@ -1410,6 +1410,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     [placeMacroAtClientPoint]
   );
 
+  const handleMacroInsertionOverlayKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (!canvasHostRef.current) return;
+      const rect = canvasHostRef.current.getBoundingClientRect();
+      placeMacroAtClientPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    },
+    [placeMacroAtClientPoint]
+  );
+
   const handleCanvasPlacementClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
       if (!activeInsertionMacro) return;
@@ -3500,7 +3512,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <div
                         className="ide-macro-insertion-overlay"
                         data-testid="ide-macro-insertion-overlay"
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Place ${activeInsertionMacro.name} on the canvas. Press Escape to cancel.`}
                         onClick={handleInsertMacroOnCanvas}
+                        onKeyDown={handleMacroInsertionOverlayKeyDown}
                       >
                         <div
                           className="ide-macro-insertion-overlay-card"
