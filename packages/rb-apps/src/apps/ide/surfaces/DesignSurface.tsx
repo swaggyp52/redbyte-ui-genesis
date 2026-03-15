@@ -1353,12 +1353,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     [onDeleteMacro]
   );
 
-  const handleInsertMacroOnCanvas = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
+  const cancelMacroPlacement = useCallback(
+    (reason: 'cancel' | 'escape') => {
+      if (!activeInsertionMacro) return;
+      setActiveMacroInsertionId(null);
+      setActionToast(
+        reason === 'escape'
+          ? `Cancelled placing ${activeInsertionMacro.name} (Esc).`
+          : `Cancelled placing ${activeInsertionMacro.name}.`
+      );
+    },
+    [activeInsertionMacro]
+  );
+
+  const placeMacroAtClientPoint = useCallback(
+    (clientX: number, clientY: number) => {
       if (!activeInsertionMacro || !onInstantiateMacro || !canvasHostRef.current) return;
       const rect = canvasHostRef.current.getBoundingClientRect();
-      const localX = event.clientX - rect.left;
-      const localY = event.clientY - rect.top;
+      const localX = clientX - rect.left;
+      const localY = clientY - rect.top;
       const position = {
         x: (localX - camera.x) / camera.zoom,
         y: (localY - camera.y) / camera.zoom,
@@ -1368,7 +1381,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         selectMultipleNodes(result.insertedNodeIds);
       }
       if (result) {
-        setActionToast(`Inserted ${result.instanceLabel}.`);
+        setActionToast(`Placed macro: ${result.instanceLabel}.`);
         // Do NOT call onCircuitMutated here. instantiateMacro already writes the
         // new circuit (with macro nodes), resets sim, and marks dirtySinceVerify/
         // dirtySinceExport inside projectRuntime. onCircuitMutated would read
@@ -1386,6 +1399,28 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       onInstantiateMacro,
       selectMultipleNodes,
     ]
+  );
+
+  const handleInsertMacroOnCanvas = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      placeMacroAtClientPoint(event.clientX, event.clientY);
+    },
+    [placeMacroAtClientPoint]
+  );
+
+  const handleCanvasPlacementClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!activeInsertionMacro) return;
+      const target = event.target as HTMLElement | null;
+      const clickedCanvasUi = Boolean(target?.closest('[data-blocks-macro-placement="1"]'));
+      if (clickedCanvasUi) return;
+      event.preventDefault();
+      event.stopPropagation();
+      placeMacroAtClientPoint(event.clientX, event.clientY);
+    },
+    [activeInsertionMacro, placeMacroAtClientPoint]
   );
 
   useEffect(() => {
@@ -1801,6 +1836,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [wireContextMenu]);
+
+  useEffect(() => {
+    if (!activeInsertionMacro) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      const activeEl = document.activeElement as HTMLElement | null;
+      const tagName = activeEl?.tagName?.toLowerCase();
+      const isTextInput = tagName === 'input' || tagName === 'textarea' || activeEl?.isContentEditable;
+      if (isTextInput) return;
+      event.preventDefault();
+      cancelMacroPlacement('escape');
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [activeInsertionMacro, cancelMacroPlacement]);
 
   useEffect(() => {
     if (!onRuntimeSimSetSelectedSignal) return;
@@ -3190,6 +3242,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <div
                       className="ide-design-diagnostic-callout"
                       data-testid="ide-design-diagnostic-callout"
+                      data-blocks-macro-placement="1"
                     >
                       <IdeCallout tone="warn">
                         Checking{diagnosticRouteRequest.signal ? ` signal ${diagnosticRouteRequest.signal}` : ''}
@@ -3223,6 +3276,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     data-tool-mode={toolMode}
                     data-interaction-mode={interactionMode}
                     data-presentation-zoom={presentationZoom}
+                    data-macro-placement-active={activeInsertionMacro ? '1' : '0'}
+                    onClick={handleCanvasPlacementClick}
                   >
                     <div className="ide-design-canvas-mode-indicator" data-testid="ide-design-canvas-mode-indicator">
                       {activeModeLabel}
@@ -3233,7 +3288,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <div className="ide-design-canvas-mode-indicator" data-testid="ide-design-presentation-zoom-indicator">
                       {presentationZoom === 'classroom' ? 'Classroom Zoom' : 'Dense Zoom'}
                     </div>
-                    <div className="ide-design-zoom-presets" data-testid="ide-design-zoom-presets">
+                    <div
+                      className="ide-design-zoom-presets"
+                      data-testid="ide-design-zoom-presets"
+                      data-blocks-macro-placement="1"
+                    >
                       {([0.5, 0.75, 1.0, 1.25] as const).map((preset) => (
                         <button
                           key={preset}
@@ -3254,7 +3313,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         Fit
                       </button>
                     </div>
-                    <div className="ide-design-canvas-controls" data-testid="ide-design-canvas-controls">
+                    <div
+                      className="ide-design-canvas-controls"
+                      data-testid="ide-design-canvas-controls"
+                      data-blocks-macro-placement="1"
+                    >
                       <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit-canvas">
                         Fit
                       </IdeButton>
@@ -3276,7 +3339,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </div>
                     {/* C-7: Debug overlay banner — shown when externally frozen at a verify tick */}
                     {externalDebugTick != null && (
-                      <div className="ide-design-debug-overlay-banner" data-testid="ide-design-debug-banner" role="status">
+                      <div
+                        className="ide-design-debug-overlay-banner"
+                        data-testid="ide-design-debug-banner"
+                        data-blocks-macro-placement="1"
+                        role="status"
+                      >
                         <span aria-hidden="true">⏸</span>
                         <strong>Debug mode — tick {externalDebugTick}</strong>
                         <span className="ide-design-debug-banner-hint">
@@ -3429,21 +3497,38 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </div>
                     )}
                     {activeInsertionMacro ? (
-                      <button
-                        type="button"
+                      <div
                         className="ide-macro-insertion-overlay"
                         data-testid="ide-macro-insertion-overlay"
                         onClick={handleInsertMacroOnCanvas}
                       >
-                        <span className="ide-macro-insertion-overlay-card">
-                          Click to place {activeInsertionMacro.name}
-                        </span>
-                      </button>
+                        <div
+                          className="ide-macro-insertion-overlay-card"
+                          data-blocks-macro-placement="1"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <div className="ide-macro-insertion-overlay-header">
+                            <strong data-testid="ide-macro-insertion-title">Placement Mode</strong>
+                            <IdeButton
+                              tone="ghost"
+                              testId="ide-macro-insertion-cancel"
+                              onClick={() => cancelMacroPlacement('cancel')}
+                            >
+                              Cancel
+                            </IdeButton>
+                          </div>
+                          <p className="ide-macro-insertion-overlay-copy" data-testid="ide-macro-insertion-message">
+                            Click on the canvas to place {activeInsertionMacro.name}.
+                          </p>
+                          <p className="ide-macro-insertion-overlay-hint">Press Esc to cancel.</p>
+                        </div>
+                      </div>
                     ) : null}
                     {wireContextMenu ? (
                       <div
                         className="ide-design-wire-context-menu"
                         data-testid="ide-design-wire-context-menu"
+                        data-blocks-macro-placement="1"
                         style={{ left: wireContextMenu.x, top: wireContextMenu.y }}
                         onPointerDown={(event) => event.stopPropagation()}
                       >

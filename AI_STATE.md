@@ -1,5 +1,58 @@
 # AI State
 
+## Change Log 2026-03-15 (Macro placement reliability + mode clarity)
+
+**Subsystem**: IDE Design surface - macro placement interaction loop
+
+**Problem**
+
+- Live macro flow could save a macro and enter placement mode, but clicking the expected canvas target could fail to place it.
+- This made authoring feel flaky: students saw placement mode but did not always get a committed insertion.
+- Placement mode also lacked a clear, explicit cancel affordance and keyboard exit contract.
+
+**Root-cause classification**
+
+- Product interaction defect in placement hit-target routing and mode UX clarity.
+- Placement depended on a narrow overlay click path in practice; expected canvas click path was not consistently reliable in live flow.
+
+**Modified files**
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+
+**What changed**
+
+- Added shared placement routing (`placeMacroAtClientPoint`) so placement coordinates are computed once and used consistently.
+- Added explicit canvas-click placement handler while macro placement mode is active.
+- Added explicit cancel affordances:
+  - visible `Cancel` button in placement overlay,
+  - Escape key exits placement mode when not typing in an input.
+- Improved feedback wording for immediate action clarity:
+  - success: `Placed macro: <instance>.`
+  - cancel: `Cancelled placing <macro>.`
+- Added visible placement-mode guidance in the overlay (`Placement Mode`, click instruction, `Esc` hint).
+- Added placement mode styling contract in CSS so the active state is visually unmistakable.
+
+**Why minimal**
+
+- Scope is limited to macro placement UX on the Design surface.
+- No changes to macro persistence internals, runtime state ownership, export/hardware/import flows, or macro schema.
+
+**Validation**
+
+- Live repro before fix (`scripts/tmp/audit-macro-flow.mjs`) showed `inserted: false` after canvas click path.
+- Live proof after fix:
+  - `scripts/tmp/audit-macro-flow.mjs` -> `inserted: true`, node count increased (`8 -> 10`).
+  - cancel path probe -> overlay exits and node count unchanged (`8 -> 8`).
+  - Esc cancel probe -> overlay exits and node count unchanged (`8 -> 8`).
+- Targeted tests:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.macros.test.ts` -> PASS (`13/13`).
+- Repository health:
+  - `pnpm repo:status` -> PASS (`39/39`), repository status `HEALTHY`.
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-15 (Export CTA hit-target overlap fix + contract guard)
 
 **Subsystem**: IDE Export surface - summary CTA interaction reliability

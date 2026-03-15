@@ -295,7 +295,7 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-macro-save-name')).toBeTruthy();
   });
 
-  it('enters macro insertion mode from the library and instantiates on canvas click', async () => {
+  it('enters macro insertion mode from the library and instantiates on canvas click target', async () => {
     const onInstantiateMacro = vi.fn(() => ({
       instanceLabel: 'AND_Gate_1',
       insertedNodeIds: ['node-v2-5'],
@@ -311,53 +311,91 @@ describe('DesignSurface workstation redesign', () => {
     const overlay = view.getByTestId('ide-macro-insertion-overlay');
     expect(overlay.textContent).toContain('AND Gate');
 
-    fireEvent.click(overlay, { clientX: 600, clientY: 320 });
+    fireEvent.click(view.getByTestId('ide-design-live-canvas'), { clientX: 600, clientY: 320 });
 
     await waitFor(() => {
       expect(onInstantiateMacro).toHaveBeenCalledWith('macro-and-gate', expect.any(Object));
     });
+  });
+
+  it('keeps overlay click path working for macro placement', async () => {
+    const onInstantiateMacro = vi.fn(() => ({
+      instanceLabel: 'AND_Gate_1',
+      insertedNodeIds: ['node-v2-5'],
+    }));
+
+    const view = renderSurface({
+      macros: [FIXTURE_MACRO],
+      onInstantiateMacro,
+    });
+
+    fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
+    fireEvent.click(view.getByTestId('ide-macro-insertion-overlay'), { clientX: 640, clientY: 360 });
+
+    await waitFor(() => {
+      expect(onInstantiateMacro).toHaveBeenCalledWith('macro-and-gate', expect.any(Object));
+    });
+  });
+
+  it('does not place when clicking placement overlay card UI', async () => {
+    const onInstantiateMacro = vi.fn(() => ({
+      instanceLabel: 'AND_Gate_1',
+      insertedNodeIds: ['node-v2-5'],
+    }));
+
+    const view = renderSurface({
+      macros: [FIXTURE_MACRO],
+      onInstantiateMacro,
+    });
+
+    fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
+    fireEvent.click(view.getByTestId('ide-macro-insertion-message'));
+
+    expect(onInstantiateMacro).not.toHaveBeenCalled();
+    expect(view.getByTestId('ide-macro-insertion-overlay')).toBeTruthy();
+  });
+
+  it('exits placement mode via cancel button without mutating the graph', async () => {
+    const onInstantiateMacro = vi.fn(() => ({
+      instanceLabel: 'AND_Gate_1',
+      insertedNodeIds: ['node-v2-5'],
+    }));
+
+    const view = renderSurface({
+      macros: [FIXTURE_MACRO],
+      onInstantiateMacro,
+    });
+
+    fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
+    expect(view.getByTestId('ide-macro-insertion-overlay')).toBeTruthy();
+
+    fireEvent.click(view.getByTestId('ide-macro-insertion-cancel'));
+
+    await waitFor(() => {
+      expect(view.queryByTestId('ide-macro-insertion-overlay')).toBeNull();
+    });
+    expect(onInstantiateMacro).not.toHaveBeenCalled();
+  });
+
+  it('exits placement mode via Escape without mutating the graph', async () => {
+    const onInstantiateMacro = vi.fn(() => ({
+      instanceLabel: 'AND_Gate_1',
+      insertedNodeIds: ['node-v2-5'],
+    }));
+
+    const view = renderSurface({
+      macros: [FIXTURE_MACRO],
+      onInstantiateMacro,
+    });
+
+    fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
+    expect(view.getByTestId('ide-macro-insertion-overlay')).toBeTruthy();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(view.queryByTestId('ide-macro-insertion-overlay')).toBeNull();
+    });
+    expect(onInstantiateMacro).not.toHaveBeenCalled();
   });
 });
-  it('shows the save-as-macro action and dialog when multiple nodes are selected', async () => {
-    const onSaveMacro = vi.fn();
-    const view = renderSurface({
-      macros: [],
-      onSaveMacro,
-    });
-
-    act(() => {
-      useLogicViewStore.getState().selectMultipleNodes(['sw0_node', 'ld0_node']);
-    });
-
-    await waitFor(() => {
-      expect(view.getByTestId('ide-design-save-macro-open')).toBeTruthy();
-    });
-
-    fireEvent.click(view.getByTestId('ide-design-save-macro-open'));
-
-    expect(view.getByTestId('ide-macro-save-dialog')).toBeTruthy();
-    expect(view.getByTestId('ide-macro-save-name')).toBeTruthy();
-  });
-
-  it('enters macro insertion mode from the library and instantiates on canvas click', async () => {
-    const onInstantiateMacro = vi.fn(() => ({
-      instanceLabel: 'AND_Gate_1',
-      insertedNodeIds: ['node-v2-5'],
-    }));
-
-    const view = renderSurface({
-      macros: [FIXTURE_MACRO],
-      onInstantiateMacro,
-    });
-
-    fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
-
-    const overlay = view.getByTestId('ide-macro-insertion-overlay');
-    expect(overlay.textContent).toContain('AND Gate');
-
-    fireEvent.click(overlay, { clientX: 600, clientY: 320 });
-
-    await waitFor(() => {
-      expect(onInstantiateMacro).toHaveBeenCalledWith('macro-and-gate', expect.any(Object));
-    });
-  });
