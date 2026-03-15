@@ -1,5 +1,44 @@
 # AI State
 
+## Change Log 2026-03-15 (Export CTA simplification — one unmistakable primary handoff)
+
+**Subsystem**: IDE Export surface — CTA hierarchy and student handoff clarity
+
+**Problem**
+
+The Export hero was rendering three buttons in the primary CTA zone simultaneously:
+1. Primary: "Download Vivado Project (Open Project)"
+2. Secondary: "Download Vivado Kit" — seated as a visual peer to the primary
+3. Ghost: "← Design" — navigation noise in the decision zone
+
+The right-column download block also duplicated both download buttons, creating four competing download actions and two identical `ide-export-rebuild-btn` testIds in the DOM. Students could not tell which button was "the real one."
+
+Additionally, one workstation test had a stale assertion against old callout copy that hadn't been updated when the callout text was rewritten.
+
+**What changed**
+
+- `ExportSurface.tsx`:
+  - Hero `ide-export-summary-actions`: removed secondary "Download Vivado Kit" button and ghost "← Design" button; the primary download is now the only action in the hero zone, wrapped in `data-testid="ide-export-primary-handoff-cta"` for contract verification.
+  - Right-column `ide-export-buildCard`: moved "Download Vivado Kit" from an inline secondary button into a collapsed `<details>` element labelled "Other outputs" (`data-testid="ide-export-other-outputs"`).
+  - Removed duplicate `testId="ide-export-rebuild-btn"` from the right-column button (it retains the `ide-primary-cta` wrapper). Now exactly one `ide-export-rebuild-btn` in the DOM.
+- `exportSurface.workstation.test.tsx`:
+  - Fixed stale assertion: updated `ide-export-unverified-callout` text expectation to match current callout title.
+  - Added new test `'hero has exactly one primary handoff CTA — no competing secondary download in the hero zone'`: asserts `ide-export-primary-handoff-cta` exists, kit button absent from hero, kit button present in download block under Other outputs.
+
+**Student-visible behavior after fix**
+
+- One large primary CTA in the export hero — no confusion about which button to click
+- "Download Vivado Kit" still available but demoted under "Other outputs" in the right column
+- All trust logic (TRUSTED / AVAILABLE / BLOCKED) and gate rows unchanged
+- Dock sidecard, trust banner, and Vivado checklist unchanged
+
+**Proof**
+
+- `pnpm exec vitest run` → 10/10 passing (was 9/10 with pre-existing stale assertion)
+- `pnpm -s ide:gate:student-loop-contract` → PASS
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-15 (Lead engineer agent enforces mandatory commit discipline)
 
 **Subsystem**: AI workflow and repo execution discipline

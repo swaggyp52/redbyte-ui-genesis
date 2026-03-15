@@ -102,7 +102,7 @@ describe('ExportSurface workstation redesign', () => {
     );
     expect(getByTestId('ide-export-blockers-callout')).toBeTruthy();
     expect(getByTestId('ide-export-unverified-callout').textContent).toContain(
-      'Vivado handoff is not trustworthy until Verify has a current PASS/FAIL result'
+      'Verification is required before trusted handoff'
     );
     expect(getByText('Advisories')).toBeTruthy();
     expect(queryByTestId('ide-export-vivado-blocked-callout')).toBeNull();
@@ -151,5 +151,27 @@ describe('ExportSurface workstation redesign', () => {
     const pill = getByTestId('ide-export-checks-dock').querySelector('[data-testid]');
     const dockText = getByTestId('ide-export-checks-dock').textContent ?? '';
     expect(dockText).not.toContain('READY');
+  });
+
+  it('hero has exactly one primary handoff CTA — no competing secondary download in the hero zone', () => {
+    const { getByTestId, queryByTestId } = render(
+      <ExportSurface project={buildProject()} determinismHash="ide-hash" />
+    );
+
+    // The primary CTA wrapper must exist in the hero
+    expect(getByTestId('ide-export-primary-handoff-cta')).toBeTruthy();
+    // The primary rebuild button inside the hero must be enabled (no blockers in this project)
+    expect(getByTestId('ide-export-rebuild-btn').hasAttribute('disabled')).toBe(false);
+
+    // The kit download is absent from the summary hero — it lives in the right-column
+    // "Other outputs" collapsed section so it never visually competes with the primary CTA.
+    const hero = getByTestId('ide-export-summary-card');
+    expect(hero.querySelector('[data-testid="ide-export-download-kit-btn"]')).toBeNull();
+    // The ghost Design-back button is also absent from the hero CTA zone
+    expect(hero.querySelector('[data-testid="ide-export-go-design-header"]')).toBeNull();
+
+    // The kit button still exists on the page — in the download block, collapsed under Other outputs
+    expect(getByTestId('ide-export-download-kit-btn')).toBeTruthy();
+    expect(getByTestId('ide-export-other-outputs')).toBeTruthy();
   });
 });

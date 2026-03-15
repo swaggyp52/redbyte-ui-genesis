@@ -890,31 +890,16 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 <p>{nextActionDetail}</p>
               </div>
               <div className="ide-export-summary-actions">
-                <IdeButton
-                  tone="primary"
-                  onClick={() => void handleDownloadExport('project')}
-                  disabled={!downloadReady || isRebuilding}
-                  testId="ide-export-rebuild-btn"
-                >
-                  {projectDownloadLabel}
-                </IdeButton>
-                <IdeButton
-                  tone="secondary"
-                  onClick={() => void handleDownloadExport('kit')}
-                  disabled={!downloadReady || isRebuilding}
-                  testId="ide-export-download-kit-btn"
-                >
-                  {kitDownloadLabel}
-                </IdeButton>
-                {onGoToDesign && (
+                <span data-testid="ide-export-primary-handoff-cta">
                   <IdeButton
-                    tone="ghost"
-                    onClick={onGoToDesign}
-                    testId="ide-export-go-design-header"
+                    tone="primary"
+                    onClick={() => void handleDownloadExport('project')}
+                    disabled={!downloadReady || isRebuilding}
+                    testId="ide-export-rebuild-btn"
                   >
-                    ← Design
+                    {projectDownloadLabel}
                   </IdeButton>
-                )}
+                </span>
               </div>
             </div>
             <div className="ide-export-summary-grid" data-testid="ide-export-design-summary">
@@ -1614,22 +1599,24 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       tone="primary"
                       onClick={() => void handleDownloadExport('project')}
                       disabled={!downloadReady || isRebuilding}
-                      testId="ide-export-rebuild-btn"
                     >
                       {projectDownloadCompactLabel}
                     </IdeButton>
                   </span>
                 </div>
-                <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
-                  <IdeButton
-                    tone="secondary"
-                    onClick={() => void handleDownloadExport('kit')}
-                    disabled={!downloadReady || isRebuilding}
-                    testId="ide-export-download-kit-btn"
-                  >
-                    {kitDownloadLabel}
-                  </IdeButton>
-                </div>
+                <details className="ide-export-other-outputs" data-testid="ide-export-other-outputs" style={{ marginTop: 'var(--ide-space-2)' }}>
+                  <summary style={{ cursor: 'pointer', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>Other outputs</summary>
+                  <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-1)' }}>
+                    <IdeButton
+                      tone="secondary"
+                      onClick={() => void handleDownloadExport('kit')}
+                      disabled={!downloadReady || isRebuilding}
+                      testId="ide-export-download-kit-btn"
+                    >
+                      {kitDownloadLabel}
+                    </IdeButton>
+                  </div>
+                </details>
                 {!downloadReady && (
                   <span
                     className="ide-export-download-gate-note"
