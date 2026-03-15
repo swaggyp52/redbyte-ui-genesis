@@ -3042,8 +3042,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             {/* Primary CTA varies by state */}
             {status === 'pass' && !isRunStale ? (
               <span data-testid="ide-primary-cta">
-                <IdeButton tone="primary" onClick={onGoToHardware} testId="ide-verify-cta-continue">
-                  Continue → Hardware
+                <IdeButton
+                  tone={lastRun?.qualification === 'incomplete-mapping' ? 'secondary' : 'primary'}
+                  onClick={onGoToHardware}
+                  testId="ide-verify-cta-continue"
+                >
+                  {lastRun?.qualification === 'incomplete-mapping' ? 'Finish mapping → Hardware' : 'Continue → Hardware'}
                 </IdeButton>
               </span>
             ) : isRunStale ? (
@@ -3169,37 +3173,71 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {status === 'pass' && runState !== 'running' && runRows.length > 0 && (
-          <div className="ide-verify-pass-summary" data-testid="ide-verify-pass-hero">
-            <div className="ide-verify-pass-summary-main">
-              <span className="ide-verify-pass-summary-icon" aria-hidden="true">✓</span>
-              <div className="ide-verify-pass-summary-copy">
-                <strong className="ide-verify-pass-summary-title">Verification passed</strong>
-                <span className="ide-verify-pass-summary-meta">
-                  {runRows.length} vector{runRows.length !== 1 ? 's' : ''} · {runRows.length - failingRows.length} pass · {failingRows.length} fail
+        {status === 'pass' && runState !== 'running' && runRows.length > 0 && (() => {
+          const isIncomplete = lastRun?.qualification === 'incomplete-mapping';
+          const unmappedNames = unmappedOutputLabels.length > 0
+            ? `${unmappedOutputLabels.slice(0, 3).join(', ')}${unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''} ${unmappedOutputLabels.length === 1 ? 'is' : 'are'} not connected to board pins`
+            : 'some outputs are not connected to board pins';
+          return (
+            <div
+              className={`ide-verify-pass-hero${isIncomplete ? ' ide-verify-pass-hero--incomplete' : ''}`}
+              data-testid="ide-verify-pass-hero"
+            >
+              <div className="ide-verify-pass-hero-body">
+                <span className="ide-verify-pass-hero-icon" aria-hidden="true">
+                  {isIncomplete ? '⚠' : '✓'}
                 </span>
+                <div className="ide-verify-pass-hero-text">
+                  {isIncomplete ? (
+                    <>
+                      <strong className="ide-verify-pass-hero-title" data-testid="ide-verify-pass-hero-title">
+                        Logic passed — mapping incomplete
+                      </strong>
+                      <span className="ide-verify-pass-hero-meta" data-testid="ide-verify-pass-hero-meta">
+                        {unmappedNames}. Finish mapping in Hardware before trusting export or bring-up.
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <strong className="ide-verify-pass-hero-title" data-testid="ide-verify-pass-hero-title">
+                        All {runRows.length} vector{runRows.length !== 1 ? 's' : ''} passed
+                      </strong>
+                      <span className="ide-verify-pass-hero-meta" data-testid="ide-verify-pass-hero-meta">
+                        Your design matches expected outputs across all test cases. This design is ready to export.
+                      </span>
+                    </>
+                  )}
+                </div>
+                {oracleApplied && (
+                  <span className="ide-verify-oracle-badge" data-testid="ide-verify-oracle-badge">
+                    Baseline locked from observed run
+                  </span>
+                )}
               </div>
-              {oracleApplied && (
-                <span className="ide-verify-oracle-badge" data-testid="ide-verify-oracle-badge">
-                  Baseline locked from observed run
-                </span>
-              )}
-            </div>
-            <div className="ide-verify-pass-summary-actions">
-              <code className="ide-verify-pass-summary-hash" data-testid="ide-verify-pass-hero-hash">
-                {lastRun?.reportHash?.slice(0, 16) ?? deterministicHash.slice(0, 16)}
-              </code>
-              <IdeButton tone="primary" onClick={onGoToHardware} testId="ide-verify-pass-hero-hardware">
-                Continue → Hardware
-              </IdeButton>
-              {onGoToDesign && (
-                <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-verify-pass-hero-design">
-                  Back to Design
+              <div className="ide-verify-pass-hero-actions">
+                <code className="ide-verify-pass-hero-hash" data-testid="ide-verify-pass-hero-hash">
+                  {lastRun?.reportHash?.slice(0, 16) ?? deterministicHash.slice(0, 16)}
+                </code>
+                <IdeButton
+                  tone={isIncomplete ? 'secondary' : 'primary'}
+                  onClick={onGoToHardware}
+                  testId="ide-verify-pass-hero-hardware"
+                >
+                  {isIncomplete ? 'Finish mapping → Hardware' : 'Continue → Hardware'}
                 </IdeButton>
-              )}
+                {onGoToDesign && (
+                  <IdeButton
+                    tone={isIncomplete ? 'ghost' : 'secondary'}
+                    onClick={onGoToDesign}
+                    testId="ide-verify-pass-hero-design"
+                  >
+                    Back to Design
+                  </IdeButton>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {isTraceOnly && canSetOracle && (
           <IdeCallout tone="info" title="Trace captured — no expectations set" testId="ide-verify-trace-oracle-callout">

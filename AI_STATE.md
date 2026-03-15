@@ -1,5 +1,50 @@
 # AI State
 
+## Change Log 2026-03-15 (Verify PASS storytelling and next-step clarity)
+
+**Subsystem**: IDE Verify surface - PASS milestone messaging, readiness clarity, and next-step CTA hierarchy
+
+**Problem**
+
+Verify PASS signaling was technically correct but narratively weak:
+1. PASS and PASS (INCOMPLETE) did not feel meaningfully different in the main PASS hero.
+2. The student-facing message did not clearly explain what passed and whether the project was actually ready for export.
+3. Next-step CTA language remained generic even when mapping was incomplete.
+
+This caused avoidable ambiguity at the most important handoff point between Verify and downstream hardware/export actions.
+
+**What changed**
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`:
+  - Reworked the PASS hero block to use the existing `ide-verify-pass-hero*` class family and render explicit milestone copy.
+  - Added clear narrative split:
+    - Full PASS: `All N vectors passed` + `ready to export` message.
+    - PASS (INCOMPLETE): `Logic passed - mapping incomplete` + explicit unmapped-output readiness warning.
+  - Differentiated PASS hero action label/tone by qualification:
+    - Full PASS: `Continue -> Hardware` (primary)
+    - Incomplete mapping: `Finish mapping -> Hardware` (secondary)
+  - Differentiated status-strip primary CTA label/tone for incomplete mapping using the same rule above.
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`:
+  - Added regression test for full PASS milestone copy and Continue CTA.
+  - Added regression test for PASS (INCOMPLETE) milestone copy and Finish mapping CTA.
+- `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - Added `ide-verify-pass-hero--incomplete` styling to visibly distinguish PASS (INCOMPLETE) from full PASS.
+
+**Student-visible behavior after fix**
+
+- PASS now reads as a trust milestone with explicit meaning, not just a badge.
+- PASS (INCOMPLETE) remains clearly distinct from full PASS in both message and action language.
+- The next step is unambiguous:
+  - fully ready: continue forward;
+  - incomplete mapping: finish mapping first.
+
+**Proof**
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx --reporter=verbose` -> 13/13 passing
+- `pnpm -s ide:gate:student-loop-contract` -> PASS
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-15 (Export CTA simplification — one unmistakable primary handoff)
 
 **Subsystem**: IDE Export surface — CTA hierarchy and student handoff clarity

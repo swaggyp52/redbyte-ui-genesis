@@ -563,4 +563,65 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-incomplete-mapping-banner')).toBeNull();
     expect(queryByTestId('ide-verify-incomplete-mapping-notice')).toBeNull();
   });
+
+  it('shows full PASS trust milestone copy and continue CTA when mapping is complete', () => {
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={makePassRun()}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        mappingComplete={true}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-pass-hero-title').textContent).toContain('All 2 vectors passed');
+    expect(getByTestId('ide-verify-pass-hero-meta').textContent).toContain('ready to export');
+    expect(getByTestId('ide-verify-pass-hero').className).not.toContain('ide-verify-pass-hero--incomplete');
+    expect(getByTestId('ide-verify-pass-hero-hardware').textContent).toContain('Continue');
+    expect(getByTestId('ide-verify-cta-continue').textContent).toContain('Continue');
+  });
+
+  it('shows PASS incomplete milestone copy and finish-mapping CTA when qualification is incomplete', () => {
+    const incompletePassRun: RuntimeVerifyRun = {
+      ...makePassRun(),
+      qualification: 'incomplete-mapping',
+    };
+
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={incompletePassRun}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        mappingComplete={false}
+        unmappedOutputLabels={['LD1']}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-summary-status').textContent).toContain('PASS (INCOMPLETE)');
+    expect(getByTestId('ide-verify-pass-hero-title').textContent).toContain('mapping incomplete');
+    expect(getByTestId('ide-verify-pass-hero-meta').textContent).toContain('not connected to board pins');
+    expect(getByTestId('ide-verify-pass-hero').className).toContain('ide-verify-pass-hero--incomplete');
+    expect(getByTestId('ide-verify-pass-hero-hardware').textContent).toContain('Finish mapping');
+    expect(getByTestId('ide-verify-cta-continue').textContent).toContain('Finish mapping');
+  });
 });

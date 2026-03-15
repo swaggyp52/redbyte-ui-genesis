@@ -13308,6 +13308,20 @@ details[open].ide-export-evidence-details > summary::before {
   padding: var(--ide-space-3, 12px);
   margin: var(--ide-space-2, 8px);
 }
+.ide-verify-pass-hero--incomplete {
+  background: linear-gradient(110deg, rgba(40, 26, 6, 0.96) 0%, rgba(30, 18, 4, 0.98) 100%);
+  border-color: rgba(245, 158, 11, 0.52);
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.12), 0 0 0 1px rgba(245, 158, 11, 0.18);
+}
+.ide-verify-pass-hero--incomplete .ide-verify-pass-hero-icon {
+  color: rgba(245, 158, 11, 0.92);
+}
+.ide-verify-pass-hero--incomplete .ide-verify-pass-hero-title {
+  color: rgba(253, 230, 138, 0.96);
+}
+.ide-verify-pass-hero--incomplete .ide-verify-pass-hero-meta {
+  color: rgba(252, 211, 77, 0.86);
+}
 .ide-verify-pass-hero-body {
   display: flex;
   align-items: center;
