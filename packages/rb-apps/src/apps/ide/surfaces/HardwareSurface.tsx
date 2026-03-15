@@ -636,6 +636,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </IdeButton>
         )}
       </div>
+      {hardwareState === 'ready' && effectiveBlockingIssues.length === 0 && (
+        <div className="ide-hw-program-handoff" data-testid="ide-hardware-program-handoff-cta">
+          <p className="ide-copy">
+            Open the <code>.bit</code> file in{' '}
+            <strong>Vivado Hardware Manager</strong> and click{' '}
+            <strong>Program Device</strong> to flash the Basys3.
+          </p>
+        </div>
+      )}
     </SurfacePanel>
   );
 

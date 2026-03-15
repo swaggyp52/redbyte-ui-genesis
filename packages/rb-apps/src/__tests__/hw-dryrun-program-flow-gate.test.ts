@@ -6,11 +6,13 @@ import { HardwareClient } from '../services/hardwareClient';
  *
  * This gate validates the hardware programming workflow in dry-run mode:
  * 1. Run HardwareClient in RB_BRIDGE_DRYRUN mode
- * 2. Simulate "program device" path end-to-end (service layer only)
+ * 2. Confirm 'program' capability is advertised after device selection
+ *    (actual programming is performed externally via Vivado Hardware Manager)
  * 3. Assert:
  *    - Correct request shape
  *    - Proper HW→SIM fallback decision
  *    - Student-friendly error code when bridge is "offline"
+ *    - Service reaches program-handoff-ready state: connected + device selected + program capability
  *
  * Pure service-layer test (no UI assertions, no React, no DOM).
  */
@@ -73,6 +75,18 @@ describe('Phase 4: Hardware Dry-Run Program Flow Gate', () => {
     const capabilities = client.getCapabilities();
     expect(capabilities?.boardId).toBe('basys3');
     expect(capabilities?.features ?? []).toContain('program');
+  });
+
+  it('reaches program-handoff-ready state when device is selected with program capability', async () => {
+    const client = new HardwareClient({ mode: 'on' });
+    await client.connect();
+    await client.selectDevice('basys3');
+
+    // program-handoff-ready = connected + active device + program in capabilities.
+    // This is the service-layer contract the UI relies on before showing the Vivado handoff step.
+    expect(client.getState().status).toBe('connected');
+    expect(client.getActiveDevice()?.deviceId).toBe('basys3');
+    expect(client.getCapabilities()?.features ?? []).toContain('program');
   });
 
   it('handles "bridge offline" scenario when mode is off', async () => {

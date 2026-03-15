@@ -145,5 +145,29 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
     await visible(hardwareModeToggle),
     'hardware mode toggle must be visible',
   );
+
+  // 4b. Hardware — proof mode must surface the Program handoff contract.
+  // After switching to Proof tab, the IDE must render one of:
+  //   ide-hardware-program-handoff-cta  — when verify PASS + export CURRENT (happy path)
+  //   ide-hardware-blocked-hero         — when prerequisites are still missing
+  // Both encode the Build → Verify → Export → Program trust chain.
+  await page.locator('[data-testid="ide-hw-mode-btn-proof"]').click();
+  await page.waitForSelector('[data-testid="ide-hw-proof-dock"]', { timeout: 5000 });
+
+  const hasProgramCta = await page
+    .locator('[data-testid="ide-hardware-program-handoff-cta"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  const hasBlockedHero = await page
+    .locator('[data-testid="ide-hardware-blocked-hero"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  assert(
+    hasProgramCta || hasBlockedHero,
+    'proof mode must show either the program handoff CTA or a prerequisite blocker — ' +
+    'the Build → Verify → Export → Program path must be represented',
+  );
 });
 

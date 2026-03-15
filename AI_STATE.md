@@ -1,5 +1,76 @@
 # AI State
 
+## Change Log 2026-03-15 (Program handoff contract enforced in Hardware flow)
+
+**Subsystem**: IDE Hardware surface and student-loop trust contract
+
+**Problem**
+
+- The student loop stopped one step short of the real outcome: Build -> Verify -> Export was represented, but Program was not enforced as an explicit handoff contract.
+- Hardware proof mode could report readiness while still ending on a generic Export CTA.
+- The student-loop gate only required the Hardware surface and mode toggle, so the Program step could disappear without failing the contract.
+
+**Root-cause classification**
+
+- Trust-contract gap between UI readiness state and the actual student outcome.
+- Coverage gap in the student-loop gate and readiness tests.
+- Dry-run program-flow wording overstated behavior by implying end-to-end device programming instead of validating the service-layer handoff state.
+
+**Modified files**
+
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+- `scripts/gates/ide-student-loop-contract.mjs`
+- `packages/rb-apps/src/__tests__/hw-dryrun-program-flow-gate.test.ts`
+
+**What changed**
+
+- Added an explicit Program-in-Vivado handoff CTA in Hardware proof mode when verify and export evidence are current.
+- Tightened the student-loop gate so Proof mode must surface either:
+  - the program handoff CTA when the loop is ready, or
+  - a blocker hero when prerequisites are missing.
+- Added focused readiness coverage for the ready-to-program state.
+- Corrected dry-run program-flow wording and added a service-layer program-handoff-ready assertion.
+
+**Validation**
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/__tests__/hw-dryrun-program-flow-gate.test.ts`
+- `pnpm -s ide:gate:student-loop-contract`
+- `pnpm -s repo:status` still reports repo-level issues unrelated to this batch; this change did not introduce new file errors in the touched scope.
+
+**Attribution**: Connor Angiel
+
+## Change Log 2026-03-15 (RedByte Lead Engineer agent upgrade + first audit run)
+
+**Subsystem**: AI workflow and execution discipline
+
+**What changed**
+
+- Replaced the custom agent spec in `.github/agents/redbyte-ide-reliability.agent.md` with a proactive lead-engineer operating model.
+- Agent now prioritizes work in strict order:
+  - student trust breaks,
+  - repo-health determinism,
+  - core Build -> Verify -> Export -> Program flow,
+  - then UX friction.
+- Added explicit product-audit behavior, commit-sized fix discipline, and mandatory step-based reporting contract.
+
+**Validation and usage proof**
+
+- Executed one read-only product audit run using the upgraded agent prompt model.
+- Audit identified the highest-friction remaining issue as missing explicit, contract-enforced Program-stage handoff in student-loop gating.
+- Proposed smallest safe fix scope:
+  - `HardwareSurface` explicit Program handoff CTA,
+  - student-loop gate assertion for that CTA,
+  - dryrun program-flow contract wording/alignment,
+  - focused hardware readiness test update.
+
+**Why minimal**
+
+- No runtime product logic, simulation semantics, export artifact generation, or hardware protocol behavior changed in this batch.
+- Scope is limited to agent behavior definition + workflow audit output.
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-15 (Macro placement reliability + mode clarity)
 
 **Subsystem**: IDE Design surface - macro placement interaction loop

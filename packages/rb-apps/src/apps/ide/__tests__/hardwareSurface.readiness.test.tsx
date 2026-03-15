@@ -155,4 +155,37 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hardware-blocked-primary').textContent).toContain('Open Verify');
     expect(getByTestId('ide-hardware-blocked-secondary').textContent).toContain('Open Design');
   });
+
+  it('shows program handoff CTA when verify and export are both current', () => {
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Ready to Program"
+          expectedBehavior="LED0 follows SW0."
+          mappingRows={[
+            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true },
+            { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true },
+            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={4}
+          health={makeHealth({ blockingIssues: [] })}
+          verifyCurrent={true}
+          exportCurrent={true}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    fireEvent.click(getByTestId('ide-hw-mode-btn-proof'));
+
+    // When verify PASS and export CURRENT the program handoff CTA must be present.
+    // This is the final step in the Build → Verify → Export → Program trust chain.
+    const cta = getByTestId('ide-hardware-program-handoff-cta');
+    expect(cta).toBeDefined();
+    expect(cta.textContent).toContain('Vivado Hardware Manager');
+    expect(cta.textContent).toContain('Program Device');
+  });
 });
