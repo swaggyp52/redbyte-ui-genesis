@@ -14457,6 +14457,25 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   gap: 10px;
 }
 
+.ide-import-start-other-options {
+  min-width: 200px;
+}
+
+.ide-import-start-other-options > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: rgba(182, 206, 230, 0.9);
+}
+
+.ide-import-start-other-options .ide-inline-actions {
+  margin-top: 8px;
+}
+
+.ide-import-start-guidance {
+  border: 1px dashed rgba(91, 155, 213, 0.42);
+  background: rgba(10, 20, 32, 0.62);
+}
+
 .ide-hardware-blocked-hero__title,
 .ide-import-start-hero__title {
   display: block;

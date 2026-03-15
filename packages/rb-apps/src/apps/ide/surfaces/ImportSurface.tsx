@@ -378,6 +378,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const [showVerifyResetNotice, setShowVerifyResetNotice] = useState(false);
   const [submissionDetectedMessage, setSubmissionDetectedMessage] = useState<string>('');
   const [submissionIntegrityMessage, setSubmissionIntegrityMessage] = useState<string>('');
+  const [importFirstLookDismissed, setImportFirstLookDismissed] = useState(false);
   const mappingSectionRef = useRef<HTMLElement | null>(null);
   const reviewSectionRef = useRef<HTMLDivElement | null>(null);
   const applySectionRef = useRef<HTMLDivElement | null>(null);
@@ -1311,6 +1312,27 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     xdcText,
   ]);
 
+  const isImportFirstLook = !importFirstLookDismissed && importEntryAction?.id === 'zip';
+
+  useEffect(() => {
+    if (importFirstLookDismissed) return;
+    if (hasParsedHdl || hdlText.trim().length > 0 || hasZipInspection || pendingApplyProject) {
+      setImportFirstLookDismissed(true);
+    }
+  }, [hasParsedHdl, hasZipInspection, hdlText, importFirstLookDismissed, pendingApplyProject]);
+
+  const runImportPrimaryAction = () => {
+    if (!importEntryAction) return;
+    if (isImportFirstLook) setImportFirstLookDismissed(true);
+    importEntryAction.primaryAction();
+  };
+
+  const runImportSecondaryAction = () => {
+    if (!importEntryAction) return;
+    setImportFirstLookDismissed(true);
+    importEntryAction.secondaryAction();
+  };
+
   const handleZipInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -1553,34 +1575,48 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         {importEntryAction ? (
           <>
             <div className="ide-inline-actions">
-              <IdeButton tone="primary" onClick={importEntryAction.primaryAction} testId="ide-import-dock-primary">
+              <IdeButton tone="primary" onClick={runImportPrimaryAction} testId="ide-import-dock-primary">
                 {importEntryAction.primaryLabel}
               </IdeButton>
-              <IdeButton tone="secondary" onClick={importEntryAction.secondaryAction} testId="ide-import-dock-secondary">
-                {importEntryAction.secondaryLabel}
-              </IdeButton>
+              {!isImportFirstLook ? (
+                <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-dock-secondary">
+                  {importEntryAction.secondaryLabel}
+                </IdeButton>
+              ) : null}
             </div>
+            {isImportFirstLook ? (
+              <details className="ide-import-start-other-options" data-testid="ide-import-dock-other-options">
+                <summary data-testid="ide-import-dock-other-options-toggle">Other ways to start</summary>
+                <div className="ide-inline-actions">
+                  <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-dock-secondary">
+                    {importEntryAction.secondaryLabel}
+                  </IdeButton>
+                </div>
+              </details>
+            ) : null}
             <p className="ide-copy" data-testid="ide-import-dock-mode-hint" style={{ margin: 0 }}>
               {importEntryAction.body}
             </p>
           </>
         ) : null}
-        <div className="ide-inline-actions">
-          <IdeButton tone="ghost" onClick={parseHdl} testId="ide-import-parse">
-            Parse HDL
-          </IdeButton>
-          <IdeButton tone="ghost" onClick={() => parseXdc()} testId="ide-import-parse-xdc">
-            Parse XDC
-          </IdeButton>
-          <IdeButton
-            tone="ghost"
-            onClick={applySuggestions}
-            disabled={!canApplySuggestions}
-            testId="ide-import-apply-pins-only"
-          >
-            Apply Pins Only
-          </IdeButton>
-        </div>
+        {!isImportFirstLook ? (
+          <div className="ide-inline-actions">
+            <IdeButton tone="ghost" onClick={parseHdl} testId="ide-import-parse">
+              Parse HDL
+            </IdeButton>
+            <IdeButton tone="ghost" onClick={() => parseXdc()} testId="ide-import-parse-xdc">
+              Parse XDC
+            </IdeButton>
+            <IdeButton
+              tone="ghost"
+              onClick={applySuggestions}
+              disabled={!canApplySuggestions}
+              testId="ide-import-apply-pins-only"
+            >
+              Apply Pins Only
+            </IdeButton>
+          </div>
+        ) : null}
       </SurfacePanel>
 
       <SurfacePanel className="ide-import-dock-guidance" testId="ide-import-expectations">
@@ -1592,22 +1628,24 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         </ul>
       </SurfacePanel>
 
-      <div className="ide-import-secondary-tools" data-testid="ide-import-secondary-tools">
-        <span className="ide-import-secondary-tools-label">Secondary tools</span>
-        <div className="ide-inline-actions">
-          <IdeButton tone="ghost" onClick={copyDiagnostics} testId="ide-import-copy-diagnostics">
-            Copy report
-          </IdeButton>
-          <IdeButton
-            tone="ghost"
-            onClick={() => void handleProcessDesign()}
-            disabled={pipelineActive || (!hdlText.trim() && !zipInspection)}
-            testId="ide-import-process-design"
-          >
-            {pipelineActive ? 'Processing…' : 'Process Design'}
-          </IdeButton>
+      {!isImportFirstLook ? (
+        <div className="ide-import-secondary-tools" data-testid="ide-import-secondary-tools">
+          <span className="ide-import-secondary-tools-label">Secondary tools</span>
+          <div className="ide-inline-actions">
+            <IdeButton tone="ghost" onClick={copyDiagnostics} testId="ide-import-copy-diagnostics">
+              Copy report
+            </IdeButton>
+            <IdeButton
+              tone="ghost"
+              onClick={() => void handleProcessDesign()}
+              disabled={pipelineActive || (!hdlText.trim() && !zipInspection)}
+              testId="ide-import-process-design"
+            >
+              {pipelineActive ? 'Processing…' : 'Process Design'}
+            </IdeButton>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <section className="ide-import-samples-grid">
         {IMPORT_SAMPLES.filter((s) => !s.behavioral).map((sample) => (
@@ -2690,12 +2728,23 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               </p>
             </div>
             <div className="ide-import-start-hero__actions">
-              <IdeButton tone="primary" onClick={importEntryAction.primaryAction} testId="ide-import-start-primary">
+              <IdeButton tone="primary" onClick={runImportPrimaryAction} testId="ide-import-start-primary">
                 {importEntryAction.primaryLabel}
               </IdeButton>
-              <IdeButton tone="secondary" onClick={importEntryAction.secondaryAction} testId="ide-import-start-secondary">
-                {importEntryAction.secondaryLabel}
-              </IdeButton>
+              {isImportFirstLook ? (
+                <details className="ide-import-start-other-options" data-testid="ide-import-start-other-options">
+                  <summary data-testid="ide-import-start-other-options-toggle">Other ways to start</summary>
+                  <div className="ide-inline-actions">
+                    <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-start-secondary">
+                      {importEntryAction.secondaryLabel}
+                    </IdeButton>
+                  </div>
+                </details>
+              ) : (
+                <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-start-secondary">
+                  {importEntryAction.secondaryLabel}
+                </IdeButton>
+              )}
             </div>
           </SurfacePanel>
         )}
@@ -2792,10 +2841,18 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
             </div>
           </SurfacePanel>
         ) : null}
-        <div className="ide-import-workbench-v2" data-testid="ide-import-workbench">
-          {sourceStageContent}
-          {reviewWorkspace}
-        </div>
+        {!isImportFirstLook ? (
+          <div className="ide-import-workbench-v2" data-testid="ide-import-workbench">
+            {sourceStageContent}
+            {reviewWorkspace}
+          </div>
+        ) : (
+          <SurfacePanel className="ide-import-start-guidance" testId="ide-import-start-guidance">
+            <p className="ide-copy" style={{ margin: 0 }}>
+              Start with <strong>Select Vivado ZIP</strong>. If you already have HDL text, open <strong>Other ways to start</strong> and choose <strong>Paste HDL</strong>.
+            </p>
+          </SurfacePanel>
+        )}
         {false && (
         <>
         <p

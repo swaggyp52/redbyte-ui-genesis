@@ -1,5 +1,57 @@
 # AI State
 
+## Change Log 2026-03-15 (Import first-run simplification + gate contract realignment)
+
+**Subsystem**: IDE Import surface onboarding and import-gate reliability
+
+**Problem**
+
+Import was still noisy on first open:
+1. Students saw the full workbench and secondary tools before choosing a start path.
+2. The first actionable contract still asserted legacy target cards (`ide-import-card-*`) that were no longer the active path.
+3. The import schematic gate depended on a stale diagnostics test id that is not part of the current import workbench flow.
+
+This created contradictory reliability signals: the import UX had shifted, but the contracts still tested the legacy surface.
+
+**What changed**
+
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`:
+  - Added explicit first-look state to keep onboarding focused.
+  - First look now presents one clear primary CTA.
+  - Moved alternate entry path behind `Other ways to start` disclosure.
+  - Deferred workbench and secondary tool surfaces until the student starts a path (ZIP or HDL).
+- `packages/rb-apps/src/apps/ide/ide-root.css`:
+  - Added styling for `ide-import-start-other-options` disclosure.
+  - Added first-look guidance panel styling for simplified onboarding context.
+- `packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx`:
+  - Updated first-look expectations to enforce single-primary entry and deferred workbench behavior.
+- `scripts/gates/ide-import-actionable-targets-contract.mjs`:
+  - Replaced stale target-card assertions with first-look hero/CTA assertions.
+  - Validates ZIP chooser behavior when ZIP is active entry.
+  - Validates alternate HDL path via disclosure/dock fallbacks.
+- `scripts/gates/ide-import-renders-schematic.mjs`:
+  - Updated navigation into HDL path for first-look flow.
+  - Removed stale diagnostics-panel assertion; kept schematic render assertion.
+- `docs/testing/ide-gate-contract.md`:
+  - Updated import selector contract to current first-look hooks.
+
+**Student-visible behavior after fix**
+
+- First-open Import no longer throws multiple heavy panels at the student.
+- One obvious first action is shown up front.
+- Alternative path remains available but intentionally demoted behind explicit disclosure.
+- Once the student starts, full workbench/tools become available.
+
+**Proof**
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx --reporter=verbose` -> 1/1 passing
+- `pnpm -s ide:gate:import-actionable-targets-contract` -> PASS
+- `pnpm -s ide:gate:import-renders-schematic` -> PASS
+- `pnpm -s ide:gate:verify-summary-contract` -> PASS
+- `pnpm -s ide:gate:student-loop-contract` -> PASS
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-15 (Verify PASS storytelling and next-step clarity)
 
 **Subsystem**: IDE Verify surface - PASS milestone messaging, readiness clarity, and next-step CTA hierarchy

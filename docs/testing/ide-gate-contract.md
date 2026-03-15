@@ -52,9 +52,12 @@ Single source of truth for Playwright gate selectors. Gate scripts must use thes
 
 ## Import
 - `ide-mode-import`
-- `ide-import-card-hdl`
-- `ide-import-card-xdc`
-- `ide-import-card-zip`
+- `ide-import-start-hero`
+- `ide-import-start-primary`
+- `ide-import-start-other-options`
+- `ide-import-start-secondary`
+- `ide-import-start-guidance`
+- `ide-import-workbench`
 - `ide-import-hdl-textarea`
 - `ide-import-xdc-input`
 - `ide-import-zip-input`
