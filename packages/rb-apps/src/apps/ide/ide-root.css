@@ -16290,6 +16290,32 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   max-width: 100%;
 }
 
+/* Export CTA hit-target fix:
+   In live student flow (Verify -> Hardware -> Export), summary/gate sections could
+   collapse in block height and let downstream export content overlap the top CTA.
+  Keep summary/gate sections in normal flow and above the artifact workspace.
+  Stacking order: summary hero (3) > gate stack (2) > export layout/body (1). */
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-summary-hero {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  overflow: visible;
+  position: relative;
+  z-index: 3;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-gate-stack {
+  height: auto;
+  overflow: visible;
+  position: relative;
+  z-index: 2;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-layout {
+  position: relative;
+  z-index: 1;
+}
+
 /* Live lab-day unblock:
    the inline Verify side panel was still crushing the oscilloscope and clipping
    the lower-right analysis region on real 1920x1080 screenshots. The lower deck

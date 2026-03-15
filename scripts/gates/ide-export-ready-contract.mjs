@@ -92,6 +92,35 @@ await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }
       `missing required artifact from export plan: ${fileName}`
     );
   }
+
+  const summaryDownloadButton = page.locator('[data-testid="ide-export-rebuild-btn"]').first();
+  assert(await visible(summaryDownloadButton), 'summary download button must be visible in export hero');
+  const summaryDownloadEnabled = await summaryDownloadButton.isEnabled().catch(() => false);
+  assert(summaryDownloadEnabled, 'summary download button must be enabled after verify PASS');
+
+  await summaryDownloadButton.scrollIntoViewIfNeeded();
+
+  const summaryButtonOwnsCenterHit = await summaryDownloadButton.evaluate((button) => {
+    const rect = button.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const top = document.elementFromPoint(x, y);
+    return Boolean(top && (top === button || button.contains(top)));
+  });
+  assert(
+    summaryButtonOwnsCenterHit,
+    'summary download button center hit-target must not be intercepted by overlapping export content'
+  );
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 10000 }),
+    summaryDownloadButton.click(),
+  ]);
+  const suggestedName = (download.suggestedFilename?.() ?? '').toLowerCase();
+  assert(
+    suggestedName.endsWith('.zip'),
+    `summary download should emit a zip artifact, got "${suggestedName || 'unknown'}"`
+  );
 });
 
 

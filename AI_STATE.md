@@ -1,5 +1,47 @@
 # AI State
 
+## Change Log 2026-03-15 (Export CTA hit-target overlap fix + contract guard)
+
+**Subsystem**: IDE Export surface - summary CTA interaction reliability
+
+**Problem**
+
+- In the live student flow (`Verify -> Hardware -> Export`), the primary export CTA could appear enabled but fail to click because downstream export content overlapped its hit area.
+- This created a classroom trust break: Export looked ready, but the handoff action was intermittently blocked by layout overlap.
+
+**Root-cause classification**
+
+- Product-layout defect in export-mode stacking/flow behavior.
+- Export summary/gate sections could collapse in effective block height, letting downstream export layout content occupy the CTA center-point hit target.
+
+**Modified files**
+
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+- `scripts/gates/ide-export-ready-contract.mjs`
+
+**What changed**
+
+- Added export-mode layout safeguards so summary and gate sections stay in normal flow with explicit stacking order above the export body content.
+- Documented the stacking order directly in CSS to reduce future layering regressions.
+- Strengthened `ide-export-ready-contract` with regression assertions that:
+  - require the summary download CTA to be visible and enabled,
+  - verify the CTA owns its center hit target (`elementFromPoint`),
+  - click the CTA and require a real ZIP download event.
+
+**Why minimal**
+
+- One targeted CSS fix for the overlap/interception behavior.
+- One targeted gate enhancement for the exact regression class.
+- No export pipeline logic rewrites, no trust-contract downgrades, and no unrelated UI churn.
+
+**Validation**
+
+- Live flow probe (Verify PASS -> Export CTA click) -> CTA click succeeded, download started, Hardware status advanced to `Export: CURRENT`.
+- `pnpm -s ide:gate:export-ready-contract` -> PASS.
+- `pnpm repo:status` -> PASS (`39/39`), repository status `HEALTHY`.
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-14 (Macro insertion persistence mismatch)
 
 **Subsystem**: IDE Design surface - macro insertion flow and project runtime persistence
