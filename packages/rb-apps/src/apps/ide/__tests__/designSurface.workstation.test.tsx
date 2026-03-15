@@ -352,8 +352,32 @@ describe('DesignSurface workstation redesign', () => {
     const overlay = view.getByTestId('ide-macro-insertion-overlay');
     expect(overlay.getAttribute('role')).toBe('button');
     expect(overlay.getAttribute('tabindex')).toBe('0');
+    overlay.focus();
+    expect(document.activeElement).toBe(overlay);
 
     fireEvent.keyDown(overlay, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(onInstantiateMacro).toHaveBeenCalledWith('macro-and-gate', expect.any(Object));
+    });
+  });
+
+  it('supports Space key placement from the insertion overlay', async () => {
+    const onInstantiateMacro = vi.fn(() => ({
+      instanceLabel: 'AND_Gate_1',
+      insertedNodeIds: ['node-v2-5'],
+    }));
+
+    const view = renderSurface({
+      macros: [FIXTURE_MACRO],
+      onInstantiateMacro,
+    });
+
+    fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
+    const overlay = view.getByTestId('ide-macro-insertion-overlay');
+    overlay.focus();
+
+    fireEvent.keyDown(overlay, { key: ' ' });
 
     await waitFor(() => {
       expect(onInstantiateMacro).toHaveBeenCalledWith('macro-and-gate', expect.any(Object));
