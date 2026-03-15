@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-03-15 (Lead engineer agent enforces mandatory commit discipline)
+
+**Subsystem**: AI workflow and repo execution discipline
+
+**What changed**
+
+- Updated `.github/agents/redbyte-ide-reliability.agent.md` so the RedByte Lead Engineer now treats batch completion as:
+  - targeted proof,
+  - immediate commit,
+  - immediate push when allowed,
+  - clean working tree verification,
+  - no stray untracked temp or audit artifacts.
+- Added explicit post-batch checks for `git status --short`, `git push`, modified tracked files, and untracked artifacts.
+- Added explicit reporting requirement when push is blocked by environment, auth, or repo policy.
+
+**Why**
+
+- Prevent validated work from lingering uncommitted in a muddy tree.
+- Keep RedByte batches small, attributable, and operationally clean.
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-15 (Program handoff contract enforced in Hardware flow)
 
 **Subsystem**: IDE Hardware surface and student-loop trust contract
