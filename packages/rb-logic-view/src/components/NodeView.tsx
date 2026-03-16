@@ -62,6 +62,8 @@ export interface NodeViewProps {
   evalSequence?: number | null;
   /** Phase 3: real-time canvas error glow. 'error' = red, 'warn' = amber. */
   issueGlow?: 'error' | 'warn' | null;
+  /** Batch 1: explicit per-port issue severity. */
+  issuePortSeverities?: Map<string, 'error' | 'warn'> | null;
 }
 
 const NODE_COLORS: Record<string, string> = {
@@ -113,6 +115,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   ioPresentation,
   evalSequence,
   issueGlow,
+  issuePortSeverities = null,
 }) => {
   // Safe rotation: default to 0 if undefined to prevent rotate(undefined) SVG errors
   const safeRotation = Number.isFinite(node.rotation) ? node.rotation : 0;
@@ -212,9 +215,20 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const isSwitch = node.type === 'Switch' || node.type === 'INPUT';
 
 
-  const isIssueHighlighted = (portName: string) =>
+  const isTraceHighlighted = (portName: string) =>
     (highlightedPort?.nodeId === node.id && highlightedPort.portName === portName) ||
     highlightedPortKeys?.has(`${node.id}:${portName}`) === true;
+
+  const getIssuePortSeverity = React.useCallback(
+    (portName: string) => issuePortSeverities?.get(`${node.id}:${portName}`) ?? null,
+    [issuePortSeverities, node.id]
+  );
+
+  const getIssueColor = React.useCallback((severity: 'error' | 'warn' | null) => {
+    if (severity === 'error') return '#ef4444';
+    if (severity === 'warn') return '#f59e0b';
+    return '#f59e0b';
+  }, []);
 
   const isValidWireTarget = React.useCallback(
     (portName: string) => {
@@ -485,7 +499,9 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           const isHovered = hoveredPort === input.id;
           const shouldGlow = isWireStart || isValidTarget || (isHovered && wireStartPort);
           const wireHighlightColor = getWireHighlightColor(input.id, isHovered);
-          const isIssueHighlight = isIssueHighlighted(input.id);
+          const isTraceHighlight = isTraceHighlighted(input.id);
+          const issueSeverity = getIssuePortSeverity(input.id);
+          const issueColor = getIssueColor(issueSeverity);
 
           return (
             <g key={`input-${input.id}`}>
@@ -542,18 +558,34 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                   style={{ pointerEvents: 'none' }}
                 />
               )}
-              {isIssueHighlight && (
+              {isTraceHighlight && (
+                <rect
+                  x={-size / 2 - 10}
+                  y={yPos - 10}
+                  width={20}
+                  height={20}
+                  fill="none"
+                  stroke="#67e8f9"
+                  strokeWidth={2}
+                  rx={3}
+                  opacity={0.78}
+                  style={{ pointerEvents: 'none' }}
+                  data-testid={`logic-node-trace-port-${node.id}-${input.id}`}
+                />
+              )}
+              {issueSeverity && (
                 <rect
                   x={-size / 2 - 6}
                   y={yPos - 6}
                   width={12}
                   height={12}
                   fill="none"
-                  stroke="#f59e0b"
+                  stroke={issueColor}
                   strokeWidth={2}
                   rx={2}
-                  opacity={0.8}
+                  opacity={0.88}
                   style={{ pointerEvents: 'none' }}
+                  data-testid={`logic-node-issue-port-${node.id}-${input.id}`}
                 />
               )}
               {renderMismatchRing(-size / 2, yPos, input.id)}
@@ -682,7 +714,9 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           const isHovered = hoveredPort === output.id;
           const shouldGlow = isWireStart || isValidTarget || (isHovered && wireStartPort);
           const wireHighlightColor = getWireHighlightColor(output.id, isHovered);
-          const isIssueHighlight = isIssueHighlighted(output.id);
+          const isTraceHighlight = isTraceHighlighted(output.id);
+          const issueSeverity = getIssuePortSeverity(output.id);
+          const issueColor = getIssueColor(issueSeverity);
 
           return (
             <g key={`output-${output.id}`}>
@@ -731,16 +765,30 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                   style={{ pointerEvents: 'none' }}
                 />
               )}
-              {isIssueHighlight && (
+              {isTraceHighlight && (
+                <circle
+                  cx={size / 2}
+                  cy={yPos}
+                  r={9}
+                  fill="none"
+                  stroke="#67e8f9"
+                  strokeWidth={2}
+                  opacity={0.78}
+                  style={{ pointerEvents: 'none' }}
+                  data-testid={`logic-node-trace-port-${node.id}-${output.id}`}
+                />
+              )}
+              {issueSeverity && (
                 <circle
                   cx={size / 2}
                   cy={yPos}
                   r={7}
                   fill="none"
-                  stroke="#f59e0b"
+                  stroke={issueColor}
                   strokeWidth={2}
-                  opacity={0.8}
+                  opacity={0.88}
                   style={{ pointerEvents: 'none' }}
+                  data-testid={`logic-node-issue-port-${node.id}-${output.id}`}
                 />
               )}
               {renderMismatchRing(size / 2, yPos, output.id)}
@@ -1073,7 +1121,9 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         const isHovered = hoveredPort === 'in';
         const shouldGlow = isWireStart || isValidTarget || (isHovered && wireStartPort);
         const wireHighlightColor = getWireHighlightColor('in', isHovered);
-        const isIssueHighlight = isIssueHighlighted('in');
+        const isTraceHighlight = isTraceHighlighted('in');
+        const issueSeverity = getIssuePortSeverity('in');
+        const issueColor = getIssueColor(issueSeverity);
 
         return (
           <g>
@@ -1097,16 +1147,30 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 style={{ pointerEvents: 'none' }}
               />
             )}
-            {isIssueHighlight && (
+            {isTraceHighlight && (
+              <circle
+                cx={-size / 2}
+                cy={0}
+                r={10}
+                fill="none"
+                stroke="#67e8f9"
+                strokeWidth={2}
+                opacity={0.78}
+                style={{ pointerEvents: 'none' }}
+                data-testid={`logic-node-trace-port-${node.id}-in`}
+              />
+            )}
+            {issueSeverity && (
               <circle
                 cx={-size / 2}
                 cy={0}
                 r={8}
                 fill="none"
-                stroke="#f59e0b"
+                stroke={issueColor}
                 strokeWidth={2}
-                opacity={0.8}
+                opacity={0.88}
                 style={{ pointerEvents: 'none' }}
+                data-testid={`logic-node-issue-port-${node.id}-in`}
               />
             )}
             {renderMismatchRing(-size / 2, 0, 'in')}
@@ -1194,7 +1258,9 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         const isHovered = hoveredPort === 'out';
         const shouldGlow = isWireStart || isValidTarget || (isHovered && wireStartPort);
         const wireHighlightColor = getWireHighlightColor('out', isHovered);
-        const isIssueHighlight = isIssueHighlighted('out');
+        const isTraceHighlight = isTraceHighlighted('out');
+        const issueSeverity = getIssuePortSeverity('out');
+        const issueColor = getIssueColor(issueSeverity);
 
         return (
           <g>
@@ -1218,16 +1284,30 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 style={{ pointerEvents: 'none' }}
               />
             )}
-            {isIssueHighlight && (
+            {isTraceHighlight && (
+              <circle
+                cx={size / 2}
+                cy={0}
+                r={10}
+                fill="none"
+                stroke="#67e8f9"
+                strokeWidth={2}
+                opacity={0.78}
+                style={{ pointerEvents: 'none' }}
+                data-testid={`logic-node-trace-port-${node.id}-out`}
+              />
+            )}
+            {issueSeverity && (
               <circle
                 cx={size / 2}
                 cy={0}
                 r={8}
                 fill="none"
-                stroke="#f59e0b"
+                stroke={issueColor}
                 strokeWidth={2}
-                opacity={0.8}
+                opacity={0.88}
                 style={{ pointerEvents: 'none' }}
+                data-testid={`logic-node-issue-port-${node.id}-out`}
               />
             )}
             {renderMismatchRing(size / 2, 0, 'out')}
@@ -1335,6 +1415,14 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
     prevProps.ioPresentation?.label === nextProps.ioPresentation?.label &&
     prevProps.ioPresentation?.pinAlias === nextProps.ioPresentation?.pinAlias &&
     prevProps.issueGlow === nextProps.issueGlow &&
+    prevProps.issuePortSeverities === nextProps.issuePortSeverities &&
+    prevProps.isMismatchHighlighted === nextProps.isMismatchHighlighted &&
+    prevProps.mismatchPortKeys === nextProps.mismatchPortKeys &&
+    prevProps.highlightedPort?.nodeId === nextProps.highlightedPort?.nodeId &&
+    prevProps.highlightedPort?.portName === nextProps.highlightedPort?.portName &&
+    prevProps.highlightedPortKeys === nextProps.highlightedPortKeys &&
+    prevProps.probedPorts === nextProps.probedPorts &&
+    prevProps.debugTick === nextProps.debugTick &&
     shallowObjectEqual(prevProps.node.state as Record<string, unknown>, nextProps.node.state as Record<string, unknown>) &&
     chipMetadataEqual(prevProps.chipMetadata, nextProps.chipMetadata) &&
     prevProps.wireStartPort?.nodeId === nextProps.wireStartPort?.nodeId &&

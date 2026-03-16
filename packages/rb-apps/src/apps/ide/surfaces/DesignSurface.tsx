@@ -35,7 +35,12 @@ import { synthesizableVerilogFromNetlist } from '../../../export/verilogExport';
 import { buildVhdlTopLevelBindings } from '../../../fpga/boards/basys3/basys3Bundle';
 import { getDesignChipMetadata } from '../designChipMetadata';
 import { serializeCluster, pasteCluster, type ClipboardCluster } from '../designClipboard';
-import { computeDesignIssues, nodeIssueSeverity } from '../designIssues';
+import {
+  compareDesignIssues,
+  computeDesignIssues,
+  nodeIssueSeverity,
+  type DesignIssue,
+} from '../designIssues';
 import {
   analyzeMacroBoundary,
   type MacroBoundaryAnalysis,
@@ -461,6 +466,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [presentationZoom, setPresentationZoom] = useState<'dense' | 'classroom'>('dense');
   const [showDetails, setShowDetails] = useState(false);
   const [actionToast, setActionToast] = useState<string | null>(null);
+  const [wireFeedback, setWireFeedback] = useState<string | null>(null);
+  const [focusedIssueSignalKey, setFocusedIssueSignalKey] = useState<string | null>(null);
   const [diagnosticFilterNodeId, setDiagnosticFilterNodeId] = useState<string | null>(null);
   const [tickEngine] = useState(() => new TickEngine(editorCircuit, { tickRate: 10 }));
   const [toolsExpanded, setToolsExpanded] = useState(false);
@@ -495,6 +502,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [traceState, setTraceState] = useState<DesignTraceState | null>(null);
   const [wireContextMenu, setWireContextMenu] = useState<DesignWireContextMenuState | null>(null);
   const lastTracedPortRef = useRef<string | null>(null);
+  const previousToolModeRef = useRef(toolMode);
+  const previousHasSelectionRef = useRef(false);
+  const suppressNextToolModeWireFeedbackClearRef = useRef(false);
 
   const clearTrace = useCallback(() => {
     lastTracedPortRef.current = null;
@@ -768,10 +778,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const previous = previousWireCountRef.current;
     const current = editorCircuit.connections.length;
     if (current > previous) {
+      setWireFeedback(null);
       setActionToast(previous === 0 ? 'First wire linked.' : 'Wire linked.');
     }
     previousWireCountRef.current = current;
   }, [editorCircuit.connections.length]);
+
+  useEffect(() => {
+    if (previousToolModeRef.current !== toolMode) {
+      if (suppressNextToolModeWireFeedbackClearRef.current) {
+        suppressNextToolModeWireFeedbackClearRef.current = false;
+      } else {
+        setWireFeedback(null);
+      }
+    }
+    previousToolModeRef.current = toolMode;
+  }, [toolMode]);
 
   const filteredPalette = useMemo(() => {
     const query = paletteQuery.trim().toLowerCase();
@@ -979,6 +1001,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       lastTracedPortRef.current = null;
       setTraceState(null);
       setWireContextMenu(null);
+      setWireFeedback(null);
     },
     [onCircuitMutated, updateCircuit]
   );
@@ -1117,6 +1140,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         : `Centered ${selectedNodes.length} selected nodes.`
     );
   }, [camera.zoom, canvasSize.height, canvasSize.width, editorCircuit.nodes, selection.nodes, setCamera]);
+
+  const focusNodeOnCanvas = useCallback((nodeId: string) => {
+    const target = editorCircuit.nodes.find((node) => node.id === nodeId);
+    if (!target) return;
+    const px = target.position?.x ?? target.x ?? 0;
+    const py = target.position?.y ?? target.y ?? 0;
+    const screenX = px * camera.zoom + camera.x;
+    const screenY = py * camera.zoom + camera.y;
+    const isVisible =
+      screenX >= 96 &&
+      screenX <= canvasSize.width - 96 &&
+      screenY >= 96 &&
+      screenY <= canvasSize.height - 96;
+    if (isVisible) return;
+    const targetZoom = Math.max(0.95, camera.zoom);
+    setCamera({
+      x: canvasSize.width / 2 - px * targetZoom,
+      y: canvasSize.height / 2 - py * targetZoom,
+      zoom: targetZoom,
+    });
+  }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, editorCircuit.nodes, setCamera]);
 
   useEffect(() => {
     if (editorCircuit.nodes.length === 0) return;
@@ -1492,16 +1536,49 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return badges;
   }, [diagnosticsByNode]);
 
-  // Phase 3: real-time canvas issue glow — O(n+e), runs once per circuit mutation.
+  const designIssueMap = useMemo(() => computeDesignIssues(editorCircuit), [editorCircuit]);
+  const authoringIssues = useMemo(
+    () => [...designIssueMap.all].sort(compareDesignIssues),
+    [designIssueMap]
+  );
+  const authoringIssueCounts = useMemo(() => {
+    let errorCount = 0;
+    let warningCount = 0;
+    for (const issue of authoringIssues) {
+      if (issue.severity === 'error') {
+        errorCount += 1;
+      } else {
+        warningCount += 1;
+      }
+    }
+    return {
+      errorCount,
+      warningCount,
+      topIssues: authoringIssues.slice(0, 3),
+    };
+  }, [authoringIssues]);
+
+  // Phase 3 + Batch 1: real-time canvas issue glow — O(n+e), runs once per circuit mutation.
   const nodeIssueSeverities = useMemo(() => {
-    const issueMap = computeDesignIssues(editorCircuit);
     const result = new Map<string, 'error' | 'warn'>();
-    for (const nodeId of issueMap.byNode.keys()) {
-      const sev = nodeIssueSeverity(nodeId, issueMap);
+    for (const nodeId of designIssueMap.byNode.keys()) {
+      const sev = nodeIssueSeverity(nodeId, designIssueMap);
       if (sev) result.set(nodeId, sev);
     }
     return result;
-  }, [editorCircuit]);
+  }, [designIssueMap]);
+  const issuePortSeverities = useMemo(() => {
+    const result = new Map<string, 'error' | 'warn'>();
+    for (const [portKey, issues] of designIssueMap.byPort.entries()) {
+      const dotIndex = portKey.indexOf('.');
+      if (dotIndex <= 0 || dotIndex >= portKey.length - 1) continue;
+      const nodeId = portKey.slice(0, dotIndex);
+      const portName = portKey.slice(dotIndex + 1);
+      const severity = issues.some((issue) => issue.severity === 'error') ? 'error' : 'warn';
+      result.set(`${nodeId}:${portName}`, severity);
+    }
+    return result;
+  }, [designIssueMap]);
 
   const selectedNodeDiagnostics = useMemo(
     () => (selectedNode ? diagnosticsByNode.get(selectedNode.id) ?? [] : []),
@@ -1519,6 +1596,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const dirtySinceExport = compilerStatus?.dirtySinceExport ?? true;
   const irHash = useMemo(() => digestValue(buildCircuitIrHashPayload(editorCircuit)), [editorCircuit]);
   const hasSelection = selection.nodes.size > 0 || selection.wires.size > 0;
+  useEffect(() => {
+    if (previousHasSelectionRef.current && !hasSelection) {
+      setWireFeedback(null);
+    }
+    previousHasSelectionRef.current = hasSelection;
+  }, [hasSelection]);
   const activeModeLabel = toolMode === 'wire' ? 'Wire Mode' : 'Select Mode';
   const zoomPercent = Math.round(camera.zoom * 100);
   const interactionLabel =
@@ -1550,6 +1633,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const clearDiagnosticFilter = useCallback(() => {
     setDiagnosticFilterNodeId(null);
   }, []);
+  const focusDesignIssue = useCallback((issue: DesignIssue) => {
+    const nodeId = issue.focusTarget.nodeId;
+    const portKey = issue.focusTarget.portKey;
+    selectMultipleNodes([nodeId], false);
+    if (portKey) {
+      const signalKey = `${nodeId}.${portKey}`;
+      setFocusedIssueSignalKey(signalKey);
+      onRuntimeSimSetSelectedSignal?.(signalKey);
+    }
+    focusNodeOnCanvas(nodeId);
+  }, [focusNodeOnCanvas, onRuntimeSimSetSelectedSignal, selectMultipleNodes]);
 
   // A-3/A-4: Node label editor callbacks
   const commitNodeLabel = useCallback(() => {
@@ -1769,9 +1863,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [selectedNode, editorCircuit.connections]);
   const selectedNodePrimarySignalKey = useMemo(() => {
     if (!selectedNode) return null;
+    if (focusedIssueSignalKey?.startsWith(`${selectedNode.id}.`)) {
+      const focusedPort = focusedIssueSignalKey.slice(selectedNode.id.length + 1);
+      if (selectedNodePins.includes(focusedPort)) {
+        return focusedIssueSignalKey;
+      }
+    }
     const candidate = pickPrimaryNodeSignalKey(selectedNode, selectedNodePins, runtimeSim.signals, liveSignals);
     return candidate;
-  }, [selectedNode, selectedNodePins, runtimeSim.signals, liveSignals]);
+  }, [focusedIssueSignalKey, liveSignals, runtimeSim.signals, selectedNode, selectedNodePins]);
   const selectedNodeSignalSnapshot = useMemo(
     () => describeSignalSnapshot(selectedNodePrimarySignalKey, runtimeSim.trace, runtimeSim.signals, liveSignals),
     [selectedNodePrimarySignalKey, runtimeSim.trace, runtimeSim.signals, liveSignals]
@@ -1797,6 +1897,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       wireId: primarySelectedWireId,
       signalKey,
       snapshot,
+      sourceNodeId: parsed.fromNodeId,
+      targetNodeId: parsed.toNodeId,
       sourceLabel: describeEndpointLabel(parsed.fromNodeId, sourceNode, ioRowByNodeId.get(parsed.fromNodeId)),
       targetLabel: describeEndpointLabel(parsed.toNodeId, targetNode, ioRowByNodeId.get(parsed.toNodeId)),
       branchCount,
@@ -1813,6 +1915,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => !!activeInspectorSignalKey && runtimeSim.probes.some((probe) => probe.key === activeInspectorSignalKey),
     [activeInspectorSignalKey, runtimeSim.probes]
   );
+  const selectionAuthoringIssues = useMemo(() => {
+    if (selectedNode) {
+      return designIssueMap.byNode.get(selectedNode.id) ?? [];
+    }
+    if (selectedWireContext) {
+      const issues = [
+        ...(designIssueMap.byPort.get(`${selectedWireContext.targetNodeId}.${selectedWireContext.targetPort}`) ?? []),
+        ...(designIssueMap.byPort.get(`${selectedWireContext.sourceNodeId}.${selectedWireContext.sourcePort}`) ?? []),
+      ];
+      return dedupeDesignIssues(issues);
+    }
+    if (activeInspectorSignalKey) {
+      return designIssueMap.byPort.get(activeInspectorSignalKey) ?? [];
+    }
+    return [];
+  }, [activeInspectorSignalKey, designIssueMap.byNode, designIssueMap.byPort, selectedNode, selectedWireContext]);
   const pinActiveInspectorSignal = useCallback(() => {
     if (!activeInspectorSignalKey || !onRuntimeSimToggleProbe) return;
     onRuntimeSimToggleProbe({
@@ -1820,6 +1938,43 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       label: activeInspectorSignalKey,
     });
   }, [activeInspectorSignalKey, onRuntimeSimToggleProbe]);
+  const selectionIssueSummary = useMemo(() => {
+    if (selectionAuthoringIssues.length === 0) return null;
+    const primaryIssue = selectionAuthoringIssues[0];
+    return (
+      <div
+        className={`ide-design-selection-issues is-${primaryIssue.severity}`}
+        data-testid="ide-design-selection-issues"
+      >
+        <div className="ide-design-selection-issues-header">
+          <span className={`ide-design-selection-issues-pill is-${primaryIssue.severity}`}>
+            {primaryIssue.severity === 'error' ? 'Error' : 'Warn'}
+          </span>
+          <strong data-testid="ide-design-selection-issue-title">{primaryIssue.title}</strong>
+        </div>
+        <p className="ide-design-selection-issues-message" data-testid="ide-design-selection-issue-message">
+          {primaryIssue.message}
+        </p>
+        <p className="ide-design-selection-issues-hint" data-testid="ide-design-selection-issue-hint">
+          {primaryIssue.hint}
+        </p>
+        {selectionAuthoringIssues.length > 1 ? (
+          <ul className="ide-design-selection-issues-list">
+            {selectionAuthoringIssues.slice(1).map((issue) => {
+              const signalKey = issue.focusTarget.portKey ? `${issue.focusTarget.nodeId}.${issue.focusTarget.portKey}` : null;
+              return (
+                <li key={`${issue.kind}-${issue.portKey}`}>
+                  <span>{issue.title}</span>
+                  <code>{describeDesignIssueLocation(issue, editorCircuit)}</code>
+                  {signalKey && signalKey === focusedIssueSignalKey ? <span>Focused</span> : null}
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+      </div>
+    );
+  }, [editorCircuit, focusedIssueSignalKey, selectionAuthoringIssues]);
 
   const traceSelectedWire = useCallback((wireId: string) => {
     const bundle = buildWireTraceBundle(editorCircuit, wireId);
@@ -1891,6 +2046,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       const activeEl = document.activeElement as HTMLElement | null;
       const tagName = activeEl?.tagName?.toLowerCase();
       const isTextInput = tagName === 'input' || tagName === 'textarea' || activeEl?.isContentEditable;
+
+      if (event.key === 'Escape' && !isTextInput) {
+        setWireFeedback(null);
+      }
 
       // Shift+D: toggle design debug overlay
       if (event.shiftKey && event.key.toLowerCase() === 'd' && !isTextInput) {
@@ -2174,6 +2333,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     : <strong>{nodeTypeLabel(selectedNode.type)}</strong>
                   }
                 </div>
+                {selectionIssueSummary}
                 <div className="ide-kv-list">
                   <div className="ide-kv-row">
                     <span>Type</span>
@@ -2292,6 +2452,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             ) : selectedWireContext ? (
               <div className="ide-design-selection-inspector" data-testid="ide-design-wire-context">
+                {selectionIssueSummary}
                 <div className="ide-kv-list">
                   <div className="ide-kv-row">
                     <span>Type</span>
@@ -2354,6 +2515,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             ) : activeInspectorSignalKey ? (
               <div className="ide-design-selection-inspector" data-testid="ide-design-signal-focus">
+                {selectionIssueSummary}
                 <div className="ide-kv-list">
                   <div className="ide-kv-row">
                     <span>Signal</span>
@@ -3147,6 +3309,68 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               >
 
             {/* ── Canvas title strip ── */}
+            <div
+              className={`ide-design-authoring-issues${
+                authoringIssueCounts.errorCount > 0
+                  ? ' has-errors'
+                  : authoringIssueCounts.warningCount > 0
+                    ? ' has-warnings'
+                    : ' is-clean'
+              }`}
+              data-testid="ide-design-authoring-issues"
+            >
+              <div className="ide-design-authoring-issues-summary">
+                <span className="ide-design-authoring-issues-label">Authoring Issues</span>
+                <span
+                  className="ide-design-authoring-issues-count is-error"
+                  data-testid="ide-design-authoring-issues-errors"
+                >
+                  {authoringIssueCounts.errorCount} errors
+                </span>
+                <span
+                  className="ide-design-authoring-issues-count is-warn"
+                  data-testid="ide-design-authoring-issues-warnings"
+                >
+                  {authoringIssueCounts.warningCount} warnings
+                </span>
+                <span className="ide-design-authoring-issues-status">
+                  {authoringIssues.length === 0
+                    ? 'No live authoring issues right now.'
+                    : 'Live checks update as you edit.'}
+                </span>
+              </div>
+              {authoringIssueCounts.topIssues.length > 0 ? (
+                <div className="ide-design-authoring-issues-list">
+                  {authoringIssueCounts.topIssues.map((issue, index) => (
+                    <article
+                      key={`${issue.kind}-${issue.portKey}`}
+                      className={`ide-design-authoring-issue is-${issue.severity}`}
+                      data-testid={`ide-design-authoring-issue-${index}`}
+                    >
+                      <div className="ide-design-authoring-issue-copy">
+                        <div className="ide-design-authoring-issue-header">
+                          <span className={`ide-design-authoring-issue-pill is-${issue.severity}`}>
+                            {issue.severity === 'error' ? 'Error' : 'Warn'}
+                          </span>
+                          <strong>{issue.title}</strong>
+                          <code>{describeDesignIssueLocation(issue, editorCircuit)}</code>
+                        </div>
+                        <p>{issue.message}</p>
+                        <p>{issue.hint}</p>
+                      </div>
+                      <IdeButton
+                        tone={issue.severity === 'error' ? 'secondary' : 'ghost'}
+                        onClick={() => focusDesignIssue(issue)}
+                        testId={`ide-design-authoring-issue-focus-${index}`}
+                      >
+                        Focus
+                      </IdeButton>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
             <div className="ide-design-canvas-titlebar" data-testid="ide-design-canvas-titlebar">
               <span className="ide-design-canvas-titlebar-label">Circuit Canvas</span>
               <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-nodes">
@@ -3261,6 +3485,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <span className="ide-design-tool-hud-wire" data-testid="ide-design-wire-cue">
                         {wireStartPort ? 'Source selected. Click a valid sink pin.' : 'Pick a source pin to start wiring.'}
                       </span>
+                    ) : null}
+                    {wireFeedback ? (
+                      <div className="ide-design-tool-hud-feedback is-error" data-testid="ide-design-wire-feedback">
+                        {wireFeedback}
+                      </div>
                     ) : null}
                   </div>
                   {diagnosticRouteRequest && diagnosticRouteRequest.mode === 'design' && (
@@ -3457,10 +3686,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       onUndo={handleUndo}
                       onRedo={handleRedo}
                       onPortClick={handlePortClick}
-                      onConnectionRejected={(reason) => setActionToast(connectionRejectedMessage(reason))}
+                      onConnectionRejected={(reason) => {
+                        suppressNextToolModeWireFeedbackClearRef.current = true;
+                        setWireFeedback(connectionRejectedMessage(reason));
+                      }}
                       nodeEvalOrder={evalOrder}
                       changedNodeIds={changedNodeIds}
                       nodeIssueSeverities={nodeIssueSeverities}
+                      issuePortSeverities={issuePortSeverities}
                       probeWireHighlights={traceState?.wireHighlights}
                       tracedNodeIds={(() => {
                         const verifyNodeId = verifyLinkedSignalKey ? verifyLinkedSignalKey.split('.')[0] : null;
@@ -4181,6 +4414,31 @@ function buildWireTraceBundle(
   return { wireHighlights, nodeIds, portKeys };
 }
 
+function dedupeDesignIssues(issues: DesignIssue[]): DesignIssue[] {
+  const seen = new Set<string>();
+  const result: DesignIssue[] = [];
+  for (const issue of issues) {
+    const key = `${issue.kind}:${issue.portKey}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(issue);
+  }
+  return result.sort(compareDesignIssues);
+}
+
+function describeDesignIssueLocation(issue: DesignIssue, circuit: Circuit): string {
+  const node = circuit.nodes.find((entry) => entry.id === issue.nodeId);
+  const nodeLabel = node?.label?.trim() ? node.label.trim() : node?.id ?? issue.nodeId;
+  const prefix = `${issue.nodeId}.`;
+  const rawPortName =
+    issue.focusTarget.portKey ??
+    (issue.portKey.startsWith(prefix) ? issue.portKey.slice(prefix.length) : '');
+  if (!rawPortName || rawPortName === '__self') {
+    return nodeLabel;
+  }
+  return `${nodeLabel}.${rawPortName}`;
+}
+
 function predictNextNodeIds(circuit: Circuit, count: number): string[] {
   const prefix = 'node-v2-';
   let maxNumeric = 0;
@@ -4214,6 +4472,15 @@ const NODE_PIN_CATALOG: Record<string, string[]> = {
 
 function deriveNodePins(node: Node | undefined, circuit: Circuit): string[] {
   if (!node) return [];
+  const canonicalMetadata = getDesignChipMetadata(node.type);
+  if (canonicalMetadata) {
+    return Array.from(
+      new Set([
+        ...canonicalMetadata.inputs.map((port) => port.id),
+        ...canonicalMetadata.outputs.map((port) => port.id),
+      ])
+    );
+  }
   const listed = NODE_PIN_CATALOG[node.type];
   if (listed && listed.length > 0) return listed;
 

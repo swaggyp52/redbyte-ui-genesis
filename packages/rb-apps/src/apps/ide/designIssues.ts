@@ -1,157 +1,161 @@
-/**
- * designIssues.ts — Real-time canvas error detection (Phase 3)
- *
- * Pure function, no React. O(n+e) scan of circuit nodes + connections.
- * Must complete <5ms on 100-node circuits.
- *
- * Issue kinds:
- * - floating-output: OUTPUT/Lamp node with no incoming connection
- * - multiple-drivers: an input port with 2+ connections driving it
- * - unconnected-input: a gate node with at least one input port unconnected
- */
-
 import type { Circuit, Connection } from '@redbyte/rb-logic-core';
+import { getDesignIssueSemantics } from './designChipMetadata';
 
 export type DesignIssueKind = 'floating-output' | 'multiple-drivers' | 'unconnected-input';
+export type DesignIssueSeverity = 'error' | 'warn';
+
+export interface DesignIssueFocusTarget {
+  nodeId: string;
+  portKey?: string;
+}
 
 export interface DesignIssue {
   nodeId: string;
   portKey: string; // "nodeId.portName"
   kind: DesignIssueKind;
+  severity: DesignIssueSeverity;
+  title: string;
   message: string;
+  hint: string;
+  focusTarget: DesignIssueFocusTarget;
 }
 
 export interface DesignIssueMap {
+  all: DesignIssue[];
   byNode: Map<string, DesignIssue[]>;
-  byPort: Map<string, DesignIssue>;
+  byPort: Map<string, DesignIssue[]>;
 }
 
-// Node types that are module outputs (need at least one driver)
-const OUTPUT_NODE_TYPES = new Set(['OUTPUT', 'Lamp']);
-
-// Node types that are pure module inputs (they provide signal, not receive)
-const INPUT_NODE_TYPES = new Set(['INPUT', 'Switch', 'InputPin', 'Clock', 'Button']);
-
-// Node types that have no logic inputs (I/O or structural)
-const NO_INPUT_TYPES = new Set([...INPUT_NODE_TYPES, ...OUTPUT_NODE_TYPES]);
-
-// Gate node types that have named input ports — checked for unconnected inputs.
-// This is the set of node types where a missing input is a real design error.
-const GATE_INPUT_PORT_MAP: Record<string, string[]> = {
-  AND:      ['a', 'b'],
-  OR:       ['a', 'b'],
-  NOT:      ['a'],
-  NAND:     ['a', 'b'],
-  NOR:      ['a', 'b'],
-  XOR:      ['a', 'b'],
-  XNOR:    ['a', 'b'],
-  BUF:      ['a'],
-  AND3:     ['a', 'b', 'c'],
-  OR3:      ['a', 'b', 'c'],
-  NAND3:    ['a', 'b', 'c'],
-  NOR3:     ['a', 'b', 'c'],
-  MUX2:     ['a', 'b', 's'],
-  DFlipFlop: ['d', 'clk'],
-};
-
-function portRefToIds(ref: Connection['from']): { nodeId: string; portName: string } | null {
-  if (typeof ref === 'string') return null; // legacy bare nodeId string — skip
+function portRefToIds(
+  ref: Connection['from'] | Connection['to'],
+  fallbackPortName: string
+): { nodeId: string; portName: string } | null {
+  if (typeof ref === 'string') return null;
   const nodeId = ref.nodeId;
-  const portName = ref.portName ?? (ref as { port?: string }).port ?? '';
-  if (!nodeId) return null;
+  const portName = ref.portName ?? (ref as { port?: string }).port ?? fallbackPortName;
+  if (!nodeId || !portName) return null;
   return { nodeId, portName };
 }
 
+function addIssue(index: DesignIssueMap, issue: DesignIssue): void {
+  index.all.push(issue);
+
+  const byNode = index.byNode.get(issue.nodeId) ?? [];
+  byNode.push(issue);
+  index.byNode.set(issue.nodeId, byNode);
+
+  const byPort = index.byPort.get(issue.portKey) ?? [];
+  byPort.push(issue);
+  index.byPort.set(issue.portKey, byPort);
+}
+
+function compareSeverity(left: DesignIssueSeverity, right: DesignIssueSeverity): number {
+  if (left === right) return 0;
+  return left === 'error' ? -1 : 1;
+}
+
+export function compareDesignIssues(left: DesignIssue, right: DesignIssue): number {
+  const severityDiff = compareSeverity(left.severity, right.severity);
+  if (severityDiff !== 0) return severityDiff;
+  if (left.nodeId < right.nodeId) return -1;
+  if (left.nodeId > right.nodeId) return 1;
+  if (left.portKey < right.portKey) return -1;
+  if (left.portKey > right.portKey) return 1;
+  if (left.kind < right.kind) return -1;
+  if (left.kind > right.kind) return 1;
+  return 0;
+}
+
 export function computeDesignIssues(circuit: Circuit): DesignIssueMap {
-  const byNode = new Map<string, DesignIssue[]>();
-  const byPort = new Map<string, DesignIssue>();
+  const issueMap: DesignIssueMap = {
+    all: [],
+    byNode: new Map<string, DesignIssue[]>(),
+    byPort: new Map<string, DesignIssue[]>(),
+  };
 
-  function addIssue(issue: DesignIssue): void {
-    const list = byNode.get(issue.nodeId) ?? [];
-    list.push(issue);
-    byNode.set(issue.nodeId, list);
-    byPort.set(issue.portKey, issue);
-  }
+  const driverCountByInputPort = new Map<string, number>();
 
-  // Index: toPort key → count of drivers
-  const driverCount = new Map<string, number>();
-  // Index: toNodeId set (for floating-output detection)
-  const nodesWithIncomingConnection = new Set<string>();
-
-  for (const conn of circuit.connections) {
-    const to = portRefToIds(conn.to);
+  for (const connection of circuit.connections) {
+    const to = portRefToIds(connection.to, 'in');
     if (!to) continue;
-    nodesWithIncomingConnection.add(to.nodeId);
     const portKey = `${to.nodeId}.${to.portName}`;
-    driverCount.set(portKey, (driverCount.get(portKey) ?? 0) + 1);
-  }
-
-  // Build set of driven input ports per node (for unconnected-input check)
-  const drivenPorts = new Set<string>();
-  for (const [portKey] of driverCount) {
-    drivenPorts.add(portKey);
+    driverCountByInputPort.set(portKey, (driverCountByInputPort.get(portKey) ?? 0) + 1);
   }
 
   for (const node of circuit.nodes) {
-    // 1. Floating output: OUTPUT/Lamp with no driver
-    if (OUTPUT_NODE_TYPES.has(node.type) && !nodesWithIncomingConnection.has(node.id)) {
-      addIssue({
-        nodeId: node.id,
-        portKey: `${node.id}.__self`,
-        kind: 'floating-output',
-        message: 'No driver — this output has nothing connected to it.',
-      });
-    }
+    const semantics = getDesignIssueSemantics(node.type);
+    if (!semantics) continue;
 
-    // 2. Multiple drivers: any input port driven by 2+ connections
-    if (!INPUT_NODE_TYPES.has(node.type)) {
-      const inputPorts = GATE_INPUT_PORT_MAP[node.type] ?? [];
-      for (const port of inputPorts) {
-        const portKey = `${node.id}.${port}`;
-        if ((driverCount.get(portKey) ?? 0) > 1) {
-          addIssue({
-            nodeId: node.id,
-            portKey,
-            kind: 'multiple-drivers',
-            message: `Multiple drivers — only one signal can drive an input port.`,
-          });
-        }
+    const inputPorts = semantics.inputPorts;
+
+    for (const portName of inputPorts) {
+      const portKey = `${node.id}.${portName}`;
+      const driverCount = driverCountByInputPort.get(portKey) ?? 0;
+
+      if (driverCount > 1) {
+        addIssue(issueMap, {
+          nodeId: node.id,
+          portKey,
+          kind: 'multiple-drivers',
+          severity: 'error',
+          title: 'Input has multiple drivers',
+          message: 'Only one signal can drive this input at a time.',
+          hint: 'Remove the extra wire so this pin has one clear source.',
+          focusTarget: { nodeId: node.id, portKey: portName },
+        });
+        continue;
+      }
+
+      if (driverCount === 0 && semantics.role === 'logic') {
+        addIssue(issueMap, {
+          nodeId: node.id,
+          portKey,
+          kind: 'unconnected-input',
+          severity: 'warn',
+          title: 'Input is still unconnected',
+          message: 'This input pin does not have a signal yet.',
+          hint: 'Connect a source before you trust the circuit behavior.',
+          focusTarget: { nodeId: node.id, portKey: portName },
+        });
       }
     }
 
-    // 3. Unconnected input: gate node with a named input port missing a driver
-    const gateInputs = GATE_INPUT_PORT_MAP[node.type];
-    if (gateInputs) {
-      for (const port of gateInputs) {
-        const portKey = `${node.id}.${port}`;
-        if (!drivenPorts.has(portKey)) {
-          addIssue({
-            nodeId: node.id,
-            portKey,
-            kind: 'unconnected-input',
-            message: `Unconnected input — this pin has no signal.`,
-          });
-        }
+    if (semantics.role === 'output-observer') {
+      const primaryInput = inputPorts[0];
+      if (!primaryInput) continue;
+      const primaryPortKey = `${node.id}.${primaryInput}`;
+      const driverCount = driverCountByInputPort.get(primaryPortKey) ?? 0;
+      if (driverCount === 0) {
+        addIssue(issueMap, {
+          nodeId: node.id,
+          portKey: primaryPortKey,
+          kind: 'floating-output',
+          severity: 'error',
+          title: 'Output has no driver',
+          message: 'This output does not receive a signal from the circuit.',
+          hint: 'Wire a gate or input into this output before you verify or export.',
+          focusTarget: { nodeId: node.id, portKey: primaryInput },
+        });
       }
     }
   }
 
-  return { byNode, byPort };
+  issueMap.all.sort(compareDesignIssues);
+  for (const issues of issueMap.byNode.values()) {
+    issues.sort(compareDesignIssues);
+  }
+  for (const issues of issueMap.byPort.values()) {
+    issues.sort(compareDesignIssues);
+  }
+
+  return issueMap;
 }
 
-/**
- * Derive a per-node severity summary for rendering.
- * Returns 'error' if any issue is floating-output or multiple-drivers,
- * 'warn' if all issues are unconnected-input, null if no issues.
- */
 export function nodeIssueSeverity(
   nodeId: string,
-  issueMap: DesignIssueMap,
-): 'error' | 'warn' | null {
+  issueMap: DesignIssueMap
+): DesignIssueSeverity | null {
   const issues = issueMap.byNode.get(nodeId);
   if (!issues || issues.length === 0) return null;
-  const hasError = issues.some(
-    (i) => i.kind === 'floating-output' || i.kind === 'multiple-drivers',
-  );
-  return hasError ? 'error' : 'warn';
+  return issues.some((issue) => issue.severity === 'error') ? 'error' : 'warn';
 }

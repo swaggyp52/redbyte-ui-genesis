@@ -1,5 +1,13 @@
 import type { ChipMetadata } from '@redbyte/rb-logic-view';
 
+export type DesignIssueRole = 'logic' | 'source' | 'output-observer' | 'neutral';
+
+export interface DesignIssueSemantics {
+  role: DesignIssueRole;
+  inputPorts: string[];
+  outputPorts: string[];
+}
+
 /**
  * Canonical design-surface chip metadata used for port rendering and wiring validation.
  * Keep this in parity with the built-in node catalog used across IDE examples.
@@ -152,6 +160,45 @@ export const DESIGN_CHIP_METADATA: Record<string, ChipMetadata> = {
   },
 };
 
+const SOURCE_ONLY_NODE_TYPES = new Set(['PowerSource', 'Switch', 'INPUT', 'Clock']);
+const OUTPUT_OBSERVER_NODE_TYPES = new Set(['OUTPUT', 'Lamp']);
+const NEUTRAL_NODE_TYPES = new Set(['Wire']);
+
 export function getDesignChipMetadata(nodeType: string): ChipMetadata | undefined {
   return DESIGN_CHIP_METADATA[nodeType];
+}
+
+export function getDesignIssueSemantics(nodeType: string): DesignIssueSemantics | undefined {
+  const metadata = getDesignChipMetadata(nodeType);
+  if (!metadata) return undefined;
+
+  if (SOURCE_ONLY_NODE_TYPES.has(nodeType)) {
+    return {
+      role: 'source',
+      inputPorts: [],
+      outputPorts: metadata.outputs.map((port) => port.id),
+    };
+  }
+
+  if (OUTPUT_OBSERVER_NODE_TYPES.has(nodeType)) {
+    return {
+      role: 'output-observer',
+      inputPorts: metadata.inputs.map((port) => port.id),
+      outputPorts: metadata.outputs.map((port) => port.id),
+    };
+  }
+
+  if (NEUTRAL_NODE_TYPES.has(nodeType)) {
+    return {
+      role: 'neutral',
+      inputPorts: metadata.inputs.map((port) => port.id),
+      outputPorts: metadata.outputs.map((port) => port.id),
+    };
+  }
+
+  return {
+    role: 'logic',
+    inputPorts: metadata.inputs.map((port) => port.id),
+    outputPorts: metadata.outputs.map((port) => port.id),
+  };
 }

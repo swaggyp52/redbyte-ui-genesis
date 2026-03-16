@@ -17237,3 +17237,205 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 .ide-workbench-workspace {
   min-height: 0;
 }
+
+/* Batch 1: authoritative authoring issues strip */
+.ide-design-authoring-issues {
+  display: grid;
+  gap: var(--ide-space-2);
+  padding: var(--ide-space-2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, rgba(7, 15, 26, 0.96), rgba(8, 18, 28, 0.88));
+}
+
+.ide-design-authoring-issues.has-errors {
+  box-shadow: inset 0 1px 0 rgba(239, 68, 68, 0.14);
+}
+
+.ide-design-authoring-issues.has-warnings {
+  box-shadow: inset 0 1px 0 rgba(245, 158, 11, 0.12);
+}
+
+.ide-design-authoring-issues-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ide-space-2);
+}
+
+.ide-design-authoring-issues-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(222, 237, 255, 0.88);
+}
+
+.ide-design-authoring-issues-count {
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ide-design-authoring-issues-count.is-error {
+  color: #fecaca;
+  border-color: rgba(239, 68, 68, 0.34);
+  background: rgba(127, 29, 29, 0.26);
+}
+
+.ide-design-authoring-issues-count.is-warn {
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.32);
+  background: rgba(120, 53, 15, 0.24);
+}
+
+.ide-design-authoring-issues-status {
+  font-size: 12px;
+  color: rgba(192, 210, 228, 0.82);
+}
+
+.ide-design-authoring-issues-list {
+  display: grid;
+  gap: var(--ide-space-2);
+}
+
+.ide-design-authoring-issue {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ide-space-2);
+  padding: var(--ide-space-2);
+  border-radius: var(--ide-radius-m, 6px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(10, 18, 29, 0.78);
+}
+
+.ide-design-authoring-issue.is-error {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.ide-design-authoring-issue.is-warn {
+  border-color: rgba(245, 158, 11, 0.26);
+}
+
+.ide-design-authoring-issue-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ide-design-authoring-issue-copy p {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(211, 224, 238, 0.88);
+}
+
+.ide-design-authoring-issue-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ide-design-authoring-issue-header strong {
+  font-size: 13px;
+  color: #f8fbff;
+}
+
+.ide-design-authoring-issue-header code {
+  font-size: 11px;
+  color: #a5c9f3;
+}
+
+.ide-design-authoring-issue-pill,
+.ide-design-selection-issues-pill {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ide-design-authoring-issue-pill.is-error,
+.ide-design-selection-issues-pill.is-error {
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.34);
+}
+
+.ide-design-authoring-issue-pill.is-warn,
+.ide-design-selection-issues-pill.is-warn {
+  color: #fde68a;
+  background: rgba(120, 53, 15, 0.34);
+}
+
+.ide-design-tool-hud-feedback {
+  width: 100%;
+  border-radius: var(--ide-radius-s);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ide-design-tool-hud-feedback.is-error {
+  border: 1px solid rgba(239, 68, 68, 0.34);
+  background: rgba(127, 29, 29, 0.28);
+  color: #fecaca;
+}
+
+.ide-design-selection-issues {
+  display: grid;
+  gap: 6px;
+  padding: var(--ide-space-2);
+  border-radius: var(--ide-radius-m, 6px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 18, 28, 0.74);
+}
+
+.ide-design-selection-issues.is-error {
+  border-color: rgba(239, 68, 68, 0.32);
+}
+
+.ide-design-selection-issues.is-warn {
+  border-color: rgba(245, 158, 11, 0.28);
+}
+
+.ide-design-selection-issues-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ide-design-selection-issues-header strong {
+  color: #f8fbff;
+}
+
+.ide-design-selection-issues-message,
+.ide-design-selection-issues-hint {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(211, 224, 238, 0.88);
+}
+
+.ide-design-selection-issues-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.ide-design-selection-issues-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  color: rgba(188, 206, 227, 0.86);
+}
+
+.ide-design-selection-issues-list code {
+  color: #a5c9f3;
+}

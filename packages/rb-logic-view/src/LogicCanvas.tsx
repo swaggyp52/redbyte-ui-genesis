@@ -73,6 +73,8 @@ export interface LogicCanvasProps {
   changedNodeIds?: Set<string> | null;
   /** Phase 3: per-node design issue severity for real-time canvas glow. */
   nodeIssueSeverities?: Map<string, 'error' | 'warn'>;
+  /** Batch 1: explicit per-port issue severity for authoring feedback. */
+  issuePortSeverities?: Map<string, 'error' | 'warn'> | null;
 }
 
 const BUILTIN_PORT_NAMES: Record<string, string[]> = {
@@ -176,6 +178,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   nodeEvalOrder,
   changedNodeIds,
   nodeIssueSeverities,
+  issuePortSeverities,
 }) => {
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
@@ -1485,6 +1488,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               ioPresentation={ioPresentationMap?.[node.id]}
               evalSequence={nodeEvalOrder ? (nodeEvalOrder.indexOf(node.id) >= 0 ? nodeEvalOrder.indexOf(node.id) + 1 : null) : null}
               issueGlow={nodeIssueSeverities?.get(node.id) ?? null}
+              issuePortSeverities={issuePortSeverities}
             />
           ))}
         </g>

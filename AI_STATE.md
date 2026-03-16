@@ -1,5 +1,80 @@
 # AI State
 
+## Change Log 2026-03-16 (Design authoring trust and live issue visibility)
+
+**Subsystem**: IDE Design/Build product experience
+
+### Problem
+
+Students could build circuits, but the live Design surface did not clearly answer:
+
+- what is wrong right now,
+- where the problem is,
+- how serious it is,
+- what to inspect next.
+
+The live issue detector also relied on stale handwritten port assumptions (`BUF`, lowercase sequential pins), invalid wire rejection only surfaced as a transient toast, and canvas issue highlighting was node-level instead of port-specific.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/designChipMetadata.ts`
+  - Added canonical live issue semantics derived from Design chip metadata, including authoritative input/output port IDs and issue roles (`source`, `logic`, `output-observer`, `neutral`).
+- `packages/rb-apps/src/apps/ide/designIssues.ts`
+  - Rebuilt live issue detection to derive from canonical metadata instead of stale handwritten maps.
+  - Expanded `DesignIssue` with:
+    - `severity`
+    - `title`
+    - `hint`
+    - `focusTarget`
+  - Kept current scope to:
+    - `floating-output`
+    - `multiple-drivers`
+    - `unconnected-input`
+  - Added deterministic issue sorting for stable UI priority.
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Added an authoritative `Authoring Issues` strip above the canvas titlebar with live error/warn counts, top issues, and `Focus` actions.
+  - Added selection-local issue explanation in the inspector before raw metrics for node/wire/signal context.
+  - Replaced invalid-wire toast handling with sticky inline HUD feedback that persists until a student clears it through explicit interaction.
+  - Routed focus actions to select the affected node, center it when needed, and target the affected signal/port when available.
+  - Memoized live issue derivation from circuit mutations only.
+- `packages/rb-logic-view/src/LogicCanvas.tsx`
+  - Added explicit per-port issue severity plumbing from DesignSurface into the canvas node layer.
+- `packages/rb-logic-view/src/components/NodeView.tsx`
+  - Split trace-port highlighting from issue-port highlighting.
+  - Added explicit red/amber per-port issue emphasis while preserving separate trace visuals.
+  - Extended memo guards to include issue-highlight inputs so issue state updates render deterministically.
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Added styling for the authoritative authoring issues strip, inspector issue summary, and sticky wire-feedback HUD.
+- `packages/rb-apps/src/apps/ide/__tests__/designIssues.test.ts` (new)
+  - Added focused regression coverage for canonical AND, OUTPUT, DFlipFlop, and metadata-derived issue semantics.
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.authoringIssues.test.tsx` (new)
+  - Added Design surface regressions for authoring strip rendering, focus action behavior, inspector issue explanation ordering, and sticky invalid-wire feedback.
+- `scripts/gates/ide-design-inspector-contract.mjs`
+  - Realigned stale inspector contract from removed starter CTA expectations to the current palette-driven Design flow and current inspector behavior.
+- `scripts/gates/ide-design-authoring-issues-contract.mjs` (new)
+  - Added a Design gate that seeds a deterministic circuit, verifies authoring issue surfacing, and proves `Focus` selects the affected node.
+- `package.json`
+  - Added `ide:gate:design-authoring-issues-contract`.
+
+### Student-visible behavior after fix
+
+- Design now has one authoritative design-time status area for live authoring problems.
+- Students can see whether the circuit currently has errors or warnings without scanning the bottom compiler console.
+- Selecting a broken node or wire now explains the issue in plain language before raw values and metrics.
+- Invalid wire attempts stay visible in-context instead of disappearing as a toast.
+- Affected ports are highlighted directly, so students can see exactly which pin needs attention.
+
+### Proof
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designIssues.test.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.authoringIssues.test.tsx --reporter=verbose` -> 8/8 passing
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:canvas-legibility-contract` -> PASS
+- `pnpm -s ide:gate:design-wire-interaction-contract` -> PASS
+- `pnpm -s ide:gate:design-inspector-contract` -> PASS
+- `pnpm -s ide:gate:design-authoring-issues-contract` -> PASS
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-16 (manual assignment QA script for end-to-end student flow)
 
 **Subsystem**: Release readiness process documentation
