@@ -1,5 +1,54 @@
 # AI State
 
+## Change Log 2026-03-15 (Release sign-off gate sweep)
+
+**Subsystem**: Classroom release readiness enforcement and operator workflow
+
+**Problem**
+
+Release readiness checks existed, but they were fragmented:
+1. No single command answered classroom readiness as a single PASS/FAIL verdict.
+2. No enforced clean-tree check in the same release-readiness flow.
+3. No explicit contradiction guard to catch unresolved merge artifacts before release.
+
+This forced release decisions to rely on scattered commands and interpretation instead of one deterministic standard.
+
+**What changed**
+
+- `scripts/classroom-signoff.mjs` (new):
+  - Added one orchestrated classroom sign-off flow that runs release hygiene + readiness contracts and prints a clear final verdict.
+  - Enforces:
+    - required script wiring (no missing/no-op signoff dependencies),
+    - merge-conflict marker detection across tracked files,
+    - working-tree cleanliness (with explicit `--allow-dirty` development override),
+    - repo health chain (`repo:status`),
+    - student loop and verify summary checks,
+    - key handoff checks (export readiness + program flow),
+    - import onboarding checks.
+  - Added timeout handling and explicit failure details per check.
+- `package.json`:
+  - Added canonical release sign-off command: `classroom:signoff`.
+- `docs/release/classroom-release-signoff.md` (new):
+  - Added the release checklist/report artifact that defines how to run and interpret sign-off.
+
+**Release-signoff behavior after fix**
+
+- `pnpm run classroom:signoff` is now the single standard command for classroom release readiness.
+- Output is explicit and sectioned with per-check PASS/FAIL and timings.
+- Final line is deterministic:
+  - `FINAL VERDICT: CLASSROOM_READY` on success,
+  - `FINAL VERDICT: NOT_READY` on any blocker.
+
+**Proof**
+
+- Baseline gap reproduction:
+  - `pnpm run classroom:signoff` (before implementation) -> `ERR_PNPM_NO_SCRIPT Missing script: classroom:signoff`
+- Implementation validation:
+  - `node --check scripts/classroom-signoff.mjs` -> exit code `0`
+  - `pnpm run classroom:signoff -- --allow-dirty` -> explicit NOT_READY verdict with concrete blockers and section-level output
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-15 (Verify FAIL depth + actionable next-step guidance)
 
 **Subsystem**: IDE Verify surface failure coaching and student actionability
