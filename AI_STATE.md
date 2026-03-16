@@ -1,5 +1,24 @@
 # AI State
 
+## Change Log 2026-03-15 (import ZIP input deduplication follow-up)
+
+**Subsystem**: Import surface regression cleanup after blocker 3
+
+### Problem
+
+- The blocker 3 fix left two `ide-import-zip-input` elements in the DOM with the same `zipInputRef` and `data-testid`, which made the ref target dependent on render order.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+  - Removed the older duplicate hidden ZIP file input from the workbench section so the unconditional first-look-safe input is the only remaining ZIP picker element.
+- `packages/rb-apps/src/apps/ide/__tests__/importSurface.submission.test.tsx`
+  - Added an assertion that exactly one `ide-import-zip-input` element exists.
+
+### Commit
+
+- `TBD` — `fix: remove duplicate ZIP import input`
+
 ## Change Log 2026-03-15 (classroom:signoff blocker 3 cleared — import ZIP file chooser)
 
 **Subsystem**: Import surface product defect fix and release signoff progression

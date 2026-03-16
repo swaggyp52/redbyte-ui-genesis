@@ -3153,17 +3153,6 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               </div>
             )}
 
-            <input
-              ref={zipInputRef}
-              type="file"
-              accept=".zip,application/zip"
-              className="ide-hidden-file-input"
-              onChange={(event) => {
-                void handleZipInputChange(event);
-              }}
-              data-testid="ide-import-zip-input"
-            />
-
             {tab === 'hdl' && (
               <div className="ide-import-editor">
                 {/* ── Supported HDL subset declaration (Req 6 from audit) ── */}
