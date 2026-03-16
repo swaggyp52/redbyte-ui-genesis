@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-03-15 (classroom:signoff blocker 3 cleared — import ZIP file chooser)
+
+**Subsystem**: Import surface product defect fix and release signoff progression
+
+### Problem
+
+Strict `classroom:signoff` was blocked by `ide:gate:import-actionable-targets-contract`:
+
+- `Import ZIP entry CTA did not trigger file chooser: page.waitForEvent: Timeout 5000ms exceeded`
+
+### Root-cause classification
+
+- **Product defect** introduced by the first-look UX simplification: the hidden `<input type="file" ref={zipInputRef}>` was inside `sourceStageContent`, which is only rendered when `!isImportFirstLook`. On first-look (initial state), the workbench is not rendered, `zipInputRef.current` is `null`, so `handleOpenZipPicker()` was a no-op.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+  - Moved the hidden ZIP file input (`ide-import-zip-input`) out of `sourceStageContent` and placed it unconditionally at the `IdePanel` content level, just before the `{!isImportFirstLook ? ...}` conditional block.
+  - This ensures `zipInputRef.current` is always non-null when `handleOpenZipPicker()` is called, regardless of first-look state.
+  - Built playground and confirmed gate PASS.
+
+### Commit
+
+- `TBD` — `fix: restore ZIP file chooser from import first-look CTA`
+
+---
+
 ## Change Log 2026-03-15 (classroom:signoff blocker 2 cleared — IDE Primary CTA contract)
 
 **Subsystem**: IDE gate contract alignment and release signoff progression

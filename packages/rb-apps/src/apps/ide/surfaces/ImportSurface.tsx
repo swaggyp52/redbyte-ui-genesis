@@ -1898,17 +1898,6 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         </IdeCallout>
       ) : null}
 
-      <input
-        ref={zipInputRef}
-        type="file"
-        accept=".zip,application/zip"
-        className="ide-hidden-file-input"
-        onChange={(event) => {
-          void handleZipInputChange(event);
-        }}
-        data-testid="ide-import-zip-input"
-      />
-
       {tab === 'upload' ? (
         <div className="ide-empty-stack ide-import-zip-stage" data-testid="ide-import-zip-stage">
           <div
@@ -2841,6 +2830,18 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
             </div>
           </SurfacePanel>
         ) : null}
+        {/* Hidden file input is unconditional so zipInputRef.current is always non-null,
+            even when the workbench is not yet mounted (first-look state). */}
+        <input
+          ref={zipInputRef}
+          type="file"
+          accept=".zip,application/zip"
+          className="ide-hidden-file-input"
+          onChange={(event) => {
+            void handleZipInputChange(event);
+          }}
+          data-testid="ide-import-zip-input"
+        />
         {!isImportFirstLook ? (
           <div className="ide-import-workbench-v2" data-testid="ide-import-workbench">
             {sourceStageContent}
