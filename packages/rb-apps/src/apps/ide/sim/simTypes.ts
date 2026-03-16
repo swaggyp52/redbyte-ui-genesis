@@ -11,6 +11,7 @@ export interface RuntimeSignalProbe {
 export interface RuntimeSimState {
   tick: number;
   running: boolean;
+  stepMode: boolean;
   lastAction?: 'run' | 'pause' | 'step' | 'input' | 'reset';
   speedHz: number;
   irHash: string;

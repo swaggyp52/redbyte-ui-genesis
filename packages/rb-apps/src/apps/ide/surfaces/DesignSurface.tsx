@@ -35,6 +35,7 @@ import { synthesizableVerilogFromNetlist } from '../../../export/verilogExport';
 import { buildVhdlTopLevelBindings } from '../../../fpga/boards/basys3/basys3Bundle';
 import { getDesignChipMetadata } from '../designChipMetadata';
 import { serializeCluster, pasteCluster, type ClipboardCluster } from '../designClipboard';
+import { computeDesignIssues, nodeIssueSeverity } from '../designIssues';
 import {
   analyzeMacroBoundary,
   type MacroBoundaryAnalysis,
@@ -1490,6 +1491,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     return badges;
   }, [diagnosticsByNode]);
+
+  // Phase 3: real-time canvas issue glow — O(n+e), runs once per circuit mutation.
+  const nodeIssueSeverities = useMemo(() => {
+    const issueMap = computeDesignIssues(editorCircuit);
+    const result = new Map<string, 'error' | 'warn'>();
+    for (const nodeId of issueMap.byNode.keys()) {
+      const sev = nodeIssueSeverity(nodeId, issueMap);
+      if (sev) result.set(nodeId, sev);
+    }
+    return result;
+  }, [editorCircuit]);
+
   const selectedNodeDiagnostics = useMemo(
     () => (selectedNode ? diagnosticsByNode.get(selectedNode.id) ?? [] : []),
     [diagnosticsByNode, selectedNode]
@@ -2509,7 +2522,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </IdeButton>
               )}
               <IdeButton tone="ghost" onClick={stepSimulation} testId="ide-design-sim-step">
-                Step
+                Step{runtimeSim.stepMode ? ` t${simTick}` : ''}
               </IdeButton>
               <IdeButton tone="ghost" onClick={resetSimulation} testId="ide-design-sim-reset">
                 Reset
@@ -3447,6 +3460,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       onConnectionRejected={(reason) => setActionToast(connectionRejectedMessage(reason))}
                       nodeEvalOrder={evalOrder}
                       changedNodeIds={changedNodeIds}
+                      nodeIssueSeverities={nodeIssueSeverities}
                       probeWireHighlights={traceState?.wireHighlights}
                       tracedNodeIds={(() => {
                         const verifyNodeId = verifyLinkedSignalKey ? verifyLinkedSignalKey.split('.')[0] : null;

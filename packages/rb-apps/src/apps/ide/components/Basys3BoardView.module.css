@@ -1,0 +1,7 @@
+.board {
+  display: block;
+  border-radius: 8px;
+  background: transparent;
+  width: 100%;
+  height: auto;
+}

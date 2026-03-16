@@ -142,8 +142,8 @@ describe('IDE synth subset contract', () => {
     expect(exportResult.warnings).toEqual([]);
     expect(exportResult.bundle?.topXdc).toContain('PACKAGE_PIN V17');
     expect(exportResult.bundle?.topXdc).toContain('PACKAGE_PIN U16');
-    expect(exportResult.bundle?.readme).toContain('| g1_in1 | SW0 | V17 | input |');
-    expect(exportResult.bundle?.readme).toContain('| g1_out | LD0 | U16 | output |');
+    expect(exportResult.bundle?.readme).toContain('| sw0 | SW0 | V17 | input |');
+    expect(exportResult.bundle?.readme).toContain('| ld0 | LD0 | U16 | output |');
 
     const viewModel = buildExportViewModel(project);
     expect(viewModel.status).toBe('ok');

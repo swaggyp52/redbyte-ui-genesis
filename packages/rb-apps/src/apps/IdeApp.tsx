@@ -179,6 +179,8 @@ export const IdeApp: React.FC = () => {
   const setMappingPin = useProjectRuntime((state) => state.setMappingPin);
   const autoSuggestMapping = useProjectRuntime((state) => state.autoSuggestMapping);
   const setVectors = useProjectRuntime((state) => state.setVectors);
+  const customVectors = useProjectRuntime((state) => state.customVectors);
+  const setCustomVectors = useProjectRuntime((state) => state.setCustomVectors);
   const generateBringUpVectors = useProjectRuntime((state) => state.generateBringUpVectors);
   const markDesignMutated = useProjectRuntime((state) => state.markDesignMutated);
   const addDesignNode = useProjectRuntime((state) => state.addDesignNode);
@@ -1396,6 +1398,8 @@ export const IdeApp: React.FC = () => {
                   return true;
                 }));
               }}
+              customVectors={customVectors}
+              onCustomVectorsChange={setCustomVectors}
             />
           </ErrorBoundary>
         ) : currentMode === 'hardware' ? (
@@ -1415,6 +1419,7 @@ export const IdeApp: React.FC = () => {
               onOpenExport={() => setCurrentMode('export')}
               onOpenVerify={() => setCurrentMode('verify')}
               onGoToDesign={() => setCurrentMode('design')}
+              onSetMappingPin={handleMappingPinChange}
             />
           </ErrorBoundary>
         ) : currentMode === 'export' ? (

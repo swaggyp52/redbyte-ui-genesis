@@ -13,6 +13,7 @@ import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useIoBus } from '../ioBus';
 import { HardwareBoard2D } from '../components/HardwareBoard2D';
+import { Basys3BoardView } from '../components/Basys3BoardView';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getStudentFacingIoLabel } from '../ioLabels';
 
@@ -44,6 +45,7 @@ export interface HardwareSurfaceProps {
   onOpenExport: () => void;
   onOpenVerify: () => void;
   onGoToDesign?: () => void;
+  onSetMappingPin?: (rowId: string, alias: string) => void;
 }
 
 /** Convert a raw signal key like "ld[5]" or "sw3" into a human label like "LED LD5" / "Switch SW3". */
@@ -79,7 +81,7 @@ export function formatAssertionPlain(a: {
 }
 
 const HARDWARE_EMPTY_SIM: RuntimeSimState = {
-  tick: 0, running: false, speedHz: 1, irHash: '', traceHash: '',
+  tick: 0, running: false, stepMode: false, speedHz: 1, irHash: '', traceHash: '',
   inputs: {}, signals: {}, trace: [], selectedSignalKey: null, probes: [],
 };
 
@@ -92,7 +94,7 @@ interface AssertionEntry {
   hasData: boolean;
 }
 
-type HwMode = 'live' | 'bringup' | 'proof';
+type HwMode = 'live' | 'bringup' | 'proof' | 'map';
 
 export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   projectName,
@@ -109,10 +111,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   onOpenExport,
   onOpenVerify,
   onGoToDesign,
+  onSetMappingPin,
 }) => {
   const { activeBoardSignal, hoverBoardSignal, setActiveBoardSignal, setHoverBoardSignal } = useBoardSignal();
   const [hwMode, setHwMode] = useState<HwMode>('live');
   const [bringupStepIndex, setBringupStepIndex] = useState(0);
+  const [selectedMappingRowId, setSelectedMappingRowId] = useState<string | null>(null);
   const sim = runtimeSim ?? HARDWARE_EMPTY_SIM;
 
   const hasClockMapping = useMemo(
@@ -143,6 +147,53 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       ),
     [mappingRows]
   );
+
+  // ── Map mode: all aliases currently assigned to rows ──────────────────
+  const mapModeAliases = useMemo(() => {
+    const s = new Set<string>();
+    for (const row of mappingRows) {
+      const pin = row.pin.trim().toUpperCase();
+      if (pin) s.add(pin);
+    }
+    return s;
+  }, [mappingRows]);
+
+  // ── Map mode: highlight the current pin of the selected row ───────────
+  const selectedMappingRowPin = useMemo(() => {
+    if (!selectedMappingRowId) return null;
+    const row = mappingRows.find((r) => r.id === selectedMappingRowId);
+    return row?.pin?.trim().toUpperCase() || null;
+  }, [selectedMappingRowId, mappingRows]);
+
+  // ── Map mode: group rows by signal type for the assignment table ───────
+  const mapModeGroups = useMemo(() => {
+    const groups: Array<{ label: string; rows: HardwareMappingRow[] }> = [
+      { label: 'Clock', rows: [] },
+      { label: 'Switches', rows: [] },
+      { label: 'Buttons', rows: [] },
+      { label: 'LEDs', rows: [] },
+      { label: '7-Segment', rows: [] },
+      { label: 'Other', rows: [] },
+    ];
+    for (const row of mappingRows) {
+      const pin = row.pin.trim().toUpperCase();
+      const lbl = getStudentFacingIoLabel(row).toUpperCase();
+      if (/CLK|W5/.test(pin) || /CLK|CLOCK/.test(lbl)) {
+        groups[0].rows.push(row);
+      } else if (/^SW\d/.test(pin) || /^SW\d/.test(lbl)) {
+        groups[1].rows.push(row);
+      } else if (/^BTN/.test(pin) || /^BTN/.test(lbl)) {
+        groups[2].rows.push(row);
+      } else if (/^LD\d/.test(pin) || /^LD\d/.test(lbl)) {
+        groups[3].rows.push(row);
+      } else if (/^(CA|CB|CC|CD|CE|CF|CG|DP|AN\d)/.test(pin) || /^(CA|CB|CC|CD|CE|CF|CG|DP|AN\d)/.test(lbl)) {
+        groups[4].rows.push(row);
+      } else {
+        groups[5].rows.push(row);
+      }
+    }
+    return groups.filter((g) => g.rows.length > 0);
+  }, [mappingRows]);
 
   const [debounceDismissed, setDebounceDismissed] = useState(() => {
     try { return localStorage.getItem('rb-debounce-tip-dismissed') === '1'; } catch { return false; }
@@ -883,14 +934,14 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </SurfacePanel>
         )}
         <div className="ide-hw-mode-toggle" data-testid="ide-hw-mode-toggle">
-          {(['live', 'bringup', 'proof'] as const).map((m) => (
+          {(['live', 'bringup', 'proof', 'map'] as const).map((m) => (
             <IdeButton
               key={m}
               tone={hwMode === m ? 'primary' : 'ghost'}
-              onClick={() => setHwMode(m)}
+              onClick={() => { setHwMode(m); setSelectedMappingRowId(null); }}
               testId={`ide-hw-mode-btn-${m}`}
             >
-              {m === 'live' ? 'Live Monitor' : m === 'bringup' ? 'Bring-Up' : 'Proof'}
+              {m === 'live' ? 'Live Monitor' : m === 'bringup' ? 'Bring-Up' : m === 'proof' ? 'Proof' : 'Map Pins'}
             </IdeButton>
           ))}
           {sim.tick > 0 && (
@@ -931,7 +982,51 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </IdeCallout>
         )}
 
-        {/* ── Board ── */}
+        {/* ── Board / Map ── */}
+        {hwMode === 'map' ? (
+          <div className="ide-hw-map-mode" data-testid="ide-hw-map-mode">
+            <div className="ide-hw-map-table" data-testid="ide-hw-map-table">
+              <p className="ide-copy ide-hw-map-instructions">
+                {selectedMappingRowId
+                  ? 'Click a board region to assign the pin.'
+                  : 'Click a signal row, then click a board region to assign its pin.'}
+              </p>
+              {mapModeGroups.map((group) => (
+                <details key={group.label} open>
+                  <summary className="ide-hw-map-group-label">{group.label}</summary>
+                  <div className="ide-hw-map-group">
+                    {group.rows.map((row) => (
+                      <button
+                        key={row.id}
+                        type="button"
+                        className={`ide-hw-map-row ${selectedMappingRowId === row.id ? 'is-selected' : ''}`}
+                        data-testid={`ide-hw-map-row-${row.id}`}
+                        onClick={() =>
+                          setSelectedMappingRowId(row.id === selectedMappingRowId ? null : row.id)
+                        }
+                      >
+                        <span className="ide-hw-map-row-label">{getStudentFacingIoLabel(row)}</span>
+                        <code className="ide-hw-map-row-pin">{row.pin || '—'}</code>
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+            <div className="ide-hw-map-board" data-testid="ide-hw-map-board">
+              <Basys3BoardView
+                mappedAliases={mapModeAliases}
+                highlightedAlias={selectedMappingRowPin}
+                onSelectAlias={(alias) => {
+                  if (selectedMappingRowId && onSetMappingPin) {
+                    onSetMappingPin(selectedMappingRowId, alias);
+                    setSelectedMappingRowId(null);
+                  }
+                }}
+              />
+            </div>
+          </div>
+        ) : (
         <div className={`ide-hw-board-wrap ${hwMode === 'proof' ? 'is-proof' : ''}`}>
           <div className="ide-hw-board-inner">
             <HardwareBoard2D
@@ -1007,6 +1102,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             </div>
           )}
         </div>
+        )}
       </IdePanel>
     </IdeSurfaceLayout>
   );

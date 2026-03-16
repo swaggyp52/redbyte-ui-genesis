@@ -203,13 +203,24 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
             ) : null}
 
             {inputSnapshot && inputSnapshot.length > 0 ? (
-              <div className="ide-kv-row">
-                <span>Inputs at tick</span>
-                <div className="ide-inline-actions">
-                  {inputSnapshot.slice(0, 8).map((entry) => (
-                    <code key={`${entry.label}-${entry.value}`}>{entry.label}={entry.value}</code>
-                  ))}
-                </div>
+              <div className="ide-kv-row ide-kv-row--full" data-testid="ide-verify-failure-input-snapshot">
+                <span>Inputs at t{failure.tick}</span>
+                <table className="ide-verify-failure-input-table" data-testid="ide-verify-failure-input-table">
+                  <thead>
+                    <tr>
+                      <th>Signal</th>
+                      <th>Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inputSnapshot.map((entry) => (
+                      <tr key={`${entry.label}-${entry.value}`}>
+                        <td><code>{entry.label}</code></td>
+                        <td><code>{entry.value}</code></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : null}
 

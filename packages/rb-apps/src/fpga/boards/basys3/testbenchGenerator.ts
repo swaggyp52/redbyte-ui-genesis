@@ -189,25 +189,33 @@ function collectSignals(
         logicalToCanonical.set(trimmed.toLowerCase(), canonical);
       };
 
-      // Derive canonical port names from ioMapping (same scheme as basys3Bundle.toSignalName).
+      // Derive canonical port names from ioMapping — label takes precedence,
+      // matching basys3Bundle.toSignalName() and verilog-generator.ts exactly.
       for (const entry of project.ioMapping?.inputs ?? []) {
-        const canonical = toVhdlIdentifier(`${entry.nodeId}_${entry.port}`);
+        const canonical = entry.label?.trim()
+          ? toVhdlIdentifier(entry.label.trim())
+          : toVhdlIdentifier(`${entry.nodeId}_${entry.port}`);
         inputNames.add(canonical);
         addLogicalAlias(canonical, canonical);
         addLogicalAlias(entry.id, canonical);
         addLogicalAlias(entry.nodeId, canonical);
         addLogicalAlias(entry.label, canonical);
-        // Map node label (e.g. 'SW0') → canonical (e.g. 'sw0_node_out')
+        // Also alias the legacy nodeId_port form so old vectors still resolve.
+        addLogicalAlias(toVhdlIdentifier(`${entry.nodeId}_${entry.port}`), canonical);
         const node = (project.circuit.nodes ?? []).find((n) => n.id === entry.nodeId);
         addLogicalAlias(node?.label, canonical);
       }
       for (const entry of project.ioMapping?.outputs ?? []) {
-        const canonical = toVhdlIdentifier(`${entry.nodeId}_${entry.port}`);
+        const canonical = entry.label?.trim()
+          ? toVhdlIdentifier(entry.label.trim())
+          : toVhdlIdentifier(`${entry.nodeId}_${entry.port}`);
         outputNames.add(canonical);
         addLogicalAlias(canonical, canonical);
         addLogicalAlias(entry.id, canonical);
         addLogicalAlias(entry.nodeId, canonical);
         addLogicalAlias(entry.label, canonical);
+        // Also alias the legacy nodeId_port form so old vectors still resolve.
+        addLogicalAlias(toVhdlIdentifier(`${entry.nodeId}_${entry.port}`), canonical);
         const node = (project.circuit.nodes ?? []).find((n) => n.id === entry.nodeId);
         addLogicalAlias(node?.label, canonical);
       }

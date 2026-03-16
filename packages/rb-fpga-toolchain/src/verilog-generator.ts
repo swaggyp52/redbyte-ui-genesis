@@ -136,11 +136,15 @@ export function circuitToVerilog(
     });
 
     for (const entry of sortedInputMapping) {
-      const wireName = `${entry.nodeId}_${entry.port}`;
+      const wireName = entry.label?.trim()
+        ? sanitizeIdentifier(entry.label.trim())
+        : `${entry.nodeId}_${entry.port}`;
       inputs.push(wireName);
     }
     for (const entry of sortedOutputMapping) {
-      const wireName = `${entry.nodeId}_${entry.port}`;
+      const wireName = entry.label?.trim()
+        ? sanitizeIdentifier(entry.label.trim())
+        : `${entry.nodeId}_${entry.port}`;
       outputs.push(wireName);
     }
   } else {

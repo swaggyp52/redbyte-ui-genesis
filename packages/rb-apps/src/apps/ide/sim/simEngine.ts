@@ -54,6 +54,7 @@ export function resetSimulationState(
   return {
     tick: 0,
     running: false,
+    stepMode: false,
     lastAction: previous?.lastAction,
     speedHz: previous?.speedHz ?? DEFAULT_SIM_SPEED_HZ,
     irHash,

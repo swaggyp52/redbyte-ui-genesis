@@ -60,6 +60,8 @@ export interface NodeViewProps {
   ioPresentation?: NodeIoPresentation;
   /** B1: Eval order step number (1-based). Shown as #N badge when node is hovered. */
   evalSequence?: number | null;
+  /** Phase 3: real-time canvas error glow. 'error' = red, 'warn' = amber. */
+  issueGlow?: 'error' | 'warn' | null;
 }
 
 const NODE_COLORS: Record<string, string> = {
@@ -110,6 +112,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   onDiagnosticBadgeClick,
   ioPresentation,
   evalSequence,
+  issueGlow,
 }) => {
   // Safe rotation: default to 0 if undefined to prevent rotate(undefined) SVG errors
   const safeRotation = Number.isFinite(node.rotation) ? node.rotation : 0;
@@ -885,6 +888,22 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           style={{ pointerEvents: 'none' }}
         />
       )}
+      {/* Issue glow ring (Phase 3 real-time canvas errors) */}
+      {issueGlow && (
+        <rect
+          data-testid={`node-issue-glow-${node.id}`}
+          x={-size / 2 - 3}
+          y={-size / 2 - 3}
+          width={size + 6}
+          height={size + 6}
+          fill="none"
+          stroke={issueGlow === 'error' ? '#ef4444' : '#f59e0b'}
+          strokeWidth={2.5}
+          rx={6}
+          opacity={0.85}
+          style={{ pointerEvents: 'none' }}
+        />
+      )}
 
       {/* B1: Eval sequence badge — shown on hover when eval order is active */}
       {isHovered && evalSequence != null && (
@@ -1315,6 +1334,7 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
     prevProps.ioPresentation?.kind === nextProps.ioPresentation?.kind &&
     prevProps.ioPresentation?.label === nextProps.ioPresentation?.label &&
     prevProps.ioPresentation?.pinAlias === nextProps.ioPresentation?.pinAlias &&
+    prevProps.issueGlow === nextProps.issueGlow &&
     shallowObjectEqual(prevProps.node.state as Record<string, unknown>, nextProps.node.state as Record<string, unknown>) &&
     chipMetadataEqual(prevProps.chipMetadata, nextProps.chipMetadata) &&
     prevProps.wireStartPort?.nodeId === nextProps.wireStartPort?.nodeId &&

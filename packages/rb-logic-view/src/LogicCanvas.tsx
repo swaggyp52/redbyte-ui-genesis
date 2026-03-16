@@ -71,6 +71,8 @@ export interface LogicCanvasProps {
   nodeEvalOrder?: string[] | null;
   /** B1: Node IDs whose outputs changed on the last sim tick. Rendered with isHighlighted when set. */
   changedNodeIds?: Set<string> | null;
+  /** Phase 3: per-node design issue severity for real-time canvas glow. */
+  nodeIssueSeverities?: Map<string, 'error' | 'warn'>;
 }
 
 const BUILTIN_PORT_NAMES: Record<string, string[]> = {
@@ -173,6 +175,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   onWireContextMenu,
   nodeEvalOrder,
   changedNodeIds,
+  nodeIssueSeverities,
 }) => {
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
@@ -1481,6 +1484,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               onDiagnosticBadgeClick={onNodeDiagnosticBadgeClick}
               ioPresentation={ioPresentationMap?.[node.id]}
               evalSequence={nodeEvalOrder ? (nodeEvalOrder.indexOf(node.id) >= 0 ? nodeEvalOrder.indexOf(node.id) + 1 : null) : null}
+              issueGlow={nodeIssueSeverities?.get(node.id) ?? null}
             />
           ))}
         </g>

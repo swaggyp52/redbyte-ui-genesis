@@ -40,7 +40,35 @@ function parsePackagePin(line: string): string | null {
 }
 
 function toSignalName(entry: IoMappingEntry): string {
+  if (entry.label?.trim()) return sanitizeIdentifier(entry.label.trim());
   return sanitizeIdentifier(`${entry.nodeId}_${entry.port}`);
+}
+
+const XDC_GROUP_ORDER = [
+  'Clock',
+  'Switches',
+  'Buttons',
+  'LEDs',
+  '7-Segment Cathodes',
+  '7-Segment Anodes',
+  'Other',
+] as const;
+
+function detectSignalGroup(entry: IoMappingEntry): string {
+  const alias = (entry.pin ?? '').toUpperCase().trim();
+  if (!alias) return 'Other';
+  if (alias === 'CLK' || alias === 'CLK100MHZ' || alias === 'W5') return 'Clock';
+  if (alias.startsWith('SW')) return 'Switches';
+  if (alias.startsWith('BTN')) return 'Buttons';
+  if (alias.startsWith('LD') || alias.startsWith('LED')) return 'LEDs';
+  if (alias.startsWith('AN')) return '7-Segment Anodes';
+  if (
+    alias.startsWith('SEG') ||
+    alias === 'DP' ||
+    (alias.length === 2 && alias[0] === 'C' && 'ABCDEFG'.includes(alias[1] ?? ''))
+  )
+    return '7-Segment Cathodes';
+  return 'Other';
 }
 
 function buildTopXdc(ioMapping: IoMapping, warnings: string[]): string {
@@ -49,19 +77,33 @@ function buildTopXdc(ioMapping: IoMapping, warnings: string[]): string {
   lines.push('# Generated for top module: top');
   lines.push('');
 
-  const sortedInputs = stableSortMapping(ioMapping.inputs);
-  const sortedOutputs = stableSortMapping(ioMapping.outputs);
+  type TaggedEntry = { entry: IoMappingEntry; dir: 'in' | 'out' };
 
-  if (sortedInputs.length > 0) {
-    lines.push('## Inputs');
-    for (const entry of sortedInputs) {
+  const allEntries: TaggedEntry[] = [
+    ...stableSortMapping(ioMapping.inputs).map((e) => ({ entry: e, dir: 'in' as const })),
+    ...stableSortMapping(ioMapping.outputs).map((e) => ({ entry: e, dir: 'out' as const })),
+  ];
+
+  const groups = new Map<string, TaggedEntry[]>();
+  for (const tagged of allEntries) {
+    const group = detectSignalGroup(tagged.entry);
+    if (!groups.has(group)) groups.set(group, []);
+    groups.get(group)!.push(tagged);
+  }
+
+  for (const groupName of XDC_GROUP_ORDER) {
+    const entries = groups.get(groupName);
+    if (!entries || entries.length === 0) continue;
+
+    lines.push(`## ${groupName}`);
+    for (const { entry } of entries) {
       if (!entry.pin) {
-        warnings.push(`Missing pin mapping for input ${entry.nodeId}.${entry.port}`);
+        warnings.push(`Missing pin mapping for ${entry.nodeId}.${entry.port}`);
         continue;
       }
       const packagePin = resolveBasys3PackagePin(entry.pin);
       if (!packagePin) {
-        warnings.push(`Unsupported Basys3 pin alias for input ${entry.nodeId}.${entry.port}: ${entry.pin}`);
+        warnings.push(`Unsupported Basys3 pin alias for ${entry.nodeId}.${entry.port}: ${entry.pin}`);
         continue;
       }
       lines.push(
@@ -73,25 +115,6 @@ function buildTopXdc(ioMapping: IoMapping, warnings: string[]): string {
           `create_clock -period 10.000 -name sys_clk -waveform {0.000 5.000} [get_ports {${toSignalName(entry)}}]`
         );
       }
-    }
-    lines.push('');
-  }
-
-  if (sortedOutputs.length > 0) {
-    lines.push('## Outputs');
-    for (const entry of sortedOutputs) {
-      if (!entry.pin) {
-        warnings.push(`Missing pin mapping for output ${entry.nodeId}.${entry.port}`);
-        continue;
-      }
-      const packagePin = resolveBasys3PackagePin(entry.pin);
-      if (!packagePin) {
-        warnings.push(`Unsupported Basys3 pin alias for output ${entry.nodeId}.${entry.port}: ${entry.pin}`);
-        continue;
-      }
-      lines.push(
-        `set_property -dict { PACKAGE_PIN ${packagePin} IOSTANDARD LVCMOS33 } [get_ports {${toSignalName(entry)}}]`
-      );
     }
     lines.push('');
   }

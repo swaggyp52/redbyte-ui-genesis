@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { Circuit, CompositeNodeDef } from '@redbyte/rb-logic-core';
 import { registerCompositeNode } from '@redbyte/rb-logic-core';
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
+import type { CustomTestVector } from './components/VectorEditor';
 import { normalizeRBProject, type RBProject } from '../../export/projectFormat';
 import { stableSerialize } from '../../utils/stableSerialize';
 import { deriveVerifySchedule, type VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
@@ -162,6 +163,7 @@ export interface ProjectRuntimeState {
   activeExampleId: string | null;
   projectIoRows: ProjectIoRow[];
   projectVectors: TestVector[];
+  customVectors: CustomTestVector[];
   circuit: Circuit;
   verifyLastRun?: RuntimeVerifyRun;
   verifyRunHistory: VerifyRunLedgerEntry[];
@@ -173,6 +175,7 @@ export interface ProjectRuntimeState {
   setMappingPin: (rowId: string, pin: string) => void;
   autoSuggestMapping: () => void;
   setVectors: (vectors: TestVector[]) => void;
+  setCustomVectors: (vectors: CustomTestVector[]) => void;
   generateBringUpVectors: () => TestVector[];
   markDesignMutated: (circuit: Circuit) => void;
   addDesignNode: (nodeType: string, position: { x: number; y: number }) => void;
@@ -226,6 +229,7 @@ interface PersistedRuntimeState {
   activeExampleId: string | null;
   projectIoRows: ProjectIoRow[];
   projectVectors: TestVector[];
+  customVectors: CustomTestVector[];
   circuit: Circuit;
   verifyLastRun?: RuntimeVerifyRun;
   verifyRunHistory: VerifyRunLedgerEntry[];
@@ -251,6 +255,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               sim: {
                 ...state.sim,
                 running: true,
+                stepMode: false,
                 lastAction: 'run',
               },
             }));
@@ -266,15 +271,18 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           },
           step: () => {
             set((state) => ({
-              sim: advanceSimulationState(
-                state.circuit,
-                state.projectIoRows,
-                {
-                  ...state.sim,
-                  lastAction: 'step',
-                },
-                1
-              ),
+              sim: {
+                ...advanceSimulationState(
+                  state.circuit,
+                  state.projectIoRows,
+                  {
+                    ...state.sim,
+                    lastAction: 'step',
+                  },
+                  1
+                ),
+                stepMode: true,
+              },
             }));
           },
           runTicks: (ticks) => {
@@ -416,6 +424,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           activeExampleId: null,
           projectIoRows,
           projectVectors: cloneVectors(project.vectors ?? []),
+          customVectors: [],
           circuit,
           verifyLastRun: undefined,
           verifyRunHistory: [],
@@ -462,6 +471,9 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             dirtySinceExport: true,
           },
         }));
+      },
+      setCustomVectors: (vectors) => {
+        set(() => ({ customVectors: [...vectors] }));
       },
       generateBringUpVectors: () => {
         const generated = generateBringUpVectors({
@@ -986,6 +998,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         activeExampleId: state.activeExampleId,
         projectIoRows: cloneIoRows(state.projectIoRows),
         projectVectors: cloneVectors(state.projectVectors),
+        customVectors: [...(state.customVectors ?? [])],
         circuit: cloneCircuit(state.circuit),
         verifyLastRun: state.verifyLastRun
           ? cloneVerifyRun(state.verifyLastRun)
@@ -1092,6 +1105,7 @@ export function mergePersistedRuntimeState(
           : currentState.activeExampleId,
     projectIoRows,
     projectVectors,
+    customVectors: Array.isArray(candidate.customVectors) ? [...candidate.customVectors] : [],
     circuit,
     verifyLastRun,
     verifyRunHistory,
@@ -1129,6 +1143,7 @@ function stateFromExample(
     activeExampleId: example.id,
     projectIoRows,
     projectVectors: cloneVectors(example.vectors),
+    customVectors: [],
     circuit,
     verifyLastRun: undefined,
     verifyRunHistory: [],
