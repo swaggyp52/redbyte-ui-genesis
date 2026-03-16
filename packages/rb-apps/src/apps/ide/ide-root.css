@@ -6459,58 +6459,11 @@ details[open] summary .details-arrow {
   color: rgba(200,230,255,0.85);
 }
 
-/* ── Workspace layout: canvas-only / hdl-only / split ── */
-/* Canvas-only (default): canvasWrap takes full width */
-.ide-design-workspace[data-design-view='canvas'] {
-  flex-direction: column;
-}
-.ide-design-workspace[data-design-view='canvas'] .ide-design-canvasWrap {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-}
-.ide-design-workspace[data-design-view='canvas'] .ide-design-hdl-pane {
-  display: none;
-}
-
-/* HDL-only: hide canvas, HDL takes full space */
-.ide-design-workspace[data-design-view='hdl'] {
-  flex-direction: column;
-}
-.ide-design-workspace[data-design-view='hdl'] .ide-design-canvasWrap {
-  display: none;
-}
-.ide-design-workspace[data-design-view='hdl'] .ide-design-hdl-pane {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-/* Split: canvas left, HDL right — side by side */
-.ide-design-workspace[data-design-view='split'] {
-  flex-direction: row;
-  align-items: stretch;
-}
-.ide-design-workspace[data-design-view='split'] .ide-design-canvasWrap {
-  flex: 1 1 55%;
-  min-width: 280px;
-  border-right: 1px solid rgba(56,189,248,0.1);
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-.ide-design-workspace[data-design-view='split'] .ide-design-hdl-pane {
-  flex: 0 0 42%;
-  min-width: 220px;
-}
-
-/* ── HDL Pane ── */
-.ide-design-hdl-pane {
-  display: flex;
-  flex-direction: column;
-  background: #020810;
-  overflow: hidden;
-}
+/* ── Workspace layout is owned by .ide-design-pane-row (see below).          ──
+   ── The old .ide-design-workspace[data-design-view='*'] block has been        ──
+   ── removed: it set flex-direction: row on the workspace in split mode,       ──
+   ── which placed the toolbar alongside the pane-row instead of above it.      ──
+   ── Layout is now entirely controlled at the pane-row level.                  ── */
 
 .ide-design-hdl-header {
   display: flex;
@@ -18351,4 +18304,61 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 .ide-design-pane-row[data-design-view='split'] .ide-design-pane--hdl {
   min-width: 220px;
+}
+
+/* ── Workspace mode compositions ───────────────────────────────────────────
+   Three distinct workspace identities: Canvas / Code / Split.
+   The workspace layout is owned by .ide-design-pane-row.
+   The old .ide-design-workspace[data-design-view='*'] block was removed.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Code-only mode: HDL pane fills the full workspace cleanly */
+.ide-design-pane-row[data-design-view='hdl'] .ide-design-pane--hdl {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Code context strip in toolbar when canvas tools are hidden */
+.ide-toolbar-group.is-code-context {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.ide-design-code-context-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(180, 208, 238, 0.88);
+}
+
+.ide-design-code-context-desc {
+  font-size: 11px;
+  color: rgba(160, 185, 212, 0.62);
+}
+
+/* Split mode: ensure pane-row has correct flex direction and both panes show */
+.ide-design-pane-row[data-design-view='split'] {
+  flex-direction: row;
+}
+
+/* Code view: HDL body should have a slightly lighter bg to feel like a text editor */
+[data-design-view='hdl'] .ide-design-pane--hdl .ide-design-hdl-body,
+[data-design-view='split'] .ide-design-pane--hdl .ide-design-hdl-body {
+  background: rgba(5, 12, 22, 0.72);
+}
+
+[data-design-view='hdl'] .ide-design-pane--hdl .ide-design-hdl-textarea,
+[data-design-view='split'] .ide-design-pane--hdl .ide-design-hdl-textarea {
+  min-height: 380px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+[data-design-view='hdl'] .ide-design-hdl-header {
+  background: rgba(8, 16, 28, 0.95);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.14);
+  padding: 10px 16px;
 }

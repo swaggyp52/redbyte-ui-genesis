@@ -3470,6 +3470,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       mode="design"
       consoleHasBlocking={compilerErrorCount > 0}
       consoleHasEntries={diagnosticsDrawerRows.length > 0}
+      hideRightDock={designView !== 'canvas'}
       dock={
         <>
           <SurfacePanel className="ide-design-palette" testId="ide-design-dock-palette">
@@ -4056,57 +4057,72 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
     >
         <IdePanel
-          title="Circuit Designer"
-          right={<IdeStatusPill tone={isPlacementMode || toolMode === 'wire' ? 'warn' : 'ok'}>{activeModeLabel}</IdeStatusPill>}
+          title={
+            designView === 'hdl' ? 'Generated Code' :
+            designView === 'split' ? 'Circuit + Code' :
+            'Circuit Designer'
+          }
+          right={designView === 'canvas' ? <IdeStatusPill tone={isPlacementMode || toolMode === 'wire' ? 'warn' : 'ok'}>{activeModeLabel}</IdeStatusPill> : null}
           testId="ide-design-panel"
         >
           <div className="ide-design-workspace" data-testid="ide-design-workspace" data-design-view={effectiveDesignView}>
 
             {/* ── Compact primary toolbar ── */}
             <div className="ide-design-toolbar" data-testid="ide-design-toolbar">
-              {/* Group 1: Mode — primary weight */}
-              <div className="ide-toolbar-group is-mode">
-                <div className="ide-design-tool-segmented" data-testid="ide-design-tool-segmented">
-                  <button
-                    type="button"
-                    className={`ide-design-tool-segment ${toolMode === 'select' ? 'is-active' : ''}`}
-                    onClick={setSelectMode}
-                    data-testid="ide-design-tool-select"
-                    aria-pressed={toolMode === 'select'}
-                    title="Select tool (S)"
-                  >
-                    <span className="ide-design-tool-icon" aria-hidden="true">↖</span>
-                    <span className="ide-design-tool-text"><strong>Select</strong><kbd>S</kbd></span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`ide-design-tool-segment ${toolMode === 'wire' ? 'is-active' : ''}`}
-                    onClick={setWireMode}
-                    data-testid="ide-design-tool-wire"
-                    aria-pressed={toolMode === 'wire'}
-                    title="Wire tool (W)"
-                  >
-                    <span className="ide-design-tool-icon" aria-hidden="true">⌀</span>
-                    <span className="ide-design-tool-text"><strong>Wire</strong><kbd>W</kbd></span>
-                  </button>
-                </div>
-              </div>
+              {/* Groups 1+2: Canvas tools — only visible when canvas is in the view */}
+              {designView !== 'hdl' ? (
+                <>
+                  {/* Group 1: Mode — primary weight */}
+                  <div className="ide-toolbar-group is-mode">
+                    <div className="ide-design-tool-segmented" data-testid="ide-design-tool-segmented">
+                      <button
+                        type="button"
+                        className={`ide-design-tool-segment ${toolMode === 'select' ? 'is-active' : ''}`}
+                        onClick={setSelectMode}
+                        data-testid="ide-design-tool-select"
+                        aria-pressed={toolMode === 'select'}
+                        title="Select tool (S)"
+                      >
+                        <span className="ide-design-tool-icon" aria-hidden="true">↖</span>
+                        <span className="ide-design-tool-text"><strong>Select</strong><kbd>S</kbd></span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`ide-design-tool-segment ${toolMode === 'wire' ? 'is-active' : ''}`}
+                        onClick={setWireMode}
+                        data-testid="ide-design-tool-wire"
+                        aria-pressed={toolMode === 'wire'}
+                        title="Wire tool (W)"
+                      >
+                        <span className="ide-design-tool-icon" aria-hidden="true">⌀</span>
+                        <span className="ide-design-tool-text"><strong>Wire</strong><kbd>W</kbd></span>
+                      </button>
+                    </div>
+                  </div>
 
-              {/* Group 2: Edit operations */}
-              <div className="ide-toolbar-group is-edit">
-                <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-tool-snap">
-                  Snap {snapToGrid ? 'On' : 'Off'}
-                </IdeButton>
-                <IdeButton tone="ghost" onClick={handleUndo} disabled={undoDepth === 0} testId="ide-design-tool-undo">
-                  Undo
-                </IdeButton>
-                <IdeButton tone="ghost" onClick={handleRedo} disabled={redoDepth === 0} testId="ide-design-tool-redo">
-                  Redo
-                </IdeButton>
-                <IdeButton tone="danger" onClick={deleteSelection} disabled={!hasSelection} testId="ide-design-tool-delete">
-                  Delete
-                </IdeButton>
-              </div>
+                  {/* Group 2: Edit operations */}
+                  <div className="ide-toolbar-group is-edit">
+                    <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-tool-snap">
+                      Snap {snapToGrid ? 'On' : 'Off'}
+                    </IdeButton>
+                    <IdeButton tone="ghost" onClick={handleUndo} disabled={undoDepth === 0} testId="ide-design-tool-undo">
+                      Undo
+                    </IdeButton>
+                    <IdeButton tone="ghost" onClick={handleRedo} disabled={redoDepth === 0} testId="ide-design-tool-redo">
+                      Redo
+                    </IdeButton>
+                    <IdeButton tone="danger" onClick={deleteSelection} disabled={!hasSelection} testId="ide-design-tool-delete">
+                      Delete
+                    </IdeButton>
+                  </div>
+                </>
+              ) : (
+                /* Code-only context strip — replaces build tools when viewing generated code */
+                <div className="ide-toolbar-group is-code-context" data-testid="ide-design-code-context">
+                  <span className="ide-design-code-context-label">VHDL · Verilog</span>
+                  <span className="ide-design-code-context-desc">Live output from circuit</span>
+                </div>
+              )}
 
               {/* Group 3: Utilities — floated right */}
               <div className="ide-toolbar-group is-utils">
