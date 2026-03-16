@@ -1746,7 +1746,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (totalWidth === 0) return 'stacked';
     const canvasWidth = totalWidth * splitRatio;
     const hdlWidth = totalWidth * (1 - splitRatio);
-    return totalWidth < 980 || canvasWidth < 440 || hdlWidth < 440 ? 'stacked' : 'split';
+    // Lower thresholds so split works on more screen sizes without stacking
+    return totalWidth < 720 || canvasWidth < 320 || hdlWidth < 320 ? 'stacked' : 'split';
   }, [designView, paneRowSize.width, splitRatio]);
   const selectedNodeIoRow = useMemo(() => {
     if (!selectedNode) return null;
@@ -2131,6 +2132,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             );
           })()}
         </SurfacePanel>
+        {/* Macro Library — placed after palette so it's accessible like a palette item */}
+        <MacroLibraryPanel
+          macros={macros}
+          activeMacroId={activeMacroInsertionId}
+          onSelectMacro={handleSelectMacro}
+          onDeleteMacro={onDeleteMacro ? handleDeleteMacro : undefined}
+        />
         </>
       }
       inspector={
@@ -2156,16 +2164,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <span className="ide-design-inspector-hint">No selection</span>
             )}
           </div>
-          {macros.length > 0 && (
-          <MacroLibraryPanel
-            macros={macros}
-            activeMacroId={activeMacroInsertionId}
-            onSelectMacro={handleSelectMacro}
-            onDeleteMacro={onDeleteMacro ? handleDeleteMacro : undefined}
-          />
-          )}
           <IdeInspectorAccordion defaultOpenId="design-context">
-          <IdeInspectorSection title="Context Inspector" accordionId="design-context" testId="ide-design-context-inspector">
+          <IdeInspectorSection title="Selection" accordionId="design-context" testId="ide-design-context-inspector">
             {selectedNode && selection.nodes.size === 1 ? (
               <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
                 <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
@@ -3653,9 +3653,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 onPointerMove={(e) => {
                   if (!isDraggingSplitter || !paneRowRef.current) return;
                   const rect = paneRowRef.current.getBoundingClientRect();
-                  const minPaneRatio = Math.min(0.45, 440 / Math.max(rect.width, 1));
+                  const minPaneRatio = Math.min(0.35, 320 / Math.max(rect.width, 1));
                   const ratio = Math.max(minPaneRatio, Math.min(1 - minPaneRatio, (e.clientX - rect.left) / rect.width));
-                  setSplitRatio(ratio);
+                  requestAnimationFrame(() => setSplitRatio(ratio));
                 }}
                 onPointerUp={(e) => {
                   (e.target as HTMLElement).releasePointerCapture(e.pointerId);
@@ -3669,7 +3669,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div
                 className="ide-design-pane ide-design-pane--hdl"
                 data-testid="ide-design-hdl-pane"
-                style={effectiveDesignView === 'split' ? { flex: `0 0 ${(1 - splitRatio) * 100}%`, minWidth: '440px' } : undefined}
+                style={effectiveDesignView === 'split' ? { flex: `0 0 ${(1 - splitRatio) * 100}%`, minWidth: '320px' } : undefined}
               >
                 {/* VHDL section */}
                 <div className="ide-design-hdl-header" data-testid="ide-design-hdl-header">

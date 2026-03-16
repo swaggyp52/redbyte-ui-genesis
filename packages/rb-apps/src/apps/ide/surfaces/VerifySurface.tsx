@@ -2078,21 +2078,21 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const displayStatusLabel =
     displayStatus === 'PASS'
       ? lastRun?.qualification === 'incomplete-mapping'
-        ? 'PASS (INCOMPLETE) — some outputs not mapped to board pins'
-        : 'PASS — deterministic agreement'
+        ? 'Simulation complete — some outputs not yet mapped to board pins'
+        : 'Simulation complete — all outputs match expectations'
       : displayStatus === 'FAIL'
         ? hasNoTrace
-          ? 'No trace — run completed with empty waveform'
-          : 'FAIL — mismatch detected'
+          ? 'Simulation complete — empty waveform recorded'
+          : 'Simulation complete — some outputs differ from expectations'
         : displayStatus === 'STALE'
-          ? 'STALE — circuit changed since last run, re-run to get current result'
+          ? 'STALE — circuit changed since last run, re-run to see current waveform'
           : displayStatus === 'RUNNING'
-            ? 'Running verification…'
+            ? 'Running simulation…'
             : displayStatus === 'TRACE'
-              ? 'TRACE ONLY — no expectations set'
+              ? 'Simulation complete — waveform recorded, no expectations set'
               : displayStatus === 'BLOCKED'
-                ? 'Blocked — add test vectors to run'
-                : 'Ready — vectors loaded, click Run';
+                ? 'Add test vectors to run the simulation'
+                : 'Ready — vectors loaded, click Run to see the waveform';
 
   const vectorSourceLabel =
     authoredVectors.length > 0 || hasVectors ? 'Project vectors loaded' : 'No vectors saved yet';
@@ -2893,7 +2893,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           <header className="ide-design-diagnostics-drawer-header">
             <h3>Activity</h3>
             <IdeStatusPill tone={displayTone} data-testid="ide-verify-console-status">
-              {displayStatus}
+              {displayStatus === 'PASS' ? 'COMPLETE' : displayStatus === 'FAIL' ? 'DIFFERS' : displayStatus}
             </IdeStatusPill>
           </header>
           <div className="ide-design-diagnostics-list">
@@ -2993,21 +2993,25 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {/* Status strip — status-first, one primary CTA */}
         <div className="ide-verify-status-strip" data-testid="ide-verify-banner">
           <IdeStatusPill tone={displayTone} testId="ide-verify-summary-status">
-            {displayStatus === 'PASS' && lastRun?.qualification === 'incomplete-mapping'
-              ? 'PASS (INCOMPLETE)'
-              : displayStatus}
+            {displayStatus === 'PASS'
+              ? lastRun?.qualification === 'incomplete-mapping'
+                ? 'COMPLETE (PARTIAL)'
+                : 'COMPLETE'
+              : displayStatus === 'FAIL'
+                ? 'DIFFERS'
+                : displayStatus}
           </IdeStatusPill>
           {lastRun && (
             <>
               <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
               <span className="ide-verify-strip-meta ide-verify-strip-pass" data-testid="ide-verify-strip-pass-count">
-                {runRows.length - failingRows.length}/{runRows.length} passed
+                {runRows.length - failingRows.length}/{runRows.length} match
               </span>
               {failingRows.length > 0 && (
                 <>
                   <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
                   <span className="ide-verify-strip-meta ide-verify-strip-fail" data-testid="ide-verify-strip-fail-count">
-                    {failingRows.length} fail
+                    {failingRows.length} differ
                     {typeof firstFailureTick === 'number' && (
                       <> · first mismatch t{firstFailureTick}
                         {failingRows.slice(0, 2).length > 0 && (
@@ -3063,26 +3067,24 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           {!isFirstRunState && (
             <div className="ide-verify-strip-actions">
             {/* Primary CTA varies by state */}
-            {status === 'pass' && !isRunStale ? (
+            {(status === 'pass' || status === 'fail') && !isRunStale ? (
               <span data-testid="ide-primary-cta">
                 <IdeButton
-                  tone={lastRun?.qualification === 'incomplete-mapping' ? 'secondary' : 'primary'}
+                  tone="primary"
                   onClick={onGoToHardware}
                   testId="ide-verify-cta-continue"
                 >
-                  {lastRun?.qualification === 'incomplete-mapping' ? 'Finish mapping → Hardware' : 'Continue → Hardware'}
+                  {lastRun?.qualification === 'incomplete-mapping'
+                    ? 'Finish mapping → Hardware'
+                    : failingRows.length > 0
+                      ? 'Continue to Hardware →'
+                      : 'Continue → Hardware'}
                 </IdeButton>
               </span>
             ) : isRunStale ? (
               <span data-testid="ide-primary-cta">
                 <IdeButton tone="primary" onClick={runVerification} disabled={runState === 'running'} testId="ide-verify-stale-primary-rerun">
-                  Re-run Verification
-                </IdeButton>
-              </span>
-            ) : failingRows.length > 0 ? (
-              <span data-testid="ide-primary-cta">
-                <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-jump-first-failure">
-                  Jump to first failing tick
+                  Re-run Simulation
                 </IdeButton>
               </span>
             ) : (
@@ -3094,11 +3096,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   testId="ide-verify-run"
                   className={displayStatus === 'READY' ? 'is-pulsing' : undefined}
                 >
-                  Run
+                  Run Simulation
                 </IdeButton>
               </span>
             )}
-            {/* Secondary: Run when not already run-primary */}
+            {/* Inspect differences shortcut — shown after run when outputs differ */}
+            {failingRows.length > 0 && !isRunStale && (
+              <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-jump-first-failure">
+                Inspect differences
+              </IdeButton>
+            )}
+            {/* Secondary: Re-run when simulation has already been run */}
             {(status === 'pass' || failingRows.length > 0) && (
               <IdeButton
                 tone="secondary"
@@ -3106,7 +3114,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 disabled={runState === 'running'}
                 testId="ide-verify-run-secondary"
               >
-                Run
+                Re-run
               </IdeButton>
             )}
             {(hasResults || Boolean(lastRun)) && (
@@ -3158,15 +3166,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )}
 
         {displayStatus === 'FAIL' && verifyHint && (
-          <IdeCallout tone="warn" testId="ide-verify-hint-callout" className="ide-callout--hint">
+          <IdeCallout tone="info" title="Something to investigate" testId="ide-verify-hint-callout" className="ide-callout--hint">
             {verifyHint}
           </IdeCallout>
         )}
 
         {!isFirstRunState && (
           <div className="ide-verify-authority-note-inline" data-testid="ide-verify-authority-note">
-            <strong>Verification Result (Authoritative)</strong>
-            <span>Design trace is for debug only and does not affect pass/fail.</span>
+            <strong>Simulation Result (Authoritative)</strong>
+            <span>Waveform trace is for inspection only and does not affect trust status.</span>
           </div>
         )}
 
@@ -3808,6 +3816,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </span>
                   ))}
                 </span>
+              </span>
+              <span className="ide-verify-drawer-label" aria-hidden="true">
+                {drawerOpen ? 'Hide analysis' : 'Show analysis'}
               </span>
               <span className="ide-verify-drawer-chevron" aria-hidden="true">
                 {drawerOpen ? '▾' : '▸'}

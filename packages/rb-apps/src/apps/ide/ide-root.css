@@ -6714,7 +6714,9 @@ details[open] summary .details-arrow {
 .ide-design-pane--hdl .ide-design-hdl-textarea {
   flex: 1 1 auto;
   min-height: 0;
-  height: 0;   /* forces textarea to honor flex sizing in Safari */
+  height: 0;       /* forces textarea to honor flex sizing in Safari */
+  overflow-y: auto; /* explicit scroll — prevents content getting clipped */
+  overflow-x: auto;
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -17080,4 +17082,158 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 .ide-hw-map-board {
   flex: 1;
   min-width: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 99 — Final authority: Verify waveform always reachable
+   Overrides all prior min-height wars so the scope is visible
+   at default viewport without horizontal layout fighting.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Oscilloscope stage: flex with min-height floor that fits in viewport */
+.ide-verify-oscilloscope-stage {
+  min-height: clamp(180px, 38vh, 520px) !important;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+/* Waveform scroll: always reachable, horizontally scrollable */
+.ide-verify-waveform-scroll {
+  min-height: clamp(160px, 32vh, 480px) !important;
+  max-height: none !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  flex: 1 1 auto;
+}
+
+/* Supporting strip (truth table drawer): capped height so it doesn't bury the scope */
+.ide-verify-supporting-strip {
+  max-height: clamp(200px, 30vh, 340px) !important;
+  overflow: hidden;
+}
+.ide-verify-supporting-strip.is-open {
+  max-height: clamp(200px, 30vh, 340px) !important;
+}
+
+/* Drawer toggle: make it taller and more obvious */
+.ide-verify-drawer-toggle {
+  height: 40px !important;
+  min-height: 40px;
+  background: rgba(10, 20, 36, 0.95) !important;
+  border-top: 1px solid rgba(56,189,248,0.2) !important;
+}
+.ide-verify-drawer-toggle:hover {
+  background: rgba(56,189,248,0.08) !important;
+}
+
+/* Drawer label: explicit show/hide indicator */
+.ide-verify-drawer-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(140,180,220,0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 100 — A5-A7: Layout balance, import centering, state guards
+   ════════════════════════════════════════════════════════════════ */
+
+/* A6-Import: center the workflow — workspace shouldn't spread to full 1000px+
+   on large monitors when it's a focused import form */
+[data-ide-mode-marker='import'] .ide-workbench-workspace > .ide-panel > .ide-panel-body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+[data-ide-mode-marker='import'] .ide-workbench-workspace > .ide-panel > .ide-panel-body > * {
+  max-width: 720px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* A6-Export: keep left col as main content, right col as sidebar.
+   On narrow workspaces (<900px), stack vertically */
+@media (max-width: 1199px) {
+  .ide-export-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* B4-Hardware: board container — rounded + shadow for professional feel */
+.ide-hw-board-wrap {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.ide-hw-board-inner {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* B4-Hardware: proof bundle dock — fix hash code overflow/truncation */
+.ide-hw-cert-slab {
+  overflow: hidden;
+}
+.ide-hw-cert-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.ide-hw-cert-val {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+/* B4-Hardware: confidence checklist — no column clipping */
+.ide-hw-confidence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ide-hw-confidence-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.ide-hw-confidence-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* A5-Project: flightdeck panels — prevent min-width causing overflow on small viewports */
+[data-ide-mode-marker='project'] .ide-project-flightdeck {
+  min-width: 0;
+  overflow: visible;
+}
+[data-ide-mode-marker='project'] .ide-project-spotlight {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* A7: Console toggle handle — always reachable even when console height = 0 */
+.ide-workbench-console-toggle {
+  flex-shrink: 0 !important;
+  min-height: 36px !important;
+  z-index: 10;
+}
+
+/* A7: Panel bodies should never collapse to 0 height from bad localStorage data */
+.ide-workbench-dock {
+  min-height: 0;
+}
+.ide-workbench-workspace {
+  min-height: 0;
 }

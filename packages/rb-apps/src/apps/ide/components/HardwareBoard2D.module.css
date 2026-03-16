@@ -4,6 +4,8 @@
   background: transparent;
   width: 100%;
   height: auto;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* LED hitbox and label - enhanced hover feedback */

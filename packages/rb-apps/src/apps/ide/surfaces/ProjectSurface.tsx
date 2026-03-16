@@ -467,101 +467,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [onOpenDesign, onOpenExport, onOpenHardware, onOpenImport, onOpenVerify]
   );
 
-  const readinessRows = useMemo(
-    () =>
-      [
-        {
-          id: 'circuit',
-          label: 'Circuit loaded',
-          ready: readiness.hasCircuit,
-          actionLabel: readiness.hasCircuit ? 'Open Design' : 'Import HDL',
-          onAction: readiness.hasCircuit ? onOpenDesign : onOpenImport,
-        },
-        {
-          id: 'mapping',
-          label: 'Mapping complete',
-          ready: readiness.hasIoMapping,
-          actionLabel: readiness.hasIoMapping ? 'Review mapping' : 'Map now',
-          onAction: readiness.hasIoMapping ? onOpenDesign : onAutoSuggestMapping,
-        },
-        {
-          id: 'verify',
-          label: 'Verify passed',
-          ready: verifyTrusted,
-          actionLabel: verifyTrusted ? 'Review verify' : 'Run Verify',
-          onAction: onOpenVerify,
-        },
-        {
-          id: 'export',
-          label: 'Export available',
-          ready: exportAvailable,
-          actionLabel: 'Open Export',
-          onAction: onOpenExport,
-        },
-        {
-          id: 'hardware',
-          label: 'Hardware bring-up ready',
-          ready: hardwareReady,
-          actionLabel: hardwareReady ? 'Open Hardware' : 'Prep hardware',
-          onAction: onOpenHardware,
-        },
-      ].map((item) => [
-        item.label,
-        <IdeStatusPill
-          key={`${item.id}-status`}
-          tone={item.id === 'export'
-            ? exportReady
-              ? 'ok'
-              : 'warn'
-            : item.id === 'verify'
-              ? verifyTrusted
-                ? 'ok'
-                : 'warn'
-              : item.ready
-                ? 'ok'
-                : 'warn'}
-        >
-          {item.id === 'export'
-            ? exportReady
-              ? 'TRUSTED'
-              : item.ready
-                ? 'AVAILABLE'
-                : 'BLOCKED'
-            : item.id === 'verify'
-              ? verifyTrusted
-                ? 'TRUSTED'
-                : verifyPassIncomplete
-                  ? 'PASS (INCOMPLETE)'
-                  : 'NEEDS RUN'
-              : item.ready
-                ? 'READY'
-                : 'BLOCKED'}
-        </IdeStatusPill>,
-        <IdeButton
-          key={`${item.id}-action`}
-          tone={item.id === 'export' || item.ready ? 'ghost' : 'secondary'}
-          onClick={item.onAction}
-          testId={`ide-project-readiness-action-${item.id}`}
-        >
-          {item.actionLabel}
-        </IdeButton>,
-      ]),
-    [
-      exportAvailable,
-      exportReady,
-      hardwareReady,
-      onAutoSuggestMapping,
-      onOpenDesign,
-      onOpenExport,
-      onOpenHardware,
-      onOpenImport,
-      onOpenVerify,
-      readiness.hasCircuit,
-      readiness.hasIoMapping,
-      verifyPassIncomplete,
-      verifyTrusted,
-    ]
-  );
 
   const ioBusIoRows = useMemo(
     () =>
@@ -700,7 +605,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     () => [
       {
         id: 'design',
-        step: '1',
+        step: '01',
         label: 'Design',
         meta: designCardDone ? 'Mapped' : readiness.hasCircuit ? 'In progress' : 'Start here',
         state: designCardDone ? 'done' : primaryCta.mode === 'design' ? 'active' : 'idle',
@@ -709,7 +614,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       },
       {
         id: 'verify',
-        step: '2',
+        step: '02',
         label: 'Verify',
         meta: verifyTrusted
           ? 'Trusted'
@@ -724,7 +629,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       },
       {
         id: 'export',
-        step: '3',
+        step: '03',
         label: 'Export',
         meta: exportReady ? 'Trusted' : exportAvailable ? 'Open now' : primaryCta.mode === 'export' ? 'Next up' : 'Map pins',
         state: exportReady ? 'done' : exportAvailable && primaryCta.mode === 'export' ? 'active' : 'idle',
@@ -733,7 +638,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       },
       {
         id: 'hardware',
-        step: '4',
+        step: '04',
         label: 'Hardware',
         meta: hardwareReady ? 'Board ready' : primaryCta.mode === 'hardware' ? 'Go live' : 'Later',
         state: hardwareReady ? 'done' : primaryCta.mode === 'hardware' ? 'active' : 'idle',
@@ -1008,9 +913,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           <div className="ide-project-showcase" data-testid="ide-project-showcase">
             <div className="ide-project-showcase-copy">
               <div className="ide-project-showcase-headline">
-                <span className="ide-project-showcase-eyebrow">RedByte classroom flow</span>
+                <span className="ide-project-showcase-eyebrow">
+                  {activeExample?.lab ?? activeExample?.course ?? 'Classroom project'}
+                </span>
                 <h2 className="ide-project-showcase-title">
-                  Build it, prove it, and light it up on the board.
+                  {activeExample?.name ?? projectName}
                 </h2>
                 <p className="ide-project-showcase-body">{projectSummary}</p>
               </div>
@@ -1444,12 +1351,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               )}
             </div>
           </details>
-
-          <IdeCallout tone="info" title="Lab-day proven export subset" testId="ide-project-supported-scope-callout">
-            RedByte is frozen today for Basys3 + Vivado Project Mode using IO, gates, <code>FullAdder</code>,{' '}
-            <code>MUX4</code>, and <code>DFlipFlop</code>. Hierarchy, bus-heavy builds, and behavioral HDL still need
-            shipped starters or manual validation.
-          </IdeCallout>
 
           <div
             className={`ide-project-mapping-summary${unmappedRequiredCount > 0 ? ' has-error' : ''}`}

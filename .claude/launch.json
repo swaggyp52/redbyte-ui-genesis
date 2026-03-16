@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "ide-preview",
+      "runtimeExecutable": "C:\\Windows\\System32\\cmd.exe",
+      "runtimeArgs": ["/c", "npx", "--yes", "serve", "dist", "-l", "5177", "--no-clipboard"],
+      "port": 5177
+    },
+    {
       "name": "playground",
       "runtimeExecutable": "C:\\Windows\\System32\\cmd.exe",
       "runtimeArgs": ["/c", "pnpm", "--filter", "@redbyte/playground", "dev"],

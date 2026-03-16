@@ -284,14 +284,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           ? 'error' as const
           : 'error' as const;
     const verifyDetail = hasVerifyPass
-      ? `PASS · ${verifyResult?.hash?.slice(0, 8) ?? ''}`
+      ? `Complete · ${verifyResult?.hash?.slice(0, 8) ?? ''}`
       : verifyResult?.status === 'pass' && dirtySinceVerify
-        ? 'Dirty'
+        ? 'Stale — design changed'
         : verifyResult
           ? typeof verifyResult.failingTick === 'number'
-            ? `FAIL · t${verifyResult.failingTick}`
-            : 'FAIL'
-          : 'No run';
+            ? `Outputs differ · t${verifyResult.failingTick}`
+            : 'Outputs differ'
+          : 'Not run';
     const mappingTone: 'ok' | 'error' =
       requiredCount === 0 || requiredMappedCount === requiredCount ? 'ok' : 'error';
     const mappingDetail =
@@ -924,12 +924,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               >
                 <IdeStatusPill tone={gate.tone}>
                   {gate.tone === 'ok'
-                    ? 'PASS'
+                    ? 'READY'
                     : gate.tone === 'warn'
-                      ? 'DIRTY'
+                      ? 'STALE'
                       : gate.tone === 'idle'
-                        ? 'UNRUN'
-                        : 'FAIL'}
+                        ? 'PENDING'
+                        : 'NEEDS FIX'}
                 </IdeStatusPill>
                 <span className="ide-export-gate-label">{gate.label}</span>
                 <span className="ide-export-gate-detail">{gate.detail}</span>
@@ -1622,7 +1622,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     className="ide-export-download-gate-note"
                     data-testid="ide-export-download-gate-note"
                   >
-                    {gateRows.find((g) => g.tone === 'error')?.label ?? 'Blockers'} must pass
+                    {gateRows.find((g) => g.tone === 'error')?.label ?? 'All gates'} must be ready
                   </span>
                 )}
                 <details className="ide-export-pipeline-details" data-testid="ide-export-pipeline-details" style={{ marginTop: 'var(--ide-space-1)' }}>

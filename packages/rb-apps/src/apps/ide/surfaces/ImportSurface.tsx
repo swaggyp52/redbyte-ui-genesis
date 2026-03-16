@@ -1918,8 +1918,24 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
             </IdeButton>
           </div>
           {zipImportError ? (
-            <IdeCallout tone="error" title="ZIP import failed" testId="ide-import-zip-error">
-              <p className="ide-copy" style={{ margin: 0 }}>{zipImportError}</p>
+            <IdeCallout tone="error" title="Could not open ZIP" testId="ide-import-zip-error">
+              <p className="ide-copy" style={{ margin: '0 0 var(--ide-space-1)' }}>
+                {/no .*(hdl|vhd|verilog|\.v\b)/i.test(zipImportError)
+                  ? 'No VHDL or Verilog file was found in this ZIP. Make sure your Vivado export includes a top-level .vhd or .v source.'
+                  : /entity/i.test(zipImportError)
+                    ? "Could not find a top-level entity in your HDL. Verify your file defines an entity block with a port list."
+                    : /port|xdc/i.test(zipImportError)
+                      ? 'No port definitions found. Check that your XDC file has valid LOC constraints and your HDL declares all ports.'
+                      : 'The ZIP could not be read. Try re-exporting from Vivado, or use Paste HDL to bring in your source directly.'}
+              </p>
+              <details>
+                <summary style={{ cursor: 'pointer', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+                  Show technical details
+                </summary>
+                <p className="ide-copy" style={{ margin: 'var(--ide-space-1) 0 0', fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>
+                  {zipImportError}
+                </p>
+              </details>
             </IdeCallout>
           ) : null}
           {zipInspection ? (
@@ -2776,8 +2792,24 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 <span className="ide-import-commitPreview-val">{commitPreview.mappedCount}/{commitPreview.totalPorts} mapped</span>
               </div>
               <div className="ide-import-commitPreview-row">
-                <span className="ide-import-commitPreview-key">GRAPH</span>
-                <span className="ide-import-commitPreview-val">{commitPreview.nodeCount} nodes · {commitPreview.connectionCount} connections</span>
+                <span className="ide-import-commitPreview-key">FIDELITY</span>
+                <span className="ide-import-commitPreview-val">
+                  {isManifestZipImport
+                    ? 'Full restore — exact RedByte project'
+                    : commitPreview.reconstructionLevel === 'full'
+                      ? 'Reconstructed — structural HDL parsed'
+                      : commitPreview.reconstructionLevel === 'ports-only'
+                        ? 'Partial — ports only, no internal logic'
+                        : 'Minimal — entity skeleton only'}
+                </span>
+              </div>
+              <div className="ide-import-commitPreview-row">
+                <span className="ide-import-commitPreview-key">CIRCUIT</span>
+                <span className="ide-import-commitPreview-val">
+                  {commitPreview.nodeCount > 0
+                    ? `${commitPreview.nodeCount} nodes · ${commitPreview.connectionCount} connections`
+                    : 'Empty — no gates or wires recovered'}
+                </span>
               </div>
             </div>
             {hasImportBlocker ? (
@@ -3348,8 +3380,24 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                   </IdeButton>
                 </div>
                 {zipImportError && (
-                  <IdeCallout tone="error" title="ZIP import failed" testId="ide-import-zip-error">
-                    <p className="ide-copy" style={{ margin: 0 }}>{zipImportError}</p>
+                  <IdeCallout tone="error" title="Could not open ZIP" testId="ide-import-zip-error">
+                    <p className="ide-copy" style={{ margin: '0 0 var(--ide-space-1)' }}>
+                      {/no .*(hdl|vhd|verilog|\.v\b)/i.test(zipImportError)
+                        ? 'No VHDL or Verilog file was found in this ZIP. Make sure your Vivado export includes a top-level .vhd or .v source.'
+                        : /entity/i.test(zipImportError)
+                          ? "Could not find a top-level entity in your HDL. Verify your file defines an entity block with a port list."
+                          : /port|xdc/i.test(zipImportError)
+                            ? 'No port definitions found. Check that your XDC file has valid LOC constraints and your HDL declares all ports.'
+                            : 'The ZIP could not be read. Try re-exporting from Vivado, or use Paste HDL to bring in your source directly.'}
+                    </p>
+                    <details>
+                      <summary style={{ cursor: 'pointer', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+                        Show technical details
+                      </summary>
+                      <p className="ide-copy" style={{ margin: 'var(--ide-space-1) 0 0', fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>
+                        {zipImportError}
+                      </p>
+                    </details>
                   </IdeCallout>
                 )}
 
