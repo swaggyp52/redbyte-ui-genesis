@@ -20,13 +20,13 @@ await runIdeGate('IDE design palette build contract satisfied', async ({ page, b
   });
   assert(Array.isArray(baselineNodeIds), 'expected baseline circuit node IDs');
 
-  await assertUniqueBoardAlias(page, 'SW0', '[data-testid="ide-design-board-input-sw0"]');
-  await assertUniqueBoardAlias(page, 'LD0', '[data-testid="ide-design-board-output-ld0"]');
+  await assertUniqueBoardAlias(page, 'SW0', '[data-testid="ide-design-board-input-sw0"]', { x: 0.18, y: 0.22 });
+  await assertUniqueBoardAlias(page, 'LD0', '[data-testid="ide-design-board-output-ld0"]', { x: 0.82, y: 0.26 });
 
-  await page.locator('[data-testid="ide-design-palette-input"]').first().click();
-  await page.locator('[data-testid="ide-design-palette-input"]').first().click();
-  await page.locator('[data-testid="ide-design-palette-xor"]').first().click();
-  await page.locator('[data-testid="ide-design-palette-output"]').first().click();
+  await placeFromPalette(page, '[data-testid="ide-design-palette-input"]', 'Input', { x: 0.25, y: 0.45 });
+  await placeFromPalette(page, '[data-testid="ide-design-palette-input"]', 'Input', { x: 0.25, y: 0.62 });
+  await placeFromPalette(page, '[data-testid="ide-design-palette-xor"]', 'XOR', { x: 0.5, y: 0.45 });
+  await placeFromPalette(page, '[data-testid="ide-design-palette-output"]', 'Output', { x: 0.75, y: 0.45 });
 
   const circuitIds = await page.evaluate((knownNodeIds) => {
     const store = window.__RB_CIRCUIT_STORE__;
@@ -105,9 +105,55 @@ await runIdeGate('IDE design palette build contract satisfied', async ({ page, b
   await assertBoardAliasCanDeleteAndReadd(
     page,
     'SW0',
-    '[data-testid="ide-design-board-input-sw0"]'
+    '[data-testid="ide-design-board-input-sw0"]',
+    { x: 0.22, y: 0.8 }
   );
 });
+
+async function placeFromPalette(page, buttonSelector, expectedLabel, placementRatio) {
+  const beforeCount = await page.evaluate(() => {
+    const store = window.__RB_CIRCUIT_STORE__;
+    return store?.getState?.().circuit?.nodes?.length ?? -1;
+  });
+
+  await page.locator(buttonSelector).first().click();
+
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
+    return canvas?.getAttribute('data-placement-active') === '1';
+  }, { timeout: 5000 });
+
+  const cueText = (await page.locator('[data-testid="ide-design-placement-cue"]').textContent()) ?? '';
+  assert(
+    cueText.toLowerCase().includes(String(expectedLabel).toLowerCase()),
+    `placement cue mismatch for ${expectedLabel}: ${cueText}`
+  );
+
+  const afterPaletteClickCount = await page.evaluate(() => {
+    const store = window.__RB_CIRCUIT_STORE__;
+    return store?.getState?.().circuit?.nodes?.length ?? -1;
+  });
+  assert(
+    afterPaletteClickCount === beforeCount,
+    `${expectedLabel} should not spawn until the canvas is clicked (${beforeCount} -> ${afterPaletteClickCount})`
+  );
+
+  await clickCanvasBlank(page, placementRatio.x, placementRatio.y);
+
+  await page.waitForFunction(
+    (expectedCount) => {
+      const store = window.__RB_CIRCUIT_STORE__;
+      const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
+      if (!store?.getState || !canvas) return false;
+      return (
+        (store.getState().circuit?.nodes?.length ?? -1) >= expectedCount &&
+        canvas.getAttribute('data-placement-active') === '0'
+      );
+    },
+    beforeCount + 1,
+    { timeout: 5000 }
+  );
+}
 
 async function clickPort(page, nodeId, portName) {
   const selector = `[data-node-id="${nodeId}"] [data-port-id="${portName}"]`;
@@ -185,18 +231,33 @@ async function assertOutputBit(page, nodeId, expected) {
   assert(actual === String(expected), `expected ${nodeId}=${expected}, got "${actual}"`);
 }
 
+async function clickCanvasBlank(page, xRatio, yRatio) {
+  const canvas = page.locator('[data-testid="ide-design-live-canvas"]');
+  const bounds = await canvas.boundingBox();
+  assert(Boolean(bounds), 'design canvas bounds unavailable for placement click');
+  await page.mouse.click(
+    bounds.x + bounds.width * xRatio,
+    bounds.y + bounds.height * yRatio
+  );
+}
+
 async function readTick(page) {
   const value = Number.parseInt(await text(page.locator('[data-testid="ide-design-sim-tick"]')), 10);
   assert(Number.isFinite(value), 'expected numeric sim tick');
   return value;
 }
 
-async function assertUniqueBoardAlias(page, alias, selector) {
+async function assertUniqueBoardAlias(page, alias, selector, placementRatio) {
   const before = await readBoardAliasNodeCount(page, alias);
   const button = page.locator(selector).first();
   const disabledBefore = await button.isDisabled().catch(() => false);
   if (!disabledBefore) {
     await button.click();
+    await page.waitForFunction(() => {
+      const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
+      return canvas?.getAttribute('data-placement-active') === '1';
+    }, { timeout: 5000 });
+    await clickCanvasBlank(page, placementRatio.x, placementRatio.y);
   }
   const disabledAfter = await button.isDisabled().catch(() => false);
   assert(disabledAfter, `${alias} palette entry should become disabled once placed`);
@@ -210,7 +271,7 @@ async function assertUniqueBoardAlias(page, alias, selector) {
   assert(after <= 1, `${alias} should never appear more than once (got ${after})`);
 }
 
-async function assertBoardAliasCanDeleteAndReadd(page, alias, selector) {
+async function assertBoardAliasCanDeleteAndReadd(page, alias, selector, placementRatio) {
   const button = page.locator(selector).first();
   const aliasNodeId = await readBoardAliasNodeId(page, alias);
   assert(aliasNodeId, `${alias} should resolve to a node before delete/re-add check`);
@@ -248,6 +309,11 @@ async function assertBoardAliasCanDeleteAndReadd(page, alias, selector) {
   assert(enabledAfterDelete, `${alias} palette entry should re-enable after deleting its node`);
 
   await button.click();
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
+    return canvas?.getAttribute('data-placement-active') === '1';
+  }, { timeout: 5000 });
+  await clickCanvasBlank(page, placementRatio.x, placementRatio.y);
 
   await page.waitForFunction(
     (targetAlias) => {

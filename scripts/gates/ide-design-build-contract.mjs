@@ -67,7 +67,11 @@ await runIdeGate('IDE design build contract satisfied', async ({ page, baseUrl }
     `wire mode cue mismatch: ${wirePillText}`
   );
 
-  await page.locator('[data-testid="ide-design-add-and-starter"]').click();
+  const addAndStarterSelector =
+    '[data-testid="ide-design-add-and-starter"], [data-testid="ide-design-empty-add-and"]';
+  await page.locator(addAndStarterSelector).first().evaluate((element) => {
+    element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  });
 
   await page.waitForFunction(
     (baseline) => {

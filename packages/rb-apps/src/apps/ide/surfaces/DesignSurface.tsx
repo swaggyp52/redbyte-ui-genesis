@@ -177,6 +177,27 @@ interface BoardIoPaletteItem {
   direction: 'in' | 'out';
 }
 
+interface PendingPlacementState {
+  kind: 'node' | 'board-io';
+  label: string;
+  nodeType?: string;
+  boardIoEntry?: BoardIoPaletteItem;
+}
+
+const CANVAS_PLACEMENT_BLOCK_SELECTOR =
+  '[data-blocks-canvas-placement="1"], [data-blocks-macro-placement="1"]';
+
+function isCanvasPlacementBlocked(target: HTMLElement | null): boolean {
+  if (!target) return false;
+  return Boolean(
+    target.closest(CANVAS_PLACEMENT_BLOCK_SELECTOR) ||
+      target.closest('[data-node-id]') ||
+      target.closest('[data-port-id]') ||
+      target.closest('[data-wire-id]') ||
+      target.closest('[data-testid^="logic-wire-reconnect"]')
+  );
+}
+
 const PALETTE_ITEMS: PaletteItem[] = [
   { type: 'INPUT', title: 'Input Pin', category: 'IO' },
   { type: 'OUTPUT', title: 'Output Pin', category: 'IO' },
@@ -400,6 +421,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const camera = useLogicViewStore((state) => state.camera);
   const toolMode = useLogicViewStore((state) => state.toolMode);
   const setToolMode = useLogicViewStore((state) => state.setToolMode);
+  const setInteractionMode = useLogicViewStore((state) => state.setInteractionMode);
   const selectMultipleNodes = useLogicViewStore((state) => state.selectMultipleNodes);
   const snapToGrid = useLogicViewStore((state) => state.snapToGrid);
   const toggleSnapToGrid = useLogicViewStore((state) => state.toggleSnapToGrid);
@@ -409,6 +431,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const rawSelection = useLogicViewStore((state) => state.selection);
   const interactionMode = useLogicViewStore((state) => state.interactionMode);
   const wireStartPort = useLogicViewStore((state) => state.editingState.wireStartPort);
+  const endWire = useLogicViewStore((state) => state.endWire);
 
   const selection = useMemo(
     () => ({
@@ -493,6 +516,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [pasteStep, setPasteStep] = useState(0);
   const [macroDialogState, setMacroDialogState] = useState<DesignMacroDialogState | null>(null);
   const [activeMacroInsertionId, setActiveMacroInsertionId] = useState<string | null>(null);
+  const [pendingPlacement, setPendingPlacement] = useState<PendingPlacementState | null>(null);
 
   // A-2: Inline node label editor state
   const [editingLabelNodeId, setEditingLabelNodeId] = useState<string | null>(null);
@@ -634,6 +658,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => macros.find((entry) => entry.id === activeMacroInsertionId) ?? null,
     [activeMacroInsertionId, macros]
   );
+  const placementModeLabel = activeInsertionMacro?.name ?? pendingPlacement?.label ?? null;
+  const isPlacementMode = placementModeLabel != null;
 
   useEffect(() => {
     setEngine(tickEngine.getEngine());
@@ -841,6 +867,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       boardIoRowByAlias.has(`${entry.direction}:${normalizeAlias(entry.alias)}`),
     [boardIoRowByAlias]
   );
+  const resolveCanvasPlacementPosition = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!canvasHostRef.current) return null;
+      const rect = canvasHostRef.current.getBoundingClientRect();
+      const worldPoint = {
+        x: (clientX - rect.left - camera.x) / camera.zoom,
+        y: (clientY - rect.top - camera.y) / camera.zoom,
+      };
+      return findSmartSpawnPosition(editorCircuit.nodes as Node[], worldPoint);
+    },
+    [camera.x, camera.y, camera.zoom, editorCircuit.nodes]
+  );
 
   const spawnAtCanvasCenter = useCallback(
     (nodeType: string, extraOffset: { x: number; y: number } = { x: 0, y: 0 }) => {
@@ -874,7 +912,35 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     ]
   );
 
-  const addBoardIoAlias = useCallback(
+  const beginPalettePlacement = useCallback(
+    (placement: PendingPlacementState) => {
+      if (wireStartPort) {
+        endWire();
+      } else if (toolMode !== 'select') {
+        setToolMode('select');
+      }
+      if (activeInsertionMacro) {
+        setActiveMacroInsertionId(null);
+      }
+      setWireFeedback(null);
+      setPendingPlacement(placement);
+      setInteractionMode('placing');
+    },
+    [activeInsertionMacro, endWire, setInteractionMode, setToolMode, toolMode, wireStartPort]
+  );
+
+  const beginNodePlacement = useCallback(
+    (nodeType: string) => {
+      beginPalettePlacement({
+        kind: 'node',
+        label: nodeTypeLabel(nodeType),
+        nodeType,
+      });
+    },
+    [beginPalettePlacement]
+  );
+
+  const beginBoardIoPlacement = useCallback(
     (entry: BoardIoPaletteItem) => {
       const aliasKey = `${entry.direction}:${normalizeAlias(entry.alias)}`;
       const existing = boardIoRowByAlias.get(aliasKey);
@@ -886,49 +952,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         setActionToast(`${entry.alias} already exists on canvas.`);
         return;
       }
-
-      const center = {
-        x: (canvasSize.width / 2 - camera.x) / camera.zoom,
-        y: (canvasSize.height / 2 - camera.y) / camera.zoom,
-      };
-      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
-      const laneOffset = entry.direction === 'in' ? -180 : 180;
-      const position = {
-        x: basePosition.x + laneOffset,
-        y: basePosition.y + (entry.direction === 'in' ? -40 : 40),
-      };
-
-      if (onRuntimeAddBoardIo) {
-        onRuntimeAddBoardIo({
-          alias: entry.alias,
-          direction: entry.direction,
-          kind: entry.kind,
-          position,
-        });
-      } else if (onRuntimeAddIo) {
-        onRuntimeAddIo(entry.direction === 'in' ? 'input' : 'output', position);
-      } else {
-        spawnAtCanvasCenter(entry.direction === 'in' ? 'INPUT' : 'OUTPUT', {
-          x: laneOffset,
-          y: entry.direction === 'in' ? -40 : 40,
-        });
-      }
-
-      setActionToast(`Added ${entry.alias} to canvas.`);
+      beginPalettePlacement({
+        kind: 'board-io',
+        label: entry.alias,
+        boardIoEntry: entry,
+      });
     },
     [
+      beginPalettePlacement,
       boardIoRowByAlias,
-      camera.x,
-      camera.y,
-      camera.zoom,
-      canvasSize.height,
-      canvasSize.width,
-      editorCircuit.nodes,
-      onRuntimeAddBoardIo,
-      onRuntimeAddIo,
       selectMultipleNodes,
       setToolMode,
-      spawnAtCanvasCenter,
     ]
   );
 
@@ -984,15 +1018,127 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     spawnAtCanvasCenter,
   ]);
 
+  const cancelPendingPlacement = useCallback(
+    (reason: 'cancel' | 'escape' | 'tool') => {
+      if (!pendingPlacement) return;
+      setPendingPlacement(null);
+      if (interactionMode === 'placing') {
+        setInteractionMode('idle');
+      }
+      if (reason === 'escape') {
+        setActionToast(`Cancelled placing ${pendingPlacement.label} (Esc).`);
+      } else if (reason === 'cancel') {
+        setActionToast(`Cancelled placing ${pendingPlacement.label}.`);
+      }
+    },
+    [interactionMode, pendingPlacement, setInteractionMode]
+  );
+
+  const cancelActivePlacement = useCallback(
+    (reason: 'cancel' | 'escape' | 'tool') => {
+      if (activeInsertionMacro) {
+        setActiveMacroInsertionId(null);
+        if (interactionMode === 'placing') {
+          setInteractionMode('idle');
+        }
+        if (reason === 'escape') {
+          setActionToast(`Cancelled placing ${activeInsertionMacro.name} (Esc).`);
+        } else if (reason === 'cancel') {
+          setActionToast(`Cancelled placing ${activeInsertionMacro.name}.`);
+        }
+        return;
+      }
+      cancelPendingPlacement(reason);
+    },
+    [activeInsertionMacro, cancelPendingPlacement, interactionMode, setInteractionMode]
+  );
+
+  const commitPendingPlacement = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!pendingPlacement) return;
+      const position = resolveCanvasPlacementPosition(clientX, clientY);
+      if (!position) return;
+
+      const nextNodeId = predictNextNodeIds(editorCircuit, 1)[0] ?? null;
+      if (pendingPlacement.kind === 'node' && pendingPlacement.nodeType) {
+        if (onRuntimeAddNode) {
+          onRuntimeAddNode(pendingPlacement.nodeType, position);
+        } else {
+          addNode(pendingPlacement.nodeType, position);
+          onCircuitMutated?.();
+        }
+        setActionToast(`${pendingPlacement.label} placed.`);
+      } else if (pendingPlacement.kind === 'board-io' && pendingPlacement.boardIoEntry) {
+        const entry = pendingPlacement.boardIoEntry;
+        if (onRuntimeAddBoardIo) {
+          onRuntimeAddBoardIo({
+            alias: entry.alias,
+            direction: entry.direction,
+            kind: entry.kind,
+            position,
+          });
+        } else if (onRuntimeAddIo) {
+          onRuntimeAddIo(entry.direction === 'in' ? 'input' : 'output', position);
+        } else {
+          addNode(entry.direction === 'in' ? 'INPUT' : 'OUTPUT', position);
+          onCircuitMutated?.();
+        }
+        setActionToast(`Added ${entry.alias} to canvas.`);
+      }
+
+      setWireFeedback(null);
+      setPendingPlacement(null);
+      if (interactionMode === 'placing') {
+        setInteractionMode('idle');
+      }
+      if (nextNodeId) {
+        queueMicrotask(() => {
+          selectMultipleNodes([nextNodeId], false);
+        });
+      }
+    },
+    [
+      addNode,
+      editorCircuit,
+      interactionMode,
+      onCircuitMutated,
+      onRuntimeAddBoardIo,
+      onRuntimeAddIo,
+      onRuntimeAddNode,
+      pendingPlacement,
+      resolveCanvasPlacementPosition,
+      selectMultipleNodes,
+      setInteractionMode,
+    ]
+  );
+
   const setSelectMode = useCallback(() => {
+    cancelActivePlacement('tool');
     setToolMode('select');
     setActionToast('Select mode active.');
-  }, [setToolMode]);
+  }, [cancelActivePlacement, setToolMode]);
 
   const setWireMode = useCallback(() => {
+    cancelActivePlacement('tool');
     setToolMode('wire');
     setActionToast('Wire mode active.');
-  }, [setToolMode]);
+  }, [cancelActivePlacement, setToolMode]);
+
+  useEffect(() => {
+    if (isPlacementMode && interactionMode === 'idle') {
+      setInteractionMode('placing');
+      return;
+    }
+    if (!isPlacementMode && interactionMode === 'placing') {
+      setInteractionMode('idle');
+    }
+  }, [interactionMode, isPlacementMode, setInteractionMode]);
+
+  useEffect(() => {
+    if (!isPlacementMode) return;
+    if (toolMode !== 'wire') return;
+    cancelActivePlacement('tool');
+  }, [cancelActivePlacement, isPlacementMode, toolMode]);
 
   const handleCircuitChange = useCallback(
     (nextCircuit: Circuit) => {
@@ -1383,10 +1529,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const handleSelectMacro = useCallback(
     (macroId: string) => {
       if (!onInstantiateMacro) return;
-      setToolMode('select');
-      setActiveMacroInsertionId((previous) => (previous === macroId ? null : macroId));
+      if (wireStartPort) {
+        endWire();
+      } else if (toolMode !== 'select') {
+        setToolMode('select');
+      }
+      setPendingPlacement(null);
+      setWireFeedback(null);
+      setActiveMacroInsertionId(macroId);
+      setInteractionMode('placing');
     },
-    [onInstantiateMacro, setToolMode]
+    [endWire, onInstantiateMacro, setInteractionMode, setToolMode, toolMode, wireStartPort]
   );
 
   const handleDeleteMacro = useCallback(
@@ -1402,13 +1555,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     (reason: 'cancel' | 'escape') => {
       if (!activeInsertionMacro) return;
       setActiveMacroInsertionId(null);
+      if (interactionMode === 'placing') {
+        setInteractionMode('idle');
+      }
       setActionToast(
         reason === 'escape'
           ? `Cancelled placing ${activeInsertionMacro.name} (Esc).`
           : `Cancelled placing ${activeInsertionMacro.name}.`
       );
     },
-    [activeInsertionMacro]
+    [activeInsertionMacro, interactionMode, setInteractionMode]
   );
 
   const placeMacroAtClientPoint = useCallback(
@@ -1435,14 +1591,19 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         // with the pre-insertion circuit, silently dropping the macro.
       }
       setActiveMacroInsertionId(null);
+      if (interactionMode === 'placing') {
+        setInteractionMode('idle');
+      }
     },
     [
       activeInsertionMacro,
+      interactionMode,
       camera.x,
       camera.y,
       camera.zoom,
       onInstantiateMacro,
       selectMultipleNodes,
+      setInteractionMode,
     ]
   );
 
@@ -1469,15 +1630,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   const handleCanvasPlacementClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (!activeInsertionMacro) return;
       const target = event.target as HTMLElement | null;
-      const clickedCanvasUi = Boolean(target?.closest('[data-blocks-macro-placement="1"]'));
-      if (clickedCanvasUi) return;
+      if (isCanvasPlacementBlocked(target)) return;
+      if (activeInsertionMacro) {
+        event.preventDefault();
+        event.stopPropagation();
+        placeMacroAtClientPoint(event.clientX, event.clientY);
+        return;
+      }
+      if (!pendingPlacement) return;
       event.preventDefault();
       event.stopPropagation();
-      placeMacroAtClientPoint(event.clientX, event.clientY);
+      commitPendingPlacement(event.clientX, event.clientY);
     },
-    [activeInsertionMacro, placeMacroAtClientPoint]
+    [activeInsertionMacro, commitPendingPlacement, pendingPlacement, placeMacroAtClientPoint]
   );
 
   useEffect(() => {
@@ -1602,21 +1768,26 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     previousHasSelectionRef.current = hasSelection;
   }, [hasSelection]);
-  const activeModeLabel = toolMode === 'wire' ? 'Wire Mode' : 'Select Mode';
+  const activeModeLabel = isPlacementMode ? 'Placement Mode' : toolMode === 'wire' ? 'Wire Mode' : 'Select Mode';
   const zoomPercent = Math.round(camera.zoom * 100);
+  const effectiveInteractionMode = isPlacementMode && interactionMode === 'idle' ? 'placing' : interactionMode;
   const interactionLabel =
-    interactionMode === 'boxSelecting'
+    effectiveInteractionMode === 'boxSelecting'
       ? 'Marquee Select'
-      : interactionMode === 'panning'
+      : effectiveInteractionMode === 'panning'
         ? 'Panning'
-        : interactionMode === 'draggingNode'
+        : isPlacementMode
+          ? 'Placement'
+        : effectiveInteractionMode === 'draggingNode'
           ? 'Dragging Node'
-          : interactionMode === 'wiring'
+          : effectiveInteractionMode === 'wiring'
             ? 'Wiring'
             : 'Idle';
   const toolHint =
-    interactionMode === 'boxSelecting'
+    effectiveInteractionMode === 'boxSelecting'
       ? 'Drag to marquee-select multiple nodes. Hold Ctrl/Cmd or Shift to add to selection.'
+      : isPlacementMode && placementModeLabel
+        ? `Click empty canvas to place ${placementModeLabel}. Esc cancels.`
       : toolMode === 'wire'
         ? wireStartPort
           ? 'Hover valid sinks in green, then click to connect. Esc cancels the wire.'
@@ -2019,7 +2190,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [wireContextMenu]);
 
   useEffect(() => {
-    if (!activeInsertionMacro) return;
+    if (!isPlacementMode) return;
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       const activeEl = document.activeElement as HTMLElement | null;
@@ -2027,13 +2198,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       const isTextInput = tagName === 'input' || tagName === 'textarea' || activeEl?.isContentEditable;
       if (isTextInput) return;
       event.preventDefault();
-      cancelMacroPlacement('escape');
+      cancelActivePlacement('escape');
     };
     window.addEventListener('keydown', handleEscape);
     return () => {
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [activeInsertionMacro, cancelMacroPlacement]);
+  }, [cancelActivePlacement, isPlacementMode]);
 
   useEffect(() => {
     if (!onRuntimeSimSetSelectedSignal) return;
@@ -2186,15 +2357,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div className="ide-palette-chips">
                 {filteredBasysInputs.map((entry) => {
                   const isPlaced = isBoardAliasPlaced(entry);
+                  const isPending =
+                    pendingPlacement?.kind === 'board-io' &&
+                    pendingPlacement.boardIoEntry?.alias === entry.alias &&
+                    pendingPlacement.boardIoEntry?.direction === entry.direction;
                   return (
                     <button
                       key={entry.alias}
-                      className={`ide-palette-chip ide-palette-chip-board${isPlaced ? ' is-placed' : ''}`}
+                      className={`ide-palette-chip ide-palette-chip-board${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
                       type="button"
-                      onClick={() => addBoardIoAlias(entry)}
+                      onClick={() => beginBoardIoPlacement(entry)}
                       data-testid={`ide-design-board-input-${entry.alias.toLowerCase()}`}
                       disabled={isPlaced}
                       title={isPlaced ? `${entry.alias} already placed` : undefined}
+                      aria-pressed={isPending}
                     >
                       {entry.alias}
                     </button>
@@ -2207,15 +2383,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div className="ide-palette-chips">
                 {filteredBasysOutputs.map((entry) => {
                   const isPlaced = isBoardAliasPlaced(entry);
+                  const isPending =
+                    pendingPlacement?.kind === 'board-io' &&
+                    pendingPlacement.boardIoEntry?.alias === entry.alias &&
+                    pendingPlacement.boardIoEntry?.direction === entry.direction;
                   return (
                     <button
                       key={entry.alias}
-                      className={`ide-palette-chip ide-palette-chip-board${isPlaced ? ' is-placed' : ''}`}
+                      className={`ide-palette-chip ide-palette-chip-board${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
                       type="button"
-                      onClick={() => addBoardIoAlias(entry)}
+                      onClick={() => beginBoardIoPlacement(entry)}
                       data-testid={`ide-design-board-output-${entry.alias.toLowerCase()}`}
                       disabled={isPlaced}
                       title={isPlaced ? `${entry.alias} already placed` : undefined}
+                      aria-pressed={isPending}
                     >
                       {entry.alias}
                     </button>
@@ -2232,17 +2413,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <div key={category} className="ide-palette-group">
                   <h4>{category}</h4>
                   <div className="ide-palette-chips">
-                    {items.map((item) => (
-                      <button
-                        key={item.type}
-                        className="ide-palette-chip"
-                        type="button"
-                        onClick={() => spawnAtCanvasCenter(item.type)}
-                        data-testid={`ide-design-palette-${item.type.toLowerCase()}`}
-                      >
-                        {item.title}
-                      </button>
-                    ))}
+                    {items.map((item) => {
+                      const isPending =
+                        pendingPlacement?.kind === 'node' && pendingPlacement.nodeType === item.type;
+                      return (
+                        <button
+                          key={item.type}
+                          className={`ide-palette-chip${isPending ? ' is-placement-active' : ''}`}
+                          type="button"
+                          onClick={() => beginNodePlacement(item.type)}
+                          data-testid={`ide-design-palette-${item.type.toLowerCase()}`}
+                          aria-pressed={isPending}
+                        >
+                          {item.title}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -2274,18 +2460,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div className="ide-palette-group ide-palette-group--custom" data-testid="ide-palette-group-custom">
                 <h4>Custom</h4>
                 <div className="ide-palette-chips">
-                  {filtered.map((item) => (
-                    <button
-                      key={item.type}
-                      className="ide-palette-chip ide-palette-chip--custom"
-                      type="button"
-                      title={item.description || item.title}
-                      onClick={() => spawnAtCanvasCenter(item.type)}
-                      data-testid={`ide-design-palette-custom-${item.type.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
-                    >
-                      {item.title}
-                    </button>
-                  ))}
+                  {filtered.map((item) => {
+                    const isPending =
+                      pendingPlacement?.kind === 'node' && pendingPlacement.nodeType === item.type;
+                    return (
+                      <button
+                        key={item.type}
+                        className={`ide-palette-chip ide-palette-chip--custom${isPending ? ' is-placement-active' : ''}`}
+                        type="button"
+                        title={item.description || item.title}
+                        onClick={() => beginNodePlacement(item.type)}
+                        data-testid={`ide-design-palette-custom-${item.type.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                        aria-pressed={isPending}
+                      >
+                        {item.title}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -3158,7 +3349,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     >
         <IdePanel
           title="Circuit Designer"
-          right={<IdeStatusPill tone={toolMode === 'wire' ? 'warn' : 'ok'}>{activeModeLabel}</IdeStatusPill>}
+          right={<IdeStatusPill tone={isPlacementMode || toolMode === 'wire' ? 'warn' : 'ok'}>{activeModeLabel}</IdeStatusPill>}
           testId="ide-design-panel"
         >
           <div className="ide-design-workspace" data-testid="ide-design-workspace" data-design-view={effectiveDesignView}>
@@ -3478,10 +3669,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
               <div className="ide-design-layout ide-design-layout-canvas-only">
                 <section className="ide-design-canvas" data-testid="ide-design-canvas">
-                  <div className="ide-design-tool-hud" data-testid="ide-design-tool-hud">
+                  <div
+                    className={`ide-design-tool-hud${isPlacementMode ? ' is-placement-mode' : ''}`}
+                    data-testid="ide-design-tool-hud"
+                    data-blocks-canvas-placement="1"
+                  >
                     <span className="ide-design-tool-hud-label">{activeModeLabel}</span>
                     <span className="ide-design-tool-hud-hint">{toolHint}</span>
-                    {toolMode === 'wire' ? (
+                    {isPlacementMode && placementModeLabel ? (
+                      <div className="ide-design-tool-hud-placement" data-testid="ide-design-placement-cue">
+                        <strong data-testid="ide-design-placement-label">{placementModeLabel}</strong>
+                        <span>Click empty canvas to place it.</span>
+                        <IdeButton tone="ghost" onClick={() => cancelActivePlacement('cancel')} testId="ide-design-placement-cancel">
+                          Cancel
+                        </IdeButton>
+                      </div>
+                    ) : null}
+                    {toolMode === 'wire' && !isPlacementMode ? (
                       <span className="ide-design-tool-hud-wire" data-testid="ide-design-wire-cue">
                         {wireStartPort ? 'Source selected. Click a valid sink pin.' : 'Pick a source pin to start wiring.'}
                       </span>
@@ -3496,6 +3700,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <div
                       className="ide-design-diagnostic-callout"
                       data-testid="ide-design-diagnostic-callout"
+                      data-blocks-canvas-placement="1"
                       data-blocks-macro-placement="1"
                     >
                       <IdeCallout tone="warn">
@@ -3528,23 +3733,37 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     ref={canvasHostRef}
                     data-testid="ide-design-live-canvas"
                     data-tool-mode={toolMode}
-                    data-interaction-mode={interactionMode}
+                    data-interaction-mode={effectiveInteractionMode}
+                    data-placement-active={isPlacementMode ? '1' : '0'}
                     data-presentation-zoom={presentationZoom}
                     data-macro-placement-active={activeInsertionMacro ? '1' : '0'}
                     onClick={handleCanvasPlacementClick}
                   >
-                    <div className="ide-design-canvas-mode-indicator" data-testid="ide-design-canvas-mode-indicator">
+                    <div
+                      className="ide-design-canvas-mode-indicator"
+                      data-testid="ide-design-canvas-mode-indicator"
+                      data-blocks-canvas-placement="1"
+                    >
                       {activeModeLabel}
                     </div>
-                    <div className="ide-design-canvas-zoom-indicator" data-testid="ide-design-canvas-zoom-indicator">
+                    <div
+                      className="ide-design-canvas-zoom-indicator"
+                      data-testid="ide-design-canvas-zoom-indicator"
+                      data-blocks-canvas-placement="1"
+                    >
                       tick {simTick}
                     </div>
-                    <div className="ide-design-canvas-mode-indicator" data-testid="ide-design-presentation-zoom-indicator">
+                    <div
+                      className="ide-design-canvas-mode-indicator"
+                      data-testid="ide-design-presentation-zoom-indicator"
+                      data-blocks-canvas-placement="1"
+                    >
                       {presentationZoom === 'classroom' ? 'Classroom Zoom' : 'Dense Zoom'}
                     </div>
                     <div
                       className="ide-design-zoom-presets"
                       data-testid="ide-design-zoom-presets"
+                      data-blocks-canvas-placement="1"
                       data-blocks-macro-placement="1"
                     >
                       {([0.5, 0.75, 1.0, 1.25] as const).map((preset) => (
@@ -3570,6 +3789,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <div
                       className="ide-design-canvas-controls"
                       data-testid="ide-design-canvas-controls"
+                      data-blocks-canvas-placement="1"
                       data-blocks-macro-placement="1"
                     >
                       <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit-canvas">
@@ -3596,6 +3816,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <div
                         className="ide-design-debug-overlay-banner"
                         data-testid="ide-design-debug-banner"
+                        data-blocks-canvas-placement="1"
                         data-blocks-macro-placement="1"
                         role="status"
                       >
@@ -3690,6 +3911,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         suppressNextToolModeWireFeedbackClearRef.current = true;
                         setWireFeedback(connectionRejectedMessage(reason));
                       }}
+                      onPlacementCancel={() => cancelActivePlacement('escape')}
                       nodeEvalOrder={evalOrder}
                       changedNodeIds={changedNodeIds}
                       nodeIssueSeverities={nodeIssueSeverities}
@@ -3718,6 +3940,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <div
                       className="ide-canvas-hint is-visible"
                       aria-hidden="true"
+                      data-blocks-canvas-placement="1"
                       style={{ opacity: hasInteracted ? 0.15 : 0.6, transition: 'opacity 0.4s ease' }}
                     >
                       <span>Ctrl + wheel: Zoom</span>
@@ -3726,32 +3949,40 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <span className="ide-canvas-hint-divider" />
                       <span>F: Fit</span>
                     </div>
-                    {editorCircuit.nodes.length === 0 && (
+                    {editorCircuit.nodes.length === 0 && !isPlacementMode && (
                       <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
                         <h3>Build a circuit in three steps</h3>
                         <ol className="ide-design-empty-steps" data-testid="ide-design-empty-checklist">
                           <li>
                             <span className="ide-design-empty-step-index">1</span>
-                            <span>Pick a gate from the palette on the left</span>
+                            <span>Pick a part from the palette on the left</span>
                           </li>
                           <li>
                             <span className="ide-design-empty-step-index">2</span>
-                            <span>Click the canvas to place it</span>
+                            <span>Click empty canvas to place one part</span>
                           </li>
                           <li>
                             <span className="ide-design-empty-step-index">3</span>
-                            <span>Drag from an output port to an input port to wire it</span>
+                            <span>Click an output pin, then a valid input pin to wire it</span>
                           </li>
                         </ol>
                         <div className="ide-design-empty-actions">
                           <IdeButton tone="secondary" onClick={addIoPins} testId="ide-design-empty-add-io">
                             Add Inputs/Outputs
                           </IdeButton>
+                          <IdeButton tone="ghost" onClick={addAndGateStarter} testId="ide-design-empty-add-and">
+                            Add AND Starter
+                          </IdeButton>
                         </div>
                       </div>
                     )}
                     {actionToast && (
-                      <div className="ide-design-toast" role="status" data-testid="ide-design-action-toast">
+                      <div
+                        className="ide-design-toast"
+                        role="status"
+                        data-testid="ide-design-action-toast"
+                        data-blocks-canvas-placement="1"
+                      >
                         {actionToast}
                       </div>
                     )}
@@ -3761,12 +3992,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         data-testid="ide-macro-insertion-overlay"
                         role="button"
                         tabIndex={0}
-                        aria-label={`Place ${activeInsertionMacro.name} on the canvas. Press Escape to cancel.`}
+                        aria-label={`Place ${activeInsertionMacro.name} on empty canvas. Press Escape to cancel.`}
                         onClick={handleInsertMacroOnCanvas}
                         onKeyDown={handleMacroInsertionOverlayKeyDown}
                       >
                         <div
                           className="ide-macro-insertion-overlay-card"
+                          data-blocks-canvas-placement="1"
                           data-blocks-macro-placement="1"
                           onClick={(event) => event.stopPropagation()}
                         >
@@ -3781,7 +4013,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                             </IdeButton>
                           </div>
                           <p className="ide-macro-insertion-overlay-copy" data-testid="ide-macro-insertion-message">
-                            Click on the canvas to place {activeInsertionMacro.name}.
+                            Click empty canvas to place {activeInsertionMacro.name}.
                           </p>
                           <p className="ide-macro-insertion-overlay-hint">Press Esc to cancel.</p>
                         </div>
@@ -3791,6 +4023,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <div
                         className="ide-design-wire-context-menu"
                         data-testid="ide-design-wire-context-menu"
+                        data-blocks-canvas-placement="1"
                         data-blocks-macro-placement="1"
                         style={{ left: wireContextMenu.x, top: wireContextMenu.y }}
                         onPointerDown={(event) => event.stopPropagation()}

@@ -61,6 +61,8 @@ export interface LogicCanvasProps {
   onPortClick?: (nodeId: string, portName: string) => void;
   /** Fired when a wire attempt is rejected due to an invalid connection. The reason is the raw validation reason. */
   onConnectionRejected?: (reason: string) => void;
+  /** Fired when Escape or right-click cancels explicit placement mode. */
+  onPlacementCancel?: () => void;
   onWireContextMenu?: (input: {
     wireId: string;
     signalKey: string | null;
@@ -174,6 +176,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   onRedo,
   onPortClick,
   onConnectionRejected,
+  onPlacementCancel,
   onWireContextMenu,
   nodeEvalOrder,
   changedNodeIds,
@@ -502,6 +505,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       setEditingState({ marquee: undefined });
     },
     onWireCancel: endWire,
+    onPlacementCancel,
     isSpacePressed,
     isReplayMode,
     interactionMode,
@@ -956,6 +960,12 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       e.preventDefault();
       onRedo?.();
     } else if (e.key === 'Escape') {
+      if (interactionMode === 'placing') {
+        e.preventDefault();
+        e.stopPropagation();
+        onPlacementCancel?.();
+        return;
+      }
       clearSelectionRef.current();
       setEditingStateRef.current({ marquee: undefined });
       if (interactionMode === 'boxSelecting') {
@@ -1000,7 +1010,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         resetViewRef.current();
       }
     }
-  }, [onRedo, onUndo, zoomFn]);
+  }, [interactionMode, onPlacementCancel, onRedo, onUndo, zoomFn]);
 
   const handleKeyUpActive = React.useCallback((e: KeyboardEvent) => {
     if (e.key === ' ') {
@@ -1245,6 +1255,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           touchAction: 'none',
           cursor: interactionMode === 'panning' ? 'grabbing' : isSpacePressed ? 'grab' : (() => {
             if (canvasInput.dragState.isDragging) return 'grabbing';
+            if (interactionMode === 'placing') return 'copy';
             if (editingState.wireStartPort) {
               if (hoveredPort) {
                 const validation = isValidConnection(

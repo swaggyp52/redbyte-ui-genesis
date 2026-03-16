@@ -19,6 +19,7 @@ interface UseCanvasInputOptions {
   onMarqueeChange?: (marquee?: { x1: number; y1: number; x2: number; y2: number }) => void;
   onMarqueeCommit?: (nodeIds: string[], addToSelection: boolean) => void;
   onWireCancel?: () => void;
+  onPlacementCancel?: () => void;
   isSpacePressed: boolean;
   isReplayMode: boolean;
   interactionMode: string; // 'idle' | 'placing' | 'draggingNode' | 'boxSelecting' | 'wiring' | 'panning'
@@ -78,6 +79,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
     onMarqueeChange,
     onMarqueeCommit,
     onWireCancel,
+    onPlacementCancel,
     isSpacePressed,
     isReplayMode,
     interactionMode,
@@ -120,7 +122,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
       setDragDelta(null);
       // Guard: replay mode or non-passthrough interaction modes
       if (isReplayMode) return;
-      if (interactionMode !== 'idle' && interactionMode !== 'wiring') return;
+      if (interactionMode !== 'idle' && interactionMode !== 'wiring' && interactionMode !== 'placing') return;
 
       const s = stateRef.current;
 
@@ -140,6 +142,11 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
         return;
       }
 
+      if (e.button === 2 && interactionMode === 'placing') {
+        onPlacementCancel?.();
+        return;
+      }
+
       // ---- Left-click (not space) ----
       if (e.button === 0 && !isSpacePressed) {
         const target = e.target as Element;
@@ -150,6 +157,10 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
         // Wire clicks are handled by WireView. Treating them as background would
         // immediately enter pending box-select and clear wire selection on pointerup.
         if (target.closest('[data-wire-id]')) return;
+
+        if (interactionMode === 'placing') {
+          return;
+        }
 
         const nodeEl = target.closest('[data-node-id]');
         if (nodeEl) {
@@ -193,6 +204,7 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
       onNodeSelect,
       onClearSelection,
       onWireCancel,
+      onPlacementCancel,
       setInteractionMode,
       stopPanInertia,
     ],

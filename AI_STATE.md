@@ -1,5 +1,72 @@
 # AI State
 
+## Change Log 2026-03-16 (Design placement model unification)
+
+**Subsystem**: IDE Design/Build product experience
+
+### Problem
+
+Design placement behavior was contradictory in live code:
+
+- palette clicks spawned nodes immediately at canvas center,
+- empty-state copy told students to click the canvas to place,
+- `placing` existed as an interaction mode but was not part of the real Design workflow,
+- cancel behavior for placement was inconsistent and mostly implicit.
+
+This made the first authoring action feel unpredictable and prototype-like.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Replaced immediate palette placement with an explicit one-shot placement flow for palette parts and board I/O.
+  - Added `Placement Mode` signaling to the Design HUD, canvas mode badge, status pill, and palette active state.
+  - Placement now commits on blank-canvas click near the clicked point instead of silently spawning at canvas center.
+  - `Esc`, tool switches, and explicit cancel actions now exit placement deterministically.
+  - Hid the large empty-state overlay while placement is active so students can actually place onto an unobstructed canvas.
+  - Restored a second empty-state starter CTA (`Add AND Starter`) so first-run onboarding has two clear build entry points again.
+  - Aligned macro insertion with the same explicit placement-mode signaling instead of leaving it as a parallel hidden state.
+- `packages/rb-logic-view/src/useCanvasInput.ts`
+  - Allowed placement mode to coexist with pan gestures while preventing background box-select and node drag from stealing placement clicks.
+  - Added explicit placement cancel support from canvas input.
+- `packages/rb-logic-view/src/LogicCanvas.tsx`
+  - Added placement cancel plumbing to keyboard handling so `Esc` exits placement instead of clearing selection first.
+  - Added placement-mode cursor treatment.
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Added placement-mode HUD, canvas, and palette-active styling so mode state is visually obvious without adding new chrome layers.
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.placementMode.test.tsx` (new)
+  - Added focused regression coverage for:
+    - entering placement mode without immediate spawn,
+    - committing one placement on blank-canvas click,
+    - `Esc` cancel,
+    - tool-switch cancel.
+- `scripts/gates/ide-design-placement-contract.mjs` (new)
+  - Added live browser proof for explicit placement mode, no immediate spawn, `Esc` cancel, and successful canvas placement.
+- `scripts/gates/ide-design-palette-build-contract.mjs`
+  - Updated the browser contract to use the new placement model instead of assuming palette clicks spawn immediately.
+- `scripts/gates/ide-design-build-contract.mjs`
+  - Realigned the starter-circuit proof to the current empty-state AND starter CTA selector.
+- `package.json`
+  - Added `ide:gate:design-placement-contract`.
+
+### Student-visible behavior after fix
+
+- Clicking a palette part now always means: enter placement mode, then click empty canvas to place one part.
+- Students can see exactly when placement mode is active and what part is queued.
+- Placement does not silently happen at canvas center anymore.
+- `Esc` and tool changes now cancel placement consistently.
+- Empty-state onboarding and live behavior now describe the same model.
+
+### Proof
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.placementMode.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.authoringIssues.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx -t "macro|placement|authoring issues" --reporter=verbose` -> PASS (`16` passed, `4` skipped by filter)
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:design-placement-contract` -> PASS
+- `pnpm -s ide:gate:design-palette-build-contract` -> PASS
+- `pnpm -s ide:gate:canvas-legibility-contract` -> PASS
+- `pnpm -s ide:gate:design-build-contract` -> PASS
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-16 (Design authoring trust and live issue visibility)
 
 **Subsystem**: IDE Design/Build product experience
