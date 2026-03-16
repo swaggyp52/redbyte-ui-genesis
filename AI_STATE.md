@@ -1,5 +1,66 @@
 # AI State
 
+## Change Log 2026-03-16 (Design inspector hierarchy + right dock redesign)
+
+**Subsystem**: IDE Design/Build product experience
+
+### Problem
+
+After live issues, placement, and palette order were improved, the right dock still felt like a cramped metadata sidebar:
+
+- selected-object identity was weak,
+- issue guidance competed with raw metrics,
+- rename, trace, duplicate, and delete actions were scattered,
+- edit controls were visually buried,
+- advanced technical detail sat too high in the reading order,
+- the dock width and spacing did not feel calm or authoritative.
+
+This made selection feel ambiguous even when the underlying editor behavior was correct.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Rebuilt the Design inspector into a fixed reading order:
+    - Selected object identity
+    - Problem / Health
+    - Primary Actions
+    - Editable Properties
+    - Signal / State
+    - Advanced Details
+  - Promoted plain-language identity titles (`SW0`, `AND gate`, reusable block names) and demoted raw ids into a secondary metadata grid.
+  - Kept live issue guidance above raw metrics, with issue focus actions and a clearer “what to do next” line.
+  - Grouped primary actions into calmer edit, trace, compose, and danger clusters instead of scattering buttons across the dock.
+  - Moved raw properties, compiler diagnostics, pin/net details, workspace counters, and evaluation-order stats into a lower-priority advanced section.
+  - Preserved existing trace, macro, delete, and live-state behavior while making the selection hierarchy much easier to scan.
+- `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+  - Increased Design-mode right-dock width caps so the inspector can breathe across compact, standard, and wide layouts.
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Added a calmer inspector visual system with stronger title anchoring, cleaner spacing rhythm, larger action grids, clearer status pills, and demoted technical detail styling.
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx` (new)
+  - Added focused coverage for selected-object identity, issue-guidance priority, primary-action grouping, and edit-field ordering.
+- `scripts/gates/ide-design-inspector-contract.mjs`
+  - Realigned the live inspector contract with the explicit placement model before validating the new selection hierarchy.
+- `scripts/gates/ide-design-workbench-contract.mjs`
+  - Strengthened live browser proof for readable right-dock width and the explicit empty-state identity card.
+
+### Student-visible behavior after fix
+
+- The right dock now answers “what is selected?” immediately with a strong top card instead of leading with raw metadata.
+- If something is wrong, that guidance is the first meaningful content in the dock.
+- The most useful actions appear together before deep technical details.
+- Rename and other edit controls are easy to find without hunting through metrics.
+- Advanced diagnostics and low-level workspace details are still available, but they no longer overpower the student-facing flow.
+
+### Proof
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.authoringIssues.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx --reporter=verbose` -> 30/30 passing
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:design-inspector-contract` -> PASS
+- `pnpm -s ide:gate:design-workbench-contract` -> PASS
+- `pnpm -s ide:gate:canvas-legibility-contract` -> PASS
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-16 (Design palette IA + left dock redesign)
 
 **Subsystem**: IDE Design/Build product experience

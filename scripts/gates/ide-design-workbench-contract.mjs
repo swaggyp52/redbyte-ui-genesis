@@ -80,6 +80,7 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
     `unexpected design layout mode: ${layoutMode}`
   );
   assert(leftDockBox.width >= 228, `left dock should stay scan-friendly (width=${leftDockBox.width})`);
+  assert(inspectorBox.width >= 212, `right inspector should stay readable (width=${inspectorBox.width})`);
   assert(canvasBox.width > leftDockBox.width, 'canvas should be wider than left dock');
   if (layoutMode === 'compact') {
     const canvasBottom = canvasBox.y + canvasBox.height;
@@ -116,5 +117,10 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
   assert(
     await visible(modeRoot.locator('[data-testid="ide-design-board-output-ld0"]').first()),
     'led search should surface board LED resources'
+  );
+
+  assert(
+    await visible(modeRoot.locator('[data-testid="ide-design-inspector-empty"]').first()),
+    'design inspector should surface an explicit empty-state identity card'
   );
 });

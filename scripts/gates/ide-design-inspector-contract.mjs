@@ -26,6 +26,17 @@ await runIdeGate('IDE design inspector contract satisfied', async ({ page, baseU
   assert(paletteCount >= 8, `expected >=8 design primitives in palette, found ${paletteCount}`);
 
   await page.locator('[data-testid="ide-design-palette-and"]').click();
+  await page.waitForSelector('[data-testid="ide-design-placement-cue"]', { timeout: 10000 });
+  await page.locator('[data-testid="ide-design-live-canvas"]').evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    element.dispatchEvent(
+      new MouseEvent('click', {
+        bubbles: true,
+        clientX: rect.left + rect.width * 0.55,
+        clientY: rect.top + rect.height * 0.62,
+      })
+    );
+  });
   const andNode = page.locator('[data-testid^="node-AND-"]').first();
   await andNode.waitFor({ timeout: 10000 });
   const andNodeId = await andNode.getAttribute('data-node-id');
@@ -45,14 +56,24 @@ await runIdeGate('IDE design inspector contract satisfied', async ({ page, baseU
     { timeout: 10000 }
   );
 
-  await page.waitForSelector('[data-testid="ide-design-selection-inspector"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-design-inspector-identity-title"]', { timeout: 10000 });
+  const identityTitle = (await page.locator('[data-testid="ide-design-inspector-identity-title"]').first().textContent())?.trim();
+  assert(identityTitle === 'AND gate', `expected AND gate identity title, got ${identityTitle}`);
+
   const typeText = (await page.locator('[data-testid="ide-design-selection-type"]').first().textContent())?.trim();
   assert(typeText === 'AND gate', `expected AND gate in selection inspector, got ${typeText}`);
 
   const nodeIdText = (await page.locator('[data-testid="ide-design-selection-id"]').first().textContent())?.trim();
   assert(Boolean(nodeIdText && nodeIdText.length > 0), 'selection inspector must show node id');
 
-  await page.waitForSelector('[data-testid="ide-design-selection-issues"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-design-inspector-health"]', { timeout: 10000 });
   const issueTitle = (await page.locator('[data-testid="ide-design-selection-issue-title"]').textContent())?.trim();
   assert(issueTitle === 'Input is still unconnected', `expected live issue title in selection inspector, got ${issueTitle}`);
+
+  const actionsText = (await page.locator('[data-testid="ide-design-inspector-actions"]').textContent())?.trim() ?? '';
+  assert(actionsText.includes('Rename'), 'primary actions must expose rename');
+  assert(actionsText.includes('Trace net'), 'primary actions must expose trace net');
+
+  const propertiesText = (await page.locator('[data-testid="ide-design-inspector-properties"]').textContent())?.trim() ?? '';
+  assert(propertiesText.includes('Add label'), 'properties section must surface rename field');
 });

@@ -19,7 +19,6 @@ import {
   IdeButton,
   IdeCallout,
   IdeEmptyState,
-  IdeInspectorAccordion,
   IdeInspectorSection,
   IdePanel,
   IdeStatusPill,
@@ -2114,6 +2113,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (e.key === 'Enter') { e.preventDefault(); commitNodeLabel(); }
     if (e.key === 'Escape') { e.preventDefault(); cancelNodeLabel(); }
   }, [commitNodeLabel, cancelNodeLabel]);
+  const beginNodeLabelEdit = useCallback((node: Node) => {
+    setEditingLabelNodeId(node.id);
+    setLabelDraft(node.label ?? '');
+  }, []);
   const liveIoSignals = useMemo(() => {
     const inputRows = editorCircuit.nodes
       .filter((node) => node.type === 'INPUT' || node.type === 'Switch')
@@ -2425,6 +2428,55 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       </div>
     );
   }, [editorCircuit, focusedIssueSignalKey, selectionAuthoringIssues]);
+  const hasSingleSelectedNode = !!selectedNode && selection.nodes.size === 1;
+  const hasMultiNodeSelection = selection.nodes.size > 1;
+  const hasMultiWireSelection = !hasMultiNodeSelection && selectedWireIds.length > 1;
+  const primarySelectionIssue = selectionAuthoringIssues[0] ?? null;
+  const primarySelectionDiagnostic = selectedNodeDiagnostics[0] ?? null;
+  const selectionStatusLabel = primarySelectionIssue
+    ? primarySelectionIssue.severity === 'error'
+      ? 'Needs fix'
+      : 'Needs review'
+    : primarySelectionDiagnostic
+      ? primarySelectionDiagnostic.severity === 'error'
+        ? 'Compiler issue'
+        : 'Compiler warning'
+      : hasSingleSelectedNode || selectedWireContext || activeInspectorSignalKey || hasMultiNodeSelection || hasMultiWireSelection
+        ? 'Ready'
+        : 'Idle';
+  const selectionStatusTone =
+    primarySelectionIssue?.severity ??
+    (primarySelectionDiagnostic?.severity === 'error'
+      ? 'error'
+      : primarySelectionDiagnostic?.severity === 'warn'
+        ? 'warn'
+        : 'ok');
+  const renderNodeLabelEditor = (node: Node) => (
+    <div className="ide-design-label-editor" data-testid="ide-design-label-editor">
+      {editingLabelNodeId === node.id ? (
+        <div className="ide-design-label-editor-row">
+          <input
+            className="ide-text-input ide-design-label-input"
+            type="text"
+            value={labelDraft}
+            onChange={(e) => setLabelDraft(e.target.value)}
+            onKeyDown={handleLabelKeyDown}
+            onBlur={commitNodeLabel}
+            autoFocus
+            placeholder="Enter label..."
+            data-testid="ide-design-label-input"
+            maxLength={32}
+          />
+          <IdeButton tone="secondary" onClick={commitNodeLabel} testId="ide-design-label-save">Save</IdeButton>
+          <IdeButton tone="ghost" onClick={cancelNodeLabel} testId="ide-design-label-cancel">Cancel</IdeButton>
+        </div>
+      ) : (
+        <IdeButton tone="secondary" onClick={() => beginNodeLabelEdit(node)} testId="ide-design-label-edit-btn">
+          {node.label ? `Rename ${node.label}` : 'Add label'}
+        </IdeButton>
+      )}
+    </div>
+  );
 
   const traceSelectedWire = useCallback((wireId: string) => {
     const bundle = buildWireTraceBundle(editorCircuit, wireId);
@@ -2626,6 +2678,784 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   };
   const [logicPaletteSection, sequentialPaletteSection, ioPaletteSection, reusablePaletteSection, boardPaletteSection] =
     PALETTE_SECTION_ORDER;
+  const renderSelectionIdentityCard = () => {
+    if (hasSingleSelectedNode && selectedNode) {
+      const displayName = selectedNode.label?.trim() || nodeTypeLabel(selectedNode.type);
+      const typeName = nodeTypeLabel(selectedNode.type);
+      const boardSummary = selectedNodeIoRow
+        ? `${selectedNodeIoRow.label} -> ${selectedNodeIoRow.pin || 'unmapped'}`
+        : 'No board mapping';
+      const nextStep = primarySelectionIssue?.hint
+        ?? (selectedNodeIoRow
+          ? 'Rename it, inspect its mapped signal, or trace the connected net next.'
+          : 'Rename it, inspect its pins, or trace the connected net next.');
+      return (
+        <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
+          <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
+            <span className="ide-design-inspector-eyebrow">Selected object</span>
+            <div className="ide-design-inspector-identity-row">
+              <div className="ide-design-inspector-title-block">
+                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+                  <strong data-testid="ide-design-inspector-identity-title">{displayName}</strong>
+                  {selectedNode.label?.trim() ? (
+                    <>
+                      <span className="ide-design-identity-sep"> / </span>
+                      <span>{typeName}</span>
+                    </>
+                  ) : null}
+                </div>
+                <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                  {typeName}
+                </p>
+              </div>
+              <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
+                {selectionStatusLabel}
+              </span>
+            </div>
+            <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+              {nextStep}
+            </p>
+            <div className="ide-design-inspector-meta-grid">
+              <div className="ide-design-inspector-meta-card">
+                <span className="ide-design-inspector-meta-label">Type</span>
+                <span className="ide-design-inspector-meta-value" data-testid="ide-design-selection-type">
+                  {typeName}
+                </span>
+              </div>
+              <div className="ide-design-inspector-meta-card">
+                <span className="ide-design-inspector-meta-label">Node ID</span>
+                <code className="ide-design-inspector-meta-value" data-testid="ide-design-selection-id">
+                  {selectedNode.id}
+                </code>
+              </div>
+              <div className="ide-design-inspector-meta-card">
+                <span className="ide-design-inspector-meta-label">Board mapping</span>
+                <span className="ide-design-inspector-meta-value">{boardSummary}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (hasMultiNodeSelection) {
+      return (
+        <div className="ide-design-selection-inspector" data-testid="ide-design-multiselect-summary">
+          <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
+            <span className="ide-design-inspector-eyebrow">Selected object</span>
+            <div className="ide-design-inspector-identity-row">
+              <div className="ide-design-inspector-title-block">
+                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+                  <strong data-testid="ide-design-multiselect-count">{selection.nodes.size} nodes selected</strong>
+                </div>
+                <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                  Compose, duplicate, or delete this group as one unit.
+                </p>
+              </div>
+              <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
+                {selectionStatusLabel}
+              </span>
+            </div>
+            <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+              Save this cluster as a reusable block or keep editing it as a grouped selection.
+            </p>
+            <div className="ide-design-selection-pins" data-testid="ide-design-multiselect-types">
+              {selectedTypeSummary.map((entry) => (
+                <span key={entry.type} className="ide-design-pin-pill">
+                  {nodeTypeLabel(entry.type)}: {entry.count}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (hasMultiWireSelection) {
+      return (
+        <div className="ide-design-selection-inspector" data-testid="ide-design-multiselect-summary">
+          <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
+            <span className="ide-design-inspector-eyebrow">Selected object</span>
+            <div className="ide-design-inspector-title-block">
+              <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+                <strong>{selectedWireIds.length} wires selected</strong>
+              </div>
+              <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                Narrow the selection to one net to inspect live signal state.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (selectedWireContext) {
+      const nextStep = primarySelectionIssue?.hint ?? 'Trace this net, pin it, or inspect its source and sink below.';
+      return (
+        <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
+          <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
+            <span className="ide-design-inspector-eyebrow">Selected object</span>
+            <div className="ide-design-inspector-identity-row">
+              <div className="ide-design-inspector-title-block">
+                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+                  <strong data-testid="ide-design-inspector-identity-title">{selectedWireContext.signalKey}</strong>
+                </div>
+                <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                  Wire net from {selectedWireContext.sourceLabel} to {selectedWireContext.targetLabel}
+                </p>
+              </div>
+              <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
+                {selectionStatusLabel}
+              </span>
+            </div>
+            <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+              {nextStep}
+            </p>
+            <div className="ide-design-inspector-meta-grid">
+              <div className="ide-design-inspector-meta-card">
+                <span className="ide-design-inspector-meta-label">Type</span>
+                <span className="ide-design-inspector-meta-value" data-testid="ide-design-selection-type">Wire</span>
+              </div>
+              <div className="ide-design-inspector-meta-card">
+                <span className="ide-design-inspector-meta-label">Wire ID</span>
+                <code className="ide-design-inspector-meta-value" data-testid="ide-design-selection-id">
+                  {selectedWireContext.wireId}
+                </code>
+              </div>
+              <div className="ide-design-inspector-meta-card">
+                <span className="ide-design-inspector-meta-label">Branches</span>
+                <span className="ide-design-inspector-meta-value">{selectedWireContext.branchCount}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (activeInspectorSignalKey) {
+      const nextStep = primarySelectionIssue?.hint ?? 'Pin this signal or step simulation to inspect how it changes.';
+      return (
+        <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
+          <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
+            <span className="ide-design-inspector-eyebrow">Selected object</span>
+            <div className="ide-design-inspector-identity-row">
+              <div className="ide-design-inspector-title-block">
+                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+                  <strong data-testid="ide-design-inspector-identity-title">{activeInspectorSignalKey}</strong>
+                </div>
+                <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                  Signal focus
+                </p>
+              </div>
+              <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
+                {selectionStatusLabel}
+              </span>
+            </div>
+            <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+              {nextStep}
+            </p>
+            <div className="ide-design-inspector-meta-grid">
+              <div className="ide-design-inspector-meta-card">
+                <span className="ide-design-inspector-meta-label">Type</span>
+                <span className="ide-design-inspector-meta-value" data-testid="ide-design-selection-type">Signal</span>
+              </div>
+              <div className="ide-design-inspector-meta-card">
+                <span className="ide-design-inspector-meta-label">Signal key</span>
+                <code className="ide-design-inspector-meta-value" data-testid="ide-design-selection-id">
+                  {activeInspectorSignalKey}
+                </code>
+              </div>
+              <div className="ide-design-inspector-meta-card">
+                <span className="ide-design-inspector-meta-label">Samples</span>
+                <span className="ide-design-inspector-meta-value">
+                  {activeInspectorSignalSnapshot?.samples ?? selectedSignalHistory.length}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="ide-design-inspector-empty-card" data-testid="ide-design-inspector-empty">
+        <span className="ide-design-inspector-eyebrow">Selected object</span>
+        <div className="ide-design-inspector-title-block">
+          <div className="ide-design-selection-identity">
+            <strong data-testid="ide-design-inspector-identity-title">Nothing selected</strong>
+          </div>
+          <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+            Select a node, wire, or signal to inspect it.
+          </p>
+        </div>
+        <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+          Build on the canvas, then use this dock to rename parts, inspect issues, and trace nets with confidence.
+        </p>
+      </div>
+    );
+  };
+  const renderSelectionHealth = () => {
+    if (selectionIssueSummary || primarySelectionDiagnostic) {
+      return (
+        <div className="ide-design-inspector-section-stack">
+          {selectionIssueSummary}
+          {primarySelectionIssue ? (
+            <div className="ide-inline-actions">
+              <IdeButton
+                tone="secondary"
+                onClick={() => focusDesignIssue(primarySelectionIssue)}
+                testId="ide-design-inspector-focus-issue"
+              >
+                Focus issue
+              </IdeButton>
+            </div>
+          ) : null}
+          {selectedNodeDiagnostics.length > 0 ? (
+            <div className="ide-design-inspector-diagnostics" data-testid="ide-design-selection-diagnostics">
+              <span className="ide-design-inspector-group-label">Compiler diagnostics</span>
+              <ul className="ide-design-inspector-diagnostic-list">
+                {selectedNodeDiagnostics.slice(0, 3).map((diagnostic) => (
+                  <li
+                    key={`${diagnostic.code}-${diagnostic.message}`}
+                    className={`ide-design-inspector-diagnostic-item is-${diagnostic.severity === 'error' ? 'error' : 'warn'}`}
+                  >
+                    <strong>{diagnostic.code}</strong>
+                    <span>{diagnostic.message}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+    if (hasSingleSelectedNode) {
+      return (
+        <IdeCallout tone="success" title="Healthy selection">
+          No live authoring issues are blocking this node right now. Use the actions below to rename it, trace its net, or inspect live state.
+        </IdeCallout>
+      );
+    }
+    if (hasMultiNodeSelection || hasMultiWireSelection) {
+      return (
+        <IdeCallout tone="info" title="Group selection">
+          Multi-select stays action-focused. Duplicate the cluster, save it as a reusable block, or narrow the selection to inspect one object deeply.
+        </IdeCallout>
+      );
+    }
+    if (selectedWireContext || activeInspectorSignalKey) {
+      return (
+        <IdeCallout tone="info" title="No active issue">
+          This signal path is currently clear. Use tracing or pinning if you want to follow it during simulation.
+        </IdeCallout>
+      );
+    }
+    return (
+      <IdeCallout tone="info" title="What to do next">
+        Select one node or wire to get object-specific guidance, live state, and edit controls in this dock.
+      </IdeCallout>
+    );
+  };
+  const renderSelectionActions = () => {
+    if (hasSingleSelectedNode && selectedNode) {
+      return (
+        <div className="ide-design-inspector-section-stack">
+          <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-edit-group">
+            <span className="ide-design-inspector-group-label">Edit</span>
+            <div className="ide-design-inspector-action-grid">
+              <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
+                Copy
+              </IdeButton>
+              <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
+                Duplicate
+              </IdeButton>
+              <IdeButton
+                tone="secondary"
+                onClick={() => beginNodeLabelEdit(selectedNode)}
+                disabled={editingLabelNodeId === selectedNode.id}
+                testId="ide-design-context-rename"
+              >
+                Rename
+              </IdeButton>
+            </div>
+          </div>
+          <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-group">
+            <span className="ide-design-inspector-group-label">Net tracing</span>
+            <div className="ide-design-inspector-action-grid">
+              {primarySelectionIssue ? (
+                <IdeButton tone="secondary" onClick={() => focusDesignIssue(primarySelectionIssue)}>
+                  Focus issue
+                </IdeButton>
+              ) : null}
+              <IdeButton tone="ghost" onClick={traceSelectedContext} disabled={!preferredNodeTracePort} testId="ide-design-context-trace">
+                Trace net
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={() => selectedNode && handleFanoutTrace(selectedNode.id)} disabled={!selectedNodeHasFanout} testId="ide-design-context-trace-fanout">
+                Trace {'->'}
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={pinActiveInspectorSignal} disabled={!activeInspectorSignalKey} testId="ide-design-context-pin">
+                {isActiveInspectorSignalPinned ? 'Unpin' : 'Pin'}
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
+                Clear
+              </IdeButton>
+            </div>
+          </div>
+          <div className="ide-design-inspector-action-group ide-design-inspector-group--danger" data-testid="ide-design-inspector-danger-group">
+            <span className="ide-design-inspector-group-label">Danger</span>
+            <div className="ide-design-inspector-action-grid">
+              <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
+                Delete node
+              </IdeButton>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (hasMultiNodeSelection) {
+      return (
+        <div className="ide-design-inspector-section-stack">
+          <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-edit-group">
+            <span className="ide-design-inspector-group-label">Edit</span>
+            <div className="ide-design-inspector-action-grid">
+              <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
+                Copy ({selection.nodes.size})
+              </IdeButton>
+              <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
+                Duplicate ({selection.nodes.size})
+              </IdeButton>
+              {clipboard ? (
+                <IdeButton tone="secondary" onClick={handlePaste} testId="ide-design-paste-btn">
+                  Paste
+                </IdeButton>
+              ) : null}
+            </div>
+          </div>
+          {onSaveMacro && selectedNodeIdsAll.length >= 2 ? (
+            <div className="ide-design-inspector-action-group">
+              <span className="ide-design-inspector-group-label">Compose</span>
+              <div className="ide-design-inspector-action-grid">
+                <IdeButton tone="ghost" onClick={openMacroDialog} testId="ide-design-save-macro-open">
+                  Save as Macro...
+                </IdeButton>
+              </div>
+            </div>
+          ) : null}
+          {onSaveAsComponent && selectedNodeIdsAll.length >= 2 ? (
+            <div className="ide-design-inspector-action-group">
+              <span className="ide-design-inspector-group-label">Reusable block</span>
+              <div className="ide-design-inspector-action-grid">
+                {saveComponentOpen ? (
+                  <>
+                    <input
+                      className="ide-text-input"
+                      type="text"
+                      placeholder="Component name..."
+                      value={saveComponentName}
+                      onChange={(e) => setSaveComponentName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleSaveComponent(); }}
+                      data-testid="ide-design-save-component-input"
+                    />
+                    <IdeButton tone="primary" onClick={handleSaveComponent} testId="ide-design-save-component-confirm">
+                      Save
+                    </IdeButton>
+                    <IdeButton tone="ghost" onClick={() => { setSaveComponentOpen(false); setSaveComponentName(''); }} testId="ide-design-save-component-cancel">
+                      Cancel
+                    </IdeButton>
+                  </>
+                ) : (
+                  <IdeButton tone="secondary" onClick={() => setSaveComponentOpen(true)} testId="ide-design-save-component-open">
+                    Save as Component...
+                  </IdeButton>
+                )}
+              </div>
+              {savedComponentToast ? (
+                <IdeCallout tone="success" testId="ide-design-save-component-toast">
+                  Saved "{savedComponentToast}" and added it to the Custom palette.
+                </IdeCallout>
+              ) : null}
+            </div>
+          ) : null}
+          <div className="ide-design-inspector-action-group ide-design-inspector-group--danger" data-testid="ide-design-inspector-danger-group">
+            <span className="ide-design-inspector-group-label">Danger</span>
+            <div className="ide-design-inspector-action-grid">
+              <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
+                Delete {selection.nodes.size} nodes
+              </IdeButton>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (selectedWireContext) {
+      return (
+        <div className="ide-design-inspector-section-stack">
+          <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-group">
+            <span className="ide-design-inspector-group-label">Net tracing</span>
+            <div className="ide-design-inspector-action-grid">
+              <IdeButton tone="secondary" onClick={() => traceSelectedWire(selectedWireContext.wireId)} testId="ide-design-context-trace">
+                Trace net
+              </IdeButton>
+              <IdeButton tone="secondary" onClick={pinActiveInspectorSignal} disabled={!activeInspectorSignalKey} testId="ide-design-context-pin">
+                {isActiveInspectorSignalPinned ? 'Unpin signal' : 'Pin signal'}
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
+                Clear trace
+              </IdeButton>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (activeInspectorSignalKey) {
+      return (
+        <div className="ide-design-inspector-section-stack">
+          <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-group">
+            <span className="ide-design-inspector-group-label">Signal actions</span>
+            <div className="ide-design-inspector-action-grid">
+              <IdeButton tone="secondary" onClick={pinActiveInspectorSignal} testId="ide-design-context-pin">
+                {isActiveInspectorSignalPinned ? 'Unpin signal' : 'Pin signal'}
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
+                Clear trace
+              </IdeButton>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <IdeCallout tone="info" title="No selection yet">
+        Start by selecting a node or wire. The primary actions for that object will appear here.
+      </IdeCallout>
+    );
+  };
+  const renderSelectionProperties = () => {
+    if (hasSingleSelectedNode && selectedNode) {
+      return (
+        <div className="ide-design-inspector-section-stack">
+          <div className="ide-design-inspector-property-card">
+            <span className="ide-design-inspector-group-label">Name</span>
+            {renderNodeLabelEditor(selectedNode)}
+          </div>
+          <IdeCallout tone="info" title="Design labels travel">
+            Labels show up in Verify, Export, and mapping views. Give parts names students can understand at a glance.
+          </IdeCallout>
+        </div>
+      );
+    }
+    if (hasMultiNodeSelection || hasMultiWireSelection) {
+      return (
+        <IdeCallout tone="info" title="Group properties">
+          Multi-select stays action-focused in this batch. Select one node when you want to rename it or inspect one set of properties.
+        </IdeCallout>
+      );
+    }
+    if (selectedWireContext || activeInspectorSignalKey) {
+      return (
+        <IdeCallout tone="info" title="Read-only selection">
+          Wire and signal selections are read-only in Design. Use Primary Actions to trace or pin them instead.
+        </IdeCallout>
+      );
+    }
+    return (
+      <IdeCallout tone="info" title="Editable properties">
+        Select one node to rename it and review the properties that matter for student-facing authoring.
+      </IdeCallout>
+    );
+  };
+  const renderSelectionState = () => {
+    if (hasSingleSelectedNode && selectedNode) {
+      return (
+        <div className="ide-design-inspector-section-stack">
+          <div className="ide-design-live-summary">
+            <div className="ide-kv-list">
+              <div className="ide-kv-row">
+                <span>Current</span>
+                <code data-testid="ide-design-context-current">{selectedNodeSignalSnapshot?.currentValue ?? 0}</code>
+              </div>
+              <div className="ide-kv-row">
+                <span>Previous</span>
+                <code data-testid="ide-design-context-previous">{selectedNodeSignalSnapshot?.previousValue ?? 0}</code>
+              </div>
+              <div className="ide-kv-row">
+                <span>Transition</span>
+                <span data-testid="ide-design-context-transition">{selectedNodeSignalSnapshot?.transition ?? 'stable'}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Last transition</span>
+                <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Driver / Source</span>
+                <span>{selectedNodeConnectionSummary?.incomingLabel ?? 'Primary source'}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Fan-in / Fan-out</span>
+                <span>{selectedNodeConnectionSummary?.fanIn ?? 0} / {selectedNodeConnectionSummary?.fanOut ?? 0}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Board mapping</span>
+                <span>{selectedNodeIoRow ? `${selectedNodeIoRow.label} -> ${selectedNodeIoRow.pin || 'unmapped'}` : 'None'}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Probe state</span>
+                <span>{isActiveInspectorSignalPinned ? 'Pinned' : 'Not pinned'}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Trace state</span>
+                <span data-testid="ide-design-context-trace-state">
+                  {traceState?.nodeIds.has(selectedNode.id) ? traceState.label : 'No trace locked'}
+                </span>
+              </div>
+            </div>
+          </div>
+          {selectedNodeSignals && selectedNodeSignals.length > 0 ? (
+            <div className="ide-design-selection-pins" data-testid="ide-design-selection-pins">
+              {selectedNodeSignals.map((entry) => {
+                const val = entry.value;
+                const valStr = val === 1 ? '1' : val === 0 ? '0' : '?';
+                return (
+                  <span
+                    key={`${selectedNode.id}-${entry.port}`}
+                    className={`ide-design-pin-pill ide-design-pin-pill--val${val === 1 ? '-hi' : val === 0 ? '-lo' : '-unk'}`}
+                    data-testid={`ide-design-pin-pill-${selectedNode.id}-${entry.port}`}
+                  >
+                    {entry.port}
+                    <span className="ide-design-pin-pill-value">{valStr}</span>
+                  </span>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+    if (selectedWireContext) {
+      return (
+        <div className="ide-design-live-summary">
+          <div className="ide-kv-list">
+            <div className="ide-kv-row">
+              <span>Signal</span>
+              <code>{selectedWireContext.signalKey}</code>
+            </div>
+            <div className="ide-kv-row">
+              <span>Current</span>
+              <code data-testid="ide-design-context-current">{selectedWireContext.snapshot?.currentValue ?? 0}</code>
+            </div>
+            <div className="ide-kv-row">
+              <span>Previous</span>
+              <code data-testid="ide-design-context-previous">{selectedWireContext.snapshot?.previousValue ?? 0}</code>
+            </div>
+            <div className="ide-kv-row">
+              <span>Transition</span>
+              <span data-testid="ide-design-context-transition">{selectedWireContext.snapshot?.transition ?? 'stable'}</span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Last transition</span>
+              <span data-testid="ide-design-context-last-transition">{selectedWireContext.snapshot?.lastTransitionTick ?? '—'}</span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Driver / Source</span>
+              <span>{selectedWireContext.sourceLabel}.{selectedWireContext.sourcePort}</span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Sink</span>
+              <span>{selectedWireContext.targetLabel}.{selectedWireContext.targetPort}</span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Trace state</span>
+              <span data-testid="ide-design-context-trace-state">
+                {traceState?.kind === 'wire-net' && traceState.sourceKey === selectedWireContext.wireId ? traceState.label : 'No trace locked'}
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (activeInspectorSignalKey) {
+      return (
+        <div className="ide-design-live-summary">
+          <div className="ide-kv-list">
+            <div className="ide-kv-row">
+              <span>Signal</span>
+              <code data-testid="ide-design-signal-selected">{activeInspectorSignalKey}</code>
+            </div>
+            <div className="ide-kv-row">
+              <span>Current</span>
+              <code data-testid="ide-design-signal-current-value">{activeInspectorSignalSnapshot?.currentValue ?? 0}</code>
+            </div>
+            <div className="ide-kv-row">
+              <span>Previous</span>
+              <code>{activeInspectorSignalSnapshot?.previousValue ?? 0}</code>
+            </div>
+            <div className="ide-kv-row">
+              <span>Transition</span>
+              <span>{activeInspectorSignalSnapshot?.transition ?? 'stable'}</span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Last transition</span>
+              <span data-testid="ide-design-context-last-transition">{activeInspectorSignalSnapshot?.lastTransitionTick ?? '—'}</span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Samples</span>
+              <span>{activeInspectorSignalSnapshot?.samples ?? selectedSignalHistory.length}</span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Trace state</span>
+              <span data-testid="ide-design-context-trace-state">{traceState?.label ?? 'No trace locked'}</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (hasMultiNodeSelection || hasMultiWireSelection) {
+      return (
+        <IdeCallout tone="info" title="Single-object state only">
+          Pick one node, wire, or signal when you want live values and transition details. Group selections stay action-focused.
+        </IdeCallout>
+      );
+    }
+    return (
+      <IdeCallout tone="info" title="Signal / State">
+        Select one node, wire, or signal to see live values, transitions, and trace status here.
+      </IdeCallout>
+    );
+  };
+  const renderAdvancedDetails = () => (
+    <div className="ide-design-inspector-section-stack">
+      {hasSingleSelectedNode && selectedNode ? (
+        <>
+          <div className="ide-design-selection-properties" data-testid="ide-design-selection-properties">
+            <span className="ide-design-inspector-group-label">Raw properties</span>
+            <div className="ide-kv-list">
+              {selectedNodeProperties.map((entry) => (
+                <div key={`${selectedNode.id}-${entry.key}`} className="ide-kv-row">
+                  <span>{entry.key}</span>
+                  <code>{entry.value}</code>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="ide-design-selection-warnings" data-testid="ide-design-selection-warnings">
+            <span className="ide-design-inspector-group-label">Node diagnostics</span>
+            {selectedNodeDiagnostics.length > 0 ? (
+              <ul className="ide-design-selection-warning-list">
+                {selectedNodeDiagnostics.map((diagnostic) => (
+                  <li
+                    key={`${selectedNode.id}-${diagnostic.code}-${diagnostic.message}`}
+                    className={`ide-design-selection-warning-item ${
+                      diagnostic.severity === 'error' ? 'is-error' : 'is-warning'
+                    }`}
+                  >
+                    <span>{diagnostic.code}</span>
+                    <span>{diagnostic.message}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="ide-copy">No compiler diagnostics are attached to this node.</p>
+            )}
+          </div>
+          <div data-testid="ide-design-net-pins">
+            <span className="ide-design-inspector-group-label">Net / Pins</span>
+            <div className="ide-kv-list">
+              <div className="ide-kv-row">
+                <span>Selected</span>
+                <code>{selectedNode.id}</code>
+              </div>
+              <div className="ide-kv-row">
+                <span>Pin count</span>
+                <span>{selectedNodePins.length}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Connected wires</span>
+                <span>
+                  {editorCircuit.connections.filter((entry) => {
+                    const fromNodeId =
+                      typeof entry.from === 'string' ? entry.from : entry.from.nodeId;
+                    const toNodeId =
+                      typeof entry.to === 'string' ? entry.to : entry.to.nodeId;
+                    return fromNodeId === selectedNode.id || toNodeId === selectedNode.id;
+                  }).length}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <span className="ide-design-inspector-group-label">Evaluation order</span>
+            <div className="ide-kv-row">
+              <span>Show eval sequence</span>
+              <IdeButton
+                tone={showEvalOrder ? 'primary' : 'ghost'}
+                onClick={() => setShowEvalOrder((v) => !v)}
+                testId="ide-design-show-eval-order"
+              >
+                {showEvalOrder ? 'On' : 'Off'}
+              </IdeButton>
+            </div>
+            {showEvalOrder && selectedNodeEvalStats ? (
+              <div className="ide-kv-list ide-copy-top-gap">
+                {selectedNodeEvalStats.step != null ? (
+                  <div className="ide-kv-row">
+                    <span>Eval step</span>
+                    <span data-testid="ide-design-eval-step">#{selectedNodeEvalStats.step}</span>
+                  </div>
+                ) : null}
+                <div className="ide-kv-row">
+                  <span>Signal depth</span>
+                  <span data-testid="ide-design-signal-depth">{selectedNodeEvalStats.depth}</span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Fanout</span>
+                  <span data-testid="ide-design-fanout">{selectedNodeEvalStats.fanout}</span>
+                </div>
+              </div>
+            ) : showEvalOrder ? (
+              <p className="ide-copy ide-copy-top-gap">Select a node to see its evaluation order stats.</p>
+            ) : null}
+          </div>
+        </>
+      ) : null}
+      {selectedWireIds.length > 0 ? (
+        <div className="ide-copy-top-gap">
+          <strong>Selected wires:</strong> {selectedWireIds.length}
+        </div>
+      ) : null}
+      <div>
+        <span className="ide-design-inspector-group-label">Workspace</span>
+        <div className="ide-kv-list">
+          <div className="ide-kv-row">
+            <span>Nodes / Wires</span>
+            <span>{circuit.nodes.length} / {circuit.connections.length}</span>
+          </div>
+          <div className="ide-kv-row">
+            <span>Tool</span>
+            <span>{activeModeLabel}</span>
+          </div>
+          <div className="ide-kv-row">
+            <span>Snap</span>
+            <span>{snapToGrid ? 'On' : 'Off'}</span>
+          </div>
+          <div className="ide-kv-row">
+            <span>Interaction</span>
+            <span data-testid="ide-design-interaction-indicator">{interactionLabel}</span>
+          </div>
+          <div className="ide-kv-row">
+            <span>Zoom</span>
+            <span data-testid="ide-design-zoom-indicator">{zoomPercent}%</span>
+          </div>
+          <div className="ide-kv-row">
+            <span>View</span>
+            <span>{effectiveDesignView === 'stacked' ? 'Split stacked' : effectiveDesignView}</span>
+          </div>
+          <div className="ide-kv-row">
+            <span>Dirty since verify</span>
+            <span>{dirtySinceVerify ? 'Yes' : 'No'}</span>
+          </div>
+          <div className="ide-kv-row">
+            <span>Dirty since export</span>
+            <span>{dirtySinceExport ? 'Yes' : 'No'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -2921,280 +3751,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       inspector={
         <>
-          {/* Selection header — always visible, changes with selection */}
-          <div className="ide-design-inspector-sel-header" data-testid="ide-design-sel-header">
-            {selectedNode ? (
-              <>
-                <span className="ide-design-inspector-sel-type">{selectedNode.type}</span>
-                <code className="ide-design-inspector-sel-id">{selectedNode.id}</code>
-              </>
-            ) : selectedWireContext ? (
-              <>
-                <span className="ide-design-inspector-sel-type">WIRE</span>
-                <code className="ide-design-inspector-sel-id">{selectedWireContext.wireId}</code>
-              </>
-            ) : activeInspectorSignalKey ? (
-              <>
-                <span className="ide-design-inspector-sel-type">SIGNAL</span>
-                <code className="ide-design-inspector-sel-id">{activeInspectorSignalKey}</code>
-              </>
-            ) : (
-              <span className="ide-design-inspector-hint">No selection</span>
-            )}
-          </div>
-          <IdeInspectorAccordion defaultOpenId="design-context">
-          <IdeInspectorSection title="Selection" accordionId="design-context" testId="ide-design-context-inspector">
-            {selectedNode && selection.nodes.size === 1 ? (
-              <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
-                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
-                  {selectedNode.label
-                    ? <><strong>{selectedNode.label}</strong><span className="ide-design-identity-sep"> — </span>{nodeTypeLabel(selectedNode.type)}</>
-                    : <strong>{nodeTypeLabel(selectedNode.type)}</strong>
-                  }
-                </div>
-                {selectionIssueSummary}
-                <div className="ide-kv-list">
-                  <div className="ide-kv-row">
-                    <span>Type</span>
-                    <span data-testid="ide-design-selection-type">{nodeTypeLabel(selectedNode.type)}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Name</span>
-                    <code data-testid="ide-design-selection-id">{selectedNode.label ?? selectedNode.id}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Current</span>
-                    <code data-testid="ide-design-context-current">{selectedNodeSignalSnapshot?.currentValue ?? 0}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Previous</span>
-                    <code data-testid="ide-design-context-previous">{selectedNodeSignalSnapshot?.previousValue ?? 0}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Transition</span>
-                    <span data-testid="ide-design-context-transition">{selectedNodeSignalSnapshot?.transition ?? 'stable'}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Last transition</span>
-                    <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Driver / Source</span>
-                    <span>{selectedNodeConnectionSummary?.incomingLabel ?? 'Primary source'}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Fan-in / Fan-out</span>
-                    <span>{selectedNodeConnectionSummary?.fanIn ?? 0} / {selectedNodeConnectionSummary?.fanOut ?? 0}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Board mapping</span>
-                    <span>{selectedNodeIoRow ? `${selectedNodeIoRow.label} -> ${selectedNodeIoRow.pin || 'unmapped'}` : 'None'}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Probe state</span>
-                    <span>{isActiveInspectorSignalPinned ? 'Pinned' : 'Not pinned'}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Trace state</span>
-                    <span data-testid="ide-design-context-trace-state">
-                      {traceState?.nodeIds.has(selectedNode.id) ? traceState.label : 'No trace locked'}
-                    </span>
-                  </div>
-                </div>
-                <div className="ide-inline-actions">
-                  <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
-                    Copy
-                  </IdeButton>
-                  <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
-                    Duplicate
-                  </IdeButton>
-                  <IdeButton
-                    tone="secondary"
-                    onClick={() => {
-                      setEditingLabelNodeId(selectedNode.id);
-                      setLabelDraft(selectedNode.label ?? '');
-                    }}
-                    disabled={editingLabelNodeId === selectedNode.id}
-                    testId="ide-design-context-rename"
-                  >
-                    Rename
-                  </IdeButton>
-                </div>
-                <div className="ide-design-label-editor" data-testid="ide-design-label-editor">
-                  {editingLabelNodeId === selectedNode.id ? (
-                    <div className="ide-design-label-editor-row">
-                      <input
-                        className="ide-text-input ide-design-label-input"
-                        type="text"
-                        value={labelDraft}
-                        onChange={(e) => setLabelDraft(e.target.value)}
-                        onKeyDown={handleLabelKeyDown}
-                        onBlur={commitNodeLabel}
-                        autoFocus
-                        placeholder="Enter label…"
-                        data-testid="ide-design-label-input"
-                        maxLength={32}
-                      />
-                      <IdeButton tone="secondary" onClick={commitNodeLabel} testId="ide-design-label-save">✓</IdeButton>
-                      <IdeButton tone="ghost" onClick={cancelNodeLabel} testId="ide-design-label-cancel">✕</IdeButton>
-                    </div>
-                  ) : (
-                    <IdeButton
-                      tone="ghost"
-                      onClick={() => {
-                        setEditingLabelNodeId(selectedNode.id);
-                        setLabelDraft(selectedNode.label ?? '');
-                      }}
-                      testId="ide-design-label-edit-btn"
-                    >
-                      {selectedNode.label ? `Label: ${selectedNode.label}` : 'Add label…'}
-                    </IdeButton>
-                  )}
-                </div>
-                <div className="ide-design-inspector-group" data-testid="ide-design-trace-group">
-                  <span className="ide-design-inspector-group-label">Net tracing</span>
-                  <div className="ide-inline-actions">
-                    <IdeButton tone="ghost" onClick={traceSelectedContext} disabled={!preferredNodeTracePort} testId="ide-design-context-trace">
-                      Trace net
-                    </IdeButton>
-                    <IdeButton tone="ghost" onClick={() => selectedNode && handleFanoutTrace(selectedNode.id)} disabled={!selectedNodeHasFanout} testId="ide-design-context-trace-fanout">
-                      Trace →
-                    </IdeButton>
-                    <IdeButton tone="ghost" onClick={pinActiveInspectorSignal} disabled={!activeInspectorSignalKey} testId="ide-design-context-pin">
-                      {isActiveInspectorSignalPinned ? 'Unpin' : 'Pin'}
-                    </IdeButton>
-                    <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
-                      Clear
-                    </IdeButton>
-                  </div>
-                </div>
-              </div>
-            ) : selectedWireContext ? (
-              <div className="ide-design-selection-inspector" data-testid="ide-design-wire-context">
-                {selectionIssueSummary}
-                <div className="ide-kv-list">
-                  <div className="ide-kv-row">
-                    <span>Type</span>
-                    <span>Wire</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Label</span>
-                    <code>{selectedWireContext.signalKey}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Current</span>
-                    <code data-testid="ide-design-context-current">{selectedWireContext.snapshot?.currentValue ?? 0}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Previous</span>
-                    <code data-testid="ide-design-context-previous">{selectedWireContext.snapshot?.previousValue ?? 0}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Transition</span>
-                    <span data-testid="ide-design-context-transition">{selectedWireContext.snapshot?.transition ?? 'stable'}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Last transition</span>
-                    <span data-testid="ide-design-context-last-transition">{selectedWireContext.snapshot?.lastTransitionTick ?? '—'}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Driver / Source</span>
-                    <span>{selectedWireContext.sourceLabel}.{selectedWireContext.sourcePort}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Sink</span>
-                    <span>{selectedWireContext.targetLabel}.{selectedWireContext.targetPort}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Net branches</span>
-                    <span>{selectedWireContext.branchCount}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Probe state</span>
-                    <span>{isActiveInspectorSignalPinned ? 'Pinned' : 'Not pinned'}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Trace state</span>
-                    <span data-testid="ide-design-context-trace-state">
-                      {traceState?.kind === 'wire-net' && traceState.sourceKey === selectedWireContext.wireId ? traceState.label : 'No trace locked'}
-                    </span>
-                  </div>
-                </div>
-                <div className="ide-inline-actions ide-design-inspector-actions">
-                  <IdeButton tone="secondary" onClick={() => traceSelectedWire(selectedWireContext.wireId)} testId="ide-design-context-trace">
-                    Trace net
-                  </IdeButton>
-                  <IdeButton tone="secondary" onClick={pinActiveInspectorSignal} disabled={!activeInspectorSignalKey} testId="ide-design-context-pin">
-                    {isActiveInspectorSignalPinned ? 'Unpin signal' : 'Pin signal'}
-                  </IdeButton>
-                  <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
-                    Clear trace
-                  </IdeButton>
-                </div>
-              </div>
-            ) : activeInspectorSignalKey ? (
-              <div className="ide-design-selection-inspector" data-testid="ide-design-signal-focus">
-                {selectionIssueSummary}
-                <div className="ide-kv-list">
-                  <div className="ide-kv-row">
-                    <span>Signal</span>
-                    <code data-testid="ide-design-signal-selected">{activeInspectorSignalKey}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Current</span>
-                    <code data-testid="ide-design-signal-current-value">{activeInspectorSignalSnapshot?.currentValue ?? 0}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Previous</span>
-                    <code>{activeInspectorSignalSnapshot?.previousValue ?? 0}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Transition</span>
-                    <span>{activeInspectorSignalSnapshot?.transition ?? 'stable'}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Last transition</span>
-                    <span data-testid="ide-design-context-last-transition">{activeInspectorSignalSnapshot?.lastTransitionTick ?? '—'}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Samples</span>
-                    <span>{activeInspectorSignalSnapshot?.samples ?? selectedSignalHistory.length}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Trace state</span>
-                    <span data-testid="ide-design-context-trace-state">{traceState?.label ?? 'No trace locked'}</span>
-                  </div>
-                </div>
-                <div className="ide-inline-actions ide-design-inspector-actions">
-                  <IdeButton tone="secondary" onClick={pinActiveInspectorSignal} testId="ide-design-context-pin">
-                    {isActiveInspectorSignalPinned ? 'Unpin signal' : 'Pin signal'}
-                  </IdeButton>
-                  <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
-                    Clear trace
-                  </IdeButton>
-                </div>
-              </div>
-            ) : (
-              <>
-            <p className="ide-copy">
-              Build your circuit using logic gates and wires. Switch to <b>Split</b> view to see live-generated VHDL alongside the canvas.
-            </p>
-            <ul className="ide-bullets">
-              <li><b>Canvas</b>: place gates, flip-flops, and wires.</li>
-              <li><b>Split</b>: canvas + live VHDL side by side.</li>
-              <li><b>Import</b>: bring in an existing Vivado/HDL project.</li>
-            </ul>
-            <div className="ide-inline-actions">
-              {onGoToProject && (
-                <IdeButton tone="ghost" onClick={onGoToProject} testId="ide-design-go-project">
-                  I/O Mapping →
-                </IdeButton>
-              )}
-            </div>
-              </>
-            )}
+          {renderSelectionIdentityCard()}
+          <IdeInspectorSection title="Problem / Health" testId="ide-design-inspector-health" collapsible={false}>
+            {renderSelectionHealth()}
           </IdeInspectorSection>
-          <IdeInspectorSection title="Board Signal" accordionId="board-signal">
+          <IdeInspectorSection title="Primary Actions" testId="ide-design-inspector-actions" collapsible={false}>
+            {renderSelectionActions()}
+          </IdeInspectorSection>
+          <IdeInspectorSection title="Editable Properties" testId="ide-design-inspector-properties" collapsible={false}>
+            {renderSelectionProperties()}
+          </IdeInspectorSection>
+          <IdeInspectorSection title="Signal / State" testId="ide-design-context-inspector" collapsible={false}>
+            {renderSelectionState()}
+          </IdeInspectorSection>
+          <IdeInspectorSection title="Board Signal" testId="ide-design-board-signal" defaultOpen={false}>
             {(() => {
               if (!selectedNode) {
                 return (
@@ -3252,46 +3822,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               );
             })()}
           </IdeInspectorSection>
-          <IdeInspectorSection title="Workspace" accordionId="metrics">
-            <div className="ide-kv-list">
-              <div className="ide-kv-row">
-                <span>Nodes / Wires</span>
-                <span>{circuit.nodes.length} / {circuit.connections.length}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Tool</span>
-                <span>{toolMode === 'wire' ? 'Wire' : 'Select'}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Snap</span>
-                <span>{snapToGrid ? 'On' : 'Off'}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Zoom</span>
-                <span data-testid="ide-design-zoom-indicator">{zoomPercent}%</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>View mode</span>
-                <span>{effectiveDesignView === 'stacked' ? 'Split (stacked)' : designView.toUpperCase()}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Interaction</span>
-                <span data-testid="ide-design-interaction-indicator">{interactionLabel}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Dirty since verify</span>
-                <span>{dirtySinceVerify ? 'Yes' : 'No'}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Dirty since export</span>
-                <span>{dirtySinceExport ? 'Yes' : 'No'}</span>
-              </div>
-            </div>
+          <IdeInspectorSection title="Advanced Details" testId="ide-design-inspector-advanced" defaultOpen={false}>
+            {renderAdvancedDetails()}
           </IdeInspectorSection>
 
           {/* Student-loop contract: live simulation must stay directly reachable even when
               other inspector sections participate in shared accordion behavior. */}
-          <IdeInspectorSection title="Live Simulation" testId="ide-design-live-sim-section">
+          <IdeInspectorSection title="Live Simulation" testId="ide-design-live-sim-section" defaultOpen={false}>
             <div className="ide-inline-actions">
               {simRunning ? (
                 <IdeButton tone="secondary" onClick={pauseSimulation} testId="ide-design-sim-pause">
@@ -3363,7 +3900,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           </IdeInspectorSection>
 
-          <IdeInspectorSection title="Signal Probe" testId="ide-design-signal-probe" accordionId="signal-probe">
+          <IdeInspectorSection title="Signal Probe" testId="ide-design-signal-probe" defaultOpen={false}>
             {selectedSignalKey ? (
               <>
                 <div className="ide-kv-list">
@@ -3441,270 +3978,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             ) : null}
           </IdeInspectorSection>
 
-          {(selection.nodes.size > 1 || selectedWireIds.length > 1) && (
-          <IdeInspectorSection title="Selection">
-            {selectedNode && selection.nodes.size === 1 ? (
-              <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
-                <div className="ide-kv-list">
-                  <div className="ide-kv-row">
-                    <span>Type</span>
-                    <span data-testid="ide-design-selection-type">{nodeTypeLabel(selectedNode.type)}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Node ID</span>
-                    <span>
-                      <code data-testid="ide-design-selection-id">{selectedNode.id}</code>
-                    </span>
-                  </div>
-                </div>
-                {/* A-5: Inline node label editor */}
-                <div className="ide-design-label-editor" data-testid="ide-design-label-editor">
-                  {editingLabelNodeId === selectedNode.id ? (
-                    <div className="ide-design-label-editor-row">
-                      <input
-                        className="ide-text-input ide-design-label-input"
-                        type="text"
-                        value={labelDraft}
-                        onChange={(e) => setLabelDraft(e.target.value)}
-                        onKeyDown={handleLabelKeyDown}
-                        onBlur={commitNodeLabel}
-                        autoFocus
-                        placeholder="Enter label…"
-                        data-testid="ide-design-label-input"
-                        maxLength={32}
-                      />
-                      <IdeButton tone="secondary" onClick={commitNodeLabel} testId="ide-design-label-save">✓</IdeButton>
-                      <IdeButton tone="ghost" onClick={cancelNodeLabel} testId="ide-design-label-cancel">✕</IdeButton>
-                    </div>
-                  ) : (
-                    <IdeButton
-                      tone="ghost"
-                      onClick={() => {
-                        setEditingLabelNodeId(selectedNode.id);
-                        setLabelDraft(selectedNode.label ?? '');
-                      }}
-                      testId="ide-design-label-edit-btn"
-                    >
-                      {selectedNode.label ? `Label: ${selectedNode.label}` : 'Add label…'}
-                    </IdeButton>
-                  )}
-                </div>
-                <div className="ide-design-selection-pins" data-testid="ide-design-selection-pins">
-                  {selectedNodePins.map((pin) => {
-                    const val = liveSignals.get(`${selectedNode.id}.${pin}`) ?? null;
-                    const valStr = val === 1 ? '1' : val === 0 ? '0' : '?';
-                    return (
-                      <span
-                        key={`${selectedNode.id}-${pin}`}
-                        className={`ide-design-pin-pill ide-design-pin-pill--val${val === 1 ? '-hi' : val === 0 ? '-lo' : '-unk'}`}
-                        data-testid={`ide-design-pin-pill-${selectedNode.id}-${pin}`}
-                      >
-                        {pin}<span className="ide-design-pin-pill-value">{valStr}</span>
-                      </span>
-                    );
-                  })}
-                </div>
-                <div className="ide-design-selection-properties" data-testid="ide-design-selection-properties">
-                  <p className="ide-copy">IR Properties</p>
-                  <div className="ide-kv-list">
-                    {selectedNodeProperties.length > 0 ? (
-                      selectedNodeProperties.map((entry) => (
-                        <div key={`${selectedNode.id}-${entry.key}`} className="ide-kv-row">
-                          <span>{entry.key}</span>
-                          <code>{entry.value}</code>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="ide-copy">No typed properties on this node.</p>
-                    )}
-                  </div>
-                </div>
-                <div className="ide-design-selection-warnings" data-testid="ide-design-selection-warnings">
-                  <p className="ide-copy">Node Diagnostics</p>
-                  {selectedNodeDiagnostics.length > 0 ? (
-                    <ul className="ide-design-selection-warning-list">
-                      {selectedNodeDiagnostics.map((diagnostic) => (
-                        <li
-                          key={`${selectedNode.id}-${diagnostic.code}-${diagnostic.message}`}
-                          className={`ide-design-selection-warning-item ${
-                            diagnostic.severity === 'error' ? 'is-error' : 'is-warning'
-                          }`}
-                        >
-                          <span>{diagnostic.code}</span>
-                          <span>{diagnostic.message}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="ide-copy">No diagnostics attached to this node.</p>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
-                  <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
-                    Copy
-                  </IdeButton>
-                  <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
-                    Duplicate
-                  </IdeButton>
-                  {clipboard && (
-                    <IdeButton tone="secondary" onClick={handlePaste} testId="ide-design-paste-btn">
-                      Paste
-                    </IdeButton>
-                  )}
-                </div>
-                <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
-                  Delete selected node
-                </IdeButton>
-              </div>
-            ) : selection.nodes.size > 1 ? (
-              <div className="ide-design-selection-inspector" data-testid="ide-design-multiselect-summary">
-                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
-                  <strong data-testid="ide-design-multiselect-count">{selection.nodes.size} nodes selected</strong>
-                </div>
-                <div className="ide-design-selection-pins" data-testid="ide-design-multiselect-types">
-                  {selectedTypeSummary.map((entry) => (
-                    <span key={entry.type} className="ide-design-pin-pill">
-                      {nodeTypeLabel(entry.type)}: {entry.count}
-                    </span>
-                  ))}
-                </div>
-                <div className="ide-inline-actions" style={{ marginBottom: 6 }}>
-                  <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
-                    Copy ({selection.nodes.size})
-                  </IdeButton>
-                  <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
-                    Duplicate ({selection.nodes.size})
-                  </IdeButton>
-                  {clipboard && (
-                    <IdeButton tone="secondary" onClick={handlePaste} testId="ide-design-paste-btn">
-                      Paste
-                    </IdeButton>
-                  )}
-                </div>
-                {onSaveMacro && selectedNodeIdsAll.length >= 2 && (
-                  <div className="ide-design-inspector-group">
-                    <span className="ide-design-inspector-group-label">Compose</span>
-                    <div className="ide-inline-actions">
-                      <IdeButton tone="ghost" onClick={openMacroDialog} testId="ide-design-save-macro-open">
-                        Save as Macro…
-                      </IdeButton>
-                    </div>
-                  </div>
-                )}
-                <div className="ide-design-inspector-group ide-design-inspector-group--danger">
-                  <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
-                    Delete {selection.nodes.size} nodes
-                  </IdeButton>
-                </div>
-                {onSaveAsComponent && selectedNodeIdsAll.length >= 2 && (
-                  <div className="ide-design-save-component-form" data-testid="ide-design-save-component-form" style={{ marginTop: 8 }}>
-                    {saveComponentOpen ? (
-                      <>
-                        <input
-                          className="ide-text-input"
-                          type="text"
-                          placeholder="Component name…"
-                          value={saveComponentName}
-                          onChange={(e) => setSaveComponentName(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleSaveComponent(); }}
-                          data-testid="ide-design-save-component-input"
-                        />
-                        <IdeButton tone="primary" onClick={handleSaveComponent} testId="ide-design-save-component-confirm">
-                          Save
-                        </IdeButton>
-                        <IdeButton tone="ghost" onClick={() => { setSaveComponentOpen(false); setSaveComponentName(''); }} testId="ide-design-save-component-cancel">
-                          Cancel
-                        </IdeButton>
-                      </>
-                    ) : (
-                      <IdeButton tone="secondary" onClick={() => setSaveComponentOpen(true)} testId="ide-design-save-component-open">
-                        Save as Component…
-                      </IdeButton>
-                    )}
-                    {savedComponentToast && (
-                      <IdeCallout tone="success" testId="ide-design-save-component-toast">
-                        Saved "{savedComponentToast}" — available in Custom palette.
-                      </IdeCallout>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : null}
-            {selectedWireIds.length > 0 && (
-              <div className="ide-copy-top-gap">
-                <strong>Selected wires:</strong> {selectedWireIds.length}
-              </div>
-            )}
-          </IdeInspectorSection>
-          )}
-
-          <IdeInspectorSection title="Next Action" accordionId="next-action">
-            <IdeCallout tone="info" title="Design Flow">
-              Place IO pins, wire through logic gates, then switch to Verify for deterministic test vectors.
-            </IdeCallout>
-          </IdeInspectorSection>
-
-          <IdeInspectorSection title="Evaluation Order" accordionId="eval-order" defaultOpen={false}>
-            <div className="ide-kv-row">
-              <span>Show eval sequence</span>
-              <IdeButton
-                tone={showEvalOrder ? 'primary' : 'ghost'}
-                onClick={() => setShowEvalOrder((v) => !v)}
-                testId="ide-design-show-eval-order"
-              >
-                {showEvalOrder ? 'On' : 'Off'}
-              </IdeButton>
-            </div>
-            {showEvalOrder && selectedNodeEvalStats && (
-              <div className="ide-kv-list" style={{ marginTop: 8 }}>
-                {selectedNodeEvalStats.step != null && (
-                  <div className="ide-kv-row">
-                    <span>Eval step</span>
-                    <span data-testid="ide-design-eval-step">#{selectedNodeEvalStats.step}</span>
-                  </div>
-                )}
-                <div className="ide-kv-row">
-                  <span>Signal depth</span>
-                  <span data-testid="ide-design-signal-depth">{selectedNodeEvalStats.depth}</span>
-                </div>
-                <div className="ide-kv-row">
-                  <span>Fanout</span>
-                  <span data-testid="ide-design-fanout">{selectedNodeEvalStats.fanout}</span>
-                </div>
-              </div>
-            )}
-            {showEvalOrder && !selectedNodeEvalStats && (
-              <p className="ide-copy" style={{ marginTop: 4 }}>Select a node to see its eval stats.</p>
-            )}
-          </IdeInspectorSection>
-
-          {selectedNode && (
-          <IdeInspectorSection title="Net / Pins" testId="ide-design-net-pins" accordionId="net-pins">
-            <div className="ide-kv-list">
-                <div className="ide-kv-row">
-                  <span>Selected</span>
-                  <code>{selectedNode.id}</code>
-                </div>
-                <div className="ide-kv-row">
-                  <span>Pin Count</span>
-                  <span>{selectedNodePins.length}</span>
-                </div>
-                <div className="ide-kv-row">
-                  <span>Connected Wires</span>
-                  <span>
-                    {editorCircuit.connections.filter((entry) => {
-                      const fromNodeId =
-                        typeof entry.from === 'string' ? entry.from : entry.from.nodeId;
-                      const toNodeId =
-                        typeof entry.to === 'string' ? entry.to : entry.to.nodeId;
-                      return fromNodeId === selectedNode.id || toNodeId === selectedNode.id;
-                    }).length}
-                  </span>
-                </div>
-              </div>
-          </IdeInspectorSection>
-          )}
-        </IdeInspectorAccordion>
         </>
       }
       console={
