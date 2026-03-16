@@ -11,7 +11,7 @@ The conflict was blocking the TypeScript/Vite build step (esbuild):
 Expected ">" but found "<"
 949| style={{ cursor: 'pointer', pointerEvents: 'all' }}
 950| data-testid={switch-toggle-${node.id}}
-951| <<<<<<< HEAD
+951| [CONFLICT_START HEAD]
 ```
 
 This caused 6 test suites to cascade fail during `pnpm test` because the build step couldn't proceed.
@@ -22,11 +22,11 @@ This caused 6 test suites to cascade fail during `pnpm test` because the build s
 **Before (with conflict):**
 ```tsx
 data-testid={`switch-toggle-${node.id}`}
-<<<<<<< HEAD
-=======
+[CONFLICT_START HEAD]
+[CONFLICT_DIVIDER]
 // Preserve overlay identifier for debugging
 data-overlay-testid={`switch-toggle-overlay-${node.id}`}
->>>>>>> origin/fix/quality-app-registry-search
+[CONFLICT_END origin/fix/quality-app-registry-search]
 onMouseDown={(e) => {
 ```
 

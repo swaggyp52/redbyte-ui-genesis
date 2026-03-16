@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-03-15 (classroom:signoff blocker 1 cleared — merge-marker hygiene)
+
+**Subsystem**: Release hygiene and signoff gating
+
+### Problem
+
+`classroom:signoff` was failing the merge-marker hygiene check because `MERGE_FIX_SUMMARY.md` still contained a literal conflict-marker triplet in a documentation code sample.
+
+### What changed
+
+- `MERGE_FIX_SUMMARY.md`
+  - Replaced literal marker lines in the historical example with neutral placeholders:
+    - `[CONFLICT_START ...]`
+    - `[CONFLICT_DIVIDER]`
+    - `[CONFLICT_END ...]`
+  - Preserved the explanatory intent without leaving marker patterns that can be mistaken for unresolved merge state.
+
+### Proof
+
+- `git grep -n -E "^(<<<<<<< |>>>>>>> )" -- .` -> no matches (`EXIT_CODE=1` from grep, expected when nothing matches)
+- `pnpm run classroom:signoff -- --allow-dirty` -> `Release Hygiene :: No merge conflict markers in tracked files` now PASS
+- Signoff remains NOT_READY due to remaining blockers in other sections (outside this batch):
+  - `IDE Primary CTA Contract`
+  - `Import actionable targets contract`
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-15 (Release sign-off gate sweep)
 
 **Subsystem**: Classroom release readiness enforcement and operator workflow
