@@ -2166,6 +2166,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const activeSimulationSummary = activeDebugContext
     ? describeVerifyDebugSummary(activeDebugContext)
     : simulationStory.summary;
+  const showSimulationStrip =
+    simRunning ||
+    simTick > 0 ||
+    editorCircuit.nodes.length > 0 ||
+    activeVerifySignal != null ||
+    activeDebugContext != null;
   const ioPresentationMap = useMemo(() => {
     const map: Record<string, NodeIoPresentation> = {};
     for (const node of editorCircuit.nodes) {
@@ -4116,11 +4122,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </button>
                   ))}
                 </div>
-                {activeVerifySignal && (
-                  <span className="ide-design-verify-link-badge" data-testid="ide-design-verify-link-badge">
-                    Verify focus {activeVerifySignal}
-                  </span>
-                )}
                 <button
                   type="button"
                   className="ide-toolbar-toggle"
@@ -4171,23 +4172,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             )}
 
-            <div className="ide-design-shortcut-strip" data-testid="ide-design-shortcut-strip">
-              <span><code>S</code> select</span>
-              <span><code>W</code> wire</span>
-              <span><code>Ctrl + wheel</code> zoom</span>
-              <span><code>Space + drag</code> pan</span>
-              <span><code>F</code> fit</span>
-              <span><code>G</code> snap</span>
-              {effectiveDesignView === 'stacked' ? <span className="is-accent">Split stacked to preserve scroll + min widths</span> : null}
-            </div>
-
-            {/* ── HDL error banner: always visible regardless of view mode ── */}
-            {liveHdlResult.error && (
-              <IdeCallout tone="error" testId="ide-design-hdl-error-canvas">
-                HDL generation failed — {liveHdlResult.error}
-              </IdeCallout>
-            )}
-
             {/* ── Content Pane Row — owns height below toolbar — switches between column/row ── */}
             <div
               ref={paneRowRef}
@@ -4198,7 +4182,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div
                 className="ide-design-pane ide-design-pane--canvas"
                 style={effectiveDesignView === 'split' ? { flex: `0 0 ${splitRatio * 100}%`, minWidth: '440px' } : undefined}
-              >
+            >
 
             {/* ── Canvas title strip ── */}
             <div
@@ -4212,25 +4196,49 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               data-testid="ide-design-authoring-issues"
             >
               <div className="ide-design-authoring-issues-summary">
-                <span className="ide-design-authoring-issues-label">Authoring Issues</span>
-                <span
-                  className="ide-design-authoring-issues-count is-error"
-                  data-testid="ide-design-authoring-issues-errors"
-                >
-                  {authoringIssueCounts.errorCount} errors
-                </span>
-                <span
-                  className="ide-design-authoring-issues-count is-warn"
-                  data-testid="ide-design-authoring-issues-warnings"
-                >
-                  {authoringIssueCounts.warningCount} warnings
-                </span>
-                <span className="ide-design-authoring-issues-status">
-                  {authoringIssues.length === 0
-                    ? 'No live authoring issues right now.'
-                    : 'Live checks update as you edit.'}
-                </span>
+                <div className="ide-design-authoring-issues-primary">
+                  <span className="ide-design-authoring-issues-label">Authoring Status</span>
+                  <span
+                    className="ide-design-authoring-issues-count is-error"
+                    data-testid="ide-design-authoring-issues-errors"
+                  >
+                    {authoringIssueCounts.errorCount} errors
+                  </span>
+                  <span
+                    className="ide-design-authoring-issues-count is-warn"
+                    data-testid="ide-design-authoring-issues-warnings"
+                  >
+                    {authoringIssueCounts.warningCount} warnings
+                  </span>
+                  <span className="ide-design-authoring-issues-status">
+                    {authoringIssues.length === 0
+                      ? 'No live authoring issues right now.'
+                      : 'Live checks update as you edit.'}
+                  </span>
+                </div>
+                <div className="ide-design-authoring-canvas-meta">
+                  <span className="ide-design-authoring-canvas-meta-label">Canvas</span>
+                  <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-nodes">
+                    {editorCircuit.nodes.length} nodes
+                  </span>
+                  <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-wires">
+                    {editorCircuit.connections.length} wires
+                  </span>
+                  <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-zoom">
+                    {Math.round(camera.zoom * 100)}%
+                  </span>
+                  {traceState ? (
+                    <span className="ide-design-canvas-titlebar-stat is-trace" data-testid="ide-design-active-trace">
+                      {traceState.label}
+                    </span>
+                  ) : null}
+                </div>
               </div>
+              {liveHdlResult.error ? (
+                <div className="ide-design-authoring-inline-error" data-testid="ide-design-hdl-error-canvas">
+                  HDL generation failed - {liveHdlResult.error}
+                </div>
+              ) : null}
               {authoringIssueCounts.topIssues.length > 0 ? (
                 <div className="ide-design-authoring-issues-list">
                   {authoringIssueCounts.topIssues.map((issue, index) => (
@@ -4263,51 +4271,41 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               ) : null}
             </div>
 
-            <div className="ide-design-canvas-titlebar" data-testid="ide-design-canvas-titlebar">
-              <span className="ide-design-canvas-titlebar-label">Circuit Canvas</span>
-              <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-nodes">
-                {editorCircuit.nodes.length} nodes
-              </span>
-              <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-wires">
-                {editorCircuit.connections.length} wires
-              </span>
-              <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-zoom">
-                {Math.round(camera.zoom * 100)}%
-              </span>
-              {traceState ? (
-                <span className="ide-design-canvas-titlebar-stat is-trace" data-testid="ide-design-active-trace">
-                  {traceState.label}
-                </span>
-              ) : null}
-            </div>
-
             {/* ── Canvas area (fills remaining height) ── */}
-            <div className="ide-design-sim-story-strip" data-testid="ide-design-sim-story-strip">
-              <div className="ide-design-sim-story-main">
-                <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-tick">
-                  Tick {simTick}
-                </span>
-                <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-mode">
-                  {simRunning ? 'Running' : 'Paused'}
-                </span>
-                {simulationStory.clockEvent ? (
-                  <span
-                    className={`ide-design-sim-story-pill is-clock is-${simulationStory.clockEvent}`}
-                    data-testid="ide-design-sim-story-clock"
-                  >
-                    {simulationStory.clockLabel} {simulationStory.clockEvent} edge
+            {showSimulationStrip ? (
+              <div className="ide-design-sim-story-strip" data-testid="ide-design-sim-story-strip">
+                <div className="ide-design-sim-story-main">
+                  <span className="ide-design-sim-story-label">Simulation</span>
+                  <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-tick">
+                    Tick {simTick}
                   </span>
-                ) : null}
-                {activeVerifySignal ? (
-                  <span className="ide-design-sim-story-pill is-verify" data-testid="ide-design-verify-focus">
-                    Verify linked to {activeVerifySignal}
+                  <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-mode">
+                    {simRunning ? 'Running' : 'Paused'}
                   </span>
-                ) : null}
+                  {simulationStory.clockEvent ? (
+                    <span
+                      className={`ide-design-sim-story-pill is-clock is-${simulationStory.clockEvent}`}
+                      data-testid="ide-design-sim-story-clock"
+                    >
+                      {simulationStory.clockLabel} {simulationStory.clockEvent} edge
+                    </span>
+                  ) : null}
+                  {activeVerifySignal ? (
+                    <span className="ide-design-verify-link-badge" data-testid="ide-design-verify-link-badge">
+                      Verify focus {activeVerifySignal}
+                    </span>
+                  ) : null}
+                  {activeVerifySignal ? (
+                    <span className="ide-design-sim-story-pill is-verify" data-testid="ide-design-verify-focus">
+                      Verify linked to {activeVerifySignal}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="ide-design-sim-story-summary" data-testid="ide-design-sim-story-summary">
+                  {activeSimulationSummary}
+                </p>
               </div>
-              <p className="ide-design-sim-story-summary" data-testid="ide-design-sim-story-summary">
-                {activeSimulationSummary}
-              </p>
-            </div>
+            ) : null}
 
             <div
               ref={canvasViewportRef}
@@ -4440,77 +4438,84 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     data-macro-placement-active={activeInsertionMacro ? '1' : '0'}
                     onClick={handleCanvasPlacementClick}
                   >
+                    {toolMode !== 'select' || isPlacementMode ? (
+                      <div
+                        className="ide-design-canvas-mode-indicator"
+                        data-testid="ide-design-canvas-mode-indicator"
+                        data-blocks-canvas-placement="1"
+                      >
+                        {activeModeLabel}
+                      </div>
+                    ) : null}
                     <div
-                      className="ide-design-canvas-mode-indicator"
-                      data-testid="ide-design-canvas-mode-indicator"
-                      data-blocks-canvas-placement="1"
-                    >
-                      {activeModeLabel}
-                    </div>
-                    <div
-                      className="ide-design-canvas-zoom-indicator"
-                      data-testid="ide-design-canvas-zoom-indicator"
-                      data-blocks-canvas-placement="1"
-                    >
-                      tick {simTick}
-                    </div>
-                    <div
-                      className="ide-design-canvas-mode-indicator"
-                      data-testid="ide-design-presentation-zoom-indicator"
-                      data-blocks-canvas-placement="1"
-                    >
-                      {presentationZoom === 'classroom' ? 'Classroom Zoom' : 'Dense Zoom'}
-                    </div>
-                    <div
-                      className="ide-design-zoom-presets"
-                      data-testid="ide-design-zoom-presets"
+                      className="ide-design-canvas-view-tools"
+                      data-testid="ide-design-canvas-view-tools"
                       data-blocks-canvas-placement="1"
                       data-blocks-macro-placement="1"
                     >
-                      {([0.5, 0.75, 1.0, 1.25] as const).map((preset) => (
-                        <button
-                          key={preset}
-                          type="button"
-                          className={`ide-design-zoom-preset${Math.round(camera.zoom * 100) === Math.round(preset * 100) ? ' is-active' : ''}`}
-                          onClick={() => setZoomToPreset(preset)}
-                          data-testid={`ide-design-zoom-preset-${Math.round(preset * 100)}`}
+                      <div className="ide-design-canvas-view-meta">
+                        <span
+                          className="ide-design-canvas-zoom-indicator"
+                          data-testid="ide-design-canvas-zoom-indicator"
                         >
-                          {Math.round(preset * 100)}%
+                          {zoomPercent}% zoom
+                        </span>
+                        {presentationZoom === 'classroom' ? (
+                          <span
+                            className="ide-design-canvas-presentation-indicator"
+                            data-testid="ide-design-presentation-zoom-indicator"
+                          >
+                            Classroom
+                          </span>
+                        ) : null}
+                      </div>
+                      <div
+                        className="ide-design-canvas-controls"
+                        data-testid="ide-design-canvas-controls"
+                      >
+                        <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit-canvas">
+                          Fit
+                        </IdeButton>
+                        <IdeButton
+                          tone="ghost"
+                          onClick={centerSelection}
+                          disabled={selection.nodes.size === 0}
+                          testId="ide-design-center-selection-canvas"
+                        >
+                          Center
+                        </IdeButton>
+                        <IdeButton
+                          tone={presentationZoom === 'classroom' ? 'secondary' : 'ghost'}
+                          onClick={() => setPresentationZoom((previous) => previous === 'dense' ? 'classroom' : 'dense')}
+                          testId="ide-design-presentation-zoom-toggle-canvas"
+                        >
+                          {presentationZoom === 'classroom' ? 'Classroom' : 'Dense'}
+                        </IdeButton>
+                      </div>
+                      <div
+                        className="ide-design-zoom-presets"
+                        data-testid="ide-design-zoom-presets"
+                      >
+                        {([0.5, 0.75, 1.0, 1.25] as const).map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            className={`ide-design-zoom-preset${Math.round(camera.zoom * 100) === Math.round(preset * 100) ? ' is-active' : ''}`}
+                            onClick={() => setZoomToPreset(preset)}
+                            data-testid={`ide-design-zoom-preset-${Math.round(preset * 100)}`}
+                          >
+                            {Math.round(preset * 100)}%
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          className="ide-design-zoom-preset"
+                          onClick={fitToCircuit}
+                          data-testid="ide-design-zoom-preset-fit"
+                        >
+                          Fit
                         </button>
-                      ))}
-                      <button
-                        type="button"
-                        className="ide-design-zoom-preset"
-                        onClick={fitToCircuit}
-                        data-testid="ide-design-zoom-preset-fit"
-                      >
-                        Fit
-                      </button>
-                    </div>
-                    <div
-                      className="ide-design-canvas-controls"
-                      data-testid="ide-design-canvas-controls"
-                      data-blocks-canvas-placement="1"
-                      data-blocks-macro-placement="1"
-                    >
-                      <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit-canvas">
-                        Fit
-                      </IdeButton>
-                      <IdeButton
-                        tone="ghost"
-                        onClick={centerSelection}
-                        disabled={selection.nodes.size === 0}
-                        testId="ide-design-center-selection-canvas"
-                      >
-                        Center
-                      </IdeButton>
-                      <IdeButton
-                        tone={presentationZoom === 'classroom' ? 'secondary' : 'ghost'}
-                        onClick={() => setPresentationZoom((previous) => previous === 'dense' ? 'classroom' : 'dense')}
-                        testId="ide-design-presentation-zoom-toggle-canvas"
-                      >
-                        {presentationZoom === 'classroom' ? 'Classroom' : 'Dense'}
-                      </IdeButton>
+                      </div>
                     </div>
                     {/* C-7: Debug overlay banner — shown when externally frozen at a verify tick */}
                     {externalDebugTick != null && (
@@ -4637,18 +4642,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         });
                       }}
                     />
-                    {/* Canvas interaction hint — fades after first interaction */}
                     <div
-                      className="ide-canvas-hint is-visible"
+                      className="ide-design-shortcut-strip ide-design-shortcut-strip--overlay"
+                      data-testid="ide-design-shortcut-strip"
                       aria-hidden="true"
                       data-blocks-canvas-placement="1"
-                      style={{ opacity: hasInteracted ? 0.15 : 0.6, transition: 'opacity 0.4s ease' }}
+                      style={{ opacity: hasInteracted ? 0.18 : 0.72, transition: 'opacity 0.4s ease' }}
                     >
-                      <span>Ctrl + wheel: Zoom</span>
-                      <span className="ide-canvas-hint-divider" />
-                      <span>Space + drag: Pan</span>
-                      <span className="ide-canvas-hint-divider" />
-                      <span>F: Fit</span>
+                      <span><code>S</code> select</span>
+                      <span><code>W</code> wire</span>
+                      <span><code>Ctrl + wheel</code> zoom</span>
+                      <span><code>Space + drag</code> pan</span>
+                      <span><code>F</code> fit</span>
+                      <span><code>G</code> snap</span>
+                      {effectiveDesignView === 'stacked' ? <span className="is-accent">Split stacked to preserve scroll + min widths</span> : null}
                     </div>
                     {editorCircuit.nodes.length === 0 && !isPlacementMode && (
                       <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
