@@ -38,7 +38,7 @@ Strict `classroom:signoff` was blocked by `ide:gate:import-actionable-targets-co
 
 ### Commit
 
-- `e93149bf` — `fix: restore ZIP file chooser from import first-look CTA`
+- `524a0a32` — `fix: restore ZIP file chooser from import first-look CTA`
 
 ---
 
