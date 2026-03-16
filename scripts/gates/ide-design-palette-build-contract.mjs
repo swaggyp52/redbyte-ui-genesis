@@ -23,10 +23,10 @@ await runIdeGate('IDE design palette build contract satisfied', async ({ page, b
   await assertUniqueBoardAlias(page, 'SW0', '[data-testid="ide-design-board-input-sw0"]', { x: 0.18, y: 0.22 });
   await assertUniqueBoardAlias(page, 'LD0', '[data-testid="ide-design-board-output-ld0"]', { x: 0.82, y: 0.26 });
 
-  await placeFromPalette(page, '[data-testid="ide-design-palette-input"]', 'Input', { x: 0.25, y: 0.45 });
-  await placeFromPalette(page, '[data-testid="ide-design-palette-input"]', 'Input', { x: 0.25, y: 0.62 });
-  await placeFromPalette(page, '[data-testid="ide-design-palette-xor"]', 'XOR', { x: 0.5, y: 0.45 });
-  await placeFromPalette(page, '[data-testid="ide-design-palette-output"]', 'Output', { x: 0.75, y: 0.45 });
+  await placeFromPalette(page, '[data-testid="ide-design-palette-input"]', 'Input', { x: 0.32, y: 0.42 });
+  await placeFromPalette(page, '[data-testid="ide-design-palette-input"]', 'Input', { x: 0.32, y: 0.62 });
+  await placeFromPalette(page, '[data-testid="ide-design-palette-xor"]', 'XOR', { x: 0.56, y: 0.46 });
+  await placeFromPalette(page, '[data-testid="ide-design-palette-output"]', 'Output', { x: 0.8, y: 0.46 });
 
   const circuitIds = await page.evaluate((knownNodeIds) => {
     const store = window.__RB_CIRCUIT_STORE__;

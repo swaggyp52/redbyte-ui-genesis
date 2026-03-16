@@ -4,6 +4,8 @@ import type { MacroDefinition } from '../macros/MacroLibrary';
 
 export interface MacroLibraryPanelProps {
   macros: MacroDefinition[];
+  totalMacroCount?: number;
+  searchQuery?: string;
   activeMacroId: string | null;
   onSelectMacro: (macroId: string) => void;
   onDeleteMacro?: (macroId: string) => void;
@@ -16,8 +18,22 @@ function formatCreatedAt(createdAt: number): string {
   return new Date(createdAt).toISOString().slice(0, 10);
 }
 
+function summarizeIoCount(inputs: number, outputs: number): string {
+  return `${inputs} in / ${outputs} out`;
+}
+
+function summarizeMacroPorts(macro: MacroDefinition): string {
+  const inputLabels = macro.inputs.map((entry) => entry.label).filter((entry) => entry.length > 0);
+  const outputLabels = macro.outputs.map((entry) => entry.label).filter((entry) => entry.length > 0);
+  const left = inputLabels.length > 0 ? inputLabels.join(', ') : 'inputs';
+  const right = outputLabels.length > 0 ? outputLabels.join(', ') : 'outputs';
+  return `${left} -> ${right}`;
+}
+
 export const MacroLibraryPanel: React.FC<MacroLibraryPanelProps> = ({
   macros,
+  totalMacroCount,
+  searchQuery,
   activeMacroId,
   onSelectMacro,
   onDeleteMacro,
@@ -31,17 +47,28 @@ export const MacroLibraryPanel: React.FC<MacroLibraryPanelProps> = ({
       }),
     [macros]
   );
+  const visibleCount = sortedMacros.length;
+  const displayCount =
+    typeof totalMacroCount === 'number' && totalMacroCount > visibleCount
+      ? `${visibleCount}/${totalMacroCount}`
+      : String(typeof totalMacroCount === 'number' ? totalMacroCount : visibleCount);
+  const trimmedSearch = searchQuery?.trim() ?? '';
 
   return (
-    <div className="ide-macro-library" data-testid="ide-macro-library-panel">
-      <header className="ide-design-subheader ide-macro-library-header">
-        <h4>Macro Library</h4>
-        <span className="ide-macro-library-count">{sortedMacros.length}</span>
+    <div className="ide-palette-subsection ide-macro-library" data-testid="ide-macro-library-panel">
+      <header className="ide-palette-subsection-header ide-macro-library-header">
+        <div>
+          <h5>Saved Macros</h5>
+          <p>Reusable clusters saved directly from the Design canvas.</p>
+        </div>
+        <span className="ide-palette-subsection-count ide-macro-library-count">{displayCount}</span>
       </header>
 
-      {sortedMacros.length === 0 ? (
+      {visibleCount === 0 ? (
         <p className="ide-copy ide-macro-library-empty">
-          Save a selected gate cluster to reuse it from this library.
+          {trimmedSearch.length > 0
+            ? `No saved macros match "${trimmedSearch}".`
+            : 'Save a selected gate cluster to reuse it here.'}
         </p>
       ) : (
         <div className="ide-macro-library-list">
@@ -52,15 +79,29 @@ export const MacroLibraryPanel: React.FC<MacroLibraryPanelProps> = ({
             >
               <button
                 type="button"
-                className={`ide-macro-library-card${activeMacroId === macro.id ? ' is-active' : ''}`}
+                className={`ide-palette-card ide-palette-card--macro ide-macro-library-card${activeMacroId === macro.id ? ' is-active' : ''}`}
                 onClick={() => onSelectMacro(macro.id)}
                 data-testid={`ide-macro-library-card-${macro.id}`}
+                title={macro.description || `${macro.name} - ${summarizeMacroPorts(macro)}`}
               >
-                <span className="ide-macro-library-name">{macro.name}</span>
-                <span className="ide-macro-library-io">
-                  {macro.inputs.length} inputs, {macro.outputs.length} outputs
+                <span className="ide-palette-card-glyph" aria-hidden="true">
+                  M
                 </span>
-                <span className="ide-macro-library-date">{formatCreatedAt(macro.createdAt)}</span>
+                <span className="ide-palette-card-body">
+                  <span className="ide-palette-card-title-row">
+                    <span className="ide-palette-card-title ide-macro-library-name">{macro.name}</span>
+                    <span className="ide-palette-card-badge">Macro</span>
+                  </span>
+                  <span className="ide-palette-card-subtitle">
+                    {macro.description || summarizeMacroPorts(macro)}
+                  </span>
+                  <span className="ide-macro-library-meta">
+                    <span className="ide-macro-library-io">
+                      {summarizeIoCount(macro.inputs.length, macro.outputs.length)}
+                    </span>
+                    <span className="ide-macro-library-date">{formatCreatedAt(macro.createdAt)}</span>
+                  </span>
+                </span>
               </button>
               {onDeleteMacro ? (
                 <IdeButton

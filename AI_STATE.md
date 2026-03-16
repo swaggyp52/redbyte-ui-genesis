@@ -1,5 +1,70 @@
 # AI State
 
+## Change Log 2026-03-16 (Design palette IA + left dock redesign)
+
+**Subsystem**: IDE Design/Build product experience
+
+### Problem
+
+After the placement-model fix, the left side of Design still felt like an inventory browser instead of a build-first workspace:
+
+- board resources appeared before core logic parts,
+- macros lived in a separate afterthought panel,
+- search only matched shallow names,
+- the left dock stayed too cramped to scan confidently,
+- section hierarchy did not reflect how students actually build circuits.
+
+This slowed part discovery and made the page feel less intentional than the underlying editor behavior.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Rebuilt the left dock into a builder-first `Build Library` with deterministic section order:
+    - Logic Gates
+    - Sequential & Timing
+    - Inputs & Outputs
+    - Reusable Blocks
+    - Board Resources
+  - Enriched palette metadata with subtitles, glyph labels, and synonym-aware search terms.
+  - Folded built-in helper blocks, custom components, and saved macros into the same main palette flow instead of splitting macros into a separate dock panel.
+  - Reordered dock content so the palette leads and live input toggles appear after the build library.
+  - Added grouped board-resource banks (`Switches`, `Buttons`, `Clock & Reset`, `LEDs`, `Seven Segment`) so board inventory stays clearly separated from logic authoring.
+- `packages/rb-apps/src/apps/ide/surfaces/MacroLibraryPanel.tsx`
+  - Restyled saved macros as first-class palette cards with count badges, clearer I/O summaries, tooltip previews, and filtered-count support during search.
+- `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+  - Increased the design-mode left dock width caps so the palette supports real scanning rhythm instead of compressing labels into a narrow sidebar.
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Added a calmer palette visual system with stronger section headers, larger card targets, cleaner spacing, and larger board-resource chips.
+  - Kept placement-active state visually explicit on both full-width palette cards and board chips.
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.paletteDock.test.tsx` (new)
+  - Added focused coverage for builder-first section order and broader search matching across primitives, macros, and board resources.
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+  - Realigned the cramped split-view regression fixture to a truly cramped width after the wider design dock.
+- `scripts/gates/ide-design-workbench-contract.mjs`
+  - Strengthened live browser proof for palette section order, dock scan width, and search behavior in a deterministic desktop viewport.
+- `scripts/gates/ide-design-palette-build-contract.mjs`
+  - Re-tuned placement targets for the wider left dock so the live build-flow contract keeps placing nodes into reliable blank-canvas positions.
+
+### Student-visible behavior after fix
+
+- The left dock now reads like a serious build workspace instead of a mixed hardware inventory.
+- Students see logic first, then sequential parts, then I/O, then reusable blocks, with board resources clearly isolated at the end.
+- Search now finds things the way students think about them (`flipflop`, `macro`, `led`, `clock`), not just by exact type strings.
+- Saved macros and custom parts now feel like normal placement options inside the same build flow.
+- The wider dock and larger card targets make scanning and selection faster without changing the underlying circuit model.
+
+### Proof
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.paletteDock.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.placementMode.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx --reporter=verbose` -> 18/18 passing
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:design-workbench-contract` -> PASS
+- `pnpm -s ide:gate:design-placement-contract` -> PASS
+- `pnpm -s ide:gate:design-palette-build-contract` -> PASS
+- `pnpm -s ide:gate:canvas-legibility-contract` -> PASS
+- `pnpm -s ide:gate:design-build-contract` -> PASS
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-16 (Design placement model unification)
 
 **Subsystem**: IDE Design/Build product experience

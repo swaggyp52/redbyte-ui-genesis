@@ -16444,6 +16444,265 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.18);
 }
 
+/* Batch 3: Design palette IA + left dock redesign */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left {
+  padding: 14px 14px 18px;
+}
+
+.ide-workbench-shell[data-layout-mode='compact'][data-ide-mode-marker='design']
+  .ide-workbench-main:not(.hide-right-dock)
+  .ide-workbench-dock-left {
+  padding: 12px 12px 16px;
+}
+
+.ide-design-palette {
+  display: grid;
+  gap: 14px;
+  padding: 2px;
+}
+
+.ide-design-palette-header {
+  align-items: flex-start;
+}
+
+.ide-design-palette-intro {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(188, 206, 227, 0.84);
+  max-width: 28ch;
+}
+
+.ide-design-palette-toolbar {
+  display: grid;
+  gap: 8px;
+}
+
+.ide-design-palette-results {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(170, 191, 214, 0.82);
+}
+
+.ide-design-palette-sections {
+  display: grid;
+  gap: 18px;
+}
+
+.ide-palette-section,
+.ide-palette-subsection {
+  display: grid;
+  gap: 10px;
+}
+
+.ide-palette-section-header,
+.ide-palette-subsection-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ide-palette-section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ide-palette-section-header h4,
+.ide-palette-subsection-header h5 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #dbeafe;
+}
+
+.ide-palette-section-copy,
+.ide-palette-subsection-header p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(160, 181, 205, 0.82);
+}
+
+.ide-palette-section-count,
+.ide-palette-subsection-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(93, 131, 168, 0.34);
+  background: rgba(15, 27, 41, 0.92);
+  color: #d8e7f8;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ide-palette-card-list,
+.ide-macro-library-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ide-palette-card,
+.ide-macro-library-card {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(90, 119, 152, 0.36);
+  background: linear-gradient(180deg, rgba(14, 24, 38, 0.96), rgba(10, 18, 30, 0.92));
+  color: #eef6ff;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--rb-motion-fast) var(--rb-ease-standard),
+    background var(--rb-motion-fast) var(--rb-ease-standard),
+    transform var(--rb-motion-fast) var(--rb-ease-standard),
+    box-shadow var(--rb-motion-fast) var(--rb-ease-standard);
+}
+
+.ide-palette-card:hover,
+.ide-macro-library-card:hover {
+  border-color: rgba(142, 199, 255, 0.44);
+  background: linear-gradient(180deg, rgba(19, 33, 49, 0.98), rgba(13, 23, 36, 0.95));
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+.ide-palette-card.is-placement-active,
+.ide-macro-library-card.is-active {
+  border-color: rgba(226, 232, 240, 0.44);
+  background: linear-gradient(180deg, rgba(25, 37, 54, 0.98), rgba(16, 27, 41, 0.96));
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.14);
+}
+
+.ide-palette-card-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 149, 179, 0.34);
+  background: rgba(24, 40, 59, 0.92);
+  color: #f8fbff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.ide-palette-card--custom .ide-palette-card-glyph {
+  border-style: dashed;
+}
+
+.ide-palette-card-body {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.ide-palette-card-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ide-palette-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f8fbff;
+}
+
+.ide-palette-card-badge {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(36, 58, 83, 0.92);
+  color: rgba(201, 223, 245, 0.88);
+}
+
+.ide-palette-card-subtitle {
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(181, 202, 225, 0.86);
+}
+
+.ide-macro-library-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.ide-macro-library-row .ide-button {
+  align-self: stretch;
+}
+
+.ide-macro-library-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+  color: rgba(159, 184, 210, 0.82);
+}
+
+.ide-palette-board-groups {
+  display: grid;
+  gap: 12px;
+}
+
+.ide-palette-board-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ide-design-palette .ide-palette-chip {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ide-design-palette .ide-palette-chip.ide-palette-chip-board {
+  border-radius: 10px;
+  border-color: rgba(81, 126, 167, 0.4);
+  background: rgba(16, 28, 44, 0.94);
+}
+
+.ide-design-palette .ide-palette-chip.ide-palette-chip-board:hover {
+  border-color: rgba(142, 199, 255, 0.5);
+  background: rgba(22, 37, 57, 0.98);
+}
+
+.ide-design-palette .ide-palette-chip.ide-palette-chip-board.is-placed,
+.ide-design-palette .ide-palette-chip.ide-palette-chip-board:disabled {
+  opacity: 0.56;
+  border-color: rgba(82, 210, 115, 0.26);
+  background: rgba(18, 36, 28, 0.9);
+  color: rgba(187, 219, 203, 0.88);
+}
+
+.ide-workbench-shell[data-layout-mode='compact'][data-ide-mode-marker='design'] .ide-design-palette-intro {
+  max-width: none;
+}
+
 /* Live lab-day unblock:
    the inline Verify side panel was still crushing the oscilloscope and clipping
    the lower-right analysis region on real 1920x1080 screenshots. The lower deck

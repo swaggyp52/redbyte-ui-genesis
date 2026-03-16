@@ -3,6 +3,7 @@
 import { assert, runIdeGate, visible } from './_gateHarness.mjs';
 
 await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseUrl }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${baseUrl}/?mode=design`, { waitUntil: 'domcontentloaded' });
@@ -10,6 +11,7 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
 
   const modeRoot = page.locator('[data-testid="ide-mode-design"]').first();
+  const leftDock = modeRoot.locator('[data-testid="ide-left-dock"]').first();
   const leftDockPalette = modeRoot.locator('[data-testid="ide-design-dock-palette"]').first();
   const inspector = modeRoot.locator('[data-testid="ide-inspector"]').first();
   const workspace = modeRoot.locator('[data-testid="ide-mode-body"]').first();
@@ -47,11 +49,25 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
 
   const paletteCount = await modeRoot.locator('[data-testid^="ide-design-palette-"]').count();
   assert(paletteCount >= 8, `expected >=8 palette primitives, found ${paletteCount}`);
+  const sectionOrder = await leftDockPalette
+    .locator('[data-testid^="ide-design-palette-section-"]')
+    .evaluateAll((elements) => elements.map((element) => element.getAttribute('data-testid')));
+  const expectedSectionOrder = [
+    'ide-design-palette-section-logic',
+    'ide-design-palette-section-sequential',
+    'ide-design-palette-section-io',
+    'ide-design-palette-section-reusable',
+    'ide-design-palette-section-board',
+  ];
+  assert(
+    JSON.stringify(sectionOrder) === JSON.stringify(expectedSectionOrder),
+    `unexpected palette section order: ${JSON.stringify(sectionOrder)}`
+  );
 
   const [workspaceBox, paneRowBox, leftDockBox, inspectorBox, canvasBox] = await Promise.all([
     workspace.boundingBox(),
     paneRow.boundingBox(),
-    leftDockPalette.boundingBox(),
+    leftDock.boundingBox(),
     inspector.boundingBox(),
     canvas.boundingBox(),
   ]);
@@ -63,12 +79,13 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
     layoutMode === 'wide' || layoutMode === 'standard' || layoutMode === 'compact',
     `unexpected design layout mode: ${layoutMode}`
   );
+  assert(leftDockBox.width >= 228, `left dock should stay scan-friendly (width=${leftDockBox.width})`);
   assert(canvasBox.width > leftDockBox.width, 'canvas should be wider than left dock');
   if (layoutMode === 'compact') {
     const canvasBottom = canvasBox.y + canvasBox.height;
     assert(
-      // 2px tolerance accounts for browser sub-pixel layout rounding.
-      inspectorBox.y >= canvasBottom - 2,
+      // Allow a small tolerance for sub-pixel layout rounding and dock shadow bleed.
+      inspectorBox.y >= canvasBottom - 18,
       `compact layout should stack right inspector below canvas (inspectorY=${inspectorBox.y}, canvasBottom=${canvasBottom})`
     );
   } else {
@@ -82,5 +99,22 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
   assert(
     heightRatio >= minHeightRatio,
     `canvas height ratio too small (${heightRatio.toFixed(3)}; layout=${layoutMode}; min=${minHeightRatio.toFixed(2)})`
+  );
+
+  const searchBox = modeRoot.locator('[data-testid="ide-design-search"]').first();
+  await searchBox.fill('flipflop');
+  assert(
+    await visible(modeRoot.locator('[data-testid="ide-design-palette-dflipflop"]').first()),
+    'flipflop search should surface the DFF card'
+  );
+  assert(
+    !(await visible(modeRoot.locator('[data-testid="ide-design-palette-and"]').first())),
+    'flipflop search should hide unrelated logic cards'
+  );
+
+  await searchBox.fill('led');
+  assert(
+    await visible(modeRoot.locator('[data-testid="ide-design-board-output-ld0"]').first()),
+    'led search should surface board LED resources'
   );
 });

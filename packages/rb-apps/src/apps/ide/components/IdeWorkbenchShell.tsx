@@ -200,11 +200,17 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   const shellStyle = useMemo(
     () => {
       const widthCaps =
-        layoutMode === 'wide'
-          ? { left: { min: 152, max: 172 }, right: { min: 196, max: 220 } }
-          : layoutMode === 'standard'
-            ? { left: { min: 144, max: 160 }, right: { min: 184, max: 208 } }
-            : { left: { min: 136, max: 152 }, right: { min: 176, max: 196 } };
+        mode === 'design'
+          ? layoutMode === 'wide'
+            ? { left: { min: 276, max: 304 }, right: { min: 196, max: 220 } }
+            : layoutMode === 'standard'
+              ? { left: { min: 260, max: 288 }, right: { min: 184, max: 208 } }
+              : { left: { min: 236, max: 252 }, right: { min: 176, max: 196 } }
+          : layoutMode === 'wide'
+            ? { left: { min: 152, max: 172 }, right: { min: 196, max: 220 } }
+            : layoutMode === 'standard'
+              ? { left: { min: 144, max: 160 }, right: { min: 184, max: 208 } }
+              : { left: { min: 136, max: 152 }, right: { min: 176, max: 196 } };
       const effectiveLeftWidth = clampValue(layout.leftWidth, widthCaps.left);
       const effectiveRightWidth = hideRightDock ? 0 : clampValue(layout.rightWidth, widthCaps.right);
       return ({
@@ -213,7 +219,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
         '--ide-workbench-console-height': `${layout.consoleHeight}px`,
       }) as React.CSSProperties;
     },
-    [hideRightDock, layout.consoleHeight, layout.leftWidth, layout.rightWidth, layoutMode]
+    [hideRightDock, layout.consoleHeight, layout.leftWidth, layout.rightWidth, layoutMode, mode]
   );
 
   const consoleState = consoleHasBlocking

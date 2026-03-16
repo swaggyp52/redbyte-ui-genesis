@@ -262,7 +262,7 @@ describe('DesignSurface workstation redesign', () => {
   });
 
   it('auto-demotes cramped split view into stacked mode', async () => {
-    installResizeObserver(900);
+    installResizeObserver(700);
     const view = renderSurface();
 
     fireEvent.click(view.getByTestId('ide-design-view-split'));
