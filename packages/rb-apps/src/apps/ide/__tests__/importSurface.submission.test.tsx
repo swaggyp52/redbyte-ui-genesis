@@ -26,6 +26,14 @@ describe('ImportSurface submission ZIP handling', () => {
     mockedParseIdeSubmissionZip.mockReset();
   });
 
+  it('renders exactly one ZIP input', () => {
+    const { getAllByTestId } = render(
+      <ImportSurface onImportSubmission={vi.fn()} />
+    );
+
+    expect(getAllByTestId('ide-import-zip-input')).toHaveLength(1);
+  });
+
   it('shows an actionable integrity failure message for tampered submissions', async () => {
     mockedParseIdeSubmissionZip.mockRejectedValue(
       new SubmissionIntegrityError('hash mismatch for "project.rbproj.json"')
