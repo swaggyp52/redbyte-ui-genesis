@@ -18310,3 +18310,45 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 .ide-design-split-handle.is-dragging::after {
   background: rgba(56, 189, 248, 0.56);
 }
+
+/* ── HDL body scroll wrapper (Code view + Split code pane) ─────────────
+   Allows VHDL and Verilog to both be visible and navigable.
+   The header stays fixed; everything below scrolls as one column.
+   ─────────────────────────────────────────────────────────────────────── */
+.ide-design-hdl-body {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  scroll-behavior: smooth;
+}
+
+/* Textarea fills at least enough space to be useful — scroll container handles overflow */
+.ide-design-hdl-body .ide-design-hdl-textarea {
+  flex: none;
+  height: auto;
+  min-height: 320px;
+  overflow-y: visible;
+  resize: vertical;
+}
+
+.ide-design-hdl-body .ide-design-hdl-textarea--compact {
+  min-height: 180px;
+}
+
+.ide-design-verilog-block {
+  flex-shrink: 0;
+}
+
+/* ── Split view pane minimum widths (CSS, not inline style) ─────────────
+   Keep inline flex-basis from the JS ratio; CSS min-width is the floor.
+   Values match the JS threshold (380 canvas / 260 hdl) with small buffer.
+   ─────────────────────────────────────────────────────────────────────── */
+.ide-design-pane-row[data-design-view='split'] .ide-design-pane--canvas {
+  min-width: 320px;
+}
+.ide-design-pane-row[data-design-view='split'] .ide-design-pane--hdl {
+  min-width: 220px;
+}

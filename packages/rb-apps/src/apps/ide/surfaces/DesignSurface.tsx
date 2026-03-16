@@ -725,6 +725,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const splitRatio = useLayoutStore((state) => state.splitRatio);
   const setSplitRatio = useLayoutStore((state) => state.setSplitRatio);
   const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
+  const isDraggingSplitterRef = useRef(false); // sync ref — avoids stale closure in pointermove
   const paneRowRef = useRef<HTMLDivElement>(null);
   // N-1: Save as Component modal state
   const [saveComponentOpen, setSaveComponentOpen] = useState(false);
@@ -2299,8 +2300,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (totalWidth === 0) return 'stacked';
     const canvasWidth = totalWidth * splitRatio;
     const hdlWidth = totalWidth * (1 - splitRatio);
-    // Lower thresholds so split works on more screen sizes without stacking
-    return totalWidth < 720 || canvasWidth < 320 || hdlWidth < 320 ? 'stacked' : 'split';
+    // Stack when either pane would be too narrow to be usable
+    return totalWidth < 680 || canvasWidth < 380 || hdlWidth < 260 ? 'stacked' : 'split';
   }, [designView, paneRowSize.width, splitRatio]);
   const selectedNodeIoRow = useMemo(() => {
     if (!selectedNode) return null;
@@ -4192,7 +4193,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             >
               <div
                 className="ide-design-pane ide-design-pane--canvas"
-                style={effectiveDesignView === 'split' ? { flex: `0 0 ${splitRatio * 100}%`, minWidth: '440px' } : undefined}
+                style={effectiveDesignView === 'split' ? { flex: `0 0 ${splitRatio * 100}%` } : undefined}
             >
 
             {/* ── Canvas title strip ── */}
@@ -4835,18 +4836,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 title="Drag to resize panels"
                 onPointerDown={(e) => {
                   e.preventDefault();
-                  (e.target as HTMLElement).setPointerCapture(e.pointerId);
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  isDraggingSplitterRef.current = true;
                   setIsDraggingSplitter(true);
                 }}
                 onPointerMove={(e) => {
-                  if (!isDraggingSplitter || !paneRowRef.current) return;
+                  if (!isDraggingSplitterRef.current || !paneRowRef.current) return;
                   const rect = paneRowRef.current.getBoundingClientRect();
-                  const minPaneRatio = Math.min(0.35, 320 / Math.max(rect.width, 1));
-                  const ratio = Math.max(minPaneRatio, Math.min(1 - minPaneRatio, (e.clientX - rect.left) / rect.width));
-                  requestAnimationFrame(() => setSplitRatio(ratio));
+                  // Clamp: canvas min 380px, hdl min 260px
+                  const canvasMin = 380 / Math.max(rect.width, 1);
+                  const hdlMin = 260 / Math.max(rect.width, 1);
+                  const ratio = Math.max(canvasMin, Math.min(1 - hdlMin, (e.clientX - rect.left) / rect.width));
+                  setSplitRatio(ratio);
                 }}
                 onPointerUp={(e) => {
-                  (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+                  e.currentTarget.releasePointerCapture(e.pointerId);
+                  isDraggingSplitterRef.current = false;
                   setIsDraggingSplitter(false);
                 }}
               />
@@ -4857,7 +4862,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div
                 className="ide-design-pane ide-design-pane--hdl"
                 data-testid="ide-design-hdl-pane"
-                style={effectiveDesignView === 'split' ? { flex: `0 0 ${(1 - splitRatio) * 100}%`, minWidth: '320px' } : undefined}
+                style={effectiveDesignView === 'split' ? { flex: `0 0 ${(1 - splitRatio) * 100}%` } : undefined}
               >
                 {/* VHDL section */}
                 <div className="ide-design-hdl-header" data-testid="ide-design-hdl-header">
@@ -4924,54 +4929,57 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     )}
                   </div>
                 </div>
-                {liveHdlResult.error && (
-                  <IdeCallout tone="error" title="HDL generation failed">
-                    {liveHdlResult.error}
-                  </IdeCallout>
-                )}
-                <textarea
-                  className="ide-code-textarea ide-design-hdl-textarea"
-                  data-testid="ide-design-hdl-textarea"
-                  value={hdlDraftText !== '' ? hdlDraftText : (topHdl ?? liveHdlResult.vhd)}
-                  onChange={(e) => setHdlDraftText(e.target.value)}
-                  placeholder="Build a circuit in Canvas view to generate live VHDL, or import HDL via Import."
-                  spellCheck={false}
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                />
-                {/* Verilog section */}
-                {liveHdlResult.verilog && (
-                  <div className="ide-design-verilog-block">
-                    <div className="ide-design-hdl-header" data-testid="ide-design-verilog-header">
-                      <span className="ide-design-hdl-header-title">top.v</span>
-                      <span className="ide-design-hdl-header-lang ide-design-hdl-header-lang--verilog">Verilog</span>
-                      <span className="ide-design-sync-badge ide-design-sync-badge-live">Live</span>
-                      <div className="ide-inline-actions ide-design-hdl-actions">
-                        <button
-                          type="button"
-                          className="ide-design-hdl-action-btn is-secondary"
-                          onClick={() => {
-                            if (liveHdlResult.verilog && typeof navigator !== 'undefined' && navigator.clipboard) {
-                              void navigator.clipboard.writeText(liveHdlResult.verilog);
-                            }
-                          }}
-                          data-testid="ide-design-verilog-copy"
-                        >
-                          Copy
-                        </button>
+                {/* ── Scrollable body: VHDL + Verilog both viewable/navigable ── */}
+                <div className="ide-design-hdl-body" data-testid="ide-design-hdl-body">
+                  {liveHdlResult.error && (
+                    <IdeCallout tone="error" title="HDL generation failed">
+                      {liveHdlResult.error}
+                    </IdeCallout>
+                  )}
+                  <textarea
+                    className="ide-code-textarea ide-design-hdl-textarea"
+                    data-testid="ide-design-hdl-textarea"
+                    value={hdlDraftText !== '' ? hdlDraftText : (topHdl ?? liveHdlResult.vhd)}
+                    onChange={(e) => setHdlDraftText(e.target.value)}
+                    placeholder="Build a circuit in Canvas view to generate live VHDL, or import HDL via Import."
+                    spellCheck={false}
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                  />
+                  {/* Verilog section */}
+                  {liveHdlResult.verilog && (
+                    <div className="ide-design-verilog-block">
+                      <div className="ide-design-hdl-header" data-testid="ide-design-verilog-header">
+                        <span className="ide-design-hdl-header-title">top.v</span>
+                        <span className="ide-design-hdl-header-lang ide-design-hdl-header-lang--verilog">Verilog</span>
+                        <span className="ide-design-sync-badge ide-design-sync-badge-live">Live</span>
+                        <div className="ide-inline-actions ide-design-hdl-actions">
+                          <button
+                            type="button"
+                            className="ide-design-hdl-action-btn is-secondary"
+                            onClick={() => {
+                              if (liveHdlResult.verilog && typeof navigator !== 'undefined' && navigator.clipboard) {
+                                void navigator.clipboard.writeText(liveHdlResult.verilog);
+                              }
+                            }}
+                            data-testid="ide-design-verilog-copy"
+                          >
+                            Copy
+                          </button>
+                        </div>
                       </div>
+                      <textarea
+                        className="ide-code-textarea ide-design-hdl-textarea ide-design-hdl-textarea--compact"
+                        data-testid="ide-design-verilog-textarea"
+                        value={liveHdlResult.verilog}
+                        readOnly
+                        spellCheck={false}
+                        autoCapitalize="off"
+                        autoCorrect="off"
+                      />
                     </div>
-                    <textarea
-                      className="ide-code-textarea ide-design-hdl-textarea ide-design-hdl-textarea--compact"
-                      data-testid="ide-design-verilog-textarea"
-                      value={liveHdlResult.verilog}
-                      readOnly
-                      spellCheck={false}
-                      autoCapitalize="off"
-                      autoCorrect="off"
-                    />
-                  </div>
-                )}
+                  )}
+                </div>{/* close ide-design-hdl-body */}
               </div>
             )}
             </div>{/* close ide-design-pane-row */}
