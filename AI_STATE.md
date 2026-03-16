@@ -1,5 +1,36 @@
 # AI State
 
+## Change Log 2026-03-15 (classroom:signoff blocker 2 cleared — IDE Primary CTA contract)
+
+**Subsystem**: IDE gate contract alignment and release signoff progression
+
+### Problem
+
+Strict `classroom:signoff` was blocked by `repo:status`, which failed at `IDE Primary CTA Contract` with:
+
+- `mode=import process-design CTA must be visible`
+
+The Import surface now has a first-look flow where the true primary CTA is `ide-import-start-primary`, while `ide-import-process-design` is intentionally deferred until first-look is dismissed.
+
+### Root-cause classification
+
+- **Stale contract** (not product defect): the gate expected a pre-first-look import CTA visibility rule.
+
+### What changed
+
+- `scripts/gates/ide-primary-cta-contract.mjs`
+  - Updated import-mode assertion to accept either valid primary CTA state:
+    - `ide-import-start-primary` (first-look)
+    - `ide-import-process-design` (post-first-look/workbench)
+
+### Proof
+
+- `pnpm -s ide:gate:primary-cta-contract` -> PASS
+- `pnpm repo:status` -> PASS (`39/39` checks, HEALTHY)
+- `pnpm run classroom:signoff` -> still `NOT_READY`, now blocked by the remaining import actionable timeout (plus clean-tree while this batch was uncommitted during intermediate run)
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-15 (classroom:signoff blocker 1 cleared — merge-marker hygiene)
 
 **Subsystem**: Release hygiene and signoff gating

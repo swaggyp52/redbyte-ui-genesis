@@ -73,8 +73,14 @@ await runIdeGate('IDE primary CTA contract satisfied', async ({ page, baseUrl })
       continue;
     }
     if (mode === 'import') {
+      const startPrimary = modeRoot.locator('[data-testid="ide-import-start-primary"]').first();
       const process = modeRoot.locator('[data-testid="ide-import-process-design"]').first();
-      assert(await process.isVisible().catch(() => false), 'mode=import process-design CTA must be visible');
+      const startPrimaryVisible = await startPrimary.isVisible().catch(() => false);
+      const processVisible = await process.isVisible().catch(() => false);
+      assert(
+        startPrimaryVisible || processVisible,
+        'mode=import expected import start primary CTA or process-design CTA to be visible'
+      );
       continue;
     }
   }
