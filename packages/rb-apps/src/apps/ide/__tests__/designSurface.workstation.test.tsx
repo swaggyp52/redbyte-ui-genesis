@@ -271,7 +271,10 @@ describe('DesignSurface workstation redesign', () => {
       expect(view.getByTestId('ide-design-workspace').getAttribute('data-design-view')).toBe('stacked');
     });
 
-    expect(view.getByTestId('ide-design-shortcut-strip').textContent).toContain('Split stacked');
+    // Stacked mode now shows a dedicated notice instead of an accent span inside the shortcut overlay
+    const notice = view.getByTestId('ide-design-stacked-notice');
+    expect(notice.textContent).toContain('too narrow');
+    expect(view.getByTestId('ide-design-shortcut-strip').textContent).not.toContain('Split stacked');
   });
 
   it('shows the save-as-macro action and dialog when multiple nodes are selected', async () => {

@@ -18239,3 +18239,74 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 [data-layout-mode='compact'][data-ide-mode-marker='design'] .ide-design-shortcut-strip--overlay {
   max-width: calc(100% - 24px);
 }
+
+/* Batch 6: Split view intentionality */
+
+/* View mode toggle — label "Code" replaces "HDL" in JSX; style unchanged but give active state more weight */
+[data-ide-mode-marker='design'] .ide-design-view-btn.is-active {
+  background: rgba(56, 189, 248, 0.22);
+  color: #e8f4ff;
+  font-weight: 800;
+}
+
+/* Stacked notice — shown when split auto-collapses to column */
+.ide-design-stacked-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  margin: 0 0 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  background: rgba(41, 30, 8, 0.52);
+  color: rgba(253, 224, 148, 0.88);
+  font-size: 12px;
+  line-height: 1.45;
+  flex-shrink: 0;
+}
+
+.ide-design-stacked-notice-icon {
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+/* Split handle — wider, better contrast, clearer affordance */
+.ide-design-split-handle {
+  flex: 0 0 8px;
+  min-width: 8px;
+  cursor: col-resize;
+  background: rgba(56, 189, 248, 0.10);
+  border-left: 1px solid rgba(56, 189, 248, 0.18);
+  border-right: 1px solid rgba(56, 189, 248, 0.18);
+  transition: background 0.15s ease, border-color 0.15s ease;
+  touch-action: none;
+  position: relative;
+}
+
+/* Centre drag-grip dots */
+.ide-design-split-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 28px;
+  border-radius: 2px;
+  background: rgba(56, 189, 248, 0.24);
+  transition: background 0.15s ease;
+}
+
+.ide-design-split-handle:hover,
+.ide-design-split-handle.is-dragging {
+  background: rgba(56, 189, 248, 0.26);
+  border-left-color: rgba(56, 189, 248, 0.34);
+  border-right-color: rgba(56, 189, 248, 0.34);
+}
+
+.ide-design-split-handle:hover::after,
+.ide-design-split-handle.is-dragging::after {
+  background: rgba(56, 189, 248, 0.56);
+}

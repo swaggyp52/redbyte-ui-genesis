@@ -4118,7 +4118,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       onClick={() => setDesignView(v)}
                       data-testid={`ide-design-view-${v}`}
                     >
-                      {v === 'canvas' ? 'Canvas' : v === 'hdl' ? 'HDL' : 'Split'}
+                      {v === 'canvas' ? 'Canvas' : v === 'hdl' ? 'Code' : 'Split'}
                     </button>
                   ))}
                 </div>
@@ -4169,6 +4169,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 >
                   Details {showDetails ? '▲' : '▼'}
                 </IdeButton>
+              </div>
+            )}
+
+            {/* ── Stacked-view notice — shown only when split auto-collapsed to column ── */}
+            {effectiveDesignView === 'stacked' && (
+              <div className="ide-design-stacked-notice" data-testid="ide-design-stacked-notice">
+                <span className="ide-design-stacked-notice-icon" aria-hidden="true">⇅</span>
+                <span>
+                  Side-by-side split is stacked because the window is too narrow.
+                  Widen the window to restore split layout.
+                </span>
               </div>
             )}
 
@@ -4655,7 +4666,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <span><code>Space + drag</code> pan</span>
                       <span><code>F</code> fit</span>
                       <span><code>G</code> snap</span>
-                      {effectiveDesignView === 'stacked' ? <span className="is-accent">Split stacked to preserve scroll + min widths</span> : null}
                     </div>
                     {editorCircuit.nodes.length === 0 && !isPlacementMode && (
                       <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
@@ -4819,6 +4829,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div
                 className={`ide-design-split-handle${isDraggingSplitter ? ' is-dragging' : ''}`}
                 data-testid="ide-design-split-handle"
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Drag to resize panels"
+                title="Drag to resize panels"
                 onPointerDown={(e) => {
                   e.preventDefault();
                   (e.target as HTMLElement).setPointerCapture(e.pointerId);
