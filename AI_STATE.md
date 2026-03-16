@@ -1,5 +1,34 @@
 # AI State
 
+## Change Log 2026-03-16 (manual assignment QA script for end-to-end student flow)
+
+**Subsystem**: Release readiness process documentation
+
+### Problem
+
+Current release checks include strong automated contracts, but there was no single explicit manual walkthrough script that validates the full student assignment loop across all IDE surfaces (Design → Verify → Hardware → Export → Import).
+
+### What changed
+
+- `docs/release/manual-assignment-qa-script.md` (new)
+  - Added a deterministic phase-by-phase manual QA procedure that covers:
+    - first-run project orientation and CTA clarity,
+    - design-canvas authoring and real-time issue detection checks,
+    - verify workflow with waveform lock-step and custom vector validation,
+    - Basys3 interactive mapping confirmation,
+    - export naming/handoff quality,
+    - import round-trip fidelity messaging.
+  - Included explicit acceptance criteria and a concise QA report template for release evidence collection.
+
+### Why this is minimal
+
+- Documentation-only change; no runtime logic or gate behavior changed.
+- Provides operator consistency for classroom signoff without introducing product risk.
+
+**Attribution**: Connor Angiel
+
+---
+
 ## Change Log 2026-03-15 (import ZIP input regression guard)
 
 **Subsystem**: Import surface review follow-up after blocker 3
