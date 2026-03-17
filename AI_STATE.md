@@ -1,5 +1,63 @@
 # AI State
 
+## Change Log 2026-03-17 (Verify waveform-first evidence redesign)
+
+**Subsystem**: IDE Verify product experience
+
+### Problem
+
+Verify was technically producing deterministic results, but the page still failed the classroom test:
+
+1. The visible result did not clearly prove which build had actually been verified.
+2. PASS runs still paid for failure-only side panels, so the waveform was visually starved.
+3. The lower analysis deck stayed too eager/open, forcing students to zoom out just to see core evidence.
+4. Top-of-page status, authority, and pass messaging were split across too many separate blocks.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Reworked the Verify top hierarchy into:
+    - compact status strip for run controls,
+    - one run-evidence card that ties the visible result to deterministic build/report hashes,
+    - waveform-first workbench below.
+  - Added explicit run-evidence facts:
+    - verified build hash,
+    - current build hash when stale,
+    - report hash,
+    - scenario,
+    - vector count,
+    - trace size,
+    - sampling mode.
+  - Removed the duplicate top PASS hero / authority split and folded their meaning into the new evidence card.
+  - Kept existing PASS CTA ids for compatibility, but moved the “continue” action into the new evidence card.
+  - Changed the lower analysis drawer behavior:
+    - new fail runs auto-open to `Mismatches`,
+    - non-failing runs default closed so the waveform gets the screen first.
+  - Render the three-panel failure workstation only when the run is actually failing; PASS/TRACE/READY states now give the waveform the full center width.
+- `packages/rb-apps/src/apps/ide/surfaces/VerifyThreePanel.tsx`
+  - Made left/right failure panels optional and exposed data markers so layout can collapse to a center-only stage when no failure-side content is needed.
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Added a final Verify-specific override block for the new evidence-card hierarchy.
+  - Reduced fail-side panel width on wide screens.
+  - Increased waveform authority with a larger guaranteed viewport and tighter supporting-drawer cap.
+  - Retuned spacing so the page reads as one evidence surface instead of stacked chrome.
+
+### Student-visible behavior
+
+- PASS runs now show one explicit “Verify run evidence” block proving what build was verified and what the run covered.
+- The waveform now reclaims the center width on non-failing runs instead of sitting between empty failure panels.
+- The lower analysis area stays out of the way on successful runs and opens directly to mismatches on failed runs.
+- STALE state now makes the old-vs-current build relationship explicit in the evidence copy.
+
+### Proof
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/VerifyThreePanel.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.three-panel.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx --reporter=dot` -> PASS
+- `pnpm -s ide:gate:verify-workbench-contract` -> PASS
+- `pnpm -s ide:gate:student-loop-contract` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-16 (Design split canvas stabilization hotfix)
 
 **Subsystem**: IDE Design/Build layout stability

@@ -618,7 +618,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [tickWidth, setTickWidth] = useState(56);
   const [tickWindowCenter, setTickWindowCenter] = useState<number | null>(null);
   const [truthTableMode, setTruthTableMode] = useState<TruthTableMode>('ticks');
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidePanelTab, setSidePanelTab] = useState<'mismatches' | 'vectors' | 'details'>('mismatches');
   const [showAllVectorTicks, setShowAllVectorTicks] = useState(false);
   const [oracleApplied, setOracleApplied] = useState(false);
@@ -1224,17 +1224,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
   }, [lastRun?.reportHash]);
 
-  // Track last auto-opened run so we only auto-open drawer once per run
-  const autoOpenedRunRef = useRef<string | null>(null);
-
-  // Auto-open drawer on FAIL while preserving the active tab.
+  // Auto-shape the lower analysis deck once per run:
+  // fail runs open directly into mismatch analysis, while pass/trace runs
+  // prioritize the waveform and collapse the lower drawer.
+  const autoHandledRunRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!lastRun || lastRun.status !== 'fail') return;
+    if (!lastRun) return;
     const key = lastRun.reportHash ?? lastRun.generatedAtIso ?? '';
-    if (autoOpenedRunRef.current === key) return;
-    autoOpenedRunRef.current = key;
-    setDrawerOpen(true);
-  }, [lastRun?.reportHash, lastRun?.status]);
+    if (autoHandledRunRef.current === key) return;
+    autoHandledRunRef.current = key;
+    if (lastRun.status === 'fail') {
+      setVerifyTab('mismatches');
+      setDrawerOpen(true);
+      return;
+    }
+    setDrawerOpen(false);
+    setVerifyTab('truth');
+  }, [lastRun?.generatedAtIso, lastRun?.reportHash, lastRun?.status]);
 
   // Reset step mode whenever a new run completes
   useEffect(() => {
@@ -2404,6 +2410,82 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     (lastRun?.waveform?.length ?? 0) > 0 &&
     authoredVectors.length > 0 &&
     onVectorsChange !== undefined;
+  const showFailureWorkbenchPanels = displayStatus === 'FAIL' && failingRows.length > 0;
+  const shortenHash = (value: string | null | undefined): string => {
+    if (!value || value.trim().length === 0) return '—';
+    return value.length > 12 ? value.slice(0, 12) : value;
+  };
+  const runProofFacts = useMemo(
+    () =>
+      lastRun
+        ? [
+            {
+              label: 'Verified build',
+              value: shortenHash(lastRun.deterministicHash),
+              fullValue: lastRun.deterministicHash,
+            },
+            ...(isRunStale
+              ? [
+                  {
+                    label: 'Current build',
+                    value: shortenHash(deterministicHash),
+                    fullValue: deterministicHash,
+                  },
+                ]
+              : []),
+            {
+              label: 'Report hash',
+              value: shortenHash(lastRun.reportHash ?? '—'),
+              fullValue: lastRun.reportHash ?? '—',
+            },
+            {
+              label: 'Scenario',
+              value: lastRun.scenarioName,
+              fullValue: lastRun.scenarioName,
+            },
+            {
+              label: 'Vectors',
+              value: `${runVectorCount} case${runVectorCount === 1 ? '' : 's'}`,
+              fullValue: `${runVectorCount} case${runVectorCount === 1 ? '' : 's'}`,
+            },
+            {
+              label: 'Trace',
+              value: `${waveformTicks.length} tick${waveformTicks.length === 1 ? '' : 's'} · ${signalTimeline.length} signal${signalTimeline.length === 1 ? '' : 's'}`,
+              fullValue: `${waveformTicks.length} tick${waveformTicks.length === 1 ? '' : 's'} · ${signalTimeline.length} signal${signalTimeline.length === 1 ? '' : 's'}`,
+            },
+            {
+              label: 'Sampling',
+              value: formatVerifySampling(lastRun),
+              fullValue: formatVerifySampling(lastRun),
+            },
+          ]
+        : [],
+    [deterministicHash, isRunStale, lastRun, runVectorCount, signalTimeline.length, waveformTicks.length]
+  );
+  const runProofTitle =
+    displayStatus === 'PASS'
+      ? lastRun?.qualification === 'incomplete-mapping'
+        ? 'Logic passed — mapping incomplete'
+        : `All ${runRows.length} vector${runRows.length === 1 ? '' : 's'} passed`
+      : displayStatus === 'FAIL'
+        ? `Verified build failed ${failingRows.length} of ${runRows.length} case${runRows.length === 1 ? '' : 's'}`
+        : displayStatus === 'STALE'
+          ? 'This page is showing an older Verify run'
+          : displayStatus === 'TRACE'
+            ? 'Simulation ran, but no expected outputs were locked'
+            : displayStatusLabel;
+  const runProofSummary =
+    displayStatus === 'PASS'
+      ? lastRun?.qualification === 'incomplete-mapping'
+        ? `${unmappedOutputLabels.length > 0 ? `${unmappedOutputLabels.slice(0, 3).join(', ')}${unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''} ${unmappedOutputLabels.length === 1 ? 'is' : 'are'} not connected to board pins.` : 'Some outputs are not connected to board pins.'} Finish mapping in Hardware before trusting export or bring-up.`
+        : 'Your design matches expected outputs across all test cases. This design is ready to export.'
+      : displayStatus === 'FAIL'
+        ? 'This failure is real for the verified build below. Use the mismatch list and waveform together to inspect exactly where the circuit diverged.'
+        : displayStatus === 'STALE'
+          ? 'The visible waveform belongs to the previously verified build hash. Re-run Verify so the evidence matches the current circuit again.'
+          : displayStatus === 'TRACE'
+            ? 'You have waveform evidence, but no expected outputs were defined, so nothing has actually been verified yet.'
+            : displayStatusLabel;
 
   return (
     <IdeSurfaceLayout
@@ -3066,55 +3148,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           )}
           {!isFirstRunState && (
             <div className="ide-verify-strip-actions">
-            {/* Primary CTA varies by state */}
-            {(status === 'pass' || status === 'fail') && !isRunStale ? (
-              <span data-testid="ide-primary-cta">
-                <IdeButton
-                  tone="primary"
-                  onClick={onGoToHardware}
-                  testId="ide-verify-cta-continue"
-                >
-                  {lastRun?.qualification === 'incomplete-mapping'
-                    ? 'Finish mapping → Hardware'
-                    : failingRows.length > 0
-                      ? 'Continue to Hardware →'
-                      : 'Continue → Hardware'}
-                </IdeButton>
-              </span>
-            ) : isRunStale ? (
-              <span data-testid="ide-primary-cta">
-                <IdeButton tone="primary" onClick={runVerification} disabled={runState === 'running'} testId="ide-verify-stale-primary-rerun">
-                  Re-run Simulation
-                </IdeButton>
-              </span>
-            ) : (
               <span data-testid="ide-primary-cta">
                 <IdeButton
                   tone="primary"
                   onClick={runVerification}
                   disabled={runState === 'running'}
-                  testId="ide-verify-run"
+                  testId={lastRun ? 'ide-verify-run-secondary' : 'ide-verify-run'}
                   className={displayStatus === 'READY' ? 'is-pulsing' : undefined}
                 >
-                  Run Simulation
+                  {isRunStale ? 'Re-run Simulation' : lastRun ? 'Re-run Simulation' : 'Run Simulation'}
                 </IdeButton>
               </span>
-            )}
-            {/* Inspect differences shortcut — shown after run when outputs differ */}
-            {failingRows.length > 0 && !isRunStale && (
+            {displayStatus === 'FAIL' && failingRows.length > 0 && !isRunStale && (
               <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-jump-first-failure">
-                Inspect differences
-              </IdeButton>
-            )}
-            {/* Secondary: Re-run when simulation has already been run */}
-            {(status === 'pass' || failingRows.length > 0) && (
-              <IdeButton
-                tone="secondary"
-                onClick={runVerification}
-                disabled={runState === 'running'}
-                testId="ide-verify-run-secondary"
-              >
-                Re-run
+                Inspect first mismatch
               </IdeButton>
             )}
             {(hasResults || Boolean(lastRun)) && (
@@ -3171,11 +3218,105 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </IdeCallout>
         )}
 
-        {!isFirstRunState && (
-          <div className="ide-verify-authority-note-inline" data-testid="ide-verify-authority-note">
-            <strong>Simulation Result (Authoritative)</strong>
-            <span>Design trace is for debug only and does not affect trust status.</span>
-          </div>
+        {!isFirstRunState && lastRun && (
+          <section
+            className={`ide-verify-run-proof ide-verify-run-proof--${displayStatus.toLowerCase()}${
+              displayStatus === 'PASS' ? ' ide-verify-pass-hero' : ''
+            }${
+              displayStatus === 'PASS' && lastRun.qualification === 'incomplete-mapping'
+                ? ' ide-verify-pass-hero--incomplete'
+                : ''
+            }`}
+            data-testid={displayStatus === 'PASS' ? 'ide-verify-pass-hero' : 'ide-verify-run-proof'}
+          >
+            <div className="ide-verify-run-proof-main">
+              <div className="ide-verify-run-proof-copy">
+                <span className="ide-verify-run-proof-eyebrow">Verify run evidence</span>
+                <strong
+                  className="ide-verify-run-proof-title"
+                  data-testid={displayStatus === 'PASS' ? 'ide-verify-pass-hero-title' : undefined}
+                >
+                  {runProofTitle}
+                </strong>
+                <p
+                  className="ide-verify-run-proof-summary"
+                  data-testid={displayStatus === 'PASS' ? 'ide-verify-pass-hero-meta' : undefined}
+                >
+                  {runProofSummary}
+                </p>
+                <p className="ide-verify-run-proof-authority" data-testid="ide-verify-authority-note">
+                  <strong>Authoritative:</strong>{' '}
+                  {isRunStale
+                    ? `the waveform below belongs to build ${shortenHash(lastRun.deterministicHash)}, while the current circuit is ${shortenHash(deterministicHash)}.`
+                    : 'pass/fail comes from this deterministic Verify run. Design trace is for debug only and does not affect trust status.'}
+                </p>
+              </div>
+              <div className="ide-verify-run-proof-actions">
+                {displayStatus === 'PASS' && (
+                  <>
+                    <span data-testid="ide-verify-cta-continue">
+                      <IdeButton
+                        tone={lastRun.qualification === 'incomplete-mapping' ? 'secondary' : 'primary'}
+                        onClick={onGoToHardware}
+                        testId="ide-verify-pass-hero-hardware"
+                      >
+                        {lastRun.qualification === 'incomplete-mapping'
+                          ? 'Finish mapping → Hardware'
+                          : 'Continue → Hardware'}
+                      </IdeButton>
+                    </span>
+                    {onGoToDesign && (
+                      <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-verify-pass-hero-design">
+                        Back to Design
+                      </IdeButton>
+                    )}
+                  </>
+                )}
+                {displayStatus === 'FAIL' && failingRows.length > 0 && (
+                  <>
+                    <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-run-proof-inspect">
+                      Inspect first mismatch
+                    </IdeButton>
+                    {onGoToDesign && (
+                      <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-verify-run-proof-design">
+                        Back to Design
+                      </IdeButton>
+                    )}
+                  </>
+                )}
+                {displayStatus === 'TRACE' && canSetOracle && (
+                  <IdeButton tone="primary" onClick={handleSetOracleExpected} testId="ide-verify-run-proof-oracle">
+                    Capture observed outputs as expected
+                  </IdeButton>
+                )}
+              </div>
+            </div>
+            <dl className="ide-verify-run-proof-grid">
+              {runProofFacts.map((fact) => (
+                <div key={fact.label} className="ide-verify-run-proof-item">
+                  <dt>{fact.label}</dt>
+                  <dd title={fact.fullValue}>
+                    {fact.label.includes('build') || fact.label.includes('hash') ? <code>{fact.value}</code> : fact.value}
+                  </dd>
+                </div>
+              ))}
+              {lastRun.qualification === 'incomplete-mapping' && unmappedOutputLabels.length > 0 && (
+                <div className="ide-verify-run-proof-item ide-verify-run-proof-item--warning">
+                  <dt>Unmapped outputs</dt>
+                  <dd data-testid="ide-verify-incomplete-output-names">
+                    {unmappedOutputLabels.slice(0, 3).join(', ')}
+                    {unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''}
+                  </dd>
+                </div>
+              )}
+              {oracleApplied && (
+                <div className="ide-verify-run-proof-item ide-verify-run-proof-item--accent">
+                  <dt>Expected outputs</dt>
+                  <dd data-testid="ide-verify-oracle-badge">Locked from observed run</dd>
+                </div>
+              )}
+            </dl>
+          </section>
         )}
 
         {displayStatus === 'FAIL' && oracleApplied && (
@@ -3203,72 +3344,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </button>
           </div>
         )}
-
-        {status === 'pass' && runState !== 'running' && runRows.length > 0 && (() => {
-          const isIncomplete = lastRun?.qualification === 'incomplete-mapping';
-          const unmappedNames = unmappedOutputLabels.length > 0
-            ? `${unmappedOutputLabels.slice(0, 3).join(', ')}${unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''} ${unmappedOutputLabels.length === 1 ? 'is' : 'are'} not connected to board pins`
-            : 'some outputs are not connected to board pins';
-          return (
-            <div
-              className={`ide-verify-pass-hero${isIncomplete ? ' ide-verify-pass-hero--incomplete' : ''}`}
-              data-testid="ide-verify-pass-hero"
-            >
-              <div className="ide-verify-pass-hero-body">
-                <span className="ide-verify-pass-hero-icon" aria-hidden="true">
-                  {isIncomplete ? '⚠' : '✓'}
-                </span>
-                <div className="ide-verify-pass-hero-text">
-                  {isIncomplete ? (
-                    <>
-                      <strong className="ide-verify-pass-hero-title" data-testid="ide-verify-pass-hero-title">
-                        Logic passed — mapping incomplete
-                      </strong>
-                      <span className="ide-verify-pass-hero-meta" data-testid="ide-verify-pass-hero-meta">
-                        {unmappedNames}. Finish mapping in Hardware before trusting export or bring-up.
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <strong className="ide-verify-pass-hero-title" data-testid="ide-verify-pass-hero-title">
-                        All {runRows.length} vector{runRows.length !== 1 ? 's' : ''} passed
-                      </strong>
-                      <span className="ide-verify-pass-hero-meta" data-testid="ide-verify-pass-hero-meta">
-                        Your design matches expected outputs across all test cases. This design is ready to export.
-                      </span>
-                    </>
-                  )}
-                </div>
-                {oracleApplied && (
-                  <span className="ide-verify-oracle-badge" data-testid="ide-verify-oracle-badge">
-                    Baseline locked from observed run
-                  </span>
-                )}
-              </div>
-              <div className="ide-verify-pass-hero-actions">
-                <code className="ide-verify-pass-hero-hash" data-testid="ide-verify-pass-hero-hash">
-                  {lastRun?.reportHash?.slice(0, 16) ?? deterministicHash.slice(0, 16)}
-                </code>
-                <IdeButton
-                  tone={isIncomplete ? 'secondary' : 'primary'}
-                  onClick={onGoToHardware}
-                  testId="ide-verify-pass-hero-hardware"
-                >
-                  {isIncomplete ? 'Finish mapping → Hardware' : 'Continue → Hardware'}
-                </IdeButton>
-                {onGoToDesign && (
-                  <IdeButton
-                    tone={isIncomplete ? 'ghost' : 'secondary'}
-                    onClick={onGoToDesign}
-                    testId="ide-verify-pass-hero-design"
-                  >
-                    Back to Design
-                  </IdeButton>
-                )}
-              </div>
-            </div>
-          );
-        })()}
 
         {isTraceOnly && canSetOracle && (
           <IdeCallout tone="info" title="Trace captured — no expectations set" testId="ide-verify-trace-oracle-callout">
@@ -3339,10 +3414,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             data-trace-ticks={waveformTicks.length}
             data-trace-signals={signalTimeline.length}
             data-layout-mode={layoutMode}
+            data-failure-layout={showFailureWorkbenchPanels ? '1' : '0'}
           >
             <VerifyThreePanel
               testId="ide-verify-three-panel"
-              leftPanel={(
+              leftPanel={showFailureWorkbenchPanels ? (
                 <VerifyVectorListPanel
                   rows={threePanelFailureRows}
                   selectedKey={selectedFailureKey}
@@ -3350,7 +3426,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   onSelectNextFailure={goToNextFail}
                   onSelectPreviousFailure={goToPrevFail}
                 />
-              )}
+              ) : null}
               centerPanel={(
             <div className="ide-verify-console-frame">
             <div className="ide-verify-instrument-deck">
@@ -3758,7 +3834,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </div>{/* /ide-verify-instrument-deck */}
             </div>
               )}
-              rightPanel={(
+              rightPanel={showFailureWorkbenchPanels ? (
                 <VerifyFailureExplanationPanel
                   failure={selectedFailureExplanationCase}
                   classification={selectedFailureClassification}
@@ -3776,7 +3852,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   patternNextInspect={selectedFailurePattern?.nextInspect ?? null}
                   onSelectPeer={(peer) => applyFailureSelection(peer)}
                 />
-              )}
+              ) : null}
             />
 
             <div className={`ide-verify-supporting-strip ${drawerOpen ? 'is-open' : ''}`}>
@@ -3858,7 +3934,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   )}
                   {/* Failure explainer */}
                   {displayStatus === 'FAIL' && selectedFailureCase && (
-                    <div className="ide-verify-failure-explainer" data-testid="ide-verify-failure-explainer">
+                    <div className="ide-verify-failure-explainer" data-testid="ide-verify-failure-explainer-inline">
                       <header className="ide-verify-failure-explainer__header">
                         <strong>Failure explainer</strong>
                       </header>
