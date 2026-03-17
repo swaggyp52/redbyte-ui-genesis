@@ -277,6 +277,104 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-shortcut-strip').textContent).not.toContain('Split stacked');
   });
 
+  it('renders a single primary code viewport and opens the secondary artifact drawer on demand', async () => {
+    const view = renderSurface();
+
+    fireEvent.click(view.getByTestId('ide-design-view-hdl'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-artifact-selector')).toBeTruthy();
+    });
+
+    expect(view.getByTestId('ide-design-code-context-primary-artifact').textContent).toContain('Viewing top.vhd');
+
+    const primaryTextarea = view.getByTestId('ide-design-hdl-textarea') as HTMLTextAreaElement;
+    expect(primaryTextarea.getAttribute('data-artifact')).toBe('vhdl');
+    expect(view.queryByTestId('ide-design-secondary-artifact-drawer')).toBeNull();
+
+    const secondaryToggle = view.getByTestId('ide-design-secondary-artifact-toggle') as HTMLButtonElement;
+    if (secondaryToggle.disabled) {
+      expect(secondaryToggle.textContent).toContain('unavailable');
+      return;
+    }
+
+    fireEvent.click(secondaryToggle);
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-secondary-artifact-drawer')).toBeTruthy();
+    });
+
+    const secondaryTextarea = view.getByTestId('ide-design-secondary-artifact-textarea') as HTMLTextAreaElement;
+    expect(secondaryTextarea.getAttribute('data-artifact')).toBe('verilog');
+
+    fireEvent.click(view.getByTestId('ide-design-artifact-verilog'));
+
+    await waitFor(() => {
+      expect(primaryTextarea.getAttribute('data-artifact')).toBe('verilog');
+    });
+    expect(primaryTextarea.readOnly).toBe(true);
+  });
+
+  it('collapses the inspector by default in code and split modes, with a rail toggle to restore it', async () => {
+    const view = renderSurface();
+    const modeRoot = view.getByTestId('ide-mode-design');
+
+    fireEvent.click(view.getByTestId('ide-design-view-hdl'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-workspace').getAttribute('data-design-view')).toBe('hdl');
+    });
+    expect(modeRoot.getAttribute('data-shell-density')).toBe('immersive');
+    expect(modeRoot.getAttribute('data-surface-frame')).toBe('edge-to-edge');
+    expect(view.getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('collapsed');
+
+    await waitFor(() => {
+      expect(view.queryByTestId('ide-left-dock')).toBeNull();
+    });
+    expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+
+    await waitFor(() => {
+      expect(view.queryByTestId('ide-inspector')).toBeNull();
+    });
+    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
+
+    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-left'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+    });
+    expect(view.getByTestId('ide-workbench-dock-collapse-left')).toBeTruthy();
+
+    fireEvent.click(view.getByTestId('ide-workbench-dock-collapse-left'));
+
+    await waitFor(() => {
+      expect(view.queryByTestId('ide-left-dock')).toBeNull();
+    });
+
+    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-right'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-inspector')).toBeTruthy();
+    });
+    expect(view.getByTestId('ide-workbench-dock-collapse-right')).toBeTruthy();
+
+    fireEvent.click(view.getByTestId('ide-workbench-dock-collapse-right'));
+
+    await waitFor(() => {
+      expect(view.queryByTestId('ide-inspector')).toBeNull();
+    });
+
+    fireEvent.click(view.getByTestId('ide-design-view-split'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-workspace').getAttribute('data-design-view')).toBe('split');
+    });
+    expect(view.queryByTestId('ide-left-dock')).toBeNull();
+    expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+    expect(view.queryByTestId('ide-inspector')).toBeNull();
+    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
+  });
+
   it('shows the save-as-macro action and dialog when multiple nodes are selected', async () => {
     const onSaveMacro = vi.fn();
     const view = renderSurface({

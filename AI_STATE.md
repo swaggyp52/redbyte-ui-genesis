@@ -1,5 +1,58 @@
 # AI State
 
+## Change Log 2026-03-16 (Design workspace adoption on the mode-aware shell foundation)
+
+**Subsystem**: IDE Design/Build product experience
+
+### Problem
+
+The shell foundation existed, but Design still behaved like one page with view-specific content crammed into the same frame:
+
+- Canvas, Code, and Split still shared too much local chrome,
+- Code mode still depended on Design-local conditionals instead of a workspace preset,
+- Split mode still needed an explicit comparison composition instead of inheriting Canvas framing,
+- the new shell policy was not yet adopted by Design itself.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/designWorkspaceConfig.ts` (new)
+  - Added explicit Design workspace presets for `canvas`, `hdl`, and `split`.
+  - Centralized dock policy, console policy, shell density, frame style, workspace intent copy, and the default split bias.
+  - Added explicit HDL artifact descriptors for `VHDL` and `Verilog`.
+- `packages/rb-apps/src/apps/ide/surfaces/DesignWorkspaceFrame.tsx` (new)
+  - Replaced the generic `IdePanel` wrapper with a Design-owned workspace frame so the surface controls its own header hierarchy.
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Adopted the new shell policy props:
+    - Canvas: left visible, right visible, console collapsed
+    - Code: left collapsed, right collapsed, console collapsed
+    - Split: left collapsed, right collapsed, console collapsed
+  - Switched Design to immersive, edge-to-edge framing.
+  - Moved workspace identity into the new Design frame with explicit mode intent copy.
+  - Stopped rendering the canvas pane in Code mode just to hide it with CSS.
+  - Kept one primary HDL viewport with explicit artifact tabs and an optional secondary drawer.
+  - Applied the split default from the Design workspace preset instead of ad hoc layout tuning.
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Added Design frame header styling so the workspace reads as a deliberate IDE surface instead of a generic boxed panel.
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+  - Added regression coverage for immersive shell markers, collapsed left/right docks in Code and Split, and default-collapsed console behavior.
+- `scripts/gates/ide-design-workbench-contract.mjs`
+  - Extended the live browser contract to verify immersive shell adoption, collapsed left/right rails in Code and Split, default collapsed console behavior, and code-biased Split sizing.
+
+### Student-visible behavior after fix
+
+- Canvas now reads as the build-first workspace with both supporting docks visible.
+- Code now reads as an artifact inspection workspace with one clear primary editor and collapsed side docks.
+- Split now reads as a comparison workspace with code given slightly more space than the circuit.
+- The Design surface no longer inherits the generic boxed `IdePanel` look.
+
+### Proof
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx --reporter=verbose` -> 14/14 passing
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:design-workbench-contract` -> PASS
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-16 (Workbench policy foundation for mode-aware shell composition)
 
 **Subsystem**: IDE workbench shell / surface layout contract

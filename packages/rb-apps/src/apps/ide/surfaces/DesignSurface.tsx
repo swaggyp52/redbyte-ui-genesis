@@ -20,7 +20,6 @@ import {
   IdeCallout,
   IdeEmptyState,
   IdeInspectorSection,
-  IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
 import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
@@ -49,6 +48,13 @@ import {
 } from '../macros/MacroLibrary';
 import { MacroLibraryPanel } from './MacroLibraryPanel';
 import { MacroSaveDialog } from './MacroSaveDialog';
+import { DesignWorkspaceFrame } from './DesignWorkspaceFrame';
+import {
+  DEFAULT_DESIGN_SPLIT_RATIO,
+  DESIGN_ARTIFACT_DESCRIPTORS,
+  resolveDesignWorkspacePreset,
+  type DesignArtifact,
+} from './designWorkspaceConfig';
 
 /** Maps internal node type strings to student-readable labels for toast feedback. */
 function nodeTypeLabel(nodeType: string): string {
@@ -722,10 +728,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [designView, setDesignView] = useState<'canvas' | 'hdl' | 'split'>('canvas');
   const [designDebugEnabled, setDesignDebugEnabled] = useState(() => readDesignDebugQueryParam());
   const [hdlDraftText, setHdlDraftText] = useState('');
+  const [primaryArtifact, setPrimaryArtifact] = useState<DesignArtifact>('vhdl');
+  const [secondaryArtifactOpen, setSecondaryArtifactOpen] = useState(false);
   const splitRatio = useLayoutStore((state) => state.splitRatio);
   const setSplitRatio = useLayoutStore((state) => state.setSplitRatio);
   const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
   const isDraggingSplitterRef = useRef(false); // sync ref — avoids stale closure in pointermove
+  const hasAdjustedSplitDefaultRef = useRef(false);
   const paneRowRef = useRef<HTMLDivElement>(null);
   // N-1: Save as Component modal state
   const [saveComponentOpen, setSaveComponentOpen] = useState(false);
@@ -818,6 +827,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     });
     return () => cancelAnimationFrame(outer);
   }, [designView]);
+
+  useEffect(() => {
+    if (designView !== 'split') return;
+    if (hasAdjustedSplitDefaultRef.current) return;
+    if (Math.abs(splitRatio - 0.5) > 0.001) return;
+    setSplitRatio(DEFAULT_DESIGN_SPLIT_RATIO);
+    hasAdjustedSplitDefaultRef.current = true;
+  }, [designView, setSplitRatio, splitRatio]);
   const hasAutoFitRef = useRef(false);
   const lastViewportSeedRef = useRef<string | undefined>(undefined);
   const pendingDebugToggleRef = useRef<DesignDebugToggleSample | null>(null);
@@ -2153,6 +2170,30 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => describeSimulationStory(liveIoSignals.inputRows, liveIoSignals.outputRows, runtimeSim.trace, simRunning),
     [liveIoSignals.inputRows, liveIoSignals.outputRows, runtimeSim.trace, simRunning]
   );
+  const hasVerilogArtifact = liveHdlResult.verilog.trim().length > 0;
+  const secondaryArtifact: DesignArtifact = primaryArtifact === 'vhdl' ? 'verilog' : 'vhdl';
+  const primaryArtifactDescriptor = DESIGN_ARTIFACT_DESCRIPTORS[primaryArtifact];
+  const secondaryArtifactDescriptor = DESIGN_ARTIFACT_DESCRIPTORS[secondaryArtifact];
+  const secondaryArtifactAvailable = secondaryArtifact === 'vhdl' || hasVerilogArtifact;
+  const primaryArtifactLabel = primaryArtifactDescriptor.label;
+  const primaryArtifactFileName = primaryArtifactDescriptor.fileName;
+  const secondaryArtifactLabel = secondaryArtifactDescriptor.label;
+  const secondaryArtifactFileName = secondaryArtifactDescriptor.fileName;
+  const artifactTabVhdlId = 'ide-design-artifact-tab-vhdl';
+  const artifactTabVerilogId = 'ide-design-artifact-tab-verilog';
+  const primaryArtifactPanelId = 'ide-design-primary-artifact-panel';
+  const primaryVhdlText = hdlDraftText !== '' ? hdlDraftText : (topHdl ?? liveHdlResult.vhd);
+  const primaryArtifactText = primaryArtifact === 'vhdl' ? primaryVhdlText : liveHdlResult.verilog;
+  const secondaryArtifactText = secondaryArtifact === 'vhdl' ? (topHdl ?? liveHdlResult.vhd) : liveHdlResult.verilog;
+  // Verilog is always generated from the current circuit and cannot be applied back to the graph.
+  const primaryArtifactIsEditable = primaryArtifactDescriptor.editable;
+
+  useEffect(() => {
+    if (!hasVerilogArtifact && primaryArtifact === 'verilog') {
+      setPrimaryArtifact('vhdl');
+      setSecondaryArtifactOpen(false);
+    }
+  }, [hasVerilogArtifact, primaryArtifact]);
   const activeDebugContext = useMemo(
     () =>
       externalDebugTick != null && externalDebugContext?.tick === externalDebugTick
@@ -2167,12 +2208,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const activeSimulationSummary = activeDebugContext
     ? describeVerifyDebugSummary(activeDebugContext)
     : simulationStory.summary;
-  const showSimulationStrip =
-    simRunning ||
-    simTick > 0 ||
-    editorCircuit.nodes.length > 0 ||
-    activeVerifySignal != null ||
-    activeDebugContext != null;
+  const authoringStatusToneClass =
+    authoringIssueCounts.errorCount > 0
+      ? 'has-errors'
+      : authoringIssueCounts.warningCount > 0
+        ? 'has-warnings'
+        : 'is-clean';
   const ioPresentationMap = useMemo(() => {
     const map: Record<string, NodeIoPresentation> = {};
     for (const node of editorCircuit.nodes) {
@@ -2298,11 +2339,26 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (designView !== 'split') return designView;
     const totalWidth = Math.max(0, paneRowSize.width);
     if (totalWidth === 0) return 'stacked';
+    const minCanvasWidth = 320;
+    const minCodeWidth = 360;
     const canvasWidth = totalWidth * splitRatio;
     const hdlWidth = totalWidth * (1 - splitRatio);
     // Stack when either pane would be too narrow to be usable
-    return totalWidth < 680 || canvasWidth < 380 || hdlWidth < 260 ? 'stacked' : 'split';
+    return totalWidth < minCanvasWidth + minCodeWidth || canvasWidth < minCanvasWidth || hdlWidth < minCodeWidth ? 'stacked' : 'split';
   }, [designView, paneRowSize.width, splitRatio]);
+  const workspacePreset = useMemo(
+    () => resolveDesignWorkspacePreset({ mode: designView, effectiveMode: effectiveDesignView }),
+    [designView, effectiveDesignView]
+  );
+  const showFullAuthoringStatus = workspacePreset.showFullAuthoringStatus;
+  const showCompactAuthoringStatus = workspacePreset.showCompactAuthoringStatus;
+  const showSimulationStrip =
+    workspacePreset.showSimulationStrip &&
+    (simRunning ||
+      simTick > 0 ||
+      editorCircuit.nodes.length > 0 ||
+      activeVerifySignal != null ||
+      activeDebugContext != null);
   const selectedNodeIoRow = useMemo(() => {
     if (!selectedNode) return null;
     return ioRowByNodeId.get(selectedNode.id) ?? ioRowByNodeId.get(`${selectedNode.id}.out`) ?? null;
@@ -3467,11 +3523,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   return (
     <>
       <IdeSurfaceLayout
-      mode="design"
-      consoleHasBlocking={compilerErrorCount > 0}
-      consoleHasEntries={diagnosticsDrawerRows.length > 0}
-      hideRightDock={designView !== 'canvas'}
-      dock={
+        mode="design"
+        consoleHasBlocking={compilerErrorCount > 0}
+        consoleHasEntries={diagnosticsDrawerRows.length > 0}
+        leftDockMode={workspacePreset.leftDockMode}
+        rightDockMode={workspacePreset.rightDockMode}
+        consoleMode={workspacePreset.consoleMode}
+        shellDensity={workspacePreset.shellDensity}
+        surfaceFrame={workspacePreset.surfaceFrame}
+        dock={
         <>
           <SurfacePanel className="ide-design-palette" testId="ide-design-dock-palette">
             <header className="ide-design-subheader ide-design-palette-header">
@@ -4056,21 +4116,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         </section>
       }
     >
-        <IdePanel
-          title={
-            designView === 'hdl' ? 'Generated Code' :
-            designView === 'split' ? 'Circuit + Code' :
-            'Circuit Designer'
+        <DesignWorkspaceFrame
+          title={workspacePreset.title}
+          intent={workspacePreset.intent}
+          status={
+            workspacePreset.showCanvasTools ? (
+              <IdeStatusPill tone={isPlacementMode || toolMode === 'wire' ? 'warn' : 'ok'}>
+                {activeModeLabel}
+              </IdeStatusPill>
+            ) : null
           }
-          right={designView === 'canvas' ? <IdeStatusPill tone={isPlacementMode || toolMode === 'wire' ? 'warn' : 'ok'}>{activeModeLabel}</IdeStatusPill> : null}
-          testId="ide-design-panel"
+          view={effectiveDesignView}
         >
-          <div className="ide-design-workspace" data-testid="ide-design-workspace" data-design-view={effectiveDesignView}>
 
             {/* ── Compact primary toolbar ── */}
             <div className="ide-design-toolbar" data-testid="ide-design-toolbar">
               {/* Groups 1+2: Canvas tools — only visible when canvas is in the view */}
-              {designView !== 'hdl' ? (
+              {workspacePreset.showCanvasTools ? (
                 <>
                   {/* Group 1: Mode — primary weight */}
                   <div className="ide-toolbar-group is-mode">
@@ -4119,8 +4181,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               ) : (
                 /* Code-only context strip — replaces build tools when viewing generated code */
                 <div className="ide-toolbar-group is-code-context" data-testid="ide-design-code-context">
-                  <span className="ide-design-code-context-label">VHDL · Verilog</span>
-                  <span className="ide-design-code-context-desc">Live output from circuit</span>
+                  <span className="ide-design-code-context-label">Code focus</span>
+                  <span className="ide-design-code-context-desc" data-testid="ide-design-code-context-primary-artifact">
+                    Viewing {primaryArtifactFileName} ({primaryArtifactLabel}) as the primary artifact.
+                    Switch artifacts and open the secondary drawer from the code pane header.
+                  </span>
                 </div>
               )}
 
@@ -4207,97 +4272,140 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               data-design-view={effectiveDesignView}
               data-testid="ide-design-pane-row"
             >
-              <div
-                className="ide-design-pane ide-design-pane--canvas"
-                style={effectiveDesignView === 'split' ? { flex: `0 0 ${splitRatio * 100}%` } : undefined}
-            >
+              {workspacePreset.showCanvasPane ? (
+                <div
+                  className="ide-design-pane ide-design-pane--canvas"
+                  style={effectiveDesignView === 'split' ? { flex: `0 0 ${splitRatio * 100}%` } : undefined}
+                >
 
             {/* ── Canvas title strip ── */}
-            <div
-              className={`ide-design-authoring-issues${
-                authoringIssueCounts.errorCount > 0
-                  ? ' has-errors'
-                  : authoringIssueCounts.warningCount > 0
-                    ? ' has-warnings'
-                    : ' is-clean'
-              }`}
-              data-testid="ide-design-authoring-issues"
-            >
-              <div className="ide-design-authoring-issues-summary">
-                <div className="ide-design-authoring-issues-primary">
-                  <span className="ide-design-authoring-issues-label">Authoring Status</span>
-                  <span
-                    className="ide-design-authoring-issues-count is-error"
-                    data-testid="ide-design-authoring-issues-errors"
-                  >
-                    {authoringIssueCounts.errorCount} errors
-                  </span>
-                  <span
-                    className="ide-design-authoring-issues-count is-warn"
-                    data-testid="ide-design-authoring-issues-warnings"
-                  >
-                    {authoringIssueCounts.warningCount} warnings
-                  </span>
-                  <span className="ide-design-authoring-issues-status">
-                    {authoringIssues.length === 0
-                      ? 'No live authoring issues right now.'
-                      : 'Live checks update as you edit.'}
-                  </span>
-                </div>
-                <div className="ide-design-authoring-canvas-meta">
-                  <span className="ide-design-authoring-canvas-meta-label">Canvas</span>
-                  <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-nodes">
-                    {editorCircuit.nodes.length} nodes
-                  </span>
-                  <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-wires">
-                    {editorCircuit.connections.length} wires
-                  </span>
-                  <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-zoom">
-                    {Math.round(camera.zoom * 100)}%
-                  </span>
-                  {traceState ? (
-                    <span className="ide-design-canvas-titlebar-stat is-trace" data-testid="ide-design-active-trace">
-                      {traceState.label}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-              {liveHdlResult.error ? (
-                <div className="ide-design-authoring-inline-error" data-testid="ide-design-hdl-error-canvas">
-                  HDL generation failed - {liveHdlResult.error}
-                </div>
-              ) : null}
-              {authoringIssueCounts.topIssues.length > 0 ? (
-                <div className="ide-design-authoring-issues-list">
-                  {authoringIssueCounts.topIssues.map((issue, index) => (
-                    <article
-                      key={`${issue.kind}-${issue.portKey}`}
-                      className={`ide-design-authoring-issue is-${issue.severity}`}
-                      data-testid={`ide-design-authoring-issue-${index}`}
+            {showFullAuthoringStatus ? (
+              <div
+                className={`ide-design-authoring-issues ${authoringStatusToneClass}`}
+                data-testid="ide-design-authoring-issues"
+              >
+                <div className="ide-design-authoring-issues-summary">
+                  <div className="ide-design-authoring-issues-primary">
+                    <span className="ide-design-authoring-issues-label">Authoring Status</span>
+                    <span
+                      className="ide-design-authoring-issues-count is-error"
+                      data-testid="ide-design-authoring-issues-errors"
                     >
-                      <div className="ide-design-authoring-issue-copy">
-                        <div className="ide-design-authoring-issue-header">
-                          <span className={`ide-design-authoring-issue-pill is-${issue.severity}`}>
-                            {issue.severity === 'error' ? 'Error' : 'Warn'}
-                          </span>
-                          <strong>{issue.title}</strong>
-                          <code>{describeDesignIssueLocation(issue, editorCircuit)}</code>
-                        </div>
-                        <p>{issue.message}</p>
-                        <p>{issue.hint}</p>
-                      </div>
-                      <IdeButton
-                        tone={issue.severity === 'error' ? 'secondary' : 'ghost'}
-                        onClick={() => focusDesignIssue(issue)}
-                        testId={`ide-design-authoring-issue-focus-${index}`}
-                      >
-                        Focus
-                      </IdeButton>
-                    </article>
-                  ))}
+                      {authoringIssueCounts.errorCount} errors
+                    </span>
+                    <span
+                      className="ide-design-authoring-issues-count is-warn"
+                      data-testid="ide-design-authoring-issues-warnings"
+                    >
+                      {authoringIssueCounts.warningCount} warnings
+                    </span>
+                    <span className="ide-design-authoring-issues-status">
+                      {authoringIssues.length === 0
+                        ? 'No live authoring issues right now.'
+                        : 'Live checks update as you edit.'}
+                    </span>
+                  </div>
+                  <div className="ide-design-authoring-canvas-meta">
+                    <span className="ide-design-authoring-canvas-meta-label">Canvas</span>
+                    <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-nodes">
+                      {editorCircuit.nodes.length} nodes
+                    </span>
+                    <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-wires">
+                      {editorCircuit.connections.length} wires
+                    </span>
+                    <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-zoom">
+                      {Math.round(camera.zoom * 100)}%
+                    </span>
+                    {traceState ? (
+                      <span className="ide-design-canvas-titlebar-stat is-trace" data-testid="ide-design-active-trace">
+                        {traceState.label}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-              ) : null}
-            </div>
+                {liveHdlResult.error ? (
+                  <div className="ide-design-authoring-inline-error" data-testid="ide-design-hdl-error-canvas">
+                    HDL generation failed - {liveHdlResult.error}
+                  </div>
+                ) : null}
+                {authoringIssueCounts.topIssues.length > 0 ? (
+                  <div className="ide-design-authoring-issues-list">
+                    {authoringIssueCounts.topIssues.map((issue, index) => (
+                      <article
+                        key={`${issue.kind}-${issue.portKey}`}
+                        className={`ide-design-authoring-issue is-${issue.severity}`}
+                        data-testid={`ide-design-authoring-issue-${index}`}
+                      >
+                        <div className="ide-design-authoring-issue-copy">
+                          <div className="ide-design-authoring-issue-header">
+                            <span className={`ide-design-authoring-issue-pill is-${issue.severity}`}>
+                              {issue.severity === 'error' ? 'Error' : 'Warn'}
+                            </span>
+                            <strong>{issue.title}</strong>
+                            <code>{describeDesignIssueLocation(issue, editorCircuit)}</code>
+                          </div>
+                          <p>{issue.message}</p>
+                          <p>{issue.hint}</p>
+                        </div>
+                        <IdeButton
+                          tone={issue.severity === 'error' ? 'secondary' : 'ghost'}
+                          onClick={() => focusDesignIssue(issue)}
+                          testId={`ide-design-authoring-issue-focus-${index}`}
+                        >
+                          Focus
+                        </IdeButton>
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : showCompactAuthoringStatus ? (
+              <div
+                className={`ide-design-authoring-issues is-compact-strip ${authoringStatusToneClass}`}
+                data-testid="ide-design-authoring-issues-compact"
+              >
+                <div className="ide-design-authoring-issues-summary">
+                  <div className="ide-design-authoring-issues-primary">
+                    <span className="ide-design-authoring-issues-label">Status</span>
+                    <span
+                      className="ide-design-authoring-issues-count is-error"
+                      data-testid="ide-design-authoring-issues-errors"
+                    >
+                      {authoringIssueCounts.errorCount} errors
+                    </span>
+                    <span
+                      className="ide-design-authoring-issues-count is-warn"
+                      data-testid="ide-design-authoring-issues-warnings"
+                    >
+                      {authoringIssueCounts.warningCount} warnings
+                    </span>
+                    <span className="ide-design-authoring-issues-status">
+                      {authoringIssueCounts.errorCount > 0
+                        ? 'Fix blocking issues to keep circuit/code comparison reliable.'
+                        : authoringIssueCounts.warningCount > 0
+                          ? 'Warnings detected while comparing circuit and generated code.'
+                          : 'Comparison workspace is clean.'}
+                    </span>
+                  </div>
+                  <div className="ide-design-authoring-canvas-meta">
+                    <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-nodes">
+                      {editorCircuit.nodes.length} nodes
+                    </span>
+                    <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-wires">
+                      {editorCircuit.connections.length} wires
+                    </span>
+                    <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-zoom">
+                      {Math.round(camera.zoom * 100)}%
+                    </span>
+                  </div>
+                </div>
+                {liveHdlResult.error ? (
+                  <div className="ide-design-authoring-inline-error" data-testid="ide-design-hdl-error-canvas">
+                    HDL generation failed - {liveHdlResult.error}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             {/* ── Canvas area (fills remaining height) ── */}
             {showSimulationStrip ? (
@@ -4839,7 +4947,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </section>
               </div>
             </div>{/* close ide-design-canvasWrap */}
-              </div>{/* close ide-design-pane--canvas */}
+                </div>
+              ) : null}
 
             {/* ── Split divider handle — drag to resize ── */}
             {effectiveDesignView === 'split' && (
@@ -4859,9 +4968,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 onPointerMove={(e) => {
                   if (!isDraggingSplitterRef.current || !paneRowRef.current) return;
                   const rect = paneRowRef.current.getBoundingClientRect();
-                  // Clamp: canvas min 380px, hdl min 260px
-                  const canvasMin = 380 / Math.max(rect.width, 1);
-                  const hdlMin = 260 / Math.max(rect.width, 1);
+                  // Clamp: keep both panes readable, with extra room reserved for code.
+                  const canvasMin = 320 / Math.max(rect.width, 1);
+                  const hdlMin = 360 / Math.max(rect.width, 1);
                   const ratio = Math.max(canvasMin, Math.min(1 - hdlMin, (e.clientX - rect.left) / rect.width));
                   setSplitRatio(ratio);
                 }}
@@ -4874,46 +4983,97 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             )}
 
             {/* ── HDL Pane — visible in hdl and split views ── */}
-            {effectiveDesignView !== 'canvas' && (
+            {workspacePreset.showCodePane && (
               <div
                 className="ide-design-pane ide-design-pane--hdl"
                 data-testid="ide-design-hdl-pane"
                 style={effectiveDesignView === 'split' ? { flex: `0 0 ${(1 - splitRatio) * 100}%` } : undefined}
               >
-                {/* VHDL section */}
+                {/* Primary artifact section */}
                 <div className="ide-design-hdl-header" data-testid="ide-design-hdl-header">
-                  <span className="ide-design-hdl-header-title">Generated VHDL</span>
-                  <span className="ide-design-hdl-header-lang">top.vhd</span>
-                  {!hdlDraftText && !topHdl && liveHdlResult.vhd && (
-                    <span className="ide-design-sync-badge ide-design-sync-badge-live" data-testid="ide-design-live-badge">
-                      Live
-                    </span>
-                  )}
-                  {hdlDraftText && hdlDraftText !== (topHdl ?? liveHdlResult.vhd) && (
+                  <span className="ide-design-hdl-header-title">Primary Artifact</span>
+                  <span className="ide-design-hdl-header-lang">{primaryArtifactFileName}</span>
+                  <span
+                    className={`ide-design-hdl-header-lang${primaryArtifact === 'verilog' ? ' ide-design-hdl-header-lang--verilog' : ''}`}
+                    data-testid="ide-design-primary-artifact-label"
+                  >
+                    {primaryArtifactLabel}
+                  </span>
+                  <span className="ide-design-sync-badge ide-design-sync-badge-live" data-testid="ide-design-primary-artifact-badge">
+                    Primary
+                  </span>
+                  {primaryArtifactIsEditable && hdlDraftText && hdlDraftText !== (topHdl ?? liveHdlResult.vhd) ? (
                     <span className="ide-design-sync-badge" data-testid="ide-design-sync-badge">
                       Modified
                     </span>
-                  )}
+                  ) : null}
                   {liveHdlResult.warnings.length > 0 && (
                     <span className="ide-design-sync-badge ide-design-sync-badge-warn">
                       {liveHdlResult.warnings.length} warning{liveHdlResult.warnings.length !== 1 ? 's' : ''}
                     </span>
                   )}
                   <div className="ide-inline-actions ide-design-hdl-actions">
+                    <div
+                      className="ide-design-artifact-selector"
+                      data-testid="ide-design-artifact-selector"
+                      role="tablist"
+                      aria-orientation="horizontal"
+                      aria-label="Generated code artifact selector"
+                    >
+                      <button
+                        type="button"
+                        role="tab"
+                        id={artifactTabVhdlId}
+                        className={`ide-design-artifact-tab${primaryArtifact === 'vhdl' ? ' is-active' : ''}`}
+                        data-testid="ide-design-artifact-vhdl"
+                        aria-selected={primaryArtifact === 'vhdl'}
+                        aria-controls={primaryArtifactPanelId}
+                        tabIndex={primaryArtifact === 'vhdl' ? 0 : -1}
+                        onClick={() => setPrimaryArtifact('vhdl')}
+                      >
+                        VHDL
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        id={artifactTabVerilogId}
+                        className={`ide-design-artifact-tab${primaryArtifact === 'verilog' ? ' is-active' : ''}`}
+                        data-testid="ide-design-artifact-verilog"
+                        aria-selected={primaryArtifact === 'verilog'}
+                        aria-controls={primaryArtifactPanelId}
+                        tabIndex={primaryArtifact === 'verilog' ? 0 : -1}
+                        onClick={() => setPrimaryArtifact('verilog')}
+                        disabled={!hasVerilogArtifact}
+                      >
+                        Verilog
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      className="ide-design-hdl-action-btn is-secondary"
+                      onClick={() => setSecondaryArtifactOpen((current) => !current)}
+                      data-testid="ide-design-secondary-artifact-toggle"
+                      disabled={!secondaryArtifactAvailable}
+                    >
+                      {secondaryArtifactAvailable
+                        ? secondaryArtifactOpen
+                          ? `Hide ${secondaryArtifactLabel}`
+                          : `Show ${secondaryArtifactLabel}`
+                        : 'Verilog unavailable'}
+                    </button>
                     <button
                       type="button"
                       className="ide-design-hdl-action-btn is-secondary"
                       onClick={() => {
-                        const text = hdlDraftText !== '' ? hdlDraftText : (topHdl ?? liveHdlResult.vhd);
-                        if (text && typeof navigator !== 'undefined' && navigator.clipboard) {
-                          void navigator.clipboard.writeText(text);
+                        if (primaryArtifactText && typeof navigator !== 'undefined' && navigator.clipboard) {
+                          void navigator.clipboard.writeText(primaryArtifactText);
                         }
                       }}
                       data-testid="ide-design-hdl-copy"
                     >
                       Copy
                     </button>
-                    {hdlDraftText && hdlDraftText !== (topHdl ?? liveHdlResult.vhd) && onApplyHdl && (
+                    {primaryArtifactIsEditable && hdlDraftText && hdlDraftText !== (topHdl ?? liveHdlResult.vhd) && onApplyHdl && (
                       <button
                         type="button"
                         className="ide-design-hdl-action-btn"
@@ -4923,7 +5083,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         Apply HDL → Graph
                       </button>
                     )}
-                    {hdlDraftText && (
+                    {primaryArtifactIsEditable && hdlDraftText ? (
                       <button
                         type="button"
                         className="ide-design-hdl-action-btn is-secondary"
@@ -4932,7 +5092,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       >
                         Reset to live
                       </button>
-                    )}
+                    ) : null}
                     {onGoToImport && (
                       <button
                         type="button"
@@ -4945,63 +5105,64 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     )}
                   </div>
                 </div>
-                {/* ── Scrollable body: VHDL + Verilog both viewable/navigable ── */}
                 <div className="ide-design-hdl-body" data-testid="ide-design-hdl-body">
                   {liveHdlResult.error && (
                     <IdeCallout tone="error" title="HDL generation failed">
                       {liveHdlResult.error}
                     </IdeCallout>
                   )}
-                  <textarea
-                    className="ide-code-textarea ide-design-hdl-textarea"
-                    data-testid="ide-design-hdl-textarea"
-                    value={hdlDraftText !== '' ? hdlDraftText : (topHdl ?? liveHdlResult.vhd)}
-                    onChange={(e) => setHdlDraftText(e.target.value)}
-                    placeholder="Build a circuit in Canvas view to generate live VHDL, or import HDL via Import."
-                    spellCheck={false}
-                    autoCapitalize="off"
-                    autoCorrect="off"
-                  />
-                  {/* Verilog section */}
-                  {liveHdlResult.verilog && (
-                    <div className="ide-design-verilog-block">
-                      <div className="ide-design-hdl-header" data-testid="ide-design-verilog-header">
-                        <span className="ide-design-hdl-header-title">top.v</span>
-                        <span className="ide-design-hdl-header-lang ide-design-hdl-header-lang--verilog">Verilog</span>
-                        <span className="ide-design-sync-badge ide-design-sync-badge-live">Live</span>
-                        <div className="ide-inline-actions ide-design-hdl-actions">
-                          <button
-                            type="button"
-                            className="ide-design-hdl-action-btn is-secondary"
-                            onClick={() => {
-                              if (liveHdlResult.verilog && typeof navigator !== 'undefined' && navigator.clipboard) {
-                                void navigator.clipboard.writeText(liveHdlResult.verilog);
-                              }
-                            }}
-                            data-testid="ide-design-verilog-copy"
-                          >
-                            Copy
-                          </button>
-                        </div>
+                  <div className="ide-design-hdl-primary-pane" data-testid="ide-design-primary-artifact-pane">
+                    <textarea
+                      className={`ide-code-textarea ide-design-hdl-textarea ide-design-hdl-textarea--primary${primaryArtifactIsEditable ? '' : ' is-readonly'}`}
+                      id={primaryArtifactPanelId}
+                      role="tabpanel"
+                      aria-labelledby={primaryArtifact === 'vhdl' ? artifactTabVhdlId : artifactTabVerilogId}
+                      data-testid="ide-design-hdl-textarea"
+                      data-artifact={primaryArtifact}
+                      value={primaryArtifactText}
+                      onChange={primaryArtifactIsEditable ? (e) => setHdlDraftText(e.target.value) : undefined}
+                      placeholder={
+                        primaryArtifactIsEditable
+                          ? 'Build a circuit in Canvas view to generate live VHDL, or import HDL via Import.'
+                          : 'Verilog is generated from the current circuit in real time.'
+                      }
+                      readOnly={!primaryArtifactIsEditable}
+                      spellCheck={false}
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                    />
+                  </div>
+                  {secondaryArtifactOpen && secondaryArtifactAvailable ? (
+                    <div className="ide-design-hdl-secondary-drawer" data-testid="ide-design-secondary-artifact-drawer">
+                      <div className="ide-design-hdl-secondary-header" data-testid="ide-design-secondary-artifact-header">
+                        <span className="ide-design-hdl-secondary-title">Secondary Artifact</span>
+                        <span className="ide-design-hdl-header-lang">{secondaryArtifactFileName}</span>
+                        <span
+                          className={`ide-design-hdl-header-lang${secondaryArtifact === 'verilog' ? ' ide-design-hdl-header-lang--verilog' : ''}`}
+                        >
+                          {secondaryArtifactLabel}
+                        </span>
                       </div>
                       <textarea
-                        className="ide-code-textarea ide-design-hdl-textarea ide-design-hdl-textarea--compact"
-                        data-testid="ide-design-verilog-textarea"
-                        value={liveHdlResult.verilog}
+                        className="ide-code-textarea ide-design-hdl-textarea ide-design-hdl-textarea--compact ide-design-hdl-textarea--secondary"
+                        data-testid="ide-design-secondary-artifact-textarea"
+                        data-artifact={secondaryArtifact}
+                        aria-label={`${secondaryArtifactLabel} secondary artifact`}
+                        title={`${secondaryArtifactLabel} secondary artifact`}
+                        value={secondaryArtifactText}
                         readOnly
                         spellCheck={false}
                         autoCapitalize="off"
                         autoCorrect="off"
                       />
                     </div>
-                  )}
+                  ) : null}
                 </div>{/* close ide-design-hdl-body */}
               </div>
             )}
             </div>{/* close ide-design-pane-row */}
 
-          </div>
-        </IdePanel>
+        </DesignWorkspaceFrame>
       </IdeSurfaceLayout>
       <MacroSaveDialog
         isOpen={macroDialogState !== null}

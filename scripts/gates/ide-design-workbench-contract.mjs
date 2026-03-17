@@ -22,13 +22,18 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
 
   assert(await visible(leftDockPalette), 'design left dock palette marker missing');
   assert(await visible(inspector), 'design right inspector marker missing');
+  assert(
+    (await modeRoot.getAttribute('data-shell-density')) === 'immersive',
+    'design surface should opt into immersive shell density'
+  );
+  assert(
+    (await modeRoot.getAttribute('data-surface-frame')) === 'edge-to-edge',
+    'design surface should opt into edge-to-edge framing'
+  );
   const consoleCount = await modeRoot.locator('[data-testid="ide-workbench-console"]').count();
   assert(consoleCount >= 1, 'design console container missing');
   const consoleState = await modeRoot.locator('[data-testid="ide-workbench-console"]').first().getAttribute('data-console-state');
-  assert(
-    consoleState === 'collapsed' || consoleState === 'expanded' || consoleState === 'blocking',
-    `unexpected console state "${consoleState ?? ''}"`
-  );
+  assert(consoleState === 'collapsed', `design console should default collapsed, saw "${consoleState ?? ''}"`);
   const diagnosticsCount = await modeRoot.locator('[data-testid="ide-design-console-list"]').count();
   assert(diagnosticsCount >= 1, 'design diagnostics list container missing');
   assert(await visible(canvas), 'design canvas marker missing');
@@ -122,5 +127,84 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
   assert(
     await visible(modeRoot.locator('[data-testid="ide-design-inspector-empty"]').first()),
     'design inspector should surface an explicit empty-state identity card'
+  );
+
+  await modeRoot.locator('[data-testid="ide-design-view-hdl"]').first().click();
+  await page.waitForFunction(() => {
+    const workspaceEl = document.querySelector('[data-testid="ide-design-workspace"]');
+    return workspaceEl?.getAttribute('data-design-view') === 'hdl';
+  }, { timeout: 10000 });
+
+  const codeContextCount = await modeRoot.locator('[data-testid="ide-design-code-context"]').count();
+  assert(codeContextCount >= 1, 'code mode context strip missing');
+  const artifactSelectorCount = await modeRoot.locator('[data-testid="ide-design-artifact-selector"]').count();
+  assert(artifactSelectorCount >= 1, 'artifact selector missing in code mode');
+
+  const leftDockHiddenInCode = await modeRoot.locator('[data-testid="ide-left-dock"]').count();
+  assert(leftDockHiddenInCode === 0, 'left dock should be collapsed by default in code mode');
+  assert(
+    await visible(modeRoot.locator('[data-testid="ide-workbench-dock-toggle-left"]').first()),
+    'left dock rail toggle missing in code mode'
+  );
+  const inspectorHiddenInCode = await modeRoot.locator('[data-testid="ide-inspector"]').count();
+  assert(inspectorHiddenInCode === 0, 'inspector should be collapsed by default in code mode');
+  assert(
+    await visible(modeRoot.locator('[data-testid="ide-workbench-dock-toggle-right"]').first()),
+    'right dock rail toggle missing in code mode'
+  );
+
+  const secondaryDrawerBefore = await modeRoot.locator('[data-testid="ide-design-secondary-artifact-drawer"]').count();
+  assert(secondaryDrawerBefore === 0, 'secondary code artifact should be collapsed by default');
+
+  const secondaryToggle = modeRoot.locator('[data-testid="ide-design-secondary-artifact-toggle"]').first();
+  const secondaryToggleDisabled = await secondaryToggle.isDisabled();
+  if (!secondaryToggleDisabled) {
+    await secondaryToggle.click();
+    assert(
+      await visible(modeRoot.locator('[data-testid="ide-design-secondary-artifact-drawer"]').first()),
+      'secondary artifact drawer did not open when requested'
+    );
+  }
+
+  await modeRoot.locator('[data-testid="ide-workbench-dock-toggle-left"]').first().click();
+  assert(
+    await visible(modeRoot.locator('[data-testid="ide-left-dock"]').first()),
+    'left dock should reopen from left dock rail toggle'
+  );
+  await modeRoot.locator('[data-testid="ide-workbench-dock-collapse-left"]').first().click();
+  const leftDockCollapsedAgain = await modeRoot.locator('[data-testid="ide-left-dock"]').count();
+  assert(leftDockCollapsedAgain === 0, 'left dock collapse action should hide the left dock again');
+
+  await modeRoot.locator('[data-testid="ide-workbench-dock-toggle-right"]').first().click();
+  assert(
+    await visible(modeRoot.locator('[data-testid="ide-inspector"]').first()),
+    'inspector should reopen from right dock rail toggle'
+  );
+  await modeRoot.locator('[data-testid="ide-workbench-dock-collapse-right"]').first().click();
+  const inspectorCollapsedAgain = await modeRoot.locator('[data-testid="ide-inspector"]').count();
+  assert(inspectorCollapsedAgain === 0, 'inspector collapse action should hide the right dock again');
+
+  await modeRoot.locator('[data-testid="ide-design-view-split"]').first().click();
+  await page.waitForFunction(() => {
+    const workspaceEl = document.querySelector('[data-testid="ide-design-workspace"]');
+    return workspaceEl?.getAttribute('data-design-view') === 'split';
+  }, { timeout: 10000 });
+
+  const [canvasSplitBox, hdlSplitBox] = await Promise.all([
+    modeRoot.locator('.ide-design-pane--canvas').first().boundingBox(),
+    modeRoot.locator('.ide-design-pane--hdl').first().boundingBox(),
+  ]);
+  assert(Boolean(canvasSplitBox && hdlSplitBox), 'split pane geometry unavailable');
+  assert(
+    hdlSplitBox.width > canvasSplitBox.width,
+    `split mode should bias code pane wider than canvas (canvas=${canvasSplitBox.width}, code=${hdlSplitBox.width})`
+  );
+  assert(
+    await visible(modeRoot.locator('[data-testid="ide-workbench-dock-toggle-left"]').first()),
+    'split mode should keep left dock collapsed behind rail toggle'
+  );
+  assert(
+    await visible(modeRoot.locator('[data-testid="ide-workbench-dock-toggle-right"]').first()),
+    'split mode should keep right dock collapsed behind rail toggle'
   );
 });

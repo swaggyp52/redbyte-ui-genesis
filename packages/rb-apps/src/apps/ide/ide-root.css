@@ -18374,7 +18374,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   padding: 10px 16px;
 }
 
-/* Workbench policy foundation - shell-level collapsed dock and frame hooks */
+/* Workbench policy foundation — shell-level collapsed dock and frame hooks */
 
 .ide-workbench-main.is-left-dock-collapsed,
 .ide-workbench-main.is-right-dock-collapsed {
@@ -18462,3 +18462,326 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 .ide-workbench-shell[data-shell-density='immersive'] .ide-workbench-dock,
 .ide-workbench-shell[data-shell-density='immersive'] .ide-workbench-console {
   scrollbar-gutter: stable both-edges;
+}
+
+/* Batch 7: Design code workspace + split comparison refinements */
+
+[data-ide-mode-marker='design'] .ide-workbench-main.is-right-dock-collapsed {
+  grid-template-columns:
+    var(--ide-workbench-left-width)
+    minmax(0, 1fr)
+    26px
+    0;
+}
+
+[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail {
+  align-self: stretch;
+  width: 26px;
+  border: 0;
+  border-left: 1px solid rgba(74, 109, 142, 0.42);
+  border-right: 1px solid rgba(74, 109, 142, 0.24);
+  background: linear-gradient(180deg, rgba(8, 17, 30, 0.98), rgba(5, 11, 20, 0.98));
+  color: rgba(165, 191, 219, 0.88);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  transition:
+    color 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease;
+  padding: 10px 0;
+}
+
+[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail:hover {
+  color: rgba(224, 236, 249, 0.96);
+  border-left-color: rgba(106, 152, 194, 0.58);
+  border-right-color: rgba(106, 152, 194, 0.4);
+  background: linear-gradient(180deg, rgba(12, 24, 40, 0.98), rgba(7, 16, 29, 0.98));
+}
+
+[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail:focus-visible {
+  outline: 1px solid rgba(142, 199, 255, 0.82);
+  outline-offset: -1px;
+}
+
+[data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-workbench-dock-collapse-btn {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(76, 110, 143, 0.44);
+  background: rgba(8, 16, 28, 0.8);
+  color: rgba(192, 213, 236, 0.88);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+[data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-workbench-dock-collapse-btn:hover {
+  color: rgba(226, 237, 249, 0.96);
+  border-color: rgba(108, 152, 192, 0.64);
+  background: rgba(13, 23, 37, 0.9);
+}
+
+[data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-workbench-dock-collapse-btn:focus-visible {
+  outline: 1px solid rgba(142, 199, 255, 0.82);
+  outline-offset: 1px;
+}
+
+[data-ide-mode-marker='design'] .ide-design-toolbar {
+  min-height: 42px;
+  padding: 6px 12px;
+}
+
+[data-ide-mode-marker='design'] .ide-design-toolbarExpanded {
+  padding: 6px 12px 8px;
+  gap: 6px 8px;
+}
+
+.ide-toolbar-group.is-code-context {
+  gap: 8px;
+  max-width: min(780px, 100%);
+}
+
+.ide-design-code-context-label {
+  font-size: 11px;
+  letter-spacing: 0.07em;
+}
+
+.ide-design-code-context-desc {
+  max-width: 70ch;
+  font-size: 11px;
+  line-height: 1.45;
+  color: rgba(177, 202, 227, 0.7);
+}
+
+.ide-design-pane-row[data-design-view='split'] {
+  gap: 0;
+}
+
+.ide-design-pane-row[data-design-view='split'] .ide-design-pane--canvas {
+  min-width: 320px;
+}
+
+.ide-design-pane-row[data-design-view='split'] .ide-design-pane--hdl {
+  min-width: 360px;
+}
+
+.ide-design-authoring-issues.is-compact-strip {
+  margin: 0 0 6px;
+  padding: 8px 12px;
+  gap: 6px;
+  border-radius: 10px;
+}
+
+.ide-design-authoring-issues.is-compact-strip .ide-design-authoring-issues-summary {
+  gap: 8px 10px;
+}
+
+.ide-design-authoring-issues.is-compact-strip .ide-design-authoring-issues-primary {
+  gap: 6px 8px;
+}
+
+.ide-design-authoring-issues.is-compact-strip .ide-design-authoring-canvas-meta {
+  gap: 6px;
+}
+
+.ide-design-authoring-issues.is-compact-strip .ide-design-authoring-issues-status {
+  font-size: 11px;
+  color: rgba(186, 210, 236, 0.76);
+}
+
+[data-design-view='hdl'] .ide-design-pane--hdl,
+[data-design-view='split'] .ide-design-pane--hdl {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: rgba(4, 11, 20, 0.96);
+}
+
+[data-design-view='hdl'] .ide-design-pane--hdl .ide-design-hdl-header,
+[data-design-view='split'] .ide-design-pane--hdl .ide-design-hdl-header {
+  padding: 8px 12px;
+  gap: 8px;
+  row-gap: 6px;
+  min-height: 40px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.16);
+}
+
+.ide-design-hdl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ide-design-artifact-selector {
+  display: inline-flex;
+  border-radius: 8px;
+  border: 1px solid rgba(71, 109, 146, 0.48);
+  background: rgba(7, 16, 28, 0.88);
+  overflow: hidden;
+}
+
+.ide-design-artifact-tab {
+  border: 0;
+  border-right: 1px solid rgba(71, 109, 146, 0.34);
+  background: transparent;
+  color: rgba(172, 196, 221, 0.8);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.ide-design-artifact-tab:last-child {
+  border-right: 0;
+}
+
+.ide-design-artifact-tab:hover:not(:disabled) {
+  color: #e4f0ff;
+  background: rgba(33, 61, 91, 0.52);
+}
+
+.ide-design-artifact-tab.is-active {
+  color: #eef7ff;
+  background: rgba(38, 102, 156, 0.52);
+}
+
+.ide-design-artifact-tab:disabled {
+  cursor: not-allowed;
+  color: rgba(123, 145, 170, 0.58);
+  background: rgba(8, 15, 25, 0.72);
+}
+
+[data-design-view='hdl'] .ide-design-pane--hdl .ide-design-hdl-body,
+[data-design-view='split'] .ide-design-pane--hdl .ide-design-hdl-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ide-design-hdl-primary-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.ide-design-hdl-textarea--primary {
+  flex: 1 1 auto;
+  min-height: 0;
+  resize: none;
+}
+
+.ide-design-hdl-textarea.is-readonly {
+  color: rgba(190, 215, 232, 0.86);
+}
+
+.ide-design-hdl-secondary-drawer {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(56, 189, 248, 0.14);
+  background: rgba(6, 14, 24, 0.9);
+}
+
+.ide-design-hdl-secondary-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.12);
+}
+
+.ide-design-hdl-secondary-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(159, 189, 218, 0.78);
+}
+
+.ide-design-hdl-textarea--secondary {
+  min-height: 168px;
+  max-height: 260px;
+  resize: vertical;
+}
+
+/* Commit B: Design workspace frame */
+
+[data-ide-mode-marker='design'] .ide-design-frame {
+  background: linear-gradient(180deg, rgba(6, 14, 24, 0.98), rgba(4, 10, 19, 0.98));
+}
+
+[data-ide-mode-marker='design'] .ide-design-frame-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.12);
+  background: linear-gradient(180deg, rgba(7, 17, 30, 0.98), rgba(5, 12, 21, 0.94));
+}
+
+[data-ide-mode-marker='design'][data-shell-density='immersive'] .ide-design-frame-header {
+  padding-top: 8px;
+  padding-bottom: 10px;
+}
+
+[data-ide-mode-marker='design'] .ide-design-frame-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+[data-ide-mode-marker='design'] .ide-design-frame-kicker {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(146, 177, 210, 0.68);
+}
+
+[data-ide-mode-marker='design'] .ide-design-frame-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+[data-ide-mode-marker='design'] .ide-design-frame-title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.2;
+  color: #f4f9ff;
+}
+
+[data-ide-mode-marker='design'] .ide-design-frame-intent {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(182, 205, 229, 0.82);
+}
+
+[data-ide-mode-marker='design'] .ide-design-frame-status {
+  flex: 0 0 auto;
+}
