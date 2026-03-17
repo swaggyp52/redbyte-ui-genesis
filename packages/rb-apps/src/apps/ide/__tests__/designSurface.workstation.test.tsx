@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { DesignSurface } from '../surfaces/DesignSurface';
@@ -36,6 +36,9 @@ const BASE_CIRCUIT: Circuit = {
     },
   ],
 };
+
+const nativeRaf = window.requestAnimationFrame;
+const nativeCancelRaf = window.cancelAnimationFrame;
 
 function makeRuntimeSim(): RuntimeSimState {
   return {
@@ -157,6 +160,11 @@ const FIXTURE_MACRO: MacroDefinition = {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+    callback(0);
+    return 1;
+  }) as typeof window.requestAnimationFrame;
+  window.cancelAnimationFrame = vi.fn() as typeof window.cancelAnimationFrame;
   installResizeObserver(1320);
   useCircuitStore.getState().reset();
   useCircuitStore.setState({
@@ -175,6 +183,11 @@ beforeEach(() => {
     snapToGrid: true,
     gridSize: 16,
   });
+});
+
+afterEach(() => {
+  window.requestAnimationFrame = nativeRaf;
+  window.cancelAnimationFrame = nativeCancelRaf;
 });
 
 describe('DesignSurface workstation redesign', () => {
@@ -396,6 +409,35 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-split-canvas-indicator').textContent).toContain('Circuit pane');
     expect(view.getByTestId('ide-design-split-stat-tick').textContent).toContain('Tick 6');
     expect(view.getByTestId('ide-design-split-stat-mode').textContent).toContain('Paused');
+  });
+
+  it('re-fits the canvas when returning from split back to fullscreen canvas view', async () => {
+    const view = renderSurface();
+
+    fireEvent.click(view.getByTestId('ide-design-view-split'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-workspace').getAttribute('data-design-view')).toBe('split');
+    });
+
+    act(() => {
+      useLogicViewStore.setState({
+        camera: { x: -999, y: -777, zoom: 0.5 },
+      });
+    });
+
+    fireEvent.click(view.getByTestId('ide-design-view-canvas'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-workspace').getAttribute('data-design-view')).toBe('canvas');
+    });
+
+    await waitFor(() => {
+      const camera = useLogicViewStore.getState().camera;
+      expect(camera.x).not.toBe(-999);
+      expect(camera.y).not.toBe(-777);
+      expect(camera.zoom).not.toBe(0.5);
+    });
   });
 
   it('shows the save-as-macro action and dialog when multiple nodes are selected', async () => {

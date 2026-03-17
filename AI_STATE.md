@@ -1,5 +1,36 @@
 # AI State
 
+## Change Log 2026-03-17 (Design split -> canvas refit stabilization)
+
+**Subsystem**: IDE Design workspace camera/layout recovery
+
+### Problem
+
+On the live deployment, returning from Build `Split` view back to full-canvas Design view could leave the circuit stranded in the upper-left corner. The camera fit logic only re-ran on split entry, not on the reverse transition back to fullscreen canvas.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Generalized the settled refit transition logic so it now runs for:
+    - entering `split`
+    - returning from `split` to `canvas`
+  - Preserved the existing double-`requestAnimationFrame` settled-fit approach so the camera updates after layout reflow instead of against stale pane dimensions.
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+  - Added a regression that forces a bad split camera state, switches back to `canvas`, and proves the camera is re-fit instead of staying stranded.
+  - Stubbed `requestAnimationFrame` deterministically in this suite so view-transition recovery is tested honestly in jsdom.
+
+### Student-visible behavior
+
+- Switching from Build `Split` back to fullscreen Design canvas no longer leaves the circuit cropped into the top-left corner.
+- The fullscreen canvas now restores a usable fit automatically after the layout transition settles.
+
+### Proof
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-17 (Lab 6 starter un-solved + board-ready contract tightening)
 
 **Subsystem**: IDE labs / examples / classroom starter flow

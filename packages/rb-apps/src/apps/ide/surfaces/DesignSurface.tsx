@@ -1516,7 +1516,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   const fitToCircuitRef = useRef(fitToCircuit);
   const previousDesignViewRef = useRef(designView);
-  const splitSettledFitFrameRef = useRef<number | null>(null);
+  const designViewSettledFitFrameRef = useRef<number | null>(null);
   useEffect(() => { fitToCircuitRef.current = fitToCircuit; }, [fitToCircuit]);
 
   const zoomIn = useCallback(() => {
@@ -1661,30 +1661,34 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [viewportSeed]);
 
   useEffect(() => {
-    if (designView !== 'split' && splitSettledFitFrameRef.current != null) {
-      window.cancelAnimationFrame(splitSettledFitFrameRef.current);
-      splitSettledFitFrameRef.current = null;
+    if (designViewSettledFitFrameRef.current != null) {
+      window.cancelAnimationFrame(designViewSettledFitFrameRef.current);
+      designViewSettledFitFrameRef.current = null;
     }
+    const previousView = previousDesignViewRef.current;
     const enteredSplit = previousDesignViewRef.current !== 'split' && designView === 'split';
+    const returnedFromSplitToCanvas = previousView === 'split' && designView === 'canvas';
     previousDesignViewRef.current = designView;
-    if (!enteredSplit) return;
-    setToolsExpanded(false);
-    setSelectMode();
+    if (!enteredSplit && !returnedFromSplitToCanvas) return;
+    if (enteredSplit) {
+      setToolsExpanded(false);
+      setSelectMode();
+    }
     if (editorCircuit.nodes.length === 0) return;
     const frame = window.requestAnimationFrame(() => {
       fitToCircuitRef.current();
       // Store frame2 ID before any null assignment to avoid cleanup race
       const frame2 = window.requestAnimationFrame(() => {
         fitToCircuitRef.current();
-        splitSettledFitFrameRef.current = null;
+        designViewSettledFitFrameRef.current = null;
       });
-      splitSettledFitFrameRef.current = frame2;
+      designViewSettledFitFrameRef.current = frame2;
     });
     return () => {
       window.cancelAnimationFrame(frame);
-      if (splitSettledFitFrameRef.current != null) {
-        window.cancelAnimationFrame(splitSettledFitFrameRef.current);
-        splitSettledFitFrameRef.current = null;
+      if (designViewSettledFitFrameRef.current != null) {
+        window.cancelAnimationFrame(designViewSettledFitFrameRef.current);
+        designViewSettledFitFrameRef.current = null;
       }
     };
   }, [designView, editorCircuit.nodes.length, setSelectMode, setToolsExpanded]);
