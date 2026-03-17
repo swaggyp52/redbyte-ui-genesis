@@ -1,5 +1,47 @@
 # AI State
 
+## Change Log 2026-03-17 (Lab 6 starter un-solved + board-ready contract tightening)
+
+**Subsystem**: IDE labs / examples / classroom starter flow
+
+### Problem
+
+Lab 6 had two classroom-facing contract problems even after the sequential semantics were corrected:
+
+1. The Lab 6 starter already placed `DLatch`, `DFlipFlop`, `TFlipFlop`, and `JKFlipFlop` on the canvas, so students were not actually starting from an unsolved scaffold.
+2. The lab instructions underspecified the real assignment loop and still treated Basys3 as optional, even though the course handout expects simulation plus board demonstration.
+
+### What changed
+
+- `packages/rb-apps/src/examples/21_lab6-flipflop-starter.json`
+  - Replaced the pre-solved storage-element canvas with a blank four-device scaffold:
+    - D latch test IO (`DL_D`, `DL_G`, `DL_Q`)
+    - DFF test IO (`DFF_D`, `DFF_CLK`, `DFF_Q`)
+    - TFF test IO plus grounded clear (`TFF_T`, `TFF_CLK`, `TFF_CLR0`, `TFF_Q`)
+    - JKFF test IO plus grounded clear (`JK_J`, `JK_K`, `JK_CLK`, `JK_CLR0`, `JK_Q`)
+  - Keeps all wiring empty so students must build the device test paths themselves.
+- `packages/rb-apps/src/labs/labDefinitions.ts`
+  - Rewrote Lab 6 goals, build steps, simulate checks, hardware steps, rubric, and expected-behavior visual around the real four-device workflow.
+  - Marked Basys3 as required and set `requiredBoardPreset: 'basys3'`.
+  - Explicitly calls out tying `CLR` low with `Ground` for TFF/JKFF and proving each device one at a time in Verify before hardware.
+- `packages/rb-apps/src/examples/index.ts`
+  - Updated the Lab 6 example description to reflect that it is now a blank build-from-scratch scaffold instead of a pre-placed storage-element demo.
+- `packages/rb-apps/src/__tests__/ci-no-solution-lab6-gate.test.ts`
+  - Strengthened the no-solution gate so it fails if Lab 6 regresses back to pre-placed sequential nodes.
+  - Added coverage for the grounded-clear scaffold and required Basys3 preset.
+
+### Student-visible behavior
+
+- Lab 6 now opens as a true unsolved starter instead of gifting students finished latch/flip-flop devices.
+- The starter explicitly includes the `CLR -> 0` wiring concept for TFF/JKFF through provided Ground nodes.
+- Lab instructions now read like the real assignment: build each device, verify the behavior, then demo it on Basys3.
+
+### Proof
+
+- Pending focused lab/example validation in this session.
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-17 (Lab 6 sequential contract unification)
 
 **Subsystem**: Logic core / IDE Design / Verify export parity / Basys3 export

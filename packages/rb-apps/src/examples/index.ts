@@ -273,7 +273,7 @@ const examples: Record<ExampleId, { data: SerializedCircuitV1; metadata: Example
     metadata: {
       id: '21_lab6-flipflop-starter',
       name: 'Lab 6 Flip-Flop Starter',
-      description: 'Unsolved starter scaffold for latch/flip-flop sequential behavior',
+      description: 'Blank four-device scaffold for building and proving latch/flip-flop behavior from scratch',
       layer: 3,
       difficulty: 'intermediate',
     },

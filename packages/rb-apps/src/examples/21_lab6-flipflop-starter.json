@@ -2,114 +2,122 @@
   "version": "v1",
   "nodes": [
     {
-      "id": "sw_clk",
+      "id": "dl_d",
       "type": "Switch",
-      "label": "CLK",
-      "position": { "x": 60, "y": 80 },
+      "label": "DL_D",
+      "position": { "x": 80, "y": 90 },
       "rotation": 0,
       "config": {}
     },
     {
-      "id": "sw_d",
+      "id": "dl_g",
       "type": "Switch",
-      "label": "D",
-      "position": { "x": 60, "y": 160 },
+      "label": "DL_G",
+      "position": { "x": 80, "y": 170 },
       "rotation": 0,
       "config": {}
     },
     {
-      "id": "sw_en",
-      "type": "Switch",
-      "label": "EN",
-      "position": { "x": 60, "y": 240 },
-      "rotation": 0,
-      "config": {}
-    },
-    {
-      "id": "sw_t",
-      "type": "Switch",
-      "label": "T",
-      "position": { "x": 60, "y": 320 },
-      "rotation": 0,
-      "config": {}
-    },
-    {
-      "id": "sw_j",
-      "type": "Switch",
-      "label": "J",
-      "position": { "x": 60, "y": 400 },
-      "rotation": 0,
-      "config": {}
-    },
-    {
-      "id": "sw_k",
-      "type": "Switch",
-      "label": "K",
-      "position": { "x": 60, "y": 480 },
-      "rotation": 0,
-      "config": {}
-    },
-    {
-      "id": "dlatch",
-      "type": "DLatch",
-      "label": "DLatch",
-      "position": { "x": 300, "y": 80 },
-      "rotation": 0,
-      "config": {}
-    },
-    {
-      "id": "dff",
-      "type": "DFlipFlop",
-      "label": "DFF",
-      "position": { "x": 300, "y": 200 },
-      "rotation": 0,
-      "config": {}
-    },
-    {
-      "id": "tff",
-      "type": "TFlipFlop",
-      "label": "TFF",
-      "position": { "x": 300, "y": 320 },
-      "rotation": 0,
-      "config": {}
-    },
-    {
-      "id": "jkff",
-      "type": "JKFlipFlop",
-      "label": "JKFF",
-      "position": { "x": 300, "y": 440 },
-      "rotation": 0,
-      "config": {}
-    },
-    {
-      "id": "led_dlatch_q",
+      "id": "dl_q",
       "type": "Lamp",
-      "label": "Q_DL",
-      "position": { "x": 560, "y": 80 },
+      "label": "DL_Q",
+      "position": { "x": 560, "y": 130 },
       "rotation": 0,
       "config": {}
     },
     {
-      "id": "led_dff_q",
-      "type": "Lamp",
-      "label": "Q_DFF",
-      "position": { "x": 560, "y": 200 },
+      "id": "dff_d",
+      "type": "Switch",
+      "label": "DFF_D",
+      "position": { "x": 80, "y": 330 },
       "rotation": 0,
       "config": {}
     },
     {
-      "id": "led_tff_q",
-      "type": "Lamp",
-      "label": "Q_TFF",
-      "position": { "x": 560, "y": 320 },
+      "id": "dff_clk",
+      "type": "Switch",
+      "label": "DFF_CLK",
+      "position": { "x": 80, "y": 410 },
       "rotation": 0,
       "config": {}
     },
     {
-      "id": "led_jkff_q",
+      "id": "dff_q",
       "type": "Lamp",
-      "label": "Q_JK",
-      "position": { "x": 560, "y": 440 },
+      "label": "DFF_Q",
+      "position": { "x": 560, "y": 370 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "tff_t",
+      "type": "Switch",
+      "label": "TFF_T",
+      "position": { "x": 760, "y": 90 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "tff_clk",
+      "type": "Switch",
+      "label": "TFF_CLK",
+      "position": { "x": 760, "y": 170 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "tff_clr0",
+      "type": "Ground",
+      "label": "TFF_CLR0",
+      "position": { "x": 760, "y": 250 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "tff_q",
+      "type": "Lamp",
+      "label": "TFF_Q",
+      "position": { "x": 1240, "y": 130 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "jkff_j",
+      "type": "Switch",
+      "label": "JK_J",
+      "position": { "x": 760, "y": 330 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "jkff_k",
+      "type": "Switch",
+      "label": "JK_K",
+      "position": { "x": 760, "y": 410 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "jkff_clk",
+      "type": "Switch",
+      "label": "JK_CLK",
+      "position": { "x": 760, "y": 490 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "jkff_clr0",
+      "type": "Ground",
+      "label": "JK_CLR0",
+      "position": { "x": 760, "y": 570 },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "jkff_q",
+      "type": "Lamp",
+      "label": "JK_Q",
+      "position": { "x": 1240, "y": 450 },
       "rotation": 0,
       "config": {}
     }
