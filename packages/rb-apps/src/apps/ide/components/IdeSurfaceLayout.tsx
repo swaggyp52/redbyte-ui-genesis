@@ -1,13 +1,13 @@
 import React from 'react';
-import { IdeWorkbenchShell } from './IdeWorkbenchShell';
-
-type IdeSurfaceMode =
-  | 'project'
-  | 'design'
-  | 'verify'
-  | 'hardware'
-  | 'export'
-  | 'import';
+import {
+  IdeWorkbenchShell,
+  type ConsoleMode,
+  type IdeSurfaceMode,
+  type LeftDockMode,
+  type RightDockMode,
+  type WorkbenchShellDensity,
+  type WorkbenchSurfaceFrame,
+} from './IdeWorkbenchShell';
 
 export interface IdeSurfaceLayoutProps {
   mode: IdeSurfaceMode;
@@ -17,7 +17,13 @@ export interface IdeSurfaceLayoutProps {
   console?: React.ReactNode;
   consoleHasBlocking?: boolean;
   consoleHasEntries?: boolean;
+  leftDockMode?: LeftDockMode;
+  /** @deprecated Use rightDockMode='hidden' instead. */
   hideRightDock?: boolean;
+  rightDockMode?: RightDockMode;
+  consoleMode?: ConsoleMode;
+  shellDensity?: WorkbenchShellDensity;
+  surfaceFrame?: WorkbenchSurfaceFrame;
 }
 
 export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({
@@ -28,7 +34,12 @@ export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({
   console,
   consoleHasBlocking = false,
   consoleHasEntries = false,
+  leftDockMode,
   hideRightDock = false,
+  rightDockMode,
+  consoleMode,
+  shellDensity,
+  surfaceFrame,
 }) => {
   return (
     <IdeWorkbenchShell
@@ -39,7 +50,12 @@ export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({
       console={console}
       consoleHasBlocking={consoleHasBlocking}
       consoleHasEntries={consoleHasEntries}
+      leftDockMode={leftDockMode}
       hideRightDock={hideRightDock}
+      rightDockMode={rightDockMode}
+      consoleMode={consoleMode}
+      shellDensity={shellDensity}
+      surfaceFrame={surfaceFrame}
     />
   );
 };

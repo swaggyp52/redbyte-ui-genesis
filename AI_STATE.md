@@ -1,5 +1,63 @@
 # AI State
 
+## Change Log 2026-03-16 (Workbench policy foundation for mode-aware shell composition)
+
+**Subsystem**: IDE workbench shell / surface layout contract
+
+### Problem
+
+The workbench shell could only vary right-dock visibility via ad hoc props, so mode-aware workspace composition still had no shared contract for:
+
+- left dock behavior,
+- console behavior,
+- shell density hooks,
+- surface framing hooks.
+
+That kept layout ownership scattered between individual surfaces and shell implementation details.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+  - Added normalized shell policy support for:
+    - `leftDockMode`,
+    - `rightDockMode`,
+    - `consoleMode`,
+    - `shellDensity`,
+    - `surfaceFrame`.
+  - Added exported `ResolvedWorkbenchPolicy` typing for the shell contract.
+  - Added collapsed-left-dock behavior with a persistent restore rail and explicit collapse control when reopened.
+  - Centralized console state resolution behind `consoleMode` while preserving current default behavior for existing callers.
+  - Added shell markers:
+    - `data-shell-density`,
+    - `data-surface-frame`.
+  - Kept legacy `hideRightDock` compatibility by resolving it to `rightDockMode='hidden'`.
+- `packages/rb-apps/src/apps/ide/components/IdeSurfaceLayout.tsx`
+  - Mirrored the new shell policy props and passed them through without changing existing surface call sites.
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Added shell-level slot width support for left/right dock modes.
+  - Added generic collapsed rail and collapse-button styling for future mode-aware workbench compositions.
+  - Added console-hidden shell row handling and frame/density hook selectors.
+- `packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx`
+  - Added coverage for:
+    - left dock collapsed/hidden behavior,
+    - right dock collapsed restore flow,
+    - console hidden/collapsed/expanded modes,
+    - shell density and surface frame markers,
+    - legacy `hideRightDock` compatibility,
+    - unchanged default shell behavior.
+
+### Student-visible behavior after fix
+
+- No surface is intentionally redesigned in this commit.
+- The shell now supports collapsed-left-dock, collapsed-right-dock, and explicit console policy behavior without requiring per-surface hacks.
+- Existing surfaces continue to render with current defaults until they opt into the new policy props.
+
+### Proof
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx --reporter=verbose` -> 12/12 passing
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-16 (Design inspector hierarchy + right dock redesign)
 
 **Subsystem**: IDE Design/Build product experience
