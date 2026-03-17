@@ -1476,7 +1476,24 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     onCircuitMutated?.();
   }, [onCircuitMutated, redo]);
 
-  const fitToCircuit = useCallback(() => {
+  const measureCanvasViewport = useCallback(() => {
+    if (!canvasHostRef.current) return null;
+    const rect = canvasHostRef.current.getBoundingClientRect();
+    const width = Math.max(640, Math.floor(rect.width));
+    const height = Math.max(64, Math.floor(rect.height));
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+      return null;
+    }
+    return { width, height };
+  }, []);
+
+  const fitToCircuit = useCallback((viewportOverride?: { width: number; height: number } | null) => {
+    const viewport = viewportOverride ?? measureCanvasViewport() ?? canvasSize;
+    if (viewport.width !== canvasSize.width || viewport.height !== canvasSize.height) {
+      setCanvasSize((previous) =>
+        previous.width === viewport.width && previous.height === viewport.height ? previous : viewport
+      );
+    }
     if (editorCircuit.nodes.length === 0) {
       setCamera({ x: 0, y: 0, zoom: 1 });
       return;
@@ -1502,17 +1519,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const padding = Math.max(56, Math.min(140, Math.round(Math.max(spanX, spanY) * 0.14)));
     const boundsWidth = Math.max(1, spanX + padding * 2);
     const boundsHeight = Math.max(1, spanY + padding * 2);
-    const zoomX = (canvasSize.width * 0.9) / boundsWidth;
-    const zoomY = (canvasSize.height * 0.9) / boundsHeight;
+    const zoomX = (viewport.width * 0.9) / boundsWidth;
+    const zoomY = (viewport.height * 0.9) / boundsHeight;
     const nextZoom = snapFitZoom(Math.max(0.55, Math.min(2.4, Math.min(zoomX, zoomY))));
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
     setCamera({
-      x: canvasSize.width / 2 - centerX * nextZoom,
-      y: canvasSize.height / 2 - centerY * nextZoom,
+      x: viewport.width / 2 - centerX * nextZoom,
+      y: viewport.height / 2 - centerY * nextZoom,
       zoom: nextZoom,
     });
-  }, [canvasSize.height, canvasSize.width, editorCircuit.nodes, setCamera]);
+  }, [canvasSize, editorCircuit.nodes, measureCanvasViewport, setCamera]);
 
   const fitToCircuitRef = useRef(fitToCircuit);
   const previousDesignViewRef = useRef(designView);
@@ -1676,10 +1693,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     if (editorCircuit.nodes.length === 0) return;
     const frame = window.requestAnimationFrame(() => {
-      fitToCircuitRef.current();
+      const viewport = measureCanvasViewport();
+      fitToCircuitRef.current(viewport);
       // Store frame2 ID before any null assignment to avoid cleanup race
       const frame2 = window.requestAnimationFrame(() => {
-        fitToCircuitRef.current();
+        fitToCircuitRef.current(measureCanvasViewport());
         designViewSettledFitFrameRef.current = null;
       });
       designViewSettledFitFrameRef.current = frame2;
@@ -1691,7 +1709,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         designViewSettledFitFrameRef.current = null;
       }
     };
-  }, [designView, editorCircuit.nodes.length, setSelectMode, setToolsExpanded]);
+  }, [designView, editorCircuit.nodes.length, measureCanvasViewport, setSelectMode, setToolsExpanded]);
 
   const handleSignalsUpdated = useCallback(() => {
     // Runtime simulation state is authoritative. Canvas-local ticks are ignored.

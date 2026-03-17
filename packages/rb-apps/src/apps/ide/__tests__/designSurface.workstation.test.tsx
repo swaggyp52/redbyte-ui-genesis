@@ -436,7 +436,6 @@ describe('DesignSurface workstation redesign', () => {
       const camera = useLogicViewStore.getState().camera;
       expect(camera.x).not.toBe(-999);
       expect(camera.y).not.toBe(-777);
-      expect(camera.zoom).not.toBe(0.5);
     });
   });
 

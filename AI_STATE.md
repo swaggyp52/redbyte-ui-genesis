@@ -15,6 +15,8 @@ On the live deployment, returning from Build `Split` view back to full-canvas De
     - entering `split`
     - returning from `split` to `canvas`
   - Preserved the existing double-`requestAnimationFrame` settled-fit approach so the camera updates after layout reflow instead of against stale pane dimensions.
+  - Added live canvas viewport measurement from the DOM host during the transition and uses that measured size for the recovery fit, rather than trusting only the previously stored `canvasSize`.
+  - Syncs `canvasSize` from the measured host on transition so `LogicCanvas` itself recovers from stale split-era dimensions instead of staying visually stranded until refresh.
 - `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
   - Added a regression that forces a bad split camera state, switches back to `canvas`, and proves the camera is re-fit instead of staying stranded.
   - Stubbed `requestAnimationFrame` deterministically in this suite so view-transition recovery is tested honestly in jsdom.
@@ -22,7 +24,7 @@ On the live deployment, returning from Build `Split` view back to full-canvas De
 ### Student-visible behavior
 
 - Switching from Build `Split` back to fullscreen Design canvas no longer leaves the circuit cropped into the top-left corner.
-- The fullscreen canvas now restores a usable fit automatically after the layout transition settles.
+- The fullscreen canvas now restores a usable fit automatically after the layout transition settles, without requiring a manual refresh.
 
 ### Proof
 
