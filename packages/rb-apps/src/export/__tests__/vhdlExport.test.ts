@@ -179,8 +179,8 @@ describe('vhdlFromNetlist', () => {
 
     expect(result.vhd).toContain('entity top is');
     expect(result.vhd).toContain('end entity top');
-    expect(result.vhd).toContain('architecture rtl of top');
-    expect(result.vhd).toContain('end architecture rtl');
+    expect(result.vhd).toContain('architecture Behavioral of top');
+    expect(result.vhd).toContain('end architecture Behavioral');
     expect(result.vhd).toContain('library IEEE');
     expect(result.vhd).toContain('STD_LOGIC');
   });

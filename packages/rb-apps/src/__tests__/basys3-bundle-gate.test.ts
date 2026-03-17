@@ -16,8 +16,13 @@ function extractXdcPorts(topXdc: string): string[] {
   );
 }
 
+/** Strip [N] suffix from XDC port refs to get entity base port names. */
+function xdcPortToEntityBase(portRef: string): string {
+  return portRef.replace(/\[\d+\]$/, '');
+}
+
 function extractVhdlPorts(topVhd: string): string[] {
-  const entityBlockMatch = topVhd.match(/entity\s+top\s+is[\s\S]*?Port\s*\(([^]*?)\);\s*end\s+entity/i);
+  const entityBlockMatch = topVhd.match(/entity\s+\w+\s+is[\s\S]*?Port\s*\(([^]*?)\);\s*end\s+entity/i);
   if (!entityBlockMatch) return [];
   return Array.from(
     new Set(
@@ -52,7 +57,7 @@ describe('RC D2 basys3 bundle gate', () => {
     expect(run1.valid).toBe(true);
     expect(run1.topVhd).toContain('library IEEE;');
     expect(run1.topVhd).toContain('entity top is');
-    expect(run1.topVhd).toContain('architecture rtl');
+    expect(run1.topVhd).toContain('architecture Behavioral');
     expect(run1.topVhd).toContain('g1_in1 : in  STD_LOGIC');
     expect(run1.topVhd).toContain('g1_in2 : in  STD_LOGIC');
     expect(run1.topVhd).toContain('g1_out : out STD_LOGIC');
@@ -74,8 +79,9 @@ describe('RC D2 basys3 bundle gate', () => {
 
     const xdcPorts = extractXdcPorts(run1.topXdc);
     const vhdlPorts = extractVhdlPorts(run1.topVhd);
-    xdcPorts.forEach((portName) => {
-      expect(vhdlPorts).toContain(portName);
+    // XDC port refs may use SW[0] notation; strip [N] to get entity base port name
+    xdcPorts.forEach((portRef) => {
+      expect(vhdlPorts).toContain(xdcPortToEntityBase(portRef));
     });
   });
 
@@ -155,17 +161,19 @@ describe('RC D2 basys3 bundle gate', () => {
 
     expect(result.valid).toBe(true);
 
-    // Entity must declare canonical port names matching the ioMapping scheme
-    expect(result.topVhd).toContain('sw0_out : in');
-    expect(result.topVhd).toContain('sw1_out : in');
-    expect(result.topVhd).toContain('ld0_in : out');
-    expect(result.topVhd).toContain('ld1_in : out');
+    // With IO nodes present, buildPortGroups produces SW/LED vector ports (swaggy.zip standard)
+    expect(result.topVhd).toContain('SW : in  STD_LOGIC_VECTOR(1 downto 0)');
+    expect(result.topVhd).toContain('LED : out STD_LOGIC_VECTOR(1 downto 0)');
 
-    // Architecture body must NOT reference portGroup vector expressions.
-    // This is the regression guard: previously produced 'ld0_in <= LED(0)' where
-    // LED was never declared, causing Vivado [Synth 8-285] build failure.
-    expect(result.topVhd).not.toMatch(/\bLED\s*\(/);
-    expect(result.topVhd).not.toMatch(/\bSW\s*\(/);
+    // Architecture body assigns LED(N) <= SW(N) — all references are to declared ports
+    expect(result.topVhd).toContain('LED(0) <= SW(0)');
+    expect(result.topVhd).toContain('LED(1) <= SW(1)');
+
+    // XDC must use vector bit notation matching the entity port names
+    expect(result.topXdc).toContain('[get_ports {SW[0]}]');
+    expect(result.topXdc).toContain('[get_ports {SW[1]}]');
+    expect(result.topXdc).toContain('[get_ports {LED[0]}]');
+    expect(result.topXdc).toContain('[get_ports {LED[1]}]');
 
     // XDC must contain physical pin assignments for both switches and LEDs
     expect(result.topXdc).toContain('PACKAGE_PIN V17'); // SW0
@@ -173,11 +181,11 @@ describe('RC D2 basys3 bundle gate', () => {
     expect(result.topXdc).toContain('PACKAGE_PIN U16'); // LD0
     expect(result.topXdc).toContain('PACKAGE_PIN E19'); // LD1
 
-    // VHDL entity ports and XDC get_ports must match (parity check)
+    // VHDL entity ports and XDC get_ports must match (parity check — vector-aware)
     const xdcPorts = extractXdcPorts(result.topXdc);
     const vhdlPorts = extractVhdlPorts(result.topVhd);
-    xdcPorts.forEach((portName) => {
-      expect(vhdlPorts).toContain(portName);
+    xdcPorts.forEach((portRef) => {
+      expect(vhdlPorts).toContain(xdcPortToEntityBase(portRef));
     });
   });
 });

@@ -47,7 +47,7 @@ describe('RC E1 classroom golden Basys3 export gate', () => {
     expect(bundle.warnings).toEqual([]);
     expect(bundle.topVhd).toContain('library IEEE;');
     expect(bundle.topVhd).toContain('entity top is');
-    expect(bundle.topVhd).toContain('architecture rtl');
+    expect(bundle.topVhd).toContain('architecture Behavioral');
 
     expect(bundle.topXdc).toContain('PACKAGE_PIN V17');
     expect(bundle.topXdc).toContain('PACKAGE_PIN V16');

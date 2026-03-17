@@ -2,4 +2,4 @@ fixture=packages/rb-apps/src/fixtures/classroom/golden-basys3-alu.rbproj
 zip.entries=README.txt,top.vhd,top.xdc
 zip.order=lexicographic
 zip.timestamp=2026-01-01T00:00:00.000Z
-sha256=2d3f355e8d35ef908240b01d92eeed789b0504d69b66cf55851ed13e8e7b0847
+sha256=ddde06ca0184ae9aedcc0975bf7146fecc7177dd85d025baac6aa503abfa917c

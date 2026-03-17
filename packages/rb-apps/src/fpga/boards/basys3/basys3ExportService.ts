@@ -362,9 +362,12 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
     topVerilog: bundleResult.topV,
   };
 
-  // TODO: Generate testbench.vhd if vectors present
+  // Generate testbench.vhd if vectors present.
+  // Pass the entity VHDL so that component/signal declarations mirror the entity exactly.
   if (project.vectors && project.vectors.length > 0) {
-    result.bundle.testbench = generateTestbenchVhdl(project, project.vectors);
+    result.bundle.testbench = generateTestbenchVhdl(project, project.vectors, {
+      entityVhd: result.bundle.topVhd,
+    });
   }
 
   // Cross-artifact consistency guard: testbench component ports must agree with entity ports.

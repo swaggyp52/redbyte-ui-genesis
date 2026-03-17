@@ -21,6 +21,100 @@ interface TestbenchGenerationOptions {
     reason?: string;
     clockSignalName?: string;
   };
+  /**
+   * When provided, component ports + signal declarations are derived directly from
+   * the entity declaration in this VHDL text, guaranteeing testbench/entity consistency.
+   * Vector types (STD_LOGIC_VECTOR) are preserved; stimulus uses bit-indexed references.
+   */
+  entityVhd?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Entity-based port extraction (used when entityVhd option is provided)
+// ---------------------------------------------------------------------------
+
+interface EntityPortInfo {
+  name: string;
+  direction: 'in' | 'out';
+  /** Type as written in entity, lowercased */
+  typeDecl: string;
+  isVector: boolean;
+  /** Bit width (e.g. 2 for VECTOR(1 downto 0)); undefined for scalars */
+  vectorWidth?: number;
+}
+
+function parseEntityPortInfos(topVhd: string): EntityPortInfo[] {
+  // Match Port block ending with "  );" on its own line (handles nested parens in vector types)
+  const m = topVhd.match(/\bPort\s*\(([\s\S]*?)\n\s*\);/i);
+  if (!m) return [];
+  const result: EntityPortInfo[] = [];
+  for (const entry of m[1].split(';').map((e) => e.trim()).filter(Boolean)) {
+    const colonIdx = entry.indexOf(':');
+    if (colonIdx < 0) continue;
+    const name = entry.slice(0, colonIdx).trim();
+    const rest = entry.slice(colonIdx + 1).trim();
+    const dirMatch = rest.match(/^(in|out|inout)\s+(.+)$/i);
+    if (!dirMatch) continue;
+    const dir = dirMatch[1].toLowerCase() as 'in' | 'out';
+    const typeDecl = dirMatch[2].trim().toLowerCase();
+    const isVector = typeDecl.includes('vector');
+    let vectorWidth: number | undefined;
+    if (isVector) {
+      const wm = typeDecl.match(/\((\d+)\s+downto\s+0\)/);
+      vectorWidth = wm ? parseInt(wm[1], 10) + 1 : undefined;
+    }
+    result.push({ name, direction: dir, typeDecl, isVector, vectorWidth });
+  }
+  return result;
+}
+
+/**
+ * Build a mapping from IO label strings (e.g. "SW0", "LD0") → VHDL port references
+ * (e.g. "SW(0)", "LD(0)") using the entity port declarations as authority.
+ *
+ * Supports both vector ports (SW0 → SW(0)) and scalar ports (CLK → clk).
+ */
+function buildLabelToEntityRef(
+  ioMapping: RBProject['ioMapping'],
+  entityPorts: EntityPortInfo[],
+): Map<string, string> {
+  const portsByBase = new Map<string, EntityPortInfo>();
+  for (const p of entityPorts) {
+    portsByBase.set(p.name.toLowerCase(), p);
+  }
+  const result = new Map<string, string>();
+
+  const processEntries = (entries: Array<{ label?: string }>) => {
+    for (const entry of entries) {
+      const label = (entry.label ?? '').trim();
+      if (!label) continue;
+      // Try vector pattern: {base}{index}, e.g. SW0 → SW(0)
+      const m = label.match(/^([A-Za-z_]+)(\d+)$/);
+      if (m) {
+        const base = m[1].toUpperCase();
+        const idx = parseInt(m[2], 10);
+        const port = portsByBase.get(base.toLowerCase());
+        if (port) {
+          const ref = port.isVector ? `${port.name}(${idx})` : port.name;
+          result.set(label, ref);
+          result.set(label.toUpperCase(), ref);
+          result.set(label.toLowerCase(), ref);
+          continue;
+        }
+      }
+      // Try exact match (case-insensitive scalar, e.g. CLK100MHZ)
+      const port = portsByBase.get(label.toLowerCase());
+      if (port) {
+        result.set(label, port.name);
+        result.set(label.toUpperCase(), port.name);
+        result.set(label.toLowerCase(), port.name);
+      }
+    }
+  };
+
+  processEntries(ioMapping?.inputs ?? []);
+  processEntries(ioMapping?.outputs ?? []);
+  return result;
 }
 
 export function generateTestbenchVhdl(
@@ -39,8 +133,21 @@ export function generateTestbenchVhdl(
             options.scheduleOverride.clockSignalName ?? derivedSchedule.clockSignalName,
         }
       : derivedSchedule;
-  const signalCatalog = collectSignals(project, vectors, scheduleContract.schedule, scheduleContract.clockSignalName);
   const topModule = (project.fpga?.top || project.hdl?.top || 'top').trim() || 'top';
+
+  // Entity-based path: derive component ports directly from the entity VHDL
+  // to guarantee testbench/entity consistency. Used when entity uses vector ports.
+  if (options?.entityVhd) {
+    return generateTestbenchFromEntity(
+      project,
+      vectors,
+      options.entityVhd,
+      scheduleContract,
+      topModule,
+    );
+  }
+
+  const signalCatalog = collectSignals(project, vectors, scheduleContract.schedule, scheduleContract.clockSignalName);
 
   const vhdlNameByLogical = buildNameMap([
     ...signalCatalog.inputs,
@@ -117,6 +224,156 @@ end architecture sim;
 `;
 }
 
+// ---------------------------------------------------------------------------
+// Entity-based testbench generation
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a testbench whose component/signal declarations mirror the entity
+ * ports extracted from `topVhd`. This guarantees structural consistency with
+ * the generated top.vhd regardless of whether it uses vector or scalar ports.
+ */
+function generateTestbenchFromEntity(
+  project: RBProject,
+  vectors: TestVector[],
+  topVhd: string,
+  scheduleContract: ReturnType<typeof deriveVerifySchedule>,
+  topModule: string,
+): string {
+  const entityPorts = parseEntityPortInfos(topVhd);
+  const labelToRef = buildLabelToEntityRef(project.ioMapping, entityPorts);
+
+  // Resolve clock signal name if needed
+  let clockPortRef: string | undefined;
+  if (scheduleContract.schedule === 'clocked_macro') {
+    const hint = scheduleContract.clockSignalName?.trim() ?? '';
+    if (hint.length > 0) {
+      clockPortRef = labelToRef.get(hint) ?? labelToRef.get(hint.toUpperCase()) ?? hint;
+    }
+    if (!clockPortRef) {
+      const clkPort = entityPorts.find(
+        (p) => p.direction === 'in' && /clk|clock/i.test(p.name),
+      );
+      clockPortRef = clkPort?.name;
+    }
+  }
+
+  const componentPortLines = entityPorts.map(
+    (p) => `      ${p.name} : ${p.direction}  ${p.typeDecl}`,
+  );
+  const componentPorts = componentPortLines.join(';\n');
+
+  const signalDeclLines = entityPorts.map((p) => {
+    const init =
+      p.direction === 'in'
+        ? p.isVector
+          ? " := (others => '0')"
+          : " := '0'"
+        : '';
+    return `  signal ${p.name} : ${p.typeDecl}${init};`;
+  });
+  if (scheduleContract.schedule === 'clocked_macro') {
+    signalDeclLines.push('  constant CLK_HALF_PERIOD : time := 5 ns;');
+  }
+  const signalDecls = signalDeclLines.join('\n');
+
+  const portMapEntries = entityPorts
+    .map((p) => `      ${p.name} => ${p.name}`)
+    .join(',\n');
+
+  const stimulus = generateEntityStimulus(
+    vectors,
+    scheduleContract.schedule,
+    clockPortRef,
+    labelToRef,
+    entityPorts,
+  );
+
+  return `library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity tb_${toVhdlIdentifier(topModule)} is
+end entity tb_${toVhdlIdentifier(topModule)};
+
+architecture sim of tb_${toVhdlIdentifier(topModule)} is
+  component ${toVhdlIdentifier(topModule)} is
+    port (
+${componentPorts}
+    );
+  end component;
+
+${signalDecls}
+begin
+  -- Deterministic schedule contract with Verify runner:
+  -- schedule=${scheduleContract.schedule}
+  -- reason=${scheduleContract.reason}
+  -- sequence=${scheduleContract.schedule === 'clocked_macro' ? CLOCKED_MACRO_SEQUENCE.join('->') : 'single-tick'}
+  dut: ${toVhdlIdentifier(topModule)}
+    port map (
+${portMapEntries}
+    );
+
+  stim: process
+  begin
+${stimulus}
+    wait;
+  end process;
+end architecture sim;
+`;
+}
+
+function generateEntityStimulus(
+  vectors: TestVector[],
+  schedule: 'combinational' | 'clocked_macro',
+  clockPortRef: string | undefined,
+  labelToRef: Map<string, string>,
+  entityPorts: EntityPortInfo[],
+): string {
+  const outputPortNames = new Set(
+    entityPorts.filter((p) => p.direction === 'out').map((p) => p.name.toLowerCase()),
+  );
+  const lines: string[] = [];
+
+  vectors.forEach((vector, index) => {
+    lines.push(`    -- Vector ${index} (tick=${vector.tick})`);
+
+    for (const key of uniqueSorted(Object.keys(vector.inputs))) {
+      const ref = labelToRef.get(key) ?? labelToRef.get(key.toUpperCase()) ?? key;
+      // Skip clock — handled by clock process below
+      if (clockPortRef && ref === clockPortRef) continue;
+      lines.push(`    ${ref} <= ${toBitLiteral(vector.inputs[key])};`);
+    }
+
+    if (schedule === 'clocked_macro' && clockPortRef) {
+      for (const clockValue of CLOCKED_MACRO_SEQUENCE) {
+        lines.push(`    ${clockPortRef} <= '${clockValue}';`);
+        lines.push('    wait for CLK_HALF_PERIOD;');
+      }
+      lines.push('    wait for 10 ns;');
+    } else {
+      lines.push('    wait for 10 ns;');
+    }
+
+    for (const expectedKey of uniqueSorted(Object.keys(vector.expected ?? {}))) {
+      const ref =
+        labelToRef.get(expectedKey) ??
+        labelToRef.get(expectedKey.toUpperCase()) ??
+        expectedKey;
+      const expectedLiteral = toBitLiteral(vector.expected[expectedKey]);
+      lines.push(`    assert ${ref} = ${expectedLiteral}`);
+      lines.push(
+        `      report "Vector ${index} failed on ${ref}: expected ${expectedLiteral}"`,
+      );
+      lines.push('      severity error;');
+    }
+
+    lines.push('');
+  });
+
+  return lines.join('\n');
+}
+
 function generateStimulus(
   vectors: TestVector[],
   schedule: 'combinational' | 'clocked_macro',
@@ -141,9 +398,9 @@ function generateStimulus(
         lines.push(`    ${safeClock} <= '${clockValue}';`);
         lines.push('    wait for CLK_HALF_PERIOD;');
       }
-      lines.push('    wait for 0 ns;');
+      lines.push('    wait for 10 ns;');
     } else {
-      lines.push('    wait for 0 ns;');
+      lines.push('    wait for 10 ns;');
     }
 
     for (const expectedName of uniqueSorted(Object.keys(vector.expected ?? {}))) {

@@ -581,7 +581,9 @@ export function validateVivadoArtifactConsistency(input: VivadoArtifactConsisten
   if (xdcPorts.length === 0) {
     issues.push('Could not extract any [get_ports {...}] names from top.xdc.');
   }
-  compareNameSets(entityPorts, xdcPorts, 'top.vhd entity ports', 'top.xdc get_ports', issues);
+  // XDC may use vector bit notation SW[0], SW[1] → normalise to base names before comparing
+  const xdcPortBaseNames = Array.from(new Set(xdcPorts.map((p) => p.replace(/\[\d+\]$/, ''))));
+  compareNameSets(entityPorts, xdcPortBaseNames, 'top.vhd entity ports', 'top.xdc get_ports', issues);
 
   const xprTopModule = extractXprSourcesTopModule(input.xprText);
   if (!xprTopModule) {

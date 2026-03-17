@@ -443,7 +443,7 @@ export function vhdlFromNetlist(
   lines.push('');
 
   // ---- Architecture ---------------------------------------------------------
-  lines.push(`architecture rtl of ${entityName} is`);
+  lines.push(`architecture Behavioral of ${entityName} is`);
 
   // Internal signal declarations
   supportedLogicNodes.forEach((node) => {
@@ -790,7 +790,7 @@ export function vhdlFromNetlist(
     });
   }
 
-  lines.push(`end architecture rtl;`);
+  lines.push(`end architecture Behavioral;`);
 
   const vhd = lines.join('\n');
 

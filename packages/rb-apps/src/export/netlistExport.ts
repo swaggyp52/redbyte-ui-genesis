@@ -137,6 +137,7 @@ export const netlistFromCircuit = (circuit: Circuit): Netlist => {
     return {
       id: node.id,
       type: node.type,
+      label: node.label,
       ports,
     };
   });
