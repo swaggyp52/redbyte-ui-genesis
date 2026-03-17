@@ -1,5 +1,44 @@
 # AI State
 
+## Change Log 2026-03-16 (Design multiselect contract triage)
+
+**Subsystem**: IDE Design/Build product experience / live gate coverage
+
+### Problem
+
+`pnpm repo:status` stopped at `IDE Design Multiselect Contract` immediately after the Design reclaim batch, so the next step was to determine whether multiselect itself regressed or whether the gate was still asserting the pre-placement behavior.
+
+### Root cause
+
+- The gate was stale, not the product.
+- `scripts/gates/ide-design-multiselect-contract.mjs` still clicked board resources as if they inserted nodes immediately.
+- After the placement-model unification, those clicks only enter placement mode until the user clicks blank canvas.
+- Because the gate never committed placement, it never seeded the four nodes required for marquee selection, so its first `waitForFunction` timed out.
+
+### What changed
+
+- `scripts/gates/ide-design-multiselect-contract.mjs`
+  - Added a small placement helper that selects a board resource, waits for placement mode, clicks blank canvas, and waits for placement to clear.
+  - Set a stable desktop viewport for deterministic marquee behavior.
+  - Kept the actual multiselect assertions unchanged:
+    - marquee/fallback multi-selection,
+    - selection bounds visibility,
+    - selection count badge,
+    - bulk delete,
+    - undo restore.
+
+### Student-visible behavior after fix
+
+- No product behavior changed.
+- This was a contract correction so the repo validation reflects the current Design interaction model honestly.
+
+### Proof
+
+- `pnpm -s ide:gate:design-multiselect-contract` -> PASS
+- `pnpm repo:status` -> advances past `IDE Design Multiselect Contract` and now stops at `IDE Verify Workbench Contract`
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-16 (Design workspace reclaim + fill pass)
 
 **Subsystem**: IDE Design/Build product experience

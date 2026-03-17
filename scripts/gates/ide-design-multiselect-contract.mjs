@@ -6,7 +6,26 @@ await runIdeGate('IDE design multiselect contract satisfied', async ({ page, bas
   await runDeterministicPass(page, baseUrl);
 });
 
+async function placeBoardEntry(page, selector, xFactor, yFactor) {
+  await page.locator(selector).first().click();
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
+    return canvas?.getAttribute('data-placement-active') === '1';
+  }, { timeout: 5000 });
+
+  const canvas = page.locator('[data-testid="ide-design-live-canvas"]').first();
+  const bounds = await canvas.boundingBox();
+  assert(Boolean(bounds), `design canvas bounds unavailable for placement from ${selector}`);
+  await page.mouse.click(bounds.x + bounds.width * xFactor, bounds.y + bounds.height * yFactor);
+
+  await page.waitForFunction(() => {
+    const canvasEl = document.querySelector('[data-testid="ide-design-live-canvas"]');
+    return canvasEl?.getAttribute('data-placement-active') === '0';
+  }, { timeout: 5000 });
+}
+
 async function runDeterministicPass(page, baseUrl) {
+  await page.setViewportSize({ width: 1600, height: 1000 });
   // Suppress the first-visit onboarding overlay and seed an empty circuit so board
   // palette chips are unplaced and available to click.
   await page.addInitScript(() => {
@@ -36,12 +55,12 @@ async function runDeterministicPass(page, baseUrl) {
 
   await ensureSnapEnabled(page);
 
-  // Board-first palette: clicking board chips adds Switch/Lamp nodes to the circuit.
-  // We need ≥4 nodes for a meaningful marquee-select test.
-  await page.locator('[data-testid="ide-design-board-input-sw0"]').click();
-  await page.locator('[data-testid="ide-design-board-input-sw1"]').click();
-  await page.locator('[data-testid="ide-design-board-input-sw2"]').click();
-  await page.locator('[data-testid="ide-design-board-output-ld0"]').click();
+  // Board-first palette: selecting board chips enters placement mode; clicking blank
+  // canvas commits the nodes. We need ≥4 nodes for a meaningful marquee-select test.
+  await placeBoardEntry(page, '[data-testid="ide-design-board-input-sw0"]', 0.18, 0.30);
+  await placeBoardEntry(page, '[data-testid="ide-design-board-input-sw1"]', 0.18, 0.48);
+  await placeBoardEntry(page, '[data-testid="ide-design-board-input-sw2"]', 0.18, 0.66);
+  await placeBoardEntry(page, '[data-testid="ide-design-board-output-ld0"]', 0.68, 0.42);
 
   await page.waitForFunction(() => {
     const store = window.__RB_CIRCUIT_STORE__;
