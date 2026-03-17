@@ -71,6 +71,7 @@ const SUPPORTED_LOGIC_TYPES = new Set([
   'PowerSource',
   'Ground',
   'AND', 'OR', 'XOR', 'NOT', 'NAND', 'NOR', 'XNOR',
+  'AND3', 'OR3', 'NAND3', 'NOR3', 'XOR3',
   'FullAdder',
   'MUX4',
   'DFlipFlop',
@@ -115,6 +116,11 @@ function deriveSignalName(node: NetlistNode, counter: number): string {
     NAND: 'nand',
     NOR: 'nor',
     XNOR: 'xnor',
+    AND3: 'and3',
+    OR3: 'or3',
+    NAND3: 'nand3',
+    NOR3: 'nor3',
+    XOR3: 'xor3',
     FullAdder: 'fa',
     MUX4: 'mux',
     DFlipFlop:  'dff',
@@ -139,6 +145,21 @@ function gateOperator(type: string): string | null {
     case 'NOR':  return 'nor';
     case 'XNOR': return 'xnor';
     default:     return null;
+  }
+}
+
+/**
+ * Determine the VHDL base operator for a 3-input gate type.
+ * Returns [baseOp, invert] — if invert=true, wrap in NOT.
+ */
+function gate3Operator(type: string): { op: string; invert: boolean } | null {
+  switch (type) {
+    case 'AND3':  return { op: 'and', invert: false };
+    case 'OR3':   return { op: 'or',  invert: false };
+    case 'NAND3': return { op: 'and', invert: true  };
+    case 'NOR3':  return { op: 'or',  invert: true  };
+    case 'XOR3':  return { op: 'xor', invert: false };
+    default:      return null;
   }
 }
 
@@ -707,6 +728,22 @@ export function vhdlFromNetlist(
       lines.push(`              ${i1} when "01",`);
       lines.push(`              ${i2} when "10",`);
       lines.push(`              ${i3} when others;`);
+      return;
+    }
+
+    // 3-input gate (AND3, OR3, NAND3, NOR3, XOR3)
+    const g3 = gate3Operator(node.type);
+    if (g3) {
+      const aSig = resolveInputSignal(node.id, 'a', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
+      const bSig = resolveInputSignal(node.id, 'b', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
+      const cSig = resolveInputSignal(node.id, 'c', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
+      if (node.type === 'XOR3') {
+        lines.push(`  ${sigName} <= ${aSig} xor ${bSig} xor ${cSig};`);
+      } else if (g3.invert) {
+        lines.push(`  ${sigName} <= not (${aSig} ${g3.op} ${bSig} ${g3.op} ${cSig});`);
+      } else {
+        lines.push(`  ${sigName} <= ${aSig} ${g3.op} ${bSig} ${g3.op} ${cSig};`);
+      }
       return;
     }
 

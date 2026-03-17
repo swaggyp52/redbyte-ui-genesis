@@ -76,6 +76,11 @@ const NODE_COLORS: Record<string, string> = {
   NOT: '#fb923c',
   NAND: '#a78bfa',
   XOR: '#ec4899',
+  AND3: '#c084fc',
+  OR3: '#f472b6',
+  NAND3: '#a78bfa',
+  NOR3: '#a78bfa',
+  XOR3: '#ec4899',
   Clock: '#3B82F6',
   Delay: '#a3e635',
   FullAdder: '#818cf8',
@@ -1444,6 +1449,7 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
         if (nodeType === 'Lamp' || nodeType === 'OUTPUT') return ['in'];
         if (nodeType === 'AND' || nodeType === 'NAND') return ['a', 'b', 'out'];
         if (nodeType === 'OR' || nodeType === 'NOR' || nodeType === 'XOR' || nodeType === 'XNOR') return ['a', 'b', 'out'];
+        if (nodeType === 'AND3' || nodeType === 'NAND3' || nodeType === 'OR3' || nodeType === 'NOR3' || nodeType === 'XOR3') return ['a', 'b', 'c', 'out'];
         if (nodeType === 'NOT') return ['in', 'out'];
         if (nodeType === 'DFlipFlop') return ['D', 'CLK', 'Q', 'out'];
         if (nodeType === 'JKFlipFlop') return ['J', 'K', 'CLK', 'Q', 'out'];

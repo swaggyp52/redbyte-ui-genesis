@@ -64,6 +64,11 @@ export {
   NOTBehavior,
   NANDBehavior,
   XORBehavior,
+  AND3Behavior,
+  OR3Behavior,
+  NAND3Behavior,
+  NOR3Behavior,
+  XOR3Behavior,
   ClockBehavior,
   DelayBehavior,
   DFlipFlopBehavior,
@@ -96,6 +101,11 @@ import {
   NOTBehavior,
   NANDBehavior,
   XORBehavior,
+  AND3Behavior,
+  OR3Behavior,
+  NAND3Behavior,
+  NOR3Behavior,
+  XOR3Behavior,
   ClockBehavior,
   DelayBehavior,
   DFlipFlopBehavior,
@@ -121,6 +131,11 @@ NodeRegistry.register('OR', ORBehavior);
 NodeRegistry.register('NOT', NOTBehavior);
 NodeRegistry.register('NAND', NANDBehavior);
 NodeRegistry.register('XOR', XORBehavior);
+NodeRegistry.register('AND3', AND3Behavior);
+NodeRegistry.register('OR3', OR3Behavior);
+NodeRegistry.register('NAND3', NAND3Behavior);
+NodeRegistry.register('NOR3', NOR3Behavior);
+NodeRegistry.register('XOR3', XOR3Behavior);
 NodeRegistry.register('Clock', ClockBehavior);
 NodeRegistry.register('Delay', DelayBehavior);
 NodeRegistry.register('DFlipFlop', DFlipFlopBehavior);

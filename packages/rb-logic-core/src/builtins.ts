@@ -143,6 +143,67 @@ export const XORBehavior: NodeBehavior = {
 };
 
 /**
+ * AND3 gate — 3-input AND
+ */
+export const AND3Behavior: NodeBehavior = {
+  evaluate(inputs) {
+    const a = inputs.a ?? 0;
+    const b = inputs.b ?? 0;
+    const c = inputs.c ?? 0;
+    return { outputs: { out: (a && b && c ? 1 : 0) as Signal }, state: {} };
+  },
+};
+
+/**
+ * OR3 gate — 3-input OR
+ */
+export const OR3Behavior: NodeBehavior = {
+  evaluate(inputs) {
+    const a = inputs.a ?? 0;
+    const b = inputs.b ?? 0;
+    const c = inputs.c ?? 0;
+    return { outputs: { out: (a || b || c ? 1 : 0) as Signal }, state: {} };
+  },
+};
+
+/**
+ * NAND3 gate — 3-input NAND
+ */
+export const NAND3Behavior: NodeBehavior = {
+  evaluate(inputs) {
+    const a = inputs.a ?? 0;
+    const b = inputs.b ?? 0;
+    const c = inputs.c ?? 0;
+    return { outputs: { out: (a && b && c ? 0 : 1) as Signal }, state: {} };
+  },
+};
+
+/**
+ * NOR3 gate — 3-input NOR
+ */
+export const NOR3Behavior: NodeBehavior = {
+  evaluate(inputs) {
+    const a = inputs.a ?? 0;
+    const b = inputs.b ?? 0;
+    const c = inputs.c ?? 0;
+    return { outputs: { out: (a || b || c ? 0 : 1) as Signal }, state: {} };
+  },
+};
+
+/**
+ * XOR3 gate — 3-input XOR (odd-parity)
+ */
+export const XOR3Behavior: NodeBehavior = {
+  evaluate(inputs) {
+    const a = inputs.a ?? 0;
+    const b = inputs.b ?? 0;
+    const c = inputs.c ?? 0;
+    const parity = (a ? 1 : 0) ^ (b ? 1 : 0) ^ (c ? 1 : 0);
+    return { outputs: { out: parity as Signal }, state: {} };
+  },
+};
+
+/**
  * Clock - Periodic oscillator
  * config.period: number of ticks per cycle (default 10)
  */

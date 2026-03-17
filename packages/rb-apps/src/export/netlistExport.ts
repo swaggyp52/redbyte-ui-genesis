@@ -80,6 +80,36 @@ const BUILTIN_PORTS: Record<string, NetlistPort[]> = {
     { name: 'b', direction: 'in' },
     { name: 'out', direction: 'out' },
   ],
+  AND3: [
+    { name: 'a', direction: 'in' },
+    { name: 'b', direction: 'in' },
+    { name: 'c', direction: 'in' },
+    { name: 'out', direction: 'out' },
+  ],
+  OR3: [
+    { name: 'a', direction: 'in' },
+    { name: 'b', direction: 'in' },
+    { name: 'c', direction: 'in' },
+    { name: 'out', direction: 'out' },
+  ],
+  NAND3: [
+    { name: 'a', direction: 'in' },
+    { name: 'b', direction: 'in' },
+    { name: 'c', direction: 'in' },
+    { name: 'out', direction: 'out' },
+  ],
+  NOR3: [
+    { name: 'a', direction: 'in' },
+    { name: 'b', direction: 'in' },
+    { name: 'c', direction: 'in' },
+    { name: 'out', direction: 'out' },
+  ],
+  XOR3: [
+    { name: 'a', direction: 'in' },
+    { name: 'b', direction: 'in' },
+    { name: 'c', direction: 'in' },
+    { name: 'out', direction: 'out' },
+  ],
 };
 
 const normalizeConnection = (connection: Connection) => {
