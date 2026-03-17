@@ -2359,6 +2359,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       editorCircuit.nodes.length > 0 ||
       activeVerifySignal != null ||
       activeDebugContext != null);
+  const showWorkspaceStatusBar =
+    showFullAuthoringStatus || showCompactAuthoringStatus || showSimulationStrip;
   const selectedNodeIoRow = useMemo(() => {
     if (!selectedNode) return null;
     return ioRowByNodeId.get(selectedNode.id) ?? ioRowByNodeId.get(`${selectedNode.id}.out`) ?? null;
@@ -4130,6 +4132,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         >
 
             {/* ── Compact primary toolbar ── */}
+          <div
+            className={`ide-design-control-bar${workspacePreset.showCanvasTools ? ' is-canvas' : ' is-code'}${
+              showWorkspaceStatusBar ? ' has-status' : ''
+            }`}
+            data-testid="ide-design-control-bar"
+          >
             <div className="ide-design-toolbar" data-testid="ide-design-toolbar">
               {/* Groups 1+2: Canvas tools — only visible when canvas is in the view */}
               {workspacePreset.showCanvasTools ? (
@@ -4255,6 +4263,173 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             )}
 
             {/* ── Stacked-view notice — shown only when split auto-collapsed to column ── */}
+            {showWorkspaceStatusBar ? (
+              <div className="ide-design-control-bar-status" data-testid="ide-design-control-bar-status">
+                {showFullAuthoringStatus ? (
+                  <div
+                    className={`ide-design-authoring-issues ${authoringStatusToneClass}`}
+                    data-testid="ide-design-authoring-issues"
+                  >
+                    <div className="ide-design-authoring-issues-summary">
+                      <div className="ide-design-authoring-issues-primary">
+                        <span className="ide-design-authoring-issues-label">Authoring Status</span>
+                        <span
+                          className="ide-design-authoring-issues-count is-error"
+                          data-testid="ide-design-authoring-issues-errors"
+                        >
+                          {authoringIssueCounts.errorCount} errors
+                        </span>
+                        <span
+                          className="ide-design-authoring-issues-count is-warn"
+                          data-testid="ide-design-authoring-issues-warnings"
+                        >
+                          {authoringIssueCounts.warningCount} warnings
+                        </span>
+                        <span className="ide-design-authoring-issues-status">
+                          {authoringIssues.length === 0
+                            ? 'No live authoring issues right now.'
+                            : 'Live checks update as you edit.'}
+                        </span>
+                      </div>
+                      <div className="ide-design-authoring-canvas-meta">
+                        <span className="ide-design-authoring-canvas-meta-label">Canvas</span>
+                        <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-nodes">
+                          {editorCircuit.nodes.length} nodes
+                        </span>
+                        <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-wires">
+                          {editorCircuit.connections.length} wires
+                        </span>
+                        <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-zoom">
+                          {Math.round(camera.zoom * 100)}%
+                        </span>
+                        {traceState ? (
+                          <span className="ide-design-canvas-titlebar-stat is-trace" data-testid="ide-design-active-trace">
+                            {traceState.label}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                    {liveHdlResult.error ? (
+                      <div className="ide-design-authoring-inline-error" data-testid="ide-design-hdl-error-canvas">
+                        HDL generation failed - {liveHdlResult.error}
+                      </div>
+                    ) : null}
+                    {authoringIssueCounts.topIssues.length > 0 ? (
+                      <div className="ide-design-authoring-issues-list">
+                        {authoringIssueCounts.topIssues.map((issue, index) => (
+                          <article
+                            key={`${issue.kind}-${issue.portKey}`}
+                            className={`ide-design-authoring-issue is-${issue.severity}`}
+                            data-testid={`ide-design-authoring-issue-${index}`}
+                          >
+                            <div className="ide-design-authoring-issue-copy">
+                              <div className="ide-design-authoring-issue-header">
+                                <span className={`ide-design-authoring-issue-pill is-${issue.severity}`}>
+                                  {issue.severity === 'error' ? 'Error' : 'Warn'}
+                                </span>
+                                <strong>{issue.title}</strong>
+                                <code>{describeDesignIssueLocation(issue, editorCircuit)}</code>
+                              </div>
+                              <p>{issue.message}</p>
+                              <p>{issue.hint}</p>
+                            </div>
+                            <IdeButton
+                              tone={issue.severity === 'error' ? 'secondary' : 'ghost'}
+                              onClick={() => focusDesignIssue(issue)}
+                              testId={`ide-design-authoring-issue-focus-${index}`}
+                            >
+                              Focus
+                            </IdeButton>
+                          </article>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : showCompactAuthoringStatus ? (
+                  <div
+                    className={`ide-design-authoring-issues is-compact-strip ${authoringStatusToneClass}`}
+                    data-testid="ide-design-authoring-issues-compact"
+                  >
+                    <div className="ide-design-authoring-issues-summary">
+                      <div className="ide-design-authoring-issues-primary">
+                        <span className="ide-design-authoring-issues-label">Status</span>
+                        <span
+                          className="ide-design-authoring-issues-count is-error"
+                          data-testid="ide-design-authoring-issues-errors"
+                        >
+                          {authoringIssueCounts.errorCount} errors
+                        </span>
+                        <span
+                          className="ide-design-authoring-issues-count is-warn"
+                          data-testid="ide-design-authoring-issues-warnings"
+                        >
+                          {authoringIssueCounts.warningCount} warnings
+                        </span>
+                        <span className="ide-design-authoring-issues-status">
+                          {authoringIssueCounts.errorCount > 0
+                            ? 'Fix blocking issues to keep circuit/code comparison reliable.'
+                            : authoringIssueCounts.warningCount > 0
+                              ? 'Warnings detected while comparing circuit and generated code.'
+                              : 'Comparison workspace is clean.'}
+                        </span>
+                      </div>
+                      <div className="ide-design-authoring-canvas-meta">
+                        <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-nodes">
+                          {editorCircuit.nodes.length} nodes
+                        </span>
+                        <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-wires">
+                          {editorCircuit.connections.length} wires
+                        </span>
+                        <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-zoom">
+                          {Math.round(camera.zoom * 100)}%
+                        </span>
+                      </div>
+                    </div>
+                    {liveHdlResult.error ? (
+                      <div className="ide-design-authoring-inline-error" data-testid="ide-design-hdl-error-canvas">
+                        HDL generation failed - {liveHdlResult.error}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {showSimulationStrip ? (
+                  <div className="ide-design-sim-story-strip" data-testid="ide-design-sim-story-strip">
+                    <div className="ide-design-sim-story-main">
+                      <span className="ide-design-sim-story-label">Simulation</span>
+                      <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-tick">
+                        Tick {simTick}
+                      </span>
+                      <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-mode">
+                        {simRunning ? 'Running' : 'Paused'}
+                      </span>
+                      {simulationStory.clockEvent ? (
+                        <span
+                          className={`ide-design-sim-story-pill is-clock is-${simulationStory.clockEvent}`}
+                          data-testid="ide-design-sim-story-clock"
+                        >
+                          {simulationStory.clockLabel} {simulationStory.clockEvent} edge
+                        </span>
+                      ) : null}
+                      {activeVerifySignal ? (
+                        <span className="ide-design-verify-link-badge" data-testid="ide-design-verify-link-badge">
+                          Verify focus {activeVerifySignal}
+                        </span>
+                      ) : null}
+                      {activeVerifySignal ? (
+                        <span className="ide-design-sim-story-pill is-verify" data-testid="ide-design-verify-focus">
+                          Verify linked to {activeVerifySignal}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="ide-design-sim-story-summary" data-testid="ide-design-sim-story-summary">
+                      {activeSimulationSummary}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
             {effectiveDesignView === 'stacked' && (
               <div className="ide-design-stacked-notice" data-testid="ide-design-stacked-notice">
                 <span className="ide-design-stacked-notice-icon" aria-hidden="true">⇅</span>
@@ -4277,171 +4452,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   className="ide-design-pane ide-design-pane--canvas"
                   style={effectiveDesignView === 'split' ? { flex: `0 0 ${splitRatio * 100}%` } : undefined}
                 >
-
-            {/* ── Canvas title strip ── */}
-            {showFullAuthoringStatus ? (
-              <div
-                className={`ide-design-authoring-issues ${authoringStatusToneClass}`}
-                data-testid="ide-design-authoring-issues"
-              >
-                <div className="ide-design-authoring-issues-summary">
-                  <div className="ide-design-authoring-issues-primary">
-                    <span className="ide-design-authoring-issues-label">Authoring Status</span>
-                    <span
-                      className="ide-design-authoring-issues-count is-error"
-                      data-testid="ide-design-authoring-issues-errors"
-                    >
-                      {authoringIssueCounts.errorCount} errors
-                    </span>
-                    <span
-                      className="ide-design-authoring-issues-count is-warn"
-                      data-testid="ide-design-authoring-issues-warnings"
-                    >
-                      {authoringIssueCounts.warningCount} warnings
-                    </span>
-                    <span className="ide-design-authoring-issues-status">
-                      {authoringIssues.length === 0
-                        ? 'No live authoring issues right now.'
-                        : 'Live checks update as you edit.'}
-                    </span>
-                  </div>
-                  <div className="ide-design-authoring-canvas-meta">
-                    <span className="ide-design-authoring-canvas-meta-label">Canvas</span>
-                    <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-nodes">
-                      {editorCircuit.nodes.length} nodes
-                    </span>
-                    <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-wires">
-                      {editorCircuit.connections.length} wires
-                    </span>
-                    <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-zoom">
-                      {Math.round(camera.zoom * 100)}%
-                    </span>
-                    {traceState ? (
-                      <span className="ide-design-canvas-titlebar-stat is-trace" data-testid="ide-design-active-trace">
-                        {traceState.label}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-                {liveHdlResult.error ? (
-                  <div className="ide-design-authoring-inline-error" data-testid="ide-design-hdl-error-canvas">
-                    HDL generation failed - {liveHdlResult.error}
-                  </div>
-                ) : null}
-                {authoringIssueCounts.topIssues.length > 0 ? (
-                  <div className="ide-design-authoring-issues-list">
-                    {authoringIssueCounts.topIssues.map((issue, index) => (
-                      <article
-                        key={`${issue.kind}-${issue.portKey}`}
-                        className={`ide-design-authoring-issue is-${issue.severity}`}
-                        data-testid={`ide-design-authoring-issue-${index}`}
-                      >
-                        <div className="ide-design-authoring-issue-copy">
-                          <div className="ide-design-authoring-issue-header">
-                            <span className={`ide-design-authoring-issue-pill is-${issue.severity}`}>
-                              {issue.severity === 'error' ? 'Error' : 'Warn'}
-                            </span>
-                            <strong>{issue.title}</strong>
-                            <code>{describeDesignIssueLocation(issue, editorCircuit)}</code>
-                          </div>
-                          <p>{issue.message}</p>
-                          <p>{issue.hint}</p>
-                        </div>
-                        <IdeButton
-                          tone={issue.severity === 'error' ? 'secondary' : 'ghost'}
-                          onClick={() => focusDesignIssue(issue)}
-                          testId={`ide-design-authoring-issue-focus-${index}`}
-                        >
-                          Focus
-                        </IdeButton>
-                      </article>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            ) : showCompactAuthoringStatus ? (
-              <div
-                className={`ide-design-authoring-issues is-compact-strip ${authoringStatusToneClass}`}
-                data-testid="ide-design-authoring-issues-compact"
-              >
-                <div className="ide-design-authoring-issues-summary">
-                  <div className="ide-design-authoring-issues-primary">
-                    <span className="ide-design-authoring-issues-label">Status</span>
-                    <span
-                      className="ide-design-authoring-issues-count is-error"
-                      data-testid="ide-design-authoring-issues-errors"
-                    >
-                      {authoringIssueCounts.errorCount} errors
-                    </span>
-                    <span
-                      className="ide-design-authoring-issues-count is-warn"
-                      data-testid="ide-design-authoring-issues-warnings"
-                    >
-                      {authoringIssueCounts.warningCount} warnings
-                    </span>
-                    <span className="ide-design-authoring-issues-status">
-                      {authoringIssueCounts.errorCount > 0
-                        ? 'Fix blocking issues to keep circuit/code comparison reliable.'
-                        : authoringIssueCounts.warningCount > 0
-                          ? 'Warnings detected while comparing circuit and generated code.'
-                          : 'Comparison workspace is clean.'}
-                    </span>
-                  </div>
-                  <div className="ide-design-authoring-canvas-meta">
-                    <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-nodes">
-                      {editorCircuit.nodes.length} nodes
-                    </span>
-                    <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-wires">
-                      {editorCircuit.connections.length} wires
-                    </span>
-                    <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-zoom">
-                      {Math.round(camera.zoom * 100)}%
-                    </span>
-                  </div>
-                </div>
-                {liveHdlResult.error ? (
-                  <div className="ide-design-authoring-inline-error" data-testid="ide-design-hdl-error-canvas">
-                    HDL generation failed - {liveHdlResult.error}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-
-            {/* ── Canvas area (fills remaining height) ── */}
-            {showSimulationStrip ? (
-              <div className="ide-design-sim-story-strip" data-testid="ide-design-sim-story-strip">
-                <div className="ide-design-sim-story-main">
-                  <span className="ide-design-sim-story-label">Simulation</span>
-                  <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-tick">
-                    Tick {simTick}
-                  </span>
-                  <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-mode">
-                    {simRunning ? 'Running' : 'Paused'}
-                  </span>
-                  {simulationStory.clockEvent ? (
-                    <span
-                      className={`ide-design-sim-story-pill is-clock is-${simulationStory.clockEvent}`}
-                      data-testid="ide-design-sim-story-clock"
-                    >
-                      {simulationStory.clockLabel} {simulationStory.clockEvent} edge
-                    </span>
-                  ) : null}
-                  {activeVerifySignal ? (
-                    <span className="ide-design-verify-link-badge" data-testid="ide-design-verify-link-badge">
-                      Verify focus {activeVerifySignal}
-                    </span>
-                  ) : null}
-                  {activeVerifySignal ? (
-                    <span className="ide-design-sim-story-pill is-verify" data-testid="ide-design-verify-focus">
-                      Verify linked to {activeVerifySignal}
-                    </span>
-                  ) : null}
-                </div>
-                <p className="ide-design-sim-story-summary" data-testid="ide-design-sim-story-summary">
-                  {activeSimulationSummary}
-                </p>
-              </div>
-            ) : null}
 
             <div
               ref={canvasViewportRef}

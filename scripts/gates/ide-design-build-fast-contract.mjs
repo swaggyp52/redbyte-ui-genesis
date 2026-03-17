@@ -6,7 +6,26 @@ async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
 }
 
+async function placePaletteEntry(page, selector, xFactor, yFactor) {
+  await page.locator(selector).first().click();
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
+    return canvas?.getAttribute('data-placement-active') === '1';
+  }, { timeout: 5000 });
+
+  const canvas = page.locator('[data-testid="ide-design-live-canvas"]').first();
+  const bounds = await canvas.boundingBox();
+  assert(Boolean(bounds), `design canvas bounds unavailable for placement from ${selector}`);
+  await page.mouse.click(bounds.x + bounds.width * xFactor, bounds.y + bounds.height * yFactor);
+
+  await page.waitForFunction(() => {
+    const canvasEl = document.querySelector('[data-testid="ide-design-live-canvas"]');
+    return canvasEl?.getAttribute('data-placement-active') === '0';
+  }, { timeout: 5000 });
+}
+
 await runIdeGate('IDE design build-fast contract satisfied', async ({ page, baseUrl }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 });
   // Suppress the first-visit onboarding overlay and seed an empty circuit so board
   // palette chips are unplaced and available to click.
   await page.addInitScript(() => {
@@ -33,10 +52,11 @@ await runIdeGate('IDE design build-fast contract satisfied', async ({ page, base
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
 
-  // Board-first palette: clicking board chips adds Switch/Lamp nodes to the circuit.
-  await page.locator('[data-testid="ide-design-board-input-sw0"]').click();
-  await page.locator('[data-testid="ide-design-board-input-sw1"]').click();
-  await page.locator('[data-testid="ide-design-board-output-ld0"]').click();
+  // Board-first palette: selecting board chips enters placement mode, then clicking
+  // blank canvas commits the Switch/Lamp nodes into the circuit.
+  await placePaletteEntry(page, '[data-testid="ide-design-board-input-sw0"]', 0.22, 0.34);
+  await placePaletteEntry(page, '[data-testid="ide-design-board-input-sw1"]', 0.22, 0.56);
+  await placePaletteEntry(page, '[data-testid="ide-design-board-output-ld0"]', 0.66, 0.45);
   const paletteToast = await text(page.locator('[data-testid="ide-design-action-toast"]'));
   assert(
     paletteToast.toLowerCase().includes('added'),
@@ -59,7 +79,11 @@ await runIdeGate('IDE design build-fast contract satisfied', async ({ page, base
   await toggles.nth(0).click();
   await toggles.nth(1).click();
 
-  // LD0 (Lamp) creates a live-output entry in the inspector as soon as it is placed.
+  // Live simulation is tucked behind a collapsible inspector section in the current
+  // workspace; open it before validating the live output table and stepping controls.
+  await page.locator('[data-testid="ide-design-live-sim-section-toggle"]').click();
+
+  // LD0 (Lamp) creates a live-output entry in the live simulation table as soon as it is placed.
   await page.waitForSelector('[data-testid^="ide-design-live-output-"]', { timeout: 10000 });
 
   await page.locator('[data-testid="ide-design-sim-step"]').click();
@@ -95,4 +119,3 @@ await runIdeGate('IDE design build-fast contract satisfied', async ({ page, base
     `last-change line must include cause/effect explanation (actual: "${lastChange}")`
   );
 });
-

@@ -3,6 +3,15 @@
 import { assert, runIdeGate, visible } from './_gateHarness.mjs';
 
 await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseUrl }) => {
+  const triggerClick = async (locator) => {
+    await locator.evaluate((element) => {
+      if (!(element instanceof HTMLElement)) {
+        throw new Error('expected clickable HTMLElement');
+      }
+      element.click();
+    });
+  };
+
   await page.setViewportSize({ width: 1920, height: 1080 });
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
@@ -101,10 +110,15 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
   const widthRatio = canvasBox.width / paneRowBox.width;
   const heightRatio = canvasBox.height / paneRowBox.height;
   const minHeightRatio = layoutMode === 'compact' ? 0.12 : 0.26;
+  const canvasOffsetY = canvasBox.y - workspaceBox.y;
   assert(widthRatio >= 0.42, `canvas width ratio too small (${widthRatio.toFixed(3)})`);
   assert(
     heightRatio >= minHeightRatio,
     `canvas height ratio too small (${heightRatio.toFixed(3)}; layout=${layoutMode}; min=${minHeightRatio.toFixed(2)})`
+  );
+  assert(
+    canvasOffsetY <= 220,
+    `canvas starts too low in the design workspace (offsetY=${canvasOffsetY.toFixed(1)})`
   );
 
   const searchBox = modeRoot.locator('[data-testid="ide-design-search"]').first();
@@ -129,7 +143,7 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
     'design inspector should surface an explicit empty-state identity card'
   );
 
-  await modeRoot.locator('[data-testid="ide-design-view-hdl"]').first().click();
+  await triggerClick(modeRoot.locator('[data-testid="ide-design-view-hdl"]').first());
   await page.waitForFunction(() => {
     const workspaceEl = document.querySelector('[data-testid="ide-design-workspace"]');
     return workspaceEl?.getAttribute('data-design-view') === 'hdl';
@@ -156,35 +170,53 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
   const secondaryDrawerBefore = await modeRoot.locator('[data-testid="ide-design-secondary-artifact-drawer"]').count();
   assert(secondaryDrawerBefore === 0, 'secondary code artifact should be collapsed by default');
 
+  const [codeWorkspaceBox, leftRailBox, primaryPaneBox, textareaBox] = await Promise.all([
+    modeRoot.locator('[data-testid="ide-mode-body"]').first().boundingBox(),
+    modeRoot.locator('[data-testid="ide-workbench-dock-toggle-left"]').first().boundingBox(),
+    modeRoot.locator('[data-testid="ide-design-primary-artifact-pane"]').first().boundingBox(),
+    modeRoot.locator('[data-testid="ide-design-hdl-textarea"]').first().boundingBox(),
+  ]);
+  assert(
+    Boolean(codeWorkspaceBox && leftRailBox && primaryPaneBox && textareaBox),
+    'code mode geometry unavailable'
+  );
+  const leftRailGap = Math.abs(codeWorkspaceBox.x - leftRailBox.x);
+  assert(leftRailGap <= 6, `collapsed left rail should not reserve a gutter (gap=${leftRailGap.toFixed(1)})`);
+  const editorFillRatio = textareaBox.height / primaryPaneBox.height;
+  assert(
+    editorFillRatio >= 0.95,
+    `primary code editor should fill the code pane (ratio=${editorFillRatio.toFixed(3)})`
+  );
+
   const secondaryToggle = modeRoot.locator('[data-testid="ide-design-secondary-artifact-toggle"]').first();
   const secondaryToggleDisabled = await secondaryToggle.isDisabled();
   if (!secondaryToggleDisabled) {
-    await secondaryToggle.click();
+    await triggerClick(secondaryToggle);
     assert(
       await visible(modeRoot.locator('[data-testid="ide-design-secondary-artifact-drawer"]').first()),
       'secondary artifact drawer did not open when requested'
     );
   }
 
-  await modeRoot.locator('[data-testid="ide-workbench-dock-toggle-left"]').first().click();
+  await triggerClick(modeRoot.locator('[data-testid="ide-workbench-dock-toggle-left"]').first());
   assert(
     await visible(modeRoot.locator('[data-testid="ide-left-dock"]').first()),
     'left dock should reopen from left dock rail toggle'
   );
-  await modeRoot.locator('[data-testid="ide-workbench-dock-collapse-left"]').first().click();
+  await triggerClick(modeRoot.locator('[data-testid="ide-workbench-dock-collapse-left"]').first());
   const leftDockCollapsedAgain = await modeRoot.locator('[data-testid="ide-left-dock"]').count();
   assert(leftDockCollapsedAgain === 0, 'left dock collapse action should hide the left dock again');
 
-  await modeRoot.locator('[data-testid="ide-workbench-dock-toggle-right"]').first().click();
+  await triggerClick(modeRoot.locator('[data-testid="ide-workbench-dock-toggle-right"]').first());
   assert(
     await visible(modeRoot.locator('[data-testid="ide-inspector"]').first()),
     'inspector should reopen from right dock rail toggle'
   );
-  await modeRoot.locator('[data-testid="ide-workbench-dock-collapse-right"]').first().click();
+  await triggerClick(modeRoot.locator('[data-testid="ide-workbench-dock-collapse-right"]').first());
   const inspectorCollapsedAgain = await modeRoot.locator('[data-testid="ide-inspector"]').count();
   assert(inspectorCollapsedAgain === 0, 'inspector collapse action should hide the right dock again');
 
-  await modeRoot.locator('[data-testid="ide-design-view-split"]').first().click();
+  await triggerClick(modeRoot.locator('[data-testid="ide-design-view-split"]').first());
   await page.waitForFunction(() => {
     const workspaceEl = document.querySelector('[data-testid="ide-design-workspace"]');
     return workspaceEl?.getAttribute('data-design-view') === 'split';

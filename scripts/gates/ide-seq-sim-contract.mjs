@@ -30,6 +30,7 @@ async function setBinaryInput(page, nodeId, target) {
 }
 
 await runIdeGate('IDE sequential simulation contract satisfied', async ({ page, baseUrl }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 });
   // Seed a minimal DFlipFlop circuit: D (Switch, starts 0) + CLK (Switch, starts 1, transparent
   // mode) + DFlipFlop + Q OUTPUT. CLK state.isOn=1 means sim-reset restores CLK=1 automatically
   // (deriveSimulationInputs reads node.state.isOn on reset), keeping the DFF transparent so
@@ -83,6 +84,7 @@ await runIdeGate('IDE sequential simulation contract satisfied', async ({ page, 
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
+  await page.locator('[data-testid="ide-design-live-sim-section-toggle"]').click();
   await page.waitForSelector('[data-testid="ide-design-live-state-table"]', { timeout: 10000 });
 
   await page.locator('[data-testid="ide-design-sim-reset"]').click();

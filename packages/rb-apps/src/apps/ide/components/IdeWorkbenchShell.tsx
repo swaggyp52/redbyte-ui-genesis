@@ -321,11 +321,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
               : { left: { min: 136, max: 152 }, right: { min: 176, max: 196 } };
       const effectiveLeftWidth = clampValue(layout.leftWidth, widthCaps.left);
       const effectiveRightWidth = clampValue(layout.rightWidth, widthCaps.right);
-      const leftSlotWidth = showLeftDock
-        ? effectiveLeftWidth
-        : showLeftCollapsedRail
-          ? COLLAPSED_DOCK_RAIL_WIDTH
-          : 0;
+      const leftSlotWidth = showLeftDock ? effectiveLeftWidth : 0;
       const rightSlotWidth = showRightDock
         ? effectiveRightWidth
         : showRightCollapsedRail

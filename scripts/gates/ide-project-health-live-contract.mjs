@@ -34,14 +34,30 @@ async function clickVerifyRun(page) {
 
 async function mutateDesignCircuit(page) {
   const candidates = [
+    page.locator('[data-testid="ide-design-palette-and"]').first(),
     page.locator('[data-testid^="ide-design-board-input-"]').locator(':scope:not([disabled])').first(),
     page.locator('[data-testid^="ide-design-board-output-"]').locator(':scope:not([disabled])').first(),
-    page.locator('[data-testid="ide-design-palette-and"]').first(),
   ];
   for (const button of candidates) {
     const isVisible = await button.isVisible().catch(() => false);
     if (!isVisible) continue;
     await button.click();
+    const placementActivated = await page
+      .waitForFunction(() => {
+        const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
+        return canvas?.getAttribute('data-placement-active') === '1';
+      }, { timeout: 5000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!placementActivated) continue;
+    const canvas = page.locator('[data-testid="ide-design-live-canvas"]').first();
+    const bounds = await canvas.boundingBox();
+    assert(Boolean(bounds), 'design canvas bounds unavailable for mutation placement');
+    await page.mouse.click(bounds.x + bounds.width * 0.2, bounds.y + bounds.height * 0.42);
+    await page.waitForFunction(() => {
+      const canvasEl = document.querySelector('[data-testid="ide-design-live-canvas"]');
+      return canvasEl?.getAttribute('data-placement-active') === '0';
+    }, { timeout: 5000 });
     return;
   }
   throw new Error('no canonical design mutation control was available');
@@ -49,6 +65,7 @@ async function mutateDesignCircuit(page) {
 
 await runIdeGate('IDE project health live contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
+  await page.setViewportSize({ width: 1600, height: 1000 });
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${baseUrl}/?mode=project`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
@@ -105,7 +122,7 @@ await runIdeGate('IDE project health live contract satisfied', async ({ page, ba
   );
 
   await page.locator('[data-testid="mode-button-design"]').click();
-  await page.waitForSelector('[data-testid="ide-design-panel"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-design-workspace"]', { timeout: 10000 });
   await mutateDesignCircuit(page);
 
   await page.locator('[data-testid="mode-button-project"]').click();

@@ -6,7 +6,26 @@ async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
 }
 
+async function placeBoardInput(page, selector, xFactor, yFactor) {
+  await page.locator(selector).first().click();
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
+    return canvas?.getAttribute('data-placement-active') === '1';
+  }, { timeout: 5000 });
+
+  const canvas = page.locator('[data-testid="ide-design-live-canvas"]').first();
+  const bounds = await canvas.boundingBox();
+  assert(Boolean(bounds), `design canvas bounds unavailable for placement from ${selector}`);
+  await page.mouse.click(bounds.x + bounds.width * xFactor, bounds.y + bounds.height * yFactor);
+
+  await page.waitForFunction(() => {
+    const canvasEl = document.querySelector('[data-testid="ide-design-live-canvas"]');
+    return canvasEl?.getAttribute('data-placement-active') === '0';
+  }, { timeout: 5000 });
+}
+
 await runIdeGate('IDE design live sim contract satisfied', async ({ page, baseUrl }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 });
   // Suppress the first-visit onboarding overlay and seed an empty circuit so board
   // palette chips are unplaced and available to click.
   await page.addInitScript(() => {
@@ -32,11 +51,12 @@ await runIdeGate('IDE design live sim contract satisfied', async ({ page, baseUr
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
+  await page.locator('[data-testid="ide-design-live-sim-section-toggle"]').click();
 
   // Place two switch inputs from the board palette — they render switch-toggle-* handles
   // and create live-input-* rows in the inspector.
-  await page.locator('[data-testid="ide-design-board-input-sw0"]').click();
-  await page.locator('[data-testid="ide-design-board-input-sw1"]').click();
+  await placeBoardInput(page, '[data-testid="ide-design-board-input-sw0"]', 0.24, 0.38);
+  await placeBoardInput(page, '[data-testid="ide-design-board-input-sw1"]', 0.24, 0.58);
   await page.waitForSelector('[data-testid^="switch-toggle-"]', { timeout: 10000 });
 
   const tickBeforeRaw = await text(page.locator('[data-testid="ide-design-sim-tick"]'));

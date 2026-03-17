@@ -1,5 +1,70 @@
 # AI State
 
+## Change Log 2026-03-16 (Design workspace reclaim + fill pass)
+
+**Subsystem**: IDE Design/Build product experience
+
+### Problem
+
+After the workspace architecture redesign landed, the Design surface still wasted critical space in three obvious ways:
+
+- collapsed left dock rails still reserved layout width in Code and Split,
+- the primary HDL editor still behaved like a fixed-height panel inside a taller code pane,
+- Canvas still started too low on screen because toolbar, authoring status, and simulation status remained stacked.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+  - Stopped reserving left dock slot width when the left dock is collapsed so the workspace can reclaim the full horizontal span.
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Merged the toolbar, authoring status, and simulation strip into one Design control bar above the workspace panes.
+  - Removed the dead duplicate authoring/simulation blocks from the canvas pane so status chrome is owned in one place.
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Moved the collapsed-left rail to an overlay instead of a width-reserving grid slot.
+  - Fixed late Design workbench grid overrides so collapsed-left and collapsed-right modes no longer reintroduce empty gutters.
+  - Made the primary HDL textarea fill its pane with internal scrolling instead of fixed-height growth.
+  - Tightened Design frame and control-bar spacing so the canvas begins significantly higher on screen.
+- `packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx`
+  - Added regression coverage that collapsed-left mode resolves `--ide-workbench-left-slot-width` to `0px`.
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+  - Added regression coverage that Design authoring status and simulation status now render inside the unified control bar.
+- `scripts/gates/ide-design-workbench-contract.mjs`
+  - Added live-browser assertions for:
+    - reclaimed left width in Code mode,
+    - primary editor fill ratio in Code mode,
+    - reduced canvas start offset in Canvas mode.
+- `scripts/gates/ide-project-health-live-contract.mjs`
+  - Updated the live gate to the current Design workspace frame and explicit placement model instead of the removed generic Design panel and pre-placement palette behavior.
+- `scripts/gates/ide-design-build-fast-contract.mjs`
+  - Updated the board-first fast-build gate to place board resources through explicit placement mode and to open the collapsible Live Simulation section before validating outputs.
+- `scripts/gates/ide-design-live-sim-contract.mjs`
+  - Updated the Design live-sim gate to use the current board-resource placement flow and the collapsible Live Simulation section.
+- `scripts/gates/ide-live-sim-contract.mjs`
+  - Updated the general live-sim gate to open the collapsible Live Simulation section before asserting live input/output state.
+- `scripts/gates/ide-seq-sim-contract.mjs`
+  - Updated the sequential-sim gate to open the collapsible Live Simulation section in the current Design inspector layout.
+
+### Student-visible behavior after fix
+
+- Code and Split no longer pretend the collapsed left dock is gone while still stealing a dock-width gutter.
+- The primary HDL editor now reads like the main object in Code mode instead of a smaller panel inside dead space.
+- Canvas begins much higher in the viewport, so the actual circuit surface dominates the screen again.
+
+### Proof
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx --reporter=verbose` -> PASS
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx --reporter=verbose` -> PASS
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx --reporter=verbose` -> PASS
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.authoringIssues.test.tsx --reporter=verbose` -> PASS
+- `pnpm -s ide:gate:design-workbench-contract` -> PASS
+- `pnpm -s ide:gate:project-health-live-contract` -> PASS
+- `pnpm -s ide:gate:design-build-fast-contract` -> PASS
+- `pnpm -s ide:gate:design-live-sim-contract` -> PASS
+- `pnpm -s ide:gate:live-sim-contract` -> PASS
+- `pnpm -s ide:gate:seq-sim-contract` -> PASS
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-16 (Design workspace adoption on the mode-aware shell foundation)
 
 **Subsystem**: IDE Design/Build product experience

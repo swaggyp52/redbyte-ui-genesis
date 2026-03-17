@@ -31,6 +31,7 @@ async function setBinaryInput(page, nodeId, target) {
 
 await runIdeGate('IDE live simulation contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
+  await page.setViewportSize({ width: 1600, height: 1000 });
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
@@ -50,6 +51,7 @@ await runIdeGate('IDE live simulation contract satisfied', async ({ page, baseUr
 
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
+  await page.locator('[data-testid="ide-design-live-sim-section-toggle"]').click();
   await page.waitForSelector('[data-testid="ide-design-live-state-table"]', { timeout: 10000 });
 
   // Fit the circuit into view so that viewport-culled switch nodes become visible.
@@ -119,4 +121,3 @@ await runIdeGate('IDE live simulation contract satisfied', async ({ page, baseUr
   const outputAfterStep = await text(page.locator('[data-testid^="ide-design-live-output-"] code').first());
   assert(outputAfterStep === '1', `expected combinational output to stay high after step, got ${outputAfterStep}`);
 });
-
