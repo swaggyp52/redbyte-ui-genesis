@@ -19,7 +19,7 @@ const META_BY_TYPE: Record<string, NodeMeta> = {
   DFlipFlop: {
     isSequential: true,
     clockPort: "CLK",
-    note: "clocked_macro v1 - level-triggered gated latch",
+    note: "clocked_macro v2 - rising-edge D flip-flop",
   },
   DLatch: {
     isSequential: true,
@@ -29,12 +29,14 @@ const META_BY_TYPE: Record<string, NodeMeta> = {
   TFlipFlop: {
     isSequential: true,
     clockPort: "CLK",
-    note: "edge-triggered toggle flip-flop; Q toggles on rising CLK when T=1",
+    resetPort: "CLR",
+    note: "clocked_macro v2 - rising-edge T flip-flop with active-high clear",
   },
   JKFlipFlop: {
     isSequential: true,
     clockPort: "CLK",
-    note: "clocked_macro v1 - level-triggered gated latch",
+    resetPort: "CLR",
+    note: "clocked_macro v2 - rising-edge JK flip-flop with active-high clear",
   },
   RSLatch: {
     isSequential: true,

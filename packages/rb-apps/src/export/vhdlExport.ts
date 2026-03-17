@@ -68,6 +68,8 @@ const OUTPUT_NODE_TYPES = new Set(['OUTPUT', 'Lamp']);
  * All others produce a warning and are skipped.
  */
 const SUPPORTED_LOGIC_TYPES = new Set([
+  'PowerSource',
+  'Ground',
   'AND', 'OR', 'XOR', 'NOT', 'NAND', 'NOR', 'XNOR',
   'FullAdder',
   'MUX4',
@@ -104,6 +106,8 @@ function extractLabelIndex(label: string | undefined): number {
  */
 function deriveSignalName(node: NetlistNode, counter: number): string {
   const typePrefix: Record<string, string> = {
+    PowerSource: 'vcc',
+    Ground: 'gnd',
     AND: 'and',
     OR: 'or',
     XOR: 'xor',
@@ -224,14 +228,24 @@ function resolveInputSignal(
   nodeIdToSignal: Map<string, string>,
   topInputBindingByTarget: Map<string, string>,
 ): string | null {
+  const normalizedPortName = portName.toLowerCase();
   const net = nets.find(
-    (n) => n.to.nodeId === nodeId && n.to.port === portName,
+    (n) => n.to.nodeId === nodeId && n.to.port.toLowerCase() === normalizedPortName,
   );
   if (!net) {
-    return topInputBindingByTarget.get(`${nodeId}:${portName}`) ?? null;
+    const directMatch = topInputBindingByTarget.get(`${nodeId}:${portName}`);
+    if (directMatch) return directMatch;
+    for (const [target, signalName] of topInputBindingByTarget.entries()) {
+      const [targetNodeId, targetPort] = target.split(':');
+      if (targetNodeId === nodeId && targetPort.toLowerCase() === normalizedPortName) {
+        return signalName;
+      }
+    }
+    return null;
   }
   return (
     nodeIdToSignal.get(`${net.from.nodeId}:${net.from.port}`) ??
+    nodeIdToSignal.get(`${net.from.nodeId}:${net.from.port.toLowerCase()}`) ??
     nodeIdToSignal.get(net.from.nodeId) ??
     null
   );
@@ -440,6 +454,9 @@ export function vhdlFromNetlist(
       lines.push(`  signal ${sigName}_carry : STD_LOGIC;`);
     } else {
       lines.push(`  signal ${sigName} : STD_LOGIC;`);
+      if (['DFlipFlop', 'DLatch', 'TFlipFlop', 'JKFlipFlop'].includes(node.type)) {
+        lines.push(`  signal ${sigName}_inv : STD_LOGIC;`);
+      }
     }
   });
 
@@ -449,6 +466,16 @@ export function vhdlFromNetlist(
   supportedLogicNodes.forEach((node) => {
     const sigName = nodeIdToSignal.get(node.id)!;
     const nets = netlist.nets;
+
+    if (node.type === 'PowerSource') {
+      lines.push(`  ${sigName} <= '1';`);
+      return;
+    }
+
+    if (node.type === 'Ground') {
+      lines.push(`  ${sigName} <= '0';`);
+      return;
+    }
 
     if (node.type === 'NOT') {
       // NOT has a single input port 'in' (inferred from connections)
@@ -481,12 +508,16 @@ export function vhdlFromNetlist(
         resolveInputSignal(node.id, 'en', nets, nodeIdToSignal, topInputBindingByTarget) ??
         resolveInputSignal(node.id, 'enable', nets, nodeIdToSignal, topInputBindingByTarget);
 
+      nodeIdToSignal.set(`${node.id}:Q`, sigName);
       nodeIdToSignal.set(`${node.id}:q`, sigName);
+      nodeIdToSignal.set(`${node.id}:Q_inv`, `${sigName}_inv`);
+      nodeIdToSignal.set(`${node.id}:qn`, `${sigName}_inv`);
       nodeIdToSignal.set(`${node.id}:out`, sigName);
 
       if (!clk) {
         warnings.push(`DFlipFlop "${node.id}" has no clock input - signal ${sigName} will be tied low`);
         lines.push(`  ${sigName} <= '0'; -- missing DFlipFlop clock`);
+        lines.push(`  ${sigName}_inv <= '1';`);
         return;
       }
 
@@ -512,6 +543,7 @@ export function vhdlFromNetlist(
 
       lines.push('    end if;');
       lines.push('  end process;');
+      lines.push(`  ${sigName}_inv <= not ${sigName};`);
       return;
     }
 
@@ -524,12 +556,16 @@ export function vhdlFromNetlist(
         resolveInputSignal(node.id, 'en',     nets, nodeIdToSignal, topInputBindingByTarget) ??
         resolveInputSignal(node.id, 'enable', nets, nodeIdToSignal, topInputBindingByTarget);
 
-      nodeIdToSignal.set(`${node.id}:Q`,   sigName);
+      nodeIdToSignal.set(`${node.id}:Q`, sigName);
+      nodeIdToSignal.set(`${node.id}:q`, sigName);
+      nodeIdToSignal.set(`${node.id}:Q_inv`, `${sigName}_inv`);
+      nodeIdToSignal.set(`${node.id}:qn`, `${sigName}_inv`);
       nodeIdToSignal.set(`${node.id}:out`, sigName);
 
       if (!en) {
         warnings.push(`DLatch "${node.id}" has no EN input — Q will be tied low`);
         lines.push(`  ${sigName} <= '0'; -- missing DLatch EN`);
+        lines.push(`  ${sigName}_inv <= '1';`);
         return;
       }
 
@@ -539,6 +575,7 @@ export function vhdlFromNetlist(
       lines.push(`      ${sigName} <= ${d};`);
       lines.push('    end if;');
       lines.push('  end process;');
+      lines.push(`  ${sigName}_inv <= not ${sigName};`);
       return;
     }
 
@@ -551,24 +588,41 @@ export function vhdlFromNetlist(
         resolveInputSignal(node.id, 'clk',   nets, nodeIdToSignal, topInputBindingByTarget) ??
         resolveInputSignal(node.id, 'clock', nets, nodeIdToSignal, topInputBindingByTarget) ??
         resolveInputSignal(node.id, 'c',     nets, nodeIdToSignal, topInputBindingByTarget);
+      const clr =
+        resolveInputSignal(node.id, 'clr', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'rst', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'reset', nets, nodeIdToSignal, topInputBindingByTarget);
 
-      nodeIdToSignal.set(`${node.id}:Q`,   sigName);
+      nodeIdToSignal.set(`${node.id}:Q`, sigName);
+      nodeIdToSignal.set(`${node.id}:q`, sigName);
+      nodeIdToSignal.set(`${node.id}:Q_inv`, `${sigName}_inv`);
+      nodeIdToSignal.set(`${node.id}:qn`, `${sigName}_inv`);
       nodeIdToSignal.set(`${node.id}:out`, sigName);
 
       if (!clk) {
         warnings.push(`TFlipFlop "${node.id}" has no CLK input — Q will be tied low`);
         lines.push(`  ${sigName} <= '0'; -- missing TFlipFlop clock`);
+        lines.push(`  ${sigName}_inv <= '1';`);
         return;
       }
 
-      lines.push(`  process (${clk})`);
-      lines.push('  begin');
-      lines.push(`    if rising_edge(${clk}) then`);
+      if (clr) {
+        lines.push(`  process (${clk}, ${clr})`);
+        lines.push('  begin');
+        lines.push(`    if ${clr} = '1' then`);
+        lines.push(`      ${sigName} <= '0';`);
+        lines.push(`    elsif rising_edge(${clk}) then`);
+      } else {
+        lines.push(`  process (${clk})`);
+        lines.push('  begin');
+        lines.push(`    if rising_edge(${clk}) then`);
+      }
       lines.push(`      if ${t} = '1' then`);
       lines.push(`        ${sigName} <= not ${sigName};`);
       lines.push('      end if;');
       lines.push('    end if;');
       lines.push('  end process;');
+      lines.push(`  ${sigName}_inv <= not ${sigName};`);
       return;
     }
 
@@ -581,20 +635,35 @@ export function vhdlFromNetlist(
         resolveInputSignal(node.id, 'clk',   nets, nodeIdToSignal, topInputBindingByTarget) ??
         resolveInputSignal(node.id, 'clock', nets, nodeIdToSignal, topInputBindingByTarget) ??
         resolveInputSignal(node.id, 'c',     nets, nodeIdToSignal, topInputBindingByTarget);
+      const clr =
+        resolveInputSignal(node.id, 'clr', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'rst', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'reset', nets, nodeIdToSignal, topInputBindingByTarget);
 
-      nodeIdToSignal.set(`${node.id}:Q`,     sigName);
+      nodeIdToSignal.set(`${node.id}:Q`, sigName);
+      nodeIdToSignal.set(`${node.id}:q`, sigName);
       nodeIdToSignal.set(`${node.id}:Q_inv`, `${sigName}_inv`);
-      nodeIdToSignal.set(`${node.id}:out`,   sigName);
+      nodeIdToSignal.set(`${node.id}:qn`, `${sigName}_inv`);
+      nodeIdToSignal.set(`${node.id}:out`, sigName);
 
       if (!clk) {
         warnings.push(`JKFlipFlop "${node.id}" has no CLK input — Q will be tied low`);
         lines.push(`  ${sigName} <= '0'; -- missing JKFlipFlop clock`);
+        lines.push(`  ${sigName}_inv <= '1';`);
         return;
       }
 
-      lines.push(`  process (${clk})`);
-      lines.push('  begin');
-      lines.push(`    if rising_edge(${clk}) then`);
+      if (clr) {
+        lines.push(`  process (${clk}, ${clr})`);
+        lines.push('  begin');
+        lines.push(`    if ${clr} = '1' then`);
+        lines.push(`      ${sigName} <= '0';`);
+        lines.push(`    elsif rising_edge(${clk}) then`);
+      } else {
+        lines.push(`  process (${clk})`);
+        lines.push('  begin');
+        lines.push(`    if rising_edge(${clk}) then`);
+      }
       lines.push(`      if ${j} = '1' and ${k} = '0' then`);
       lines.push(`        ${sigName} <= '1';`);
       lines.push(`      elsif ${j} = '0' and ${k} = '1' then`);
@@ -604,6 +673,7 @@ export function vhdlFromNetlist(
       lines.push('      end if;');
       lines.push('    end if;');
       lines.push('  end process;');
+      lines.push(`  ${sigName}_inv <= not ${sigName};`);
       return;
     }
 

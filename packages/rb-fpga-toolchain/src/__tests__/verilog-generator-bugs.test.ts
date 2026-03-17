@@ -155,3 +155,72 @@ describe('Bug 3 regression — module output ports receive assign statements', (
     expect(verilog).not.toContain("1'b0");
   });
 });
+
+describe('Sequential primitive support regression', () => {
+  it('supports DLatch as a first-class primitive instead of marking it unsupported', () => {
+    const circuit: CircuitV1 = {
+      schemaVersion: '1.0',
+      nodes: [
+        { id: 'd_sw', type: 'Switch', x: 0, y: 80, params: {}, state: {} },
+        { id: 'en_sw', type: 'Switch', x: 0, y: 120, params: {}, state: {} },
+        { id: 'dl0', type: 'DLatch', x: 100, y: 100, params: {}, state: {} },
+        { id: 'q_out', type: 'Lamp', x: 200, y: 100, params: {}, state: {} },
+      ],
+      connections: [
+        { id: 'c1', fromNodeId: 'd_sw', fromPin: 'out', toNodeId: 'dl0', toPin: 'D' },
+        { id: 'c2', fromNodeId: 'en_sw', fromPin: 'out', toNodeId: 'dl0', toPin: 'EN' },
+        { id: 'c3', fromNodeId: 'dl0', fromPin: 'Q', toNodeId: 'q_out', toPin: 'in' },
+      ],
+      customChips: [],
+    };
+    const mapping: IoMapping = {
+      inputs: [
+        { id: 'i0', nodeId: 'd_sw', port: 'out', pin: 'SW0' },
+        { id: 'i1', nodeId: 'en_sw', port: 'out', pin: 'SW1' },
+      ],
+      outputs: [{ id: 'o0', nodeId: 'q_out', port: 'in', pin: 'LD0' }],
+    };
+
+    const result = circuitToVerilog(circuit, mapping, { moduleName: 'top' });
+    expect(result.unsupportedNodes).toEqual([]);
+    expect(result.verilog).toContain('RB_DLATCH');
+    expect(result.verilog).toContain('.d(d_sw_out)');
+    expect(result.verilog).toContain('.en(en_sw_out)');
+  });
+
+  it('supports CLR and Q_inv on generated JK flip-flops', () => {
+    const circuit: CircuitV1 = {
+      schemaVersion: '1.0',
+      nodes: [
+        { id: 'j_sw', type: 'Switch', x: 0, y: 60, params: {}, state: {} },
+        { id: 'k_sw', type: 'Switch', x: 0, y: 100, params: {}, state: {} },
+        { id: 'clk_sw', type: 'Switch', x: 0, y: 140, params: {}, state: {} },
+        { id: 'gnd0', type: 'Ground', x: 0, y: 180, params: {}, state: {} },
+        { id: 'jk0', type: 'JKFlipFlop', x: 100, y: 120, params: {}, state: {} },
+        { id: 'qn_out', type: 'Lamp', x: 220, y: 120, params: {}, state: {} },
+      ],
+      connections: [
+        { id: 'c1', fromNodeId: 'j_sw', fromPin: 'out', toNodeId: 'jk0', toPin: 'J' },
+        { id: 'c2', fromNodeId: 'k_sw', fromPin: 'out', toNodeId: 'jk0', toPin: 'K' },
+        { id: 'c3', fromNodeId: 'clk_sw', fromPin: 'out', toNodeId: 'jk0', toPin: 'CLK' },
+        { id: 'c4', fromNodeId: 'gnd0', fromPin: 'out', toNodeId: 'jk0', toPin: 'CLR' },
+        { id: 'c5', fromNodeId: 'jk0', fromPin: 'Q_inv', toNodeId: 'qn_out', toPin: 'in' },
+      ],
+      customChips: [],
+    };
+    const mapping: IoMapping = {
+      inputs: [
+        { id: 'i0', nodeId: 'j_sw', port: 'out', pin: 'SW0' },
+        { id: 'i1', nodeId: 'k_sw', port: 'out', pin: 'SW1' },
+        { id: 'i2', nodeId: 'clk_sw', port: 'out', pin: 'CLK100MHZ' },
+      ],
+      outputs: [{ id: 'o0', nodeId: 'qn_out', port: 'in', pin: 'LD0' }],
+    };
+
+    const { verilog } = circuitToVerilog(circuit, mapping, { moduleName: 'top' });
+    expect(verilog).toContain('RB_GND');
+    expect(verilog).toContain('.clr(gnd0_out)');
+    expect(verilog).toContain('.q_inv(jk0_q_inv)');
+    expect(verilog).toContain('assign qn_out_in = jk0_q_inv;');
+  });
+});

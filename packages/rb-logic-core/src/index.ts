@@ -55,6 +55,7 @@ export {
 // Built-in behaviors
 export {
   PowerSourceBehavior,
+  GroundBehavior,
   SwitchBehavior,
   LampBehavior,
   WireBehavior,
@@ -65,6 +66,7 @@ export {
   XORBehavior,
   ClockBehavior,
   DelayBehavior,
+  DFlipFlopBehavior,
   TFlipFlopBehavior,
   JKFlipFlopBehavior,
 } from './builtins';
@@ -85,6 +87,7 @@ export {
 import { NodeRegistry } from './NodeRegistry';
 import {
   PowerSourceBehavior,
+  GroundBehavior,
   SwitchBehavior,
   LampBehavior,
   WireBehavior,
@@ -95,6 +98,7 @@ import {
   XORBehavior,
   ClockBehavior,
   DelayBehavior,
+  DFlipFlopBehavior,
   TFlipFlopBehavior,
   JKFlipFlopBehavior,
   INPUTBehavior,
@@ -103,13 +107,12 @@ import {
 import { registerCompositeNode } from './CompositeNode';
 import {
   RSLatchDef,
-  DFlipFlopDef,
   DLatchDef,
-  JKFlipFlopDef,
   FullAdderDef,
   Counter4BitDef,
 } from './composite-defs';
 NodeRegistry.register('PowerSource', PowerSourceBehavior);
+NodeRegistry.register('Ground', GroundBehavior);
 NodeRegistry.register('Switch', SwitchBehavior);
 NodeRegistry.register('Lamp', LampBehavior);
 NodeRegistry.register('Wire', WireBehavior);
@@ -120,6 +123,7 @@ NodeRegistry.register('NAND', NANDBehavior);
 NodeRegistry.register('XOR', XORBehavior);
 NodeRegistry.register('Clock', ClockBehavior);
 NodeRegistry.register('Delay', DelayBehavior);
+NodeRegistry.register('DFlipFlop', DFlipFlopBehavior);
 NodeRegistry.register('TFlipFlop', TFlipFlopBehavior);
 NodeRegistry.register('JKFlipFlop', JKFlipFlopBehavior);
 NodeRegistry.register('INPUT', INPUTBehavior);
@@ -127,7 +131,6 @@ NodeRegistry.register('OUTPUT', OUTPUTBehavior);
 
 // Register composite nodes
 registerCompositeNode(RSLatchDef);
-registerCompositeNode(DFlipFlopDef);
 registerCompositeNode(DLatchDef);
 registerCompositeNode(FullAdderDef);
 registerCompositeNode(Counter4BitDef);

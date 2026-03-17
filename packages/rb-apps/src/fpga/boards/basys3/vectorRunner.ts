@@ -42,7 +42,8 @@ export interface VectorRunResult {
  *   - combinational: drive → tick() → sample/assert
  *   - clocked_macro: drive → (clk=0 tick) → (clk=1 tick) → (clk=0 tick) → sample/assert
  *
- * The 3-tick clocked_macro schedule matches the latch-gated behavior of DFlipFlop/etc.
+ * For edge-triggered sequential logic, the middle tick is the rising-edge capture
+ * and the final low tick restores a stable post-edge sample point.
  */
 export async function runTestVectors(
   circuit: Circuit,
@@ -82,23 +83,6 @@ export async function runTestVectors(
   const clockNodeName = scheduleContract.needsSimClockInjection
     ? '__sim_clk__'
     : (scheduleContract.clockSignalName ?? '__sim_clk__');
-
-  // Boot-reset for clocked_macro circuits: run one CLK cycle with the first
-  // vector's data inputs before the main loop.  SR-NAND-based latches (e.g.
-  // DFlipFlop composite) initialise from all-zero NAND inputs → Q=Q_inv=1
-  // (metastable). One CLK pulse with first-vector EN drives D=XOR(1,EN) and
-  // captures Q=0, matching the stable start state the test vectors assume.
-  if (schedule === 'clocked_macro' && vectors.length > 0) {
-    const firstVector = vectors[0];
-    for (const [portName, value] of Object.entries(firstVector.inputs ?? {})) {
-      if (portName === clockNodeName) continue;
-      driveInput(engine, portName, value);
-    }
-    for (const clockValue of CLOCKED_MACRO_SEQUENCE) {
-      driveInput(engine, clockNodeName, clockValue);
-      engine.tick();
-    }
-  }
 
   // Execute vectors
   for (let tickIdx = 0; tickIdx < vectors.length; tickIdx++) {
@@ -197,9 +181,9 @@ function executeCombinatorialStep(
 /**
  * Clocked macro execution: 3-tick schedule
  *   1. Drive inputs (hold stable)
- *   2. clk=0 → tick() (settle/hold phase)
- *   3. clk=1 → tick() (transparent/update into latch)
- *   4. clk=0 → tick() (hold/latch captures)
+ *   2. clk=0 → tick() (pre-edge settle phase)
+ *   3. clk=1 → tick() (rising-edge capture phase)
+ *   4. clk=0 → tick() (post-edge hold phase)
  *   5. Sample outputs (post)
  */
 function executeClockedMacroStep(

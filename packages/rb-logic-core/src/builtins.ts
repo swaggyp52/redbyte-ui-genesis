@@ -17,6 +17,18 @@ export const PowerSourceBehavior: NodeBehavior = {
 };
 
 /**
+ * Ground - Always outputs 0
+ */
+export const GroundBehavior: NodeBehavior = {
+  evaluate() {
+    return {
+      outputs: { out: 0 },
+      state: {},
+    };
+  },
+};
+
+/**
  * Switch - Toggleable input (state-based)
  */
 export const SwitchBehavior: NodeBehavior = {
@@ -176,58 +188,103 @@ export const DelayBehavior: NodeBehavior = {
   },
 };
 
-/**
- * T Flip-Flop - edge-triggered toggle flip-flop
- * Inputs: T (toggle), CLK (clock)
- * Output: Q (and out for compatibility)
- * Rising edge: if T=1, Q toggles; if T=0, Q holds
- *
- * Implemented as a behavioral node (not structural composite) to avoid
- * the oscillation/race condition inherent in a level-triggered T latch.
- */
-export const TFlipFlopBehavior: NodeBehavior = {
-  evaluate(inputs, state) {
-    const t       = (inputs.T   ?? 0) as number;
-    const clk     = (inputs.CLK ?? 0) as number;
-    const lastClk = (state.lastClk ?? 0) as number;
-    let q         = (state.q     ?? 0) as number;
+function readFirstNumber(inputs: NodeInputs, names: readonly string[], fallback = 0): number {
+  for (const name of names) {
+    const value = inputs[name];
+    if (typeof value === 'number') return value;
+  }
+  return fallback;
+}
 
-    // Rising edge: lastClk=0 → clk=1
-    if (lastClk === 0 && clk === 1) {
-      if (t === 1) q = q === 0 ? 1 : 0;
+function sequentialOutputs(q: number): NodeOutputs {
+  const qInv = q === 0 ? 1 : 0;
+  return {
+    Q: q as Signal,
+    q: q as Signal,
+    out: q as Signal,
+    Q_inv: qInv as Signal,
+    qn: qInv as Signal,
+  };
+}
+
+/**
+ * D Flip-Flop - edge-triggered storage element
+ * Inputs: D, CLK, optional EN, optional RST/CLR/RESET
+ * Outputs: Q, Q_inv (plus compatibility aliases)
+ */
+export const DFlipFlopBehavior: NodeBehavior = {
+  evaluate(inputs, state) {
+    const d = readFirstNumber(inputs, ['D', 'd', 'in']);
+    const clk = readFirstNumber(inputs, ['CLK', 'clk', 'clock', 'C']);
+    const rst = readFirstNumber(inputs, ['RST', 'rst', 'RESET', 'reset', 'CLR', 'clr'], 0);
+    const en = readFirstNumber(inputs, ['EN', 'en', 'ENABLE', 'enable'], 1);
+    const lastClk = (state.lastClk ?? 0) as number;
+    let q = (state.q ?? 0) as number;
+
+    if (rst === 1) {
+      q = 0;
+    } else if (lastClk === 0 && clk === 1 && en === 1) {
+      q = d === 0 ? 0 : 1;
     }
 
     return {
-      outputs: { Q: q as Signal, out: q as Signal },
+      outputs: sequentialOutputs(q),
       state: { q, lastClk: clk },
     };
   },
 };
 
 /**
- * JK Flip-Flop (level-triggered latch)
- * Inputs: J, K, CLK
- * Output: Q (and out for compatibility)
- * When CLK=1: J=1 K=0 → SET, J=0 K=1 → RESET, J=K=1 → TOGGLE, J=K=0 → HOLD
- * When CLK=0: always HOLD
+ * T Flip-Flop - edge-triggered toggle flip-flop
+ * Inputs: T, CLK, optional CLR
+ * Outputs: Q, Q_inv (plus compatibility aliases)
  */
-export const JKFlipFlopBehavior: NodeBehavior = {
+export const TFlipFlopBehavior: NodeBehavior = {
   evaluate(inputs, state) {
-    const j   = (inputs.J   ?? 0) as number;
-    const k   = (inputs.K   ?? 0) as number;
-    const clk = (inputs.CLK ?? 0) as number;
-    let q     = (state.q    ?? 0) as number;
+    const t = readFirstNumber(inputs, ['T', 't', 'in']);
+    const clk = readFirstNumber(inputs, ['CLK', 'clk', 'clock', 'C']);
+    const clr = readFirstNumber(inputs, ['CLR', 'clr', 'RST', 'rst', 'RESET', 'reset'], 0);
+    const lastClk = (state.lastClk ?? 0) as number;
+    let q = (state.q ?? 0) as number;
 
-    if (clk === 1) {
-      if      (j === 1 && k === 0) q = 1;
-      else if (j === 0 && k === 1) q = 0;
-      else if (j === 1 && k === 1) q = q === 0 ? 1 : 0;
-      // j=0, k=0: hold
+    if (clr === 1) {
+      q = 0;
+    } else if (lastClk === 0 && clk === 1 && t === 1) {
+      q = q === 0 ? 1 : 0;
     }
 
     return {
-      outputs: { Q: q as Signal, out: q as Signal },
-      state: { q },
+      outputs: sequentialOutputs(q),
+      state: { q, lastClk: clk },
+    };
+  },
+};
+
+/**
+ * JK Flip-Flop - edge-triggered JK storage element
+ * Inputs: J, K, CLK, optional CLR
+ * Outputs: Q, Q_inv (plus compatibility aliases)
+ */
+export const JKFlipFlopBehavior: NodeBehavior = {
+  evaluate(inputs, state) {
+    const j = readFirstNumber(inputs, ['J', 'j'], 0);
+    const k = readFirstNumber(inputs, ['K', 'k'], 0);
+    const clk = readFirstNumber(inputs, ['CLK', 'clk', 'clock', 'C']);
+    const clr = readFirstNumber(inputs, ['CLR', 'clr', 'RST', 'rst', 'RESET', 'reset'], 0);
+    const lastClk = (state.lastClk ?? 0) as number;
+    let q = (state.q ?? 0) as number;
+
+    if (clr === 1) {
+      q = 0;
+    } else if (lastClk === 0 && clk === 1) {
+      if (j === 1 && k === 0) q = 1;
+      else if (j === 0 && k === 1) q = 0;
+      else if (j === 1 && k === 1) q = q === 0 ? 1 : 0;
+    }
+
+    return {
+      outputs: sequentialOutputs(q),
+      state: { q, lastClk: clk },
     };
   },
 };

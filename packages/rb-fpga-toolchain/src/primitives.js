@@ -124,20 +124,39 @@ endmodule`,
 endmodule`,
     },
     // D Flip-Flop (for sequential circuits)
-    {
+  {
         nodeType: 'DFlipFlop',
         moduleName: 'RB_DFF',
-        ports: { inputs: ['d', 'clk'], outputs: ['q'] },
+        ports: { inputs: ['d', 'clk'], outputs: ['q', 'q_inv'] },
         verilog: `module RB_DFF(
   input wire d,
   input wire clk,
-  output reg q
+  output reg q,
+  output wire q_inv
 );
+  assign q_inv = ~q;
   always @(posedge clk) begin
     q <= d;
   end
 endmodule`,
-    },
+  },
+  {
+        nodeType: 'DLatch',
+        moduleName: 'RB_DLATCH',
+        ports: { inputs: ['d', 'en'], outputs: ['q', 'q_inv'] },
+        verilog: `module RB_DLATCH(
+  input wire d,
+  input wire en,
+  output reg q,
+  output wire q_inv
+);
+  assign q_inv = ~q;
+  always @(*) begin
+    if (en)
+      q = d;
+  end
+endmodule`,
+  },
     // D Flip-Flop with Reset
     {
         nodeType: 'DFlipFlopReset',
@@ -179,44 +198,55 @@ endmodule`,
 endmodule`,
     },
     // JK Flip-Flop
-    {
+  {
         nodeType: 'JKFlipFlop',
         moduleName: 'RB_JKFF',
-        ports: { inputs: ['j', 'k', 'clk'], outputs: ['q', 'qn'] },
+        ports: { inputs: ['j', 'k', 'clk', 'clr'], outputs: ['q', 'q_inv'] },
         verilog: `module RB_JKFF(
   input wire j,
   input wire k,
   input wire clk,
+  input wire clr,
   output reg q,
-  output wire qn
+  output wire q_inv
 );
-  assign qn = ~q;
-  always @(posedge clk) begin
-    case ({j, k})
-      2'b00: q <= q;     // Hold
-      2'b01: q <= 1'b0;  // Reset
-      2'b10: q <= 1'b1;  // Set
-      2'b11: q <= ~q;    // Toggle
-    endcase
+  assign q_inv = ~q;
+  always @(posedge clk or posedge clr) begin
+    if (clr) begin
+      q <= 1'b0;
+    end else begin
+      case ({j, k})
+        2'b00: q <= q;     // Hold
+        2'b01: q <= 1'b0;  // Reset
+        2'b10: q <= 1'b1;  // Set
+        2'b11: q <= ~q;    // Toggle
+      endcase
+    end
   end
 endmodule`,
-    },
+  },
     // T Flip-Flop
-    {
+  {
         nodeType: 'TFlipFlop',
         moduleName: 'RB_TFF',
-        ports: { inputs: ['t', 'clk'], outputs: ['q'] },
+        ports: { inputs: ['t', 'clk', 'clr'], outputs: ['q', 'q_inv'] },
         verilog: `module RB_TFF(
   input wire t,
   input wire clk,
-  output reg q
+  input wire clr,
+  output reg q,
+  output wire q_inv
 );
-  always @(posedge clk) begin
-    if (t)
+  assign q_inv = ~q;
+  always @(posedge clk or posedge clr) begin
+    if (clr) begin
+      q <= 1'b0;
+    end else if (t) begin
       q <= ~q;
+    end
   end
 endmodule`,
-    },
+  },
     // 2-to-1 Multiplexer
     {
         nodeType: 'MUX2',

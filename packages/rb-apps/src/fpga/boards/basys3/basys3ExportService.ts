@@ -79,6 +79,8 @@ const SYNTH_SUPPORTED_NODE_TYPES = new Set([
   'INPUT',
   'Switch',
   'Clock',
+  'PowerSource',
+  'Ground',
   'OUTPUT',
   'Lamp',
   'Wire',
@@ -92,9 +94,13 @@ const SYNTH_SUPPORTED_NODE_TYPES = new Set([
   'FullAdder',
   'MUX4',
   'DFlipFlop',
+  'DLatch',
+  'TFlipFlop',
+  'JKFlipFlop',
 ]);
 
-const SEQUENTIAL_NODE_TYPES = new Set(['DFlipFlop']);
+const STATEFUL_NODE_TYPES = new Set(['DFlipFlop', 'DLatch', 'TFlipFlop', 'JKFlipFlop']);
+const CLOCKED_NODE_TYPES = new Set(['DFlipFlop', 'TFlipFlop', 'JKFlipFlop']);
 
 /**
  * Validate RBProject for Basys3 export.
@@ -504,7 +510,7 @@ function validateSynthSubset(project: RBProject): Basys3ExportError[] {
     diagnostics.push({
       type: 'logic',
       severity: 'error',
-      message: `Unsupported synth subset node type "${node.type}" on node "${node.id}". Fix: replace it with supported v1 primitives (IO, combinational gates, DFlipFlop).`,
+      message: `Unsupported synth subset node type "${node.type}" on node "${node.id}". Fix: replace it with supported v1 primitives (IO, constants, combinational gates, DLatch, DFlipFlop, TFlipFlop, JKFlipFlop).`,
     });
   }
 
@@ -604,17 +610,17 @@ function validateClockResetContract(
   nodesById: Map<string, RBProject['circuit']['nodes'][number]>
 ): Basys3ExportError[] {
   const diagnostics: Basys3ExportError[] = [];
-  const sequentialNodes = circuit.nodes.filter((node) => SEQUENTIAL_NODE_TYPES.has(node.type));
-  if (sequentialNodes.length === 0) return diagnostics;
+  const statefulNodes = circuit.nodes.filter((node) => STATEFUL_NODE_TYPES.has(node.type));
+  if (statefulNodes.length === 0) return diagnostics;
 
   const clockDrivers = new Set<string>();
   const resetDrivers = new Set<string>();
   const enableDrivers = new Set<string>();
 
-  for (const node of sequentialNodes) {
+  for (const node of statefulNodes) {
     const inbound = normalizedConnections.filter((entry) => entry.toNodeId === node.id);
     const clockInputs = inbound.filter((entry) => /^(clk|clock|c|ck)$/i.test(entry.toPort));
-    if (clockInputs.length === 0) {
+    if (CLOCKED_NODE_TYPES.has(node.type) && clockInputs.length === 0) {
       diagnostics.push({
         type: 'logic',
         severity: 'error',
@@ -698,7 +704,7 @@ function detectCombinationalLoopViolations(
   const adjacency = new Map<string, Set<string>>();
   const nonSequentialNodes = new Set(
     circuit.nodes
-      .filter((node) => !SEQUENTIAL_NODE_TYPES.has(node.type))
+      .filter((node) => !STATEFUL_NODE_TYPES.has(node.type))
       .map((node) => node.id)
   );
 

@@ -69,6 +69,8 @@ function nodeTypeLabel(nodeType: string): string {
     BUFFER: 'Buffer',
     INPUT: 'Input',
     OUTPUT: 'Output',
+    Ground: 'Ground',
+    DLatch: 'D latch',
     DFlipFlop: 'D flip-flop',
     TFlipFlop: 'T flip-flop',
     JKFlipFlop: 'JK flip-flop',
@@ -285,6 +287,14 @@ const PALETTE_ITEMS: PaletteItem[] = [
     searchTerms: ['flip flop', 'flipflop', 'register', 'state', 'memory'],
   },
   {
+    type: 'TFlipFlop',
+    title: 'TFF',
+    category: 'Sequential',
+    subtitle: 'Rising-edge toggle flip-flop with active-high clear.',
+    glyph: 'TFF',
+    searchTerms: ['flip flop', 'flipflop', 'toggle', 'state', 'memory'],
+  },
+  {
     type: 'Clock',
     title: 'Clock',
     category: 'Sequential',
@@ -307,6 +317,14 @@ const PALETTE_ITEMS: PaletteItem[] = [
     subtitle: 'Observed sink pin for circuit outputs and labels.',
     glyph: 'OUT',
     searchTerms: ['output', 'pin', 'sink', 'probe', 'io', 'i/o'],
+  },
+  {
+    type: 'Ground',
+    title: 'Ground',
+    category: 'IO',
+    subtitle: 'Constant logic 0 source for reset and clear wiring.',
+    glyph: '0',
+    searchTerms: ['ground', 'constant', 'zero', 'low', 'clear'],
   },
 ];
 
@@ -5713,7 +5731,11 @@ const NODE_PIN_CATALOG: Record<string, string[]> = {
   NOR: ['a', 'b', 'out'],
   XNOR: ['a', 'b', 'out'],
   BUF: ['in', 'out'],
-  DFlipFlop: ['D', 'CLK', 'Q'],
+  Ground: ['out'],
+  DLatch: ['D', 'EN', 'Q', 'Q_inv'],
+  DFlipFlop: ['D', 'CLK', 'Q', 'Q_inv'],
+  TFlipFlop: ['T', 'CLK', 'CLR', 'Q', 'Q_inv'],
+  JKFlipFlop: ['J', 'K', 'CLK', 'CLR', 'Q', 'Q_inv'],
 };
 
 function deriveNodePins(node: Node | undefined, circuit: Circuit): string[] {

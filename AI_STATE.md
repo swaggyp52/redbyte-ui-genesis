@@ -1,5 +1,82 @@
 # AI State
 
+## Change Log 2026-03-17 (Lab 6 sequential contract unification)
+
+**Subsystem**: Logic core / IDE Design / Verify export parity / Basys3 export
+
+### Problem
+
+Lab 6 support was blocked by a semantic split across RedByte surfaces:
+
+1. `DFlipFlop` was simulated as a transparent latch while HDL export treated it as a rising-edge flip-flop.
+2. `JKFlipFlop` was level-triggered in simulation while export treated it as rising-edge triggered.
+3. `TFlipFlop` / `JKFlipFlop` lacked first-class active-high clear support.
+4. Basys export still rejected `DLatch`, `TFlipFlop`, `JKFlipFlop`, and constant-low wiring.
+5. Design metadata/palette and VHDL export did not fully support the Lab 6 primitive set or complement outputs.
+
+### What changed
+
+- `packages/rb-logic-core/src/builtins.ts`
+  - Added `GroundBehavior`.
+  - Added behavioral `DFlipFlopBehavior` with rising-edge capture, optional `EN`, optional active-high reset/clear aliases, and `Q` / `Q_inv` compatibility outputs.
+  - Upgraded `TFlipFlopBehavior` and `JKFlipFlopBehavior` to emit `Q` / `Q_inv` aliases and honor active-high `CLR`.
+- `packages/rb-logic-core/src/index.ts`
+  - Registered `Ground`.
+  - Switched runtime `DFlipFlop` registration away from the old composite latch path and onto the behavioral rising-edge implementation.
+- `packages/rb-logic-core/src/analysis/nodeMetaRegistry.ts`
+  - Updated sequential metadata so DFF/JK/T advertise the correct rising-edge contract, with `CLR` metadata on T/JK.
+- `packages/rb-apps/src/fpga/boards/basys3/vectorRunner.ts`
+  - Removed the old boot-reset warmup that only existed to compensate for the composite latch-backed DFF.
+  - Reworded clocked-macro comments around a post-rising-edge sample model instead of latch-gated behavior.
+- `packages/rb-apps/src/fpga/boards/basys3/sequentialAnalysis.ts`
+  - Updated sequential analysis notes and reset metadata to match the corrected DFF/JK/T contracts.
+- `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`
+  - Expanded the synth subset allowlist to include `PowerSource`, `Ground`, `DLatch`, `TFlipFlop`, and `JKFlipFlop`.
+  - Split clocked-vs-stateful validation so `DLatch` is treated as stateful without incorrectly requiring a clock pin.
+- `packages/rb-apps/src/export/vhdlExport.ts`
+  - Added `PowerSource` / `Ground` VHDL emission.
+  - Made input-port resolution case-insensitive so uppercase Design ports map correctly into export.
+  - Added complement-signal declarations and `Q_inv` emission for DFF / DLatch / TFF / JKFF.
+  - Added `CLR` handling for TFF / JKFF in VHDL processes.
+- `packages/rb-fpga-toolchain/src/primitives.ts`
+  - Added `DLatch` as a first-class primitive.
+  - Added `q_inv` outputs to DFF / DLatch / TFF / JKFF.
+  - Added active-high `clr` inputs to TFF / JKFF so generated Basys Verilog matches the Lab 6 contract.
+- `packages/rb-fpga-toolchain/src/primitives.js`
+  - Mirrored the primitive changes for the JS sibling.
+- `packages/rb-apps/src/apps/ide/designChipMetadata.ts`
+  - Added first-class metadata for `Ground`, `DLatch`, and `TFlipFlop`.
+  - Added `CLR` to `JKFlipFlop` and `TFlipFlop` metadata.
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Added `TFlipFlop` and `Ground` to the actual Design palette.
+  - Expanded node pin catalog coverage for Lab 6 sequential primitives.
+- `packages/rb-apps/src/apps/ide/examplesCatalog.ts`
+  - Removed the stale comment describing DFFs as transparent latches.
+- Tests:
+  - `packages/rb-logic-core/src/sequential.test.ts`
+    - Replaced the old JK latch assumptions with edge-triggered DFF/TFF/JKFF coverage plus CLR assertions.
+  - `packages/rb-apps/src/export/__tests__/vhdlExport.test.ts`
+    - Added regression coverage for uppercase sequential port names, `Q_inv`, `CLR`, and `Ground`.
+  - `packages/rb-fpga-toolchain/src/__tests__/verilog-generator-bugs.test.ts`
+    - Added DLatch support coverage and JK `CLR` / `Q_inv` generation coverage.
+
+### Student-visible behavior
+
+- `DFlipFlop` now behaves as a true rising-edge flip-flop in Design/runtime instead of a transparent latch.
+- `JKFlipFlop` now matches export semantics instead of mutating while the clock is merely held high.
+- `TFlipFlop` and `JKFlipFlop` can now model the Lab 6 active-high clear input cleanly.
+- Design now exposes the missing Lab 6 primitives (`TFlipFlop`, `Ground`) with correct pins.
+- Export paths now accept the Lab 6 primitive set and preserve complement outputs more honestly.
+
+### Proof
+
+- `pnpm exec vitest run packages/rb-logic-core/src/sequential.test.ts packages/rb-fpga-toolchain/src/__tests__/verilog-generator-bugs.test.ts packages/rb-apps/src/__tests__/verifyRunMeta.test.ts packages/rb-apps/src/apps/ide/__tests__/designIssues.test.ts` -> PASS
+- `pnpm exec vitest run packages/rb-apps/src/export/__tests__/vhdlExport.test.ts packages/rb-apps/src/__tests__/ide-synth-subset-contract.test.ts packages/rb-apps/src/__tests__/basys3-bundle-gate.test.ts` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm --filter @redbyte/rb-fpga-toolchain build` -> PASS
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-17 (Verify waveform-first evidence redesign)
 
 **Subsystem**: IDE Verify product experience

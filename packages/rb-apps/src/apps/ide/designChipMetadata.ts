@@ -20,6 +20,13 @@ export const DESIGN_CHIP_METADATA: Record<string, ChipMetadata> = {
     color: '#ef4444',
     layer: 0,
   },
+  Ground: {
+    name: 'Ground',
+    inputs: [],
+    outputs: [{ id: 'out', name: 'out' }],
+    color: '#64748b',
+    layer: 0,
+  },
   Switch: {
     name: 'Switch',
     inputs: [],
@@ -125,6 +132,13 @@ export const DESIGN_CHIP_METADATA: Record<string, ChipMetadata> = {
     color: '#ec4899',
     layer: 3,
   },
+  DLatch: {
+    name: 'DLatch',
+    inputs: [{ id: 'D', name: 'D' }, { id: 'EN', name: 'EN' }],
+    outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q_inv' }],
+    color: '#ec4899',
+    layer: 3,
+  },
   DFlipFlop: {
     name: 'DFlipFlop',
     inputs: [{ id: 'D', name: 'D' }, { id: 'CLK', name: 'CLK' }],
@@ -132,9 +146,16 @@ export const DESIGN_CHIP_METADATA: Record<string, ChipMetadata> = {
     color: '#ec4899',
     layer: 3,
   },
+  TFlipFlop: {
+    name: 'TFlipFlop',
+    inputs: [{ id: 'T', name: 'T' }, { id: 'CLK', name: 'CLK' }, { id: 'CLR', name: 'CLR' }],
+    outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q_inv' }],
+    color: '#ec4899',
+    layer: 3,
+  },
   JKFlipFlop: {
     name: 'JKFlipFlop',
-    inputs: [{ id: 'J', name: 'J' }, { id: 'K', name: 'K' }, { id: 'CLK', name: 'CLK' }],
+    inputs: [{ id: 'J', name: 'J' }, { id: 'K', name: 'K' }, { id: 'CLK', name: 'CLK' }, { id: 'CLR', name: 'CLR' }],
     outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q_inv' }],
     color: '#ec4899',
     layer: 3,
@@ -160,7 +181,7 @@ export const DESIGN_CHIP_METADATA: Record<string, ChipMetadata> = {
   },
 };
 
-const SOURCE_ONLY_NODE_TYPES = new Set(['PowerSource', 'Switch', 'INPUT', 'Clock']);
+const SOURCE_ONLY_NODE_TYPES = new Set(['PowerSource', 'Ground', 'Switch', 'INPUT', 'Clock']);
 const OUTPUT_OBSERVER_NODE_TYPES = new Set(['OUTPUT', 'Lamp']);
 const NEUTRAL_NODE_TYPES = new Set(['Wire']);
 

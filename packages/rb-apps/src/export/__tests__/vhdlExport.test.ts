@@ -211,6 +211,80 @@ describe('vhdlFromNetlist', () => {
     const result = vhdlFromNetlist(unconnectedOutputNetlist, { entityName: 'top' });
     expect(result.warnings.length).toBeGreaterThan(0);
   });
+
+  it('normalizes uppercase DFlipFlop ports and emits Q_inv support', () => {
+    const netlist: Netlist = {
+      kind: 'rb-netlist',
+      version: 1,
+      createdAt: '2025-01-01T00:00:00.000Z',
+      circuitDigest: 'test-dff-uppercase',
+      nodes: [
+        { id: 'd_src', type: 'Switch', label: 'D', ports: [{ name: 'out', direction: 'out' }] },
+        { id: 'clk_src', type: 'Switch', label: 'CLK', ports: [{ name: 'out', direction: 'out' }] },
+        {
+          id: 'dff0',
+          type: 'DFlipFlop',
+          ports: [
+            { name: 'D', direction: 'in' },
+            { name: 'CLK', direction: 'in' },
+            { name: 'Q', direction: 'out' },
+            { name: 'Q_inv', direction: 'out' },
+          ],
+        },
+        { id: 'q_out', type: 'Lamp', label: 'Q', ports: [{ name: 'in', direction: 'in' }] },
+      ],
+      nets: [
+        { id: 'd->dff', from: { nodeId: 'd_src', port: 'out' }, to: { nodeId: 'dff0', port: 'D' } },
+        { id: 'clk->dff', from: { nodeId: 'clk_src', port: 'out' }, to: { nodeId: 'dff0', port: 'CLK' } },
+        { id: 'q->out', from: { nodeId: 'dff0', port: 'Q' }, to: { nodeId: 'q_out', port: 'in' } },
+      ],
+    };
+
+    const result = vhdlFromNetlist(netlist, { entityName: 'top' });
+    expect(result.warnings.join('\n')).not.toContain('missing DFlipFlop clock');
+    expect(result.vhd).toMatch(/if rising_edge\(CLK(?:\(\d+\))?\) then/);
+    expect(result.vhd).toContain('signal dff_0_inv : STD_LOGIC;');
+    expect(result.vhd).toContain('dff_0_inv <= not dff_0;');
+  });
+
+  it('emits CLR-aware sequential processes and constant-low Ground support', () => {
+    const netlist: Netlist = {
+      kind: 'rb-netlist',
+      version: 1,
+      createdAt: '2025-01-01T00:00:00.000Z',
+      circuitDigest: 'test-jk-clr-ground',
+      nodes: [
+        { id: 'j_src', type: 'Switch', label: 'J', ports: [{ name: 'out', direction: 'out' }] },
+        { id: 'k_src', type: 'Switch', label: 'K', ports: [{ name: 'out', direction: 'out' }] },
+        { id: 'clk_src', type: 'Switch', label: 'CLK', ports: [{ name: 'out', direction: 'out' }] },
+        { id: 'clr_src', type: 'Ground', ports: [{ name: 'out', direction: 'out' }] },
+        {
+          id: 'jk0',
+          type: 'JKFlipFlop',
+          ports: [
+            { name: 'J', direction: 'in' },
+            { name: 'K', direction: 'in' },
+            { name: 'CLK', direction: 'in' },
+            { name: 'CLR', direction: 'in' },
+            { name: 'Q', direction: 'out' },
+            { name: 'Q_inv', direction: 'out' },
+          ],
+        },
+      ],
+      nets: [
+        { id: 'j->jk', from: { nodeId: 'j_src', port: 'out' }, to: { nodeId: 'jk0', port: 'J' } },
+        { id: 'k->jk', from: { nodeId: 'k_src', port: 'out' }, to: { nodeId: 'jk0', port: 'K' } },
+        { id: 'clk->jk', from: { nodeId: 'clk_src', port: 'out' }, to: { nodeId: 'jk0', port: 'CLK' } },
+        { id: 'clr->jk', from: { nodeId: 'clr_src', port: 'out' }, to: { nodeId: 'jk0', port: 'CLR' } },
+      ],
+    };
+
+    const result = vhdlFromNetlist(netlist, { entityName: 'top' });
+    expect(result.vhd).toContain("gnd_0 <= '0';");
+    expect(result.vhd).toMatch(/process \(CLK(?:\(\d+\))?, gnd_0\)/);
+    expect(result.vhd).toContain("if gnd_0 = '1' then");
+    expect(result.vhd).toContain('jkff_0_inv <= not jkff_0;');
+  });
 });
 
   // ---------------------------------------------------------------------------

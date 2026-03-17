@@ -219,7 +219,7 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
         // Reset AND gates: D_final = AND(D_normal, NOT(RST))
         { id: 'd0_rst',   type: 'AND',       x: 420, y: 100, label: 'RST0',     config: {}, state: {} },
         { id: 'd1_rst',   type: 'AND',       x: 420, y: 290, label: 'RST1',     config: {}, state: {} },
-        // D flip-flops (transparent latch, CLK=1→transparent, CLK=0→hold)
+        // D flip-flops (rising-edge capture, hold between edges)
         { id: 'q0_ff',    type: 'DFlipFlop', x: 560, y: 100, label: 'Q0',       config: {}, state: {} },
         { id: 'q1_ff',    type: 'DFlipFlop', x: 560, y: 290, label: 'Q1',       config: {}, state: {} },
         // Output sinks
