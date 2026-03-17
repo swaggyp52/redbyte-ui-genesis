@@ -277,7 +277,7 @@ describe('DesignSurface workstation redesign', () => {
     // Stacked mode now shows a dedicated notice instead of an accent span inside the shortcut overlay
     const notice = view.getByTestId('ide-design-stacked-notice');
     expect(notice.textContent).toContain('too narrow');
-    expect(view.getByTestId('ide-design-shortcut-strip').textContent).not.toContain('Split stacked');
+    expect(view.queryByTestId('ide-design-shortcut-strip')).toBeNull();
   });
 
   it('renders a single primary code viewport and opens the secondary artifact drawer on demand', async () => {
@@ -376,6 +376,26 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
     expect(view.queryByTestId('ide-inspector')).toBeNull();
     expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
+  });
+
+  it('renders comparison-focused chrome in split mode', async () => {
+    const view = renderSurface();
+
+    fireEvent.click(view.getByTestId('ide-design-view-split'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-workspace').getAttribute('data-design-view')).toBe('split');
+    });
+
+    expect(view.getByTestId('ide-design-split-context-summary').textContent).toContain('Stage the circuit');
+    expect(view.getByTestId('ide-design-split-compare-tools')).toBeTruthy();
+    expect(view.queryByTestId('ide-design-tool-segmented')).toBeNull();
+    expect(view.queryByTestId('ide-design-tools-toggle')).toBeNull();
+    expect(view.queryByTestId('ide-design-shortcut-strip')).toBeNull();
+    expect(view.queryByTestId('ide-design-zoom-presets')).toBeNull();
+    expect(view.getByTestId('ide-design-split-canvas-indicator').textContent).toContain('Circuit pane');
+    expect(view.getByTestId('ide-design-split-stat-tick').textContent).toContain('Tick 6');
+    expect(view.getByTestId('ide-design-split-stat-mode').textContent).toContain('Paused');
   });
 
   it('shows the save-as-macro action and dialog when multiple nodes are selected', async () => {

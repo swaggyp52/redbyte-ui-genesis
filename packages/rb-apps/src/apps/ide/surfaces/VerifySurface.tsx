@@ -2893,7 +2893,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           <header className="ide-design-diagnostics-drawer-header">
             <h3>Activity</h3>
             <IdeStatusPill tone={displayTone} data-testid="ide-verify-console-status">
-              {displayStatus === 'PASS' ? 'COMPLETE' : displayStatus === 'FAIL' ? 'DIFFERS' : displayStatus}
+              {displayStatus === 'PASS' ? 'PASS' : displayStatus === 'FAIL' ? 'FAIL' : displayStatus}
             </IdeStatusPill>
           </header>
           <div className="ide-design-diagnostics-list">
@@ -2995,10 +2995,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           <IdeStatusPill tone={displayTone} testId="ide-verify-summary-status">
             {displayStatus === 'PASS'
               ? lastRun?.qualification === 'incomplete-mapping'
-                ? 'COMPLETE (PARTIAL)'
-                : 'COMPLETE'
+                ? 'PASS (INCOMPLETE)'
+                : 'PASS'
               : displayStatus === 'FAIL'
-                ? 'DIFFERS'
+                ? 'FAIL'
                 : displayStatus}
           </IdeStatusPill>
           {lastRun && (
@@ -3174,7 +3174,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {!isFirstRunState && (
           <div className="ide-verify-authority-note-inline" data-testid="ide-verify-authority-note">
             <strong>Simulation Result (Authoritative)</strong>
-            <span>Waveform trace is for inspection only and does not affect trust status.</span>
+            <span>Design trace is for debug only and does not affect trust status.</span>
           </div>
         )}
 

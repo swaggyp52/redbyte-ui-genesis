@@ -322,9 +322,12 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       const effectiveLeftWidth = clampValue(layout.leftWidth, widthCaps.left);
       const effectiveRightWidth = clampValue(layout.rightWidth, widthCaps.right);
       const leftSlotWidth = showLeftDock ? effectiveLeftWidth : 0;
+      const overlayCollapsedRightRail = mode === 'design' && showRightCollapsedRail;
       const rightSlotWidth = showRightDock
         ? effectiveRightWidth
-        : showRightCollapsedRail
+        : overlayCollapsedRightRail
+          ? 0
+          : showRightCollapsedRail
           ? COLLAPSED_DOCK_RAIL_WIDTH
           : 0;
       const effectiveConsoleHeight = showConsole

@@ -1,5 +1,98 @@
 # AI State
 
+## Change Log 2026-03-16 (Design split canvas stabilization hotfix)
+
+**Subsystem**: IDE Design/Build layout stability
+
+### Problem
+
+Two bugs caused visible layout corruption in Design/Build mode before lab:
+
+1. **Collapsed right rail stealing layout width** — When the right inspector dock was collapsed, a 26px rail restore-strip was reserved in the CSS grid column slot even in Design mode, squeezing the canvas/code workspace.
+2. **Stale canvas dimensions on split-mode entry** — When switching to Split view, the first `requestAnimationFrame` for `fitToCircuit()` fired before the canvas DOM had finished layout reflow, resulting in an incorrectly zoomed circuit on entry.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+  - Added `overlayCollapsedRightRail` flag: when `mode === 'design'` and right dock is collapsed, `rightSlotWidth` is set to `0` (slot removed from grid) instead of `COLLAPSED_DOCK_RAIL_WIDTH`.
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Appended "Lab-day stabilization" block: CSS `position: absolute` rule repositions the right rail as an overlay in Design mode. Also adds `min-height: 0` propagation for split/hdl pane flex chains and `height: 100%` for canvas wrap elements.
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Added `splitSettledFitFrameRef` to track a second settled-fit rAF on split entry.
+  - Split-entry effect runs `fitToCircuit()` twice: once immediately (initial dimensions) and once after a second rAF (post-reflow dimensions).
+  - Fixed rAF cleanup race: frame2 ID stored in ref *before* any null assignment (not after).
+  - Added `setToolsExpanded` to `useEffect` dependency array.
+
+### Student-visible behavior
+
+- Split mode canvas no longer appears incorrectly zoomed on first entry.
+- Full workspace width is reclaimed when right inspector is collapsed in Design mode.
+- All panes maintain correct flex height in Canvas/Code/Split views.
+
+### Proof
+
+- `pnpm exec vitest run designSurface.workstation.test.tsx` → **15/15 PASS**
+- `pnpm exec vitest run ideWorkbenchShell.test.tsx` → **12/12 PASS**
+- `pnpm -s ide:gate:design-workbench-contract` → **PASS**
+- `pnpm --filter @redbyte/playground build` → **built in 5.31s (clean)**
+
+**Attribution**: Connor Angiel
+
+## Change Log 2026-03-16 (Design split comparison workspace refinement)
+
+**Subsystem**: IDE Design/Build product experience
+
+### Problem
+
+After the reclaim pass, Split had the right shell policy and pane ratio, but it still looked and behaved too much like Canvas mode:
+
+- the left pane kept the full authoring toolbar,
+- the shortcut overlay still leaked build-first guidance into comparison mode,
+- Split lacked a clear compare-specific action cluster,
+- the top chrome still felt busier than a deliberate circuit-vs-code workspace.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Added a Split-entry effect that collapses the expanded toolbar, returns to select mode, and fits the circuit on entry so comparison starts from a stable staged view.
+  - Replaced the full Canvas toolbar in Split with a compact comparison context:
+    - `Comparison` summary copy
+    - `Fit Circuit`
+    - `Center Selection`
+  - Removed the `More` toolbar toggle and expanded-toolbar row from Split.
+  - Hid the shortcut overlay and non-essential canvas zoom/presentation controls in Split.
+  - Kept one compact status row in Split with node/wire/zoom plus tick and run state.
+  - Added a clearer Split canvas indicator (`Circuit pane`) while preserving the code-favored pane ratio.
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Added Split-specific frame, toolbar, compact-status, and canvas-overlay styling so the mode reads calmer and tighter than Canvas.
+  - Reduced Split header/control-bar density and softened the left-pane staging visuals for comparison.
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+  - Updated the cramped stacked fallback assertion to reflect that shortcut overlay help is now Canvas-only.
+  - Added focused Split coverage for comparison tools, hidden full authoring toolbar, hidden shortcut overlay, hidden zoom presets, and compact comparison status.
+- `scripts/gates/ide-design-workbench-contract.mjs`
+  - Extended the live workbench gate to verify Split-specific comparison actions, absence of the full canvas authoring toolbar, absence of the shortcut overlay, and presence of the compact Split status row.
+
+### Student-visible behavior after fix
+
+- Split now reads as a circuit-vs-code comparison workspace instead of Canvas with code attached.
+- The left pane starts in a calmer staged state with quick compare actions instead of full build chrome.
+- Code remains slightly wider than the circuit, while status stays compact and docks remain collapsed by default.
+
+### Proof
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx --reporter=verbose` -> PASS
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx --reporter=verbose` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s ide:gate:design-workbench-contract` -> PASS
+- Live browser confirmation at `http://127.0.0.1:4173/os/?mode=design` in Split:
+  - comparison tools visible,
+  - left/right docks collapsed behind restore rails,
+  - full canvas toolbar count = `0`,
+  - shortcut overlay count = `0`,
+  - code pane width `1020.31px` > circuit pane width `801.67px`.
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-16 (Design multiselect contract triage)
 
 **Subsystem**: IDE Design/Build product experience / live gate coverage
@@ -20845,5 +20938,61 @@ Key details:
 **Remaining concern**
 
 - Repo health is now blocked by IDE Live Sim Contract.
+
+- **Attribution**: Connor Angiel
+
+---
+
+## Change Log 2026-03-17 (Design/Verify classroom loop truth pass)
+
+**Subsystem**: IDE Design + Verify classroom flow
+
+**Problem**
+
+- Students could not trust the Verify result language because the browser build still surfaced `COMPLETE` / `DIFFERS` instead of explicit `PASS` / `FAIL`.
+- The Design surface exposed a VHDL pane that behaved like an editor even though the real graph-from-HDL apply path is not wired in the app flow.
+- Live Simulation rows existed in Design but were not directly reachable in the classroom flow the browser gates exercise.
+
+**Root-cause classification**
+
+- Product semantics drift on Verify summary labels.
+- False affordance in Design generated-code inspection.
+- Inspector visibility mismatch in the live classroom loop.
+
+**Files changed**
+
+- packages/rb-apps/src/apps/ide/components/IdePrimitives.tsx
+- packages/rb-apps/src/apps/ide/surfaces/designWorkspaceConfig.ts
+- packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx
+- packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx
+
+**What changed**
+
+- Made Design VHDL generated/read-only by default in workspace config.
+- Added an explicit generated-code callout in Design so the pane no longer implies live HDL editing/apply support.
+- Kept the Design Live Simulation inspector section open/reachable for the classroom loop while preserving the existing toggle hook.
+- Restored Verify browser-facing status language to `PASS`, `PASS (INCOMPLETE)`, and `FAIL`.
+- Reworded the Verify authority note to make it explicit that Design trace is debug-only and does not affect trust status.
+- Rebuilt the package/app bundles used by the preview gates so the browser runtime actually served the updated IDE code.
+
+**Why minimal**
+
+- No new test files or new product subsystems.
+- Changes stay inside the existing Design/Verify UI primitives and surface copy.
+- Validation focused only on the flows that were broken in the browser loop.
+
+**Validation**
+
+- pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx --reporter=dot
+- pnpm --filter @redbyte/rb-apps build
+- pnpm --filter @redbyte/playground build
+- pnpm -s ide:gate:verify-workbench-contract -> PASS
+- pnpm -s ide:gate:student-loop-contract -> PASS
+- pnpm -s ide:gate:design-live-sim-contract -> PASS
+- pnpm -s ide:gate:live-sim-contract -> PASS
+
+**Remaining concern**
+
+- `pnpm --filter @redbyte/rb-apps build` still emits pre-existing TypeScript errors outside this change slice even though it refreshes the runtime bundle needed by the IDE preview flow.
 
 - **Attribution**: Connor Angiel

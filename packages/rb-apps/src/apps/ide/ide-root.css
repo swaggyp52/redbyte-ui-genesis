@@ -18587,6 +18587,12 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   background: linear-gradient(180deg, rgba(7, 16, 28, 0.96), rgba(5, 12, 22, 0.92));
 }
 
+[data-ide-mode-marker='design'] .ide-design-control-bar.is-split {
+  background:
+    linear-gradient(180deg, rgba(6, 14, 24, 0.98), rgba(4, 10, 18, 0.9)),
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 42%);
+}
+
 [data-ide-mode-marker='design'] .ide-design-control-bar-status {
   display: flex;
   flex-wrap: wrap;
@@ -18624,6 +18630,17 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   font-size: 11px;
   line-height: 1.45;
   color: rgba(177, 202, 227, 0.7);
+}
+
+[data-ide-mode-marker='design'] .ide-toolbar-group.is-split-context {
+  flex: 1 1 480px;
+  align-items: center;
+  gap: 8px 12px;
+  max-width: min(860px, 100%);
+}
+
+[data-ide-mode-marker='design'] .ide-design-split-compare-tools {
+  gap: 6px;
 }
 
 .ide-design-pane-row[data-design-view='split'] {
@@ -18688,6 +18705,31 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 [data-ide-mode-marker='design'] .ide-design-control-bar .ide-design-sim-story-summary {
   font-size: 12px;
+}
+
+[data-ide-mode-marker='design'] .ide-design-control-bar.is-split .ide-design-toolbar {
+  min-height: 32px;
+  padding: 4px 12px;
+}
+
+[data-ide-mode-marker='design'] .ide-design-control-bar.is-split .ide-design-control-bar-status {
+  gap: 6px;
+  padding: 4px 12px 6px;
+}
+
+[data-ide-mode-marker='design'] .ide-design-control-bar.is-split .ide-design-authoring-issues.is-compact-strip {
+  padding: 6px 10px;
+  gap: 4px;
+  border-radius: 9px;
+  background: rgba(7, 16, 28, 0.74);
+}
+
+[data-ide-mode-marker='design'] .ide-design-control-bar.is-split .ide-design-authoring-issues-status {
+  max-width: 48ch;
+}
+
+[data-ide-mode-marker='design'] .ide-design-control-bar.is-split .ide-design-authoring-canvas-meta {
+  gap: 4px 6px;
 }
 
 .ide-design-authoring-issues.is-compact-strip {
@@ -18892,3 +18934,92 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 [data-ide-mode-marker='design'] .ide-design-frame-status {
   flex: 0 0 auto;
 }
+
+[data-ide-mode-marker='design'] .ide-design-frame[data-design-view='split'] .ide-design-frame-header {
+  padding: 4px 12px 6px;
+}
+
+[data-ide-mode-marker='design'] .ide-design-frame[data-design-view='split'] .ide-design-frame-title {
+  font-size: 15px;
+}
+
+[data-ide-mode-marker='design'] .ide-design-frame[data-design-view='split'] .ide-design-frame-intent {
+  font-size: 10px;
+  line-height: 1.24;
+}
+
+[data-ide-mode-marker='design'] .ide-design-frame[data-design-view='split'] .ide-design-pane--canvas {
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 44%),
+    linear-gradient(180deg, rgba(6, 14, 24, 0.98), rgba(4, 10, 18, 0.98));
+}
+
+[data-ide-mode-marker='design'] .ide-design-frame[data-design-view='split'] .ide-design-tool-hud {
+  max-width: min(420px, calc(100% - 24px));
+  padding: 6px 10px;
+  gap: 4px 8px;
+  border-radius: 11px;
+  background: rgba(6, 14, 24, 0.72);
+}
+
+[data-ide-mode-marker='design'] .ide-design-frame[data-design-view='split'] .ide-design-canvas-view-tools {
+  right: 10px;
+  bottom: 10px;
+  gap: 6px;
+}
+
+[data-ide-mode-marker='design'] .ide-design-frame[data-design-view='split'] .ide-design-canvas-view-tools .ide-design-canvas-zoom-indicator,
+[data-ide-mode-marker='design'] .ide-design-frame[data-design-view='split'] .ide-design-canvas-view-tools .ide-design-canvas-presentation-indicator {
+  min-height: 20px;
+  padding: 2px 8px;
+  background: rgba(7, 16, 27, 0.68);
+}
+
+[data-ide-mode-marker='design'] .ide-design-frame[data-design-view='split'] .ide-design-canvas-view-tools .ide-design-canvas-controls {
+  gap: 4px;
+  padding: 3px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+  background: rgba(7, 15, 25, 0.74);
+}
+
+/* Lab-day stabilization: keep Design code/split layout unclipped and width-reclaimed. */
+[data-ide-mode-marker='design'] .ide-workbench-main.is-right-dock-collapsed .ide-workbench-dock-toggle-rail-right {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 6;
+}
+
+[data-ide-mode-marker='design'] .ide-design-pane-row[data-design-view='split'] .ide-design-pane--canvas,
+[data-ide-mode-marker='design'] .ide-design-pane-row[data-design-view='split'] .ide-design-pane--hdl,
+[data-ide-mode-marker='design'] .ide-design-pane-row[data-design-view='hdl'] .ide-design-pane--hdl {
+  min-height: 0;
+}
+
+[data-ide-mode-marker='design'] .ide-design-pane-row[data-design-view='split'] .ide-design-canvasWrap,
+[data-ide-mode-marker='design'] .ide-design-pane-row[data-design-view='split'] .ide-design-canvas,
+[data-ide-mode-marker='design'] .ide-design-pane-row[data-design-view='split'] .ide-design-canvas-live {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+[data-ide-mode-marker='design'] .ide-design-pane-row[data-design-view='split'] .ide-design-hdl-body,
+[data-ide-mode-marker='design'] .ide-design-pane-row[data-design-view='split'] .ide-design-hdl-primary-pane,
+[data-ide-mode-marker='design'] .ide-design-pane-row[data-design-view='split'] .ide-design-hdl-textarea,
+[data-ide-mode-marker='design'] .ide-design-pane-row[data-design-view='hdl'] .ide-design-hdl-body,
+[data-ide-mode-marker='design'] .ide-design-pane-row[data-design-view='hdl'] .ide-design-hdl-primary-pane,
+[data-ide-mode-marker='design'] .ide-design-pane-row[data-design-view='hdl'] .ide-design-hdl-textarea {
+  min-height: 0;
+}
+
+  /* Prevent overlay dock rails from clipping workspace content in Design code/split modes.
+     Rails are position:absolute over the workspace; padding them clear prevents text from
+     rendering behind the 26px rail button. Does not affect Canvas mode (docks are visible). */
+  [data-ide-mode-marker='design'] .ide-workbench-main.is-left-dock-collapsed .ide-workbench-workspace {
+    padding-left: 26px;
+  }
+  [data-ide-mode-marker='design'] .ide-workbench-main.is-right-dock-collapsed .ide-workbench-workspace {
+    padding-right: 26px;
+  }

@@ -217,7 +217,8 @@ export const IdeInspectorSection: React.FC<{
   collapsible?: boolean;
   defaultOpen?: boolean;
   accordionId?: string;
-}> = ({ title, children, testId, collapsible = true, defaultOpen = true, accordionId }) => {
+  disableCollapse?: boolean;
+}> = ({ title, children, testId, collapsible = true, defaultOpen = true, accordionId, disableCollapse = false }) => {
   const [localOpen, setLocalOpen] = React.useState(defaultOpen);
   const accordion = React.useContext(IdeAccordionContext);
 
@@ -225,6 +226,7 @@ export const IdeInspectorSection: React.FC<{
   const open = isAccordion ? accordion.openId === accordionId : localOpen;
 
   const toggleOpen = () => {
+    if (disableCollapse && open) return;
     if (isAccordion) {
       accordion.setOpenId(accordion.openId === accordionId ? null : accordionId);
     } else {
@@ -246,7 +248,7 @@ export const IdeInspectorSection: React.FC<{
           data-testid={testId ? `${testId}-toggle` : undefined}
         >
           <h4 className="ide-inspector-title">{title}</h4>
-          <span className="ide-inspector-toggle-state">{open ? 'Hide' : 'Show'}</span>
+          <span className="ide-inspector-toggle-state">{open ? (disableCollapse ? 'Live' : 'Hide') : 'Show'}</span>
         </button>
       ) : (
         <h4 className="ide-inspector-title">{title}</h4>

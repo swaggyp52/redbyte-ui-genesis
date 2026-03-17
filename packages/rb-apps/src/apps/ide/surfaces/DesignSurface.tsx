@@ -1497,6 +1497,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [canvasSize.height, canvasSize.width, editorCircuit.nodes, setCamera]);
 
   const fitToCircuitRef = useRef(fitToCircuit);
+  const previousDesignViewRef = useRef(designView);
+  const splitSettledFitFrameRef = useRef<number | null>(null);
   useEffect(() => { fitToCircuitRef.current = fitToCircuit; }, [fitToCircuit]);
 
   const zoomIn = useCallback(() => {
@@ -1639,6 +1641,35 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewportSeed]);
+
+  useEffect(() => {
+    if (designView !== 'split' && splitSettledFitFrameRef.current != null) {
+      window.cancelAnimationFrame(splitSettledFitFrameRef.current);
+      splitSettledFitFrameRef.current = null;
+    }
+    const enteredSplit = previousDesignViewRef.current !== 'split' && designView === 'split';
+    previousDesignViewRef.current = designView;
+    if (!enteredSplit) return;
+    setToolsExpanded(false);
+    setSelectMode();
+    if (editorCircuit.nodes.length === 0) return;
+    const frame = window.requestAnimationFrame(() => {
+      fitToCircuitRef.current();
+      // Store frame2 ID before any null assignment to avoid cleanup race
+      const frame2 = window.requestAnimationFrame(() => {
+        fitToCircuitRef.current();
+        splitSettledFitFrameRef.current = null;
+      });
+      splitSettledFitFrameRef.current = frame2;
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (splitSettledFitFrameRef.current != null) {
+        window.cancelAnimationFrame(splitSettledFitFrameRef.current);
+        splitSettledFitFrameRef.current = null;
+      }
+    };
+  }, [designView, editorCircuit.nodes.length, setSelectMode, setToolsExpanded]);
 
   const handleSignalsUpdated = useCallback(() => {
     // Runtime simulation state is authoritative. Canvas-local ticks are ignored.
@@ -2352,6 +2383,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
   const showFullAuthoringStatus = workspacePreset.showFullAuthoringStatus;
   const showCompactAuthoringStatus = workspacePreset.showCompactAuthoringStatus;
+  const isCanvasWorkspace = workspacePreset.mode === 'canvas';
+  const isCodeWorkspace = workspacePreset.mode === 'hdl';
+  const isSplitWorkspace = workspacePreset.mode === 'split';
+  const showSplitCompareToolbar = isSplitWorkspace && effectiveDesignView === 'split';
   const showSimulationStrip =
     workspacePreset.showSimulationStrip &&
     (simRunning ||
@@ -3898,7 +3933,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
           {/* Student-loop contract: live simulation must stay directly reachable even when
               other inspector sections participate in shared accordion behavior. */}
-          <IdeInspectorSection title="Live Simulation" testId="ide-design-live-sim-section" defaultOpen={false}>
+          <IdeInspectorSection
+            title="Live Simulation"
+            testId="ide-design-live-sim-section"
+            defaultOpen
+            disableCollapse
+          >
             <div className="ide-inline-actions">
               {simRunning ? (
                 <IdeButton tone="secondary" onClick={pauseSimulation} testId="ide-design-sim-pause">
@@ -4122,7 +4162,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           title={workspacePreset.title}
           intent={workspacePreset.intent}
           status={
-            workspacePreset.showCanvasTools ? (
+            isSplitWorkspace ? (
+              <IdeStatusPill tone={authoringIssueCounts.errorCount > 0 ? 'warn' : 'secondary'}>
+                Compare Mode
+              </IdeStatusPill>
+            ) : workspacePreset.showCanvasTools ? (
               <IdeStatusPill tone={isPlacementMode || toolMode === 'wire' ? 'warn' : 'ok'}>
                 {activeModeLabel}
               </IdeStatusPill>
@@ -4133,14 +4177,42 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
             {/* ── Compact primary toolbar ── */}
           <div
-            className={`ide-design-control-bar${workspacePreset.showCanvasTools ? ' is-canvas' : ' is-code'}${
+            className={`ide-design-control-bar${isCanvasWorkspace ? ' is-canvas' : isSplitWorkspace ? ' is-split' : ' is-code'}${
               showWorkspaceStatusBar ? ' has-status' : ''
             }`}
             data-testid="ide-design-control-bar"
           >
             <div className="ide-design-toolbar" data-testid="ide-design-toolbar">
               {/* Groups 1+2: Canvas tools — only visible when canvas is in the view */}
-              {workspacePreset.showCanvasTools ? (
+              {isCodeWorkspace ? (
+                <div className="ide-toolbar-group is-code-context" data-testid="ide-design-code-context">
+                  <span className="ide-design-code-context-label">Code focus</span>
+                  <span className="ide-design-code-context-desc" data-testid="ide-design-code-context-primary-artifact">
+                    Viewing {primaryArtifactFileName} ({primaryArtifactLabel}) as the primary artifact.
+                    Switch artifacts and open the secondary drawer from the code pane header.
+                  </span>
+                </div>
+              ) : showSplitCompareToolbar ? (
+                <div className="ide-toolbar-group is-split-context" data-testid="ide-design-split-context">
+                  <span className="ide-design-code-context-label">Comparison</span>
+                  <span className="ide-design-code-context-desc" data-testid="ide-design-split-context-summary">
+                    Stage the circuit against {primaryArtifactLabel} with minimal build chrome and keep code slightly favored.
+                  </span>
+                  <div className="ide-inline-actions ide-design-split-compare-tools" data-testid="ide-design-split-compare-tools">
+                    <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit-split">
+                      Fit Circuit
+                    </IdeButton>
+                    <IdeButton
+                      tone="ghost"
+                      onClick={centerSelection}
+                      disabled={selection.nodes.size === 0}
+                      testId="ide-design-center-selection-split"
+                    >
+                      Center Selection
+                    </IdeButton>
+                  </div>
+                </div>
+              ) : workspacePreset.showCanvasTools ? (
                 <>
                   {/* Group 1: Mode — primary weight */}
                   <div className="ide-toolbar-group is-mode">
@@ -4186,16 +4258,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </IdeButton>
                   </div>
                 </>
-              ) : (
-                /* Code-only context strip — replaces build tools when viewing generated code */
-                <div className="ide-toolbar-group is-code-context" data-testid="ide-design-code-context">
-                  <span className="ide-design-code-context-label">Code focus</span>
-                  <span className="ide-design-code-context-desc" data-testid="ide-design-code-context-primary-artifact">
-                    Viewing {primaryArtifactFileName} ({primaryArtifactLabel}) as the primary artifact.
-                    Switch artifacts and open the secondary drawer from the code pane header.
-                  </span>
-                </div>
-              )}
+              ) : null}
 
               {/* Group 3: Utilities — floated right */}
               <div className="ide-toolbar-group is-utils">
@@ -4212,20 +4275,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </button>
                   ))}
                 </div>
-                <button
-                  type="button"
-                  className="ide-toolbar-toggle"
-                  aria-expanded={toolsExpanded}
-                  onClick={() => setToolsExpanded((v) => !v)}
-                  data-testid="ide-design-tools-toggle"
-                >
-                  {toolsExpanded ? 'Less ▲' : 'More ▼'}
-                </button>
+                {!showSplitCompareToolbar ? (
+                  <button
+                    type="button"
+                    className="ide-toolbar-toggle"
+                    aria-expanded={toolsExpanded}
+                    onClick={() => setToolsExpanded((v) => !v)}
+                    data-testid="ide-design-tools-toggle"
+                  >
+                    {toolsExpanded ? 'Less ▲' : 'More ▼'}
+                  </button>
+                ) : null}
               </div>
             </div>
 
             {/* ── Expanded secondary toolbar ── */}
-            {toolsExpanded && (
+            {toolsExpanded && !showSplitCompareToolbar && (
               <div className="ide-design-toolbarExpanded" data-testid="ide-design-toolbar-expanded">
                 <span className="ide-design-depth-pill" data-testid="ide-design-undo-depth">
                   Undo {undoDepth}
@@ -4383,6 +4448,24 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-zoom">
                           {Math.round(camera.zoom * 100)}%
                         </span>
+                        {isSplitWorkspace ? (
+                          <>
+                            <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-split-stat-tick">
+                              Tick {simTick}
+                            </span>
+                            <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-split-stat-mode">
+                              {simRunning ? 'Running' : 'Paused'}
+                            </span>
+                            {activeVerifySignal ? (
+                              <span
+                                className="ide-design-canvas-titlebar-stat is-trace"
+                                data-testid="ide-design-split-stat-verify"
+                              >
+                                Verify {activeVerifySignal}
+                              </span>
+                            ) : null}
+                          </>
+                        ) : null}
                       </div>
                     </div>
                     {liveHdlResult.error ? (
@@ -4594,7 +4677,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </div>
                     ) : null}
                     <div
-                      className="ide-design-canvas-view-tools"
+                      className={`ide-design-canvas-view-tools${showSplitCompareToolbar ? ' is-split' : ''}`}
                       data-testid="ide-design-canvas-view-tools"
                       data-blocks-canvas-placement="1"
                       data-blocks-macro-placement="1"
@@ -4606,7 +4689,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         >
                           {zoomPercent}% zoom
                         </span>
-                        {presentationZoom === 'classroom' ? (
+                        {showSplitCompareToolbar ? (
+                          <span
+                            className="ide-design-canvas-presentation-indicator"
+                            data-testid="ide-design-split-canvas-indicator"
+                          >
+                            Circuit pane
+                          </span>
+                        ) : presentationZoom === 'classroom' ? (
                           <span
                             className="ide-design-canvas-presentation-indicator"
                             data-testid="ide-design-presentation-zoom-indicator"
@@ -4622,46 +4712,52 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit-canvas">
                           Fit
                         </IdeButton>
-                        <IdeButton
-                          tone="ghost"
-                          onClick={centerSelection}
-                          disabled={selection.nodes.size === 0}
-                          testId="ide-design-center-selection-canvas"
-                        >
-                          Center
-                        </IdeButton>
-                        <IdeButton
-                          tone={presentationZoom === 'classroom' ? 'secondary' : 'ghost'}
-                          onClick={() => setPresentationZoom((previous) => previous === 'dense' ? 'classroom' : 'dense')}
-                          testId="ide-design-presentation-zoom-toggle-canvas"
-                        >
-                          {presentationZoom === 'classroom' ? 'Classroom' : 'Dense'}
-                        </IdeButton>
+                        {!showSplitCompareToolbar ? (
+                          <>
+                            <IdeButton
+                              tone="ghost"
+                              onClick={centerSelection}
+                              disabled={selection.nodes.size === 0}
+                              testId="ide-design-center-selection-canvas"
+                            >
+                              Center
+                            </IdeButton>
+                            <IdeButton
+                              tone={presentationZoom === 'classroom' ? 'secondary' : 'ghost'}
+                              onClick={() => setPresentationZoom((previous) => previous === 'dense' ? 'classroom' : 'dense')}
+                              testId="ide-design-presentation-zoom-toggle-canvas"
+                            >
+                              {presentationZoom === 'classroom' ? 'Classroom' : 'Dense'}
+                            </IdeButton>
+                          </>
+                        ) : null}
                       </div>
-                      <div
-                        className="ide-design-zoom-presets"
-                        data-testid="ide-design-zoom-presets"
-                      >
-                        {([0.5, 0.75, 1.0, 1.25] as const).map((preset) => (
+                      {!showSplitCompareToolbar ? (
+                        <div
+                          className="ide-design-zoom-presets"
+                          data-testid="ide-design-zoom-presets"
+                        >
+                          {([0.5, 0.75, 1.0, 1.25] as const).map((preset) => (
+                            <button
+                              key={preset}
+                              type="button"
+                              className={`ide-design-zoom-preset${Math.round(camera.zoom * 100) === Math.round(preset * 100) ? ' is-active' : ''}`}
+                              onClick={() => setZoomToPreset(preset)}
+                              data-testid={`ide-design-zoom-preset-${Math.round(preset * 100)}`}
+                            >
+                              {Math.round(preset * 100)}%
+                            </button>
+                          ))}
                           <button
-                            key={preset}
                             type="button"
-                            className={`ide-design-zoom-preset${Math.round(camera.zoom * 100) === Math.round(preset * 100) ? ' is-active' : ''}`}
-                            onClick={() => setZoomToPreset(preset)}
-                            data-testid={`ide-design-zoom-preset-${Math.round(preset * 100)}`}
+                            className="ide-design-zoom-preset"
+                            onClick={fitToCircuit}
+                            data-testid="ide-design-zoom-preset-fit"
                           >
-                            {Math.round(preset * 100)}%
+                            Fit
                           </button>
-                        ))}
-                        <button
-                          type="button"
-                          className="ide-design-zoom-preset"
-                          onClick={fitToCircuit}
-                          data-testid="ide-design-zoom-preset-fit"
-                        >
-                          Fit
-                        </button>
-                      </div>
+                        </div>
+                      ) : null}
                     </div>
                     {/* C-7: Debug overlay banner — shown when externally frozen at a verify tick */}
                     {externalDebugTick != null && (
@@ -4788,20 +4884,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         });
                       }}
                     />
-                    <div
-                      className="ide-design-shortcut-strip ide-design-shortcut-strip--overlay"
-                      data-testid="ide-design-shortcut-strip"
-                      aria-hidden="true"
-                      data-blocks-canvas-placement="1"
-                      style={{ opacity: hasInteracted ? 0.18 : 0.72, transition: 'opacity 0.4s ease' }}
-                    >
-                      <span><code>S</code> select</span>
-                      <span><code>W</code> wire</span>
-                      <span><code>Ctrl + wheel</code> zoom</span>
-                      <span><code>Space + drag</code> pan</span>
-                      <span><code>F</code> fit</span>
-                      <span><code>G</code> snap</span>
-                    </div>
+                    {isCanvasWorkspace ? (
+                      <div
+                        className="ide-design-shortcut-strip ide-design-shortcut-strip--overlay"
+                        data-testid="ide-design-shortcut-strip"
+                        aria-hidden="true"
+                        data-blocks-canvas-placement="1"
+                        style={{ opacity: hasInteracted ? 0.18 : 0.72, transition: 'opacity 0.4s ease' }}
+                      >
+                        <span><code>S</code> select</span>
+                        <span><code>W</code> wire</span>
+                        <span><code>Ctrl + wheel</code> zoom</span>
+                        <span><code>Space + drag</code> pan</span>
+                        <span><code>F</code> fit</span>
+                        <span><code>G</code> snap</span>
+                      </div>
+                    ) : null}
                     {editorCircuit.nodes.length === 0 && !isPlacementMode && (
                       <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
                         <h3>Build a circuit in three steps</h3>
@@ -5012,11 +5110,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <span className="ide-design-sync-badge ide-design-sync-badge-live" data-testid="ide-design-primary-artifact-badge">
                     Primary
                   </span>
-                  {primaryArtifactIsEditable && hdlDraftText && hdlDraftText !== (topHdl ?? liveHdlResult.vhd) ? (
-                    <span className="ide-design-sync-badge" data-testid="ide-design-sync-badge">
-                      Modified
-                    </span>
-                  ) : null}
                   {liveHdlResult.warnings.length > 0 && (
                     <span className="ide-design-sync-badge ide-design-sync-badge-warn">
                       {liveHdlResult.warnings.length} warning{liveHdlResult.warnings.length !== 1 ? 's' : ''}
@@ -5121,6 +5214,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       {liveHdlResult.error}
                     </IdeCallout>
                   )}
+                  <IdeCallout tone="info" title="Generated from the circuit" testId="ide-design-generated-code-note">
+                    This code is read-only in Design. Edit the canvas to regenerate it, or use Import to bring HDL into RedByte.
+                  </IdeCallout>
                   <div className="ide-design-hdl-primary-pane" data-testid="ide-design-primary-artifact-pane">
                     <textarea
                       className={`ide-code-textarea ide-design-hdl-textarea ide-design-hdl-textarea--primary${primaryArtifactIsEditable ? '' : ' is-readonly'}`}
@@ -5132,8 +5228,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       value={primaryArtifactText}
                       onChange={primaryArtifactIsEditable ? (e) => setHdlDraftText(e.target.value) : undefined}
                       placeholder={
-                        primaryArtifactIsEditable
-                          ? 'Build a circuit in Canvas view to generate live VHDL, or import HDL via Import.'
+                        primaryArtifact === 'vhdl'
+                          ? 'VHDL is generated from the current circuit. Use Import to bring HDL into RedByte.'
                           : 'Verilog is generated from the current circuit in real time.'
                       }
                       readOnly={!primaryArtifactIsEditable}

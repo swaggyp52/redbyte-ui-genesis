@@ -43,7 +43,7 @@ export const DESIGN_ARTIFACT_DESCRIPTORS: Record<DesignArtifact, DesignArtifactD
     id: 'vhdl',
     label: 'VHDL',
     fileName: 'top.vhd',
-    editable: true,
+    editable: false,
   },
   verilog: {
     id: 'verilog',
