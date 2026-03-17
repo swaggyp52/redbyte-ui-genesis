@@ -127,6 +127,14 @@ const passResult: ProjectHealthVerifyResult = {
   ranAtIso: '2026-03-12T00:00:00.000Z',
 };
 
+const failResult: ProjectHealthVerifyResult = {
+  status: 'fail',
+  hash: 'abc123fail',
+  reportHash: 'rep-fail',
+  failingTick: 3,
+  ranAtIso: '2026-03-12T00:00:00.000Z',
+};
+
 describe('ExportSurface trust clarity', () => {
   afterEach(() => { cleanup(); });
 
@@ -214,6 +222,22 @@ describe('ExportSurface trust clarity', () => {
     const consequence = getByTestId('ide-export-trust-consequence');
     expect(consequence.textContent).toMatch(/Test|PASS|trusted/i);
     // Download button must remain enabled (not disabled) in AVAILABLE state
+    expect(getByTestId('ide-export-dock-download').hasAttribute('disabled')).toBe(false);
+  });
+
+  it('keeps export available when verify failed against the selected reference', () => {
+    const { getByTestId } = render(
+      <ExportSurface
+        project={buildMappedProject()}
+        determinismHash="ide-hash"
+        verifyResult={failResult}
+      />
+    );
+
+    const banner = getByTestId('ide-export-trust-banner');
+    expect(banner.textContent).toContain('AVAILABLE');
+    expect(banner.textContent).toContain('NOT TRUSTED');
+    expect(banner.textContent).not.toContain('BLOCKED');
     expect(getByTestId('ide-export-dock-download').hasAttribute('disabled')).toBe(false);
   });
 });

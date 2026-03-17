@@ -141,9 +141,30 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(getByTestId('ide-verify-empty-state').textContent).toContain('Verify before trusting the circuit');
+    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('comparing against project vectors');
     expect(getByTestId('ide-verify-empty-run').textContent).toContain('Run Verification');
     expect(getByTestId('ide-verify-empty-open-vectors').textContent).toContain('Open Project vectors');
     expect(getByTestId('ide-verify-run').textContent).toContain('Run Verification');
+  });
+
+  it('labels trace-only verification as observation mode when no expected outputs are loaded', () => {
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={false}
+        customVectors={[
+          { id: 'cv-01', tick: 0, inputs: { sw0: 1 }, expected: {} },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('observation only');
   });
 
   it('populates truth table rows for a passing run', () => {

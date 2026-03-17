@@ -90,22 +90,6 @@ export function deriveProjectHealth(
     });
   }
 
-  if (core.lastVerify?.status === 'fail') {
-    blockingIssues.push({
-      code: 'RBP1003',
-      message: 'Latest verification run failed.',
-      fixPath: { mode: 'verify', actionLabel: 'Run Verification' },
-    });
-  }
-
-  if (core.dirtySinceVerify) {
-    blockingIssues.push({
-      code: 'RBP1004',
-      message: 'Design changed since last verification run.',
-      fixPath: { mode: 'verify', actionLabel: 'Run Verification' },
-    });
-  }
-
   if (core.lastExport?.status === 'blocked') {
     blockingIssues.push({
       code: 'RBP2001',

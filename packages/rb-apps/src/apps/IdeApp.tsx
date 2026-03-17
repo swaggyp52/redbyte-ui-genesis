@@ -252,6 +252,17 @@ export const IdeApp: React.FC = () => {
       }),
     [projectHealth, readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors]
   );
+  const statusBarGateStatus = useMemo<'pass' | 'warn' | 'fail'>(() => {
+    if (projectHealth.blockingIssues.length > 0) return 'fail';
+    if (projectHealthCore.lastVerify?.status === 'fail') return 'warn';
+    if (projectHealth.dirtySinceVerify || projectHealth.dirtySinceExport) return 'warn';
+    return 'pass';
+  }, [
+    projectHealth.blockingIssues.length,
+    projectHealth.dirtySinceExport,
+    projectHealth.dirtySinceVerify,
+    projectHealthCore.lastVerify?.status,
+  ]);
 
   const pendingExample = useMemo(
     () => (pendingExampleId ? getIdeExampleById(pendingExampleId) : undefined),
@@ -1536,7 +1547,7 @@ export const IdeApp: React.FC = () => {
         />
       ) : null}
 
-      <IdeStatusBar mode={currentMode} determinismHash={determinismHash} gateStatus={projectHealth.blockingIssues.length > 0 ? 'fail' : (projectHealth.dirtySinceVerify || projectHealth.dirtySinceExport) ? 'warn' : 'pass'} />
+      <IdeStatusBar mode={currentMode} determinismHash={determinismHash} gateStatus={statusBarGateStatus} />
     </div>
     </BoardSignalProvider>
   );

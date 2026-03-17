@@ -1,5 +1,46 @@
 # AI State
 
+## Change Log 2026-03-17 (Verify reference mismatch no longer acts like export invalidity)
+
+**Subsystem**: IDE project health / Verify reference-state UX / Export trust semantics
+
+### Problem
+
+RedByte had a workflow trust bug: a Verify failure or stale Verify run was still being promoted into global project `blockingIssues`, even though ExportSurface already treated those conditions as untrusted-but-available evidence rather than structural export blockers. That made the pipeline and shell present reference mismatch like the build itself was invalid. Verify also hid what it was comparing against by collapsing everything into vague `Project vectors loaded` wording.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectHealth.ts`
+  - Stopped treating failed Verify and dirty-since-Verify as structural `blockingIssues`.
+  - Structural blockers remain reserved for missing circuit/mapping/vectors and actual export blockers.
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Retuned the status bar so failed/stale Verify reads as `warn` instead of a hard `fail` when export structure is still valid.
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Added explicit reference-mode copy for:
+    - project vectors,
+    - custom vectors,
+    - project + custom vectors,
+    - observation-only runs with no expected outputs.
+  - Clarified that mismatch means “differs from selected reference,” not “structurally invalid.”
+  - Named Verify run scenarios dynamically so the evidence card reflects the real reference mode instead of always saying `Project Vectors`.
+  - Added the active reference mode to the Verify evidence facts.
+- Tests
+  - Added `projectHealth.test.ts` to lock the advisory-vs-blocker semantics.
+  - Extended export/verify workstation tests so failed Verify still leaves export available and Verify labels observation/reference state explicitly.
+
+### Student-visible behavior
+
+- A Verify mismatch no longer makes the whole project read as structurally blocked when generated HDL and export artifacts are still valid.
+- Export remains available when Verify differs from the selected reference, but it stays clearly marked as not trusted.
+- Verify now states exactly what it is comparing against, or whether the run is observation-only.
+
+### Proof
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectHealth.test.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/pipelineStrip.test.tsx` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-17 (Design split -> canvas refit stabilization)
 
 **Subsystem**: IDE Design workspace camera/layout recovery
