@@ -2,16 +2,13 @@ import type { Circuit } from '@redbyte/rb-logic-core';
 import { toCircuitV1 } from '@redbyte/rb-logic-core';
 import { circuitToVerilog } from '@redbyte/rb-fpga-toolchain';
 import type { IoMapping, IoMappingEntry } from '@redbyte/rb-utils';
-import { lintBasys3ProjectPorts } from './portLint';
 import { compareCodepoint } from '../../../export/codepointSort';
-import { netlistFromCircuit } from '../../../export/netlistExport';
-import {
-  vhdlFromNetlist,
-  type VhdlTopInputBinding,
-  type VhdlTopOutputBinding,
-  type VhdlTopPort,
-} from '../../../export/vhdlExport';
+import { vhdlFromNetlist } from '../../../export/vhdlExport';
 import { BASYS3_ALLOWED_PACKAGE_PINS, resolveBasys3PackagePin } from './basys3Pins';
+import { buildBasys3ExportModel } from './basys3ExportModel';
+import { lintBasys3ProjectPorts } from './portLint';
+
+export { buildVhdlTopLevelBindings } from './basys3ExportModel';
 
 export interface Basys3BundleResult {
   topV: string;
@@ -31,7 +28,7 @@ function mappingKey(entry: IoMappingEntry): string {
 }
 
 function stableSortMapping(entries: IoMappingEntry[]): IoMappingEntry[] {
-  return [...entries].sort((a, b) => compareCodepoint(mappingKey(a), mappingKey(b)));
+  return [...entries].sort((left, right) => compareCodepoint(mappingKey(left), mappingKey(right)));
 }
 
 function parsePackagePin(line: string): string | null {
@@ -42,82 +39,6 @@ function parsePackagePin(line: string): string | null {
 function toSignalName(entry: IoMappingEntry): string {
   if (entry.label?.trim()) return sanitizeIdentifier(entry.label.trim());
   return sanitizeIdentifier(`${entry.nodeId}_${entry.port}`);
-}
-
-/**
- * Normalize a label prefix to the Basys3 canonical port base name.
- * 'SW', 'SWITCH' → 'SW'; 'LED', 'LAMP' → 'LED'; others upper-cased.
- */
-function normalizePortBase(raw: string): string {
-  const upper = raw.toUpperCase();
-  if (upper === 'SW' || upper === 'SWITCH') return 'SW';
-  if (upper === 'LED' || upper === 'LAMP') return 'LED';
-  return upper;
-}
-
-/**
- * Build a map of entryId → XDC port reference string, mirroring buildPortGroups() in vhdlExport.ts.
- *
- * Input entries default to 'SW' group; output entries default to 'LED' group when unlabeled.
- * Labeled entries (SW[0], LED[1]) are grouped by prefix and emitted as vector bit refs.
- * Unlabeled entries without a clear prefix fall back to individual nodeId_port names.
- *
- * Returns Map<entryId, xdcPortRef> e.g. 'sw0-id' → 'SW[0]', 'led0-id' → 'LED[0]'.
- */
-function buildXdcPortRefMap(
-  inputs: IoMappingEntry[],
-  outputs: IoMappingEntry[],
-): Map<string, string> {
-  function processGroup(entries: IoMappingEntry[], defaultBase: string): Map<string, string> {
-    const prefixGroups = new Map<string, IoMappingEntry[]>();
-    const listIndexByPrefix = new Map<string, number>();
-
-    for (const entry of entries) {
-      const label = entry.label?.trim();
-      let prefix: string;
-      if (label) {
-        const match = label.match(/^([A-Za-z_]+)/);
-        prefix = match ? normalizePortBase(match[1]) : sanitizeIdentifier(label);
-      } else {
-        // No label → use defaultBase ('SW' or 'LED') to match buildPortGroups behaviour
-        prefix = defaultBase;
-      }
-      if (!prefixGroups.has(prefix)) prefixGroups.set(prefix, []);
-      prefixGroups.get(prefix)!.push(entry);
-    }
-
-    const result = new Map<string, string>();
-    for (const [prefix, groupEntries] of prefixGroups) {
-      const bits = groupEntries.map((e) => {
-        const m = (e.label ?? '').match(/\[(\d+)\]/);
-        return m ? parseInt(m[1], 10) : -1;
-      });
-      const maxExplicitBit = Math.max(...bits.filter((b) => b >= 0), -1);
-      const isVector = maxExplicitBit > 0 || groupEntries.length > 1;
-
-      listIndexByPrefix.set(prefix, 0);
-      for (const entry of groupEntries) {
-        const bitMatch = (entry.label ?? '').match(/\[(\d+)\]/);
-        const listIdx = listIndexByPrefix.get(prefix) ?? 0;
-        listIndexByPrefix.set(prefix, listIdx + 1);
-        const bitIndex = bitMatch ? parseInt(bitMatch[1], 10) : listIdx;
-        result.set(entry.id, isVector ? `${prefix}[${bitIndex}]` : prefix);
-      }
-    }
-    return result;
-  }
-
-  const result = new Map<string, string>();
-  processGroup(inputs, 'SW').forEach((v, k) => result.set(k, v));
-  processGroup(outputs, 'LED').forEach((v, k) => result.set(k, v));
-  return result;
-}
-
-/** True when the circuit has at least one first-class IO node (Switch, Lamp, etc.). */
-function circuitHasIoNodes(circuit: { nodes?: Array<{ type: string }> }): boolean {
-  return (circuit.nodes ?? []).some((n) =>
-    ['INPUT', 'OUTPUT', 'Switch', 'Lamp', 'Button', 'Clock', 'CLOCK'].includes(n.type),
-  );
 }
 
 const XDC_GROUP_ORDER = [
@@ -142,8 +63,9 @@ function detectSignalGroup(entry: IoMappingEntry): string {
     alias.startsWith('SEG') ||
     alias === 'DP' ||
     (alias.length === 2 && alias[0] === 'C' && 'ABCDEFG'.includes(alias[1] ?? ''))
-  )
+  ) {
     return '7-Segment Cathodes';
+  }
   return 'Other';
 }
 
@@ -160,15 +82,15 @@ function buildTopXdc(
   type TaggedEntry = { entry: IoMappingEntry; dir: 'in' | 'out' };
 
   const allEntries: TaggedEntry[] = [
-    ...stableSortMapping(ioMapping.inputs).map((e) => ({ entry: e, dir: 'in' as const })),
-    ...stableSortMapping(ioMapping.outputs).map((e) => ({ entry: e, dir: 'out' as const })),
+    ...stableSortMapping(ioMapping.inputs).map((entry) => ({ entry, dir: 'in' as const })),
+    ...stableSortMapping(ioMapping.outputs).map((entry) => ({ entry, dir: 'out' as const })),
   ];
 
   const groups = new Map<string, TaggedEntry[]>();
   for (const tagged of allEntries) {
     const group = detectSignalGroup(tagged.entry);
     if (!groups.has(group)) groups.set(group, []);
-    groups.get(group)!.push(tagged);
+    groups.get(group)?.push(tagged);
   }
 
   for (const groupName of XDC_GROUP_ORDER) {
@@ -187,10 +109,8 @@ function buildTopXdc(
         continue;
       }
       const portRef = portRefMap?.get(entry.id) ?? toSignalName(entry);
-      // Two-line format matching Basys3 master XDC reference standard
       lines.push(`set_property PACKAGE_PIN ${packagePin} [get_ports {${portRef}}]`);
       lines.push(`set_property IOSTANDARD LVCMOS33 [get_ports {${portRef}}]`);
-      // Basys3 onboard 100 MHz oscillator is on W5 — emit timing constraint.
       if (packagePin === 'W5') {
         lines.push(
           `create_clock -period 10.000 -name sys_clk -waveform {0.000 5.000} [get_ports {${portRef}}]`,
@@ -200,7 +120,7 @@ function buildTopXdc(
     lines.push('');
   }
 
-  return lines.join('\n').trimEnd() + '\n';
+  return `${lines.join('\n').trimEnd()}\n`;
 }
 
 function buildReadme(
@@ -252,32 +172,17 @@ function buildReadme(
   return lines.join('\n');
 }
 
-export function buildVhdlTopLevelBindings(ioMapping: IoMapping): {
-  topPorts: VhdlTopPort[];
-  topInputBindings: VhdlTopInputBinding[];
-  topOutputBindings: VhdlTopOutputBinding[];
-} {
-  const sortedInputs = stableSortMapping(ioMapping.inputs);
-  const sortedOutputs = stableSortMapping(ioMapping.outputs);
+function extractVhdlEntityPorts(vhdlText: string): string[] {
+  const match = vhdlText.match(/\bPort\s*\(([\s\S]*?)\n\s*\);/i);
+  if (!match) return [];
+  return match[1]
+    .split(';')
+    .map((line) => line.trim().split(':')[0]?.trim() ?? '')
+    .filter(Boolean);
+}
 
-  const topPorts: VhdlTopPort[] = [
-    ...sortedInputs.map((entry) => ({ name: toSignalName(entry), dir: 'in' as const, vhdlType: 'STD_LOGIC' })),
-    ...sortedOutputs.map((entry) => ({ name: toSignalName(entry), dir: 'out' as const, vhdlType: 'STD_LOGIC' })),
-  ];
-
-  const topInputBindings: VhdlTopInputBinding[] = sortedInputs.map((entry) => ({
-    portName: toSignalName(entry),
-    toNodeId: entry.nodeId,
-    toPort: entry.port,
-  }));
-
-  const topOutputBindings: VhdlTopOutputBinding[] = sortedOutputs.map((entry) => ({
-    portName: toSignalName(entry),
-    fromNodeId: entry.nodeId,
-    fromPort: entry.port,
-  }));
-
-  return { topPorts, topInputBindings, topOutputBindings };
+function extractXdcPortNames(xdcText: string): string[] {
+  return [...xdcText.matchAll(/\[get_ports\s+\{([^}]+)\}\]/g)].map((match) => match[1].trim());
 }
 
 export function exportBasys3Bundle(
@@ -286,71 +191,47 @@ export function exportBasys3Bundle(
   options?: { entityName?: string },
 ): Basys3BundleResult {
   const warnings: string[] = [];
-  const netlist = netlistFromCircuit(circuit);
+  const exportModel = buildBasys3ExportModel(circuit, ioMapping);
+  const entityName = options?.entityName ?? 'top';
 
-  // For circuits with first-class IO nodes (Switch/Lamp), let buildPortGroups in
-  // vhdlFromNetlist produce SW/LED vector ports matching the swaggy.zip standard.
-  // For degenerate circuits (only logic-gate ports in ioMapping), fall back to
-  // explicit topPorts so the entity still has declared ports.
-  const useVectorPorts = circuitHasIoNodes(circuit);
-  const { topPorts, topInputBindings, topOutputBindings } = buildVhdlTopLevelBindings(ioMapping);
-  const vhdl = vhdlFromNetlist(netlist, {
-    entityName: options?.entityName ?? 'top',
-    ...(useVectorPorts ? {} : { topPorts, topInputBindings, topOutputBindings }),
+  const vhdl = vhdlFromNetlist(exportModel.netlist, {
+    entityName,
+    topPorts: exportModel.topPorts,
+    topInputBindings: exportModel.topInputBindings,
+    topOutputBindings: exportModel.topOutputBindings,
   });
 
   warnings.push(...vhdl.warnings);
 
-    // ---------------------------------------------------------------------------
-    // VHDL entity port extraction (used for pre-ZIP parity check)
-    // ---------------------------------------------------------------------------
-
-    function extractVhdlEntityPorts(vhdlText: string): string[] {
-      // Use a Port-block end marker (own line with ');') to avoid truncation on nested
-      // parentheses inside vector types like STD_LOGIC_VECTOR(N downto 0).
-      const match = vhdlText.match(/\bPort\s*\(([\s\S]*?)\n\s*\);/i);
-      if (!match) return [];
-      return match[1]
-        .split(';')
-        .map((line) => line.trim().split(':')[0]?.trim() ?? '')
-        .filter(Boolean);
-    }
-
-    function extractXdcPortNames(xdcText: string): string[] {
-      return [...xdcText.matchAll(/\[get_ports\s+\{([^}]+)\}\]/g)].map((m) => m[1].trim());
-    }
-
+  // TODO(slice4-migration): replace this legacy raw-circuit Verilog path with an
+  // export-model-backed adapter so top.v no longer has its own structural authority.
   const verilog = circuitToVerilog(toCircuitV1(circuit), ioMapping, {
-    moduleName: options?.entityName ?? 'top',
+    moduleName: entityName,
     targetBoard: 'basys3',
   });
-
   if (verilog.unsupportedNodes.length > 0) {
     warnings.push(...verilog.unsupportedNodes.map((node) => `Unsupported node: ${node}`));
   }
   warnings.push(...verilog.warnings);
 
-  // Build XDC port ref map only for vector-port circuits (SW/LED style).
-  // For degenerate circuits (topPorts fallback), null → uses toSignalName instead.
-  const xdcPortRefMap = useVectorPorts
-    ? buildXdcPortRefMap(
-        stableSortMapping(ioMapping.inputs),
-        stableSortMapping(ioMapping.outputs),
-      )
-    : null;
+  const xdcPortRefMap = new Map<string, string>();
+  for (const ref of [...exportModel.inputRefs, ...exportModel.outputRefs]) {
+    xdcPortRefMap.set(ref.entryId, ref.xdcRef);
+  }
 
   const topXdc = buildTopXdc(ioMapping, warnings, xdcPortRefMap);
   const lint = lintBasys3ProjectPorts(
     {
       sources: [{ path: 'top.v', language: 'verilog', text: verilog.verilog }],
-      top: options?.entityName ?? 'top',
+      top: entityName,
     },
-    topXdc
+    topXdc,
   );
 
-  // When using vector VHDL ports, the verilog generator uses individual names that
-  // diverge from the vector XDC refs by design — suppress misleading lint warnings.
-  if (!useVectorPorts) {
+  const hasVectorTopPorts = exportModel.topPorts.some((port) =>
+    /STD_LOGIC_VECTOR/i.test(port.vhdlType ?? '')
+  );
+  if (!hasVectorTopPorts) {
     if (!lint.verilogModuleFound) {
       warnings.push('top module not found in generated verilog');
     }
@@ -370,43 +251,39 @@ export function exportBasys3Bundle(
     .map((pin) => `Unknown Basys3 package pin in XDC: ${pin}`);
   warnings.push(...xdcPinWarnings);
 
-    // ---- VHDL entity port vs XDC port parity check ---------------------------
-    // For vector ports: XDC uses SW[0], SW[1] but VHDL entity declares SW.
-    // Strip [N] from XDC refs to get base port name for comparison.
-    const vhdlEntityPorts = new Set(extractVhdlEntityPorts(vhdl.vhd));
-    const xdcPortRefs = extractXdcPortNames(topXdc).filter(
-      // Exclude create_clock port ref (it's a timing constraint, not a port)
-      (p) => !p.startsWith('sys_clk'),
-    );
-    // Map each XDC port ref to its base entity port name (strip [N] suffix)
-    const xdcBaseNames = new Set(xdcPortRefs.map((p) => p.replace(/\[\d+\]$/, '')));
-    const vhdlXdcMismatches: string[] = [];
-    for (const p of vhdlEntityPorts) {
-      if (!xdcBaseNames.has(p)) {
-        vhdlXdcMismatches.push(`VHDL entity port "${p}" has no XDC constraint`);
-      }
+  const vhdlEntityPorts = new Set(extractVhdlEntityPorts(vhdl.vhd));
+  const xdcPortRefs = extractXdcPortNames(topXdc).filter((port) => !port.startsWith('sys_clk'));
+  const xdcBaseNames = new Set(xdcPortRefs.map((port) => port.replace(/\[\d+\]$/, '')));
+  const vhdlXdcMismatches: string[] = [];
+  for (const port of vhdlEntityPorts) {
+    if (!xdcBaseNames.has(port)) {
+      vhdlXdcMismatches.push(`VHDL entity port "${port}" has no XDC constraint`);
     }
-    for (const p of xdcPortRefs) {
-      const base = p.replace(/\[\d+\]$/, '');
-      if (!vhdlEntityPorts.has(base)) {
-        vhdlXdcMismatches.push(`XDC get_ports "${p}" not found in VHDL entity`);
-      }
+  }
+  for (const port of xdcPortRefs) {
+    const base = port.replace(/\[\d+\]$/, '');
+    if (!vhdlEntityPorts.has(base)) {
+      vhdlXdcMismatches.push(`XDC get_ports "${port}" not found in VHDL entity`);
     }
-    warnings.push(...vhdlXdcMismatches);
+  }
+  warnings.push(...vhdlXdcMismatches);
 
   const readme = buildReadme(ioMapping, warnings, xdcPortRefMap);
-  const uniqueWarnings = Array.from(new Set(warnings)).sort((a, b) => compareCodepoint(a, b));
+  const uniqueWarnings = Array.from(new Set(warnings)).sort((left, right) =>
+    compareCodepoint(left, right),
+  );
 
-  // When using vector VHDL ports (SW/LED style), verilog lint diverges by design —
-  // skip verilog-based checks; validity is proven by the VHDL-vs-XDC parity check.
-  const valid = useVectorPorts
-    ? xdcPinWarnings.length === 0 && vhdlXdcMismatches.length === 0
+  const valid = hasVectorTopPorts
+    ? xdcPinWarnings.length === 0 &&
+      vhdlXdcMismatches.length === 0 &&
+      exportModel.blockingDiagnostics.length === 0
     : lint.verilogModuleFound &&
       lint.missingInHdl.length === 0 &&
       lint.missingInXdc.length === 0 &&
       xdcPinWarnings.length === 0 &&
       verilog.unsupportedNodes.length === 0 &&
-      vhdlXdcMismatches.length === 0;
+      vhdlXdcMismatches.length === 0 &&
+      exportModel.blockingDiagnostics.length === 0;
 
   return {
     topV: verilog.verilog,

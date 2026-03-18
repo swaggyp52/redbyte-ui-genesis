@@ -1,5 +1,74 @@
 # AI State
 
+## Change Log 2026-03-18 (Export/backend now consumes IR-derived structure)
+
+**Subsystem**: Basys3 export bundle / netlist export / VHDL export / synth-subset validation
+
+### Problem
+
+Export still had parallel structural authority after Slice 3:
+
+1. `netlistExport.ts` re-inferred ports/nets from raw circuit connections instead of consuming elaborated IR.
+2. `basys3Bundle.ts` and `basys3ExportService.ts` still rebuilt naming, port identity, and clock/reset contract details from raw graph assumptions.
+3. VHDL/XDC parity could drift for first-class boundary IO, including the existing `two-bit-counter` bundle/XDC mismatch and direct `Switch -> Lamp` vector-port regression.
+
+### What changed
+
+- `packages/rb-apps/src/fpga/boards/basys3/basys3ExportModel.ts` (new)
+  - Added `buildBasys3ExportModel(...)` as the lowered export seam:
+    - `Circuit -> elaborateCircuit() -> CircuitIR -> buildSimulationModel(ir) -> Basys3ExportModel`
+  - Centralized export-structure authority for:
+    - canonical top-level ports,
+    - deterministic top-level bindings,
+    - IR-backed netlist generation,
+    - boundary-aware Basys3 alias vector grouping,
+    - blocking IR diagnostics / runnable state.
+- `packages/rb-apps/src/export/netlistExport.ts`
+  - Added `netlistFromIr(ir)` and made `netlistFromCircuit(...)` a thin compatibility wrapper with a migration TODO.
+  - Rebuilt netlist nodes and nets from `CircuitIR` primitives/ports/nets instead of raw connection inference.
+  - Made netlist metadata deterministic:
+    - `createdAt = 1970-01-01T00:00:00.000Z`
+    - `circuitDigest = ir.irHash`
+- `packages/rb-apps/src/export/vhdlExport.ts`
+  - Added explicit bit-indexed top-level bindings so VHDL can drive `SW(n)` / `LED(n)` ports directly from export-model bindings.
+  - Preserved scalar behavior for non-boundary logic-port mappings.
+- `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts`
+  - Switched bundle VHDL/XDC/README generation to consume `Basys3ExportModel` instead of raw-circuit structural inference.
+  - Fixed boundary-aware alias grouping so first-class IO nodes mapped to `SW0..N` / `LD0..N` export as vector ports when appropriate, while logic-node mappings keep scalar fallback names.
+  - Preserved `top.v` generation as an explicit temporary compatibility seam with a TODO marker; it no longer drives VHDL/XDC structural authority.
+- `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`
+  - Replaced raw graph synth-subset validation with IR/model-backed validation:
+    - IR diagnostics,
+    - combinational loop gating,
+    - clock/reset contract checks from `SimulationModel` bindings,
+    - required-port discovery from `CircuitIR`.
+- Tests
+  - Added IR-backed netlist authority coverage in `packages/rb-apps/src/__tests__/netlist-export.test.ts`.
+  - Added explicit vector top-binding coverage in `packages/rb-apps/src/export/__tests__/vhdlExport.test.ts`.
+  - Kept the bundle/export consistency gates green, including the former `two-bit-counter` parity failure.
+
+### Student-visible behavior
+
+- Export now follows the compiler-fed structure path for VHDL/XDC/README/testbench-facing authority instead of re-deriving names and bindings from the raw graph.
+- Supported valid designs keep deterministic export output.
+- Direct boundary pass-through designs now emit consistent vector ports (`SW`, `LED`) without undeclared VHDL identifiers.
+- The prior `two-bit-counter` bundle/XDC mismatch is resolved.
+- Invalid structural designs remain blocked by IR-backed diagnostics instead of permissive export fallthrough.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/netlist-export.test.ts packages/rb-apps/src/export/__tests__/vhdlExport.test.ts packages/rb-apps/src/__tests__/basys3-port-naming-phase1.test.ts packages/rb-apps/src/__tests__/basys3-bundle-gate.test.ts packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts packages/rb-apps/src/export/__tests__/golden-examples.test.ts packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts packages/rb-apps/src/export/__tests__/ideSubmissionDeterminism.test.ts packages/rb-apps/src/__tests__/ide-vivado-artifact-consistency.test.ts packages/rb-apps/src/__tests__/export-reimport-roundtrip.test.ts` -> PASS (10 files, 84 tests)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/ide-synth-subset-contract.test.ts packages/rb-apps/src/__tests__/basys3-bundle-gate.test.ts packages/rb-apps/src/export/__tests__/golden-examples.test.ts` -> PASS (3 files, 37 tests)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/export/__tests__/stopship-verify.test.ts` -> PARTIAL:
+  - STOP-SHIP 1-6 pass, including HDL pane/export parity
+  - remaining failures are only stale STOP-SHIP 7 assumptions that unsolved starter examples (`lab5-adder`, `lab6-full-adder`, `lab7-comparator`) should verify clean
+- `pnpm repo:status` -> PARTIAL:
+  - ahead-count guard still warns because local branch is already `ahead 4` in this remote-disabled environment
+  - export/synth/persistence/import contracts pass
+  - remaining failing check is `IDE Design Fit Contract`, outside the Slice 4 export/backend change set
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-18 (Verify path now consumes IR-derived structure)
 
 **Subsystem**: Verify schedule / vectorRunner / deterministic verification seam

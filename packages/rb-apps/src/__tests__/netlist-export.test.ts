@@ -73,4 +73,28 @@ describe('netlist export', () => {
     const netlistB = netlistFromCircuit(circuitB);
     expect(netlistA.circuitDigest).toBe(netlistB.circuitDigest);
   });
+
+  it('uses IR-derived primitive ports instead of inferring only from raw connections', () => {
+    const circuit: Circuit = {
+      nodes: [
+        { id: 'd_in', type: 'INPUT', position: { x: 0, y: 0 }, rotation: 0, config: {}, label: 'D' },
+        { id: 'ff0', type: 'DFlipFlop', position: { x: 120, y: 0 }, rotation: 0, config: {}, label: 'Q0' },
+        { id: 'q_out', type: 'OUTPUT', position: { x: 240, y: 0 }, rotation: 0, config: {}, label: 'Q' },
+      ],
+      connections: [
+        { from: { nodeId: 'd_in', portName: 'out' }, to: { nodeId: 'ff0', portName: 'D' } },
+        { from: { nodeId: 'ff0', portName: 'Q' }, to: { nodeId: 'q_out', portName: 'in' } },
+      ],
+    };
+
+    const netlist = netlistFromCircuit(circuit);
+    const ff0 = netlist.nodes.find((node) => node.id === 'ff0');
+    expect(ff0?.ports.map((port) => `${port.name}:${port.direction}`)).toEqual(
+      expect.arrayContaining([
+        'D:in',
+        'CLK:in',
+        'Q:out',
+      ]),
+    );
+  });
 });

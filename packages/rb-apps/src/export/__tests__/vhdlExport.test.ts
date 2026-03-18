@@ -462,4 +462,28 @@ describe('vhdlFromNetlist', () => {
       }
       expect(result.warnings).toHaveLength(0);
     });
+
+    it('supports explicit vector topPorts bindings derived from export refs', () => {
+      const result = vhdlFromNetlist(passThroughNetlist, {
+        entityName: 'top',
+        topPorts: [
+          { name: 'SW', dir: 'in', vhdlType: 'STD_LOGIC_VECTOR(1 downto 0)' },
+          { name: 'LED', dir: 'out', vhdlType: 'STD_LOGIC_VECTOR(1 downto 0)' },
+        ],
+        topInputBindings: [
+          { portName: 'SW', bitIndex: 0, toNodeId: 'sw0_node', toPort: 'out' },
+          { portName: 'SW', bitIndex: 1, toNodeId: 'sw1_node', toPort: 'out' },
+        ],
+        topOutputBindings: [
+          { portName: 'LED', bitIndex: 0, fromNodeId: 'ld0_node', fromPort: 'in' },
+          { portName: 'LED', bitIndex: 1, fromNodeId: 'ld1_node', fromPort: 'in' },
+        ],
+      });
+
+      expect(result.vhd).toContain('SW : in  STD_LOGIC_VECTOR(1 downto 0)');
+      expect(result.vhd).toContain('LED : out STD_LOGIC_VECTOR(1 downto 0)');
+      expect(result.vhd).toContain('LED(0) <= SW(0)');
+      expect(result.vhd).toContain('LED(1) <= SW(1)');
+      expect(result.warnings).toEqual([]);
+    });
   });

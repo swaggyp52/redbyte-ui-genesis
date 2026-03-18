@@ -31,12 +31,14 @@ export interface VhdlTopPort {
 
 export interface VhdlTopInputBinding {
   portName: string;
+  bitIndex?: number;
   toNodeId: string;
   toPort: string;
 }
 
 export interface VhdlTopOutputBinding {
   portName: string;
+  bitIndex?: number;
   fromNodeId: string;
   fromPort: string;
 }
@@ -161,6 +163,12 @@ function gate3Operator(type: string): { op: string; invert: boolean } | null {
     case 'XOR3':  return { op: 'xor', invert: false };
     default:      return null;
   }
+}
+
+function topBindingSignalRef(binding: { portName: string; bitIndex?: number }): string {
+  return binding.bitIndex !== undefined
+    ? `${binding.portName}(${binding.bitIndex})`
+    : binding.portName;
 }
 
 // ---------------------------------------------------------------------------
@@ -333,7 +341,7 @@ export function vhdlFromNetlist(
   (topInputBindings ?? []).forEach((binding) => {
     const key = `${binding.toNodeId}:${binding.toPort}`;
     if (!topInputBindingByTarget.has(key)) {
-      topInputBindingByTarget.set(key, binding.portName);
+      topInputBindingByTarget.set(key, topBindingSignalRef(binding));
     }
   });
 
@@ -364,7 +372,7 @@ export function vhdlFromNetlist(
   // Top-level input bindings can target non-INPUT helper nodes (for example Clock),
   // so map explicit binding targets directly to VHDL port expressions.
   for (const binding of topInputBindings ?? []) {
-    const direct = binding.portName;
+    const direct = topBindingSignalRef(binding);
       // Always override: topPort names take precedence over buildPortGroups vector names
       // (e.g. 'sw0_node_out' must override 'SW(0)' otherwise architecture body uses
       //  the undeclared portGroup expression instead of the declared entity port name).
@@ -761,13 +769,14 @@ export function vhdlFromNetlist(
   // ---- Drive output ports from internal signals or direct input connections --
   if ((topOutputBindings?.length ?? 0) > 0) {
     topOutputBindings?.forEach((binding) => {
+        const topOutputSignalRef = topBindingSignalRef(binding);
         // First: direct signal lookup — works for directly-pinned logic gate outputs
         // (e.g. AND gate output port 'out' → signal 'and_0').
         const directSig =
           nodeIdToSignal.get(`${binding.fromNodeId}:${binding.fromPort}`) ??
           null;
         if (directSig) {
-          lines.push(`  ${binding.portName} <= ${directSig};`);
+          lines.push(`  ${topOutputSignalRef} <= ${directSig};`);
           return;
         }
 
@@ -785,7 +794,7 @@ export function vhdlFromNetlist(
         warnings.push(
             `Top output port "${binding.portName}" has no driver — output will be tied low`,
         );
-          lines.push(`  ${binding.portName} <= '0'; -- undriven output`);
+          lines.push(`  ${topOutputSignalRef} <= '0'; -- undriven output`);
         return;
       }
 
@@ -797,10 +806,10 @@ export function vhdlFromNetlist(
           warnings.push(
             `Top output port "${binding.portName}" has unresolved driver ${driverNet.from.nodeId}.${driverNet.from.port}`,
           );
-          lines.push(`  ${binding.portName} <= '0'; -- unresolved driver`);
+          lines.push(`  ${topOutputSignalRef} <= '0'; -- unresolved driver`);
           return;
         }
-        lines.push(`  ${binding.portName} <= ${resolvedDriverSig};`);
+        lines.push(`  ${topOutputSignalRef} <= ${resolvedDriverSig};`);
     });
   } else {
     outputNodes.forEach((outNode) => {

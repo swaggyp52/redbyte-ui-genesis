@@ -10,6 +10,7 @@
  * All exports must go through this service.
  */
 
+import type { CircuitIR, SimulationModel } from '@redbyte/rb-logic-core';
 import { exportBasys3Bundle } from './basys3Bundle';
 import type { RBProject } from '../../export/projectFormat';
 import { generateTestbenchVhdl } from './testbenchGenerator';
@@ -22,6 +23,7 @@ import {
   normalizeBasys3PinAlias,
   resolveBasys3PackagePin,
 } from './basys3Pins';
+import { buildBasys3ExportModel } from './basys3ExportModel';
 
 export interface Basys3ExportError {
   type: 'validation' | 'constraint' | 'logic' | 'unknown';
@@ -65,42 +67,13 @@ interface MappingRecord {
   key: string;
 }
 
-interface NormalizedConnection {
-  fromNodeId: string;
-  fromPort: string;
-  toNodeId: string;
-  toPort: string;
-}
-
 const BASYS3_INPUT_ALIAS_LIST = listKnownBasys3AliasesForDirection('input');
 const BASYS3_OUTPUT_ALIAS_LIST = listKnownBasys3AliasesForDirection('output');
 
-const SYNTH_SUPPORTED_NODE_TYPES = new Set([
-  'INPUT',
-  'Switch',
-  'Clock',
-  'PowerSource',
-  'Ground',
-  'OUTPUT',
-  'Lamp',
-  'Wire',
-  'AND',
-  'OR',
-  'XOR',
-  'NOT',
-  'NAND',
-  'NOR',
-  'XNOR',
-  'FullAdder',
-  'MUX4',
-  'DFlipFlop',
-  'DLatch',
-  'TFlipFlop',
-  'JKFlipFlop',
-]);
-
-const STATEFUL_NODE_TYPES = new Set(['DFlipFlop', 'DLatch', 'TFlipFlop', 'JKFlipFlop']);
-const CLOCKED_NODE_TYPES = new Set(['DFlipFlop', 'TFlipFlop', 'JKFlipFlop']);
+interface ExportAuthorityContext {
+  ir: CircuitIR;
+  simModel: SimulationModel;
+}
 
 /**
  * Validate RBProject for Basys3 export.
@@ -123,9 +96,10 @@ function validateProjectForBasys3(project: RBProject): Basys3ExportError[] {
     return errors;
   }
 
+  const authority: ExportAuthorityContext = buildBasys3ExportModel(project.circuit, project.ioMapping);
   const inputMappings = normalizeMappings(project, 'input');
   const outputMappings = normalizeMappings(project, 'output');
-  const requiredPorts = deriveRequiredPorts(project);
+  const requiredPorts = deriveRequiredPorts(project, authority.ir);
   const matchedMappingKeys = new Set<string>();
 
   // Check for required switch mappings (SW0-15)
@@ -146,7 +120,7 @@ function validateProjectForBasys3(project: RBProject): Basys3ExportError[] {
     });
   }
 
-  errors.push(...validateSynthSubset(project));
+  errors.push(...validateSynthSubset(project, authority.ir, authority.simModel));
   errors.push(...validateTopPortWidths(project));
 
   for (const requiredPort of requiredPorts) {
@@ -502,64 +476,50 @@ function normalizeMappings(project: RBProject, direction: MappingDirection): Map
     .sort((left, right) => compareCodepoint(left.key, right.key));
 }
 
-function validateSynthSubset(project: RBProject): Basys3ExportError[] {
+function validateSynthSubset(
+  project: RBProject,
+  ir: CircuitIR,
+  simModel: SimulationModel,
+): Basys3ExportError[] {
   const diagnostics: Basys3ExportError[] = [];
-  const circuit = project.circuit;
-  const normalizedConnections = normalizeCircuitConnections(circuit);
-  const nodesById = new Map(circuit.nodes.map((node) => [node.id, node]));
-
-  for (const node of circuit.nodes) {
-    if (SYNTH_SUPPORTED_NODE_TYPES.has(node.type)) continue;
-    diagnostics.push({
-      type: 'logic',
-      severity: 'error',
-      message: `Unsupported synth subset node type "${node.type}" on node "${node.id}". Fix: replace it with supported v1 primitives (IO, constants, combinational gates, DLatch, DFlipFlop, TFlipFlop, JKFlipFlop).`,
-    });
-  }
-
-  const inboundByEndpoint = new Map<string, NormalizedConnection[]>();
-  for (const connection of normalizedConnections) {
-    const endpointKey = `${connection.toNodeId}.${connection.toPort}`;
-    const existing = inboundByEndpoint.get(endpointKey);
-    if (existing) {
-      existing.push(connection);
-    } else {
-      inboundByEndpoint.set(endpointKey, [connection]);
-    }
-  }
-
-  for (const [endpointKey, inbound] of inboundByEndpoint.entries()) {
-    if (inbound.length < 2) continue;
-    const [nodeId, portName] = endpointKey.split('.');
-    const sourceList = inbound
-      .map((entry) => `${entry.fromNodeId}.${entry.fromPort}`)
-      .sort((left, right) => compareCodepoint(left, right))
-      .join(', ');
-    diagnostics.push({
-      type: 'logic',
-      severity: 'error',
-      message: `Multiple drivers detected for "${nodeId}.${portName}" from: ${sourceList}. Fix: keep exactly one upstream source per input port.`,
-    });
-  }
-
+  const seenMessages = new Set<string>();
   const hasTopLevelHdl = isTopLevelHdlPortProjection(project);
-  if (!hasTopLevelHdl) {
-    const outputNodes = circuit.nodes.filter((node) => node.type === 'OUTPUT' || node.type === 'Lamp');
-    for (const outputNode of outputNodes) {
-      const hasDriver = normalizedConnections.some((entry) => entry.toNodeId === outputNode.id);
-      if (hasDriver) continue;
-      diagnostics.push({
-        type: 'logic',
-        severity: 'error',
-        message: `Floating output detected on node "${outputNode.id}" (${outputNode.label ?? outputNode.id}). Fix: connect a single upstream driver before export.`,
-      });
+
+  const pushDiagnostic = (diagnostic: Basys3ExportError): void => {
+    if (seenMessages.has(diagnostic.message)) return;
+    seenMessages.add(diagnostic.message);
+    diagnostics.push(diagnostic);
+  };
+
+  for (const diagnostic of ir.diagnostics) {
+    if (hasTopLevelHdl && diagnostic.code === 'IR003') continue;
+    if (
+      (diagnostic.code === 'IR004' || diagnostic.code === 'IR005') &&
+      isSatisfiedByDirectInputMapping(project, diagnostic.nodeId, diagnostic.port)
+    ) {
+      continue;
     }
+    pushDiagnostic({
+      type: 'logic',
+      severity: diagnostic.severity === 'info' ? 'warning' : diagnostic.severity,
+      message: diagnostic.message,
+    });
   }
 
-  diagnostics.push(...validateClockResetContract(circuit, normalizedConnections, nodesById));
-  diagnostics.push(...detectCombinationalLoopViolations(circuit, normalizedConnections, nodesById));
+  if (ir.features.hasCombinationalLoop) {
+    pushDiagnostic({
+      type: 'logic',
+      severity: 'error',
+      message:
+        'Combinational loop detected. Fix: break the loop with a sequential element (DFlipFlop) or remove feedback.',
+    });
+  }
 
-  return diagnostics;
+  for (const diagnostic of validateClockResetContract(ir, simModel)) {
+    pushDiagnostic(diagnostic);
+  }
+
+  return diagnostics.sort((left, right) => compareCodepoint(left.message, right.message));
 }
 
 function isTopLevelHdlPortProjection(project: RBProject): boolean {
@@ -608,65 +568,27 @@ function validateTopPortWidths(project: RBProject): Basys3ExportError[] {
 }
 
 function validateClockResetContract(
-  circuit: RBProject['circuit'],
-  normalizedConnections: NormalizedConnection[],
-  nodesById: Map<string, RBProject['circuit']['nodes'][number]>
+  ir: CircuitIR,
+  simModel: SimulationModel,
 ): Basys3ExportError[] {
   const diagnostics: Basys3ExportError[] = [];
-  const statefulNodes = circuit.nodes.filter((node) => STATEFUL_NODE_TYPES.has(node.type));
-  if (statefulNodes.length === 0) return diagnostics;
+  const statefulPrimitives = ir.primitives.filter((primitive) =>
+    ['DFlipFlop', 'DLatch', 'TFlipFlop', 'JKFlipFlop'].includes(primitive.type)
+  );
+  if (statefulPrimitives.length === 0) return diagnostics;
 
-  const clockDrivers = new Set<string>();
-  const resetDrivers = new Set<string>();
-  const enableDrivers = new Set<string>();
-
-  for (const node of statefulNodes) {
-    const inbound = normalizedConnections.filter((entry) => entry.toNodeId === node.id);
-    const clockInputs = inbound.filter((entry) => /^(clk|clock|c|ck)$/i.test(entry.toPort));
-    if (CLOCKED_NODE_TYPES.has(node.type) && clockInputs.length === 0) {
-      diagnostics.push({
-        type: 'logic',
-        severity: 'error',
-        message: `Sequential node "${node.id}" is missing a clock input. Fix: connect "${node.id}.clk" to a mapped clock source (for example clk -> CLK100MHZ / W5).`,
-      });
-      continue;
-    }
-    if (clockInputs.length > 1) {
-      diagnostics.push({
-        type: 'logic',
-        severity: 'error',
-        message: `Sequential node "${node.id}" has multiple clock drivers. Fix: keep one deterministic clock source for "${node.id}.clk".`,
-      });
-    }
-    for (const entry of clockInputs) {
-      clockDrivers.add(`${entry.fromNodeId}.${entry.fromPort}`);
-    }
-
-    const resetInputs = inbound.filter((entry) => /^(rst|reset|clr|clear)$/i.test(entry.toPort));
-    if (resetInputs.length > 1) {
-      diagnostics.push({
-        type: 'logic',
-        severity: 'error',
-        message: `Sequential node "${node.id}" has multiple reset drivers. Fix: keep one active-high reset source for "${node.id}.rst".`,
-      });
-    }
-    for (const entry of resetInputs) {
-      resetDrivers.add(`${entry.fromNodeId}.${entry.fromPort}`);
-      const driverNode = nodesById.get(entry.fromNodeId);
-      if (driverNode?.type === 'NOT') {
-        diagnostics.push({
-          type: 'logic',
-          severity: 'error',
-          message: `Unsupported reset polarity on "${node.id}.rst": source "${entry.fromNodeId}" inverts reset. Fix: synth subset v1 requires direct active-high reset wiring.`,
-        });
-      }
-    }
-
-    const enableInputs = inbound.filter((entry) => /^(en|enable)$/i.test(entry.toPort));
-    for (const entry of enableInputs) {
-      enableDrivers.add(`${entry.fromNodeId}.${entry.fromPort}`);
-    }
-  }
+  const primitiveById = new Map(ir.primitives.map((primitive) => [primitive.id, primitive]));
+  const netsByName = new Map(ir.nets.map((net) => [net.name, net]));
+  const clockDrivers = new Set(
+    simModel.clockBindings
+      .map((binding) => binding.canonicalName ?? binding.netName ?? binding.primitiveId)
+      .filter((binding): binding is string => typeof binding === 'string' && binding.length > 0),
+  );
+  const resetDrivers = new Set(
+    simModel.resetBindings
+      .map((binding) => binding.canonicalName ?? binding.netName ?? binding.primitiveId)
+      .filter((binding): binding is string => typeof binding === 'string' && binding.length > 0),
+  );
 
   if (clockDrivers.size > 1) {
     const sortedDrivers = Array.from(clockDrivers).sort((left, right) => compareCodepoint(left, right));
@@ -686,126 +608,27 @@ function validateClockResetContract(
     });
   }
 
-  if (enableDrivers.size > 1) {
-    const sortedEnable = Array.from(enableDrivers).sort((left, right) => compareCodepoint(left, right));
-    diagnostics.push({
-      type: 'logic',
-      severity: 'warning',
-      message: `Multiple enable sources detected (${sortedEnable.join(', ')}). Verify deterministic enable semantics before export.`,
-    });
-  }
-
-  return diagnostics;
-}
-
-function detectCombinationalLoopViolations(
-  circuit: RBProject['circuit'],
-  normalizedConnections: NormalizedConnection[],
-  nodesById: Map<string, RBProject['circuit']['nodes'][number]>
-): Basys3ExportError[] {
-  const diagnostics: Basys3ExportError[] = [];
-  const adjacency = new Map<string, Set<string>>();
-  const nonSequentialNodes = new Set(
-    circuit.nodes
-      .filter((node) => !STATEFUL_NODE_TYPES.has(node.type))
-      .map((node) => node.id)
-  );
-
-  for (const nodeId of nonSequentialNodes) {
-    adjacency.set(nodeId, new Set());
-  }
-
-  for (const connection of normalizedConnections) {
-    if (!nonSequentialNodes.has(connection.fromNodeId)) continue;
-    if (!nonSequentialNodes.has(connection.toNodeId)) continue;
-    adjacency.get(connection.fromNodeId)?.add(connection.toNodeId);
-  }
-
-  const visited = new Set<string>();
-  const inStack = new Set<string>();
-  const parent = new Map<string, string>();
-  let cycle: string[] | null = null;
-
-  const buildCycle = (fromId: string, toId: string): string[] => {
-    const nodes = [toId];
-    let cursor = fromId;
-    while (cursor !== toId && parent.has(cursor)) {
-      nodes.push(cursor);
-      cursor = parent.get(cursor) ?? toId;
-    }
-    nodes.push(toId);
-    return nodes.reverse();
-  };
-
-  const dfs = (nodeId: string): boolean => {
-    visited.add(nodeId);
-    inStack.add(nodeId);
-
-    for (const next of adjacency.get(nodeId) ?? []) {
-      if (!visited.has(next)) {
-        parent.set(next, nodeId);
-        if (dfs(next)) return true;
-        continue;
-      }
-      if (!inStack.has(next)) continue;
-      cycle = buildCycle(nodeId, next);
-      return true;
-    }
-
-    inStack.delete(nodeId);
-    return false;
-  };
-
-  for (const nodeId of nonSequentialNodes) {
-    if (visited.has(nodeId)) continue;
-    if (dfs(nodeId)) break;
-  }
-
-  if (cycle && cycle.length > 0) {
-    const cycleLabel = cycle
-      .map((nodeId) => {
-        const node = nodesById.get(nodeId);
-        return node ? `${node.id}(${node.type})` : nodeId;
-      })
-      .join(' -> ');
+  for (const primitive of statefulPrimitives) {
+    if (!primitive.resetBinding) continue;
+    const resetNet = netsByName.get(primitive.resetBinding);
+    if (!resetNet || resetNet.drivers.length !== 1) continue;
+    const resetDriverPrimitive = primitiveById.get(resetNet.drivers[0]?.nodeId ?? '');
+    if (resetDriverPrimitive?.type !== 'NOT') continue;
     diagnostics.push({
       type: 'logic',
       severity: 'error',
-      message: `Combinational loop detected: ${cycleLabel}. Fix: break the loop with a sequential element (DFlipFlop) or remove feedback.`,
+      message: `Unsupported reset polarity on "${primitive.id}.rst": source "${resetDriverPrimitive.id}" inverts reset. Fix: synth subset v1 requires direct active-high reset wiring.`,
     });
   }
 
   return diagnostics;
-}
-
-function normalizeCircuitConnections(circuit: RBProject['circuit']): NormalizedConnection[] {
-  return circuit.connections
-    .map((connection) => ({
-      fromNodeId:
-        typeof connection.from === 'string' ? connection.from : connection.from.nodeId,
-      fromPort:
-        typeof connection.from === 'string'
-          ? connection.fromPin ?? connection.fromPort ?? 'out'
-          : connection.from.portName ?? connection.from.port ?? 'out',
-      toNodeId:
-        typeof connection.to === 'string' ? connection.to : connection.to.nodeId,
-      toPort:
-        typeof connection.to === 'string'
-          ? connection.toPin ?? connection.toPort ?? 'in'
-          : connection.to.portName ?? connection.to.port ?? 'in',
-    }))
-    .sort((left, right) => {
-      const leftKey = `${left.fromNodeId}.${left.fromPort}->${left.toNodeId}.${left.toPort}`;
-      const rightKey = `${right.fromNodeId}.${right.fromPort}->${right.toNodeId}.${right.toPort}`;
-      return compareCodepoint(leftKey, rightKey);
-    });
 }
 
 function findMappingRecord(entries: MappingRecord[], normalizedPortName: string): MappingRecord | undefined {
   return entries.find((entry) => entry.aliases.includes(normalizedPortName));
 }
 
-function deriveRequiredPorts(project: RBProject): RequiredPort[] {
+function deriveRequiredPorts(project: RBProject, ir: CircuitIR): RequiredPort[] {
   const required = new Map<string, RequiredPort>();
 
   const register = (name: string, direction: RequiredPortDirection) => {
@@ -825,16 +648,9 @@ function deriveRequiredPorts(project: RBProject): RequiredPort[] {
     register(topPort.name, topPort.direction);
   }
 
-  for (const node of project.circuit.nodes) {
-    const declared = (node.label ?? '').trim() || node.id;
-    if (!declared) continue;
-    if (node.type === 'Switch' || node.type === 'InputPin' || node.type === 'INPUT' || node.type === 'Clock') {
-      register(declared, 'input');
-      continue;
-    }
-    if (node.type === 'Lamp' || node.type === 'OUTPUT') {
-      register(declared, 'output');
-    }
+  for (const port of ir.ports) {
+    const direction = port.kind === 'output' ? 'output' : 'input';
+    register(port.name, direction);
   }
 
   return Array.from(required.values()).sort((left, right) => compareCodepoint(left.name, right.name));
@@ -934,6 +750,40 @@ function parseVerilogTopPorts(
 
 function normalizeSignalName(name: string): string {
   return name.trim().toLowerCase();
+}
+
+const PORT_ALIAS_GROUPS: ReadonlyArray<ReadonlyArray<string>> = [
+  ['a', 'in1'],
+  ['b', 'in2'],
+  ['c', 'in3'],
+  ['clk', 'clock', 'ck'],
+  ['rst', 'reset', 'clr', 'clear'],
+  ['en', 'enable'],
+  ['q_inv', 'qbar', 'q_not'],
+];
+
+function portAliases(name: string): string[] {
+  const normalized = normalizeSignalName(name);
+  for (const group of PORT_ALIAS_GROUPS) {
+    if (group.includes(normalized)) return [...group];
+  }
+  return [normalized];
+}
+
+function portsEquivalent(left: string, right: string): boolean {
+  const leftAliases = new Set(portAliases(left));
+  return portAliases(right).some((alias) => leftAliases.has(alias));
+}
+
+function isSatisfiedByDirectInputMapping(
+  project: RBProject,
+  nodeId: string | undefined,
+  port: string | undefined,
+): boolean {
+  if (!project.ioMapping || !nodeId || !port) return false;
+  return project.ioMapping.inputs.some(
+    (entry) => entry.nodeId === nodeId && portsEquivalent(entry.port, port),
+  );
 }
 
 function displayMappingEntry(entry: MappingRecord): string {
