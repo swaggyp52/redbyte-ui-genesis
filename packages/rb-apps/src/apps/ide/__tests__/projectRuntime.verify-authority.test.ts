@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RBProject } from '../../../export/projectFormat';
+import { useCircuitStore } from '../../../stores/circuitStore';
+import { deriveVerifySchedule } from '../../../fpga/boards/basys3/verifySchedule';
 import { useProjectRuntime } from '../projectRuntime';
 
 function buildAuthorityFixture(): RBProject {
@@ -57,9 +59,97 @@ function buildAuthorityFixture(): RBProject {
   };
 }
 
+function buildSequentialAuthorityFixture(): RBProject {
+  return {
+    kind: 'rb-project',
+    version: 1,
+    createdAt: '2026-03-18T00:00:00.000Z',
+    updatedAt: '2026-03-18T00:00:00.000Z',
+    name: 'Sequential Verify Authority Fixture',
+    description: 'Runtime verify should preserve the canonical clocked contract.',
+    circuit: {
+      nodes: [
+        {
+          id: 'd_node',
+          type: 'INPUT',
+          label: 'd',
+          position: { x: 0, y: 0 },
+          x: 0,
+          y: 0,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+        {
+          id: 'clk_node',
+          type: 'INPUT',
+          label: 'clk',
+          position: { x: 0, y: 100 },
+          x: 0,
+          y: 100,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+        {
+          id: 'ff_node',
+          type: 'DFlipFlop',
+          label: 'ff0',
+          position: { x: 220, y: 40 },
+          x: 220,
+          y: 40,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+        {
+          id: 'q_node',
+          type: 'OUTPUT',
+          label: 'q',
+          position: { x: 420, y: 40 },
+          x: 420,
+          y: 40,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+      ],
+      connections: [
+        {
+          from: { nodeId: 'd_node', portName: 'out' },
+          to: { nodeId: 'ff_node', portName: 'D' },
+        },
+        {
+          from: { nodeId: 'clk_node', portName: 'out' },
+          to: { nodeId: 'ff_node', portName: 'CLK' },
+        },
+        {
+          from: { nodeId: 'ff_node', portName: 'Q' },
+          to: { nodeId: 'q_node', portName: 'in' },
+        },
+      ],
+    },
+    ioMapping: {
+      inputs: [
+        { id: 'd', nodeId: 'd_node', port: 'out', label: 'd', pin: 'SW0' },
+        { id: 'clk', nodeId: 'clk_node', port: 'out', label: 'clk', pin: 'CLK100MHZ' },
+      ],
+      outputs: [{ id: 'q', nodeId: 'q_node', port: 'in', label: 'q', pin: 'LD0' }],
+    },
+    vectors: [
+      { tick: 0, inputs: { d: 1 }, expected: { q: 1 } },
+      { tick: 1, inputs: { d: 0 }, expected: { q: 0 } },
+    ],
+    meta: {
+      projectId: 'rb-sequential-verify-authority-fixture',
+    },
+  };
+}
+
 describe('projectRuntime verify authority', () => {
   beforeEach(() => {
     localStorage.clear();
+    useCircuitStore.getState().reset();
     useProjectRuntime.getState().resetToActiveExample();
     useProjectRuntime.getState().loadFromProject(buildAuthorityFixture());
   });
@@ -108,6 +198,29 @@ describe('projectRuntime verify authority', () => {
     expect(useProjectRuntime.getState().verifyLastRun?.traceWaveform).toBeUndefined();
   });
 
+  it('preserves prior sim state and adds a guard when a design mutation produces invalid IR', () => {
+    const sim = useProjectRuntime.getState().actions.sim;
+    sim.toggleProbe({ key: 'ld0_node.in', label: 'LD0 In' });
+    sim.setInput('sw0_node', 1);
+    sim.step();
+
+    const before = structuredClone(useProjectRuntime.getState().sim);
+    const invalidCircuit = structuredClone(useProjectRuntime.getState().circuit);
+    invalidCircuit.connections = [];
+
+    useProjectRuntime.getState().markDesignMutated(invalidCircuit);
+
+    const after = useProjectRuntime.getState().sim;
+
+    expect(after.tick).toBe(before.tick);
+    expect(after.trace).toEqual(before.trace);
+    expect(after.inputs).toEqual(before.inputs);
+    expect(after.signals).toEqual(before.signals);
+    expect(after.probes).toEqual(before.probes);
+    expect(after.guard?.reason).toBe('invalid-ir');
+    expect(after.guard?.diagnostics.length).toBeGreaterThan(0);
+  });
+
   it('keeps the default signal-tour showcase example passing deterministically', () => {
     localStorage.clear();
     useProjectRuntime.getState().resetToActiveExample();
@@ -124,5 +237,96 @@ describe('projectRuntime verify authority', () => {
     expect(run.status).toBe('pass');
     expect(run.report.rows.every((row) => row.status === 'pass')).toBe(true);
     expect(run.firstFailingTick).toBeUndefined();
+  });
+
+  it('ignores editor-store circuit drift and verifies the runtime-authoritative circuit', () => {
+    useCircuitStore.getState().updateCircuit(
+      {
+        nodes: [
+          {
+            id: 'sw0_node',
+            type: 'INPUT',
+            label: 'sw0',
+            position: { x: 0, y: 0 },
+            x: 0,
+            y: 0,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'ld0_node',
+            type: 'OUTPUT',
+            label: 'ld0',
+            position: { x: 160, y: 0 },
+            x: 160,
+            y: 0,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+        ],
+        connections: [],
+      },
+      { skipHistory: true, enforceLimits: false }
+    );
+
+    expect(useCircuitStore.getState().circuit.connections).toHaveLength(0);
+    expect(useProjectRuntime.getState().circuit.connections).toHaveLength(1);
+
+    const run = useProjectRuntime.getState().runVerification({
+      scenarioId: 'runtime-circuit-authority',
+      scenarioName: 'Runtime Circuit Authority',
+      deterministicHash: 'runtime-circuit-authority-hash',
+      rows: [],
+      ranAtIso: '2026-03-18T00:00:00.000Z',
+      useRuntimeTrace: false,
+    });
+
+    expect(run.status).toBe('pass');
+    expect(run.report.rows.every((row) => row.status === 'pass')).toBe(true);
+    expect(run.traceWaveform).toBeUndefined();
+  });
+
+  it('stores and reuses the canonical sequential schedule contract on runtime verify runs', () => {
+    useProjectRuntime.getState().loadFromProject(buildSequentialAuthorityFixture());
+
+    const run = useProjectRuntime.getState().runVerification({
+      scenarioId: 'runtime-sequential-authority',
+      scenarioName: 'Runtime Sequential Authority',
+      deterministicHash: 'runtime-sequential-authority-hash',
+      rows: [],
+      ranAtIso: '2026-03-18T12:00:00.000Z',
+      useRuntimeTrace: false,
+    });
+
+    const state = useProjectRuntime.getState();
+    const expectedContract = deriveVerifySchedule(state.circuit, {
+      inputs: state.projectIoRows
+        .filter((row) => row.direction === 'in')
+        .map((row) => ({
+          id: row.id,
+          nodeId: row.nodeId,
+          port: row.port,
+          label: row.label,
+          pin: row.pin,
+        })),
+      outputs: state.projectIoRows
+        .filter((row) => row.direction === 'out')
+        .map((row) => ({
+          id: row.id,
+          nodeId: row.nodeId,
+          port: row.port,
+          label: row.label,
+          pin: row.pin,
+        })),
+    });
+
+    expect(run.status).toBe('pass');
+    expect(run.schedule).toBe('clocked_macro');
+    expect(run.scheduleContract).toEqual(expectedContract);
+    expect(run.meta.samplePoint).toBe(expectedContract.samplePoint);
+    expect(run.meta.tick0Meaning).toBe(expectedContract.tick0Meaning);
+    expect(state.verifyLastRun?.scheduleContract).toEqual(expectedContract);
   });
 });

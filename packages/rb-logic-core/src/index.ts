@@ -8,6 +8,7 @@ export { analyzeSequentialLogic } from './analysis/analyzeSequentialLogic';
 export type { NodeMeta } from './analysis/nodeMetaRegistry';
 export { getNodeMeta, isSequentialNodeType, getClockPortName, getResetPortName } from './analysis/nodeMetaRegistry';
 export { injectSimClock } from './analysis/injectSimClock';
+export * from './ir';
 
 // Determinism / Event logging (for replay, recording, verification)
 export type { EventLogV1, SimulationEventV1 } from './determinism/eventLog';

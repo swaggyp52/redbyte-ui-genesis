@@ -1,3 +1,5 @@
+import type { IRDiagnostic } from '@redbyte/rb-logic-core';
+
 export interface RuntimeSimTraceSample {
   tick: number;
   signals: Record<string, 0 | 1>;
@@ -6,6 +8,13 @@ export interface RuntimeSimTraceSample {
 export interface RuntimeSignalProbe {
   key: string;
   label: string;
+}
+
+export interface RuntimeSimGuard {
+  status: 'blocked';
+  reason: 'invalid-ir';
+  diagnostics: IRDiagnostic[];
+  irHash: string;
 }
 
 export interface RuntimeSimState {
@@ -21,6 +30,7 @@ export interface RuntimeSimState {
   trace: RuntimeSimTraceSample[];
   selectedSignalKey: string | null;
   probes: RuntimeSignalProbe[];
+  guard?: RuntimeSimGuard;
 }
 
 export interface SimulationIoRow {

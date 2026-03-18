@@ -1,5 +1,286 @@
 # AI State
 
+## Change Log 2026-03-18 (Simulation now consumes CircuitIR via SimulationModel)
+
+**Subsystem**: IR runtime seam / simEngine / deterministic verify / runtime sim guard
+
+### Problem
+
+Simulation still treated raw `Circuit` as a structural authority:
+
+1. `simEngine` re-derived naming, bindings, and topology from raw circuit fields instead of consuming the elaborated IR graph.
+2. Runtime simulation had no explicit IR-backed execution seam, so the compiler path stopped at elaboration rather than becoming the authority for runtime structure.
+3. Invalid IR could still leak into runtime-facing simulation code paths instead of blocking cleanly with structured diagnostics.
+
+### What changed
+
+- `packages/rb-logic-core/src/ir/simulationModel.ts` (new)
+  - Added `SimulationModel` plus:
+    - grouped boundary port refs,
+    - output bindings,
+    - clock/reset candidate bindings,
+    - blocking diagnostics,
+    - `isRunnable`.
+  - Added `buildSimulationModel(ir)` as the IR-to-sim lowering seam.
+- `packages/rb-logic-core/src/ir/index.ts`
+  - Exported the new simulation-model types and builder from the IR public API.
+- `packages/rb-logic-core/src/index.ts`
+  - Re-exported the IR public API from the package root so runtime consumers can import the seam from the canonical package entry.
+- `packages/rb-logic-core/package.json`
+  - Added the `./ir` export path for the public IR API.
+- `packages/rb-apps/src/apps/ide/sim/simEngine.ts`
+  - Reduced to a thin re-export shim over the new implementation file.
+- `packages/rb-apps/src/apps/ide/sim/simEngineCore.ts` (new)
+  - Added model-native simulation entrypoints:
+    - `resetSimulationStateFromModel(...)`
+    - `advanceSimulationStateFromModel(...)`
+    - `recomputeSimulationStateFromModel(...)`
+    - `runDeterministicVerifyFromModel(...)`
+    - `simulateExpectedIoRowsFromModel(...)`
+  - Kept raw-circuit entrypoints only as thin temporary wrappers that elaborate IR, build `SimulationModel`, and delegate immediately.
+  - Removed local structural mini-compiler behavior from primary execution paths by sourcing:
+    - canonical naming from `SimulationModel`,
+    - output bindings from `SimulationModel.outputBindings`,
+    - clock/reset resolution from `SimulationModel` bindings,
+    - invalid-run gating from `SimulationModel.blockingDiagnostics`.
+  - Added strict invalid-IR fail-fast behavior:
+    - interactive sim returns blocked results,
+    - deterministic verify emits `invalid-ir` preflight diagnostics,
+    - no simulated rows/trace are produced for blocked IR.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Routed primary runtime sim/reset/step/input/recompute paths through:
+    - `elaborateCircuit(...)`
+    - `buildSimulationModel(...)`
+    - model-native sim engine entrypoints.
+  - Added blocked-result handling so runtime preserves prior trace/probes/inputs/signals and records an additive `sim.guard`.
+  - Routed runtime deterministic verify through the model-native seam.
+- `packages/rb-apps/src/apps/ide/sim/simTypes.ts`
+  - Added `RuntimeSimGuard` and additive `guard?: RuntimeSimGuard` on `RuntimeSimState`.
+- `packages/rb-apps/src/apps/ide/verifyReport.ts`
+  - Extended preflight issues with `kind: 'invalid-ir'`.
+- Tests
+  - Added `packages/rb-logic-core/src/__tests__/simulationModel.test.ts`.
+  - Extended `packages/rb-apps/src/apps/ide/__tests__/simEngine.verify-diagnostics.test.ts` with:
+    - invalid-IR fail-fast coverage,
+    - model-native naming authority coverage.
+  - Extended `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` with blocked-runtime guard coverage.
+
+### Student-visible behavior
+
+- Runtime simulation now follows an explicit compiler-backed seam:
+  `Circuit -> elaborateCircuit() -> CircuitIR -> buildSimulationModel(ir) -> simEngine`.
+- Invalid structural designs now block runtime simulation and deterministic verify cleanly instead of limping forward.
+- Supported combinational and current sequential verify behavior remains stable, but the structural authority now comes from IR-derived data instead of ad hoc raw-circuit inspection inside `simEngine`.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-logic-core/src/__tests__/elaborator.test.ts packages/rb-logic-core/src/__tests__/simulationModel.test.ts packages/rb-apps/src/apps/ide/__tests__/simEngine.verify-diagnostics.test.ts packages/rb-apps/src/apps/ide/__tests__/simEngine.canonical-naming.test.ts packages/rb-apps/src/apps/ide/__tests__/studentLoop.unmapped-output.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts` -> PASS (7 files, 38 tests)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/circuitProjection.test.ts packages/rb-apps/src/apps/ide/__tests__/traceContract.test.ts packages/rb-apps/src/__tests__/ide-bringup-contract.test.ts packages/rb-apps/src/export/__tests__/ideSubmissionDeterminism.test.ts packages/rb-apps/src/export/__tests__/golden-examples.test.ts` -> PARTIAL: 5 suites PASS; `golden-examples.test.ts` still has the existing unrelated `two-bit-counter` export warning failure (`EN`/`SW` XDC mismatch).
+
+**Attribution**: Connor Angiel
+
+## Change Log 2026-03-17 (Unified temporal schedule contract across verify runtime and export)
+
+**Subsystem**: IDE verify runtime / sequential semantics authority / export parity
+
+### Problem
+
+Temporal ownership was still split across multiple paths:
+
+1. `deriveVerifySchedule(...)` defined `clocked_macro` semantics, but `simEngine` deterministic verify still used a local single-step simulation path.
+2. Sequential analysis and sim-clock injection existed in both `rb-apps` and `rb-logic-core`, leaving clock/reset authority duplicated.
+3. Runtime verify derived schedule metadata after simulation, while export/testbench generation mirrored only partial schedule fields.
+4. Unsupported temporal constructs could be detected by schedule derivation but were not forced into a deterministic fail-fast runtime result.
+
+### What changed
+
+- `packages/rb-apps/src/fpga/boards/basys3/verifySchedule.ts`
+  - Promoted the verify contract into a richer canonical temporal object with:
+    - `samplePoint`
+    - `tick0Meaning`
+    - `resetHint`
+    - `temporalIssues`
+    - `hasUnsupportedTemporal`
+  - Switched sequential analysis authority to `@redbyte/rb-logic-core`.
+  - Tightened HDL sequential detection so generic combinational `process(...)` blocks no longer over-classify as clocked sequential.
+  - Added explicit internal sim clock naming (`__sim_clk__`) when schedule derivation requires injected clock ownership.
+- `packages/rb-logic-core/src/analysis/nodeMetaRegistry.ts`
+  - Declared `DFlipFlop.resetPort = 'RST'` so reset detection, temporal guards, and runtime bootstrap all use the same core metadata authority.
+- `packages/rb-apps/src/fpga/boards/basys3/sequentialAnalysis.ts`
+  - Reduced to a compatibility re-export wrapper over `rb-logic-core` sequential analysis helpers.
+- `packages/rb-apps/src/fpga/boards/basys3/simClockInjection.ts`
+  - Reduced to a compatibility re-export wrapper over `rb-logic-core` sim clock injection.
+- `packages/rb-apps/src/fpga/boards/basys3/vectorRunner.ts`
+  - Switched clock injection usage to the core implementation and aligned injected clock naming with the canonical schedule contract.
+- `packages/rb-apps/src/apps/ide/sim/simEngine.ts`
+  - `runDeterministicVerifyFromCircuit(...)` now accepts an optional `VerifyScheduleContract`.
+  - Added fail-fast `unsupported-temporal` preflight results before any simulation occurs.
+  - Added true `clocked_macro` execution for deterministic verify (`0 -> 1 -> 0`) while preserving the existing combinational path.
+  - Unified reset bootstrap and clock-node resolution against the schedule contract instead of local clock/reset guessing.
+  - Reused the same contract for `buildVerifyRowsDeterministicFromCircuit(...)` and `simulateExpectedIoRows(...)`.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Runtime verify now derives the schedule contract before simulation and passes it into `simEngine`.
+  - `RuntimeVerifyRun` now stores the canonical `scheduleContract` additively for downstream consumers.
+  - Verify metadata now projects from the contract’s own sampling semantics instead of re-deriving them.
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Verify actions now pass an HDL-aware schedule contract from the full `RBProject` into runtime verify, preserving falling-edge / HDL-only temporal guard behavior without widening runtime store truth.
+- `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`
+  - Runtime-backed testbench generation now consumes the stored runtime `scheduleContract` instead of mirroring only `schedule` plus a guessed clock name.
+- `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts`
+  - `scheduleOverride` now accepts the richer contract shape and merges it directly into generation.
+- Tests
+  - Added `packages/rb-apps/src/__tests__/verifySchedule.temporal-guard.test.ts`.
+  - Added simEngine regressions for `clocked_macro` execution and `unsupported-temporal` fail-fast.
+  - Added runtime regression proving sequential verify runs persist the same canonical contract runtime derived.
+
+### Student-visible behavior
+
+- Sequential verify now uses the same temporal assumptions as the board/testbench path instead of a separate local simulation rule.
+- Unsupported temporal constructs fail explicitly before mismatch interpretation.
+- Exported runtime-backed testbenches mirror the runtime verify contract, including the resolved clock source when available.
+- Combinational verify behavior remains unchanged.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/verifySchedule.temporal-guard.test.ts packages/rb-apps/src/apps/ide/__tests__/simEngine.verify-diagnostics.test.ts packages/rb-apps/src/apps/ide/__tests__/simEngine.canonical-naming.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.failure-patterns.test.tsx packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts packages/rb-apps/src/__tests__/ide-bringup-contract.test.ts` -> PASS (10 files, 48 tests)
+
+**Attribution**: Connor Angiel
+
+## Change Log 2026-03-18 (Runtime-owned undo/redo history authority + persistence)
+
+**Subsystem**: IDE project truth ownership / runtime design transition history
+
+### Problem
+
+Undo/redo ownership was still split across runtime and editor concerns:
+
+1. Runtime held canonical project circuit authority, but undo/redo behavior still depended on editor-local history semantics.
+2. Runtime history stacks existed but were not rehydrated from persisted runtime state, so reload could drop authoritative undo/redo continuity.
+3. History restore paths needed the same IO-row/node consistency guarantees as normal runtime snapshot commits.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Added runtime-authoritative history transition intents and integration points already wired by this slice (`applyCircuitMutation`, `undoProjectEdit`, `redoProjectEdit`) across runtime-native edits.
+  - Extended persisted runtime payload to include `designPast`, `designFuture`, `maxDesignHistory`, and `designRevision`.
+  - Added bounded deep-clone persistence helpers for design history stacks.
+  - Added persisted history rehydration sanitizers:
+    - snapshot circuit validation via `normalizeRBProject(...)`,
+    - orphaned IO mapping filtering against restored circuit node IDs,
+    - bounds clamp for history depth (max 500),
+    - revision normalization.
+  - Documented `designRevision` semantics as transition-count based (forward edits and undo/redo both advance revision).
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Undo/redo requests route through runtime callbacks instead of editor-store history authority.
+  - Surface-driven editor mutations now run with `skipHistory: true` and emit explicit next-circuit payloads for runtime commit.
+- `packages/rb-apps/src/stores/circuitStore.ts`
+  - Mutation helpers now accept optional `skipHistory` options for projection/cache-only updates.
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+  - Locked runtime authority for undo/redo transitions, projection sync, macro/IO rollback behavior, and post-undo verify/export canonical-state trust.
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts`
+  - Added history restore regression coverage (including malformed snapshot drop + orphaned row filtering).
+  - Added `maxDesignHistory` clamp regression coverage.
+
+### Student-visible behavior
+
+- Undo/redo now follows runtime-authoritative project history semantics instead of competing local editor history truth.
+- Runtime history survives persisted restore with validation and bounded depth.
+- Verify/export trust checks continue to derive from canonical runtime state after undo/redo transitions.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/circuitProjection.test.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.labelEdit.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.progressivePaste.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.macros.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` -> PASS (9 files, 60 tests)
+
+**Attribution**: Connor Angiel
+
+## Change Log 2026-03-18 (Runtime-authoritative design mutation bridge)
+
+**Subsystem**: IDE project truth ownership / design-shell-runtime contract
+
+### Problem
+
+Design editing still crossed a dual-truth seam:
+
+1. `DesignSurface` mutated `useCircuitStore`, then emitted `onCircuitMutated()` with no payload.
+2. `IdeApp` re-read `useCircuitStore.getState().circuit` and pushed that snapshot into `projectRuntime.markDesignMutated(...)`.
+3. Runtime then projected its own circuit back into the editor store.
+
+That made the shell depend on editor-store readback for canonical project truth and preserved the stale-writeback failure already documented by macro insertion tests.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Widened `onCircuitMutated` to `onCircuitMutated(circuit)`.
+  - Added a single `emitCircuitMutation()` helper that forwards the post-mutation editor-store circuit after delete, paste, duplicate, placement fallback, canvas edits, undo/redo, and label edits.
+  - Kept macro insertion on the runtime-native path and clarified why it must skip the callback.
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - `handleDesignMutation(...)` now accepts the next circuit payload directly and calls `markDesignMutated(nextCircuit)`.
+  - Removed shell readback of `useCircuitStore.getState().circuit`.
+  - Replaced the inline runtime/store reconciliation block with a one-way projection call in `useLayoutEffect(...)`.
+- `packages/rb-apps/src/apps/ide/circuitProjection.ts` (new)
+  - Added `projectRuntimeCircuitToEditorStore(...)` as the explicit runtime-to-editor projection helper.
+  - Projection is fingerprint-guarded and resets editor history before loading authoritative runtime state.
+- `packages/rb-apps/src/apps/ide/__tests__/circuitProjection.test.ts` (new)
+  - Added focused coverage for one-way projection behavior, idempotent no-op sync, editor drift not mutating runtime, and runtime-hash stability across editor drift.
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx`
+  - Added assertions that duplicate actions emit the exact updated circuit payload.
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.labelEdit.test.tsx`
+  - Added assertions that label-save emits the updated circuit payload.
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.macros.test.ts`
+  - Added a positive regression proving `markDesignMutated(runtime.circuit)` preserves instantiated macros.
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts`
+  - Added a regression proving verify ignores editor-store circuit drift and still runs from runtime authority.
+
+### Student-visible behavior
+
+- Design edits still feel the same in the canvas, but runtime is now the only authoritative project truth the shell uses for verify/export/readiness.
+- The stale macro-writeback class is blocked by contract: the shell no longer asks the editor store what the canonical circuit is.
+- Verify/export trust remains runtime-derived even if the editor store drifts locally during editing.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/circuitProjection.test.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.labelEdit.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.macros.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx` -> PASS
+
+**Attribution**: Connor Angiel
+
+## Change Log 2026-03-17 (Canonical verify waveform trace contract)
+
+**Subsystem**: IDE verify runtime / simulation trace coherence
+
+### Problem
+
+Verify waveform assembly had split authority in runtime:
+
+1. Report-derived waveform (`buildVerifyWaveSamples(report)`) and trace-derived waveform (`toVerifyWaveSamplesFromTrace`) were built in parallel and reconciled with fallback logic.
+2. The legacy `traceWaveform` side channel preserved a second waveform truth path that was no longer needed for authoritative runs.
+
+This made waveform evidence harder to reason about and kept trace normalization logic duplicated inside `projectRuntime.ts`.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/sim/traceContract.ts` (new)
+  - Added `normalizeSimulationTrace(...)` to canonicalize runtime trace frames (tick normalization, deterministic signal ordering, dedupe by tick).
+  - Added `buildVerifyWaveSamplesFromRuntimeTrace(...)` for trace-to-waveform projection.
+  - Added `buildCanonicalVerifyWaveSamples(report, trace)` as the single merge path for trace + report waveform evidence.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - `runVerification(...)` now uses `buildCanonicalVerifyWaveSamples(report, deterministicResult?.trace ?? [])`.
+  - `recordVerification(...)` now uses the same canonical builder (report-only path uses empty trace).
+  - Removed the local legacy helper `toVerifyWaveSamplesFromTrace(...)`.
+  - Stopped emitting `traceWaveform` for new authoritative runs (legacy optional field remains on type for persisted-state compatibility checks).
+- `packages/rb-apps/src/apps/ide/__tests__/traceContract.test.ts` (new)
+  - Added focused unit coverage for trace normalization and canonical waveform merge behavior.
+
+### Student-visible behavior
+
+- Verify waveform data now comes from one canonical runtime merge path instead of parallel report/trace fallback logic.
+- Existing authoritative/export trust behavior is preserved (`traceWaveform` remains absent in exported last-run evidence).
+
+### Proof
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/traceContract.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts packages/rb-apps/src/export/__tests__/ideSubmissionBundle.test.ts` -> PASS
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-17 (Verify reference mismatch no longer acts like export invalidity)
 
 **Subsystem**: IDE project health / Verify reference-state UX / Export trust semantics

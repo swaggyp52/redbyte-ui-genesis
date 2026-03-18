@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Circuit, CompositeNodeDef } from '@redbyte/rb-logic-core';
-import { registerCompositeNode } from '@redbyte/rb-logic-core';
+import type { Circuit, CompositeNodeDef, SimulationModel } from '@redbyte/rb-logic-core';
+import { buildSimulationModel, elaborateCircuit, registerCompositeNode } from '@redbyte/rb-logic-core';
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
 import type { CustomTestVector } from './components/VectorEditor';
 import { normalizeRBProject, type RBProject } from '../../export/projectFormat';
@@ -31,7 +31,6 @@ import type {
 } from './projectHealth';
 import {
   buildVerifyReport,
-  buildVerifyWaveSamples,
   type VerifyEvidenceCapsule,
   type VerifyReport,
   type VerifyReportVector,
@@ -40,17 +39,21 @@ import {
 import { generateBringUpVectors } from './bringupArtifacts';
 import {
   DEFAULT_SIM_SPEED_HZ,
-  advanceSimulationState,
-  buildVerifyRowsDeterministicFromCircuit,
-  recomputeSimulationState,
-  resetSimulationState,
-  runDeterministicVerifyFromCircuit,
+  advanceSimulationStateFromModel,
+  recomputeSimulationStateFromModel,
+  resetSimulationStateFromModel,
+  runDeterministicVerifyFromModel,
+  toRuntimeSimGuard,
+  type SimEngineResult,
 } from './sim/simEngine';
 import type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
+import { buildCanonicalVerifyWaveSamples } from './sim/traceContract';
 
 export type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
 
 const STORAGE_KEY = 'rb.ide.project-runtime.v1';
+const DEFAULT_MAX_DESIGN_HISTORY = 100;
+const MAX_ALLOWED_DESIGN_HISTORY = 500;
 
 const DEFAULT_EXAMPLE = getIdeExampleById(IDE_DEFAULT_EXAMPLE_ID) ?? IDE_EXAMPLES[0];
 
@@ -98,6 +101,7 @@ export interface RuntimeVerifyRun {
   firstFailingTick?: number;
   generatedAtIso: string;
   schedule: 'combinational' | 'clocked_macro';
+  scheduleContract?: VerifyScheduleContract;
   meta: VerifyRunMeta;
   report: VerifyReport;
   waveform: VerifyWaveSample[];
@@ -125,6 +129,7 @@ export interface RunVerificationInput {
   scenarioId: string;
   scenarioName: string;
   deterministicHash: string;
+  scheduleContract?: VerifyScheduleContract;
   rows: Array<{
     tick: number;
     signal: string;
@@ -165,6 +170,10 @@ export interface ProjectRuntimeState {
   projectVectors: TestVector[];
   customVectors: CustomTestVector[];
   circuit: Circuit;
+  designPast: DesignHistorySnapshot[];
+  designFuture: DesignHistorySnapshot[];
+  maxDesignHistory: number;
+  designRevision: number;
   verifyLastRun?: RuntimeVerifyRun;
   verifyRunHistory: VerifyRunLedgerEntry[];
   sim: RuntimeSimState;
@@ -177,7 +186,10 @@ export interface ProjectRuntimeState {
   setVectors: (vectors: TestVector[]) => void;
   setCustomVectors: (vectors: CustomTestVector[]) => void;
   generateBringUpVectors: () => TestVector[];
+  applyCircuitMutation: (circuit: Circuit) => void;
   markDesignMutated: (circuit: Circuit) => void;
+  undoProjectEdit: () => void;
+  redoProjectEdit: () => void;
   addDesignNode: (nodeType: string, position: { x: number; y: number }) => void;
   addDesignIo: (direction: 'input' | 'output', position: { x: number; y: number }) => void;
   addDesignBoardIo: (input: {
@@ -231,6 +243,10 @@ interface PersistedRuntimeState {
   projectVectors: TestVector[];
   customVectors: CustomTestVector[];
   circuit: Circuit;
+  designPast?: DesignHistorySnapshot[];
+  designFuture?: DesignHistorySnapshot[];
+  maxDesignHistory?: number;
+  designRevision?: number;
   verifyLastRun?: RuntimeVerifyRun;
   verifyRunHistory: VerifyRunLedgerEntry[];
   sim: RuntimeSimState;
@@ -238,6 +254,19 @@ interface PersistedRuntimeState {
   macros: MacroDefinition[];
   macroInsertionCounts: Record<string, number>;
   customComponents: CompositeNodeDef[];
+}
+
+interface DesignHistorySnapshot {
+  circuit: Circuit;
+  projectIoRows: ProjectIoRow[];
+  macroInsertionCounts: Record<string, number>;
+}
+
+interface RuntimeSeedState extends PersistedRuntimeState {
+  designPast: DesignHistorySnapshot[];
+  designFuture: DesignHistorySnapshot[];
+  maxDesignHistory: number;
+  designRevision: number;
 }
 
 export const useProjectRuntime = create<ProjectRuntimeState>()(
@@ -270,43 +299,59 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             }));
           },
           step: () => {
-            set((state) => ({
-              sim: {
-                ...advanceSimulationState(
-                  state.circuit,
-                  state.projectIoRows,
-                  {
-                    ...state.sim,
-                    lastAction: 'step',
-                  },
-                  1
-                ),
-                stepMode: true,
-              },
-            }));
+            set((state) => {
+              const model = buildSimulationModelForCircuit(state.circuit);
+              const result = advanceSimulationStateFromModel(
+                state.circuit,
+                model,
+                state.projectIoRows,
+                {
+                  ...state.sim,
+                  lastAction: 'step',
+                },
+                1
+              );
+              return {
+                sim: applyInteractiveSimResult(state.sim, result, model, { stepMode: true }),
+              };
+            });
           },
           runTicks: (ticks) => {
             const boundedTicks = Math.max(0, Math.min(512, Math.floor(ticks)));
             if (boundedTicks === 0) return;
-            set((state) => ({
-              sim: advanceSimulationState(
+            set((state) => {
+              const model = buildSimulationModelForCircuit(state.circuit);
+              const result = advanceSimulationStateFromModel(
                 state.circuit,
+                model,
                 state.projectIoRows,
                 {
                   ...state.sim,
                   lastAction: 'step',
                 },
                 boundedTicks
-              ),
-            }));
+              );
+              return {
+                sim: applyInteractiveSimResult(state.sim, result, model),
+              };
+            });
           },
           reset: () => {
-            set((state) => ({
-              sim: resetSimulationState(state.circuit, state.projectIoRows, {
-                ...state.sim,
-                lastAction: 'reset',
-              }),
-            }));
+            set((state) => {
+              const model = buildSimulationModelForCircuit(state.circuit);
+              const result = resetSimulationStateFromModel(
+                state.circuit,
+                model,
+                state.projectIoRows,
+                {
+                  ...state.sim,
+                  lastAction: 'reset',
+                }
+              );
+              return {
+                sim: applyInteractiveSimResult(state.sim, result, model),
+              };
+            });
           },
           setSpeed: (hz) => {
             const speedHz = clampSimSpeed(hz);
@@ -326,17 +371,20 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 ...state.sim.inputs,
                 [normalizedNodeId]: bit,
               };
+              const model = buildSimulationModelForCircuit(state.circuit);
+              const result = recomputeSimulationStateFromModel(
+                state.circuit,
+                model,
+                state.projectIoRows,
+                {
+                  ...state.sim,
+                  inputs: nextInputs,
+                  running: state.sim.running,
+                  lastAction: 'input',
+                }
+              );
               return {
-                sim: recomputeSimulationState(
-                  state.circuit,
-                  state.projectIoRows,
-                  {
-                    ...state.sim,
-                    inputs: nextInputs,
-                    running: state.sim.running,
-                    lastAction: 'input',
-                  }
-                ),
+                sim: applyInteractiveSimResult(state.sim, result, model),
               };
             });
           },
@@ -349,17 +397,20 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 ...state.sim.inputs,
                 [normalizedNodeId]: nextValue as 0 | 1,
               };
+              const model = buildSimulationModelForCircuit(state.circuit);
+              const result = recomputeSimulationStateFromModel(
+                state.circuit,
+                model,
+                state.projectIoRows,
+                {
+                  ...state.sim,
+                  inputs: nextInputs,
+                  running: state.sim.running,
+                  lastAction: 'input',
+                }
+              );
               return {
-                sim: recomputeSimulationState(
-                  state.circuit,
-                  state.projectIoRows,
-                  {
-                    ...state.sim,
-                    inputs: nextInputs,
-                    running: state.sim.running,
-                    lastAction: 'input',
-                  }
-                ),
+                sim: applyInteractiveSimResult(state.sim, result, model),
               };
             });
           },
@@ -426,9 +477,12 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           projectVectors: cloneVectors(project.vectors ?? []),
           customVectors: [],
           circuit,
+          designPast: [],
+          designFuture: [],
+          designRevision: 0,
           verifyLastRun: undefined,
           verifyRunHistory: [],
-          sim: resetSimulationState(circuit, projectIoRows),
+          sim: initializeSimulationStateForCircuit(circuit, projectIoRows),
           projectHealthCore: {
             dirtySinceVerify: true,
             dirtySinceExport: true,
@@ -491,16 +545,60 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         }));
         return generated;
       },
+      applyCircuitMutation: (circuit) => {
+        set((state) => {
+          const currentFingerprint = digestValue(stableSerialize(state.circuit));
+          const nextFingerprint = digestValue(stableSerialize(circuit));
+          if (currentFingerprint === nextFingerprint) {
+            return state;
+          }
+
+          return {
+            ...commitDesignSnapshot(
+              state,
+              {
+                circuit: cloneCircuit(circuit),
+                projectIoRows: cloneIoRows(state.projectIoRows),
+                macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
+              },
+              {
+                designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                  -state.maxDesignHistory
+                ),
+                designFuture: [],
+              }
+            ),
+          };
+        });
+      },
       markDesignMutated: (circuit) => {
-        set((state) => ({
-          circuit: cloneCircuit(circuit),
-          sim: resetSimulationState(circuit, state.projectIoRows, state.sim),
-          projectHealthCore: {
-            ...state.projectHealthCore,
-            dirtySinceVerify: true,
-            dirtySinceExport: true,
-          },
-        }));
+        get().applyCircuitMutation(circuit);
+      },
+      undoProjectEdit: () => {
+        set((state) => {
+          if (state.designPast.length === 0) return state;
+          const previous = state.designPast[state.designPast.length - 1];
+          return {
+            ...commitDesignSnapshot(state, previous, {
+              designPast: state.designPast.slice(0, -1),
+              designFuture: [createDesignHistorySnapshot(state), ...state.designFuture],
+            }),
+          };
+        });
+      },
+      redoProjectEdit: () => {
+        set((state) => {
+          if (state.designFuture.length === 0) return state;
+          const next = state.designFuture[0];
+          return {
+            ...commitDesignSnapshot(state, next, {
+              designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                -state.maxDesignHistory
+              ),
+              designFuture: state.designFuture.slice(1),
+            }),
+          };
+        });
       },
       addDesignNode: (nodeType, position) => {
         set((state) => {
@@ -519,15 +617,20 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             config: nodeType === 'Clock' ? { period: 10 } : {},
             state: {},
           });
-          return {
-            circuit: nextCircuit,
-            sim: resetSimulationState(nextCircuit, state.projectIoRows, state.sim),
-            projectHealthCore: {
-              ...state.projectHealthCore,
-              dirtySinceVerify: true,
-              dirtySinceExport: true,
+          return commitDesignSnapshot(
+            state,
+            {
+              circuit: nextCircuit,
+              projectIoRows: cloneIoRows(state.projectIoRows),
+              macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
             },
-          };
+            {
+              designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                -state.maxDesignHistory
+              ),
+              designFuture: [],
+            }
+          );
         });
       },
       addDesignIo: (direction, position) => {
@@ -610,16 +713,20 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             });
           }
 
-          return {
-            circuit: nextCircuit,
-            projectIoRows: nextIoRows,
-            sim: resetSimulationState(nextCircuit, nextIoRows, state.sim),
-            projectHealthCore: {
-              ...state.projectHealthCore,
-              dirtySinceVerify: true,
-              dirtySinceExport: true,
+          return commitDesignSnapshot(
+            state,
+            {
+              circuit: nextCircuit,
+              projectIoRows: nextIoRows,
+              macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
             },
-          };
+            {
+              designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                -state.maxDesignHistory
+              ),
+              designFuture: [],
+            }
+          );
         });
       },
       connectDesignNodes: (connection) => {
@@ -655,15 +762,20 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             to: { nodeId: connection.toNodeId, portName: toPort },
           });
 
-          return {
-            circuit: nextCircuit,
-            sim: resetSimulationState(nextCircuit, state.projectIoRows, state.sim),
-            projectHealthCore: {
-              ...state.projectHealthCore,
-              dirtySinceVerify: true,
-              dirtySinceExport: true,
+          return commitDesignSnapshot(
+            state,
+            {
+              circuit: nextCircuit,
+              projectIoRows: cloneIoRows(state.projectIoRows),
+              macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
             },
-          };
+            {
+              designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                -state.maxDesignHistory
+              ),
+              designFuture: [],
+            }
+          );
         });
       },
       runVerification: (input) => {
@@ -672,12 +784,19 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const scenarioId = input.scenarioId.trim() || 'runtime-verify';
           const scenarioName = input.scenarioName.trim() || 'Runtime verification';
           const circuitHash = digestValue(stableSerialize(state.circuit));
+          const ioMapping = toIoMapping(state.projectIoRows);
+          const scheduleContract = input.scheduleContract
+            ? cloneVerifyScheduleContract(input.scheduleContract)
+            : deriveVerifySchedule(state.circuit, ioMapping);
+          const model = buildSimulationModelForCircuit(state.circuit);
           const deterministicResult =
             state.projectVectors.length > 0
-              ? runDeterministicVerifyFromCircuit(
+              ? runDeterministicVerifyFromModel(
                   state.circuit,
+                  model,
                   state.projectIoRows,
-                  state.projectVectors
+                  state.projectVectors,
+                  scheduleContract
                 )
               : null;
           const normalizedRows = deterministicResult?.rows ?? normalizeVerifyRows(input.rows);
@@ -687,10 +806,6 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             failedRows.length > 0 || preflightIssues.length > 0 ? 'fail' : 'pass';
           const ranAtIso = input.ranAtIso ?? new Date().toISOString();
           const vectors = toVerifyVectors(state.projectVectors);
-          const scheduleContract = deriveVerifySchedule(
-            state.circuit,
-            toIoMapping(state.projectIoRows)
-          );
           const signalRoles = deriveSignalRoles(state.projectIoRows, scheduleContract);
           const report = buildVerifyReport({
             scenarioId,
@@ -702,8 +817,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             generatedAtIso: ranAtIso,
             signalRoles,
           });
-          const reportWaveform = buildVerifyWaveSamples(report);
-          const traceWaveform = toVerifyWaveSamplesFromTrace(deterministicResult?.trace ?? []);
+          const waveform = buildCanonicalVerifyWaveSamples(
+            report,
+            deterministicResult?.trace ?? []
+          );
           const evidence =
             deterministicResult !== null
               ? ({
@@ -721,20 +838,20 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             firstFailingTick: report.firstFailingTick,
             generatedAtIso: report.generatedAtIso,
             schedule: scheduleContract.schedule,
+            scheduleContract: cloneVerifyScheduleContract(scheduleContract),
             meta: buildVerifyRunMeta(scheduleContract),
             report,
-            waveform: reportWaveform.length > 0 ? reportWaveform : traceWaveform,
-            traceWaveform: traceWaveform.length > 0 ? traceWaveform : undefined,
+            waveform,
             evidence,
           };
 
           // Build ledger entry (synchronous hashes via digestValue + stableSerialize)
           const vectorsHash = digestValue(stableSerialize(state.projectVectors));
-          const mappingHash = digestValue(stableSerialize(toIoMapping(state.projectIoRows)));
+          const mappingHash = digestValue(stableSerialize(ioMapping));
           const projectSnap = {
             circuit: state.circuit,
             vectors: state.projectVectors,
-            mapping: toIoMapping(state.projectIoRows),
+            mapping: ioMapping,
           };
           const projectHash = digestValue(stableSerialize(projectSnap));
           const prevEntry = state.verifyRunHistory[state.verifyRunHistory.length - 1] ?? null;
@@ -822,7 +939,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       },
       recordVerification: (result) => {
         set((state) => {
-          const scheduleContract = deriveVerifySchedule(state.circuit, toIoMapping(state.projectIoRows));
+          const scheduleContract = deriveVerifySchedule(
+            state.circuit,
+            toIoMapping(state.projectIoRows)
+          );
           const signalRoles = deriveSignalRoles(state.projectIoRows, scheduleContract);
           const nextRun =
             result.report
@@ -838,9 +958,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                       : result.report.firstFailingTick,
                   generatedAtIso: result.ranAtIso,
                   schedule: scheduleContract.schedule,
+                  scheduleContract: cloneVerifyScheduleContract(scheduleContract),
                   meta: buildVerifyRunMeta(scheduleContract),
                   report: { ...result.report, signalRoles },
-                  waveform: buildVerifyWaveSamples(result.report),
+                  waveform: buildCanonicalVerifyWaveSamples(result.report, []),
                   evidence: state.verifyLastRun?.evidence,
                 } satisfies RuntimeVerifyRun)
               : state.verifyLastRun;
@@ -953,17 +1074,23 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             });
 
             return {
-              circuit: cloneCircuit(result.circuit),
-              sim: resetSimulationState(result.circuit, state.projectIoRows, state.sim),
-              projectHealthCore: {
-                ...state.projectHealthCore,
-                dirtySinceVerify: true,
-                dirtySinceExport: true,
-              },
-              macroInsertionCounts: {
-                ...state.macroInsertionCounts,
-                [macroId]: nextInstanceIndex,
-              },
+              ...commitDesignSnapshot(
+                state,
+                {
+                  circuit: cloneCircuit(result.circuit),
+                  projectIoRows: cloneIoRows(state.projectIoRows),
+                  macroInsertionCounts: {
+                    ...state.macroInsertionCounts,
+                    [macroId]: nextInstanceIndex,
+                  },
+                },
+                {
+                  designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                    -state.maxDesignHistory
+                  ),
+                  designFuture: [],
+                }
+              ),
             };
           } catch {
             result = null;
@@ -1000,6 +1127,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         projectVectors: cloneVectors(state.projectVectors),
         customVectors: [...(state.customVectors ?? [])],
         circuit: cloneCircuit(state.circuit),
+        designPast: cloneDesignHistoryPast(state.designPast, state.maxDesignHistory),
+        designFuture: cloneDesignHistoryFuture(state.designFuture, state.maxDesignHistory),
+        maxDesignHistory: state.maxDesignHistory,
+        designRevision: state.designRevision,
         verifyLastRun: state.verifyLastRun
           ? cloneVerifyRun(state.verifyLastRun)
           : undefined,
@@ -1086,6 +1217,13 @@ export function mergePersistedRuntimeState(
   const verifyLastRun = invalidateVerifyTrust ? undefined : rawVerifyLastRun;
   const verifyRunHistory = invalidateVerifyTrust ? [] : normalizeVerifyRunHistory(candidate.verifyRunHistory);
   const sim = normalizePersistedSimState(candidate.sim, circuit, projectIoRows);
+  const maxDesignHistory = normalizePersistedMaxDesignHistory(
+    candidate.maxDesignHistory,
+    currentState.maxDesignHistory
+  );
+  const designPast = normalizePersistedDesignPast(candidate.designPast, maxDesignHistory);
+  const designFuture = normalizePersistedDesignFuture(candidate.designFuture, maxDesignHistory);
+  const designRevision = normalizePersistedDesignRevision(candidate.designRevision);
 
   return {
     ...currentState,
@@ -1107,6 +1245,10 @@ export function mergePersistedRuntimeState(
     projectVectors,
     customVectors: Array.isArray(candidate.customVectors) ? [...candidate.customVectors] : [],
     circuit,
+    designPast,
+    designFuture,
+    maxDesignHistory,
+    designRevision,
     verifyLastRun,
     verifyRunHistory,
     sim,
@@ -1125,10 +1267,10 @@ export function mergePersistedRuntimeState(
 function stateFromExample(
   example: IdeExampleDefinition,
   projectId = createProjectId(example.id)
-): PersistedRuntimeState {
+): RuntimeSeedState {
   const projectIoRows = cloneIoRows(example.ioRows);
   const circuit = cloneCircuit(example.circuit);
-  const baseSimState = resetSimulationState(circuit, projectIoRows);
+  const baseSimState = initializeSimulationStateForCircuit(circuit, projectIoRows);
   // Build kit probes from example.probes if defined
   const kitProbes = (example.probes ?? []).map((p) => ({
     key: `${p.nodeId}.${p.portName}`,
@@ -1145,6 +1287,10 @@ function stateFromExample(
     projectVectors: cloneVectors(example.vectors),
     customVectors: [],
     circuit,
+    designPast: [],
+    designFuture: [],
+    maxDesignHistory: DEFAULT_MAX_DESIGN_HISTORY,
+    designRevision: 0,
     verifyLastRun: undefined,
     verifyRunHistory: [],
     sim,
@@ -1156,6 +1302,67 @@ function stateFromExample(
     macroInsertionCounts: {},
     customComponents: [],
   };
+}
+
+function buildSimulationModelForCircuit(circuit: Circuit): SimulationModel {
+  return buildSimulationModel(elaborateCircuit(circuit).ir);
+}
+
+function buildEmptyRuntimeSimState(model: SimulationModel): RuntimeSimState {
+  const trace: RuntimeSimTraceSample[] = [];
+  return {
+    tick: 0,
+    running: false,
+    stepMode: false,
+    speedHz: DEFAULT_SIM_SPEED_HZ,
+    irHash: model.irHash,
+    traceHash: `sim_${digestValue({ irHash: model.irHash, trace })}`,
+    inputs: {},
+    signals: {},
+    trace,
+    selectedSignalKey: null,
+    probes: [],
+    guard: undefined,
+  };
+}
+
+function buildBlockedRuntimeSimState(
+  previous: RuntimeSimState | undefined,
+  model: SimulationModel
+): RuntimeSimState {
+  const seed = previous ? cloneSimState(previous) : buildEmptyRuntimeSimState(model);
+  return {
+    ...seed,
+    running: false,
+    stepMode: false,
+    guard: toRuntimeSimGuard(model),
+  };
+}
+
+function applyInteractiveSimResult(
+  previous: RuntimeSimState | undefined,
+  result: SimEngineResult<RuntimeSimState>,
+  model: SimulationModel,
+  overrides?: Partial<RuntimeSimState>
+): RuntimeSimState {
+  if (result.status === 'ok') {
+    return {
+      ...result.value,
+      ...(overrides ?? {}),
+      guard: undefined,
+    };
+  }
+  return buildBlockedRuntimeSimState(previous, model);
+}
+
+function initializeSimulationStateForCircuit(
+  circuit: Circuit,
+  ioRows: ProjectIoRow[],
+  previous?: RuntimeSimState
+): RuntimeSimState {
+  const model = buildSimulationModelForCircuit(circuit);
+  const result = resetSimulationStateFromModel(circuit, model, ioRows, previous);
+  return applyInteractiveSimResult(previous, result, model);
 }
 
 function normalizeMacroInsertionCounts(value: unknown): Record<string, number> {
@@ -1215,9 +1422,95 @@ function cloneCircuit(circuit: Circuit): Circuit {
   };
 }
 
+function cloneMacroInsertionCounts(value: Record<string, number>): Record<string, number> {
+  return { ...value };
+}
+
+function cloneDesignHistorySnapshot(snapshot: DesignHistorySnapshot): DesignHistorySnapshot {
+  return {
+    circuit: cloneCircuit(snapshot.circuit),
+    projectIoRows: cloneIoRows(snapshot.projectIoRows),
+    macroInsertionCounts: cloneMacroInsertionCounts(snapshot.macroInsertionCounts),
+  };
+}
+
+function cloneDesignHistoryPast(
+  history: DesignHistorySnapshot[],
+  maxEntries: number
+): DesignHistorySnapshot[] {
+  const boundedLimit = normalizePersistedMaxDesignHistory(maxEntries, DEFAULT_MAX_DESIGN_HISTORY);
+  return history
+    .slice(-boundedLimit)
+    .map((snapshot) => cloneDesignHistorySnapshot(snapshot));
+}
+
+function cloneDesignHistoryFuture(
+  history: DesignHistorySnapshot[],
+  maxEntries: number
+): DesignHistorySnapshot[] {
+  const boundedLimit = normalizePersistedMaxDesignHistory(maxEntries, DEFAULT_MAX_DESIGN_HISTORY);
+  return history
+    .slice(0, boundedLimit)
+    .map((snapshot) => cloneDesignHistorySnapshot(snapshot));
+}
+
+function createDesignHistorySnapshot(
+  state: Pick<ProjectRuntimeState, 'circuit' | 'projectIoRows' | 'macroInsertionCounts'>
+): DesignHistorySnapshot {
+  return {
+    circuit: cloneCircuit(state.circuit),
+    projectIoRows: cloneIoRows(state.projectIoRows),
+    macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
+  };
+}
+
+function commitDesignSnapshot(
+  state: ProjectRuntimeState,
+  snapshot: DesignHistorySnapshot,
+  history: Pick<ProjectRuntimeState, 'designPast' | 'designFuture'>
+): Pick<
+  ProjectRuntimeState,
+  | 'circuit'
+  | 'projectIoRows'
+  | 'macroInsertionCounts'
+  | 'designPast'
+  | 'designFuture'
+  | 'designRevision'
+  | 'sim'
+  | 'projectHealthCore'
+> {
+  const nextCircuit = cloneCircuit(snapshot.circuit);
+  const validNodeIds = new Set(
+    nextCircuit.nodes.map((node) => normalizePortToken(node.id))
+  );
+  const nextIoRows = cloneIoRows(snapshot.projectIoRows).filter((row) => {
+    const nodeId = normalizePortToken(row.nodeId);
+    return nodeId.length === 0 || validNodeIds.has(nodeId);
+  });
+  return {
+    circuit: nextCircuit,
+    projectIoRows: nextIoRows,
+    macroInsertionCounts: cloneMacroInsertionCounts(snapshot.macroInsertionCounts),
+    designPast: history.designPast,
+    designFuture: history.designFuture,
+    // Tracks state transitions, not unique circuit graphs. Undo/redo transitions
+    // intentionally advance this counter just like forward edits.
+    designRevision: state.designRevision + 1,
+    sim: initializeSimulationStateForCircuit(nextCircuit, nextIoRows, state.sim),
+    projectHealthCore: {
+      ...state.projectHealthCore,
+      dirtySinceVerify: true,
+      dirtySinceExport: true,
+    },
+  };
+}
+
 function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
   return {
     ...run,
+    scheduleContract: run.scheduleContract
+      ? cloneVerifyScheduleContract(run.scheduleContract)
+      : undefined,
     meta: { ...run.meta },
     report: {
       ...run.report,
@@ -1265,6 +1558,18 @@ function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
   };
 }
 
+function cloneVerifyScheduleContract(contract: VerifyScheduleContract): VerifyScheduleContract {
+  return {
+    ...contract,
+    analysis: {
+      ...contract.analysis,
+      sequentialNodes: contract.analysis.sequentialNodes.map((node) => ({ ...node })),
+    },
+    resetHint: contract.resetHint ? { ...contract.resetHint } : undefined,
+    temporalIssues: contract.temporalIssues.map((issue) => ({ ...issue })),
+  };
+}
+
 function isAuthoritativeVerifyHash(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0 && !value.startsWith('sim_');
 }
@@ -1303,6 +1608,12 @@ function cloneSimState(sim: RuntimeSimState): RuntimeSimState {
       signals: { ...entry.signals },
     })),
     probes: sim.probes.map((probe) => ({ ...probe })),
+    guard: sim.guard
+      ? {
+          ...sim.guard,
+          diagnostics: sim.guard.diagnostics.map((diagnostic) => ({ ...diagnostic })),
+        }
+      : undefined,
   };
 }
 
@@ -1377,10 +1688,11 @@ function normalizePersistedSimState(
   circuit: Circuit,
   ioRows: ProjectIoRow[]
 ): RuntimeSimState {
-  const fallback = resetSimulationState(circuit, ioRows);
+  const model = buildSimulationModelForCircuit(circuit);
+  const fallback = initializeSimulationStateForCircuit(circuit, ioRows);
   if (!value || typeof value !== 'object') return fallback;
   const candidate = value as Partial<RuntimeSimState>;
-  return {
+  const normalizedState: RuntimeSimState = {
     ...fallback,
     tick: Number.isFinite(candidate.tick) ? Math.max(0, Math.floor(Number(candidate.tick))) : fallback.tick,
     running: candidate.running === true,
@@ -1411,7 +1723,91 @@ function normalizePersistedSimState(
           .map((probe) => normalizePersistedProbe(probe))
           .filter((probe): probe is RuntimeSignalProbe => probe !== null)
       : fallback.probes,
+    guard: undefined,
   };
+  return model.isRunnable
+    ? normalizedState
+    : buildBlockedRuntimeSimState(normalizedState, model);
+}
+
+function normalizePersistedDesignPast(
+  value: unknown,
+  maxEntries: number
+): DesignHistorySnapshot[] {
+  const boundedLimit = normalizePersistedMaxDesignHistory(maxEntries, DEFAULT_MAX_DESIGN_HISTORY);
+  return normalizePersistedDesignHistoryStack(value).slice(-boundedLimit);
+}
+
+function normalizePersistedDesignFuture(
+  value: unknown,
+  maxEntries: number
+): DesignHistorySnapshot[] {
+  const boundedLimit = normalizePersistedMaxDesignHistory(maxEntries, DEFAULT_MAX_DESIGN_HISTORY);
+  return normalizePersistedDesignHistoryStack(value).slice(0, boundedLimit);
+}
+
+function normalizePersistedDesignHistoryStack(value: unknown): DesignHistorySnapshot[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => normalizePersistedDesignHistorySnapshot(entry))
+    .filter((entry): entry is DesignHistorySnapshot => entry !== null);
+}
+
+function normalizePersistedDesignHistorySnapshot(value: unknown): DesignHistorySnapshot | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<DesignHistorySnapshot>;
+  if (
+    !candidate.circuit ||
+    typeof candidate.circuit !== 'object' ||
+    !Array.isArray((candidate.circuit as Circuit).nodes) ||
+    !Array.isArray((candidate.circuit as Circuit).connections)
+  ) {
+    return null;
+  }
+
+  const normalizedRows = normalizePersistedIoRows(candidate.projectIoRows, []);
+  let normalizedProject: RBProject;
+  try {
+    normalizedProject = normalizeRBProject({
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '1970-01-01T00:00:00.000Z',
+      updatedAt: '1970-01-01T00:00:00.000Z',
+      name: 'History Snapshot',
+      description: '',
+      circuit: candidate.circuit,
+      ioMapping: toIoMapping(normalizedRows),
+      vectors: [],
+      meta: {
+        projectId: 'rb-history-snapshot',
+      },
+    });
+  } catch {
+    return null;
+  }
+
+  const normalizedCircuit = cloneCircuit(normalizedProject.circuit);
+  const validNodeIds = new Set(normalizedCircuit.nodes.map((node) => normalizePortToken(node.id)));
+  const normalizedProjectIoRows = ioRowsFromProject(normalizedProject).filter((row) => {
+    const nodeId = normalizePortToken(row.nodeId);
+    return nodeId.length === 0 || validNodeIds.has(nodeId);
+  });
+
+  return {
+    circuit: normalizedCircuit,
+    projectIoRows: normalizedProjectIoRows,
+    macroInsertionCounts: normalizeMacroInsertionCounts(candidate.macroInsertionCounts),
+  };
+}
+
+function normalizePersistedMaxDesignHistory(value: unknown, fallback: number): number {
+  const baseline = Number.isFinite(fallback) ? Number(fallback) : DEFAULT_MAX_DESIGN_HISTORY;
+  const raw = Number.isFinite(value) ? Number(value) : baseline;
+  return Math.max(1, Math.min(MAX_ALLOWED_DESIGN_HISTORY, Math.floor(raw)));
+}
+
+function normalizePersistedDesignRevision(value: unknown): number {
+  return Number.isFinite(value) ? Math.max(0, Math.floor(Number(value))) : 0;
 }
 
 function normalizePersistedTraceSample(
@@ -1632,26 +2028,6 @@ function normalizeVerifyRows(
   }));
 }
 
-function toVerifyWaveSamplesFromTrace(trace: RuntimeSimTraceSample[]): VerifyWaveSample[] {
-  if (trace.length === 0) return [];
-  const byTick = new Map<number, VerifyWaveSample>();
-  for (const sample of trace) {
-    if (!Number.isFinite(sample.tick)) continue;
-    const tick = Math.max(0, Math.floor(sample.tick));
-    const signals = Object.fromEntries(
-      Object.entries(sample.signals)
-        .sort(([left], [right]) => compareText(left, right))
-        .map(([key, value]) => [key, String(value === 1 ? 1 : 0)])
-    ) as Record<string, string>;
-    byTick.set(tick, {
-      tick,
-      signals,
-      mismatches: [],
-    });
-  }
-  return Array.from(byTick.values()).sort((left, right) => left.tick - right.tick);
-}
-
 function toVerifyVectors(vectors: TestVector[]): VerifyReportVector[] {
   return vectors
     .map((vector, index) => ({
@@ -1708,6 +2084,7 @@ function deriveSignalRoles(
 ): Record<string, 'clock' | 'reset' | 'input' | 'output'> {
   const roles: Record<string, 'clock' | 'reset' | 'input' | 'output'> = {};
   const clockName = scheduleContract.clockSignalName?.toLowerCase() ?? '';
+  const resetName = scheduleContract.resetHint?.signalName?.toLowerCase() ?? '';
 
   for (const row of ioRows) {
     const label = row.label.trim();
@@ -1724,12 +2101,18 @@ function deriveSignalRoles(
         lower.startsWith('clock_'))
     ) {
       roles[label] = 'clock';
+    } else if (resetName && lower === resetName) {
+      roles[label] = 'reset';
     } else if (
       lower === 'rst' ||
       lower === 'reset' ||
+      lower === 'clr' ||
+      lower === 'clear' ||
       lower === 'btnc' ||
       lower.startsWith('rst_') ||
-      lower.startsWith('reset_')
+      lower.startsWith('reset_') ||
+      lower.startsWith('clr_') ||
+      lower.startsWith('clear_')
     ) {
       roles[label] = 'reset';
     } else if (row.direction === 'in') {
@@ -1746,8 +2129,8 @@ function buildVerifyRunMeta(scheduleContract: VerifyScheduleContract): VerifyRun
   return {
     circuitKind: isClocked ? 'sequential' : 'combinational',
     clockingProtocol: isClocked ? 'clocked_macro' : null,
-    samplePoint: isClocked ? 'post-rising-edge' : 'steady-state',
-    tick0Meaning: isClocked ? 'initial-state' : null,
+    samplePoint: scheduleContract.samplePoint,
+    tick0Meaning: scheduleContract.tick0Meaning,
     clockSignalName: scheduleContract.clockSignalName ?? null,
   };
 }

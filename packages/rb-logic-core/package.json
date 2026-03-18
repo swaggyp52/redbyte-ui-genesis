@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/rb-logic-core.js",
       "require": "./dist/rb-logic-core.js"
+    },
+    "./ir": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/rb-logic-core.js",
+      "require": "./dist/rb-logic-core.js"
     }
   },
   "scripts": {

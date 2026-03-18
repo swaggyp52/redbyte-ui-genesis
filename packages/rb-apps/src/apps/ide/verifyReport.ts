@@ -37,7 +37,9 @@ export interface VerifyEvidencePreflightIssue {
     | 'missing-output-row'
     | 'missing-output-node'
     | 'missing-expected-binding'
-    | 'missing-output-sample';
+    | 'missing-output-sample'
+    | 'unsupported-temporal'
+    | 'invalid-ir';
   signal: string;
   message: string;
   tick?: number;
