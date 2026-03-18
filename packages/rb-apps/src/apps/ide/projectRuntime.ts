@@ -6,7 +6,10 @@ import type { IoMapping, TestVector } from '@redbyte/rb-utils';
 import type { CustomTestVector } from './components/VectorEditor';
 import { normalizeRBProject, type RBProject } from '../../export/projectFormat';
 import { stableSerialize } from '../../utils/stableSerialize';
-import { deriveVerifySchedule, type VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
+import {
+  buildDeterministicVerifyContext,
+  type VerifyScheduleContract,
+} from '../../fpga/boards/basys3/verifySchedule';
 import { digestValue } from '../../utils/digest';
 import {
   deleteMacro as deleteMacroFromLibrary,
@@ -785,10 +788,14 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const scenarioName = input.scenarioName.trim() || 'Runtime verification';
           const circuitHash = digestValue(stableSerialize(state.circuit));
           const ioMapping = toIoMapping(state.projectIoRows);
+          const verifyContext = buildDeterministicVerifyContext(
+            state.circuit,
+            ioMapping
+          );
           const scheduleContract = input.scheduleContract
             ? cloneVerifyScheduleContract(input.scheduleContract)
-            : deriveVerifySchedule(state.circuit, ioMapping);
-          const model = buildSimulationModelForCircuit(state.circuit);
+            : verifyContext.schedule;
+          const model = verifyContext.simModel;
           const deterministicResult =
             state.projectVectors.length > 0
               ? runDeterministicVerifyFromModel(
@@ -939,10 +946,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       },
       recordVerification: (result) => {
         set((state) => {
-          const scheduleContract = deriveVerifySchedule(
+          const scheduleContract = buildDeterministicVerifyContext(
             state.circuit,
             toIoMapping(state.projectIoRows)
-          );
+          ).schedule;
           const signalRoles = deriveSignalRoles(state.projectIoRows, scheduleContract);
           const nextRun =
             result.report

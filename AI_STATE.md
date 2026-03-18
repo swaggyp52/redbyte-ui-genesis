@@ -1,5 +1,69 @@
 # AI State
 
+## Change Log 2026-03-18 (Verify path now consumes IR-derived structure)
+
+**Subsystem**: Verify schedule / vectorRunner / deterministic verification seam
+
+### Problem
+
+Verify still had its own raw-graph structural authority after Slice 2:
+
+1. `verifySchedule.ts` still walked raw circuit structure to recover clock/reset facts and signal identity.
+2. `vectorRunner.ts` still inferred input/output bindings from raw node labels and ad hoc graph assumptions.
+3. Deterministic verify wrappers and runtime verify were still rebuilding schedule/model inputs separately instead of consuming one shared IR-derived context.
+
+### What changed
+
+- `packages/rb-apps/src/fpga/boards/basys3/verifySchedule.ts`
+  - Added `buildDeterministicVerifyContext(...)` and `deriveVerifyScheduleFromStructure(...)`.
+  - Switched schedule derivation to consume:
+    - `CircuitIR`
+    - `SimulationModel`
+    - `IoMapping`
+    - HDL text hints
+  - Preserved `VerifyScheduleContract` output shape while moving structural authority off raw graph walks.
+  - Kept temporal ownership in the schedule layer:
+    - clocked/combinational classification
+    - unsupported falling-edge guard
+    - multi-clock-domain guard
+    - active-low-reset guard
+- `packages/rb-apps/src/fpga/boards/basys3/vectorRunner.ts`
+  - Rebuilt deterministic vector execution around IR/model-derived bindings.
+  - Removed raw-circuit structural interpretation for:
+    - input identity lookup
+    - output sampling lookup
+    - clock signal resolution
+    - naming fallback
+  - `vectorRunner` now behaves as a binding/execution consumer:
+    - structure from `SimulationModel`
+    - timing from `VerifyScheduleContract`
+    - execution from `TickEngine`
+- `packages/rb-apps/src/apps/ide/sim/simEngineCore.ts`
+  - Raw-circuit deterministic verify wrappers now build one shared verify context and delegate immediately.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Runtime verify now builds one shared verify context (`ir`, `simModel`, `schedule`) instead of deriving schedule and simulation structure separately.
+- Tests
+  - Added `packages/rb-apps/src/__tests__/vectorRunner.ir-authority.test.ts`.
+  - Extended `packages/rb-apps/src/__tests__/verifySchedule.temporal-guard.test.ts` with IR/model-backed clock authority coverage.
+
+### Student-visible behavior
+
+- Verify now follows the same compiler-fed structural path as simulation:
+  `Circuit -> elaborateCircuit() -> CircuitIR -> buildSimulationModel(ir) -> verify schedule / vector execution`.
+- Supported combinational verify behavior remains stable.
+- Supported `clocked_macro` sequential verify still works through the IR/model seam.
+- Invalid IR preflight behavior remains intact because deterministic verify still gates on `SimulationModel.isRunnable`.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/verifySchedule.temporal-guard.test.ts packages/rb-apps/src/__tests__/verifyRunMeta.test.ts packages/rb-apps/src/__tests__/vectorRunner.ir-authority.test.ts packages/rb-apps/src/apps/ide/__tests__/simEngine.verify-diagnostics.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts packages/rb-apps/src/__tests__/ide-bringup-contract.test.ts packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts packages/rb-apps/src/export/__tests__/ideSubmissionDeterminism.test.ts` -> PASS (8 files, 30 tests)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/export/__tests__/stopship-verify.test.ts packages/rb-apps/src/export/__tests__/golden-examples.test.ts` -> PARTIAL:
+  - existing unrelated `golden-examples.test.ts` failure remains on `two-bit-counter` bundle validity (`EN` / `SW` XDC mismatch)
+  - existing unrelated `stopship-verify.test.ts` STOP-SHIP 6 pane/export VHDL mismatch remains
+  - `stopship-verify.test.ts` STOP-SHIP 7 still assumes all IDE examples are solved, but `lab5-adder`, `lab6-full-adder`, and `lab7-comparator` are unsolved starter scaffolds with zero internal connections
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-18 (Simulation now consumes CircuitIR via SimulationModel)
 
 **Subsystem**: IR runtime seam / simEngine / deterministic verify / runtime sim guard

@@ -11,9 +11,9 @@ import {
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
 import { digestValue } from '../../../utils/digest';
 import {
+  buildDeterministicVerifyContext,
   CLOCKED_MACRO_SEQUENCE,
   INTERNAL_SIM_CLOCK_NAME,
-  deriveVerifySchedule,
   type VerifyScheduleContract,
 } from '../../../fpga/boards/basys3/verifySchedule';
 import { normalizeIoSignalKey } from '../ioLabels';
@@ -256,9 +256,12 @@ export function buildVerifyRowsDeterministicFromCircuit(
   vectors: TestVector[],
   scheduleContract?: VerifyScheduleContract
 ): RuntimeVerifyTraceRow[] {
-  const model = buildSimulationModel(elaborateCircuit(circuit).ir);
-  const contract =
-    scheduleContract ?? deriveVerifySchedule(circuit, toIoMappingFromSimulationRows(ioRows));
+  const context = buildDeterministicVerifyContext(
+    circuit,
+    toIoMappingFromSimulationRows(ioRows)
+  );
+  const model = context.simModel;
+  const contract = scheduleContract ?? context.schedule;
   return runDeterministicVerifyFromModel(circuit, model, ioRows, vectors, contract).rows;
 }
 
@@ -269,9 +272,12 @@ export function runDeterministicVerifyFromCircuit(
   vectors: TestVector[],
   scheduleContract?: VerifyScheduleContract
 ): DeterministicVerifyResult {
-  const model = buildSimulationModel(elaborateCircuit(circuit).ir);
-  const contract =
-    scheduleContract ?? deriveVerifySchedule(circuit, toIoMappingFromSimulationRows(ioRows));
+  const context = buildDeterministicVerifyContext(
+    circuit,
+    toIoMappingFromSimulationRows(ioRows)
+  );
+  const model = context.simModel;
+  const contract = scheduleContract ?? context.schedule;
   return runDeterministicVerifyFromModel(circuit, model, ioRows, vectors, contract);
 }
 
@@ -456,10 +462,12 @@ export function simulateExpectedIoRows(params: {
   vectors: TestVector[];
   scheduleContract?: VerifyScheduleContract;
 }): SimulatedExpectedIoRow[] {
-  const model = buildSimulationModel(elaborateCircuit(params.circuit).ir);
-  const contract =
-    params.scheduleContract ??
-    deriveVerifySchedule(params.circuit, toIoMappingFromSimulationRows(params.ioRows));
+  const context = buildDeterministicVerifyContext(
+    params.circuit,
+    toIoMappingFromSimulationRows(params.ioRows)
+  );
+  const model = context.simModel;
+  const contract = params.scheduleContract ?? context.schedule;
   return simulateExpectedIoRowsFromModel({
     executionCircuit: params.circuit,
     model,
