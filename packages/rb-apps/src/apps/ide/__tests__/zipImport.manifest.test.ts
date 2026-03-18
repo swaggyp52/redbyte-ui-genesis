@@ -106,6 +106,10 @@ describe('zipImport manifest-first flow', () => {
     expect(result.manifestPath).toBe('demo/project.rbproj.json');
     expect(result.project.name).toBe(project.name);
     expect(result.project.circuit.connections).toHaveLength(1);
+    expect(result.status.parse).toBe('success');
+    expect(result.status.compiler).toBe('runnable');
+    expect(result.isImportRunnable).toBe(true);
+    expect(result.compilerDiagnostics).toEqual([]);
     expect(result.parsedHdl.ports).toEqual([
       { name: 'in_a', direction: 'in', typeName: 'STD_LOGIC' },
       { name: 'out_y', direction: 'out', typeName: 'STD_LOGIC' },

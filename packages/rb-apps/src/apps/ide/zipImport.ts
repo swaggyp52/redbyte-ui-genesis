@@ -1,19 +1,22 @@
 import JSZip from 'jszip';
-import type { IoMapping } from '@redbyte/rb-utils';
 import type { RBProject } from '../../export/projectFormat';
 import { decodeRBProject } from '../../export/projectFormat';
 import { compareCodepoint } from '../../export/codepointSort';
 import {
-  parsedHdlToCircuit,
   type ParsedHDL,
   type ParsedPort,
   type ReconstructionLevel,
 } from '../../import/hdlToCircuit';
+import {
+  buildImportedProjectCompilerResult,
+  deriveProjectCompilerResult,
+  type ImportDiagnostic,
+  type ImportedProjectCompilerResult,
+} from '../../import/importCompiler';
 import { parseVerilog } from '../../import/verilogImport';
 import { parseVhdl } from '../../import/vhdlImport';
 import { parseXdcPins, type XdcParseResult } from '../../import/xdcImport';
 
-const IMPORT_TIMESTAMP = '2026-02-20T00:00:00.000Z';
 const CLASSROOM_BOARD = 'basys3';
 const CLASSROOM_PART = 'xc7a35tcpg236-1';
 
@@ -37,6 +40,10 @@ export interface ZipImportInspection {
   xdcResult?: XdcParseResult;
   weakPinPorts: string[];
   warnings: string[];
+  parserDiagnostics: ImportedProjectCompilerResult['parserDiagnostics'];
+  compilerDiagnostics: ImportedProjectCompilerResult['compilerDiagnostics'];
+  status: ImportedProjectCompilerResult['status'];
+  isImportRunnable: boolean;
   reconstructionLevel: ReconstructionLevel;
   project: RBProject;
 }
@@ -119,10 +126,14 @@ export async function importVivadoZipBytes(
       ? Object.keys(xdcResult.pinMap)
           .filter((port) => !mappedPortNames.has(normalizeToken(port)))
           .sort(compareCodepoint)
-          .map((port) => `Ignored XDC port "${port}" (no matching HDL port in detected top).`)
+          .map((port) => ({
+            source: 'constraints' as const,
+            severity: 'warning' as const,
+            message: `Ignored XDC port "${port}" (no matching HDL port in detected top).`,
+          }))
       : [];
 
-  const project = buildImportedProject({
+  const compilerResult = buildImportedProjectCompilerResult({
     sourceName,
     topPath: topEntry.path,
     topText: topEntry.text,
@@ -130,21 +141,13 @@ export async function importVivadoZipBytes(
     xdcPath: xdcEntry?.path,
     xdcText: xdcEntry?.text,
     xdcResult,
+    parserDiagnostics: [...xdcPortWarnings, ...collectXprDiagnostics(entries)],
   });
 
   const selectedPaths = new Set<string>([topEntry.path, ...(xdcEntry ? [xdcEntry.path] : [])]);
   const ignoredFiles = allPaths
     .filter((path) => !selectedPaths.has(path))
     .sort(compareCodepoint);
-
-  const converted = parsedHdlToCircuit(parsedHdl);
-  const warnings = uniqueWarnings([
-    ...(parsedHdl.warnings ?? []).map((warning) => warning.message),
-    ...converted.warnings,
-    ...(xdcResult?.warnings ?? []),
-    ...xdcPortWarnings,
-    ...collectXprWarnings(entries),
-  ]);
 
   const hdlEntries = files.filter((entry) => isHdlPath(entry.path));
   const hdlCandidates = [...hdlEntries].sort(compareHdlEntry).map((entry) => entry.path);
@@ -165,9 +168,13 @@ export async function importVivadoZipBytes(
     parsedHdl,
     xdcResult,
     weakPinPorts,
-    warnings,
-    reconstructionLevel: converted.reconstructionLevel,
-    project,
+    warnings: compilerResult.parserDiagnostics.map((diagnostic) => diagnostic.message),
+    parserDiagnostics: compilerResult.parserDiagnostics,
+    compilerDiagnostics: compilerResult.compilerDiagnostics,
+    status: compilerResult.status,
+    isImportRunnable: compilerResult.isImportRunnable,
+    reconstructionLevel: compilerResult.reconstructionLevel,
+    project: compilerResult.project,
   };
 }
 
@@ -182,62 +189,7 @@ export function buildImportedProject(input: {
   /** Optional: preserve node positions from an existing canvas when re-importing */
   existingPositions?: Map<string, { x: number; y: number }>;
 }): RBProject {
-  const converted = parsedHdlToCircuit(input.parsedHdl);
-  // Apply saved positions where node IDs match (e.g. same VHDL instance names)
-  if (input.existingPositions && input.existingPositions.size > 0) {
-    for (const node of converted.circuit.nodes) {
-      const saved = input.existingPositions.get(node.id);
-      if (saved) {
-        node.x = saved.x;
-        node.y = saved.y;
-      }
-    }
-  }
-  const ioMapping = buildIoMapping(input.parsedHdl.ports, converted.circuit, input.xdcResult);
-  const topEntity = sanitizeIdentifier(
-    input.parsedHdl.entityName.trim() || stemFromPath(input.topPath) || 'top'
-  );
-  const projectName = deriveProjectName(input.sourceName, topEntity);
-  const projectId = deriveProjectId(input.sourceName, topEntity);
-
-  return {
-    kind: 'rb-project',
-    version: 1,
-    createdAt: IMPORT_TIMESTAMP,
-    updatedAt: IMPORT_TIMESTAMP,
-    name: projectName,
-    description: `Imported from ${input.sourceName}`,
-    circuit: converted.circuit,
-    hdl: {
-      top: topEntity,
-      sources: [
-        {
-          path: normalizePath(input.topPath),
-          language: input.parsedHdl.lang,
-          text: input.topText,
-        },
-      ],
-    },
-    fpga: {
-      board: CLASSROOM_BOARD,
-      part: CLASSROOM_PART,
-      top: topEntity,
-      constraints:
-        input.xdcText && input.xdcText.trim().length > 0
-          ? {
-              type: 'xdc',
-              text: input.xdcText,
-            }
-          : undefined,
-    },
-    ioMapping,
-    vectors: [],
-    meta: {
-      appSurface: 'ide-import',
-      projectId,
-      tags: ['import', 'vivado', CLASSROOM_BOARD],
-    },
-  };
+  return buildImportedProjectCompilerResult(input).project;
 }
 
 async function buildManifestInspection(input: {
@@ -267,27 +219,78 @@ async function buildManifestInspection(input: {
   const zipTopEntry = chooseTopHdlEntry(input.entries.filter((entry) => isHdlPath(entry.path)));
   const zipXdcEntry = chooseXdcEntry(input.entries);
   const detectedFiles = [input.manifestEntry.path];
-  const warnings = uniqueWarnings([
-    `Imported from RedByte project manifest "${input.manifestEntry.path}".`,
+  const parserDiagnostics: ImportDiagnostic[] = [
+    {
+      source: 'manifest',
+      severity: 'warning',
+      message: `Imported from RedByte project manifest "${input.manifestEntry.path}".`,
+    },
     ...(project.fpga?.board && project.fpga.board !== CLASSROOM_BOARD
-      ? [`Manifest targets board "${project.fpga.board}". Classroom target is "${CLASSROOM_BOARD}".`]
+      ? [
+          {
+            source: 'manifest' as const,
+            severity: 'warning' as const,
+            message: `Manifest targets board "${project.fpga.board}". Classroom target is "${CLASSROOM_BOARD}".`,
+          },
+        ]
       : []),
-    ...(zipTopEntry && manifestTopSource && normalizeNewlines(zipTopEntry.text) !== normalizeNewlines(manifestTopSource.text)
-      ? [`ZIP HDL "${zipTopEntry.path}" differs from the embedded RedByte manifest. RedByte restored the manifest version.`]
+    ...(zipTopEntry &&
+    manifestTopSource &&
+    normalizeNewlines(zipTopEntry.text) !== normalizeNewlines(manifestTopSource.text)
+      ? [
+          {
+            source: 'manifest' as const,
+            severity: 'warning' as const,
+            message: `ZIP HDL "${zipTopEntry.path}" differs from the embedded RedByte manifest. RedByte restored the manifest version.`,
+          },
+        ]
       : []),
     ...(zipXdcEntry && xdcText.length > 0 && normalizeNewlines(zipXdcEntry.text) !== normalizeNewlines(xdcText)
-      ? [`ZIP constraints "${zipXdcEntry.path}" differ from the embedded RedByte manifest. RedByte restored the manifest version.`]
+      ? [
+          {
+            source: 'manifest' as const,
+            severity: 'warning' as const,
+            message: `ZIP constraints "${zipXdcEntry.path}" differ from the embedded RedByte manifest. RedByte restored the manifest version.`,
+          },
+        ]
       : []),
-    ...(manifestPreview.previewWarnings.length > 0
-      ? manifestPreview.previewWarnings
+    ...(manifestPreview.previewDiagnostics.length > 0
+      ? manifestPreview.previewDiagnostics
       : manifestTopSource
-      ? [`Restored HDL source "${manifestTopSource.path}" from the manifest.`]
-      : ['Manifest does not include a top HDL source; the preview is using project IO metadata only.']),
-    ...(xdcText.length > 0 ? ['Restored XDC constraints from the manifest.'] : []),
-    ...(parsedHdl.warnings ?? []).map((warning) => warning.message),
-    ...(xdcResult?.warnings ?? []),
-    ...collectXprWarnings(input.entries),
-  ]);
+      ? [
+          {
+            source: 'manifest' as const,
+            severity: 'warning' as const,
+            message: `Restored HDL source "${manifestTopSource.path}" from the manifest.`,
+          },
+        ]
+      : []),
+    ...(xdcText.length > 0
+      ? [
+          {
+            source: 'manifest' as const,
+            severity: 'warning' as const,
+            message: 'Restored XDC constraints from the manifest.',
+          },
+        ]
+      : []),
+    ...(parsedHdl.warnings ?? []).map((warning) => ({
+      source: 'parser' as const,
+      severity: 'warning' as const,
+      message: warning.message,
+    })),
+    ...(xdcResult?.warnings ?? []).map((warning) => ({
+      source: 'constraints' as const,
+      severity: 'warning' as const,
+      message: warning,
+    })),
+    ...collectXprDiagnostics(input.entries),
+  ];
+  const compilerResult = deriveProjectCompilerResult(project, {
+    parsedHdl,
+    parseStatus: manifestPreview.parseStatus,
+    parserDiagnostics,
+  });
 
   return {
     sourceName: input.sourceName,
@@ -305,8 +308,12 @@ async function buildManifestInspection(input: {
     parsedHdl,
     xdcResult,
     weakPinPorts: collectWeakPinPorts(xdcResult),
-    warnings,
-    reconstructionLevel: 'full',
+    warnings: compilerResult.parserDiagnostics.map((diagnostic) => diagnostic.message),
+    parserDiagnostics: compilerResult.parserDiagnostics,
+    compilerDiagnostics: compilerResult.compilerDiagnostics,
+    status: compilerResult.status,
+    isImportRunnable: compilerResult.isImportRunnable,
+    reconstructionLevel: compilerResult.reconstructionLevel,
     project,
   };
 }
@@ -381,13 +388,15 @@ function parseManifestHdl(
     | undefined
 ): {
   parsedHdl: ParsedHDL;
-  previewWarnings: string[];
+  previewDiagnostics: ImportDiagnostic[];
+  parseStatus: 'success' | 'failure';
 } {
   if (source && source.text.trim().length > 0) {
     try {
       return {
         parsedHdl: source.language === 'vhdl' ? parseVhdl(source.text) : parseVerilog(source.text),
-        previewWarnings: [],
+        previewDiagnostics: [],
+        parseStatus: 'success',
       };
     } catch (error) {
       const detail =
@@ -396,16 +405,28 @@ function parseManifestHdl(
           : 'parse failed';
       return {
         parsedHdl: buildManifestFallbackParsedHdl(project, source.language),
-        previewWarnings: [
-          `Manifest HDL source "${source.path}" could not be parsed for preview (${detail}). RedByte restored the manifest project and derived ports from project IO metadata.`,
+        previewDiagnostics: [
+          {
+            source: 'manifest',
+            severity: 'warning',
+            message: `Manifest HDL source "${source.path}" could not be parsed for preview (${detail}). RedByte restored the manifest project and derived ports from project IO metadata.`,
+          },
         ],
+        parseStatus: 'failure',
       };
     }
   }
 
   return {
     parsedHdl: buildManifestFallbackParsedHdl(project, 'vhdl'),
-    previewWarnings: ['Manifest does not include a top HDL source; the preview is using project IO metadata only.'],
+    previewDiagnostics: [
+      {
+        source: 'manifest',
+        severity: 'warning',
+        message: 'Manifest does not include a top HDL source; the preview is using project IO metadata only.',
+      },
+    ],
+    parseStatus: 'failure',
   };
 }
 
@@ -514,7 +535,7 @@ function collectWeakPinPorts(xdcResult: XdcParseResult | undefined): string[] {
     : [];
 }
 
-function collectXprWarnings(entries: ZipTextEntry[]): string[] {
+function collectXprDiagnostics(entries: ZipTextEntry[]): ImportDiagnostic[] {
   const xprParts = entries
     .filter((entry) => entry.path.toLowerCase().endsWith('.xpr'))
     .map((entry) => ({
@@ -525,8 +546,12 @@ function collectXprWarnings(entries: ZipTextEntry[]): string[] {
 
   return xprParts
     .filter((entry) => normalizeToken(entry.part) !== CLASSROOM_PART)
-    .map((entry) => `Vivado project "${entry.path}" targets part "${entry.part}". RedByte import assumes ${CLASSROOM_PART}.`)
-    .sort(compareCodepoint);
+    .map((entry) => ({
+      source: 'archive' as const,
+      severity: 'warning' as const,
+      message: `Vivado project "${entry.path}" targets part "${entry.part}". RedByte import assumes ${CLASSROOM_PART}.`,
+    }))
+    .sort((left, right) => compareCodepoint(left.message, right.message));
 }
 
 function extractVivadoPart(text: string): string | undefined {
@@ -545,66 +570,6 @@ function chooseXdcEntry(files: ZipTextEntry[]): ZipTextEntry | undefined {
   const xdcEntries = files.filter((entry) => entry.path.toLowerCase().endsWith('.xdc'));
   if (xdcEntries.length === 0) return undefined;
   return [...xdcEntries].sort(compareXdcEntry)[0];
-}
-
-function buildIoMapping(
-  ports: ParsedPort[],
-  circuit: RBProject['circuit'],
-  xdcResult: XdcParseResult | undefined
-): IoMapping {
-  const pinMap = new Map<string, string>();
-  for (const [port, pin] of Object.entries(xdcResult?.pinMap ?? {})) {
-    pinMap.set(normalizeToken(port), pin.trim().toUpperCase());
-  }
-
-  const mapping: IoMapping = {
-    inputs: [],
-    outputs: [],
-  };
-
-  for (const port of ports) {
-    const portName = port.name.trim();
-    if (!portName) continue;
-    const nodeId =
-      findPortNodeId(circuit, port) ??
-      (port.direction === 'in' ? `port_${portName}` : `port_out_${portName}`);
-    const mappedPin = pinMap.get(normalizeToken(portName)) ?? '';
-    if (port.direction === 'in') {
-      mapping.inputs.push({
-        id: toMappingId(portName),
-        nodeId,
-        port: 'out',
-        label: portName,
-        pin: mappedPin,
-      });
-      continue;
-    }
-    mapping.outputs.push({
-      id: toMappingId(portName),
-      nodeId,
-      port: 'in',
-      label: portName,
-      pin: mappedPin,
-    });
-  }
-
-  mapping.inputs.sort((left, right) => compareCodepoint(left.id, right.id));
-  mapping.outputs.sort((left, right) => compareCodepoint(left.id, right.id));
-  return mapping;
-}
-
-function findPortNodeId(
-  circuit: RBProject['circuit'],
-  port: ParsedPort
-): string | undefined {
-  const targetLabel = normalizeToken(port.name);
-  const preferredType = port.direction === 'in' ? 'INPUT' : 'OUTPUT';
-  const match = circuit.nodes.find((node) => {
-    const nodeLabel = normalizeToken(String(node.label ?? ''));
-    if (nodeLabel !== targetLabel) return false;
-    return normalizeToken(String(node.type)) === normalizeToken(preferredType);
-  });
-  return match?.id;
 }
 
 function compareHdlEntry(left: ZipTextEntry, right: ZipTextEntry): number {
@@ -697,15 +662,6 @@ function baseName(path: string): string {
   return normalizePath(path).split('/').pop()?.toLowerCase() ?? '';
 }
 
-function toMappingId(value: string): string {
-  const normalized = value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  return normalized.length > 0 ? normalized : 'io';
-}
-
 function sanitizeIdentifier(value: string): string {
   const normalized = value
     .trim()
@@ -714,34 +670,4 @@ function sanitizeIdentifier(value: string): string {
   if (normalized.length === 0) return 'top';
   if (!/^[A-Za-z_]/.test(normalized)) return `top_${normalized}`;
   return normalized;
-}
-
-function stemFromPath(path: string): string {
-  const file = normalizePath(path).split('/').pop() ?? '';
-  return file.replace(/\.[^.]+$/, '');
-}
-
-function deriveProjectName(sourceName: string, topEntity: string): string {
-  const stem = sourceName.trim().replace(/\.[^.]+$/, '');
-  if (stem.length > 0) return stem;
-  return topEntity;
-}
-
-function deriveProjectId(sourceName: string, topEntity: string): string {
-  const raw = sourceName.trim().replace(/\.[^.]+$/, '') || topEntity;
-  const normalized = raw
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return normalized.length > 0 ? `rb-${normalized}` : 'rb-imported-project';
-}
-
-function uniqueWarnings(rows: string[]): string[] {
-  const deduped = new Set<string>();
-  for (const row of rows) {
-    const message = row.trim();
-    if (!message) continue;
-    deduped.add(message);
-  }
-  return Array.from(deduped).sort(compareCodepoint);
 }

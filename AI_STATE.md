@@ -1,5 +1,74 @@
 # AI State
 
+## Change Log 2026-03-18 (HDL import now joins compiler authority early)
+
+**Subsystem**: HDL/Vivado ZIP import / import compiler seam / ImportSurface diagnostics
+
+### Problem
+
+Imported HDL still joined compiler authority too late after Slice 4:
+
+1. HDL and ZIP import rebuilt a raw `Circuit` but did not immediately elaborate IR or build `SimulationModel`.
+2. Parser/reconstruction success could be mistaken for a valid runnable import because the import UI did not distinguish parser-local diagnostics from compiler-authoritative diagnostics.
+3. Manifest restore, reconstructed ZIP import, and compatibility helpers still entered the project/runtime path through looser import-time authority than visual designs.
+
+### What changed
+
+- `packages/rb-apps/src/import/importCompiler.ts` (new)
+  - Added the typed import compiler seam:
+    - `ParsedHDL -> parsedHdlToCircuit(...) -> elaborateCircuit(...) -> buildSimulationModel(ir)`
+  - Added `ImportedProjectCompilerResult` plus explicit status breakdown:
+    - parse success/failure
+    - reconstruction success/partial/failure
+    - compiler runnable/blocked
+  - Kept parser/reconstruction diagnostics separate from compiler diagnostics.
+- `packages/rb-apps/src/import/importCompiler.js` (new)
+  - Added a thin JS re-export wrapper for the TS source-of-truth module.
+- `packages/rb-apps/src/apps/ide/zipImport.ts`
+  - Switched reconstructed ZIP and manifest inspection paths to the import compiler seam.
+  - Added additive import inspection fields:
+    - `parserDiagnostics`
+    - `compilerDiagnostics`
+    - `status`
+    - `isImportRunnable`
+  - Preserved manifest restore behavior while making compiler validity visible at import time.
+- `packages/rb-apps/src/import/importToRbProject.ts`
+  - Reduced the compatibility helper to a thin adapter over `buildImportedProjectCompilerResult(...)`.
+  - Raw `Circuit` remains an intermediate only; IR/model are built immediately.
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+  - Switched preview/build/apply flow to consume `ImportedProjectCompilerResult`.
+  - Added separate Import status surfaces:
+    - parse
+    - reconstruction
+    - compiler
+  - Preserved the structural-subset policy while surfacing compiler-blocked imports before project replacement.
+  - Submission ZIP integrity handling now renders correctly from the first-look ZIP path by entering the upload workflow before ZIP processing.
+- Tests
+  - Added `packages/rb-apps/src/import/__tests__/importCompiler.test.ts`.
+  - Reworked `packages/rb-apps/src/import/__tests__/importToRbProject.test.ts` to assert real compiler-seam behavior instead of mocking raw reconstruction.
+  - Updated ZIP/import contracts to assert compiler status and runnable state.
+  - Kept the submission-integrity workflow covered in `packages/rb-apps/src/apps/ide/__tests__/importSurface.submission.test.tsx`.
+
+### Student-visible behavior
+
+- Imported HDL now receives IR diagnostics and `SimulationModel` gating at import time instead of only later when sim/verify/export runs.
+- Import status now distinguishes:
+  - parse success,
+  - reconstruction success,
+  - compiler runnable state.
+- Unsupported or structurally invalid HDL can still parse, but RedByte no longer presents it as a fully valid runnable design.
+- Submission ZIP tampering now surfaces an actionable integrity failure callout even from the initial ZIP-first import entry path.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/importSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.honesty.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.verify-reset.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx packages/rb-apps/src/__tests__/ide-vivado-project-folder-contract.test.ts packages/rb-apps/src/import/__tests__/importCompiler.test.ts packages/rb-apps/src/import/__tests__/importToRbProject.test.ts packages/rb-apps/src/apps/ide/__tests__/zipImport.manifest.test.ts packages/rb-apps/src/apps/ide/__tests__/zipImport.roundtrip.test.ts packages/rb-apps/src/__tests__/ide-zip-import-contract.test.ts packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts` -> PASS (13 files, 33 tests)
+- `pnpm repo:status` -> PARTIAL:
+  - import/build/compiler checks pass, including `IDE ZIP Import Contract`, `Import Pipeline Validation`, and `Building`
+  - ahead-count guard still fails in this remote-disabled environment because local branch is already `ahead 5`
+  - remaining repo-wide failing check is `IDE Design Fit Contract`, outside this Slice 5 import change set
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-18 (Export/backend now consumes IR-derived structure)
 
 **Subsystem**: Basys3 export bundle / netlist export / VHDL export / synth-subset validation

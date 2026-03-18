@@ -6,7 +6,7 @@
 import type { RBProject } from '@redbyte/rb-circuit';
 import type { ParsedHDL } from './hdlToCircuit.js';
 import type { XdcParseResult } from './xdcImport.js';
-import { parsedHdlToCircuit } from './hdlToCircuit.js';
+import { buildImportedProjectCompilerResult } from './importCompiler.js';
 
 /**
  * Convert ParsedHDL (+ optional XDC output) to RBProject.
@@ -20,9 +20,15 @@ export function importToRbProject(
   parsedHdl: ParsedHDL,
   xdcResult?: XdcParseResult,
 ): RBProject {
-  // Step 1: Convert HDL to Circuit (auto-layout included)
-  const importResult = parsedHdlToCircuit(parsedHdl);
-  const circuit = importResult.circuit;
+  // Step 1: Convert HDL to Circuit, then elaborate IR immediately.
+  const compilerResult = buildImportedProjectCompilerResult({
+    sourceName: `${parsedHdl.entityName || 'imported-design'}.${parsedHdl.lang === 'verilog' ? 'v' : 'vhd'}`,
+    topPath: `top.${parsedHdl.lang === 'verilog' ? 'v' : 'vhd'}`,
+    topText: '',
+    parsedHdl,
+    xdcResult,
+  });
+  const circuit = compilerResult.circuit;
 
   // Step 2: Build IO mapping from XDC (if provided)
   // Use parsed port names (not circuit.ports, which doesn't expose the port names)

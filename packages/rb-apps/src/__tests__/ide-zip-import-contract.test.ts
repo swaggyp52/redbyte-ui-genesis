@@ -28,6 +28,9 @@ describe('IDE zip import contract', () => {
     expect(importedA.detectedXdcPath).toBe('basys3.xdc');
     expect(importedA.detectedFiles).toEqual(['top.vhd', 'basys3.xdc']);
     expect(importedA.ignoredFiles).toContain('README.md');
+    expect(importedA.status.compiler).toBe('runnable');
+    expect(importedA.isImportRunnable).toBe(true);
+    expect(importedA.compilerDiagnostics).toEqual([]);
 
     const hashA = digestValue(importedA.project);
     const hashB = digestValue(importedB.project);

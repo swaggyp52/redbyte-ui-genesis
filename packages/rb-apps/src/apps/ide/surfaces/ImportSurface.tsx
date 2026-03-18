@@ -4,17 +4,19 @@ import { parseVerilog, scanVerilogModules } from '../../../import/verilogImport'
 import { parseXdcPins, type XdcParseResult } from '../../../import/xdcImport';
 import type { ParsedHDL, ReconstructionLevel } from '../../../import/hdlToCircuit';
 import type { ParsedHdlWarning } from '../../../import/hdlToCircuit';
-import type { RBProject } from '../../../export/projectFormat';
 import {
-  NotASubmissionZipError,
-  parseIdeSubmissionZip,
-  SubmissionIntegrityError,
+  buildImportedProjectCompilerResult,
+  deriveProjectCompilerResult,
+  type ImportedProjectCompilerResult,
+} from '../../../import/importCompiler';
+import type { RBProject } from '../../../export/projectFormat';
+import * as submissionImport from '../../../export/parseIdeSubmission';
+import {
   type ParsedIdeSubmission,
 } from '../../../export/parseIdeSubmission';
 import type { IdeExampleIoRow } from '../examplesCatalog';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
-  buildImportedProject,
   importVivadoZipBytes,
   importVivadoZipFile,
   reimportZipWithCandidates,
@@ -349,7 +351,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const [xdcResult, setXdcResult] = useState<XdcParseResult | null>(null);
   const [zipInspection, setZipInspection] = useState<ZipImportInspection | null>(null);
   const [zipBusy, setZipBusy] = useState(false);
-  const [pendingApplyProject, setPendingApplyProject] = useState<RBProject | null>(null);
+  const [pendingApplyImportResult, setPendingApplyImportResult] = useState<ImportedProjectCompilerResult | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [statusMessage, setStatusMessage] = useState<string>('Start with a Vivado ZIP or paste HDL.');
   const [zipImportError, setZipImportError] = useState<string>('');
@@ -382,6 +384,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const mappingSectionRef = useRef<HTMLElement | null>(null);
   const reviewSectionRef = useRef<HTMLDivElement | null>(null);
   const applySectionRef = useRef<HTMLDivElement | null>(null);
+  const pendingApplyProject = pendingApplyImportResult?.project ?? null;
 
   const lineCount = useMemo(() => Math.max(1, hdlText.split('\n').length), [hdlText]);
   const xdcLineCount = useMemo(() => Math.max(1, xdcText.split('\n').length), [xdcText]);
@@ -449,7 +452,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     }
     try {
       setZipInspection(null);
-      setPendingApplyProject(null);
+      setPendingApplyImportResult(null);
       setShowVerifyResetNotice(false);
       const effectiveLang =
         language === 'auto' ? detectHdlLanguage(source) : (language as 'vhdl' | 'verilog');
@@ -621,6 +624,47 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     [mapping, ports]
   );
 
+  const previewImportResult = useMemo((): ImportedProjectCompilerResult | null => {
+    if (!parsedHdl) return null;
+
+    if (zipInspection?.importMode === 'manifest') {
+      return deriveProjectCompilerResult(zipInspection.project, {
+        parsedHdl,
+        parseStatus: zipInspection.status.parse,
+        parserDiagnostics: zipInspection.parserDiagnostics,
+        reconstructionLevel: zipInspection.reconstructionLevel,
+      });
+    }
+
+    const sourceName =
+      zipInspection?.sourceName ??
+      `${parsedHdl.entityName.trim() || 'imported-design'}.${parsedHdl.lang === 'vhdl' ? 'vhd' : 'v'}`;
+    const topPath =
+      zipInspection?.detectedTopPath ?? `top.${parsedHdl.lang === 'vhdl' ? 'vhd' : 'v'}`;
+    const topText = hdlText.trim();
+    const normalizedXdcText = xdcText.trim();
+    const userPins = Object.fromEntries(
+      Object.entries(mapping).filter(([, pin]) => pin.trim().length > 0)
+    );
+    const mergedXdcResult: XdcParseResult | undefined =
+      xdcResult
+        ? { ...xdcResult, pinMap: { ...xdcResult.pinMap, ...userPins } }
+        : Object.keys(userPins).length > 0
+          ? { pinMap: userPins, pinEntries: {}, warnings: [] }
+          : undefined;
+
+    return buildImportedProjectCompilerResult({
+      sourceName,
+      topPath,
+      topText,
+      parsedHdl,
+      xdcPath: zipInspection?.detectedXdcPath ?? (normalizedXdcText ? 'top.xdc' : undefined),
+      xdcText: normalizedXdcText.length > 0 ? normalizedXdcText : undefined,
+      xdcResult: mergedXdcResult,
+      parserDiagnostics: zipInspection?.parserDiagnostics ?? [],
+    });
+  }, [parsedHdl, zipInspection, hdlText, xdcText, xdcResult, mapping]);
+
   const blockingErrors = useMemo(() => {
     const errors: string[] = [];
     if (parsedHdl && ports.length === 0) {
@@ -634,12 +678,23 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   }, [invalidNameErrors, parsedHdl, ports.length, unmappedPorts]);
 
   const warnings = useMemo(() => {
-    const warningRows: string[] = [];
-    if (parsedHdl?.warnings?.length) warningRows.push(...parsedHdl.warnings.map((w) => w.message));
-    if (xdcResult?.warnings?.length) warningRows.push(...xdcResult.warnings);
-    if (zipInspection?.warnings?.length) warningRows.push(...zipInspection.warnings);
-    return warningRows;
-  }, [parsedHdl, xdcResult, zipInspection]);
+    const warningRows = new Set<string>();
+    for (const diagnostic of previewImportResult?.parserDiagnostics ?? zipInspection?.parserDiagnostics ?? []) {
+      warningRows.add(diagnostic.message);
+    }
+    if (zipInspection?.warnings?.length) {
+      for (const warning of zipInspection.warnings) warningRows.add(warning);
+    }
+    if (warningRows.size === 0) {
+      if (parsedHdl?.warnings?.length) {
+        for (const warning of parsedHdl.warnings) warningRows.add(warning.message);
+      }
+      if (xdcResult?.warnings?.length) {
+        for (const warning of xdcResult.warnings) warningRows.add(warning);
+      }
+    }
+    return Array.from(warningRows);
+  }, [parsedHdl, previewImportResult, xdcResult, zipInspection]);
 
   const hasParsedHdl = parsedHdl !== null;
   const hdlLooksValid =
@@ -654,6 +709,30 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     [unmappedPorts]
   );
   const canImport = hasParsedHdl && blockingErrors.length === 0;
+  const activeImportStatus =
+    pendingApplyImportResult?.status ?? previewImportResult?.status ?? zipInspection?.status ?? null;
+  const parseStatusLabel =
+    !hasParsedHdl && !hasZipInspection
+      ? 'pending'
+      : activeImportStatus?.parse === 'failure'
+        ? 'failed'
+        : activeImportStatus?.parse === 'success'
+          ? 'ok'
+          : 'pending';
+  const reconstructionStatusLabel =
+    activeImportStatus?.reconstruction === 'success'
+      ? 'full'
+      : activeImportStatus?.reconstruction === 'partial'
+        ? 'partial'
+        : activeImportStatus?.reconstruction === 'failure'
+          ? 'failed'
+          : 'pending';
+  const compilerStatusLabel =
+    activeImportStatus?.compiler === 'blocked'
+      ? 'blocked'
+      : activeImportStatus?.compiler === 'runnable'
+        ? 'runnable'
+        : 'pending';
 
   // ── STOP-SHIP: Behavioral construct pre-scan ───────────────────────────────
   // Detect process/always/rising_edge BEFORE the commit is applied.
@@ -665,14 +744,15 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
   // Compute reconstruction level for paste imports (where there's no zipInspection).
   const effectiveReconstructionLevel = useMemo((): ReconstructionLevel => {
+    if (previewImportResult?.reconstructionLevel) return previewImportResult.reconstructionLevel;
     if (zipInspection?.reconstructionLevel) return zipInspection.reconstructionLevel;
     return computeReconstructionLevelFromParsed(parsedHdl);
-  }, [zipInspection, parsedHdl]);
+  }, [previewImportResult, zipInspection, parsedHdl]);
 
   // Block commit when behavioral constructs detected or no gates were reconstructed.
   // STOP-SHIP item 1: No silent dropping. STOP-SHIP item 5: No fake success.
   const importBlockerReasons = useMemo((): string[] => {
-    if (!pendingApplyProject) return [];
+    if (!pendingApplyImportResult) return [];
     const reasons: string[] = [];
     if (detectedBehavioralConstructs.length > 0) {
       reasons.push(
@@ -684,8 +764,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     } else if (effectiveReconstructionLevel === 'ports-only') {
       reasons.push('Only the port names were saved — no internal logic was captured. Switch to Build and wire the gates manually, or re-import from a full RedByte project export.');
     }
+    for (const diagnostic of pendingApplyImportResult.compilerDiagnostics) {
+      if (diagnostic.severity !== 'error') continue;
+      reasons.push(`${diagnostic.code}: ${diagnostic.message}`);
+    }
     return reasons;
-  }, [pendingApplyProject, detectedBehavioralConstructs, effectiveReconstructionLevel]);
+  }, [pendingApplyImportResult, detectedBehavioralConstructs, effectiveReconstructionLevel]);
 
   const hasImportBlocker = importBlockerReasons.length > 0;
 
@@ -930,7 +1014,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     }
     try {
       setZipInspection(null);
-      setPendingApplyProject(null);
+      setPendingApplyImportResult(null);
       setShowVerifyResetNotice(false);
       const parsed = parseXdcPins(source);
       setXdcResult(parsed);
@@ -976,40 +1060,32 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     setStatusMessage('Applied Basys3 mapping suggestions for eligible ports.');
   };
 
-  const buildCurrentProject = (): RBProject | null => {
-    if (!parsedHdl) return null;
-    const sourceName =
-      zipInspection?.sourceName ??
-      `${parsedHdl.entityName.trim() || 'imported-design'}.${parsedHdl.lang === 'vhdl' ? 'vhd' : 'v'}`;
-    const topPath =
-      zipInspection?.detectedTopPath ?? `top.${parsedHdl.lang === 'vhdl' ? 'vhd' : 'v'}`;
-    const topText = hdlText.trim();
-    const normalizedXdcText = xdcText.trim();
-    // Merge user's pin selections from mapping state into XDC result
-    const userPins = Object.fromEntries(
-      Object.entries(mapping).filter(([, pin]) => pin.trim().length > 0)
-    );
-    const mergedXdcResult: XdcParseResult | undefined =
-      xdcResult
-        ? { ...xdcResult, pinMap: { ...xdcResult.pinMap, ...userPins } }
-        : Object.keys(userPins).length > 0
-          ? { pinMap: userPins, pinEntries: {}, warnings: [] }
-          : undefined;
-    return buildImportedProject({
-      sourceName,
-      topPath,
-      topText,
-      parsedHdl,
-      xdcPath: zipInspection?.detectedXdcPath ?? (normalizedXdcText ? 'top.xdc' : undefined),
-      xdcText: normalizedXdcText.length > 0 ? normalizedXdcText : undefined,
-      xdcResult: mergedXdcResult,
-    });
-  };
+  const buildCurrentImportResult = useCallback(
+    (): ImportedProjectCompilerResult | null => previewImportResult,
+    [previewImportResult]
+  );
+
+  const finalizeImportResult = useCallback(
+    (result: ImportedProjectCompilerResult): ImportedProjectCompilerResult => {
+      if (zipInspection?.importMode === 'manifest') return result;
+      if ((result.project.vectors?.length ?? 0) > 0) return result;
+      const baselineVectors = generateBaselineVectors(result.project);
+      if (baselineVectors.length === 0) return result;
+      return {
+        ...result,
+        project: {
+          ...result.project,
+          vectors: baselineVectors,
+        },
+      };
+    },
+    [zipInspection]
+  );
 
   const handleProcessDesign = useCallback(async () => {
     setPipelineActive(true);
     setPipelineSteps(makePipelineSteps());
-    setPendingApplyProject(null);
+    setPendingApplyImportResult(null);
     setShowVerifyResetNotice(false);
     setStatusMessage('Processing design…');
 
@@ -1130,26 +1206,28 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       // STEP: build
       markPipelineStep('build', 'running');
       await importTick(60);
-      const built = buildCurrentProject();
+      const built = buildCurrentImportResult();
       if (!built) {
-        markPipelineStep('build', 'error', 'buildCurrentProject returned null');
+        markPipelineStep('build', 'error', 'buildCurrentImportResult returned null');
         setStatusMessage('Build failed.');
         setPipelineActive(false);
         return;
       }
-      const baselineVectors = generateBaselineVectors(built);
-      const builtWithVectors: RBProject = baselineVectors.length > 0
-        ? { ...built, vectors: baselineVectors }
-        : built;
-      setPendingApplyProject(builtWithVectors);
+      const finalized = finalizeImportResult(built);
+      const baselineVectorCount = finalized.project.vectors?.length ?? 0;
+      setPendingApplyImportResult(finalized);
       markPipelineStep(
         'build',
         'done',
-        baselineVectors.length > 0
-          ? `${built.circuit.nodes.length} nodes · ${baselineVectors.length} baseline vectors`
-          : `${built.circuit.nodes.length} nodes · ${built.circuit.connections.length} connections`
+        baselineVectorCount > 0
+          ? `${finalized.project.circuit.nodes.length} nodes · ${baselineVectorCount} baseline vectors`
+          : `${finalized.project.circuit.nodes.length} nodes · ${finalized.project.circuit.connections.length} connections`
       );
-      setStatusMessage('Design processed. Review commit preview below.');
+      setStatusMessage(
+        finalized.isImportRunnable
+          ? 'Design processed. Review commit preview below.'
+          : 'Design processed, but the compiler blocked this import. Review diagnostics before replacing the project.'
+      );
     } catch (err) {
       const reason = err instanceof Error ? err.message : 'unknown error';
       setStatusMessage(`Process failed: ${reason}`);
@@ -1161,14 +1239,14 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     }
   }, [
     hdlText, xdcText, language, zipInspection, xdcResult, parsedHdl, mapping,
-    markPipelineStep, buildCurrentProject, selectedEntityName, detectedEntityNames,
+    markPipelineStep, buildCurrentImportResult, finalizeImportResult, selectedEntityName, detectedEntityNames,
   ]);
 
   const requestApplyProject = () => {
     if (!canImport) return;
-    const nextProject = buildCurrentProject();
-    if (!nextProject) return;
-    setPendingApplyProject(nextProject);
+    const nextImportResult = buildCurrentImportResult();
+    if (!nextImportResult) return;
+    setPendingApplyImportResult(finalizeImportResult(nextImportResult));
     setShowVerifyResetNotice(false);
     setStatusMessage('Confirm applying import to replace the active project.');
   };
@@ -1190,7 +1268,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         `${parsedHdl?.entityName.trim() || 'imported-design'}.${parsedHdl?.lang === 'verilog' ? 'v' : 'vhd'}`,
     });
     onImportProject?.(pendingApplyProject);
-    setPendingApplyProject(null);
+    setPendingApplyImportResult(null);
     setShowVerifyResetNotice(true);
     setStatusMessage(
       `RBProject ready: ${pendingApplyProject.circuit.nodes.length} nodes, ${pendingApplyProject.circuit.connections.length} connections.`
@@ -1198,7 +1276,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   };
 
   const cancelApplyProject = () => {
-    setPendingApplyProject(null);
+    setPendingApplyImportResult(null);
     setShowVerifyResetNotice(false);
     setStatusMessage('Import apply canceled.');
   };
@@ -1220,7 +1298,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         `${parsedHdl?.entityName.trim() || 'imported-design'}.${parsedHdl?.lang === 'verilog' ? 'v' : 'vhd'}`,
     });
     onImportProject?.(pendingApplyProject);
-    setPendingApplyProject(null);
+    setPendingApplyImportResult(null);
     setShowVerifyResetNotice(true);
     setStatusMessage('Project imported. Opening Verify…');
     onGoToVerify?.();
@@ -1353,9 +1431,11 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       setStatusMessage('ZIP import requires a .zip archive.');
       return;
     }
+    setImportFirstLookDismissed(true);
+    setTab('upload');
     zipFileRef.current = file;
     setZipBusy(true);
-    setPendingApplyProject(null);
+    setPendingApplyImportResult(null);
     setShowVerifyResetNotice(false);
     setZipImportError('');
     setSubmissionDetectedMessage('');
@@ -1364,7 +1444,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     try {
       const bytes = await file.arrayBuffer();
       try {
-        const submission = await parseIdeSubmissionZip(bytes);
+        const submission = await submissionImport.parseIdeSubmissionZip(bytes);
         setSubmissionDetectedMessage(
           `Submission ZIP detected: ${submission.gradeSummary.bundleId}. Open the submission workflow instead of Vivado import.`
         );
@@ -1373,14 +1453,22 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         setZipBusy(false);
         return;
       } catch (submissionError) {
-        if (submissionError instanceof SubmissionIntegrityError) {
+        const isSubmissionIntegrityError =
+          submissionError instanceof submissionImport.SubmissionIntegrityError ||
+          (submissionError instanceof Error &&
+            submissionError.name === 'SubmissionIntegrityError');
+        if (isSubmissionIntegrityError) {
           const message = submissionError.message;
           setSubmissionIntegrityMessage(message);
           setStatusMessage(message);
           setZipBusy(false);
           return;
         }
-        if (!(submissionError instanceof NotASubmissionZipError)) {
+        const isNotASubmissionZipError =
+          submissionError instanceof submissionImport.NotASubmissionZipError ||
+          (submissionError instanceof Error &&
+            submissionError.name === 'NotASubmissionZipError');
+        if (!isNotASubmissionZipError) {
           const message =
             submissionError instanceof Error ? submissionError.message : 'unknown submission parse error';
           setSubmissionIntegrityMessage(message);
@@ -1407,8 +1495,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       ).length;
       setStatusMessage(
         inspection.importMode === 'manifest'
-          ? `ZIP parsed from RedByte manifest: ${inspection.manifestPath ?? inspection.detectedFiles[0]}.`
-          : `ZIP parsed: ${inspection.detectedTopPath}${inspection.detectedXdcPath ? ` + ${inspection.detectedXdcPath}` : ''} (${mappedPins}/${inspection.parsedHdl.ports.length} mapped).`
+          ? inspection.isImportRunnable
+            ? `ZIP parsed from RedByte manifest: ${inspection.manifestPath ?? inspection.detectedFiles[0]}.`
+            : `ZIP parsed from RedByte manifest, but compiler checks are blocked by imported design diagnostics.`
+          : inspection.isImportRunnable
+            ? `ZIP parsed: ${inspection.detectedTopPath}${inspection.detectedXdcPath ? ` + ${inspection.detectedXdcPath}` : ''} (${mappedPins}/${inspection.parsedHdl.ports.length} mapped).`
+            : `ZIP parsed, but compiler checks are blocked. Review diagnostics before replacing the project.`
       );
     } catch (error) {
       zipFileRef.current = null;
@@ -1432,7 +1524,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     const file = zipFileRef.current;
     if (!file) return;
     setZipBusy(true);
-    setPendingApplyProject(null);
+    setPendingApplyImportResult(null);
     setShowVerifyResetNotice(false);
     setZipImportError('');
     setSubmissionDetectedMessage('');
@@ -1454,8 +1546,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       ).length;
       setStatusMessage(
         inspection.importMode === 'manifest'
-          ? `ZIP parsed from RedByte manifest: ${inspection.manifestPath ?? inspection.detectedFiles[0]}.`
-          : `Re-extracted: ${hdlPath}${xdcPath ? ` + ${xdcPath}` : ''} (${mappedPins}/${inspection.parsedHdl.ports.length} mapped).`
+          ? inspection.isImportRunnable
+            ? `ZIP parsed from RedByte manifest: ${inspection.manifestPath ?? inspection.detectedFiles[0]}.`
+            : `ZIP parsed from RedByte manifest, but compiler checks are blocked by imported design diagnostics.`
+          : inspection.isImportRunnable
+            ? `Re-extracted: ${hdlPath}${xdcPath ? ` + ${xdcPath}` : ''} (${mappedPins}/${inspection.parsedHdl.ports.length} mapped).`
+            : `Re-extracted, but compiler checks are blocked. Review diagnostics before replacing the project.`
       );
     } catch (error) {
       setZipInspection(null);
@@ -1526,6 +1622,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       mapping,
       warnings,
       blockingErrors,
+      compilerStatus: compilerStatusLabel,
+      compilerDiagnostics:
+        pendingApplyImportResult?.compilerDiagnostics ??
+        previewImportResult?.compilerDiagnostics ??
+        zipInspection?.compilerDiagnostics ??
+        [],
     });
     try {
       await navigator.clipboard.writeText(report);
@@ -3621,6 +3723,18 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 <span>{statusMessage}</span>
               </div>
               <div className="ide-kv-row">
+                <span>Parse</span>
+                <span data-testid="ide-import-parse-status">{parseStatusLabel}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Reconstruction</span>
+                <span data-testid="ide-import-reconstruction-status">{reconstructionStatusLabel}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Compiler</span>
+                <span data-testid="ide-import-compiler-status">{compilerStatusLabel}</span>
+              </div>
+              <div className="ide-kv-row">
                 <span>Copy</span>
                 <span>{copyFeedback === 'idle' ? 'idle' : copyFeedback === 'copied' ? 'copied' : 'failed'}</span>
               </div>
@@ -3965,11 +4079,22 @@ function buildDiagnosticsReport(params: {
   mapping: Record<string, string>;
   warnings: string[];
   blockingErrors: string[];
+  compilerStatus: string;
+  compilerDiagnostics: ImportedProjectCompilerResult['compilerDiagnostics'];
 }): string {
-  const { parsedEntityName, ports, mapping, warnings, blockingErrors } = params;
+  const {
+    parsedEntityName,
+    ports,
+    mapping,
+    warnings,
+    blockingErrors,
+    compilerStatus,
+    compilerDiagnostics,
+  } = params;
   const lines: string[] = [];
   lines.push('RedByte Import Diagnostics');
   lines.push(`Entity: ${parsedEntityName}`);
+  lines.push(`Compiler: ${compilerStatus}`);
   lines.push('');
   lines.push('Ports:');
   for (const port of ports) {
@@ -3984,6 +4109,15 @@ function buildDiagnosticsReport(params: {
     lines.push('- none');
   } else {
     for (const error of blockingErrors) lines.push(`- ${error}`);
+  }
+  lines.push('');
+  lines.push('Compiler Diagnostics:');
+  if (compilerDiagnostics.length === 0) {
+    lines.push('- none');
+  } else {
+    for (const diagnostic of compilerDiagnostics) {
+      lines.push(`- [${diagnostic.severity}] ${diagnostic.code}: ${diagnostic.message}`);
+    }
   }
   lines.push('');
   lines.push('Warnings:');

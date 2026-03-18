@@ -1,26 +1,10 @@
-// Copyright (c) 2025 Connor Angiel — RedByte OS Genesis
-// Tests: importToRbProject bridge
-
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { ParsedHDL } from '../hdlToCircuit.js';
 import type { XdcParseResult } from '../xdcImport.js';
 import { importToRbProject } from '../importToRbProject.js';
-import * as hdlToCircuitModule from '../hdlToCircuit.js';
-
-// Mock parsedHdlToCircuit to avoid full circuit generation complexity
-vi.spyOn(hdlToCircuitModule, 'parsedHdlToCircuit').mockImplementation((parsed) => {
-  return {
-    circuit: {
-      name: parsed.entityName,
-      ports: parsed.ports.map((p) => ({ name: p.name })),
-    } as any,
-    warnings: [],
-    unmappedComponents: [],
-  };
-});
 
 describe('importToRbProject', () => {
-  it('converts ParsedHDL to RBProject (no XDC)', () => {
+  it('converts ParsedHDL to a circuit-backed RBProject wrapper', () => {
     const hdl: ParsedHDL = {
       entityName: 'AND_GATE',
       ports: [
@@ -36,13 +20,16 @@ describe('importToRbProject', () => {
 
     const result = importToRbProject(hdl);
 
-    expect(result.circuit).toBeDefined();
-    expect(result.circuit.name).toBe('AND_GATE');
-    expect(result.circuit.ports).toHaveLength(3);
-    expect(result.ioMapping).toBeUndefined(); // No XDC provided
+    expect(result.circuit.nodes.map((node) => node.id).sort()).toEqual([
+      'port_a',
+      'port_b',
+      'port_out_y',
+    ]);
+    expect(result.circuit.connections).toEqual([]);
+    expect(result.ioMapping).toBeUndefined();
   });
 
-  it('merges XDC pin mapping into ioMapping', () => {
+  it('merges XDC pin mapping into the compatibility ioMapping record', () => {
     const hdl: ParsedHDL = {
       entityName: 'DEMO',
       ports: [
@@ -74,7 +61,7 @@ describe('importToRbProject', () => {
     });
   });
 
-  it('omits ioMapping if XDC matches no ports', () => {
+  it('omits compatibility ioMapping if XDC matches no parsed ports', () => {
     const hdl: ParsedHDL = {
       entityName: 'TEST',
       ports: [
@@ -89,7 +76,7 @@ describe('importToRbProject', () => {
 
     const xdc: XdcParseResult = {
       pinMap: {
-        unmatched_port: 'V17', // This port name doesn't exist in HDL
+        unmatched_port: 'V17',
       },
       warnings: [],
     };
