@@ -286,6 +286,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    expect(getByTestId('ide-verify-preflight-guard').textContent).toContain('VPRE1002');
     expect(getByTestId('ide-verify-preflight-guard').textContent).toContain('Cannot verify: output ld0');
   });
 

@@ -8,9 +8,10 @@ import { generateTestbenchVhdl } from '../../../fpga/boards/basys3/testbenchGene
 import { generateVivadoImportTcl } from '../../../fpga/boards/basys3/vivadoImportTcl';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import {
-  createDiagnosticId,
+  createIdeDiagnostic,
   type IdeDiagnostic,
   type IdeDiagnosticAction,
+  type IdeDiagnosticLocation,
   type IdeDiagnosticOwner,
   type IdeDiagnosticSeverity,
 } from '../diagnostics';
@@ -120,22 +121,19 @@ function collectDiagnostics(
     const canonicalSeverity: IdeDiagnosticSeverity =
       normalizedSeverity === 'error' ? 'error' : 'warn';
     const title = diagnosticTitleFor(code, message, normalizedSeverity);
-    const id = createDiagnosticId({
-      code,
-      owner,
-      message,
-      hint,
-    });
-    const canonical: IdeDiagnostic = {
-      id,
+    const canonical = createIdeDiagnostic({
       severity: canonicalSeverity,
       code,
       title,
       message,
       hint,
       owner,
+      origin: 'export',
+      stage: 'export',
+      location: diagnosticLocationFromOwner(owner, port),
       actions,
-    };
+    });
+    const id = canonical.id;
 
     diagnostics.push({
       id,
@@ -726,6 +724,38 @@ function buildDiagnosticActions(owner: IdeDiagnosticOwner): IdeDiagnosticAction[
       },
     },
   ];
+}
+
+function diagnosticLocationFromOwner(
+  owner: IdeDiagnosticOwner,
+  port: string | undefined
+): IdeDiagnosticLocation | undefined {
+  if (owner.kind === 'node') {
+    return {
+      nodeId: owner.nodeId,
+      port: port ?? owner.portName,
+    };
+  }
+  if (owner.kind === 'mapping') {
+    return {
+      nodeId: owner.nodeId,
+      port: port ?? owner.portName,
+      mappingKey: owner.mappingKey,
+    };
+  }
+  if (owner.kind === 'port') {
+    return {
+      port: port ?? owner.portName,
+      mappingKey: owner.mappingKey,
+    };
+  }
+  if (owner.kind === 'file') {
+    return {
+      filePath: owner.filePath,
+      port,
+    };
+  }
+  return undefined;
 }
 
 function normalizePort(value: string): string {

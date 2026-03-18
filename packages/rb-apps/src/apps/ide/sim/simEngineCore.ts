@@ -338,6 +338,9 @@ export function runDeterministicVerifyFromModel(
         if (!preflight.has(key)) {
           preflight.set(key, {
             kind: 'missing-output-row',
+            code: 'VPRE1001',
+            severity: 'error',
+            blocking: true,
             signal,
             tick: entry.tick,
             vectorId: entry.vectorId,
@@ -353,10 +356,15 @@ export function runDeterministicVerifyFromModel(
         if (!preflight.has(key)) {
           preflight.set(key, {
             kind: 'missing-output-node',
+            code: 'VPRE1002',
+            severity: 'error',
+            blocking: true,
             signal: expectedMatch.signal,
             tick: entry.tick,
             vectorId: entry.vectorId,
             caseIndex: entry.caseIndex,
+            nodeId: expectedMatch.row.nodeId,
+            port: expectedMatch.row.id,
             message: `Cannot verify: output ${expectedMatch.signal} is not mapped to a concrete design node.`,
           });
         }
@@ -383,10 +391,18 @@ export function runDeterministicVerifyFromModel(
               actualResolution.reason === 'missing-output-node'
                 ? 'missing-output-node'
                 : 'missing-output-sample',
+            code:
+              actualResolution.reason === 'missing-output-node'
+                ? 'VPRE1002'
+                : 'VPRE1004',
+            severity: 'error',
+            blocking: true,
             signal: expectedMatch.signal,
             tick: entry.tick,
             vectorId: entry.vectorId,
             caseIndex: entry.caseIndex,
+            nodeId: expectedMatch.row.nodeId,
+            port: expectedMatch.row.id,
             message:
               actualResolution.reason === 'missing-output-node'
                 ? `Cannot verify: output ${expectedMatch.signal} is not mapped to a concrete design node.`
@@ -693,8 +709,14 @@ function buildInvalidIrResult(
       normalizationMap: [],
       preflight: model.blockingDiagnostics.map((diagnostic) => ({
         kind: 'invalid-ir' as const,
+        code: diagnostic.code,
+        severity: diagnostic.severity,
+        blocking: diagnostic.severity === 'error',
         signal: diagnostic.nodeId ?? diagnostic.netName ?? diagnostic.code,
         message: diagnostic.message,
+        nodeId: diagnostic.nodeId,
+        port: diagnostic.port,
+        netName: diagnostic.netName,
       })),
       failures: [],
     },
@@ -728,6 +750,9 @@ function buildUnsupportedTemporalResult(
       normalizationMap: [],
       preflight: scheduleContract.temporalIssues.map((issue) => ({
         kind: 'unsupported-temporal' as const,
+        code: issue.code,
+        severity: 'error' as const,
+        blocking: true,
         signal: scheduleContract.clockSignalName ?? issue.code,
         message: issue.message,
       })),

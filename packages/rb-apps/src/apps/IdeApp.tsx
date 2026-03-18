@@ -11,6 +11,7 @@ import { useCircuitStore } from '../stores/circuitStore';
 import { digestValue } from '../utils/digest';
 import { stableSerialize } from '../utils/stableSerialize';
 import './ide/ide-root.css';
+import { deriveDesignCompilerDiagnostics } from './ide/designCompilerDiagnostics';
 import { IdeLeftRail, type IdeMode } from './ide/components/IdeLeftRail';
 import { IdeTopBar } from './ide/components/IdeTopBar';
 import { IdeStatusBar } from './ide/components/IdeStatusBar';
@@ -1002,15 +1003,20 @@ export const IdeApp: React.FC = () => {
     }));
   }, []);
 
+  const designDiagnostics = useMemo(
+    () => deriveDesignCompilerDiagnostics(exportProject),
+    [exportProject]
+  );
+
   const designCompilerStatus = useMemo<DesignCompilerStatus>(
     () => ({
       dirtySinceVerify: projectHealthCore.dirtySinceVerify,
       dirtySinceExport: projectHealthCore.dirtySinceExport,
-      errorCount: exportViewModel.diagnostics.filter((entry) => entry.severity === 'error').length,
-      warningCount: exportViewModel.diagnostics.filter((entry) => entry.severity === 'warn').length,
-      diagnostics: exportViewModel.diagnostics,
+      errorCount: designDiagnostics.filter((entry) => entry.severity === 'error').length,
+      warningCount: designDiagnostics.filter((entry) => entry.severity === 'warn').length,
+      diagnostics: designDiagnostics,
     }),
-    [exportViewModel.diagnostics, projectHealthCore.dirtySinceExport, projectHealthCore.dirtySinceVerify]
+    [designDiagnostics, projectHealthCore.dirtySinceExport, projectHealthCore.dirtySinceVerify]
   );
   const verifyMappingComplete = missingRequiredCount === 0;
   const unmappedOutputLabels = useMemo(

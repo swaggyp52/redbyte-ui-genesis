@@ -15,6 +15,7 @@ import {
   type ParsedIdeSubmission,
 } from '../../../export/parseIdeSubmission';
 import type { IdeExampleIoRow } from '../examplesCatalog';
+import { adaptImportDiagnostic, adaptIrDiagnostic } from '../diagnostics';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   importVivadoZipBytes,
@@ -695,6 +696,28 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     }
     return Array.from(warningRows);
   }, [parsedHdl, previewImportResult, xdcResult, zipInspection]);
+  const unifiedImportDiagnostics = useMemo(
+    () => [
+      ...(
+        previewImportResult?.parserDiagnostics ??
+        zipInspection?.parserDiagnostics ??
+        []
+      ).map((diagnostic) => adaptImportDiagnostic(diagnostic)),
+      ...(
+        pendingApplyImportResult?.compilerDiagnostics ??
+        previewImportResult?.compilerDiagnostics ??
+        zipInspection?.compilerDiagnostics ??
+        []
+      ).map((diagnostic) => adaptIrDiagnostic(diagnostic, { stage: 'import' })),
+    ],
+    [
+      pendingApplyImportResult?.compilerDiagnostics,
+      previewImportResult?.compilerDiagnostics,
+      previewImportResult?.parserDiagnostics,
+      zipInspection?.compilerDiagnostics,
+      zipInspection?.parserDiagnostics,
+    ]
+  );
 
   const hasParsedHdl = parsedHdl !== null;
   const hdlLooksValid =
@@ -1921,6 +1944,17 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         ) : hasParsedHdl ? (
           <IdeCallout tone="info" title="No warnings" testId="ide-import-warnings">
             No parser warnings detected yet.
+          </IdeCallout>
+        ) : null}
+        {unifiedImportDiagnostics.length > 0 ? (
+          <IdeCallout tone="info" title="Unified diagnostics" testId="ide-import-unified-diagnostics">
+            <ul className="ide-list">
+              {unifiedImportDiagnostics.slice(0, 6).map((diagnostic) => (
+                <li key={diagnostic.id}>
+                  <strong>{diagnostic.code}</strong> [{diagnostic.origin}] {diagnostic.message}
+                </li>
+              ))}
+            </ul>
           </IdeCallout>
         ) : null}
       </IdeInspectorSection>

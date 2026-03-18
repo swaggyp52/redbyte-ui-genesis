@@ -1,5 +1,81 @@
 # AI State
 
+## Change Log 2026-03-18 (Compiler diagnostics now share one IDE-facing contract)
+
+**Subsystem**: IDE diagnostics contract / import+design+verify+export diagnostic normalization
+
+### Problem
+
+After Slice 5, RedByte had a coherent compiler spine but diagnostics were still fragmented:
+
+1. Import parser/reconstruction diagnostics, IR diagnostics, verify preflight issues, and export diagnostics used different shapes and severity semantics.
+2. Verify preflight issues had `kind` but no stable diagnostic code, and import diagnostics still lacked stable codes/location metadata.
+3. The Design diagnostics panel was still effectively export-backed, so the design view could surface backend diagnostics instead of current compiler-stage truth.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/diagnostics.ts`
+  - Expanded the shared IDE-facing diagnostic contract with:
+    - required stable `code`
+    - `origin`
+    - `stage`
+    - `blocking`
+    - additive `location`
+  - Added deterministic severity/blocking rules:
+    - `info -> blocking false`
+    - `warn -> blocking false`
+    - `error -> blocking true` by default unless explicitly overridden
+  - Added adapter helpers:
+    - `adaptIrDiagnostic(...)`
+    - `adaptImportDiagnostic(...)`
+    - `adaptVerifyPreflightIssue(...)`
+- `packages/rb-apps/src/apps/ide/designCompilerDiagnostics.ts` (new)
+  - Added a small IR-backed helper for Design-mode compiler diagnostics so the design console no longer needs to piggyback on export diagnostics.
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Switched `designCompilerStatus` to `deriveDesignCompilerDiagnostics(exportProject)` instead of reusing `exportViewModel.diagnostics`.
+- `packages/rb-apps/src/import/importCompiler.ts`
+  - Extended `ImportDiagnostic` with additive metadata:
+    - `code?`
+    - `filePath?`
+    - `line?`
+    - `column?`
+    - `blocking?`
+  - Preserved parser/reconstruction/compiler separation while carrying import-time source context forward.
+- `packages/rb-apps/src/apps/ide/verifyReport.ts`
+  - Extended `VerifyEvidencePreflightIssue` additively with stable-code/severity/blocking/location fields.
+- `packages/rb-apps/src/apps/ide/sim/simEngineCore.ts`
+  - Populated verify-preflight issues with stable `VPRE...` / IR codes and node/port/net metadata where available.
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Normalized verify preflight issues through the shared adapter and rendered stable codes alongside preflight messages.
+- `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`
+  - Moved canonical export diagnostics onto the shared IDE contract while preserving existing `RBEX...` identity.
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - Normalized Verify-evidence advisories through the same shared contract.
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+  - Added a lightweight unified-diagnostics view so parser/import and compiler diagnostics can be surfaced together without a surface redesign.
+- Tests
+  - Added `packages/rb-apps/src/apps/ide/__tests__/diagnostics.contract.test.ts`
+  - Added `packages/rb-apps/src/apps/ide/__tests__/designCompilerDiagnostics.test.ts`
+  - Updated `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` to assert stable verify-preflight code display.
+
+### Student-visible behavior
+
+- Import, Design, Verify, and Export now have one coherent IDE diagnostic contract without flattening parser/reconstruction/IR/preflight/export into one vague bucket.
+- Verify preflight blockers now show stable codes (`VPRE...`) instead of anonymous message-only issues.
+- Design diagnostics now reflect current compiler-stage truth, not export-only backend blockers.
+- Import diagnostics can now carry stable codes and source locations when available, while still remaining distinct from compiler/IR diagnostics.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/diagnostics.contract.test.ts packages/rb-apps/src/apps/ide/__tests__/designCompilerDiagnostics.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/import/__tests__/importCompiler.test.ts packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts packages/rb-apps/src/apps/ide/__tests__/importSurface.honesty.test.tsx` -> PASS (6 files, 31 tests)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/simEngine.verify-diagnostics.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx` -> PASS (3 files, 14 tests)
+
+### Remaining concern
+
+- `pnpm repo:status` was not rerun for this slice because the repo is already ahead of origin in this remote-disabled environment and still has the unrelated `IDE Design Fit Contract` repo-health failure outside this diagnostics contract change set.
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-18 (HDL import now joins compiler authority early)
 
 **Subsystem**: HDL/Vivado ZIP import / import compiler seam / ImportSurface diagnostics

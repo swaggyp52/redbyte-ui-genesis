@@ -3,7 +3,7 @@ import type { IdeExampleDefinition } from '../examplesCatalog';
 import type { RBProject } from '../../../export/projectFormat';
 import { buildDeterministicZip } from '../../../export/deterministicZip';
 import type { ProjectHealthExportResult, ProjectHealthVerifyResult } from '../projectHealth';
-import { createDiagnosticId, type IdeDiagnostic } from '../diagnostics';
+import { createIdeDiagnostic, type IdeDiagnostic } from '../diagnostics';
 import {
   buildVivadoProjectFolderZip,
   deriveVivadoProjectSlug,
@@ -1898,16 +1898,7 @@ function createEvidenceDiagnostic(input: {
   severity?: ExportDiagnosticSeverity;
 }): ExportDiagnosticView {
   const severity = input.severity ?? 'warning';
-  const canonical: IdeDiagnostic = {
-    id: createDiagnosticId({
-      code: input.code,
-      owner: {
-        kind: 'file',
-        filePath: 'verify-report.json',
-      },
-      message: input.message,
-      hint: [input.fix],
-    }),
+  const canonical = createIdeDiagnostic({
     severity: severity === 'error' ? 'error' : 'warn',
     code: input.code,
     title: severity === 'error' ? 'Evidence gate blocker' : 'Evidence advisory',
@@ -1915,6 +1906,11 @@ function createEvidenceDiagnostic(input: {
     hint: [input.fix],
     owner: {
       kind: 'file',
+      filePath: 'verify-report.json',
+    },
+    origin: 'export',
+    stage: 'export',
+    location: {
       filePath: 'verify-report.json',
     },
     actions: [
@@ -1927,7 +1923,7 @@ function createEvidenceDiagnostic(input: {
         },
       },
     ],
-  };
+  });
 
   return {
     id: canonical.id,

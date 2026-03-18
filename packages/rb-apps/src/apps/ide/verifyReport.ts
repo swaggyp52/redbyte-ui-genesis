@@ -40,11 +40,17 @@ export interface VerifyEvidencePreflightIssue {
     | 'missing-output-sample'
     | 'unsupported-temporal'
     | 'invalid-ir';
+  code?: string;
+  severity?: 'error' | 'warning' | 'info';
+  blocking?: boolean;
   signal: string;
   message: string;
   tick?: number;
   vectorId?: string;
   caseIndex?: number;
+  nodeId?: string;
+  port?: string;
+  netName?: string;
 }
 
 export interface VerifyEvidenceFailure {

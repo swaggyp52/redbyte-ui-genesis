@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { TestVector } from '@redbyte/rb-utils';
 import type { RunVerificationInput, RuntimeVerifyRun } from '../projectRuntime';
 import { buildVerifyTickSignalIndex, normalizeSignalKey, type VerifyTickSignalIndexEntry } from '../verifyReport';
+import { adaptVerifyPreflightIssue } from '../diagnostics';
 import type { IdeExampleDefinition } from '../examplesCatalog';
 import {
   deriveVerifyFailurePattern,
@@ -830,6 +831,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const verifyPreflightIssues = useMemo(
     () => lastRun?.evidence?.preflight ?? [],
     [lastRun?.evidence?.preflight]
+  );
+  const verifyPreflightDiagnostics = useMemo(
+    () => verifyPreflightIssues.map((issue) => adaptVerifyPreflightIssue(issue)),
+    [verifyPreflightIssues]
   );
   const selectedFailureEvidence = useMemo(() => {
     if (!selectedFailureCase) return null;
@@ -3721,15 +3726,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </div>
 
               {/* No-trace diagnostic — shown when run produced no waveform data */}
-              {verifyPreflightIssues.length > 0 && (
+              {verifyPreflightDiagnostics.length > 0 && (
                 <IdeCallout tone="error" title="Cannot verify current expectations" testId="ide-verify-preflight-guard">
                   <p className="ide-copy">
                     Fix these structural issues before treating this as a logic mismatch.
                   </p>
                   <ul className="ide-list">
-                    {verifyPreflightIssues.slice(0, 4).map((issue, index) => (
-                      <li key={`${issue.kind}-${issue.signal}-${issue.vectorId ?? index}`}>
-                        {issue.message}
+                    {verifyPreflightDiagnostics.slice(0, 4).map((diagnostic, index) => (
+                      <li key={`${diagnostic.code}-${diagnostic.location?.signal ?? diagnostic.id}-${diagnostic.location?.vectorId ?? index}`}>
+                        <strong>{diagnostic.code}:</strong> {diagnostic.message}
                       </li>
                     ))}
                   </ul>

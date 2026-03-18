@@ -28,7 +28,12 @@ export type ImportCompilerStatus = 'runnable' | 'blocked';
 export interface ImportDiagnostic {
   source: 'parser' | 'reconstruction' | 'constraints' | 'manifest' | 'archive';
   severity: 'warning' | 'error';
+  code?: string;
   message: string;
+  filePath?: string;
+  line?: number;
+  column?: number;
+  blocking?: boolean;
 }
 
 export interface ImportedProjectCompilerStatus {
@@ -90,6 +95,9 @@ export function buildImportedProjectCompilerResult(
     ...(input.parsedHdl.warnings ?? []).map((warning) => ({
       source: 'parser' as const,
       severity: 'warning' as const,
+      filePath: normalizePath(input.topPath),
+      line: warning.line,
+      column: warning.col,
       message: warning.message,
     })),
     ...converted.warnings.map((warning) => ({
@@ -100,6 +108,7 @@ export function buildImportedProjectCompilerResult(
     ...(input.xdcResult?.warnings ?? []).map((warning) => ({
       source: 'constraints' as const,
       severity: 'warning' as const,
+      filePath: input.xdcPath ? normalizePath(input.xdcPath) : undefined,
       message: warning,
     })),
   ]);
@@ -295,13 +304,26 @@ function normalizeParserDiagnostics(rows: ImportDiagnostic[]): ImportDiagnostic[
   for (const row of rows) {
     const message = row.message.trim();
     if (!message) continue;
-    const key = `${row.source}|${row.severity}|${message}`;
+    const key = [
+      row.source,
+      row.severity,
+      row.code ?? '',
+      row.filePath ?? '',
+      Number.isFinite(row.line) ? row.line : '',
+      Number.isFinite(row.column) ? row.column : '',
+      message,
+    ].join('|');
     if (seen.has(key)) continue;
     seen.add(key);
     normalized.push({
       source: row.source,
       severity: row.severity,
+      code: row.code?.trim() || undefined,
       message,
+      filePath: row.filePath ? normalizePath(row.filePath) : undefined,
+      line: Number.isFinite(row.line) ? Math.max(1, Math.floor(Number(row.line))) : undefined,
+      column: Number.isFinite(row.column) ? Math.max(1, Math.floor(Number(row.column))) : undefined,
+      blocking: row.blocking === true ? true : undefined,
     });
   }
   return normalized.sort(compareImportDiagnostic);
@@ -310,8 +332,16 @@ function normalizeParserDiagnostics(rows: ImportDiagnostic[]): ImportDiagnostic[
 function compareImportDiagnostic(left: ImportDiagnostic, right: ImportDiagnostic): number {
   const bySeverity = compareCodepoint(left.severity, right.severity);
   if (bySeverity !== 0) return bySeverity;
+  const byCode = compareCodepoint(left.code ?? '', right.code ?? '');
+  if (byCode !== 0) return byCode;
   const bySource = compareCodepoint(left.source, right.source);
   if (bySource !== 0) return bySource;
+  const byFilePath = compareCodepoint(left.filePath ?? '', right.filePath ?? '');
+  if (byFilePath !== 0) return byFilePath;
+  const byLine = (left.line ?? Number.MAX_SAFE_INTEGER) - (right.line ?? Number.MAX_SAFE_INTEGER);
+  if (byLine !== 0) return byLine;
+  const byColumn = (left.column ?? Number.MAX_SAFE_INTEGER) - (right.column ?? Number.MAX_SAFE_INTEGER);
+  if (byColumn !== 0) return byColumn;
   return compareCodepoint(left.message, right.message);
 }
 
