@@ -7197,16 +7197,16 @@ details[open] summary .details-arrow {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
 }
 .ide-verify-workbench > .ide-verify-instrument-deck {
   flex: 1 1 auto;
   min-height: 0;
 }
 
-/* ── instrument deck: 65/35 column grid ── */
+/* ── instrument deck: 70/30 column grid (authoritative; see Phase 24 override removed) ── */
 .ide-verify-instrument-deck {
   display: grid;
-  grid-template-columns: minmax(0, 1.85fr) minmax(300px, 1fr);
   min-height: 0;
   overflow: hidden;
 }
@@ -7216,20 +7216,18 @@ details[open] summary .details-arrow {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-height: 500px;
   border-right: 1px solid rgba(24,44,72,0.7);
   background: rgba(8, 16, 30, 0.92);
 }
 .ide-verify-oscilloscope-stage .ide-waveform-outer {
   flex: 1 1 auto;
-  min-height: 400px;
+  min-height: 0;
   overflow: auto;
-  border-color: rgba(20,40,68,0.8) !important;
+  border-color: rgba(20,40,68,0.8);
 }
 /* Sprint 11: named scroll wrapper for the SVG waveform — handles horizontal overflow */
 .ide-verify-waveform-scroll {
   overflow: auto;
-  min-height: 420px;
 }
 
 /* ── supporting strip (tab bar + panels below deck) ── */
@@ -7488,7 +7486,7 @@ details[open] summary .details-arrow {
 /* Container borders use steel-blue or near-black, not teal */
 .ide-verify-waveform-panel,
 .ide-verify-waveform-hero {
-  border-color: rgba(24,44,72,0.7) !important;
+  border-color: rgba(24,44,72,0.7);
 }
 /* Waveform legend: steel-blue tokens */
 .ide-verify-waveform-legend {
@@ -7526,13 +7524,9 @@ details[open] summary .details-arrow {
   align-items: stretch;
 }
 
-/* ── 70/30 deck + reasonable scope min ── */
+/* ── 70/30 deck (authoritative column split) ── */
 .ide-verify-instrument-deck {
   grid-template-columns: minmax(0, 2.35fr) minmax(260px, 1fr);
-}
-.ide-verify-oscilloscope-stage {
-  /* Sprint 11: removed 480px hard floor — grid row now fills available height */
-  min-height: 500px;
 }
 
 /* ── Oscilloscope instrument header (OSCILLOSCOPE label + chips) ── */
@@ -7891,20 +7885,6 @@ details[open] summary .details-arrow {
   background: rgba(255,107,107,0.1);
 }
 
-/* ── Workbench flex: console-frame is the flex:1 child ── */
-.ide-verify-workbench {
-  overflow: hidden;
-}
-.ide-verify-panel .ide-panel-body > .ide-verify-workbench {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-/* Workbench fills remaining flex space — oscilloscope owns height internally. */
-.ide-verify-panel .ide-panel-body > .ide-verify-workbench {
-  flex: 1 1 auto;
-  min-height: 0;
-}
 
 /* ══════════════════════════════════════════════════════════════════
    Phase 25 — Scope dominance · Truth table instrument feel ·
