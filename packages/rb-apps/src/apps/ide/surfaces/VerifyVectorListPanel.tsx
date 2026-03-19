@@ -71,13 +71,13 @@ export const VerifyVectorListPanel: React.FC<VerifyVectorListPanelProps> = ({
   return (
     <section className="ide-verify-vector-list-panel" data-testid="ide-verify-vector-list-panel">
       <header className="ide-design-subheader ide-verify-three-panel-header">
-        <h3>Failing Vectors</h3>
+        <h3>Assertion mismatches</h3>
         <span className="ide-copy" data-testid="ide-verify-vector-list-count">
           {rows.length}
         </span>
       </header>
       <p className="ide-copy ide-verify-vector-list-help">
-        Arrow keys or J/K jump between failing ticks.
+        Arrow keys or J/K jump between mismatches.
       </p>
       <div
         className="ide-verify-vector-list-scroll"
@@ -86,7 +86,7 @@ export const VerifyVectorListPanel: React.FC<VerifyVectorListPanelProps> = ({
         onKeyDown={handleKeyDown}
       >
         {rows.length === 0 ? (
-          <p className="ide-copy">No failing rows in this run.</p>
+          <p className="ide-copy">No assertion mismatches in this run.</p>
         ) : (
           rows.map((row) => {
             const isSelected = row.key === selectedKey;
@@ -104,7 +104,7 @@ export const VerifyVectorListPanel: React.FC<VerifyVectorListPanelProps> = ({
                   <strong>t{row.tick}</strong>
                 </span>
                 <span className="ide-verify-vector-row-secondary">
-                  exp <code>{row.expected}</code> got <code>{row.actual}</code>
+                  asserted <code>{row.expected}</code> → <code>{row.actual}</code>
                 </span>
               </button>
             );

@@ -76,14 +76,14 @@ function buildLikelyReasonText(input: {
   }
 
   if (classification?.reason === 'timing-mismatch') {
-    return `${failure.signal} mismatched at t${failure.tick}: expected ${failure.expected}, got ${observed}. Clock or sample timing likely differs from expectation.`;
+    return `${failure.signal} mismatched at t${failure.tick}: asserted ${failure.expected}, observed ${observed}. Clock or sample timing likely differs.`;
   }
 
   if (classification?.message) {
     return `${failure.signal} mismatched at t${failure.tick}: ${classification.message}.`;
   }
 
-  return `${failure.signal} mismatched at t${failure.tick}: expected ${failure.expected}, got ${observed}.`;
+  return `${failure.signal} mismatched at t${failure.tick}: asserted ${failure.expected}, observed ${observed}.`;
 }
 
 function buildNextStepText(input: {
@@ -151,7 +151,7 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
   return (
     <section className="ide-verify-failure-explanation-panel" data-testid="ide-verify-failure-explanation-panel">
       <header className="ide-design-subheader ide-verify-three-panel-header">
-        <h3>Failure Explanation</h3>
+        <h3>Assertion detail</h3>
         <span className="ide-copy">{failure ? `t${failure.tick}` : 'No selection'}</span>
       </header>
 
@@ -160,22 +160,22 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
         data-testid="ide-verify-failure-explainer"
       >
         {!failure ? (
-          <p className="ide-copy">Select a failing vector row to inspect expected vs actual output.</p>
+          <p className="ide-copy">Select an assertion mismatch to inspect.</p>
         ) : (
           <div className="ide-kv-list">
             <p className="ide-verify-right-summary-text" data-testid="ide-verify-right-summary">
-              At t{failure.tick}, {failure.signal} failed: expected {failure.expected}, got {displayObservedValue(failure.actual)}
+              At t{failure.tick}, {failure.signal} — asserted {failure.expected}, observed {displayObservedValue(failure.actual)}
             </p>
             <div className="ide-kv-row">
               <span>Signal key</span>
               <code data-testid="ide-verify-right-signal-key">{failure.signal}</code>
             </div>
             <div className="ide-kv-row">
-              <span>Expected value</span>
+              <span>Asserted</span>
               <code data-testid="ide-verify-right-expected">{failure.expected}</code>
             </div>
             <div className="ide-kv-row">
-              <span>Actual value</span>
+              <span>Observed</span>
               <code data-testid="ide-verify-right-actual">{failure.actual}</code>
             </div>
             <div className="ide-kv-row">
@@ -226,7 +226,7 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
 
             {peers.length > 0 ? (
               <div className="ide-kv-row" data-testid="ide-verify-right-peer-list">
-                <span>Also failing</span>
+                <span>Also mismatched</span>
                 <div className="ide-inline-actions">
                   {peers.map((peer) => (
                     <button

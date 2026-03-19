@@ -2427,10 +2427,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           : 'Project Vectors';
   const verifyReferenceNote =
     totalVectorCount === 0
-      ? 'Add vectors to compare against expected behavior.'
+      ? 'Add vectors to define the input stimulus for this run.'
       : totalExpectedCaseCount === 0
         ? 'Run the circuit to observe waveform and outputs. With no expected outputs loaded, this is observation only.'
-        : 'Mismatch means the current circuit differs from the selected reference. It does not mean the design graph or generated HDL is structurally invalid.';
+        : assertionMode
+          ? 'Mismatch means the current circuit differs from the selected reference. It does not mean the design graph or generated HDL is structurally invalid.'
+          : 'Vectors include expected values. Enable Assertions to compare observed outputs against them.';
 
   useEffect(() => {
     if (displayStatus === 'PASS' && failingRows.length === 0 && verifyTab === 'mismatches') {
@@ -3236,7 +3238,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </span>
                   </div>
                 </article>
-                {firstFailure ? (
+                {assertionMode && firstFailure ? (
                   <article className="ide-design-diagnostic-row is-error">
                     <div className="ide-design-diagnostic-row-header">
                       <code>FIRST_FAIL</code>
@@ -3375,7 +3377,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <>
               <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
               <span className="ide-verify-strip-meta ide-verify-strip-pass" data-testid="ide-verify-strip-pass-count">
-                {runRows.length - failingRows.length}/{runRows.length} match
+                {assertionMode
+                  ? `${runRows.length - failingRows.length}/${runRows.length} match`
+                  : `${runRows.length} vector${runRows.length !== 1 ? 's' : ''}`}
               </span>
               {assertionMode && failingRows.length > 0 && (
                 <>
@@ -4267,7 +4271,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 )}
                 {assertionMode && !drawerOpen && selectedFailureCase && (
                   <span className="ide-verify-drawer-hint">
-                    t{selectedFailureCase.tick} · {selectedFailureCase.signal} · exp <code>{selectedFailureCase.expected}</code> act <code>{selectedFailureCase.actual}</code>
+                    t{selectedFailureCase.tick} · {selectedFailureCase.signal} · asserted <code>{selectedFailureCase.expected}</code> observed <code>{selectedFailureCase.actual}</code>
                   </span>
                 )}
                 <span className="ide-verify-drawer-tabs" data-testid="ide-verify-tab-bar">
@@ -4315,7 +4319,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       {selectedFailureCase && (
                         <span className="ide-verify-fail-summary__first">
                           Selected: <code>{selectedFailureCase.signal}</code> at t{selectedFailureCase.tick}
-                          {' '}exp <code>{selectedFailureCase.expected}</code> got <code>{selectedFailureCase.actual}</code>
+                          {' '}asserted <code>{selectedFailureCase.expected}</code> observed <code>{selectedFailureCase.actual}</code>
                         </span>
                       )}
                       {selectedFailureCase && onFixPath && (
@@ -4329,8 +4333,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       )}
                     </div>
                   )}
-                  {/* Failure explainer */}
-                  {displayStatus === 'FAIL' && selectedFailureCase && (
+                  {/* Failure explainer — assertion mode only */}
+                  {assertionMode && displayStatus === 'FAIL' && selectedFailureCase && (
                     <div className="ide-verify-failure-explainer" data-testid="ide-verify-failure-explainer-inline">
                       <header className="ide-verify-failure-explainer__header">
                         <strong>Failure explainer</strong>
@@ -4461,17 +4465,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   )}
                   {/* Mismatch table */}
                   {failingRows.length === 0 ? (
-                    <IdeCallout tone="success" title="No mismatches in current run">
-                      PASS evidence is ready for export.
-                    </IdeCallout>
+                    assertionMode ? (
+                      <IdeCallout tone="success" title="No mismatches in current run">
+                        PASS evidence is ready for export.
+                      </IdeCallout>
+                    ) : (
+                      <IdeCallout tone="info" title="Run complete">
+                        Enable Assertions to compare observed outputs against asserted values.
+                      </IdeCallout>
+                    )
                   ) : (
                     <table className="ide-verify-mismatch-list" data-testid="ide-verify-mismatch-list">
                       <thead>
                         <tr>
                           <th>Tick</th>
                           <th>Signal</th>
-                          <th>Expected</th>
-                          <th>Actual</th>
+                          <th>Asserted</th>
+                          <th>Observed</th>
                           {onFixPath && <th />}
                         </tr>
                       </thead>
@@ -4549,8 +4559,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     >
                       <span className="ide-verify-fix-expectation-label">
                         t{selectedFailure.tick} · <code>{selectedFailure.signal}</code>
-                        {' '}expected <code>{selectedFailure.expected}</code>
-                        {', '}got <code>{selectedFailure.actual}</code>
+                        {' '}asserted <code>{selectedFailure.expected}</code>
+                        {', '}observed <code>{selectedFailure.actual}</code>
                       </span>
                       <button
                         type="button"
@@ -4570,7 +4580,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </div>
                   )}
                   <IdeDataTable
-                    columns={['Tick', 'Signal', 'Expected', 'Actual', 'Status']}
+                    columns={['Tick', 'Signal', 'Asserted', 'Observed', 'Status']}
                     rows={resultRows}
                     testId="ide-verify-results-table"
                   />
@@ -4657,7 +4667,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   )}
                   <section data-testid="ide-verify-signal-table">
                     <IdeDataTable
-                      columns={['Signal', `Tick ${selectedTick ?? '-'}`, 'Expected', 'Actual']}
+                      columns={['Signal', `Tick ${selectedTick ?? '-'}`, 'Asserted', 'Observed']}
                       rows={selectedTickRows.map((row) => [
                         row.signal,
                         String(row.tick),
