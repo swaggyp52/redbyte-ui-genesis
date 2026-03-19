@@ -7188,8 +7188,8 @@ details[open] summary .details-arrow {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Phase 21/22 — Instrument deck (65/35) · Oscilloscope stage ·
-   TruthTablePane · Supporting strip
+   Instrument deck · Oscilloscope stage · TruthTablePane · Supporting strip
+   (column split is 70/30 — defined at Phase 24 block below)
    ══════════════════════════════════════════════════════════════════ */
 
 /* ── workbench is a flex column; deck fills remaining height ── */
@@ -7204,7 +7204,7 @@ details[open] summary .details-arrow {
   min-height: 0;
 }
 
-/* ── instrument deck: 70/30 column grid (authoritative; see Phase 24 override removed) ── */
+/* ── instrument deck: base grid structure (column split: 70/30 defined ~line 7527) ── */
 .ide-verify-instrument-deck {
   display: grid;
   min-height: 0;

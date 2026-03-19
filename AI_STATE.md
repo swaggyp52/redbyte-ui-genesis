@@ -1,5 +1,55 @@
 # AI State
 
+## Change Log 2026-03-19 (Verify layout Slice 1 — strip conflicting layout overrides)
+
+**Subsystem**: Verify surface CSS layout infrastructure
+
+### Problem
+
+The Verify page was suffering from layered layout debt introduced by progressive "Phase" development that appended new rules without removing the old ones they superseded:
+
+1. `.ide-verify-oscilloscope-stage` had `min-height: 500px` in Phase 21/22 and Phase 24 blocks, then `min-height: 0` in Phase 25 — a classic cascade fight where the old floors were dead weight but still present.
+2. `.ide-verify-instrument-deck` had a 65/35 column split from Phase 21/22 overridden by the authoritative 70/30 from Phase 24 — dead declaration left in place.
+3. `.ide-verify-waveform-scroll` had `min-height: 420px` fighting the oscilloscope stage sizing.
+4. `.ide-verify-oscilloscope-stage .ide-waveform-outer` had `min-height: 400px` plus a `!important` color compensation flag.
+5. `.ide-verify-workbench` selector appeared three times (including one exact duplicate pair).
+6. `.ide-verify-waveform-panel, .ide-verify-waveform-hero` had `border-color: ... !important` compensating for an older color system.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Removed Phase 21/22 `.ide-verify-oscilloscope-stage` `min-height: 500px` (dead; Phase 25 `min-height: 0` is authoritative)
+  - Removed Phase 24 `.ide-verify-oscilloscope-stage` `min-height: 500px` stub block (duplicate dead override)
+  - Removed `.ide-verify-oscilloscope-stage .ide-waveform-outer` `min-height: 400px` (replaced with `min-height: 0` so height flows from flex parent)
+  - Removed `.ide-verify-waveform-scroll` `min-height: 420px` hard floor (fought oscilloscope stage sizing)
+  - Removed Phase 21/22 `.ide-verify-instrument-deck` 65/35 column split (dead; Phase 24 70/30 wins; kept `display`/`min-height`/`overflow`)
+  - Removed `.ide-verify-workbench { overflow: hidden }` preamble (merged into consolidated base block)
+  - Removed duplicate `.ide-verify-panel .ide-panel-body > .ide-verify-workbench` `flex: 1 1 auto` pair (already covered by L7042 combined rule)
+  - Removed `border-color: ... !important` compensating flags from `.ide-verify-waveform-panel, .ide-verify-waveform-hero` and `.ide-verify-oscilloscope-stage .ide-waveform-outer`
+  - Net: −26 deletions, +6 insertions (net −20 lines)
+
+### Height contract after cleanup
+
+```
+panel-body (flex col, overflow hidden)
+  → .ide-verify-workbench (flex col, min-height 0, overflow hidden) — flex:1 from L7042
+    → .ide-verify-console-frame (flex col, flex:1 from L7513)
+      → .ide-verify-instrument-deck (grid, grid-template-rows minmax(0,1fr), align stretch)
+        → .ide-verify-oscilloscope-stage (flex col, min-height 0 from Phase 25)
+          → .ide-waveform-outer (flex:1, min-height 0, overflow auto)
+```
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` → 13 passed (same as baseline), 6 pre-existing failures unchanged
+
+### Remaining concern
+
+- 6 pre-existing test failures in `verifySurface.workstation.test.tsx` (missing `ide-verify-jump-first-failure` testid; first-run CTA text mismatches) are unrelated to this CSS slice.
+- Next step: Slice 2 — waveform & canvas height stabilization.
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-03-18 (Compiler diagnostics now share one IDE-facing contract)
 
 **Subsystem**: IDE diagnostics contract / import+design+verify+export diagnostic normalization
