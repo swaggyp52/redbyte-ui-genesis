@@ -649,6 +649,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [tickWindowCenter, setTickWindowCenter] = useState<number | null>(null);
   const [truthTableMode, setTruthTableMode] = useState<TruthTableMode>('ticks');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Assertion mode: when false (default), Verify is an observation/simulation environment.
+  // When true, mismatch panels, failure hints, and grading language become visible.
+  const [assertionMode, setAssertionMode] = useState(false);
   const [sidePanelTab, setSidePanelTab] = useState<'mismatches' | 'vectors' | 'details'>('mismatches');
   const [showAllVectorTicks, setShowAllVectorTicks] = useState(false);
   const [oracleApplied, setOracleApplied] = useState(false);
@@ -1292,14 +1295,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     const key = lastRun.reportHash ?? lastRun.generatedAtIso ?? '';
     if (autoHandledRunRef.current === key) return;
     autoHandledRunRef.current = key;
-    if (lastRun.status === 'fail') {
+    if (lastRun.status === 'fail' && assertionMode) {
       setVerifyTab('mismatches');
       setDrawerOpen(true);
       return;
     }
     setDrawerOpen(false);
     setVerifyTab('truth');
-  }, [lastRun?.generatedAtIso, lastRun?.reportHash, lastRun?.status]);
+  }, [assertionMode, lastRun?.generatedAtIso, lastRun?.reportHash, lastRun?.status]);
 
   // Reset step mode whenever a new run completes
   useEffect(() => {
@@ -2742,7 +2745,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     (lastRun?.waveform?.length ?? 0) > 0 &&
     authoredVectors.length > 0 &&
     onVectorsChange !== undefined;
-  const showFailureWorkbenchPanels = displayStatus === 'FAIL' && failingRows.length > 0;
+  const showFailureWorkbenchPanels = assertionMode && displayStatus === 'FAIL' && failingRows.length > 0;
   const shortenHash = (value: string | null | undefined): string => {
     if (!value || value.trim().length === 0) return '—';
     return value.length > 12 ? value.slice(0, 12) : value;
@@ -3305,7 +3308,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               <span className="ide-verify-strip-meta ide-verify-strip-pass" data-testid="ide-verify-strip-pass-count">
                 {runRows.length - failingRows.length}/{runRows.length} match
               </span>
-              {failingRows.length > 0 && (
+              {assertionMode && failingRows.length > 0 && (
                 <>
                   <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
                   <span className="ide-verify-strip-meta ide-verify-strip-fail" data-testid="ide-verify-strip-fail-count">
@@ -3375,13 +3378,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   {isRunStale ? 'Re-run Simulation' : lastRun ? 'Re-run Simulation' : 'Run Simulation'}
                 </IdeButton>
               </span>
-            {displayStatus === 'FAIL' && failingRows.length > 0 && !isRunStale && (
+            {assertionMode && displayStatus === 'FAIL' && failingRows.length > 0 && !isRunStale && (
               <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-jump-first-failure">
                 Inspect first mismatch
               </IdeButton>
             )}
             {(hasResults || Boolean(lastRun)) && (
               <IdeButton tone="ghost" onClick={clearResults} testId="ide-verify-clear">Clear</IdeButton>
+            )}
+            {hasResults && (
+              <IdeButton
+                tone={assertionMode ? 'secondary' : 'ghost'}
+                onClick={() => setAssertionMode((v) => !v)}
+                testId="ide-verify-assertion-mode-toggle"
+                title="Toggle assertion checking — compare expected outputs against observed circuit behavior"
+              >
+                Assertions {assertionMode ? 'ON' : 'OFF'}
+              </IdeButton>
             )}
             {hasResults && totalSteps > 0 && (
               <span className="ide-verify-strip-advanced-actions">
@@ -3416,7 +3429,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </IdeCallout>
         )}
 
-        {displayStatus === 'FAIL' && failureDiagnosis.length > 0 && (
+        {assertionMode && displayStatus === 'FAIL' && failureDiagnosis.length > 0 && (
           <div className="ide-verify-fail-diagnosis" data-testid="ide-verify-fail-diagnosis">
             <span className="ide-verify-fail-diagnosis-header" data-testid="ide-verify-fail-diagnosis-header">Issues found</span>
             {failureDiagnosis.map((item) => (
@@ -3428,13 +3441,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {displayStatus === 'FAIL' && verifyHint && (
+        {assertionMode && displayStatus === 'FAIL' && verifyHint && (
           <IdeCallout tone="info" title="Something to investigate" testId="ide-verify-hint-callout" className="ide-callout--hint">
             {verifyHint}
           </IdeCallout>
         )}
 
-        {displayStatus === 'FAIL' && vectorsAreAutoGenerated && (
+        {assertionMode && displayStatus === 'FAIL' && vectorsAreAutoGenerated && (
           <IdeCallout tone="warn" testId="ide-verify-auto-vector-fail-note">
             <span>
               <strong>Ran with starter vectors.</strong>{' '}
@@ -3445,7 +3458,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </IdeCallout>
         )}
 
-        {displayStatus === 'FAIL' && (
+        {assertionMode && displayStatus === 'FAIL' && (
           <div className="ide-verify-readiness-strip" data-testid="ide-verify-readiness-strip">
             <span
               className={`ide-verify-readiness-axis ide-verify-readiness-axis--${mappingComplete !== false ? 'ok' : 'warn'}`}
@@ -3468,7 +3481,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {displayStatus === 'FAIL' && mappingComplete !== false && onGoToExport && (
+        {assertionMode && displayStatus === 'FAIL' && mappingComplete !== false && onGoToExport && (
           <div className="ide-verify-export-available-note" data-testid="ide-verify-export-available">
             <span className="ide-verify-export-available-label">
               Your exported HDL is still available.{' '}
@@ -3536,7 +3549,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     )}
                   </>
                 )}
-                {displayStatus === 'FAIL' && failingRows.length > 0 && (
+                {assertionMode && displayStatus === 'FAIL' && failingRows.length > 0 && (
                   <>
                     <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-run-proof-inspect">
                       Inspect first mismatch
@@ -3771,7 +3784,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       Delta {cursorDeltaTicks} ticks
                     </code>
                   )}
-                  {failTicksSorted.length > 0 && currentFailIndex >= 0 && (
+                  {assertionMode && failTicksSorted.length > 0 && currentFailIndex >= 0 && (
                     <span className="ide-verify-scope-fail-index">
                       fail {currentFailIndex + 1}/{failTicksSorted.length}
                     </span>
@@ -3809,7 +3822,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <div className="ide-verify-signal-digest" data-testid="ide-verify-signal-digest">
                   <span className="ide-verify-signal-digest-label">Signals</span>
                   {signalDigestRows.map((sig) => {
-                    const tone = sig.isFailing === null ? 'idle' : sig.isFailing ? 'fail' : 'pass';
+                    const tone = !assertionMode || sig.isFailing === null ? 'idle' : sig.isFailing ? 'fail' : 'pass';
                     return (
                       <span
                         key={sig.key}
@@ -3825,7 +3838,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         {sig.pin && (
                           <span className="ide-verify-signal-chip-pin">{sig.pin}</span>
                         )}
-                        {sig.isFailing !== null && (
+                        {assertionMode && sig.isFailing !== null && (
                           <span className="ide-verify-signal-chip-status">
                             {sig.isFailing ? '✗' : '✓'}
                           </span>
@@ -3869,7 +3882,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 )}
                 {/* Left: Fail navigator */}
                 <div className="ide-verify-wfbar-group ide-verify-wfbar-left" data-testid="ide-verify-fail-nav">
-                  {failTicksSorted.length > 0 ? (
+                  {assertionMode && failTicksSorted.length > 0 ? (
                     <>
                       <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-fail-nav-first">
                         First mismatch
@@ -4100,8 +4113,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <WaveformViewer
                   signals={displaySignalTimeline}
                   ticks={zoomedTicks}
-                  failTicks={new Set(failingRows.map((row) => row.tick))}
-                  failingSignalKeys={failingSignalKeys}
+                  failTicks={assertionMode ? new Set(failingRows.map((row) => row.tick)) : new Set<number>()}
+                  failingSignalKeys={assertionMode ? failingSignalKeys : new Set<string>()}
                   selectedTick={selectedTick}
                   cursorA={cursorA}
                   cursorB={cursorB}
@@ -4183,10 +4196,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               aria-expanded={drawerOpen}
             >
               <span className="ide-verify-drawer-summary">
-                {failingRows.length > 0 && (
+                {assertionMode && failingRows.length > 0 && (
                   <span className="ide-verify-drawer-badge">{failingRows.length} fail</span>
                 )}
-                {!drawerOpen && selectedFailureCase && (
+                {assertionMode && !drawerOpen && selectedFailureCase && (
                   <span className="ide-verify-drawer-hint">
                     t{selectedFailureCase.tick} · {selectedFailureCase.signal} · exp <code>{selectedFailureCase.expected}</code> act <code>{selectedFailureCase.actual}</code>
                   </span>
@@ -4227,7 +4240,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               {verifyTab === 'mismatches' && (
                 <section className="ide-verify-mismatch-panel" data-testid="ide-verify-mismatch-table">
                   {/* Fail summary — compact selected-failure header */}
-                  {displayStatus === 'FAIL' && failingRows.length > 0 && (
+                  {assertionMode && displayStatus === 'FAIL' && failingRows.length > 0 && (
                     <div className="ide-verify-fail-summary" data-testid="ide-verify-fail-summary-inline">
                       <span className="ide-verify-fail-summary__status">FAIL</span>
                       <span className="ide-verify-fail-summary__count">

@@ -410,9 +410,9 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
     );
   }
 
-  // Post-run: collapsible above the waveform workbench
+  // Post-run: open by default above the waveform workbench
   return (
-    <details className="ide-verify-scenario-builder-details ide-verify-scenario-builder-details--postrun">
+    <details className="ide-verify-scenario-builder-details ide-verify-scenario-builder-details--postrun" open>
       <summary className="ide-verify-scenario-builder-summary">
         Testbench
         {authoredVectors.length > 0 && (
