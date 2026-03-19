@@ -177,6 +177,7 @@ const WaveformViewer: React.FC<{
   clockSignals?: Set<string>;
   onHoverSignal?: (signal: string | null) => void;
   selectedSignal?: string | null;
+  signalGroups?: Map<string, SignalLaneGroup>;
 }> = ({
   signals,
   ticks,
@@ -196,6 +197,7 @@ const WaveformViewer: React.FC<{
   clockSignals,
   onHoverSignal,
   selectedSignal = null,
+  signalGroups,
 }) => {
   const LABEL_W = 140;
   const ROW_H = rowHeight;
@@ -203,9 +205,38 @@ const WaveformViewer: React.FC<{
   const ROW_LO = Math.round(ROW_H * 0.78);
   const HEADER_H = 28;
   const TICK_W = tickWidth;
+  const GROUP_HEADER_H = 20;
+
+  const GROUP_LABELS: Record<SignalLaneGroup, string> = {
+    Inputs: 'Stimulus',
+    Outputs: 'Observed',
+    Internal: 'Internal',
+  };
+
+  type LayoutRow =
+    | { kind: 'header'; group: SignalLaneGroup; y: number }
+    | { kind: 'signal'; signalRow: WaveformSignalRow; stripeIndex: number; y: number };
+
+  const { layoutRows, totalHeight } = (() => {
+    const rows: LayoutRow[] = [];
+    let y = HEADER_H;
+    let lastGroup: SignalLaneGroup | null = null;
+    let stripeIndex = 0;
+    for (const signalRow of signals) {
+      const group = signalGroups?.get(signalRow.signal) ?? 'Internal';
+      if (group !== lastGroup && signalGroups) {
+        rows.push({ kind: 'header', group, y });
+        y += GROUP_HEADER_H;
+        lastGroup = group;
+      }
+      rows.push({ kind: 'signal', signalRow, stripeIndex: stripeIndex++, y });
+      y += ROW_H;
+    }
+    return { layoutRows: rows, totalHeight: y };
+  })();
 
   const width = LABEL_W + ticks.length * TICK_W;
-  const height = HEADER_H + signals.length * ROW_H;
+  const height = totalHeight;
 
   if (signals.length === 0) {
     return (
@@ -311,9 +342,35 @@ const WaveformViewer: React.FC<{
         />
       ))}
 
-      {/* Signal rows */}
-      {signals.map((signalRow, rowIndex) => {
-        const y = HEADER_H + rowIndex * ROW_H;
+      {/* Signal rows with group headers */}
+      {layoutRows.map((layoutRow) => {
+        if (layoutRow.kind === 'header') {
+          const { group, y } = layoutRow;
+          return (
+            <g key={`group-header-${group}`}>
+              <rect x={0} y={y} width={width} height={GROUP_HEADER_H}
+                fill="rgba(56,189,248,0.04)" />
+              <line x1={0} y1={y} x2={width} y2={y}
+                stroke="rgba(56,189,248,0.15)" strokeWidth="1" />
+              <text
+                x={LABEL_W - 8}
+                y={y + GROUP_HEADER_H / 2}
+                textAnchor="end"
+                dominantBaseline="middle"
+                fontSize="9"
+                fontWeight="600"
+                fill="rgba(56,189,248,0.45)"
+                style={{ pointerEvents: 'none', userSelect: 'none' } as React.CSSProperties}
+              >
+                {GROUP_LABELS[group]}
+              </text>
+              <line x1={LABEL_W} y1={y} x2={LABEL_W} y2={y + GROUP_HEADER_H}
+                stroke="rgba(30,80,140,0.7)" strokeWidth="1.5" />
+            </g>
+          );
+        }
+
+        const { signalRow, stripeIndex, y } = layoutRow;
         const normalizedKey = signalRow.signal.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
         const isFailing = failingSignalKeys.has(normalizedKey);
         const isPinned = pinnedSignals.has(signalRow.signal);
@@ -331,7 +388,7 @@ const WaveformViewer: React.FC<{
               y={y}
               width={width}
               height={ROW_H}
-              fill={rowIndex % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent'}
+              fill={stripeIndex % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent'}
             />
             {/* Row separator */}
             <line x1={0} y1={y + ROW_H - 1} x2={width} y2={y + ROW_H - 1}
@@ -1053,10 +1110,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       if (selectedFailureSignalKey && normalized === selectedFailureSignalKey) return 1;
       if (selectedFailurePeerKeys.has(normalized)) return 2;
       if (matchedProbeSignalKeys.has(normalized)) return 3;
-      const direction = mappedSignalDirectionKeys.get(normalized);
-      if (direction === 'out') return 4;
-      if (direction === 'in') return 5;
-      return 6;
+      return 10; // fall through to group ordering
+    };
+    const laneGroupPriority = (signal: string): number => {
+      const direction = mappedSignalDirectionKeys.get(normalizeFieldId(signal));
+      if (direction === 'in') return 1;  // Stimulus
+      if (direction === 'out') return 2; // Observed
+      return 3;                          // Internal
     };
     return [...visibleSignalTimelineBase].sort((left, right) => {
       const leftManual = manualOrder.get(left.signal);
@@ -1074,9 +1134,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         return leftPinned - rightPinned;
       }
       if (selectedFailureCase) {
-        const priorityDelta = lanePriority(left.signal) - lanePriority(right.signal);
-        if (priorityDelta !== 0) return priorityDelta;
+        const failDelta = lanePriority(left.signal) - lanePriority(right.signal);
+        if (failDelta !== 0) return failDelta;
       }
+      // Always group: Stimulus (in) → Observed (out) → Internal
+      const groupDelta = laneGroupPriority(left.signal) - laneGroupPriority(right.signal);
+      if (groupDelta !== 0) return groupDelta;
       return compareText(left.signal, right.signal);
     });
   }, [
@@ -4128,6 +4191,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   signalMeta={signalMetaMap}
                   isSequential={isSequentialRun}
                   clockSignals={clockSignals}
+                  signalGroups={laneGroupBySignal}
                   onHoverSignal={handleSignalHover}
                   selectedSignal={selectedSignal}
                   emptyMessage={
