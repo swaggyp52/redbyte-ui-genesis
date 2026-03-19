@@ -8442,7 +8442,6 @@ details[open] summary .details-arrow {
 .ide-export-gate-row:last-child { border-bottom: none; }
 .ide-export-gate-row.is-pass   { background: rgba(61,186,110,0.04); }
 .ide-export-gate-row.is-fail   { background: rgba(252,165,165,0.04); }
-.ide-export-gate-row.is-warn   { background: rgba(251,191,36,0.06); }
 .ide-export-gate-row.is-unrun  { opacity: 0.5; }
 .ide-export-gate-label  { font-weight: 600; color: var(--ide-text-soft); white-space: nowrap; }
 .ide-export-gate-detail { color: var(--ide-text-muted); font-family: var(--rb-font-mono, monospace); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -19262,470 +19261,55 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   }
 }
 
-/* ─── Phase 34: Scenario Library ──────────────────────────────────────────── */
+/* ── StimulusCanvas (Slice 5) ──────────────────────────────────────────────── */
+/* Horizontal timeline grid for scenario authoring. Inline layout handled in
+   component; this block provides structural helpers and interaction states. */
 
-.ide-scenario-library-header {
+.ide-stimulus-canvas {
+  border: 1px solid var(--rb-border);
+  border-radius: 4px;
+  margin: 8px 0;
+  background: var(--rb-surface-1, transparent);
+}
+
+.ide-stimulus-row--stripe {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+/* Hover state for editable cells */
+.ide-stimulus-row button:hover > .ide-stimulus-cell--lo {
+  border-color: var(--rb-accent);
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.ide-stimulus-row button:hover > .ide-stimulus-cell--hi {
+  opacity: 0.82;
+}
+
+.ide-stimulus-row--header {
+  border-bottom: 1px solid var(--rb-border);
+}
+
+.ide-stimulus-group-header {
+  border-top: 1px solid var(--rb-border);
+  border-bottom: 1px solid var(--rb-border);
+}
+
+.ide-stimulus-group-header--asserted {
+  border-top: 2px solid var(--rb-border);
+}
+
+/* Toolbar row above the canvas */
+.ide-stimulus-toolbar {
   display: flex;
-  align-items: center;
-  gap: var(--rb-space-2, 8px);
-  padding: 6px var(--rb-space-3, 12px);
-  background: var(--rb-color-surface-2, #1e1e2e);
-  border-bottom: 1px solid var(--rb-color-border, rgba(255,255,255,0.08));
-  flex-wrap: wrap;
-  min-height: 38px;
-}
-
-.ide-scenario-switcher {
-  position: relative;
-  min-width: 0;
-}
-
-.ide-scenario-switcher-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--rb-color-surface-1, #181825);
-  border: 1px solid var(--rb-color-border, rgba(255,255,255,0.12));
-  border-radius: var(--rb-radius-1, 4px);
-  padding: 3px 10px;
-  cursor: pointer;
-  color: var(--rb-color-text, inherit);
-  font-size: var(--rb-font-size-1, 12px);
-  font-family: var(--rb-font-mono);
-  max-width: 220px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: background 120ms;
-}
-.ide-scenario-switcher-btn:hover {
-  background: var(--rb-color-surface-3, #2a2a3e);
-}
-.ide-scenario-switcher-name {
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.ide-scenario-switcher-meta {
-  font-size: 10px;
-  color: var(--rb-color-text-3, rgba(255,255,255,0.4));
-  flex-shrink: 0;
-}
-.ide-scenario-switcher-caret {
-  font-size: 9px;
-  color: var(--rb-color-text-3, rgba(255,255,255,0.4));
-  flex-shrink: 0;
-}
-
-.ide-scenario-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  z-index: 200;
-  min-width: 200px;
-  max-width: 300px;
-  background: var(--rb-color-surface-2, #1e1e2e);
-  border: 1px solid var(--rb-color-border, rgba(255,255,255,0.14));
-  border-radius: var(--rb-radius-2, 6px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
-  overflow: hidden;
-}
-
-.ide-scenario-dropdown-item {
-  display: flex;
-  align-items: center;
-  padding: 7px 12px;
-  cursor: pointer;
-  font-size: var(--rb-font-size-1, 12px);
-  font-family: var(--rb-font-mono);
-  color: var(--rb-color-text-2, rgba(255,255,255,0.7));
-  border: none;
-  background: none;
-  width: 100%;
-  text-align: left;
   gap: 8px;
-  transition: background 80ms, color 80ms;
-}
-.ide-scenario-dropdown-item:hover {
-  background: var(--rb-color-surface-3, #2a2a3e);
-  color: var(--rb-color-text, white);
-}
-.ide-scenario-dropdown-item.is-active {
-  color: var(--rb-color-text, white);
-  font-weight: 600;
-}
-.ide-scenario-dropdown-item-name {
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ide-scenario-dropdown-item-meta {
-  font-size: 10px;
-  color: var(--rb-color-text-3, rgba(255,255,255,0.4));
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.ide-scenario-rename-input {
-  font-family: var(--rb-font-mono);
-  font-size: var(--rb-font-size-1, 12px);
-  background: var(--rb-color-surface-1, #181825);
-  border: 1px solid var(--rb-color-accent, #7c6de3);
-  border-radius: var(--rb-radius-1, 4px);
-  padding: 3px 10px;
-  color: var(--rb-color-text, white);
-  outline: none;
-  max-width: 200px;
-}
-
-.ide-scenario-library-actions {
-  display: flex;
   align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-  margin-left: auto;
+  margin-bottom: 6px;
 }
 
-.ide-scenario-action-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 8px;
-  font-size: 11px;
-  font-family: var(--rb-font-sans, sans-serif);
-  background: transparent;
-  border: 1px solid var(--rb-color-border, rgba(255,255,255,0.1));
-  border-radius: var(--rb-radius-1, 4px);
-  color: var(--rb-color-text-2, rgba(255,255,255,0.6));
-  cursor: pointer;
-  transition: background 100ms, color 100ms, border-color 100ms;
-  white-space: nowrap;
-}
-.ide-scenario-action-btn:hover:not(:disabled):not(.is-disabled) {
-  background: var(--rb-color-surface-3, #2a2a3e);
-  color: var(--rb-color-text, white);
-  border-color: rgba(255,255,255,0.2);
-}
-.ide-scenario-action-btn--danger:hover:not(:disabled):not(.is-disabled) {
-  background: color-mix(in srgb, var(--rb-color-error, #ef4444) 15%, transparent);
-  color: var(--rb-color-error, #ef4444);
-  border-color: var(--rb-color-error, #ef4444);
-}
-.ide-scenario-action-btn:disabled,
-.ide-scenario-action-btn.is-disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-/* Scenario-stale banner (same scenario, vectors edited since last run) */
-.ide-verify-scenario-stale-banner {
-  display: flex;
-  align-items: center;
-  gap: var(--rb-space-2, 8px);
-  padding: 8px var(--rb-space-3, 12px);
-  background: color-mix(in srgb, var(--rb-color-warn, #d97706) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--rb-color-warn, #d97706) 35%, transparent);
-  border-radius: var(--rb-radius-1, 4px);
-  font-size: var(--rb-font-size-1, 12px);
-  flex-wrap: wrap;
-}
-.ide-verify-scenario-stale-banner-label {
-  font-weight: 700;
-  color: var(--rb-color-warn, #d97706);
-  letter-spacing: 0.05em;
-  flex-shrink: 0;
-}
-
-/* Wrong-scenario banner (different scenario than the one that produced the run) */
-.ide-verify-wrong-scenario-banner {
-  display: flex;
-  align-items: center;
-  gap: var(--rb-space-2, 8px);
-  padding: 8px var(--rb-space-3, 12px);
-  background: color-mix(in srgb, var(--rb-color-info, #3b82f6) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--rb-color-info, #3b82f6) 28%, transparent);
-  border-radius: var(--rb-radius-1, 4px);
-  font-size: var(--rb-font-size-1, 12px);
-  flex-wrap: wrap;
-}
-
-
-/* ── Phase 35: Timeline Authoring Hardening ─────────────────────────────── */
-
-/* Inline cell toggle — scalar binary cells in the vector table */
-.ide-verify-vector-cell-toggle {
-  background: none;
-  border: 1px solid transparent;
-  border-radius: var(--rb-radius-1, 4px);
-  color: var(--rb-color-text-secondary, rgba(255,255,255,0.7));
-  cursor: pointer;
-  font-family: var(--rb-font-mono, 'IBM Plex Mono', monospace);
-  font-size: var(--rb-font-size-1, 12px);
-  min-width: 24px;
-  padding: 2px 4px;
-  text-align: center;
-  transition: border-color 0.1s, color 0.1s, background 0.1s;
-}
-.ide-verify-vector-cell-toggle:hover {
-  background: rgba(56,189,248,0.08);
-  border-color: rgba(56,189,248,0.3);
-  color: var(--rb-color-primary, #38bdf8);
-}
-.ide-verify-vector-cell-toggle:active {
-  background: rgba(56,189,248,0.15);
-}
-
-/* Per-row duplicate button */
-.ide-verify-vector-dup-btn {
-  background: none;
-  border: none;
-  color: var(--rb-color-text-muted, rgba(255,255,255,0.35));
-  cursor: pointer;
-  font-size: var(--rb-font-size-1, 12px);
-  line-height: 1;
-  padding: 2px 4px;
-  border-radius: var(--rb-radius-1, 4px);
-  transition: color 0.1s, background 0.1s;
-}
-.ide-verify-vector-dup-btn:hover {
-  background: rgba(56,189,248,0.08);
-  color: var(--rb-color-primary, #38bdf8);
-}
-
-/* Hold × N and Pulse control rows */
-.ide-verify-hold-n-row,
-.ide-verify-pulse-row {
-  display: flex;
-  align-items: center;
-  gap: var(--rb-space-2, 8px);
-  margin-top: var(--rb-space-2, 8px);
-}
-.ide-verify-hold-n-label,
-.ide-verify-pulse-label {
-  display: flex;
-  align-items: center;
-  gap: var(--rb-space-1, 4px);
-  font-size: var(--rb-font-size-1, 12px);
-  color: var(--rb-color-text-secondary, rgba(255,255,255,0.6));
-}
-.ide-verify-hold-n-input {
-  width: 52px !important;
-}
-
-/* ── Phase 36: Expected-Output Authoring + Mismatch Navigation ───────────── */
-
-/* Expected-output cell variant — inherits .ide-verify-vector-cell-toggle base styles */
-.ide-verify-vector-cell-expected {
-  /* subtle italic hint to distinguish expected from input columns */
-  font-style: italic;
-}
-
-/* Pass result: subtle tint — do not overshadow fail or selection */
-.ide-verify-vector-cell-toggle.is-result-pass {
-  background: rgba(34, 197, 94, 0.06);
-  border-color: rgba(34, 197, 94, 0.18);
-  color: rgba(134, 239, 172, 0.75);
-}
-.ide-verify-vector-cell-toggle.is-result-pass:hover {
-  background: rgba(34, 197, 94, 0.12);
-  border-color: rgba(34, 197, 94, 0.3);
-  color: rgba(134, 239, 172, 0.95);
-}
-
-/* Fail result: obvious — stronger background + outline */
-.ide-verify-vector-cell-toggle.is-result-fail {
-  background: rgba(239, 68, 68, 0.14);
-  border-color: rgba(239, 68, 68, 0.55);
-  color: rgba(252, 165, 165, 0.95);
-}
-.ide-verify-vector-cell-toggle.is-result-fail:hover {
-  background: rgba(239, 68, 68, 0.22);
-}
-
-/* Selection wins over pass/fail tint (constraint 3) */
-.ide-verify-vector-cell-toggle.is-row-selected,
-.ide-verify-vector-tick-cell.is-row-selected {
-  background: rgba(56, 189, 248, 0.16) !important;
-  border-color: rgba(56, 189, 248, 0.55) !important;
-  color: var(--rb-color-primary, #38bdf8) !important;
-  outline: 1px solid rgba(56, 189, 248, 0.35);
-}
-
-/* Tick cell (non-button span) base style */
-.ide-verify-vector-tick-cell {
-  display: inline-block;
-  font-family: var(--rb-font-mono, 'IBM Plex Mono', monospace);
-  font-size: var(--rb-font-size-1, 12px);
-  padding: 2px 4px;
-  border-radius: var(--rb-radius-1, 4px);
-  border: 1px solid transparent;
-  color: var(--rb-color-text-secondary, rgba(255,255,255,0.6));
-}
-
-/* Fix-expectation strip — appears in vectors tab when failure is selected and has vectorId */
-.ide-verify-fix-expectation-strip {
-  display: flex;
-  align-items: center;
-  gap: var(--rb-space-2, 8px);
-  padding: 6px var(--rb-space-3, 12px);
-  margin: 4px 0;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.28);
-  border-radius: var(--rb-radius-1, 4px);
-  font-size: var(--rb-font-size-1, 12px);
-  flex-wrap: wrap;
-}
-.ide-verify-fix-expectation-label {
-  flex: 1;
-  color: var(--rb-color-text-secondary, rgba(255,255,255,0.7));
-  min-width: 0;
-}
-.ide-verify-fix-expectation-label code {
-  color: rgba(252, 165, 165, 0.9);
-  font-family: var(--rb-font-mono, 'IBM Plex Mono', monospace);
-}
-.ide-verify-fix-expectation-btn {
-  background: rgba(239, 68, 68, 0.18);
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  border-radius: var(--rb-radius-1, 4px);
-  color: rgba(252, 165, 165, 0.95);
-  cursor: pointer;
-  font-size: var(--rb-font-size-1, 12px);
-  padding: 3px 8px;
-  transition: background 0.1s, border-color 0.1s;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.ide-verify-fix-expectation-btn:hover {
-  background: rgba(239, 68, 68, 0.28);
-  border-color: rgba(239, 68, 68, 0.6);
-}
-
-/* ── Phase 37: Sequential First-Class + Verify Trust (Slice 5) ───────────────── */
-
-/* Sequential mode badge in waveform scope header */
-.ide-verify-scope-seq-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 6px;
-  border-radius: var(--rb-radius-1, 4px);
-  background: rgba(251, 191, 36, 0.12);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  color: rgba(251, 191, 36, 0.9);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  flex-shrink: 0;
-}
-
-/* ── Phase 38: Export/Verify Trust Readiness (Slice 6) ───────────────────────── */
-
-/* Readiness strip — shared between ExportSurface and VerifySurface FAIL state */
-.ide-export-readiness-strip,
-.ide-verify-readiness-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--rb-space-2, 8px);
-  padding: 8px 0;
-}
-.ide-export-readiness-axis,
-.ide-verify-readiness-axis {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: var(--rb-radius-1, 4px);
-  font-size: 11px;
-  font-weight: 500;
-  border: 1px solid transparent;
-  font-family: var(--rb-font-mono, 'IBM Plex Mono', monospace);
-}
-.ide-export-readiness-axis--ok,
-.ide-verify-readiness-axis--ok {
-  background: rgba(34, 197, 94, 0.08);
-  border-color: rgba(34, 197, 94, 0.22);
-  color: rgba(134, 239, 172, 0.9);
-}
-.ide-export-readiness-axis--warn,
-.ide-verify-readiness-axis--warn {
-  background: rgba(251, 191, 36, 0.08);
-  border-color: rgba(251, 191, 36, 0.22);
-  color: rgba(251, 191, 36, 0.9);
-}
-.ide-export-readiness-axis--fail,
-.ide-verify-readiness-axis--fail {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.22);
-  color: rgba(252, 165, 165, 0.9);
-}
-.ide-export-readiness-axis--idle,
-.ide-verify-readiness-axis--idle {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.45);
-}
-
-/* Export-available note in VerifySurface FAIL state */
-.ide-verify-export-available-note {
-  display: flex;
-  align-items: center;
-  gap: var(--rb-space-3, 12px);
-  padding: 8px var(--rb-space-3, 12px);
-  background: rgba(56, 189, 248, 0.05);
-  border: 1px solid rgba(56, 189, 248, 0.15);
-  border-radius: var(--rb-radius-1, 4px);
-  font-size: var(--rb-font-size-1, 12px);
-  flex-wrap: wrap;
-}
-.ide-verify-export-available-label {
-  flex: 1;
-  color: rgba(186, 230, 253, 0.8);
-  min-width: 0;
-}
-
-/* ── Phase 39: Hardware Scenario Provenance (Slice 7) ────────────────────────── */
-
-/* Provenance strip — shown below connection callout when verifyLastRun exists */
-.ide-hardware-provenance-strip {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  padding: 6px 10px;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: var(--rb-radius-1, 4px);
-  font-size: 11px;
-  font-family: var(--rb-font-mono, 'IBM Plex Mono', monospace);
-  margin-bottom: 4px;
-}
-.ide-hardware-provenance-run-label {
-  color: var(--ide-text-soft, rgba(255,255,255,0.6));
-  font-style: italic;
-}
-.ide-hardware-provenance-sep {
-  color: var(--ide-text-muted, rgba(255,255,255,0.3));
-}
-.ide-hardware-provenance-axis {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 6px;
-  border-radius: 3px;
-  font-size: 10px;
-  font-weight: 600;
-  border: 1px solid transparent;
-}
-.ide-hardware-provenance-axis--ok {
-  background: rgba(34, 197, 94, 0.08);
-  border-color: rgba(34, 197, 94, 0.22);
-  color: rgba(134, 239, 172, 0.9);
-}
-.ide-hardware-provenance-axis--warn {
-  background: rgba(251, 191, 36, 0.08);
-  border-color: rgba(251, 191, 36, 0.22);
-  color: rgba(251, 191, 36, 0.9);
-}
-/* Warn variant in cert slab */
-.ide-hw-cert-val--warn {
-  color: rgba(251, 191, 36, 0.85);
+/* Manual entry fallback nested details */
+.ide-verify-manual-entry-details {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--rb-border);
 }
