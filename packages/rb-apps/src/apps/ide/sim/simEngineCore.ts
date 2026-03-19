@@ -16,6 +16,7 @@ import {
   INTERNAL_SIM_CLOCK_NAME,
   type VerifyScheduleContract,
 } from '../../../fpga/boards/basys3/verifySchedule';
+import { adaptIrDiagnostic } from '../diagnostics';
 import { normalizeIoSignalKey } from '../ioLabels';
 import type {
   VerifyEvidenceCapsule,
@@ -49,8 +50,9 @@ export interface DeterministicVerifyResult {
   evidence: Omit<VerifyEvidenceCapsule, 'circuitHash'>;
 }
 
-// TODO(slice-2): Remove these raw-circuit compatibility wrappers once runtime/export callers
-// pass CircuitIR-derived SimulationModel objects directly.
+// TODO(slice-7): Retained as transitional wrappers — real callers in projectRuntime.ts and
+// bringupArtifacts.ts still pass Circuit. Remove once those callers are migrated to pass
+// SimulationModel directly (requires deriving the model at the call site).
 export function resetSimulationState(
   circuit: Circuit,
   ioRows: SimulationIoRow[],
@@ -60,7 +62,7 @@ export function resetSimulationState(
   return resetSimulationStateFromModel(circuit, model, ioRows, previous);
 }
 
-// TODO(slice-2): Remove this wrapper after all runtime callers delegate through SimulationModel.
+// TODO(slice-7): Retained — projectRuntime.ts caller not yet migrated to pass SimulationModel.
 export function advanceSimulationState(
   circuit: Circuit,
   ioRows: SimulationIoRow[],
@@ -71,7 +73,7 @@ export function advanceSimulationState(
   return advanceSimulationStateFromModel(circuit, model, ioRows, sim, requestedTicks);
 }
 
-// TODO(slice-2): Remove this wrapper after all runtime callers delegate through SimulationModel.
+// TODO(slice-7): Retained — projectRuntime.ts caller not yet migrated to pass SimulationModel.
 export function recomputeSimulationState(
   circuit: Circuit,
   ioRows: SimulationIoRow[],
@@ -249,7 +251,7 @@ export function buildVerifyRowsFromRuntimeTrace(
   });
 }
 
-// TODO(slice-2): Remove this wrapper after export callers consume model-native helpers directly.
+// TODO(slice-7): Thin delegate — retained until export/test callers pass SimulationModel directly.
 export function buildVerifyRowsDeterministicFromCircuit(
   circuit: Circuit,
   ioRows: SimulationIoRow[],
@@ -265,7 +267,7 @@ export function buildVerifyRowsDeterministicFromCircuit(
   return runDeterministicVerifyFromModel(circuit, model, ioRows, vectors, contract).rows;
 }
 
-// TODO(slice-2): Remove this wrapper after verify callers consume model-native helpers directly.
+// TODO(slice-7): Thin delegate — retained until verify/test callers pass SimulationModel directly.
 export function runDeterministicVerifyFromCircuit(
   circuit: Circuit,
   ioRows: SimulationIoRow[],
@@ -471,7 +473,7 @@ export function runDeterministicVerifyFromModel(
   };
 }
 
-// TODO(slice-2): Remove this wrapper after bring-up/export callers consume model-native helpers.
+// TODO(slice-7): Thin delegate — retained until bringup/export callers pass SimulationModel directly.
 export function simulateExpectedIoRows(params: {
   circuit: Circuit;
   ioRows: SimulationIoRow[];
@@ -1115,7 +1117,8 @@ export function toRuntimeSimGuard(model: SimulationModel): RuntimeSimGuard {
   return {
     status: 'blocked',
     reason: 'invalid-ir',
-    diagnostics: model.blockingDiagnostics.map((diagnostic) => ({ ...diagnostic })),
+    // Normalize at engine boundary: IRDiagnostic → IdeDiagnostic so no raw IR types leak upward.
+    diagnostics: model.blockingDiagnostics.map((diagnostic) => adaptIrDiagnostic(diagnostic)),
     irHash: model.irHash,
   };
 }

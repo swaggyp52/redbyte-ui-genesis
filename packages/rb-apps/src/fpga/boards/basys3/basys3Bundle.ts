@@ -69,6 +69,13 @@ function detectSignalGroup(entry: IoMappingEntry): string {
   return 'Other';
 }
 
+function hasClockInput(ioMapping: IoMapping): boolean {
+  return ioMapping.inputs.some((entry) => {
+    const alias = (entry.pin ?? '').toUpperCase().trim();
+    return alias === 'CLK' || alias === 'CLK100MHZ' || alias === 'W5';
+  });
+}
+
 function buildTopXdc(
   ioMapping: IoMapping,
   warnings: string[],
@@ -77,6 +84,12 @@ function buildTopXdc(
   const lines: string[] = [];
   lines.push('# RedByte Basys3 Constraints (deterministic)');
   lines.push('# Generated for top module: top');
+  if (hasClockInput(ioMapping)) {
+    lines.push('# Timing: Sequential design — create_clock constraint generated below.');
+  } else {
+    lines.push('# Timing: Combinational design — create_clock intentionally omitted.');
+    lines.push('# Vivado timing/power warnings for unconstrained paths are expected and non-blocking.');
+  }
   lines.push('');
 
   type TaggedEntry = { entry: IoMappingEntry; dir: 'in' | 'out' };

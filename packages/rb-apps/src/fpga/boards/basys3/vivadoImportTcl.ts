@@ -36,6 +36,10 @@ export function generateVivadoImportTcl(input: VivadoImportTclInput): string {
     'set_property target_language VHDL [current_project]',
     `add_files -norecurse ${sourceList}`,
     `add_files -fileset constrs_1 -norecurse ${constraintsList}`,
+    '# Set VHDL 2008 file type on all design sources',
+    'foreach src_file [get_files -of_objects [get_filesets sources_1] *.vhd] {',
+    '  set_property FILE_TYPE {VHDL 2008} $src_file',
+    '}',
     'set_property top $top_module [current_fileset]',
     'update_compile_order -fileset sources_1',
   ];
@@ -46,6 +50,10 @@ export function generateVivadoImportTcl(input: VivadoImportTclInput): string {
       `set tb_file [file join $script_dir "${escapeTclString(simulationPath)}"]`,
       'if {[file exists $tb_file]} {',
       '  add_files -fileset sim_1 -norecurse [list $tb_file]',
+      '  # Set VHDL 2008 file type on all simulation sources',
+      '  foreach sim_file [get_files -of_objects [get_filesets sim_1] *.vhd] {',
+      '    set_property FILE_TYPE {VHDL 2008} $sim_file',
+      '  }',
       '}'
     );
   }

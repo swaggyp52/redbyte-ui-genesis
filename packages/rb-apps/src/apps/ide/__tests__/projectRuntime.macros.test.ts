@@ -155,4 +155,49 @@ describe('projectRuntime macros', () => {
     // Macro is now silently gone — this is the trust break the fix prevents
     expect(useProjectRuntime.getState().circuit.nodes).toHaveLength(4);
   });
+
+  it('preserves instantiated macros when markDesignMutated receives the runtime-authoritative circuit', () => {
+    useProjectRuntime.getState().loadFromProject(buildMacroProject());
+
+    const result = useProjectRuntime
+      .getState()
+      .instantiateMacro('macro-and-gate', { x: 520, y: 220 });
+    expect(result).toBeTruthy();
+    expect(result?.insertedNodeIds).toEqual(['node-v2-5']);
+
+    const authoritativeCircuit = structuredClone(useProjectRuntime.getState().circuit);
+    useProjectRuntime.getState().markDesignMutated(authoritativeCircuit);
+
+    const state = useProjectRuntime.getState();
+    expect(state.circuit.nodes).toHaveLength(5);
+    expect(state.circuit.nodes.some((node) => node.id === 'node-v2-5')).toBe(true);
+    expect(state.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(state.projectHealthCore.dirtySinceExport).toBe(true);
+  });
+
+  it('routes macro insertion through runtime history undo and redo', () => {
+    useProjectRuntime.getState().loadFromProject(buildMacroProject());
+
+    const initialNodeCount = useProjectRuntime.getState().circuit.nodes.length;
+
+    const result = useProjectRuntime
+      .getState()
+      .instantiateMacro('macro-and-gate', { x: 520, y: 220 });
+
+    expect(result?.insertedNodeIds).toEqual(['node-v2-5']);
+    expect(useProjectRuntime.getState().designPast).toHaveLength(1);
+    expect(useProjectRuntime.getState().circuit.nodes).toHaveLength(initialNodeCount + 1);
+    expect(useProjectRuntime.getState().macroInsertionCounts['macro-and-gate']).toBe(1);
+
+    useProjectRuntime.getState().undoProjectEdit();
+
+    expect(useProjectRuntime.getState().circuit.nodes).toHaveLength(initialNodeCount);
+    expect(useProjectRuntime.getState().designFuture).toHaveLength(1);
+    expect(useProjectRuntime.getState().macroInsertionCounts['macro-and-gate']).toBeUndefined();
+
+    useProjectRuntime.getState().redoProjectEdit();
+
+    expect(useProjectRuntime.getState().circuit.nodes).toHaveLength(initialNodeCount + 1);
+    expect(useProjectRuntime.getState().macroInsertionCounts['macro-and-gate']).toBe(1);
+  });
 });

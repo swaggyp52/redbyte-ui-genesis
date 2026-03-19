@@ -290,6 +290,21 @@ export function adaptImportDiagnostic(
   });
 }
 
+/**
+ * Unify parser and compiler diagnostics from an import compiler result into a single
+ * normalized IdeDiagnostic[]. Use this in zipImport.ts and ImportSurface instead of
+ * calling adaptImportDiagnostic / adaptIrDiagnostic inline.
+ */
+export function unifyImportDiagnostics(
+  parserDiagnostics: ImportDiagnostic[],
+  compilerDiagnostics: IRDiagnostic[]
+): IdeDiagnostic[] {
+  return [
+    ...parserDiagnostics.map((diagnostic) => adaptImportDiagnostic(diagnostic)),
+    ...compilerDiagnostics.map((diagnostic) => adaptIrDiagnostic(diagnostic, { stage: 'import' })),
+  ];
+}
+
 export function adaptVerifyPreflightIssue(
   issue: VerifyEvidencePreflightIssue,
   options: AdaptVerifyPreflightIssueOptions = {}

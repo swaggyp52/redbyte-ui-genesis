@@ -19,6 +19,7 @@ const META_BY_TYPE: Record<string, NodeMeta> = {
   DFlipFlop: {
     isSequential: true,
     clockPort: "CLK",
+    resetPort: "RST",
     note: "clocked_macro v2 - rising-edge D flip-flop",
   },
   DLatch: {

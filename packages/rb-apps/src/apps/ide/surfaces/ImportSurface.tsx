@@ -15,7 +15,7 @@ import {
   type ParsedIdeSubmission,
 } from '../../../export/parseIdeSubmission';
 import type { IdeExampleIoRow } from '../examplesCatalog';
-import { adaptImportDiagnostic, adaptIrDiagnostic } from '../diagnostics';
+import { unifyImportDiagnostics } from '../diagnostics';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   importVivadoZipBytes,
@@ -697,19 +697,15 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     return Array.from(warningRows);
   }, [parsedHdl, previewImportResult, xdcResult, zipInspection]);
   const unifiedImportDiagnostics = useMemo(
-    () => [
-      ...(
-        previewImportResult?.parserDiagnostics ??
+    () => unifyImportDiagnostics(
+      previewImportResult?.parserDiagnostics ??
         zipInspection?.parserDiagnostics ??
-        []
-      ).map((diagnostic) => adaptImportDiagnostic(diagnostic)),
-      ...(
-        pendingApplyImportResult?.compilerDiagnostics ??
+        [],
+      pendingApplyImportResult?.compilerDiagnostics ??
         previewImportResult?.compilerDiagnostics ??
         zipInspection?.compilerDiagnostics ??
         []
-      ).map((diagnostic) => adaptIrDiagnostic(diagnostic, { stage: 'import' })),
-    ],
+    ),
     [
       pendingApplyImportResult?.compilerDiagnostics,
       previewImportResult?.compilerDiagnostics,

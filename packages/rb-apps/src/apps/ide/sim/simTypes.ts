@@ -1,4 +1,4 @@
-import type { IRDiagnostic } from '@redbyte/rb-logic-core';
+import type { IdeDiagnostic } from '../diagnostics';
 
 export interface RuntimeSimTraceSample {
   tick: number;
@@ -13,7 +13,8 @@ export interface RuntimeSignalProbe {
 export interface RuntimeSimGuard {
   status: 'blocked';
   reason: 'invalid-ir';
-  diagnostics: IRDiagnostic[];
+  /** IDE-normalized diagnostics — converted from IRDiagnostic at the engine boundary. */
+  diagnostics: IdeDiagnostic[];
   irHash: string;
 }
 

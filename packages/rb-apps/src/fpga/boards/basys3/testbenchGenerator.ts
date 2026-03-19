@@ -1,9 +1,11 @@
 import type { TestVector } from '@redbyte/rb-utils';
 import type { RBProject } from '../../../export/projectFormat';
 import { compareCodepoint } from '../../../export/codepointSort';
+import { exportBasys3Bundle } from './basys3Bundle';
 import {
   CLOCKED_MACRO_SEQUENCE,
   deriveVerifySchedule,
+  type VerifyScheduleContract,
   type VerifySchedule,
 } from './verifySchedule';
 
@@ -16,11 +18,7 @@ interface SignalCatalog {
 }
 
 interface TestbenchGenerationOptions {
-  scheduleOverride?: {
-    schedule: VerifySchedule;
-    reason?: string;
-    clockSignalName?: string;
-  };
+  scheduleOverride?: Partial<VerifyScheduleContract> & Pick<VerifyScheduleContract, 'schedule'>;
   /**
    * When provided, component ports + signal declarations are derived directly from
    * the entity declaration in this VHDL text, guaranteeing testbench/entity consistency.
@@ -127,21 +125,19 @@ export function generateTestbenchVhdl(
     options?.scheduleOverride
       ? {
           ...derivedSchedule,
-          schedule: options.scheduleOverride.schedule,
-          reason: options.scheduleOverride.reason ?? derivedSchedule.reason,
-          clockSignalName:
-            options.scheduleOverride.clockSignalName ?? derivedSchedule.clockSignalName,
+          ...options.scheduleOverride,
         }
       : derivedSchedule;
   const topModule = (project.fpga?.top || project.hdl?.top || 'top').trim() || 'top';
+  const resolvedEntityVhd = options?.entityVhd ?? resolveCanonicalEntityVhd(project);
 
   // Entity-based path: derive component ports directly from the entity VHDL
   // to guarantee testbench/entity consistency. Used when entity uses vector ports.
-  if (options?.entityVhd) {
+  if (resolvedEntityVhd) {
     return generateTestbenchFromEntity(
       project,
       vectors,
-      options.entityVhd,
+      resolvedEntityVhd,
       scheduleContract,
       topModule,
     );
@@ -222,6 +218,17 @@ ${stimulus}
   end process;
 end architecture sim;
 `;
+}
+
+function resolveCanonicalEntityVhd(project: RBProject): string | undefined {
+  if (!project.ioMapping) return undefined;
+  try {
+    return exportBasys3Bundle(project.circuit, project.ioMapping, {
+      entityName: project.hdl?.top,
+    }).topVhd;
+  } catch {
+    return undefined;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -350,7 +357,7 @@ function generateEntityStimulus(
         lines.push(`    ${clockPortRef} <= '${clockValue}';`);
         lines.push('    wait for CLK_HALF_PERIOD;');
       }
-      lines.push('    wait for 10 ns;');
+      lines.push('    wait for 0 ns;');
     } else {
       lines.push('    wait for 10 ns;');
     }
@@ -398,7 +405,7 @@ function generateStimulus(
         lines.push(`    ${safeClock} <= '${clockValue}';`);
         lines.push('    wait for CLK_HALF_PERIOD;');
       }
-      lines.push('    wait for 10 ns;');
+      lines.push('    wait for 0 ns;');
     } else {
       lines.push('    wait for 10 ns;');
     }

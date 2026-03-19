@@ -1,16 +1,16 @@
 // Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 // IdeApp - IDE-first shell surface with deterministic mode markers.
 
-import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { installFatalCapture, pushMount } from '@redbyte/rb-utils';
 import type { TestVector } from '@redbyte/rb-utils';
 import { decodeRBProject, type RBProject } from '../export/projectFormat';
-import { useCircuitStore } from '../stores/circuitStore';
 import { digestValue } from '../utils/digest';
 import { stableSerialize } from '../utils/stableSerialize';
 import './ide/ide-root.css';
+import { projectRuntimeCircuitToEditorStore } from './ide/circuitProjection';
 import { deriveDesignCompilerDiagnostics } from './ide/designCompilerDiagnostics';
 import { IdeLeftRail, type IdeMode } from './ide/components/IdeLeftRail';
 import { IdeTopBar } from './ide/components/IdeTopBar';
@@ -31,6 +31,7 @@ import {
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ThrowOnce } from '../components/ThrowOnce';
 import { buildExportViewModel } from './ide/viewmodels/buildExportViewModel';
+import { getActiveScenario } from './ide/verifyScenario';
 import {
   choosePrimaryDiagnosticAction,
   type IdeDiagnostic,
@@ -66,6 +67,7 @@ import { BoardSignalProvider } from './ide/BoardSignalContext';
 import { netlistFromCircuit } from '../export/netlistExport';
 import { vhdlFromNetlist } from '../export/vhdlExport';
 import { buildVhdlTopLevelBindings } from '../fpga/boards/basys3/basys3Bundle';
+import { deriveVerifySchedule } from '../fpga/boards/basys3/verifySchedule';
 
 const DesignSurface = React.lazy(() =>
   import('./ide/surfaces/DesignSurface').then((module) => ({ default: module.DesignSurface }))
@@ -169,6 +171,8 @@ export const IdeApp: React.FC = () => {
   const activeExampleId = useProjectRuntime((state) => state.activeExampleId);
   const projectIoRows = useProjectRuntime((state) => state.projectIoRows);
   const projectVectors = useProjectRuntime((state) => state.projectVectors);
+  const scenarios = useProjectRuntime((state) => state.scenarios);
+  const activeScenarioId = useProjectRuntime((state) => state.activeScenarioId);
   const circuit = useProjectRuntime((state) => state.circuit);
   const verifyLastRun = useProjectRuntime((state) => state.verifyLastRun);
   const verifyRunHistory = useProjectRuntime((state) => state.verifyRunHistory);
@@ -183,7 +187,11 @@ export const IdeApp: React.FC = () => {
   const customVectors = useProjectRuntime((state) => state.customVectors);
   const setCustomVectors = useProjectRuntime((state) => state.setCustomVectors);
   const generateBringUpVectors = useProjectRuntime((state) => state.generateBringUpVectors);
-  const markDesignMutated = useProjectRuntime((state) => state.markDesignMutated);
+  const applyCircuitMutation = useProjectRuntime((state) => state.applyCircuitMutation);
+  const undoProjectEdit = useProjectRuntime((state) => state.undoProjectEdit);
+  const redoProjectEdit = useProjectRuntime((state) => state.redoProjectEdit);
+  const designUndoDepth = useProjectRuntime((state) => state.designPast.length);
+  const designRedoDepth = useProjectRuntime((state) => state.designFuture.length);
   const addDesignNode = useProjectRuntime((state) => state.addDesignNode);
   const addDesignIo = useProjectRuntime((state) => state.addDesignIo);
   const addDesignBoardIo = useProjectRuntime((state) => state.addDesignBoardIo);
@@ -198,6 +206,11 @@ export const IdeApp: React.FC = () => {
   const setRuntimeSimInput = useProjectRuntime((state) => state.actions.sim.setInput);
   const setRuntimeSimSelectedSignal = useProjectRuntime((state) => state.actions.sim.setSelectedSignal);
   const toggleRuntimeSimProbe = useProjectRuntime((state) => state.actions.sim.toggleProbe);
+  const renameActiveScenario = useProjectRuntime((state) => state.renameActiveScenario);
+  const setActiveScenarioId = useProjectRuntime((state) => state.setActiveScenarioId);
+  const deleteScenario = useProjectRuntime((state) => state.deleteScenario);
+  const createScenario = useProjectRuntime((state) => state.createScenario);
+  const duplicateScenario = useProjectRuntime((state) => state.duplicateScenario);
   const recordExport = useProjectRuntime((state) => state.recordExport);
   const setProjectIdentity = useProjectRuntime((state) => state.setProjectIdentity);
   const setLastSavedAt = useProjectRuntime((state) => state.setLastSavedAt);
@@ -285,14 +298,12 @@ export const IdeApp: React.FC = () => {
     return 'Generate bring-up vectors, run verify, then confirm mapped outputs on Basys3.';
   }, [activeExample?.expectedBehavior, projectVectors.length]);
 
-  const runtimeCircuitFingerprint = useMemo(() => digestValue(circuit), [circuit]);
-  useEffect(() => {
-    const store = useCircuitStore.getState();
-    const storeFingerprint = digestValue(store.circuit);
-    if (storeFingerprint === runtimeCircuitFingerprint) return;
-    store.reset();
-    store.updateCircuit(circuit, { skipHistory: true, enforceLimits: true });
-  }, [circuit, runtimeCircuitFingerprint]);
+  // Projects runtime authority into the editor cache. This stays safe because
+  // DesignSurface mutations now hand the next circuit directly back to runtime,
+  // so the shell never re-reads useCircuitStore to decide canonical truth.
+  useLayoutEffect(() => {
+    projectRuntimeCircuitToEditorStore(circuit);
+  }, [circuit]);
 
   const applyExample = useCallback(
     (exampleId: string) => {
@@ -378,7 +389,16 @@ export const IdeApp: React.FC = () => {
 
   const handleRunVerification = useCallback(
     (input: Parameters<typeof runRuntimeVerification>[0]) => {
-      runRuntimeVerification(input);
+      // Use the ref to avoid TDZ: exportProject (declared later in this function body)
+      // cannot be used in a useCallback dep array declared here. exportProjectRef
+      // is always up-to-date (assigned at line ~714 on every render).
+      const ep = exportProjectRef.current;
+      runRuntimeVerification({
+        ...input,
+        scheduleContract: ep
+          ? deriveVerifySchedule(ep.circuit, ep.ioMapping, ep.hdl)
+          : undefined,
+      });
     },
     [runRuntimeVerification]
   );
@@ -435,10 +455,10 @@ export const IdeApp: React.FC = () => {
     setDebugTickIndex(newIndex);
   }, [debugTickIndex, verifyLastRun]);
 
-  const handleDesignMutation = useCallback(() => {
-    markDesignMutated(useCircuitStore.getState().circuit);
+  const handleDesignMutation = useCallback((nextCircuit: Circuit) => {
+    applyCircuitMutation(nextCircuit);
     setDiagnosticRouteRequest(null);
-  }, [markDesignMutated]);
+  }, [applyCircuitMutation]);
 
   const refreshSavedProjects = useCallback(() => {
     setSavedProjects(listIdeProjectSnapshots());
@@ -984,9 +1004,14 @@ export const IdeApp: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const activeScenario = useMemo(
+    () => getActiveScenario(scenarios, activeScenarioId) ?? undefined,
+    [scenarios, activeScenarioId]
+  );
+
   const exportViewModel = useMemo(
-    () => buildExportViewModel(exportProject, verifyLastRun),
-    [exportProject, verifyLastRun]
+    () => buildExportViewModel(exportProject, verifyLastRun, activeScenario),
+    [exportProject, verifyLastRun, activeScenario]
   );
   const hardwareExpectedIoRows = useMemo(
     () => extractExpectedIoRows(exportViewModel.artifacts),
@@ -1339,6 +1364,10 @@ export const IdeApp: React.FC = () => {
               onRuntimeAddIo={addDesignIo}
               onRuntimeAddBoardIo={addDesignBoardIo}
               onRuntimeConnect={connectDesignNodes}
+              onRuntimeUndo={undoProjectEdit}
+              onRuntimeRedo={redoProjectEdit}
+              runtimeUndoDepth={designUndoDepth}
+              runtimeRedoDepth={designRedoDepth}
               compilerStatus={designCompilerStatus}
               onDiagnosticAction={handleDiagnosticAction}
               diagnosticRouteRequest={diagnosticRouteRequest}
@@ -1398,6 +1427,7 @@ export const IdeApp: React.FC = () => {
               example={activeExample ?? null}
               onGoToDesign={() => setCurrentMode('design')}
               onGoToHardware={() => setCurrentMode('hardware')}
+              onGoToExport={() => setCurrentMode('export')}
               hasDff={hasDff}
               vectorsAreAutoGenerated={vectorsAreAutoGenerated}
               onPreviewVector={(inputs) => {
@@ -1407,16 +1437,27 @@ export const IdeApp: React.FC = () => {
               }}
               onDebugTickSelected={handleDebugTickSelected}
               onSignalSelected={setVerifySelectedSignal}
-              onDeleteVector={(tickStr) => {
-                const tick = Number(tickStr);
-                let removed = false;
-                setVectors(projectVectors.filter((v) => {
-                  if (!removed && v.tick === tick) { removed = true; return false; }
-                  return true;
-                }));
+              onDeleteVector={(vectorId) => {
+                // Resolve the 0-based index from the stable vec-NN id (e.g. "vec-01" → index 0)
+                // Falls back to direct numeric parse for legacy id formats ("0", "1", …)
+                let idx: number;
+                if (vectorId.startsWith('vec-')) {
+                  idx = parseInt(vectorId.replace('vec-', ''), 10) - 1;
+                } else {
+                  idx = parseInt(vectorId, 10);
+                }
+                setVectors(projectVectors.filter((_, i) => i !== idx));
               }}
               customVectors={customVectors}
               onCustomVectorsChange={setCustomVectors}
+              scenarios={scenarios}
+              activeScenarioId={activeScenarioId}
+              activeScenario={activeScenario}
+              onCreateScenario={() => createScenario('New Scenario')}
+              onDuplicateScenario={duplicateScenario}
+              onRenameScenario={renameActiveScenario}
+              onDeleteScenario={deleteScenario}
+              onSwitchScenario={setActiveScenarioId}
             />
           </ErrorBoundary>
         ) : currentMode === 'hardware' ? (
@@ -1437,6 +1478,11 @@ export const IdeApp: React.FC = () => {
               onOpenVerify={() => setCurrentMode('verify')}
               onGoToDesign={() => setCurrentMode('design')}
               onSetMappingPin={handleMappingPinChange}
+              verifyLastRun={verifyLastRun}
+              activeScenario={activeScenario}
+              scenarios={scenarios}
+              vectorsAreAutoGenerated={vectorsAreAutoGenerated}
+              onSwitchScenario={setActiveScenarioId}
             />
           </ErrorBoundary>
         ) : currentMode === 'export' ? (
@@ -1445,8 +1491,10 @@ export const IdeApp: React.FC = () => {
               project={exportProject}
               verifyResult={projectHealthCore.lastVerify}
               verifyLastRun={verifyLastRun}
+              activeScenario={activeScenario}
               dirtySinceVerify={projectHealthCore.dirtySinceVerify}
               determinismHash={determinismHash}
+              vectorsAreAutoGenerated={vectorsAreAutoGenerated}
               onExportResult={handleExportResult}
               onDiagnosticAction={handleDiagnosticAction}
               onOpenVerify={() => setCurrentMode('verify')}

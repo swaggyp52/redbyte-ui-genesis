@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { mergePersistedRuntimeState, useProjectRuntime } from '../projectRuntime';
+import { DEFAULT_SCENARIO_ID } from '../verifyScenario';
 
 describe('mergePersistedRuntimeState', () => {
   beforeEach(() => {
@@ -230,5 +231,248 @@ describe('mergePersistedRuntimeState', () => {
     expect(merged.projectHealthCore.lastVerify).toBeUndefined();
     expect(merged.projectHealthCore.dirtySinceVerify).toBe(true);
     expect(merged.projectHealthCore.dirtySinceExport).toBe(false);
+  });
+
+  it('restores persisted runtime undo and redo history snapshots', () => {
+    const current = useProjectRuntime.getState();
+
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-history-restore',
+        projectName: 'History Restore Project',
+        activeExampleId: null,
+        projectIoRows: [
+          {
+            id: 'sw0',
+            nodeId: 'sw0_node',
+            port: 'out',
+            label: 'sw0',
+            direction: 'in',
+            pin: 'SW0',
+            required: true,
+          },
+          {
+            id: 'ld0',
+            nodeId: 'ld0_node',
+            port: 'in',
+            label: 'ld0',
+            direction: 'out',
+            pin: 'LD0',
+            required: true,
+          },
+        ],
+        projectVectors: [],
+        circuit: {
+          nodes: [
+            { id: 'sw0_node', type: 'INPUT', x: 0, y: 0 },
+            { id: 'ld0_node', type: 'OUTPUT', x: 10, y: 5 },
+          ],
+          connections: [
+            {
+              from: 'sw0_node',
+              fromPort: 'out',
+              to: 'ld0_node',
+              toPort: 'in',
+            },
+          ],
+        },
+        designPast: [
+          {
+            circuit: {
+              nodes: [{ id: 'sw0_node', type: 'INPUT', x: 0, y: 0 }],
+              connections: [],
+            },
+            projectIoRows: [
+              {
+                id: 'sw0',
+                nodeId: 'sw0_node',
+                port: 'out',
+                label: 'sw0',
+                direction: 'in',
+                pin: 'SW0',
+                required: true,
+              },
+              {
+                id: 'ghost',
+                nodeId: 'ghost_node',
+                port: 'out',
+                label: 'ghost',
+                direction: 'in',
+                pin: '',
+                required: true,
+              },
+            ],
+            macroInsertionCounts: {
+              'macro-and-gate': 1,
+            },
+          },
+          {
+            not: 'a-snapshot',
+          },
+        ],
+        designFuture: [
+          {
+            circuit: {
+              nodes: [
+                { id: 'sw0_node', type: 'INPUT', x: 0, y: 0 },
+                { id: 'ld0_node', type: 'OUTPUT', x: 10, y: 5 },
+                { id: 'and0', type: 'AND', x: 32, y: 12 },
+              ],
+              connections: [],
+            },
+            projectIoRows: [
+              {
+                id: 'sw0',
+                nodeId: 'sw0_node',
+                port: 'out',
+                label: 'sw0',
+                direction: 'in',
+                pin: 'SW0',
+                required: true,
+              },
+            ],
+            macroInsertionCounts: {
+              'macro-and-gate': 2,
+            },
+          },
+        ],
+        maxDesignHistory: 42,
+        designRevision: 7,
+      },
+      current
+    );
+
+    expect(merged.maxDesignHistory).toBe(42);
+    expect(merged.designRevision).toBe(7);
+    expect(merged.designPast).toHaveLength(1);
+    expect(merged.designFuture).toHaveLength(1);
+    expect(merged.designPast[0]?.projectIoRows.some((row) => row.nodeId === 'ghost_node')).toBe(false);
+    expect(merged.designPast[0]?.macroInsertionCounts['macro-and-gate']).toBe(1);
+    expect(merged.designFuture[0]?.macroInsertionCounts['macro-and-gate']).toBe(2);
+  });
+
+  it('migrates projectVectors to default scenario when scenarios is absent', () => {
+    const current = useProjectRuntime.getState();
+
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-migration',
+        projectName: 'Migration Project',
+        activeExampleId: null,
+        projectIoRows: [],
+        projectVectors: [
+          { tick: 0, inputs: { a: 0 }, expected: { y: 0 } },
+          { tick: 1, inputs: { a: 1 }, expected: { y: 1 } },
+        ],
+        circuit: {
+          nodes: [{ id: 'a_node', type: 'INPUT', x: 0, y: 0 }],
+          connections: [],
+        },
+        // No `scenarios` field — legacy state
+      },
+      current
+    );
+
+    expect(merged.scenarios).toHaveLength(1);
+    expect(merged.scenarios[0].id).toBe(DEFAULT_SCENARIO_ID);
+    expect(merged.scenarios[0].vectors).toHaveLength(2);
+    expect(merged.activeScenarioId).toBe(DEFAULT_SCENARIO_ID);
+  });
+
+  it('preserves persisted scenarios and activeScenarioId when present', () => {
+    const current = useProjectRuntime.getState();
+    const scenario = {
+      id: 'sc-custom',
+      name: 'Custom Scenario',
+      vectors: [{ tick: 0, inputs: { a: 0 }, expected: { y: 0 } }],
+      version: 3,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+    };
+
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-with-scenarios',
+        projectName: 'With Scenarios',
+        activeExampleId: null,
+        projectIoRows: [],
+        projectVectors: [],
+        scenarios: [scenario],
+        activeScenarioId: 'sc-custom',
+        circuit: {
+          nodes: [{ id: 'a_node', type: 'INPUT', x: 0, y: 0 }],
+          connections: [],
+        },
+      },
+      current
+    );
+
+    expect(merged.scenarios).toHaveLength(1);
+    expect(merged.scenarios[0].id).toBe('sc-custom');
+    expect(merged.scenarios[0].version).toBe(3);
+    expect(merged.activeScenarioId).toBe('sc-custom');
+  });
+
+  it('self-heals activeScenarioId when it references a deleted scenario', () => {
+    const current = useProjectRuntime.getState();
+    const scenario = {
+      id: 'sc-existing',
+      name: 'Existing',
+      vectors: [],
+      version: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-orphan-active',
+        projectName: 'Orphan Active',
+        activeExampleId: null,
+        projectIoRows: [],
+        projectVectors: [],
+        scenarios: [scenario],
+        activeScenarioId: 'sc-deleted-ghost', // orphaned
+        circuit: {
+          nodes: [{ id: 'a_node', type: 'INPUT', x: 0, y: 0 }],
+          connections: [],
+        },
+      },
+      current
+    );
+
+    expect(merged.activeScenarioId).toBe('sc-existing');
+  });
+
+  it('stateFromExample initializes scenarios with a default scenario', () => {
+    const state = useProjectRuntime.getState();
+    state.resetToActiveExample();
+    const fresh = useProjectRuntime.getState();
+
+    expect(fresh.scenarios).toHaveLength(1);
+    expect(fresh.scenarios[0].id).toBe(DEFAULT_SCENARIO_ID);
+    expect(fresh.activeScenarioId).toBe(DEFAULT_SCENARIO_ID);
+  });
+
+  it('clamps persisted maxDesignHistory to the runtime hard limit', () => {
+    const current = useProjectRuntime.getState();
+
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-history-clamp',
+        projectName: 'History Clamp Project',
+        activeExampleId: null,
+        projectIoRows: [],
+        projectVectors: [],
+        circuit: {
+          nodes: [{ id: 'sw0_node', type: 'INPUT', x: 0, y: 0 }],
+          connections: [],
+        },
+        maxDesignHistory: 5000,
+      },
+      current
+    );
+
+    expect(merged.maxDesignHistory).toBe(500);
   });
 });

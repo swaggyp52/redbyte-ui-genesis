@@ -97,7 +97,7 @@ export function connectionRejectedMessage(reason: string): string {
 
 export interface DesignSurfaceProps {
   onOpenPalette?: () => void;
-  onCircuitMutated?: () => void;
+  onCircuitMutated?: (circuit: Circuit) => void;
   onRuntimeAddNode?: (nodeType: string, position: { x: number; y: number }) => void;
   onRuntimeAddIo?: (direction: 'input' | 'output', position: { x: number; y: number }) => void;
   onRuntimeAddBoardIo?: (input: {
@@ -112,6 +112,10 @@ export interface DesignSurfaceProps {
     toNodeId: string;
     toPort: string;
   }) => void;
+  onRuntimeUndo?: () => void;
+  onRuntimeRedo?: () => void;
+  runtimeUndoDepth?: number;
+  runtimeRedoDepth?: number;
   compilerStatus?: DesignCompilerStatus;
   onDiagnosticAction?: (diagnostic: IdeDiagnostic) => void;
   diagnosticRouteRequest?: IdeDiagnosticRouteRequest | null;
@@ -654,6 +658,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   onRuntimeAddIo,
   onRuntimeAddBoardIo,
   onRuntimeConnect,
+  onRuntimeUndo,
+  onRuntimeRedo,
+  runtimeUndoDepth,
+  runtimeRedoDepth,
   compilerStatus,
   onDiagnosticAction,
   diagnosticRouteRequest,
@@ -697,13 +705,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const updateCircuit = useCircuitStore((state) => state.updateCircuit);
   const deleteNode = useCircuitStore((state) => state.deleteNode);
   const deleteConnection = useCircuitStore((state) => state.deleteConnection);
-  const undo = useCircuitStore((state) => state.undo);
-  const redo = useCircuitStore((state) => state.redo);
   const setEngine = useCircuitStore((state) => state.setEngine);
   const setTickEngine = useCircuitStore((state) => state.setTickEngine);
   const updateNode = useCircuitStore((state) => state.updateNode);
-  const undoDepth = useCircuitStore((state) => state.past.length);
-  const redoDepth = useCircuitStore((state) => state.future.length);
+  const undoDepth = runtimeUndoDepth ?? 0;
+  const redoDepth = runtimeRedoDepth ?? 0;
 
   const camera = useLogicViewStore((state) => state.camera);
   const toolMode = useLogicViewStore((state) => state.toolMode);
@@ -948,6 +954,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     },
     [designDebugEnabled, liveInputValueById, runtimeSim.inputs, runtimeSim.signals]
   );
+  const emitCircuitMutation = useCallback((nextCircuit?: Circuit) => {
+    onCircuitMutated?.(nextCircuit ?? useCircuitStore.getState().circuit);
+  }, [onCircuitMutated]);
   const getChipMetadata = useCallback((nodeType: string): ChipMetadata | undefined => {
     return getDesignChipMetadata(nodeType);
   }, []);
@@ -1015,21 +1024,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const selectedWireIds = Array.from(selection.wires);
 
     for (const nodeId of selectedNodeIds) {
-      deleteNode(nodeId);
+      deleteNode(nodeId, { skipHistory: true });
     }
 
     for (const wireId of selectedWireIds) {
       const parsed = parseWireId(wireId);
       if (!parsed) continue;
-      deleteConnection(parsed.fromNodeId, parsed.fromPort, parsed.toNodeId, parsed.toPort);
+      deleteConnection(parsed.fromNodeId, parsed.fromPort, parsed.toNodeId, parsed.toPort, {
+        skipHistory: true,
+      });
     }
 
     clearSelection();
     if (selectedNodeIds.length + selectedWireIds.length > 0) {
       setActionToast('Removed selected nodes and wires.');
-      onCircuitMutated?.();
+      emitCircuitMutation();
     }
-  }, [clearSelection, deleteConnection, deleteNode, onCircuitMutated, selection.nodes, selection.wires]);
+  }, [clearSelection, deleteConnection, deleteNode, emitCircuitMutation, selection.nodes, selection.wires]);
 
   // CP-1: Copy selected nodes into in-memory clipboard
   // Each copy resets paste step so fresh pasting starts at origin+step*40
@@ -1055,12 +1066,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       nodes: [...circuit.nodes, ...result.pastedNodes],
       connections: [...circuit.connections, ...result.pastedConnections],
     };
-    updateCircuit(next);
+    updateCircuit(next, { skipHistory: true, enforceLimits: true });
     selectMultipleNodes(result.pastedNodes.map((n) => n.id));
     setActionToast(`Pasted ${result.pastedNodes.length} node${result.pastedNodes.length !== 1 ? 's' : ''}.`);
     setPasteStep(nextStep);
-    onCircuitMutated?.();
-  }, [circuit, clipboard, pasteStep, updateCircuit, selectMultipleNodes, onCircuitMutated]);
+    emitCircuitMutation(next);
+  }, [circuit, clipboard, emitCircuitMutation, pasteStep, selectMultipleNodes, updateCircuit]);
 
   // CP-2: Duplicate selected nodes — offset from current selection bounding box,
   // chains naturally because duplicated nodes become the new selection
@@ -1077,12 +1088,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       nodes: [...circuit.nodes, ...result.pastedNodes],
       connections: [...circuit.connections, ...result.pastedConnections],
     };
-    updateCircuit(next);
+    updateCircuit(next, { skipHistory: true, enforceLimits: true });
     selectMultipleNodes(result.pastedNodes.map((n) => n.id));
     const count = result.pastedNodes.length;
     setActionToast(`Duplicated ${count} node${count !== 1 ? 's' : ''}.`);
-    onCircuitMutated?.();
-  }, [circuit, selection.nodes, updateCircuit, selectMultipleNodes, onCircuitMutated]);
+    emitCircuitMutation(next);
+  }, [circuit, emitCircuitMutation, selection.nodes, selectMultipleNodes, updateCircuit]);
 
   useEffect(() => {
     if (!actionToast) return;
@@ -1248,8 +1259,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       if (onRuntimeAddNode) {
         onRuntimeAddNode(nodeType, position);
       } else {
-        addNode(nodeType, position);
-        onCircuitMutated?.();
+        addNode(nodeType, position, { skipHistory: true });
+        emitCircuitMutation();
       }
       setActionToast(`${nodeTypeLabel(nodeType)} placed.`);
     },
@@ -1261,7 +1272,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       canvasSize.height,
       canvasSize.width,
       editorCircuit.nodes,
-      onCircuitMutated,
+      emitCircuitMutation,
       onRuntimeAddNode,
     ]
   );
@@ -1418,8 +1429,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         if (onRuntimeAddNode) {
           onRuntimeAddNode(pendingPlacement.nodeType, position);
         } else {
-          addNode(pendingPlacement.nodeType, position);
-          onCircuitMutated?.();
+          addNode(pendingPlacement.nodeType, position, { skipHistory: true });
+          emitCircuitMutation();
         }
         setActionToast(`${pendingPlacement.label} placed.`);
       } else if (pendingPlacement.kind === 'board-io' && pendingPlacement.boardIoEntry) {
@@ -1434,8 +1445,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         } else if (onRuntimeAddIo) {
           onRuntimeAddIo(entry.direction === 'in' ? 'input' : 'output', position);
         } else {
-          addNode(entry.direction === 'in' ? 'INPUT' : 'OUTPUT', position);
-          onCircuitMutated?.();
+          addNode(entry.direction === 'in' ? 'INPUT' : 'OUTPUT', position, { skipHistory: true });
+          emitCircuitMutation();
         }
         setActionToast(`Added ${entry.alias} to canvas.`);
       }
@@ -1454,8 +1465,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     [
       addNode,
       editorCircuit,
+      emitCircuitMutation,
       interactionMode,
-      onCircuitMutated,
       onRuntimeAddBoardIo,
       onRuntimeAddIo,
       onRuntimeAddNode,
@@ -1496,25 +1507,26 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   const handleCircuitChange = useCallback(
     (nextCircuit: Circuit) => {
-      updateCircuit(normalizeCircuitForCanvas(nextCircuit), { skipHistory: false, enforceLimits: true });
-      onCircuitMutated?.();
+      updateCircuit(normalizeCircuitForCanvas(nextCircuit), {
+        skipHistory: true,
+        enforceLimits: true,
+      });
+      emitCircuitMutation(normalizeCircuitForCanvas(nextCircuit));
       lastTracedPortRef.current = null;
       setTraceState(null);
       setWireContextMenu(null);
       setWireFeedback(null);
     },
-    [onCircuitMutated, updateCircuit]
+    [emitCircuitMutation, updateCircuit]
   );
 
   const handleUndo = useCallback(() => {
-    undo();
-    onCircuitMutated?.();
-  }, [onCircuitMutated, undo]);
+    onRuntimeUndo?.();
+  }, [onRuntimeUndo]);
 
   const handleRedo = useCallback(() => {
-    redo();
-    onCircuitMutated?.();
-  }, [onCircuitMutated, redo]);
+    onRuntimeRedo?.();
+  }, [onRuntimeRedo]);
 
   const measureCanvasViewport = useCallback(() => {
     if (!canvasHostRef.current) return null;
@@ -1990,12 +2002,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       if (result) {
         setActionToast(`Placed macro: ${result.instanceLabel}.`);
-        // Do NOT call onCircuitMutated here. instantiateMacro already writes the
-        // new circuit (with macro nodes), resets sim, and marks dirtySinceVerify/
-        // dirtySinceExport inside projectRuntime. onCircuitMutated would read
-        // circuitStore, which has not yet been synced from projectRuntime (that
-        // sync is a React effect — async), so it would overwrite projectRuntime
-        // with the pre-insertion circuit, silently dropping the macro.
+        // Do NOT call onCircuitMutated here. instantiateMacro directly mutates
+        // runtime state (circuit + sim + health), then IdeApp's useLayoutEffect
+        // projects that authoritative circuit back into circuitStore. Calling
+        // onCircuitMutated here would still send the stale pre-insertion editor
+        // snapshot back into projectRuntime and silently drop the macro.
       }
       setActiveMacroInsertionId(null);
       if (interactionMode === 'placing') {
@@ -2227,11 +2238,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const commitNodeLabel = useCallback(() => {
     if (!editingLabelNodeId) return;
     const trimmed = labelDraft.trim();
-    updateNode(editingLabelNodeId, { label: trimmed.length > 0 ? trimmed : undefined });
-    onCircuitMutated?.();
+    updateNode(
+      editingLabelNodeId,
+      { label: trimmed.length > 0 ? trimmed : undefined },
+      { skipHistory: true }
+    );
+    emitCircuitMutation();
     setEditingLabelNodeId(null);
     setLabelDraft('');
-  }, [editingLabelNodeId, labelDraft, updateNode, onCircuitMutated]);
+  }, [editingLabelNodeId, emitCircuitMutation, labelDraft, updateNode]);
 
   const cancelNodeLabel = useCallback(() => {
     setEditingLabelNodeId(null);

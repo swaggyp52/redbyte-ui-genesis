@@ -7,6 +7,7 @@ import {
 import { generateTestbenchVhdl } from '../../../fpga/boards/basys3/testbenchGenerator';
 import { generateVivadoImportTcl } from '../../../fpga/boards/basys3/vivadoImportTcl';
 import type { RuntimeVerifyRun } from '../projectRuntime';
+import { computeScenarioContentHash, type VerifyScenario } from '../verifyScenario';
 import {
   createIdeDiagnostic,
   type IdeDiagnostic,
@@ -57,6 +58,27 @@ export interface ExportArtifactView {
   note: string;
 }
 
+/**
+ * Structured provenance for the scenario used to generate the exported testbench.
+ * Present when an active scenario and a passing Verify run are both available.
+ */
+export interface ExportedScenarioProvenance {
+  /** Stable scenario identifier — survives renames and vector edits. */
+  id: string;
+  /** User-visible scenario name at export time. */
+  name: string;
+  /** Monotonic scenario version counter at export time. */
+  version: number;
+  /** Deterministic content hash of (id + version + vectors) at export time. */
+  contentHash: string;
+  /**
+   * True when the scenario's content hash differs from the hash recorded in the
+   * last Verify PASS run. The testbench uses the current scenario vectors, but
+   * they have not yet been re-verified against this design.
+   */
+  isStaleComparedToLastPass: boolean;
+}
+
 export interface ExportViewModel {
   status: 'ok' | 'blocked';
   diagnostics: IdeDiagnostic[];
@@ -65,6 +87,11 @@ export interface ExportViewModel {
   pinTable: ExportPinTableRow[];
   artifacts: ExportArtifactView[];
   exportHash?: string;
+  /**
+   * Structured scenario provenance for the exported testbench.
+   * Present when an active scenario and a passing Verify run are both available.
+   */
+  exportedScenario?: ExportedScenarioProvenance;
 }
 
 interface RequiredPortDescriptor {
@@ -74,7 +101,8 @@ interface RequiredPortDescriptor {
 
 export function buildExportViewModel(
   project: RBProject,
-  runtimeVerifyRun?: RuntimeVerifyRun
+  runtimeVerifyRun?: RuntimeVerifyRun,
+  activeScenario?: VerifyScenario
 ): ExportViewModel {
   const flattenedProject = flattenProjectMacros(project);
   const exportResult = exportProjectAsBasys3(flattenedProject);
@@ -84,7 +112,8 @@ export function buildExportViewModel(
   const warnings = diagnostics.filter((entry) => entry.severity === 'warning');
   const requiredPorts = collectRequiredPorts(diagnostics);
   const pinTable = buildPinTable(flattenedProject, diagnostics, requiredPorts);
-  const artifacts = buildArtifacts(flattenedProject, exportResult, errors.length > 0, runtimeVerifyRun);
+  const artifacts = buildArtifacts(flattenedProject, exportResult, errors.length > 0, runtimeVerifyRun, activeScenario);
+  const exportedScenario = buildScenarioProvenance(activeScenario, runtimeVerifyRun);
 
   return {
     status: errors.length > 0 ? 'blocked' : 'ok',
@@ -94,9 +123,12 @@ export function buildExportViewModel(
     pinTable,
     artifacts,
     exportHash: exportResult.determinismHash,
+    exportedScenario,
   };
 }
 
+// TODO(slice-8): Move port/owner extraction earlier — enrich Basys3ExportError with port?: string
+// and nodeId?: string at the source so the regex recovery below is unnecessary.
 function collectDiagnostics(
   project: RBProject,
   exportErrors: Basys3ExportError[],
@@ -285,12 +317,13 @@ function buildArtifacts(
   project: RBProject,
   exportResult: ReturnType<typeof exportProjectAsBasys3>,
   blocked: boolean,
-  runtimeVerifyRun?: RuntimeVerifyRun
+  runtimeVerifyRun?: RuntimeVerifyRun,
+  activeScenario?: VerifyScenario
 ): ExportArtifactView[] {
   const artifacts: ExportArtifactView[] = [];
   const bundle = exportResult.bundle;
   const rbprojJson = encodeRBProject(project);
-  const runtimeBackedTestbench = buildRuntimeBackedTestbench(project, runtimeVerifyRun);
+  const runtimeBackedTestbench = buildRuntimeBackedTestbench(project, runtimeVerifyRun, activeScenario);
   const topEntity = resolveTopEntity(project);
   const vhdlSourcePaths: string[] = ['top.vhd'];
   const vivadoImportTcl = generateVivadoImportTcl({
@@ -488,19 +521,78 @@ function buildArtifacts(
 
 function buildRuntimeBackedTestbench(
   project: RBProject,
-  runtimeVerifyRun: RuntimeVerifyRun | undefined
+  runtimeVerifyRun: RuntimeVerifyRun | undefined,
+  activeScenario: VerifyScenario | undefined
 ): { content: string; note: string } | undefined {
   if (!runtimeVerifyRun || runtimeVerifyRun.status !== 'pass') return undefined;
-  if (!project.vectors || project.vectors.length === 0) return undefined;
-  const content = generateTestbenchVhdl(project, project.vectors, {
-    scheduleOverride: {
-      schedule: runtimeVerifyRun.schedule,
-      reason: 'verify-last-run',
-    },
+
+  // When a scenario is available it is the authoritative vector source.
+  // project.vectors is the compat fallback only when no scenario is present.
+  const vectors = activeScenario ? activeScenario.vectors : project.vectors;
+  if (!vectors || vectors.length === 0) return undefined;
+
+  const scheduleContract = runtimeVerifyRun.scheduleContract;
+  const content = generateTestbenchVhdl(project, vectors, {
+    scheduleOverride: scheduleContract
+      ? {
+          ...scheduleContract,
+          reason: 'verify-last-run',
+        }
+      : {
+          schedule: runtimeVerifyRun.schedule,
+          reason: 'verify-last-run',
+          clockSignalName: runtimeVerifyRun.meta.clockSignalName ?? undefined,
+        },
   });
+
+  const clockNote =
+    scheduleContract?.clockSignalName && scheduleContract.clockSignalName.length > 0
+      ? `, clock=${scheduleContract.clockSignalName}`
+      : '';
+
+  let note: string;
+  if (activeScenario) {
+    const contentHash = computeScenarioContentHash(activeScenario);
+    const isStale =
+      typeof runtimeVerifyRun.scenarioContentHash === 'string'
+        ? runtimeVerifyRun.scenarioContentHash !== contentHash
+        : false;
+    if (isStale) {
+      note =
+        `STALE — scenario '${activeScenario.name}' v${activeScenario.version} has changed since ` +
+        `last Verify PASS. Vectors reflect the current scenario; re-run Verify to confirm alignment.`;
+    } else {
+      note =
+        `Vectors from scenario '${activeScenario.name}' v${activeScenario.version} (${contentHash})` +
+        ` — matches Verify PASS (${runtimeVerifyRun.schedule}${clockNote}).`;
+    }
+  } else {
+    note = `Deterministic schedule mirrored from latest Verify PASS (${runtimeVerifyRun.schedule}${clockNote}).`;
+  }
+
+  return { content, note };
+}
+
+/**
+ * Compute structured scenario provenance for the exported testbench.
+ * Returns undefined when either the active scenario or a passing run is absent.
+ */
+function buildScenarioProvenance(
+  activeScenario: VerifyScenario | undefined,
+  runtimeVerifyRun: RuntimeVerifyRun | undefined
+): ExportedScenarioProvenance | undefined {
+  if (!activeScenario || !runtimeVerifyRun || runtimeVerifyRun.status !== 'pass') return undefined;
+  const contentHash = computeScenarioContentHash(activeScenario);
+  const isStaleComparedToLastPass =
+    typeof runtimeVerifyRun.scenarioContentHash === 'string'
+      ? runtimeVerifyRun.scenarioContentHash !== contentHash
+      : false;
   return {
-    content,
-    note: `Deterministic schedule mirrored from latest Verify PASS (${runtimeVerifyRun.schedule}).`,
+    id: activeScenario.id,
+    name: activeScenario.name,
+    version: activeScenario.version,
+    contentHash,
+    isStaleComparedToLastPass,
   };
 }
 

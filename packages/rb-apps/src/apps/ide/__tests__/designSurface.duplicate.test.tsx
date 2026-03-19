@@ -157,6 +157,7 @@ describe('DesignSurface duplicate — Ctrl+D shortcut', () => {
       expect(useCircuitStore.getState().circuit.nodes.length).toBeGreaterThan(before);
     });
     expect(onCircuitMutated).toHaveBeenCalled();
+    expect(onCircuitMutated.mock.lastCall?.[0]).toEqual(useCircuitStore.getState().circuit);
   });
 
   it('Ctrl+D with no selection is a no-op', async () => {
@@ -276,6 +277,7 @@ describe('DesignSurface duplicate — inspector button', () => {
       expect(useCircuitStore.getState().circuit.nodes.length).toBeGreaterThan(before);
     });
     expect(onCircuitMutated).toHaveBeenCalled();
+    expect(onCircuitMutated.mock.lastCall?.[0]).toEqual(useCircuitStore.getState().circuit);
   });
 
   it('shows Duplicate (N) in multi-select panel', async () => {
@@ -313,5 +315,24 @@ describe('DesignSurface duplicate — inspector button', () => {
     await waitFor(() => {
       expect(useCircuitStore.getState().circuit.nodes.length).toBe(before + 2);
     });
+  });
+});
+
+describe('DesignSurface history routing', () => {
+  it('routes undo and redo requests through runtime callbacks', () => {
+    const onRuntimeUndo = vi.fn();
+    const onRuntimeRedo = vi.fn();
+    const view = renderSurface({
+      onRuntimeUndo,
+      onRuntimeRedo,
+      runtimeUndoDepth: 2,
+      runtimeRedoDepth: 1,
+    });
+
+    fireEvent.click(view.getByTestId('ide-design-tool-undo'));
+    fireEvent.click(view.getByTestId('ide-design-tool-redo'));
+
+    expect(onRuntimeUndo).toHaveBeenCalledTimes(1);
+    expect(onRuntimeRedo).toHaveBeenCalledTimes(1);
   });
 });

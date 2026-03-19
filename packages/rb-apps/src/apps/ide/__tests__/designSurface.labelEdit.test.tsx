@@ -262,6 +262,44 @@ describe('DesignSurface label editing — Save commits new label', () => {
     });
   });
 
+  it('clicking Save emits the updated circuit payload', async () => {
+    const onCircuitMutated = vi.fn();
+    const view = renderSurface({ onCircuitMutated });
+
+    act(() => {
+      useLogicViewStore.getState().selectNode('sw0_node');
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-context-rename')).toBeTruthy();
+    });
+
+    act(() => {
+      fireEvent.click(view.getByTestId('ide-design-context-rename'));
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-label-input')).toBeTruthy();
+    });
+
+    act(() => {
+      const input = view.getByTestId('ide-design-label-input') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'RenamedViaCallback' } });
+    });
+
+    act(() => {
+      fireEvent.click(view.getByTestId('ide-design-label-save'));
+    });
+
+    await waitFor(() => {
+      const node = useCircuitStore.getState().circuit.nodes.find((n) => n.id === 'sw0_node');
+      expect(node?.label).toBe('RenamedViaCallback');
+    });
+
+    expect(onCircuitMutated).toHaveBeenCalled();
+    expect(onCircuitMutated.mock.lastCall?.[0]).toEqual(useCircuitStore.getState().circuit);
+  });
+
   it('pressing Enter in the input commits the label', async () => {
     const view = renderSurface();
 

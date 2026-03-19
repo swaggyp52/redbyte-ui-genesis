@@ -16,6 +16,8 @@ import {
 import { parseVerilog } from '../../import/verilogImport';
 import { parseVhdl } from '../../import/vhdlImport';
 import { parseXdcPins, type XdcParseResult } from '../../import/xdcImport';
+import type { IdeDiagnostic } from './diagnostics';
+import { unifyImportDiagnostics } from './diagnostics';
 
 const CLASSROOM_BOARD = 'basys3';
 const CLASSROOM_PART = 'xc7a35tcpg236-1';
@@ -42,6 +44,8 @@ export interface ZipImportInspection {
   warnings: string[];
   parserDiagnostics: ImportedProjectCompilerResult['parserDiagnostics'];
   compilerDiagnostics: ImportedProjectCompilerResult['compilerDiagnostics'];
+  /** Pre-normalized diagnostics — use this instead of adapting parserDiagnostics/compilerDiagnostics inline. */
+  ideDiagnostics: IdeDiagnostic[];
   status: ImportedProjectCompilerResult['status'];
   isImportRunnable: boolean;
   reconstructionLevel: ReconstructionLevel;
@@ -171,6 +175,10 @@ export async function importVivadoZipBytes(
     warnings: compilerResult.parserDiagnostics.map((diagnostic) => diagnostic.message),
     parserDiagnostics: compilerResult.parserDiagnostics,
     compilerDiagnostics: compilerResult.compilerDiagnostics,
+    ideDiagnostics: unifyImportDiagnostics(
+      compilerResult.parserDiagnostics,
+      compilerResult.compilerDiagnostics
+    ),
     status: compilerResult.status,
     isImportRunnable: compilerResult.isImportRunnable,
     reconstructionLevel: compilerResult.reconstructionLevel,
@@ -311,6 +319,10 @@ async function buildManifestInspection(input: {
     warnings: compilerResult.parserDiagnostics.map((diagnostic) => diagnostic.message),
     parserDiagnostics: compilerResult.parserDiagnostics,
     compilerDiagnostics: compilerResult.compilerDiagnostics,
+    ideDiagnostics: unifyImportDiagnostics(
+      compilerResult.parserDiagnostics,
+      compilerResult.compilerDiagnostics
+    ),
     status: compilerResult.status,
     isImportRunnable: compilerResult.isImportRunnable,
     reconstructionLevel: compilerResult.reconstructionLevel,

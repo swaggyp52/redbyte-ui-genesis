@@ -60,7 +60,10 @@ function hashCircuit(circuit: Circuit): string {
 // Node count limits: strict in Classroom Edition, generous in normal mode
 const CE_HARD_LIMIT = 20;
 const NORMAL_HARD_LIMIT = 500;
-const HARD_LIMIT = isCEMode() ? CE_HARD_LIMIT : NORMAL_HARD_LIMIT;
+// Lazy to avoid Rollup TDZ when module evaluation order shifts across chunk boundaries
+function getHardLimit(): number {
+  return isCEMode() ? CE_HARD_LIMIT : NORMAL_HARD_LIMIT;
+}
 
 function getConnectionNodeId(ref: PortRef | string): string {
   return typeof ref === 'string' ? ref : ref.nodeId;
@@ -122,11 +125,25 @@ interface CircuitState {
   // Circuit mutations (all stable, no closures)
   updateCircuit: (circuit: Circuit, opts?: { skipHistory?: boolean; enforceLimits?: boolean }) => void;
   commit: (circuit: Circuit) => void; // Explicit commit with history
-  addNode: (nodeType: string, position: { x: number; y: number }) => void;
-  updateNode: (nodeId: string, updates: Partial<Node>) => void;
-  deleteNode: (nodeId: string) => void;
-  addConnection: (from: PortRef, to: PortRef) => void;
-  deleteConnection: (fromNodeId: string, fromPort: string, toNodeId: string, toPort: string) => void;
+  addNode: (
+    nodeType: string,
+    position: { x: number; y: number },
+    opts?: { skipHistory?: boolean }
+  ) => void;
+  updateNode: (
+    nodeId: string,
+    updates: Partial<Node>,
+    opts?: { skipHistory?: boolean }
+  ) => void;
+  deleteNode: (nodeId: string, opts?: { skipHistory?: boolean }) => void;
+  addConnection: (from: PortRef, to: PortRef, opts?: { skipHistory?: boolean }) => void;
+  deleteConnection: (
+    fromNodeId: string,
+    fromPort: string,
+    toNodeId: string,
+    toPort: string,
+    opts?: { skipHistory?: boolean }
+  ) => void;
 
   // Undo/Redo (PR2.3)
   undo: () => void;
@@ -212,7 +229,7 @@ function createCircuitStore() {
         let clampEvent: CircuitState['lastClampEvent'] = null;
 
         if (enforceLimits) {
-          const res = clampCircuit(incoming, HARD_LIMIT);
+          const res = clampCircuit(incoming, getHardLimit());
           circuit = res.circuit;
 
           if (res.clamped) {
@@ -359,13 +376,13 @@ function createCircuitStore() {
     canUndo: () => get().past.length > 0,
     canRedo: () => get().future.length > 0,
 
-    addNode: (nodeType, position) => {
+    addNode: (nodeType, position, opts = {}) => {
       console.log(`[CircuitStore.addNode] Called with type=${nodeType}, pos=${JSON.stringify(position)}`);
       const { circuit } = get();
 
       // Guardrail: block at node limit (CE: 20, normal: 500)
-      if (circuit.nodes.length >= HARD_LIMIT) {
-        console.warn(`[CircuitStore] Node creation blocked: limit reached (${circuit.nodes.length}/${HARD_LIMIT})`);
+      if (circuit.nodes.length >= getHardLimit()) {
+        console.warn(`[CircuitStore] Node creation blocked: limit reached (${circuit.nodes.length}/${getHardLimit()})`);
         return;
       }
 
@@ -396,44 +413,44 @@ function createCircuitStore() {
         config: defaultConfig,
       };
       console.log(`[CircuitStore.addNode] Creating new node:`, newNode);
-      get().commit({
+      get().updateCircuit({
         ...circuit,
         nodes: [...circuit.nodes, newNode],
-      });
+      }, { skipHistory: opts.skipHistory ?? false, enforceLimits: true });
       console.log(`[CircuitStore.addNode] Commit called, circuit now has ${circuit.nodes.length + 1} nodes`);
     },
 
-    updateNode: (nodeId, updates) => {
+    updateNode: (nodeId, updates, opts = {}) => {
       const { circuit } = get();
-      get().commit({
+      get().updateCircuit({
         ...circuit,
         nodes: circuit.nodes.map((n) => (n.id === nodeId ? { ...n, ...updates } : n)),
-      });
+      }, { skipHistory: opts.skipHistory ?? false, enforceLimits: true });
     },
 
-    deleteNode: (nodeId) => {
+    deleteNode: (nodeId, opts = {}) => {
       const { circuit } = get();
-      get().commit({
+      get().updateCircuit({
         ...circuit,
         nodes: circuit.nodes.filter((n) => n.id !== nodeId),
         connections: circuit.connections.filter(
           (c) => getConnectionNodeId(c.from) !== nodeId && getConnectionNodeId(c.to) !== nodeId
         ),
-      });
+      }, { skipHistory: opts.skipHistory ?? false, enforceLimits: true });
     },
 
-    addConnection: (from, to) => {
+    addConnection: (from, to, opts = {}) => {
       const { circuit } = get();
       const newConnection: Connection = { from, to };
-      get().commit({
+      get().updateCircuit({
         ...circuit,
         connections: [...circuit.connections, newConnection],
-      });
+      }, { skipHistory: opts.skipHistory ?? false, enforceLimits: true });
     },
 
-    deleteConnection: (fromNodeId, fromPort, toNodeId, toPort) => {
+    deleteConnection: (fromNodeId, fromPort, toNodeId, toPort, opts = {}) => {
       const { circuit } = get();
-      get().commit({
+      get().updateCircuit({
         ...circuit,
         connections: circuit.connections.filter(
           (c) =>
@@ -444,7 +461,7 @@ function createCircuitStore() {
               getConnectionPort(c, 'to', '') === toPort
             )
         ),
-      });
+      }, { skipHistory: opts.skipHistory ?? false, enforceLimits: true });
     },
 
     reset: () =>

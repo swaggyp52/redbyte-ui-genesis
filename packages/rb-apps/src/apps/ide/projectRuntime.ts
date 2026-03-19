@@ -41,6 +41,17 @@ import {
 } from './verifyReport';
 import { generateBringUpVectors } from './bringupArtifacts';
 import {
+  computeScenarioContentHash,
+  createDefaultScenario,
+  createScenario as buildNewScenario,
+  DEFAULT_SCENARIO_ID,
+  getActiveScenario,
+  migrateProjectVectorsToScenario,
+  repairScenarioLibrary,
+  stampScenario,
+  type VerifyScenario,
+} from './verifyScenario';
+import {
   DEFAULT_SIM_SPEED_HZ,
   advanceSimulationStateFromModel,
   recomputeSimulationStateFromModel,
@@ -94,6 +105,10 @@ export interface VerifyRunMeta {
 export interface RuntimeVerifyRun {
   scenarioId: string;
   scenarioName: string;
+  /** Monotonic version of the scenario at the time of the run — for drift detection. */
+  scenarioVersion?: number;
+  /** Deterministic content hash of the scenario at the time of the run. */
+  scenarioContentHash?: string;
   status: 'pass' | 'fail';
   /** Set when status is 'pass' but the result has a known limitation.
    *  'incomplete-mapping': some output IO rows have no FPGA pin assigned.
@@ -131,6 +146,10 @@ export function detectIncompleteMappingQualification(
 export interface RunVerificationInput {
   scenarioId: string;
   scenarioName: string;
+  /** Scenario version at time of run — stored in result for machine-checkable drift detection. */
+  scenarioVersion?: number;
+  /** Pre-computed content hash of the scenario (from computeScenarioContentHash). */
+  scenarioContentHash?: string;
   deterministicHash: string;
   scheduleContract?: VerifyScheduleContract;
   rows: Array<{
@@ -170,8 +189,16 @@ export interface ProjectRuntimeState {
   lastSavedAt: string;
   activeExampleId: string | null;
   projectIoRows: ProjectIoRow[];
+  /**
+   * @deprecated Compatibility state only. Authority has moved to `scenarios`.
+   * Kept in sync with the active scenario's vectors after migration.
+   */
   projectVectors: TestVector[];
   customVectors: CustomTestVector[];
+  /** Scenario library — always contains at least one scenario after initialization. */
+  scenarios: VerifyScenario[];
+  /** ID of the currently active scenario — always a valid ID in `scenarios`. */
+  activeScenarioId: string | null;
   circuit: Circuit;
   designPast: DesignHistorySnapshot[];
   designFuture: DesignHistorySnapshot[];
@@ -189,6 +216,32 @@ export interface ProjectRuntimeState {
   setVectors: (vectors: TestVector[]) => void;
   setCustomVectors: (vectors: CustomTestVector[]) => void;
   generateBringUpVectors: () => TestVector[];
+  /** Replace the active scenario's vectors. Stamps the scenario (increments version). */
+  updateActiveScenarioVectors: (vectors: TestVector[]) => void;
+  /** Rename the active scenario. Stamps the scenario (increments version). */
+  renameActiveScenario: (name: string) => void;
+  /** Switch the active scenario by ID. No-op if ID is not in the library. */
+  setActiveScenarioId: (id: string) => void;
+  /**
+   * Delete a scenario by ID. Refuses to delete the last remaining scenario.
+   * After deletion, reassigns activeScenarioId deterministically to the previous
+   * scenario (or first if none exists before it).
+   */
+  deleteScenario: (id: string) => void;
+  /**
+   * Create a new named scenario and switch to it immediately.
+   * When seedVectors is omitted the new scenario is seeded from the active scenario's
+   * vectors (never blank by default — students expect continuity).
+   * Returns the newly created scenario.
+   */
+  createScenario: (name: string, seedVectors?: TestVector[]) => VerifyScenario;
+  /**
+   * Duplicate the active scenario under a new UUID with a "(copy)" name suffix.
+   * The copy inherits vectors only — it carries no run provenance.
+   * Switches the active scenario to the new copy immediately.
+   * Returns the newly created scenario.
+   */
+  duplicateScenario: () => VerifyScenario;
   applyCircuitMutation: (circuit: Circuit) => void;
   markDesignMutated: (circuit: Circuit) => void;
   undoProjectEdit: () => void;
@@ -243,8 +296,11 @@ interface PersistedRuntimeState {
   lastSavedAt: string;
   activeExampleId: string | null;
   projectIoRows: ProjectIoRow[];
+  /** @deprecated Compatibility only — authority has moved to `scenarios`. */
   projectVectors: TestVector[];
   customVectors: CustomTestVector[];
+  scenarios?: VerifyScenario[];
+  activeScenarioId?: string | null;
   circuit: Circuit;
   designPast?: DesignHistorySnapshot[];
   designFuture?: DesignHistorySnapshot[];
@@ -270,6 +326,8 @@ interface RuntimeSeedState extends PersistedRuntimeState {
   designFuture: DesignHistorySnapshot[];
   maxDesignHistory: number;
   designRevision: number;
+  scenarios: VerifyScenario[];
+  activeScenarioId: string | null;
 }
 
 export const useProjectRuntime = create<ProjectRuntimeState>()(
@@ -479,6 +537,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           projectIoRows,
           projectVectors: cloneVectors(project.vectors ?? []),
           customVectors: [],
+          ...migrateProjectVectorsToScenario(project.vectors ?? []),
           circuit,
           designPast: [],
           designFuture: [],
@@ -520,17 +579,116 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         }));
       },
       setVectors: (vectors) => {
-        set((state) => ({
-          projectVectors: cloneVectors(vectors),
-          projectHealthCore: {
-            ...state.projectHealthCore,
-            dirtySinceVerify: true,
-            dirtySinceExport: true,
-          },
-        }));
+        set((state) => {
+          const cloned = cloneVectors(vectors);
+          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+          const scenarios = activeScenario
+            ? state.scenarios.map((s) =>
+                s.id === activeScenario.id
+                  ? stampScenario({ ...s, vectors: cloned })
+                  : s
+              )
+            : state.scenarios;
+          return {
+            projectVectors: cloned,
+            scenarios,
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              dirtySinceVerify: true,
+              dirtySinceExport: true,
+            },
+          };
+        });
       },
       setCustomVectors: (vectors) => {
         set(() => ({ customVectors: [...vectors] }));
+      },
+      updateActiveScenarioVectors: (vectors) => {
+        set((state) => {
+          const cloned = cloneVectors(vectors);
+          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+          if (!activeScenario) return state;
+          const updated = stampScenario({ ...activeScenario, vectors: cloned });
+          return {
+            projectVectors: cloned,
+            scenarios: state.scenarios.map((s) => (s.id === activeScenario.id ? updated : s)),
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              dirtySinceVerify: true,
+              dirtySinceExport: true,
+            },
+          };
+        });
+      },
+      renameActiveScenario: (name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        set((state) => {
+          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+          if (!activeScenario) return state;
+          const updated = stampScenario({ ...activeScenario, name: trimmed });
+          return {
+            scenarios: state.scenarios.map((s) => (s.id === activeScenario.id ? updated : s)),
+          };
+        });
+      },
+      setActiveScenarioId: (id) => {
+        set((state) => {
+          const exists = state.scenarios.some((s) => s.id === id);
+          if (!exists) return state;
+          const activeScenario = state.scenarios.find((s) => s.id === id)!;
+          return {
+            activeScenarioId: id,
+            projectVectors: cloneVectors(activeScenario.vectors),
+          };
+        });
+      },
+      deleteScenario: (id) => {
+        set((state) => {
+          // Invariant: never delete the last scenario
+          if (state.scenarios.length <= 1) return state;
+          const idx = state.scenarios.findIndex((s) => s.id === id);
+          if (idx === -1) return state;
+          const remaining = state.scenarios.filter((s) => s.id !== id);
+          // Reassign active deterministically: prefer the scenario before it, else first
+          let nextActiveId = state.activeScenarioId;
+          if (state.activeScenarioId === id) {
+            nextActiveId = idx > 0 ? remaining[idx - 1].id : remaining[0].id;
+          }
+          const nextActive = remaining.find((s) => s.id === nextActiveId) ?? remaining[0];
+          return {
+            scenarios: remaining,
+            activeScenarioId: nextActive.id,
+            projectVectors: cloneVectors(nextActive.vectors),
+          };
+        });
+      },
+      createScenario: (name, seedVectors) => {
+        const state = get();
+        const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+        // Default: seed from active scenario's vectors, not blank (constraint: prefer continuity)
+        const vectors = seedVectors ?? (activeScenario ? cloneVectors(activeScenario.vectors) : cloneVectors(state.projectVectors));
+        const scenario = buildNewScenario(name, vectors);
+        set((current) => ({
+          scenarios: [...current.scenarios, scenario],
+          activeScenarioId: scenario.id,
+          projectVectors: cloneVectors(scenario.vectors),
+        }));
+        return scenario;
+      },
+      duplicateScenario: () => {
+        const state = get();
+        const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+        const sourceName = activeScenario?.name ?? 'Scenario';
+        // Inherit vectors only — the copy has no run provenance (constraint: no verify truth transfer)
+        const sourceVectors = activeScenario ? activeScenario.vectors : state.projectVectors;
+        const copy = buildNewScenario(`${sourceName} (copy)`, sourceVectors);
+        set((current) => ({
+          scenarios: [...current.scenarios, copy],
+          activeScenarioId: copy.id,
+          projectVectors: cloneVectors(copy.vectors),
+        }));
+        return copy;
       },
       generateBringUpVectors: () => {
         const generated = generateBringUpVectors({
@@ -538,14 +696,26 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           circuit: get().circuit,
           existingVectors: get().projectVectors,
         });
-        set((state) => ({
-          projectVectors: cloneVectors(generated),
-          projectHealthCore: {
-            ...state.projectHealthCore,
-            dirtySinceVerify: true,
-            dirtySinceExport: true,
-          },
-        }));
+        set((state) => {
+          const cloned = cloneVectors(generated);
+          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+          const scenarios = activeScenario
+            ? state.scenarios.map((s) =>
+                s.id === activeScenario.id
+                  ? stampScenario({ ...s, vectors: cloned })
+                  : s
+              )
+            : state.scenarios;
+          return {
+            projectVectors: cloned,
+            scenarios,
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              dirtySinceVerify: true,
+              dirtySinceExport: true,
+            },
+          };
+        });
         return generated;
       },
       applyCircuitMutation: (circuit) => {
@@ -784,8 +954,18 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       runVerification: (input) => {
         let runtimeRun: RuntimeVerifyRun | undefined;
         set((state) => {
-          const scenarioId = input.scenarioId.trim() || 'runtime-verify';
-          const scenarioName = input.scenarioName.trim() || 'Runtime verification';
+          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+          const scenarioId = input.scenarioId.trim() || activeScenario?.id || 'runtime-verify';
+          const scenarioName = input.scenarioName.trim() || activeScenario?.name || 'Runtime verification';
+          const scenarioVersion = input.scenarioVersion ?? activeScenario?.version;
+          const scenarioContentHash =
+            input.scenarioContentHash ??
+            (activeScenario ? computeScenarioContentHash(activeScenario) : undefined);
+          // Authority: use active scenario vectors; fall back to legacy projectVectors
+          const verifyVectors =
+            activeScenario && activeScenario.vectors.length > 0
+              ? activeScenario.vectors
+              : state.projectVectors;
           const circuitHash = digestValue(stableSerialize(state.circuit));
           const ioMapping = toIoMapping(state.projectIoRows);
           const verifyContext = buildDeterministicVerifyContext(
@@ -797,12 +977,12 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             : verifyContext.schedule;
           const model = verifyContext.simModel;
           const deterministicResult =
-            state.projectVectors.length > 0
+            verifyVectors.length > 0
               ? runDeterministicVerifyFromModel(
                   state.circuit,
                   model,
                   state.projectIoRows,
-                  state.projectVectors,
+                  verifyVectors,
                   scheduleContract
                 )
               : null;
@@ -812,7 +992,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const status: 'pass' | 'fail' =
             failedRows.length > 0 || preflightIssues.length > 0 ? 'fail' : 'pass';
           const ranAtIso = input.ranAtIso ?? new Date().toISOString();
-          const vectors = toVerifyVectors(state.projectVectors);
+          const vectors = toVerifyVectors(verifyVectors);
           const signalRoles = deriveSignalRoles(state.projectIoRows, scheduleContract);
           const report = buildVerifyReport({
             scenarioId,
@@ -838,6 +1018,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           runtimeRun = {
             scenarioId: report.scenarioId,
             scenarioName: report.scenarioName,
+            scenarioVersion,
+            scenarioContentHash,
             status: report.status,
             qualification: detectIncompleteMappingQualification(state.projectIoRows, report.status),
             deterministicHash: report.deterministicHash,
@@ -853,11 +1035,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           };
 
           // Build ledger entry (synchronous hashes via digestValue + stableSerialize)
-          const vectorsHash = digestValue(stableSerialize(state.projectVectors));
+          const vectorsHash = digestValue(stableSerialize(verifyVectors));
           const mappingHash = digestValue(stableSerialize(ioMapping));
           const projectSnap = {
             circuit: state.circuit,
-            vectors: state.projectVectors,
+            vectors: verifyVectors,
             mapping: ioMapping,
           };
           const projectHash = digestValue(stableSerialize(projectSnap));
@@ -1133,6 +1315,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         projectIoRows: cloneIoRows(state.projectIoRows),
         projectVectors: cloneVectors(state.projectVectors),
         customVectors: [...(state.customVectors ?? [])],
+        scenarios: state.scenarios,
+        activeScenarioId: state.activeScenarioId,
         circuit: cloneCircuit(state.circuit),
         designPast: cloneDesignHistoryPast(state.designPast, state.maxDesignHistory),
         designFuture: cloneDesignHistoryFuture(state.designFuture, state.maxDesignHistory),
@@ -1219,6 +1403,14 @@ export function mergePersistedRuntimeState(
   const projectIoRows = ioRowsFromProject(normalizedProject);
   const circuit = cloneCircuit(normalizedProject.circuit);
   const projectVectors = cloneVectors(normalizedProject.vectors ?? []);
+
+  // Scenario migration: if scenarios absent in persisted data, migrate from projectVectors
+  const { scenarios, activeScenarioId } = repairScenarioLibrary(
+    candidate.scenarios,
+    candidate.activeScenarioId,
+    projectVectors
+  );
+
   const rawVerifyLastRun = tryCloneVerifyRun(candidate.verifyLastRun);
   const invalidateVerifyTrust = hasLegacyVerifyTrust(rawVerifyLastRun, candidate.projectHealthCore);
   const verifyLastRun = invalidateVerifyTrust ? undefined : rawVerifyLastRun;
@@ -1251,6 +1443,8 @@ export function mergePersistedRuntimeState(
     projectIoRows,
     projectVectors,
     customVectors: Array.isArray(candidate.customVectors) ? [...candidate.customVectors] : [],
+    scenarios,
+    activeScenarioId,
     circuit,
     designPast,
     designFuture,
@@ -1284,6 +1478,7 @@ function stateFromExample(
     label: p.label,
   }));
   const sim = kitProbes.length > 0 ? { ...baseSimState, probes: kitProbes } : baseSimState;
+  const defaultScenario = createDefaultScenario(example.vectors);
   return {
     projectId,
     projectName: example.name,
@@ -1293,6 +1488,8 @@ function stateFromExample(
     projectIoRows,
     projectVectors: cloneVectors(example.vectors),
     customVectors: [],
+    scenarios: [defaultScenario],
+    activeScenarioId: defaultScenario.id,
     circuit,
     designPast: [],
     designFuture: [],
