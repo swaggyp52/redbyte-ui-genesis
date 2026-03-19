@@ -2955,40 +2955,45 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               ))
             )}
           </div>
-          <header className="ide-design-subheader">
-            <h3>Failures</h3>
-            <span className="ide-copy">{failingRows.length}</span>
-          </header>
-          <div className="ide-signal-list" data-testid="ide-verify-failures-list">
-            {failingRows.length === 0 ? (
-              <p className="ide-copy">No failing rows in the latest run.</p>
-            ) : (
-              failingRows.slice(0, 8).map((row) => (
-                <button
-                  key={`${row.tick}-${row.signal}`}
-                  type="button"
-                  className={`ide-signal-row ${
-                    selectedFailureKey ===
-                    buildFailureCaseKey(row.tick, row.signal, row.vectorId, row.caseIndex)
-                      ? 'is-active'
-                      : ''
-                  }`}
-                  onClick={() => applyFailureSelection(row)}
-                  onMouseEnter={() => handleSignalHover(row.signal)}
-                  onMouseLeave={() => handleSignalHover(null)}
-                  data-testid={`ide-verify-failure-${toTestId(`${row.signal}-${row.tick}`)}`}
-                >
-                  <span>{row.signal}</span>
-                  <span>t{row.tick}</span>
-                </button>
-              ))
-            )}
-          </div>
+          {assertionMode && (
+            <>
+              <header className="ide-design-subheader">
+                <h3>Failures</h3>
+                <span className="ide-copy">{failingRows.length}</span>
+              </header>
+              <div className="ide-signal-list" data-testid="ide-verify-failures-list">
+                {failingRows.length === 0 ? (
+                  <p className="ide-copy">No failing rows in the latest run.</p>
+                ) : (
+                  failingRows.slice(0, 8).map((row) => (
+                    <button
+                      key={`${row.tick}-${row.signal}`}
+                      type="button"
+                      className={`ide-signal-row ${
+                        selectedFailureKey ===
+                        buildFailureCaseKey(row.tick, row.signal, row.vectorId, row.caseIndex)
+                          ? 'is-active'
+                          : ''
+                      }`}
+                      onClick={() => applyFailureSelection(row)}
+                      onMouseEnter={() => handleSignalHover(row.signal)}
+                      onMouseLeave={() => handleSignalHover(null)}
+                      data-testid={`ide-verify-failure-${toTestId(`${row.signal}-${row.tick}`)}`}
+                    >
+                      <span>{row.signal}</span>
+                      <span>t{row.tick}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </>
+          )}
         </section>
       }
       inspector={
         <IdeInspectorAccordion defaultOpenId="vectors">
-          <IdeInspectorSection title="Mismatch Detail" accordionId="mismatch-detail">
+          {assertionMode && (
+            <IdeInspectorSection title="Mismatch Detail" accordionId="mismatch-detail">
             {selectedFailureCase ? (() => {
               return (
                 <div className="ide-kv-list">
@@ -3084,6 +3089,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </p>
             )}
           </IdeInspectorSection>
+          )}
           <IdeInspectorSection title="Vectors" accordionId="vectors">
             <p className="ide-copy">{vectorSourceLabel}</p>
             <p className="ide-copy" data-testid="ide-verify-reference-mode-note">{verifyReferenceNote}</p>
@@ -3495,16 +3501,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {!isFirstRunState && lastRun && (
+        {!isFirstRunState && lastRun && displayStatus === 'PASS' && (
           <section
-            className={`ide-verify-run-proof ide-verify-run-proof--${displayStatus.toLowerCase()}${
-              displayStatus === 'PASS' ? ' ide-verify-pass-hero' : ''
-            }${
-              displayStatus === 'PASS' && lastRun.qualification === 'incomplete-mapping'
-                ? ' ide-verify-pass-hero--incomplete'
-                : ''
+            className={`ide-verify-run-proof ide-verify-run-proof--pass ide-verify-pass-hero${
+              lastRun.qualification === 'incomplete-mapping' ? ' ide-verify-pass-hero--incomplete' : ''
             }`}
-            data-testid={displayStatus === 'PASS' ? 'ide-verify-pass-hero' : 'ide-verify-run-proof'}
+            data-testid="ide-verify-pass-hero"
           >
             <div className="ide-verify-run-proof-main">
               <div className="ide-verify-run-proof-copy">
@@ -4645,6 +4647,70 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             )}
             </div>
           </div>
+          {lastRun && displayStatus !== 'PASS' && (
+            <section
+              className={`ide-verify-run-proof ide-verify-run-proof--${displayStatus.toLowerCase()}`}
+              data-testid="ide-verify-run-proof"
+            >
+              <div className="ide-verify-run-proof-main">
+                <div className="ide-verify-run-proof-copy">
+                  <span className="ide-verify-run-proof-eyebrow">Verify run evidence</span>
+                  <strong className="ide-verify-run-proof-title">{runProofTitle}</strong>
+                  <p className="ide-verify-run-proof-summary">{runProofSummary}</p>
+                  <p className="ide-verify-run-proof-authority" data-testid="ide-verify-authority-note">
+                    <strong>Authoritative:</strong>{' '}
+                    {isRunStale
+                      ? `the waveform below belongs to build ${shortenHash(lastRun.deterministicHash)}, while the current circuit is ${shortenHash(deterministicHash)}.`
+                      : 'pass/fail comes from this deterministic Verify run. Design trace is for debug only and does not affect trust status.'}
+                  </p>
+                </div>
+                <div className="ide-verify-run-proof-actions">
+                  {assertionMode && displayStatus === 'FAIL' && failingRows.length > 0 && (
+                    <>
+                      <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-run-proof-inspect">
+                        Inspect first mismatch
+                      </IdeButton>
+                      {onGoToDesign && (
+                        <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-verify-run-proof-design">
+                          Back to Design
+                        </IdeButton>
+                      )}
+                    </>
+                  )}
+                  {displayStatus === 'TRACE' && canSetOracle && (
+                    <IdeButton tone="primary" onClick={handleSetOracleExpected} testId="ide-verify-run-proof-oracle">
+                      Capture observed outputs as expected
+                    </IdeButton>
+                  )}
+                </div>
+              </div>
+              <dl className="ide-verify-run-proof-grid">
+                {runProofFacts.map((fact) => (
+                  <div key={fact.label} className="ide-verify-run-proof-item">
+                    <dt>{fact.label}</dt>
+                    <dd title={fact.fullValue}>
+                      {fact.label.includes('build') || fact.label.includes('hash') ? <code>{fact.value}</code> : fact.value}
+                    </dd>
+                  </div>
+                ))}
+                {lastRun.qualification === 'incomplete-mapping' && unmappedOutputLabels.length > 0 && (
+                  <div className="ide-verify-run-proof-item ide-verify-run-proof-item--warning">
+                    <dt>Unmapped outputs</dt>
+                    <dd data-testid="ide-verify-incomplete-output-names">
+                      {unmappedOutputLabels.slice(0, 3).join(', ')}
+                      {unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''}
+                    </dd>
+                  </div>
+                )}
+                {oracleApplied && (
+                  <div className="ide-verify-run-proof-item ide-verify-run-proof-item--accent">
+                    <dt>Expected outputs</dt>
+                    <dd data-testid="ide-verify-oracle-badge">Locked from observed run</dd>
+                  </div>
+                )}
+              </dl>
+            </section>
+          )}
           </>
         )}
       </IdePanel>
