@@ -40,6 +40,7 @@ import {
   type VerifyAuthorVector,
   type SweepPreset,
 } from './ScenarioBuilderPanel';
+import { AssertionCanvas, type AssertionCanvasProps } from '../components/AssertionCanvas';
 import { ScenarioLibraryHeader } from './ScenarioLibraryHeader';
 import { computeScenarioContentHash, type VerifyScenario } from '../verifyScenario';
 import type {
@@ -1249,6 +1250,43 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ? keyed.filter((row) => row.signal === selectedSignal)
       : keyed;
   }, [selectedSignal, selectedTick, tickIndex.rowsByTick]);
+
+  // ─── AssertionCanvas data provider ────────────────────────────────────────
+  // Build a function that returns expected/actual cell values for assertion overlay.
+  // Data comes from: vectors (expected) + report (actual + mismatch status).
+  const getAssertionCellValue = useCallback(
+    (tick: number, signal: string) => {
+      // Look up expected value from scenario vectors
+      let expectedValue: 0 | 1 | null = null;
+      for (const vec of vectors ?? []) {
+        if (vec.tick === tick) {
+          expectedValue = vec.expected?.[signal] ?? null;
+          break;
+        }
+      }
+
+      // Look up actual value from verify run report
+      let actualValue: 0 | 1 | string = '-';
+      let isMismatch = false;
+
+      if (lastRun?.report) {
+        for (const row of lastRun.report.rows) {
+          if (row.tick === tick && row.signal === signal) {
+            actualValue = row.actual;
+            isMismatch = row.status === 'fail' && expectedValue !== null;
+            break;
+          }
+        }
+      }
+
+      return {
+        expected: expectedValue,
+        actual: actualValue,
+        isMismatch,
+      };
+    },
+    [vectors, lastRun?.report]
+  );
 
   useEffect(() => {
     if (timelineTicks.length === 0) {
@@ -4203,6 +4241,25 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   }
                 />
                 </div>
+                {/* AssertionCanvas — read-only assertion overlay aligned with waveform (Slice 6) */}
+                {assertionMode && lastRun && outputFields.length > 0 && timelineTicks.length > 0 && (
+                  <div
+                    style={{
+                      padding: '12px 12px 0 12px',
+                      background: 'var(--rb-surface-1, transparent)',
+                    }}
+                  >
+                    <AssertionCanvas
+                      outputFields={outputFields}
+                      ticks={timelineTicks}
+                      getCellValue={getAssertionCellValue}
+                      selectedTick={selectedTick}
+                      selectedSignal={selectedSignal}
+                      assertionMode={assertionMode}
+                      readOnly={true}
+                    />
+                  </div>
+                )}
                 {/* Signal Snapshot — shown in step mode, shows all I/O at selected tick */}
                 {isStepMode && stepSnapshotRows.length > 0 && (
                   <section className="ide-verify-snapshot-panel" data-testid="ide-verify-snapshot-panel">
