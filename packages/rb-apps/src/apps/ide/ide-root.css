@@ -19313,3 +19313,76 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   padding-top: 6px;
   border-top: 1px dashed var(--rb-border);
 }
+
+/* ── AssertionCanvas (Slice 6) ─────────────────────────────────────────────── */
+/* Read-only assertion/expected output overlay aligned with waveform timeline.
+   Displays expected vs actual comparison for verification runs.
+   Mismatch highlighting only active when assertionMode ON. */
+
+.ide-assertion-canvas {
+  border: 1px solid var(--rb-border);
+  border-radius: 4px;
+  background: var(--rb-surface-1, transparent);
+}
+
+.ide-assertion-row--stripe {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.ide-assertion-row--header {
+  border-bottom: 1px solid var(--rb-border);
+}
+
+.ide-assertion-group-header {
+  border-top: 1px solid var(--rb-border);
+  border-bottom: 1px solid var(--rb-border);
+}
+
+.ide-assertion-group-header--observed {
+  border-top: 1px solid var(--rb-border);
+}
+
+.ide-assertion-group-header--asserted {
+  border-top: 2px solid var(--rb-border);
+}
+
+/* Cell states: undefined, neutral, pass, fail */
+.ide-assertion-cell {
+  transition: outline 0.15s ease, background-color 0.15s ease;
+}
+
+.ide-assertion-cell--undefined {
+  /* No assertion specified — neutral, not alarming */
+  color: var(--rb-text-tertiary);
+}
+
+.ide-assertion-cell--neutral {
+  /* Assertion exists but mismatch styling OFF (assertionMode=false) */
+  color: var(--rb-text-secondary);
+}
+
+.ide-assertion-cell--pass {
+  /* Assertion matches observed value (when assertionMode=true) */
+  color: var(--rb-success, #22c55e);
+  font-weight: 500;
+}
+
+.ide-assertion-cell--fail {
+  /* Assertion mismatches observed value (when assertionMode=true) */
+  color: var(--rb-error, #dc3232);
+  font-weight: 600;
+}
+
+/* Hover state for read-only cells (prepare for v2 editing interaction) */
+.ide-assertion-row button:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.06) !important;
+}
+
+/* Disabled button state (read-only) */
+.ide-assertion-row button:disabled {
+  cursor: default;
+}
+
+.ide-assertion-row button:disabled:focus {
+  outline: none;
+}
