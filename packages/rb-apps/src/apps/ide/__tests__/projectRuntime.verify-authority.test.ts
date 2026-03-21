@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { RBProject } from '../../../export/projectFormat';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { deriveVerifySchedule } from '../../../fpga/boards/basys3/verifySchedule';
+import { choosePrimaryProjectCta, deriveProjectHealth } from '../projectHealth';
 import { useProjectRuntime } from '../projectRuntime';
 
 function buildAuthorityFixture(): RBProject {
@@ -237,6 +238,82 @@ describe('projectRuntime verify authority', () => {
     expect(run.status).toBe('pass');
     expect(run.report.rows.every((row) => row.status === 'pass')).toBe(true);
     expect(run.firstFailingTick).toBeUndefined();
+  });
+
+  it('marks verify authority stale when a mapped pin changes after a passing verify run', () => {
+    useProjectRuntime.getState().runVerification({
+      scenarioId: 'mapping-mutation-stales-verify',
+      scenarioName: 'Mapping Mutation Stales Verify',
+      deterministicHash: 'mapping-mutation-stales-verify-hash',
+      rows: [],
+      ranAtIso: '2026-03-21T12:00:00.000Z',
+      useRuntimeTrace: false,
+    });
+
+    const sw0RowId = useProjectRuntime
+      .getState()
+      .projectIoRows.find((row) => row.nodeId === 'sw0_node')?.id;
+
+    expect(sw0RowId).toBeTruthy();
+    expect(useProjectRuntime.getState().projectHealthCore.dirtySinceVerify).toBe(false);
+
+    useProjectRuntime.getState().setMappingPin(sw0RowId!, 'SW1');
+
+    const state = useProjectRuntime.getState();
+    const readiness = {
+      hasCircuit: state.circuit.nodes.length > 0,
+      hasIoMapping: state.projectIoRows.filter((row) => row.required).every((row) => row.pin.trim().length > 0),
+      hasVectors: state.projectVectors.length > 0,
+      verifyQualification: state.verifyLastRun?.qualification,
+    };
+    const health = deriveProjectHealth(state.projectHealthCore, readiness);
+
+    expect(state.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(choosePrimaryProjectCta(health, readiness)).toEqual({
+      label: 'Verify',
+      mode: 'verify',
+      code: 'RBP1004',
+    });
+  });
+
+  it('marks verify authority stale when auto-suggest changes pin assignments after a passing verify run', () => {
+    const ld0RowId = useProjectRuntime
+      .getState()
+      .projectIoRows.find((row) => row.nodeId === 'ld0_node')?.id;
+
+    expect(ld0RowId).toBeTruthy();
+
+    useProjectRuntime.getState().setMappingPin(ld0RowId!, '');
+
+    useProjectRuntime.getState().runVerification({
+      scenarioId: 'auto-suggest-stales-verify',
+      scenarioName: 'Auto Suggest Stales Verify',
+      deterministicHash: 'auto-suggest-stales-verify-hash',
+      rows: [],
+      ranAtIso: '2026-03-21T12:05:00.000Z',
+      useRuntimeTrace: false,
+    });
+
+    expect(useProjectRuntime.getState().projectHealthCore.dirtySinceVerify).toBe(false);
+
+    useProjectRuntime.getState().autoSuggestMapping();
+
+    const state = useProjectRuntime.getState();
+    const readiness = {
+      hasCircuit: state.circuit.nodes.length > 0,
+      hasIoMapping: state.projectIoRows.filter((row) => row.required).every((row) => row.pin.trim().length > 0),
+      hasVectors: state.projectVectors.length > 0,
+      verifyQualification: state.verifyLastRun?.qualification,
+    };
+    const health = deriveProjectHealth(state.projectHealthCore, readiness);
+
+    expect(state.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(state.projectIoRows.find((row) => row.nodeId === 'ld0_node')?.pin.trim().length).toBeGreaterThan(0);
+    expect(choosePrimaryProjectCta(health, readiness)).toEqual({
+      label: 'Verify',
+      mode: 'verify',
+      code: 'RBP1004',
+    });
   });
 
   it('ignores editor-store circuit drift and verifies the runtime-authoritative circuit', () => {

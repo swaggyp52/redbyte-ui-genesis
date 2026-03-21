@@ -503,6 +503,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           ),
           projectHealthCore: {
             ...state.projectHealthCore,
+            dirtySinceVerify: true,
             dirtySinceExport: true,
           },
         }));
@@ -516,6 +517,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           ),
           projectHealthCore: {
             ...state.projectHealthCore,
+            dirtySinceVerify: true,
             dirtySinceExport: true,
           },
         }));

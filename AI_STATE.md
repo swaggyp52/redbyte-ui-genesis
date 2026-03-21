@@ -1,5 +1,40 @@
 # AI State
 
+## Change Log 2026-03-21 (Authority hardening slice 15: mapping mutations invalidate verify authority)
+
+**Subsystem**: Runtime mapping edits / verify trust currentness
+
+### Problem
+
+Mapping mutations still left Verify authority looking current in runtime state:
+
+1. `setMappingPin(...)` only marked `dirtySinceExport`, even though IO mapping is part of the verified project authority.
+2. `autoSuggestMapping(...)` had the same gap.
+3. After a passing verify run, changing a mapped pin could therefore leave Project/shared health routing as if Verify were still current.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - `setMappingPin(...)` now marks `dirtySinceVerify: true` as well as `dirtySinceExport: true`.
+  - `autoSuggestMapping(...)` now does the same.
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts`
+  - Added a regression proving a mapped pin change after PASS invalidates Verify authority and routes the next action back to Verify.
+  - Added a regression proving `autoSuggestMapping(...)` also invalidates Verify authority after PASS.
+  - Both tests assert the precondition that `runVerification(...)` cleared the dirty flag first.
+
+### Student-visible behavior
+
+- Changing IO pin assignments after a PASS now immediately makes Verify stale instead of leaving Project readiness falsely trusted.
+- Auto-suggested pin changes now also send students back through Verify before trust is restored.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` -> PASS (1 file, 9 tests)
+
+### Remaining concern
+
+- The next cross-surface seam is proving a fresh clean PASS after mapping repair clears prior incomplete-mapping trust warnings consistently across Project, Verify, Export, and Hardware.
+
 ## Change Log 2026-03-21 (Authority hardening slice 14: shared Project health for qualified-pass mapping trust)
 
 **Subsystem**: Project readiness / shared health authority / restore-path qualification fidelity
