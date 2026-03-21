@@ -1,5 +1,38 @@
 # AI State
 
+## Change Log 2026-03-21 (Authority hardening slice 12: export orphan-row drop for deleted boundaries)
+
+**Subsystem**: Export pin-table authority / deleted boundary cleanup
+
+### Problem
+
+Even after slice 11, Export could still leak ghost mapping rows when a boundary node had been deleted entirely:
+
+1. A mapping row whose `nodeId` no longer existed in the live circuit still appeared in the pin table.
+2. That let deleted-boundary history masquerade as live export state.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`
+  - Export pin-table and mapping-owner resolution now ignore mapping entries whose boundary `nodeId` is no longer present in the live INPUT/OUTPUT node set.
+  - The live boundary index now always carries a stable fallback label for current boundary nodes.
+- `packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts`
+  - Added a regression proving a deleted-boundary orphan row is dropped from the export pin table while the surviving live output row remains intact.
+
+### Student-visible behavior
+
+- Export no longer shows ghost pin rows for deleted boundary nodes.
+- The pin table now reflects only live boundary IO instead of stale deleted-row history.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts -t "drops orphan mapping rows whose boundary node no longer exists in the live circuit"` -> PASS (1 file, 1 test)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx` -> PASS (3 files, 18 tests)
+
+### Remaining concern
+
+- The next authority seam is an IDE-shell agreement regression that drives a live boundary mutation through runtime and proves Verify, Export, and Hardware all reflect the same current authority in one flow.
+
 ## Change Log 2026-03-21 (Authority hardening slice 11: export live-label collapse for renamed boundary rows)
 
 **Subsystem**: Export pin-table identity / stale mapping-row collapse

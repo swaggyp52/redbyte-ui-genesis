@@ -225,6 +225,80 @@ function createRenamedBoundaryDuplicateFixture(): RBProject {
   };
 }
 
+function createDeletedBoundaryOrphanFixture(): RBProject {
+  return {
+    kind: 'rb-project',
+    version: 1,
+    createdAt: '2026-03-21T00:00:00.000Z',
+    updatedAt: '2026-03-21T00:00:00.000Z',
+    name: 'Export Orphan Fixture',
+    description: 'Export should ignore mapping rows whose boundary node was deleted from the live circuit.',
+    circuit: {
+      nodes: [
+        {
+          id: 'sw0_node',
+          type: 'INPUT',
+          label: 'sw0',
+          position: { x: 0, y: 0 },
+          x: 0,
+          y: 0,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+        {
+          id: 'ld0_node',
+          type: 'OUTPUT',
+          label: 'ld0',
+          position: { x: 180, y: 0 },
+          x: 180,
+          y: 0,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+      ],
+      connections: [
+        {
+          from: { nodeId: 'sw0_node', portName: 'out' },
+          to: { nodeId: 'ld0_node', portName: 'in' },
+        },
+      ],
+    },
+    ioMapping: {
+      inputs: [
+        {
+          id: 'sw0',
+          nodeId: 'sw0_node',
+          port: 'out',
+          label: 'sw0',
+          pin: 'V17',
+        },
+      ],
+      outputs: [
+        {
+          id: 'ld0',
+          nodeId: 'ld0_node',
+          port: 'in',
+          label: 'ld0',
+          pin: 'U16',
+        },
+        {
+          id: 'ghost_output',
+          nodeId: 'ghost_output_node',
+          port: 'in',
+          label: 'ghost_output',
+          pin: 'LD9',
+        },
+      ],
+    },
+    vectors: [{ tick: 0, inputs: { sw0: 1 }, expected: { ld0: 1 } }],
+    meta: {
+      projectId: 'rb-export-orphan-fixture',
+    },
+  };
+}
+
 function getArtifactContent(project: RBProject, path: string): string {
   const viewModel = buildExportViewModel(project);
   expect(viewModel.status).toBe('ok');
@@ -277,5 +351,12 @@ describe('buildExportViewModel canonical naming', () => {
     expect(liveRows).toHaveLength(1);
     expect(liveRows[0]?.pin).toBe('U16');
     expect(viewModel.pinTable.some((row) => row.port === 'ld0_old')).toBe(false);
+  });
+
+  it('drops orphan mapping rows whose boundary node no longer exists in the live circuit', () => {
+    const viewModel = buildExportViewModel(createDeletedBoundaryOrphanFixture());
+
+    expect(viewModel.pinTable.some((row) => row.port === 'ghost_output')).toBe(false);
+    expect(viewModel.pinTable.find((row) => row.port === 'ld0')?.pin).toBe('U16');
   });
 });

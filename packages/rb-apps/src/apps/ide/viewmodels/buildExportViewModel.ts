@@ -237,6 +237,9 @@ function buildPinTable(
     direction: ExportPinDirection,
     entry: { id: string; nodeId: string; port: string; label?: string; pin?: string }
   ) => {
+    if (!liveIoNodeLabels.has(entry.nodeId)) {
+      return;
+    }
     const portName = resolveMappingPortName(entry, liveIoNodeLabels);
     const portKey = normalizePort(portName);
     const existing = rows.get(portKey);
@@ -674,6 +677,9 @@ function buildMappingIndex(project: RBProject): Map<string, MappingIndexEntry> {
   const index = new Map<string, MappingIndexEntry>();
   const liveIoNodeLabels = buildLiveIoNodeLabelIndex(project);
   const upsert = (entry: { id: string; nodeId: string; port: string; label?: string }) => {
+    if (!liveIoNodeLabels.has(entry.nodeId)) {
+      return;
+    }
     const portName = resolveMappingPortName(entry, liveIoNodeLabels);
     const mappingKey = normalizePort(portName);
     if (index.has(mappingKey)) return;
@@ -860,8 +866,7 @@ function buildLiveIoNodeLabelIndex(project: RBProject): Map<string, string> {
   const index = new Map<string, string>();
   for (const node of project.circuit.nodes) {
     if (node.type !== 'INPUT' && node.type !== 'OUTPUT') continue;
-    const label = getStudentFacingIoLabel(node);
-    if (label.length === 0) continue;
+    const label = getStudentFacingIoLabel(node, node.id);
     index.set(node.id, label);
   }
   return index;
