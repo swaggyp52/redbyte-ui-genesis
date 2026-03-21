@@ -1,5 +1,41 @@
 # AI State
 
+## Change Log 2026-03-21 (Authority hardening slice 10: export trust clarity for qualified PASS runs)
+
+**Subsystem**: Export trust banner / evidence diagnostics / qualified verify state
+
+### Problem
+
+Export already treated `verifyLastRun.qualification === 'incomplete-mapping'` as not fully trusted, but the surface still described that state like a generic verify failure:
+
+1. The trust banner fell back to `Verification has not passed.` even when logic verification had passed.
+2. The Verify gate detail said `Outputs differ`, which misdescribed a mapping-qualified PASS as a logic mismatch.
+3. The advisory path could show no evidence warning at all for this qualified state.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - Added an explicit export evidence diagnostic for `incomplete-mapping` qualified PASS runs.
+  - Export trust copy now names this as a mapping-evidence problem instead of a generic verify failure.
+  - Verify gate detail now reports `Pass incomplete — mapping` for this case.
+  - The readiness strip keeps the Scenario axis authored and moves the warning to the Verify axis, where it belongs.
+- `packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx`
+  - Added a regression proving Export explains a qualified PASS as a mapping-trust problem and does not claim `Outputs differ`.
+
+### Student-visible behavior
+
+- Export now tells students when logic verification passed but the handoff is still unsealed because output mapping was incomplete.
+- The surface no longer mislabels this state as a generic verify failure.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx -t "explains pass-with-incomplete-mapping as a mapping-trust problem, not a generic verify failure|treats pass-with-incomplete-mapping as unverified: export is NOT trusted"` -> PASS (1 file, 2 tests)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx` -> PASS (2 files, 12 tests)
+
+### Remaining concern
+
+- Export coherence for boundary rename/delete and custom IO-count churn still needs an app-level agreement regression so stale row history cannot masquerade as a live export blocker.
+
 ## Change Log 2026-03-21 (Authority hardening slice 9: semantic clock selection for bring-up vectors)
 
 **Subsystem**: Bring-up artifact generation / semantic clock authority

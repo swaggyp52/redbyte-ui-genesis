@@ -153,6 +153,48 @@ describe('ExportSurface workstation redesign', () => {
     expect(dockText).not.toContain('READY');
   });
 
+  it('explains pass-with-incomplete-mapping as a mapping-trust problem, not a generic verify failure', () => {
+    const incompletePassRun: Parameters<typeof ExportSurface>[0]['verifyLastRun'] = {
+      scenarioId: 'pass-scenario',
+      scenarioName: 'Pass Scenario',
+      status: 'pass',
+      qualification: 'incomplete-mapping',
+      deterministicHash: 'abc123',
+      reportHash: 'rep-pass',
+      generatedAtIso: '2026-02-27T00:00:00.000Z',
+      schedule: 'combinational',
+      meta: {
+        circuitKind: 'combinational',
+        clockingProtocol: null,
+        samplePoint: 'steady-state',
+        tick0Meaning: null,
+        clockSignalName: null,
+      },
+      report: {
+        vectors: [],
+        inputsAtTick: {},
+        inputsByVectorId: {},
+        signalRoles: {},
+        rows: [],
+      } as Parameters<typeof ExportSurface>[0]['verifyLastRun']['report'],
+      waveform: [],
+    };
+
+    const { getByTestId } = render(
+      <ExportSurface
+        project={buildProject()}
+        determinismHash="ide-hash"
+        verifyLastRun={incompletePassRun}
+        verifyResult={{ status: 'pass', hash: 'abc123', reportHash: 'rep-pass' }}
+        dirtySinceVerify={false}
+      />
+    );
+
+    expect(getByTestId('ide-export-trust-reason').textContent).toMatch(/mapped|mapping|unsealed/i);
+    expect(getByTestId('ide-export-blockers-callout').textContent).toMatch(/mapping|unsealed|trusted/i);
+    expect(getByTestId('ide-export-gate-verify').textContent).not.toContain('Outputs differ');
+  });
+
   it('hero has exactly one primary handoff CTA — no competing secondary download in the hero zone', () => {
     const { getByTestId, queryByTestId } = render(
       <ExportSurface project={buildProject()} determinismHash="ide-hash" />
