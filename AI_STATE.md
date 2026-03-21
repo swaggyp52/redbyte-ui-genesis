@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-03-21 (Phase 1: fix localhost-breaking CSS merge conflict in ide-root.css)
+
+**Subsystem**: CSS build / PostCSS parser / dev-server viability
+
+### Problem
+
+`packages/rb-apps/src/apps/ide/ide-root.css` contained unresolved git merge conflict markers (`<<<<<<< HEAD`, `=======`, `>>>>>>> cfda112d`) starting at line 19446 and ending at line 23221. PostCSS/Vite threw `Unknown word >>>>>>>` at runtime, breaking the dev server entirely.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Removed the three conflict markers.
+  - Kept both sides of the conflict: HEAD side (AssertionCanvas Slice 6 CSS, ~70 lines) and incoming side (Slice 2 height chain fix, ~3700 lines).
+  - Added the missing closing `}` for `.ide-assertion-row button:disabled:focus` rule that was cut by the conflict separator.
+
+### Verification
+
+- `node` inline check: zero conflict markers, full file brace-balanced (3621 opens == 3621 closes).
+- `git diff --stat HEAD`: 1 file changed, 2 insertions, 3 deletions (only conflict markers removed + closing brace added).
+
 ## Change Log 2026-03-21 (Authority hardening slice 16: restore invalidates stale verify trust on project-hash mismatch)
 
 **Subsystem**: Runtime restore / persisted verify currentness / Project readiness agreement

@@ -19443,7 +19443,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   border-top: 1px dashed var(--rb-border);
 }
 
-<<<<<<< HEAD
 /* ── AssertionCanvas (Slice 6) ─────────────────────────────────────────────── */
 /* Read-only assertion/expected output overlay aligned with waveform timeline.
    Displays expected vs actual comparison for verification runs.
@@ -19515,7 +19514,8 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 .ide-assertion-row button:disabled:focus {
   outline: none;
-=======
+}
+
 /* ════════════════════════════════════════════════════════════════
    Slice 2 — Height Chain Fix
    Root cause: clamp(520px, 64vh, 900px) !important on workbench-v2
@@ -23218,5 +23218,4 @@ button:disabled,
   border-bottom: 1px solid rgba(56, 189, 248, 0.12) !important;
   padding: 3px 10px !important;
   min-height: 0 !important;
->>>>>>> cfda112d (ide: land workspace refactor and align gate contracts)
 }
