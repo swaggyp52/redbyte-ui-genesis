@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { mergePersistedRuntimeState, useProjectRuntime } from '../projectRuntime';
+import { choosePrimaryProjectCta, deriveProjectHealth } from '../projectHealth';
 import { DEFAULT_SCENARIO_ID } from '../verifyScenario';
 
 describe('mergePersistedRuntimeState', () => {
@@ -306,6 +307,111 @@ describe('mergePersistedRuntimeState', () => {
       })
     );
     expect(merged.projectHealthCore.dirtySinceVerify).toBe(false);
+  });
+
+  it('invalidates restored qualified verify trust when the latest verify ledger project hash no longer matches', () => {
+    const current = useProjectRuntime.getState();
+
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-stale-qualified-verify',
+        projectName: 'Stale Qualified Verify Project',
+        activeExampleId: null,
+        projectIoRows: [
+          {
+            id: 'sw0',
+            nodeId: 'sw0_node',
+            port: 'out',
+            label: 'sw0',
+            direction: 'in',
+            pin: 'SW0',
+            required: true,
+          },
+          {
+            id: 'ld0',
+            nodeId: 'ld0_node',
+            port: 'in',
+            label: 'ld0',
+            direction: 'out',
+            pin: '',
+            required: false,
+          },
+        ],
+        projectVectors: [
+          {
+            tick: 0,
+            inputs: { sw0: 1 },
+            expected: { ld0: 1 },
+          },
+        ],
+        circuit: {
+          nodes: [
+            { id: 'sw0_node', type: 'INPUT', x: 0, y: 0 },
+            { id: 'ld0_node', type: 'OUTPUT', x: 10, y: 5 },
+          ],
+          connections: [
+            {
+              from: 'sw0_node',
+              fromPort: 'out',
+              to: 'ld0_node',
+              toPort: 'in',
+            },
+          ],
+        },
+        verifyRunHistory: [
+          {
+            runId: 'verify-old-boundary-shape',
+            ranAtIso: '2026-03-21T00:00:00.000Z',
+            status: 'pass',
+            passedRows: 1,
+            failedRows: 0,
+            firstFailure: null,
+            circuitHash: 'cir_old',
+            vectorsHash: 'vec_old',
+            mappingHash: 'map_old',
+            projectHash: 'project_hash_before_boundary_delete',
+            didCircuitChangeSinceLast: false,
+            didVectorsChangeSinceLast: false,
+            didMappingChangeSinceLast: false,
+          },
+        ],
+        projectHealthCore: {
+          lastVerify: {
+            status: 'pass',
+            hash: 'vrf_authoritative_hash_1234',
+            qualification: 'incomplete-mapping',
+            reportHash: 'vrf_authoritative_hash_1234_report',
+            ranAtIso: '2026-03-21T00:00:00.000Z',
+          },
+          dirtySinceVerify: false,
+          dirtySinceExport: true,
+        },
+      },
+      current
+    );
+
+    const health = deriveProjectHealth(merged.projectHealthCore, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: merged.projectHealthCore.lastVerify?.qualification,
+    });
+
+    expect(merged.verifyRunHistory).toHaveLength(1);
+    expect(merged.projectHealthCore.lastVerify).toEqual(
+      expect.objectContaining({
+        status: 'pass',
+        qualification: 'incomplete-mapping',
+      })
+    );
+    expect(merged.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(health.blockingIssues.some((issue) => issue.code === 'RBP1005')).toBe(false);
+    expect(choosePrimaryProjectCta(health, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: merged.projectHealthCore.lastVerify?.qualification,
+    })).toEqual({ label: 'Verify', mode: 'verify', code: 'RBP1004' });
   });
 
   it('restores persisted runtime undo and redo history snapshots', () => {

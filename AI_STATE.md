@@ -1,5 +1,41 @@
 # AI State
 
+## Change Log 2026-03-21 (Authority hardening slice 16: restore invalidates stale verify trust on project-hash mismatch)
+
+**Subsystem**: Runtime restore / persisted verify currentness / Project readiness agreement
+
+### Problem
+
+Restore could preserve stale verify trust even when the restored project no longer matched the latest verified design:
+
+1. `mergePersistedRuntimeState(...)` normalized `verifyRunHistory` and preserved authoritative `lastVerify`, but it did not compare the restored circuit/vectors/mapping against the latest verify ledger `projectHash`.
+2. That let persisted `dirtySinceVerify: false` survive restore even when a boundary rename/delete or equivalent project mutation had changed the restored authoritative project shape.
+3. Verify/Export currentness helpers already key off hashes, but shared Project health still trusts `dirtySinceVerify`, so Project could falsely route students forward on stale trust after restore.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Restore now recomputes the canonical verify project hash from the normalized restored circuit, vectors, and IO mapping.
+  - If the latest persisted verify ledger entry exists and its `projectHash` does not match the restored hash, restore now forces `projectHealthCore.dirtySinceVerify = true`.
+  - The verify ledger and authoritative `lastVerify` are preserved; only currentness is invalidated.
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts`
+  - Added a regression proving restore invalidates a qualified PASS when the latest verify ledger hash no longer matches the restored project.
+  - The test also asserts the user-facing consequence: shared Project CTA falls back to Verify and no longer surfaces `RBP1005` as a current trusted blocker.
+
+### Student-visible behavior
+
+- Reloading a saved project after boundary-shape changes no longer leaves Project acting as if an older verify PASS is still current.
+- Project now sends students back to Verify when restored authority diverges from the latest verified project hash, even if the prior PASS and verify ledger are still preserved for audit history.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts -t "invalidates restored qualified verify trust when the latest verify ledger project hash no longer matches"` -> PASS (1 file, 1 test)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx` -> PASS (1 file, 11 tests)
+
+### Remaining concern
+
+- The next high-value seam is the export-side equivalent on restore: proving stale successful export state is also invalidated when the restored project/export hash no longer matches the last exported bundle, so Project / Export / Hardware all agree after restore without relying on separate heuristics.
+
 ## Change Log 2026-03-21 (Authority hardening slice 15: mapping mutations invalidate verify authority)
 
 **Subsystem**: Runtime mapping edits / verify trust currentness

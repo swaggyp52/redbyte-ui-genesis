@@ -1275,6 +1275,18 @@ export function mergePersistedRuntimeState(
   const invalidateVerifyTrust = hasLegacyVerifyTrust(rawVerifyLastRun, candidate.projectHealthCore);
   const verifyLastRun = invalidateVerifyTrust ? undefined : rawVerifyLastRun;
   const verifyRunHistory = invalidateVerifyTrust ? [] : normalizeVerifyRunHistory(candidate.verifyRunHistory);
+  const restoredVerifyProjectHash = digestValue(
+    stableSerialize({
+      circuit,
+      vectors: projectVectors,
+      mapping: toIoMapping(projectIoRows),
+    })
+  );
+  const latestVerifyLedgerEntry = verifyRunHistory.at(-1);
+  const hasRestoredVerifyProjectHashMismatch =
+    !invalidateVerifyTrust &&
+    Boolean(latestVerifyLedgerEntry) &&
+    latestVerifyLedgerEntry?.projectHash !== restoredVerifyProjectHash;
   const sim = normalizePersistedSimState(candidate.sim, circuit, projectIoRows);
   const maxDesignHistory = normalizePersistedMaxDesignHistory(
     candidate.maxDesignHistory,
@@ -1283,6 +1295,12 @@ export function mergePersistedRuntimeState(
   const designPast = normalizePersistedDesignPast(candidate.designPast, maxDesignHistory);
   const designFuture = normalizePersistedDesignFuture(candidate.designFuture, maxDesignHistory);
   const designRevision = normalizePersistedDesignRevision(candidate.designRevision);
+  const projectHealthCore = normalizePersistedProjectHealth(
+    candidate.projectHealthCore,
+    verifyLastRun,
+    currentState.projectHealthCore,
+    invalidateVerifyTrust
+  );
 
   return {
     ...currentState,
@@ -1311,12 +1329,12 @@ export function mergePersistedRuntimeState(
     verifyLastRun,
     verifyRunHistory,
     sim,
-    projectHealthCore: normalizePersistedProjectHealth(
-      candidate.projectHealthCore,
-      verifyLastRun,
-      currentState.projectHealthCore,
-      invalidateVerifyTrust
-    ),
+    projectHealthCore: hasRestoredVerifyProjectHashMismatch
+      ? {
+          ...projectHealthCore,
+          dirtySinceVerify: true,
+        }
+      : projectHealthCore,
     macros: normalizedProject.macros ?? [],
     macroInsertionCounts: normalizeMacroInsertionCounts(candidate.macroInsertionCounts),
     customComponents: normalizedProject.customComponents ?? [],
