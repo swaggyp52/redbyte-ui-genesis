@@ -1,8 +1,10 @@
 import type { Circuit } from '@redbyte/rb-logic-core';
-import type { TestVector } from '@redbyte/rb-utils';
+import type { IoMapping, TestVector } from '@redbyte/rb-utils';
 import type { RBProject } from '../../export/projectFormat';
 import { stableStringify } from '../../export/stableStringify';
 import { compareCodepoint } from '../../export/codepointSort';
+import { deriveVerifySchedule } from '../../fpga/boards/basys3/verifySchedule';
+import { deriveIoSignalRoles } from './ioSignalRoles';
 import { simulateExpectedIoRows } from './sim/simEngine';
 import type { SimulatedExpectedIoRow } from './sim/simTypes';
 import {
@@ -97,7 +99,11 @@ export function generateBringUpVectors(params: {
   if (inputSignals.length === 0) return [];
 
   if (isSequentialDesign(params.circuit, inputSignals)) {
-    return buildSequentialBringUpVectors(inputSignals, outputSignals);
+    const signalRoles = deriveIoSignalRoles(
+      params.ioRows,
+      deriveVerifySchedule(params.circuit, toIoMapping(params.ioRows))
+    );
+    return buildSequentialBringUpVectors(inputSignals, outputSignals, signalRoles);
   }
 
   return buildCombinationalBringUpVectors(
@@ -256,10 +262,19 @@ function buildProgramAndTestTcl(project: RBProject): string {
 
 function buildSequentialBringUpVectors(
   inputSignals: string[],
-  outputSignals: string[]
+  outputSignals: string[],
+  signalRoles: Record<string, 'clock' | 'reset' | 'input' | 'output'>
 ): TestVector[] {
   const vectors: TestVector[] = [];
-  const clock = inputSignals.find((signal) => CLOCK_ALIASES.has(signal)) ?? inputSignals[0];
+  const semanticClockSignals = new Set(
+    Object.entries(signalRoles)
+      .filter(([, role]) => role === 'clock')
+      .map(([signal]) => normalizeIoSignalKey(signal))
+  );
+  const clock =
+    inputSignals.find((signal) => semanticClockSignals.has(normalizeIoSignalKey(signal))) ??
+    inputSignals.find((signal) => CLOCK_ALIASES.has(signal)) ??
+    inputSignals[0];
   const reset = inputSignals.find((signal) => RESET_ALIASES.has(signal));
   const enable = inputSignals.find((signal) => ENABLE_ALIASES.has(signal));
 
@@ -444,6 +459,29 @@ function normalizeBitSymbol(value: unknown): '0' | '1' | '-' {
 
 function sortSignals(signals: string[]): string[] {
   return [...new Set(signals)].sort(compareCodepoint);
+}
+
+function toIoMapping(ioRows: BringUpIoRow[]): IoMapping {
+  return {
+    inputs: ioRows
+      .filter((row) => row.direction === 'in')
+      .map((row) => ({
+        id: row.id,
+        nodeId: row.nodeId ?? row.id,
+        port: row.port ?? 'out',
+        label: row.label,
+        pin: row.pin,
+      })),
+    outputs: ioRows
+      .filter((row) => row.direction === 'out')
+      .map((row) => ({
+        id: row.id,
+        nodeId: row.nodeId ?? row.id,
+        port: row.port ?? 'in',
+        label: row.label,
+        pin: row.pin,
+      })),
+  };
 }
 
 function sanitizeIdentifier(value: string, fallback: string): string {

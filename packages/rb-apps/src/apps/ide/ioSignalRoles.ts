@@ -1,10 +1,14 @@
 import type { VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
-import type { IdeExampleIoRow } from './examplesCatalog';
 
 export type IoSignalRole = 'clock' | 'reset' | 'input' | 'output';
 
+export interface IoSignalRoleRow {
+  label: string;
+  direction: 'in' | 'out';
+}
+
 export function deriveIoSignalRoles(
-  ioRows: IdeExampleIoRow[],
+  ioRows: readonly IoSignalRoleRow[],
   scheduleContract: VerifyScheduleContract
 ): Record<string, IoSignalRole> {
   const roles: Record<string, IoSignalRole> = {};

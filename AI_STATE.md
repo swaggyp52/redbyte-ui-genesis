@@ -1,5 +1,40 @@
 # AI State
 
+## Change Log 2026-03-21 (Authority hardening slice 9: semantic clock selection for bring-up vectors)
+
+**Subsystem**: Bring-up artifact generation / semantic clock authority
+
+### Problem
+
+Bring-up vector generation still chose the sequential clock with a local alias rule:
+
+1. `generateBringUpVectors()` preferred `clk`/`clock`/`clk100mhz`, otherwise the first sorted input signal.
+2. A sequential project with a semantic clock label like `phase_driver` could therefore pulse the wrong input during bring-up even after Hardware readiness and map mode were fixed.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/bringupArtifacts.ts`
+  - Sequential bring-up generation now derives signal roles from the current schedule contract.
+  - The bring-up clock is selected from semantic `clock` roles first, then falls back to the legacy alias path only if needed.
+  - Added an explicit `IoMapping` conversion helper for the schedule derivation input.
+- `packages/rb-apps/src/apps/ide/ioSignalRoles.ts`
+  - Generalized the shared role helper to the minimal row shape it actually consumes, so bring-up rows can reuse it safely.
+- `packages/rb-apps/src/apps/ide/__tests__/bringupArtifacts.canonical-naming.test.ts`
+  - Added a regression proving a sequential input labeled `phase_driver` is the one pulsed as the bring-up clock.
+
+### Student-visible behavior
+
+- Generated bring-up vectors now pulse the real semantic clock input on sequential designs, even when its name is not `clk`-shaped.
+- Bring-up behavior now aligns with the same clock authority already used by Verify and Hardware.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/bringupArtifacts.canonical-naming.test.ts` -> PASS (1 file, 3 tests)
+
+### Remaining concern
+
+- Reset and enable signal selection inside sequential bring-up generation still rely on local alias sets rather than the shared semantic role source.
+
 ## Change Log 2026-03-21 (Authority hardening slice 8: semantic clock grouping in Hardware map mode)
 
 **Subsystem**: Hardware map mode / semantic clock authority

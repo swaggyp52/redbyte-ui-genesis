@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RBProject } from '../../../export/projectFormat';
-import { buildBringUpArtifacts } from '../bringupArtifacts';
+import { buildBringUpArtifacts, generateBringUpVectors } from '../bringupArtifacts';
 
 function createProjectFixture(): RBProject {
   return {
@@ -118,5 +118,106 @@ describe('bringupArtifacts canonical naming', () => {
       { signal: 'leda', pin: 'U16' },
       { signal: 'leda_2', pin: 'V16' },
     ]);
+  });
+
+  it('drives the semantic clock input in sequential bring-up vectors even when its label is not clock-shaped', () => {
+    const vectors = generateBringUpVectors({
+      circuit: {
+        nodes: [
+          {
+            id: 'data_node',
+            type: 'INPUT',
+            label: 'data_in',
+            position: { x: 0, y: 0 },
+            x: 0,
+            y: 0,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'phase_driver_node',
+            type: 'INPUT',
+            label: 'phase_driver',
+            position: { x: 0, y: 100 },
+            x: 0,
+            y: 100,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'ff_node',
+            type: 'DFlipFlop',
+            label: 'ff0',
+            position: { x: 220, y: 40 },
+            x: 220,
+            y: 40,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'q_node',
+            type: 'OUTPUT',
+            label: 'q',
+            position: { x: 420, y: 40 },
+            x: 420,
+            y: 40,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+        ],
+        connections: [
+          {
+            from: { nodeId: 'data_node', portName: 'out' },
+            to: { nodeId: 'ff_node', portName: 'D' },
+          },
+          {
+            from: { nodeId: 'phase_driver_node', portName: 'out' },
+            to: { nodeId: 'ff_node', portName: 'CLK' },
+          },
+          {
+            from: { nodeId: 'ff_node', portName: 'Q' },
+            to: { nodeId: 'q_node', portName: 'in' },
+          },
+        ],
+      },
+      ioRows: [
+        {
+          id: 'data_in',
+          nodeId: 'data_node',
+          port: 'out',
+          label: 'data_in',
+          direction: 'in',
+          pin: 'SW0',
+          required: true,
+        },
+        {
+          id: 'phase_driver',
+          nodeId: 'phase_driver_node',
+          port: 'out',
+          label: 'phase_driver',
+          direction: 'in',
+          pin: 'CLK100MHZ',
+          required: true,
+        },
+        {
+          id: 'q',
+          nodeId: 'q_node',
+          port: 'in',
+          label: 'q',
+          direction: 'out',
+          pin: 'LD0',
+          required: true,
+        },
+      ],
+    });
+
+    expect(vectors[0]?.inputs.phase_driver).toBe(0);
+    expect(vectors[1]?.inputs.phase_driver).toBe(1);
+    expect(vectors[0]?.inputs.data_in).toBe(0);
+    expect(vectors[1]?.inputs.data_in).toBe(0);
   });
 });
