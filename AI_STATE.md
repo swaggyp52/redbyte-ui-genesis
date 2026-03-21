@@ -1,5 +1,38 @@
 # AI State
 
+## Change Log 2026-03-21 (Authority hardening slice 11: export live-label collapse for renamed boundary rows)
+
+**Subsystem**: Export pin-table identity / stale mapping-row collapse
+
+### Problem
+
+Export pin-table rows still derived their identity from persisted mapping row labels before the live circuit boundary label:
+
+1. If a boundary node was renamed but a stale duplicate mapping row survived, Export could show both the stale label and the live label.
+2. That let stale row history leak into the current pin table even though runtime authority already knew which live boundary node survived.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`
+  - Export pin-table and mapping-owner identity now prefer the current live INPUT/OUTPUT node label for a mapped node before falling back to the persisted row label.
+  - Duplicate stale mapping rows targeting the same live boundary node now collapse onto the live export port name.
+- `packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts`
+  - Added a regression proving stale duplicate rows for a renamed output collapse onto the live label and preserve the surviving mapped pin.
+
+### Student-visible behavior
+
+- Export no longer shows stale renamed boundary labels as separate live pin rows when malformed duplicate mapping rows exist.
+- The pin table now follows the current live boundary name students see in Design instead of stale row history.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts -t "collapses stale duplicate mapping rows onto the live renamed boundary label"` -> PASS (1 file, 1 test)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx` -> PASS (3 files, 17 tests)
+
+### Remaining concern
+
+- Export still needs an app-level agreement regression that exercises live boundary deletion or IO-count churn through the IDE shell so Verify, Export, and Hardware are proven to stay aligned on the same current authority path.
+
 ## Change Log 2026-03-21 (Authority hardening slice 10: export trust clarity for qualified PASS runs)
 
 **Subsystem**: Export trust banner / evidence diagnostics / qualified verify state

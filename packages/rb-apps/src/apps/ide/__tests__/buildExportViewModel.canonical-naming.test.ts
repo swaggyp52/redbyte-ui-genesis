@@ -151,6 +151,80 @@ function createProjectFromExample(exampleId: string): RBProject {
   };
 }
 
+function createRenamedBoundaryDuplicateFixture(): RBProject {
+  return {
+    kind: 'rb-project',
+    version: 1,
+    createdAt: '2026-03-21T00:00:00.000Z',
+    updatedAt: '2026-03-21T00:00:00.000Z',
+    name: 'Export Rename Survivor Fixture',
+    description: 'Export should follow the live boundary label when stale duplicate rows remain.',
+    circuit: {
+      nodes: [
+        {
+          id: 'sw0_node',
+          type: 'INPUT',
+          label: 'sw0',
+          position: { x: 0, y: 0 },
+          x: 0,
+          y: 0,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+        {
+          id: 'ld0_node',
+          type: 'OUTPUT',
+          label: 'ld0_live',
+          position: { x: 180, y: 0 },
+          x: 180,
+          y: 0,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+      ],
+      connections: [
+        {
+          from: { nodeId: 'sw0_node', portName: 'out' },
+          to: { nodeId: 'ld0_node', portName: 'in' },
+        },
+      ],
+    },
+    ioMapping: {
+      inputs: [
+        {
+          id: 'sw0',
+          nodeId: 'sw0_node',
+          port: 'out',
+          label: 'sw0',
+          pin: 'V17',
+        },
+      ],
+      outputs: [
+        {
+          id: 'ld0_stale',
+          nodeId: 'ld0_node',
+          port: 'in',
+          label: 'ld0_old',
+          pin: '',
+        },
+        {
+          id: 'ld0_live',
+          nodeId: 'ld0_node',
+          port: 'in',
+          label: 'ld0_live',
+          pin: 'U16',
+        },
+      ],
+    },
+    vectors: [{ tick: 0, inputs: { sw0: 1 }, expected: { ld0_live: 1 } }],
+    meta: {
+      projectId: 'rb-export-rename-survivor-fixture',
+    },
+  };
+}
+
 function getArtifactContent(project: RBProject, path: string): string {
   const viewModel = buildExportViewModel(project);
   expect(viewModel.status).toBe('ok');
@@ -194,5 +268,14 @@ describe('buildExportViewModel canonical naming', () => {
     const testbenchVhd = getArtifactContent(project, 'testbench.vhd');
 
     expect(validateArtifactConsistency(topVhd, testbenchVhd)).toEqual([]);
+  });
+
+  it('collapses stale duplicate mapping rows onto the live renamed boundary label', () => {
+    const viewModel = buildExportViewModel(createRenamedBoundaryDuplicateFixture());
+    const liveRows = viewModel.pinTable.filter((row) => row.port === 'ld0_live');
+
+    expect(liveRows).toHaveLength(1);
+    expect(liveRows[0]?.pin).toBe('U16');
+    expect(viewModel.pinTable.some((row) => row.port === 'ld0_old')).toBe(false);
   });
 });

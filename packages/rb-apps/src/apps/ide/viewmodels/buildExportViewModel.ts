@@ -231,12 +231,13 @@ function buildPinTable(
   requiredPorts: Map<string, RequiredPortDescriptor>
 ): ExportPinTableRow[] {
   const rows = new Map<string, ExportPinTableRow>();
+  const liveIoNodeLabels = buildLiveIoNodeLabelIndex(project);
 
   const appendMapping = (
     direction: ExportPinDirection,
     entry: { id: string; nodeId: string; port: string; label?: string; pin?: string }
   ) => {
-    const portName = resolveMappingPortName(entry);
+    const portName = resolveMappingPortName(entry, liveIoNodeLabels);
     const portKey = normalizePort(portName);
     const existing = rows.get(portKey);
     const pin = normalizePin(entry.pin);
@@ -671,8 +672,9 @@ interface MappingIndexEntry {
 
 function buildMappingIndex(project: RBProject): Map<string, MappingIndexEntry> {
   const index = new Map<string, MappingIndexEntry>();
+  const liveIoNodeLabels = buildLiveIoNodeLabelIndex(project);
   const upsert = (entry: { id: string; nodeId: string; port: string; label?: string }) => {
-    const portName = resolveMappingPortName(entry);
+    const portName = resolveMappingPortName(entry, liveIoNodeLabels);
     const mappingKey = normalizePort(portName);
     if (index.has(mappingKey)) return;
     index.set(mappingKey, {
@@ -854,15 +856,28 @@ function normalizePort(value: string): string {
   return value.trim().toLowerCase();
 }
 
+function buildLiveIoNodeLabelIndex(project: RBProject): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const node of project.circuit.nodes) {
+    if (node.type !== 'INPUT' && node.type !== 'OUTPUT') continue;
+    const label = getStudentFacingIoLabel(node);
+    if (label.length === 0) continue;
+    index.set(node.id, label);
+  }
+  return index;
+}
+
 function resolveMappingPortName(entry: {
   id: string;
   nodeId: string;
   port: string;
   label?: string;
-}): string {
+}, liveIoNodeLabels?: ReadonlyMap<string, string>): string {
   const fallback = entry.port.trim()
     ? `${entry.nodeId}.${entry.port}`
     : entry.id;
+  const liveLabel = liveIoNodeLabels?.get(entry.nodeId)?.trim() ?? '';
+  if (liveLabel.length > 0) return liveLabel;
   return getStudentFacingIoLabel(entry, fallback);
 }
 
