@@ -21,7 +21,7 @@
 
 | Authority | File | Responsibility |
 |-----------|------|----------------|
-| `projectRuntime.ts` | `packages/rb-apps/src/apps/ide/projectRuntime.ts` | Run verification against sim trace |
+| `projectRuntime.ts` | `packages/rb-apps/src/apps/ide/projectRuntime.ts` | Runtime-authoritative design state, deterministic verification, and IO-backed project authority |
 | `circuitStore.ts` | `packages/rb-apps/src/stores/circuitStore.ts` | Circuit graph mutations |
 | `unifiedProjectStore.ts` | `packages/rb-lab-engine/src/stores/unifiedProjectStore.ts` | Single source of truth for RBProject |
 | `projectHealth.ts` | `packages/rb-apps/src/apps/ide/projectHealth.ts` | Derives blocking issues from core state |
@@ -43,12 +43,14 @@ Gate: `scripts/gates/ide-zip-import-contract.mjs`
 
 ---
 
-### Path 2: Verify Run Produces Trace
+### Path 2: Verify Run Produces Deterministic Evidence
 
 1. Design surface runs simulation (30+ ticks)
 2. VerifySurface → user generates vectors → clicks Run
-3. `projectRuntime.ts::runVerification()` → calls `buildVerifyRowsFromRuntimeTrace(vectors, ioRows, sim)`
-4. Returns `RunVerificationOutput` with `report` and `waveform`
+3. `projectRuntime.ts::runVerification()` builds IO mapping from runtime `projectIoRows`
+4. `projectRuntime.ts::runVerification()` → calls `buildDeterministicVerifyContext(circuit, ioMapping)`
+5. `projectRuntime.ts::runVerification()` → calls `runDeterministicVerifyFromModel(circuit, simModel, ioRows, vectors, scheduleContract)`
+6. Returns `RuntimeVerifyRun` with `report`, `waveform`, and deterministic evidence capsule
 5. VerifySurface renders waveform + PASS/FAIL status
 
 Gate: `scripts/gates/ide-verify-reality-contract.mjs`

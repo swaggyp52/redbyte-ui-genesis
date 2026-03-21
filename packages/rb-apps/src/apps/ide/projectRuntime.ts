@@ -41,17 +41,6 @@ import {
 } from './verifyReport';
 import { generateBringUpVectors } from './bringupArtifacts';
 import {
-  computeScenarioContentHash,
-  createDefaultScenario,
-  createScenario as buildNewScenario,
-  DEFAULT_SCENARIO_ID,
-  getActiveScenario,
-  migrateProjectVectorsToScenario,
-  repairScenarioLibrary,
-  stampScenario,
-  type VerifyScenario,
-} from './verifyScenario';
-import {
   DEFAULT_SIM_SPEED_HZ,
   advanceSimulationStateFromModel,
   recomputeSimulationStateFromModel,
@@ -62,7 +51,6 @@ import {
 } from './sim/simEngine';
 import type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
 import { buildCanonicalVerifyWaveSamples } from './sim/traceContract';
-import { normalizeIoSignalKey } from './ioLabels';
 
 export type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
 
@@ -106,10 +94,6 @@ export interface VerifyRunMeta {
 export interface RuntimeVerifyRun {
   scenarioId: string;
   scenarioName: string;
-  /** Monotonic version of the scenario at the time of the run — for drift detection. */
-  scenarioVersion?: number;
-  /** Deterministic content hash of the scenario at the time of the run. */
-  scenarioContentHash?: string;
   status: 'pass' | 'fail';
   /** Set when status is 'pass' but the result has a known limitation.
    *  'incomplete-mapping': some output IO rows have no FPGA pin assigned.
@@ -147,10 +131,6 @@ export function detectIncompleteMappingQualification(
 export interface RunVerificationInput {
   scenarioId: string;
   scenarioName: string;
-  /** Scenario version at time of run — stored in result for machine-checkable drift detection. */
-  scenarioVersion?: number;
-  /** Pre-computed content hash of the scenario (from computeScenarioContentHash). */
-  scenarioContentHash?: string;
   deterministicHash: string;
   scheduleContract?: VerifyScheduleContract;
   rows: Array<{
@@ -159,12 +139,6 @@ export interface RunVerificationInput {
     expected: string;
     actual: string;
   }>;
-  /**
-   * When false (default), the engine runs in pure TRACE mode — no assertion rows
-   * are checked regardless of what expected values are stored in project vectors.
-   * Students must explicitly enable Assertions to get pass/fail checking.
-   */
-  assertionMode?: boolean;
   ranAtIso?: string;
   // Legacy no-op: authoritative verification always uses deterministic circuit evaluation.
   useRuntimeTrace?: boolean;
@@ -196,16 +170,8 @@ export interface ProjectRuntimeState {
   lastSavedAt: string;
   activeExampleId: string | null;
   projectIoRows: ProjectIoRow[];
-  /**
-   * @deprecated Compatibility state only. Authority has moved to `scenarios`.
-   * Kept in sync with the active scenario's vectors after migration.
-   */
   projectVectors: TestVector[];
   customVectors: CustomTestVector[];
-  /** Scenario library — always contains at least one scenario after initialization. */
-  scenarios: VerifyScenario[];
-  /** ID of the currently active scenario — always a valid ID in `scenarios`. */
-  activeScenarioId: string | null;
   circuit: Circuit;
   designPast: DesignHistorySnapshot[];
   designFuture: DesignHistorySnapshot[];
@@ -223,32 +189,6 @@ export interface ProjectRuntimeState {
   setVectors: (vectors: TestVector[]) => void;
   setCustomVectors: (vectors: CustomTestVector[]) => void;
   generateBringUpVectors: () => TestVector[];
-  /** Replace the active scenario's vectors. Stamps the scenario (increments version). */
-  updateActiveScenarioVectors: (vectors: TestVector[]) => void;
-  /** Rename the active scenario. Stamps the scenario (increments version). */
-  renameActiveScenario: (name: string) => void;
-  /** Switch the active scenario by ID. No-op if ID is not in the library. */
-  setActiveScenarioId: (id: string) => void;
-  /**
-   * Delete a scenario by ID. Refuses to delete the last remaining scenario.
-   * After deletion, reassigns activeScenarioId deterministically to the previous
-   * scenario (or first if none exists before it).
-   */
-  deleteScenario: (id: string) => void;
-  /**
-   * Create a new named scenario and switch to it immediately.
-   * When seedVectors is omitted the new scenario is seeded from the active scenario's
-   * vectors (never blank by default — students expect continuity).
-   * Returns the newly created scenario.
-   */
-  createScenario: (name: string, seedVectors?: TestVector[]) => VerifyScenario;
-  /**
-   * Duplicate the active scenario under a new UUID with a "(copy)" name suffix.
-   * The copy inherits vectors only — it carries no run provenance.
-   * Switches the active scenario to the new copy immediately.
-   * Returns the newly created scenario.
-   */
-  duplicateScenario: () => VerifyScenario;
   applyCircuitMutation: (circuit: Circuit) => void;
   markDesignMutated: (circuit: Circuit) => void;
   undoProjectEdit: () => void;
@@ -303,11 +243,8 @@ interface PersistedRuntimeState {
   lastSavedAt: string;
   activeExampleId: string | null;
   projectIoRows: ProjectIoRow[];
-  /** @deprecated Compatibility only — authority has moved to `scenarios`. */
   projectVectors: TestVector[];
   customVectors: CustomTestVector[];
-  scenarios?: VerifyScenario[];
-  activeScenarioId?: string | null;
   circuit: Circuit;
   designPast?: DesignHistorySnapshot[];
   designFuture?: DesignHistorySnapshot[];
@@ -333,8 +270,6 @@ interface RuntimeSeedState extends PersistedRuntimeState {
   designFuture: DesignHistorySnapshot[];
   maxDesignHistory: number;
   designRevision: number;
-  scenarios: VerifyScenario[];
-  activeScenarioId: string | null;
 }
 
 export const useProjectRuntime = create<ProjectRuntimeState>()(
@@ -544,7 +479,6 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           projectIoRows,
           projectVectors: cloneVectors(project.vectors ?? []),
           customVectors: [],
-          ...migrateProjectVectorsToScenario(project.vectors ?? []),
           circuit,
           designPast: [],
           designFuture: [],
@@ -586,116 +520,17 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         }));
       },
       setVectors: (vectors) => {
-        set((state) => {
-          const cloned = cloneVectors(vectors);
-          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
-          const scenarios = activeScenario
-            ? state.scenarios.map((s) =>
-                s.id === activeScenario.id
-                  ? stampScenario({ ...s, vectors: cloned })
-                  : s
-              )
-            : state.scenarios;
-          return {
-            projectVectors: cloned,
-            scenarios,
-            projectHealthCore: {
-              ...state.projectHealthCore,
-              dirtySinceVerify: true,
-              dirtySinceExport: true,
-            },
-          };
-        });
+        set((state) => ({
+          projectVectors: cloneVectors(vectors),
+          projectHealthCore: {
+            ...state.projectHealthCore,
+            dirtySinceVerify: true,
+            dirtySinceExport: true,
+          },
+        }));
       },
       setCustomVectors: (vectors) => {
         set(() => ({ customVectors: [...vectors] }));
-      },
-      updateActiveScenarioVectors: (vectors) => {
-        set((state) => {
-          const cloned = cloneVectors(vectors);
-          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
-          if (!activeScenario) return state;
-          const updated = stampScenario({ ...activeScenario, vectors: cloned });
-          return {
-            projectVectors: cloned,
-            scenarios: state.scenarios.map((s) => (s.id === activeScenario.id ? updated : s)),
-            projectHealthCore: {
-              ...state.projectHealthCore,
-              dirtySinceVerify: true,
-              dirtySinceExport: true,
-            },
-          };
-        });
-      },
-      renameActiveScenario: (name) => {
-        const trimmed = name.trim();
-        if (!trimmed) return;
-        set((state) => {
-          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
-          if (!activeScenario) return state;
-          const updated = stampScenario({ ...activeScenario, name: trimmed });
-          return {
-            scenarios: state.scenarios.map((s) => (s.id === activeScenario.id ? updated : s)),
-          };
-        });
-      },
-      setActiveScenarioId: (id) => {
-        set((state) => {
-          const exists = state.scenarios.some((s) => s.id === id);
-          if (!exists) return state;
-          const activeScenario = state.scenarios.find((s) => s.id === id)!;
-          return {
-            activeScenarioId: id,
-            projectVectors: cloneVectors(activeScenario.vectors),
-          };
-        });
-      },
-      deleteScenario: (id) => {
-        set((state) => {
-          // Invariant: never delete the last scenario
-          if (state.scenarios.length <= 1) return state;
-          const idx = state.scenarios.findIndex((s) => s.id === id);
-          if (idx === -1) return state;
-          const remaining = state.scenarios.filter((s) => s.id !== id);
-          // Reassign active deterministically: prefer the scenario before it, else first
-          let nextActiveId = state.activeScenarioId;
-          if (state.activeScenarioId === id) {
-            nextActiveId = idx > 0 ? remaining[idx - 1].id : remaining[0].id;
-          }
-          const nextActive = remaining.find((s) => s.id === nextActiveId) ?? remaining[0];
-          return {
-            scenarios: remaining,
-            activeScenarioId: nextActive.id,
-            projectVectors: cloneVectors(nextActive.vectors),
-          };
-        });
-      },
-      createScenario: (name, seedVectors) => {
-        const state = get();
-        const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
-        // Default: seed from active scenario's vectors, not blank (constraint: prefer continuity)
-        const vectors = seedVectors ?? (activeScenario ? cloneVectors(activeScenario.vectors) : cloneVectors(state.projectVectors));
-        const scenario = buildNewScenario(name, vectors);
-        set((current) => ({
-          scenarios: [...current.scenarios, scenario],
-          activeScenarioId: scenario.id,
-          projectVectors: cloneVectors(scenario.vectors),
-        }));
-        return scenario;
-      },
-      duplicateScenario: () => {
-        const state = get();
-        const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
-        const sourceName = activeScenario?.name ?? 'Scenario';
-        // Inherit vectors only — the copy has no run provenance (constraint: no verify truth transfer)
-        const sourceVectors = activeScenario ? activeScenario.vectors : state.projectVectors;
-        const copy = buildNewScenario(`${sourceName} (copy)`, sourceVectors);
-        set((current) => ({
-          scenarios: [...current.scenarios, copy],
-          activeScenarioId: copy.id,
-          projectVectors: cloneVectors(copy.vectors),
-        }));
-        return copy;
       },
       generateBringUpVectors: () => {
         const generated = generateBringUpVectors({
@@ -703,26 +538,14 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           circuit: get().circuit,
           existingVectors: get().projectVectors,
         });
-        set((state) => {
-          const cloned = cloneVectors(generated);
-          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
-          const scenarios = activeScenario
-            ? state.scenarios.map((s) =>
-                s.id === activeScenario.id
-                  ? stampScenario({ ...s, vectors: cloned })
-                  : s
-              )
-            : state.scenarios;
-          return {
-            projectVectors: cloned,
-            scenarios,
-            projectHealthCore: {
-              ...state.projectHealthCore,
-              dirtySinceVerify: true,
-              dirtySinceExport: true,
-            },
-          };
-        });
+        set((state) => ({
+          projectVectors: cloneVectors(generated),
+          projectHealthCore: {
+            ...state.projectHealthCore,
+            dirtySinceVerify: true,
+            dirtySinceExport: true,
+          },
+        }));
         return generated;
       },
       applyCircuitMutation: (circuit) => {
@@ -814,8 +637,57 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         });
       },
       addDesignIo: (direction, position) => {
-        const type = direction === 'input' ? 'INPUT' : 'OUTPUT';
-        get().addDesignNode(type, position);
+        set((state) => {
+          const type = direction === 'input' ? 'INPUT' : 'OUTPUT';
+          const rowDirection = direction === 'input' ? 'in' : 'out';
+          const rowPort = direction === 'input' ? 'out' : 'in';
+          const rowId = getNextIoRowId(
+            state.projectIoRows,
+            direction === 'input' ? 'input' : 'output'
+          );
+          const nodeId = getNextDesignNodeId(state.circuit);
+          const normalizedPosition = {
+            x: roundToMill(position.x),
+            y: roundToMill(position.y),
+          };
+          const nextCircuit = cloneCircuit(state.circuit);
+          nextCircuit.nodes.push({
+            id: nodeId,
+            type,
+            label: rowId,
+            position: normalizedPosition,
+            x: normalizedPosition.x,
+            y: normalizedPosition.y,
+            rotation: 0,
+            config: {},
+            state: {},
+          });
+          const nextIoRows = cloneIoRows(state.projectIoRows);
+          nextIoRows.push({
+            id: rowId,
+            nodeId,
+            port: rowPort,
+            label: rowId,
+            direction: rowDirection,
+            pin: '',
+            required: true,
+          });
+
+          return commitDesignSnapshot(
+            state,
+            {
+              circuit: nextCircuit,
+              projectIoRows: nextIoRows,
+              macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
+            },
+            {
+              designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                -state.maxDesignHistory
+              ),
+              designFuture: [],
+            }
+          );
+        });
       },
       addDesignBoardIo: ({ alias, direction, kind, position }) => {
         set((state) => {
@@ -961,18 +833,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       runVerification: (input) => {
         let runtimeRun: RuntimeVerifyRun | undefined;
         set((state) => {
-          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
-          const scenarioId = input.scenarioId.trim() || activeScenario?.id || 'runtime-verify';
-          const scenarioName = input.scenarioName.trim() || activeScenario?.name || 'Runtime verification';
-          const scenarioVersion = input.scenarioVersion ?? activeScenario?.version;
-          const scenarioContentHash =
-            input.scenarioContentHash ??
-            (activeScenario ? computeScenarioContentHash(activeScenario) : undefined);
-          // Authority: use active scenario vectors; fall back to legacy projectVectors
-          const verifyVectors =
-            activeScenario && activeScenario.vectors.length > 0
-              ? activeScenario.vectors
-              : state.projectVectors;
+          const scenarioId = input.scenarioId.trim() || 'runtime-verify';
+          const scenarioName = input.scenarioName.trim() || 'Runtime verification';
           const circuitHash = digestValue(stableSerialize(state.circuit));
           const ioMapping = toIoMapping(state.projectIoRows);
           const verifyContext = buildDeterministicVerifyContext(
@@ -984,73 +846,35 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             : verifyContext.schedule;
           const model = verifyContext.simModel;
           const deterministicResult =
-            verifyVectors.length > 0
+            state.projectVectors.length > 0
               ? runDeterministicVerifyFromModel(
                   state.circuit,
                   model,
                   state.projectIoRows,
-                  verifyVectors,
+                  state.projectVectors,
                   scheduleContract
                 )
               : null;
-          // rawRows = full simulation comparison rows (expected vs actual for every output signal).
-          // assertionRows = rows used for pass/fail checking; empty when assertionMode is OFF.
-          // Splitting these lets TRACE runs still show the waveform (output signals come from
-          // rawRows in buildCanonicalVerifyWaveSamples) while suppressing false FAILs.
-          const rawRows = deterministicResult?.rows ?? normalizeVerifyRows(input.rows);
-          // Build set of currently valid output signal keys from the live design.
-          // Any expected row referencing a signal not in this set is stale (e.g. from
-          // a starter template or a deleted output node) and must be silently dropped,
-          // not treated as a run failure. This is the VERIFY CONTRACT:
-          //   Verify may only fail for student-authored assertions against currently-
-          //   mapped outputs. It must never fail due to inherited starter expectations.
-          const currentOutputKeys = new Set(
-            state.projectIoRows
-              .filter((r) => r.direction === 'out')
-              .flatMap((r) => [
-                normalizeIoSignalKey(r.id),
-                normalizeIoSignalKey(r.label),
-              ])
-              .filter(Boolean)
-          );
-          // When assertionMode=false: TRACE mode — no pass/fail evaluation at all.
-          // When assertionMode=true: filter rows to only those in the current design.
-          const assertionRows = input.assertionMode
-            ? rawRows.filter((row) => currentOutputKeys.has(normalizeIoSignalKey(row.signal)))
-            : [];
-          const failedRows = assertionRows.filter((row) => row.expected !== row.actual);
-          // Preflight issues for stale signals (missing-output-row for signals no longer
-          // in the design) are silently dropped. Other preflight issues remain blocking.
-          const preflightIssues = input.assertionMode
-            ? (deterministicResult?.evidence.preflight ?? []).filter(
-                (issue) =>
-                  issue.kind !== 'missing-output-row' ||
-                  currentOutputKeys.has(normalizeIoSignalKey(issue.signal))
-              )
-            : [];
+          const normalizedRows = deterministicResult?.rows ?? normalizeVerifyRows(input.rows);
+          const failedRows = normalizedRows.filter((row) => row.expected !== row.actual);
+          const preflightIssues = deterministicResult?.evidence.preflight ?? [];
           const status: 'pass' | 'fail' =
             failedRows.length > 0 || preflightIssues.length > 0 ? 'fail' : 'pass';
           const ranAtIso = input.ranAtIso ?? new Date().toISOString();
-          const vectors = toVerifyVectors(verifyVectors);
+          const vectors = toVerifyVectors(state.projectVectors);
           const signalRoles = deriveSignalRoles(state.projectIoRows, scheduleContract);
           const report = buildVerifyReport({
             scenarioId,
             scenarioName,
             status,
             deterministicHash: input.deterministicHash,
-            rows: assertionRows,   // empty in TRACE mode — no mismatches shown
+            rows: normalizedRows,
             vectors,
             generatedAtIso: ranAtIso,
             signalRoles,
           });
-          // Build waveform with rawRows so output signal lanes populate even in TRACE mode.
-          // The report used for display has assertionRows (empty) but the waveform needs
-          // all signal values to render lanes for inputs and outputs.
-          const waveformReport = assertionRows.length === rawRows.length
-            ? report
-            : { ...report, rows: rawRows.map((r) => ({ ...r, status: 'pass' as const })) };
           const waveform = buildCanonicalVerifyWaveSamples(
-            waveformReport,
+            report,
             deterministicResult?.trace ?? []
           );
           const evidence =
@@ -1063,8 +887,6 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           runtimeRun = {
             scenarioId: report.scenarioId,
             scenarioName: report.scenarioName,
-            scenarioVersion,
-            scenarioContentHash,
             status: report.status,
             qualification: detectIncompleteMappingQualification(state.projectIoRows, report.status),
             deterministicHash: report.deterministicHash,
@@ -1080,11 +902,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           };
 
           // Build ledger entry (synchronous hashes via digestValue + stableSerialize)
-          const vectorsHash = digestValue(stableSerialize(verifyVectors));
+          const vectorsHash = digestValue(stableSerialize(state.projectVectors));
           const mappingHash = digestValue(stableSerialize(ioMapping));
           const projectSnap = {
             circuit: state.circuit,
-            vectors: verifyVectors,
+            vectors: state.projectVectors,
             mapping: ioMapping,
           };
           const projectHash = digestValue(stableSerialize(projectSnap));
@@ -1360,8 +1182,6 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         projectIoRows: cloneIoRows(state.projectIoRows),
         projectVectors: cloneVectors(state.projectVectors),
         customVectors: [...(state.customVectors ?? [])],
-        scenarios: state.scenarios,
-        activeScenarioId: state.activeScenarioId,
         circuit: cloneCircuit(state.circuit),
         designPast: cloneDesignHistoryPast(state.designPast, state.maxDesignHistory),
         designFuture: cloneDesignHistoryFuture(state.designFuture, state.maxDesignHistory),
@@ -1448,14 +1268,6 @@ export function mergePersistedRuntimeState(
   const projectIoRows = ioRowsFromProject(normalizedProject);
   const circuit = cloneCircuit(normalizedProject.circuit);
   const projectVectors = cloneVectors(normalizedProject.vectors ?? []);
-
-  // Scenario migration: if scenarios absent in persisted data, migrate from projectVectors
-  const { scenarios, activeScenarioId } = repairScenarioLibrary(
-    candidate.scenarios,
-    candidate.activeScenarioId,
-    projectVectors
-  );
-
   const rawVerifyLastRun = tryCloneVerifyRun(candidate.verifyLastRun);
   const invalidateVerifyTrust = hasLegacyVerifyTrust(rawVerifyLastRun, candidate.projectHealthCore);
   const verifyLastRun = invalidateVerifyTrust ? undefined : rawVerifyLastRun;
@@ -1488,8 +1300,6 @@ export function mergePersistedRuntimeState(
     projectIoRows,
     projectVectors,
     customVectors: Array.isArray(candidate.customVectors) ? [...candidate.customVectors] : [],
-    scenarios,
-    activeScenarioId,
     circuit,
     designPast,
     designFuture,
@@ -1523,7 +1333,6 @@ function stateFromExample(
     label: p.label,
   }));
   const sim = kitProbes.length > 0 ? { ...baseSimState, probes: kitProbes } : baseSimState;
-  const defaultScenario = createDefaultScenario(example.vectors);
   return {
     projectId,
     projectName: example.name,
@@ -1533,8 +1342,6 @@ function stateFromExample(
     projectIoRows,
     projectVectors: cloneVectors(example.vectors),
     customVectors: [],
-    scenarios: [defaultScenario],
-    activeScenarioId: defaultScenario.id,
     circuit,
     designPast: [],
     designFuture: [],
@@ -1713,36 +1520,101 @@ function createDesignHistorySnapshot(
   };
 }
 
-/**
- * Build the set of normalized signal keys that correspond to current output IO rows.
- * Used to filter stale expected values in project vectors.
- */
-function buildValidOutputKeySet(ioRows: ProjectIoRow[]): Set<string> {
-  return new Set(
-    ioRows
-      .filter((r) => r.direction === 'out')
-      .flatMap((r) => [normalizeIoSignalKey(r.id), normalizeIoSignalKey(r.label)])
-      .filter(Boolean)
-  );
+function getBoundaryIoShape(
+  node: Circuit['nodes'][number]
+): { direction: 'in' | 'out'; port: 'out' | 'in' } | null {
+  if (node.type === 'INPUT' || node.type === 'Clock') {
+    return { direction: 'in', port: 'out' };
+  }
+  if (node.type === 'OUTPUT') {
+    return { direction: 'out', port: 'in' };
+  }
+  return null;
 }
 
-/**
- * Prune expected keys from vectors that no longer correspond to any mapped output signal.
- * Preserves all input data — only removes stale expected values for deleted/remapped outputs.
- * This enforces the VERIFY CONTRACT: inherited starter expectations cannot survive design changes.
- */
-export function pruneStaleVectorExpected(
-  vectors: TestVector[],
-  validOutputKeys: Set<string>
-): TestVector[] {
-  return vectors.map((v) => ({
-    ...v,
-    expected: Object.fromEntries(
-      Object.entries(v.expected).filter(([key]) =>
-        validOutputKeys.has(normalizeIoSignalKey(key))
-      )
-    ),
-  }));
+function chooseCanonicalIoRow(rows: ProjectIoRow[]): ProjectIoRow | null {
+  if (rows.length === 0) return null;
+
+  let bestRow = rows[0];
+  let bestScore = -1;
+
+  for (const row of rows) {
+    const score =
+      (row.pin.trim().length > 0 ? 4 : 0) +
+      (row.required ? 2 : 0) +
+      (row.label.trim().length > 0 ? 1 : 0);
+
+    if (score > bestScore) {
+      bestRow = row;
+      bestScore = score;
+      continue;
+    }
+
+    if (score === bestScore) {
+      const currentId = normalizePortToken(row.id);
+      const bestId = normalizePortToken(bestRow.id);
+      if (currentId.localeCompare(bestId) < 0) {
+        bestRow = row;
+      }
+    }
+  }
+
+  return bestRow;
+}
+
+function synchronizeProjectIoRows(circuit: Circuit, rows: ProjectIoRow[]): ProjectIoRow[] {
+  const boundaryNodes = new Map(
+    circuit.nodes
+      .map((node) => {
+        const shape = getBoundaryIoShape(node);
+        if (!shape) return null;
+        return [normalizePortToken(node.id), { node, shape }] as const;
+      })
+      .filter((entry): entry is readonly [string, { node: Circuit['nodes'][number]; shape: { direction: 'in' | 'out'; port: 'out' | 'in' } }] => entry !== null)
+  );
+
+  const rowsByNodeId = new Map<string, ProjectIoRow[]>();
+  for (const row of rows) {
+    const normalizedNodeId = normalizePortToken(row.nodeId);
+    if (!normalizedNodeId) continue;
+    const existing = rowsByNodeId.get(normalizedNodeId);
+    if (existing) {
+      rowsByNodeId.set(normalizedNodeId, [...existing, row]);
+    } else {
+      rowsByNodeId.set(normalizedNodeId, [row]);
+    }
+  }
+
+  const synchronized: ProjectIoRow[] = [];
+  for (const [normalizedNodeId, { node, shape }] of boundaryNodes.entries()) {
+    const canonicalRow = chooseCanonicalIoRow(rowsByNodeId.get(normalizedNodeId) ?? []);
+    if (canonicalRow) {
+      const nextLabel = node.label?.trim() || canonicalRow.label.trim() || canonicalRow.id;
+      synchronized.push({
+        ...canonicalRow,
+        nodeId: node.id,
+        direction: shape.direction,
+        port: shape.port,
+        label: nextLabel,
+        required: canonicalRow.required ?? true,
+      });
+      continue;
+    }
+
+    const fallbackLabel = shape.direction === 'in' ? 'input' : 'output';
+    const nextLabel = node.label?.trim() || fallbackLabel;
+    synchronized.push({
+      id: getNextIoRowId(synchronized, nextLabel),
+      nodeId: node.id,
+      direction: shape.direction,
+      port: shape.port,
+      label: nextLabel,
+      pin: '',
+      required: true,
+    });
+  }
+
+  return synchronized;
 }
 
 function commitDesignSnapshot(
@@ -1753,8 +1625,6 @@ function commitDesignSnapshot(
   ProjectRuntimeState,
   | 'circuit'
   | 'projectIoRows'
-  | 'projectVectors'
-  | 'scenarios'
   | 'macroInsertionCounts'
   | 'designPast'
   | 'designFuture'
@@ -1763,27 +1633,10 @@ function commitDesignSnapshot(
   | 'projectHealthCore'
 > {
   const nextCircuit = cloneCircuit(snapshot.circuit);
-  const validNodeIds = new Set(
-    nextCircuit.nodes.map((node) => normalizePortToken(node.id))
-  );
-  const nextIoRows = cloneIoRows(snapshot.projectIoRows).filter((row) => {
-    const nodeId = normalizePortToken(row.nodeId);
-    return nodeId.length === 0 || validNodeIds.has(nodeId);
-  });
-  // Prune stale expected values from all vectors when the IO mapping changes.
-  // This prevents inherited starter/template expectations from surviving design mutations
-  // and causing false FAILs in future verify runs (VERIFY CONTRACT enforcement).
-  const validOutputKeys = buildValidOutputKeySet(nextIoRows);
-  const nextVectors = pruneStaleVectorExpected(state.projectVectors, validOutputKeys);
-  const nextScenarios = state.scenarios.map((s) => ({
-    ...s,
-    vectors: pruneStaleVectorExpected(s.vectors, validOutputKeys),
-  }));
+  const nextIoRows = synchronizeProjectIoRows(nextCircuit, cloneIoRows(snapshot.projectIoRows));
   return {
     circuit: nextCircuit,
     projectIoRows: nextIoRows,
-    projectVectors: nextVectors,
-    scenarios: nextScenarios,
     macroInsertionCounts: cloneMacroInsertionCounts(snapshot.macroInsertionCounts),
     designPast: history.designPast,
     designFuture: history.designFuture,

@@ -34,6 +34,7 @@ export interface ExportSurfaceProps {
   project: RBProject;
   verifyResult?: ProjectHealthVerifyResult;
   verifyLastRun?: RuntimeVerifyRun;
+  designReady?: boolean;
   /** The currently active Verify scenario — used as the authoritative testbench vector source. */
   activeScenario?: VerifyScenario;
   dirtySinceVerify?: boolean;
@@ -116,6 +117,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   project,
   verifyResult,
   verifyLastRun,
+  designReady = true,
   activeScenario,
   dirtySinceVerify = false,
   determinismHash,
@@ -414,11 +416,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     () => viewModel.artifacts.filter((artifact) => artifact.status === 'ready').length,
     [viewModel.artifacts]
   );
-  const downloadReady = !hasBlockingErrors;
+  const exportBlocked = hasBlockingErrors || !designReady;
+  const downloadReady = !exportBlocked;
   const exportTrusted = downloadReady && hasVerifyPass;
   const nextActionTitle = exportTrusted
     ? 'Open Vivado and import the generated project.'
-    : hasBlockingErrors
+    : exportBlocked
       ? 'Resolve blockers before downloading the build package.'
       : isStarterScenarioFail
         ? 'Export available — scenario not yet authored.'
@@ -427,8 +430,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           : '⚠ Verify first — this export may fail in Vivado.';
   const nextActionDetail = exportTrusted
     ? 'Download the Vivado Project, unzip it, then run the import script or open the project directly.'
-    : hasBlockingErrors
-      ? 'Use the blocker list and pin review below to clear mapping or clock issues before export.'
+    : exportBlocked
+      ? !designReady && !hasBlockingErrors
+        ? 'The live design authority is incomplete. Fix the circuit or its mapped boundary IO before exporting.'
+        : 'Use the blocker list and pin review below to clear mapping or clock issues before export.'
       : isStarterScenarioFail
         ? 'Your HDL was generated from your circuit design. The current test scenario used auto-generated starter vectors — this output is available to download, but it is not evidence-quality until you author a real scenario and get a PASS.'
         : isNoRunYet
@@ -944,7 +949,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           title={
             exportTrusted
               ? 'Export Handoff Ready'
-              : hasBlockingErrors
+              : exportBlocked
                 ? 'Export Handoff Blocked'
                 : 'Export Handoff Available'
           }
@@ -965,7 +970,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           right={
             exportTrusted ? (
               <IdeStatusPill tone="ok">Ready</IdeStatusPill>
-            ) : hasBlockingErrors ? (
+            ) : exportBlocked ? (
               <IdeStatusPill tone="error">Blocked</IdeStatusPill>
             ) : (
               <IdeStatusPill tone="warn">Unverified</IdeStatusPill>
@@ -982,8 +987,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             <div className="ide-export-summary-hero-main">
               <div className="ide-export-summary-copy">
                 <div className="ide-export-summary-eyebrow">
-                  <IdeStatusPill tone={exportTrusted ? 'ok' : hasBlockingErrors ? 'error' : 'warn'}>
-                    {exportTrusted ? 'READY FOR VIVADO' : hasBlockingErrors ? 'BLOCKED' : isStarterScenarioFail || isNoRunYet ? 'AVAILABLE' : 'UNVERIFIED'}
+                  <IdeStatusPill tone={exportTrusted ? 'ok' : exportBlocked ? 'error' : 'warn'}>
+                    {exportTrusted ? 'READY FOR VIVADO' : exportBlocked ? 'BLOCKED' : isStarterScenarioFail || isNoRunYet ? 'AVAILABLE' : 'UNVERIFIED'}
                   </IdeStatusPill>
                   <span>Engineering handoff</span>
                 </div>
@@ -1056,13 +1061,16 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <div className="ide-export-trust-row ide-export-trust-row--available">
                 <div className="ide-export-trust-header">
                   <IdeStatusPill tone="warn">
-                    {isStarterScenarioFail ? 'AVAILABLE — UNSEALED' : isNoRunYet ? 'AVAILABLE — NOT VERIFIED' : 'AVAILABLE — NOT TRUSTED'}
+                    {isStarterScenarioFail ? 'AVAILABLE — UNSEALED' : 'AVAILABLE — NOT TRUSTED'}
                   </IdeStatusPill>
                 </div>
                 {/* Readiness strip — 3-axis project readiness: design / scenario / verify */}
                 <div className="ide-export-readiness-strip" data-testid="ide-export-readiness-strip">
-                  <span className={`ide-export-readiness-axis ide-export-readiness-axis--ok`} data-testid="ide-export-readiness-design">
-                    ✓ Design: valid
+                  <span
+                    className={`ide-export-readiness-axis ${designReady ? 'ide-export-readiness-axis--ok' : 'ide-export-readiness-axis--fail'}`}
+                    data-testid="ide-export-readiness-design"
+                  >
+                    {designReady ? '✓ Design: valid' : '✗ Design: incomplete'}
                   </span>
                   <span
                     className={`ide-export-readiness-axis ${isStarterScenarioFail ? 'ide-export-readiness-axis--warn' : isNoRunYet ? 'ide-export-readiness-axis--idle' : 'ide-export-readiness-axis--ok'}`}
@@ -1102,9 +1110,19 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 <div className="ide-export-trust-header">
                   <IdeStatusPill tone="error">BLOCKED</IdeStatusPill>
                 </div>
+                <div className="ide-export-readiness-strip" data-testid="ide-export-readiness-strip">
+                  <span
+                    className={`ide-export-readiness-axis ${designReady ? 'ide-export-readiness-axis--ok' : 'ide-export-readiness-axis--fail'}`}
+                    data-testid="ide-export-readiness-design"
+                  >
+                    {designReady ? '✓ Design: valid' : '✗ Design: incomplete'}
+                  </span>
+                </div>
                 <div className="ide-export-trust-body">
                   <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
-                    Fix the blockers below, then run Test to get a PASS — after that, this export will be trusted and ready to submit.
+                    {designReady || hasBlockingErrors
+                      ? 'Fix the blockers below, then run Test to get a PASS — after that, this export will be trusted and ready to submit.'
+                      : 'Fix the live design authority first, then run Test to get a PASS — after that, this export will be trusted and ready to submit.'}
                   </p>
                   {(unmappedRequiredPorts.length > 0 || viewModel.errors.length > 0) && (
                     <ul className="ide-export-trust-blocker-list" data-testid="ide-export-trust-blocker-list">
@@ -1124,6 +1142,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   )}
                 </div>
                 <div className="ide-inline-actions">
+                  {onGoToDesign && !designReady && (
+                    <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-export-trust-go-design">
+                      Open Design →
+                    </IdeButton>
+                  )}
                   {onGoToHardware && unmappedRequiredPorts.length > 0 && (
                     <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-export-trust-go-hardware">
                       Map Pins in Hardware →

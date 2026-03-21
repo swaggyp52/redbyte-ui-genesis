@@ -1,6 +1,109 @@
 # AI State
 
-<<<<<<< HEAD
+## Change Log 2026-03-21 (Authority hardening slice 2: export trust and duplicate-row survivor semantics)
+
+**Subsystem**: IDE runtime IO authority / Export trust coherence
+
+### Problem
+
+After slice 1, the runtime authority path was improved but two trust gaps remained:
+
+1. `synchronizeProjectIoRows(...)` still resolved duplicate authoritative rows for the same live boundary node by first-row order, which could preserve an empty/unmapped survivor and discard the pinned row.
+2. `ExportSurface.tsx` still hardcoded `Design: valid` in its readiness strip instead of consuming the same live-design readiness truth Project/Hardware already use.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Added deterministic duplicate-row survivor selection inside `synchronizeProjectIoRows(...)`.
+  - Canonical row selection now prefers rows that preserve useful authority state for the live node:
+    - mapped pin present,
+    - required row,
+    - non-empty label,
+    - deterministic id tie-break.
+  - Orphan rows remain pruned because only live boundary nodes are re-emitted into synchronized authority.
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+  - Added a regression that loads malformed authority state containing:
+    - two rows for the same live output node,
+    - one orphan row for a deleted/nonexistent node.
+  - The test now proves one snapshot mutation prunes the orphan and preserves the pinned survivor for the live node.
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - Added `designReady?: boolean` so Export no longer self-certifies design validity.
+  - Export now enters a blocked trust state when live design authority is incomplete, even if the local export viewmodel itself has not surfaced a structural error yet.
+  - The readiness strip now renders `Design: incomplete` when that canonical signal is false.
+  - Added an explicit Design CTA in the blocked trust state when the issue is incomplete live authority rather than only pin mapping/export diagnostics.
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Threaded `designReady={readiness.hasCircuit && readiness.hasIoMapping}` into `ExportSurface`, aligning Export with the same runtime-derived readiness path already used for Project/Hardware.
+- `packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx`
+  - Added a regression proving Export must not claim `Design: valid` when canonical live-design readiness is false.
+
+### Student-visible behavior
+
+- Malformed duplicated authority rows no longer cause the runtime to keep the empty survivor for a live IO node.
+- Export no longer claims the design is valid based on local assumptions alone; it now reflects the same live readiness truth as the rest of the IDE.
+- When live design authority is incomplete, Export is blocked honestly and routes students back to Design instead of implying the design axis is already good.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectHealth.test.ts` -> PASS (4 files, 22 tests)
+
+### Remaining concern
+
+- This slice did not yet add a dedicated regression for same-label collisions across two distinct live boundary nodes; the current contract still relies on nodeId as identity and internal row-id uniqueness.
+- The broader unrelated `verifySurface.authoring.test.tsx` failure remains outside this slice.
+
+## Change Log 2026-03-21 (Custom design IO authority sync slice 1)
+
+**Subsystem**: IDE runtime IO authority / Verify authoring trust
+
+### Problem
+
+Custom designs could drift immediately from the authority consumed by Verify and Export:
+
+1. Generic `addDesignIo()` created visual INPUT/OUTPUT nodes without creating matching `projectIoRows`, so custom boundary IO could exist on the canvas while downstream surfaces still saw stale mapping authority.
+2. Boundary-node label edits changed the live schematic but left `projectIoRows` labels stale across runtime mutation / undo / redo.
+3. Verify authoring still fabricated fallback inputs (`in_a`, `in_b`) when no authoritative mapped inputs existed, masking broken authority instead of reflecting the live design truth.
+4. `AI_STATE.md` itself still contained unresolved merge markers.
+
+### What changed
+
+- `AI_STATE.md`
+  - Removed unresolved merge conflict markers and preserved both historical changelog entries.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Reworked `addDesignIo()` so generic INPUT/OUTPUT insertion now creates:
+    - the boundary node,
+    - a matching `projectIoRows` entry,
+    - one runtime history snapshot commit.
+  - Added `synchronizeProjectIoRows(...)` inside `commitDesignSnapshot(...)` so runtime snapshot commits now resync boundary IO rows from live boundary nodes.
+  - Boundary sync currently covers:
+    - new generic boundary nodes,
+    - live label propagation from boundary nodes into `projectIoRows`,
+    - orphaned/deleted boundary row pruning,
+    - direction/port normalization for `INPUT`, `OUTPUT`, and `Clock` boundary nodes.
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Removed synthetic fallback `in_a` / `in_b` input-field seeding.
+  - Starter vector generation now uses only authoritative inputs.
+  - Zero-input Generate Basics now produces a single empty-input vector instead of inventing fake inputs.
+- Tests
+  - Added generic input/output authority regressions to `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts`.
+  - Extended rename/undo/redo authority coverage in `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`.
+  - Added no-fallback-input authoring regression in `packages/rb-apps/src/apps/ide/__tests__/verifySurface.authoring.test.tsx`.
+
+### Student-visible behavior
+
+- Adding a generic input or output in Design now immediately enters the same runtime authority path Verify and Export already consume.
+- Renaming a live boundary node now updates the authoritative row label used downstream.
+- Verify no longer invents placeholder inputs when the design has no authoritative mapped inputs.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` -> PASS (7 tests)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx -t "authoritative|label edits survive runtime undo/redo correctly"` -> PASS (4 targeted tests)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.authoring.test.tsx -t "does not invent fallback input ports when no authoritative inputs exist"` -> PASS
+
+### Remaining concern
+
+- The broader `verifySurface.authoring.test.tsx` suite still contains an unrelated pre-existing failure in `populates expected field in the authored vector when Add Case is submitted`; this batch did not attempt to fix that behavior.
+
 ## Change Log 2026-03-19 (Verify layout Slice 1 — strip conflicting layout overrides)
 
 **Subsystem**: Verify surface CSS layout infrastructure
@@ -48,7 +151,7 @@ panel-body (flex col, overflow hidden)
 
 - 6 pre-existing test failures in `verifySurface.workstation.test.tsx` (missing `ide-verify-jump-first-failure` testid; first-run CTA text mismatches) are unrelated to this CSS slice.
 - Next step: Slice 2 — waveform & canvas height stabilization.
-=======
+
 ## Change Log 2026-03-21 (IDE gate suite stabilized for current workbench/runtime behavior)
 
 **Subsystem**: IDE Playwright gate contracts / verify+design+project workflow assertions
@@ -86,7 +189,6 @@ After large IDE surface refactors, multiple gate scripts drifted from current UI
 
 - Re-ran all individually failing gate commands encountered in-session and verified they pass after updates (`project-health`, `persistence`, `workbench-layout`, `design-workbench`, `design-fit`, `design-build-fast`, `live-sim`, `diagnostics-jump`, `examples`, `canvas-legibility`, `verify-workbench`).
 - Full `pnpm repo:status` run progressed through the updated gate set with passing results for those contracts.
->>>>>>> cfda112d (ide: land workspace refactor and align gate contracts)
 
 **Attribution**: Connor Angiel
 

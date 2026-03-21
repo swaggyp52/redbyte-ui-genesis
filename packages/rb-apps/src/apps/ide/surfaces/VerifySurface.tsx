@@ -750,11 +750,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     for (const entry of normalized) {
       if (!deduped.has(entry.id)) deduped.set(entry.id, entry);
     }
-
-    if (deduped.size === 0) {
-      deduped.set('in_a', { id: 'in_a', label: 'in_a' });
-      deduped.set('in_b', { id: 'in_b', label: 'in_b' });
-    }
     return Array.from(deduped.values());
   }, [mappedInputs, mappedSignals]);
 
@@ -2740,7 +2735,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       setOracleApplied(false);
       return;
     }
-    const templateFields = inputFields.length > 0 ? inputFields : [{ id: 'in_a', label: 'in_a' }];
+    if (inputFields.length === 0) {
+      onVectorsChange?.([{ id: 'vec-01', tick: 0, inputs: {}, expected: {} }]);
+      setDraftTick(1);
+      setOracleApplied(false);
+      return;
+    }
+    const templateFields = inputFields;
     // tick 0: all inputs 0
     // tick 1..N: one-hot — only field[i] = 1
     // tick N+1: all inputs 1
@@ -2805,7 +2806,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [inputFields, authoredVectors, onVectorsChange]);
 
   const handleGenerateSweepVectors = () => {
-    const templateFields = inputFields.length > 0 ? inputFields : [{ id: 'in_a', label: 'in_a' }];
+    if (inputFields.length === 0) {
+      onVectorsChange?.([{ id: 'vec-01', tick: 0, inputs: {}, expected: {} }]);
+      setDraftTick(1);
+      setOracleApplied(false);
+      return;
+    }
+    const templateFields = inputFields;
     const hold = Math.max(1, Math.min(64, Math.floor(sweepHoldTicks || 1)));
     const seed = parseSeed(sweepSeed);
     const vectors: VerifyAuthorVector[] = [];

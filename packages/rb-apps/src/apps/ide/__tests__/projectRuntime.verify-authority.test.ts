@@ -329,4 +329,54 @@ describe('projectRuntime verify authority', () => {
     expect(run.meta.tick0Meaning).toBe(expectedContract.tick0Meaning);
     expect(state.verifyLastRun?.scheduleContract).toEqual(expectedContract);
   });
+
+  it('creates a matching authoritative input row when generic design input is added', () => {
+    const beforeState = useProjectRuntime.getState();
+    const beforeNodeIds = new Set(beforeState.circuit.nodes.map((node) => node.id));
+    const beforeRowCount = beforeState.projectIoRows.length;
+
+    useProjectRuntime.getState().addDesignIo('input', { x: 320, y: 120 });
+
+    const afterState = useProjectRuntime.getState();
+    const addedNode = afterState.circuit.nodes.find(
+      (node) => node.type === 'INPUT' && !beforeNodeIds.has(node.id)
+    );
+
+    expect(addedNode).toBeDefined();
+    expect(afterState.projectIoRows).toHaveLength(beforeRowCount + 1);
+    expect(
+      afterState.projectIoRows.some(
+        (row) =>
+          row.nodeId === addedNode?.id &&
+          row.direction === 'in' &&
+          row.port === 'out' &&
+          row.required === true
+      )
+    ).toBe(true);
+  });
+
+  it('creates a matching authoritative output row when generic design output is added', () => {
+    const beforeState = useProjectRuntime.getState();
+    const beforeNodeIds = new Set(beforeState.circuit.nodes.map((node) => node.id));
+    const beforeRowCount = beforeState.projectIoRows.length;
+
+    useProjectRuntime.getState().addDesignIo('output', { x: 420, y: 120 });
+
+    const afterState = useProjectRuntime.getState();
+    const addedNode = afterState.circuit.nodes.find(
+      (node) => node.type === 'OUTPUT' && !beforeNodeIds.has(node.id)
+    );
+
+    expect(addedNode).toBeDefined();
+    expect(afterState.projectIoRows).toHaveLength(beforeRowCount + 1);
+    expect(
+      afterState.projectIoRows.some(
+        (row) =>
+          row.nodeId === addedNode?.id &&
+          row.direction === 'out' &&
+          row.port === 'in' &&
+          row.required === true
+      )
+    ).toBe(true);
+  });
 });

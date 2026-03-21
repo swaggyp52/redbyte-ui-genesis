@@ -225,6 +225,19 @@ describe('ExportSurface trust clarity', () => {
     expect(getByTestId('ide-export-dock-download').hasAttribute('disabled')).toBe(false);
   });
 
+  it('does not claim the design is valid when live authority is incomplete', () => {
+    const { getByTestId } = render(
+      <ExportSurface
+        project={buildMappedProject()}
+        determinismHash="ide-hash"
+        designReady={false}
+      />
+    );
+
+    expect(getByTestId('ide-export-readiness-design').textContent).toContain('Design: incomplete');
+    expect(getByTestId('ide-export-trust-banner').textContent).toContain('BLOCKED');
+  });
+
   it('keeps export available when verify failed against the selected reference', () => {
     const { getByTestId } = render(
       <ExportSurface

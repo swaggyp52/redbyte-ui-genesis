@@ -112,6 +112,31 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
 
     expect(queryByTestId('ide-verify-add-vector-expected-ld0')).toBeNull();
   });
+
+  it('does not invent fallback input ports when no authoritative inputs exist', () => {
+    const onVectorsChange = vi.fn();
+    const { getByTestId, queryByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={false}
+        vectors={[]}
+        mappedInputs={[]}
+        mappedSignals={[{ id: 'ld0', direction: 'out' as const, label: 'LD0' }]}
+        onOpenProjectVectors={vi.fn()}
+        onVectorsChange={onVectorsChange}
+      />
+    );
+
+    expect(queryByTestId('ide-verify-add-vector-input-in_a')).toBeNull();
+    expect(queryByTestId('ide-verify-add-vector-input-in_b')).toBeNull();
+
+    fireEvent.click(getByTestId('ide-verify-empty-generate-basics'));
+
+    expect(onVectorsChange).toHaveBeenCalledTimes(1);
+    expect(onVectorsChange.mock.calls[0]?.[0]).toEqual([
+      { id: 'vec-01', tick: 0, inputs: {}, expected: {} },
+    ]);
+  });
 });
 
 // ─── Auto-generated vector disclosure ────────────────────────────────────────

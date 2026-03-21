@@ -161,6 +161,9 @@ describe('projectRuntime history authority', () => {
     const originalLabel = useProjectRuntime.getState().circuit.nodes.find(
       (node) => node.id === 'sw0_node'
     )?.label;
+    const originalRowLabel = useProjectRuntime.getState().projectIoRows.find(
+      (row) => row.nodeId === 'sw0_node'
+    )?.label;
     const editedCircuit: Circuit = {
       ...useProjectRuntime.getState().circuit,
       nodes: useProjectRuntime.getState().circuit.nodes.map((node) =>
@@ -175,6 +178,9 @@ describe('projectRuntime history authority', () => {
     expect(
       useProjectRuntime.getState().circuit.nodes.find((node) => node.id === 'sw0_node')?.label
     ).toBe('renamed-sw0');
+    expect(
+      useProjectRuntime.getState().projectIoRows.find((row) => row.nodeId === 'sw0_node')?.label
+    ).toBe('renamed-sw0');
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -183,6 +189,9 @@ describe('projectRuntime history authority', () => {
     expect(
       useProjectRuntime.getState().circuit.nodes.find((node) => node.id === 'sw0_node')?.label
     ).toBe(originalLabel);
+    expect(
+      useProjectRuntime.getState().projectIoRows.find((row) => row.nodeId === 'sw0_node')?.label
+    ).toBe(originalRowLabel);
 
     act(() => {
       useProjectRuntime.getState().redoProjectEdit();
@@ -191,6 +200,57 @@ describe('projectRuntime history authority', () => {
     expect(
       useProjectRuntime.getState().circuit.nodes.find((node) => node.id === 'sw0_node')?.label
     ).toBe('renamed-sw0');
+    expect(
+      useProjectRuntime.getState().projectIoRows.find((row) => row.nodeId === 'sw0_node')?.label
+    ).toBe('renamed-sw0');
+  });
+
+  it('prunes orphan rows and keeps the pinned survivor when duplicate rows target one live boundary node', () => {
+    const malformedProject = buildHistoryFixture();
+    malformedProject.ioMapping.outputs = [
+      {
+        id: 'ld0_shadow',
+        nodeId: 'ld0_node',
+        port: 'in',
+        label: 'ld0-shadow',
+        pin: '',
+      },
+      {
+        id: 'ld0',
+        nodeId: 'ld0_node',
+        port: 'in',
+        label: 'ld0',
+        pin: 'LD0',
+      },
+      {
+        id: 'ghost_output',
+        nodeId: 'ghost_output_node',
+        port: 'in',
+        label: 'ghost-output',
+        pin: 'LD9',
+      },
+    ];
+
+    useProjectRuntime.getState().loadFromProject(malformedProject);
+
+    const renamedCircuit: Circuit = {
+      ...useProjectRuntime.getState().circuit,
+      nodes: useProjectRuntime.getState().circuit.nodes.map((node) =>
+        node.id === 'ld0_node' ? { ...node, label: 'ld0-live' } : node
+      ),
+    };
+
+    act(() => {
+      useProjectRuntime.getState().applyCircuitMutation(renamedCircuit);
+    });
+
+    const rows = useProjectRuntime.getState().projectIoRows;
+    const liveOutputRows = rows.filter((row) => row.nodeId === 'ld0_node');
+
+    expect(rows.some((row) => row.nodeId === 'ghost_output_node')).toBe(false);
+    expect(liveOutputRows).toHaveLength(1);
+    expect(liveOutputRows[0]?.pin).toBe('LD0');
+    expect(liveOutputRows[0]?.label).toBe('ld0-live');
   });
 
   it('duplicate-style payloads survive runtime undo/redo correctly', () => {
@@ -435,5 +495,102 @@ describe('projectRuntime history authority', () => {
     });
 
     expect(run.status).toBe('pass');
+  });
+
+  it('deleting a boundary output prunes stale authority and undo/redo never leaves ghost readiness state', () => {
+    const originalHash = currentProjectHash();
+    const deletedOutputCircuit: Circuit = {
+      nodes: useProjectRuntime
+        .getState()
+        .circuit.nodes.filter((node) => node.id !== 'ld0_node'),
+      connections: useProjectRuntime.getState().circuit.connections.filter((connection) => {
+        const fromNodeId =
+          typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+        const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+        return fromNodeId !== 'ld0_node' && toNodeId !== 'ld0_node';
+      }),
+    };
+
+    act(() => {
+      useProjectRuntime.getState().applyCircuitMutation(deletedOutputCircuit);
+    });
+
+    const deletedHash = currentProjectHash();
+    expect(useProjectRuntime.getState().circuit.nodes.some((node) => node.id === 'ld0_node')).toBe(false);
+    expect(useProjectRuntime.getState().projectIoRows.some((row) => row.nodeId === 'ld0_node')).toBe(false);
+    expect(deletedHash).not.toBe(originalHash);
+    expect(
+      deriveVerifyCurrent({
+        hasVerifyRun: true,
+        latestVerifyLedgerEntry: { projectHash: originalHash },
+        currentVerifyProjectHash: deletedHash,
+        dirtySinceVerify: true,
+      })
+    ).toBe(false);
+    expect(
+      deriveExportCurrent({
+        lastExport: {
+          status: 'ok',
+          hash: originalHash,
+          ranAtIso: '2026-03-21T00:00:00.000Z',
+        },
+        currentExportHash: deletedHash,
+        dirtySinceExport: true,
+      })
+    ).toBe(false);
+
+    act(() => {
+      useProjectRuntime.getState().undoProjectEdit();
+    });
+
+    const restoredHash = currentProjectHash();
+    expect(useProjectRuntime.getState().projectIoRows.some((row) => row.nodeId === 'ld0_node')).toBe(true);
+    expect(restoredHash).toBe(originalHash);
+    expect(
+      deriveVerifyCurrent({
+        hasVerifyRun: true,
+        latestVerifyLedgerEntry: { projectHash: originalHash },
+        currentVerifyProjectHash: restoredHash,
+        dirtySinceVerify: true,
+      })
+    ).toBe(true);
+    expect(
+      deriveExportCurrent({
+        lastExport: {
+          status: 'ok',
+          hash: originalHash,
+          ranAtIso: '2026-03-21T00:00:00.000Z',
+        },
+        currentExportHash: restoredHash,
+        dirtySinceExport: true,
+      })
+    ).toBe(true);
+
+    act(() => {
+      useProjectRuntime.getState().redoProjectEdit();
+    });
+
+    const redoneHash = currentProjectHash();
+    expect(useProjectRuntime.getState().projectIoRows.some((row) => row.nodeId === 'ld0_node')).toBe(false);
+    expect(redoneHash).toBe(deletedHash);
+    expect(
+      deriveVerifyCurrent({
+        hasVerifyRun: true,
+        latestVerifyLedgerEntry: { projectHash: originalHash },
+        currentVerifyProjectHash: redoneHash,
+        dirtySinceVerify: true,
+      })
+    ).toBe(false);
+    expect(
+      deriveExportCurrent({
+        lastExport: {
+          status: 'ok',
+          hash: originalHash,
+          ranAtIso: '2026-03-21T00:00:00.000Z',
+        },
+        currentExportHash: redoneHash,
+        dirtySinceExport: true,
+      })
+    ).toBe(false);
   });
 });
