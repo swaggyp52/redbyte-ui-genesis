@@ -90,5 +90,63 @@ describe('simEngine canonical naming', () => {
       expect(result.rows).toHaveLength(1);
       expect(result.rows[0]?.signal).toBe(expectedSignal);
     });
+
+    it('keeps distinct machine signal keys when two outputs share the same normalized label', () => {
+      const collisionCircuit: Circuit = {
+        nodes: [
+          {
+            id: 'sw0_node',
+            type: 'INPUT',
+            label: 'SW0',
+            x: 0,
+            y: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'leda_node',
+            type: 'OUTPUT',
+            label: 'LED-A',
+            x: 160,
+            y: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'leda_2_node',
+            type: 'OUTPUT',
+            label: 'LEDA',
+            x: 160,
+            y: 96,
+            config: {},
+            state: {},
+          },
+        ],
+        connections: [
+          {
+            from: { nodeId: 'sw0_node', portName: 'out' },
+            to: { nodeId: 'leda_node', portName: 'in' },
+          },
+          {
+            from: { nodeId: 'sw0_node', portName: 'out' },
+            to: { nodeId: 'leda_2_node', portName: 'in' },
+          },
+        ],
+      };
+      const ioRows: SimulationIoRow[] = [
+        { id: 'sw0', label: 'SW0', direction: 'in', nodeId: 'sw0_node' },
+        { id: 'leda', label: 'LED-A', direction: 'out', nodeId: 'leda_node' },
+        { id: 'leda_2', label: 'LEDA', direction: 'out', nodeId: 'leda_2_node' },
+      ];
+
+      const result = runDeterministicVerifyFromCircuit(
+        collisionCircuit,
+        ioRows,
+        [{ tick: 0, inputs: { sw0: 1 }, expected: { leda: 1, leda_2: 1 } }],
+      );
+
+      expect(result.rows).toHaveLength(2);
+      expect(result.rows.map((row) => row.signal)).toEqual(['leda', 'leda_2']);
+    });
   });
 });

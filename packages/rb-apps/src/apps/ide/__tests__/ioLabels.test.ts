@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
+import {
+  getCanonicalIoSignalKey,
+  getIoSignalLookupKeys,
+  getStudentFacingIoLabel,
+  normalizeIoSignalKey,
+} from '../ioLabels';
 
 describe('getStudentFacingIoLabel', () => {
   it('prefers label over port and id', () => {
@@ -42,5 +47,38 @@ describe('normalizeIoSignalKey', () => {
     expect(normalizeIoSignalKey('LD[0]')).toBe('ld');
     expect(normalizeIoSignalKey('node_0.out')).toBe('node_0.out');
     expect(normalizeIoSignalKey('SW-0')).toBe('sw0');
+  });
+});
+
+describe('collision-safe IO signal keys', () => {
+  const duplicateOutputs = [
+    {
+      id: 'leda',
+      nodeId: 'leda_node',
+      label: 'LED-A',
+      direction: 'out' as const,
+    },
+    {
+      id: 'leda_2',
+      nodeId: 'leda_2_node',
+      label: 'LEDA',
+      direction: 'out' as const,
+    },
+  ];
+
+  it('falls back to stable row ids when labels collide after normalization', () => {
+    expect(getCanonicalIoSignalKey(duplicateOutputs[0], duplicateOutputs)).toBe('leda');
+    expect(getCanonicalIoSignalKey(duplicateOutputs[1], duplicateOutputs)).toBe('leda_2');
+  });
+
+  it('does not offer ambiguous labels as lookup keys', () => {
+    expect(getIoSignalLookupKeys(duplicateOutputs[0], duplicateOutputs)).toEqual([
+      'leda',
+      'leda_node',
+    ]);
+    expect(getIoSignalLookupKeys(duplicateOutputs[1], duplicateOutputs)).toEqual([
+      'leda_2',
+      'leda_2_node',
+    ]);
   });
 });

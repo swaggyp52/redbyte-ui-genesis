@@ -5,7 +5,11 @@ import { stableStringify } from '../../export/stableStringify';
 import { compareCodepoint } from '../../export/codepointSort';
 import { simulateExpectedIoRows } from './sim/simEngine';
 import type { SimulatedExpectedIoRow } from './sim/simTypes';
-import { getStudentFacingIoLabel, normalizeIoSignalKey } from './ioLabels';
+import {
+  getCanonicalIoSignalKey,
+  getStudentFacingIoLabel,
+  normalizeIoSignalKey,
+} from './ioLabels';
 
 export interface BringUpIoRow {
   id: string;
@@ -77,16 +81,16 @@ export function generateBringUpVectors(params: {
   circuit: Circuit;
   existingVectors?: TestVector[];
 }): TestVector[] {
+  const inputRows = params.ioRows.filter((row) => row.direction === 'in');
   const inputSignals = sortSignals(
-    params.ioRows
-      .filter((row) => row.direction === 'in')
-      .map((row) => normalizeIoSignalKey(getStudentFacingIoLabel(row)))
+    inputRows
+      .map((row) => getCanonicalIoSignalKey(row, inputRows))
       .filter((value) => value.length > 0)
   );
+  const outputRows = params.ioRows.filter((row) => row.direction === 'out');
   const outputSignals = sortSignals(
-    params.ioRows
-      .filter((row) => row.direction === 'out')
-      .map((row) => normalizeIoSignalKey(getStudentFacingIoLabel(row)))
+    outputRows
+      .map((row) => getCanonicalIoSignalKey(row, outputRows))
       .filter((value) => value.length > 0)
   );
 
@@ -127,8 +131,8 @@ function buildExpectedIoReport(input: BringUpArtifactsInput): BringUpExpectedIoR
     .filter((row) => row.direction === 'out')
     .sort((left, right) =>
       compareCodepoint(
-        normalizeIoSignalKey(getStudentFacingIoLabel(left)),
-        normalizeIoSignalKey(getStudentFacingIoLabel(right))
+        getCanonicalIoSignalKey(left, input.ioRows),
+        getCanonicalIoSignalKey(right, input.ioRows)
       )
     );
 
@@ -147,7 +151,7 @@ function buildExpectedIoReport(input: BringUpArtifactsInput): BringUpExpectedIoR
   const ticks = hasVerifyRows ? verifyTicks : vectorTicks;
 
   const signals = outputRows.map((row) => {
-    const signalName = normalizeIoSignalKey(getStudentFacingIoLabel(row));
+    const signalName = getCanonicalIoSignalKey(row, outputRows);
     const values = ticks.map((tick) => ({
       tick,
       expected: resolveExpectedValue({
@@ -194,12 +198,12 @@ function buildBringUpMarkdown(input: {
     .filter((row) => row.pin.trim().length > 0)
     .sort((left, right) =>
       compareCodepoint(
-        normalizeIoSignalKey(getStudentFacingIoLabel(left)),
-        normalizeIoSignalKey(getStudentFacingIoLabel(right))
+        getCanonicalIoSignalKey(left, input.ioRows),
+        getCanonicalIoSignalKey(right, input.ioRows)
       )
     )
     .slice(0, 6)
-    .map((row) => `- ${normalizeIoSignalKey(getStudentFacingIoLabel(row))} -> ${row.pin}`);
+    .map((row) => `- ${getCanonicalIoSignalKey(row, input.ioRows)} -> ${row.pin}`);
 
   const lines = [
     '# Basys3 Bring-Up',

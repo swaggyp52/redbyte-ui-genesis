@@ -1,5 +1,51 @@
 # AI State
 
+## Change Log 2026-03-21 (Authority hardening slice 3: collision-safe machine signal keys)
+
+**Subsystem**: IDE verify/export signal identity
+
+### Problem
+
+After slices 1 and 2, runtime authority rows stayed distinct by `nodeId`, but downstream machine-facing signal identity still preferred normalized labels in multiple places.
+
+That left a deterministic trust gap when two live boundary nodes normalized into the same student-facing label space:
+
+1. Verify/sim rows could collapse two outputs onto one signal key.
+2. Bring-up/EXPECTED_IO generation could emit conflicting or misleading signal names.
+3. Lookup behavior could silently match an ambiguous normalized label instead of forcing a stable row-backed key.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/ioLabels.ts`
+  - Added shared collision-safe helpers:
+    - `getCanonicalIoSignalKey(...)`
+    - `getIoSignalLookupKeys(...)`
+  - Canonical machine keys now prefer the student-facing label only when it is unique within the relevant IO direction.
+  - When normalized labels collide, machine identity falls back deterministically to the authoritative row id, then node id.
+- `packages/rb-apps/src/apps/ide/sim/simEngineCore.ts`
+  - Verify/runtime/sim expected rows now emit collision-safe machine signal keys instead of raw `normalizeIoSignalKey(row.label || row.id)`.
+  - IO lookup resolution now stops treating ambiguous labels as authoritative lookup keys.
+- `packages/rb-apps/src/apps/ide/bringupArtifacts.ts`
+  - Bring-up vector generation, EXPECTED_IO signal emission, and mapping summaries now share the same collision-safe machine key contract as Verify.
+- Tests
+  - Added helper-level collision regressions in `packages/rb-apps/src/apps/ide/__tests__/ioLabels.test.ts`.
+  - Added Verify/sim collision regression in `packages/rb-apps/src/apps/ide/__tests__/simEngine.canonical-naming.test.ts`.
+  - Added bring-up EXPECTED_IO collision regression in `packages/rb-apps/src/apps/ide/__tests__/bringupArtifacts.canonical-naming.test.ts`.
+
+### Student-visible behavior
+
+- Two distinct live outputs no longer collapse onto one machine signal key just because their labels normalize the same way.
+- Verify and EXPECTED_IO now agree on the same deterministic signal ids when label collisions exist.
+- Ambiguous labels no longer act like silent authoritative lookup keys; stable row ids carry the machine contract instead.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ioLabels.test.ts packages/rb-apps/src/apps/ide/__tests__/simEngine.canonical-naming.test.ts packages/rb-apps/src/apps/ide/__tests__/bringupArtifacts.canonical-naming.test.ts` -> PASS (3 files, 12 tests)
+
+### Remaining concern
+
+- This slice hardens machine-facing signal identity for Verify/export/bring-up, but it does not yet rename or warn on duplicate student-facing labels in the Design UI itself.
+
 ## Change Log 2026-03-21 (Authority hardening slice 2: export trust and duplicate-row survivor semantics)
 
 **Subsystem**: IDE runtime IO authority / Export trust coherence

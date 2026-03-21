@@ -17,7 +17,11 @@ import {
   type VerifyScheduleContract,
 } from '../../../fpga/boards/basys3/verifySchedule';
 import { adaptIrDiagnostic } from '../diagnostics';
-import { normalizeIoSignalKey } from '../ioLabels';
+import {
+  getCanonicalIoSignalKey,
+  getIoSignalLookupKeys,
+  normalizeIoSignalKey,
+} from '../ioLabels';
 import type {
   VerifyEvidenceCapsule,
   VerifyEvidenceFailure,
@@ -235,11 +239,11 @@ export function buildVerifyRowsFromRuntimeTrace(
     const tick = Number.isFinite(vector.tick) ? Math.max(0, Math.floor(vector.tick)) : 0;
     const sample = traceByTick.get(tick);
     for (const outputRow of outputRows) {
-      const expected = resolveVectorBitSymbol(vector.expected ?? {}, outputRow);
+        const expected = resolveVectorBitSymbol(vector.expected ?? {}, outputRow, outputRows);
       const actual = resolveOutputSymbolFromTrace(sample, outputRow, undefined);
       rows.push({
         tick,
-        signal: normalizeIoSignalKey(outputRow.label || outputRow.id),
+          signal: getCanonicalIoSignalKey(outputRow, outputRows),
         expected,
         actual,
       });
@@ -524,7 +528,7 @@ export function simulateExpectedIoRowsFromModel(params: {
       if (value.reason !== 'matched') continue;
       rows.push({
         tick: entry.tick,
-        signal: normalizeIoSignalKey(row.label || row.id),
+        signal: getCanonicalIoSignalKey(row, outputRows),
         expected: value.symbol === '1' ? '1' : '0',
       });
     }
@@ -855,9 +859,7 @@ function resolveIoRowByKey(
   for (const row of rows) {
     const modelPort = resolveModelPortForRow(row, modelPorts);
     const candidates = [
-      row.id,
-      row.label,
-      row.nodeId ?? '',
+        ...getIoSignalLookupKeys(row, rows),
       modelPort?.canonicalName ?? '',
       modelPort?.sourceNodeId ?? '',
     ]
@@ -866,7 +868,7 @@ function resolveIoRowByKey(
     if (candidates.includes(normalizedKey)) {
       return {
         row,
-        signal: normalizeIoSignalKey(row.label || row.id),
+          signal: getCanonicalIoSignalKey(row, rows),
         modelPort,
       };
     }
@@ -876,10 +878,12 @@ function resolveIoRowByKey(
 
 function resolveVectorBitSymbol(
   expected: Record<string, boolean | number | string | undefined>,
-  row: SimulationIoRow
+  row: SimulationIoRow,
+  rows: SimulationIoRow[]
 ): string {
+  const lookupKeys = new Set(getIoSignalLookupKeys(row, rows));
   for (const [rawKey, value] of Object.entries(expected)) {
-    if (normalizeIoSignalKey(rawKey) === normalizeIoSignalKey(row.label || row.id)) {
+    if (lookupKeys.has(normalizeIoSignalKey(rawKey))) {
       return normalizeBit(value) === 1 ? '1' : '0';
     }
   }

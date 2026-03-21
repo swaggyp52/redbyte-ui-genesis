@@ -81,4 +81,42 @@ describe('bringupArtifacts canonical naming', () => {
 
     expect(parsed.signals?.[0]?.signal).toBe('ld');
   });
+
+  it('keeps duplicate normalized output labels distinct in EXPECTED_IO', () => {
+    const artifacts = buildBringUpArtifacts({
+      project: createProjectFixture(),
+      ioRows: [
+        {
+          id: 'leda',
+          nodeId: 'leda_node',
+          label: 'LED-A',
+          direction: 'out',
+          pin: 'U16',
+          required: true,
+        },
+        {
+          id: 'leda_2',
+          nodeId: 'leda_2_node',
+          label: 'LEDA',
+          direction: 'out',
+          pin: 'V16',
+          required: true,
+        },
+      ],
+      expectedBehavior: 'Both LEDs follow the same switch',
+      verifyRows: [
+        { tick: 0, signal: 'leda', expected: '1', actual: '1' },
+        { tick: 0, signal: 'leda_2', expected: '1', actual: '1' },
+      ],
+    });
+
+    const parsed = JSON.parse(artifacts.expectedIoJson) as {
+      signals?: Array<{ signal?: string; pin?: string }>;
+    };
+
+    expect(parsed.signals?.map((row) => ({ signal: row.signal, pin: row.pin }))).toEqual([
+      { signal: 'leda', pin: 'U16' },
+      { signal: 'leda_2', pin: 'V16' },
+    ]);
+  });
 });
