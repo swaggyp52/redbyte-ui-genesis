@@ -12,6 +12,35 @@ import {
 import { BoardSignalProvider } from '../BoardSignalContext';
 import { HardwareSurface } from '../surfaces/HardwareSurface';
 
+function makeVerifyRunWithRoles(
+  signalRoles: Record<string, 'clock' | 'reset' | 'input' | 'output'>
+) {
+  return {
+    scenarioId: 'hardware-semantic-roles',
+    scenarioName: 'Hardware semantic roles',
+    status: 'pass',
+    deterministicHash: 'det_hardware_semantic_roles',
+    reportHash: 'rep_hardware_semantic_roles',
+    firstFailingTick: null,
+    generatedAtIso: '2026-03-21T12:00:00.000Z',
+    schedule: 'clocked_macro',
+    meta: {
+      circuitKind: 'sequential',
+      clockingProtocol: 'clocked_macro',
+      samplePoint: 'post-rising-edge',
+      tick0Meaning: 'initial-state',
+      clockSignalName: 'phase_driver',
+    },
+    report: {
+      vectors: [],
+      inputsAtTick: {},
+      signalRoles,
+      rows: [],
+    },
+    waveform: [],
+  } as any;
+}
+
 function makeHealth(overrides: Partial<ProjectHealth> = {}): ProjectHealth {
   return {
     lastVerify: {
@@ -197,6 +226,40 @@ describe('HardwareSurface readiness', () => {
           })}
           verifyCurrent={false}
           exportCurrent={false}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByText('Clock').parentElement?.textContent).toContain('Mapped');
+  });
+
+  it('uses semantic verify signal roles so non-regex clock labels still count as clock mapping', () => {
+    const { getByText } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Semantic Clock Role"
+          expectedBehavior="LED0 follows the sequential design."
+          mappingRows={[
+            { id: 'phase_driver', label: 'phase_driver', direction: 'in', pin: 'W5', required: true },
+            { id: 'data_in', label: 'data_in', direction: 'in', pin: 'V17', required: true },
+            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={2}
+          health={makeHealth({
+            dirtySinceVerify: true,
+            dirtySinceExport: true,
+          })}
+          verifyCurrent={false}
+          exportCurrent={false}
+          verifyLastRun={makeVerifyRunWithRoles({
+            phase_driver: 'clock',
+            data_in: 'input',
+            ld0: 'output',
+          })}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}

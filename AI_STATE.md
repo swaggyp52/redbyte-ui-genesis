@@ -1,5 +1,39 @@
 # AI State
 
+## Change Log 2026-03-21 (Authority hardening slice 6: semantic clock-role readiness)
+
+**Subsystem**: Hardware readiness / shared IO-role authority
+
+### Problem
+
+Hardware still inferred required clock rows with a local label regex (`clk`, `clock`, `clk100mhz`) even though Verify/runtime already produced semantic signal roles.
+
+That left Hardware label-fragile on sequential designs where the real clock input had a nonstandard student-facing name.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - Clock readiness now prefers semantic `clock` roles from `verifyLastRun.report.signalRoles`.
+  - Matching uses normalized IO lookup keys instead of raw label regexes.
+  - Legacy label matching remains only as a fallback when no verify role map exists yet.
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Threaded `verifyLastRun` into `HardwareSurface` so Hardware consumes the same runtime verify authority students already see in Verify.
+- `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+  - Added a regression proving a required input labeled `phase_driver` still counts as the clock when Verify marks it as `clock`.
+
+### Student-visible behavior
+
+- Hardware no longer depends on clock-like labels to decide whether the required clock is mapped.
+- Sequential designs with custom clock names now agree with Verify’s semantic role model instead of being blocked by label shape.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx` -> PASS (1 file, 8 tests)
+
+### Remaining concern
+
+- Hardware now reuses semantic roles from the latest verify run; broader live-design role derivation outside verify remains a separate seam.
+
 ## Change Log 2026-03-21 (Authority hardening slice 5: clock readiness completeness)
 
 **Subsystem**: Hardware readiness / Verify-Export-Hardware mapping agreement

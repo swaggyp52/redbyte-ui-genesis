@@ -1453,6 +1453,7 @@ export const IdeApp: React.FC = () => {
               onOpenVerify={() => setCurrentMode('verify')}
               onGoToDesign={() => setCurrentMode('design')}
               onSetMappingPin={handleMappingPinChange}
+              verifyLastRun={verifyLastRun}
             />
           </ErrorBoundary>
         ) : currentMode === 'export' ? (

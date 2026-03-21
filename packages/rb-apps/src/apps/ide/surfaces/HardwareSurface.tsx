@@ -16,7 +16,7 @@ import { useIoBus } from '../ioBus';
 import { HardwareBoard2D } from '../components/HardwareBoard2D';
 import { Basys3BoardView } from '../components/Basys3BoardView';
 import { useBoardSignal } from '../BoardSignalContext';
-import { getStudentFacingIoLabel } from '../ioLabels';
+import { getIoSignalLookupKeys, getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
 
 export interface HardwareMappingRow {
   id: string;
@@ -135,17 +135,34 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const [selectedMappingRowId, setSelectedMappingRowId] = useState<string | null>(null);
   const sim = runtimeSim ?? HARDWARE_EMPTY_SIM;
 
+  const clockRoleKeys = useMemo(() => {
+    const next = new Set<string>();
+    for (const [key, role] of Object.entries(verifyLastRun?.report.signalRoles ?? {})) {
+      if (role === 'clock') {
+        const normalized = normalizeIoSignalKey(key);
+        if (normalized) next.add(normalized);
+      }
+    }
+    return next;
+  }, [verifyLastRun?.reportHash]);
+
+  // Prefer semantic verify roles for clock detection; fall back only when no role map exists yet.
   const hasClockMapping = useMemo(
     () => {
       const requiredClockRows = mappingRows.filter(
-        (row) =>
-          row.direction === 'in' &&
-          row.required &&
-          /(^clk$|clock|clk100mhz)/i.test(getStudentFacingIoLabel(row))
+        (row) => {
+          if (row.direction !== 'in' || !row.required) return false;
+
+          if (clockRoleKeys.size > 0) {
+            return getIoSignalLookupKeys(row, mappingRows).some((key) => clockRoleKeys.has(key));
+          }
+
+          return /(^clk$|clock|clk100mhz)/i.test(getStudentFacingIoLabel(row));
+        }
       );
       return requiredClockRows.length > 0 && requiredClockRows.every((row) => row.pin.trim().length > 0);
     },
-    [mappingRows]
+    [clockRoleKeys, mappingRows]
   );
   const hasOutputMapping = useMemo(
     () => {
