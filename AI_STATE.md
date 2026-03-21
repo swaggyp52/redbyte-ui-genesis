@@ -1,5 +1,43 @@
 # AI State
 
+## Change Log 2026-03-21 (Authority hardening slice 7: live semantic IO roles for Hardware)
+
+**Subsystem**: Hardware readiness / live verify-authority alignment
+
+### Problem
+
+Slice 6 made Hardware reuse semantic clock roles from `verifyLastRun`, but that still left one live-authority gap:
+
+1. Hardware only got semantic roles after a verify run already existed.
+2. Opening Hardware on a fresh sequential design with a nonstandard clock label could still show `Clock: Missing` until Verify had been run once.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/ioSignalRoles.ts`
+  - Extracted shared IO signal-role derivation from runtime into one reusable helper.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Runtime verify now uses the shared helper instead of a private local role-derivation function.
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Derived live semantic IO roles from the current schedule contract and current IO rows.
+  - Threaded those live roles into `HardwareSurface`.
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - Hardware now prefers live semantic roles, then falls back to verify-run roles, then finally to the legacy label heuristic only when no semantic source exists.
+- `packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx`
+  - Added a regression proving a sequential project with a clock labeled `phase_driver` shows `Clock: Mapped` in Hardware before any verify run exists.
+
+### Student-visible behavior
+
+- Hardware now recognizes the current live clock role on sequential designs even before the first verify run.
+- Nonstandard clock names stay aligned with Verify/export authority instead of depending on `clk`-style labels.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx` -> PASS (2 files, 11 tests)
+
+### Remaining concern
+
+- The legacy label heuristic still exists as a last-resort compatibility fallback when no semantic role source is available at all.
+
 ## Change Log 2026-03-21 (Authority hardening slice 6: semantic clock-role readiness)
 
 **Subsystem**: Hardware readiness / shared IO-role authority

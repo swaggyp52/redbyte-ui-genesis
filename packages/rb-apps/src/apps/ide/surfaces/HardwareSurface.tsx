@@ -17,6 +17,7 @@ import { HardwareBoard2D } from '../components/HardwareBoard2D';
 import { Basys3BoardView } from '../components/Basys3BoardView';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getIoSignalLookupKeys, getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
+import type { IoSignalRole } from '../ioSignalRoles';
 
 export interface HardwareMappingRow {
   id: string;
@@ -47,6 +48,7 @@ export interface HardwareSurfaceProps {
   onOpenVerify: () => void;
   onGoToDesign?: () => void;
   onSetMappingPin?: (rowId: string, alias: string) => void;
+  signalRoles?: Record<string, IoSignalRole>;
   /** Last completed verify run — provides scenario/run provenance for the board view. */
   verifyLastRun?: RuntimeVerifyRun;
   /** Currently active scenario — compared to verifyLastRun to detect drift. */
@@ -123,6 +125,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   onOpenVerify,
   onGoToDesign,
   onSetMappingPin,
+  signalRoles,
   verifyLastRun,
   activeScenario,
   scenarios = [],
@@ -137,14 +140,17 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
   const clockRoleKeys = useMemo(() => {
     const next = new Set<string>();
-    for (const [key, role] of Object.entries(verifyLastRun?.report.signalRoles ?? {})) {
+    const roleSource = Object.keys(signalRoles ?? {}).length > 0
+      ? signalRoles ?? {}
+      : verifyLastRun?.report.signalRoles ?? {};
+    for (const [key, role] of Object.entries(roleSource)) {
       if (role === 'clock') {
         const normalized = normalizeIoSignalKey(key);
         if (normalized) next.add(normalized);
       }
     }
     return next;
-  }, [verifyLastRun?.reportHash]);
+  }, [signalRoles, verifyLastRun?.reportHash]);
 
   // Prefer semantic verify roles for clock detection; fall back only when no role map exists yet.
   const hasClockMapping = useMemo(

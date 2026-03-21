@@ -48,6 +48,7 @@ import {
   type ProjectHealthExportResult,
   type ProjectHealthMode,
 } from './ide/projectHealth';
+import { deriveIoSignalRoles } from './ide/ioSignalRoles';
 import { useProjectRuntime, type ProjectIoRow, type VerifyRunLedgerEntry } from './ide/projectRuntime';
 import {
   decodePersistedIdeProject,
@@ -1004,6 +1005,16 @@ export const IdeApp: React.FC = () => {
     () => extractExpectedIoRows(exportViewModel.artifacts),
     [exportViewModel.artifacts]
   );
+
+  const liveSignalRoles = useMemo(() => {
+    if (!exportProject) return {};
+    const scheduleContract = deriveVerifySchedule(
+      exportProject.circuit,
+      exportProject.ioMapping,
+      exportProject.hdl
+    );
+    return deriveIoSignalRoles(projectIoRows, scheduleContract);
+  }, [exportProject, projectIoRows]);
   const handleDiagnosticAction = useCallback((diagnostic: IdeDiagnostic) => {
     const action = choosePrimaryDiagnosticAction(diagnostic);
     if (!action) return;
@@ -1453,6 +1464,7 @@ export const IdeApp: React.FC = () => {
               onOpenVerify={() => setCurrentMode('verify')}
               onGoToDesign={() => setCurrentMode('design')}
               onSetMappingPin={handleMappingPinChange}
+              signalRoles={liveSignalRoles}
               verifyLastRun={verifyLastRun}
             />
           </ErrorBoundary>

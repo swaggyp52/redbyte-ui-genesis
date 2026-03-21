@@ -39,6 +39,7 @@ import {
   type VerifyReportVector,
   type VerifyWaveSample,
 } from './verifyReport';
+import { deriveIoSignalRoles } from './ioSignalRoles';
 import { generateBringUpVectors } from './bringupArtifacts';
 import {
   DEFAULT_SIM_SPEED_HZ,
@@ -862,7 +863,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             failedRows.length > 0 || preflightIssues.length > 0 ? 'fail' : 'pass';
           const ranAtIso = input.ranAtIso ?? new Date().toISOString();
           const vectors = toVerifyVectors(state.projectVectors);
-          const signalRoles = deriveSignalRoles(state.projectIoRows, scheduleContract);
+          const signalRoles = deriveIoSignalRoles(state.projectIoRows, scheduleContract);
           const report = buildVerifyReport({
             scenarioId,
             scenarioName,
@@ -999,7 +1000,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             state.circuit,
             toIoMapping(state.projectIoRows)
           ).schedule;
-          const signalRoles = deriveSignalRoles(state.projectIoRows, scheduleContract);
+          const signalRoles = deriveIoSignalRoles(state.projectIoRows, scheduleContract);
           const nextRun =
             result.report
               ? ({
@@ -2223,52 +2224,6 @@ function toIoMapping(rows: ProjectIoRow[]): IoMapping {
         pin: row.pin,
       })),
   };
-}
-
-function deriveSignalRoles(
-  ioRows: ProjectIoRow[],
-  scheduleContract: VerifyScheduleContract
-): Record<string, 'clock' | 'reset' | 'input' | 'output'> {
-  const roles: Record<string, 'clock' | 'reset' | 'input' | 'output'> = {};
-  const clockName = scheduleContract.clockSignalName?.toLowerCase() ?? '';
-  const resetName = scheduleContract.resetHint?.signalName?.toLowerCase() ?? '';
-
-  for (const row of ioRows) {
-    const label = row.label.trim();
-    if (!label) continue;
-    const lower = label.toLowerCase();
-
-    if (
-      clockName &&
-      (lower === clockName ||
-        lower === 'clk' ||
-        lower === 'clock' ||
-        lower === 'clk100mhz' ||
-        lower.startsWith('clk_') ||
-        lower.startsWith('clock_'))
-    ) {
-      roles[label] = 'clock';
-    } else if (resetName && lower === resetName) {
-      roles[label] = 'reset';
-    } else if (
-      lower === 'rst' ||
-      lower === 'reset' ||
-      lower === 'clr' ||
-      lower === 'clear' ||
-      lower === 'btnc' ||
-      lower.startsWith('rst_') ||
-      lower.startsWith('reset_') ||
-      lower.startsWith('clr_') ||
-      lower.startsWith('clear_')
-    ) {
-      roles[label] = 'reset';
-    } else if (row.direction === 'in') {
-      roles[label] = 'input';
-    } else {
-      roles[label] = 'output';
-    }
-  }
-  return roles;
 }
 
 function buildVerifyRunMeta(scheduleContract: VerifyScheduleContract): VerifyRunMeta {
