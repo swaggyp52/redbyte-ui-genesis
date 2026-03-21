@@ -52,6 +52,13 @@ import {
 } from './sim/simEngine';
 import type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
 import { buildCanonicalVerifyWaveSamples } from './sim/traceContract';
+import {
+  DEFAULT_SCENARIO_ID,
+  createDefaultScenario,
+  migrateProjectVectorsToScenario,
+  repairScenarioLibrary,
+  type VerifyScenario,
+} from './verifyScenario';
 
 export type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
 
@@ -172,6 +179,8 @@ export interface ProjectRuntimeState {
   activeExampleId: string | null;
   projectIoRows: ProjectIoRow[];
   projectVectors: TestVector[];
+  scenarios: VerifyScenario[];
+  activeScenarioId: string;
   customVectors: CustomTestVector[];
   circuit: Circuit;
   designPast: DesignHistorySnapshot[];
@@ -245,6 +254,8 @@ interface PersistedRuntimeState {
   activeExampleId: string | null;
   projectIoRows: ProjectIoRow[];
   projectVectors: TestVector[];
+  scenarios?: VerifyScenario[];
+  activeScenarioId?: string;
   customVectors: CustomTestVector[];
   circuit: Circuit;
   designPast?: DesignHistorySnapshot[];
@@ -267,6 +278,8 @@ interface DesignHistorySnapshot {
 }
 
 interface RuntimeSeedState extends PersistedRuntimeState {
+  scenarios: VerifyScenario[];
+  activeScenarioId: string;
   designPast: DesignHistorySnapshot[];
   designFuture: DesignHistorySnapshot[];
   maxDesignHistory: number;
@@ -479,6 +492,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           activeExampleId: null,
           projectIoRows,
           projectVectors: cloneVectors(project.vectors ?? []),
+          ...migrateProjectVectorsToScenario(project.vectors ?? []),
           customVectors: [],
           circuit,
           designPast: [],
@@ -1184,6 +1198,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         activeExampleId: state.activeExampleId,
         projectIoRows: cloneIoRows(state.projectIoRows),
         projectVectors: cloneVectors(state.projectVectors),
+        scenarios: state.scenarios.map((s) => ({ ...s, vectors: s.vectors.map((v) => ({ ...v, inputs: { ...v.inputs }, expected: { ...(v.expected ?? {}) } })) })),
+        activeScenarioId: state.activeScenarioId,
         customVectors: [...(state.customVectors ?? [])],
         circuit: cloneCircuit(state.circuit),
         designPast: cloneDesignHistoryPast(state.designPast, state.maxDesignHistory),
@@ -1301,6 +1317,10 @@ export function mergePersistedRuntimeState(
     currentState.projectHealthCore,
     invalidateVerifyTrust
   );
+  const { scenarios, activeScenarioId } =
+    Array.isArray(candidate.scenarios) && (candidate.scenarios as unknown[]).length > 0
+      ? repairScenarioLibrary(candidate.scenarios, candidate.activeScenarioId, projectVectors)
+      : migrateProjectVectorsToScenario(projectVectors);
 
   return {
     ...currentState,
@@ -1320,6 +1340,8 @@ export function mergePersistedRuntimeState(
           : currentState.activeExampleId,
     projectIoRows,
     projectVectors,
+    scenarios,
+    activeScenarioId,
     customVectors: Array.isArray(candidate.customVectors) ? [...candidate.customVectors] : [],
     circuit,
     designPast,
@@ -1362,6 +1384,8 @@ function stateFromExample(
     activeExampleId: example.id,
     projectIoRows,
     projectVectors: cloneVectors(example.vectors),
+    scenarios: [createDefaultScenario(example.vectors)],
+    activeScenarioId: DEFAULT_SCENARIO_ID,
     customVectors: [],
     circuit,
     designPast: [],
