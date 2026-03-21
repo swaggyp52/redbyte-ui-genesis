@@ -136,13 +136,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const sim = runtimeSim ?? HARDWARE_EMPTY_SIM;
 
   const hasClockMapping = useMemo(
-    () =>
-      mappingRows.some(
+    () => {
+      const requiredClockRows = mappingRows.filter(
         (row) =>
           row.direction === 'in' &&
-          /(^clk$|clock|clk100mhz)/i.test(getStudentFacingIoLabel(row)) &&
-          row.pin.trim().length > 0
-      ),
+          row.required &&
+          /(^clk$|clock|clk100mhz)/i.test(getStudentFacingIoLabel(row))
+      );
+      return requiredClockRows.length > 0 && requiredClockRows.every((row) => row.pin.trim().length > 0);
+    },
     [mappingRows]
   );
   const hasOutputMapping = useMemo(

@@ -1,5 +1,39 @@
 # AI State
 
+## Change Log 2026-03-21 (Authority hardening slice 5: clock readiness completeness)
+
+**Subsystem**: Hardware readiness / Verify-Export-Hardware mapping agreement
+
+### Problem
+
+After slice 4, output readiness on Hardware matched the required-pin completeness contract used elsewhere, but clock readiness still diverged:
+
+1. `HardwareSurface.tsx` treated clock readiness as true when any clock-like input had a pin.
+2. Export and Verify already treated incomplete mapping through the broader required-row completeness path.
+3. A design with one mapped clock and another required clock left unmapped could therefore show contradictory readiness across surfaces.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - Tightened `hasClockMapping` to require every required clock-like input row to have a concrete pin assignment.
+  - Clock readiness now uses the same completeness shape as output readiness instead of an existence-only heuristic.
+- `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+  - Added a regression proving Hardware must show `Clock: Missing` when a required clock row is still unmapped.
+
+### Student-visible behavior
+
+- Hardware no longer reports clock readiness prematurely when only one of multiple required clock inputs is pinned.
+- Clock-mapping trust now agrees with the incomplete-mapping behavior already surfaced by Verify and Export.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx` -> PASS (1 file, 6 tests)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx -t "mapping|incomplete|Finish mapping|shows full PASS trust milestone copy and continue CTA when mapping is complete|shows PASS incomplete milestone copy and finish-mapping CTA when qualification is incomplete"` -> PASS (3 files, 9 tests)
+
+### Remaining concern
+
+- Required-input completeness is still inferred by label shape (`clk`, `clock`, `clk100mhz`) inside Hardware rather than through a shared semantic role model; that broader normalization seam remains open.
+
 ## Change Log 2026-03-21 (Authority hardening slice 4: hardware required-output mapping truth)
 
 **Subsystem**: Hardware readiness / custom IO-count mapping trust

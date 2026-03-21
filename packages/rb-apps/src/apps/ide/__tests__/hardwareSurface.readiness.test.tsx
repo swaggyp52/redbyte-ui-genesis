@@ -149,6 +149,64 @@ describe('HardwareSurface readiness', () => {
     expect(getByText('Outputs').parentElement?.textContent).toContain('Missing');
   });
 
+  it('does not claim clock is mapped when a required clock row is still missing a pin', () => {
+    const { getByText } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Partially Mapped Clocks"
+          expectedBehavior="LED0 follows the clocked design."
+          mappingRows={[
+            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true },
+            { id: 'clk_aux', label: 'clock_aux', direction: 'in', pin: '', required: true },
+            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={2}
+          health={makeHealth({
+            dirtySinceVerify: true,
+            dirtySinceExport: true,
+          })}
+          verifyCurrent={false}
+          exportCurrent={false}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByText('Clock').parentElement?.textContent).toContain('Missing');
+  });
+
+  it('claims clock is mapped when all required clock rows have pins', () => {
+    const { getByText } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Fully Mapped Clocks"
+          expectedBehavior="LED0 follows the fully mapped clocked design."
+          mappingRows={[
+            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true },
+            { id: 'clk_aux', label: 'clock_aux', direction: 'in', pin: 'V10', required: true },
+            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={2}
+          health={makeHealth({
+            dirtySinceVerify: true,
+            dirtySinceExport: true,
+          })}
+          verifyCurrent={false}
+          exportCurrent={false}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByText('Clock').parentElement?.textContent).toContain('Mapped');
+  });
+
   it('points students to Test first when hardware is blocked before any current pass', () => {
     const { getByTestId } = render(
       <BoardSignalProvider>
