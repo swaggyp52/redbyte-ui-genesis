@@ -253,6 +253,43 @@ describe('projectRuntime history authority', () => {
     expect(liveOutputRows[0]?.label).toBe('ld0-live');
   });
 
+  it('reconciles orphan and duplicate boundary rows immediately when loading a malformed project', () => {
+    const malformedProject = buildHistoryFixture();
+    malformedProject.ioMapping.outputs = [
+      {
+        id: 'ld0_shadow',
+        nodeId: 'ld0_node',
+        port: 'in',
+        label: 'ld0-shadow',
+        pin: '',
+      },
+      {
+        id: 'ld0',
+        nodeId: 'ld0_node',
+        port: 'in',
+        label: 'ld0',
+        pin: 'LD0',
+      },
+      {
+        id: 'ghost_output',
+        nodeId: 'ghost_output_node',
+        port: 'in',
+        label: 'ghost-output',
+        pin: 'LD9',
+      },
+    ];
+
+    useProjectRuntime.getState().loadFromProject(malformedProject);
+
+    const rows = useProjectRuntime.getState().projectIoRows;
+    const liveOutputRows = rows.filter((row) => row.nodeId === 'ld0_node');
+
+    expect(rows.some((row) => row.nodeId === 'ghost_output_node')).toBe(false);
+    expect(liveOutputRows).toHaveLength(1);
+    expect(liveOutputRows[0]?.pin).toBe('LD0');
+    expect(liveOutputRows[0]?.label).toBe('ld0');
+  });
+
   it('duplicate-style payloads survive runtime undo/redo correctly', () => {
     const originalCount = useProjectRuntime.getState().circuit.nodes.length;
     const duplicatedCircuit: Circuit = {

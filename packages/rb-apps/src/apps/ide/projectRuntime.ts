@@ -457,8 +457,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         });
       },
       loadFromProject: (project) => {
-        const projectIoRows = ioRowsFromProject(project);
         const circuit = cloneCircuit(project.circuit);
+        const projectIoRows = synchronizeProjectIoRows(circuit, ioRowsFromProject(project));
         const incomingProjectId = (project.meta?.projectId ?? '').trim();
         // Register any custom components from the project
         for (const def of (project.customComponents ?? [])) {
@@ -1266,8 +1266,8 @@ export function mergePersistedRuntimeState(
     return currentState;
   }
 
-  const projectIoRows = ioRowsFromProject(normalizedProject);
   const circuit = cloneCircuit(normalizedProject.circuit);
+  const projectIoRows = synchronizeProjectIoRows(circuit, ioRowsFromProject(normalizedProject));
   const projectVectors = cloneVectors(normalizedProject.vectors ?? []);
   const rawVerifyLastRun = tryCloneVerifyRun(candidate.verifyLastRun);
   const invalidateVerifyTrust = hasLegacyVerifyTrust(rawVerifyLastRun, candidate.projectHealthCore);
@@ -1935,11 +1935,10 @@ function normalizePersistedDesignHistorySnapshot(value: unknown): DesignHistoryS
   }
 
   const normalizedCircuit = cloneCircuit(normalizedProject.circuit);
-  const validNodeIds = new Set(normalizedCircuit.nodes.map((node) => normalizePortToken(node.id)));
-  const normalizedProjectIoRows = ioRowsFromProject(normalizedProject).filter((row) => {
-    const nodeId = normalizePortToken(row.nodeId);
-    return nodeId.length === 0 || validNodeIds.has(nodeId);
-  });
+  const normalizedProjectIoRows = synchronizeProjectIoRows(
+    normalizedCircuit,
+    ioRowsFromProject(normalizedProject)
+  );
 
   return {
     circuit: normalizedCircuit,

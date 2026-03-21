@@ -1,5 +1,40 @@
 # AI State
 
+## Change Log 2026-03-21 (Authority hardening slice 13: runtime load reconciliation for malformed boundary rows)
+
+**Subsystem**: Runtime project load / persisted-state authority sync
+
+### Problem
+
+Runtime only reconciled malformed boundary rows after later circuit mutations, not at initial load:
+
+1. `loadFromProject` copied persisted mapping rows directly into runtime authority.
+2. Persisted restore helpers used raw or partial row filtering instead of the shared reconciliation path.
+3. A malformed saved/imported project could therefore carry orphan or duplicate boundary rows into Verify, Export, and Hardware before any edit happened.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - `loadFromProject` now reconciles imported IO rows through `synchronizeProjectIoRows(...)` immediately.
+  - `mergePersistedRuntimeState(...)` now applies the same reconciliation path when restoring persisted runtime state.
+  - `normalizePersistedDesignHistorySnapshot(...)` now uses the same reconciliation path instead of ad hoc orphan filtering.
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+  - Added a regression proving malformed duplicate/orphan boundary rows are pruned immediately on load, with the pinned survivor preserved.
+
+### Student-visible behavior
+
+- Loading a malformed saved/imported project no longer leaves ghost boundary rows alive until the next edit.
+- Verify, Export, and Hardware now start from the same reconciled live IO manifest as soon as the project loads.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx -t "reconciles orphan and duplicate boundary rows immediately when loading a malformed project"` -> PASS (1 file, 1 test)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` -> PASS (2 files, 18 tests)
+
+### Remaining concern
+
+- The next high-value seam is an end-to-end IDE-shell agreement regression that mutates live boundary IO through the app and proves Verify, Export, and Hardware all surface the same current blocker state without relying on separate heuristics.
+
 ## Change Log 2026-03-21 (Authority hardening slice 12: export orphan-row drop for deleted boundaries)
 
 **Subsystem**: Export pin-table authority / deleted boundary cleanup
