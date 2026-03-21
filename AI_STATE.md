@@ -1,5 +1,39 @@
 # AI State
 
+## Change Log 2026-03-21 (Authority hardening slice 4: hardware required-output mapping truth)
+
+**Subsystem**: Hardware readiness / custom IO-count mapping trust
+
+### Problem
+
+After slice 3, Project/Export readiness already treated required mapping completeness correctly, but `HardwareSurface` still had a local divergence:
+
+1. `hasOutputMapping` only checked whether any output row had a pin.
+2. Adding a new required output without assigning a pin could therefore leave Hardware showing `Outputs: Mapped` even while the broader readiness model was blocked.
+
+This became more visible after custom IO-count changes because one previously mapped output was enough to satisfy the old Hardware-only heuristic.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - Tightened `hasOutputMapping` to require every required output row to have a concrete pin assignment.
+  - Hardware’s live monitor/checklist now follows the same required-output completeness truth as the rest of the readiness model.
+- `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+  - Added a regression proving Hardware must show `Outputs: Missing` when one required output is still unmapped, even if another output is already pinned.
+
+### Student-visible behavior
+
+- Hardware no longer overstates mapping readiness after custom IO-count increases.
+- A newly added required output with no pin now keeps the Hardware surface honest until mapping is completed.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx` -> PASS (1 file, 5 tests)
+
+### Remaining concern
+
+- Clock readiness still uses a clock-specific heuristic rather than a generalized required-input completeness check; that seam remains separate from this output-mapping slice.
+
 ## Change Log 2026-03-21 (Authority hardening slice 3: collision-safe machine signal keys)
 
 **Subsystem**: IDE verify/export signal identity

@@ -146,7 +146,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     [mappingRows]
   );
   const hasOutputMapping = useMemo(
-    () => mappingRows.some((row) => row.direction === 'out' && row.pin.trim().length > 0),
+    () => {
+      const requiredOutputs = mappingRows.filter(
+        (row) => row.direction === 'out' && row.required
+      );
+      return requiredOutputs.length > 0 && requiredOutputs.every((row) => row.pin.trim().length > 0);
+    },
     [mappingRows]
   );
 

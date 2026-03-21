@@ -120,6 +120,35 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
   });
 
+  it('does not claim outputs are mapped when a required output row is still missing a pin', () => {
+    const { getByText } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Partially Mapped Outputs"
+          expectedBehavior="Both LEDs should follow switches."
+          mappingRows={[
+            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true },
+            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
+            { id: 'ld1', label: 'ld1', direction: 'out', pin: '', required: true },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={2}
+          health={makeHealth({
+            dirtySinceVerify: true,
+            dirtySinceExport: true,
+          })}
+          verifyCurrent={false}
+          exportCurrent={false}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByText('Outputs').parentElement?.textContent).toContain('Missing');
+  });
+
   it('points students to Test first when hardware is blocked before any current pass', () => {
     const { getByTestId } = render(
       <BoardSignalProvider>
