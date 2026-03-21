@@ -22,6 +22,7 @@ export interface ProjectHealthIssue {
 export interface ProjectHealthVerifyResult {
   status: 'pass' | 'fail';
   hash: string;
+  qualification?: 'incomplete-mapping';
   reportHash?: string;
   report?: VerifyReport;
   failingTick?: number;
@@ -52,6 +53,7 @@ export interface ProjectReadinessState {
   hasCircuit: boolean;
   hasIoMapping: boolean;
   hasVectors: boolean;
+  verifyQualification?: 'incomplete-mapping';
 }
 
 export interface ProjectPrimaryCta {
@@ -65,6 +67,11 @@ export function deriveProjectHealth(
   readiness: ProjectReadinessState
 ): ProjectHealth {
   const blockingIssues: ProjectHealthIssue[] = [];
+  const verifyQualification = readiness.verifyQualification ?? core.lastVerify?.qualification;
+  const isIncompleteMappingQualifiedPass =
+    core.lastVerify?.status === 'pass' &&
+    !core.dirtySinceVerify &&
+    verifyQualification === 'incomplete-mapping';
 
   if (!readiness.hasCircuit) {
     blockingIssues.push({
@@ -87,6 +94,14 @@ export function deriveProjectHealth(
       code: 'RBP1002',
       message: 'No verification vectors defined.',
       fixPath: { mode: 'verify', actionLabel: 'Add Test Vectors' },
+    });
+  }
+
+  if (isIncompleteMappingQualifiedPass) {
+    blockingIssues.push({
+      code: 'RBP1005',
+      message: 'Verify passed, but some output pins remain unmapped - hardware results may not reflect all outputs.',
+      fixPath: { mode: 'hardware', actionLabel: 'Open Hardware' },
     });
   }
 
@@ -124,6 +139,9 @@ export function choosePrimaryProjectCta(
   }
   if (!readiness.hasVectors) {
     return { label: 'Verify', mode: 'verify', code: 'RBP1002' };
+  }
+  if (health.blockingIssues.some((issue) => issue.code === 'RBP1005')) {
+    return { label: 'Hardware', mode: 'hardware', code: 'RBP1005' };
   }
   if (!health.lastVerify || health.lastVerify.status !== 'pass' || health.dirtySinceVerify) {
     return { label: 'Verify', mode: 'verify', code: 'RBP1004' };

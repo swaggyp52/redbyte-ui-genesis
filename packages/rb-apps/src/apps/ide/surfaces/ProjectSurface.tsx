@@ -120,31 +120,6 @@ const PROJECT_OUTPUT_ALIAS_OPTIONS = [
   ...Array.from({ length: 4 }, (_, index) => `AN${index}`),
 ];
 
-/**
- * Synthesizes the complete list of export trust blockers, including:
- * - All existing health.blockingIssues
- * - RBP1005 when verify passes but has incomplete mapping
- */
-function buildExportTrustBlockers(
-  health: ProjectHealth,
-  verifyPassIncomplete: boolean
-): ProjectHealthIssue[] {
-  const issues = [...health.blockingIssues];
-  
-  if (verifyPassIncomplete) {
-    const hasRbp1005 = issues.some((issue) => issue.code === 'RBP1005');
-    if (!hasRbp1005) {
-      issues.push({
-        code: 'RBP1005',
-        message: 'Verify passed, but some output pins remain unmapped — hardware results may not reflect all outputs.',
-        fixPath: { mode: 'hardware', actionLabel: 'Open Hardware' },
-      });
-    }
-  }
-  
-  return issues;
-}
-
 export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   projectName,
   description,
@@ -261,10 +236,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     verifyPassCurrent && readiness.verifyQualification === 'incomplete-mapping';
   const verifyTrusted = verifyPassCurrent && !verifyPassIncomplete;
   const verifyPass = readiness.verifyPass; // Keep for backward compatibility in display
-  const blockingIssues = useMemo(
-    () => buildExportTrustBlockers(health, verifyPassIncomplete),
-    [health, verifyPassIncomplete]
-  );
+  const blockingIssues = useMemo(() => health.blockingIssues, [health.blockingIssues]);
   const topBlockingIssues = useMemo(() => blockingIssues.slice(0, 3), [blockingIssues]);
   const blockingIssue = topBlockingIssues[0] ?? null;
   const activeExample = useMemo(
@@ -735,9 +707,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             <h3>Project Console</h3>
             <span className="ide-workbench-console-mode">Project</span>
           </header>
-          {health.blockingIssues.length > 0 ? (
+          {blockingIssues.length > 0 ? (
             <IdeCallout tone="warn" title="Blocking issues">
-              {health.blockingIssues[0]?.message}
+              {blockingIssues[0]?.message}
             </IdeCallout>
           ) : (
             <IdeCallout tone="success" title="Ready">

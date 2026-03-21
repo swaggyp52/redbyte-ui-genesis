@@ -233,6 +233,81 @@ describe('mergePersistedRuntimeState', () => {
     expect(merged.projectHealthCore.dirtySinceExport).toBe(false);
   });
 
+  it('preserves incomplete-mapping qualification in restored project health', () => {
+    const current = useProjectRuntime.getState();
+
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-qualified-verify',
+        projectName: 'Qualified Verify Project',
+        projectDescription: 'Restored qualified verify trust',
+        activeExampleId: null,
+        projectIoRows: [
+          {
+            id: 'sw0',
+            nodeId: 'sw0_node',
+            port: 'out',
+            label: 'sw0',
+            direction: 'in',
+            pin: 'SW0',
+            required: true,
+          },
+          {
+            id: 'ld0',
+            nodeId: 'ld0_node',
+            port: 'in',
+            label: 'ld0',
+            direction: 'out',
+            pin: '',
+            required: false,
+          },
+        ],
+        projectVectors: [
+          {
+            tick: 0,
+            inputs: { sw0: 1 },
+            expected: { ld0: 1 },
+          },
+        ],
+        circuit: {
+          nodes: [
+            { id: 'sw0_node', type: 'INPUT', x: 0, y: 0 },
+            { id: 'ld0_node', type: 'OUTPUT', x: 10, y: 5 },
+          ],
+          connections: [
+            {
+              from: 'sw0_node',
+              fromPort: 'out',
+              to: 'ld0_node',
+              toPort: 'in',
+            },
+          ],
+        },
+        projectHealthCore: {
+          lastVerify: {
+            status: 'pass',
+            hash: 'vrf_trusted_hash_1234',
+            qualification: 'incomplete-mapping',
+            reportHash: 'vrf_trusted_hash_1234_report',
+            ranAtIso: '2026-03-21T00:00:00.000Z',
+          },
+          dirtySinceVerify: false,
+          dirtySinceExport: true,
+        },
+      },
+      current
+    );
+
+    expect(merged.projectHealthCore.lastVerify).toEqual(
+      expect.objectContaining({
+        status: 'pass',
+        hash: 'vrf_trusted_hash_1234',
+        qualification: 'incomplete-mapping',
+      })
+    );
+    expect(merged.projectHealthCore.dirtySinceVerify).toBe(false);
+  });
+
   it('restores persisted runtime undo and redo history snapshots', () => {
     const current = useProjectRuntime.getState();
 

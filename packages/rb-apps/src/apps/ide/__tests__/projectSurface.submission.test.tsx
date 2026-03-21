@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render } from '@testing-library/react';
 import { ProjectSurface, type ProjectSurfaceProps } from '../surfaces/ProjectSurface';
 import { BoardSignalProvider } from '../BoardSignalContext';
+import { choosePrimaryProjectCta, deriveProjectHealth } from '../projectHealth';
 
 function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurfaceProps {
   return {
@@ -59,6 +60,57 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
 }
 
 describe('ProjectSurface workspace panels', () => {
+  it('keeps the shared CTA and console aligned on incomplete-mapping trust blockers', () => {
+    const health = deriveProjectHealth(
+      {
+        lastVerify: {
+          status: 'pass',
+          hash: 'verify-pass-hash',
+          qualification: 'incomplete-mapping',
+          ranAtIso: '2026-03-21T00:00:00.000Z',
+        },
+        lastExport: undefined,
+        dirtySinceVerify: false,
+        dirtySinceExport: false,
+      },
+      {
+        hasCircuit: true,
+        hasIoMapping: true,
+        hasVectors: true,
+        verifyQualification: 'incomplete-mapping',
+      }
+    );
+    const primaryCta = choosePrimaryProjectCta(health, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: 'incomplete-mapping',
+    });
+
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            readiness: {
+              hasCircuit: true,
+              hasIoMapping: true,
+              hasVectors: true,
+              verifyPass: true,
+              verifyQualification: 'incomplete-mapping',
+              missingRequiredCount: 0,
+            },
+            health,
+            primaryCtaLabel: primaryCta.label,
+            primaryCta,
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-project-showcase-primary-cta').textContent).toContain('Continue to Hardware');
+    expect(getByTestId('ide-project-console').textContent).toContain('some output pins remain unmapped');
+  });
+
   it('keeps the hero CTA dominant while surfacing the active example context', () => {
     const { getByTestId } = render(
       <BoardSignalProvider>
@@ -387,6 +439,25 @@ describe('ProjectSurface workspace panels', () => {
   });
 
   it('clearly explains AVAILABLE status means untrusted export files when verify incomplete', () => {
+    const health = deriveProjectHealth(
+      {
+        lastVerify: {
+          status: 'pass',
+          hash: 'h',
+          qualification: 'incomplete-mapping',
+          ranAtIso: '2026-02-27T00:00:00Z',
+        },
+        lastExport: undefined,
+        dirtySinceVerify: false,
+        dirtySinceExport: false,
+      },
+      {
+        hasCircuit: true,
+        hasIoMapping: true,
+        hasVectors: true,
+        verifyQualification: 'incomplete-mapping',
+      }
+    );
     const { getAllByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
@@ -399,18 +470,7 @@ describe('ProjectSurface workspace panels', () => {
               verifyQualification: 'incomplete-mapping',
               missingRequiredCount: 0,
             },
-            health: {
-              lastVerify: {
-                status: 'pass',
-                hash: 'h',
-                qualification: 'incomplete-mapping',
-                ranAtIso: '2026-02-27T00:00:00Z',
-              },
-              lastExport: undefined,
-              dirtySinceVerify: false,
-              dirtySinceExport: false,
-              blockingIssues: [],
-            },
+            health,
           })}
         />
       </BoardSignalProvider>
@@ -425,6 +485,25 @@ describe('ProjectSurface workspace panels', () => {
   });
 
   it('shows explicit trust blocker when verify passes but with incomplete mapping', () => {
+    const health = deriveProjectHealth(
+      {
+        lastVerify: {
+          status: 'pass',
+          hash: 'h',
+          qualification: 'incomplete-mapping',
+          ranAtIso: '2026-02-27T00:00:00Z',
+        },
+        lastExport: undefined,
+        dirtySinceVerify: false,
+        dirtySinceExport: false,
+      },
+      {
+        hasCircuit: true,
+        hasIoMapping: true,
+        hasVectors: true,
+        verifyQualification: 'incomplete-mapping',
+      }
+    );
     const { getAllByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
@@ -437,18 +516,7 @@ describe('ProjectSurface workspace panels', () => {
               verifyQualification: 'incomplete-mapping',
               missingRequiredCount: 0,
             },
-            health: {
-              lastVerify: {
-                status: 'pass',
-                hash: 'h',
-                qualification: 'incomplete-mapping',
-                ranAtIso: '2026-02-27T00:00:00Z',
-              },
-              lastExport: undefined,
-              dirtySinceVerify: false,
-              dirtySinceExport: false,
-              blockingIssues: [],
-            },
+            health,
           })}
         />
       </BoardSignalProvider>

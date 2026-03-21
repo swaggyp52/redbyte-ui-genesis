@@ -1,5 +1,49 @@
 # AI State
 
+## Change Log 2026-03-21 (Authority hardening slice 14: shared Project health for qualified-pass mapping trust)
+
+**Subsystem**: Project readiness / shared health authority / restore-path qualification fidelity
+
+### Problem
+
+Project readiness still split qualified-pass mapping trust across multiple local paths:
+
+1. `deriveProjectHealth(...)` did not emit a shared blocker for pass-with-`incomplete-mapping`, so `choosePrimaryProjectCta(...)` could still route students to Export even when Hardware mapping was the real fix.
+2. `ProjectSurface` synthesized `RBP1005` locally while other Project affordances still read raw `health.blockingIssues`, leaving CTA/console/readiness authority split.
+3. Persisted `projectHealthCore.lastVerify` dropped `qualification`, so the new shared fallback path could disappear after restore.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectHealth.ts`
+  - Shared project health now emits `RBP1005` when the current trusted PASS is qualified by `incomplete-mapping`.
+  - `choosePrimaryProjectCta(...)` now routes that state to Hardware while still preserving structural blocker precedence.
+  - Project readiness inputs now accept `verifyQualification` so the shared health layer can own this trust decision directly.
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Project readiness now passes `verifyLastRun?.qualification ?? projectHealthCore.lastVerify?.qualification`, keeping restored Project state aligned with the same shared health authority.
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - Project console and blocker presentation now consume the shared blocker list consistently instead of mixing raw health blockers with local synthesis.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Persisted `projectHealthCore.lastVerify` now preserves `qualification` during restore normalization.
+- Tests
+  - Added shared health regressions for `RBP1005`, fallback qualification handling, and CTA precedence.
+  - Added ProjectSurface agreement regression proving the shared CTA and console align on the same incomplete-mapping blocker.
+  - Added persistence regression proving restored project health retains `qualification: 'incomplete-mapping'`.
+
+### Student-visible behavior
+
+- Project now routes pass-with-incomplete-mapping to Hardware as the next action instead of misleadingly pointing to Export.
+- Project blocker callouts, CTA routing, and readiness messaging now agree on the same shared mapping-trust state.
+- Reloading a saved project no longer loses the incomplete-mapping qualification that keeps Project trust honest after restore.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectHealth.test.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx` -> PASS (2 files, 9 tests)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectHealth.test.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts -t "projectHealth verify trust vs structural blockers|keeps the shared CTA and console aligned on incomplete-mapping trust blockers|unmapped output blocker \(RBP1005\) includes an action button pointing to Hardware|clearly explains AVAILABLE status means untrusted export files when verify incomplete|shows explicit trust blocker when verify passes but with incomplete mapping|preserves incomplete-mapping qualification in restored project health"` -> PASS (4 files, 10 tests, 24 skipped)
+
+### Remaining concern
+
+- The next high-value seam is Project/Verify/Export/Hardware agreement through undo/redo and restored runtime override cases, especially proving a fresh clean PASS overrides stale persisted incomplete-mapping state across the shell.
+
 ## Change Log 2026-03-21 (Authority hardening slice 13: runtime load reconciliation for malformed boundary rows)
 
 **Subsystem**: Runtime project load / persisted-state authority sync

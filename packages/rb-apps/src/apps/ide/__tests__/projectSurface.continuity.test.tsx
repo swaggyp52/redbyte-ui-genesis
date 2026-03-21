@@ -14,6 +14,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render } from '@testing-library/react';
 import { ProjectSurface, type ProjectSurfaceProps } from '../surfaces/ProjectSurface';
 import { BoardSignalProvider } from '../BoardSignalContext';
+import { deriveProjectHealth } from '../projectHealth';
 
 function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurfaceProps {
   return {
@@ -70,6 +71,25 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
 describe('ProjectSurface — blocker-to-surface routing', () => {
   it('unmapped output blocker (RBP1005) includes an action button pointing to Hardware', () => {
     const onOpenHardware = vi.fn();
+    const health = deriveProjectHealth(
+      {
+        lastVerify: {
+          status: 'pass',
+          hash: 'h',
+          qualification: 'incomplete-mapping',
+          ranAtIso: '2026-02-27T00:00:00Z',
+        },
+        lastExport: undefined,
+        dirtySinceVerify: false,
+        dirtySinceExport: false,
+      },
+      {
+        hasCircuit: true,
+        hasIoMapping: true,
+        hasVectors: true,
+        verifyQualification: 'incomplete-mapping',
+      }
+    );
     const { getAllByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
@@ -82,17 +102,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
               verifyQualification: 'incomplete-mapping',
               missingRequiredCount: 0,
             },
-            health: {
-              lastVerify: {
-                status: 'pass',
-                hash: 'h',
-                ranAtIso: '2026-02-27T00:00:00Z',
-              },
-              lastExport: undefined,
-              dirtySinceVerify: false,
-              dirtySinceExport: false,
-              blockingIssues: [],
-            },
+            health,
             onOpenHardware,
           })}
         />

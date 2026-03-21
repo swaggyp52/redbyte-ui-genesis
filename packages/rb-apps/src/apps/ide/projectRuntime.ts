@@ -2108,6 +2108,7 @@ function normalizePersistedLastVerify(
       status: verifyLastRun.status,
       hash: verifyLastRun.deterministicHash,
       reportHash: verifyLastRun.reportHash,
+      qualification: verifyLastRun.qualification,
       report: verifyLastRun.report,
       failingTick: verifyLastRun.firstFailingTick,
       ranAtIso: verifyLastRun.generatedAtIso,
@@ -2124,6 +2125,7 @@ function normalizePersistedLastVerify(
   return {
     status: candidate.status,
     hash: candidate.hash,
+    qualification: candidate.qualification === 'incomplete-mapping' ? 'incomplete-mapping' : undefined,
     reportHash: typeof candidate.reportHash === 'string' ? candidate.reportHash : undefined,
     report: verifyLastRun?.report,
     failingTick: Number.isFinite(candidate.failingTick) ? Number(candidate.failingTick) : verifyLastRun?.firstFailingTick,

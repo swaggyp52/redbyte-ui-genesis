@@ -234,10 +234,18 @@ export const IdeApp: React.FC = () => {
       hasIoMapping,
       hasVectors,
       verifyPass: latestVerifyPass,
-      verifyQualification: verifyLastRun?.qualification,
+      verifyQualification: verifyLastRun?.qualification ?? projectHealthCore.lastVerify?.qualification,
       missingRequiredCount,
     }),
-    [hasCircuit, hasIoMapping, hasVectors, latestVerifyPass, missingRequiredCount, verifyLastRun?.qualification]
+    [
+      hasCircuit,
+      hasIoMapping,
+      hasVectors,
+      latestVerifyPass,
+      missingRequiredCount,
+      projectHealthCore.lastVerify?.qualification,
+      verifyLastRun?.qualification,
+    ]
   );
 
   const projectHealth = useMemo(
@@ -246,8 +254,9 @@ export const IdeApp: React.FC = () => {
         hasCircuit: readiness.hasCircuit,
         hasIoMapping: readiness.hasIoMapping,
         hasVectors: readiness.hasVectors,
+        verifyQualification: readiness.verifyQualification,
       }),
-    [projectHealthCore, readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors]
+    [projectHealthCore, readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors, readiness.verifyQualification]
   );
 
   const primaryProjectCta = useMemo(
@@ -256,8 +265,9 @@ export const IdeApp: React.FC = () => {
         hasCircuit: readiness.hasCircuit,
         hasIoMapping: readiness.hasIoMapping,
         hasVectors: readiness.hasVectors,
+        verifyQualification: readiness.verifyQualification,
       }),
-    [projectHealth, readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors]
+    [projectHealth, readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors, readiness.verifyQualification]
   );
   const statusBarGateStatus = useMemo<'pass' | 'warn' | 'fail'>(() => {
     if (projectHealth.blockingIssues.length > 0) return 'fail';
