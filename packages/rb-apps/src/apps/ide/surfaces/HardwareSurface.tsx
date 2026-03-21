@@ -224,7 +224,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     for (const row of mappingRows) {
       const pin = row.pin.trim().toUpperCase();
       const lbl = getStudentFacingIoLabel(row).toUpperCase();
-      if (/CLK|W5/.test(pin) || /CLK|CLOCK/.test(lbl)) {
+      if (getIoSignalLookupKeys(row, mappingRows).some((key) => clockRoleKeys.has(key))) {
+        groups[0].rows.push(row);
+      } else if (/CLK|W5/.test(pin) || /CLK|CLOCK/.test(lbl)) {
         groups[0].rows.push(row);
       } else if (/^SW\d/.test(pin) || /^SW\d/.test(lbl)) {
         groups[1].rows.push(row);
@@ -239,7 +241,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       }
     }
     return groups.filter((g) => g.rows.length > 0);
-  }, [mappingRows]);
+  }, [clockRoleKeys, mappingRows]);
 
   const [debounceDismissed, setDebounceDismissed] = useState(() => {
     try { return localStorage.getItem('rb-debounce-tip-dismissed') === '1'; } catch { return false; }

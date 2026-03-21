@@ -270,6 +270,43 @@ describe('HardwareSurface readiness', () => {
     expect(getByText('Clock').parentElement?.textContent).toContain('Mapped');
   });
 
+  it('groups semantic clock rows into the Clock section in map mode even before a pin is assigned', () => {
+    const { getByTestId, getByText } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Semantic Clock Map Group"
+          expectedBehavior="Clock row should stay grouped semantically."
+          mappingRows={[
+            { id: 'phase_driver', label: 'phase_driver', direction: 'in', pin: '', required: true },
+            { id: 'data_in', label: 'data_in', direction: 'in', pin: 'V17', required: true },
+            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={makeHealth({
+            dirtySinceVerify: true,
+            dirtySinceExport: true,
+          })}
+          verifyCurrent={false}
+          exportCurrent={false}
+          signalRoles={{
+            phase_driver: 'clock',
+            data_in: 'input',
+            ld0: 'output',
+          }}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    fireEvent.click(getByTestId('ide-hw-mode-btn-map'));
+
+    const clockGroup = getByText('Clock').closest('details');
+    expect(clockGroup?.textContent).toContain('phase_driver');
+  });
+
   it('points students to Test first when hardware is blocked before any current pass', () => {
     const { getByTestId } = render(
       <BoardSignalProvider>

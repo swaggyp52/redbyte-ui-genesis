@@ -1,5 +1,37 @@
 # AI State
 
+## Change Log 2026-03-21 (Authority hardening slice 8: semantic clock grouping in Hardware map mode)
+
+**Subsystem**: Hardware map mode / semantic clock authority
+
+### Problem
+
+After slice 7, Hardware readiness used live semantic clock roles, but the Map Pins table still grouped rows with a separate heuristic path:
+
+1. The Clock group in map mode only recognized rows by `CLK|CLOCK` labels or the `W5` pin.
+2. A semantic clock row with a nonstandard label and no pin assignment still landed under `Other`, even though readiness already treated it as the clock.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - `mapModeGroups` now checks semantic clock role keys first before any legacy label/pin heuristics.
+  - Hardware map mode now groups the same clock row identity that readiness already uses.
+- `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+  - Added a regression proving a semantic clock row labeled `phase_driver` with no assigned pin appears under the Clock section in map mode.
+
+### Student-visible behavior
+
+- The Map Pins table now keeps semantic clock rows in the Clock bucket even before they have a board pin assigned.
+- Hardware readiness and Hardware map mode now agree on which row is the clock.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx` -> PASS (1 file, 9 tests)
+
+### Remaining concern
+
+- Other Hardware map grouping buckets (for example reset-specific handling) still rely on local heuristics rather than the shared semantic role source.
+
 ## Change Log 2026-03-21 (Authority hardening slice 7: live semantic IO roles for Hardware)
 
 **Subsystem**: Hardware readiness / live verify-authority alignment
