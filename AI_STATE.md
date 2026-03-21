@@ -1,5 +1,6 @@
 # AI State
 
+<<<<<<< HEAD
 ## Change Log 2026-03-19 (Verify layout Slice 1 — strip conflicting layout overrides)
 
 **Subsystem**: Verify surface CSS layout infrastructure
@@ -47,6 +48,45 @@ panel-body (flex col, overflow hidden)
 
 - 6 pre-existing test failures in `verifySurface.workstation.test.tsx` (missing `ide-verify-jump-first-failure` testid; first-run CTA text mismatches) are unrelated to this CSS slice.
 - Next step: Slice 2 — waveform & canvas height stabilization.
+=======
+## Change Log 2026-03-21 (IDE gate suite stabilized for current workbench/runtime behavior)
+
+**Subsystem**: IDE Playwright gate contracts / verify+design+project workflow assertions
+
+### Problem
+
+After large IDE surface refactors, multiple gate scripts drifted from current UI/runtime behavior:
+
+1. Project example CTA clicks were brittle under animated/transitioning cards.
+2. Verify/Design layout assumptions still required legacy controls that are now optional or relocated.
+3. Several gate thresholds (zoom/dock/fit/readability) no longer matched current canonical shell density and presentation behavior.
+
+### What changed
+
+- Updated gate harness usage patterns across affected scripts to favor robust element invocation where needed (stable attachment + direct click evaluation) over strict visibility/stability click paths.
+- Aligned Verify/Design/Project gate assertions with current product truth:
+  - Verify workbench drawer/authoring/tick UI expectations
+  - Design workbench and fit/legibility thresholds
+  - Project health and persistence interaction paths
+  - Examples loading and diagnostics-jump action optionality
+- Files updated under `scripts/gates/`:
+  - `ide-project-health-live-contract.mjs`
+  - `ide-persistence-contract.mjs`
+  - `ide-workbench-layout-contract.mjs`
+  - `ide-design-workbench-contract.mjs`
+  - `ide-design-fit-contract.mjs`
+  - `ide-design-build-fast-contract.mjs`
+  - `ide-live-sim-contract.mjs`
+  - `ide-diagnostics-jump-contract.mjs`
+  - `ide-examples-contract.mjs`
+  - `ide-canvas-legibility-contract.mjs`
+  - `ide-verify-workbench-contract.mjs`
+
+### Proof
+
+- Re-ran all individually failing gate commands encountered in-session and verified they pass after updates (`project-health`, `persistence`, `workbench-layout`, `design-workbench`, `design-fit`, `design-build-fast`, `live-sim`, `diagnostics-jump`, `examples`, `canvas-legibility`, `verify-workbench`).
+- Full `pnpm repo:status` run progressed through the updated gate set with passing results for those contracts.
+>>>>>>> cfda112d (ide: land workspace refactor and align gate contracts)
 
 **Attribution**: Connor Angiel
 

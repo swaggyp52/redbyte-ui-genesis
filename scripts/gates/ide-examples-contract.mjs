@@ -40,7 +40,12 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
   )?.trim() ?? '';
   assert(expectedName.length > 0, 'target example card must include a visible name');
 
-  await targetLoad.locator('button').first().click();
+  await targetLoad.locator('button').first().evaluate((button) => {
+    if (!(button instanceof HTMLElement)) {
+      throw new Error('expected example load button element');
+    }
+    button.click();
+  });
   const ideConfirm = page.locator('[data-testid="ide-example-confirm"]').first();
   if (await ideConfirm.isVisible({ timeout: 3000 }).catch(() => false)) {
     await ideConfirm.click();

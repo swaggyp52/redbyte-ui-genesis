@@ -8,6 +8,12 @@
       "port": 5177
     },
     {
+      "name": "ide-dev",
+      "runtimeExecutable": "C:\\Windows\\System32\\cmd.exe",
+      "runtimeArgs": ["/c", "pnpm", "--filter", "rb-apps", "preview", "--port", "5178"],
+      "port": 5178
+    },
+    {
       "name": "playground",
       "runtimeExecutable": "C:\\Windows\\System32\\cmd.exe",
       "runtimeArgs": ["/c", "pnpm", "--filter", "@redbyte/playground", "dev"],

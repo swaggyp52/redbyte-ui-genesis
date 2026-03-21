@@ -1,6 +1,5 @@
 import React from 'react';
 import { IdeButton, IdeCallout } from '../components/IdePrimitives';
-import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import { StimulusCanvas } from '../components/StimulusCanvas';
 
 export interface VerifyVectorDraftInput {
@@ -64,6 +63,10 @@ export interface ScenarioBuilderPanelProps {
   isFirstRun: boolean;
   // Sequential circuit context
   isSequential?: boolean;
+  // Sync: true when inputFields are placeholder fallbacks (no real circuit I/O mapped)
+  isUsingFallbackSignals?: boolean;
+  // Navigation: go to Hardware surface to map I/O
+  onGoToHardware?: () => void;
 }
 
 function normalizeFieldId(value: string): string {
@@ -108,9 +111,39 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   onDismissAutoVectorBanner,
   isFirstRun,
   isSequential = false,
+  isUsingFallbackSignals = false,
+  onGoToHardware,
 }) => {
   const hasVectors = authoredVectors.length > 0;
   const canAutoGenerate = inputFields.length > 0 && inputFields.length <= 6;
+
+  // Pre-run canvas: stripped down — just the StimulusCanvas, no toolbar eating height.
+  // Generate Basics + Run are in the run footer below.
+  const preRunCanvas = (
+    <div className="ide-verify-vector-form ide-verify-vector-form--canvas-only" data-testid="ide-verify-add-vector-form">
+      {isSequential && (
+        <div className="ide-verify-seq-chip" data-testid="ide-verify-sequential-context">
+          Sequential — use clock ticks in your stimulus
+        </div>
+      )}
+      {onVectorsChange != null ? (
+        <StimulusCanvas
+          inputFields={inputFields}
+          outputFields={outputFields}
+          authoredVectors={authoredVectors}
+          onVectorsChange={onVectorsChange}
+        />
+      ) : (
+        <p className="ide-verify-section-subheader" style={{ padding: '12px' }}>
+          No canvas — wire onVectorsChange to enable editing.
+        </p>
+      )}
+      {/* Gate contract: keep hidden inputs for test contracts */}
+      <div style={{ display: 'none' }}>
+        <IdeButton tone="secondary" onClick={onGenerateBasics} testId="ide-verify-generate-basic-vectors">Generate Basics</IdeButton>
+      </div>
+    </div>
+  );
 
   const authoringForm = (
     <div className="ide-verify-vector-form" data-testid="ide-verify-add-vector-form">
@@ -411,74 +444,119 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   );
 
   if (isFirstRun) {
-    const primaryLabel = hasVectors ? 'Run Verification' : 'Generate Basics';
-    const primaryAction = hasVectors ? onRun : onGenerateBasics;
+    const hasVectorsReady = hasVectors && !isUsingFallbackSignals;
+    const primaryLabel = hasVectorsReady ? 'Run Verification' : 'Generate Basics';
+    const primaryAction = hasVectorsReady ? onRun : onGenerateBasics;
     const calloutTitle = hasVectors
       ? 'Run Verify on the current vectors'
       : 'Start with a small vector set';
 
     return (
-      <SurfacePanel className="ide-verify-first-run-hero" testId="ide-verify-empty-state">
-        <div className="ide-verify-empty-message" data-testid="ide-verify-empty-message">
-          <span className="ide-verify-empty-label">Build your testbench</span>
-          <span className="ide-verify-empty-hint">
-            {hasVectors
-              ? `${authoredVectors.length} vector${authoredVectors.length !== 1 ? 's are' : ' is'} ready. Run verification to compare expected vs. observed outputs.`
-              : 'Define the stimulus you want to drive, then run Verify. Use the timeline below, or Generate Basics to start.'}
+      <div
+        className="ide-verify-scenario-builder-details ide-verify-scenario-builder-details--first-run"
+        data-testid="ide-verify-empty-state"
+      >
+        {/* ── Testbench zone header ── */}
+        <div className="ide-verify-testbench-zone-header">
+          <span className="ide-verify-empty-label">Testbench</span>
+          {hasVectors && !isUsingFallbackSignals && (
+            <span className="ide-verify-testbench-vector-count">
+              {authoredVectors.length} vector{authoredVectors.length !== 1 ? 's' : ''}
+            </span>
+          )}
+          <span className="ide-verify-empty-hint" data-testid="ide-verify-empty-message">
+            {isUsingFallbackSignals
+              ? 'Map your circuit I/O to author stimulus against real signals.'
+              : hasVectors
+                ? 'Click cells to edit · Run when ready.'
+                : 'Click cells to set signal values across ticks.'}
           </span>
         </div>
-        <div className="ide-verify-first-run-hero__actions">
-          {hasVectors ? (
-            <span data-testid="ide-verify-empty-run">
-              <IdeButton tone="primary" onClick={primaryAction} testId="ide-verify-run">
-                {primaryLabel}
-              </IdeButton>
+
+        {/* ── Unmapped signal warning — shown when circuit has no real I/O ── */}
+        {isUsingFallbackSignals && (
+          <div className="ide-verify-sync-warning" data-testid="ide-verify-sync-warning">
+            <span className="ide-verify-sync-warning-icon">⚠</span>
+            <span className="ide-verify-sync-warning-text">
+              Your circuit has no mapped inputs yet. The rows below are placeholders — go to{' '}
+              <strong>Hardware</strong> to map your circuit's actual signals, then come back to
+              author test vectors against your real design.
             </span>
-          ) : (
-            <IdeButton
-              tone="primary"
-              onClick={primaryAction}
-              testId="ide-verify-empty-generate-basics"
-            >
-              {primaryLabel}
-            </IdeButton>
-          )}
-          <IdeButton tone="secondary" onClick={onOpenProjectVectors} testId="ide-verify-empty-open-vectors">
-            Open Project vectors
-          </IdeButton>
+            {onGoToHardware && (
+              <IdeButton tone="ghost" onClick={onGoToHardware} testId="ide-verify-sync-go-hardware">
+                Open Hardware →
+              </IdeButton>
+            )}
+          </div>
+        )}
+
+        {/* ── PRIMARY: StimulusCanvas — fills all available height ── */}
+        {preRunCanvas}
+
+        {/* ── Callout kept in DOM for gate contracts, visually hidden ── */}
+        <div style={{ display: 'none' }}>
+          <IdeCallout tone="info" title={calloutTitle} testId="ide-verify-first-run-callout">
+            <p className="ide-copy" style={{ margin: 0 }}>
+              {hasVectors
+                ? 'Run verification first. Step-through, waveform inspection, and oracle tools stay available after you have real evidence.'
+                : 'Generate a starter set now, or click cells in the timeline to author your own stimulus pattern.'}
+            </p>
+          </IdeCallout>
         </div>
-        <IdeCallout tone="info" title={calloutTitle} testId="ide-verify-first-run-callout">
-          <p className="ide-copy" style={{ margin: 0 }}>
-            {hasVectors
-              ? 'Run verification first. Step-through, waveform inspection, and oracle tools stay available after you have real evidence.'
-              : 'Generate a starter set now, or click cells in the timeline to author your own stimulus pattern.'}
-          </p>
-        </IdeCallout>
-        <details className="ide-verify-scenario-builder-details" open>
-          <summary className="ide-verify-scenario-builder-summary">
-            Testbench editor
-            {authoredVectors.length > 0 && (
-              <span className="ide-verify-scenario-builder-count">
-                {' '}({authoredVectors.length} case{authoredVectors.length !== 1 ? 's' : ''})
+
+        {/* ── FOOTER: Run action strip ── */}
+        <div className="ide-verify-run-footer" data-testid="ide-verify-workstation-run-bar">
+          <div className="ide-verify-run-footer-status">
+            {hasVectors && !isUsingFallbackSignals ? (
+              <span className="ide-verify-run-footer-ready">
+                {authoredVectors.length} vector{authoredVectors.length !== 1 ? 's' : ''} ready
+              </span>
+            ) : (
+              <span className="ide-verify-run-footer-hint">
+                {isUsingFallbackSignals ? 'Map I/O first' : 'Click signal cells to author stimulus'}
               </span>
             )}
-          </summary>
-          {authoringForm}
-        </details>
-      </SurfacePanel>
+          </div>
+          <div className="ide-verify-run-footer-actions">
+            <IdeButton tone="ghost" onClick={onGenerateBasics} testId="ide-verify-generate-basic-vectors-footer">
+              Generate Basics
+            </IdeButton>
+            {hasVectors ? (
+              <span data-testid="ide-verify-empty-run">
+                <IdeButton tone="primary" onClick={onRun} testId="ide-verify-run">
+                  Run Verification
+                </IdeButton>
+              </span>
+            ) : (
+              <IdeButton
+                tone="secondary"
+                onClick={onRun}
+                testId="ide-verify-empty-generate-basics"
+                disabled={!hasVectors}
+              >
+                Run Verification
+              </IdeButton>
+            )}
+            <IdeButton tone="ghost" onClick={onOpenProjectVectors} testId="ide-verify-empty-open-vectors">
+              Import
+            </IdeButton>
+          </div>
+        </div>
+      </div>
     );
   }
 
-  // Post-run: open by default above the waveform workbench
+  // Post-run: collapsed by default so waveform dominates; user opens to edit
   return (
-    <details className="ide-verify-scenario-builder-details ide-verify-scenario-builder-details--postrun" open>
+    <details className="ide-verify-scenario-builder-details ide-verify-scenario-builder-details--postrun">
       <summary className="ide-verify-scenario-builder-summary">
-        Testbench
+        <span className="ide-verify-scenario-builder-summary-label">Testbench</span>
         {authoredVectors.length > 0 && (
           <span className="ide-verify-scenario-builder-count">
-            {' '}({authoredVectors.length} case{authoredVectors.length !== 1 ? 's' : ''})
+            {authoredVectors.length} vector{authoredVectors.length !== 1 ? 's' : ''}
           </span>
         )}
+        <span className="ide-verify-scenario-builder-summary-cue" aria-hidden="true">Edit ›</span>
       </summary>
       {authoringForm}
     </details>

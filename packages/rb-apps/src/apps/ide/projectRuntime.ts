@@ -62,6 +62,7 @@ import {
 } from './sim/simEngine';
 import type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
 import { buildCanonicalVerifyWaveSamples } from './sim/traceContract';
+import { normalizeIoSignalKey } from './ioLabels';
 
 export type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
 
@@ -158,6 +159,12 @@ export interface RunVerificationInput {
     expected: string;
     actual: string;
   }>;
+  /**
+   * When false (default), the engine runs in pure TRACE mode — no assertion rows
+   * are checked regardless of what expected values are stored in project vectors.
+   * Students must explicitly enable Assertions to get pass/fail checking.
+   */
+  assertionMode?: boolean;
   ranAtIso?: string;
   // Legacy no-op: authoritative verification always uses deterministic circuit evaluation.
   useRuntimeTrace?: boolean;
@@ -986,9 +993,41 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                   scheduleContract
                 )
               : null;
-          const normalizedRows = deterministicResult?.rows ?? normalizeVerifyRows(input.rows);
-          const failedRows = normalizedRows.filter((row) => row.expected !== row.actual);
-          const preflightIssues = deterministicResult?.evidence.preflight ?? [];
+          // rawRows = full simulation comparison rows (expected vs actual for every output signal).
+          // assertionRows = rows used for pass/fail checking; empty when assertionMode is OFF.
+          // Splitting these lets TRACE runs still show the waveform (output signals come from
+          // rawRows in buildCanonicalVerifyWaveSamples) while suppressing false FAILs.
+          const rawRows = deterministicResult?.rows ?? normalizeVerifyRows(input.rows);
+          // Build set of currently valid output signal keys from the live design.
+          // Any expected row referencing a signal not in this set is stale (e.g. from
+          // a starter template or a deleted output node) and must be silently dropped,
+          // not treated as a run failure. This is the VERIFY CONTRACT:
+          //   Verify may only fail for student-authored assertions against currently-
+          //   mapped outputs. It must never fail due to inherited starter expectations.
+          const currentOutputKeys = new Set(
+            state.projectIoRows
+              .filter((r) => r.direction === 'out')
+              .flatMap((r) => [
+                normalizeIoSignalKey(r.id),
+                normalizeIoSignalKey(r.label),
+              ])
+              .filter(Boolean)
+          );
+          // When assertionMode=false: TRACE mode — no pass/fail evaluation at all.
+          // When assertionMode=true: filter rows to only those in the current design.
+          const assertionRows = input.assertionMode
+            ? rawRows.filter((row) => currentOutputKeys.has(normalizeIoSignalKey(row.signal)))
+            : [];
+          const failedRows = assertionRows.filter((row) => row.expected !== row.actual);
+          // Preflight issues for stale signals (missing-output-row for signals no longer
+          // in the design) are silently dropped. Other preflight issues remain blocking.
+          const preflightIssues = input.assertionMode
+            ? (deterministicResult?.evidence.preflight ?? []).filter(
+                (issue) =>
+                  issue.kind !== 'missing-output-row' ||
+                  currentOutputKeys.has(normalizeIoSignalKey(issue.signal))
+              )
+            : [];
           const status: 'pass' | 'fail' =
             failedRows.length > 0 || preflightIssues.length > 0 ? 'fail' : 'pass';
           const ranAtIso = input.ranAtIso ?? new Date().toISOString();
@@ -999,13 +1038,19 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             scenarioName,
             status,
             deterministicHash: input.deterministicHash,
-            rows: normalizedRows,
+            rows: assertionRows,   // empty in TRACE mode — no mismatches shown
             vectors,
             generatedAtIso: ranAtIso,
             signalRoles,
           });
+          // Build waveform with rawRows so output signal lanes populate even in TRACE mode.
+          // The report used for display has assertionRows (empty) but the waveform needs
+          // all signal values to render lanes for inputs and outputs.
+          const waveformReport = assertionRows.length === rawRows.length
+            ? report
+            : { ...report, rows: rawRows.map((r) => ({ ...r, status: 'pass' as const })) };
           const waveform = buildCanonicalVerifyWaveSamples(
-            report,
+            waveformReport,
             deterministicResult?.trace ?? []
           );
           const evidence =
@@ -1668,6 +1713,38 @@ function createDesignHistorySnapshot(
   };
 }
 
+/**
+ * Build the set of normalized signal keys that correspond to current output IO rows.
+ * Used to filter stale expected values in project vectors.
+ */
+function buildValidOutputKeySet(ioRows: ProjectIoRow[]): Set<string> {
+  return new Set(
+    ioRows
+      .filter((r) => r.direction === 'out')
+      .flatMap((r) => [normalizeIoSignalKey(r.id), normalizeIoSignalKey(r.label)])
+      .filter(Boolean)
+  );
+}
+
+/**
+ * Prune expected keys from vectors that no longer correspond to any mapped output signal.
+ * Preserves all input data — only removes stale expected values for deleted/remapped outputs.
+ * This enforces the VERIFY CONTRACT: inherited starter expectations cannot survive design changes.
+ */
+export function pruneStaleVectorExpected(
+  vectors: TestVector[],
+  validOutputKeys: Set<string>
+): TestVector[] {
+  return vectors.map((v) => ({
+    ...v,
+    expected: Object.fromEntries(
+      Object.entries(v.expected).filter(([key]) =>
+        validOutputKeys.has(normalizeIoSignalKey(key))
+      )
+    ),
+  }));
+}
+
 function commitDesignSnapshot(
   state: ProjectRuntimeState,
   snapshot: DesignHistorySnapshot,
@@ -1676,6 +1753,8 @@ function commitDesignSnapshot(
   ProjectRuntimeState,
   | 'circuit'
   | 'projectIoRows'
+  | 'projectVectors'
+  | 'scenarios'
   | 'macroInsertionCounts'
   | 'designPast'
   | 'designFuture'
@@ -1691,9 +1770,20 @@ function commitDesignSnapshot(
     const nodeId = normalizePortToken(row.nodeId);
     return nodeId.length === 0 || validNodeIds.has(nodeId);
   });
+  // Prune stale expected values from all vectors when the IO mapping changes.
+  // This prevents inherited starter/template expectations from surviving design mutations
+  // and causing false FAILs in future verify runs (VERIFY CONTRACT enforcement).
+  const validOutputKeys = buildValidOutputKeySet(nextIoRows);
+  const nextVectors = pruneStaleVectorExpected(state.projectVectors, validOutputKeys);
+  const nextScenarios = state.scenarios.map((s) => ({
+    ...s,
+    vectors: pruneStaleVectorExpected(s.vectors, validOutputKeys),
+  }));
   return {
     circuit: nextCircuit,
     projectIoRows: nextIoRows,
+    projectVectors: nextVectors,
+    scenarios: nextScenarios,
     macroInsertionCounts: cloneMacroInsertionCounts(snapshot.macroInsertionCounts),
     designPast: history.designPast,
     designFuture: history.designFuture,

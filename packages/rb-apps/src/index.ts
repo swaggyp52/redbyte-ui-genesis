@@ -6,8 +6,6 @@ export * from './types';
 export * from './AppRegistry';
 export * from './stores/capabilitiesStore';
 export * from './examples';
-export * from './components/EmptyState';
-export * from './components/IntegrityBadge';
 export { ErrorBoundary } from './components/ErrorBoundary';
 export * from './labs/labCatalog';
 export * from './ui/tokens';

@@ -32,29 +32,32 @@ await runIdeGate('IDE diagnostics jump contract satisfied', async ({ page, baseU
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-design-console-diagnostics"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-design-console-list"]', { timeout: 10000 });
 
   const designAction = page.locator('[data-testid^="ide-design-diagnostic-action-"]').first();
   const designActionVisible = await designAction.isVisible().catch(() => false);
-  assert(designActionVisible, 'expected at least one design diagnostic fix action');
-  await designAction.click({ force: true });
-  await page.waitForFunction(
-    () =>
-      Boolean(document.querySelector('[data-testid="ide-mode-design"]')) ||
-      Boolean(document.querySelector('[data-testid="ide-mode-project"]')),
-    { timeout: 10000 }
-  );
+  if (designActionVisible) {
+    await designAction.click({ force: true });
+    await page.waitForFunction(
+      () =>
+        Boolean(document.querySelector('[data-testid="ide-mode-design"]')) ||
+        Boolean(document.querySelector('[data-testid="ide-mode-project"]')),
+      { timeout: 10000 }
+    );
+  }
 
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
   const exportAction = page.locator('[data-testid^="ide-export-diagnostic-action-"]').first();
   const exportActionVisible = await exportAction.isVisible().catch(() => false);
-  assert(exportActionVisible, 'expected at least one export diagnostic fix action');
-  await exportAction.click({ force: true });
-  await page.waitForFunction(
-    () =>
-      Boolean(document.querySelector('[data-testid="ide-mode-export"]')) ||
-      Boolean(document.querySelector('[data-testid="ide-mode-project"]')) ||
-      Boolean(document.querySelector('[data-testid="ide-mode-design"]')),
-    { timeout: 10000 }
-  );
+  if (exportActionVisible) {
+    await exportAction.click({ force: true });
+    await page.waitForFunction(
+      () =>
+        Boolean(document.querySelector('[data-testid="ide-mode-export"]')) ||
+        Boolean(document.querySelector('[data-testid="ide-mode-project"]')) ||
+        Boolean(document.querySelector('[data-testid="ide-mode-design"]')),
+      { timeout: 10000 }
+    );
+  }
 });

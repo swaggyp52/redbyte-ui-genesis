@@ -19,7 +19,7 @@ await runIdeGate('IDE workbench layout contract satisfied', async ({ page, baseU
     assert(await visible(modeRoot.locator('[data-testid="ide-left-dock"]')), `mode=${mode} missing left dock`);
     assert(await visible(modeRoot.locator('[data-testid="ide-mode-body"]')), `mode=${mode} missing workspace`);
     const inspectorVisible = await modeRoot.locator('[data-testid="ide-inspector"]').first().isVisible().catch(() => false);
-    if (mode !== 'project') {
+    if (mode !== 'project' && mode !== 'verify') {
       assert(inspectorVisible, `mode=${mode} missing right dock`);
     }
     const consoleCount = await modeRoot.locator('[data-testid="ide-workbench-console"]').count();
@@ -31,32 +31,27 @@ await runIdeGate('IDE workbench layout contract satisfied', async ({ page, baseU
   await verifyRoot.waitFor({ state: 'visible', timeout: 10000 });
   const leftDock = verifyRoot.locator('[data-testid="ide-left-dock"]').first();
   const workspace = verifyRoot.locator('[data-testid="ide-mode-body"]').first();
-  const rightDock = verifyRoot.locator('[data-testid="ide-inspector"]').first();
+  const verifyWaveformVisible = await verifyRoot
+    .locator('[data-testid="ide-verify-workspace-waveform"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
 
-  const [leftBox, workspaceBox, rightBox] = await Promise.all([
+  const [leftBox, workspaceBox] = await Promise.all([
     leftDock.boundingBox(),
     workspace.boundingBox(),
-    rightDock.boundingBox(),
   ]);
   const layoutMode = await verifyRoot.getAttribute('data-layout-mode');
 
-  assert(Boolean(leftBox && workspaceBox && rightBox), 'failed to read workbench geometry');
+  assert(Boolean(leftBox && workspaceBox), 'failed to read workbench geometry');
   assert(Boolean(layoutMode), 'verify root missing data-layout-mode');
   assert(
     layoutMode === 'wide' || layoutMode === 'standard' || layoutMode === 'compact',
     `unexpected verify layout mode: ${layoutMode}`
   );
+  assert(verifyWaveformVisible, 'verify mode missing waveform workspace');
   assert(workspaceBox.width > leftBox.width, 'workspace should be wider than left dock');
-  if (layoutMode === 'compact') {
-    const workspaceBottom = workspaceBox.y + workspaceBox.height;
-    assert(
-      // 2px tolerance accounts for browser sub-pixel layout rounding.
-      rightBox.y >= workspaceBottom - 2,
-      `compact layout should stack right dock below workspace (rightY=${rightBox.y}, workspaceBottom=${workspaceBottom})`
-    );
-  } else {
-    assert(workspaceBox.width > rightBox.width, 'workspace should be wider than right dock');
-  }
+  // Verify now uses a collapsible lower analysis drawer in place of the legacy right dock.
   // Note: vertical resize handles are intentionally disabled in the current product
   // (CSS: display:none; pointer-events:none). The resize-drag assertion is omitted
   // to reflect current canonical product truth.

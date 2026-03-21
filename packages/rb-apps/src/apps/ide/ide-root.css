@@ -25,12 +25,12 @@
   --rb-radius-1: 8px;
   --rb-radius-2: 12px;
   --rb-radius-3: 16px;
-  /* Typography: 12/13/14/16/18/24 */
+  /* Typography: 12/14/15/16/20/24 */
   --rb-font-size-1: 12px;
-  --rb-font-size-2: 13px;
-  --rb-font-size-3: 14px;
+  --rb-font-size-2: 14px;
+  --rb-font-size-3: 15px;
   --rb-font-size-4: 16px;
-  --rb-font-size-5: 18px;
+  --rb-font-size-5: 20px;
   --rb-font-size-6: 24px;
   /* Line heights: 16/18/20/24/32 */
   --rb-line-height-1: 16px;
@@ -82,11 +82,11 @@
   --rb-rail-width: 52px;
   --rb-inspector-min: 320px;
   --rb-inspector-max: 420px;
-  --rb-topbar-height: 42px;
-  --rb-status-height: 24px;
-  --rb-mode-header-height: 36px;
+  --rb-topbar-height: 56px;
+  --rb-status-height: 28px;
+  --rb-mode-header-height: 40px;
   --rb-title-row-height: var(--rb-mode-header-height);
-  --rb-action-row-height: 32px;
+  --rb-action-row-height: 40px;
   --rb-grid-columns: 12;
   --rb-grid-gutter: var(--rb-space-3);
   --rb-grid-panel-padding: var(--rb-space-2);
@@ -118,8 +118,16 @@
   --ide-radius-m: var(--rb-radius-2);
   --ide-radius: var(--rb-radius-1);
   --ide-gutter: var(--rb-space-3);
-  --ide-card-pad: var(--rb-space-2);
-  --ide-card-gap: var(--rb-space-2);
+  --ide-card-pad: var(--rb-space-4);
+  --ide-card-gap: var(--rb-space-4);
+  /* Control & panel sizing — new in design-system reset */
+  --rb-control-h:    36px;
+  --rb-control-h-sm: 28px;
+  --rb-control-h-lg: 44px;
+  --rb-panel-pad:    16px;
+  --rb-panel-pad-lg: 24px;
+  --rb-section-gap:  20px;
+  --rb-surface-pad:  24px;
   --ide-border-strong: color-mix(in srgb, var(--ide-border) 82%, #8ec7ff 18%);
   --ide-font-ui: var(--rb-font-ui);
   --ide-font-mono: var(--rb-font-mono);
@@ -191,7 +199,7 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: var(--ide-space-2);
-  padding: 0 var(--ide-gutter);
+  padding: 0 var(--rb-space-5);
   border-bottom: 1px solid rgba(46,196,182,0.1);
   background: var(--rb-elevation-topbar);
   backdrop-filter: blur(6px);
@@ -207,15 +215,16 @@
 .ide-brand-mark {
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   border: 1px solid #3f5f7f;
   background: linear-gradient(135deg, #16314d, #2b5779);
   color: #f8fbff;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   font-weight: var(--rb-font-weight-semibold);
+  flex-shrink: 0;
 }
 
 .ide-project-meta {
@@ -224,10 +233,11 @@
 
 .ide-project-label {
   margin: 0;
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--ide-text-soft);
+  line-height: 1;
 }
 
 .ide-project-name {
@@ -260,7 +270,7 @@
   border: 1px solid rgba(46, 196, 182, 0.45);
   color: #c5fff9;
   background: rgba(46, 196, 182, 0.12);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -280,8 +290,9 @@
 }
 
 .ide-top-right .ide-button {
-  padding: 4px 8px;
-  min-height: 26px;
+  padding: 6px 12px;
+  min-height: 32px;
+  font-size: 13px;
 }
 
 .ide-layout-shell {
@@ -295,10 +306,10 @@
   box-sizing: border-box;
   border-right: 1px solid var(--ide-border);
   background: linear-gradient(180deg, rgba(16, 26, 36, 0.95), rgba(10, 17, 24, 0.96));
-  padding: var(--ide-space-1) 2px;
+  padding: 8px 4px;
   display: flex;
   flex-direction: column;
-  gap: var(--ide-space-0);
+  gap: 4px;
   width: var(--ide-rail-width);
   transition: width var(--rb-motion-normal) var(--rb-ease-standard);
   overflow: hidden;
@@ -329,7 +340,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--ide-space-1);
+  gap: 3px;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -339,10 +350,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 5px;
   border: 1px solid transparent;
-  border-radius: 6px;
-  padding: 5px 2px;
+  border-radius: 8px;
+  padding: 10px 6px;
+  min-height: 52px;
   background: transparent;
   color: var(--ide-text-soft);
   cursor: pointer;
@@ -388,19 +400,19 @@
 }
 
 .ide-mode-glyph {
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
   display: grid;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: var(--rb-font-weight-semibold);
 }
 
 .ide-mode-label {
-  font-size: 9px;
-  line-height: 11px;
+  font-size: 11px;
+  line-height: 14px;
   font-weight: var(--rb-font-weight-semibold);
   text-align: center;
 }
@@ -3099,11 +3111,16 @@
 }
 
 .ide-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   border: 1px solid transparent;
   border-radius: var(--ide-radius-s);
-  padding: 5px 10px;
-  font-size: var(--rb-font-size-1);
-  line-height: var(--rb-line-height-1);
+  padding: 8px 16px;
+  min-height: var(--rb-control-h);
+  font-size: var(--rb-font-size-2);
+  line-height: var(--rb-line-height-2);
   font-weight: var(--rb-font-weight-semibold);
   cursor: pointer;
   transition:
@@ -3113,6 +3130,14 @@
     color var(--rb-motion-micro, 60ms) ease,
     transform var(--rb-motion-micro, 60ms) ease;
   white-space: nowrap;
+}
+
+/* Compact variant — toolbar, inline, dense contexts */
+.ide-button-sm {
+  padding: 5px 10px;
+  min-height: var(--rb-control-h-sm);
+  font-size: 12px;
+  line-height: var(--rb-line-height-1);
 }
 
 .ide-button:disabled {
@@ -13068,13 +13093,13 @@ details[open].ide-export-evidence-details > summary::before {
    Place last so they win over prior phases without !important.
    ══════════════════════════════════════════════════════════════════ */
 
-/* ── B2.1: Status strip → 48px instrument header ── */
+/* ── B2.1: Status strip → compact 36px run bar ── */
 .ide-verify-panel .ide-panel-body > .ide-verify-status-strip {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 0 var(--ide-space-3, 16px);
-  min-height: 48px;
+  min-height: 36px;
   background: rgba(3, 8, 18, 0.98);
   border-bottom: 1px solid rgba(30, 60, 110, 0.45);
   flex-shrink: 0;
@@ -14666,10 +14691,10 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 /* Surface redesign v2: verify workstation hierarchy, lane controls, and lower-deck tabs */
 .ide-verify-workbench-v2 {
   display: grid;
-  grid-template-rows: minmax(650px, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: 14px;
   min-height: 0;
-  height: 100%;
+  flex: 1;
 }
 
 .ide-verify-console-frame,
@@ -14689,11 +14714,12 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 .ide-verify-oscilloscope-stage {
   display: grid;
-  grid-template-rows: auto auto auto minmax(600px, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 10px;
   padding: 12px;
   border: 1px solid rgba(45, 84, 122, 0.45);
   border-radius: 16px;
+  min-height: 0;
   background:
     linear-gradient(180deg, rgba(7, 18, 31, 0.98), rgba(5, 13, 24, 0.98)),
     radial-gradient(circle at top, rgba(56, 189, 248, 0.08), transparent 55%);
@@ -14711,8 +14737,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 
 .ide-verify-waveform-scroll {
-  min-height: 480px;
-  max-height: min(75vh, 900px);
+  min-height: 0;
   overflow: auto;
   padding: 8px 10px 10px;
   border-radius: 14px;
@@ -19280,6 +19305,130 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 
 /* Toolbar row above the canvas */
+/* ════════════════════════════════════════════════════════════════
+   Slice 2 — Verify Workstation Layout Reset
+   Primary goal: waveform fills the viewport, everything else fits
+   underneath. Uses CSS order to restack without TSX changes.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Panel body: explicit flex column, hidden overflow so waveform clips cleanly */
+.ide-workbench-workspace > .ide-verify-panel .ide-panel-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Stacking order: status strip → waveform → supporting sections ── */
+
+/* Reference-mode callout: demote to bottom, very compact */
+.ide-verify-panel .ide-panel-body > .ide-callout {
+  order: 10;
+  flex-shrink: 0;
+  padding: 6px var(--rb-space-4);
+  font-size: 12px;
+  display: none; /* hide it entirely — already explained in status strip */
+}
+
+/* Incomplete-mapping / stale / wrong-scenario banners: below status */
+.ide-verify-panel .ide-panel-body > [class*="ide-verify-"][class*="-banner"],
+.ide-verify-panel .ide-panel-body > [class*="ide-verify-"][class*="-notice"] {
+  order: 1;
+  flex-shrink: 0;
+}
+
+/* Status strip: always first, compact */
+.ide-verify-panel .ide-panel-body > .ide-verify-status-strip {
+  order: 2;
+  flex-shrink: 0;
+}
+
+/* Workbench (waveform): PRIMARY — order 3 so it renders immediately after strip */
+.ide-verify-panel .ide-panel-body > .ide-verify-workbench {
+  order: 3;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Run-proof evidence block: below the waveform, compact & scrollable */
+.ide-verify-panel .ide-panel-body > .ide-verify-run-proof {
+  order: 4;
+  flex: 0 0 auto;
+  max-height: 96px;
+  overflow: hidden;
+  border-top: 1px solid rgba(30, 60, 110, 0.35);
+}
+
+/* Scenario library header: below proof */
+.ide-verify-panel .ide-panel-body > .ide-scenario-library-header {
+  order: 5;
+  flex-shrink: 0;
+}
+
+/* ScenarioBuilderPanel details: at bottom, scrollable */
+.ide-verify-panel .ide-panel-body > .ide-verify-scenario-builder-details {
+  order: 6;
+  flex: 0 0 auto;
+  max-height: 200px;
+  overflow-y: auto;
+  border-top: 1px solid rgba(30, 60, 110, 0.35);
+}
+
+/* Kit tip, clocked banner, fail-diagnosis, hint callouts: below status */
+.ide-verify-panel .ide-panel-body > .ide-verify-kit-tip,
+.ide-verify-panel .ide-panel-body > .ide-callout--clocked,
+.ide-verify-panel .ide-panel-body > .ide-verify-fail-diagnosis,
+.ide-verify-panel .ide-panel-body > .ide-callout--hint,
+.ide-verify-panel .ide-panel-body > .ide-verify-incomplete-banner,
+.ide-verify-panel .ide-panel-body > .ide-verify-scenario-stale-banner,
+.ide-verify-panel .ide-panel-body > .ide-verify-wrong-scenario-banner {
+  order: 1;
+  flex-shrink: 0;
+}
+
+/* ── Scope / instrument styles ── */
+
+/* Scope label: stronger presence */
+.ide-verify-scope-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+
+/* Scope header: taller for better instrument feel */
+.ide-verify-oscilloscope-stage > .ide-verify-scope-header {
+  min-height: 40px;
+  padding: 0 16px;
+}
+
+/* Signal chips: slightly larger */
+.ide-verify-signal-chip {
+  font-size: 12px;
+  padding: 2px 8px;
+}
+
+/* Run-proof: compact header only, no overflow scroll */
+.ide-verify-run-proof-eyebrow {
+  font-size: 10px;
+}
+.ide-verify-run-proof-title {
+  font-size: 16px;
+  margin: 0;
+}
+.ide-verify-run-proof-summary,
+.ide-verify-run-proof-authority,
+.ide-verify-run-proof-grid,
+.ide-verify-run-proof-actions {
+  display: none; /* Hide supporting detail — title is enough at a glance */
+}
+.ide-verify-run-proof-copy {
+  padding: 8px 16px;
+}
+
+/* Stimulus canvas: more spacious */
+.ide-stimulus-canvas {
+  font-size: 13px;
+}
+
 .ide-stimulus-toolbar {
   display: flex;
   gap: 8px;
@@ -19294,6 +19443,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   border-top: 1px dashed var(--rb-border);
 }
 
+<<<<<<< HEAD
 /* ── AssertionCanvas (Slice 6) ─────────────────────────────────────────────── */
 /* Read-only assertion/expected output overlay aligned with waveform timeline.
    Displays expected vs actual comparison for verification runs.
@@ -19365,4 +19515,3708 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 .ide-assertion-row button:disabled:focus {
   outline: none;
+=======
+/* ════════════════════════════════════════════════════════════════
+   Slice 2 — Height Chain Fix
+   Root cause: clamp(520px, 64vh, 900px) !important on workbench-v2
+   prevents flex:1 from working. Waveform got 0px. Fix: zero all
+   min-height floors, fix grid, compact secondary content.
+   ════════════════════════════════════════════════════════════════ */
+
+/* 1. Verify grid: cap the vectors dock so workspace gets the majority.
+      Uses :not(.hide-right-dock) to match the compact-mode rule specificity (0,4,0)
+      so this later declaration wins. !important beats the minmax(220px,auto) minimum. */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-main:not(.hide-right-dock) {
+  grid-template-rows: minmax(0, 1fr) 80px !important;
+}
+
+/* 2. Zero the workbench's own min-height floor (beats 520px !important) */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel .ide-panel-body > .ide-verify-workbench {
+  min-height: 0 !important;
+}
+
+/* 3. Zero all inner waveform subtree clamp floors */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-frame,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
+  min-height: 0 !important;
+  overflow-y: auto; /* scrollable so all signals are reachable */
+}
+
+/* 4. Collapse zero-testid secondary content in panel-body */
+.ide-verify-panel .ide-panel-body > .ide-scenario-library-header {
+  max-height: 0;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  border: none;
+}
+.ide-verify-panel .ide-panel-body > .ide-verify-run-proof {
+  max-height: 0 !important;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  border: none;
+}
+
+/* 5. Scenario builder: pull OUT of flex flow via absolute positioning so workbench
+      (flex:1) fills all remaining height. Gate testids remain in DOM and queryable. */
+.ide-verify-panel .ide-panel-body {
+  position: relative; /* anchor for the absolutely-positioned scenario builder */
+}
+.ide-verify-panel .ide-panel-body > .ide-verify-scenario-builder-details {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 80px;
+  overflow-y: auto;
+  z-index: 2;
+  background: var(--rb-elevation-2, #0d1520);
+  border-top: 1px solid rgba(48, 77, 107, 0.4);
+  border-radius: 0 0 var(--ide-radius-s, 6px) var(--ide-radius-s, 6px);
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   Slice 2 — Waveform visibility fix
+   cursor-readout (160px delta table) was blocking the oscilloscope.
+   It's redundant — same data is in the Truth Table drawer tab.
+   waveform-legend is also redundant with signal row colors.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Remove the 160px blocker before the waveform scroll */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-cursor-readout {
+  display: none !important;
+}
+
+/* Remove the redundant legend strip (16px) */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-legend {
+  display: none !important;
+}
+
+/* Compact the tick-explainer to just its summary row when closed */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-tick-explainer {
+  max-height: 24px;
+  overflow: hidden;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-tick-explainer[open] {
+  max-height: 200px;
+  overflow: auto;
+}
+
+/* Waveform bar: tighten the controls row */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-bar {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+/* Status strip: hide less-critical secondary actions to reduce clutter */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-status-capture-btn,
+.ide-workbench-shell[data-ide-mode-marker='verify'] [data-testid="ide-verify-status-step-btn"],
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-status-step {
+  display: none;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Slice 2 — Height chain: make oscilloscope fill the workbench
+   Each ancestor needs flex:1 + min-height:0 to pass height down.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Three-panel: take all workbench height minus supporting-strip */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workbench > .ide-verify-three-panel,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workbench-v2 > .ide-verify-three-panel {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Three-panel-center: column flex so oscilloscope-stage can flex-fill */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel-center {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Console-frame: fill center */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-console-frame {
+  flex: 1 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* Instrument-deck: fill console-frame */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck {
+  flex: 1 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* Oscilloscope-stage: fill instrument-deck, keep existing grid for row layout */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Waveform frame: override grid→flex so scroll fills available height.
+   The original grid has 4 rows (auto auto auto minmax(450px,1fr)).
+   With legend+cursor hidden, scroll lands in row 2 (auto=25px) while
+   the 450px minmax row sits empty, clipped by overflow:hidden.
+   Switching to flex column bypasses the misaligned grid entirely. */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-waveform-outer,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-frame {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Waveform scroll: takes all remaining height in the flex column */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
+  flex: 1 !important;
+  min-height: 0 !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Slice 2 — Waveform scroll: final min-height override
+   The (0,4,0) rule clamp(400px,54vh,680px) still wins. Beat it
+   with (0,5,0) specificity: two attrs + three classes.
+   ════════════════════════════════════════════════════════════════ */
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='standard'] .ide-verify-panel .ide-verify-waveform-scroll,
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='compact'] .ide-verify-panel .ide-verify-waveform-scroll {
+  min-height: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Slice 2 — Reclaim waveform height: collapse redundant header rows
+   scope-bus-strip (29px) and waveform-bar secondary content add ~90px
+   of overhead before the waveform canvas. Collapse non-essential rows.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Collapse scope-bus-strip — bus decode text is rarely actioned */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-scope-bus-strip {
+  display: none !important;
+}
+
+/* Tighten oscilloscope-stage internal spacing */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
+  gap: 6px !important;
+  padding: 8px !important;
+}
+
+/* Condense the waveform-bar — it currently renders at 63px */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-bar {
+  flex-wrap: wrap !important;
+  row-gap: 4px !important;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+/* Collapse tick-explainer inside waveform-frame (it's open by default) */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-tick-explainer {
+  max-height: 28px !important;
+  overflow: hidden !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-tick-explainer[open] {
+  max-height: 160px !important;
+  overflow: auto !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   VERIFY WORKSTATION — HARD RESET (v2 — follow-up patch applied)
+   One fixed screen. No vertical page scroll, ever.
+   Zone A (top ~42%): Testbench / StimulusCanvas authoring grid.
+   Zone B (bottom ~58%): Oscilloscope waveform viewer.
+   DOM natural order is correct — no CSS order manipulation needed.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Root: force full height down to panel ── */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* ── Panel body: flex column host for the two zones ── */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+/* ── Status strip: fixed-height header ── */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-status-strip {
+  order: 1 !important;
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  padding: 6px 12px !important;
+  border-bottom: 1px solid rgba(48, 77, 107, 0.5) !important;
+  background: var(--rb-elevation-2, #0c1623) !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+/* ── Scenario library tabs: fixed height ── */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-scenario-library-header {
+  order: 2 !important;
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+}
+
+/* ── Stale banners: keep visible, compact, before status strip ── */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-stale-banner,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-scenario-stale-banner,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-wrong-scenario-banner {
+  order: 0 !important;
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  padding: 5px 12px !important;
+  font-size: 11px !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   ZONE A — Testbench / StimulusCanvas (top ~34%)
+   Works for both isFirstRun=true (div) and isFirstRun=false (details).
+   ════════════════════════════════════════════════════════════════════════════ */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-scenario-builder-details {
+  order: 3 !important;
+  /* Cancel any previous absolute overlay */
+  position: static !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  z-index: auto !important;
+  max-height: none !important;
+  /* Zone sizing — 42% of panel body height (bumped from 34% for canvas room) */
+  flex: 0 0 42% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  /* Internal flex layout */
+  display: flex !important;
+  flex-direction: column !important;
+  /* Visual identity */
+  background: var(--rb-elevation-2, #0c1623) !important;
+  border-top: 1px solid rgba(56, 189, 248, 0.10) !important;
+  border-bottom: 2px solid rgba(56, 189, 248, 0.22) !important;
+  border-radius: 0 !important;
+}
+
+/* Workstation run bar (first-run state compact header) — single-line, max 44px */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workstation-run-bar {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 5px 10px !important;
+  background: rgba(3, 8, 18, 0.7) !important;
+  border-bottom: 1px solid rgba(48, 77, 107, 0.4) !important;
+  flex-wrap: nowrap !important;
+  max-height: 44px !important;
+  overflow: hidden !important;
+  min-height: 36px !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workstation-run-bar .ide-verify-empty-message {
+  flex: 1 1 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1px !important;
+  min-width: 0 !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workstation-run-bar .ide-verify-empty-label {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  color: rgba(56, 189, 248, 0.7) !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workstation-run-bar .ide-verify-empty-hint {
+  font-size: 11px !important;
+  color: rgba(148, 185, 215, 0.7) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workstation-run-bar .ide-verify-first-run-hero__actions {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  gap: 6px !important;
+  align-items: center !important;
+}
+
+/* Summary bar: post-run collapsible header */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-summary {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 5px 12px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  color: rgba(56, 189, 248, 0.7) !important;
+  border-bottom: 1px solid rgba(48, 77, 107, 0.4) !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  background: rgba(3, 8, 18, 0.6) !important;
+  list-style: none !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-summary::marker,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-summary::-webkit-details-marker {
+  display: none !important;
+}
+
+/* Vector form body: flex column, canvas gets flex:1 to fill space */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details > .ide-verify-vector-form {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  padding: 6px 10px 4px !important;
+  gap: 0 !important;
+}
+
+/* Sequential context callout: compress from full IdeCallout to 1-line chip.
+   The callout text is helpful but must NOT steal StimulusCanvas height.
+   Rendered as a compact inline badge at the top of the vector form. */
+.ide-workbench-shell[data-ide-mode-marker='verify'] [data-testid="ide-verify-sequential-context"] {
+  margin: 0 !important;
+  padding: 3px 8px !important;
+  background: rgba(56, 189, 248, 0.08) !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.14) !important;
+  border-radius: 0 !important;
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] [data-testid="ide-verify-sequential-context"] .ide-callout-title,
+.ide-workbench-shell[data-ide-mode-marker='verify'] [data-testid="ide-verify-sequential-context"] .ide-callout-body p {
+  display: inline !important;
+  font-size: 10px !important;
+  line-height: 1.4 !important;
+  color: rgba(147, 197, 253, 0.8) !important;
+  font-weight: 400 !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] [data-testid="ide-verify-sequential-context"] .ide-callout-body {
+  display: inline !important;
+}
+/* Auto-vector notice: same compact treatment */
+.ide-workbench-shell[data-ide-mode-marker='verify'] [data-testid="ide-verify-auto-vector-notice"] {
+  margin: 0 !important;
+  padding: 3px 8px !important;
+  background: rgba(56, 189, 248, 0.06) !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.10) !important;
+  border-radius: 0 !important;
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] [data-testid="ide-verify-auto-vector-notice"] .ide-callout-body p,
+.ide-workbench-shell[data-ide-mode-marker='verify'] [data-testid="ide-verify-auto-vector-notice"] .ide-inline-actions {
+  font-size: 10px !important;
+  margin: 0 !important;
+}
+
+/* Run bar buttons: compact variant for workstation density */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workstation-run-bar .ide-button {
+  padding: 4px 10px !important;
+  font-size: 11px !important;
+  min-height: 28px !important;
+}
+
+/* Stimulus toolbar: compact action row */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-stimulus-toolbar {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 0 0 4px 0 !important;
+  min-height: 0 !important;
+}
+
+/* Stimulus canvas: flex:1 — fills all remaining vertical space */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-stimulus-canvas {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+}
+
+/* Secondary controls (More options, sweep): hidden in workstation view.
+   Primary authoring path is the StimulusCanvas timeline. These details
+   remain in DOM (vitest getByTestId still finds them) but don't take space. */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-more-actions-details,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-sweep-details {
+  display: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   ZONE B — Oscilloscope Waveform (fills remaining screen)
+   ════════════════════════════════════════════════════════════════════════════ */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-workbench {
+  order: 4 !important;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   COLLAPSE NOISE — callouts, run evidence, failure panels
+   These use display:none but remain in DOM so getByTestId() still finds them.
+   ════════════════════════════════════════════════════════════════════════════ */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-callout,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-run-proof,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-fail-diagnosis,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-readiness-strip,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-export-available-note,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-preview-banner,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-kit-tip,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-incomplete-banner {
+  display: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   OSCILLOSCOPE STAGE — visual upgrade
+   Make the waveform feel premium: stronger background, better proportions.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* Stage fills workbench fully */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workbench .ide-verify-oscilloscope-stage {
+  background: #010810 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+/* Scope header: instrument panel bar */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-scope-header {
+  background: #020c1a !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.18) !important;
+  padding: 5px 12px !important;
+  min-height: 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+/* Scope label: instrument brand */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-scope-label {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  color: rgba(56, 189, 248, 0.6) !important;
+}
+
+/* Signal digest chips: compact pill row */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-digest {
+  padding: 3px 12px !important;
+  gap: 4px !important;
+  background: rgba(2, 12, 26, 0.8) !important;
+  border-bottom: 1px solid rgba(48, 77, 107, 0.3) !important;
+  min-height: 0 !important;
+  max-height: 30px !important;
+  overflow: hidden !important;
+}
+
+/* Waveform scroll: pristine dark canvas */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
+  background: #010810 !important;
+}
+
+/* Empty waveform: centered placeholder */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-empty {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 100% !important;
+  font-size: 13px !important;
+  color: rgba(56, 189, 248, 0.3) !important;
+  letter-spacing: 0.04em !important;
+  font-family: var(--rb-font-mono, 'IBM Plex Mono', monospace) !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   DESIGN WORKSTATION — SLICE 3
+   Replace debug-dashboard energy with canvas-tool instrument feel.
+   Rules target [data-ide-mode-marker='design'] for full-surface scope.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Toolbar: authoritative instrument bar ── */
+[data-ide-mode-marker='design'] .ide-design-toolbar {
+  min-height: 44px !important;
+  padding: 6px 12px !important;
+  background: #071522 !important;
+  border-bottom: 2px solid rgba(56, 189, 248, 0.30) !important;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  overflow: visible !important;
+}
+
+/* ── Tool segments: bigger, readable, instrument-grade ── */
+[data-ide-mode-marker='design'] .ide-toolbar-group.is-mode .ide-design-tool-segment {
+  min-height: 36px !important;
+  padding: 0 16px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+  gap: 6px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-tool-icon {
+  font-size: 15px !important;
+  line-height: 1 !important;
+}
+
+[data-ide-mode-marker='design'] .ide-toolbar-group.is-mode .ide-design-tool-segment.is-active {
+  background: rgba(56, 189, 248, 0.16) !important;
+  border-color: rgba(56, 189, 248, 0.6) !important;
+  color: #e0f4ff !important;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25) inset, 0 0 12px rgba(56, 189, 248, 0.08) !important;
+}
+
+/* ── Edit group: tighter, supportive ── */
+[data-ide-mode-marker='design'] .ide-toolbar-group.is-edit .ide-button {
+  font-size: 11px !important;
+  padding: 4px 10px !important;
+  min-height: 28px !important;
+}
+
+/* ── View toggle: clear, right-rail ── */
+[data-ide-mode-marker='design'] .ide-design-view-btn {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 3px 10px !important;
+  min-height: 26px !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* ── Canvas: dominant, fills available space ── */
+[data-ide-mode-marker='design'] .ide-design-canvas-live {
+  background: #050e1c !important;
+  border-color: rgba(40, 70, 100, 0.5) !important;
+}
+
+/* Canvas focus ring: subtle blue glow */
+[data-ide-mode-marker='design'] .ide-design-canvas-live:focus-within {
+  border-color: rgba(56, 189, 248, 0.35) !important;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.12) inset !important;
+}
+
+/* ── Palette: narrower, tighter rows ── */
+[data-ide-mode-marker='design'] .ide-design-palette {
+  width: 180px !important;
+  min-width: 160px !important;
+  max-width: 200px !important;
+}
+
+/* Palette cards: tighter rows — icon + name only, subtitle hidden */
+[data-ide-mode-marker='design'] .ide-palette-card {
+  padding: 4px 8px !important;
+  min-height: 28px !important;
+  gap: 6px !important;
+  align-items: center !important;
+}
+
+[data-ide-mode-marker='design'] .ide-palette-card-glyph {
+  font-size: 10px !important;
+  min-width: 28px !important;
+  height: 22px !important;
+  padding: 0 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+[data-ide-mode-marker='design'] .ide-palette-card-title {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+/* Subtitle hidden — title attr tooltip carries the description */
+[data-ide-mode-marker='design'] .ide-palette-card-subtitle {
+  display: none !important;
+}
+
+/* Board resource chips: compact */
+[data-ide-mode-marker='design'] .ide-palette-chip {
+  padding: 3px 8px !important;
+  min-height: 24px !important;
+  font-size: 11px !important;
+}
+
+/* Palette group headers: microtext, reduced visual weight */
+[data-ide-mode-marker='design'] .ide-palette-group h4,
+[data-ide-mode-marker='design'] .ide-palette-section-header h4,
+[data-ide-mode-marker='design'] .ide-palette-subsection-header h5 {
+  font-size: 9px !important;
+  color: rgba(120, 165, 205, 0.45) !important;
+  padding: 5px 8px 2px !important;
+}
+
+/* Section descriptive copy: hidden */
+[data-ide-mode-marker='design'] .ide-palette-section-copy,
+[data-ide-mode-marker='design'] .ide-palette-subsection-header p,
+[data-ide-mode-marker='design'] .ide-design-palette-intro {
+  display: none !important;
+}
+
+/* Palette sections gap: tighter */
+[data-ide-mode-marker='design'] .ide-design-palette-sections {
+  gap: 8px !important;
+}
+
+/* ── Inspector: supportive, not dominant ── */
+[data-ide-mode-marker='design'] .ide-inspector {
+  background: rgba(5, 12, 22, 0.92) !important;
+  border-left: 1px solid rgba(40, 68, 96, 0.5) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-inspector-section {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Inspector section title: quieter */
+[data-ide-mode-marker='design'] .ide-inspector-title {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.09em !important;
+  color: rgba(100, 150, 195, 0.6) !important;
+}
+
+/* ── Diagnostics drawer: hidden unless it has actual content ── */
+/* The diagnostics drawer below the canvas adds noise when empty.
+   We set max-height: 0 when collapsed to reclaim vertical space. */
+[data-ide-mode-marker='design'] .ide-design-diagnostics-drawer:not([data-open='true']) {
+  max-height: 0 !important;
+  overflow: hidden !important;
+  border-top: none !important;
+  padding: 0 !important;
+}
+
+/* ── Status pill: compact, right-aligned ── */
+[data-ide-mode-marker='design'] .ide-design-canvas-mode-indicator {
+  font-size: 9px !important;
+  padding: 2px 8px !important;
+  min-height: 18px !important;
+}
+
+/* ── Keyboard shortcut strip: subtler ── */
+[data-ide-mode-marker='design'] .ide-design-shortcut-strip {
+  font-size: 9px !important;
+  opacity: 0.6 !important;
+}
+
+/* ── Toolbar expanded panel: compact ── */
+[data-ide-mode-marker='design'] .ide-design-toolbarExpanded {
+  padding: 8px 12px !important;
+  background: #050f1d !important;
+  border-bottom: 1px solid rgba(40, 68, 96, 0.4) !important;
+}
+
+/* ── Tool HUD: more visible, decisive ── */
+[data-ide-mode-marker='design'] .ide-design-tool-hud {
+  font-size: 11px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-tool-hud-wire {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: rgba(147, 210, 255, 0.9) !important;
+}
+
+/* ── Canvas background: darker, more instrument-like ── */
+[data-ide-mode-marker='design'] .ide-design-canvas {
+  background: rgba(4, 10, 18, 0.82) !important;
+}
+
+
+/* ── Authoring status bar: compact, read as secondary info ── */
+/* The "AUTHORING STATUS / SIMULATION" info bar below the toolbar is verbose.
+   When no errors, compress it dramatically so canvas gets more vertical space. */
+[data-ide-mode-marker='design'] .ide-design-control-bar {
+  min-height: 0 !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-control-bar.is-canvas.has-status {
+  background: rgba(3, 7, 14, 0.85) !important;
+  border-bottom: 1px solid rgba(30, 55, 80, 0.5) !important;
+  overflow: visible !important;
+}
+
+/* Status text labels: tight */
+[data-ide-mode-marker='design'] .ide-design-authoring-status-label,
+[data-ide-mode-marker='design'] .ide-design-sim-status-label {
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: rgba(90, 130, 170, 0.6) !important;
+}
+
+/* Long descriptive sentences in control bar: hidden when status is ok */
+[data-ide-mode-marker='design'] .ide-design-authoring-status-prose,
+[data-ide-mode-marker='design'] .ide-design-sim-status-prose {
+  display: none !important;
+}
+
+/* ── Palette: width constraint ── */
+[data-ide-mode-marker='design'] .ide-design-palette {
+  width: 190px !important;
+  min-width: 170px !important;
+  max-width: 210px !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SLICE 4 — Project Launchpad + Onboarding Reset
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Onboarding: bottom-center card — no full-bleed blackout ──
+   Users can see the app behind the card so the steps make sense */
+.rb-onboarding-overlay {
+  position: fixed !important;
+  inset: auto !important;
+  bottom: 28px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 9999 !important;
+  background: none !important;
+  display: block !important;
+}
+.rb-onboarding-card {
+  pointer-events: all !important;
+  max-width: 480px !important;
+  width: min(92vw, 480px) !important;
+  background: var(--ide-surface-2, #0d1b2a) !important;
+  border: 1px solid rgba(46,196,182,0.3) !important;
+  box-shadow:
+    0 16px 48px rgba(2,8,16,0.72),
+    0 0 0 1px rgba(46,196,182,0.06) !important;
+  border-radius: 12px !important;
+  padding: 22px 26px !important;
+}
+.rb-onboarding-title {
+  font-size: 0.97rem !important;
+  font-weight: 700 !important;
+  margin-bottom: 6px !important;
+  color: rgba(235,248,255,0.96) !important;
+}
+.rb-onboarding-body {
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+  margin-bottom: 18px !important;
+  color: rgba(184,208,228,0.82) !important;
+}
+/* Skip: visible — important affordance for returning users */
+.rb-onboarding-skip {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: rgba(200,216,232,0.55) !important;
+  padding: 7px 12px !important;
+  border: 1px solid rgba(200,216,232,0.14) !important;
+  border-radius: 6px !important;
+  background: none !important;
+  cursor: pointer !important;
+}
+.rb-onboarding-skip:hover {
+  color: rgba(200,216,232,0.9) !important;
+  border-color: rgba(200,216,232,0.28) !important;
+}
+/* Next/Get started: bigger, authoritative */
+.rb-onboarding-next {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  padding: 9px 22px !important;
+  min-height: 36px !important;
+  background: rgba(46,196,182,0.14) !important;
+  border: 1px solid rgba(46,196,182,0.4) !important;
+  color: rgba(46,196,182,0.95) !important;
+  border-radius: 7px !important;
+}
+.rb-onboarding-next:hover {
+  background: rgba(46,196,182,0.24) !important;
+}
+
+/* ── Project loaded state: CTA more visually dominant ── */
+[data-ide-mode-marker='project'] .ide-project-showcase-actions .ide-button-primary {
+  min-height: 44px !important;
+  padding: 10px 24px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 8px 28px rgba(46,196,182,0.28) !important;
+}
+
+/* ── Project: suppress verbose export explanation text ── */
+[data-ide-mode-marker='project'] .ide-project-export-explanation {
+  display: none !important;
+}
+
+/* ── Project: examples disclosure — closed by default feel ── */
+[data-ide-mode-marker='project'] .ide-project-examples-disclosure {
+  border-top: 1px solid rgba(60,90,120,0.22) !important;
+  margin-top: 12px !important;
+}
+[data-ide-mode-marker='project'] .ide-project-examples-disclosure > summary {
+  font-size: 13px !important;
+  color: rgba(180,200,220,0.6) !important;
+  padding: 10px 2px !important;
+  cursor: pointer !important;
+  list-style: none !important;
+}
+[data-ide-mode-marker='project'] .ide-project-examples-disclosure > summary:hover {
+  color: rgba(210,228,244,0.9) !important;
+}
+[data-ide-mode-marker='project'] .ide-project-examples-disclosure > summary::marker,
+[data-ide-mode-marker='project'] .ide-project-examples-disclosure > summary::-webkit-details-marker {
+  display: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SLICE 4 REFINEMENT — Mission Briefing Hierarchy
+   Eye path: title → CTA → preview → supporting info
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Primary CTA: full-width, dominant, unavoidable ── */
+[data-ide-mode-marker='project'] .ide-project-showcase-actions {
+  flex-direction: column !important;
+  gap: 8px !important;
+  margin-top: 4px !important;
+}
+[data-ide-mode-marker='project'] .ide-project-showcase-actions .ide-button-primary {
+  width: 100% !important;
+  min-height: 52px !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.01em !important;
+  justify-content: center !important;
+  background: rgba(46,196,182,0.2) !important;
+  border-color: rgba(46,196,182,0.52) !important;
+  box-shadow:
+    0 0 28px rgba(46,196,182,0.16),
+    0 8px 20px rgba(2,8,16,0.38) !important;
+}
+[data-ide-mode-marker='project'] .ide-project-showcase-actions .ide-button-secondary,
+[data-ide-mode-marker='project'] .ide-project-showcase-actions .ide-button-ghost {
+  width: 100% !important;
+  justify-content: center !important;
+  min-height: 36px !important;
+  font-size: 13px !important;
+  opacity: 0.7 !important;
+}
+
+/* ── Status row: compress — supporting signal, not primary content ── */
+[data-ide-mode-marker='project'] .ide-project-showcase-status-row {
+  gap: 6px !important;
+  flex-wrap: nowrap !important;
+}
+[data-ide-mode-marker='project'] .ide-project-showcase-status-copy {
+  font-size: 11px !important;
+  color: rgba(160,190,215,0.58) !important;
+  line-height: 1.3 !important;
+}
+
+/* ── Chip row: lighten — metadata, not hierarchy ── */
+[data-ide-mode-marker='project'] .ide-project-showcase-chip-row {
+  gap: 6px !important;
+}
+[data-ide-mode-marker='project'] .ide-project-context-tag {
+  font-size: 10px !important;
+  opacity: 0.6 !important;
+  padding: 2px 8px !important;
+}
+
+/* ── Body text: clearly secondary to the title ── */
+[data-ide-mode-marker='project'] .ide-project-showcase-body {
+  font-size: 13px !important;
+  color: rgba(172,200,222,0.58) !important;
+  line-height: 1.48 !important;
+}
+
+/* ── Checklist: flatten from bordered boxes → inline status strip ── */
+[data-ide-mode-marker='project'] .ide-project-showcase-checklist {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 18px !important;
+  flex-wrap: wrap !important;
+  padding: 8px 0 0 !important;
+  border-top: 1px solid rgba(55,85,115,0.16) !important;
+}
+[data-ide-mode-marker='project'] .ide-project-showcase-checkpoint {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 0 !important;
+  border: none !important;
+  background: none !important;
+  border-radius: 0 !important;
+}
+[data-ide-mode-marker='project'] .ide-project-showcase-checkpoint-dot {
+  width: 6px !important;
+  height: 6px !important;
+  margin-top: 0 !important;
+  box-shadow: none !important;
+}
+[data-ide-mode-marker='project'] .ide-project-showcase-checkpoint > div {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+[data-ide-mode-marker='project'] .ide-project-showcase-checkpoint strong {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: rgba(205,225,242,0.72) !important;
+}
+[data-ide-mode-marker='project'] .ide-project-showcase-checkpoint span {
+  font-size: 10px !important;
+  color: rgba(145,172,196,0.52) !important;
+}
+
+/* ── Hero card: softer border — zone, not floating widget ── */
+[data-ide-mode-marker='project'] .ide-project-hero {
+  border-color: rgba(55,90,120,0.18) !important;
+  box-shadow: 0 6px 20px rgba(2,8,16,0.18) !important;
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   POLISH PASS — Hierarchy · Waveform · Canvas · Transitions
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Global: animations ── */
+@keyframes rb-result-land {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes rb-waveform-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Waveform instrument upgrade ── */
+/* Container: instrument-style framing */
+[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll,
+[data-ide-mode-marker='verify'] [data-testid='ide-verify-waveform-svg'] {
+  animation: rb-waveform-in 250ms ease-out;
+}
+[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
+  border: 1px solid rgba(46,196,182,0.12) !important;
+  box-shadow:
+    0 0 0 1px rgba(2,8,16,0.6) inset,
+    0 4px 20px rgba(2,8,16,0.5) !important;
+}
+/* Run result: animate in with presence */
+[data-ide-mode-marker='verify'] [data-testid='ide-verify-status-strip'],
+[data-ide-mode-marker='verify'] [data-testid='ide-verify-run-strip'] {
+  transition: background 200ms ease, color 200ms ease !important;
+}
+/* PASS state: green glow */
+[data-ide-mode-marker='verify'] .ide-verify-workstation[data-display-status='PASS'] .ide-verify-workstation-run-bar {
+  box-shadow: 0 0 18px rgba(52,211,153,0.12) inset !important;
+}
+/* FAIL state: red emphasis */
+[data-ide-mode-marker='verify'] .ide-verify-workstation[data-display-status='FAIL'] .ide-verify-workstation-run-bar {
+  box-shadow: 0 0 18px rgba(255,107,107,0.12) inset !important;
+}
+
+/* ── Design canvas: workspace, not panel ── */
+[data-ide-mode-marker='design'] .ide-design-canvas:not(.ide-design-console) {
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 2px !important;
+  background: transparent !important;
+}
+/* Canvas live area: full-bleed, no extra chrome */
+[data-ide-mode-marker='design'] .ide-design-canvas-live {
+  border-radius: 2px !important;
+}
+
+/* ── Global action hierarchy: one dominant per screen ── */
+/* Level 1 — primary: high-contrast, strong presence */
+.ide-button.ide-button-primary {
+  transition: box-shadow 150ms ease, background 150ms ease, transform 80ms ease !important;
+}
+.ide-button.ide-button-primary:hover {
+  transform: translateY(-1px) !important;
+}
+.ide-button.ide-button-primary:active {
+  transform: translateY(0) !important;
+}
+/* Level 2 — secondary: clearly subordinate */
+.ide-button.ide-button-secondary {
+  transition: background 120ms ease, border-color 120ms ease !important;
+}
+/* Level 3 — pills/chips: informational only, no interactive weight */
+.ide-status-pill {
+  transition: background 200ms ease, color 200ms ease !important;
+  pointer-events: none !important;
+}
+/* Status pill state transitions: animate color changes */
+.ide-status-pill.ide-status-ok {
+  animation: rb-result-land 250ms ease-out !important;
+}
+.ide-status-pill.ide-status-error {
+  animation: rb-result-land 250ms ease-out !important;
+}
+
+/* ── Verify: result landing emphasis ── */
+/* PASS result */
+[data-ide-mode-marker='verify'] .ide-status-pill.ide-status-ok {
+  box-shadow: 0 0 12px rgba(52,211,153,0.25) !important;
+}
+/* FAIL result */
+[data-ide-mode-marker='verify'] .ide-status-pill.ide-status-error {
+  box-shadow: 0 0 12px rgba(255,107,107,0.25) !important;
+}
+
+/* ── Stage transition: subtle surface fade ── */
+.ide-panel {
+  animation: rb-result-land 180ms ease-out;
+}
+
+/* ════════════════════════════════════════════════════════════
+   DESIGN ALIVE PASS — Canvas dominance · Node glow · Header trim
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Header: collapse descriptive subtitle — reclaim vertical space ── */
+[data-ide-mode-marker='design'] .ide-design-frame-intent {
+  display: none !important;
+}
+[data-ide-mode-marker='design'] .ide-design-frame-title {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: rgba(180,208,232,0.6) !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+[data-ide-mode-marker='design'] .ide-design-frame-copy {
+  gap: 0 !important;
+}
+
+/* ── Side panels: soften — canvas gets visual focus ── */
+[data-ide-mode-marker='design'] .ide-workbench-dock-left {
+  opacity: 0.78 !important;
+  transition: opacity 220ms ease !important;
+}
+[data-ide-mode-marker='design'] .ide-workbench-dock-left:hover,
+[data-ide-mode-marker='design'] .ide-workbench-dock-left:focus-within {
+  opacity: 1 !important;
+}
+[data-ide-mode-marker='design'] .ide-workbench-dock-right {
+  opacity: 0.8 !important;
+  transition: opacity 220ms ease !important;
+}
+[data-ide-mode-marker='design'] .ide-workbench-dock-right:hover,
+[data-ide-mode-marker='design'] .ide-workbench-dock-right:focus-within {
+  opacity: 1 !important;
+}
+
+/* ── Circuit nodes: stronger presence + interaction glow ── */
+[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-body {
+  fill: #0c1b2b !important;
+  stroke: rgba(110,162,205,0.68) !important;
+  stroke-width: 1.2 !important;
+  transition: stroke 150ms ease, filter 150ms ease !important;
+}
+[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-header {
+  fill: rgba(7,15,26,0.96) !important;
+  stroke: rgba(120,180,230,0.32) !important;
+}
+/* Hover: node lights up */
+[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-id]:hover {
+  filter: drop-shadow(0 0 5px rgba(56,189,248,0.35)) !important;
+}
+[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-id]:hover .logic-node-body {
+  stroke: rgba(100,180,255,0.88) !important;
+}
+/* Selected: distinct emphasis glow */
+[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-selected='1'] {
+  filter: drop-shadow(0 0 8px rgba(46,196,182,0.5)) !important;
+}
+[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-selected='1'] .logic-node-body {
+  stroke: rgba(46,196,182,0.92) !important;
+  stroke-width: 1.6 !important;
+}
+
+/* ── Wires: higher contrast, hover emphasis ── */
+[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-wire-id] path {
+  stroke-width: 1.8px !important;
+}
+[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-wire-id] path[stroke='#6b7280'] {
+  stroke: #7abbd8 !important;
+}
+[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-wire-id]:hover path {
+  stroke: rgba(56,189,248,0.88) !important;
+  filter: drop-shadow(0 0 3px rgba(56,189,248,0.35)) !important;
+}
+
+/* ── Zoom controls: compact cluster ── */
+[data-ide-mode-marker='design'] .ide-design-canvas-controls {
+  gap: 2px !important;
+  padding: 3px !important;
+}
+[data-ide-mode-marker='design'] .ide-design-canvas-controls .ide-button {
+  min-height: 24px !important;
+  padding: 3px 8px !important;
+  font-size: 11px !important;
+  border-radius: 5px !important;
+}
+
+/* ── Palette: maximum density ── */
+[data-ide-mode-marker='design'] .ide-palette-card {
+  min-height: 26px !important;
+  padding: 3px 7px !important;
+  gap: 5px !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SLICE 5 — Export / Import / Hardware alignment
+   Each surface must communicate its purpose at a glance.
+   ════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────
+   EXPORT — Release surface
+   ───────────────────────────────────── */
+
+[data-ide-mode-marker='export'] .ide-panel-description {
+  font-size: 11px !important;
+  opacity: 0.52 !important;
+  line-height: 1.3 !important;
+}
+[data-ide-mode-marker='export'] .ide-export-summary-hero h2,
+[data-ide-mode-marker='export'] .ide-export-summary-hero h3 {
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: rgba(235,248,255,0.95) !important;
+}
+[data-ide-mode-marker='export'] .ide-export-summary-actions {
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+[data-ide-mode-marker='export'] .ide-export-summary-actions .ide-button-primary {
+  width: 100% !important;
+  min-height: 52px !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  justify-content: center !important;
+  background: rgba(46,196,182,0.2) !important;
+  border-color: rgba(46,196,182,0.52) !important;
+  box-shadow: 0 0 28px rgba(46,196,182,0.16), 0 8px 20px rgba(2,8,16,0.38) !important;
+}
+[data-ide-mode-marker='export'] .ide-export-summary-actions .ide-button-secondary,
+[data-ide-mode-marker='export'] .ide-export-summary-actions .ide-button-ghost {
+  width: 100% !important;
+  justify-content: center !important;
+  opacity: 0.68 !important;
+  font-size: 12px !important;
+  min-height: 32px !important;
+}
+[data-ide-mode-marker='export'] .ide-export-summary-stat {
+  padding: 6px 10px !important;
+}
+[data-ide-mode-marker='export'] .ide-export-trust-row {
+  padding: 7px 10px !important;
+  gap: 8px !important;
+  min-height: 0 !important;
+  align-items: center !important;
+}
+[data-ide-mode-marker='export'] .ide-export-trust-row .ide-button {
+  font-size: 11px !important;
+  min-height: 26px !important;
+  padding: 3px 10px !important;
+}
+[data-ide-mode-marker='export'] .ide-export-sidecard {
+  opacity: 0.88 !important;
+  transition: opacity 200ms !important;
+}
+[data-ide-mode-marker='export'] .ide-export-sidecard:hover {
+  opacity: 1 !important;
+}
+
+/* ─────────────────────────────────────
+   IMPORT — Guided intake surface
+   ───────────────────────────────────── */
+
+[data-ide-mode-marker='import'] .ide-panel-description {
+  font-size: 11px !important;
+  opacity: 0.52 !important;
+}
+[data-ide-mode-marker='import'] .ide-import-start-card,
+[data-ide-mode-marker='import'] .ide-import-start-other-options {
+  border-color: rgba(46,196,182,0.18) !important;
+  background: rgba(5,14,25,0.82) !important;
+}
+[data-ide-mode-marker='import'] .ide-import-dock-actions .ide-button-primary {
+  width: 100% !important;
+  min-height: 44px !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  justify-content: center !important;
+  box-shadow: 0 4px 16px rgba(46,196,182,0.15) !important;
+}
+[data-ide-mode-marker='import'] .ide-import-dock-actions .ide-button-secondary,
+[data-ide-mode-marker='import'] .ide-import-dock-actions .ide-button-ghost {
+  width: 100% !important;
+  justify-content: center !important;
+  font-size: 12px !important;
+  opacity: 0.72 !important;
+}
+[data-ide-mode-marker='import'] .ide-import-workflow-step {
+  padding: 5px 8px !important;
+  gap: 6px !important;
+}
+[data-ide-mode-marker='import'] .ide-import-workflow-step-label {
+  font-size: 11px !important;
+}
+[data-ide-mode-marker='import'] .ide-import-workflow-step-desc {
+  font-size: 10px !important;
+  opacity: 0.65 !important;
+  line-height: 1.3 !important;
+}
+[data-ide-mode-marker='import'] .ide-workbench-dock-right {
+  opacity: 0.82 !important;
+  transition: opacity 200ms !important;
+}
+[data-ide-mode-marker='import'] .ide-workbench-dock-right:hover,
+[data-ide-mode-marker='import'] .ide-workbench-dock-right:focus-within {
+  opacity: 1 !important;
+}
+
+/* ─────────────────────────────────────
+   HARDWARE — Board bring-up console
+   ───────────────────────────────────── */
+
+[data-ide-mode-marker='hardware'] .ide-hardware-provenance-strip {
+  padding: 4px 12px !important;
+  min-height: 0 !important;
+  gap: 10px !important;
+  opacity: 0.68 !important;
+  font-size: 10px !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hardware-provenance-axis {
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-mode-toggle {
+  gap: 2px !important;
+  padding: 3px !important;
+  background: rgba(4,10,20,0.7) !important;
+  border-radius: 7px !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-mode-toggle button {
+  min-height: 28px !important;
+  padding: 4px 12px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  border-radius: 5px !important;
+  letter-spacing: 0.03em !important;
+}
+[data-ide-mode-marker='hardware'] .ide-workbench-dock-right .ide-table-wrap th {
+  font-size: 9px !important;
+  letter-spacing: 0.07em !important;
+  opacity: 0.65 !important;
+  text-transform: uppercase !important;
+}
+[data-ide-mode-marker='hardware'] .ide-workbench-dock-right .ide-table-wrap td {
+  padding: 2px 8px !important;
+  font-size: 11px !important;
+  font-family: var(--rb-font-mono) !important;
+}
+[data-ide-mode-marker='hardware'] .ide-workbench-dock-right {
+  opacity: 0.82 !important;
+  transition: opacity 200ms !important;
+}
+[data-ide-mode-marker='hardware'] .ide-workbench-dock-right:hover,
+[data-ide-mode-marker='hardware'] .ide-workbench-dock-right:focus-within {
+  opacity: 1 !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero {
+  padding: 20px 24px !important;
+  border-color: rgba(244,185,66,0.2) !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero h2,
+[data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero h3 {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: rgba(240,250,255,0.96) !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero .ide-button-primary {
+  min-height: 44px !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  padding: 10px 22px !important;
+  box-shadow: 0 4px 16px rgba(46,196,182,0.18) !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero .ide-button-secondary {
+  font-size: 12px !important;
+  opacity: 0.75 !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-callout {
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   HARDWARE REDESIGN — Bring-up console, not spreadsheet
+   ════════════════════════════════════════════════════════════ */
+
+/* ── 1. Blocked hero → slim amber warning strip (not a blocking card) ── */
+[data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 14px !important;
+  padding: 9px 16px !important;
+  min-height: 0 !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(244,185,66,0.28) !important;
+  background: rgba(244,185,66,0.048) !important;
+  margin-bottom: 8px !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero__copy {
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1px !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero__title {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: rgba(244,200,80,0.92) !important;
+  display: block !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero .ide-copy {
+  font-size: 11px !important;
+  color: rgba(165,195,220,0.55) !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  max-width: 520px !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero__actions {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 6px !important;
+  flex-shrink: 0 !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero__actions .ide-button-primary {
+  min-height: 30px !important;
+  font-size: 12px !important;
+  padding: 4px 14px !important;
+  box-shadow: 0 0 18px rgba(46,196,182,0.14) !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero__actions .ide-button-secondary,
+[data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero__actions .ide-button-ghost {
+  min-height: 30px !important;
+  font-size: 11px !important;
+  padding: 4px 10px !important;
+  opacity: 0.7 !important;
+}
+
+/* ── 2. Live state table → monitoring console, not spreadsheet ── */
+/* Hide SIGNAL/VALUE header — visually obvious from context */
+[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] thead {
+  display: none !important;
+}
+[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+}
+[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] td {
+  padding: 1px 6px !important;
+  font-size: 10px !important;
+  line-height: 1.55 !important;
+  border: none !important;
+  vertical-align: middle !important;
+}
+[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] td:first-child {
+  font-family: var(--rb-font-mono) !important;
+  font-size: 9.5px !important;
+  color: rgba(140,180,215,0.55) !important;
+  letter-spacing: 0.04em !important;
+  width: 52px !important;
+}
+[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] td:last-child {
+  font-family: var(--rb-font-mono) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: rgba(46,196,182,0.78) !important;
+  letter-spacing: 0.05em !important;
+}
+/* Zebra rows: very subtle separation between signal groups */
+[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] tr:nth-child(8),
+[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] tr:nth-child(16) {
+  border-bottom: 1px solid rgba(56,189,248,0.07) !important;
+}
+
+/* ── 3. Right dock: console panel header ── */
+[data-ide-mode-marker='hardware'] .ide-workbench-dock-right .ide-inspector-title {
+  font-size: 9px !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: rgba(130,170,210,0.48) !important;
+  font-weight: 600 !important;
+}
+/* Signal log — treated as a monitoring readout */
+[data-ide-mode-marker='hardware'] .ide-workbench-dock-right .ide-workbench-console-header {
+  padding: 5px 10px !important;
+}
+[data-ide-mode-marker='hardware'] .ide-workbench-dock-right .ide-workbench-console-header h4 {
+  font-size: 9px !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  opacity: 0.45 !important;
+  font-weight: 600 !important;
+}
+
+/* ── 4. Mode tabs — instrument selector bar ── */
+[data-ide-mode-marker='hardware'] .ide-hw-mode-toggle {
+  border-bottom: 1px solid rgba(56,189,248,0.1) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0 0 4px 0 !important;
+  margin-bottom: 8px !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-mode-toggle button {
+  border-radius: 4px 4px 0 0 !important;
+  letter-spacing: 0.04em !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-mode-toggle .ide-button-primary {
+  background: rgba(56,189,248,0.1) !important;
+  border-bottom: 2px solid rgba(56,189,248,0.62) !important;
+  color: rgba(220,240,255,0.95) !important;
+}
+
+/* ── 5. Left dock: operator control panel ── */
+[data-ide-mode-marker='hardware'] .ide-hw-live-design-link {
+  margin-top: 8px !important;
+  padding-top: 8px !important;
+  border-top: 1px solid rgba(56,189,248,0.07) !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-live-design-link .ide-button {
+  font-size: 11px !important;
+  opacity: 0.62 !important;
+  min-height: 26px !important;
+}
+/* Sim tick label */
+[data-ide-mode-marker='hardware'] .ide-workbench-placeholder-header h3 {
+  font-size: 9px !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: rgba(130,170,210,0.48) !important;
+  font-weight: 600 !important;
+}
+
+/* ── 6. Provenance strip — status axis bar ── */
+[data-ide-mode-marker='hardware'] .ide-hardware-provenance-strip {
+  padding: 5px 14px !important;
+  border-radius: 0 !important;
+  border-top: 1px solid rgba(56,189,248,0.07) !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  background: transparent !important;
+}
+[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-export-status']:has-text,
+[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-export-status'] {
+  font-family: var(--rb-font-mono) !important;
+  font-size: 10px !important;
+}
+
+/* ── 7. Board area — give the PCB visual maximum breathing room ── */
+[data-ide-mode-marker='hardware'] .ide-panel-body {
+  padding: 0 !important;
+}
+[data-ide-mode-marker='hardware'] .ide-panel-body > *:first-child {
+  padding: 8px 14px 0 !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   EXPORT REFINEMENT — Flatten surface, authority, handoff
+   ════════════════════════════════════════════════════════════ */
+
+/* ── 1. Flatten hero card layers — release-console, not form ── */
+[data-ide-mode-marker='export'] .ide-export-summary-hero {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  animation: rb-export-hero-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+[data-ide-mode-marker='export'] .ide-export-summary-copy {
+  padding: 20px 24px !important;
+}
+[data-ide-mode-marker='export'] .ide-export-trust-banner {
+  animation: rb-export-hero-in 320ms 80ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+@keyframes rb-export-hero-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── 2. AVAILABLE state — amber warn treatment ── */
+[data-ide-mode-marker='export'] .ide-export-trust-row--available {
+  border-left: 3px solid rgba(244,185,66,0.62) !important;
+  background: rgba(244,185,66,0.04) !important;
+  padding-left: 16px !important;
+}
+[data-ide-mode-marker='export'] .ide-export-trust-row--available .ide-export-trust-header {
+  margin-bottom: 6px !important;
+}
+[data-ide-mode-marker='export'] .ide-export-trust-reason {
+  font-size: 13px !important;
+  color: rgba(240,200,110,0.82) !important;
+  font-weight: 500 !important;
+  margin: 0 0 4px !important;
+}
+[data-ide-mode-marker='export'] .ide-export-trust-consequence {
+  font-size: 12px !important;
+  color: rgba(180,210,235,0.65) !important;
+  line-height: 1.4 !important;
+  margin: 0 !important;
+}
+[data-ide-mode-marker='export'] .ide-export-readiness-strip {
+  gap: 10px !important;
+  margin: 8px 0 !important;
+}
+[data-ide-mode-marker='export'] .ide-export-readiness-axis--warn {
+  color: rgba(244,185,66,0.88) !important;
+}
+[data-ide-mode-marker='export'] .ide-export-readiness-axis--fail {
+  color: rgba(255,107,107,0.78) !important;
+}
+[data-ide-mode-marker='export'] .ide-export-readiness-axis--idle {
+  color: rgba(150,180,210,0.48) !important;
+}
+
+/* ── 3. Readiness actions — connected to amber state, not detached ── */
+[data-ide-mode-marker='export'] .ide-export-trust-row--available .ide-inline-actions {
+  margin-top: 10px !important;
+  padding-top: 10px !important;
+  border-top: 1px solid rgba(244,185,66,0.14) !important;
+}
+[data-ide-mode-marker='export'] .ide-export-trust-row--available .ide-inline-actions .ide-button {
+  border-color: rgba(244,185,66,0.36) !important;
+  color: rgba(244,200,100,0.9) !important;
+  font-size: 12px !important;
+  min-height: 30px !important;
+}
+[data-ide-mode-marker='export'] .ide-export-trust-row--available .ide-inline-actions .ide-button:hover {
+  border-color: rgba(244,185,66,0.62) !important;
+  background: rgba(244,185,66,0.07) !important;
+}
+
+/* ── 4. CTA authority — entrance + trusted-state boost ── */
+@keyframes rb-export-cta-settle {
+  from { opacity: 0.45; transform: translateY(4px); }
+  to   { opacity: 1;   transform: translateY(0); }
+}
+[data-ide-mode-marker='export'] .ide-export-summary-actions .ide-button-primary {
+  animation: rb-export-cta-settle 380ms 120ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  letter-spacing: 0.01em !important;
+}
+/* Trusted state: stronger teal glow */
+[data-ide-mode-marker='export']:has(.ide-export-trust-row--trusted) .ide-export-summary-actions .ide-button-primary {
+  background: rgba(46,196,182,0.22) !important;
+  border-color: rgba(46,196,182,0.62) !important;
+  box-shadow: 0 0 36px rgba(46,196,182,0.22), 0 8px 24px rgba(2,8,16,0.4) !important;
+}
+
+/* ── 5. Demote Package Context sidecard — supporting info only ── */
+[data-ide-mode-marker='export'] .ide-export-sidecard {
+  opacity: 0.58 !important;
+}
+[data-ide-mode-marker='export'] .ide-export-sidecard:hover,
+[data-ide-mode-marker='export'] .ide-export-sidecard:focus-within {
+  opacity: 0.94 !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   EXPORT LAST 10% — CTA lift, scan hierarchy, finality energy
+   ════════════════════════════════════════════════════════════ */
+
+/* ── 1. CTA lift — undeniable primary action ── */
+[data-ide-mode-marker='export'] .ide-export-summary-actions .ide-button-primary {
+  background: rgba(46,196,182,0.24) !important;
+  border-color: rgba(46,196,182,0.72) !important;
+  box-shadow:
+    0 0 44px rgba(46,196,182,0.2),
+    0 12px 28px rgba(2,8,16,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.06) !important;
+}
+[data-ide-mode-marker='export'] .ide-export-summary-actions .ide-button-primary:hover {
+  background: rgba(46,196,182,0.32) !important;
+  border-color: rgba(46,196,182,0.88) !important;
+  box-shadow:
+    0 0 56px rgba(46,196,182,0.28),
+    0 14px 32px rgba(2,8,16,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.09) !important;
+}
+
+/* ── 2. Scan hierarchy — AVAILABLE state leads the eye ── */
+[data-ide-mode-marker='export'] .ide-export-trust-row--available .ide-export-trust-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 8px !important;
+}
+/* AVAILABLE pill — slightly larger, amber weight */
+[data-ide-mode-marker='export'] .ide-export-trust-row--available .ide-status-pill {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  padding: 3px 8px !important;
+}
+/* Description compresses so eye reaches CTA faster */
+[data-ide-mode-marker='export'] .ide-export-trust-row--available .ide-export-trust-body {
+  margin-bottom: 4px !important;
+}
+/* Tighten gap between state section and CTA in actions */
+[data-ide-mode-marker='export'] .ide-export-summary-actions {
+  gap: 6px !important;
+}
+
+/* ── 3. Finality energy — threshold line before CTA ── */
+[data-ide-mode-marker='export'] .ide-export-summary-actions::before {
+  content: '';
+  display: block;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(46,196,182,0.32) 30%,
+    rgba(46,196,182,0.32) 70%,
+    transparent 100%
+  );
+  margin-bottom: 4px;
+}
+/* Eyebrow "Engineering handoff" — reinforce final-step framing */
+[data-ide-mode-marker='export'] .ide-export-summary-eyebrow span {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: rgba(46,196,182,0.62) !important;
+  opacity: 1 !important;
+}
+/* Trusted state final: max glow + lift */
+[data-ide-mode-marker='export']:has(.ide-export-trust-row--trusted) .ide-export-summary-actions .ide-button-primary {
+  background: rgba(46,196,182,0.28) !important;
+  border-color: rgba(46,196,182,0.78) !important;
+  box-shadow:
+    0 0 52px rgba(46,196,182,0.28),
+    0 14px 32px rgba(2,8,16,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.09) !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   EXPORT LAST 5% + GLOBAL STAGE TRANSITIONS
+   ════════════════════════════════════════════════════════════ */
+
+/* ── 1. CTA interaction feedback — alive, not just styled ── */
+[data-ide-mode-marker='export'] .ide-export-summary-actions .ide-button-primary:hover {
+  background: rgba(46,196,182,0.34) !important;
+  border-color: rgba(46,196,182,0.88) !important;
+  box-shadow:
+    0 0 60px rgba(46,196,182,0.32),
+    0 16px 36px rgba(2,8,16,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.1) !important;
+  transform: translateY(-1px) !important;
+  transition:
+    transform 120ms ease,
+    box-shadow 160ms ease,
+    background 120ms ease,
+    border-color 120ms ease !important;
+}
+[data-ide-mode-marker='export'] .ide-export-summary-actions .ide-button-primary:active {
+  transform: translateY(1px) scale(0.9985) !important;
+  box-shadow:
+    0 0 28px rgba(46,196,182,0.16),
+    0 4px 12px rgba(2,8,16,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.04) !important;
+  transition: transform 60ms ease, box-shadow 60ms ease !important;
+}
+
+/* ── 2. AVAILABLE pill — anchors page state at a glance ── */
+[data-ide-mode-marker='export'] .ide-export-trust-row--available .ide-status-pill {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.07em !important;
+  padding: 4px 10px !important;
+  background: rgba(244,185,66,0.12) !important;
+  border: 1px solid rgba(244,185,66,0.38) !important;
+  border-radius: 5px !important;
+  color: rgba(244,200,80,0.95) !important;
+}
+
+/* ── 3. Readiness row — breathing room + defined section ── */
+[data-ide-mode-marker='export'] .ide-export-trust-banner {
+  padding-top: 2px !important;
+}
+[data-ide-mode-marker='export'] .ide-export-trust-row {
+  padding: 10px 14px !important;
+}
+[data-ide-mode-marker='export'] .ide-export-trust-row + .ide-export-trust-row,
+[data-ide-mode-marker='export'] .ide-inline-actions {
+  border-top: 1px solid rgba(56,189,248,0.07) !important;
+  padding-top: 8px !important;
+  margin-top: 4px !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   IMPORT POLISH — Intake station, not admin panel
+   ════════════════════════════════════════════════════════════ */
+
+/* ── First-look: centered intake zone ── */
+[data-ide-mode-marker='import'] .ide-import-start-guidance {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 180px !important;
+  text-align: center !important;
+  background: rgba(5,14,26,0.55) !important;
+  border: 1px solid rgba(46,196,182,0.12) !important;
+  border-radius: 10px !important;
+  padding: 32px 40px !important;
+}
+[data-ide-mode-marker='import'] .ide-import-start-guidance .ide-copy {
+  font-size: 14px !important;
+  color: rgba(180,210,235,0.72) !important;
+  line-height: 1.65 !important;
+  max-width: 460px !important;
+}
+[data-ide-mode-marker='import'] .ide-import-start-guidance strong {
+  color: rgba(235,248,255,0.92) !important;
+  font-weight: 700 !important;
+}
+
+/* ── Workflow steps: current/active gets teal left-border anchor ── */
+[data-ide-mode-marker='import'] .ide-import-workflow-step-btn {
+  padding: 6px 8px !important;
+  border-radius: 5px !important;
+  border-left: 2px solid transparent !important;
+  transition: background 160ms, border-color 160ms !important;
+}
+[data-ide-mode-marker='import'] .ide-import-workflow-step.is-active .ide-import-workflow-step-btn,
+[data-ide-mode-marker='import'] .ide-import-workflow-step.is-current .ide-import-workflow-step-btn {
+  border-left-color: rgba(46,196,182,0.65) !important;
+  background: rgba(46,196,182,0.06) !important;
+}
+[data-ide-mode-marker='import'] .ide-import-workflow-step-order {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  background: rgba(20,40,62,0.9) !important;
+  color: rgba(130,180,220,0.65) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+[data-ide-mode-marker='import'] .ide-import-workflow-step.is-active .ide-import-workflow-step-order,
+[data-ide-mode-marker='import'] .ide-import-workflow-step.is-current .ide-import-workflow-step-order {
+  background: rgba(46,196,182,0.15) !important;
+  color: rgba(46,196,182,0.95) !important;
+}
+
+/* ── Dock actions: "Current step" header muted, CTA prominent ── */
+[data-ide-mode-marker='import'] .ide-import-dock-actions {
+  border-top: 1px solid rgba(56,189,248,0.08) !important;
+}
+[data-ide-mode-marker='import'] .ide-import-dock-actions-header strong {
+  font-size: 9px !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: rgba(130,170,210,0.48) !important;
+  font-weight: 600 !important;
+}
+
+/* ── Sample cards: quick-load tiles, not a plain list ── */
+[data-ide-mode-marker='import'] .ide-import-samples-grid {
+  gap: 8px !important;
+}
+[data-ide-mode-marker='import'] .ide-import-sample-card {
+  border: 1px solid rgba(56,189,248,0.13) !important;
+  background: rgba(4,11,22,0.68) !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  gap: 3px !important;
+  transition: border-color 150ms, background 150ms !important;
+  text-align: left !important;
+}
+[data-ide-mode-marker='import'] .ide-import-sample-card:hover {
+  border-color: rgba(56,189,248,0.3) !important;
+  background: rgba(4,11,22,0.88) !important;
+}
+[data-ide-mode-marker='import'] .ide-import-sample-card-name {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: rgba(220,240,255,0.88) !important;
+  display: block !important;
+}
+[data-ide-mode-marker='import'] .ide-import-sample-card-desc {
+  font-size: 11px !important;
+  color: rgba(150,185,220,0.58) !important;
+  display: block !important;
+}
+[data-ide-mode-marker='import'] .ide-import-sample-card-learn {
+  font-size: 10px !important;
+  color: rgba(46,196,182,0.6) !important;
+  display: block !important;
+  margin-top: 2px !important;
+}
+
+/* ── Fix 1 & 2: Collapse redundant guidance panel — hero card is the sole instruction ── */
+[data-ide-mode-marker='import'] .ide-import-start-guidance {
+  background: transparent !important;
+  border: none !important;
+  padding: 4px 0 !important;
+  min-height: 0 !important;
+  text-align: left !important;
+}
+[data-ide-mode-marker='import'] .ide-import-start-guidance .ide-copy {
+  font-size: 10px !important;
+  color: rgba(120,155,190,0.35) !important;
+  line-height: 1.4 !important;
+  max-width: none !important;
+  font-style: italic !important;
+}
+
+/* ── Fix 3: Hero CTA authority — match Export level ── */
+[data-ide-mode-marker='import'] .ide-import-start-hero {
+  border: 1px solid rgba(46,196,182,0.13) !important;
+  background: rgba(4,12,24,0.68) !important;
+  border-radius: 10px !important;
+  padding: 20px 22px !important;
+}
+[data-ide-mode-marker='import'] .ide-import-start-hero__title {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: rgba(235,248,255,0.92) !important;
+  display: block !important;
+  margin-bottom: 6px !important;
+}
+[data-ide-mode-marker='import'] .ide-import-start-hero .ide-copy {
+  font-size: 13px !important;
+  color: rgba(160,195,225,0.68) !important;
+  line-height: 1.5 !important;
+}
+[data-ide-mode-marker='import'] .ide-import-start-hero__actions {
+  margin-top: 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+}
+[data-ide-mode-marker='import'] .ide-import-start-hero__actions .ide-button-primary {
+  min-height: 42px !important;
+  padding: 8px 22px !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  background: rgba(46,196,182,0.2) !important;
+  border-color: rgba(46,196,182,0.62) !important;
+  box-shadow:
+    0 0 36px rgba(46,196,182,0.16),
+    0 8px 20px rgba(2,8,16,0.38),
+    inset 0 1px 0 rgba(255,255,255,0.06) !important;
+  animation: rb-export-cta-settle 380ms 80ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+[data-ide-mode-marker='import'] .ide-import-start-hero__actions .ide-button-primary:hover {
+  background: rgba(46,196,182,0.3) !important;
+  border-color: rgba(46,196,182,0.8) !important;
+  box-shadow:
+    0 0 48px rgba(46,196,182,0.24),
+    0 10px 24px rgba(2,8,16,0.44),
+    inset 0 1px 0 rgba(255,255,255,0.08) !important;
+  transform: translateY(-1px) !important;
+}
+[data-ide-mode-marker='import'] .ide-import-start-hero__actions .ide-button-primary:active {
+  transform: translateY(1px) !important;
+  box-shadow: 0 0 16px rgba(46,196,182,0.1), 0 4px 10px rgba(2,8,16,0.3) !important;
+}
+
+/* ── Fix 4: "Other ways to start" — visible as clear secondary path ── */
+[data-ide-mode-marker='import'] .ide-import-start-other-options {
+  margin: 0 !important;
+}
+[data-ide-mode-marker='import'] .ide-import-start-other-options > summary {
+  font-size: 12px !important;
+  color: rgba(46,196,182,0.72) !important;
+  padding: 5px 10px !important;
+  border: 1px solid rgba(46,196,182,0.22) !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  list-style: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-weight: 600 !important;
+  transition: border-color 140ms, color 140ms !important;
+}
+[data-ide-mode-marker='import'] .ide-import-start-other-options > summary:hover {
+  border-color: rgba(46,196,182,0.45) !important;
+  color: rgba(46,196,182,0.95) !important;
+}
+[data-ide-mode-marker='import'] .ide-import-start-other-options[open] > summary {
+  border-color: rgba(46,196,182,0.42) !important;
+  background: rgba(46,196,182,0.05) !important;
+}
+
+/* ── Fix 5: Workflow step progression emphasis ── */
+[data-ide-mode-marker='import'] .ide-import-workflow-step.is-active .ide-import-workflow-step-copy strong,
+[data-ide-mode-marker='import'] .ide-import-workflow-step.is-current .ide-import-workflow-step-copy strong {
+  color: rgba(200,238,234,0.92) !important;
+  font-weight: 700 !important;
+}
+[data-ide-mode-marker='import'] .ide-import-workflow-step.is-done .ide-import-workflow-step-order {
+  background: rgba(46,196,182,0.1) !important;
+  color: rgba(46,196,182,0.7) !important;
+}
+[data-ide-mode-marker='import'] .ide-import-workflow-step.is-done .ide-import-workflow-step-btn {
+  opacity: 0.6 !important;
+}
+
+/* ── Target cards (HDL/XDC/ZIP tabs after first-look): instrument tabs ── */
+[data-ide-mode-marker='import'] .ide-import-target-cards {
+  gap: 6px !important;
+}
+[data-ide-mode-marker='import'] .ide-import-target-card {
+  border: 1px solid rgba(56,189,248,0.13) !important;
+  background: rgba(4,10,20,0.68) !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  gap: 3px !important;
+  transition: border-color 150ms !important;
+}
+[data-ide-mode-marker='import'] .ide-import-target-card.is-active {
+  border-color: rgba(56,189,248,0.4) !important;
+  background: rgba(56,189,248,0.055) !important;
+}
+[data-ide-mode-marker='import'] .ide-import-target-card-icon {
+  font-size: 17px !important;
+  color: rgba(56,189,248,0.65) !important;
+}
+[data-ide-mode-marker='import'] .ide-import-target-card-title {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: rgba(220,240,255,0.88) !important;
+}
+[data-ide-mode-marker='import'] .ide-import-target-card-desc {
+  font-size: 10px !important;
+  color: rgba(140,175,210,0.5) !important;
+  line-height: 1.3 !important;
+}
+
+/* ── 4. Stage transition continuity — surfaces slide in on mount ── */
+/* Each surface is conditionally rendered so it remounts on every mode switch.
+   The animation fires naturally at mount — no JS needed. */
+@keyframes rb-surface-enter {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ide-panel {
+  animation: rb-surface-enter 210ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+/* Dock panels enter slightly behind (stagger) */
+.ide-workbench-dock-left .ide-panel,
+.ide-workbench-dock-right .ide-panel {
+  animation: rb-surface-enter 210ms 60ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SLICE 6 — GLOBAL COHESION PASS
+   One system, consistent motion, unified visual language
+   ════════════════════════════════════════════════════════════ */
+
+/* ── 1. Button interaction: upgrade to premium timing ──────── */
+/* 60ms feels mechanical; 140ms feels deliberate */
+.ide-button {
+  transition:
+    background    140ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow    140ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color  140ms cubic-bezier(0.16, 1, 0.3, 1),
+    color         100ms ease,
+    transform      80ms ease,
+    opacity       140ms ease !important;
+}
+/* Primary: stronger hover glow for full-width CTAs */
+.ide-button-primary:hover:not(:disabled) {
+  box-shadow:
+    0 0 20px rgba(46,196,182,0.32),
+    0 4px 14px rgba(2,8,16,0.45),
+    0 2px 0 rgba(255,255,255,0.06) inset !important;
+  transform: translateY(-1px) !important;
+}
+.ide-button-primary:active:not(:disabled) {
+  transform: scale(0.975) translateY(0) !important;
+  box-shadow: 0 0 6px rgba(46,196,182,0.18) !important;
+  transition-duration: 55ms !important;
+}
+
+/* ── 2. Mode nav: active state appearance transition ───────── */
+.ide-mode-button {
+  transition:
+    background   180ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    color        120ms ease,
+    opacity      160ms ease !important;
+}
+/* Active indicator glyph box gets a teal tint */
+.ide-mode-button.is-active .ide-mode-glyph {
+  background: rgba(46,196,182,0.12) !important;
+  border-color: rgba(46,196,182,0.28) !important;
+  color: rgba(210,255,250,0.92) !important;
+}
+
+/* ── 3. Surface entry: tighten the spring curve ────────────── */
+@keyframes rb-surface-enter-v2 {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ide-workbench-main > .ide-panel {
+  animation: rb-surface-enter-v2 200ms cubic-bezier(0.22, 1, 0.36, 1) both !important;
+}
+/* Stagger: dock panels enter 50ms behind */
+.ide-workbench-dock-left > .ide-panel,
+.ide-workbench-dock-right > .ide-panel {
+  animation: rb-surface-enter-v2 200ms 50ms cubic-bezier(0.22, 1, 0.36, 1) both !important;
+}
+
+/* ── 4. Consistent scrollbar across all surfaces ───────────── */
+.ide-workbench-main *,
+.ide-workbench-dock-left *,
+.ide-workbench-dock-right *,
+.ide-panel * {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(56,189,248,0.22) transparent !important;
+}
+.ide-workbench-main *::-webkit-scrollbar,
+.ide-workbench-dock-left *::-webkit-scrollbar,
+.ide-workbench-dock-right *::-webkit-scrollbar {
+  width: 4px !important;
+  height: 4px !important;
+}
+.ide-workbench-main *::-webkit-scrollbar-track,
+.ide-workbench-dock-left *::-webkit-scrollbar-track,
+.ide-workbench-dock-right *::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+.ide-workbench-main *::-webkit-scrollbar-thumb,
+.ide-workbench-dock-left *::-webkit-scrollbar-thumb,
+.ide-workbench-dock-right *::-webkit-scrollbar-thumb {
+  background: rgba(56,189,248,0.2) !important;
+  border-radius: 4px !important;
+}
+.ide-workbench-main *::-webkit-scrollbar-thumb:hover,
+.ide-workbench-dock-left *::-webkit-scrollbar-thumb:hover,
+.ide-workbench-dock-right *::-webkit-scrollbar-thumb:hover {
+  background: rgba(56,189,248,0.38) !important;
+}
+
+/* ── 5. Verify surface status colors — consistent system ──── */
+/* PASS */
+[data-ide-mode-marker='verify'] .ide-status-pill.is-pass,
+[data-ide-mode-marker='verify'] .ide-status-pill[data-status='PASS'] {
+  background: rgba(46,196,182,0.14) !important;
+  border-color: rgba(46,196,182,0.32) !important;
+  color: rgba(46,196,182,0.96) !important;
+}
+/* FAIL */
+[data-ide-mode-marker='verify'] .ide-status-pill.is-fail,
+[data-ide-mode-marker='verify'] .ide-status-pill[data-status='FAIL'] {
+  background: rgba(255,107,107,0.12) !important;
+  border-color: rgba(255,107,107,0.28) !important;
+  color: rgba(255,140,140,0.94) !important;
+}
+/* RUNNING */
+[data-ide-mode-marker='verify'] .ide-status-pill.is-running,
+[data-ide-mode-marker='verify'] .ide-status-pill[data-status='RUNNING'] {
+  background: rgba(56,189,248,0.1) !important;
+  border-color: rgba(56,189,248,0.25) !important;
+  color: rgba(120,210,255,0.9) !important;
+}
+/* BLOCKED / STALE */
+[data-ide-mode-marker='verify'] .ide-status-pill.is-blocked,
+[data-ide-mode-marker='verify'] .ide-status-pill[data-status='BLOCKED'],
+[data-ide-mode-marker='verify'] .ide-status-pill[data-status='STALE'] {
+  background: rgba(244,185,66,0.08) !important;
+  border-color: rgba(244,185,66,0.22) !important;
+  color: rgba(244,200,80,0.78) !important;
+}
+
+/* ── 6. Hardware: NEEDS ACTION status consistent with amber system */
+[data-ide-mode-marker='hardware'] .ide-status-pill,
+.ide-needs-action-pill {
+  background: rgba(244,185,66,0.1) !important;
+  border-color: rgba(244,185,66,0.3) !important;
+  color: rgba(244,200,80,0.9) !important;
+}
+
+/* ── 7. Focus ring: consistent brand color across all surfaces */
+.ide-button:focus-visible,
+.ide-mode-button:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(56,189,248,0.55) !important;
+  outline-offset: 2px !important;
+}
+
+/* ── 8. Text selection: brand-matched highlight ────────────── */
+::selection {
+  background: rgba(46,196,182,0.22) !important;
+  color: rgba(240,255,253,0.98) !important;
+}
+
+/* ── 9. Section title consistency across all surfaces ──────── */
+.ide-panel-section-title,
+.ide-inspector-title,
+.ide-workbench-placeholder-header h3,
+.ide-workbench-console-header h4 {
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: rgba(130,170,210,0.45) !important;
+}
+
+/* ── 10. Consistent disabled state across all surfaces ─────── */
+button:disabled,
+.ide-button:disabled {
+  cursor: not-allowed !important;
+  pointer-events: auto !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SLICE 7 — DETAIL POLISH
+   Surgical micro-fixes: cropping, spacing, empty states, grouping
+   ════════════════════════════════════════════════════════════ */
+
+/* ── A1. Bottom status bar: lift off viewport edge ── */
+.ide-status-bar {
+  border-top: 1px solid rgba(56,189,248,0.07) !important;
+  padding-top: 3px !important;
+  padding-bottom: max(3px, env(safe-area-inset-bottom, 0px)) !important;
+}
+
+/* ── A2. Panel header/content gap: tighten floating headers ── */
+.ide-panel-header {
+  margin-bottom: 6px !important;
+}
+.ide-inspector-section-header {
+  padding-bottom: 3px !important;
+}
+
+/* ── A3. Project title: one-line clamp with ellipsis ── */
+/* Real class: .ide-project-identity-name (inside .ide-project-identity-strip) */
+[data-ide-mode-marker='project'] .ide-project-identity-name {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* ── A4. Design mini-toolbar: increase icon cluster gap ── */
+[data-ide-mode-marker='design'] .ide-design-toolbar .ide-toolbar-group {
+  gap: 8px !important;
+}
+[data-ide-mode-marker='design'] .ide-toolbar-group + .ide-toolbar-group {
+  margin-left: 4px !important;
+}
+
+/* ── A5. Export artifact path: no wrapping, truncate with ellipsis ── */
+[data-testid='ide-export-preview-path'] {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  display: block !important;
+  font-family: var(--rb-font-mono) !important;
+  font-size: 11px !important;
+}
+
+/* ── A6. Hardware live-state: correct signal group separators ── */
+/* liveHardwareRows order: SW0-SW7 (rows 1-8), BTNC-BTNR (rows 9-13), LD0-LD7 (rows 14-21) */
+
+/* Separator after SW group (row 8) */
+[data-testid='ide-hardware-live-state-table'] tr:nth-child(8) td {
+  padding-bottom: 5px !important;
+  border-bottom: 1px solid rgba(56,189,248,0.10) !important;
+}
+/* Separator after BTN group (row 13) */
+[data-testid='ide-hardware-live-state-table'] tr:nth-child(13) td {
+  padding-bottom: 5px !important;
+  border-bottom: 1px solid rgba(56,189,248,0.10) !important;
+}
+/* Space before first row of each new group */
+[data-testid='ide-hardware-live-state-table'] tr:nth-child(9) td,
+[data-testid='ide-hardware-live-state-table'] tr:nth-child(14) td {
+  padding-top: 5px !important;
+}
+
+/* Muted group-label prefixes on first row of each group */
+[data-testid='ide-hardware-live-state-table'] tr:nth-child(1) td:first-child::before {
+  content: 'SW  ';
+  font-size: 7.5px !important;
+  opacity: 0.3 !important;
+  letter-spacing: 0.05em !important;
+}
+[data-testid='ide-hardware-live-state-table'] tr:nth-child(9) td:first-child::before {
+  content: 'BTN  ';
+  font-size: 7.5px !important;
+  opacity: 0.3 !important;
+  letter-spacing: 0.05em !important;
+}
+[data-testid='ide-hardware-live-state-table'] tr:nth-child(14) td:first-child::before {
+  content: 'LD  ';
+  font-size: 7.5px !important;
+  opacity: 0.3 !important;
+  letter-spacing: 0.05em !important;
+}
+
+/* ── A7. Hardware signal log empty state: guided, not abandoned ── */
+[data-testid='ide-hw-signal-log-empty'] {
+  font-size: 11px !important;
+  color: rgba(140,175,210,0.4) !important;
+  font-style: italic !important;
+  padding: 4px 2px !important;
+  margin: 0 !important;
+  line-height: 1.5 !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SLICE 8 — VERIFY SIGNAL LEGIBILITY + SCOPE HEADER CLEANUP
+   Make Verify readable at a glance: signal identity, unified
+   instrument header, control grouping, empty state polish
+   ════════════════════════════════════════════════════════════ */
+
+/* ── A. Signal chip semantic identity ──────────────────────────
+   Chips now carry data-direction='in'|'out' (added in TSX).
+   Category color layers under the existing tone modifiers.
+   ─────────────────────────────────────────────────────────── */
+
+/* Base: slightly increase chip contrast + readable padding */
+.ide-verify-signal-chip {
+  font-size: 11px !important;
+  min-width: 0 !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  padding: 2px 7px !important;
+  border-radius: 12px !important;
+  font-weight: 500 !important;
+  transition: border-color 120ms ease, background 120ms ease !important;
+}
+
+/* INPUT chips: cool cyan identity */
+.ide-verify-signal-chip[data-direction='in'] {
+  border-color: rgba(56,189,248,0.38) !important;
+  background: rgba(56,189,248,0.07) !important;
+  color: rgba(185,230,255,0.88) !important;
+}
+.ide-verify-signal-chip[data-direction='in'] .ide-verify-signal-chip-dir {
+  color: rgba(100,210,255,0.9) !important;
+}
+
+/* OUTPUT chips: teal/green identity */
+.ide-verify-signal-chip[data-direction='out'] {
+  border-color: rgba(46,196,182,0.38) !important;
+  background: rgba(46,196,182,0.07) !important;
+  color: rgba(180,242,230,0.88) !important;
+}
+.ide-verify-signal-chip[data-direction='out'] .ide-verify-signal-chip-dir {
+  color: rgba(46,196,182,0.95) !important;
+}
+
+/* ASSERTION FAIL: red override — shape still identifies category */
+.ide-verify-signal-chip--fail {
+  border-color: rgba(255,107,107,0.52) !important;
+  background: rgba(255,107,107,0.1) !important;
+  color: rgba(255,170,170,0.92) !important;
+}
+.ide-verify-signal-chip--fail .ide-verify-signal-chip-dir {
+  color: rgba(255,140,140,0.8) !important;
+}
+
+/* ASSERTION PASS: boost category colour slightly */
+.ide-verify-signal-chip--pass[data-direction='in'] {
+  border-color: rgba(56,189,248,0.58) !important;
+  background: rgba(56,189,248,0.12) !important;
+}
+.ide-verify-signal-chip--pass[data-direction='out'] {
+  border-color: rgba(46,196,182,0.58) !important;
+  background: rgba(46,196,182,0.12) !important;
+}
+
+/* Direction glyph: consistent size */
+.ide-verify-signal-chip-dir {
+  font-size: 9px !important;
+  margin-right: 3px !important;
+  opacity: 0.85 !important;
+}
+
+/* Pin badge: muted monospace */
+.ide-verify-signal-chip-pin {
+  font-size: 9px !important;
+  opacity: 0.52 !important;
+  margin-left: 4px !important;
+  font-family: var(--rb-font-mono) !important;
+}
+
+/* Status check/cross */
+.ide-verify-signal-chip-status {
+  margin-left: 3px !important;
+  font-size: 10px !important;
+}
+
+/* ── B. Waveform header consolidation ──────────────────────────
+   Merge scope-header + signal-digest + waveform-bar into one
+   coherent instrument header zone.
+   ─────────────────────────────────────────────────────────── */
+
+/* Shared header background */
+.ide-verify-scope-header,
+.ide-verify-signal-digest,
+.ide-verify-waveform-bar {
+  background: rgba(8,20,34,0.55) !important;
+}
+
+/* Scope header: no bottom border (digest follows immediately) */
+.ide-verify-scope-header {
+  border-bottom: none !important;
+  padding-bottom: 6px !important;
+  padding-top: 8px !important;
+}
+
+/* Signal digest: flows directly below header */
+.ide-verify-signal-digest {
+  border-top: none !important;
+  padding-top: 3px !important;
+  padding-bottom: 6px !important;
+  gap: 5px !important;
+  flex-wrap: wrap !important;
+}
+
+/* Signal digest label: small, muted section label */
+.ide-verify-signal-digest-label {
+  font-size: 9px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: rgba(130,170,210,0.38) !important;
+  font-weight: 600 !important;
+  align-self: center !important;
+  margin-right: 4px !important;
+}
+
+/* Waveform bar: single thin separator marks end of header zone */
+.ide-verify-waveform-bar {
+  border-top: 1px solid rgba(56,189,248,0.07) !important;
+  border-bottom: 1px solid rgba(56,189,248,0.07) !important;
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+}
+
+/* ── C. Control hierarchy ──────────────────────────────────────
+   Group tick-range vs cursor controls as distinct clusters
+   ─────────────────────────────────────────────────────────── */
+
+/* Tick range + density cluster */
+.ide-verify-wfbar-center {
+  background: rgba(56,189,248,0.03) !important;
+  border: 1px solid rgba(56,189,248,0.08) !important;
+  border-radius: 6px !important;
+  padding: 2px 8px !important;
+  gap: 4px !important;
+}
+
+/* Cursor + scrubber cluster */
+.ide-verify-wfbar-right {
+  background: rgba(56,189,248,0.025) !important;
+  border: 1px solid rgba(56,189,248,0.07) !important;
+  border-radius: 6px !important;
+  padding: 2px 8px !important;
+  gap: 6px !important;
+}
+
+/* Labels: clearly secondary */
+.ide-verify-zoom-label {
+  font-size: 9px !important;
+  opacity: 0.42 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+}
+
+/* Zoom/range buttons: compact */
+.ide-verify-zoom-btn {
+  font-size: 10px !important;
+  padding: 2px 7px !important;
+  min-height: 22px !important;
+  border-radius: 4px !important;
+  opacity: 0.72 !important;
+  transition: opacity 100ms ease, background 100ms ease !important;
+}
+.ide-verify-zoom-btn:hover {
+  opacity: 1 !important;
+  background: rgba(56,189,248,0.1) !important;
+}
+
+/* Cursor controls: left-border separation */
+.ide-verify-cursor-controls {
+  border-left: 1px solid rgba(56,189,248,0.08) !important;
+  padding-left: 8px !important;
+  margin-left: 4px !important;
+}
+
+/* ── D. Empty waveform state ───────────────────────────────────
+   Instrument "waiting" state — intentional, not dead
+   ─────────────────────────────────────────────────────────── */
+
+.ide-verify-waveform-empty {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  min-height: 110px !important;
+  color: rgba(130,175,215,0.32) !important;
+  font-size: 12px !important;
+  font-style: italic !important;
+  border: 1px dashed rgba(56,189,248,0.08) !important;
+  border-radius: 6px !important;
+  margin: 8px 6px !important;
+  background: rgba(6,16,28,0.35) !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* ── E. Stimulus ↔ waveform consistency ────────────────────────
+   Group headers match signal chip identity colors
+   ─────────────────────────────────────────────────────────── */
+
+.ide-stimulus-group-header:not(.ide-stimulus-group-header--asserted) {
+  color: rgba(100,210,255,0.72) !important;
+  font-size: 9.5px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  font-weight: 700 !important;
+}
+
+.ide-stimulus-group-header--asserted {
+  color: rgba(46,196,182,0.72) !important;
+  font-size: 9.5px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  font-weight: 700 !important;
+}
+
+/* ── F. Scope header instrument polish ─────────────────────────
+   Title, badges, tick readouts feel like instrument metadata
+   ─────────────────────────────────────────────────────────── */
+
+.ide-verify-scope-label {
+  font-size: 9px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  font-weight: 700 !important;
+  color: rgba(130,170,210,0.42) !important;
+}
+
+.ide-verify-scope-seq-badge {
+  font-size: 9px !important;
+  padding: 1px 6px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(244,185,66,0.28) !important;
+  background: rgba(244,185,66,0.07) !important;
+  color: rgba(244,200,80,0.82) !important;
+  letter-spacing: 0.04em !important;
+}
+
+.ide-verify-scope-tick,
+.ide-verify-scope-cursor {
+  font-size: 10px !important;
+  opacity: 0.72 !important;
+  font-family: var(--rb-font-mono) !important;
+}
+.ide-verify-scope-cursor {
+  color: rgba(180,220,255,0.75) !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SLICE 9 — VERIFY FINAL INSTRUMENT FINISH
+   Clock chip identity, right rail companion finish,
+   instrument-waiting empty state, visual family tightening
+   ════════════════════════════════════════════════════════════ */
+
+/* ── A. Instrument-waiting empty state ─────────────────────────
+   When no run has happened yet, the waveform zone is a waiting
+   instrument — not a dead panel.
+   ─────────────────────────────────────────────────────────── */
+
+/* Breathing scanline gradient over the empty zone */
+.ide-verify-waveform-empty::before {
+  content: '' !important;
+  display: block !important;
+  width: 100% !important;
+  height: 1px !important;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(56,189,248,0.10) 30%,
+    rgba(56,189,248,0.18) 50%,
+    rgba(56,189,248,0.10) 70%,
+    transparent 100%
+  ) !important;
+  margin-bottom: 10px !important;
+}
+
+/* Slightly lift the empty text contrast */
+.ide-verify-waveform-empty > span {
+  color: rgba(130,175,215,0.40) !important;
+  font-size: 11.5px !important;
+  letter-spacing: 0.06em !important;
+  font-style: normal !important;
+  font-family: var(--rb-font-mono) !important;
+}
+
+/* ── B. Clock signal chip identity ─────────────────────────────
+   Clock chips: amber/gold — same amber as waveform clock rails.
+   data-is-clock='true' is set in TSX.
+   ─────────────────────────────────────────────────────────── */
+
+.ide-verify-signal-chip[data-is-clock='true'] {
+  border-color: rgba(251,191,36,0.42) !important;
+  background: rgba(251,191,36,0.07) !important;
+  color: rgba(254,220,100,0.88) !important;
+}
+.ide-verify-signal-chip[data-is-clock='true'] .ide-verify-signal-chip-dir {
+  color: rgba(251,191,36,0.92) !important;
+  font-size: 10px !important;
+}
+/* Clock + assertion fail: red beats amber */
+.ide-verify-signal-chip--fail[data-is-clock='true'] {
+  border-color: rgba(255,107,107,0.52) !important;
+  background: rgba(255,107,107,0.10) !important;
+  color: rgba(255,170,170,0.92) !important;
+}
+
+/* ── C. Waveform header final tightening ───────────────────────
+   Remove any residual double-border between digest and waveform-bar
+   ─────────────────────────────────────────────────────────── */
+
+/* Ensure no gap / border stacking at the seam */
+.ide-verify-signal-digest + .ide-verify-waveform-bar {
+  border-top: 1px solid rgba(56,189,248,0.08) !important;
+  margin-top: 0 !important;
+}
+
+/* Scope header left meta cluster: tighter gap */
+.ide-verify-scope-header .ide-verify-scope-meta {
+  gap: 8px !important;
+}
+
+/* ── D. Right rail — Vectors companion panel ───────────────────
+   Style the Vectors inspector as a deliberate reference monitor:
+   subtle frame, section label uppercase, table cells compact.
+   ─────────────────────────────────────────────────────────── */
+
+/* Inspector sections in verify right rail: uniform subtle treatment */
+[data-ide-mode-marker='verify'] .ide-inspector-section {
+  border-left: 2px solid rgba(56,189,248,0.08) !important;
+  padding-left: 8px !important;
+}
+
+/* Inspector section toggle headers: instrument label style */
+[data-ide-mode-marker='verify'] .ide-inspector-section .ide-inspector-toggle {
+  font-size: 9.5px !important;
+  letter-spacing: 0.10em !important;
+  text-transform: uppercase !important;
+  color: rgba(130,170,210,0.55) !important;
+  font-weight: 700 !important;
+}
+
+/* Reference mode note: muted, italic */
+[data-testid='ide-verify-reference-mode-note'] {
+  font-size: 11px !important;
+  color: rgba(130,175,215,0.45) !important;
+  font-style: italic !important;
+  margin-top: 2px !important;
+  line-height: 1.4 !important;
+}
+
+/* Vector table: compact cells */
+[data-testid='ide-verify-vectors-table'] td,
+[data-testid='ide-verify-vectors-table'] th {
+  padding: 3px 6px !important;
+  font-size: 11px !important;
+}
+[data-testid='ide-verify-vectors-table'] th {
+  font-size: 9.5px !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  color: rgba(130,170,210,0.52) !important;
+}
+
+/* Tick snapshot: matches vector table density */
+.ide-verify-tick-snapshot .ide-kv-row {
+  padding: 2px 0 !important;
+  font-size: 11px !important;
+}
+
+/* ── E. Visual family tightening across all three zones ────────
+   Stimulus header label / section dividers match waveform header.
+   ─────────────────────────────────────────────────────────── */
+
+/* Stimulus canvas header: same background as waveform header zone */
+.ide-stimulus-header {
+  background: rgba(8,20,34,0.55) !important;
+  border-bottom: 1px solid rgba(56,189,248,0.07) !important;
+  padding: 5px 10px !important;
+}
+
+/* Stimulus label in header: instrument label */
+.ide-stimulus-header-label {
+  font-size: 9px !important;
+  letter-spacing: 0.10em !important;
+  text-transform: uppercase !important;
+  color: rgba(130,170,210,0.42) !important;
+  font-weight: 700 !important;
+}
+
+/* Assert zone section label (when visible): matches family */
+[data-ide-mode-marker='verify'] .ide-verify-assert-zone-header {
+  font-size: 9px !important;
+  letter-spacing: 0.10em !important;
+  text-transform: uppercase !important;
+  color: rgba(130,170,210,0.42) !important;
+  font-weight: 700 !important;
+  padding: 4px 10px !important;
+  background: rgba(8,20,34,0.55) !important;
+  border-bottom: 1px solid rgba(56,189,248,0.07) !important;
+}
+
+/* Stimulus tick header cell: same amber as clock signals for time axis */
+.ide-stimulus-tick-header {
+  color: rgba(251,191,36,0.60) !important;
+  font-size: 10px !important;
+  font-family: var(--rb-font-mono) !important;
+}
+
+/* Stimulus add-tick button: subtle affordance */
+.ide-stimulus-add-tick {
+  opacity: 0.45 !important;
+  font-size: 13px !important;
+  transition: opacity 120ms ease !important;
+}
+.ide-stimulus-add-tick:hover {
+  opacity: 0.85 !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SLICE 10 — STRUCTURAL USABILITY OVERHAUL
+   Verify + Design: real layout fixes, not polish.
+   Waveform dominates. Canvas dominates. Docks are secondary.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── VERIFY: Waveform gets the space it needs ───────────────────
+
+   The scenario builder was set to flex:0 0 42% which gave the
+   waveform only ~300px. Combined with 62px row heights, only
+   2-3 signals were visible. Fixes:
+   1. Scenario builder collapsed by default (TSX change)
+   2. When open, cap it at 28% so waveform always dominates
+   3. Give waveform workbench flex:1 with enough minimum height
+   4. Signal list dock narrower to give waveform more width
+   ─────────────────────────────────────────────────────────── */
+
+/* Verify: narrow signal list dock — it's navigation, not the main event */
+.ide-workbench-shell[data-ide-mode-marker='verify'] {
+  --ide-workbench-left-width: 140px !important;
+  --ide-workbench-right-width: 200px !important;
+}
+
+/* Scenario builder: when open, cap at 28% height max so waveform dominates */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-scenario-builder-details {
+  flex: 0 0 auto !important;
+  max-height: 28% !important;
+  min-height: 0 !important;
+}
+
+/* Scenario builder collapsed state: just the summary bar (~32px) */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-scenario-builder-details:not([open]) {
+  max-height: 36px !important;
+  overflow: hidden !important;
+}
+
+/* Waveform workbench: flex:1 fills all remaining space */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-workbench {
+  flex: 1 1 0 !important;
+  min-height: 200px !important;
+  overflow: hidden !important;
+}
+
+/* Oscilloscope stage fills workbench vertically */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* The center waveform area of the three-panel must fill height */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel .ide-verify-center-panel,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel > .ide-main-area {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* Oscilloscope stage fills its container */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* Waveform scroll area: flex:1 inside oscilloscope */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+}
+
+/* Status strip: compact, never shrinks */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-status-strip {
+  flex: 0 0 auto !important;
+  min-height: 32px !important;
+  max-height: 42px !important;
+}
+
+/* Summary bar: clear affordance to expand/collapse testbench */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-summary {
+  height: 34px !important;
+  min-height: 34px !important;
+  font-size: 11px !important;
+  padding: 0 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  cursor: pointer !important;
+  background: rgba(4,12,24,0.7) !important;
+  border-bottom: 1px solid rgba(56,189,248,0.12) !important;
+  color: rgba(120,175,220,0.80) !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  font-weight: 700 !important;
+  gap: 8px !important;
+}
+
+/* Summary bar: open indicator arrow */
+.ide-verify-scenario-builder-details[open] > .ide-verify-scenario-builder-summary::after {
+  content: '▾' !important;
+  margin-left: auto !important;
+  opacity: 0.5 !important;
+  font-size: 12px !important;
+}
+.ide-verify-scenario-builder-details:not([open]) > .ide-verify-scenario-builder-summary::after {
+  content: '▸' !important;
+  margin-left: auto !important;
+  opacity: 0.5 !important;
+  font-size: 12px !important;
+}
+
+/* Tab bar + tab panel: compact, don't eat waveform height */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-tab-bar {
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-tab-panel {
+  max-height: 220px !important;
+  overflow: auto !important;
+}
+
+/* Verify left dock: signal list — narrow and clean */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-dock-left {
+  padding: 8px 6px !important;
+}
+
+/* Signal list rows: compact */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-signal-row {
+  padding: 3px 6px !important;
+  font-size: 11px !important;
+}
+
+/* ── DESIGN: Canvas gets maximum space ──────────────────────────
+
+   Left palette dock was 276px on a 1674px viewport — 16.5%.
+   Right inspector was 252px — 15%. The canvas had 1074px (64%)
+   which is actually decent but the palette dock is too wide.
+   Main fixes:
+   1. Narrow left dock from 276px → 200px
+   2. Compact palette items (less text, tighter rows)
+   3. Toolbar buttons: bigger click targets, clearer labels
+   4. Right inspector: slightly narrower
+   ─────────────────────────────────────────────────────────── */
+
+/* Design: tighter dock widths */
+.ide-workbench-shell[data-ide-mode-marker='design'] {
+  --ide-workbench-left-width: 192px !important;
+  --ide-workbench-right-width: 224px !important;
+}
+
+/* Palette dock: compact padding */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left {
+  padding: 8px 8px 12px !important;
+}
+
+/* Palette items: tighter rows, cleaner typography */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-item {
+  padding: 5px 8px !important;
+  font-size: 12px !important;
+  border-radius: 5px !important;
+  min-height: 28px !important;
+}
+
+/* Palette group headers: clear but compact */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-group-header,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-subheader h3 {
+  font-size: 9.5px !important;
+  letter-spacing: 0.10em !important;
+  padding-top: 10px !important;
+  padding-bottom: 4px !important;
+  color: rgba(120,165,210,0.5) !important;
+}
+
+/* Palette search: compact */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-search {
+  padding: 4px 8px !important;
+  font-size: 12px !important;
+  height: 28px !important;
+}
+
+/* Design toolbar: bigger click targets */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar .ide-button,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-circuit-toolbar .ide-button {
+  min-height: 32px !important;
+  padding: 5px 12px !important;
+  font-size: 12px !important;
+}
+
+/* Tool buttons (Select/Wire): clear active state, bigger */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-tool-button,
+.ide-workbench-shell[data-ide-mode-marker='design'] [data-tool] {
+  min-height: 34px !important;
+  padding: 6px 14px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+/* Mode indicator badge: clear and readable */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-circuit-mode-indicator {
+  font-size: 11px !important;
+  padding: 3px 10px !important;
+  border-radius: 6px !important;
+  background: rgba(56,189,248,0.1) !important;
+  border: 1px solid rgba(56,189,248,0.2) !important;
+  color: rgba(150,210,255,0.85) !important;
+}
+
+/* Inspector right dock: compact padding */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
+  padding: 10px 10px 14px !important;
+}
+
+/* Inspector section headers: clear, not shouty */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector-section-header,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector-toggle {
+  font-size: 9.5px !important;
+  letter-spacing: 0.08em !important;
+  color: rgba(120,165,210,0.55) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SLICE 11 — INTERACTION & ORGANIZATION OVERHAUL
+   Control grouping, toolbar discipline, panel role clarity
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Verify: Run strip — 3 grouped clusters ─────────────────── */
+.ide-verify-status-strip {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0 !important;
+  flex-wrap: wrap !important;
+  row-gap: 4px !important;
+}
+
+/* Status + meta stays left */
+.ide-verify-status-strip > .ide-status-pill,
+.ide-verify-status-strip > .ide-verify-strip-sep,
+.ide-verify-status-strip > .ide-verify-strip-meta,
+.ide-verify-status-strip > .ide-verify-incomplete-notice {
+  flex-shrink: 0;
+}
+
+/* Strip actions: flex row of groups */
+.ide-verify-strip-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0 !important;
+  margin-left: auto !important;
+}
+
+/* Each group: tightly packed row of related controls */
+.ide-verify-strip-group {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 0 10px !important;
+}
+
+/* Divider between groups */
+.ide-verify-strip-group + .ide-verify-strip-group {
+  border-left: 1px solid rgba(148, 163, 184, 0.15) !important;
+}
+
+/* Primary group: Run CTA has normal padding */
+.ide-verify-strip-group--run {
+  padding-left: 0 !important;
+}
+
+/* Utility group: slightly muted at rest */
+.ide-verify-strip-group--util .ide-button {
+  opacity: 0.65 !important;
+  font-size: 11px !important;
+}
+.ide-verify-strip-group--util .ide-button:hover {
+  opacity: 1 !important;
+}
+
+/* Observe group: assertion/step controls */
+.ide-verify-strip-group--observe .ide-button {
+  font-size: 12px !important;
+}
+
+/* ── Design: toolbar visual group separators ────────────────── */
+[data-ide-mode-marker='design'] .ide-design-toolbar .ide-toolbar-group.is-mode,
+[data-ide-mode-marker='design'] .ide-design-toolbar .ide-toolbar-group.is-edit {
+  position: relative !important;
+  padding-right: 16px !important;
+  margin-right: 4px !important;
+}
+[data-ide-mode-marker='design'] .ide-design-toolbar .ide-toolbar-group.is-mode::after,
+[data-ide-mode-marker='design'] .ide-design-toolbar .ide-toolbar-group.is-edit::after {
+  content: '' !important;
+  position: absolute !important;
+  right: 0 !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 1px !important;
+  height: 18px !important;
+  background: rgba(148, 163, 184, 0.18) !important;
+}
+
+/* ── Design: expanded toolbar — promote fit/zoom to compact row */
+[data-ide-mode-marker='design'] .ide-design-toolbarExpanded {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 4px 12px !important;
+  border-top: 1px solid rgba(148,163,184,0.08) !important;
+  background: rgba(15,23,42,0.4) !important;
+}
+[data-ide-mode-marker='design'] .ide-design-toolbarExpanded .ide-button {
+  font-size: 11px !important;
+  min-height: 26px !important;
+  padding: 3px 8px !important;
+}
+[data-ide-mode-marker='design'] .ide-design-depth-pill {
+  font-size: 10px !important;
+  opacity: 0.5 !important;
+  padding: 0 4px !important;
+}
+
+/* ── Verify: left dock — signal visibility panel ────────────── */
+/* Role: signal visibility only. Utility controls muted. */
+.ide-verify-signal-toolbar {
+  gap: 4px !important;
+  padding: 4px 0 !important;
+}
+.ide-verify-signal-toolbar .ide-button {
+  font-size: 10px !important;
+  min-height: 22px !important;
+  padding: 2px 7px !important;
+  opacity: 0.55 !important;
+  border-radius: 4px !important;
+}
+.ide-verify-signal-toolbar .ide-button:hover {
+  opacity: 1 !important;
+}
+
+/* Signal group headers: clean section anchor */
+.ide-verify-signal-group-header {
+  padding: 4px 0 2px !important;
+  margin-top: 4px !important;
+}
+.ide-verify-signal-group-header .ide-verify-group-toggle {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.07em !important;
+  text-transform: uppercase !important;
+  color: rgba(130,170,210,0.5) !important;
+  background: none !important;
+  border: none !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+}
+.ide-verify-signal-group-header .ide-verify-group-toggle:hover {
+  color: rgba(130,170,210,0.9) !important;
+}
+
+/* ── Signal chips — instrument controls, not UI badges ──────── */
+.ide-verify-signal-digest {
+  gap: 6px !important;
+  padding: 6px 0 !important;
+}
+.ide-verify-signal-chip {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  padding: 5px 12px !important;
+  border-radius: 6px !important;
+  letter-spacing: 0.01em !important;
+  cursor: pointer !important;
+  transition: background 0.12s, border-color 0.12s !important;
+  user-select: none !important;
+}
+/* Active chip: clear selection identity */
+.ide-verify-signal-chip.is-active,
+.ide-verify-signal-chip[data-active='true'] {
+  background: rgba(56,189,248,0.14) !important;
+  border-color: rgba(56,189,248,0.5) !important;
+  color: rgba(186,230,253,0.95) !important;
+}
+/* Direction glyph: instrument indicator */
+.ide-verify-signal-chip .ide-verify-chip-dir {
+  opacity: 0.5 !important;
+  font-size: 9px !important;
+  margin-right: 2px !important;
+}
+
+/* ── Verify waveform header: unified zone ───────────────────── */
+/* Remove visual gap between chip bar and waveform */
+.ide-verify-scope-header {
+  padding-bottom: 4px !important;
+  border-bottom: 1px solid rgba(56,189,248,0.07) !important;
+  margin-bottom: 0 !important;
+}
+.ide-verify-oscilloscope-stage {
+  border-top: none !important;
+}
+
+/* ── Contextual-only: debug/step controls stay compact ──────── */
+.ide-verify-step-controls,
+[data-testid='ide-verify-step-controls'] {
+  display: flex !important;
+  gap: 6px !important;
+  align-items: center !important;
+  padding: 6px 0 !important;
+  border-top: 1px solid rgba(56,189,248,0.07) !important;
+}
+.ide-verify-step-controls .ide-button,
+[data-testid='ide-verify-step-controls'] .ide-button {
+  font-size: 11px !important;
+  min-height: 26px !important;
+  padding: 3px 9px !important;
+}
+
+/* ── Right panel: reference context — cleaner ───────────────── */
+[data-ide-mode-marker='verify'] .ide-workbench-right-slot .ide-inspector-section {
+  padding: 8px 10px !important;
+}
+[data-ide-mode-marker='verify'] .ide-workbench-right-slot .ide-inspector-section-header {
+  font-size: 9px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: rgba(130,170,210,0.4) !important;
+  margin-bottom: 6px !important;
+}
+
+/* ── Design palette: compact drawer, not sprawling panel ───── */
+/* Hide verbose descriptions — glyph + title only */
+[data-ide-mode-marker='design'] .ide-palette-card-subtitle {
+  display: none !important;
+}
+[data-ide-mode-marker='design'] .ide-palette-card {
+  padding: 5px 8px !important;
+  min-height: 0 !important;
+  gap: 6px !important;
+  align-items: center !important;
+}
+[data-ide-mode-marker='design'] .ide-palette-card-glyph {
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  min-width: 28px !important;
+  letter-spacing: 0 !important;
+}
+[data-ide-mode-marker='design'] .ide-palette-card-title {
+  font-size: 12px !important;
+}
+[data-ide-mode-marker='design'] .ide-palette-card-title-row {
+  margin-bottom: 0 !important;
+}
+
+/* ── Design search input: clear and purposeful ──────────────── */
+[data-testid='ide-design-search'] {
+  font-size: 12px !important;
+  padding: 5px 10px !important;
+  border-radius: 6px !important;
+}
+
+/* ── Kill: floating text labels that add noise ──────────────── */
+/* "Undo N / Redo N" depth pills → only visible in expanded toolbar */
+.ide-design-depth-pill {
+  font-size: 10px !important;
+  opacity: 0.45 !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SLICE 12 — FINAL PRODUCT FINISH PASS
+   Ruthless hierarchy, instrument clarity, dead weight removal
+   ════════════════════════════════════════════════════════════ */
+
+/* ── A7. Remove "What is a tick?" from instrument viewport ──── */
+/* It pollutes prime waveform space — belongs in help docs */
+.ide-verify-tick-explainer {
+  display: none !important;
+}
+
+/* ── A2. Testbench summary bar: authority and intent ─────────── */
+.ide-verify-scenario-builder-details--postrun > summary.ide-verify-scenario-builder-summary {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 7px 12px !important;
+  background: rgba(15,23,42,0.55) !important;
+  border: 1px solid rgba(56,189,248,0.1) !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  list-style: none !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: rgba(186,230,253,0.7) !important;
+  user-select: none !important;
+}
+.ide-verify-scenario-builder-details--postrun > summary.ide-verify-scenario-builder-summary::-webkit-details-marker {
+  display: none !important;
+}
+.ide-verify-scenario-builder-details--postrun > summary.ide-verify-scenario-builder-summary:hover {
+  background: rgba(15,23,42,0.75) !important;
+  color: rgba(186,230,253,0.95) !important;
+}
+.ide-verify-scenario-builder-summary-label {
+  font-weight: 700 !important;
+  color: rgba(186,230,253,0.85) !important;
+}
+.ide-verify-scenario-builder-count {
+  font-size: 11px !important;
+  color: rgba(148,163,184,0.55) !important;
+  background: rgba(56,189,248,0.07) !important;
+  padding: 1px 7px !important;
+  border-radius: 4px !important;
+}
+.ide-verify-scenario-builder-summary-cue {
+  margin-left: auto !important;
+  font-size: 10px !important;
+  opacity: 0.35 !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* ── A5. Signal chip bar: respect group state ────────────────── */
+/* "Signals" label is redundant — chips ARE the signals */
+.ide-verify-signal-digest-label {
+  display: none !important;
+}
+.ide-verify-signal-digest {
+  padding: 3px 0 5px !important;
+  gap: 5px !important;
+  flex-wrap: wrap !important;
+}
+
+/* ── A3. StimulusCanvas: stronger visual identity ────────────── */
+.ide-stimulus-tick-header {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: rgba(130,170,210,0.55) !important;
+  background: rgba(8,15,30,0.5) !important;
+  text-align: center !important;
+}
+.ide-stimulus-row-label {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: rgba(186,230,253,0.8) !important;
+}
+
+/* ── A4. Waveform controls bar: tighter, cleaner ─────────────── */
+.ide-verify-zoom-label {
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  opacity: 0.38 !important;
+  margin-right: 2px !important;
+}
+.ide-verify-zoom-btn {
+  font-size: 11px !important;
+  min-height: 24px !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  background: rgba(30,41,59,0.6) !important;
+  border: 1px solid rgba(56,189,248,0.1) !important;
+  color: rgba(148,163,184,0.8) !important;
+}
+.ide-verify-zoom-btn:hover {
+  background: rgba(30,41,59,0.9) !important;
+  color: rgba(186,230,253,0.95) !important;
+}
+.ide-verify-zoom-btn.is-active {
+  background: rgba(56,189,248,0.12) !important;
+  border-color: rgba(56,189,248,0.35) !important;
+  color: rgba(186,230,253,0.95) !important;
+}
+
+/* ── A4. Scope header: unified instrument band ───────────────── */
+.ide-verify-scope-header {
+  min-height: 30px !important;
+  gap: 8px !important;
+  padding: 5px 12px !important;
+  background: rgba(8,15,30,0.35) !important;
+  border-bottom: 1px solid rgba(56,189,248,0.07) !important;
+}
+.ide-verify-scope-label {
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: rgba(130,170,210,0.4) !important;
+}
+
+/* ── A6. Drawer toggle: minimal when closed ──────────────────── */
+.ide-verify-supporting-strip:not(.is-open) .ide-verify-drawer-toggle {
+  padding: 5px 12px !important;
+  min-height: 28px !important;
+  border-top: 1px solid rgba(56,189,248,0.07) !important;
+}
+.ide-verify-drawer-label {
+  font-size: 10px !important;
+  opacity: 0.4 !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* ── A6. Drawer tabs: clear active state ─────────────────────── */
+.ide-verify-drawer-tab {
+  font-size: 11px !important;
+  padding: 3px 9px !important;
+  border-radius: 4px !important;
+  color: rgba(130,170,210,0.5) !important;
+  cursor: pointer !important;
+  transition: background 0.1s, color 0.1s !important;
+}
+.ide-verify-drawer-tab.is-active {
+  color: rgba(186,230,253,0.92) !important;
+  background: rgba(56,189,248,0.12) !important;
+}
+.ide-verify-drawer-tab:hover:not(.is-active) {
+  color: rgba(186,230,253,0.7) !important;
+  background: rgba(56,189,248,0.06) !important;
+}
+
+/* ── B1. Design toolbar: Fit button — accessible, not dominant ─ */
+[data-testid='ide-design-fit-circuit-primary'] {
+  opacity: 0.72 !important;
+}
+[data-testid='ide-design-fit-circuit-primary']:hover {
+  opacity: 1 !important;
+}
+
+/* ── B2. Design palette: kill verbose section descriptions ────── */
+.ide-palette-section-copy {
+  display: none !important;
+}
+/* Palette results text: minimal */
+.ide-design-palette-results {
+  font-size: 10px !important;
+  color: rgba(130,170,210,0.45) !important;
+  padding: 1px 0 4px !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+  line-height: 1.3 !important;
+}
+/* Palette section headers: even tighter */
+.ide-palette-section-header {
+  padding: 5px 8px 3px !important;
+}
+.ide-palette-section-header h4 {
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.09em !important;
+  text-transform: uppercase !important;
+  color: rgba(130,170,210,0.38) !important;
+  margin: 0 !important;
+}
+.ide-palette-section-count {
+  font-size: 9px !important;
+  opacity: 0.35 !important;
+}
+/* Palette "Build Library" header: compact */
+[data-ide-mode-marker='design'] .ide-design-palette h3 {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: rgba(186,230,253,0.72) !important;
+  margin: 0 !important;
+}
+[data-ide-mode-marker='design'] .ide-design-palette-header {
+  padding: 10px 12px 5px !important;
+}
+[data-ide-mode-marker='design'] .ide-design-palette-toolbar {
+  padding: 0 10px 6px !important;
+}
+
+/* ── B4. Inspector no-selection: calm, minimal ────────────────── */
+.ide-design-inspector-empty-card {
+  padding: 14px 12px !important;
+}
+.ide-design-inspector-eyebrow {
+  font-size: 9px !important;
+  letter-spacing: 0.09em !important;
+  text-transform: uppercase !important;
+  color: rgba(130,170,210,0.3) !important;
+  display: block !important;
+  margin-bottom: 8px !important;
+}
+[data-testid='ide-design-inspector-identity-title'] {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: rgba(186,230,253,0.55) !important;
+}
+[data-testid='ide-design-inspector-identity-subtitle'] {
+  font-size: 11px !important;
+  color: rgba(130,170,210,0.45) !important;
+  margin-top: 3px !important;
+  line-height: 1.4 !important;
+}
+[data-testid='ide-design-inspector-next-step'] {
+  font-size: 10px !important;
+  color: rgba(130,170,210,0.3) !important;
+  margin-top: 12px !important;
+  line-height: 1.5 !important;
+  padding-top: 10px !important;
+  border-top: 1px solid rgba(56,189,248,0.05) !important;
+}
+
+/* ── C3. Waveform legend: minimal, not decorative ────────────── */
+.ide-verify-waveform-legend {
+  padding: 2px 0 !important;
+  gap: 10px !important;
+}
+.ide-verify-legend-item {
+  font-size: 9px !important;
+  letter-spacing: 0.06em !important;
+}
+
+/* ── C5. Status strip meta: cleaner hierarchy ────────────────── */
+.ide-verify-strip-meta {
+  font-size: 12px !important;
+  opacity: 0.75 !important;
+}
+.ide-verify-strip-sep {
+  opacity: 0.25 !important;
+  margin: 0 1px !important;
+}
+
+/* ── C6. Step bar: instrument-style compact controls ─────────── */
+.ide-verify-step-bar {
+  display: flex !important;
+  gap: 5px !important;
+  align-items: center !important;
+  padding: 5px 0 4px !important;
+  border-bottom: 1px solid rgba(56,189,248,0.07) !important;
+}
+.ide-verify-step-bar .ide-button {
+  font-size: 11px !important;
+  min-height: 26px !important;
+  padding: 2px 10px !important;
+}
+
+/* ── C4. Cursor controls: compact row ────────────────────────── */
+.ide-verify-cursor-controls {
+  display: flex !important;
+  gap: 3px !important;
+  align-items: center !important;
+}
+
+/* ── D. Design "Focus" button in palette: demote ─────────────── */
+/* It's rarely needed, shouldn't compete with search */
+.ide-design-palette-header .ide-button {
+  font-size: 10px !important;
+  opacity: 0.55 !important;
+  min-height: 24px !important;
+  padding: 2px 8px !important;
+}
+.ide-design-palette-header .ide-button:hover {
+  opacity: 0.9 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   WAVEFORM GHOST LANES — pre-run oscilloscope ready state
+   ══════════════════════════════════════════════════════════════════ */
+
+.ide-verify-waveform-ghost {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: relative;
+}
+
+.ide-verify-waveform-ghost svg {
+  display: block;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   TOOLBAR CLIP FIX — restore status bars without clipping toolbar
+   Root cause: previous slice set max-height:32px on the entire
+   control-bar wrapper which contained both the toolbar AND status.
+   Fix: compress ONLY the status children, never the wrapper.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Status bar row — compact but visible */
+[data-ide-mode-marker='design'] .ide-design-control-bar-status {
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+/* When authoring issues are clean (no errors), show only a tiny strip */
+[data-ide-mode-marker='design'] .ide-design-authoring-issues.is-clean {
+  min-height: 0 !important;
+  max-height: 22px !important;
+  overflow: hidden !important;
+  padding: 3px 12px !important;
+  font-size: 10px !important;
+  color: rgba(130,165,200,0.45) !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Sim story strip — compact at all times */
+[data-ide-mode-marker='design'] .ide-design-sim-story-strip {
+  min-height: 0 !important;
+  max-height: 22px !important;
+  overflow: hidden !important;
+  padding: 3px 12px !important;
+  font-size: 10px !important;
+  color: rgba(130,165,200,0.45) !important;
+  background: transparent !important;
+  border-top: 1px solid rgba(40,60,80,0.25) !important;
+  border-radius: 0 !important;
+}
+
+/* When there ARE errors/warnings, let authoring issues expand naturally */
+[data-ide-mode-marker='design'] .ide-design-authoring-issues:not(.is-clean) {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* Toolbar: reduce padding slightly — 4px is enough vertical breathing room */
+[data-ide-mode-marker='design'] .ide-design-toolbar {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VERIFY — TESTBENCH EDITOR REDESIGN
+   Primary layout: canvas-first (StimulusCanvas at top), run footer at bottom.
+   Student's actual circuit signals drive the rows — sync warning when unmapped.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Testbench zone header — replaces old workstation-run-bar at top position */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-testbench-zone-header {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 5px 12px !important;
+  background: rgba(3, 8, 18, 0.6) !important;
+  border-bottom: 1px solid rgba(48, 77, 107, 0.35) !important;
+  min-height: 32px !important;
+  flex-wrap: nowrap !important;
+  overflow: hidden !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-testbench-zone-header .ide-verify-empty-label {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  color: rgba(56, 189, 248, 0.7) !important;
+  flex: 0 0 auto !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-testbench-vector-count {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  color: rgba(134, 239, 172, 0.8) !important;
+  background: rgba(134, 239, 172, 0.08) !important;
+  border: 1px solid rgba(134, 239, 172, 0.2) !important;
+  border-radius: 4px !important;
+  padding: 1px 6px !important;
+  flex: 0 0 auto !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-testbench-zone-header .ide-verify-empty-hint {
+  font-size: 11px !important;
+  color: rgba(148, 185, 215, 0.5) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  flex: 1 1 0 !important;
+}
+
+/* Sync warning — shown when no real circuit I/O is mapped */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-sync-warning {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  padding: 6px 12px !important;
+  background: rgba(245, 158, 11, 0.06) !important;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2) !important;
+  font-size: 11px !important;
+  color: rgba(253, 230, 138, 0.85) !important;
+  line-height: 1.45 !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-sync-warning-icon {
+  flex: 0 0 auto !important;
+  font-size: 12px !important;
+  opacity: 0.8 !important;
+  margin-top: 1px !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-sync-warning-text {
+  flex: 1 1 0 !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-sync-warning .ide-button {
+  flex: 0 0 auto !important;
+  font-size: 10px !important;
+  min-height: 24px !important;
+  padding: 2px 8px !important;
+  color: rgba(253, 230, 138, 0.9) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+  white-space: nowrap !important;
+}
+
+/* Run footer — sticky action bar at the BOTTOM of the testbench zone */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-run-footer {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 5px 10px !important;
+  background: rgba(3, 8, 18, 0.75) !important;
+  border-top: 1px solid rgba(56, 189, 248, 0.15) !important;
+  min-height: 36px !important;
+  flex-wrap: nowrap !important;
+  overflow: hidden !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-run-footer-status {
+  flex: 1 1 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  min-width: 0 !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-run-footer-ready {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: rgba(134, 239, 172, 0.85) !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-run-footer-hint {
+  font-size: 10px !important;
+  color: rgba(148, 185, 215, 0.45) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-run-footer-actions {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  gap: 6px !important;
+  align-items: center !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-run-footer .ide-button {
+  padding: 4px 10px !important;
+  font-size: 11px !important;
+  min-height: 28px !important;
+}
+
+/* ─── Old workstation-run-bar: preserve for post-run selector hits (data-testid) ─── */
+/* The run bar is now .ide-verify-run-footer; old class may still appear in post-run */
+
+/* ─── CRITICAL: first-run container is a <div>, not <details>.
+   The :not([open]) rule has specificity 0,6,0 (includes [open] attr inside :not).
+   This rule chains BOTH classes to reach 0,6,0 and win by document order. ─── */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-scenario-builder-details.ide-verify-scenario-builder-details--first-run {
+  max-height: none !important;
+  flex: 0 0 65% !important;    /* pre-run: ghost waveform is decorative, give testbench the space */
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+}
+
+/* Canvas-only form variant: no padding, just flex so canvas fills it */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-vector-form--canvas-only {
+  padding: 0 !important;
+  gap: 0 !important;
+}
+/* Seq chip: single-line compact badge */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-seq-chip {
+  flex: 0 0 auto !important;
+  font-size: 10px !important;
+  color: rgba(147, 197, 253, 0.8) !important;
+  background: rgba(56, 189, 248, 0.07) !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.12) !important;
+  padding: 3px 10px !important;
+  min-height: 0 !important;
+>>>>>>> cfda112d (ide: land workspace refactor and align gate contracts)
 }

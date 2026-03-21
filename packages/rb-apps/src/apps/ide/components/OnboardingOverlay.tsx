@@ -11,86 +11,86 @@ interface OnboardingStep {
 const MODE_STEPS: Record<IdeMode, OnboardingStep[]> = {
   project: [
     {
-      title: 'Choose your starting point',
-      body: 'Start a new project, open an existing project, or continue recent work from the Project home.',
+      title: 'This is your project hub.',
+      body: 'See your circuit\'s status and jump to Build, Verify, or Export from here.',
     },
     {
-      title: 'Follow the lab flow',
-      body: 'Project is your home base. Move through Build, Test, Program, and Export as your circuit becomes ready.',
+      title: 'Follow the workflow.',
+      body: 'Build your circuit → verify it → export a Vivado project. Each step unlocks the next.',
     },
     {
-      title: 'Keep work safe',
-      body: 'RedByte keeps local progress and recovery data, but exported project files remain the safest handoff for lab.',
+      title: 'Export saves your work.',
+      body: 'Download a ZIP from Export to hand off or restore this project at any time.',
     },
   ],
   design: [
     {
-      title: 'Build your circuit',
-      body: 'Use the gate palette on the left to place logic gates. Drag from output ports to input ports to wire them together.',
+      title: 'This is Design — draw your circuit here.',
+      body: 'Pick gates from the palette, then drag wires from output ports to input ports.',
     },
     {
-      title: 'Verify correctness',
-      body: 'Switch to Test to add or generate test vectors, then compare expected and observed outputs.',
+      title: 'Run verification.',
+      body: 'Switch to Verify, add test vectors in the stimulus grid, and see waveforms fill in.',
     },
     {
-      title: 'Export to hardware',
-      body: 'Once verification passes, move to Program or Export to build your Basys3 Vivado project.',
+      title: 'Export to Vivado when your circuit passes.',
+      body: 'A green PASS run in Verify means you\'re ready — Export builds the Basys3 project.',
     },
   ],
   verify: [
     {
-      title: 'Run verification first',
-      body: 'Verify checks your circuit against expected outputs and captures waveform evidence for each tick.',
+      title: 'This is the Verify workstation.',
+      body: 'Edit stimulus vectors in the top grid — waveforms appear in the panel below.',
     },
     {
-      title: 'Use failures as a guide',
-      body: 'If a run fails, jump to the first mismatch, inspect the failing tick, then return to Build with a concrete fix target.',
+      title: 'Read the waveforms.',
+      body: 'Each column is one clock tick — trace any mismatch back to the first failing row.',
     },
     {
-      title: 'Move forward only when current',
-      body: 'After a passing run, continue to Program or Export. If the circuit changes, rerun Test before trusting the result.',
+      title: 'Pass here before exporting.',
+      body: 'A green PASS confirms correctness and unlocks a trusted hardware export.',
     },
   ],
   hardware: [
     {
-      title: 'Check readiness first',
-      body: 'Program depends on a current passing Test run and a current export bundle for this project state.',
+      title: 'Check readiness first.',
+      body: 'You need a passing Verify run and a current export bundle before programming the board.',
     },
     {
-      title: 'Use the board view as proof',
-      body: 'The Program screen helps you compare mapped I/O, bring-up vectors, and expected behavior before programming Basys3.',
+      title: 'Map your I/O.',
+      body: 'Assign each logic signal to a Basys3 pin — unmapped signals block the export.',
     },
     {
-      title: 'Return to Build when blocked',
-      body: 'If this screen says the project is blocked or stale, go back, fix the circuit, rerun Test, or rebuild the export bundle.',
+      title: 'Program from Export.',
+      body: 'Download the Vivado project, open the .xpr, then run bitstream generation in Vivado.',
     },
   ],
   export: [
     {
-      title: 'Download the Vivado project',
-      body: 'Use Download Vivado Project (Open Project) for the normal lab path. It creates a folder Vivado can open directly from the .xpr file.',
+      title: 'Download your Vivado project.',
+      body: 'Click Download to get a ZIP with an .xpr file Vivado can open directly.',
     },
     {
-      title: 'Open the .xpr in Vivado',
-      body: 'Unzip the download, choose Open Project in Vivado, and select the generated .xpr file.',
+      title: 'Open the .xpr in Vivado.',
+      body: 'Unzip the download, choose Open Project in Vivado, then generate the bitstream.',
     },
     {
-      title: 'Keep the ZIP for round-trip restore',
-      body: 'RedByte exports include the project manifest so the same ZIP can be imported back into RedByte later.',
+      title: 'Keep the ZIP for later.',
+      body: 'This same ZIP can be imported back into RedByte to fully restore your project.',
     },
   ],
   import: [
     {
-      title: 'Start with a ZIP or HDL',
-      body: 'Recommended: load a Vivado ZIP. You can also paste structural VHDL or Verilog and optional XDC constraints.',
+      title: 'Import a ZIP or paste HDL.',
+      body: 'Drop a RedByte export ZIP to restore a project, or paste structural VHDL/Verilog to convert.',
     },
     {
-      title: 'Review before replacing anything',
-      body: 'Imports do not overwrite your project immediately. RedByte shows a review step before any replacement happens.',
+      title: 'Review before replacing.',
+      body: 'RedByte shows a preview — your current circuit is not changed until you confirm.',
     },
     {
-      title: 'Re-run Test after import',
-      body: 'Imported projects restore design state, but verification evidence must be regenerated from the Test screen.',
+      title: 'Re-run Verify after import.',
+      body: 'Verification evidence must be regenerated from the Verify screen after any import.',
     },
   ],
 };

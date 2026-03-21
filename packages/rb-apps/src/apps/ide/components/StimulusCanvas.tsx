@@ -19,11 +19,11 @@ import React, { useCallback, useState } from 'react';
 import type { VerifyAuthorVector, VerifyVectorDraftInput } from '../surfaces/ScenarioBuilderPanel';
 
 // ── Layout constants (mirror WaveformViewer) ─────────────────────────────────
-const LABEL_W = 140;
-const TICK_W = 48;
-const ROW_H = 34;
-const GROUP_H = 20;
-const ADD_COL_W = 36;
+const LABEL_W = 148;
+const TICK_W = 64;
+const ROW_H = 36;
+const GROUP_H = 22;
+const ADD_COL_W = 40;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

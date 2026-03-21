@@ -1588,6 +1588,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const designViewSettledFitFrameRef = useRef<number | null>(null);
   useEffect(() => { fitToCircuitRef.current = fitToCircuit; }, [fitToCircuit]);
 
+  // Auto-fit on mode entry: whenever Design mounts with an existing circuit,
+  // frame it immediately. Runs once per mount; does not fight subsequent user pan/zoom.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const frame = window.requestAnimationFrame(() => {
+      if (editorCircuit.nodes.length > 0) {
+        fitToCircuitRef.current();
+        hasAutoFitRef.current = true;
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // mount only
+
   const zoomIn = useCallback(() => {
     zoomCamera(120, canvasSize.width / 2, canvasSize.height / 2);
   }, [canvasSize.height, canvasSize.width, zoomCamera]);
@@ -3669,9 +3683,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             <header className="ide-design-subheader ide-design-palette-header">
               <div>
                 <h3>Build Library</h3>
-                <p className="ide-design-palette-intro">
-                  Logic first. Reusable blocks in the middle. Board resources stay separate.
-                </p>
               </div>
               <IdeButton tone="ghost" onClick={onOpenPalette}>
                 Focus
@@ -3686,13 +3697,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 placeholder="Search logic, dff, clock, macro, led..."
                 data-testid="ide-design-search"
               />
-              <p className="ide-design-palette-results" data-testid="ide-design-palette-results">
-                {paletteHasQuery
-                  ? hasPaletteResults
-                    ? 'Matching parts from logic, reusable blocks, and board resources.'
-                    : `No results for "${paletteQuery.trim()}".`
-                  : 'Choose a part, place it once, and keep building.'}
-              </p>
+              {paletteHasQuery && (
+                <p className="ide-design-palette-results" data-testid="ide-design-palette-results">
+                  {hasPaletteResults
+                    ? `${filteredPaletteByCategory.logic.length + filteredPaletteByCategory.sequential.length + filteredPaletteByCategory.io.length + filteredPaletteByCategory.components.length} results`
+                    : `No results for "${paletteQuery.trim()}".`}
+                </p>
+              )}
             </div>
 
             <div className="ide-design-palette-sections">
@@ -4347,6 +4358,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </IdeButton>
                     <IdeButton tone="ghost" onClick={handleRedo} disabled={redoDepth === 0} testId="ide-design-tool-redo">
                       Redo
+                    </IdeButton>
+                    <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit-primary">
+                      Fit
                     </IdeButton>
                     <IdeButton tone="danger" onClick={deleteSelection} disabled={!hasSelection} testId="ide-design-tool-delete">
                       Delete

@@ -1176,7 +1176,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           <details
             ref={examplesSectionRef}
             className="ide-project-examples-disclosure"
-            open
             data-testid="ide-project-examples-disclosure"
           >
             <summary className="ide-project-examples-disclosure-summary">

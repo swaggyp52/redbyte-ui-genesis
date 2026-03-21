@@ -32,35 +32,113 @@ async function clickVerifyRun(page) {
   throw new Error('verify run button was not visible in any supported state');
 }
 
+async function authorMinimalVerifyVector(page) {
+  const legacyTickInput = page.locator('[data-testid="ide-verify-add-vector-tick"]').first();
+  const legacyTickVisible = await legacyTickInput.isVisible().catch(() => false);
+
+  if (legacyTickVisible) {
+    await legacyTickInput.fill('11');
+    const firstInput = page.locator('[data-testid^="ide-verify-add-vector-input-"]').first();
+    const firstInputVisible = await firstInput.isVisible().catch(() => false);
+    if (firstInputVisible) {
+      await firstInput.selectOption('1');
+    }
+    await page.locator('[data-testid="ide-verify-add-vector-submit"]').first().click();
+    return;
+  }
+
+  const addTickButton = page.locator('[data-testid="ide-stimulus-add-tick"]').first();
+  const addTickVisible = await addTickButton.isVisible().catch(() => false);
+  if (!addTickVisible) {
+    throw new Error('verify authoring controls unavailable (neither legacy form nor StimulusCanvas found)');
+  }
+
+  await addTickButton.click();
+  const firstStimulusCell = page.locator('[data-testid^="ide-stimulus-cell-"]').first();
+  await firstStimulusCell.waitFor({ state: 'visible', timeout: 10000 });
+  await firstStimulusCell.click();
+}
+
+async function clickGenerateBasicsIfVisible(page) {
+  const button = page.locator('[data-testid="ide-verify-generate-basic-vectors"]').first();
+  const isVisible = await button.isVisible().catch(() => false);
+  if (isVisible) {
+    await button.click();
+  }
+}
+
+async function waitForCondition(page, label, predicate, timeout = 30000) {
+  try {
+    await page.waitForFunction(predicate, { timeout });
+  } catch {
+    throw new Error(`timed out waiting for condition: ${label}`);
+  }
+}
+
 async function mutateDesignCircuit(page) {
+  await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
+
+  const baselineNodeCount = await page.evaluate(() => {
+    const store = window.__RB_CIRCUIT_STORE__;
+    return store?.getState?.().circuit?.nodes?.length ?? -1;
+  });
+  assert(baselineNodeCount >= 0, 'baseline node count unavailable for project-health mutation');
+
   const candidates = [
+    page.locator('[data-testid="ide-design-palette-input"]').first(),
     page.locator('[data-testid="ide-design-palette-and"]').first(),
-    page.locator('[data-testid^="ide-design-board-input-"]').locator(':scope:not([disabled])').first(),
-    page.locator('[data-testid^="ide-design-board-output-"]').locator(':scope:not([disabled])').first(),
   ];
+
+  let activated = false;
   for (const button of candidates) {
     const isVisible = await button.isVisible().catch(() => false);
     if (!isVisible) continue;
     await button.click();
-    const placementActivated = await page
+    activated = await page
       .waitForFunction(() => {
         const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
         return canvas?.getAttribute('data-placement-active') === '1';
       }, { timeout: 5000 })
       .then(() => true)
       .catch(() => false);
-    if (!placementActivated) continue;
-    const canvas = page.locator('[data-testid="ide-design-live-canvas"]').first();
-    const bounds = await canvas.boundingBox();
-    assert(Boolean(bounds), 'design canvas bounds unavailable for mutation placement');
-    await page.mouse.click(bounds.x + bounds.width * 0.2, bounds.y + bounds.height * 0.42);
-    await page.waitForFunction(() => {
-      const canvasEl = document.querySelector('[data-testid="ide-design-live-canvas"]');
-      return canvasEl?.getAttribute('data-placement-active') === '0';
-    }, { timeout: 5000 });
-    return;
+    if (activated) break;
   }
-  throw new Error('no canonical design mutation control was available');
+
+  assert(activated, 'no canonical design mutation control activated placement mode');
+
+  const canvas = page.locator('[data-testid="ide-design-live-canvas"]').first();
+  const bounds = await canvas.boundingBox();
+  assert(Boolean(bounds), 'design canvas bounds unavailable for mutation placement');
+  const clickPoints = [
+    [0.25, 0.45],
+    [0.35, 0.55],
+    [0.5, 0.5],
+    [0.65, 0.4],
+  ];
+
+  let mutated = false;
+  for (const [xFactor, yFactor] of clickPoints) {
+    await page.mouse.click(bounds.x + bounds.width * xFactor, bounds.y + bounds.height * yFactor);
+    mutated = await page
+      .waitForFunction(
+        (expectedCount) => {
+          const store = window.__RB_CIRCUIT_STORE__;
+          const canvasEl = document.querySelector('[data-testid="ide-design-live-canvas"]');
+          if (!store?.getState || !canvasEl) return false;
+          return (
+            (store.getState().circuit?.nodes?.length ?? -1) >= expectedCount &&
+            canvasEl.getAttribute('data-placement-active') === '0'
+          );
+        },
+        baselineNodeCount + 1,
+        { timeout: 2500 }
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (mutated) break;
+  }
+
+  assert(mutated, 'design mutation did not materialize a new node');
 }
 
 await runIdeGate('IDE project health live contract satisfied', async ({ page, baseUrl }) => {
@@ -83,31 +161,22 @@ await runIdeGate('IDE project health live contract satisfied', async ({ page, ba
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-verify-add-vector-form"]', { timeout: 10000 });
 
-  await page.locator('[data-testid="ide-verify-add-vector-tick"]').fill('11');
-  const firstInput = page.locator('[data-testid^="ide-verify-add-vector-input-"]').first();
-  await firstInput.selectOption('1');
-  await page.locator('[data-testid="ide-verify-add-vector-submit"]').click();
-  await page.locator('[data-testid="ide-verify-generate-basic-vectors"]').click();
+  await authorMinimalVerifyVector(page);
+  await clickGenerateBasicsIfVisible(page);
   await clickVerifyRun(page);
-  await page.waitForFunction(
-    () => {
-      const status = document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent ?? '';
-      const consoleHash = document.querySelector('[data-testid="ide-verify-console-hash"]')?.textContent ?? '';
-      return !/^(READY|RUNNING)$/i.test(status.trim()) && /report=/i.test(consoleHash) && !/report=\s*[—-]/i.test(consoleHash);
-    },
-    { timeout: 10000 }
-  );
 
   await page.locator('[data-testid="mode-button-project"]').click();
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
-  await page.waitForFunction(
+  await waitForCondition(
+    page,
+    'project mode reflects verify status/hash and clean marker',
     () => {
       const status = document.querySelector('[data-testid="ide-project-last-verify-status"]')?.textContent ?? '';
       const hash = document.querySelector('[data-testid="ide-project-last-verify-hash"]')?.textContent ?? '';
       const dirty = document.querySelector('[data-testid="ide-project-dirty-since-verify"]')?.textContent ?? '';
       return /^(PASS|FAIL)$/i.test(status.trim()) && hash.trim().length > 0 && !/[—-]/.test(hash.trim()) && /^CLEAN$/i.test(dirty.trim());
     },
-    { timeout: 10000 }
+    10000
   );
 
   const verifyStatus = await text(page.locator('[data-testid="ide-project-last-verify-status"]'));

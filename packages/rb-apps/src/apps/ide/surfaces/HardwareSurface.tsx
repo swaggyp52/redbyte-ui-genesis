@@ -754,7 +754,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     <IdeInspectorSection title="Signal Log" defaultOpen>
       {signalChangeFeed.length === 0 ? (
         <p className="ide-copy" data-testid="ide-hw-signal-log-empty">
-          No trace data.
+          No trace data — run Verify to record signal transitions.
         </p>
       ) : (
         <div className="ide-hw-event-log" data-testid="ide-hw-signal-log">

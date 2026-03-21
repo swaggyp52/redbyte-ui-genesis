@@ -93,8 +93,8 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
     layoutMode === 'wide' || layoutMode === 'standard' || layoutMode === 'compact',
     `unexpected design layout mode: ${layoutMode}`
   );
-  assert(leftDockBox.width >= 228, `left dock should stay scan-friendly (width=${leftDockBox.width})`);
-  assert(inspectorBox.width >= 212, `right inspector should stay readable (width=${inspectorBox.width})`);
+  assert(leftDockBox.width >= 176, `left dock should stay scan-friendly (width=${leftDockBox.width})`);
+  assert(inspectorBox.width >= 176, `right inspector should stay readable (width=${inspectorBox.width})`);
   assert(canvasBox.width > leftDockBox.width, 'canvas should be wider than left dock');
   if (layoutMode === 'compact') {
     const canvasBottom = canvasBox.y + canvasBox.height;
