@@ -1,5 +1,45 @@
 # AI State
 
+## Change Log 2026-03-22 (Authority hardening slice 20: output deletion prunes stale expected outputs through runtime history)
+
+**Subsystem**: Runtime design-history authority / IO-count mutation coherence across Verify / Export / Hardware
+
+### Problem
+
+Deleting an output after a trusted verify+export run could still leave stale expected-output state alive in runtime vectors:
+
+1. `commitDesignSnapshot(...)` reconciled live IO rows and dirtied trust, but it did not prune stale `projectVectors[*].expected` keys when outputs disappeared.
+2. That allowed a deleted output signal to survive in the verification corpus even after the live boundary row and node were gone.
+3. Cross-surface trust could become stale correctly while ghost expected-output state still existed underneath, especially in output-count-change flows.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Design history snapshots now carry `projectVectors` so undo/redo can restore the correct expectation set for each circuit state.
+  - Added `buildValidOutputSignalKeys(...)` and exported `pruneStaleVectorExpected(...)` to remove expected-output keys that no longer map to any live output boundary.
+  - `commitDesignSnapshot(...)` now prunes stale expected-output keys against the reconciled live output rows whenever design history transitions occur.
+  - `cloneVectors(...)` now deep-clones `inputs` and `expected` maps so design-history snapshots do not share nested vector object references.
+  - Persisted design-history snapshot normalization now prunes stale expected-output keys against the normalized live IO rows.
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+  - Added a cross-surface regression for a two-output project where one output is deleted after verify PASS and export success.
+  - Asserts: Verify stale, Export stale, Project CTA routes to Verify, Hardware is blocked, ghost mapping row is gone, and stale expected-output signal is absent from runtime vectors and EXPECTED_IO.
+  - Added an undo/redo regression proving pruned vector state stays coherent after post-delete vector edits.
+
+### Student-visible behavior
+
+- Deleting an output from a custom design now removes stale expected-output authority instead of leaving ghost assertion state behind.
+- Verify, Export, Project, and Hardware all agree that trust is stale after the output-count change.
+- Undo/redo restores the correct expectation set for each design state instead of mixing vector state across history transitions.
+
+### Proof
+
+- `pnpm --filter @redbyte/rb-apps exec vitest run src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx -t "deleting an output after verify and export prunes stale expected outputs and keeps all surfaces aligned|undo and redo preserve the current pruned vector state after output deletion and vector edits"` -> PASS (1 file, 2 tests)
+- `pnpm --filter @redbyte/rb-apps exec vitest run --environment jsdom src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx src/apps/ide/__tests__/projectRuntime.persistence.test.ts src/apps/ide/__tests__/verifyContract.reset.test.ts` -> PASS (3 files, 35 tests)
+
+### Remaining concern
+
+- The next adjacent seam is live IO rename/add flows through the same authority contract, especially proving output-label churn and output-addition churn cannot leave stale verify/export artifacts or ghost expectations behind in active scenario state.
+
 ## Change Log 2026-03-22 (Authority hardening slice 19: explicit no-ledger verify trust invalidation on restore)
 
 **Subsystem**: Restore/load authority coherence across Verify / Export / Project / Hardware

@@ -276,6 +276,7 @@ interface PersistedRuntimeState {
 interface DesignHistorySnapshot {
   circuit: Circuit;
   projectIoRows: ProjectIoRow[];
+  projectVectors?: TestVector[];
   macroInsertionCounts: Record<string, number>;
 }
 
@@ -1567,7 +1568,11 @@ function cloneIoRows(rows: ProjectIoRow[]): ProjectIoRow[] {
 }
 
 function cloneVectors(vectors: TestVector[]): TestVector[] {
-  return vectors.map((vector) => ({ ...vector }));
+  return vectors.map((vector) => ({
+    ...vector,
+    inputs: { ...(vector.inputs ?? {}) },
+    expected: { ...(vector.expected ?? {}) },
+  }));
 }
 
 function cloneCircuit(circuit: Circuit): Circuit {
@@ -1585,6 +1590,7 @@ function cloneDesignHistorySnapshot(snapshot: DesignHistorySnapshot): DesignHist
   return {
     circuit: cloneCircuit(snapshot.circuit),
     projectIoRows: cloneIoRows(snapshot.projectIoRows),
+    projectVectors: snapshot.projectVectors ? cloneVectors(snapshot.projectVectors) : undefined,
     macroInsertionCounts: cloneMacroInsertionCounts(snapshot.macroInsertionCounts),
   };
 }
@@ -1610,13 +1616,44 @@ function cloneDesignHistoryFuture(
 }
 
 function createDesignHistorySnapshot(
-  state: Pick<ProjectRuntimeState, 'circuit' | 'projectIoRows' | 'macroInsertionCounts'>
+  state: Pick<ProjectRuntimeState, 'circuit' | 'projectIoRows' | 'projectVectors' | 'macroInsertionCounts'>
 ): DesignHistorySnapshot {
   return {
     circuit: cloneCircuit(state.circuit),
     projectIoRows: cloneIoRows(state.projectIoRows),
+    projectVectors: cloneVectors(state.projectVectors),
     macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
   };
+}
+
+function buildValidOutputSignalKeys(rows: ProjectIoRow[]): Set<string> {
+  const validOutputKeys = new Set<string>();
+  for (const row of rows) {
+    if (row.direction !== 'out') continue;
+    for (const candidate of [row.id, row.label, row.nodeId]) {
+      const normalized = normalizePortToken(candidate);
+      if (normalized.length > 0) {
+        validOutputKeys.add(normalized);
+      }
+    }
+  }
+  return validOutputKeys;
+}
+
+export function pruneStaleVectorExpected(
+  vectors: TestVector[],
+  validOutputKeys: Set<string>
+): TestVector[] {
+  return vectors.map((vector) => ({
+    ...vector,
+    inputs: { ...(vector.inputs ?? {}) },
+    expected: Object.fromEntries(
+      Object.entries(vector.expected ?? {}).filter(([key]) => {
+        const normalizedKey = normalizePortToken(key);
+        return normalizedKey.length > 0 && validOutputKeys.has(normalizedKey);
+      })
+    ) as Record<string, 0 | 1>,
+  }));
 }
 
 function getBoundaryIoShape(
@@ -1724,6 +1761,7 @@ function commitDesignSnapshot(
   ProjectRuntimeState,
   | 'circuit'
   | 'projectIoRows'
+  | 'projectVectors'
   | 'macroInsertionCounts'
   | 'designPast'
   | 'designFuture'
@@ -1733,9 +1771,14 @@ function commitDesignSnapshot(
 > {
   const nextCircuit = cloneCircuit(snapshot.circuit);
   const nextIoRows = synchronizeProjectIoRows(nextCircuit, cloneIoRows(snapshot.projectIoRows));
+  const nextProjectVectors = pruneStaleVectorExpected(
+    snapshot.projectVectors ? cloneVectors(snapshot.projectVectors) : cloneVectors(state.projectVectors),
+    buildValidOutputSignalKeys(nextIoRows)
+  );
   return {
     circuit: nextCircuit,
     projectIoRows: nextIoRows,
+    projectVectors: nextProjectVectors,
     macroInsertionCounts: cloneMacroInsertionCounts(snapshot.macroInsertionCounts),
     designPast: history.designPast,
     designFuture: history.designFuture,
@@ -2041,6 +2084,10 @@ function normalizePersistedDesignHistorySnapshot(value: unknown): DesignHistoryS
   return {
     circuit: normalizedCircuit,
     projectIoRows: normalizedProjectIoRows,
+    projectVectors: pruneStaleVectorExpected(
+      normalizePersistedVectors(candidate.projectVectors, []),
+      buildValidOutputSignalKeys(normalizedProjectIoRows)
+    ),
     macroInsertionCounts: normalizeMacroInsertionCounts(candidate.macroInsertionCounts),
   };
 }

@@ -16,6 +16,7 @@ import { BoardSignalProvider } from '../BoardSignalContext';
 import { projectRuntimeCircuitToEditorStore } from '../circuitProjection';
 import { choosePrimaryProjectCta, deriveProjectHealth } from '../projectHealth';
 import { HardwareSurface } from '../surfaces/HardwareSurface';
+import { buildExportViewModel } from '../viewmodels/buildExportViewModel';
 import { mergePersistedRuntimeState, useProjectRuntime } from '../projectRuntime';
 
 function buildHistoryFixture(): RBProject {
@@ -70,6 +71,142 @@ function buildHistoryFixture(): RBProject {
       projectId: 'rb-runtime-history-fixture',
     },
   };
+}
+
+function buildTwoOutputHistoryFixture(): RBProject {
+  return {
+    kind: 'rb-project',
+    version: 1,
+    createdAt: '2026-03-22T00:00:00.000Z',
+    updatedAt: '2026-03-22T00:00:00.000Z',
+    name: 'Runtime Two Output Fixture',
+    description: 'Two-output circuit for IO-count authority tests.',
+    circuit: {
+      nodes: [
+        {
+          id: 'sw0_node',
+          type: 'INPUT',
+          label: 'sw0',
+          position: { x: 0, y: 0 },
+          x: 0,
+          y: 0,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+        {
+          id: 'ld0_node',
+          type: 'OUTPUT',
+          label: 'ld0',
+          position: { x: 180, y: -40 },
+          x: 180,
+          y: -40,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+        {
+          id: 'ld1_node',
+          type: 'OUTPUT',
+          label: 'ld1',
+          position: { x: 180, y: 40 },
+          x: 180,
+          y: 40,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+      ],
+      connections: [
+        {
+          from: { nodeId: 'sw0_node', portName: 'out' },
+          to: { nodeId: 'ld0_node', portName: 'in' },
+        },
+        {
+          from: { nodeId: 'sw0_node', portName: 'out' },
+          to: { nodeId: 'ld1_node', portName: 'in' },
+        },
+      ],
+    },
+    ioMapping: {
+      inputs: [{ id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'sw0', pin: 'SW0' }],
+      outputs: [
+        { id: 'ld0', nodeId: 'ld0_node', port: 'in', label: 'ld0', pin: 'LD0' },
+        { id: 'ld1', nodeId: 'ld1_node', port: 'in', label: 'ld1', pin: 'LD1' },
+      ],
+    },
+    vectors: [
+      { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0, ld1: 0 } },
+      { tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1, ld1: 1 } },
+    ],
+    meta: {
+      projectId: 'rb-runtime-two-output-fixture',
+    },
+  };
+}
+
+function buildProjectFromRuntimeState(): RBProject {
+  const state = useProjectRuntime.getState();
+  return {
+    kind: 'rb-project',
+    version: 1,
+    createdAt: '2026-03-22T00:00:00.000Z',
+    updatedAt: '2026-03-22T00:00:00.000Z',
+    name: state.projectName,
+    description: state.projectDescription,
+    circuit: state.circuit,
+    ioMapping: {
+      inputs: state.projectIoRows
+        .filter((row) => row.direction === 'in')
+        .map((row) => ({
+          id: row.id,
+          nodeId: row.nodeId,
+          port: row.port,
+          label: row.label,
+          pin: row.pin,
+        })),
+      outputs: state.projectIoRows
+        .filter((row) => row.direction === 'out')
+        .map((row) => ({
+          id: row.id,
+          nodeId: row.nodeId,
+          port: row.port,
+          label: row.label,
+          pin: row.pin,
+        })),
+    },
+    vectors: state.projectVectors,
+    meta: {
+      projectId: state.projectId,
+    },
+  };
+}
+
+function extractExpectedIoRowsForTest(
+  artifacts: ReturnType<typeof buildExportViewModel>['artifacts']
+): Array<{ signal: string; tick: number; expected: string }> {
+  const expectedIo = artifacts.find((artifact) => artifact.path === 'EXPECTED_IO.json');
+  if (!expectedIo || expectedIo.content.trim().length === 0) return [];
+  const parsed = JSON.parse(expectedIo.content) as {
+    signals?: Array<{
+      signal?: string;
+      values?: Array<{ tick?: number; expected?: string | number }>;
+    }>;
+  };
+  const rows: Array<{ signal: string; tick: number; expected: string }> = [];
+  for (const signalRow of parsed.signals ?? []) {
+    const signal = (signalRow.signal ?? '').trim();
+    if (signal.length === 0) continue;
+    for (const value of signalRow.values ?? []) {
+      if (!Number.isFinite(value.tick)) continue;
+      rows.push({
+        signal,
+        tick: Math.max(0, Math.floor(Number(value.tick))),
+        expected: String(value.expected ?? '0'),
+      });
+    }
+  }
+  return rows;
 }
 
 function RuntimeProjectionHarness() {
@@ -632,6 +769,163 @@ describe('projectRuntime history authority', () => {
         dirtySinceExport: true,
       })
     ).toBe(false);
+  });
+
+  it('deleting an output after verify and export prunes stale expected outputs and keeps all surfaces aligned', () => {
+    useProjectRuntime.getState().loadFromProject(buildTwoOutputHistoryFixture());
+
+    const originalHash = currentProjectHash();
+    const verifyRun = useProjectRuntime.getState().runVerification({
+      scenarioId: 'two-output-baseline',
+      scenarioName: 'Two Output Baseline',
+      deterministicHash: 'two-output-baseline-hash',
+      rows: [],
+      ranAtIso: '2026-03-22T02:00:00.000Z',
+      useRuntimeTrace: false,
+    });
+    expect(verifyRun.status).toBe('pass');
+
+    act(() => {
+      useProjectRuntime.getState().recordExport({
+        status: 'ok',
+        hash: originalHash,
+        ranAtIso: '2026-03-22T02:01:00.000Z',
+      });
+    });
+
+    const deletedOutputCircuit: Circuit = {
+      nodes: useProjectRuntime
+        .getState()
+        .circuit.nodes.filter((node) => node.id !== 'ld1_node'),
+      connections: useProjectRuntime.getState().circuit.connections.filter((connection) => {
+        const fromNodeId =
+          typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+        const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+        return fromNodeId !== 'ld1_node' && toNodeId !== 'ld1_node';
+      }),
+    };
+
+    act(() => {
+      useProjectRuntime.getState().applyCircuitMutation(deletedOutputCircuit);
+    });
+
+    const deletedHash = currentProjectHash();
+    const runtimeState = useProjectRuntime.getState();
+    const verifyCurrent = deriveVerifyCurrent({
+      hasVerifyRun: true,
+      latestVerifyLedgerEntry: runtimeState.verifyRunHistory.at(-1),
+      currentVerifyProjectHash: deletedHash,
+      dirtySinceVerify: runtimeState.projectHealthCore.dirtySinceVerify,
+    });
+    const exportCurrent = deriveExportCurrent({
+      lastExport: runtimeState.projectHealthCore.lastExport,
+      currentExportHash: deletedHash,
+      dirtySinceExport: runtimeState.projectHealthCore.dirtySinceExport,
+    });
+    const health = deriveProjectHealth(runtimeState.projectHealthCore, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: runtimeState.projectHealthCore.lastVerify?.qualification,
+    });
+    const exportViewModel = buildExportViewModel(buildProjectFromRuntimeState(), runtimeState.verifyLastRun);
+    const expectedIoRows = extractExpectedIoRowsForTest(exportViewModel.artifacts);
+
+    expect(runtimeState.projectIoRows.some((row) => row.nodeId === 'ld1_node')).toBe(false);
+    expect(runtimeState.projectVectors.every((vector) => !('ld1' in (vector.expected ?? {})))).toBe(true);
+    expect(runtimeState.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(runtimeState.projectHealthCore.dirtySinceExport).toBe(true);
+    expect(verifyCurrent).toBe(false);
+    expect(exportCurrent).toBe(false);
+    expect(exportViewModel.pinTable.some((row) => row.port === 'ld1')).toBe(false);
+    expect(expectedIoRows.some((row) => row.signal === 'ld1')).toBe(false);
+    expect(choosePrimaryProjectCta(health, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: runtimeState.projectHealthCore.lastVerify?.qualification,
+    })).toEqual({ label: 'Verify', mode: 'verify', code: 'RBP1004' });
+
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName={runtimeState.projectName}
+          expectedBehavior="LD0 and LD1 follow SW0."
+          mappingRows={runtimeState.projectIoRows.map((row) => ({
+            id: row.id,
+            nodeId: row.nodeId,
+            label: row.label,
+            direction: row.direction,
+            pin: row.pin,
+            required: row.required,
+          }))}
+          expectedIoRows={expectedIoRows}
+          vectorsCount={runtimeState.projectVectors.length}
+          health={health}
+          verifyCurrent={verifyCurrent}
+          exportCurrent={exportCurrent}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+    expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
+  });
+
+  it('undo and redo preserve the current pruned vector state after output deletion and vector edits', () => {
+    useProjectRuntime.getState().loadFromProject(buildTwoOutputHistoryFixture());
+
+    const deletedOutputCircuit: Circuit = {
+      nodes: useProjectRuntime
+        .getState()
+        .circuit.nodes.filter((node) => node.id !== 'ld1_node'),
+      connections: useProjectRuntime.getState().circuit.connections.filter((connection) => {
+        const fromNodeId =
+          typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+        const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+        return fromNodeId !== 'ld1_node' && toNodeId !== 'ld1_node';
+      }),
+    };
+
+    act(() => {
+      useProjectRuntime.getState().applyCircuitMutation(deletedOutputCircuit);
+    });
+
+    act(() => {
+      useProjectRuntime.getState().setVectors([
+        { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 1 } },
+        { tick: 1, inputs: { sw0: 1 }, expected: { ld0: 0 } },
+      ]);
+    });
+
+    expect(useProjectRuntime.getState().projectVectors).toEqual([
+      { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 1 } },
+      { tick: 1, inputs: { sw0: 1 }, expected: { ld0: 0 } },
+    ]);
+
+    act(() => {
+      useProjectRuntime.getState().undoProjectEdit();
+    });
+
+    expect(useProjectRuntime.getState().projectIoRows.some((row) => row.nodeId === 'ld1_node')).toBe(true);
+    expect(useProjectRuntime.getState().projectVectors).toEqual([
+      { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0, ld1: 0 } },
+      { tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1, ld1: 1 } },
+    ]);
+
+    act(() => {
+      useProjectRuntime.getState().redoProjectEdit();
+    });
+
+    expect(useProjectRuntime.getState().projectIoRows.some((row) => row.nodeId === 'ld1_node')).toBe(false);
+    expect(useProjectRuntime.getState().projectVectors).toEqual([
+      { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 1 } },
+      { tick: 1, inputs: { sw0: 1 }, expected: { ld0: 0 } },
+    ]);
   });
 
   it('keeps Verify/Export/Project/Hardware aligned after restore when mapping changed and legacy export hash is missing', () => {
