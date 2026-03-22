@@ -1,5 +1,53 @@
 # AI State
 
+## Change Log 2026-03-22 (Authority hardening slice 22: output addition expands expected identity and invalidates stale trust across surfaces)
+
+**Subsystem**: Runtime boundary-addition authority coherence across Verify / Export / Project / Hardware
+
+### Problem
+
+Adding a new output after trusted verify+export invalidated trust flags, but runtime vectors did not expand expected-output identity for the new boundary:
+
+1. Design snapshot reconciliation pruned stale expected keys for deleted/renamed outputs, but did not add missing expected keys for newly added outputs.
+2. That allowed expanded designs to carry pre-addition expected shapes (`ld0` only) in runtime vectors, creating an authority gap in output-count increase flows.
+3. Cross-surface stale trust generally appeared, but runtime expectation identity did not fully track the expanded output set per design state.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+  - Added red regression: **adding an output after verify and export invalidates authority and expands expected output identity per state**.
+  - Flow covered:
+    - trusted verify+export baseline,
+    - add new output boundary node,
+    - assert Verify/Export stale and Project CTA + Hardware callouts aligned,
+    - assert expanded design vectors now include the added output expected key with default `0`,
+    - assert stale export artifact is not treated as current,
+    - assert undo/redo restores correct output identity shape per history state.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Added `ensureVectorExpectedCoverage(...)` to seed missing expected-output keys for live output rows when vectors lack coverage.
+  - Coverage check respects normalized aliases (`id`, `label`, `nodeId`) and only seeds when no alias is present.
+  - Integrated this step after stale-key pruning in:
+    - `commitDesignSnapshot(...)` (live mutation/undo/redo path)
+    - `normalizePersistedDesignHistorySnapshot(...)` (persisted history normalization path)
+
+### Student-visible behavior
+
+- Adding an output after a trusted verify/export run now immediately keeps runtime expected identity in sync with the expanded output set.
+- Previous verify/export trust is still invalidated (stale) and all surfaces continue to agree on stale readiness.
+- Undo/redo now restores both IO rows and expected-output identity shape for each design state instead of leaving pre-addition expected shape in expanded states.
+
+### Proof
+
+- Red proof:
+  - `pnpm --filter @redbyte/rb-apps exec vitest run src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx -t "adding an output after verify and export invalidates authority and expands expected output identity per state"` -> FAIL at missing `ld1` expected identity coverage in vectors.
+- Green proof:
+  - `pnpm --filter @redbyte/rb-apps exec vitest run src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx -t "adding an output after verify and export invalidates authority and expands expected output identity per state"` -> PASS (1 file, 1 test)
+  - `pnpm --filter @redbyte/rb-apps exec vitest run --environment jsdom src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx src/apps/ide/__tests__/projectRuntime.persistence.test.ts` -> PASS (2 files, 29 tests)
+
+### Remaining concern
+
+- Next seam: input-side count-change and rename coherence to prove input identity expansion/rename cannot leak stale verify/export trust or misalign Project/Hardware readiness through undo/redo.
+
 ## Change Log 2026-03-22 (Authority hardening slice 21: output rename invalidates stale signal identity across surfaces)
 
 **Subsystem**: Runtime boundary-rename authority coherence across Verify / Export / Project / Hardware

@@ -1656,6 +1656,38 @@ export function pruneStaleVectorExpected(
   }));
 }
 
+function ensureVectorExpectedCoverage(vectors: TestVector[], rows: ProjectIoRow[]): TestVector[] {
+  const outputRows = rows.filter((row) => row.direction === 'out');
+  if (outputRows.length === 0) return cloneVectors(vectors);
+
+  return vectors.map((vector) => {
+    const nextExpected: Record<string, 0 | 1> = { ...(vector.expected ?? {}) };
+    const normalizedExpectedKeys = new Set(
+      Object.keys(nextExpected)
+        .map((key) => normalizePortToken(key))
+        .filter((key) => key.length > 0)
+    );
+
+    for (const row of outputRows) {
+      const aliases = [row.id, row.label, row.nodeId]
+        .map((key) => normalizePortToken(key))
+        .filter((key) => key.length > 0);
+      const hasCoverage = aliases.some((alias) => normalizedExpectedKeys.has(alias));
+      if (hasCoverage) continue;
+      const outputKey = row.id.trim();
+      if (!outputKey) continue;
+      nextExpected[outputKey] = 0;
+      normalizedExpectedKeys.add(normalizePortToken(outputKey));
+    }
+
+    return {
+      ...vector,
+      inputs: { ...(vector.inputs ?? {}) },
+      expected: nextExpected,
+    };
+  });
+}
+
 function getBoundaryIoShape(
   node: Circuit['nodes'][number]
 ): { direction: 'in' | 'out'; port: 'out' | 'in' } | null {
@@ -1783,10 +1815,11 @@ function commitDesignSnapshot(
 > {
   const nextCircuit = cloneCircuit(snapshot.circuit);
   const nextIoRows = synchronizeProjectIoRows(nextCircuit, cloneIoRows(snapshot.projectIoRows));
-  const nextProjectVectors = pruneStaleVectorExpected(
+  const prunedProjectVectors = pruneStaleVectorExpected(
     snapshot.projectVectors ? cloneVectors(snapshot.projectVectors) : cloneVectors(state.projectVectors),
     buildValidOutputSignalKeys(nextIoRows)
   );
+  const nextProjectVectors = ensureVectorExpectedCoverage(prunedProjectVectors, nextIoRows);
   return {
     circuit: nextCircuit,
     projectIoRows: nextIoRows,
@@ -2096,9 +2129,12 @@ function normalizePersistedDesignHistorySnapshot(value: unknown): DesignHistoryS
   return {
     circuit: normalizedCircuit,
     projectIoRows: normalizedProjectIoRows,
-    projectVectors: pruneStaleVectorExpected(
-      normalizePersistedVectors(candidate.projectVectors, []),
-      buildValidOutputSignalKeys(normalizedProjectIoRows)
+    projectVectors: ensureVectorExpectedCoverage(
+      pruneStaleVectorExpected(
+        normalizePersistedVectors(candidate.projectVectors, []),
+        buildValidOutputSignalKeys(normalizedProjectIoRows)
+      ),
+      normalizedProjectIoRows
     ),
     macroInsertionCounts: normalizeMacroInsertionCounts(candidate.macroInsertionCounts),
   };
