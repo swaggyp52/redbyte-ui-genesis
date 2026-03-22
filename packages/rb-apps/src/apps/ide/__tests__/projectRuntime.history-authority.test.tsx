@@ -928,6 +928,119 @@ describe('projectRuntime history authority', () => {
     ]);
   });
 
+  it('renaming an output after verify and export invalidates authority and removes ghost expected signal identity', () => {
+    useProjectRuntime.getState().loadFromProject(buildTwoOutputHistoryFixture());
+
+    const originalHash = currentProjectHash();
+    const verifyRun = useProjectRuntime.getState().runVerification({
+      scenarioId: 'rename-output-baseline',
+      scenarioName: 'Rename Output Baseline',
+      deterministicHash: 'rename-output-baseline-hash',
+      rows: [],
+      ranAtIso: '2026-03-22T03:00:00.000Z',
+      useRuntimeTrace: false,
+    });
+    expect(verifyRun.status).toBe('pass');
+
+    act(() => {
+      useProjectRuntime.getState().recordExport({
+        status: 'ok',
+        hash: originalHash,
+        ranAtIso: '2026-03-22T03:01:00.000Z',
+      });
+    });
+
+    const renamedOutputCircuit: Circuit = {
+      nodes: useProjectRuntime.getState().circuit.nodes.map((node) =>
+        node.id === 'ld1_node' ? { ...node, label: 'led_status' } : node
+      ),
+      connections: [...useProjectRuntime.getState().circuit.connections],
+    };
+
+    act(() => {
+      useProjectRuntime.getState().applyCircuitMutation(renamedOutputCircuit);
+    });
+
+    const renamedHash = currentProjectHash();
+    const renamedState = useProjectRuntime.getState();
+    const verifyCurrent = deriveVerifyCurrent({
+      hasVerifyRun: true,
+      latestVerifyLedgerEntry: renamedState.verifyRunHistory.at(-1),
+      currentVerifyProjectHash: renamedHash,
+      dirtySinceVerify: renamedState.projectHealthCore.dirtySinceVerify,
+    });
+    const exportCurrent = deriveExportCurrent({
+      lastExport: renamedState.projectHealthCore.lastExport,
+      currentExportHash: renamedHash,
+      dirtySinceExport: renamedState.projectHealthCore.dirtySinceExport,
+    });
+    const health = deriveProjectHealth(renamedState.projectHealthCore, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: renamedState.projectHealthCore.lastVerify?.qualification,
+    });
+    const renamedExportViewModel = buildExportViewModel(buildProjectFromRuntimeState(), renamedState.verifyLastRun);
+    const renamedExpectedIoRows = extractExpectedIoRowsForTest(renamedExportViewModel.artifacts);
+
+    expect(renamedState.projectIoRows.some((row) => row.nodeId === 'ld1_node' && row.label === 'led_status')).toBe(true);
+    expect(renamedState.projectVectors.every((vector) => !('ld1' in (vector.expected ?? {})))).toBe(true);
+    expect(renamedState.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(renamedState.projectHealthCore.dirtySinceExport).toBe(true);
+    expect(verifyCurrent).toBe(false);
+    expect(exportCurrent).toBe(false);
+    expect(renamedExpectedIoRows.some((row) => row.signal === 'ld1')).toBe(false);
+    expect(choosePrimaryProjectCta(health, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: renamedState.projectHealthCore.lastVerify?.qualification,
+    })).toEqual({ label: 'Verify', mode: 'verify', code: 'RBP1004' });
+
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName={renamedState.projectName}
+          expectedBehavior="LD0 and status LED follow SW0."
+          mappingRows={renamedState.projectIoRows.map((row) => ({
+            id: row.id,
+            nodeId: row.nodeId,
+            label: row.label,
+            direction: row.direction,
+            pin: row.pin,
+            required: row.required,
+          }))}
+          expectedIoRows={renamedExpectedIoRows}
+          vectorsCount={renamedState.projectVectors.length}
+          health={health}
+          verifyCurrent={verifyCurrent}
+          exportCurrent={exportCurrent}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+    expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
+
+    act(() => {
+      useProjectRuntime.getState().undoProjectEdit();
+    });
+
+    expect(useProjectRuntime.getState().projectIoRows.some((row) => row.nodeId === 'ld1_node' && row.label === 'ld1')).toBe(true);
+    expect(useProjectRuntime.getState().projectVectors.some((vector) => 'ld1' in (vector.expected ?? {}))).toBe(true);
+
+    act(() => {
+      useProjectRuntime.getState().redoProjectEdit();
+    });
+
+    expect(useProjectRuntime.getState().projectIoRows.some((row) => row.nodeId === 'ld1_node' && row.label === 'led_status')).toBe(true);
+    expect(useProjectRuntime.getState().projectVectors.every((vector) => !('ld1' in (vector.expected ?? {})))).toBe(true);
+  });
+
   it('keeps Verify/Export/Project/Hardware aligned after restore when mapping changed and legacy export hash is missing', () => {
     const current = useProjectRuntime.getState();
     const verifiedProjectHash = currentProjectHash();

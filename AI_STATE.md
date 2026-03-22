@@ -1,5 +1,46 @@
 # AI State
 
+## Change Log 2026-03-22 (Authority hardening slice 21: output rename invalidates stale signal identity across surfaces)
+
+**Subsystem**: Runtime boundary-rename authority coherence across Verify / Export / Project / Hardware
+
+### Problem
+
+Output rename after trusted verify+export could preserve ghost expected-output identity through legacy row-id aliases:
+
+1. `synchronizeProjectIoRows(...)` updated row labels from live boundary node labels, but legacy row ids that mirrored old labels could remain unchanged.
+2. Runtime vector pruning accepted output row id aliases as valid expected keys, so a stale expected key matching the old label-shaped id could survive rename.
+3. Trust flags correctly went stale, but ghost expected-output identity could still persist under the hood across runtime/history transitions.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+  - Added a red regression for rename-after-verify-export flow:
+    - trusted verify+export baseline,
+    - rename output `ld1_node` label,
+    - assert stale trust alignment across Verify/Export/Project/Hardware,
+    - assert old expected key (`ld1`) is removed,
+    - assert undo restores old identity and redo restores renamed identity.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - `synchronizeProjectIoRows(...)` now rekeys legacy label-derived row ids when the live boundary label changes.
+  - Rekeying is narrow: only ids that were mirroring their prior label are rewritten; non-label-stable ids stay unchanged.
+  - This removes stale expected-key validity via old id alias after rename while preserving minimal behavior change.
+
+### Student-visible behavior
+
+- Renaming an output after verify+export no longer allows ghost expected signal identity to survive through old row-id aliases.
+- Verify, Export, Project CTA, and Hardware readiness now agree on stale trust after rename.
+- Undo/redo restores the correct signal identity for each history state instead of mixing old expected keys into renamed states.
+
+### Proof
+
+- `pnpm --filter @redbyte/rb-apps exec vitest run src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx -t "renaming an output after verify and export invalidates authority and removes ghost expected signal identity"` -> PASS (1 file, 1 test)
+- `pnpm --filter @redbyte/rb-apps exec vitest run --environment jsdom src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx src/apps/ide/__tests__/projectRuntime.persistence.test.ts` -> PASS (2 files, 28 tests)
+
+### Remaining concern
+
+- Next seam: output addition after verify+export to prove new output identities cannot inherit stale trust or leak ghost expected/export artifacts when IO-count increases.
+
 ## Change Log 2026-03-22 (Authority hardening slice 20: output deletion prunes stale expected outputs through runtime history)
 
 **Subsystem**: Runtime design-history authority / IO-count mutation coherence across Verify / Export / Hardware

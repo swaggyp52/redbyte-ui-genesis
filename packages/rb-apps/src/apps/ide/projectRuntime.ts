@@ -1726,8 +1726,20 @@ function synchronizeProjectIoRows(circuit: Circuit, rows: ProjectIoRow[]): Proje
     const canonicalRow = chooseCanonicalIoRow(rowsByNodeId.get(normalizedNodeId) ?? []);
     if (canonicalRow) {
       const nextLabel = node.label?.trim() || canonicalRow.label.trim() || canonicalRow.id;
+      const canonicalRowId = normalizePortToken(canonicalRow.id);
+      const canonicalRowLabel = normalizePortToken(canonicalRow.label);
+      const nextLabelToken = normalizePortToken(nextLabel);
+      const shouldRekeyLabelDerivedId =
+        canonicalRowId.length > 0 &&
+        canonicalRowLabel.length > 0 &&
+        canonicalRowId === canonicalRowLabel &&
+        canonicalRowId !== nextLabelToken;
+      const nextRowId = shouldRekeyLabelDerivedId
+        ? getNextIoRowId(synchronized, nextLabel)
+        : canonicalRow.id;
       synchronized.push({
         ...canonicalRow,
+        id: nextRowId,
         nodeId: node.id,
         direction: shape.direction,
         port: shape.port,
