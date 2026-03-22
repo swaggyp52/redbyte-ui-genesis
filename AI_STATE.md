@@ -1,5 +1,53 @@
 # AI State
 
+## Change Log 2026-03-22 (Authority hardening slice 25: input deletion prunes ghost keys across vectors and scenarios)
+
+**Subsystem**: Runtime input-deletion authority coherence across Verify / Export / Project / Hardware / scenario library
+
+### Problem
+
+After trusted verify+export, deleting an input boundary row removed input identity from `projectVectors` but could still leave deleted input keys in scenario vectors:
+
+1. Vector normalization on design snapshots had input pruning for `projectVectors`, but scenario vectors were not normalized against live IO shape.
+2. Deleting input `sw0` could therefore preserve ghost `sw0` keys in `scenarios[*].vectors[*].inputs`.
+3. That left stale input identity alive in scenario/history-adjacent state while the live design no longer contained that input.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+  - Added red regression: **deleting an input after verify and export prunes ghost input identity across vectors and scenarios**.
+  - Flow covered:
+    - trusted verify+export baseline,
+    - delete input boundary node,
+    - assert Verify/Export stale and Project CTA + Hardware stale/readiness alignment,
+    - assert deleted input key is absent in both `projectVectors` and scenario vectors,
+    - assert undo restores key and redo prunes it again.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Added `normalizeVectorsForLiveIo(...)` helper to apply ordered normalization: prune stale outputs/inputs, then ensure live IO coverage.
+  - `commitDesignSnapshot(...)` now normalizes both:
+    - `projectVectors`
+    - all scenario vectors (`scenarios[*].vectors`) against the same live IO rows.
+  - `mergePersistedRuntimeState(...)` now normalizes repaired scenario vectors against restored live IO rows.
+  - Added defensive `Array.isArray(...)` guards before cloning scenario vectors in normalization paths.
+
+### Student-visible behavior
+
+- Deleting an input after trusted verify/export no longer leaves ghost deleted input keys in scenario vectors.
+- Verify, Export, Project CTA, and Hardware readiness continue to align on stale trust after input deletion.
+- Undo/redo now restores and re-prunes input identity coherently across both project vectors and scenario vectors.
+
+### Proof
+
+- Red proof:
+  - `pnpm --filter @redbyte/rb-apps exec vitest run src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx -t "deleting an input after verify and export prunes ghost input identity across vectors and scenarios"` -> FAIL at scenario ghost-key survival.
+- Green proof:
+  - `pnpm --filter @redbyte/rb-apps exec vitest run src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx -t "deleting an input after verify and export prunes ghost input identity across vectors and scenarios"` -> PASS (1 file, 1 test)
+  - `pnpm --filter @redbyte/rb-apps exec vitest run --environment jsdom src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx src/apps/ide/__tests__/projectRuntime.persistence.test.ts` -> PASS (2 files, 32 tests)
+
+### Remaining concern
+
+- Next seam: final integrated cross-surface authority matrix agreement test covering add/rename/delete input+output, mapping mutation, restore/load, and undo/redo with Project/Verify/Export/Hardware trust agreement.
+
 ## Change Log 2026-03-22 (Authority hardening slice 24: input rename prunes ghost vector input keys and preserves cross-surface stale alignment)
 
 **Subsystem**: Runtime input-identity rename authority coherence across Verify / Export / Project / Hardware

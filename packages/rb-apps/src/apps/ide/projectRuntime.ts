@@ -1342,10 +1342,17 @@ export function mergePersistedRuntimeState(
       restoredExportHash.length === 0 ||
       projectHealthCore.lastExport.hash !== restoredExportHash
     );
-  const { scenarios, activeScenarioId } =
+  const { scenarios: repairedScenarios, activeScenarioId } =
     Array.isArray(candidate.scenarios) && (candidate.scenarios as unknown[]).length > 0
       ? repairScenarioLibrary(candidate.scenarios, candidate.activeScenarioId, projectVectors)
       : migrateProjectVectorsToScenario(projectVectors);
+  const scenarios = repairedScenarios.map((scenario) => ({
+    ...scenario,
+    vectors: normalizeVectorsForLiveIo(
+      cloneVectors(Array.isArray(scenario.vectors) ? scenario.vectors : []),
+      projectIoRows
+    ),
+  }));
 
   return {
     ...currentState,
@@ -1747,6 +1754,19 @@ function ensureVectorInputCoverage(vectors: TestVector[], rows: ProjectIoRow[]):
   });
 }
 
+function normalizeVectorsForLiveIo(vectors: TestVector[], rows: ProjectIoRow[]): TestVector[] {
+  return ensureVectorInputCoverage(
+    ensureVectorExpectedCoverage(
+      pruneStaleVectorInputs(
+        pruneStaleVectorExpected(vectors, buildValidOutputSignalKeys(rows)),
+        buildValidInputSignalKeys(rows)
+      ),
+      rows
+    ),
+    rows
+  );
+}
+
 function getBoundaryIoShape(
   node: Circuit['nodes'][number]
 ): { direction: 'in' | 'out'; port: 'out' | 'in' } | null {
@@ -1865,6 +1885,7 @@ function commitDesignSnapshot(
   | 'circuit'
   | 'projectIoRows'
   | 'projectVectors'
+  | 'scenarios'
   | 'macroInsertionCounts'
   | 'designPast'
   | 'designFuture'
@@ -1874,21 +1895,22 @@ function commitDesignSnapshot(
 > {
   const nextCircuit = cloneCircuit(snapshot.circuit);
   const nextIoRows = synchronizeProjectIoRows(nextCircuit, cloneIoRows(snapshot.projectIoRows));
-  const prunedProjectVectors = pruneStaleVectorInputs(
-    pruneStaleVectorExpected(
-      snapshot.projectVectors ? cloneVectors(snapshot.projectVectors) : cloneVectors(state.projectVectors),
-      buildValidOutputSignalKeys(nextIoRows)
-    ),
-    buildValidInputSignalKeys(nextIoRows)
-  );
-  const nextProjectVectors = ensureVectorInputCoverage(
-    ensureVectorExpectedCoverage(prunedProjectVectors, nextIoRows),
+  const nextProjectVectors = normalizeVectorsForLiveIo(
+    snapshot.projectVectors ? cloneVectors(snapshot.projectVectors) : cloneVectors(state.projectVectors),
     nextIoRows
   );
+  const nextScenarios = state.scenarios.map((scenario) => ({
+    ...scenario,
+    vectors: normalizeVectorsForLiveIo(
+      cloneVectors(Array.isArray(scenario.vectors) ? scenario.vectors : []),
+      nextIoRows
+    ),
+  }));
   return {
     circuit: nextCircuit,
     projectIoRows: nextIoRows,
     projectVectors: nextProjectVectors,
+    scenarios: nextScenarios,
     macroInsertionCounts: cloneMacroInsertionCounts(snapshot.macroInsertionCounts),
     designPast: history.designPast,
     designFuture: history.designFuture,
@@ -2194,17 +2216,8 @@ function normalizePersistedDesignHistorySnapshot(value: unknown): DesignHistoryS
   return {
     circuit: normalizedCircuit,
     projectIoRows: normalizedProjectIoRows,
-    projectVectors: ensureVectorInputCoverage(
-      ensureVectorExpectedCoverage(
-        pruneStaleVectorInputs(
-          pruneStaleVectorExpected(
-            normalizePersistedVectors(candidate.projectVectors, []),
-            buildValidOutputSignalKeys(normalizedProjectIoRows)
-          ),
-          buildValidInputSignalKeys(normalizedProjectIoRows)
-        ),
-        normalizedProjectIoRows
-      ),
+    projectVectors: normalizeVectorsForLiveIo(
+      normalizePersistedVectors(candidate.projectVectors, []),
       normalizedProjectIoRows
     ),
     macroInsertionCounts: normalizeMacroInsertionCounts(candidate.macroInsertionCounts),

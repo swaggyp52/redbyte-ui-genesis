@@ -1332,6 +1332,138 @@ describe('projectRuntime history authority', () => {
     expect(redoneState.projectVectors.every((vector) => !('sw0' in (vector.inputs ?? {})))).toBe(true);
   });
 
+  it('deleting an input after verify and export prunes ghost input identity across vectors and scenarios', () => {
+    useProjectRuntime.getState().loadFromProject(buildTwoOutputHistoryFixture());
+
+    const originalHash = currentProjectHash();
+    const verifyRun = useProjectRuntime.getState().runVerification({
+      scenarioId: 'delete-input-baseline',
+      scenarioName: 'Delete Input Baseline',
+      deterministicHash: 'delete-input-baseline-hash',
+      rows: [],
+      ranAtIso: '2026-03-22T07:00:00.000Z',
+      useRuntimeTrace: false,
+    });
+    expect(verifyRun.status).toBe('pass');
+
+    act(() => {
+      useProjectRuntime.getState().recordExport({
+        status: 'ok',
+        hash: originalHash,
+        ranAtIso: '2026-03-22T07:01:00.000Z',
+      });
+    });
+
+    const deletedInputCircuit: Circuit = {
+      nodes: useProjectRuntime
+        .getState()
+        .circuit.nodes.filter((node) => node.id !== 'sw0_node'),
+      connections: useProjectRuntime.getState().circuit.connections.filter((connection) => {
+        const fromNodeId =
+          typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+        const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+        return fromNodeId !== 'sw0_node' && toNodeId !== 'sw0_node';
+      }),
+    };
+
+    act(() => {
+      useProjectRuntime.getState().applyCircuitMutation(deletedInputCircuit);
+    });
+
+    const deletedHash = currentProjectHash();
+    const deletedState = useProjectRuntime.getState();
+    const verifyCurrent = deriveVerifyCurrent({
+      hasVerifyRun: true,
+      latestVerifyLedgerEntry: deletedState.verifyRunHistory.at(-1),
+      currentVerifyProjectHash: deletedHash,
+      dirtySinceVerify: deletedState.projectHealthCore.dirtySinceVerify,
+    });
+    const exportCurrent = deriveExportCurrent({
+      lastExport: deletedState.projectHealthCore.lastExport,
+      currentExportHash: deletedHash,
+      dirtySinceExport: deletedState.projectHealthCore.dirtySinceExport,
+    });
+    const health = deriveProjectHealth(deletedState.projectHealthCore, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: deletedState.projectHealthCore.lastVerify?.qualification,
+    });
+
+    expect(deletedState.projectIoRows.some((row) => row.nodeId === 'sw0_node')).toBe(false);
+    expect(deletedState.projectVectors.every((vector) => !('sw0' in (vector.inputs ?? {})))).toBe(true);
+    expect(
+      deletedState.scenarios.every((scenario) =>
+        scenario.vectors.every((vector) => !('sw0' in (vector.inputs ?? {})))
+      )
+    ).toBe(true);
+    expect(deletedState.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(deletedState.projectHealthCore.dirtySinceExport).toBe(true);
+    expect(verifyCurrent).toBe(false);
+    expect(exportCurrent).toBe(false);
+    expect(choosePrimaryProjectCta(health, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: deletedState.projectHealthCore.lastVerify?.qualification,
+    })).toEqual({ label: 'Verify', mode: 'verify', code: 'RBP1004' });
+
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName={deletedState.projectName}
+          expectedBehavior="LD0 and LD1 follow the remaining live inputs."
+          mappingRows={deletedState.projectIoRows.map((row) => ({
+            id: row.id,
+            nodeId: row.nodeId,
+            label: row.label,
+            direction: row.direction,
+            pin: row.pin,
+            required: row.required,
+          }))}
+          expectedIoRows={[]}
+          vectorsCount={deletedState.projectVectors.length}
+          health={health}
+          verifyCurrent={verifyCurrent}
+          exportCurrent={exportCurrent}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+    expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
+
+    act(() => {
+      useProjectRuntime.getState().undoProjectEdit();
+    });
+
+    const restoredState = useProjectRuntime.getState();
+    expect(restoredState.projectIoRows.some((row) => row.nodeId === 'sw0_node')).toBe(true);
+    expect(restoredState.projectVectors.some((vector) => 'sw0' in (vector.inputs ?? {}))).toBe(true);
+    expect(
+      restoredState.scenarios.some((scenario) =>
+        scenario.vectors.some((vector) => 'sw0' in (vector.inputs ?? {}))
+      )
+    ).toBe(true);
+
+    act(() => {
+      useProjectRuntime.getState().redoProjectEdit();
+    });
+
+    const redoneState = useProjectRuntime.getState();
+    expect(redoneState.projectIoRows.some((row) => row.nodeId === 'sw0_node')).toBe(false);
+    expect(redoneState.projectVectors.every((vector) => !('sw0' in (vector.inputs ?? {})))).toBe(true);
+    expect(
+      redoneState.scenarios.every((scenario) =>
+        scenario.vectors.every((vector) => !('sw0' in (vector.inputs ?? {})))
+      )
+    ).toBe(true);
+  });
+
   it('renaming an output after verify and export invalidates authority and removes ghost expected signal identity', () => {
     useProjectRuntime.getState().loadFromProject(buildTwoOutputHistoryFixture());
 
