@@ -1319,6 +1319,15 @@ export function mergePersistedRuntimeState(
     currentState.projectHealthCore,
     invalidateVerifyTrust
   );
+  const hasExplicitLegacyVerifyLedgerGap =
+    candidate.verifyLastRun === undefined &&
+    Array.isArray(candidate.verifyRunHistory) &&
+    candidate.verifyRunHistory.length === 0;
+  const hasRestoredVerifyTrustWithoutLedger =
+    hasExplicitLegacyVerifyLedgerGap &&
+    projectHealthCore.lastVerify?.status === 'pass' &&
+    isAuthoritativeVerifyHash(projectHealthCore.lastVerify.hash) &&
+    !verifyLastRun;
   const restoredExportHash = computeRestoredExportHash(normalizedProject);
   const hasRestoredLegacyExportWithoutHash =
     projectHealthCore.lastExport?.status === 'ok' &&
@@ -1367,14 +1376,21 @@ export function mergePersistedRuntimeState(
     verifyRunHistory,
     sim,
     projectHealthCore:
+      hasRestoredVerifyTrustWithoutLedger ||
       hasRestoredVerifyProjectHashMismatch ||
       hasRestoredLegacyExportWithoutHash ||
       hasRestoredExportHashMismatch
         ? {
             ...projectHealthCore,
-            ...(hasRestoredVerifyProjectHashMismatch ? { dirtySinceVerify: true } : {}),
             ...(
-              hasRestoredLegacyExportWithoutHash || hasRestoredExportHashMismatch
+              hasRestoredVerifyTrustWithoutLedger || hasRestoredVerifyProjectHashMismatch
+                ? { dirtySinceVerify: true }
+                : {}
+            ),
+            ...(
+              hasRestoredVerifyTrustWithoutLedger ||
+              hasRestoredLegacyExportWithoutHash ||
+              hasRestoredExportHashMismatch
                 ? { dirtySinceExport: true }
                 : {}
             ),

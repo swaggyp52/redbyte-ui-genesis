@@ -1,5 +1,41 @@
 # AI State
 
+## Change Log 2026-03-22 (Authority hardening slice 19: explicit no-ledger verify trust invalidation on restore)
+
+**Subsystem**: Restore/load authority coherence across Verify / Export / Project / Hardware
+
+### Problem
+
+A realistic legacy restore path could still preserve stale trust when verify ledger evidence was explicitly empty:
+
+1. Persisted state could carry `projectHealthCore.lastVerify.status: 'pass'` with authoritative-looking hash metadata.
+2. If the same payload explicitly had `verifyLastRun: undefined` and `verifyRunHistory: []`, there was no authoritative run ledger evidence proving that verify trust was current.
+3. Restore could keep `dirtySinceVerify`/`dirtySinceExport` clean, allowing cross-surface trust drift where stale trust looked current in parts of the IDE.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+  - Added a cross-surface regression for explicit legacy no-ledger restore payloads (trusted-looking `lastVerify`, no `verifyLastRun`, empty `verifyRunHistory`).
+  - Asserts agreement across derived verify/export currentness, shared Project CTA, and Hardware stale/readiness callouts.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - `mergePersistedRuntimeState(...)` now detects explicit no-ledger restore payloads (`verifyLastRun === undefined` with explicit empty `verifyRunHistory`).
+  - When that payload still carries authoritative-looking PASS verify trust, restore now conservatively invalidates both `dirtySinceVerify` and `dirtySinceExport`.
+  - Scope is intentionally narrow to explicit legacy ledger-gap payloads so existing restore semantics for other states remain unchanged.
+
+### Student-visible behavior
+
+- Restoring a legacy project that claims PASS verify trust but provides no verify run ledger evidence now reliably lands in a stale-trust state across all affected surfaces.
+- Project CTA and Hardware trust callouts now agree with Verify/Export currentness instead of allowing partial trust drift.
+
+### Proof
+
+- `pnpm --filter @redbyte/rb-apps exec vitest run src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx` -> PASS (1 file, 13 tests)
+- `pnpm --filter @redbyte/rb-apps exec vitest run --environment jsdom src/apps/ide/__tests__/projectRuntime.persistence.test.ts src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx` -> PASS (2 files, 25 tests)
+
+### Remaining concern
+
+- This slice targets explicit legacy no-ledger payloads only. A future migration slice can canonicalize older persisted verify metadata so all legacy restore variants become provably ledger-backed without relying on runtime conservative invalidation.
+
 ## Change Log 2026-03-22 (Authority hardening slice 18: cross-surface restore agreement for legacy export trust)
 
 **Subsystem**: Restore/load authority coherence across Verify / Export / Project / Hardware

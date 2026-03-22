@@ -764,4 +764,103 @@ describe('projectRuntime history authority', () => {
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
     expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
   });
+
+  it('keeps Project/Verify/Export/Hardware aligned when restored verify trust has no run ledger evidence', () => {
+    const current = useProjectRuntime.getState();
+    const verifiedProjectHash = currentProjectHash();
+
+    const restored = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-no-ledger-verify-trust',
+        projectName: 'No Ledger Verify Trust',
+        activeExampleId: null,
+        projectIoRows: current.projectIoRows,
+        projectVectors: current.projectVectors,
+        circuit: current.circuit,
+        // Legacy state: trusted lastVerify survives, but no authoritative verify run evidence is present.
+        verifyRunHistory: [],
+        projectHealthCore: {
+          lastVerify: {
+            status: 'pass',
+            hash: 'vrf_no_ledger_hash',
+            reportHash: 'vrf_no_ledger_report_hash',
+            ranAtIso: '2026-03-22T01:00:00.000Z',
+          },
+          lastExport: {
+            status: 'ok',
+            hash: verifiedProjectHash,
+            ranAtIso: '2026-03-22T01:05:00.000Z',
+          },
+          dirtySinceVerify: false,
+          dirtySinceExport: false,
+        },
+      },
+      current
+    );
+
+    const restoredProjectHash = buildCurrentVerifyProjectHash({
+      circuit: restored.circuit,
+      projectVectors: restored.projectVectors,
+      projectIoRows: restored.projectIoRows,
+    });
+    const verifyCurrent = deriveVerifyCurrent({
+      hasVerifyRun: Boolean(restored.verifyLastRun),
+      latestVerifyLedgerEntry: restored.verifyRunHistory.at(-1),
+      currentVerifyProjectHash: restoredProjectHash,
+      dirtySinceVerify: restored.projectHealthCore.dirtySinceVerify,
+    });
+    const exportCurrent = deriveExportCurrent({
+      lastExport: restored.projectHealthCore.lastExport,
+      currentExportHash: restoredProjectHash,
+      dirtySinceExport: restored.projectHealthCore.dirtySinceExport,
+    });
+    const health = deriveProjectHealth(restored.projectHealthCore, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: restored.projectHealthCore.lastVerify?.qualification,
+    });
+
+    expect(restored.verifyLastRun).toBeUndefined();
+    expect(restored.verifyRunHistory).toEqual([]);
+    expect(restored.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(restored.projectHealthCore.dirtySinceExport).toBe(true);
+    expect(verifyCurrent).toBe(false);
+    expect(exportCurrent).toBe(false);
+    expect(choosePrimaryProjectCta(health, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: restored.projectHealthCore.lastVerify?.qualification,
+    })).toEqual({ label: 'Verify', mode: 'verify', code: 'RBP1004' });
+
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName={restored.projectName}
+          expectedBehavior="LED0 follows SW0."
+          mappingRows={restored.projectIoRows.map((row) => ({
+            id: row.id,
+            nodeId: row.nodeId,
+            label: row.label,
+            direction: row.direction,
+            pin: row.pin,
+            required: row.required,
+          }))}
+          expectedIoRows={[]}
+          vectorsCount={restored.projectVectors.length}
+          health={health}
+          verifyCurrent={verifyCurrent}
+          exportCurrent={exportCurrent}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+    expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
+  });
 });
