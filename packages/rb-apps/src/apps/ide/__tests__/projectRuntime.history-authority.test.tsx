@@ -1708,6 +1708,331 @@ describe('projectRuntime history authority', () => {
     expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
   });
 
+  it('keeps Project, Verify, Export, and Hardware aligned across the full custom-design authority mutation matrix', () => {
+    useProjectRuntime.getState().loadFromProject(buildTwoOutputHistoryFixture());
+
+    const baselineHash = currentProjectHash();
+    const verifyRun = useProjectRuntime.getState().runVerification({
+      scenarioId: 'authority-matrix-baseline',
+      scenarioName: 'Authority Matrix Baseline',
+      deterministicHash: 'authority-matrix-baseline-hash',
+      rows: [],
+      ranAtIso: '2026-03-22T08:00:00.000Z',
+      useRuntimeTrace: false,
+    });
+    expect(verifyRun.status).toBe('pass');
+
+    act(() => {
+      useProjectRuntime.getState().recordExport({
+        status: 'ok',
+        hash: baselineHash,
+        ranAtIso: '2026-03-22T08:01:00.000Z',
+      });
+    });
+
+    const assertRuntimeStaleAlignment = () => {
+      const state = useProjectRuntime.getState();
+      const hash = currentProjectHash();
+      const verifyCurrent = deriveVerifyCurrent({
+        hasVerifyRun: true,
+        latestVerifyLedgerEntry: state.verifyRunHistory.at(-1),
+        currentVerifyProjectHash: hash,
+        dirtySinceVerify: state.projectHealthCore.dirtySinceVerify,
+      });
+      const exportCurrent = deriveExportCurrent({
+        lastExport: state.projectHealthCore.lastExport,
+        currentExportHash: hash,
+        dirtySinceExport: state.projectHealthCore.dirtySinceExport,
+      });
+      const health = deriveProjectHealth(state.projectHealthCore, {
+        hasCircuit: true,
+        hasIoMapping: true,
+        hasVectors: true,
+        verifyQualification: state.projectHealthCore.lastVerify?.qualification,
+      });
+
+      expect(verifyCurrent).toBe(false);
+      expect(exportCurrent).toBe(false);
+      expect(choosePrimaryProjectCta(health, {
+        hasCircuit: true,
+        hasIoMapping: true,
+        hasVectors: true,
+        verifyQualification: state.projectHealthCore.lastVerify?.qualification,
+      })).toEqual({ label: 'Verify', mode: 'verify', code: 'RBP1004' });
+
+      const { getByTestId, unmount } = render(
+        <BoardSignalProvider>
+          <HardwareSurface
+            projectName={state.projectName}
+            expectedBehavior="Authority matrix flow"
+            mappingRows={state.projectIoRows.map((row) => ({
+              id: row.id,
+              nodeId: row.nodeId,
+              label: row.label,
+              direction: row.direction,
+              pin: row.pin,
+              required: row.required,
+            }))}
+            expectedIoRows={[]}
+            vectorsCount={state.projectVectors.length}
+            health={health}
+            verifyCurrent={verifyCurrent}
+            exportCurrent={exportCurrent}
+            onGenerateBringUpVectors={vi.fn()}
+            onOpenExport={vi.fn()}
+            onOpenVerify={vi.fn()}
+          />
+        </BoardSignalProvider>
+      );
+
+      expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+      expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
+      expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
+      unmount();
+    };
+
+    const trustedVerifyCurrent = deriveVerifyCurrent({
+      hasVerifyRun: true,
+      latestVerifyLedgerEntry: useProjectRuntime.getState().verifyRunHistory.at(-1),
+      currentVerifyProjectHash: currentProjectHash(),
+      dirtySinceVerify: useProjectRuntime.getState().projectHealthCore.dirtySinceVerify,
+    });
+    const trustedExportCurrent = deriveExportCurrent({
+      lastExport: useProjectRuntime.getState().projectHealthCore.lastExport,
+      currentExportHash: currentProjectHash(),
+      dirtySinceExport: useProjectRuntime.getState().projectHealthCore.dirtySinceExport,
+    });
+    expect(trustedVerifyCurrent).toBe(true);
+    expect(trustedExportCurrent).toBe(true);
+
+    const withAddedInput: Circuit = {
+      nodes: [
+        ...useProjectRuntime.getState().circuit.nodes,
+        {
+          id: 'sw1_node',
+          type: 'INPUT',
+          label: 'sw1',
+          position: { x: 0, y: 120 },
+          x: 0,
+          y: 120,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+      ],
+      connections: [
+        ...useProjectRuntime.getState().circuit.connections,
+        {
+          from: { nodeId: 'sw1_node', portName: 'out' },
+          to: { nodeId: 'ld0_node', portName: 'in' },
+        },
+      ],
+    };
+    act(() => {
+      useProjectRuntime.getState().applyCircuitMutation(withAddedInput);
+    });
+    expect(useProjectRuntime.getState().projectVectors.every((vector) => 'sw1' in (vector.inputs ?? {}))).toBe(true);
+    assertRuntimeStaleAlignment();
+
+    const withRenamedInput: Circuit = {
+      nodes: useProjectRuntime.getState().circuit.nodes.map((node) =>
+        node.id === 'sw0_node' ? { ...node, label: 'sw_main' } : node
+      ),
+      connections: [...useProjectRuntime.getState().circuit.connections],
+    };
+    act(() => {
+      useProjectRuntime.getState().applyCircuitMutation(withRenamedInput);
+    });
+    expect(useProjectRuntime.getState().projectVectors.every((vector) => !('sw0' in (vector.inputs ?? {})))).toBe(true);
+    expect(useProjectRuntime.getState().projectVectors.every((vector) => 'sw_main' in (vector.inputs ?? {}))).toBe(true);
+    assertRuntimeStaleAlignment();
+
+    const withDeletedInput: Circuit = {
+      nodes: useProjectRuntime.getState().circuit.nodes.filter((node) => node.id !== 'sw1_node'),
+      connections: useProjectRuntime.getState().circuit.connections.filter((connection) => {
+        const fromNodeId =
+          typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+        const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+        return fromNodeId !== 'sw1_node' && toNodeId !== 'sw1_node';
+      }),
+    };
+    act(() => {
+      useProjectRuntime.getState().applyCircuitMutation(withDeletedInput);
+    });
+    expect(useProjectRuntime.getState().projectVectors.every((vector) => !('sw1' in (vector.inputs ?? {})))).toBe(true);
+    assertRuntimeStaleAlignment();
+
+    const withAddedOutput: Circuit = {
+      nodes: [
+        ...useProjectRuntime.getState().circuit.nodes,
+        {
+          id: 'ld2_node',
+          type: 'OUTPUT',
+          label: 'ld2',
+          position: { x: 180, y: 120 },
+          x: 180,
+          y: 120,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+      ],
+      connections: [
+        ...useProjectRuntime.getState().circuit.connections,
+        {
+          from: { nodeId: 'sw0_node', portName: 'out' },
+          to: { nodeId: 'ld2_node', portName: 'in' },
+        },
+      ],
+    };
+    act(() => {
+      useProjectRuntime.getState().applyCircuitMutation(withAddedOutput);
+    });
+    expect(useProjectRuntime.getState().projectVectors.every((vector) => 'ld2' in (vector.expected ?? {}))).toBe(true);
+    assertRuntimeStaleAlignment();
+
+    const withRenamedOutput: Circuit = {
+      nodes: useProjectRuntime.getState().circuit.nodes.map((node) =>
+        node.id === 'ld1_node' ? { ...node, label: 'led_status' } : node
+      ),
+      connections: [...useProjectRuntime.getState().circuit.connections],
+    };
+    act(() => {
+      useProjectRuntime.getState().applyCircuitMutation(withRenamedOutput);
+    });
+    expect(useProjectRuntime.getState().projectVectors.every((vector) => !('ld1' in (vector.expected ?? {})))).toBe(true);
+    expect(
+      useProjectRuntime.getState().projectVectors.every((vector) => 'led_status' in (vector.expected ?? {}))
+    ).toBe(true);
+    assertRuntimeStaleAlignment();
+
+    const withDeletedOutput: Circuit = {
+      nodes: useProjectRuntime.getState().circuit.nodes.filter((node) => node.id !== 'ld2_node'),
+      connections: useProjectRuntime.getState().circuit.connections.filter((connection) => {
+        const fromNodeId =
+          typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+        const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+        return fromNodeId !== 'ld2_node' && toNodeId !== 'ld2_node';
+      }),
+    };
+    act(() => {
+      useProjectRuntime.getState().applyCircuitMutation(withDeletedOutput);
+    });
+    expect(useProjectRuntime.getState().projectVectors.every((vector) => !('ld2' in (vector.expected ?? {})))).toBe(true);
+    assertRuntimeStaleAlignment();
+
+    const renamedInputRow = useProjectRuntime.getState().projectIoRows.find((row) => row.nodeId === 'sw0_node');
+    expect(renamedInputRow).toBeDefined();
+    act(() => {
+      useProjectRuntime.getState().setMappingPin(renamedInputRow!.id, 'SW2');
+    });
+    assertRuntimeStaleAlignment();
+
+    const mappedPinAfterMutation = useProjectRuntime
+      .getState()
+      .projectIoRows.find((row) => row.nodeId === 'sw0_node')?.pin;
+    expect(mappedPinAfterMutation).toBe('SW2');
+
+    act(() => {
+      useProjectRuntime.getState().undoProjectEdit();
+    });
+    expect(useProjectRuntime.getState().projectIoRows.find((row) => row.nodeId === 'sw0_node')?.pin).not.toBe('SW2');
+
+    act(() => {
+      useProjectRuntime.getState().redoProjectEdit();
+    });
+    expect(useProjectRuntime.getState().projectIoRows.find((row) => row.nodeId === 'sw0_node')?.pin).toBe('SW2');
+    assertRuntimeStaleAlignment();
+
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-authority-matrix-restore',
+        projectName: 'Authority Matrix Restore',
+        activeExampleId: null,
+        projectIoRows: useProjectRuntime.getState().projectIoRows,
+        projectVectors: useProjectRuntime.getState().projectVectors,
+        scenarios: useProjectRuntime.getState().scenarios.map((scenario) => ({
+          ...scenario,
+          vectors: scenario.vectors.map((vector) => ({
+            ...vector,
+            inputs: { ...(vector.inputs ?? {}), sw0: 1 },
+            expected: { ...(vector.expected ?? {}), ld1: 1 },
+          })),
+        })),
+        circuit: useProjectRuntime.getState().circuit,
+        verifyRunHistory: [
+          {
+            runId: 'verify-authority-matrix-restore',
+            ranAtIso: '2026-03-22T08:02:00.000Z',
+            status: 'pass',
+            passedRows: 2,
+            failedRows: 0,
+            firstFailure: null,
+            circuitHash: 'cir-matrix-restore',
+            vectorsHash: 'vec-matrix-restore',
+            mappingHash: 'map-matrix-restore',
+            projectHash: baselineHash,
+            didCircuitChangeSinceLast: false,
+            didVectorsChangeSinceLast: false,
+            didMappingChangeSinceLast: false,
+          },
+        ],
+        projectHealthCore: {
+          lastVerify: {
+            status: 'pass',
+            hash: 'vrf_matrix_restore',
+            reportHash: 'vrf_matrix_restore_report',
+            ranAtIso: '2026-03-22T08:02:00.000Z',
+          },
+          lastExport: {
+            status: 'ok',
+            hash: baselineHash,
+            ranAtIso: '2026-03-22T08:03:00.000Z',
+          },
+          dirtySinceVerify: false,
+          dirtySinceExport: false,
+        },
+      },
+      useProjectRuntime.getState()
+    );
+
+    const mergedHash = buildCurrentVerifyProjectHash({
+      circuit: merged.circuit,
+      projectVectors: merged.projectVectors,
+      projectIoRows: merged.projectIoRows,
+    });
+    expect(
+      merged.scenarios.every((scenario) =>
+        scenario.vectors.every((vector) => !('sw0' in (vector.inputs ?? {})) && !('ld1' in (vector.expected ?? {})))
+      )
+    ).toBe(true);
+    expect(
+      merged.scenarios.every((scenario) =>
+        scenario.vectors.every(
+          (vector) =>
+            'sw_main' in (vector.inputs ?? {}) &&
+            'ld0' in (vector.expected ?? {}) &&
+            'led_status' in (vector.expected ?? {})
+        )
+      )
+    ).toBe(true);
+    expect(
+      deriveVerifyCurrent({
+        hasVerifyRun: Boolean(merged.verifyLastRun),
+        latestVerifyLedgerEntry: merged.verifyRunHistory.at(-1),
+        currentVerifyProjectHash: mergedHash,
+        dirtySinceVerify: merged.projectHealthCore.dirtySinceVerify,
+      })
+    ).toBe(false);
+    expect(
+      deriveExportCurrent({
+        lastExport: merged.projectHealthCore.lastExport,
+        currentExportHash: mergedHash,
+        dirtySinceExport: merged.projectHealthCore.dirtySinceExport,
+      })
+    ).toBe(false);
+  });
+
   it('keeps Project/Verify/Export/Hardware aligned when restored verify trust has no run ledger evidence', () => {
     const current = useProjectRuntime.getState();
     const verifiedProjectHash = currentProjectHash();

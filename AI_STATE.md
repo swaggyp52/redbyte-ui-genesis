@@ -1,5 +1,46 @@
 # AI State
 
+## Change Log 2026-03-22 (Authority hardening slice 26: integrated custom-design authority matrix agreement)
+
+**Subsystem**: Cross-surface authority agreement across Project / Verify / Export / Hardware through full custom-design mutation matrix
+
+### Problem
+
+After fixing isolated seams (output add/rename/delete and input add/rename/delete), we still needed one integrated proof that all trust surfaces stay aligned across combined mutations and history transitions:
+
+1. Add, rename, and delete mutations across both inputs and outputs in one flow.
+2. Mapping mutation and vector edits after authority invalidation.
+3. Restore/load plus undo/redo transitions preserving per-state identity and stale/current trust agreement.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+  - Added integrated regression: **keeps Project, Verify, Export, and Hardware aligned across the full custom-design authority mutation matrix**.
+  - Covers one end-to-end sequence:
+    - trusted verify/export baseline,
+    - output+input additions,
+    - output+input renames,
+    - input+output deletions,
+    - mapping mutation,
+    - restore/load-style state transitions,
+    - undo/redo identity restoration checks,
+    - cross-surface stale/current agreement assertions throughout.
+
+### Student-visible behavior
+
+- Custom circuits remain first-class through complex mutation chains.
+- Project CTA, Verify currentness, Export currentness, and Hardware readiness remain synchronized after each authoritative design-shape change.
+- Undo/redo and restored state transitions preserve correct per-state signal identity instead of leaking ghost keys.
+
+### Proof
+
+- `pnpm --filter @redbyte/rb-apps exec vitest run src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx -t "keeps Project, Verify, Export, and Hardware aligned across the full custom-design authority mutation matrix"` -> PASS (1 file, 1 test)
+- `pnpm --filter @redbyte/rb-apps exec vitest run --environment jsdom src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx src/apps/ide/__tests__/projectRuntime.persistence.test.ts` -> PASS (2 files, 33 tests)
+
+### Remaining concern
+
+- Continue monitoring future IO-schema features (for example wider buses or grouped boundary edits) with matrix extensions, but current custom-design authority matrix is green end-to-end.
+
 ## Change Log 2026-03-22 (Authority hardening slice 25: input deletion prunes ghost keys across vectors and scenarios)
 
 **Subsystem**: Runtime input-deletion authority coherence across Verify / Export / Project / Hardware / scenario library
