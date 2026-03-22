@@ -1,5 +1,52 @@
 # AI State
 
+## Change Log 2026-03-22 (Authority hardening slice 23: input addition expands vector input identity and invalidates stale trust across surfaces)
+
+**Subsystem**: Runtime input-side count-change authority coherence across Verify / Export / Project / Hardware
+
+### Problem
+
+Adding a new input after trusted verify+export left runtime vector input shape anchored to the pre-mutation input set:
+
+1. Design snapshot reconciliation invalidated trust and synchronized IO rows, but did not add missing vector `inputs` keys for newly added live inputs.
+2. That allowed expanded input designs to keep stale scenario/input shape (`sw0` only) even after input count increased.
+3. Trust dirties went stale, but runtime vector input identity did not fully represent the new authoritative input set per state.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+  - Added red regression: **adding an input after verify and export invalidates authority and expands vector input identity per state**.
+  - Flow covered:
+    - trusted verify+export baseline,
+    - add new input boundary node,
+    - assert Verify/Export stale and Project CTA + Hardware stale/readiness alignment,
+    - assert vectors include the added input key with default `0`,
+    - assert undo/redo restores the correct input identity shape for each history state.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Added `ensureVectorInputCoverage(...)` to seed missing vector `inputs` keys for live input rows when vectors lack coverage.
+  - Coverage check uses normalized aliases (`id`, `label`, `nodeId`) and only seeds when no alias exists.
+  - Applied input coverage expansion in:
+    - `commitDesignSnapshot(...)` (live mutation + undo/redo path)
+    - `normalizePersistedDesignHistorySnapshot(...)` (persisted history normalization path)
+
+### Student-visible behavior
+
+- Adding an input after verify+export now immediately updates runtime vector input identity to include the new input instead of silently keeping pre-addition input shape.
+- Verify and Export are invalidated honestly, with Project CTA and Hardware readiness reflecting the same stale-trust truth.
+- Undo/redo now restores the correct input identity set per design state.
+
+### Proof
+
+- Red proof:
+  - `pnpm --filter @redbyte/rb-apps exec vitest run src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx -t "adding an input after verify and export invalidates authority and expands vector input identity per state"` -> FAIL at missing `sw1` vector input identity coverage.
+- Green proof:
+  - `pnpm --filter @redbyte/rb-apps exec vitest run src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx -t "adding an input after verify and export invalidates authority and expands vector input identity per state"` -> PASS (1 file, 1 test)
+  - `pnpm --filter @redbyte/rb-apps exec vitest run --environment jsdom src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx src/apps/ide/__tests__/projectRuntime.persistence.test.ts` -> PASS (2 files, 30 tests)
+
+### Remaining concern
+
+- Next adjacent input seam: explicit input rename/delete ghost-key pruning in vectors, to prove old input identity cannot survive authoritative input-shape contraction flows.
+
 ## Change Log 2026-03-22 (Authority hardening slice 22: output addition expands expected identity and invalidates stale trust across surfaces)
 
 **Subsystem**: Runtime boundary-addition authority coherence across Verify / Export / Project / Hardware

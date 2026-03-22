@@ -1074,6 +1074,146 @@ describe('projectRuntime history authority', () => {
     ).toBe(true);
   });
 
+  it('adding an input after verify and export invalidates authority and expands vector input identity per state', () => {
+    useProjectRuntime.getState().loadFromProject(buildTwoOutputHistoryFixture());
+
+    const originalHash = currentProjectHash();
+    const verifyRun = useProjectRuntime.getState().runVerification({
+      scenarioId: 'add-input-baseline',
+      scenarioName: 'Add Input Baseline',
+      deterministicHash: 'add-input-baseline-hash',
+      rows: [],
+      ranAtIso: '2026-03-22T05:00:00.000Z',
+      useRuntimeTrace: false,
+    });
+    expect(verifyRun.status).toBe('pass');
+
+    act(() => {
+      useProjectRuntime.getState().recordExport({
+        status: 'ok',
+        hash: originalHash,
+        ranAtIso: '2026-03-22T05:01:00.000Z',
+      });
+    });
+
+    const expandedInputCircuit: Circuit = {
+      nodes: [
+        ...useProjectRuntime.getState().circuit.nodes,
+        {
+          id: 'sw1_node',
+          type: 'INPUT',
+          label: 'sw1',
+          position: { x: 0, y: 120 },
+          x: 0,
+          y: 120,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+      ],
+      connections: [
+        ...useProjectRuntime.getState().circuit.connections,
+        {
+          from: { nodeId: 'sw1_node', portName: 'out' },
+          to: { nodeId: 'ld0_node', portName: 'in' },
+        },
+      ],
+    };
+
+    act(() => {
+      useProjectRuntime.getState().applyCircuitMutation(expandedInputCircuit);
+    });
+
+    const expandedHash = currentProjectHash();
+    const expandedState = useProjectRuntime.getState();
+    const verifyCurrent = deriveVerifyCurrent({
+      hasVerifyRun: true,
+      latestVerifyLedgerEntry: expandedState.verifyRunHistory.at(-1),
+      currentVerifyProjectHash: expandedHash,
+      dirtySinceVerify: expandedState.projectHealthCore.dirtySinceVerify,
+    });
+    const exportCurrent = deriveExportCurrent({
+      lastExport: expandedState.projectHealthCore.lastExport,
+      currentExportHash: expandedHash,
+      dirtySinceExport: expandedState.projectHealthCore.dirtySinceExport,
+    });
+    const health = deriveProjectHealth(expandedState.projectHealthCore, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: expandedState.projectHealthCore.lastVerify?.qualification,
+    });
+    const addedInputRow = expandedState.projectIoRows.find((row) => row.nodeId === 'sw1_node');
+
+    expect(addedInputRow?.id).toBe('sw1');
+    expect(
+      expandedState.projectVectors.every((vector) => {
+        const inputs = vector.inputs ?? {};
+        return addedInputRow !== undefined && addedInputRow.id in inputs && inputs[addedInputRow.id] === 0;
+      })
+    ).toBe(true);
+    expect(expandedState.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(expandedState.projectHealthCore.dirtySinceExport).toBe(true);
+    expect(verifyCurrent).toBe(false);
+    expect(exportCurrent).toBe(false);
+    expect(choosePrimaryProjectCta(health, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: expandedState.projectHealthCore.lastVerify?.qualification,
+    })).toEqual({ label: 'Verify', mode: 'verify', code: 'RBP1004' });
+
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName={expandedState.projectName}
+          expectedBehavior="LD0 and LD1 follow SW0 and SW1."
+          mappingRows={expandedState.projectIoRows.map((row) => ({
+            id: row.id,
+            nodeId: row.nodeId,
+            label: row.label,
+            direction: row.direction,
+            pin: row.pin,
+            required: row.required,
+          }))}
+          expectedIoRows={[]}
+          vectorsCount={expandedState.projectVectors.length}
+          health={health}
+          verifyCurrent={verifyCurrent}
+          exportCurrent={exportCurrent}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+    expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
+
+    act(() => {
+      useProjectRuntime.getState().undoProjectEdit();
+    });
+
+    expect(useProjectRuntime.getState().projectIoRows.some((row) => row.nodeId === 'sw1_node')).toBe(false);
+    expect(useProjectRuntime.getState().projectVectors.every((vector) => !('sw1' in (vector.inputs ?? {})))).toBe(true);
+
+    act(() => {
+      useProjectRuntime.getState().redoProjectEdit();
+    });
+
+    const redoneState = useProjectRuntime.getState();
+    const redoneAddedInputRow = redoneState.projectIoRows.find((row) => row.nodeId === 'sw1_node');
+    expect(redoneAddedInputRow?.id).toBe('sw1');
+    expect(
+      redoneState.projectVectors.every((vector) => {
+        const inputs = vector.inputs ?? {};
+        return redoneAddedInputRow !== undefined && redoneAddedInputRow.id in inputs && inputs[redoneAddedInputRow.id] === 0;
+      })
+    ).toBe(true);
+  });
+
   it('renaming an output after verify and export invalidates authority and removes ghost expected signal identity', () => {
     useProjectRuntime.getState().loadFromProject(buildTwoOutputHistoryFixture());
 

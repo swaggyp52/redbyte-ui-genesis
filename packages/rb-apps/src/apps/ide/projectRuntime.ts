@@ -1688,6 +1688,38 @@ function ensureVectorExpectedCoverage(vectors: TestVector[], rows: ProjectIoRow[
   });
 }
 
+function ensureVectorInputCoverage(vectors: TestVector[], rows: ProjectIoRow[]): TestVector[] {
+  const inputRows = rows.filter((row) => row.direction === 'in');
+  if (inputRows.length === 0) return cloneVectors(vectors);
+
+  return vectors.map((vector) => {
+    const nextInputs: Record<string, 0 | 1> = { ...(vector.inputs ?? {}) };
+    const normalizedInputKeys = new Set(
+      Object.keys(nextInputs)
+        .map((key) => normalizePortToken(key))
+        .filter((key) => key.length > 0)
+    );
+
+    for (const row of inputRows) {
+      const aliases = [row.id, row.label, row.nodeId]
+        .map((key) => normalizePortToken(key))
+        .filter((key) => key.length > 0);
+      const hasCoverage = aliases.some((alias) => normalizedInputKeys.has(alias));
+      if (hasCoverage) continue;
+      const inputKey = row.id.trim();
+      if (!inputKey) continue;
+      nextInputs[inputKey] = 0;
+      normalizedInputKeys.add(normalizePortToken(inputKey));
+    }
+
+    return {
+      ...vector,
+      inputs: nextInputs,
+      expected: { ...(vector.expected ?? {}) },
+    };
+  });
+}
+
 function getBoundaryIoShape(
   node: Circuit['nodes'][number]
 ): { direction: 'in' | 'out'; port: 'out' | 'in' } | null {
@@ -1819,7 +1851,10 @@ function commitDesignSnapshot(
     snapshot.projectVectors ? cloneVectors(snapshot.projectVectors) : cloneVectors(state.projectVectors),
     buildValidOutputSignalKeys(nextIoRows)
   );
-  const nextProjectVectors = ensureVectorExpectedCoverage(prunedProjectVectors, nextIoRows);
+  const nextProjectVectors = ensureVectorInputCoverage(
+    ensureVectorExpectedCoverage(prunedProjectVectors, nextIoRows),
+    nextIoRows
+  );
   return {
     circuit: nextCircuit,
     projectIoRows: nextIoRows,
@@ -2129,10 +2164,13 @@ function normalizePersistedDesignHistorySnapshot(value: unknown): DesignHistoryS
   return {
     circuit: normalizedCircuit,
     projectIoRows: normalizedProjectIoRows,
-    projectVectors: ensureVectorExpectedCoverage(
-      pruneStaleVectorExpected(
-        normalizePersistedVectors(candidate.projectVectors, []),
-        buildValidOutputSignalKeys(normalizedProjectIoRows)
+    projectVectors: ensureVectorInputCoverage(
+      ensureVectorExpectedCoverage(
+        pruneStaleVectorExpected(
+          normalizePersistedVectors(candidate.projectVectors, []),
+          buildValidOutputSignalKeys(normalizedProjectIoRows)
+        ),
+        normalizedProjectIoRows
       ),
       normalizedProjectIoRows
     ),
