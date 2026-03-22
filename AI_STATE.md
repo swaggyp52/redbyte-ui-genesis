@@ -1,5 +1,41 @@
 # AI State
 
+## Change Log 2026-03-22 (Authority hardening slice 17: restore invalidates stale export trust on export-hash mismatch)
+
+**Subsystem**: Runtime restore / persisted export currentness / Project-Export-Hardware agreement
+
+### Problem
+
+Restore could preserve stale export trust even when the restored project no longer matched the last successful export:
+
+1. `mergePersistedRuntimeState(...)` already invalidated verify trust on verify-project-hash mismatch, but it did not invalidate export trust on export-hash mismatch.
+2. If persisted `projectHealthCore.lastExport.status === 'ok'` and `dirtySinceExport: false` survived restore, shared Project CTA could still route forward as if Export were current.
+3. This let Project/Hardware trust diverge from the restored live export authority after restore/load.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Restore now computes the canonical live export hash from the restored normalized project using the same Basys3 export determinism path.
+  - If persisted `lastExport.hash` exists and does not match the restored export hash (or export-hash recomputation fails), restore now forces `projectHealthCore.dirtySinceExport = true`.
+  - Added contextual warning logging when restored export hash computation fails.
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts`
+  - Added a regression proving restore invalidates export trust when persisted `lastExport.hash` no longer matches restored live export authority.
+  - The test asserts the user-facing consequence: Project CTA routes back to Export (`RBP2002`) instead of treating export trust as current.
+
+### Student-visible behavior
+
+- Reloading a saved project with stale exported-bundle trust no longer leaves Project/Hardware treating export as current.
+- Project now routes students back through Export when restored export authority diverges from persisted successful-export hash.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts -t "invalidates restored export trust when persisted export hash no longer matches the restored project"` -> PASS (1 file, 1 test)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectHealth.test.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` -> PASS (5 files, 47 tests)
+
+### Remaining concern
+
+- Restore still relies on persisted `lastExport.status` semantics for non-`ok` historical states; a future slice should decide whether blocked-to-ok or legacy no-hash transitions should also force conservative export-staleness invalidation.
+
 ## Change Log 2026-03-21 (Authority hardening slice 16: restore invalidates stale verify trust on project-hash mismatch)
 
 **Subsystem**: Runtime restore / persisted verify currentness / Project readiness agreement

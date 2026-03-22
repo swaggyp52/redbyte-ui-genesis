@@ -414,6 +414,96 @@ describe('mergePersistedRuntimeState', () => {
     })).toEqual({ label: 'Verify', mode: 'verify', code: 'RBP1004' });
   });
 
+  it('invalidates restored export trust when persisted export hash no longer matches the restored project', () => {
+    const current = useProjectRuntime.getState();
+
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-stale-export-trust',
+        projectName: 'Stale Export Trust Project',
+        activeExampleId: null,
+        projectIoRows: [
+          {
+            id: 'sw0',
+            nodeId: 'sw0_node',
+            port: 'out',
+            label: 'sw0',
+            direction: 'in',
+            pin: 'SW0',
+            required: true,
+          },
+          {
+            id: 'ld0',
+            nodeId: 'ld0_node',
+            port: 'in',
+            label: 'ld0',
+            direction: 'out',
+            pin: 'LD0',
+            required: true,
+          },
+        ],
+        projectVectors: [
+          {
+            tick: 0,
+            inputs: { sw0: 1 },
+            expected: { ld0: 1 },
+          },
+        ],
+        circuit: {
+          nodes: [
+            { id: 'sw0_node', type: 'INPUT', x: 0, y: 0 },
+            { id: 'ld0_node', type: 'OUTPUT', x: 10, y: 5 },
+          ],
+          connections: [
+            {
+              from: 'sw0_node',
+              fromPort: 'out',
+              to: 'ld0_node',
+              toPort: 'in',
+            },
+          ],
+        },
+        projectHealthCore: {
+          lastVerify: {
+            status: 'pass',
+            hash: 'vrf_authoritative_hash_1234',
+            reportHash: 'vrf_authoritative_hash_1234_report',
+            ranAtIso: '2026-03-21T00:00:00.000Z',
+          },
+          lastExport: {
+            status: 'ok',
+            hash: 'exp_hash_for_old_project_shape',
+            ranAtIso: '2026-03-21T00:05:00.000Z',
+          },
+          dirtySinceVerify: false,
+          dirtySinceExport: false,
+        },
+      },
+      current
+    );
+
+    const health = deriveProjectHealth(merged.projectHealthCore, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: merged.projectHealthCore.lastVerify?.qualification,
+    });
+
+    expect(merged.projectHealthCore.lastExport).toEqual(
+      expect.objectContaining({
+        status: 'ok',
+        hash: 'exp_hash_for_old_project_shape',
+      })
+    );
+    expect(merged.projectHealthCore.dirtySinceExport).toBe(true);
+    expect(choosePrimaryProjectCta(health, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: merged.projectHealthCore.lastVerify?.qualification,
+    })).toEqual({ label: 'Export', mode: 'export', code: 'RBP2002' });
+  });
+
   it('restores persisted runtime undo and redo history snapshots', () => {
     const current = useProjectRuntime.getState();
 

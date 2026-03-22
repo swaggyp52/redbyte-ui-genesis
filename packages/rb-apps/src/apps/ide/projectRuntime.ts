@@ -59,6 +59,8 @@ import {
   repairScenarioLibrary,
   type VerifyScenario,
 } from './verifyScenario';
+import { exportProjectAsBasys3 } from '../../fpga/boards/basys3/basys3ExportService';
+import { flattenProjectMacros } from './macros/macroFlattener';
 
 export type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
 
@@ -1317,6 +1319,16 @@ export function mergePersistedRuntimeState(
     currentState.projectHealthCore,
     invalidateVerifyTrust
   );
+  const restoredExportHash = computeRestoredExportHash(normalizedProject);
+  const hasRestoredExportHashMismatch =
+    projectHealthCore.lastExport?.status === 'ok' &&
+    typeof projectHealthCore.lastExport.hash === 'string' &&
+    projectHealthCore.lastExport.hash.length > 0 &&
+    (
+      typeof restoredExportHash !== 'string' ||
+      restoredExportHash.length === 0 ||
+      projectHealthCore.lastExport.hash !== restoredExportHash
+    );
   const { scenarios, activeScenarioId } =
     Array.isArray(candidate.scenarios) && (candidate.scenarios as unknown[]).length > 0
       ? repairScenarioLibrary(candidate.scenarios, candidate.activeScenarioId, projectVectors)
@@ -1351,16 +1363,33 @@ export function mergePersistedRuntimeState(
     verifyLastRun,
     verifyRunHistory,
     sim,
-    projectHealthCore: hasRestoredVerifyProjectHashMismatch
-      ? {
-          ...projectHealthCore,
-          dirtySinceVerify: true,
-        }
-      : projectHealthCore,
+    projectHealthCore:
+      hasRestoredVerifyProjectHashMismatch || hasRestoredExportHashMismatch
+        ? {
+            ...projectHealthCore,
+            ...(hasRestoredVerifyProjectHashMismatch ? { dirtySinceVerify: true } : {}),
+            ...(hasRestoredExportHashMismatch ? { dirtySinceExport: true } : {}),
+          }
+        : projectHealthCore,
     macros: normalizedProject.macros ?? [],
     macroInsertionCounts: normalizeMacroInsertionCounts(candidate.macroInsertionCounts),
     customComponents: normalizedProject.customComponents ?? [],
   };
+}
+
+function computeRestoredExportHash(project: RBProject): string | undefined {
+  try {
+    if (!project.circuit || !project.ioMapping) {
+      return undefined;
+    }
+    return exportProjectAsBasys3(flattenProjectMacros(project)).determinismHash;
+  } catch (error) {
+    console.warn('[projectRuntime] failed to compute restored export hash', {
+      projectId: project.meta?.projectId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return undefined;
+  }
 }
 
 function stateFromExample(
