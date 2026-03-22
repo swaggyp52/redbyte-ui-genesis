@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import React, { useLayoutEffect } from 'react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { RBProject } from '../../../export/projectFormat';
@@ -12,8 +12,11 @@ import {
 } from '../../IdeApp';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { digestValue } from '../../../utils/digest';
+import { BoardSignalProvider } from '../BoardSignalContext';
 import { projectRuntimeCircuitToEditorStore } from '../circuitProjection';
-import { useProjectRuntime } from '../projectRuntime';
+import { choosePrimaryProjectCta, deriveProjectHealth } from '../projectHealth';
+import { HardwareSurface } from '../surfaces/HardwareSurface';
+import { mergePersistedRuntimeState, useProjectRuntime } from '../projectRuntime';
 
 function buildHistoryFixture(): RBProject {
   return {
@@ -629,5 +632,136 @@ describe('projectRuntime history authority', () => {
         dirtySinceExport: true,
       })
     ).toBe(false);
+  });
+
+  it('keeps Verify/Export/Project/Hardware aligned after restore when mapping changed and legacy export hash is missing', () => {
+    const current = useProjectRuntime.getState();
+    const verifiedProjectHash = currentProjectHash();
+
+    const restored = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-cross-surface-restore-mapping',
+        projectName: 'Cross Surface Restore Mapping',
+        activeExampleId: null,
+        projectIoRows: [
+          {
+            id: 'sw0',
+            nodeId: 'sw0_node',
+            port: 'out',
+            label: 'sw0',
+            direction: 'in',
+            pin: 'SW1',
+            required: true,
+          },
+          {
+            id: 'ld0',
+            nodeId: 'ld0_node',
+            port: 'in',
+            label: 'ld0',
+            direction: 'out',
+            pin: 'LD0',
+            required: true,
+          },
+        ],
+        projectVectors: current.projectVectors,
+        circuit: current.circuit,
+        verifyRunHistory: [
+          {
+            runId: 'verify-pre-mapping-mutation',
+            ranAtIso: '2026-03-22T00:00:00.000Z',
+            status: 'pass',
+            passedRows: 2,
+            failedRows: 0,
+            firstFailure: null,
+            circuitHash: 'cir_before_mapping_change',
+            vectorsHash: 'vec_before_mapping_change',
+            mappingHash: 'map_before_mapping_change',
+            projectHash: verifiedProjectHash,
+            didCircuitChangeSinceLast: false,
+            didVectorsChangeSinceLast: false,
+            didMappingChangeSinceLast: false,
+          },
+        ],
+        projectHealthCore: {
+          lastVerify: {
+            status: 'pass',
+            hash: 'vrf_cross_surface_hash',
+            reportHash: 'vrf_cross_surface_report_hash',
+            ranAtIso: '2026-03-22T00:00:00.000Z',
+          },
+          // Legacy persisted export trust can have status ok without a hash.
+          lastExport: {
+            status: 'ok',
+            ranAtIso: '2026-03-22T00:05:00.000Z',
+          },
+          dirtySinceVerify: false,
+          dirtySinceExport: false,
+        },
+      },
+      current
+    );
+
+    const restoredProjectHash = buildCurrentVerifyProjectHash({
+      circuit: restored.circuit,
+      projectVectors: restored.projectVectors,
+      projectIoRows: restored.projectIoRows,
+    });
+    const verifyCurrent = deriveVerifyCurrent({
+      hasVerifyRun: Boolean(restored.verifyLastRun),
+      latestVerifyLedgerEntry: restored.verifyRunHistory.at(-1),
+      currentVerifyProjectHash: restoredProjectHash,
+      dirtySinceVerify: restored.projectHealthCore.dirtySinceVerify,
+    });
+    const exportCurrent = deriveExportCurrent({
+      lastExport: restored.projectHealthCore.lastExport,
+      currentExportHash: undefined,
+      dirtySinceExport: restored.projectHealthCore.dirtySinceExport,
+    });
+    const health = deriveProjectHealth(restored.projectHealthCore, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: restored.projectHealthCore.lastVerify?.qualification,
+    });
+
+    expect(restored.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(restored.projectHealthCore.dirtySinceExport).toBe(true);
+    expect(verifyCurrent).toBe(false);
+    expect(exportCurrent).toBe(false);
+    expect(choosePrimaryProjectCta(health, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: restored.projectHealthCore.lastVerify?.qualification,
+    })).toEqual({ label: 'Verify', mode: 'verify', code: 'RBP1004' });
+
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName={restored.projectName}
+          expectedBehavior="LED0 follows SW0."
+          mappingRows={restored.projectIoRows.map((row) => ({
+            id: row.id,
+            nodeId: row.nodeId,
+            label: row.label,
+            direction: row.direction,
+            pin: row.pin,
+            required: row.required,
+          }))}
+          expectedIoRows={[]}
+          vectorsCount={restored.projectVectors.length}
+          health={health}
+          verifyCurrent={verifyCurrent}
+          exportCurrent={exportCurrent}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+    expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
   });
 });

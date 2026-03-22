@@ -1320,6 +1320,9 @@ export function mergePersistedRuntimeState(
     invalidateVerifyTrust
   );
   const restoredExportHash = computeRestoredExportHash(normalizedProject);
+  const hasRestoredLegacyExportWithoutHash =
+    projectHealthCore.lastExport?.status === 'ok' &&
+    (!projectHealthCore.lastExport.hash || projectHealthCore.lastExport.hash.length === 0);
   const hasRestoredExportHashMismatch =
     projectHealthCore.lastExport?.status === 'ok' &&
     typeof projectHealthCore.lastExport.hash === 'string' &&
@@ -1364,11 +1367,17 @@ export function mergePersistedRuntimeState(
     verifyRunHistory,
     sim,
     projectHealthCore:
-      hasRestoredVerifyProjectHashMismatch || hasRestoredExportHashMismatch
+      hasRestoredVerifyProjectHashMismatch ||
+      hasRestoredLegacyExportWithoutHash ||
+      hasRestoredExportHashMismatch
         ? {
             ...projectHealthCore,
             ...(hasRestoredVerifyProjectHashMismatch ? { dirtySinceVerify: true } : {}),
-            ...(hasRestoredExportHashMismatch ? { dirtySinceExport: true } : {}),
+            ...(
+              hasRestoredLegacyExportWithoutHash || hasRestoredExportHashMismatch
+                ? { dirtySinceExport: true }
+                : {}
+            ),
           }
         : projectHealthCore,
     macros: normalizedProject.macros ?? [],

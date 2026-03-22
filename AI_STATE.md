@@ -1,5 +1,44 @@
 # AI State
 
+## Change Log 2026-03-22 (Authority hardening slice 18: cross-surface restore agreement for legacy export trust)
+
+**Subsystem**: Restore/load authority coherence across Verify / Export / Project / Hardware
+
+### Problem
+
+Cross-surface trust could still diverge after restore in a realistic legacy flow:
+
+1. A project could have a trusted verify PASS and successful export, then mapping could change before persistence.
+2. Restore already invalidated verify trust using verify ledger `projectHash` mismatch.
+3. But legacy persisted `lastExport.status: 'ok'` without `lastExport.hash` could keep `dirtySinceExport: false`, leaving Export/Hardware trust pathways too optimistic relative to Verify/Project stale state.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Restore now treats legacy successful export state with missing export hash as unverifiable currentness and forces `projectHealthCore.dirtySinceExport = true`.
+  - Existing explicit export-hash mismatch invalidation remains in place.
+  - Result: restore now invalidates export trust when it cannot prove export currentness, not only when a stored hash mismatches.
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+  - Added a cross-surface regression that simulates:
+    - verified + exported project,
+    - mapping mutation,
+    - restore with legacy `lastExport.status: 'ok'` but no export hash,
+    - assertions that Verify/Export currentness, Project CTA, and Hardware readiness messaging all agree on stale trust.
+
+### Student-visible behavior
+
+- After restore from legacy export trust state, RedByte no longer treats export as current when currentness cannot be proven.
+- Verify, Project CTA, Export status, and Hardware callouts now align on the same stale-trust truth in restore+mapping-mutation flows.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx -t "keeps Verify/Export/Project/Hardware aligned after restore when mapping changed and legacy export hash is missing"` -> PASS (1 file, 1 test)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectHealth.test.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` -> PASS (6 files, 57 tests)
+
+### Remaining concern
+
+- Restore still uses conservative invalidation for legacy missing-export-hash states; a future migration slice can backfill canonical export hashes for legacy snapshots to reduce one-time stale prompts after upgrade.
+
 ## Change Log 2026-03-22 (Authority hardening slice 17: restore invalidates stale export trust on export-hash mismatch)
 
 **Subsystem**: Runtime restore / persisted export currentness / Project-Export-Hardware agreement
