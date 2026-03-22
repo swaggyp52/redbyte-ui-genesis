@@ -1640,6 +1640,20 @@ function buildValidOutputSignalKeys(rows: ProjectIoRow[]): Set<string> {
   return validOutputKeys;
 }
 
+function buildValidInputSignalKeys(rows: ProjectIoRow[]): Set<string> {
+  const validInputKeys = new Set<string>();
+  for (const row of rows) {
+    if (row.direction !== 'in') continue;
+    for (const candidate of [row.id, row.label, row.nodeId]) {
+      const normalized = normalizePortToken(candidate);
+      if (normalized.length > 0) {
+        validInputKeys.add(normalized);
+      }
+    }
+  }
+  return validInputKeys;
+}
+
 export function pruneStaleVectorExpected(
   vectors: TestVector[],
   validOutputKeys: Set<string>
@@ -1653,6 +1667,19 @@ export function pruneStaleVectorExpected(
         return normalizedKey.length > 0 && validOutputKeys.has(normalizedKey);
       })
     ) as Record<string, 0 | 1>,
+  }));
+}
+
+function pruneStaleVectorInputs(vectors: TestVector[], validInputKeys: Set<string>): TestVector[] {
+  return vectors.map((vector) => ({
+    ...vector,
+    inputs: Object.fromEntries(
+      Object.entries(vector.inputs ?? {}).filter(([key]) => {
+        const normalizedKey = normalizePortToken(key);
+        return normalizedKey.length > 0 && validInputKeys.has(normalizedKey);
+      })
+    ) as Record<string, 0 | 1>,
+    expected: { ...(vector.expected ?? {}) },
   }));
 }
 
@@ -1847,9 +1874,12 @@ function commitDesignSnapshot(
 > {
   const nextCircuit = cloneCircuit(snapshot.circuit);
   const nextIoRows = synchronizeProjectIoRows(nextCircuit, cloneIoRows(snapshot.projectIoRows));
-  const prunedProjectVectors = pruneStaleVectorExpected(
-    snapshot.projectVectors ? cloneVectors(snapshot.projectVectors) : cloneVectors(state.projectVectors),
-    buildValidOutputSignalKeys(nextIoRows)
+  const prunedProjectVectors = pruneStaleVectorInputs(
+    pruneStaleVectorExpected(
+      snapshot.projectVectors ? cloneVectors(snapshot.projectVectors) : cloneVectors(state.projectVectors),
+      buildValidOutputSignalKeys(nextIoRows)
+    ),
+    buildValidInputSignalKeys(nextIoRows)
   );
   const nextProjectVectors = ensureVectorInputCoverage(
     ensureVectorExpectedCoverage(prunedProjectVectors, nextIoRows),
@@ -2166,9 +2196,12 @@ function normalizePersistedDesignHistorySnapshot(value: unknown): DesignHistoryS
     projectIoRows: normalizedProjectIoRows,
     projectVectors: ensureVectorInputCoverage(
       ensureVectorExpectedCoverage(
-        pruneStaleVectorExpected(
-          normalizePersistedVectors(candidate.projectVectors, []),
-          buildValidOutputSignalKeys(normalizedProjectIoRows)
+        pruneStaleVectorInputs(
+          pruneStaleVectorExpected(
+            normalizePersistedVectors(candidate.projectVectors, []),
+            buildValidOutputSignalKeys(normalizedProjectIoRows)
+          ),
+          buildValidInputSignalKeys(normalizedProjectIoRows)
         ),
         normalizedProjectIoRows
       ),

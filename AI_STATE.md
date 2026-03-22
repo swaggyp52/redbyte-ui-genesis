@@ -1,5 +1,54 @@
 # AI State
 
+## Change Log 2026-03-22 (Authority hardening slice 24: input rename prunes ghost vector input keys and preserves cross-surface stale alignment)
+
+**Subsystem**: Runtime input-identity rename authority coherence across Verify / Export / Project / Hardware
+
+### Problem
+
+Input rename after trusted verify+export could leave ghost old input identity in vectors:
+
+1. Runtime already rekeyed label-derived IO row ids on rename and expanded missing input coverage for new keys.
+2. But vector `inputs` lacked a stale-key prune pass, so renamed input flows could keep old keys (for example `sw0`) while also seeding new keys (for example `sw_main`).
+3. That allowed stale input identity to survive authoritative design-shape mutation and history transitions.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+  - Added red regression: **renaming an input after verify and export invalidates authority and removes ghost input identity**.
+  - Flow covered:
+    - trusted verify+export baseline,
+    - rename input boundary label/id identity,
+    - assert Verify/Export stale + Project CTA + Hardware stale/readiness alignment,
+    - assert old input key is absent from vectors,
+    - assert renamed key is present,
+    - assert undo/redo restores the correct input identity set per history state.
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Added `buildValidInputSignalKeys(...)` to compute authoritative live input aliases (`id`, `label`, `nodeId`).
+  - Added `pruneStaleVectorInputs(...)` to remove vector input keys no longer present in the authoritative live input set.
+  - Integrated input pruning in both:
+    - `commitDesignSnapshot(...)` (live mutation + undo/redo path)
+    - `normalizePersistedDesignHistorySnapshot(...)` (persisted history normalization path)
+  - Existing input/output coverage expansion remains, now applied after stale-key pruning.
+
+### Student-visible behavior
+
+- Renaming an input no longer leaves ghost old input keys behind in vectors.
+- Verify and Export trust still invalidate immediately, and Project/Hardware continue to show the same stale authority state.
+- Undo/redo now restores the right input identity set for each design state instead of mixing old and renamed keys.
+
+### Proof
+
+- Red proof:
+  - `pnpm --filter @redbyte/rb-apps exec vitest run src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx -t "renaming an input after verify and export invalidates authority and removes ghost input identity"` -> FAIL at stale `sw0` key survival in vectors.
+- Green proof:
+  - `pnpm --filter @redbyte/rb-apps exec vitest run src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx -t "renaming an input after verify and export invalidates authority and removes ghost input identity"` -> PASS (1 file, 1 test)
+  - `pnpm --filter @redbyte/rb-apps exec vitest run --environment jsdom src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx src/apps/ide/__tests__/projectRuntime.persistence.test.ts` -> PASS (2 files, 31 tests)
+
+### Remaining concern
+
+- Next seam: input deletion explicit ghost-key pruning assertion and then a final integrated cross-surface authority matrix test covering add/rename/delete inputs and outputs, restore, mapping mutation, and undo/redo agreement in one run.
+
 ## Change Log 2026-03-22 (Authority hardening slice 23: input addition expands vector input identity and invalidates stale trust across surfaces)
 
 **Subsystem**: Runtime input-side count-change authority coherence across Verify / Export / Project / Hardware
