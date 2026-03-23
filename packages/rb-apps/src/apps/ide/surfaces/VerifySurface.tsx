@@ -1629,14 +1629,41 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         const vecId = vector.id ?? String(index);
         // Selection: visually override pass/fail tint when this row is pinpointed by a failure click.
         const isSelected = selectedVectorId !== null && vecId === selectedVectorId;
+        // Per-row pass/fail status derived from run results
+        const rowStatus: 'pass' | 'fail' | null = (() => {
+          if (outputFields.length === 0) return null;
+          let anyFail = false;
+          let anyResult = false;
+          for (const field of outputFields) {
+            const resultKey = `${vecId}::${normalizeFieldId(field.id)}`;
+            const s = runResultByVecAndSignal.get(resultKey);
+            if (s === 'fail') { anyFail = true; anyResult = true; }
+            else if (s === 'pass') { anyResult = true; }
+          }
+          if (!anyResult) return null;
+          return anyFail ? 'fail' : 'pass';
+        })();
+
         const cells: React.ReactNode[] = [
           // Tick cell — highlight entire row identity via data-selected
           <span
             key={`tick-${vecId}`}
             className={`ide-verify-vector-tick-cell${isSelected ? ' is-row-selected' : ''}`}
             data-testid={`ide-verify-vector-tick-${vecId}`}
+            data-vector-status={rowStatus ?? 'none'}
+            onClick={() => setSelectedTick(vector.tick)}
+            style={{ cursor: 'pointer' }}
+            title={`Tick ${vector.tick} — click to highlight in waveform`}
           >
             {String(vector.tick)}
+            {rowStatus === 'fail' && <span className="ide-verify-row-badge ide-verify-row-badge--fail" aria-label="fail">✗</span>}
+            {rowStatus === 'pass' && <span className="ide-verify-row-badge ide-verify-row-badge--pass" aria-label="pass">✓</span>}
+            {(() => {
+              const compat = vectorCompatibilityMap.get(vector.id);
+              if (compat === 'orphaned') return <span className="ide-verify-compat-badge ide-verify-compat-badge--orphaned" title="This vector references signals not in the current circuit">⚠</span>;
+              if (compat === 'partial') return <span className="ide-verify-compat-badge ide-verify-compat-badge--partial" title="This vector partially matches the current circuit signals">~</span>;
+              return null;
+            })()}
           </span>,
           ...inputFields.map((field) => {
             const val = vector.inputs[field.id] ?? 0;
@@ -1776,6 +1803,68 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return s;
   }, [signalRoleLookup]);
+
+  // ── Design schema authority: vector compatibility and readiness ────────
+  const inputFieldIds = useMemo(() => new Set(inputFields.map((f) => f.id)), [inputFields]);
+  const outputFieldIds = useMemo(() => new Set(outputFields.map((f) => f.id)), [outputFields]);
+
+  type VectorCompatibility = 'compatible' | 'partial' | 'orphaned';
+  const vectorCompatibilityMap = useMemo((): Map<string, VectorCompatibility> => {
+    return new Map(
+      authoredVectors.map((v) => {
+        const vectorInputKeys = Object.keys(v.inputs ?? {});
+        if (vectorInputKeys.length === 0) return [v.id, 'compatible' as VectorCompatibility];
+        const matchCount = vectorInputKeys.filter((k) => inputFieldIds.has(k)).length;
+        if (matchCount === 0) return [v.id, 'orphaned' as VectorCompatibility];
+        if (matchCount < vectorInputKeys.length) return [v.id, 'partial' as VectorCompatibility];
+        return [v.id, 'compatible' as VectorCompatibility];
+      })
+    );
+  }, [authoredVectors, inputFieldIds]);
+
+  const someVectorsOrphaned = useMemo(
+    () => Array.from(vectorCompatibilityMap.values()).some((c) => c === 'orphaned'),
+    [vectorCompatibilityMap]
+  );
+
+  type VectorReadiness =
+    | 'ready-verify'
+    | 'ready-trace'
+    | 'missing-expected'
+    | 'no-stimulus'
+    | 'needs-clock'
+    | 'no-vectors';
+
+  const vectorReadiness = useMemo((): VectorReadiness => {
+    if (authoredVectors.length === 0) return 'no-vectors';
+    if (hasDff && clockSignals.size > 0) {
+      const clockKeys = Array.from(clockSignals);
+      const hasClockActivity = authoredVectors.some((v) =>
+        clockKeys.some((clk) => v.inputs[clk] !== undefined)
+      );
+      if (!hasClockActivity) return 'needs-clock';
+    }
+    const hasExpected = authoredVectors.some((v) => Object.keys(v.expected ?? {}).length > 0);
+    if (!hasExpected && assertionMode) return 'missing-expected';
+    if (hasExpected && assertionMode) return 'ready-verify';
+    return 'ready-trace';
+  }, [authoredVectors, hasDff, clockSignals, assertionMode]);
+
+  // Schema-change detection: show banner when inputFields IDs change across renders
+  const prevInputFieldIdsRef = useRef<string>('');
+  const [showSchemaChangeBanner, setShowSchemaChangeBanner] = useState(false);
+  useEffect(() => {
+    const currentIds = inputFields.map((f) => f.id).sort().join(',');
+    if (prevInputFieldIdsRef.current && prevInputFieldIdsRef.current !== currentIds) {
+      setShowSchemaChangeBanner(true);
+    }
+    prevInputFieldIdsRef.current = currentIds;
+  }, [inputFields]);
+  // Dismiss schema banner on next run
+  useEffect(() => {
+    if (runState === 'running') setShowSchemaChangeBanner(false);
+  }, [runState]);
+
   const selectedFailurePattern = useMemo(
     () =>
       deriveVerifyFailurePattern({
@@ -2144,6 +2233,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         : null,
       hasFloatingOutputWarning,
       floatingSignals,
+      vectorsAreAutoGenerated,
     };
     return getVerifyHint({ ...ctx, pattern: selectedFailurePattern });
   }, [
@@ -2157,6 +2247,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     floatingSignals,
     selectedFailureCase,
     selectedFailurePattern,
+    vectorsAreAutoGenerated,
   ]);
 
   const isShowcaseKit = example?.category === 'showcase';
@@ -2474,7 +2565,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   useEffect(() => {
     if (!lastRun) return;
-    if (lastRun.status === 'fail' && firstFailureTick !== undefined) {
+    if (!isRunStale && lastRun.status === 'fail' && firstFailureTick !== undefined) {
       setTickZoom('fail');
       setTickWindowCenter(firstFailureTick);
       return;
@@ -2547,7 +2638,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ? lastRun?.qualification === 'incomplete-mapping' ? 'warn' : 'ok'
       : displayStatus === 'FAIL'
         ? 'error'
-        : displayStatus === 'STALE' || displayStatus === 'BLOCKED'
+        : displayStatus === 'BLOCKED'
           ? 'warn'
           : 'idle';
   const displayStatusLabel =
@@ -2560,7 +2651,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           ? 'Simulation complete — empty waveform recorded'
           : 'Simulation complete — some outputs differ from expectations'
         : displayStatus === 'STALE'
-          ? 'STALE — circuit changed since last run, re-run to see current waveform'
+          ? `Circuit updated — results below are from build ${lastRun?.deterministicHash?.slice(0, 8) ?? 'previous'}`
           : displayStatus === 'RUNNING'
             ? 'Running simulation…'
             : displayStatus === 'TRACE'
@@ -2591,7 +2682,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     totalVectorCount === 0
       ? 'Add vectors to define the input stimulus for this run.'
       : totalExpectedCaseCount === 0
-        ? 'Run the circuit to observe waveform and outputs. With no expected outputs loaded, this is observation only.'
+        ? 'Your vectors have no expected outputs set. Switch to \u2018Check Expected Outputs\u2019 mode to enable pass/fail verification. You can capture the current waveform outputs using the capture button.'
         : assertionMode
           ? 'Mismatch means the current circuit differs from the selected reference. It does not mean the design graph or generated HDL is structurally invalid.'
           : 'Vectors include expected values. Enable Assertions to compare observed outputs against them.';
@@ -2734,6 +2825,22 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     },
     [authoredVectors, draftTick, draftInputs, draftExpected, inputFields, outputFields, onVectorsChange]
   );
+
+  const handleInsertClockPattern = useCallback(() => {
+    if (clockSignals.size === 0) return;
+    const clkKey = Array.from(clockSignals)[0];
+    const startTick = authoredVectors.length > 0
+      ? Math.max(...authoredVectors.map((v) => v.tick)) + 1
+      : 0;
+    const clkVectors: typeof authoredVectors = [0, 1, 2, 3].map((offset) => ({
+      id: `vec-clk-${String(startTick + offset).padStart(2, '0')}`,
+      tick: startTick + offset,
+      inputs: { [clkKey]: (offset % 2) as 0 | 1 },
+      expected: {},
+    }));
+    onVectorsChange?.([...authoredVectors, ...clkVectors]);
+    setOracleApplied(false);
+  }, [authoredVectors, clockSignals, onVectorsChange]);
 
   const handleGenerateBasicVectors = () => {
     if (onGenerateBasicVectors) {
@@ -3526,14 +3633,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             The badge must never show PASS/FAIL for a circuit that has since changed. */}
         {isRunStale && (
           <div
-            className="ide-verify-stale-banner ide-surface-panel"
+            className="ide-verify-stale-banner ide-verify-stale-hero ide-surface-panel"
             data-testid="ide-verify-stale-banner"
             role="alert"
           >
-            <strong className="ide-verify-stale-banner-label">STALE</strong>
-            <span>Circuit changed since last run. Re-run verification to get a current result.</span>
-            <IdeButton tone="secondary" onClick={runVerification} testId="ide-verify-stale-rerun">
-              Re-run now
+            <strong className="ide-verify-stale-banner-label">Circuit Updated</strong>
+            <span>Results below were recorded before the last circuit change — re-run to see current behavior.</span>
+            <IdeButton tone="primary" onClick={runVerification} testId="ide-verify-stale-rerun">
+              Re-run for current circuit
             </IdeButton>
           </div>
         )}
@@ -3543,7 +3650,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         </IdeCallout>
 
         {/* Status strip — status-first, one primary CTA */}
-        <div className="ide-verify-status-strip" data-testid="ide-verify-banner">
+        <div className="ide-verify-status-strip" data-testid="ide-verify-banner" data-zone="status">
           <IdeStatusPill tone={displayTone} testId="ide-verify-summary-status">
             {displayStatus === 'PASS'
               ? lastRun?.qualification === 'incomplete-mapping'
@@ -3553,15 +3660,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ? 'FAIL'
                 : displayStatus}
           </IdeStatusPill>
+          {lastRun && !isRunStale && (
+            <span
+              className={`ide-verify-mode-chip ${assertionMode ? 'ide-verify-mode-chip--verify' : 'ide-verify-mode-chip--trace'}`}
+              data-testid="ide-verify-mode-chip"
+              title={assertionMode ? 'Verification run — pass/fail checked against expected outputs' : 'Trace run — waveform captured, no pass/fail checking'}
+            >
+              {assertionMode ? 'VERIFICATION RUN' : 'TRACE RUN'}
+            </span>
+          )}
           {lastRun && (
             <>
               <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
-              <span className="ide-verify-strip-meta ide-verify-strip-pass" data-testid="ide-verify-strip-pass-count">
-                {assertionMode
-                  ? `${runRows.length - failingRows.length}/${runRows.length} match`
-                  : `${runRows.length} vector${runRows.length !== 1 ? 's' : ''}`}
-              </span>
-              {assertionMode && failingRows.length > 0 && (
+              {isRunStale ? (
+                <span className="ide-verify-strip-meta ide-verify-strip-stale-note" data-testid="ide-verify-strip-pass-count">
+                  Results from previous build {lastRun.deterministicHash?.slice(0, 8) ?? ''}
+                </span>
+              ) : (
+                <span className="ide-verify-strip-meta ide-verify-strip-pass" data-testid="ide-verify-strip-pass-count">
+                  {assertionMode
+                    ? `${runRows.length - failingRows.length}/${runRows.length} match`
+                    : `${runRows.length} vector${runRows.length !== 1 ? 's' : ''}`}
+                </span>
+              )}
+              {!isRunStale && assertionMode && failingRows.length > 0 && (
                 <>
                   <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
                   <span className="ide-verify-strip-meta ide-verify-strip-fail" data-testid="ide-verify-strip-fail-count">
@@ -3630,7 +3752,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     testId={lastRun ? 'ide-verify-run-secondary' : 'ide-verify-run'}
                     className={displayStatus === 'READY' ? 'is-pulsing' : undefined}
                   >
-                    {isRunStale ? 'Re-run Simulation' : lastRun ? 'Re-run Simulation' : 'Run Simulation'}
+                    {isRunStale ? 'Re-run for current circuit' : lastRun ? 'Re-run Simulation' : 'Run Simulation'}
                   </IdeButton>
                 </span>
                 {assertionMode && displayStatus === 'FAIL' && failingRows.length > 0 && !isRunStale && (
@@ -3646,9 +3768,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     tone={assertionMode ? 'secondary' : 'ghost'}
                     onClick={() => setAssertionMode((v) => !v)}
                     testId="ide-verify-assertion-mode-toggle"
-                    title="Toggle assertion checking — compare expected outputs against observed circuit behavior"
+                    title={assertionMode
+                      ? 'Pass/Fail Checking ON — compares expected outputs against actual circuit behavior'
+                      : 'Trace Inputs Only — runs stimulus and shows waveform, no pass/fail checking'}
                   >
-                    Assertions {assertionMode ? 'ON' : 'OFF'}
+                    {assertionMode ? 'Check Expected Outputs' : 'Trace Inputs Only'}
                   </IdeButton>
                   {totalSteps > 0 && (
                     <IdeButton
@@ -3680,6 +3804,36 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </div>
           )}
         </div>
+
+        {/* TRACE callout — shown immediately after the status strip so it's above the fold */}
+        {isTraceOnly && canSetOracle && (
+          <IdeCallout tone="info" title="Waveform captured — no pass/fail checking" testId="ide-verify-trace-oracle-callout">
+            <p className="ide-copy">
+              Waveform recorded for {waveformTicks.length} tick{waveformTicks.length !== 1 ? 's' : ''}. No expected outputs were set, so nothing was verified.
+              {hasDff && (
+                <> Sequential circuit detected — outputs depend on prior ticks. Trace first, then capture or edit expected values for each relevant tick.</>
+              )}
+            </p>
+            <p className="ide-copy">
+              Set expected output values in your vectors to enable pass/fail verification, or capture the current outputs as expected values now.
+            </p>
+            <div className="ide-inline-actions">
+              <IdeButton tone="primary" onClick={() => setAssertionMode(true)} testId="ide-verify-trace-enable-assertions">
+                Enable Pass/Fail Checking
+              </IdeButton>
+              {canSetOracle && (
+                <IdeButton tone="secondary" onClick={handleSetOracleExpected} testId="ide-verify-trace-oracle-btn">
+                  Capture outputs as expected
+                </IdeButton>
+              )}
+              {authoredVectors.length === 0 && (
+                <IdeButton tone="ghost" onClick={handleGenerateBasicVectors} testId="ide-verify-trace-generate-basics">
+                  Generate Basics first
+                </IdeButton>
+              )}
+            </div>
+          </IdeCallout>
+        )}
 
         {isSequentialRun && (
           <IdeCallout tone="info" testId="ide-verify-clocked-banner">
@@ -3877,27 +4031,76 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {isTraceOnly && canSetOracle && (
-          <IdeCallout tone="info" title="Trace captured — no expectations set" testId="ide-verify-trace-oracle-callout">
-            <p className="ide-copy">
-              Verification ran and produced {waveformTicks.length} tick{waveformTicks.length !== 1 ? 's' : ''} of waveform data,
-              but no expected outputs were defined so nothing was verified.
-            </p>
-            <p className="ide-copy">
-              Click <strong>Capture observed outputs as expected</strong> to lock in the current outputs as the expected values.
-              Future runs will fail if the circuit produces different results — that is how Verify works.
-            </p>
+        {/* TRACE callout moved to bottom workbench area — canonical position after results zone */}
+
+        {/* Sequential first-run helper strip */}
+        {hasDff && isFirstRunState && (
+          <IdeCallout tone="info" testId="ide-verify-sequential-helper">
+            <strong>Clocked circuit detected</strong>
+            <ul className="ide-copy" style={{ margin: '4px 0 4px 16px', padding: 0 }}>
+              <li>Include a clock waveform covering enough ticks to observe state changes</li>
+              <li>Outputs often depend on prior ticks — trace first, then capture expected values</li>
+            </ul>
             <div className="ide-inline-actions">
-              <IdeButton tone="primary" onClick={handleSetOracleExpected} testId="ide-verify-trace-oracle-btn">
-                Capture observed outputs as expected
+              <IdeButton tone="secondary" onClick={handleInsertClockPattern} testId="ide-verify-insert-clock-pattern">
+                Insert basic clock pattern
               </IdeButton>
-              {authoredVectors.length === 0 && (
-                <IdeButton tone="secondary" onClick={handleGenerateBasicVectors} testId="ide-verify-trace-generate-basics">
-                  Generate Basics first
-                </IdeButton>
-              )}
             </div>
           </IdeCallout>
+        )}
+
+        {/* Sequential clock-missing guidance when vectors exist but no clock activity */}
+        {hasDff && !isFirstRunState && vectorReadiness === 'needs-clock' && (
+          <IdeCallout tone="warn" testId="ide-verify-needs-clock">
+            No clock activity detected in your vectors. Clocked circuits need CLK toggles to advance state.
+            <div className="ide-inline-actions" style={{ marginTop: 6 }}>
+              <IdeButton tone="secondary" onClick={handleInsertClockPattern} testId="ide-verify-insert-clock-pattern-warn">
+                Insert basic clock pattern
+              </IdeButton>
+            </div>
+          </IdeCallout>
+        )}
+
+        {/* ── VECTORS ZONE ─────────────────────────────────────────────────── */}
+        {inputFields.length > 0 && (
+          <h4 className="ide-verify-zone-label" data-zone="vectors">Test Vectors</h4>
+        )}
+
+        {/* Live circuit I/O summary — anchors vectors to the current design */}
+        {inputFields.length > 0 && (
+          <div className="ide-verify-io-summary" data-testid="ide-verify-io-summary">
+            <span className="ide-verify-io-summary-section">
+              <span className="ide-verify-io-summary-label">Inputs:</span>
+              {inputFields.map((f) => f.label ?? f.id).join(', ')}
+            </span>
+            {outputFields.length > 0 && (
+              <span className="ide-verify-io-summary-section">
+                <span className="ide-verify-io-summary-label">Outputs:</span>
+                {outputFields.map((f) => f.label ?? f.id).join(', ')}
+              </span>
+            )}
+            {clockSignals.size > 0 && (
+              <span className="ide-verify-io-summary-section">
+                <span className="ide-verify-io-summary-label">Clocks:</span>
+                {Array.from(clockSignals).join(', ')}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Schema-change banner — neutral info when circuit interface changes */}
+        {showSchemaChangeBanner && (
+          <div className="ide-verify-schema-change-banner" data-testid="ide-verify-schema-change-banner" role="status">
+            <span>Circuit interface updated — inputs or outputs changed. Review your vectors to confirm they match the new design.</span>
+            <button
+              type="button"
+              className="ide-verify-schema-dismiss-btn"
+              onClick={() => setShowSchemaChangeBanner(false)}
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
         )}
 
         {/* Scenario library strip — rendered whenever scenario library props are provided */}
@@ -3953,9 +4156,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           }
           onGoToHardware={onGoToHardware}
         />
-          <div
+          {(displayStatus !== 'BLOCKED' && displayStatus !== 'READY') && <div
             className="ide-verify-workbench ide-verify-workbench-v2"
             data-testid="ide-verify-workbench"
+            data-zone="results"
             data-trace-ticks={waveformTicks.length}
             data-trace-signals={signalTimeline.length}
             data-layout-mode={layoutMode}
@@ -4903,7 +5107,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </>
             )}
             </div>}
-          </div>
+          </div>}
           {lastRun && displayStatus !== 'PASS' && (
             <section
               className={`ide-verify-run-proof ide-verify-run-proof--${displayStatus.toLowerCase()}`}

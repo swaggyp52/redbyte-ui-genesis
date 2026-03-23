@@ -244,6 +244,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const hasVerifyPass = verifyResult?.status === 'pass' && !dirtySinceVerify && !verifyLastRun?.qualification;
   /** True when no verify run has been recorded at all. */
   const isNoRunYet = !verifyResult;
+  /** True when the previous verify run passed but the circuit has since changed (STALE).
+   *  Download is allowed but labeled as previous sealed build — not blocked. */
+  const isStaleButPassBefore = verifyResult?.status === 'pass' && dirtySinceVerify && !verifyLastRun?.qualification;
   /** True only when: design is structurally OK, auto-generated (starter) vectors were used,
    *  the run failed, and there are no other hard blockers. Softens export gate for this case. */
   const isStarterScenarioFail =
@@ -437,6 +440,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       ? 'Resolve blockers before downloading the build package.'
       : isIncompleteMappingQualified
         ? 'Export available — verification passed, but mapping evidence is incomplete.'
+      : isStaleButPassBefore
+        ? 'Previous sealed build available — circuit updated since.'
       : isStarterScenarioFail
         ? 'Export available — scenario not yet authored.'
         : isNoRunYet
@@ -450,6 +455,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         : 'Use the blocker list and pin review below to clear mapping or clock issues before export.'
       : isIncompleteMappingQualified
         ? 'Your last Verify run passed logically, but at least one required output pin was still unmapped. Complete the live pin mapping and rerun Verify before treating this handoff as sealed evidence.'
+      : isStaleButPassBefore
+        ? 'Your last verified build passed. The circuit has changed since — re-run Verify and rebuild to seal the updated design, or download the previous build now.'
       : isStarterScenarioFail
         ? 'Your HDL was generated from your circuit design. The current test scenario used auto-generated starter vectors — this output is available to download, but it is not evidence-quality until you author a real scenario and get a PASS.'
         : isNoRunYet
@@ -468,6 +475,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       ? 'Re-download'
       : exportTrusted
         ? 'Download Project ZIP'
+        : isStaleButPassBefore
+          ? 'Download Project ZIP (previous build)'
         : isStarterScenarioFail || isNoRunYet
           ? 'Download Project ZIP (unsealed)'
           : '⚠ Verify first — this may fail in Vivado';
@@ -768,6 +777,35 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             <div className="ide-kv-row">
               <span>Artifacts</span>
               <span>{readyArtifactCount}/{viewModel.artifacts.length}</span>
+            </div>
+            {/* Provenance status rows: Design | Verification | Build */}
+            <div className="ide-kv-row ide-export-provenance-row" data-testid="ide-export-provenance-design">
+              <span>Design</span>
+              <span className="ide-status-mono" title={`Current circuit: ${determinismHash}`}>{determinismHash.slice(0, 8)}</span>
+            </div>
+            <div className="ide-kv-row ide-export-provenance-row" data-testid="ide-export-provenance-verify">
+              <span>Verification</span>
+              <span>
+                {!verifyResult
+                  ? <span className="ide-export-provenance-none">Not run</span>
+                  : dirtySinceVerify
+                    ? <span className="ide-export-provenance-stale" title="Circuit changed since last verify run">Previous build</span>
+                    : <span className={`ide-export-provenance-${verifyResult.status === 'pass' ? 'pass' : 'fail'}`}>
+                        {verifyResult.status === 'pass' ? 'PASS ✓' : 'FAIL ✗'}
+                      </span>
+                }
+              </span>
+            </div>
+            <div className="ide-kv-row ide-export-provenance-row" data-testid="ide-export-provenance-build">
+              <span>Build</span>
+              <span>
+                {!viewModel.exportHash
+                  ? <span className="ide-export-provenance-none">Not built</span>
+                  : viewModel.exportHash !== determinismHash
+                    ? <span className="ide-export-provenance-stale" title="Build is from a previous circuit version">Previous</span>
+                    : <span className="ide-export-provenance-pass">Current ✓</span>
+                }
+              </span>
             </div>
           </div>
           <p className="ide-copy ide-export-sidecard-copy">{nextActionTitle}</p>

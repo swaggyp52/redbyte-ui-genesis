@@ -23218,3 +23218,121 @@ button:disabled,
   padding: 3px 10px !important;
   min-height: 0 !important;
 }
+
+/* ── Batch 1: STALE UX overhaul ─────────────────────────────────── */
+.ide-verify-stale-hero {
+  background: color-mix(in srgb, var(--rb-info, #38bdf8) 8%, transparent);
+  border-color: var(--rb-info, #38bdf8);
+  min-height: 52px;
+  padding: 8px 12px;
+}
+.ide-verify-strip-stale-note {
+  color: var(--rb-text-secondary);
+  font-style: italic;
+  font-size: 0.85em;
+}
+
+/* ── Batch 3: TRACE/VERIFY mode chips + StimulusCanvas clarity ───── */
+.ide-verify-mode-chip {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.ide-verify-mode-chip--trace {
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--rb-text-secondary);
+}
+.ide-verify-mode-chip--verify {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--rb-info, #38bdf8);
+}
+.ide-stimulus-group-header--asserted {
+  border-top: 1px solid rgba(56, 189, 248, 0.25) !important;
+}
+
+/* ── Batch 4: Design schema authority ───────────────────────────── */
+.ide-verify-io-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 4px 12px;
+  font-size: 0.78em;
+  color: var(--rb-text-secondary);
+  border-bottom: 1px solid var(--rb-border, rgba(255,255,255,0.08));
+  background: var(--rb-surface-1, transparent);
+}
+.ide-verify-io-summary-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ide-verify-io-summary-label {
+  font-weight: 600;
+  color: var(--rb-text-secondary);
+  opacity: 0.7;
+}
+.ide-verify-schema-change-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 0.82em;
+  color: var(--rb-text-secondary);
+  background: rgba(56, 189, 248, 0.06);
+  border-left: 3px solid var(--rb-info, #38bdf8);
+}
+.ide-verify-schema-dismiss-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--rb-text-secondary);
+  padding: 0 4px;
+  font-size: 0.9em;
+  flex-shrink: 0;
+}
+.ide-verify-compat-badge {
+  font-size: 9px;
+  margin-left: 3px;
+  vertical-align: super;
+}
+.ide-verify-compat-badge--orphaned {
+  color: var(--rb-warn, #fb923c);
+}
+.ide-verify-compat-badge--partial {
+  color: var(--rb-text-secondary);
+}
+
+/* ── Batch 5: Vector-to-result connection ───────────────────────── */
+.ide-verify-row-badge {
+  font-size: 10px;
+  margin-left: 3px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.ide-verify-row-badge--fail { color: var(--rb-error, #f87171); }
+.ide-verify-row-badge--pass { color: var(--rb-success, #4ade80); }
+[data-vector-status='fail'] .ide-verify-vector-tick-cell,
+[data-vector-status='fail'].ide-verify-vector-tick-cell {
+  border-left: 3px solid var(--rb-error, #f87171);
+}
+[data-vector-status='pass'] .ide-verify-vector-tick-cell,
+[data-vector-status='pass'].ide-verify-vector-tick-cell {
+  border-left: 3px solid var(--rb-success, #4ade80);
+}
+
+/* ── Batch 7: Export provenance rows ────────────────────────────── */
+.ide-export-provenance-row { font-size: 0.82em; }
+.ide-export-provenance-none { color: var(--rb-text-secondary); opacity: 0.6; }
+.ide-export-provenance-stale { color: var(--rb-text-secondary); font-style: italic; }
+.ide-export-provenance-pass { color: var(--rb-success, #4ade80); }
+.ide-export-provenance-fail { color: var(--rb-error, #f87171); }
+
+/* ── Batch 8: Visual zone structure ──────────────────────────────────────── */
+[data-zone="status"] { border-bottom: 2px solid rgba(56, 189, 248, 0.12); flex: 0 0 auto; }
+[data-zone="vectors"] { flex: 0 0 auto; }
+[data-zone="results"] { flex: 1 1 0; min-height: 0; overflow: hidden; }
+.ide-verify-zone-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--rb-text-secondary); padding: 4px 12px 2px; margin: 0; font-weight: 500; }

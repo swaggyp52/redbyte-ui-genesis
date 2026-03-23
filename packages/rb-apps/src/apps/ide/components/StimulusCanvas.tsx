@@ -372,8 +372,8 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
                 height: GROUP_H,
                 alignItems: 'center',
                 background: 'var(--rb-surface-2, transparent)',
-                opacity: 0.6,
               }}
+              title="Set expected values here, then enable Pass/Fail Checking in the run bar to verify your circuit."
             >
               <div
                 style={{
@@ -387,7 +387,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
                   fontFamily: 'var(--rb-font-sans, sans-serif)',
                 }}
               >
-                Asserted
+                Expected Outputs
               </div>
               {ticks.map((tick) => (
                 <div
@@ -402,7 +402,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
               <div
                 key={field.id}
                 className="ide-stimulus-row ide-stimulus-row--output"
-                style={{ display: 'flex', height: ROW_H, alignItems: 'center', opacity: 0.45 }}
+                style={{ display: 'flex', height: ROW_H, alignItems: 'center', opacity: 0.75 }}
               >
                 <div
                   style={{
