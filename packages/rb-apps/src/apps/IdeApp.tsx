@@ -2,7 +2,7 @@
 // IdeApp - IDE-first shell surface with deterministic mode markers.
 
 import React, { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { Circuit } from '@redbyte/rb-logic-core';
+import { analyzeSequentialLogic, type Circuit } from '@redbyte/rb-logic-core';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { installFatalCapture, pushMount } from '@redbyte/rb-utils';
 import type { TestVector } from '@redbyte/rb-utils';
@@ -214,7 +214,10 @@ export const IdeApp: React.FC = () => {
   const deleteMacro = useProjectRuntime((state) => state.deleteMacro);
   const instantiateMacro = useProjectRuntime((state) => state.instantiateMacro);
   const hasCircuit = circuit.nodes.length > 0;
-  const hasDff = verifyLastRun?.schedule === 'clocked_macro';
+  const hasDff = useMemo(
+    () => deriveHasDff(circuit, verifyLastRun?.schedule),
+    [circuit, verifyLastRun?.schedule]
+  );
   const missingRequiredCount = useMemo(
     () => projectIoRows.filter((entry) => entry.required && entry.pin.trim().length === 0).length,
     [projectIoRows]
@@ -1756,6 +1759,24 @@ function toProjectIoMapping(projectIoRows: ProjectIoRow[]): {
         pin: row.pin,
       })),
   };
+}
+
+/**
+ * Derive whether the current circuit contains clocked/sequential macros.
+ *
+ * Circuit graph is checked FIRST so that a sequential design is identified
+ * immediately — before (and independent of) any prior verify run.
+ * The run schedule is a fallback for HDL-import paths where the circuit graph
+ * may not carry DFF nodes directly.
+ */
+export function deriveHasDff(
+  circuit: Circuit,
+  verifyLastRunSchedule: string | undefined
+): boolean {
+  return (
+    analyzeSequentialLogic(circuit).hasClockedMacros ||
+    verifyLastRunSchedule === 'clocked_macro'
+  );
 }
 
 export function buildCurrentVerifyProjectHash(input: {

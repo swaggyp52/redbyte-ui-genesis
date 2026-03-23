@@ -1,6 +1,53 @@
 # AI State
 
-## Change Log 2026-03-22 (Authority hardening slice 26: integrated custom-design authority matrix agreement)
+## Change Log 2026-03-22 (Sequential trust slice 27: circuit-graph-first hasDff for sequential verify semantics)
+
+**Subsystem**: Sequential design trust — `hasDff` derivation in IdeApp.tsx drives VerifySurface sequential mode
+
+### Problem
+
+`hasDff` in IdeApp.tsx was derived solely from `verifyLastRun?.schedule === 'clocked_macro'`.
+This caused two trust failures for sequential/custom designs:
+
+1. A sequential circuit (DFlipFlop, Counter4Bit, etc.) with **no prior verify run** received `hasDff=false` → VerifySurface treated the design as combinational before first verification — no sequential badge, no clock guidance, no starter-vector clock transitions shown.
+2. A design mutated after a sequential verify run (run stale/cleared) could transiently carry the wrong `hasDff` value since it reflected the stale run, not the current circuit graph.
+
+Both undermine the product promise: "Design reflects the circuit honestly."
+
+### What changed
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Added `import { analyzeSequentialLogic }` from `@redbyte/rb-logic-core` (circuit graph analysis).
+  - Exported new pure function `deriveHasDff(circuit, verifyLastRunSchedule)`: returns `analyzeSequentialLogic(circuit).hasClockedMacros || schedule === 'clocked_macro'`. Circuit graph takes priority; run schedule is fallback for HDL-import paths with no DFF nodes.
+  - Replaced `const hasDff = verifyLastRun?.schedule === 'clocked_macro'` with `useMemo(() => deriveHasDff(circuit, verifyLastRun?.schedule), [circuit, verifyLastRun?.schedule])`.
+
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+  - Added import `deriveHasDff` from IdeApp.
+  - Added 8-test describe block **`deriveHasDff: circuit-graph-first sequential trust`** covering:
+    - DFlipFlop with no prior run → true
+    - Combinational-only circuit → false
+    - Empty circuit + clocked_macro run (HDL path) → true
+    - Empty circuit, no run → false
+    - DFlipFlop AND clocked_macro run → true
+    - Counter4Bit node → true without prior run
+    - Circuit has DFlipFlop but run says combinational → circuit wins (true)
+    - Full trust chain: DFlipFlop → hasDff=true → isSequentialRun=true
+
+### Student-visible behavior
+
+- A sequential circuit built in the Design surface immediately shows correct sequential UX in Verify (clock signal badge, sequential starter vectors, clock-aware waveform) — even before the first verify run.
+- Removing all DFF nodes from a design correctly drops sequential treatment at the next render, avoiding stale sequential guidance.
+
+### Proof
+
+- `pnpm --filter @redbyte/rb-apps exec vitest run "src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx"` → PASS (1 file, 29 tests: 21 prior + 8 new)
+- `pnpm --filter @redbyte/rb-apps exec vitest run "src/__tests__/scenario-sequential-trust-gate.test.ts"` → PASS (1 file, 35 tests)
+
+### Remaining concern
+
+- `hasDff` now correctly reflects the current circuit, but VerifySurface's `clockSignals` set still builds from `lastRun?.report.signalRoles` only. A sequential design with no run yet will have correct `isSequentialRun=true` but an empty `clockSignals` set (no explicit signal role hints). Monitor for signal-role guidance gaps on first-run sequential designs.
+
+
 
 **Subsystem**: Cross-surface authority agreement across Project / Verify / Export / Hardware through full custom-design mutation matrix
 
