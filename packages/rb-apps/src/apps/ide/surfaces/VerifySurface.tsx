@@ -773,8 +773,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [mappedSignals]);
 
   const authoredVectors = useMemo(
-    () => normalizeVectors(vectors, inputFields),
-    [inputFields, vectors]
+    () => normalizeVectors(vectors, inputFields, outputFields),
+    [inputFields, outputFields, vectors]
   );
   const customVectorCount = customVectors.length;
   const totalVectorCount = authoredVectors.length + customVectorCount;
@@ -794,6 +794,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [onSignalSelected]);
   const [draftTick, setDraftTick] = useState<number>(() => nextVectorTick(vectors));
   const [runState, setRunState] = useState<'idle' | 'running' | 'complete'>('idle');
+  const [orphanPreflight, setOrphanPreflight] = useState(false);
   const [draftInputs, setDraftInputs] = useState<Record<string, '0' | '1'>>(() =>
     createDraftInputs(inputFields)
   );
@@ -1626,20 +1627,33 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // ── Design schema authority: vector compatibility ─────────────────────────
   // Declared before vectorRows because vectorRows references vectorCompatibilityMap inline.
   const inputFieldIds = useMemo(() => new Set(inputFields.map((f) => f.id)), [inputFields]);
+  const outputFieldIds = useMemo(() => new Set(outputFields.map((f) => f.id)), [outputFields]);
 
   type VectorCompatibility = 'compatible' | 'partial' | 'orphaned';
   const vectorCompatibilityMap = useMemo((): Map<string, VectorCompatibility> => {
     return new Map(
       authoredVectors.map((v) => {
-        const vectorInputKeys = Object.keys(v.inputs ?? {});
-        if (vectorInputKeys.length === 0) return [v.id, 'compatible' as VectorCompatibility];
-        const matchCount = vectorInputKeys.filter((k) => inputFieldIds.has(k)).length;
-        if (matchCount === 0) return [v.id, 'orphaned' as VectorCompatibility];
-        if (matchCount < vectorInputKeys.length) return [v.id, 'partial' as VectorCompatibility];
+        const inputKeys = Object.keys(v.inputs ?? {});
+        const expectedKeys = Object.keys(v.expected ?? {});
+        // Check inputs against current inputFields
+        const inputMatchCount = inputKeys.filter((k) => inputFieldIds.has(k)).length;
+        const inputOrphaned = inputKeys.length > 0 && inputMatchCount === 0;
+        const inputPartial = inputKeys.length > 0 && inputMatchCount < inputKeys.length;
+        // Check expected against current outputFields (only when outputFields is non-empty)
+        const expectedMatchCount = outputFieldIds.size > 0
+          ? expectedKeys.filter((k) => outputFieldIds.has(k)).length
+          : expectedKeys.length;
+        const expectedOrphaned = expectedKeys.length > 0 && outputFieldIds.size > 0 && expectedMatchCount === 0;
+        const expectedPartial = expectedKeys.length > 0 && outputFieldIds.size > 0 && expectedMatchCount < expectedKeys.length;
+        // Aggregate: orphaned if all signal references are dead, partial if some are
+        const allOrphaned = (inputKeys.length + expectedKeys.length) > 0 && inputMatchCount === 0 && expectedMatchCount === 0;
+        const someOrphaned = inputOrphaned || inputPartial || expectedOrphaned || expectedPartial;
+        if (allOrphaned) return [v.id, 'orphaned' as VectorCompatibility];
+        if (someOrphaned) return [v.id, 'partial' as VectorCompatibility];
         return [v.id, 'compatible' as VectorCompatibility];
       })
     );
-  }, [authoredVectors, inputFieldIds]);
+  }, [authoredVectors, inputFieldIds, outputFieldIds]);
 
   const someVectorsOrphaned = useMemo(
     () => Array.from(vectorCompatibilityMap.values()).some((c) => c === 'orphaned'),
@@ -1850,16 +1864,22 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return 'ready-trace';
   }, [authoredVectors, hasDff, clockSignals, assertionMode]);
 
-  // Schema-change detection: show banner when inputFields IDs change across renders
+  // Schema-change detection: show banner when inputFields or outputFields IDs change across renders
   const prevInputFieldIdsRef = useRef<string>('');
+  const prevOutputFieldIdsRef = useRef<string>('');
   const [showSchemaChangeBanner, setShowSchemaChangeBanner] = useState(false);
   useEffect(() => {
-    const currentIds = inputFields.map((f) => f.id).sort().join(',');
-    if (prevInputFieldIdsRef.current && prevInputFieldIdsRef.current !== currentIds) {
+    const currentInputIds = inputFields.map((f) => f.id).sort().join(',');
+    const currentOutputIds = outputFields.map((f) => f.id).sort().join(',');
+    const inputChanged = prevInputFieldIdsRef.current !== '' && prevInputFieldIdsRef.current !== currentInputIds;
+    const outputChanged = prevOutputFieldIdsRef.current !== '' && prevOutputFieldIdsRef.current !== currentOutputIds;
+    if (inputChanged || outputChanged) {
       setShowSchemaChangeBanner(true);
+      setOrphanPreflight(false); // dismiss any stale preflight
     }
-    prevInputFieldIdsRef.current = currentIds;
-  }, [inputFields]);
+    prevInputFieldIdsRef.current = currentInputIds;
+    prevOutputFieldIdsRef.current = currentOutputIds;
+  }, [inputFields, outputFields]);
   // Dismiss schema banner on next run
   useEffect(() => {
     if (runState === 'running') setShowSchemaChangeBanner(false);
@@ -2723,6 +2743,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       assertionMode,
       rows,
     });
+  };
+
+  // Pre-run preflight: if vectors have orphaned signal references and assertionMode is on,
+  // warn the student before running rather than producing silently wrong pass/fail results.
+  const handleRunWithPreflight = () => {
+    if (someVectorsOrphaned && assertionMode) {
+      setOrphanPreflight(true);
+      return;
+    }
+    runVerification();
   };
 
   const clearResults = () => {
@@ -3744,17 +3774,43 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <div className="ide-verify-strip-actions">
               {/* Group 1 — PRIMARY: Run CTA + contextual failure navigation */}
               <div className="ide-verify-strip-group ide-verify-strip-group--run">
-                <span data-testid="ide-primary-cta">
-                  <IdeButton
-                    tone="primary"
-                    onClick={runVerification}
-                    disabled={runState === 'running'}
-                    testId={lastRun ? 'ide-verify-run-secondary' : 'ide-verify-run'}
-                    className={displayStatus === 'READY' ? 'is-pulsing' : undefined}
-                  >
-                    {isRunStale ? 'Re-run for current circuit' : lastRun ? 'Re-run Simulation' : 'Run Simulation'}
-                  </IdeButton>
-                </span>
+                {orphanPreflight ? (
+                  <div className="ide-verify-orphan-preflight" data-testid="ide-verify-orphan-preflight">
+                    <span className="ide-verify-orphan-preflight-msg">
+                      ⚠ Some vectors reference signals that no longer exist. Pass/fail results will be incorrect.
+                    </span>
+                    <IdeButton
+                      tone="primary"
+                      onClick={() => { setOrphanPreflight(false); handleGenerateBasicVectors(); }}
+                    >
+                      Regenerate vectors
+                    </IdeButton>
+                    <IdeButton
+                      tone="ghost"
+                      onClick={() => { setOrphanPreflight(false); runVerification(); }}
+                    >
+                      Run anyway
+                    </IdeButton>
+                    <IdeButton
+                      tone="ghost"
+                      onClick={() => setOrphanPreflight(false)}
+                    >
+                      Cancel
+                    </IdeButton>
+                  </div>
+                ) : (
+                  <span data-testid="ide-primary-cta">
+                    <IdeButton
+                      tone="primary"
+                      onClick={handleRunWithPreflight}
+                      disabled={runState === 'running'}
+                      testId={lastRun ? 'ide-verify-run-secondary' : 'ide-verify-run'}
+                      className={displayStatus === 'READY' ? 'is-pulsing' : undefined}
+                    >
+                      {isRunStale ? 'Re-run for current circuit' : lastRun ? 'Re-run Simulation' : 'Run Simulation'}
+                    </IdeButton>
+                  </span>
+                )}
                 {assertionMode && displayStatus === 'FAIL' && failingRows.length > 0 && !isRunStale && (
                   <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-jump-first-failure">
                     Inspect first mismatch
@@ -4091,7 +4147,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {/* Schema-change banner — neutral info when circuit interface changes */}
         {showSchemaChangeBanner && (
           <div className="ide-verify-schema-change-banner" data-testid="ide-verify-schema-change-banner" role="status">
-            <span>Circuit interface updated — inputs or outputs changed. Review your vectors to confirm they match the new design.</span>
+            <span className="ide-verify-schema-change-msg">
+              Circuit interface updated — inputs or outputs changed.
+              {someVectorsOrphaned
+                ? ' Some vectors reference old signals and will be skipped.'
+                : ' Review your vectors to confirm they match the new design.'}
+            </span>
+            <IdeButton
+              tone="primary"
+              onClick={() => { setShowSchemaChangeBanner(false); handleGenerateBasicVectors(); }}
+            >
+              Regenerate vectors
+            </IdeButton>
             <button
               type="button"
               className="ide-verify-schema-dismiss-btn"
@@ -5179,9 +5246,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
 function normalizeVectors(
   vectors: VerifySurfaceProps['vectors'],
-  inputFields: VerifyVectorDraftInput[]
+  inputFields: VerifyVectorDraftInput[],
+  outputFields: VerifyVectorDraftInput[]
 ): VerifyAuthorVector[] {
   if (!vectors || vectors.length === 0) return [];
+  const validOutputIds = new Set(outputFields.map((f) => f.id));
   return vectors
     .map((vector, index) => ({
       id: `vec-${String(index + 1).padStart(2, '0')}`,
@@ -5191,7 +5260,9 @@ function normalizeVectors(
         return acc;
       }, {}),
       expected: Object.fromEntries(
-        Object.entries(vector.expected ?? {}).map(([key, value]) => [normalizeFieldId(key), normalizeBit(value)])
+        Object.entries(vector.expected ?? {})
+          .map(([key, value]) => [normalizeFieldId(key), normalizeBit(value)] as [string, 0 | 1])
+          .filter(([key]) => validOutputIds.size === 0 || validOutputIds.has(key))
       ),
     }))
     .sort((left, right) => left.tick - right.tick);

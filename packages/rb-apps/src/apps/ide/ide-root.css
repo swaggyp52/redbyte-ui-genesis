@@ -23336,3 +23336,23 @@ button:disabled,
 [data-zone="vectors"] { flex: 0 0 auto; }
 [data-zone="results"] { flex: 1 1 0; min-height: 0; overflow: hidden; }
 .ide-verify-zone-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--rb-text-secondary); padding: 4px 12px 2px; margin: 0; font-weight: 500; }
+
+/* ── Custom-circuit trust: orphan preflight + schema-change banner ── */
+.ide-verify-orphan-preflight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--rb-warn, #fb923c) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rb-warn, #fb923c) 35%, transparent);
+  border-radius: 6px;
+}
+.ide-verify-orphan-preflight-msg {
+  font-size: 12px;
+  color: var(--rb-text-primary);
+  flex: 1 1 auto;
+}
+.ide-verify-schema-change-msg {
+  flex: 1 1 auto;
+}
