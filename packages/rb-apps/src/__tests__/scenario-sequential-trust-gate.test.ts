@@ -1,3 +1,136 @@
+// ─── statusGates: stale/trace/real-fail truth discrimination ──────────────────
+//
+// Slice 29 gate: UI elements that gate on raw `status` (3-way: idle/pass/fail)
+// must instead gate on `displayStatus` (7-way) to avoid truth drift in stale
+// and trace-only runs.
+//
+// Three affected render guards in VerifySurface:
+//   A. consoleHasBlocking — should be displayStatus==='FAIL', not status==='fail'
+//   B. incomplete-mapping notice — should be displayStatus==='PASS', not status==='pass'
+//   C. failure diff callout — should be displayStatus==='FAIL', not status==='fail'
+//
+// Mirror: the displayStatus state machine and its downstream guards.
+
+type RawStatus = 'idle' | 'pass' | 'fail';
+type DisplayStatus7 = 'BLOCKED' | 'READY' | 'RUNNING' | 'PASS' | 'FAIL' | 'TRACE' | 'STALE';
+
+interface RunInput {
+  deterministicHash: string;
+  status: 'pass' | 'fail';
+  qualification?: string;
+}
+
+/** Mirror of isRunStale computation */
+function computeIsRunStale(
+  currentHash: string,
+  lastRun: RunInput | undefined
+): boolean {
+  return (
+    lastRun !== undefined &&
+    lastRun.deterministicHash !== '' &&
+    currentHash !== '' &&
+    lastRun.deterministicHash !== currentHash
+  );
+}
+
+/** Mirror of displayStatus state machine in VerifySurface */
+function deriveDisplayStatus(
+  runState: 'idle' | 'running' | 'complete',
+  isRunStale: boolean,
+  isTraceOnly: boolean,
+  rawStatus: RawStatus,
+  hasAuthoredVectors: boolean
+): DisplayStatus7 {
+  if (runState === 'running') return 'RUNNING';
+  if (isRunStale) return 'STALE';
+  if (isTraceOnly) return 'TRACE';
+  if (rawStatus === 'pass') return 'PASS';
+  if (rawStatus === 'fail') return 'FAIL';
+  if (!hasAuthoredVectors) return 'BLOCKED';
+  return 'READY';
+}
+
+/** Mirror of consoleHasBlocking — must use displayStatus, not raw status */
+function consoleHasBlocking(displayStatus: DisplayStatus7): boolean {
+  return displayStatus === 'FAIL';
+}
+
+/** Mirror of incomplete-mapping notice condition — must use displayStatus */
+function shouldShowIncompleteMappingNotice(
+  displayStatus: DisplayStatus7,
+  qualification: string | undefined
+): boolean {
+  return displayStatus === 'PASS' && qualification === 'incomplete-mapping';
+}
+
+/** Mirror of failure diff callout — must use displayStatus */
+function shouldShowFailureDiff(displayStatus: DisplayStatus7): boolean {
+  return displayStatus === 'FAIL';
+}
+
+describe('statusGates: stale/trace/real-fail truth discrimination (slice 29)', () => {
+  // ── A: consoleHasBlocking ────────────────────────────────────────────────
+  it('stale-pass run: displayStatus=STALE → consoleHasBlocking=false', () => {
+    const isStale = computeIsRunStale('hash-new', { deterministicHash: 'hash-old', status: 'pass' });
+    const ds = deriveDisplayStatus('complete', isStale, false, 'pass', true);
+    expect(ds).toBe('STALE');
+    expect(consoleHasBlocking(ds)).toBe(false);
+  });
+
+  it('stale-fail run: displayStatus=STALE → consoleHasBlocking=false', () => {
+    const isStale = computeIsRunStale('hash-new', { deterministicHash: 'hash-old', status: 'fail' });
+    const ds = deriveDisplayStatus('complete', isStale, false, 'fail', true);
+    expect(ds).toBe('STALE');
+    expect(consoleHasBlocking(ds)).toBe(false);
+  });
+
+  it('current-fail run: displayStatus=FAIL → consoleHasBlocking=true', () => {
+    const isStale = computeIsRunStale('hash-abc', { deterministicHash: 'hash-abc', status: 'fail' });
+    const ds = deriveDisplayStatus('complete', isStale, false, 'fail', true);
+    expect(ds).toBe('FAIL');
+    expect(consoleHasBlocking(ds)).toBe(true);
+  });
+
+  // ── B: incomplete-mapping notice ─────────────────────────────────────────
+  it('stale-pass + incomplete-mapping: displayStatus=STALE → no notice', () => {
+    const isStale = computeIsRunStale('hash-new', { deterministicHash: 'hash-old', status: 'pass', qualification: 'incomplete-mapping' });
+    const ds = deriveDisplayStatus('complete', isStale, false, 'pass', true);
+    expect(ds).toBe('STALE');
+    expect(shouldShowIncompleteMappingNotice(ds, 'incomplete-mapping')).toBe(false);
+  });
+
+  it('current-pass + incomplete-mapping: displayStatus=PASS → shows notice', () => {
+    const isStale = computeIsRunStale('hash-abc', { deterministicHash: 'hash-abc', status: 'pass', qualification: 'incomplete-mapping' });
+    const ds = deriveDisplayStatus('complete', isStale, false, 'pass', true);
+    expect(ds).toBe('PASS');
+    expect(shouldShowIncompleteMappingNotice(ds, 'incomplete-mapping')).toBe(true);
+  });
+
+  // ── C: failure diff callout ───────────────────────────────────────────────
+  it('stale-fail run: displayStatus=STALE → no failure diff', () => {
+    const isStale = computeIsRunStale('hash-new', { deterministicHash: 'hash-old', status: 'fail' });
+    const ds = deriveDisplayStatus('complete', isStale, false, 'fail', true);
+    expect(ds).toBe('STALE');
+    expect(shouldShowFailureDiff(ds)).toBe(false);
+  });
+
+  it('current-fail run: displayStatus=FAIL → shows failure diff', () => {
+    const isStale = computeIsRunStale('hash-abc', { deterministicHash: 'hash-abc', status: 'fail' });
+    const ds = deriveDisplayStatus('complete', isStale, false, 'fail', true);
+    expect(ds).toBe('FAIL');
+    expect(shouldShowFailureDiff(ds)).toBe(true);
+  });
+
+  // ── Trace-only: no assertion failures ────────────────────────────────────
+  it('trace-only run (no assertion rows): displayStatus=TRACE → all three guards false', () => {
+    const isStale = computeIsRunStale('hash-abc', { deterministicHash: 'hash-abc', status: 'pass' });
+    const ds = deriveDisplayStatus('complete', isStale, true /* isTraceOnly */, 'pass', true);
+    expect(ds).toBe('TRACE');
+    expect(consoleHasBlocking(ds)).toBe(false);
+    expect(shouldShowIncompleteMappingNotice(ds, 'incomplete-mapping')).toBe(false);
+    expect(shouldShowFailureDiff(ds)).toBe(false);
+  });
+});
 /**
  * Contract gate: Sequential First-Class + Verify Trust.
  *
@@ -195,7 +328,6 @@ describe('clockSignals set building', () => {
     expect(set.size).toBe(2);
   });
 });
-
 // ─── FAIL qualification (auto-vector note) ─────────────────────────────────────
 
 describe('FAIL qualification: auto-vector note', () => {

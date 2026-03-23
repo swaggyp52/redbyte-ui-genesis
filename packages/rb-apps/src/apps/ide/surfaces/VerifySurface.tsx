@@ -3084,7 +3084,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   return (
     <IdeSurfaceLayout
       mode="verify"
-      consoleHasBlocking={status === 'fail'}
+      consoleHasBlocking={displayStatus === 'FAIL'}
       consoleHasEntries={false}
       rightDockMode="collapsed"
       dock={
@@ -3594,7 +3594,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </span>
             </>
           )}
-          {status === 'pass' && lastRun?.qualification === 'incomplete-mapping' && (
+          {displayStatus === 'PASS' && lastRun?.qualification === 'incomplete-mapping' && (
             <div
               className="ide-verify-incomplete-notice ide-surface-panel"
               data-testid="ide-verify-incomplete-mapping-notice"
@@ -4860,7 +4860,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     />
                   </section>
 
-                  {status === 'fail' && (
+                  {displayStatus === 'FAIL' && (
                     <section data-testid="ide-verify-diff-table">
                       <IdeCallout tone="error" title="Failure Diff">
                         <ul className="ide-list">

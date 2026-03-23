@@ -1,4 +1,56 @@
 # AI State
+## Change Log 2026-03-22 (Sequential trust slice 29: displayStatus gates UI truth — stale/trace/fail discrimination)
+
+**Subsystem**: VerifySurface render truth — consoleHasBlocking, incomplete-mapping notice, failure diff callout
+
+### Problem
+
+Three render guards in VerifySurface used the raw 3-way `status` (`'idle' | 'pass' | 'fail'`) instead of the
+semantic 7-way `displayStatus` (`'BLOCKED' | 'READY' | 'RUNNING' | 'PASS' | 'FAIL' | 'TRACE' | 'STALE'`).
+`displayStatus` already handled stale/trace correctly in most display paths, but these three guards leaked:
+
+1. `consoleHasBlocking={status === 'fail'}` — a stale-fail run (circuit changed since last verify)
+   incorrectly raised the console-has-blocking flag even though the failure came from an old circuit.
+2. `{status === 'pass' && lastRun?.qualification === 'incomplete-mapping' && (...)}` — a stale-pass run
+   could show the "incomplete output mapping" notice even though the run's pass result was already invalidated.
+3. `{status === 'fail' && (<section data-testid="ide-verify-diff-table">...)}` — a stale-fail run still
+   rendered the "Failure Diff" callout inside the tick-inspector panel, presenting old-circuit failure detail
+   as if it were from the current circuit.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Line ~3087: `consoleHasBlocking={status === 'fail'}` → `consoleHasBlocking={displayStatus === 'FAIL'}`
+  - Line ~3597: `{status === 'pass' && lastRun?.qualification === 'incomplete-mapping'}` → `{displayStatus === 'PASS' && lastRun?.qualification === 'incomplete-mapping'}`
+  - Line ~4863: `{status === 'fail' && (<section data-testid="ide-verify-diff-table">}` → `{displayStatus === 'FAIL' && (`
+  All three guards now use `displayStatus` which correctly evaluates to `'STALE'` when the circuit hash changed since
+  the last run, preventing stale-run trust artifacts from surfacing in unrelated UI elements.
+
+- `packages/rb-apps/src/__tests__/scenario-sequential-trust-gate.test.ts`
+  - Added mirror functions: `computeIsRunStale`, `deriveDisplayStatus`, `consoleHasBlocking`,
+    `shouldShowIncompleteMappingNotice`, `shouldShowFailureDiff`.
+  - Added 8-test describe `statusGates: stale/trace/real-fail truth discrimination (slice 29)`.
+  - Tests cover: stale-pass/fail → guards all false; current-fail → FAIL guards true; current-pass+incomplete-mapping → notice shown; trace-only → all guards false.
+
+### Student-visible behavior
+
+- The console no longer marks a blocked state from a stale verify run.
+- The "incomplete output mapping" notice and the tick-inspector failure diff are suppressed when the circuit
+  changed since the last run (stale state), preventing old-run context from being presented as current truth.
+- All three guards are semantically consistent: only `displayStatus === 'FAIL'` / `'PASS'` triggers fail/pass UI.
+
+### Proof
+
+- `pnpm --filter @redbyte/rb-apps exec vitest run "src/__tests__/scenario-sequential-trust-gate.test.ts" "src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx"` → PASS (2 files, 80 tests: 51 + 29)
+
+### Remaining concern
+
+- `canExportTestbench = status === 'pass'` (line ~2053) remains unconnected (dead code — never used in render).
+  When this becomes active, it should also be updated to `displayStatus === 'PASS'`.
+- `failureDiagnosis` and `verifyHint` useMemos still guard on `status !== 'fail'` (lines ~2081, ~2128).
+  They compute unnecessarily during stale-fail runs, but are correctly suppressed in the render by
+  `displayStatus === 'FAIL'` guards, so there is no UX truth drift from these.
+
 
 ## Change Log 2026-03-22 (Sequential trust slice 27: circuit-graph-first hasDff for sequential verify semantics)
 ## Change Log 2026-03-22 (Sequential trust slice 28: clockSignals merges live signal roles before any verify run)
