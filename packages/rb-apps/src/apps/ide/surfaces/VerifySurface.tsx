@@ -1623,6 +1623,29 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [authoredVectors, onVectorsChange]
   );
 
+  // ── Design schema authority: vector compatibility ─────────────────────────
+  // Declared before vectorRows because vectorRows references vectorCompatibilityMap inline.
+  const inputFieldIds = useMemo(() => new Set(inputFields.map((f) => f.id)), [inputFields]);
+
+  type VectorCompatibility = 'compatible' | 'partial' | 'orphaned';
+  const vectorCompatibilityMap = useMemo((): Map<string, VectorCompatibility> => {
+    return new Map(
+      authoredVectors.map((v) => {
+        const vectorInputKeys = Object.keys(v.inputs ?? {});
+        if (vectorInputKeys.length === 0) return [v.id, 'compatible' as VectorCompatibility];
+        const matchCount = vectorInputKeys.filter((k) => inputFieldIds.has(k)).length;
+        if (matchCount === 0) return [v.id, 'orphaned' as VectorCompatibility];
+        if (matchCount < vectorInputKeys.length) return [v.id, 'partial' as VectorCompatibility];
+        return [v.id, 'compatible' as VectorCompatibility];
+      })
+    );
+  }, [authoredVectors, inputFieldIds]);
+
+  const someVectorsOrphaned = useMemo(
+    () => Array.from(vectorCompatibilityMap.values()).some((c) => c === 'orphaned'),
+    [vectorCompatibilityMap]
+  );
+
   const vectorRows = useMemo(
     () =>
       authoredVectors.map((vector, index) => {
@@ -1759,7 +1782,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [
       authoredVectors, inputFields, outputFields, onPreviewVector, onDeleteVector,
       previewingVectorId, handleToggleVectorCell, handleToggleVectorExpected,
-      handleDuplicateVector, selectedVectorId, runResultByVecAndSignal,
+      handleDuplicateVector, selectedVectorId, runResultByVecAndSignal, vectorCompatibilityMap,
     ]
   );
 
@@ -1803,29 +1826,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return s;
   }, [signalRoleLookup]);
-
-  // ── Design schema authority: vector compatibility and readiness ────────
-  const inputFieldIds = useMemo(() => new Set(inputFields.map((f) => f.id)), [inputFields]);
-  const outputFieldIds = useMemo(() => new Set(outputFields.map((f) => f.id)), [outputFields]);
-
-  type VectorCompatibility = 'compatible' | 'partial' | 'orphaned';
-  const vectorCompatibilityMap = useMemo((): Map<string, VectorCompatibility> => {
-    return new Map(
-      authoredVectors.map((v) => {
-        const vectorInputKeys = Object.keys(v.inputs ?? {});
-        if (vectorInputKeys.length === 0) return [v.id, 'compatible' as VectorCompatibility];
-        const matchCount = vectorInputKeys.filter((k) => inputFieldIds.has(k)).length;
-        if (matchCount === 0) return [v.id, 'orphaned' as VectorCompatibility];
-        if (matchCount < vectorInputKeys.length) return [v.id, 'partial' as VectorCompatibility];
-        return [v.id, 'compatible' as VectorCompatibility];
-      })
-    );
-  }, [authoredVectors, inputFieldIds]);
-
-  const someVectorsOrphaned = useMemo(
-    () => Array.from(vectorCompatibilityMap.values()).some((c) => c === 'orphaned'),
-    [vectorCompatibilityMap]
-  );
 
   type VectorReadiness =
     | 'ready-verify'
