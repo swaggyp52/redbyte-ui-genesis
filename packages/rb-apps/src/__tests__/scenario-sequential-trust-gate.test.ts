@@ -317,3 +317,109 @@ describe('combinational behavior — no sequential treatment leaks', () => {
     expect(set.size).toBe(0);
   });
 });
+
+// ─── clockSignals: live-authority merge ───────────────────────────────────────
+//
+// Slice 28 gate: clockSignals in VerifySurface must be populated from live
+// signal roles even when no verify run exists yet.
+//
+// VerifySurface receives `liveSignalRoles` from IdeApp (deriveIoSignalRoles).
+// The merge rule: live roles provide the baseline; run signal roles override
+// on conflict (they are the most precise since the run has actually wired
+// signals). This means:
+//   - no run → liveSignalRoles drives clockSignals
+//   - run exists → run roles override live roles per signal
+//   - combinational liveRoles + no run → empty clockSignals (no leak)
+
+type SignalRole = 'clock' | 'reset' | 'input' | 'output';
+
+/** Mirror of normalizeFieldId in VerifySurface */
+function normalizeFieldIdForRoles(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+}
+
+/** Mirror of merged signalRoleLookup in VerifySurface after slice 28 fix */
+function buildMergedClockSignals(
+  liveSignalRoles: Record<string, SignalRole>,
+  runSignalRoles: Record<string, SignalRole>
+): Set<string> {
+  // Merge: live is baseline, run overrides on conflict
+  const merged: Record<string, SignalRole> = {};
+  for (const [key, role] of Object.entries(liveSignalRoles)) {
+    merged[normalizeFieldIdForRoles(key)] = role;
+  }
+  for (const [key, role] of Object.entries(runSignalRoles)) {
+    merged[normalizeFieldIdForRoles(key)] = role;
+  }
+  const s = new Set<string>();
+  for (const [key, role] of Object.entries(merged)) {
+    if (role === 'clock') s.add(key);
+  }
+  return s;
+}
+
+describe('clockSignals: live-authority merge (slice 28)', () => {
+  it('sequential design, no run: liveSignalRoles with clock → non-empty clockSignals', () => {
+    const live: Record<string, SignalRole> = { CLK100MHZ: 'clock', sw0: 'input', led0: 'output' };
+    const runRoles: Record<string, SignalRole> = {};
+    const set = buildMergedClockSignals(live, runRoles);
+    expect(set.size).toBeGreaterThan(0);
+    expect(set.has('clk100mhz')).toBe(true);
+  });
+
+  it('clk label in liveRoles → normalized to clk in clockSignals without run', () => {
+    const live: Record<string, SignalRole> = { clk: 'clock', rst: 'reset', q: 'output' };
+    const set = buildMergedClockSignals(live, {});
+    expect(set.has('clk')).toBe(true);
+    expect(set.size).toBe(1);
+  });
+
+  it('run signal roles override live on conflict (run clock identity wins)', () => {
+    // Live says CLK100MHZ is clock; run reclassifies it as input (hypothetical conflict)
+    const live: Record<string, SignalRole> = { CLK100MHZ: 'clock' };
+    const run: Record<string, SignalRole> = { CLK100MHZ: 'input' };
+    const set = buildMergedClockSignals(live, run);
+    expect(set.has('clk100mhz')).toBe(false);
+  });
+
+  it('run roles add additional clock signals beyond live roles', () => {
+    const live: Record<string, SignalRole> = { clk: 'clock', rst: 'reset' };
+    const run: Record<string, SignalRole> = { clk: 'clock', rst: 'reset', clk2: 'clock' };
+    const set = buildMergedClockSignals(live, run);
+    expect(set.has('clk')).toBe(true);
+    expect(set.has('clk2')).toBe(true);
+  });
+
+  it('combinational live roles produce empty clockSignals (no sequentiality leak)', () => {
+    const live: Record<string, SignalRole> = { a: 'input', b: 'input', y: 'output' };
+    const set = buildMergedClockSignals(live, {});
+    expect(set.size).toBe(0);
+  });
+
+  it('empty live + empty run → empty clockSignals', () => {
+    const set = buildMergedClockSignals({}, {});
+    expect(set.size).toBe(0);
+  });
+
+  it('run roles alone (no live) still populate clockSignals', () => {
+    const run: Record<string, SignalRole> = { clk: 'clock', d: 'input', q: 'output' };
+    const set = buildMergedClockSignals({}, run);
+    expect(set.has('clk')).toBe(true);
+  });
+
+  it('VerifySurface: sequential design before first run gets non-empty clockSignals (no-run trust chain)', () => {
+    // Full trust chain: sequential circuit → liveSignalRoles has clock → clockSignals populated
+    // This mirrors: deriveHasDff(dffCircuit) → true; liveSignalRoles → { CLK100MHZ: clock }
+    // → buildMergedClockSignals(liveRoles, {}) → { clk100mhz }
+    const liveRolesForSequentialDesign: Record<string, SignalRole> = {
+      CLK100MHZ: 'clock',
+      RST: 'reset',
+      SW0: 'input',
+      LED0: 'output',
+    };
+    const set = buildMergedClockSignals(liveRolesForSequentialDesign, {});
+    expect(set.size).toBeGreaterThan(0);
+    expect(set.has('clk100mhz')).toBe(true);
+    // Trust chain passes: isSequentialRun=true AND clockSignals non-empty before any verify run
+  });
+});

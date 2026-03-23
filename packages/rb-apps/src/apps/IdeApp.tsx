@@ -1447,6 +1447,7 @@ export const IdeApp: React.FC = () => {
               }}
               onDebugTickSelected={handleDebugTickSelected}
               onSignalSelected={setVerifySelectedSignal}
+              liveSignalRoles={liveSignalRoles}
               onDeleteVector={(tickStr) => {
                 const tick = Number(tickStr);
                 let removed = false;

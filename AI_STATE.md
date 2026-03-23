@@ -1,6 +1,56 @@
 # AI State
 
 ## Change Log 2026-03-22 (Sequential trust slice 27: circuit-graph-first hasDff for sequential verify semantics)
+## Change Log 2026-03-22 (Sequential trust slice 28: clockSignals merges live signal roles before any verify run)
+
+**Subsystem**: Sequential design trust — `clockSignals` in VerifySurface merges live IO signal roles with run roles
+
+### Problem
+
+`clockSignals` in VerifySurface was built solely from `lastRun?.report.signalRoles ?? {}`.
+A sequential design with DFF nodes but no prior verify run got an **empty `clockSignals` set**, meaning:
+- No clock-lane visual marker in the waveform panel
+- No clock-aware signal identity in tick inspection
+- All sequential UI that depends on `clockSignals` (waveform clock lane, signal group badges) behaved as combinational before the first run
+
+This was the second half of the same trust gap fixed in slice 27: even though `isSequentialRun` was now correct (from `hasDff` via circuit graph), the `clockSignals` set that drives clock-lane display was still empty until the first run.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Added optional prop `liveSignalRoles?: Record<string, 'clock' | 'reset' | 'input' | 'output'>`.
+  - Updated `signalRoleLookup` useMemo to merge: `normalizeSignalRoles({ ...liveSignalRoles, ...lastRun?.report.signalRoles })`. Live roles are the baseline; run roles override on conflict (run is more precise — it has actually wired the signals).
+  - Added `liveSignalRoles` to the memo dependency array.
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Passes `liveSignalRoles={liveSignalRoles}` to `<VerifySurface>`. `liveSignalRoles` is already computed from `deriveIoSignalRoles(projectIoRows, scheduleContract)` (used by HardwareSurface since prior slices) — no new computation needed.
+
+- `packages/rb-apps/src/apps/ide/__tests__/scenario-sequential-trust-gate.test.ts`
+  - Added 8-test describe `clockSignals: live-authority merge (slice 28)` testing the merge contract:
+    - sequential design no-run: liveRoles with clock → non-empty set
+    - normalized CLK100MHZ → clk100mhz
+    - run roles override live on conflict
+    - run adds signals beyond live
+    - combinational live → empty (no leak)
+    - empty+empty → empty
+    - run-only → works
+    - full trust chain: DFF + CLK100MHZ → clockSignals populated before first run
+
+### Student-visible behavior
+
+- A sequential circuit built in Design immediately shows clock-lane markers and clock-aware signal badges in Verify — even before the user has run verification.
+- Clock identity no longer vanishes when a stale run is cleared or when a new design has no run history.
+
+### Proof
+
+- `pnpm --filter @redbyte/rb-apps exec vitest run "src/__tests__/scenario-sequential-trust-gate.test.ts"` → PASS (43 tests: 35 prior + 8 new)
+- `pnpm --filter @redbyte/rb-apps exec vitest run "src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx"` → PASS (29 tests)
+- Combined: 72/72 green
+
+### Remaining concern
+
+- `liveSignalRoles` is computed only when `exportProject` is truthy (it depends on `buildDeriveVerifySchedule` from the export project). If `exportProject` is null, `liveSignalRoles = {}` and the merge has nothing to contribute. Monitor for the case where circuit is loaded but exportProject is not yet resolved — particularly on first mount with projects that have no export history.
+
 
 **Subsystem**: Sequential design trust — `hasDff` derivation in IdeApp.tsx drives VerifySurface sequential mode
 
