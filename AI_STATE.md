@@ -1,4 +1,61 @@
 # AI State
+## Change Log 2026-03-22 (Verify product repair slice 30: Export download no longer hard-gated by Verify PASS)
+
+**Subsystem**: ExportSurface download pipeline trust split — artifact generation vs Verify seal
+
+### Problem
+
+ExportSurface already presented generated artifacts as **AVAILABLE / UNVERIFIED** when the design was structurally exportable but Verify had not produced a trusted PASS yet.
+The trust banner, dock CTA, and tests already told the student that current HDL existed and could be inspected.
+
+But `handleDownloadExport(...)` still hard-blocked the actual project/kit download pipeline on Verify PASS:
+
+1. **No Verify run yet**: CTA enabled, banner said AVAILABLE, but clicking download failed with `Download requires a passing verification...`.
+2. **Verify FAIL**: export stayed visually available, but the download pipeline still aborted.
+3. **Stale Verify PASS** (`dirtySinceVerify=true`): current generated code existed for the current circuit, but download still treated stale trust as if no current artifact could be built.
+4. **incomplete-mapping qualification**: the export could be structurally buildable, but Verify qualification still blocked the package build.
+
+This fused two concepts RedByte must keep separate:
+- **artifact existence / compiler output**
+- **behavioral trust / Verify seal**
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - In `handleDownloadExport(...)`, step `clock` no longer aborts package generation for non-pass Verify states.
+  - Verify state is now recorded as **advisory pipeline metadata**:
+    - `Unsealed — starter scenario`
+    - `Unsealed — verify not run`
+    - `Unsealed — verify stale`
+    - `Unsealed — mapping incomplete`
+    - `Unsealed — verify mismatch`
+  - Only **structural export blockers** still prevent download:
+    - export diagnostics (`hasBlockingErrors`)
+    - incomplete live design authority (`!designReady`)
+    - required pin mapping missing (`requiredMappedCount < requiredCount`)
+  - Result: project/kit download now follows the product contract already shown by the UI: current artifacts are downloadable when structurally valid, while trust remains clearly unsealed.
+
+- `packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx`
+  - Added 3 integration regressions that click the real Export CTA and prove the callback completes with `status: 'ok'` in these previously contradictory states:
+    - no Verify run yet
+    - Verify FAIL
+    - stale Verify PASS (`dirtySinceVerify=true`)
+  - Tests also assert no export error callout appears.
+
+### Student-visible behavior
+
+- Generated Vivado project output is now downloadable even when Verify is **not yet trusted**.
+- The UI still clearly labels those states as **AVAILABLE / NOT TRUSTED / UNSEALED**.
+- Verify now seals evidence instead of acting like the compiler output does not exist.
+
+### Proof
+
+- `pnpm --filter @redbyte/rb-apps exec vitest run "src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx" "src/apps/ide/__tests__/exportSurface.workstation.test.tsx"` → PASS (2 files, 15 tests)
+
+### Remaining concern
+
+- The download pipeline still surfaces all untrusted states through a single `clock` step even when the reason is not literally clock-related. Behavior is now correct, but the label remains legacy naming and could be clarified in a later slice.
+
 ## Change Log 2026-03-22 (Sequential trust slice 29: displayStatus gates UI truth — stale/trace/fail discrimination)
 
 **Subsystem**: VerifySurface render truth — consoleHasBlocking, incomplete-mapping notice, failure diff callout

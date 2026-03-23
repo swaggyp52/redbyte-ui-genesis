@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import type { RBProject } from '../../../export/projectFormat';
 import { ExportSurface } from '../surfaces/ExportSurface';
 import type { ProjectHealthVerifyResult } from '../projectHealth';
@@ -136,7 +136,61 @@ const failResult: ProjectHealthVerifyResult = {
 };
 
 describe('ExportSurface trust clarity', () => {
-  afterEach(() => { cleanup(); });
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  async function runProjectDownloadInView(
+    ui: React.ReactElement,
+    expectedHash?: string
+  ): Promise<void> {
+    if (!('createObjectURL' in URL)) {
+      Object.defineProperty(URL, 'createObjectURL', {
+        configurable: true,
+        writable: true,
+        value: vi.fn(),
+      });
+    }
+    if (!('revokeObjectURL' in URL)) {
+      Object.defineProperty(URL, 'revokeObjectURL', {
+        configurable: true,
+        writable: true,
+        value: vi.fn(),
+      });
+    }
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:export-test');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    const onExportResult = vi.fn();
+    const view = render(React.cloneElement(ui, { onExportResult }));
+
+    await act(async () => {
+      fireEvent.click(view.getByTestId('ide-export-dock-download'));
+    });
+
+    await waitFor(() => {
+      expect(onExportResult).toHaveBeenCalled();
+    });
+
+    const latestCall = onExportResult.mock.calls.at(-1)?.[0];
+    expect(latestCall).toEqual(
+      expect.objectContaining({
+        status: 'ok',
+      })
+    );
+    if (expectedHash !== undefined) {
+      expect(latestCall).toEqual(
+        expect.objectContaining({
+          hash: expectedHash,
+        })
+      );
+    }
+
+    expect(view.queryByTestId('ide-export-capsule-error')).toBeNull();
+  }
 
   it('trusted export state renders TRUSTED clearly', () => {
     const { getByTestId } = render(
@@ -223,6 +277,38 @@ describe('ExportSurface trust clarity', () => {
     expect(consequence.textContent).toMatch(/Test|PASS|trusted/i);
     // Download button must remain enabled (not disabled) in AVAILABLE state
     expect(getByTestId('ide-export-dock-download').hasAttribute('disabled')).toBe(false);
+  });
+
+  it('lets project download complete when Verify has not run yet', async () => {
+    const project = buildMappedProject();
+
+    await runProjectDownloadInView(
+      <ExportSurface project={project} determinismHash="ide-hash" />,
+      undefined
+    );
+  });
+
+  it('lets project download complete when Verify failed against the current reference', async () => {
+    const project = buildMappedProject();
+
+    await runProjectDownloadInView(
+      <ExportSurface project={project} determinismHash="ide-hash" verifyResult={failResult} />,
+      undefined
+    );
+  });
+
+  it('lets project download complete when the last Verify PASS is stale', async () => {
+    const project = buildMappedProject();
+
+    await runProjectDownloadInView(
+      <ExportSurface
+        project={project}
+        determinismHash="ide-hash"
+        verifyResult={passResult}
+        dirtySinceVerify={true}
+      />,
+      undefined
+    );
   });
 
   it('does not claim the design is valid when live authority is incomplete', () => {

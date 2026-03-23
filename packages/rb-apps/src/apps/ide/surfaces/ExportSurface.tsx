@@ -609,9 +609,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       }
       markStep('mapping', 'done');
 
-      // STEP: clock — check verify pass
-      // Softening rule: starter/auto-generated scenario fail is advisory, not a hard block.
-      // All other non-pass cases (authored fail, stale, incomplete-mapping, no run) remain hard gates.
+      // STEP: clock — record verify/trust state.
+      // Export package generation is allowed whenever the export itself is structurally valid.
+      // Verify seals trust; it does not determine whether current compiler artifacts exist.
       markStep('clock', 'running');
       await tick();
       const isStarterFailNow =
@@ -619,14 +619,20 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         verifyResult?.status === 'fail' &&
         !dirtySinceVerify &&
         verifyLastRun?.qualification !== 'incomplete-mapping';
+      const isVerifyStaleNow = Boolean(verifyResult && dirtySinceVerify);
+      const isNoRunYetNow = !verifyResult;
+      const isVerifyMismatchNow = verifyResult?.status === 'fail';
+      const isIncompleteMappingNow = verifyLastRun?.qualification === 'incomplete-mapping';
       if (isStarterFailNow) {
-        // Soft pass — let the pipeline continue; output is unsealed but downloadable
         markStep('clock', 'warn', 'Unsealed — starter scenario');
-      } else if (!verifyResult || verifyResult.status !== 'pass' || dirtySinceVerify || verifyLastRun?.qualification === 'incomplete-mapping') {
-        markStep('clock', 'error', 'Verify PASS required');
-        setDownloadError('Download requires a passing verification with no pending design changes.');
-        setIsRebuilding(false);
-        return;
+      } else if (isNoRunYetNow) {
+        markStep('clock', 'warn', 'Unsealed — verify not run');
+      } else if (isVerifyStaleNow) {
+        markStep('clock', 'warn', 'Unsealed — verify stale');
+      } else if (isIncompleteMappingNow) {
+        markStep('clock', 'warn', 'Unsealed — mapping incomplete');
+      } else if (isVerifyMismatchNow) {
+        markStep('clock', 'warn', 'Unsealed — verify mismatch');
       } else {
         markStep('clock', 'done');
       }
