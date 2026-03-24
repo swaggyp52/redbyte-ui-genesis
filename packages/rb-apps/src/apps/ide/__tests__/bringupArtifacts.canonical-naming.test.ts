@@ -219,5 +219,132 @@ describe('bringupArtifacts canonical naming', () => {
     expect(vectors[1]?.inputs.phase_driver).toBe(1);
     expect(vectors[0]?.inputs.data_in).toBe(0);
     expect(vectors[1]?.inputs.data_in).toBe(0);
+    expect(vectors[2]?.inputs.data_in).toBe(1);
+    expect(vectors[3]?.expected.q).toBe(1);
+  });
+
+  it('falls back to stimulus-only vectors for sequential designs it cannot classify safely', () => {
+    const vectors = generateBringUpVectors({
+      circuit: {
+        nodes: [
+          {
+            id: 'j_node',
+            type: 'INPUT',
+            label: 'j',
+            position: { x: 0, y: 0 },
+            x: 0,
+            y: 0,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'k_node',
+            type: 'INPUT',
+            label: 'k',
+            position: { x: 0, y: 100 },
+            x: 0,
+            y: 100,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'clk_node',
+            type: 'INPUT',
+            label: 'clk',
+            position: { x: 0, y: 200 },
+            x: 0,
+            y: 200,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'jk_node',
+            type: 'JKFlipFlop',
+            label: 'jk0',
+            position: { x: 220, y: 80 },
+            x: 220,
+            y: 80,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'q_node',
+            type: 'OUTPUT',
+            label: 'q',
+            position: { x: 420, y: 80 },
+            x: 420,
+            y: 80,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+        ],
+        connections: [
+          {
+            from: { nodeId: 'j_node', portName: 'out' },
+            to: { nodeId: 'jk_node', portName: 'J' },
+          },
+          {
+            from: { nodeId: 'k_node', portName: 'out' },
+            to: { nodeId: 'jk_node', portName: 'K' },
+          },
+          {
+            from: { nodeId: 'clk_node', portName: 'out' },
+            to: { nodeId: 'jk_node', portName: 'CLK' },
+          },
+          {
+            from: { nodeId: 'jk_node', portName: 'Q' },
+            to: { nodeId: 'q_node', portName: 'in' },
+          },
+        ],
+      },
+      ioRows: [
+        {
+          id: 'j',
+          nodeId: 'j_node',
+          port: 'out',
+          label: 'j',
+          direction: 'in',
+          pin: 'SW0',
+          required: true,
+        },
+        {
+          id: 'k',
+          nodeId: 'k_node',
+          port: 'out',
+          label: 'k',
+          direction: 'in',
+          pin: 'SW1',
+          required: true,
+        },
+        {
+          id: 'clk',
+          nodeId: 'clk_node',
+          port: 'out',
+          label: 'clk',
+          direction: 'in',
+          pin: 'CLK100MHZ',
+          required: true,
+        },
+        {
+          id: 'q',
+          nodeId: 'q_node',
+          port: 'in',
+          label: 'q',
+          direction: 'out',
+          pin: 'LD0',
+          required: true,
+        },
+      ],
+    });
+
+    expect(vectors).toHaveLength(8);
+    expect(vectors[0]?.inputs.clk).toBe(0);
+    expect(vectors[1]?.inputs.clk).toBe(1);
+    expect(vectors.every((vector) => Object.keys(vector.expected ?? {}).length === 0)).toBe(true);
   });
 });

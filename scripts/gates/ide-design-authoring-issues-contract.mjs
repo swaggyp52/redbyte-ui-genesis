@@ -71,10 +71,17 @@ await runIdeGate('IDE design authoring issues contract satisfied', async ({ page
   await page.waitForSelector('[data-testid="ide-design-authoring-issues"]', { timeout: 10000 });
 
   const issueCount = await page.locator('[data-testid^="ide-design-authoring-issue-"]').count();
-  assert(issueCount >= 1, `expected at least one authoring issue row, found ${issueCount}`);
+  assert(issueCount >= 1, `expected at least one compact authoring issue summary, found ${issueCount}`);
 
   const firstIssueText = (await page.locator('[data-testid="ide-design-authoring-issue-0"]').textContent())?.trim() ?? '';
-  assert(firstIssueText.includes('Output has no driver'), `expected top authoring issue to describe missing output driver, got ${firstIssueText}`);
+  assert(firstIssueText.includes('Output not wired yet'), `expected top authoring issue to describe draft output wiring, got ${firstIssueText}`);
+
+  const errorCountText = (await page.locator('[data-testid="ide-design-authoring-issues-errors"]').textContent())?.trim() ?? '';
+  const warningCountText = (await page.locator('[data-testid="ide-design-authoring-issues-warnings"]').textContent())?.trim() ?? '';
+  const draftCountText = (await page.locator('[data-testid="ide-design-authoring-issues-drafts"]').textContent())?.trim() ?? '';
+  assert(errorCountText.includes('0 errors'), `expected non-blocking draft issue to avoid error count, got ${errorCountText}`);
+  assert(warningCountText.includes('0 warnings'), `expected no warnings in draft-only authoring state, got ${warningCountText}`);
+  assert(draftCountText.includes('2 drafts'), `expected draft count to surface in-progress wiring, got ${draftCountText}`);
 
   await page.locator('[data-testid="ide-design-authoring-issue-focus-0"]').click();
   await page.waitForSelector('[data-testid="ide-design-selection-inspector"]', { timeout: 10000 });

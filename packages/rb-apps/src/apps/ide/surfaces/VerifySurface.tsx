@@ -29,15 +29,17 @@ import {
 } from './VerifyFailureExplanationPanel';
 import {
   VerifyVectorListPanel,
-  type VerifyVectorListFailureRow,
 } from './VerifyVectorListPanel';
 import { VerifyThreePanel } from './VerifyThreePanel';
 import { classifyVerifyFailure } from './verify-failure-classifier';
 import { TruthTablePane } from './TruthTablePane';
+import { buildVerifyStudentViewModel } from '../viewmodels/buildVerifyStudentViewModel';
+import { buildVerifySessionViewModel } from '../viewmodels/buildVerifySessionViewModel';
 import {
   ScenarioBuilderPanel,
   type VerifyVectorDraftInput,
   type VerifyAuthorVector,
+  type VerifyExpectedDraftValue,
   type SweepPreset,
 } from './ScenarioBuilderPanel';
 import { AssertionCanvas, type AssertionCanvasProps } from '../components/AssertionCanvas';
@@ -798,8 +800,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [draftInputs, setDraftInputs] = useState<Record<string, '0' | '1'>>(() =>
     createDraftInputs(inputFields)
   );
-  const [draftExpected, setDraftExpected] = useState<Record<string, '0' | '1'>>(() =>
-    createDraftInputs(outputFields)
+  const [draftExpected, setDraftExpected] = useState<Record<string, VerifyExpectedDraftValue>>(() =>
+    createDraftExpected(outputFields)
   );
   const [verifyTab, setVerifyTab] = useState<VerifyDrawerTab>('truth');
   const [kitTipOpen, setKitTipOpen] = useState(false);
@@ -812,7 +814,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Assertion mode: when false (default), Verify is an observation/simulation environment.
   // When true, mismatch panels, failure hints, and grading language become visible.
-  const [assertionMode, setAssertionMode] = useState(false);
+  const [assertionMode, setAssertionMode] = useState(
+    () =>
+      Boolean(
+        lastRun &&
+        (lastRun.status === 'pass' || lastRun.status === 'fail') &&
+        (lastRun.report?.rows?.length ?? 0) > 0
+      )
+  );
   const [sidePanelTab, setSidePanelTab] = useState<'mismatches' | 'vectors' | 'details'>('mismatches');
   const [showAllVectorTicks, setShowAllVectorTicks] = useState(false);
   const [oracleApplied, setOracleApplied] = useState(false);
@@ -926,7 +935,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setDraftInputs((prev) => ({ ...prev, [fieldId]: value }));
   }, []);
 
-  const handleDraftExpectedChange = useCallback((fieldId: string, value: '0' | '1') => {
+  const handleDraftExpectedChange = useCallback((fieldId: string, value: VerifyExpectedDraftValue) => {
     setDraftExpected((prev) => ({ ...prev, [fieldId]: value }));
   }, []);
 
@@ -937,7 +946,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [inputFields]);
 
   useEffect(() => {
-    setDraftExpected((prev) => withInputFieldDefaults(prev, outputFields));
+    setDraftExpected((prev) => withExpectedFieldDefaults(prev, outputFields));
   }, [outputFields]);
 
   useEffect(() => {
@@ -945,6 +954,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [vectors]);
 
   const runRows = lastRun?.report.rows ?? [];
+  useEffect(() => {
+    if (!lastRun) return;
+    const hasVerificationRows = (lastRun.report?.rows?.length ?? 0) > 0;
+    if (hasVerificationRows && (lastRun.status === 'pass' || lastRun.status === 'fail')) {
+      setAssertionMode(true);
+      return;
+    }
+    if (!hasVerificationRows) {
+      setAssertionMode(false);
+    }
+  }, [lastRun?.reportHash, lastRun?.status, lastRun?.report?.rows]);
   const tickIndex = useMemo(
     () => (lastRun?.report ? buildVerifyTickSignalIndex(lastRun.report) : { ticks: [], rowsByTick: {} }),
     [lastRun?.report]
@@ -1006,19 +1026,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [failingRows, selectedFailureKey]
   );
   const selectedFailureCase = selectedFailure ?? firstFailure;
-  const threePanelFailureRows = useMemo<VerifyVectorListFailureRow[]>(
-    () =>
-      failingRows.map((row) => ({
-        key: buildFailureCaseKey(row.tick, row.signal, row.vectorId, row.caseIndex),
-        tick: row.tick,
-        signal: row.signal,
-        expected: row.expected,
-        actual: row.actual,
-        vectorId: row.vectorId,
-        caseIndex: row.caseIndex,
-      })),
-    [failingRows]
-  );
   const selectedFailurePeers = useMemo(() => {
     if (!selectedFailureCase) return [];
     const selectedKey = buildFailureCaseKey(
@@ -1039,6 +1046,35 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const verifyPreflightDiagnostics = useMemo(
     () => verifyPreflightIssues.map((issue) => adaptVerifyPreflightIssue(issue)),
     [verifyPreflightIssues]
+  );
+  const studentVerifyModel = useMemo(
+    () =>
+      buildVerifyStudentViewModel({
+        lastRun,
+        mappedSignals,
+        selectedFailureKey,
+        preflightDiagnostics: verifyPreflightDiagnostics,
+      }),
+    [lastRun, mappedSignals, selectedFailureKey, verifyPreflightDiagnostics]
+  );
+  const studentFailureRows = studentVerifyModel.failureRows;
+  const studentSelectedFailure = studentVerifyModel.selectedFailure;
+  const studentSelectedFailurePeers = studentVerifyModel.selectedPeers;
+  const studentFailureRowByKey = useMemo(() => {
+    const lookup = new Map<string, (typeof studentFailureRows)[number]>();
+    for (const row of studentFailureRows) {
+      lookup.set(row.key, row);
+    }
+    return lookup;
+  }, [studentFailureRows]);
+  const selectedFailureLabel =
+    studentSelectedFailure?.signalLabel ?? selectedFailureCase?.signal ?? null;
+  const getFailureSignalLabel = useCallback(
+    (row: Pick<VerifyFailureTarget, 'tick' | 'signal' | 'vectorId' | 'caseIndex'>) =>
+      studentFailureRowByKey.get(
+        buildFailureCaseKey(row.tick, row.signal, row.vectorId, row.caseIndex)
+      )?.signalLabel ?? row.signal,
+    [studentFailureRowByKey]
   );
   const selectedFailureEvidence = useMemo(() => {
     if (!selectedFailureCase) return null;
@@ -1323,6 +1359,29 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setDrawerOpen(true);
     setSidePanelTab('vectors');
   }, [handleSignalSelect]);
+  const reviewFailureInVerify = useCallback(
+    (target: VerifyFailureTarget | VerifyRow | null) => {
+      if (!target) return;
+      applyFailureSelection(target);
+      setVerifyTab('vectors');
+      setDrawerOpen(true);
+    },
+    [applyFailureSelection]
+  );
+  const openFailureInDesign = useCallback(
+    (target: VerifyFailureTarget | VerifyRow | null) => {
+      if (!target || !onFixPath) return;
+      onFixPath({
+        signal: target.signal,
+        tick: target.tick,
+        expected: target.expected,
+        actual: target.actual,
+        vectorId: target.vectorId,
+        caseIndex: target.caseIndex,
+      });
+    },
+    [onFixPath]
+  );
   const handleThreePanelFailureSelect = useCallback(
     (failureKey: string) => {
       const target = failingRows.find(
@@ -1521,8 +1580,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
     if (lastRun.status === 'fail' && assertionMode) {
       setVerifyTab('mismatches');
-      setDrawerOpen(true);
-      return;
     }
     setDrawerOpen(false);
   }, [assertionMode, lastRun?.generatedAtIso, lastRun?.reportHash, lastRun?.status]);
@@ -2010,12 +2067,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return {
       tick: selectedFailureCase.tick,
       signal: selectedFailureCase.signal,
+      signalLabel: studentSelectedFailure?.signalLabel ?? selectedFailureCase.signal,
       expected: selectedFailureCase.expected,
       actual: selectedFailureCase.actual,
       vectorId: selectedFailureCase.vectorId,
       caseIndex: selectedFailureCase.caseIndex,
     };
-  }, [selectedFailureCase]);
+  }, [selectedFailureCase, studentSelectedFailure?.signalLabel]);
   const selectedFailureClassification = useMemo(() => {
     if (!selectedFailureCase) return null;
     return classifyVerifyFailure({
@@ -2706,7 +2764,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         : assertionMode
           ? 'Mismatch means the current circuit differs from the selected reference. It does not mean the design graph or generated HDL is structurally invalid.'
           : 'Vectors include expected values. Enable Assertions to compare observed outputs against them.';
-
   useEffect(() => {
     if (displayStatus === 'PASS' && failingRows.length === 0 && verifyTab === 'mismatches') {
       setVerifyTab('truth');
@@ -2716,10 +2773,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const runVerification = () => {
     setRunState('running');
     // Merge project vectors with custom vectors (Phase 4)
-    const allVectors: Array<{ tick: number; expected: Record<string, 0 | 1> }> = [
-      ...authoredVectors,
-      ...customVectors,
-    ];
+    const allVectors: TestVector[] = [...authoredVectors, ...customVectors].map((vector) => ({
+      tick: vector.tick,
+      inputs: { ...(vector.inputs ?? {}) },
+      expected: { ...(vector.expected ?? {}) },
+    }));
     // When assertionMode is OFF, send zero rows → engine runs in pure TRACE mode.
     // This prevents auto-generated expected values (from bringup vectors) from being
     // silently compared against the student's circuit and producing false FAILs.
@@ -2741,6 +2799,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       scenarioContentHash: activeScenario ? computeScenarioContentHash(activeScenario) : undefined,
       deterministicHash,
       assertionMode,
+      vectors: allVectors,
       rows,
     });
   };
@@ -2770,10 +2829,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         acc[field.id] = draftInputs[field.id] === '1' ? 1 : 0;
         return acc;
       }, {}),
-      expected: outputFields.reduce<Record<string, 0 | 1>>((acc, field) => {
-        acc[field.id] = draftExpected[field.id] === '1' ? 1 : 0;
-        return acc;
-      }, {}),
+      expected: buildExpectedRecord(outputFields, draftExpected),
     };
     const nextVectors = [...authoredVectors, nextVector].sort((left, right) => left.tick - right.tick);
     onVectorsChange?.(nextVectors);
@@ -2785,12 +2841,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         return acc;
       }, {})
     );
-    setDraftExpected(
-      outputFields.reduce<Record<string, '0' | '1'>>((acc, field) => {
-        acc[field.id] = nextVector.expected[field.id] === 1 ? '1' : '0';
-        return acc;
-      }, {})
-    );
+    setDraftExpected(expectedRecordToDraftState(nextVector.expected, outputFields));
     setOracleApplied(false);
   };
 
@@ -2808,10 +2859,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           acc[f.id] = draftInputs[f.id] === '1' ? 1 : 0;
           return acc;
         }, {}),
-        expected: outputFields.reduce<Record<string, 0 | 1>>((acc, f) => {
-          acc[f.id] = draftExpected[f.id] === '1' ? 1 : 0;
-          return acc;
-        }, {}),
+        expected: buildExpectedRecord(outputFields, draftExpected),
       }));
       const nextVectors = [...authoredVectors, ...newRows].sort((a, b) => a.tick - b.tick);
       onVectorsChange?.(nextVectors);
@@ -2832,10 +2880,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         acc[f.id] = draftInputs[f.id] === '1' ? 1 : 0;
         return acc;
       }, {});
-      const baseExpected = outputFields.reduce<Record<string, 0 | 1>>((acc, f) => {
-        acc[f.id] = draftExpected[f.id] === '1' ? 1 : 0;
-        return acc;
-      }, {});
+      const baseExpected = buildExpectedRecord(outputFields, draftExpected);
       const rowHigh: VerifyAuthorVector = {
         id: `vec-p${String(Date.now()).slice(-6)}h`,
         tick: startTick,
@@ -3091,6 +3136,39 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         .filter((key) => !inputSignalKeys.has(key))
     );
 
+    const canonicalOutputKeyByWaveSignal = new Map<string, string>();
+    for (const row of lastRun.evidence?.ioRows ?? []) {
+      if (row.direction !== 'out') continue;
+      const canonicalCandidates = [row.id, row.label]
+        .map(normalizeFieldId)
+        .filter(Boolean);
+      const canonicalOutputKey =
+        canonicalCandidates.find((candidate) => outputSignalKeys.has(candidate)) ??
+        canonicalCandidates[0];
+      if (!canonicalOutputKey) continue;
+      for (const candidate of [
+        row.id,
+        row.label,
+        row.nodeId,
+        row.nodeId ? `${row.nodeId}.in` : '',
+        row.nodeId ? `${row.nodeId}_in` : '',
+      ]) {
+        const normalizedCandidate = normalizeFieldId(candidate);
+        if (!normalizedCandidate) continue;
+        canonicalOutputKeyByWaveSignal.set(normalizedCandidate, canonicalOutputKey);
+      }
+    }
+    for (const entry of lastRun.evidence?.normalizationMap ?? []) {
+      if (entry.role !== 'output') continue;
+      const canonicalOutputKey = normalizeFieldId(entry.rawKey);
+      const matchedSignalKey = normalizeFieldId(entry.matchedSignal ?? '');
+      if (!canonicalOutputKey) continue;
+      canonicalOutputKeyByWaveSignal.set(canonicalOutputKey, canonicalOutputKey);
+      if (matchedSignalKey) {
+        canonicalOutputKeyByWaveSignal.set(matchedSignalKey, canonicalOutputKey);
+      }
+    }
+
     const updatedVectors = sourceVectors.map((vector) => {
       const tickSignals = waveformByTick.get(vector.tick);
       if (!tickSignals) return vector;
@@ -3107,12 +3185,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         // Skip tri-state / unknown / high-impedance values — only lock clean 0/1
         if (rawValue !== '0' && rawValue !== '1') continue;
         const key = normalizeFieldId(signal);
+        const canonicalOutputKey = canonicalOutputKeyByWaveSignal.get(key) ?? key;
         // Skip inputs
-        if (inputSignalKeys.has(key)) continue;
+        if (inputSignalKeys.has(key) || inputSignalKeys.has(canonicalOutputKey)) continue;
         // Apply scope filter: explicit outputs → mapped non-inputs → all non-inputs
-        if (outputSignalKeys.size > 0 && !outputSignalKeys.has(key)) continue;
-        if (outputSignalKeys.size === 0 && mappedNonInputKeys.size > 0 && !mappedNonInputKeys.has(key)) continue;
-        const targetKey = expectedKeyByNormalized.get(key) ?? key;
+        if (outputSignalKeys.size > 0 && !outputSignalKeys.has(canonicalOutputKey)) continue;
+        if (
+          outputSignalKeys.size === 0 &&
+          mappedNonInputKeys.size > 0 &&
+          !mappedNonInputKeys.has(canonicalOutputKey)
+        ) {
+          continue;
+        }
+        const targetKey = expectedKeyByNormalized.get(canonicalOutputKey) ?? canonicalOutputKey;
         expected[targetKey] = rawValue === '1' ? 1 : 0;
       }
 
@@ -3120,7 +3205,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       return { ...vector, expected };
     });
 
+    const capturedAnyExpected = updatedVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0);
     onVectorsChange?.(updatedVectors);
+    if (capturedAnyExpected) {
+      setAssertionMode(true);
+    }
     setOracleApplied(true);
   };
 
@@ -3128,7 +3217,45 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     (lastRun?.waveform?.length ?? 0) > 0 &&
     authoredVectors.length > 0 &&
     onVectorsChange !== undefined;
+  const verifySession = useMemo(
+    () =>
+      buildVerifySessionViewModel({
+        totalVectorCount,
+        totalExpectedCaseCount,
+        runState,
+        lastRun,
+        assertionMode,
+        isRunStale,
+        isTraceOnly,
+        hasResults,
+        canSetOracle,
+        failingRowCount: failingRows.length,
+      }),
+    [
+      assertionMode,
+      canSetOracle,
+      failingRows.length,
+      hasResults,
+      isRunStale,
+      isTraceOnly,
+      lastRun,
+      runState,
+      totalExpectedCaseCount,
+      totalVectorCount,
+    ]
+  );
   const showFailureWorkbenchPanels = assertionMode && displayStatus === 'FAIL' && failingRows.length > 0;
+  const canInspectFirstMismatch =
+    assertionMode && displayStatus === 'FAIL' && failingRows.length > 0 && !isRunStale;
+  const captureIsPrimary =
+    verifySession.recommendedNextAction === 'capture' && canSetOracle && !canInspectFirstMismatch;
+  const primaryActionKind: 'run' | 'capture' | 'inspect' = canInspectFirstMismatch
+    ? 'inspect'
+    : captureIsPrimary
+      ? 'capture'
+      : 'run';
+  const runActionTone = primaryActionKind === 'run' ? 'primary' : 'secondary';
+  const captureActionTone = primaryActionKind === 'capture' ? 'primary' : 'secondary';
   const shortenHash = (value: string | null | undefined): string => {
     if (!value || value.trim().length === 0) return '—';
     return value.length > 12 ? value.slice(0, 12) : value;
@@ -3196,10 +3323,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const runProofTitle =
     displayStatus === 'PASS'
       ? lastRun?.qualification === 'incomplete-mapping'
-        ? 'Logic passed — mapping incomplete'
-        : `All ${runRows.length} vector${runRows.length === 1 ? '' : 's'} passed`
+        ? 'Assertions match — mapping review still needed'
+        : `Assertions match across ${runRows.length} vector${runRows.length === 1 ? '' : 's'}`
       : displayStatus === 'FAIL'
-        ? `Verified build failed ${failingRows.length} of ${runRows.length} case${runRows.length === 1 ? '' : 's'}`
+        ? `Assertions differ in ${failingRows.length} of ${runRows.length} case${runRows.length === 1 ? '' : 's'}`
         : displayStatus === 'STALE'
           ? 'This page is showing an older Verify run'
           : displayStatus === 'TRACE'
@@ -3209,13 +3336,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     displayStatus === 'PASS'
       ? lastRun?.qualification === 'incomplete-mapping'
         ? `${unmappedOutputLabels.length > 0 ? `${unmappedOutputLabels.slice(0, 3).join(', ')}${unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''} ${unmappedOutputLabels.length === 1 ? 'is' : 'are'} not connected to board pins.` : 'Some outputs are not connected to board pins.'} Finish mapping in Hardware before trusting export or bring-up.`
-        : 'Your design matches expected outputs across all test cases. This design is ready to export.'
+        : 'Observed outputs matched every asserted expectation in this run.'
       : displayStatus === 'FAIL'
-        ? 'This failure is real for the verified build below. Use the mismatch list and waveform together to inspect exactly where the circuit diverged.'
-        : displayStatus === 'STALE'
+        ? 'Assertions differ from observed outputs in the deterministic run below. Start with the first differing case.'
+      : displayStatus === 'STALE'
           ? 'The visible waveform belongs to the previously verified build hash. Re-run Verify so the evidence matches the current circuit again.'
-          : displayStatus === 'TRACE'
-            ? 'You have waveform evidence, but no expected outputs were defined, so nothing has actually been verified yet.'
+      : displayStatus === 'TRACE'
+            ? 'You have waveform evidence, but no expected outputs were defined, so this run is observation only.'
             : displayStatusLabel;
 
   return (
@@ -3362,7 +3489,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       onMouseLeave={() => handleSignalHover(null)}
                       data-testid={`ide-verify-failure-${toTestId(`${row.signal}-${row.tick}`)}`}
                     >
-                      <span>{row.signal}</span>
+                      <span>{getFailureSignalLabel(row)}</span>
                       <span>t{row.tick}</span>
                     </button>
                   ))
@@ -3381,7 +3508,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <div className="ide-kv-list">
                   <div className="ide-kv-row">
                     <span>Signal</span>
-                    <code>{selectedFailureCase.signal}</code>
+                    <code>{selectedFailureLabel ?? selectedFailureCase.signal}</code>
                   </div>
                   <div className="ide-kv-row">
                     <span>Expected</span>
@@ -3396,40 +3523,45 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     <span>{selectedFailureCase.tick}</span>
                   </div>
                   {selectedFailureEvidence && (
-                    <>
-                      <div className="ide-kv-row" data-testid="ide-verify-mismatch-case-id">
-                        <span>Case</span>
-                        <code>{selectedFailureEvidence.vectorId}</code>
-                      </div>
-                      <div className="ide-kv-row" data-testid="ide-verify-mismatch-sampled-key">
-                        <span>Sampled key</span>
-                        <code>{selectedFailureEvidence.actualSourceKey ?? 'missing'}</code>
-                      </div>
-                      <div className="ide-kv-row" data-testid="ide-verify-mismatch-expected-key">
-                        <span>Expected key</span>
-                        <code>{selectedFailureEvidence.expectedSourceKey ?? 'missing'}</code>
-                      </div>
-                      <div className="ide-kv-row" data-testid="ide-verify-mismatch-reason">
-                        <span>Why</span>
-                        <span style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-                          {selectedFailureEvidence.actualReason === 'missing-output-sample'
-                            ? 'The expected output could not be sampled from the circuit trace. Check mapping, drivers, and output wiring.'
-                            : selectedFailureEvidence.actualReason === 'missing-output-node'
-                              ? 'The expected output is not mapped to a concrete design node.'
-                              : 'The sampled output did not match the expected value for this case.'}
-                        </span>
-                      </div>
-                    </>
+                    <div className="ide-kv-row ide-kv-row--full">
+                      <details className="ide-verify-technical-details" data-testid="ide-verify-mismatch-technical-details">
+                        <summary>Technical details</summary>
+                        <div className="ide-kv-list" style={{ marginTop: '0.75rem' }}>
+                          <div className="ide-kv-row" data-testid="ide-verify-mismatch-case-id">
+                            <span>Case</span>
+                            <code>{selectedFailureEvidence.vectorId}</code>
+                          </div>
+                          <div className="ide-kv-row" data-testid="ide-verify-mismatch-sampled-key">
+                            <span>Sampled key</span>
+                            <code>{selectedFailureEvidence.actualSourceKey ?? 'missing'}</code>
+                          </div>
+                          <div className="ide-kv-row" data-testid="ide-verify-mismatch-expected-key">
+                            <span>Expected key</span>
+                            <code>{selectedFailureEvidence.expectedSourceKey ?? 'missing'}</code>
+                          </div>
+                          <div className="ide-kv-row" data-testid="ide-verify-mismatch-reason">
+                            <span>Why</span>
+                            <span style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+                              {selectedFailureEvidence.actualReason === 'missing-output-sample'
+                                ? 'The expected output could not be sampled from the circuit trace. Check mapping, drivers, and output wiring.'
+                                : selectedFailureEvidence.actualReason === 'missing-output-node'
+                                  ? 'The expected output is not mapped to a concrete design node.'
+                                  : 'The sampled output did not match the expected value for this case.'}
+                            </span>
+                          </div>
+                        </div>
+                      </details>
+                    </div>
                   )}
                   {selectedFailureCase.expected !== selectedFailureCase.actual && (
                     <div className="ide-kv-row" data-testid="ide-verify-mismatch-hint">
                       <span>Hint</span>
                       <span style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
                         {selectedFailureCase.actual === '0' && selectedFailureCase.expected === '1'
-                          ? `${selectedFailureCase.signal} reads 0 when 1 is expected — verify the driving node is connected and producing output.`
+                          ? `${selectedFailureLabel ?? selectedFailureCase.signal} reads 0 when 1 is expected — verify the driving node is connected and producing output.`
                           : selectedFailureCase.actual === '1' && selectedFailureCase.expected === '0'
-                            ? `${selectedFailureCase.signal} reads 1 when 0 is expected — check for unintended connections or inverted logic.`
-                            : `${selectedFailureCase.signal} has an unexpected value at tick ${String(selectedFailureCase.tick)} — verify input conditions.`}
+                            ? `${selectedFailureLabel ?? selectedFailureCase.signal} reads 1 when 0 is expected — check for unintended connections or inverted logic.`
+                            : `${selectedFailureLabel ?? selectedFailureCase.signal} has an unexpected value at tick ${String(selectedFailureCase.tick)} — verify input conditions.`}
                       </span>
                     </div>
                   )}
@@ -3444,7 +3576,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                                 className="ide-verify-mismatch-fix-btn"
                                 onClick={() => applyFailureSelection(row)}
                               >
-                                <code>{row.signal}</code> {row.expected}{' -> '}{row.actual}
+                                <code>{getFailureSignalLabel(row)}</code> {row.expected}{' -> '}{row.actual}
                               </button>
                             ))}
                       </div>
@@ -3456,10 +3588,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     <div className="ide-inline-actions">
                       <IdeButton
                         tone="secondary"
-                        onClick={() => onFixPath(selectedFailureCase)}
+                        onClick={() => reviewFailureInVerify(selectedFailureCase)}
                         testId="ide-verify-mismatch-fix"
                       >
-                        Fix in Design
+                        Review in Verify
+                      </IdeButton>
+                      <IdeButton
+                        tone="ghost"
+                        onClick={() => openFailureInDesign(selectedFailureCase)}
+                        testId="ide-verify-mismatch-open-design"
+                      >
+                        Open in Design
                       </IdeButton>
                     </div>
                   )}
@@ -3532,7 +3671,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           <header className="ide-design-diagnostics-drawer-header">
             <h3>Activity</h3>
             <IdeStatusPill tone={displayTone} data-testid="ide-verify-console-status">
-              {displayStatus === 'PASS' ? 'PASS' : displayStatus === 'FAIL' ? 'FAIL' : displayStatus}
+              {displayStatus === 'PASS'
+                ? 'ASSERTIONS MATCH'
+                : displayStatus === 'FAIL'
+                  ? 'ASSERTIONS DIFFER'
+                  : displayStatus}
             </IdeStatusPill>
           </header>
           <div className="ide-design-diagnostics-list">
@@ -3675,30 +3818,41 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        <IdeCallout tone={totalExpectedCaseCount === 0 ? 'warn' : 'info'} testId="ide-verify-reference-mode">
-          {vectorSourceLabel}. {verifyReferenceNote}
-        </IdeCallout>
+        <div
+          className="ide-surface-panel ide-verify-session-hero"
+          data-testid="ide-verify-session-hero"
+          data-status={verifySession.status}
+          data-mode={verifySession.mode}
+        >
+          <div className="ide-verify-session-hero-main">
+            <IdeStatusPill tone={verifySession.tone} testId="ide-verify-session-status">
+              {verifySession.statusBadge}
+            </IdeStatusPill>
+            <span
+              className={`ide-verify-mode-chip ide-verify-mode-chip--${verifySession.mode === 'assertion' ? 'verify' : 'trace'}`}
+              data-testid="ide-verify-session-mode"
+            >
+              {verifySession.modeLabel}
+            </span>
+            <strong data-testid="ide-verify-session-title">{verifySession.title}</strong>
+            <span data-testid="ide-verify-session-summary">{verifySession.summary}</span>
+          </div>
+          <span className="ide-verify-reference-mode-inline" data-testid="ide-verify-reference-mode">
+            {vectorSourceLabel}. {verifyReferenceNote}
+          </span>
+        </div>
 
         {/* Status strip — status-first, one primary CTA */}
         <div className="ide-verify-status-strip" data-testid="ide-verify-banner" data-zone="status">
           <IdeStatusPill tone={displayTone} testId="ide-verify-summary-status">
             {displayStatus === 'PASS'
               ? lastRun?.qualification === 'incomplete-mapping'
-                ? 'PASS (INCOMPLETE)'
-                : 'PASS'
+                ? 'ASSERTIONS MATCH (MAPPING REVIEW)'
+                : 'ASSERTIONS MATCH'
               : displayStatus === 'FAIL'
-                ? 'FAIL'
+                ? 'ASSERTIONS DIFFER'
                 : displayStatus}
           </IdeStatusPill>
-          {lastRun && !isRunStale && (
-            <span
-              className={`ide-verify-mode-chip ${assertionMode ? 'ide-verify-mode-chip--verify' : 'ide-verify-mode-chip--trace'}`}
-              data-testid="ide-verify-mode-chip"
-              title={assertionMode ? 'Verification run — pass/fail checked against expected outputs' : 'Trace run — waveform captured, no pass/fail checking'}
-            >
-              {assertionMode ? 'VERIFICATION RUN' : 'TRACE RUN'}
-            </span>
-          )}
           {lastRun && (
             <>
               <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
@@ -3720,12 +3874,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     {failingRows.length} differ
                     {typeof firstFailureTick === 'number' && (
                       <> · first mismatch t{firstFailureTick}
-                        {failingRows.slice(0, 2).length > 0 && (
-                          <> ({failingRows.slice(0, 2).map((r) => r.signal).join(', ')}
-                            {failingRows.length > 2 ? ` +${failingRows.length - 2} more` : ''}
-                          )
-                          </>
-                        )}
+                        {failingRows[0] && <> on {getFailureSignalLabel(failingRows[0])}</>}
                       </>
                     )}
                   </span>
@@ -3772,7 +3921,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           )}
           {!isFirstRunState && (
             <div className="ide-verify-strip-actions">
-              {/* Group 1 — PRIMARY: Run CTA + contextual failure navigation */}
+              {/* Group 1 — PRIMARY: one dominant next action */}
               <div className="ide-verify-strip-group ide-verify-strip-group--run">
                 {orphanPreflight ? (
                   <div className="ide-verify-orphan-preflight" data-testid="ide-verify-orphan-preflight">
@@ -3799,27 +3948,53 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </IdeButton>
                   </div>
                 ) : (
-                  <span data-testid="ide-primary-cta">
+                  <span data-testid={primaryActionKind === 'run' ? 'ide-primary-cta' : undefined}>
                     <IdeButton
-                      tone="primary"
+                      tone={runActionTone}
                       onClick={handleRunWithPreflight}
                       disabled={runState === 'running'}
                       testId={lastRun ? 'ide-verify-run-secondary' : 'ide-verify-run'}
                       className={displayStatus === 'READY' ? 'is-pulsing' : undefined}
                     >
-                      {isRunStale ? 'Re-run for current circuit' : lastRun ? 'Re-run Simulation' : 'Run Simulation'}
+                      {verifySession.runLabel}
                     </IdeButton>
                   </span>
                 )}
-                {assertionMode && displayStatus === 'FAIL' && failingRows.length > 0 && !isRunStale && (
-                  <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-jump-first-failure">
-                    Inspect first mismatch
+                {primaryActionKind === 'inspect' ? (
+                  <span data-testid="ide-primary-cta">
+                    <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-jump-first-failure">
+                      Inspect first mismatch
+                    </IdeButton>
+                  </span>
+                ) : null}
+                {primaryActionKind !== 'capture' && canSetOracle && !canInspectFirstMismatch ? (
+                  <IdeButton
+                    tone={captureActionTone}
+                    onClick={handleSetOracleExpected}
+                    testId="ide-verify-set-oracle"
+                    title="Capture the current waveform outputs into expected values for this testbench."
+                  >
+                    Capture outputs as expected
                   </IdeButton>
-                )}
+                ) : null}
+                {primaryActionKind === 'capture' ? (
+                  <span data-testid="ide-primary-cta">
+                    <IdeButton
+                      tone="primary"
+                      onClick={handleSetOracleExpected}
+                      testId="ide-verify-set-oracle"
+                      title="Capture the current waveform outputs into expected values for this testbench."
+                    >
+                      Capture outputs as expected
+                    </IdeButton>
+                  </span>
+                ) : null}
               </div>
-              {/* Group 2 — SECONDARY: Observation mode controls */}
-              {hasResults && (
-                <div className="ide-verify-strip-group ide-verify-strip-group--observe">
+              {/* Group 2 — SECONDARY: tucked away, never the dominant focus */}
+              {(hasResults || Boolean(lastRun)) && (
+                <details className="ide-verify-strip-group ide-verify-strip-group--advanced" data-testid="ide-verify-advanced-debug">
+                  <summary>More actions</summary>
+                  <div className="ide-inline-actions" style={{ marginTop: '0.75rem' }}>
                   <IdeButton
                     tone={assertionMode ? 'secondary' : 'ghost'}
                     onClick={() => setAssertionMode((v) => !v)}
@@ -3839,66 +4014,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       {isStepMode ? 'Exit Step-Through' : 'Step Through'}
                     </IdeButton>
                   )}
-                </div>
-              )}
-              {/* Group 3 — TERTIARY: Utility — clear results + contextual oracle capture */}
-              {(hasResults || Boolean(lastRun)) && (
-                <div className="ide-verify-strip-group ide-verify-strip-group--util">
                   <IdeButton tone="ghost" onClick={clearResults} testId="ide-verify-clear">Clear</IdeButton>
-                  {canSetOracle && (
-                    <IdeButton
-                      tone="ghost"
-                      onClick={handleSetOracleExpected}
-                      testId="ide-verify-set-oracle"
-                      title="Updates your truth table expected values to match what the circuit currently produces."
-                    >
-                      Capture outputs
-                    </IdeButton>
-                  )}
-                </div>
+                  </div>
+                </details>
               )}
             </div>
           )}
         </div>
 
-        {/* TRACE callout — shown immediately after the status strip so it's above the fold */}
-        {isTraceOnly && canSetOracle && (
-          <IdeCallout tone="info" title="Waveform captured — no pass/fail checking" testId="ide-verify-trace-oracle-callout">
-            <p className="ide-copy">
-              Waveform recorded for {waveformTicks.length} tick{waveformTicks.length !== 1 ? 's' : ''}. No expected outputs were set, so nothing was verified.
-              {hasDff && (
-                <> Sequential circuit detected — outputs depend on prior ticks. Trace first, then capture or edit expected values for each relevant tick.</>
-              )}
-            </p>
-            <p className="ide-copy">
-              Set expected output values in your vectors to enable pass/fail verification, or capture the current outputs as expected values now.
-            </p>
-            <div className="ide-inline-actions">
-              <IdeButton tone="primary" onClick={() => setAssertionMode(true)} testId="ide-verify-trace-enable-assertions">
-                Enable Pass/Fail Checking
-              </IdeButton>
-              {canSetOracle && (
-                <IdeButton tone="secondary" onClick={handleSetOracleExpected} testId="ide-verify-trace-oracle-btn">
-                  Capture outputs as expected
-                </IdeButton>
-              )}
-              {authoredVectors.length === 0 && (
-                <IdeButton tone="ghost" onClick={handleGenerateBasicVectors} testId="ide-verify-trace-generate-basics">
-                  Generate Basics first
-                </IdeButton>
-              )}
-            </div>
-          </IdeCallout>
-        )}
-
-        {isSequentialRun && (
-          <IdeCallout tone="info" testId="ide-verify-clocked-banner">
-            Clocked circuit: expected outputs are sampled AFTER the rising edge of each clock tick.
-            Tick 0 = initial state (no clock pulse yet).
-          </IdeCallout>
-        )}
-
-        {assertionMode && displayStatus === 'FAIL' && failureDiagnosis.length > 0 && (
+        {drawerOpen && assertionMode && displayStatus === 'FAIL' && failureDiagnosis.length > 0 && (
           <div className="ide-verify-fail-diagnosis" data-testid="ide-verify-fail-diagnosis">
             <span className="ide-verify-fail-diagnosis-header" data-testid="ide-verify-fail-diagnosis-header">Issues found</span>
             {failureDiagnosis.map((item) => (
@@ -3910,13 +4034,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {assertionMode && displayStatus === 'FAIL' && verifyHint && (
+        {drawerOpen && assertionMode && displayStatus === 'FAIL' && verifyHint && (
           <IdeCallout tone="info" title="Something to investigate" testId="ide-verify-hint-callout" className="ide-callout--hint">
             {verifyHint}
           </IdeCallout>
         )}
 
-        {assertionMode && displayStatus === 'FAIL' && vectorsAreAutoGenerated && (
+        {drawerOpen && assertionMode && displayStatus === 'FAIL' && vectorsAreAutoGenerated && (
           <IdeCallout tone="warn" testId="ide-verify-auto-vector-fail-note">
             <span>
               <strong>Ran with starter vectors.</strong>{' '}
@@ -3927,7 +4051,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </IdeCallout>
         )}
 
-        {assertionMode && displayStatus === 'FAIL' && (
+        {drawerOpen && assertionMode && displayStatus === 'FAIL' && (
           <div className="ide-verify-readiness-strip" data-testid="ide-verify-readiness-strip">
             <span
               className={`ide-verify-readiness-axis ide-verify-readiness-axis--${mappingComplete !== false ? 'ok' : 'warn'}`}
@@ -3950,12 +4074,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {assertionMode && displayStatus === 'FAIL' && mappingComplete !== false && onGoToExport && (
+        {drawerOpen && assertionMode && displayStatus === 'FAIL' && mappingComplete !== false && onGoToExport && (
           <div className="ide-verify-export-available-note" data-testid="ide-verify-export-available">
             <span className="ide-verify-export-available-label">
               Your exported HDL is still available.{' '}
               {vectorsAreAutoGenerated
-                ? 'Export is unsealed until you author a real scenario and get a PASS.'
+                ? 'Export remains advisory until you author a real comparison scenario.'
                 : 'Export reflects your current circuit — verify trust is separate from HDL availability.'}
             </span>
             <IdeButton tone="ghost" onClick={onGoToExport} testId="ide-verify-go-to-export">
@@ -3990,7 +4114,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   <strong>Authoritative:</strong>{' '}
                   {isRunStale
                     ? `the waveform below belongs to build ${shortenHash(lastRun.deterministicHash)}, while the current circuit is ${shortenHash(deterministicHash)}.`
-                    : 'pass/fail comes from this deterministic Verify run. Design trace is for debug only and does not affect trust status.'}
+                    : 'the compare result comes from this deterministic Verify run. Design trace is for debug only and does not affect trust status.'}
                 </p>
               </div>
               <div className="ide-verify-run-proof-actions">
@@ -4236,7 +4360,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               testId="ide-verify-three-panel"
               leftPanel={showFailureWorkbenchPanels ? (
                 <VerifyVectorListPanel
-                  rows={threePanelFailureRows}
+                  rows={studentFailureRows}
                   selectedKey={selectedFailureKey}
                   onSelectFailureKey={handleThreePanelFailureSelect}
                   onSelectNextFailure={goToNextFail}
@@ -4380,15 +4504,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-fail-nav-first">
                         First mismatch
                       </IdeButton>
-                      <IdeButton tone="secondary" onClick={goToPrevFail} testId="ide-verify-fail-nav-prev">
-                        Prev mismatch
-                      </IdeButton>
-                      <IdeButton tone="secondary" onClick={goToNextFail} testId="ide-verify-fail-nav-next">
-                        Next mismatch
-                      </IdeButton>
                       <span className="ide-verify-fail-nav-position ide-copy">
                         {currentFailIndex >= 0
-                          ? `fail ${currentFailIndex + 1} / ${failTicksSorted.length}`
+                          ? `showing fail ${currentFailIndex + 1} / ${failTicksSorted.length}`
                           : `${failTicksSorted.length} fail tick${failTicksSorted.length !== 1 ? 's' : ''}`}
                       </span>
                     </>
@@ -4521,11 +4639,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   <div className="ide-inline-actions">
                     <IdeButton
                       tone="primary"
-                      onClick={() => onFixPath?.({ signal: '', tick: 0, expected: '', actual: '' })}
+                      onClick={() => openFailureInDesign({ signal: '', tick: 0, expected: '', actual: '' })}
                       disabled={!onFixPath}
                       testId="ide-verify-no-trace-fix"
                     >
-                      Fix in Design
+                      Open in Design
                     </IdeButton>
                   </div>
                 </IdeCallout>
@@ -4692,9 +4810,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   failure={selectedFailureExplanationCase}
                   classification={selectedFailureClassification}
                   reasonCode={selectedFailureEvidence?.actualReason ?? null}
-                  peers={selectedFailurePeers.map((row) => ({
+                  peers={studentSelectedFailurePeers.map((row) => ({
                     tick: row.tick,
-                    signal: row.signal,
+                    signal: row.rawSignal,
+                    signalLabel: row.signalLabel,
                     expected: row.expected,
                     actual: row.actual,
                     vectorId: row.vectorId,
@@ -4704,6 +4823,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   patternSummary={selectedFailurePattern?.summary ?? null}
                   patternNextInspect={selectedFailurePattern?.nextInspect ?? null}
                   onSelectPeer={(peer) => applyFailureSelection(peer)}
+                  onJumpToFix={(failure) => reviewFailureInVerify(failure)}
+                  onOpenInDesign={(failure) => openFailureInDesign(failure)}
                 />
               ) : null}
             />
@@ -4723,7 +4844,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 )}
                 {assertionMode && !drawerOpen && selectedFailureCase && (
                   <span className="ide-verify-drawer-hint">
-                    t{selectedFailureCase.tick} · {selectedFailureCase.signal} · asserted <code>{selectedFailureCase.expected}</code> observed <code>{selectedFailureCase.actual}</code>
+                    t{selectedFailureCase.tick} · {selectedFailureLabel ?? selectedFailureCase.signal} · expected <code>{selectedFailureCase.expected}</code> observed <code>{selectedFailureCase.actual}</code>
                   </span>
                 )}
                 {Boolean(lastRun) && (
@@ -4766,23 +4887,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   {/* Fail summary — compact selected-failure header */}
                   {assertionMode && displayStatus === 'FAIL' && failingRows.length > 0 && (
                     <div className="ide-verify-fail-summary" data-testid="ide-verify-fail-summary-inline">
-                      <span className="ide-verify-fail-summary__status">FAIL</span>
+                      <span className="ide-verify-fail-summary__status">ASSERTIONS DIFFER</span>
                       <span className="ide-verify-fail-summary__count">
                         {failingRows.length} of {runRows.length} vectors failing
                       </span>
                       {selectedFailureCase && (
                         <span className="ide-verify-fail-summary__first">
-                          Selected: <code>{selectedFailureCase.signal}</code> at t{selectedFailureCase.tick}
-                          {' '}asserted <code>{selectedFailureCase.expected}</code> observed <code>{selectedFailureCase.actual}</code>
+                          Selected: <code>{selectedFailureLabel ?? selectedFailureCase.signal}</code> at t{selectedFailureCase.tick}
+                          {' '}expected <code>{selectedFailureCase.expected}</code> observed <code>{selectedFailureCase.actual}</code>
                         </span>
                       )}
                       {selectedFailureCase && onFixPath && (
                         <IdeButton
-                          tone="danger"
-                          onClick={() => { onFixPath(selectedFailureCase); onGoToDesign?.(); }}
+                          tone="secondary"
+                          onClick={() => openFailureInDesign(selectedFailureCase)}
                           testId="ide-verify-jump-to-failure-card"
                         >
-                          Jump to failing node →
+                          Open in Design
                         </IdeButton>
                       )}
                     </div>
@@ -4800,7 +4921,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         </div>
                         <div>
                           <span>Signal</span>
-                          <code data-testid="ide-verify-explainer-signal">{selectedFailureCase.signal}</code>
+                          <code data-testid="ide-verify-explainer-signal">{selectedFailureLabel ?? selectedFailureCase.signal}</code>
                         </div>
                         <div>
                           <span>Expected</span>
@@ -4824,9 +4945,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         )}
                       </div>
                       {selectedFailureEvidence && (
-                        <div className="ide-verify-failure-explainer__inputs">
-                          <span>Resolved comparison</span>
-                          <div className="ide-verify-failure-explainer__chips">
+                        <details
+                          className="ide-verify-failure-explainer__inputs ide-verify-technical-details"
+                          data-testid="ide-verify-explainer-technical-details"
+                        >
+                          <summary>Technical details</summary>
+                          <div className="ide-verify-failure-explainer__chips" style={{ marginTop: '0.75rem' }}>
                             <div className="ide-kv-row" data-testid="ide-verify-mismatch-case-id">
                               <span>Vector case</span>
                               <code>{selectedFailureEvidence?.vectorId ?? 'unknown'}</code>
@@ -4850,7 +4974,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                               </code>
                             </div>
                           </div>
-                        </div>
+                        </details>
                       )}
                       {selectedFailurePattern && (
                         <div
@@ -4882,7 +5006,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                                 onClick={() => applyFailureSelection(row)}
                                 data-testid={`ide-verify-related-failure-${toTestId(`${row.signal}-${row.tick}`)}`}
                               >
-                                <code>{row.signal}</code> {row.expected}{' -> '}{row.actual}
+                                <code>{getFailureSignalLabel(row)}</code> {row.expected}{' -> '}{row.actual}
                               </button>
                             ))}
                           </div>
@@ -4920,8 +5044,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   {/* Mismatch table */}
                   {failingRows.length === 0 ? (
                     assertionMode ? (
-                      <IdeCallout tone="success" title="No mismatches in current run">
-                        PASS evidence is ready for export.
+                      <IdeCallout tone="success" title="No differences in current run">
+                        Assertions match observed outputs for this run.
                       </IdeCallout>
                     ) : (
                       <IdeCallout tone="info" title="Run complete">
@@ -4963,22 +5087,21 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                                 t{row.tick}
                               </button>
                             </td>
-                            <td><code className="ide-verify-mismatch-signal">{row.signal}</code></td>
+                            <td><code className="ide-verify-mismatch-signal">{getFailureSignalLabel(row)}</code></td>
                             <td><code className="ide-verify-mismatch-expected">{row.expected}</code></td>
                             <td><code className="ide-verify-mismatch-actual--fail">{row.actual}</code></td>
-                            {onFixPath && (
+                          {onFixPath && (
                               <td>
                                 <button
                                   type="button"
                                   className="ide-verify-mismatch-fix-btn"
                                   onClick={(event) => {
                                     event.stopPropagation();
-                                    onFixPath({ signal: row.signal, tick: row.tick, expected: row.expected, actual: row.actual });
-                                    onGoToDesign?.();
+                                    reviewFailureInVerify(row);
                                   }}
-                                  title={`Fix ${row.signal} in Design`}
+                                  title={`Review ${getFailureSignalLabel(row)} in Verify`}
                                 >
-                                  Fix →
+                                  Review
                                 </button>
                               </td>
                             )}
@@ -5013,7 +5136,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     >
                       <span className="ide-verify-fix-expectation-label">
                         t{selectedFailure.tick} · <code>{selectedFailure.signal}</code>
-                        {' '}asserted <code>{selectedFailure.expected}</code>
+                        {' '}expected <code>{selectedFailure.expected}</code>
                         {', '}observed <code>{selectedFailure.actual}</code>
                       </span>
                       <button
@@ -5027,7 +5150,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           )
                         }
                         data-testid="ide-verify-fix-expectation-btn"
-                        title={`Set expected ${selectedFailure.signal} = ${selectedFailure.actual} for this authored row`}
+                        title={`Set expected ${getFailureSignalLabel(selectedFailure)} = ${selectedFailure.actual} for this authored row`}
                       >
                         Accept {selectedFailure.actual} as expected
                       </button>
@@ -5057,7 +5180,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   kmaps={kmapRows}
                   kmapUnavailableReason={kmapUnavailableReason ?? undefined}
                   traceInputsByTick={traceInputsByTick}
-                  onFixPath={onFixPath ? (row) => onFixPath({ signal: row.signal, tick: row.tick, expected: row.expected, actual: row.actual }) : undefined}
+                  onFixPath={(row) => reviewFailureInVerify(row)}
                   onSelectFailureCase={(failure) => applyFailureSelection(failure)}
                   showModeToggle={true}
                   displaySection="truth"
@@ -5080,7 +5203,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   kmaps={kmapRows}
                   kmapUnavailableReason={kmapUnavailableReason ?? undefined}
                   traceInputsByTick={traceInputsByTick}
-                  onFixPath={onFixPath ? (row) => onFixPath({ signal: row.signal, tick: row.tick, expected: row.expected, actual: row.actual }) : undefined}
+                  onFixPath={(row) => reviewFailureInVerify(row)}
                   onSelectFailureCase={(failure) => applyFailureSelection(failure)}
                   showModeToggle={true}
                   displaySection="kmap"
@@ -5189,26 +5312,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     <strong>Authoritative:</strong>{' '}
                     {isRunStale
                       ? `the waveform below belongs to build ${shortenHash(lastRun.deterministicHash)}, while the current circuit is ${shortenHash(deterministicHash)}.`
-                      : 'pass/fail comes from this deterministic Verify run. Design trace is for debug only and does not affect trust status.'}
+                      : 'the compare result comes from this deterministic Verify run. Design trace is for debug only and does not affect trust status.'}
                   </p>
                 </div>
                 <div className="ide-verify-run-proof-actions">
                   {assertionMode && displayStatus === 'FAIL' && failingRows.length > 0 && (
                     <>
-                      <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-run-proof-inspect">
-                        Inspect first mismatch
-                      </IdeButton>
                       {onGoToDesign && (
                         <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-verify-run-proof-design">
                           Back to Design
                         </IdeButton>
                       )}
                     </>
-                  )}
-                  {displayStatus === 'TRACE' && canSetOracle && (
-                    <IdeButton tone="primary" onClick={handleSetOracleExpected} testId="ide-verify-run-proof-oracle">
-                      Capture observed outputs as expected
-                    </IdeButton>
                   )}
                 </div>
               </div>
@@ -5280,6 +5395,15 @@ function createDraftInputs(inputFields: VerifyVectorDraftInput[]): Record<string
   }, {});
 }
 
+function createDraftExpected(
+  outputFields: VerifyVectorDraftInput[]
+): Record<string, VerifyExpectedDraftValue> {
+  return outputFields.reduce<Record<string, VerifyExpectedDraftValue>>((acc, field) => {
+    acc[field.id] = '';
+    return acc;
+  }, {});
+}
+
 function withInputFieldDefaults(
   current: Record<string, '0' | '1'>,
   inputFields: VerifyVectorDraftInput[]
@@ -5289,6 +5413,42 @@ function withInputFieldDefaults(
     next[field.id] = current[field.id] === '1' ? '1' : '0';
   }
   return next;
+}
+
+function withExpectedFieldDefaults(
+  current: Record<string, VerifyExpectedDraftValue>,
+  outputFields: VerifyVectorDraftInput[]
+): Record<string, VerifyExpectedDraftValue> {
+  const next: Record<string, VerifyExpectedDraftValue> = {};
+  for (const field of outputFields) {
+    const currentValue = current[field.id];
+    next[field.id] = currentValue === '1' ? '1' : currentValue === '0' ? '0' : '';
+  }
+  return next;
+}
+
+function buildExpectedRecord(
+  outputFields: VerifyVectorDraftInput[],
+  draftExpected: Record<string, VerifyExpectedDraftValue>
+): Record<string, 0 | 1> {
+  return outputFields.reduce<Record<string, 0 | 1>>((acc, field) => {
+    const value = draftExpected[field.id];
+    if (value === '0' || value === '1') {
+      acc[field.id] = value === '1' ? 1 : 0;
+    }
+    return acc;
+  }, {});
+}
+
+function expectedRecordToDraftState(
+  expected: Record<string, 0 | 1>,
+  outputFields: VerifyVectorDraftInput[]
+): Record<string, VerifyExpectedDraftValue> {
+  return outputFields.reduce<Record<string, VerifyExpectedDraftValue>>((acc, field) => {
+    acc[field.id] =
+      expected[field.id] === 1 ? '1' : expected[field.id] === 0 ? '0' : '';
+    return acc;
+  }, {});
 }
 
 function normalizeBit(value: unknown): 0 | 1 {

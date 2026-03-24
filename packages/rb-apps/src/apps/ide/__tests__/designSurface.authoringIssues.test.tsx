@@ -139,16 +139,17 @@ afterEach(() => {
 });
 
 describe('DesignSurface authoring issues', () => {
-  it('renders the authoring issues strip with prioritized errors before warnings', async () => {
+  it('renders a compact authoring status row and keeps draft wiring issues non-blocking', async () => {
     const view = renderSurface();
 
     await waitFor(() => {
       expect(view.getByTestId('ide-design-authoring-issues')).toBeTruthy();
     });
 
-    expect(view.getByTestId('ide-design-authoring-issues-errors').textContent).toContain('1 errors');
-    expect(view.getByTestId('ide-design-authoring-issues-warnings').textContent).toContain('1 warnings');
-    expect(view.getByTestId('ide-design-authoring-issue-0').textContent).toContain('Output has no driver');
+    expect(view.getByTestId('ide-design-authoring-issues-errors').textContent).toContain('0 errors');
+    expect(view.getByTestId('ide-design-authoring-issues-warnings').textContent).toContain('0 warnings');
+    expect(view.getByTestId('ide-design-authoring-issues-drafts').textContent).toContain('2 drafts');
+    expect(view.getByTestId('ide-design-authoring-issue-0').textContent).toContain('Output not wired yet');
   });
 
   it('focus action selects the affected node and routes inspector focus to the issue port', async () => {
@@ -180,7 +181,7 @@ describe('DesignSurface authoring issues', () => {
     const currentValue = view.getByTestId('ide-design-context-current');
     const position = issueBlock.compareDocumentPosition(currentValue);
 
-    expect(issueBlock.textContent).toContain('Output has no driver');
+    expect(issueBlock.textContent).toContain('Output not wired yet');
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 

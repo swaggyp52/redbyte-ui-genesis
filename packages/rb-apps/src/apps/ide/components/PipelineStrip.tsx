@@ -27,7 +27,7 @@ interface StageConfig {
 
 const STAGES: StageConfig[] = [
   { key: 'design', mode: 'design', letter: 'D', label: 'Design', blockerCodes: ['RBP1000', 'RBP1001'] },
-  { key: 'verify', mode: 'verify', letter: 'V', label: 'Verify', blockerCodes: ['RBP1003'] },
+  { key: 'verify', mode: 'verify', letter: 'V', label: 'Verify', blockerCodes: [] },
   { key: 'hardware', mode: 'hardware', letter: 'H', label: 'Hardware', blockerCodes: [] },
   { key: 'export', mode: 'export', letter: 'E', label: 'Export', blockerCodes: ['RBP2001'] },
 ];
@@ -47,7 +47,7 @@ function deriveStageStatus(
     case 'design':
       return !codes.has('RBP1000') && !codes.has('RBP1001') ? 'pass' : 'pending';
     case 'verify':
-      return health.lastVerify?.status === 'pass' && !health.dirtySinceVerify ? 'pass' : 'pending';
+      return health.lastVerify && !health.dirtySinceVerify ? 'pass' : 'pending';
     case 'hardware':
       // Hardware has no strong pass signal in the health model yet — keep pending unless verify passes
       return 'pending';
@@ -167,7 +167,7 @@ export const PipelineStrip: React.FC<PipelineStripProps> = ({
           </IdeButton>
         ) : !primaryBlocker ? (
           <span className="ide-pipeline-all-pass" data-testid="ide-guided-ready">
-            All stages passing
+            All stages current
           </span>
         ) : null}
 

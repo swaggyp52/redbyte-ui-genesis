@@ -7,7 +7,7 @@ function makeCircuit(nodes: Circuit['nodes'], connections: Circuit['connections'
 }
 
 describe('computeDesignIssues', () => {
-  it('detects an unconnected AND input from canonical metadata', () => {
+  it('detects an unconnected AND input from canonical metadata as a draft authoring issue', () => {
     const circuit = makeCircuit(
       [
         { id: 'sw0', type: 'INPUT', position: { x: 0, y: 0 }, rotation: 0, config: {}, state: {} },
@@ -26,11 +26,12 @@ describe('computeDesignIssues', () => {
 
     expect(issues).toHaveLength(1);
     expect(issues[0]?.kind).toBe('unconnected-input');
-    expect(issues[0]?.severity).toBe('warn');
+    expect(issues[0]?.severity).toBe('draft');
+    expect(issues[0]?.blocking).toBe(false);
     expect(issues[0]?.focusTarget).toEqual({ nodeId: 'and0', portKey: 'b' });
   });
 
-  it('detects floating OUTPUT nodes as errors', () => {
+  it('detects floating OUTPUT nodes as draft issues instead of blocking errors', () => {
     const circuit = makeCircuit([
       { id: 'out0', type: 'OUTPUT', position: { x: 0, y: 0 }, rotation: 0, config: {}, state: {} },
     ]);
@@ -40,8 +41,31 @@ describe('computeDesignIssues', () => {
 
     expect(issues).toHaveLength(1);
     expect(issues[0]?.kind).toBe('floating-output');
-    expect(issues[0]?.severity).toBe('error');
+    expect(issues[0]?.severity).toBe('draft');
+    expect(issues[0]?.blocking).toBe(false);
     expect(issues[0]?.focusTarget).toEqual({ nodeId: 'out0', portKey: 'in' });
+  });
+
+  it('clears a floating output draft issue after the output is wired', () => {
+    const floatingCircuit = makeCircuit([
+      { id: 'sw0', type: 'INPUT', position: { x: 0, y: 0 }, rotation: 0, config: {}, state: {} },
+      { id: 'out0', type: 'OUTPUT', position: { x: 80, y: 0 }, rotation: 0, config: {}, state: {} },
+    ]);
+    const wiredCircuit = makeCircuit(
+      [
+        { id: 'sw0', type: 'INPUT', position: { x: 0, y: 0 }, rotation: 0, config: {}, state: {} },
+        { id: 'out0', type: 'OUTPUT', position: { x: 80, y: 0 }, rotation: 0, config: {}, state: {} },
+      ],
+      [
+        {
+          from: { nodeId: 'sw0', portName: 'out' },
+          to: { nodeId: 'out0', portName: 'in' },
+        },
+      ]
+    );
+
+    expect(computeDesignIssues(floatingCircuit).byNode.get('out0')?.[0]?.severity).toBe('draft');
+    expect(computeDesignIssues(wiredCircuit).byNode.get('out0') ?? []).toHaveLength(0);
   });
 
   it('uses uppercase sequential port names from metadata for DFlipFlop', () => {

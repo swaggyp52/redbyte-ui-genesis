@@ -24,7 +24,7 @@ describe('PipelineStrip export availability semantics', () => {
             {
               code: 'RBP2002',
               message: 'Project changed since last successful export.',
-              fixPath: { mode: 'export', actionLabel: 'Build Evidence Capsule' },
+              fixPath: { mode: 'export', actionLabel: 'Build Submission Package' },
             },
           ],
         }}
@@ -33,8 +33,8 @@ describe('PipelineStrip export availability semantics', () => {
       />
     );
 
-    expect(getByTestId('ide-pipeline-stage-verify')).toHaveAttribute('aria-label', 'Verify — pending');
-    expect(getByTestId('ide-pipeline-stage-export')).toHaveAttribute('aria-label', 'Export — pending');
+    expect(getByTestId('ide-pipeline-stage-verify').getAttribute('aria-label')).toBe('Verify — pending');
+    expect(getByTestId('ide-pipeline-stage-export').getAttribute('aria-label')).toBe('Export — pending');
     expect(queryByTestId('ide-guided-blocker')).toBeNull();
     expect(getByTestId('ide-guided-primary-cta').textContent).toContain('Verify');
   });

@@ -144,6 +144,24 @@ describe('DesignSurface placement mode', () => {
     expect(view.getByTestId('ide-design-live-canvas').getAttribute('data-placement-active')).toBe('0');
   });
 
+  it('keeps placement active while Shift is held so students can place multiple gates in one flow', async () => {
+    const view = renderSurface();
+
+    fireEvent.click(view.getByTestId('ide-design-palette-and'));
+    fireEvent.click(view.getByTestId('ide-design-live-canvas'), {
+      clientX: 440,
+      clientY: 260,
+      shiftKey: true,
+    });
+
+    await waitFor(() => {
+      expect(useCircuitStore.getState().circuit.nodes).toHaveLength(1);
+    });
+
+    expect(view.getByTestId('ide-design-live-canvas').getAttribute('data-placement-active')).toBe('1');
+    expect(view.getByTestId('ide-design-placement-cue').textContent).toContain('AND gate');
+  });
+
   it('cancels placement with Escape without mutating the circuit', async () => {
     const view = renderSurface();
 

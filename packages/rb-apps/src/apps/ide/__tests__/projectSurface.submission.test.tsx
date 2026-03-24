@@ -87,7 +87,7 @@ describe('ProjectSurface workspace panels', () => {
       verifyQualification: 'incomplete-mapping',
     });
 
-    const { getByTestId } = render(
+    const { getByTestId, getAllByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -107,12 +107,12 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-project-showcase-primary-cta').textContent).toContain('Continue to Hardware');
-    expect(getByTestId('ide-project-console').textContent).toContain('some output pins remain unmapped');
+    expect(getAllByTestId('ide-project-showcase-primary-cta').at(-1)?.textContent).toContain('Continue to Hardware');
+    expect(getByTestId('ide-project-console').textContent).toContain('Finish mapping before relying on hardware behavior');
   });
 
   it('keeps the hero CTA dominant while surfacing the active example context', () => {
-    const { getByTestId } = render(
+    const { getByTestId, getAllByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -147,14 +147,15 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    const showcase = getByTestId('ide-project-showcase');
-    expect(showcase.textContent).toContain('Build it, prove it, and light it up on the board.');
-    expect(getByTestId('ide-project-showcase-primary-cta').textContent).toContain('Continue to Verify');
-    expect(getByTestId('ide-project-board-preview').textContent).toContain(
+    const showcases = getAllByTestId('ide-project-showcase');
+    const showcase = showcases[showcases.length - 1];
+    expect(showcase.textContent).toContain('Signal Tour: Switches -> LEDs');
+    expect(getAllByTestId('ide-project-showcase-primary-cta').at(-1)?.textContent).toContain('Continue to Verify');
+    expect(getAllByTestId('ide-project-board-preview').at(-1)?.textContent).toContain(
       'Flip switches and the matching LEDs follow immediately.'
     );
 
-    const context = getByTestId('ide-project-context');
+    const context = getAllByTestId('ide-project-context').at(-1)!;
     expect(context.textContent).toContain('Signal Tour: Switches -> LEDs');
     expect(context.textContent).toContain('Flip switches and the matching LEDs follow immediately.');
   });
@@ -352,8 +353,6 @@ describe('ProjectSurface workspace panels', () => {
     expect(onUpdateMappingPin).toHaveBeenCalledWith('clk', 'CLK100MHZ');
     expect(onUpdateMappingPin).toHaveBeenCalledWith('seg0', 'SEG0');
     
-    const calloutList = getAllByTestId('ide-project-supported-scope-callout');
-    expect(calloutList[calloutList.length - 1].textContent).toContain('FullAdder');
   });
 
   it('keeps export available on Project even when Verify has not been trusted yet', () => {
@@ -438,7 +437,7 @@ describe('ProjectSurface workspace panels', () => {
     expect(lastList.parentElement?.textContent).toContain('…and 1 more');
   });
 
-  it('clearly explains AVAILABLE status means untrusted export files when verify incomplete', () => {
+  it('clearly explains AVAILABLE status means export files are already available when compare is advisory', () => {
     const health = deriveProjectHealth(
       {
         lastVerify: {
@@ -476,12 +475,12 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    // Check for the AVAILABLE vs TRUSTED explanation text (get last one in case others exist)
+    // Check for the AVAILABLE explanation text (get last one in case others exist)
     const explanations = getAllByTestId('ide-project-export-explanation');
     const explanation = explanations[explanations.length - 1];
     expect(explanation?.textContent || '').toContain('AVAILABLE');
-    expect(explanation?.textContent || '').toContain('not confirmed correctness');
-    expect(explanation?.textContent || '').toContain('Not a trusted handoff');
+    expect(explanation?.textContent || '').toContain('reviewed or downloaded now');
+    expect(explanation?.textContent || '').toContain('do not block export');
   });
 
   it('shows explicit trust blocker when verify passes but with incomplete mapping', () => {
@@ -522,12 +521,12 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    // Verify row should show PASS (INCOMPLETE) not just READY/PASS
+    // Verify row should show mapping-review advisory, not grading language
     const readinessItems = getAllByTestId('ide-project-readiness-summary');
     const lastReadiness = readinessItems[readinessItems.length - 1];
-    expect(lastReadiness?.textContent || '').toContain('PASS (INCOMPLETE)');
+    expect(lastReadiness?.textContent || '').toContain('MATCH (MAPPING REVIEW)');
 
-    // Export row should show AVAILABLE (not TRUSTED)
+    // Export row should stay available
     expect(lastReadiness?.textContent || '').toContain('AVAILABLE');
 
     // RBP1005 blocker should appear in the list
@@ -598,10 +597,10 @@ describe('ProjectSurface workspace panels', () => {
 
     const summaryElements = getAllByTestId('ide-project-readiness-summary');
     expect(summaryElements[summaryElements.length - 1].textContent).toContain('Verify');
-    expect(summaryElements[summaryElements.length - 1].textContent).toContain('NEEDS RUN');
+    expect(summaryElements[summaryElements.length - 1].textContent).toContain('NOT RUN');
   });
 
-  it('uses consistent stable terminology for all readiness states - export trusted', () => {
+  it('uses consistent stable terminology for all readiness states - export available', () => {
     const { getAllByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
@@ -632,6 +631,6 @@ describe('ProjectSurface workspace panels', () => {
 
     const summaryElements = getAllByTestId('ide-project-readiness-summary');
     expect(summaryElements[summaryElements.length - 1].textContent).toContain('Export');
-    expect(summaryElements[summaryElements.length - 1].textContent).toContain('TRUSTED');
+    expect(summaryElements[summaryElements.length - 1].textContent).toContain('AVAILABLE');
   });
 });

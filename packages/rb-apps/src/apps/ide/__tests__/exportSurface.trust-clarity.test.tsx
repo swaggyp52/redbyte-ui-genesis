@@ -192,7 +192,7 @@ describe('ExportSurface trust clarity', () => {
     expect(view.queryByTestId('ide-export-capsule-error')).toBeNull();
   }
 
-  it('trusted export state renders TRUSTED clearly', () => {
+  it('compare-aligned export state renders as available without blocked copy', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={buildMappedProject()}
@@ -203,25 +203,22 @@ describe('ExportSurface trust clarity', () => {
     );
 
     const banner = getByTestId('ide-export-trust-banner');
-    expect(banner.textContent).toContain('TRUSTED');
+    expect(banner.textContent).toContain('EXPORT AVAILABLE');
     expect(banner.textContent).not.toContain('BLOCKED');
-    expect(banner.textContent).not.toContain('NOT TRUSTED');
   });
 
-  it('untrusted export state names the verify blocker', () => {
+  it('advisory export state names comparison status without blocking download', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={buildMappedProject()}
         determinismHash="ide-hash"
-        // No verifyResult → AVAILABLE, NOT TRUSTED
+        // No verifyResult -> available with advisory compare state
       />
     );
 
     const banner = getByTestId('ide-export-trust-banner');
     expect(banner.textContent).toContain('AVAILABLE');
-    expect(banner.textContent).toContain('NOT TRUSTED');
-    // Must name the verification reason, not just generic text
-    expect(banner.textContent).toMatch(/[Vv]erif/);
+    expect(banner.textContent).toContain('NOT COMPARED');
   });
 
   it('mapping blocker points to Hardware', () => {
@@ -248,7 +245,7 @@ describe('ExportSurface trust clarity', () => {
         project={buildMappedProject()}
         determinismHash="ide-hash"
         onOpenVerify={onOpenVerify}
-        // No verifyResult → unverified AVAILABLE state
+        // No verifyResult -> advisory AVAILABLE state
       />
     );
 
@@ -258,23 +255,22 @@ describe('ExportSurface trust clarity', () => {
     expect(getByTestId('ide-export-trust-go-verify')).toBeTruthy();
   });
 
-  it('download-allowed-but-untrusted state is clearly labeled with consequence', () => {
+  it('download-allowed advisory state is clearly labeled with consequence', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={buildMappedProject()}
         determinismHash="ide-hash"
-        // No verifyResult → AVAILABLE, NOT TRUSTED
+        // No verifyResult -> available with advisory compare state
       />
     );
 
     const banner = getByTestId('ide-export-trust-banner');
-    // Must show AVAILABLE — not TRUSTED, not BLOCKED
+    // Must show AVAILABLE, not BLOCKED
     expect(banner.textContent).toContain('AVAILABLE');
-    expect(banner.textContent).toContain('NOT TRUSTED');
     expect(banner.textContent).not.toContain('BLOCKED');
     // Consequence language must guide student to next action
     const consequence = getByTestId('ide-export-trust-consequence');
-    expect(consequence.textContent).toMatch(/Test|PASS|trusted/i);
+    expect(consequence.textContent).toMatch(/Compare|expected-output|export/i);
     // Download button must remain enabled (not disabled) in AVAILABLE state
     expect(getByTestId('ide-export-dock-download').hasAttribute('disabled')).toBe(false);
   });
@@ -297,7 +293,7 @@ describe('ExportSurface trust clarity', () => {
     );
   });
 
-  it('lets project download complete when the last Verify PASS is stale', async () => {
+  it('lets project download complete when the last comparison-aligned run is stale', async () => {
     const project = buildMappedProject();
 
     await runProjectDownloadInView(
@@ -335,7 +331,7 @@ describe('ExportSurface trust clarity', () => {
 
     const banner = getByTestId('ide-export-trust-banner');
     expect(banner.textContent).toContain('AVAILABLE');
-    expect(banner.textContent).toContain('NOT TRUSTED');
+    expect(banner.textContent).toContain('ASSERTIONS DIFFER');
     expect(banner.textContent).not.toContain('BLOCKED');
     expect(getByTestId('ide-export-dock-download').hasAttribute('disabled')).toBe(false);
   });

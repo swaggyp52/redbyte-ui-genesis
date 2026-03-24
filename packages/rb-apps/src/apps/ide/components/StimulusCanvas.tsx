@@ -1,31 +1,15 @@
-/**
- * StimulusCanvas — horizontal timeline grid for scenario authoring.
- *
- * Row-per-signal × column-per-tick grid with click-to-toggle cells.
- * Layout constants mirror WaveformViewer: LABEL_W=140, TICK_W=48.
- *
- * - Input lanes: fully editable (click any cell to toggle 0↔1).
- * - Output lanes: read-only display of stored expected values (v1).
- *   Enable Assertions flow is Slice 6+.
- * - Clock/sequential rows: editable like any other input row.
- * - "+" column: adds a new tick at max+1.
- * - Hover tick header → reveals "×" delete affordance.
- *
- * Data contract: same VerifyAuthorVector[] as the rest of the Verify engine.
- * Immutable: all mutations return new arrays, never in-place edits.
- */
-
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { VerifyAuthorVector, VerifyVectorDraftInput } from '../surfaces/ScenarioBuilderPanel';
 
-// ── Layout constants (mirror WaveformViewer) ─────────────────────────────────
 const LABEL_W = 148;
 const TICK_W = 64;
 const ROW_H = 36;
 const GROUP_H = 22;
 const ADD_COL_W = 40;
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+type LaneKind = 'input' | 'expected';
+type PaintSession = { kind: LaneKind; value: 0 | 1 | null };
+type LaneOption = { key: string; kind: LaneKind; fieldId: string; label: string };
 
 export interface StimulusCanvasProps {
   inputFields: VerifyVectorDraftInput[];
@@ -34,89 +18,116 @@ export interface StimulusCanvasProps {
   onVectorsChange: (vectors: VerifyAuthorVector[]) => void;
 }
 
-// ── Pure helpers ─────────────────────────────────────────────────────────────
-
 function makeId(): string {
   return `sc_${Math.random().toString(36).slice(2, 9)}`;
 }
 
-/** Sorted deduplicated tick list from vectors. */
+function sortVectors(vectors: VerifyAuthorVector[]): VerifyAuthorVector[] {
+  return [...vectors].sort((a, b) => a.tick - b.tick);
+}
+
 function uniqueSortedTicks(vectors: VerifyAuthorVector[]): number[] {
-  return [...new Set(vectors.map((v) => v.tick))].sort((a, b) => a - b);
+  return [...new Set(vectors.map((vector) => vector.tick))].sort((a, b) => a - b);
 }
 
-/** Get stored input cell value for (tick, fieldId). Default 0. */
-function getInputValue(
+function emptyInputs(inputFields: VerifyVectorDraftInput[]): Record<string, 0 | 1> {
+  const next: Record<string, 0 | 1> = {};
+  for (const field of inputFields) next[field.id] = 0;
+  return next;
+}
+
+function ensureTick(
   vectors: VerifyAuthorVector[],
-  tick: number,
-  fieldId: string,
-): 0 | 1 {
-  return vectors.find((v) => v.tick === tick)?.inputs[fieldId] ?? 0;
+  inputFields: VerifyVectorDraftInput[],
+  tick: number
+): VerifyAuthorVector[] {
+  if (vectors.some((vector) => vector.tick === tick)) return vectors;
+  return sortVectors([
+    ...vectors,
+    { id: makeId(), tick, inputs: emptyInputs(inputFields), expected: {} },
+  ]);
 }
 
-/** Get stored expected cell value for (tick, fieldId). null = not set. */
+function ensureTicks(
+  vectors: VerifyAuthorVector[],
+  inputFields: VerifyVectorDraftInput[],
+  ticks: number[]
+): VerifyAuthorVector[] {
+  return ticks.reduce((current, tick) => ensureTick(current, inputFields, tick), vectors);
+}
+
+function getInputValue(vectors: VerifyAuthorVector[], tick: number, fieldId: string): 0 | 1 {
+  return vectors.find((vector) => vector.tick === tick)?.inputs[fieldId] ?? 0;
+}
+
 function getExpectedValue(
   vectors: VerifyAuthorVector[],
   tick: number,
-  fieldId: string,
+  fieldId: string
 ): 0 | 1 | null {
-  const vec = vectors.find((v) => v.tick === tick);
-  if (!vec) return null;
-  const val = vec.expected[fieldId];
-  return val != null ? val : null;
+  const value = vectors.find((vector) => vector.tick === tick)?.expected[fieldId];
+  return value == null ? null : value;
 }
 
-/**
- * Toggle input cell at (tick, fieldId).
- * If no vector exists at tick, materialises one with all inputs at 0.
- */
-function toggleInputCell(
+function setInputValue(
   vectors: VerifyAuthorVector[],
   inputFields: VerifyVectorDraftInput[],
   tick: number,
   fieldId: string,
+  value: 0 | 1
 ): VerifyAuthorVector[] {
-  const current = getInputValue(vectors, tick, fieldId);
-  const next: 0 | 1 = current === 0 ? 1 : 0;
-  const existing = vectors.find((v) => v.tick === tick);
-  if (existing) {
-    return vectors.map((v) =>
-      v.tick === tick ? { ...v, inputs: { ...v.inputs, [fieldId]: next } } : v,
-    );
-  }
-  // Materialise new vector at this tick
-  const inputs: Record<string, 0 | 1> = {};
-  for (const f of inputFields) inputs[f.id] = 0;
-  inputs[fieldId] = next;
-  return [...vectors, { id: makeId(), tick, inputs, expected: {} }].sort(
-    (a, b) => a.tick - b.tick,
+  return ensureTick(vectors, inputFields, tick).map((vector) =>
+    vector.tick === tick ? { ...vector, inputs: { ...vector.inputs, [fieldId]: value } } : vector
   );
 }
 
-/** Append a new tick column after the current maximum tick. */
-function appendTick(
+function setExpectedValue(
   vectors: VerifyAuthorVector[],
   inputFields: VerifyVectorDraftInput[],
-): VerifyAuthorVector[] {
-  const maxTick =
-    vectors.length > 0 ? Math.max(...vectors.map((v) => v.tick)) : -1;
-  const inputs: Record<string, 0 | 1> = {};
-  for (const f of inputFields) inputs[f.id] = 0;
-  return [
-    ...vectors,
-    { id: makeId(), tick: maxTick + 1, inputs, expected: {} },
-  ];
-}
-
-/** Remove all vectors at the given tick. */
-function removeTick(
-  vectors: VerifyAuthorVector[],
   tick: number,
+  fieldId: string,
+  value: 0 | 1 | null
 ): VerifyAuthorVector[] {
-  return vectors.filter((v) => v.tick !== tick);
+  return ensureTick(vectors, inputFields, tick).map((vector) => {
+    if (vector.tick !== tick) return vector;
+    const expected = { ...vector.expected };
+    if (value == null) delete expected[fieldId];
+    else expected[fieldId] = value;
+    return { ...vector, expected };
+  });
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+function appendTick(
+  vectors: VerifyAuthorVector[],
+  inputFields: VerifyVectorDraftInput[]
+): VerifyAuthorVector[] {
+  const ticks = uniqueSortedTicks(vectors);
+  return ensureTick(vectors, inputFields, ticks.length > 0 ? ticks[ticks.length - 1] + 1 : 0);
+}
+
+function removeTick(vectors: VerifyAuthorVector[], tick: number): VerifyAuthorVector[] {
+  return vectors.filter((vector) => vector.tick !== tick);
+}
+
+function duplicateTick(
+  vectors: VerifyAuthorVector[],
+  inputFields: VerifyVectorDraftInput[],
+  tick: number
+): VerifyAuthorVector[] {
+  const source = vectors.find((vector) => vector.tick === tick);
+  if (!source) return vectors;
+  const shifted = vectors.map((vector) => (vector.tick > tick ? { ...vector, tick: vector.tick + 1 } : vector));
+  return sortVectors([
+    ...shifted,
+    { ...source, id: makeId(), tick: tick + 1, inputs: { ...source.inputs }, expected: { ...source.expected } },
+  ]);
+}
+
+function buildOperationTicks(vectors: VerifyAuthorVector[], minimumCount: number): number[] {
+  const ticks = uniqueSortedTicks(vectors);
+  if (ticks.length > 0) return ticks;
+  return Array.from({ length: Math.max(1, minimumCount) }, (_, index) => index);
+}
 
 export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   inputFields,
@@ -124,340 +135,271 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   authoredVectors,
   onVectorsChange,
 }) => {
+  const latestVectorsRef = useRef(authoredVectors);
   const [hoveredTick, setHoveredTick] = useState<number | null>(null);
-  const ticks = uniqueSortedTicks(authoredVectors);
-  const hasOutputs = outputFields.length > 0;
+  const [selectedTick, setSelectedTick] = useState(0);
+  const [selectedLaneKey, setSelectedLaneKey] = useState('');
+  const [paintSession, setPaintSession] = useState<PaintSession | null>(null);
+
+  useEffect(() => {
+    latestVectorsRef.current = authoredVectors;
+  }, [authoredVectors]);
+
+  useEffect(() => {
+    const stopPainting = () => setPaintSession(null);
+    window.addEventListener('pointerup', stopPainting);
+    return () => window.removeEventListener('pointerup', stopPainting);
+  }, []);
+
+  const ticks = useMemo(() => uniqueSortedTicks(authoredVectors), [authoredVectors]);
   const totalW = LABEL_W + ticks.length * TICK_W + ADD_COL_W;
+  const laneOptions = useMemo<LaneOption[]>(
+    () => [
+      ...inputFields.map((field) => ({ key: `input:${field.id}`, kind: 'input' as const, fieldId: field.id, label: field.label })),
+      ...outputFields.map((field) => ({ key: `expected:${field.id}`, kind: 'expected' as const, fieldId: field.id, label: field.label })),
+    ],
+    [inputFields, outputFields]
+  );
+  const selectedLane = laneOptions.find((option) => option.key === selectedLaneKey) ?? laneOptions[0] ?? null;
 
-  const handleCellClick = useCallback(
-    (tick: number, fieldId: string) => {
-      onVectorsChange(toggleInputCell(authoredVectors, inputFields, tick, fieldId));
+  useEffect(() => {
+    setSelectedTick((previous) => (ticks.length === 0 ? 0 : ticks.includes(previous) ? previous : ticks[0]));
+  }, [ticks]);
+
+  useEffect(() => {
+    setSelectedLaneKey((previous) =>
+      previous && laneOptions.some((option) => option.key === previous) ? previous : laneOptions[0]?.key ?? ''
+    );
+  }, [laneOptions]);
+
+  const commitVectors = useCallback(
+    (recipe: (vectors: VerifyAuthorVector[]) => VerifyAuthorVector[]) => {
+      const nextVectors = recipe(latestVectorsRef.current);
+      latestVectorsRef.current = nextVectors;
+      onVectorsChange(nextVectors);
     },
-    [authoredVectors, inputFields, onVectorsChange],
+    [onVectorsChange]
   );
 
-  const handleAddTick = useCallback(() => {
-    onVectorsChange(appendTick(authoredVectors, inputFields));
-  }, [authoredVectors, inputFields, onVectorsChange]);
+  const handleRowFill = useCallback((value: 0 | 1) => {
+    if (!selectedLane) return;
+    const targetTicks = buildOperationTicks(latestVectorsRef.current, 1);
+    commitVectors((vectors) => {
+      let next = ensureTicks(vectors, inputFields, targetTicks);
+      for (const tick of targetTicks) {
+        next =
+          selectedLane.kind === 'input'
+            ? setInputValue(next, inputFields, tick, selectedLane.fieldId, value)
+            : setExpectedValue(next, inputFields, tick, selectedLane.fieldId, value);
+      }
+      return next;
+    });
+  }, [commitVectors, inputFields, selectedLane]);
 
-  const handleDeleteTick = useCallback(
-    (tick: number) => {
-      onVectorsChange(removeTick(authoredVectors, tick));
-    },
-    [authoredVectors, onVectorsChange],
-  );
+  const handleRowToggle = useCallback(() => {
+    if (!selectedLane || selectedLane.kind !== 'input') return;
+    const targetTicks = buildOperationTicks(latestVectorsRef.current, 1);
+    commitVectors((vectors) => {
+      let next = ensureTicks(vectors, inputFields, targetTicks);
+      for (const tick of targetTicks) {
+        const value: 0 | 1 = getInputValue(next, tick, selectedLane.fieldId) === 0 ? 1 : 0;
+        next = setInputValue(next, inputFields, tick, selectedLane.fieldId, value);
+      }
+      return next;
+    });
+  }, [commitVectors, inputFields, selectedLane]);
+
+  const handleExpectedClear = useCallback(() => {
+    if (!selectedLane || selectedLane.kind !== 'expected') return;
+    const targetTicks = buildOperationTicks(latestVectorsRef.current, 1);
+    commitVectors((vectors) => {
+      let next = ensureTicks(vectors, inputFields, targetTicks);
+      for (const tick of targetTicks) {
+        next = setExpectedValue(next, inputFields, tick, selectedLane.fieldId, null);
+      }
+      return next;
+    });
+  }, [commitVectors, inputFields, selectedLane]);
+
+  const handleInputPattern = useCallback((resolver: (index: number) => 0 | 1) => {
+    if (!selectedLane || selectedLane.kind !== 'input') return;
+    const targetTicks = buildOperationTicks(latestVectorsRef.current, 4);
+    commitVectors((vectors) => {
+      let next = ensureTicks(vectors, inputFields, targetTicks);
+      targetTicks.forEach((tick, index) => {
+        next = setInputValue(next, inputFields, tick, selectedLane.fieldId, resolver(index));
+      });
+      return next;
+    });
+  }, [commitVectors, inputFields, selectedLane]);
+
+  const handleBinaryCount = useCallback(() => {
+    const targetTicks = buildOperationTicks(
+      latestVectorsRef.current,
+      Math.min(8, Math.max(4, 1 << Math.min(inputFields.length, 3)))
+    );
+    commitVectors((vectors) => {
+      let next = ensureTicks(vectors, inputFields, targetTicks);
+      targetTicks.forEach((tick, tickIndex) => {
+        inputFields.forEach((field, fieldIndex) => {
+          const shift = inputFields.length - fieldIndex - 1;
+          const value: 0 | 1 = ((tickIndex >> shift) & 1) === 1 ? 1 : 0;
+          next = setInputValue(next, inputFields, tick, field.id, value);
+        });
+      });
+      return next;
+    });
+  }, [commitVectors, inputFields]);
+
+  const handleColumnChange = useCallback((mode: 'fill0' | 'fill1' | 'toggle') => {
+    commitVectors((vectors) => {
+      let next = ensureTick(vectors, inputFields, selectedTick);
+      for (const field of inputFields) {
+        const value =
+          mode === 'fill0'
+            ? 0
+            : mode === 'fill1'
+              ? 1
+              : getInputValue(next, selectedTick, field.id) === 0
+                ? 1
+                : 0;
+        next = setInputValue(next, inputFields, selectedTick, field.id, value);
+      }
+      return next;
+    });
+  }, [commitVectors, inputFields, selectedTick]);
+
+  const handleInputPointerDown = useCallback((tick: number, fieldId: string) => {
+    const value: 0 | 1 = getInputValue(latestVectorsRef.current, tick, fieldId) === 0 ? 1 : 0;
+    setSelectedTick(tick);
+    setSelectedLaneKey(`input:${fieldId}`);
+    commitVectors((vectors) => setInputValue(vectors, inputFields, tick, fieldId, value));
+    setPaintSession({ kind: 'input', value });
+  }, [commitVectors, inputFields]);
+
+  const handleExpectedPointerDown = useCallback((tick: number, fieldId: string) => {
+    const current = getExpectedValue(latestVectorsRef.current, tick, fieldId);
+    const value: 0 | 1 | null = current == null ? 0 : current === 0 ? 1 : null;
+    setSelectedTick(tick);
+    setSelectedLaneKey(`expected:${fieldId}`);
+    commitVectors((vectors) => setExpectedValue(vectors, inputFields, tick, fieldId, value));
+    setPaintSession({ kind: 'expected', value });
+  }, [commitVectors, inputFields]);
 
   if (inputFields.length === 0) {
-    return (
-      <p
-        className="ide-stimulus-empty"
-        data-testid="ide-stimulus-empty"
-        style={{ color: 'var(--rb-text-secondary)', fontSize: '0.82em', margin: '8px 0', fontStyle: 'italic' }}
-      >
-        No IO mapping — add inputs in the Hardware surface first.
-      </p>
-    );
+    return <p className="ide-stimulus-empty" data-testid="ide-stimulus-empty">No IO mapping - add inputs in the Hardware surface first.</p>;
   }
 
   return (
-    <div
-      className="ide-stimulus-canvas"
-      data-testid="ide-stimulus-canvas"
-      style={{ overflowX: 'auto', userSelect: 'none' }}
-    >
+    <div className="ide-stimulus-canvas" data-testid="ide-stimulus-canvas" style={{ overflowX: 'auto', userSelect: 'none' }}>
+      <div className="ide-stimulus-toolbar" data-testid="ide-stimulus-toolbar">
+        <div className="ide-stimulus-toolbar-group">
+          <span className="ide-stimulus-toolbar-label">Row tools</span>
+          <select className="ide-stimulus-target-select" value={selectedLane?.key ?? ''} onChange={(event) => setSelectedLaneKey(event.target.value)} data-testid="ide-stimulus-row-target">
+            {laneOptions.map((option) => <option key={option.key} value={option.key}>{option.kind === 'input' ? 'Stimulus' : 'Expected'}: {option.label}</option>)}
+          </select>
+          <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(0)} data-testid="ide-stimulus-row-fill-0">Fill 0</button>
+          <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(1)} data-testid="ide-stimulus-row-fill-1">Fill 1</button>
+          {selectedLane?.kind === 'input' ? (
+            <>
+              <button type="button" className="ide-stimulus-mini-btn" onClick={handleRowToggle} data-testid="ide-stimulus-row-toggle">Toggle</button>
+              <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleInputPattern((index) => index % 2 === 0 ? 0 : 1)} data-testid="ide-stimulus-pattern-alternating">Alternating</button>
+              <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleInputPattern((index) => index % 2 === 0 ? 0 : 1)} data-testid="ide-stimulus-pattern-clock">Clock pattern</button>
+            </>
+          ) : (
+            <button type="button" className="ide-stimulus-mini-btn" onClick={handleExpectedClear} data-testid="ide-stimulus-row-clear">Clear</button>
+          )}
+        </div>
+        <div className="ide-stimulus-toolbar-group">
+          <span className="ide-stimulus-toolbar-label">Tick tools</span>
+          <select className="ide-stimulus-target-select" value={String(selectedTick)} onChange={(event) => setSelectedTick(Number(event.target.value || '0'))} data-testid="ide-stimulus-tick-target">
+            {(ticks.length > 0 ? ticks : [0]).map((tick) => <option key={tick} value={tick}>t{tick}</option>)}
+          </select>
+          <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('fill0')} data-testid="ide-stimulus-column-fill-0">Fill 0</button>
+          <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('fill1')} data-testid="ide-stimulus-column-fill-1">Fill 1</button>
+          <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('toggle')} data-testid="ide-stimulus-column-toggle">Toggle</button>
+          <button type="button" className="ide-stimulus-mini-btn" onClick={() => { commitVectors((vectors) => duplicateTick(vectors, inputFields, selectedTick)); setSelectedTick((value) => value + 1); }} data-testid="ide-stimulus-duplicate-tick">Duplicate</button>
+          <button type="button" className="ide-stimulus-mini-btn" onClick={() => commitVectors((vectors) => removeTick(vectors, selectedTick))} disabled={ticks.length === 0} data-testid="ide-stimulus-delete-selected-tick">Delete</button>
+        </div>
+        <div className="ide-stimulus-toolbar-group">
+          <span className="ide-stimulus-toolbar-label">Patterns</span>
+          <button type="button" className="ide-stimulus-mini-btn" onClick={handleBinaryCount} data-testid="ide-stimulus-pattern-binary">Binary count</button>
+          <button type="button" className="ide-stimulus-mini-btn" onClick={() => commitVectors((vectors) => appendTick(vectors, inputFields))} data-testid="ide-stimulus-add-tick">Add tick</button>
+          <span className="ide-stimulus-toolbar-note">Drag across cells to paint</span>
+        </div>
+      </div>
       <div style={{ minWidth: totalW, position: 'relative' }}>
-
-        {/* ── Tick header row ─────────────────────────────────────────── */}
-        <div
-          className="ide-stimulus-row ide-stimulus-row--header"
-          style={{ display: 'flex', height: GROUP_H + 8, alignItems: 'center' }}
-        >
+        <div className="ide-stimulus-row ide-stimulus-row--header" style={{ display: 'flex', height: GROUP_H + 8, alignItems: 'center' }}>
           <div style={{ width: LABEL_W, flexShrink: 0 }} />
           {ticks.map((tick) => (
-            <div
-              key={tick}
-              style={{
-                width: TICK_W,
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-                fontSize: '0.72em',
-                color: 'var(--rb-text-secondary)',
-                fontFamily: 'var(--rb-font-mono, monospace)',
-                cursor: 'default',
-              }}
-              onMouseEnter={() => setHoveredTick(tick)}
-              onMouseLeave={() => setHoveredTick(null)}
-            >
+            <div key={tick} className={`ide-stimulus-tick-header${selectedTick === tick ? ' is-selected' : ''}`} style={{ width: TICK_W, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', fontSize: '0.72em', fontFamily: 'var(--rb-font-mono, monospace)', cursor: 'pointer' }} onMouseEnter={() => setHoveredTick(tick)} onMouseLeave={() => setHoveredTick(null)} onClick={() => setSelectedTick(tick)}>
               t{tick}
-              {hoveredTick === tick && (
-                <button
-                  onClick={() => handleDeleteTick(tick)}
-                  title={`Remove tick t${tick}`}
-                  data-testid={`ide-stimulus-delete-tick-${tick}`}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    right: 3,
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--rb-text-secondary)',
-                    fontSize: '1em',
-                    lineHeight: 1,
-                    padding: '0 2px',
-                  }}
-                >
-                  ×
-                </button>
-              )}
+              {hoveredTick === tick ? (
+                <div className="ide-stimulus-tick-actions">
+                  <button type="button" onClick={(event) => { event.stopPropagation(); commitVectors((vectors) => duplicateTick(vectors, inputFields, tick)); setSelectedTick(tick + 1); }} data-testid={`ide-stimulus-duplicate-tick-${tick}`}>+</button>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); commitVectors((vectors) => removeTick(vectors, tick)); }} data-testid={`ide-stimulus-delete-tick-${tick}`}>x</button>
+                </div>
+              ) : null}
             </div>
-          ))}
-          <div
-            style={{
-              width: ADD_COL_W,
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <button
-              onClick={handleAddTick}
-              title="Add tick column"
-              data-testid="ide-stimulus-add-tick"
-              style={{
-                background: 'none',
-                border: '1px dashed var(--rb-border)',
-                borderRadius: 3,
-                cursor: 'pointer',
-                color: 'var(--rb-text-secondary)',
-                fontSize: '0.82em',
-                width: 22,
-                height: 18,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              +
-            </button>
-          </div>
-        </div>
-
-        {/* ── Stimulus group header ────────────────────────────────────── */}
-        <div
-          className="ide-stimulus-group-header"
-          style={{ display: 'flex', height: GROUP_H, alignItems: 'center', background: 'var(--rb-surface-2, transparent)' }}
-        >
-          <div
-            style={{
-              width: LABEL_W,
-              flexShrink: 0,
-              paddingLeft: 8,
-              fontSize: '0.68em',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: 'var(--rb-text-secondary)',
-              fontFamily: 'var(--rb-font-sans, sans-serif)',
-            }}
-          >
-            Stimulus
-          </div>
-          {ticks.map((tick) => (
-            <div
-              key={tick}
-              style={{ width: TICK_W, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }}
-            />
           ))}
           <div style={{ width: ADD_COL_W, flexShrink: 0 }} />
         </div>
-
-        {/* ── Input signal rows ────────────────────────────────────────── */}
-        {inputFields.map((field, idx) => (
-          <div
-            key={field.id}
-            className={`ide-stimulus-row${idx % 2 === 1 ? ' ide-stimulus-row--stripe' : ''}`}
-            style={{ display: 'flex', height: ROW_H, alignItems: 'center' }}
-          >
-            <div
-              className="ide-stimulus-label-cell"
-              title={field.pin ? `Pin: ${field.pin}` : field.label}
-              style={{
-                width: LABEL_W,
-                flexShrink: 0,
-                paddingLeft: 8,
-                paddingRight: 4,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                fontSize: '0.8em',
-                color: 'var(--rb-text-primary)',
-                fontFamily: 'var(--rb-font-mono, monospace)',
-              }}
-            >
-              {field.label}
-              {field.pin && (
-                <code style={{ marginLeft: 4, fontSize: '0.82em', color: 'var(--rb-text-secondary)' }}>
-                  {field.pin}
-                </code>
-              )}
-            </div>
-            {ticks.length === 0 && idx === 0 ? (
-              <div
-                style={{
-                  flex: 1,
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  paddingLeft: 8,
-                  fontSize: '0.75em',
-                  color: 'var(--rb-text-secondary)',
-                  fontStyle: 'italic',
-                }}
-              >
-                Press + to add a tick →
-              </div>
-            ) : (
-              ticks.map((tick) => {
-                const val = getInputValue(authoredVectors, tick, field.id);
-                return (
-                  <button
-                    key={tick}
-                    onClick={() => handleCellClick(tick, field.id)}
-                    data-testid={`ide-stimulus-cell-${field.id}-t${tick}`}
-                    title={`${field.label} at t${tick}: ${val} — click to toggle`}
-                    style={{
-                      width: TICK_W,
-                      flexShrink: 0,
-                      height: ROW_H,
-                      border: 'none',
-                      borderLeft: '1px solid var(--rb-border)',
-                      cursor: 'pointer',
-                      background: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: 0,
-                    }}
-                  >
-                    <div
-                      className={`ide-stimulus-cell${val === 1 ? ' ide-stimulus-cell--hi' : ' ide-stimulus-cell--lo'}`}
-                      style={{
-                        width: TICK_W - 8,
-                        height: ROW_H - 10,
-                        borderRadius: 3,
-                        background: val === 1 ? 'var(--rb-accent)' : 'transparent',
-                        border: val === 0 ? '1px solid var(--rb-border)' : 'none',
-                        transition: 'background 0.1s ease',
-                      }}
-                    />
-                  </button>
-                );
-              })
-            )}
+        <div className="ide-stimulus-group-header" style={{ display: 'flex', height: GROUP_H, alignItems: 'center' }}>
+          <div style={{ width: LABEL_W, flexShrink: 0, paddingLeft: 8, fontSize: '0.68em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>Stimulus</div>
+          {ticks.map((tick) => <div key={tick} style={{ width: TICK_W, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }} />)}
+          <div style={{ width: ADD_COL_W, flexShrink: 0 }} />
+        </div>
+        {inputFields.map((field, index) => (
+          <div key={field.id} className={`ide-stimulus-row${index % 2 === 1 ? ' ide-stimulus-row--stripe' : ''}`} style={{ display: 'flex', height: ROW_H, alignItems: 'center' }}>
+            <button type="button" className={`ide-stimulus-label-cell${selectedLane?.key === `input:${field.id}` ? ' is-selected' : ''}`} onClick={() => setSelectedLaneKey(`input:${field.id}`)} data-testid={`ide-stimulus-row-select-${field.id}`} style={{ width: LABEL_W, flexShrink: 0, paddingLeft: 8, paddingRight: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.8em', color: 'var(--rb-text-primary)', fontFamily: 'var(--rb-font-mono, monospace)', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer' }}>
+              {field.label}{field.pin ? <code style={{ marginLeft: 4, fontSize: '0.82em', color: 'var(--rb-text-secondary)' }}>{field.pin}</code> : null}
+            </button>
+            {ticks.length === 0 && index === 0 ? (
+              <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', paddingLeft: 8, fontSize: '0.75em', color: 'var(--rb-text-secondary)', fontStyle: 'italic' }}>Add a tick or use a pattern to start authoring.</div>
+            ) : ticks.map((tick) => {
+              const value = getInputValue(authoredVectors, tick, field.id);
+              return (
+                <button key={tick} type="button" onPointerDown={() => handleInputPointerDown(tick, field.id)} onPointerEnter={(event) => {
+                  if (!paintSession || paintSession.kind !== 'input' || (event.buttons & 1) === 0) return;
+                  setSelectedTick(tick);
+                  setSelectedLaneKey(`input:${field.id}`);
+                  commitVectors((vectors) => setInputValue(vectors, inputFields, tick, field.id, paintSession.value as 0 | 1));
+                }} data-testid={`ide-stimulus-cell-${field.id}-t${tick}`} title={`${field.label} at t${tick}: ${value} - drag to paint`} style={{ width: TICK_W, flexShrink: 0, height: ROW_H, border: 'none', borderLeft: '1px solid var(--rb-border)', cursor: 'pointer', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                  <div className={`ide-stimulus-cell${value === 1 ? ' ide-stimulus-cell--hi' : ' ide-stimulus-cell--lo'}`} style={{ width: TICK_W - 8, height: ROW_H - 10, borderRadius: 3, background: value === 1 ? 'var(--rb-accent)' : 'transparent', border: value === 0 ? '1px solid var(--rb-border)' : 'none' }} />
+                </button>
+              );
+            })}
             <div style={{ width: ADD_COL_W, flexShrink: 0 }} />
           </div>
         ))}
-
-        {/* ── Asserted group header + output rows (read-only, v1) ───────── */}
-        {hasOutputs && (
+        {outputFields.length > 0 ? (
           <>
-            <div
-              className="ide-stimulus-group-header ide-stimulus-group-header--asserted"
-              style={{
-                display: 'flex',
-                height: GROUP_H,
-                alignItems: 'center',
-                background: 'var(--rb-surface-2, transparent)',
-              }}
-              title="Set expected values here, then enable Pass/Fail Checking in the run bar to verify your circuit."
-            >
-              <div
-                style={{
-                  width: LABEL_W,
-                  flexShrink: 0,
-                  paddingLeft: 8,
-                  fontSize: '0.68em',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  color: 'var(--rb-text-secondary)',
-                  fontFamily: 'var(--rb-font-sans, sans-serif)',
-                }}
-              >
-                Expected Outputs
-              </div>
-              {ticks.map((tick) => (
-                <div
-                  key={tick}
-                  style={{ width: TICK_W, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }}
-                />
-              ))}
+            <div className="ide-stimulus-group-header ide-stimulus-group-header--asserted" style={{ display: 'flex', height: GROUP_H, alignItems: 'center', background: 'var(--rb-surface-2, transparent)' }}>
+              <div style={{ width: LABEL_W, flexShrink: 0, paddingLeft: 8, fontSize: '0.68em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>Expected outputs</div>
+              {ticks.map((tick) => <div key={tick} style={{ width: TICK_W, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }} />)}
               <div style={{ width: ADD_COL_W, flexShrink: 0 }} />
             </div>
-
             {outputFields.map((field) => (
-              <div
-                key={field.id}
-                className="ide-stimulus-row ide-stimulus-row--output"
-                style={{ display: 'flex', height: ROW_H, alignItems: 'center', opacity: 0.75 }}
-              >
-                <div
-                  style={{
-                    width: LABEL_W,
-                    flexShrink: 0,
-                    paddingLeft: 8,
-                    paddingRight: 4,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    fontSize: '0.8em',
-                    color: 'var(--rb-text-secondary)',
-                    fontStyle: 'italic',
-                    fontFamily: 'var(--rb-font-mono, monospace)',
-                  }}
-                >
-                  {field.label}
-                </div>
+              <div key={field.id} className="ide-stimulus-row ide-stimulus-row--output" style={{ display: 'flex', height: ROW_H, alignItems: 'center' }}>
+                <button type="button" className={`ide-stimulus-label-cell ide-stimulus-label-cell--expected${selectedLane?.key === `expected:${field.id}` ? ' is-selected' : ''}`} onClick={() => setSelectedLaneKey(`expected:${field.id}`)} data-testid={`ide-stimulus-row-select-${field.id}`} style={{ width: LABEL_W, flexShrink: 0, paddingLeft: 8, paddingRight: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.8em', color: 'var(--rb-text-secondary)', fontStyle: 'italic', fontFamily: 'var(--rb-font-mono, monospace)', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer' }}>{field.label}</button>
                 {ticks.map((tick) => {
-                  const exp = getExpectedValue(authoredVectors, tick, field.id);
+                  const value = getExpectedValue(authoredVectors, tick, field.id);
                   return (
-                    <div
-                      key={tick}
-                      title={`${field.label} at t${tick}: ${exp != null ? exp : 'not set'} — enable Assertions to author expected values`}
-                      style={{
-                        width: TICK_W,
-                        flexShrink: 0,
-                        height: ROW_H,
-                        borderLeft: '1px solid var(--rb-border)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      {exp != null ? (
-                        <div
-                          style={{
-                            width: TICK_W - 8,
-                            height: ROW_H - 10,
-                            borderRadius: 3,
-                            background: exp === 1 ? 'var(--rb-accent)' : 'transparent',
-                            border: exp === 0 ? '1px solid var(--rb-border)' : 'none',
-                          }}
-                        />
-                      ) : (
-                        <span style={{ fontSize: '0.72em', color: 'var(--rb-text-secondary)' }}>—</span>
-                      )}
-                    </div>
+                    <button key={tick} type="button" onPointerDown={() => handleExpectedPointerDown(tick, field.id)} onPointerEnter={(event) => {
+                      if (!paintSession || paintSession.kind !== 'expected' || (event.buttons & 1) === 0) return;
+                      setSelectedTick(tick);
+                      setSelectedLaneKey(`expected:${field.id}`);
+                      commitVectors((vectors) => setExpectedValue(vectors, inputFields, tick, field.id, paintSession.value));
+                    }} data-testid={`ide-stimulus-expected-${field.id}-t${tick}`} title={`${field.label} at t${tick}: ${value != null ? value : 'not set'} - drag to paint`} style={{ width: TICK_W, flexShrink: 0, height: ROW_H, borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderLeft: '1px solid var(--rb-border)', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
+                      {value != null ? <div style={{ width: TICK_W - 8, height: ROW_H - 10, borderRadius: 3, background: value === 1 ? 'var(--rb-accent)' : 'transparent', border: value === 0 ? '1px solid var(--rb-border)' : 'none' }} /> : <span style={{ fontSize: '0.72em', color: 'var(--rb-text-secondary)' }}>-</span>}
+                    </button>
                   );
                 })}
                 <div style={{ width: ADD_COL_W, flexShrink: 0 }} />
               </div>
             ))}
           </>
-        )}
+        ) : null}
       </div>
     </div>
   );

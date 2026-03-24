@@ -60,7 +60,7 @@ function makeHealth(overrides: Partial<ProjectHealth> = {}): ProjectHealth {
       {
         code: 'RBP2002',
         message: 'Project changed since last successful export.',
-        fixPath: { mode: 'export', actionLabel: 'Build Evidence Capsule' },
+        fixPath: { mode: 'export', actionLabel: 'Build Submission Package' },
       },
     ],
     ...overrides,
@@ -114,7 +114,7 @@ describe('HardwareSurface readiness', () => {
   });
 
   it('warns when verification is current but the export bundle is stale', () => {
-    const { getByTestId } = render(
+    const { getAllByTestId, getByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Fresh Verify, Stale Export"
@@ -136,7 +136,7 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    fireEvent.click(getByTestId('ide-hw-mode-btn-proof'));
+    fireEvent.click(getAllByTestId('ide-hw-mode-btn-proof').at(-1)!);
 
     expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain(
       'bundle was built from an older version'
@@ -150,7 +150,7 @@ describe('HardwareSurface readiness', () => {
   });
 
   it('does not claim outputs are mapped when a required output row is still missing a pin', () => {
-    const { getByText } = render(
+    const { getAllByText } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Partially Mapped Outputs"
@@ -175,11 +175,11 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByText('Outputs').parentElement?.textContent).toContain('Missing');
+    expect(getAllByText('Outputs').at(-1)?.parentElement?.textContent).toContain('Missing');
   });
 
   it('does not claim clock is mapped when a required clock row is still missing a pin', () => {
-    const { getByText } = render(
+    const { getAllByText } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Partially Mapped Clocks"
@@ -204,11 +204,11 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByText('Clock').parentElement?.textContent).toContain('Missing');
+    expect(getAllByText('Clock').at(-1)?.parentElement?.textContent).toContain('Missing');
   });
 
   it('claims clock is mapped when all required clock rows have pins', () => {
-    const { getByText } = render(
+    const { getAllByText } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Fully Mapped Clocks"
@@ -233,11 +233,11 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByText('Clock').parentElement?.textContent).toContain('Mapped');
+    expect(getAllByText('Clock').at(-1)?.parentElement?.textContent).toContain('Mapped');
   });
 
   it('uses semantic verify signal roles so non-regex clock labels still count as clock mapping', () => {
-    const { getByText } = render(
+    const { getAllByText } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Semantic Clock Role"
@@ -267,11 +267,11 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByText('Clock').parentElement?.textContent).toContain('Mapped');
+    expect(getAllByText('Clock').at(-1)?.parentElement?.textContent).toContain('Mapped');
   });
 
   it('groups semantic clock rows into the Clock section in map mode even before a pin is assigned', () => {
-    const { getByTestId, getByText } = render(
+    const { getAllByTestId, getAllByText } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Semantic Clock Map Group"
@@ -301,14 +301,14 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    fireEvent.click(getByTestId('ide-hw-mode-btn-map'));
+    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
 
-    const clockGroup = getByText('Clock').closest('details');
+    const clockGroup = getAllByText('Clock').at(-1)?.closest('details');
     expect(clockGroup?.textContent).toContain('phase_driver');
   });
 
-  it('points students to Test first when hardware is blocked before any current pass', () => {
-    const { getByTestId } = render(
+  it('points students to Export first when hardware is blocked before a current bundle exists', () => {
+    const { getAllByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Needs Verify"
@@ -317,13 +317,15 @@ describe('HardwareSurface readiness', () => {
           expectedIoRows={[]}
           vectorsCount={0}
           health={makeHealth({
+            lastExport: undefined,
             lastVerify: undefined,
             dirtySinceVerify: false,
+            dirtySinceExport: false,
             blockingIssues: [
               {
                 code: 'RBP1004',
-                message: 'Run Verify before programming the board.',
-                fixPath: { mode: 'verify', actionLabel: 'Run Verify' },
+                message: 'Build the hardware bundle before programming the board.',
+                fixPath: { mode: 'export', actionLabel: 'Open Export' },
               },
             ],
           })}
@@ -337,14 +339,14 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hardware-blocked-hero').textContent).toContain('Pass Test before programming');
-    expect(getByTestId('ide-hardware-blocked-hero').textContent).toContain('return here to program the board');
-    expect(getByTestId('ide-hardware-blocked-primary').textContent).toContain('Open Verify');
-    expect(getByTestId('ide-hardware-blocked-secondary').textContent).toContain('Open Design');
+    expect(getAllByTestId('ide-hardware-blocked-hero').at(-1)?.textContent).toContain('Build the hardware bundle first');
+    expect(getAllByTestId('ide-hardware-blocked-hero').at(-1)?.textContent).toContain('return here to program the board');
+    expect(getAllByTestId('ide-hardware-blocked-primary').at(-1)?.textContent).toContain('Open Export');
+    expect(getAllByTestId('ide-hardware-blocked-secondary').at(-1)?.textContent).toContain('Open Design');
   });
 
-  it('shows program handoff CTA when verify and export are both current', () => {
-    const { getByTestId } = render(
+  it('shows program handoff CTA when export is current', () => {
+    const { getAllByTestId, getByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Ready to Program"
@@ -366,10 +368,9 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    fireEvent.click(getByTestId('ide-hw-mode-btn-proof'));
+    fireEvent.click(getAllByTestId('ide-hw-mode-btn-proof').at(-1)!);
 
-    // When verify PASS and export CURRENT the program handoff CTA must be present.
-    // This is the final step in the Build → Verify → Export → Program trust chain.
+    // When export is current the program handoff CTA must be present.
     const cta = getByTestId('ide-hardware-program-handoff-cta');
     expect(cta).toBeDefined();
     expect(cta.textContent).toContain('Vivado Hardware Manager');

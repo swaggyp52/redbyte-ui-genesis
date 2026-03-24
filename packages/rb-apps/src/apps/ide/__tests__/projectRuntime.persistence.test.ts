@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { mergePersistedRuntimeState, useProjectRuntime } from '../projectRuntime';
 import { choosePrimaryProjectCta, deriveProjectHealth } from '../projectHealth';
@@ -745,5 +746,63 @@ describe('mergePersistedRuntimeState', () => {
     );
 
     expect(merged.maxDesignHistory).toBe(500);
+  });
+
+  it('normalizes persisted custom vectors against the restored live IO shape without inventing expected outputs', () => {
+    const current = useProjectRuntime.getState();
+
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-custom-vectors-restore',
+        projectName: 'Custom Vector Restore',
+        activeExampleId: null,
+        projectIoRows: [
+          {
+            id: 'sw0',
+            nodeId: 'sw0_node',
+            port: 'out',
+            label: 'sw0',
+            direction: 'in',
+            pin: 'SW0',
+            required: true,
+          },
+          {
+            id: 'ld0',
+            nodeId: 'ld0_node',
+            port: 'in',
+            label: 'ld0',
+            direction: 'out',
+            pin: 'LD0',
+            required: true,
+          },
+        ],
+        projectVectors: [],
+        customVectors: [
+          {
+            id: 'cv-01',
+            tick: 0,
+            inputs: { sw0: 1, ghost_in: 1 },
+            expected: { ghost_out: 1 },
+          },
+        ],
+        circuit: {
+          nodes: [
+            { id: 'sw0_node', type: 'INPUT', x: 0, y: 0 },
+            { id: 'ld0_node', type: 'OUTPUT', x: 10, y: 0 },
+          ],
+          connections: [],
+        },
+      },
+      current
+    );
+
+    expect(merged.customVectors).toEqual([
+      {
+        id: 'cv-01',
+        tick: 0,
+        inputs: { sw0: 1 },
+        expected: {},
+      },
+    ]);
   });
 });

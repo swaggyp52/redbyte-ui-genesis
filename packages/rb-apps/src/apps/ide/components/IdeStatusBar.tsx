@@ -9,7 +9,12 @@ export interface IdeStatusBarProps {
 
 export const IdeStatusBar: React.FC<IdeStatusBarProps> = ({ mode, determinismHash, gateStatus }) => {
   const gateTone = gateStatus === 'pass' ? 'ok' : gateStatus === 'warn' ? 'warn' : 'error';
-  const gateLabel = gateStatus === 'pass' ? 'Gates OK' : gateStatus === 'warn' ? 'Gates Pending' : 'Gate Fail';
+  const gateLabel =
+    gateStatus === 'pass'
+      ? 'Preflight Ready'
+      : gateStatus === 'warn'
+        ? 'Preflight Review'
+        : 'Preflight Issues';
 
   return (
     <footer className="ide-status-bar" data-testid="ide-status-bar">

@@ -198,6 +198,13 @@ interface PendingPlacementState {
   boardIoEntry?: BoardIoPaletteItem;
 }
 
+interface PlacementGhostState {
+  screenX: number;
+  screenY: number;
+  worldX: number;
+  worldY: number;
+}
+
 interface PaletteSectionDefinition {
   id: 'logic' | 'sequential' | 'io' | 'reusable' | 'board';
   title: string;
@@ -814,6 +821,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [macroDialogState, setMacroDialogState] = useState<DesignMacroDialogState | null>(null);
   const [activeMacroInsertionId, setActiveMacroInsertionId] = useState<string | null>(null);
   const [pendingPlacement, setPendingPlacement] = useState<PendingPlacementState | null>(null);
+  const [placementGhost, setPlacementGhost] = useState<PlacementGhostState | null>(null);
 
   // A-2: Inline node label editor state
   const [editingLabelNodeId, setEditingLabelNodeId] = useState<string | null>(null);
@@ -1387,6 +1395,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     (reason: 'cancel' | 'escape' | 'tool') => {
       if (!pendingPlacement) return;
       setPendingPlacement(null);
+      setPlacementGhost(null);
       if (interactionMode === 'placing') {
         setInteractionMode('idle');
       }
@@ -1403,6 +1412,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     (reason: 'cancel' | 'escape' | 'tool') => {
       if (activeInsertionMacro) {
         setActiveMacroInsertionId(null);
+        setPlacementGhost(null);
         if (interactionMode === 'placing') {
           setInteractionMode('idle');
         }
@@ -1419,10 +1429,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
 
   const commitPendingPlacement = useCallback(
-    (clientX: number, clientY: number) => {
+    (clientX: number, clientY: number, options?: { keepPlacing?: boolean }) => {
       if (!pendingPlacement) return;
       const position = resolveCanvasPlacementPosition(clientX, clientY);
       if (!position) return;
+      const keepPlacing = options?.keepPlacing === true;
 
       const nextNodeId = predictNextNodeIds(editorCircuit, 1)[0] ?? null;
       if (pendingPlacement.kind === 'node' && pendingPlacement.nodeType) {
@@ -1452,8 +1463,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
 
       setWireFeedback(null);
-      setPendingPlacement(null);
-      if (interactionMode === 'placing') {
+      if (!keepPlacing) {
+        setPendingPlacement(null);
+        setPlacementGhost(null);
+      }
+      if (!keepPlacing && interactionMode === 'placing') {
         setInteractionMode('idle');
       }
       if (nextNodeId) {
@@ -1476,6 +1490,37 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       setInteractionMode,
     ]
   );
+
+  const updatePlacementGhost = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!pendingPlacement || activeInsertionMacro || !canvasHostRef.current) return;
+      const position = resolveCanvasPlacementPosition(clientX, clientY);
+      if (!position) return;
+      setPlacementGhost({
+        screenX: position.x * camera.zoom + camera.x,
+        screenY: position.y * camera.zoom + camera.y,
+        worldX: position.x,
+        worldY: position.y,
+      });
+    },
+    [
+      activeInsertionMacro,
+      camera.x,
+      camera.y,
+      camera.zoom,
+      pendingPlacement,
+      resolveCanvasPlacementPosition,
+    ]
+  );
+
+  useEffect(() => {
+    if (!pendingPlacement || activeInsertionMacro || !canvasHostRef.current) {
+      setPlacementGhost(null);
+      return;
+    }
+    const rect = canvasHostRef.current.getBoundingClientRect();
+    updatePlacementGhost(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  }, [activeInsertionMacro, canvasSize.height, canvasSize.width, pendingPlacement, updatePlacementGhost]);
 
   const setSelectMode = useCallback(() => {
     cancelActivePlacement('tool');
@@ -2073,9 +2118,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       if (!pendingPlacement) return;
       event.preventDefault();
       event.stopPropagation();
-      commitPendingPlacement(event.clientX, event.clientY);
+      commitPendingPlacement(event.clientX, event.clientY, { keepPlacing: event.shiftKey });
     },
     [activeInsertionMacro, commitPendingPlacement, pendingPlacement, placeMacroAtClientPoint]
+  );
+
+  const handleCanvasPlacementPointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!pendingPlacement || activeInsertionMacro) return;
+      updatePlacementGhost(event.clientX, event.clientY);
+    },
+    [activeInsertionMacro, pendingPlacement, updatePlacementGhost]
   );
 
   useEffect(() => {
@@ -2142,16 +2195,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const authoringIssueCounts = useMemo(() => {
     let errorCount = 0;
     let warningCount = 0;
+    let draftCount = 0;
     for (const issue of authoringIssues) {
       if (issue.severity === 'error') {
         errorCount += 1;
-      } else {
+      } else if (issue.severity === 'warn') {
         warningCount += 1;
+      } else {
+        draftCount += 1;
       }
     }
     return {
       errorCount,
       warningCount,
+      draftCount,
       topIssues: authoringIssues.slice(0, 3),
     };
   }, [authoringIssues]);
@@ -2161,7 +2218,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const result = new Map<string, 'error' | 'warn'>();
     for (const nodeId of designIssueMap.byNode.keys()) {
       const sev = nodeIssueSeverity(nodeId, designIssueMap);
-      if (sev) result.set(nodeId, sev);
+      if (sev) result.set(nodeId, sev === 'error' ? 'error' : 'warn');
     }
     return result;
   }, [designIssueMap]);
@@ -2200,7 +2257,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     previousHasSelectionRef.current = hasSelection;
   }, [hasSelection]);
-  const activeModeLabel = isPlacementMode ? 'Placement Mode' : toolMode === 'wire' ? 'Wire Mode' : 'Select Mode';
+  const activeModeLabel = isPlacementMode
+    ? placementModeLabel
+      ? `Placing ${placementModeLabel}`
+      : 'Placement Mode'
+    : toolMode === 'wire'
+      ? 'Wire Mode'
+      : 'Select Mode';
   const zoomPercent = Math.round(camera.zoom * 100);
   const effectiveInteractionMode = isPlacementMode && interactionMode === 'idle' ? 'placing' : interactionMode;
   const interactionLabel =
@@ -2219,10 +2282,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     effectiveInteractionMode === 'boxSelecting'
       ? 'Drag to marquee-select multiple nodes. Hold Ctrl/Cmd or Shift to add to selection.'
       : isPlacementMode && placementModeLabel
-        ? `Click empty canvas to place ${placementModeLabel}. Esc cancels.`
-      : toolMode === 'wire'
-        ? wireStartPort
-          ? 'Hover valid sinks in green, then click to connect. Esc cancels the wire.'
+        ? `Click to place ${placementModeLabel}. Hold Shift to keep placing. Esc cancels.`
+        : toolMode === 'wire'
+          ? wireStartPort
+            ? 'Hover valid sinks in green, then click to connect. Esc cancels the wire.'
           : 'Start Wire (W), click a source pin, then click a valid sink pin.'
         : 'Click a node to inspect it. Drag to reposition.';
   const handleNodeDiagnosticBadgeClick = useCallback(
@@ -2353,7 +2416,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       ? 'has-errors'
       : authoringIssueCounts.warningCount > 0
         ? 'has-warnings'
+        : authoringIssueCounts.draftCount > 0
+          ? 'has-drafts'
         : 'is-clean';
+  const topAuthoringIssue = authoringIssueCounts.topIssues[0] ?? null;
+  const authoringStatusLabel =
+    authoringIssueCounts.errorCount > 0
+      ? 'Blocking circuit issue'
+      : authoringIssueCounts.warningCount > 0
+        ? 'Circuit needs review'
+        : authoringIssueCounts.draftCount > 0
+          ? 'Draft wiring in progress'
+          : 'Ready to build';
   const ioPresentationMap = useMemo(() => {
     const map: Record<string, NodeIoPresentation> = {};
     for (const node of editorCircuit.nodes) {
@@ -2569,6 +2643,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     };
   }, [editorCircuit.connections, editorCircuit.nodes, ioRowByNodeId, liveSignals, primarySelectedWireId, resolveConnectionEndpoint, runtimeSim.signals, runtimeSim.trace]);
   const activeInspectorSignalKey = selectedWireContext?.signalKey ?? selectedNodePrimarySignalKey ?? selectedSignalKey;
+  const activeInspectorSignalLabel = useMemo(
+    () => describeStudentSignalKey(activeInspectorSignalKey, editorCircuit, ioRowByNodeId),
+    [activeInspectorSignalKey, editorCircuit, ioRowByNodeId]
+  );
   const activeInspectorSignalSnapshot = useMemo(
     () => describeSignalSnapshot(activeInspectorSignalKey, runtimeSim.trace, runtimeSim.signals, liveSignals),
     [activeInspectorSignalKey, runtimeSim.trace, runtimeSim.signals, liveSignals]
@@ -2603,14 +2681,19 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const selectionIssueSummary = useMemo(() => {
     if (selectionAuthoringIssues.length === 0) return null;
     const primaryIssue = selectionAuthoringIssues[0];
+    const issueTone = primaryIssue.severity === 'draft' ? 'warn' : primaryIssue.severity;
     return (
       <div
-        className={`ide-design-selection-issues is-${primaryIssue.severity}`}
+        className={`ide-design-selection-issues is-${issueTone}`}
         data-testid="ide-design-selection-issues"
       >
         <div className="ide-design-selection-issues-header">
-          <span className={`ide-design-selection-issues-pill is-${primaryIssue.severity}`}>
-            {primaryIssue.severity === 'error' ? 'Error' : 'Warn'}
+          <span className={`ide-design-selection-issues-pill is-${issueTone}`}>
+            {primaryIssue.severity === 'error'
+              ? 'Error'
+              : primaryIssue.severity === 'warn'
+                ? 'Warn'
+                : 'Draft'}
           </span>
           <strong data-testid="ide-design-selection-issue-title">{primaryIssue.title}</strong>
         </div>
@@ -2645,7 +2728,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const selectionStatusLabel = primarySelectionIssue
     ? primarySelectionIssue.severity === 'error'
       ? 'Needs fix'
-      : 'Needs review'
+      : primarySelectionIssue.severity === 'warn'
+        ? 'Needs review'
+        : 'In progress'
     : primarySelectionDiagnostic
       ? primarySelectionDiagnostic.severity === 'error'
         ? 'Compiler issue'
@@ -2654,7 +2739,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         ? 'Ready'
         : 'Idle';
   const selectionStatusTone =
-    primarySelectionIssue?.severity ??
+    (primarySelectionIssue?.severity === 'draft' ? 'warn' : primarySelectionIssue?.severity) ??
     (primarySelectionDiagnostic?.severity === 'error'
       ? 'error'
       : primarySelectionDiagnostic?.severity === 'warn'
@@ -2891,6 +2976,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (hasSingleSelectedNode && selectedNode) {
       const displayName = selectedNode.label?.trim() || nodeTypeLabel(selectedNode.type);
       const typeName = nodeTypeLabel(selectedNode.type);
+      const studentNodeLabel = describeNodeForStudents(selectedNode, selectedNodeIoRow);
       const boardSummary = selectedNodeIoRow
         ? `${selectedNodeIoRow.label} -> ${selectedNodeIoRow.pin || 'unmapped'}`
         : 'No board mapping';
@@ -2932,9 +3018,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </span>
               </div>
               <div className="ide-design-inspector-meta-card">
-                <span className="ide-design-inspector-meta-label">Node ID</span>
+                <span className="ide-design-inspector-meta-label">Reference</span>
                 <code className="ide-design-inspector-meta-value" data-testid="ide-design-selection-id">
-                  {selectedNode.id}
+                  {studentNodeLabel}
                 </code>
               </div>
               <div className="ide-design-inspector-meta-card">
@@ -3004,7 +3090,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             <div className="ide-design-inspector-identity-row">
               <div className="ide-design-inspector-title-block">
                 <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
-                  <strong data-testid="ide-design-inspector-identity-title">{selectedWireContext.signalKey}</strong>
+                  <strong data-testid="ide-design-inspector-identity-title">
+                    {describeStudentSignalKey(selectedWireContext.signalKey, editorCircuit, ioRowByNodeId)}
+                  </strong>
                 </div>
                 <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
                   Wire net from {selectedWireContext.sourceLabel} to {selectedWireContext.targetLabel}
@@ -3023,9 +3111,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <span className="ide-design-inspector-meta-value" data-testid="ide-design-selection-type">Wire</span>
               </div>
               <div className="ide-design-inspector-meta-card">
-                <span className="ide-design-inspector-meta-label">Wire ID</span>
+                <span className="ide-design-inspector-meta-label">Connection</span>
                 <code className="ide-design-inspector-meta-value" data-testid="ide-design-selection-id">
-                  {selectedWireContext.wireId}
+                  {`${selectedWireContext.sourceLabel} -> ${selectedWireContext.targetLabel}`}
                 </code>
               </div>
               <div className="ide-design-inspector-meta-card">
@@ -3046,7 +3134,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             <div className="ide-design-inspector-identity-row">
               <div className="ide-design-inspector-title-block">
                 <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
-                  <strong data-testid="ide-design-inspector-identity-title">{activeInspectorSignalKey}</strong>
+                  <strong data-testid="ide-design-inspector-identity-title">{activeInspectorSignalLabel}</strong>
                 </div>
                 <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
                   Signal focus
@@ -3065,9 +3153,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <span className="ide-design-inspector-meta-value" data-testid="ide-design-selection-type">Signal</span>
               </div>
               <div className="ide-design-inspector-meta-card">
-                <span className="ide-design-inspector-meta-label">Signal key</span>
+                <span className="ide-design-inspector-meta-label">Signal</span>
                 <code className="ide-design-inspector-meta-value" data-testid="ide-design-selection-id">
-                  {activeInspectorSignalKey}
+                  {activeInspectorSignalLabel}
                 </code>
               </div>
               <div className="ide-design-inspector-meta-card">
@@ -3089,12 +3177,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             <strong data-testid="ide-design-inspector-identity-title">Nothing selected</strong>
           </div>
           <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
-            Select a node, wire, or signal to inspect it.
+            Select a node, wire, or signal.
           </p>
         </div>
-        <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
-          Build on the canvas, then use this dock to rename parts, inspect issues, and trace nets with confidence.
-        </p>
       </div>
     );
   };
@@ -3133,32 +3218,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         </div>
       );
     }
-    if (hasSingleSelectedNode) {
-      return (
-        <IdeCallout tone="success" title="Healthy selection">
-          No live authoring issues are blocking this node right now. Use the actions below to rename it, trace its net, or inspect live state.
-        </IdeCallout>
-      );
-    }
-    if (hasMultiNodeSelection || hasMultiWireSelection) {
-      return (
-        <IdeCallout tone="info" title="Group selection">
-          Multi-select stays action-focused. Duplicate the cluster, save it as a reusable block, or narrow the selection to inspect one object deeply.
-        </IdeCallout>
-      );
-    }
-    if (selectedWireContext || activeInspectorSignalKey) {
-      return (
-        <IdeCallout tone="info" title="No active issue">
-          This signal path is currently clear. Use tracing or pinning if you want to follow it during simulation.
-        </IdeCallout>
-      );
-    }
-    return (
-      <IdeCallout tone="info" title="What to do next">
-        Select one node or wire to get object-specific guidance, live state, and edit controls in this dock.
-      </IdeCallout>
-    );
+    return null;
   };
   const renderSelectionActions = () => {
     if (hasSingleSelectedNode && selectedNode) {
@@ -3328,11 +3388,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         </div>
       );
     }
-    return (
-      <IdeCallout tone="info" title="No selection yet">
-        Start by selecting a node or wire. The primary actions for that object will appear here.
-      </IdeCallout>
-    );
+    return null;
   };
   const renderSelectionProperties = () => {
     if (hasSingleSelectedNode && selectedNode) {
@@ -3342,31 +3398,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             <span className="ide-design-inspector-group-label">Name</span>
             {renderNodeLabelEditor(selectedNode)}
           </div>
-          <IdeCallout tone="info" title="Design labels travel">
-            Labels show up in Verify, Export, and mapping views. Give parts names students can understand at a glance.
-          </IdeCallout>
         </div>
       );
     }
-    if (hasMultiNodeSelection || hasMultiWireSelection) {
-      return (
-        <IdeCallout tone="info" title="Group properties">
-          Multi-select stays action-focused in this batch. Select one node when you want to rename it or inspect one set of properties.
-        </IdeCallout>
-      );
-    }
-    if (selectedWireContext || activeInspectorSignalKey) {
-      return (
-        <IdeCallout tone="info" title="Read-only selection">
-          Wire and signal selections are read-only in Design. Use Primary Actions to trace or pin them instead.
-        </IdeCallout>
-      );
-    }
-    return (
-      <IdeCallout tone="info" title="Editable properties">
-        Select one node to rename it and review the properties that matter for student-facing authoring.
-      </IdeCallout>
-    );
+    return null;
   };
   const renderSelectionState = () => {
     if (hasSingleSelectedNode && selectedNode) {
@@ -3441,7 +3476,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           <div className="ide-kv-list">
             <div className="ide-kv-row">
               <span>Signal</span>
-              <code>{selectedWireContext.signalKey}</code>
+              <code>{describeStudentSignalKey(selectedWireContext.signalKey, editorCircuit, ioRowByNodeId)}</code>
             </div>
             <div className="ide-kv-row">
               <span>Current</span>
@@ -3461,11 +3496,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
             <div className="ide-kv-row">
               <span>Driver / Source</span>
-              <span>{selectedWireContext.sourceLabel}.{selectedWireContext.sourcePort}</span>
+              <span>{selectedWireContext.sourceLabel} · {describePortForStudents(selectedWireContext.sourcePort)}</span>
             </div>
             <div className="ide-kv-row">
               <span>Sink</span>
-              <span>{selectedWireContext.targetLabel}.{selectedWireContext.targetPort}</span>
+              <span>{selectedWireContext.targetLabel} · {describePortForStudents(selectedWireContext.targetPort)}</span>
             </div>
             <div className="ide-kv-row">
               <span>Trace state</span>
@@ -3483,7 +3518,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           <div className="ide-kv-list">
             <div className="ide-kv-row">
               <span>Signal</span>
-              <code data-testid="ide-design-signal-selected">{activeInspectorSignalKey}</code>
+              <code data-testid="ide-design-signal-selected">{activeInspectorSignalLabel}</code>
             </div>
             <div className="ide-kv-row">
               <span>Current</span>
@@ -3963,15 +3998,30 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       inspector={
         <>
           {renderSelectionIdentityCard()}
-          <IdeInspectorSection title="Problem / Health" testId="ide-design-inspector-health" collapsible={false}>
-            {renderSelectionHealth()}
-          </IdeInspectorSection>
-          <IdeInspectorSection title="Primary Actions" testId="ide-design-inspector-actions" collapsible={false}>
-            {renderSelectionActions()}
-          </IdeInspectorSection>
-          <IdeInspectorSection title="Editable Properties" testId="ide-design-inspector-properties" collapsible={false}>
-            {renderSelectionProperties()}
-          </IdeInspectorSection>
+          {(() => {
+            const content = renderSelectionHealth();
+            return content ? (
+              <IdeInspectorSection title="Selection Health" testId="ide-design-inspector-health" collapsible={false}>
+                {content}
+              </IdeInspectorSection>
+            ) : null;
+          })()}
+          {(() => {
+            const content = renderSelectionActions();
+            return content ? (
+              <IdeInspectorSection title="Primary Actions" testId="ide-design-inspector-actions" collapsible={false}>
+                {content}
+              </IdeInspectorSection>
+            ) : null;
+          })()}
+          {(() => {
+            const content = renderSelectionProperties();
+            return content ? (
+              <IdeInspectorSection title="Properties" testId="ide-design-inspector-properties" collapsible={false}>
+                {content}
+              </IdeInspectorSection>
+            ) : null;
+          })()}
           <IdeInspectorSection title="Signal / State" testId="ide-design-context-inspector" collapsible={false}>
             {renderSelectionState()}
           </IdeInspectorSection>
@@ -4446,7 +4496,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   >
                     <div className="ide-design-authoring-issues-summary">
                       <div className="ide-design-authoring-issues-primary">
-                        <span className="ide-design-authoring-issues-label">Authoring Status</span>
+                        <span className="ide-design-authoring-issues-label">Circuit</span>
                         <span
                           className="ide-design-authoring-issues-count is-error"
                           data-testid="ide-design-authoring-issues-errors"
@@ -4459,10 +4509,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         >
                           {authoringIssueCounts.warningCount} warnings
                         </span>
+                        <span
+                          className="ide-design-authoring-issues-count is-warn"
+                          data-testid="ide-design-authoring-issues-drafts"
+                        >
+                          {authoringIssueCounts.draftCount} drafts
+                        </span>
                         <span className="ide-design-authoring-issues-status">
-                          {authoringIssues.length === 0
-                            ? 'No live authoring issues right now.'
-                            : 'Live checks update as you edit.'}
+                          {authoringStatusLabel}
                         </span>
                       </div>
                       <div className="ide-design-authoring-canvas-meta">
@@ -4488,34 +4542,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         HDL generation failed - {liveHdlResult.error}
                       </div>
                     ) : null}
-                    {authoringIssueCounts.topIssues.length > 0 ? (
-                      <div className="ide-design-authoring-issues-list">
-                        {authoringIssueCounts.topIssues.map((issue, index) => (
-                          <article
-                            key={`${issue.kind}-${issue.portKey}`}
-                            className={`ide-design-authoring-issue is-${issue.severity}`}
-                            data-testid={`ide-design-authoring-issue-${index}`}
-                          >
-                            <div className="ide-design-authoring-issue-copy">
-                              <div className="ide-design-authoring-issue-header">
-                                <span className={`ide-design-authoring-issue-pill is-${issue.severity}`}>
-                                  {issue.severity === 'error' ? 'Error' : 'Warn'}
-                                </span>
-                                <strong>{issue.title}</strong>
-                                <code>{describeDesignIssueLocation(issue, editorCircuit)}</code>
-                              </div>
-                              <p>{issue.message}</p>
-                              <p>{issue.hint}</p>
-                            </div>
-                            <IdeButton
-                              tone={issue.severity === 'error' ? 'secondary' : 'ghost'}
-                              onClick={() => focusDesignIssue(issue)}
-                              testId={`ide-design-authoring-issue-focus-${index}`}
-                            >
-                              Focus
-                            </IdeButton>
-                          </article>
-                        ))}
+                    {topAuthoringIssue ? (
+                      <div className="ide-inline-actions">
+                        <span data-testid="ide-design-authoring-issue-0">
+                          {topAuthoringIssue.title}
+                        </span>
+                        <IdeButton
+                          tone={topAuthoringIssue.blocking ? 'secondary' : 'ghost'}
+                          onClick={() => focusDesignIssue(topAuthoringIssue)}
+                          testId="ide-design-authoring-issue-focus-0"
+                        >
+                          Review issue
+                        </IdeButton>
                       </div>
                     ) : null}
                   </div>
@@ -4526,7 +4564,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   >
                     <div className="ide-design-authoring-issues-summary">
                       <div className="ide-design-authoring-issues-primary">
-                        <span className="ide-design-authoring-issues-label">Status</span>
+                        <span className="ide-design-authoring-issues-label">Circuit</span>
                         <span
                           className="ide-design-authoring-issues-count is-error"
                           data-testid="ide-design-authoring-issues-errors"
@@ -4539,12 +4577,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         >
                           {authoringIssueCounts.warningCount} warnings
                         </span>
+                        <span
+                          className="ide-design-authoring-issues-count is-warn"
+                          data-testid="ide-design-authoring-issues-drafts"
+                        >
+                          {authoringIssueCounts.draftCount} drafts
+                        </span>
                         <span className="ide-design-authoring-issues-status">
-                          {authoringIssueCounts.errorCount > 0
-                            ? 'Fix blocking issues to keep circuit/code comparison reliable.'
-                            : authoringIssueCounts.warningCount > 0
-                              ? 'Warnings detected while comparing circuit and generated code.'
-                              : 'Comparison workspace is clean.'}
+                          {authoringStatusLabel}
                         </span>
                       </div>
                       <div className="ide-design-authoring-canvas-meta">
@@ -4713,15 +4753,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   >
                     <span className="ide-design-tool-hud-label">{activeModeLabel}</span>
                     <span className="ide-design-tool-hud-hint">{toolHint}</span>
-                    {isPlacementMode && placementModeLabel ? (
-                      <div className="ide-design-tool-hud-placement" data-testid="ide-design-placement-cue">
-                        <strong data-testid="ide-design-placement-label">{placementModeLabel}</strong>
-                        <span>Click empty canvas to place it.</span>
-                        <IdeButton tone="ghost" onClick={() => cancelActivePlacement('cancel')} testId="ide-design-placement-cancel">
-                          Cancel
-                        </IdeButton>
-                      </div>
-                    ) : null}
                     {toolMode === 'wire' && !isPlacementMode ? (
                       <span className="ide-design-tool-hud-wire" data-testid="ide-design-wire-cue">
                         {wireStartPort ? 'Source selected. Click a valid sink pin.' : 'Pick a source pin to start wiring.'}
@@ -4775,6 +4806,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     data-presentation-zoom={presentationZoom}
                     data-macro-placement-active={activeInsertionMacro ? '1' : '0'}
                     onClick={handleCanvasPlacementClick}
+                    onPointerMove={handleCanvasPlacementPointerMove}
+                    onPointerLeave={() => {
+                      if (pendingPlacement) {
+                        setPlacementGhost(null);
+                      }
+                    }}
                   >
                     {toolMode !== 'select' || isPlacementMode ? (
                       <div
@@ -4993,6 +5030,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         });
                       }}
                     />
+                    {pendingPlacement && !activeInsertionMacro ? (
+                      <div
+                        className="ide-design-placement-hit-layer"
+                        data-testid="ide-design-placement-hit-layer"
+                        onClick={handleCanvasPlacementClick}
+                        onPointerMove={handleCanvasPlacementPointerMove}
+                        onPointerLeave={() => setPlacementGhost(null)}
+                      />
+                    ) : null}
+                    {pendingPlacement && placementGhost && !activeInsertionMacro ? (
+                      <div
+                        className="ide-design-placement-ghost"
+                        data-testid="ide-design-placement-cue"
+                        style={{
+                          left: placementGhost.screenX,
+                          top: placementGhost.screenY,
+                        }}
+                      >
+                        <strong data-testid="ide-design-placement-label">{pendingPlacement.label}</strong>
+                        <span>Shift keeps placing</span>
+                        <span>Esc cancels</span>
+                      </div>
+                    ) : null}
                     {isCanvasWorkspace ? (
                       <div
                         className="ide-design-shortcut-strip ide-design-shortcut-strip--overlay"
@@ -5783,7 +5843,7 @@ function dedupeDesignIssues(issues: DesignIssue[]): DesignIssue[] {
 
 function describeDesignIssueLocation(issue: DesignIssue, circuit: Circuit): string {
   const node = circuit.nodes.find((entry) => entry.id === issue.nodeId);
-  const nodeLabel = node?.label?.trim() ? node.label.trim() : node?.id ?? issue.nodeId;
+  const nodeLabel = describeNodeForStudents(node);
   const prefix = `${issue.nodeId}.`;
   const rawPortName =
     issue.focusTarget.portKey ??
@@ -5791,7 +5851,57 @@ function describeDesignIssueLocation(issue: DesignIssue, circuit: Circuit): stri
   if (!rawPortName || rawPortName === '__self') {
     return nodeLabel;
   }
-  return `${nodeLabel}.${rawPortName}`;
+  return `${nodeLabel} · ${describePortForStudents(rawPortName)}`;
+}
+
+function describeNodeForStudents(node: Node | undefined, ioRow?: DesignIoRow | null): string {
+  if (!node) return 'Selected part';
+  const preferred = ioRow?.label?.trim() || node.label?.trim();
+  if (preferred) return preferred;
+  return nodeTypeLabel(node.type);
+}
+
+function describePortForStudents(portName: string): string {
+  const normalized = portName.trim().toLowerCase();
+  const labels: Record<string, string> = {
+    a: 'Input A',
+    b: 'Input B',
+    c: 'Input C',
+    d: 'D',
+    en: 'Enable',
+    clk: 'Clock',
+    clr: 'Clear',
+    reset: 'Reset',
+    in: 'Input',
+    out: 'Output',
+    q: 'Q',
+    q_inv: 'Q bar',
+    j: 'J',
+    k: 'K',
+    s: 'Set',
+    r: 'Reset',
+    sel: 'Select',
+  };
+  if (labels[normalized]) return labels[normalized];
+  if (normalized.length <= 3) return normalized.toUpperCase();
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function describeStudentSignalKey(
+  signalKey: string | null | undefined,
+  circuit: Circuit,
+  ioRowByNodeId?: Map<string, DesignIoRow>
+): string {
+  const raw = signalKey?.trim();
+  if (!raw) return 'Signal';
+  const dotIndex = raw.indexOf('.');
+  if (dotIndex === -1) return raw;
+  const nodeId = raw.slice(0, dotIndex);
+  const portName = raw.slice(dotIndex + 1);
+  const node = circuit.nodes.find((entry) => entry.id === nodeId);
+  const nodeLabel = describeNodeForStudents(node, ioRowByNodeId?.get(nodeId));
+  if (!portName || portName === 'out') return nodeLabel;
+  return `${nodeLabel} · ${describePortForStudents(portName)}`;
 }
 
 function predictNextNodeIds(circuit: Circuit, count: number): string[] {

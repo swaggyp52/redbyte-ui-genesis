@@ -278,8 +278,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
   const effectiveBoardSignal = hoverBoardSignal ?? activeBoardSignal;
 
-  const verifyPassed = health.lastVerify?.status === 'pass';
-  const verifyReady = verifyPassed && verifyCurrent;
+  const compareCurrent = Boolean(health.lastVerify) && verifyCurrent;
+  const compareMatches = compareCurrent && health.lastVerify?.status === 'pass';
+  const compareDiffers = compareCurrent && health.lastVerify?.status === 'fail';
   const exportReady = health.lastExport?.status === 'ok' && exportCurrent;
 
   // ── Scenario drift detection ─────────────────────────────────────────
@@ -314,23 +315,23 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       }),
     [exportCurrent, health.blockingIssues, verifyCurrent]
   );
-  const hardwareState = verifyReady
-    ? exportReady
-      ? 'ready'
-      : health.lastExport?.status === 'ok'
-        ? 'export-stale'
-        : 'export-needed'
-    : 'verify-needed';
+  const hardwareState = exportReady
+    ? 'ready'
+    : health.lastExport?.status === 'ok'
+      ? 'export-stale'
+      : 'export-needed';
   const hasBlocking = effectiveBlockingIssues.length > 0 || hardwareState !== 'ready';
 
   // ── Verify status for callout ────────────────────────────────────────
   const verifyStatus = !health.lastVerify
     ? 'NOT RUN'
-    : !verifyPassed
-      ? 'FAIL'
-      : verifyReady
-        ? 'PASS'
-        : 'STALE';
+    : compareDiffers
+      ? 'ASSERTIONS DIFFER'
+      : compareMatches
+        ? 'ASSERTIONS MATCH'
+        : compareCurrent
+          ? 'SIMULATION CURRENT'
+          : 'STALE';
   const exportStatus = health.lastExport?.status === 'ok'
     ? exportReady
       ? 'CURRENT'
@@ -339,21 +340,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       ? 'BLOCKED'
       : 'MISSING';
   const readinessCallout = useMemo(() => {
-    if (!verifyReady) {
-      return {
-        tone: 'warn' as const,
-        title: 'Bring-up blocked',
-        message:
-          effectiveBlockingIssues[0]?.message ??
-          'Resolve verification blockers before building the hardware bundle.',
-      };
-    }
     if (hardwareState === 'export-stale') {
       return {
         tone: 'warn' as const,
         title: 'Re-export required',
         message:
-          'Your circuit verified, but the bundle was built from an older version. Re-export from Export, then return here to program the board.',
+          'The hardware bundle was built from an older version. Re-export from Export, then return here to program the board.',
       };
     }
     if (hardwareState === 'export-needed') {
@@ -361,38 +353,31 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         tone: 'warn' as const,
         title: 'Export required',
         message:
-          'Your circuit passed verification. Build the hardware bundle in Export once, then return here to program the board.',
+          effectiveBlockingIssues[0]?.message ??
+          'Build the hardware bundle in Export, then return here to program the board.',
       };
     }
     return {
       tone: 'success' as const,
       title: 'Ready for hardware',
-      message: 'Proof and export evidence are current for this project state.',
+      message: compareDiffers
+        ? 'Programming is available. Assertions differ from observed outputs, so review the comparison before relying on behavior.'
+        : 'Programming is available for this project state.',
     };
-  }, [effectiveBlockingIssues, hardwareState, verifyReady]);
+  }, [compareDiffers, effectiveBlockingIssues, hardwareState]);
   const blockedHero = useMemo(() => {
     if (!hasBlocking) return null;
-    if (!verifyReady) {
-      return {
-        title: 'Pass Test before programming',
-        body:
-          'Your design hasn\'t passed verification yet. Open Verify, run your vectors, and get a PASS — then return here to program the board.',
-        primaryLabel: 'Open Verify',
-        primaryAction: onOpenVerify,
-        primaryTestId: 'ide-hardware-blocked-primary',
-      };
-    }
     return {
       title: hardwareState === 'export-stale' ? 'Re-export this project now' : 'Build the hardware bundle first',
       body:
         hardwareState === 'export-stale'
           ? 'Your circuit changed since the last bundle was built. Re-export from Export, then return here to program the board.'
-          : 'Your design passed verification. Open Export, build the bundle once, then return here to program the board.',
+          : 'Open Export, build the current bundle once, then return here to program the board.',
       primaryLabel: hardwareState === 'export-stale' ? 'Re-export Current Bundle' : 'Open Export',
       primaryAction: onOpenExport,
       primaryTestId: 'ide-hardware-blocked-primary',
     };
-  }, [hasBlocking, hardwareState, onOpenExport, onOpenVerify, verifyReady]);
+  }, [hasBlocking, hardwareState, onOpenExport]);
 
   // ── Bring-Up: group expectedIoRows by tick ──────────────────────────
   const bringupTickGroups = useMemo(() => {
@@ -444,7 +429,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         expectedWord,
         actualWord,
         <IdeStatusPill key={`${s.signal}-pill`} tone={pass ? 'ok' : 'error'}>
-          {pass ? 'OK' : 'FAIL'}
+          {pass ? 'MATCH' : 'DIFFER'}
         </IdeStatusPill>,
       ];
     });
@@ -531,10 +516,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     { label: 'Clock mapped',        pass: hasClockMapping },
     { label: 'Outputs mapped',      pass: hasOutputMapping },
     { label: 'Vectors generated',   pass: vectorsCount > 0 },
-    { label: 'All assertions pass', pass: hasAssertionData && assertionFailCount === 0 },
-    { label: 'Verify current',      pass: verifyReady && !scenarioDrifted },
+    { label: 'Assertions match',    pass: hasAssertionData && assertionFailCount === 0 },
+    { label: 'Compare current',     pass: compareCurrent && !scenarioDrifted },
     { label: 'Export current',      pass: exportReady },
-  ], [hasClockMapping, hasOutputMapping, vectorsCount, hasAssertionData, assertionFailCount, verifyReady, scenarioDrifted, exportReady]);
+  ], [hasClockMapping, hasOutputMapping, vectorsCount, hasAssertionData, assertionFailCount, compareCurrent, scenarioDrifted, exportReady]);
 
   const confidenceScore = useMemo(
     () => Math.round((confidenceChecks.filter((c) => c.pass).length / confidenceChecks.length) * 100),
@@ -633,15 +618,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 : 'error'
           }
         >
-          {bringupTickGroups.length === 0 ? 'No vectors' : bringupStepPass ? 'PASS' : 'FAIL'}
+          {bringupTickGroups.length === 0 ? 'No vectors' : bringupStepPass ? 'MATCH' : 'DIFFER'}
         </IdeStatusPill>
       </header>
       {hasAssertionData && (
         <div className="ide-hw-assert-summary" data-testid="ide-hw-assert-summary">
           <span className={assertionFailCount > 0 ? 'ide-hw-assert-fail-count' : 'ide-hw-assert-pass-count'}>
             {assertionFailCount > 0
-              ? `${assertionFailCount} bring-up check${assertionFailCount > 1 ? 's' : ''} failed`
-              : `${assertionPassCount} bring-up check${assertionPassCount === 1 ? '' : 's'} passed`}
+              ? `${assertionFailCount} bring-up check${assertionFailCount > 1 ? 's' : ''} differed`
+              : `${assertionPassCount} bring-up check${assertionPassCount === 1 ? '' : 's'} matched`}
           </span>
         </div>
       )}
@@ -756,13 +741,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         </div>
       </div>
       <div className="ide-inline-actions">
-        {verifyReady ? (
+        {exportReady ? (
           <IdeButton tone="primary" onClick={onOpenExport} testId="ide-hardware-build-export">
-            {exportReady ? 'Open Export Bundle' : 'Re-export Current Bundle'}
+            Open Export Bundle
           </IdeButton>
         ) : (
-          <IdeButton tone="primary" onClick={onOpenVerify} testId="ide-hardware-run-verify">
-            Run Verify First
+          <IdeButton tone="primary" onClick={onOpenExport} testId="ide-hardware-build-export">
+            {hardwareState === 'export-stale' ? 'Re-export Current Bundle' : 'Open Export'}
           </IdeButton>
         )}
       </div>
@@ -878,12 +863,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             className="ide-hw-assert-formal ide-hw-proof-assert-ok is-pass"
             data-testid="ide-hw-proof-assert-ok"
           >
-            {'\u22A2'} {assertionPassCount} assertions VALID{confidenceScore === 100 ? ' \u220E' : ''}
+            {'\u22A2'} {assertionPassCount} assertion{assertionPassCount === 1 ? '' : 's'} match observed outputs{confidenceScore === 100 ? ' \u220E' : ''}
           </code>
         ) : (
           <div data-testid="ide-hw-proof-assert-failures">
             <p className="ide-copy ide-hw-proof-assert-fail-note">
-              {assertionFailCount} assertion{assertionFailCount > 1 ? 's' : ''} failed
+              {assertionFailCount} assertion{assertionFailCount > 1 ? 's' : ''} differ from observed outputs
             </p>
             <IdeDataTable
               columns={['Step', 'Output', 'Expected', 'Observed']}
@@ -980,8 +965,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           {verifyStatus !== undefined && (
             <>
               <span className="ide-hw-callout-sep" aria-hidden="true">·</span>
-              <span className={verifyStatus === 'PASS' ? 'ide-hw-callout-pass' : verifyStatus === 'FAIL' ? 'ide-hw-callout-fail' : ''}>
-                Verify: {verifyStatus}
+              <span className={compareMatches ? 'ide-hw-callout-pass' : compareDiffers ? 'ide-hw-callout-fail' : ''}>
+                Compare: {verifyStatus}
               </span>
               <span className="ide-hw-callout-sep" aria-hidden="true">|</span>
               <span data-testid="ide-hardware-export-status">
@@ -995,7 +980,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         {verifyLastRun && (
           <div className="ide-hardware-provenance-strip" data-testid="ide-hardware-provenance-strip">
             <span className="ide-hardware-provenance-run-label" data-testid="ide-hardware-provenance-run-label">
-              Verified: &ldquo;{verifyLastRun.scenarioName}&rdquo;
+              Compared: &ldquo;{verifyLastRun.scenarioName}&rdquo;
             </span>
             <span className="ide-hardware-provenance-sep" aria-hidden="true">·</span>
             <span
@@ -1015,7 +1000,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   className="ide-hardware-provenance-axis ide-hardware-provenance-axis--warn"
                   data-testid="ide-hardware-seal-axis"
                 >
-                  ~ Unsealed (starter)
+                  ~ Starter scenario
                 </span>
               </>
             )}
@@ -1091,12 +1076,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         )}
 
         {/* ── Starter-seal note — shown when verify is ready but unsealed ── */}
-        {verifyReady && !scenarioDrifted && vectorsAreAutoGenerated && (
+        {compareCurrent && !scenarioDrifted && vectorsAreAutoGenerated && (
           <IdeCallout tone="warn" testId="ide-hardware-starter-seal-note">
             <p className="ide-copy" style={{ margin: 0 }}>
-              <strong>Ready — Unsealed.</strong>{' '}
-              The board is backed by a starter scenario only. Author a real test scenario, re-verify,
-              and get a PASS for a sealed proof.
+              <strong>Ready — starter scenario only.</strong>{' '}
+              The board is backed by a starter scenario only. Author a real test scenario and rerun Compare before relying on this result for lab work.
             </p>
           </IdeCallout>
         )}

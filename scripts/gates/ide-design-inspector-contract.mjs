@@ -68,7 +68,7 @@ await runIdeGate('IDE design inspector contract satisfied', async ({ page, baseU
 
   await page.waitForSelector('[data-testid="ide-design-inspector-health"]', { timeout: 10000 });
   const issueTitle = (await page.locator('[data-testid="ide-design-selection-issue-title"]').textContent())?.trim();
-  assert(issueTitle === 'Input is still unconnected', `expected live issue title in selection inspector, got ${issueTitle}`);
+  assert(issueTitle === 'Input not wired yet', `expected live issue title in selection inspector, got ${issueTitle}`);
 
   const actionsText = (await page.locator('[data-testid="ide-design-inspector-actions"]').textContent())?.trim() ?? '';
   assert(actionsText.includes('Rename'), 'primary actions must expose rename');

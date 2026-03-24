@@ -15,6 +15,8 @@ export interface VerifyAuthorVector {
   expected: Record<string, 0 | 1>;
 }
 
+export type VerifyExpectedDraftValue = '' | '0' | '1';
+
 export type SweepPreset = 'binary-count' | 'toggle-sw0' | 'walk-one-hot';
 
 export interface ScenarioBuilderPanelProps {
@@ -28,10 +30,10 @@ export interface ScenarioBuilderPanelProps {
   // Draft form state (kept for fallback manual entry in More options)
   draftTick: number;
   draftInputs: Record<string, '0' | '1'>;
-  draftExpected: Record<string, '0' | '1'>;
+  draftExpected: Record<string, VerifyExpectedDraftValue>;
   onDraftTickChange: (tick: number) => void;
   onDraftInputChange: (fieldId: string, value: '0' | '1') => void;
-  onDraftExpectedChange: (fieldId: string, value: '0' | '1') => void;
+  onDraftExpectedChange: (fieldId: string, value: VerifyExpectedDraftValue) => void;
   // Test case actions
   onAddVector: () => void;
   onGenerateBasics: () => void;
@@ -291,7 +293,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             </div>
             {outputFields.length > 0 && (
               <>
-                <p className="ide-verify-section-subheader">Expected outputs</p>
+                <p className="ide-verify-section-subheader">Expected outputs (optional)</p>
                 <div className="ide-verify-vector-grid ide-verify-vector-grid--expected">
                   {outputFields.map((field, index) => (
                     <label
@@ -306,12 +308,20 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
                       </span>
                       <select
                         className="ide-export-pin-input"
-                        value={draftExpected[field.id] ?? '0'}
+                        value={draftExpected[field.id] ?? ''}
                         onChange={(event) =>
-                          onDraftExpectedChange(field.id, event.target.value === '1' ? '1' : '0')
+                          onDraftExpectedChange(
+                            field.id,
+                            event.target.value === '1'
+                              ? '1'
+                              : event.target.value === '0'
+                                ? '0'
+                                : ''
+                          )
                         }
                         data-testid={`ide-verify-add-vector-expected-${toTestId(field.id)}`}
                       >
+                        <option value="">-</option>
                         <option value="0">0</option>
                         <option value="1">1</option>
                       </select>
@@ -445,8 +455,6 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
 
   if (isFirstRun) {
     const hasVectorsReady = hasVectors && !isUsingFallbackSignals;
-    const primaryLabel = hasVectorsReady ? 'Run Verification' : 'Generate Basics';
-    const primaryAction = hasVectorsReady ? onRun : onGenerateBasics;
     const calloutTitle = hasVectors
       ? 'Run Verify on the current vectors'
       : 'Start with a small vector set';
@@ -468,8 +476,8 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             {isUsingFallbackSignals
               ? 'Map your circuit I/O to author stimulus against real signals.'
               : hasVectors
-                ? 'Click cells to edit · Run when ready.'
-                : 'Click cells to set signal values across ticks.'}
+                ? 'Click cells to edit, or use row and tick tools above the grid.'
+                : 'Click cells or use the row and tick tools to build a testbench quickly.'}
           </span>
         </div>
 
@@ -499,7 +507,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             <p className="ide-copy" style={{ margin: 0 }}>
               {hasVectors
                 ? 'Run verification first. Step-through, waveform inspection, and oracle tools stay available after you have real evidence.'
-                : 'Generate a starter set now, or click cells in the timeline to author your own stimulus pattern.'}
+                : 'Generate a starter set now, or use the timeline plus row and tick tools to author your own stimulus pattern.'}
             </p>
           </IdeCallout>
         </div>
@@ -518,10 +526,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             )}
           </div>
           <div className="ide-verify-run-footer-actions">
-            <IdeButton tone="ghost" onClick={onGenerateBasics} testId="ide-verify-generate-basic-vectors-footer">
-              Generate Basics
-            </IdeButton>
-            {hasVectors ? (
+            {hasVectorsReady ? (
               <span data-testid="ide-verify-empty-run">
                 <IdeButton tone="primary" onClick={onRun} testId="ide-verify-run">
                   Run Verification
@@ -529,12 +534,11 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
               </span>
             ) : (
               <IdeButton
-                tone="secondary"
-                onClick={onRun}
-                testId="ide-verify-empty-generate-basics"
-                disabled={!hasVectors}
+                tone="primary"
+                onClick={onGenerateBasics}
+                testId="ide-verify-generate-basic-vectors-footer"
               >
-                Run Verification
+                Generate Basics
               </IdeButton>
             )}
             <IdeButton tone="ghost" onClick={onOpenProjectVectors} testId="ide-verify-empty-open-vectors">

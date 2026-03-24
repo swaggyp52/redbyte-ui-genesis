@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RBProject } from '../../../export/projectFormat';
 import { useCircuitStore } from '../../../stores/circuitStore';
@@ -455,5 +456,154 @@ describe('projectRuntime verify authority', () => {
           row.required === true
       )
     ).toBe(true);
+  });
+
+  it('uses the live verification session vectors instead of only stored project vectors', () => {
+    useProjectRuntime.getState().setVectors([
+      { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 1 } },
+    ]);
+
+    const run = useProjectRuntime.getState().runVerification({
+      scenarioId: 'live-session-vectors',
+      scenarioName: 'Live Session Vectors',
+      deterministicHash: 'live-session-vectors-hash',
+      rows: [],
+      vectors: [{ tick: 0, inputs: { sw0: 0 }, expected: {} }],
+      ranAtIso: '2026-03-23T09:00:00.000Z',
+      useRuntimeTrace: false,
+    });
+
+    expect(run.status).toBe('pass');
+    expect(run.report.vectors[0]?.expected).toEqual({});
+    expect(run.report.rows).toEqual([]);
+  });
+
+  it('marks verify stale when custom vectors change and preserves unset expected outputs', () => {
+    useProjectRuntime.getState().runVerification({
+      scenarioId: 'custom-vectors-dirty',
+      scenarioName: 'Custom Vectors Dirty',
+      deterministicHash: 'custom-vectors-dirty-hash',
+      rows: [],
+      ranAtIso: '2026-03-23T09:10:00.000Z',
+      useRuntimeTrace: false,
+    });
+
+    useProjectRuntime.getState().setCustomVectors([
+      { id: 'cv-01', tick: 0, inputs: { sw0: 1 }, expected: {} },
+    ]);
+
+    const state = useProjectRuntime.getState();
+    expect(state.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(state.customVectors).toEqual([
+      { id: 'cv-01', tick: 0, inputs: { sw0: 1 }, expected: {} },
+    ]);
+  });
+
+  it('rebinds project and custom vectors to renamed live IO rows after a design mutation', () => {
+    useProjectRuntime.getState().setCustomVectors([
+      { id: 'cv-01', tick: 0, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+    ]);
+
+    const renamedCircuit = structuredClone(useProjectRuntime.getState().circuit);
+    renamedCircuit.nodes = renamedCircuit.nodes.map((node) => {
+      if (node.id === 'sw0_node') return { ...node, label: 'switch_a' };
+      if (node.id === 'ld0_node') return { ...node, label: 'led_a' };
+      return node;
+    });
+
+    useProjectRuntime.getState().applyCircuitMutation(renamedCircuit);
+
+    const state = useProjectRuntime.getState();
+    expect(state.projectIoRows.find((row) => row.nodeId === 'sw0_node')?.id).toBe('switch_a');
+    expect(state.projectIoRows.find((row) => row.nodeId === 'ld0_node')?.id).toBe('led_a');
+    expect(state.projectVectors[0]?.inputs).toEqual({ switch_a: 0 });
+    expect(state.projectVectors[0]?.expected).toEqual({ led_a: 0 });
+    expect(state.customVectors[0]?.inputs).toEqual({ switch_a: 1 });
+    expect(state.customVectors[0]?.expected).toEqual({ led_a: 1 });
+
+    const run = state.runVerification({
+      scenarioId: 'renamed-live-io',
+      scenarioName: 'Renamed Live IO',
+      deterministicHash: 'renamed-live-io-hash',
+      rows: [],
+      ranAtIso: '2026-03-23T09:20:00.000Z',
+      useRuntimeTrace: false,
+    });
+
+    expect(run.status).toBe('pass');
+    expect(run.report.vectors[0]?.inputs).toEqual({ switch_a: 0 });
+    expect(run.report.vectors[0]?.expected).toEqual({ led_a: 0 });
+  });
+
+  it('prunes removed outputs from project and custom vectors after a design mutation', () => {
+    useProjectRuntime.getState().setCustomVectors([
+      { id: 'cv-01', tick: 0, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+    ]);
+
+    const reducedCircuit = structuredClone(useProjectRuntime.getState().circuit);
+    reducedCircuit.nodes = reducedCircuit.nodes.filter((node) => node.id !== 'ld0_node');
+    reducedCircuit.connections = reducedCircuit.connections.filter(
+      (connection) => connection.to.nodeId !== 'ld0_node' && connection.from.nodeId !== 'ld0_node'
+    );
+
+    useProjectRuntime.getState().applyCircuitMutation(reducedCircuit);
+
+    const state = useProjectRuntime.getState();
+    expect(state.projectIoRows.some((row) => row.direction === 'out')).toBe(false);
+    expect(state.projectVectors.every((vector) => Object.keys(vector.expected ?? {}).length === 0)).toBe(true);
+    expect(state.customVectors[0]?.expected).toEqual({});
+
+    const run = state.runVerification({
+      scenarioId: 'removed-output-live-io',
+      scenarioName: 'Removed Output Live IO',
+      deterministicHash: 'removed-output-live-io-hash',
+      rows: [],
+      ranAtIso: '2026-03-23T09:30:00.000Z',
+      useRuntimeTrace: false,
+    });
+
+    expect(run.status).toBe('pass');
+    expect(run.report.rows).toEqual([]);
+  });
+
+  it('stays rebound across repeated design-edit and verify cycles without zombie signal keys', () => {
+    const renameSeries = [
+      { input: 'switch_a', output: 'led_a' },
+      { input: 'switch_b', output: 'led_b' },
+      { input: 'switch_c', output: 'led_c' },
+    ];
+
+    for (const [index, rename] of renameSeries.entries()) {
+      const renamedCircuit = structuredClone(useProjectRuntime.getState().circuit);
+      renamedCircuit.nodes = renamedCircuit.nodes.map((node) => {
+        if (node.id === 'sw0_node') return { ...node, label: rename.input };
+        if (node.id === 'ld0_node') return { ...node, label: rename.output };
+        return node;
+      });
+
+      useProjectRuntime.getState().applyCircuitMutation(renamedCircuit);
+
+      const state = useProjectRuntime.getState();
+      expect(Object.keys(state.projectVectors[0]?.inputs ?? {})).toEqual([rename.input]);
+      expect(Object.keys(state.projectVectors[0]?.expected ?? {})).toEqual([rename.output]);
+
+      const run = state.runVerification({
+        scenarioId: `rebind-cycle-${index + 1}`,
+        scenarioName: `Rebind Cycle ${index + 1}`,
+        deterministicHash: `rebind-cycle-${index + 1}`,
+        rows: [],
+        ranAtIso: `2026-03-23T09:${40 + index}:00.000Z`,
+        useRuntimeTrace: false,
+      });
+
+      expect(run.status).toBe('pass');
+      expect(
+        run.report.vectors.every(
+          (vector) =>
+            Object.keys(vector.inputs).every((key) => key === rename.input) &&
+            Object.keys(vector.expected).every((key) => key === rename.output)
+        )
+      ).toBe(true);
+    }
   });
 });

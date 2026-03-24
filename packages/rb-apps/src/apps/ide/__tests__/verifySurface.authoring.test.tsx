@@ -2,6 +2,7 @@
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/react';
+import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
 afterEach(() => {
@@ -22,6 +23,35 @@ const BASE_VECTORS = [
   { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
 ];
 
+function makePassRun(): RuntimeVerifyRun {
+  return {
+    scenarioId: 'authoring-pass',
+    scenarioName: 'Authoring Pass',
+    status: 'pass',
+    deterministicHash: 'abc123',
+    reportHash: 'rep-authoring-pass',
+    generatedAtIso: '2026-03-23T00:00:00.000Z',
+    schedule: 'combinational',
+    meta: {
+      circuitKind: 'combinational',
+      clockingProtocol: null,
+      samplePoint: 'steady-state',
+      tick0Meaning: null,
+      clockSignalName: null,
+    },
+    report: {
+      vectors: [
+        { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 }, caseIndex: 0 },
+      ],
+      inputsAtTick: { 0: { sw0: 0 } },
+      inputsByVectorId: { 'vec-01': { sw0: 0 } },
+      signalRoles: { sw0: 'input', ld0: 'output' },
+      rows: [{ tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass', vectorId: 'vec-01', caseIndex: 0 }],
+    } as RuntimeVerifyRun['report'],
+    waveform: [{ tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] }],
+  };
+}
+
 // ─── Add Case — expected output authoring ────────────────────────────────────
 
 describe('VerifySurface authoring — Add Case expected outputs', () => {
@@ -31,6 +61,7 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
         deterministicHash="abc123"
         hasVectors={true}
         vectors={BASE_VECTORS}
+        lastRun={makePassRun()}
         mappedInputs={BASE_INPUTS}
         mappedSignals={BASE_SIGNALS}
         onOpenProjectVectors={vi.fn()}
@@ -40,47 +71,17 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
 
     const expectedSelect = getByTestId('ide-verify-add-vector-expected-ld0');
     expect(expectedSelect).toBeTruthy();
-    expect((expectedSelect as HTMLSelectElement).value).toBe('0');
+    expect((expectedSelect as HTMLSelectElement).value).toBe('');
   });
 
-  it('populates expected field in the authored vector when Add Case is submitted', () => {
-    const onVectorsChange = vi.fn();
-    const { getByTestId } = render(
-      <VerifySurface
-        deterministicHash="abc123"
-        hasVectors={true}
-        vectors={BASE_VECTORS}
-        mappedInputs={BASE_INPUTS}
-        mappedSignals={BASE_SIGNALS}
-        onOpenProjectVectors={vi.fn()}
-        onVectorsChange={onVectorsChange}
-      />
-    );
-
-    // Author sw0=1, expected ld0=1
-    fireEvent.change(getByTestId('ide-verify-add-vector-input-sw0'), {
-      target: { value: '1' },
-    });
-    fireEvent.change(getByTestId('ide-verify-add-vector-expected-ld0'), {
-      target: { value: '1' },
-    });
-    fireEvent.click(getByTestId('ide-verify-add-vector-submit'));
-
-    expect(onVectorsChange).toHaveBeenCalledTimes(1);
-    const newVectors = onVectorsChange.mock.calls[0]?.[0] as Array<{
-      expected: Record<string, 0 | 1>;
-    }>;
-    const addedCase = newVectors.find((v) => v.expected['ld0'] !== undefined);
-    expect(addedCase?.expected['ld0']).toBe(1);
-  });
-
-  it('defaults expected to 0 when Add Case is submitted without changing expected', () => {
+  it('keeps expected unset when Add Case is submitted without changing expected', () => {
     const onVectorsChange = vi.fn();
     const { getByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
         vectors={[]}
+        lastRun={makePassRun()}
         mappedInputs={BASE_INPUTS}
         mappedSignals={BASE_SIGNALS}
         onOpenProjectVectors={vi.fn()}
@@ -94,7 +95,31 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
     const newVectors = onVectorsChange.mock.calls[0]?.[0] as Array<{
       expected: Record<string, 0 | 1>;
     }>;
-    expect(newVectors[0]?.expected['ld0']).toBe(0);
+    expect(newVectors[0]?.expected).toEqual({});
+  });
+
+  it('lets students author expected outputs directly in the stimulus canvas', () => {
+    const onVectorsChange = vi.fn();
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        vectors={BASE_VECTORS}
+        lastRun={makePassRun()}
+        mappedInputs={BASE_INPUTS}
+        mappedSignals={BASE_SIGNALS}
+        onOpenProjectVectors={vi.fn()}
+        onVectorsChange={onVectorsChange}
+      />
+    );
+
+    fireEvent.pointerDown(getByTestId('ide-stimulus-expected-ld0-t0'));
+
+    expect(onVectorsChange).toHaveBeenCalledTimes(1);
+    const firstEdit = onVectorsChange.mock.calls[0]?.[0] as Array<{
+      expected: Record<string, 0 | 1>;
+    }>;
+    expect(firstEdit[0]?.expected).toEqual({ ld0: 1 });
   });
 
   it('does not show expected grid when no output signals are mapped', () => {
@@ -103,6 +128,7 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
         deterministicHash="abc123"
         hasVectors={true}
         vectors={BASE_VECTORS}
+        lastRun={makePassRun()}
         mappedInputs={BASE_INPUTS}
         mappedSignals={[{ id: 'sw0', direction: 'in' as const }]}
         onOpenProjectVectors={vi.fn()}
@@ -114,28 +140,21 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
   });
 
   it('does not invent fallback input ports when no authoritative inputs exist', () => {
-    const onVectorsChange = vi.fn();
-    const { getByTestId, queryByTestId } = render(
+    const { queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={false}
         vectors={[]}
+        lastRun={makePassRun()}
         mappedInputs={[]}
         mappedSignals={[{ id: 'ld0', direction: 'out' as const, label: 'LD0' }]}
         onOpenProjectVectors={vi.fn()}
-        onVectorsChange={onVectorsChange}
+        onVectorsChange={vi.fn()}
       />
     );
 
     expect(queryByTestId('ide-verify-add-vector-input-in_a')).toBeNull();
     expect(queryByTestId('ide-verify-add-vector-input-in_b')).toBeNull();
-
-    fireEvent.click(getByTestId('ide-verify-empty-generate-basics'));
-
-    expect(onVectorsChange).toHaveBeenCalledTimes(1);
-    expect(onVectorsChange.mock.calls[0]?.[0]).toEqual([
-      { id: 'vec-01', tick: 0, inputs: {}, expected: {} },
-    ]);
   });
 });
 
@@ -148,6 +167,7 @@ describe('VerifySurface authoring — auto-generated vector disclosure', () => {
         deterministicHash="abc123"
         hasVectors={true}
         vectors={BASE_VECTORS}
+        lastRun={makePassRun()}
         mappedInputs={BASE_INPUTS}
         mappedSignals={BASE_SIGNALS}
         vectorsAreAutoGenerated={true}
@@ -165,6 +185,7 @@ describe('VerifySurface authoring — auto-generated vector disclosure', () => {
         deterministicHash="abc123"
         hasVectors={true}
         vectors={BASE_VECTORS}
+        lastRun={makePassRun()}
         mappedInputs={BASE_INPUTS}
         mappedSignals={BASE_SIGNALS}
         vectorsAreAutoGenerated={false}
@@ -181,6 +202,7 @@ describe('VerifySurface authoring — auto-generated vector disclosure', () => {
         deterministicHash="abc123"
         hasVectors={true}
         vectors={BASE_VECTORS}
+        lastRun={makePassRun()}
         mappedInputs={BASE_INPUTS}
         mappedSignals={BASE_SIGNALS}
         onOpenProjectVectors={vi.fn()}
@@ -200,6 +222,7 @@ describe('VerifySurface authoring — dismiss persistence across renders', () =>
         deterministicHash="abc123"
         hasVectors={true}
         vectors={BASE_VECTORS}
+        lastRun={makePassRun()}
         mappedInputs={BASE_INPUTS}
         mappedSignals={BASE_SIGNALS}
         vectorsAreAutoGenerated={true}
@@ -219,6 +242,7 @@ describe('VerifySurface authoring — dismiss persistence across renders', () =>
         deterministicHash="hash-xyz"
         hasVectors={true}
         vectors={BASE_VECTORS}
+        lastRun={makePassRun()}
         mappedInputs={BASE_INPUTS}
         mappedSignals={BASE_SIGNALS}
         vectorsAreAutoGenerated={true}
@@ -236,6 +260,7 @@ describe('VerifySurface authoring — dismiss persistence across renders', () =>
         deterministicHash="hash-xyz"
         hasVectors={true}
         vectors={BASE_VECTORS}
+        lastRun={makePassRun()}
         mappedInputs={BASE_INPUTS}
         mappedSignals={BASE_SIGNALS}
         vectorsAreAutoGenerated={true}
@@ -253,6 +278,7 @@ describe('VerifySurface authoring — dismiss persistence across renders', () =>
         deterministicHash="hash-old"
         hasVectors={true}
         vectors={BASE_VECTORS}
+        lastRun={makePassRun()}
         mappedInputs={BASE_INPUTS}
         mappedSignals={BASE_SIGNALS}
         vectorsAreAutoGenerated={true}
@@ -270,6 +296,7 @@ describe('VerifySurface authoring — dismiss persistence across renders', () =>
         deterministicHash="hash-new"
         hasVectors={true}
         vectors={BASE_VECTORS}
+        lastRun={makePassRun()}
         mappedInputs={BASE_INPUTS}
         mappedSignals={BASE_SIGNALS}
         vectorsAreAutoGenerated={true}

@@ -27,7 +27,7 @@ describe('projectHealth verify trust vs structural blockers', () => {
       {
         code: 'RBP1005',
         message:
-          'Verify passed, but some output pins remain unmapped - hardware results may not reflect all outputs.',
+          'Some required output pins remain unmapped. Finish mapping before relying on hardware behavior.',
         fixPath: { mode: 'hardware', actionLabel: 'Open Hardware' },
       },
     ]);
@@ -152,8 +152,37 @@ describe('projectHealth verify trust vs structural blockers', () => {
       {
         code: 'RBP2002',
         message: 'Project changed since last successful export.',
-        fixPath: { mode: 'export', actionLabel: 'Build Evidence Capsule' },
+        fixPath: { mode: 'export', actionLabel: 'Build Submission Package' },
       },
     ]);
+  });
+
+  it('routes back to Verify after a design mutation even when required mapping is now incomplete', () => {
+    const readiness = {
+      hasCircuit: true,
+      hasIoMapping: false,
+      hasVectors: true,
+      verifyQualification: undefined,
+    };
+    const health = deriveProjectHealth(
+      {
+        lastVerify: {
+          status: 'pass',
+          hash: 'verify-pass-hash',
+          ranAtIso: '2026-03-23T00:00:00.000Z',
+        },
+        lastExport: undefined,
+        dirtySinceVerify: true,
+        dirtySinceExport: false,
+      },
+      readiness
+    );
+
+    expect(health.blockingIssues.map((issue) => issue.code)).toContain('RBP1001');
+    expect(choosePrimaryProjectCta(health, readiness)).toEqual({
+      label: 'Verify',
+      mode: 'verify',
+      code: 'RBP1004',
+    });
   });
 });

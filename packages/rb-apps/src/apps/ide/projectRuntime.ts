@@ -143,6 +143,7 @@ export interface RunVerificationInput {
   scenarioName: string;
   deterministicHash: string;
   scheduleContract?: VerifyScheduleContract;
+  vectors?: TestVector[];
   rows: Array<{
     tick: number;
     signal: string;
@@ -541,7 +542,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       },
       setVectors: (vectors) => {
         set((state) => ({
-          projectVectors: cloneVectors(vectors),
+          projectVectors: normalizeVectorsForLiveIo(cloneVectors(vectors), state.projectIoRows),
           projectHealthCore: {
             ...state.projectHealthCore,
             dirtySinceVerify: true,
@@ -550,7 +551,13 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         }));
       },
       setCustomVectors: (vectors) => {
-        set(() => ({ customVectors: [...vectors] }));
+        set((state) => ({
+          customVectors: normalizeVectorsForLiveIo(cloneVectors(vectors), state.projectIoRows),
+          projectHealthCore: {
+            ...state.projectHealthCore,
+            dirtySinceVerify: true,
+          },
+        }));
       },
       generateBringUpVectors: () => {
         const generated = generateBringUpVectors({
@@ -559,7 +566,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           existingVectors: get().projectVectors,
         });
         set((state) => ({
-          projectVectors: cloneVectors(generated),
+          projectVectors: normalizeVectorsForLiveIo(cloneVectors(generated), state.projectIoRows),
           projectHealthCore: {
             ...state.projectHealthCore,
             dirtySinceVerify: true,
@@ -865,13 +872,17 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             ? cloneVerifyScheduleContract(input.scheduleContract)
             : verifyContext.schedule;
           const model = verifyContext.simModel;
+          const runtimeVectors = normalizeVectorsForLiveIo(
+            cloneVectors(input.vectors ?? state.projectVectors),
+            state.projectIoRows
+          );
           const deterministicResult =
-            state.projectVectors.length > 0
+            runtimeVectors.length > 0
               ? runDeterministicVerifyFromModel(
                   state.circuit,
                   model,
                   state.projectIoRows,
-                  state.projectVectors,
+                  runtimeVectors,
                   scheduleContract
                 )
               : null;
@@ -881,7 +892,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const status: 'pass' | 'fail' =
             failedRows.length > 0 || preflightIssues.length > 0 ? 'fail' : 'pass';
           const ranAtIso = input.ranAtIso ?? new Date().toISOString();
-          const vectors = toVerifyVectors(state.projectVectors);
+          const vectors = toVerifyVectors(runtimeVectors);
           const signalRoles = deriveIoSignalRoles(state.projectIoRows, scheduleContract);
           const report = buildVerifyReport({
             scenarioId,
@@ -922,11 +933,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           };
 
           // Build ledger entry (synchronous hashes via digestValue + stableSerialize)
-          const vectorsHash = digestValue(stableSerialize(state.projectVectors));
+          const vectorsHash = digestValue(stableSerialize(runtimeVectors));
           const mappingHash = digestValue(stableSerialize(ioMapping));
           const projectSnap = {
             circuit: state.circuit,
-            vectors: state.projectVectors,
+            vectors: runtimeVectors,
             mapping: ioMapping,
           };
           const projectHash = digestValue(stableSerialize(projectSnap));
@@ -1374,7 +1385,12 @@ export function mergePersistedRuntimeState(
     projectVectors,
     scenarios,
     activeScenarioId,
-    customVectors: Array.isArray(candidate.customVectors) ? [...candidate.customVectors] : [],
+    customVectors: normalizeVectorsForLiveIo(
+      cloneVectors(
+        Array.isArray(candidate.customVectors) ? (candidate.customVectors as CustomTestVector[]) : []
+      ),
+      projectIoRows
+    ),
     circuit,
     designPast,
     designFuture,
@@ -1574,7 +1590,7 @@ function cloneIoRows(rows: ProjectIoRow[]): ProjectIoRow[] {
   return rows.map((row) => ({ ...row }));
 }
 
-function cloneVectors(vectors: TestVector[]): TestVector[] {
+function cloneVectors<T extends TestVector>(vectors: T[]): T[] {
   return vectors.map((vector) => ({
     ...vector,
     inputs: { ...(vector.inputs ?? {}) },
@@ -1661,10 +1677,10 @@ function buildValidInputSignalKeys(rows: ProjectIoRow[]): Set<string> {
   return validInputKeys;
 }
 
-export function pruneStaleVectorExpected(
-  vectors: TestVector[],
+export function pruneStaleVectorExpected<T extends TestVector>(
+  vectors: T[],
   validOutputKeys: Set<string>
-): TestVector[] {
+): T[] {
   return vectors.map((vector) => ({
     ...vector,
     inputs: { ...(vector.inputs ?? {}) },
@@ -1674,10 +1690,13 @@ export function pruneStaleVectorExpected(
         return normalizedKey.length > 0 && validOutputKeys.has(normalizedKey);
       })
     ) as Record<string, 0 | 1>,
-  }));
+  })) as T[];
 }
 
-function pruneStaleVectorInputs(vectors: TestVector[], validInputKeys: Set<string>): TestVector[] {
+function pruneStaleVectorInputs<T extends TestVector>(
+  vectors: T[],
+  validInputKeys: Set<string>
+): T[] {
   return vectors.map((vector) => ({
     ...vector,
     inputs: Object.fromEntries(
@@ -1687,42 +1706,13 @@ function pruneStaleVectorInputs(vectors: TestVector[], validInputKeys: Set<strin
       })
     ) as Record<string, 0 | 1>,
     expected: { ...(vector.expected ?? {}) },
-  }));
+  })) as T[];
 }
 
-function ensureVectorExpectedCoverage(vectors: TestVector[], rows: ProjectIoRow[]): TestVector[] {
-  const outputRows = rows.filter((row) => row.direction === 'out');
-  if (outputRows.length === 0) return cloneVectors(vectors);
-
-  return vectors.map((vector) => {
-    const nextExpected: Record<string, 0 | 1> = { ...(vector.expected ?? {}) };
-    const normalizedExpectedKeys = new Set(
-      Object.keys(nextExpected)
-        .map((key) => normalizePortToken(key))
-        .filter((key) => key.length > 0)
-    );
-
-    for (const row of outputRows) {
-      const aliases = [row.id, row.label, row.nodeId]
-        .map((key) => normalizePortToken(key))
-        .filter((key) => key.length > 0);
-      const hasCoverage = aliases.some((alias) => normalizedExpectedKeys.has(alias));
-      if (hasCoverage) continue;
-      const outputKey = row.id.trim();
-      if (!outputKey) continue;
-      nextExpected[outputKey] = 0;
-      normalizedExpectedKeys.add(normalizePortToken(outputKey));
-    }
-
-    return {
-      ...vector,
-      inputs: { ...(vector.inputs ?? {}) },
-      expected: nextExpected,
-    };
-  });
-}
-
-function ensureVectorInputCoverage(vectors: TestVector[], rows: ProjectIoRow[]): TestVector[] {
+function ensureVectorInputCoverage<T extends TestVector>(
+  vectors: T[],
+  rows: ProjectIoRow[]
+): T[] {
   const inputRows = rows.filter((row) => row.direction === 'in');
   if (inputRows.length === 0) return cloneVectors(vectors);
 
@@ -1751,17 +1741,93 @@ function ensureVectorInputCoverage(vectors: TestVector[], rows: ProjectIoRow[]):
       inputs: nextInputs,
       expected: { ...(vector.expected ?? {}) },
     };
-  });
+  }) as T[];
 }
 
-function normalizeVectorsForLiveIo(vectors: TestVector[], rows: ProjectIoRow[]): TestVector[] {
+function buildRowRekeyMap(
+  previousRows: ProjectIoRow[],
+  nextRows: ProjectIoRow[],
+  direction: 'in' | 'out'
+): Map<string, string> {
+  const nextRowsByNodeId = new Map<string, ProjectIoRow>();
+  for (const row of nextRows) {
+    if (row.direction !== direction) continue;
+    const normalizedNodeId = normalizePortToken(row.nodeId);
+    if (!normalizedNodeId) continue;
+    nextRowsByNodeId.set(normalizedNodeId, row);
+  }
+
+  const rekeyMap = new Map<string, string>();
+  for (const row of previousRows) {
+    if (row.direction !== direction) continue;
+    const normalizedNodeId = normalizePortToken(row.nodeId);
+    if (!normalizedNodeId) continue;
+    const nextRow = nextRowsByNodeId.get(normalizedNodeId);
+    const canonicalKey = nextRow?.id?.trim();
+    if (!nextRow || !canonicalKey) continue;
+    for (const candidate of [row.id, row.label, row.nodeId]) {
+      const normalizedCandidate = normalizePortToken(candidate);
+      if (!normalizedCandidate) continue;
+      rekeyMap.set(normalizedCandidate, canonicalKey);
+    }
+  }
+
+  return rekeyMap;
+}
+
+function rekeyVectorSignalRecord(
+  record: Record<string, 0 | 1> | undefined,
+  rekeyMap: Map<string, string>
+): Record<string, 0 | 1> {
+  if (!record) return {};
+
+  const nextRecord: Record<string, 0 | 1> = {};
+  const seen = new Set<string>();
+  const entries = Object.entries(record);
+
+  const applyEntries = (preferAliasKeys: boolean) => {
+    for (const [rawKey, value] of entries) {
+      const normalizedKey = normalizePortToken(rawKey);
+      if (!normalizedKey) continue;
+      const mappedKey = rekeyMap.get(normalizedKey) ?? rawKey.trim();
+      const normalizedMappedKey = normalizePortToken(mappedKey);
+      if (!normalizedMappedKey) continue;
+      const isAliasKey = rekeyMap.has(normalizedKey) && normalizedMappedKey !== normalizedKey;
+      if (isAliasKey !== preferAliasKeys) continue;
+      if (seen.has(normalizedMappedKey)) continue;
+      nextRecord[mappedKey] = value;
+      seen.add(normalizedMappedKey);
+    }
+  };
+
+  applyEntries(false);
+  applyEntries(true);
+  return nextRecord;
+}
+
+function rekeyVectorsForLiveIo<T extends TestVector>(
+  vectors: T[],
+  previousRows: ProjectIoRow[],
+  nextRows: ProjectIoRow[]
+): T[] {
+  const inputRekeyMap = buildRowRekeyMap(previousRows, nextRows, 'in');
+  const outputRekeyMap = buildRowRekeyMap(previousRows, nextRows, 'out');
+
+  return vectors.map((vector) => ({
+    ...vector,
+    inputs: rekeyVectorSignalRecord(vector.inputs, inputRekeyMap),
+    expected: rekeyVectorSignalRecord(vector.expected, outputRekeyMap),
+  })) as T[];
+}
+
+function normalizeVectorsForLiveIo<T extends TestVector>(
+  vectors: T[],
+  rows: ProjectIoRow[]
+): T[] {
   return ensureVectorInputCoverage(
-    ensureVectorExpectedCoverage(
-      pruneStaleVectorInputs(
-        pruneStaleVectorExpected(vectors, buildValidOutputSignalKeys(rows)),
-        buildValidInputSignalKeys(rows)
-      ),
-      rows
+    pruneStaleVectorInputs(
+      pruneStaleVectorExpected(vectors, buildValidOutputSignalKeys(rows)),
+      buildValidInputSignalKeys(rows)
     ),
     rows
   );
@@ -1885,6 +1951,7 @@ function commitDesignSnapshot(
   | 'circuit'
   | 'projectIoRows'
   | 'projectVectors'
+  | 'customVectors'
   | 'scenarios'
   | 'macroInsertionCounts'
   | 'designPast'
@@ -1895,14 +1962,26 @@ function commitDesignSnapshot(
 > {
   const nextCircuit = cloneCircuit(snapshot.circuit);
   const nextIoRows = synchronizeProjectIoRows(nextCircuit, cloneIoRows(snapshot.projectIoRows));
+  const sourceProjectVectors = snapshot.projectVectors
+    ? cloneVectors(snapshot.projectVectors)
+    : cloneVectors(state.projectVectors);
+  const projectVectorRows = snapshot.projectVectors ? snapshot.projectIoRows : state.projectIoRows;
   const nextProjectVectors = normalizeVectorsForLiveIo(
-    snapshot.projectVectors ? cloneVectors(snapshot.projectVectors) : cloneVectors(state.projectVectors),
+    rekeyVectorsForLiveIo(sourceProjectVectors, projectVectorRows, nextIoRows),
+    nextIoRows
+  );
+  const nextCustomVectors = normalizeVectorsForLiveIo(
+    rekeyVectorsForLiveIo(cloneVectors(state.customVectors), state.projectIoRows, nextIoRows),
     nextIoRows
   );
   const nextScenarios = state.scenarios.map((scenario) => ({
     ...scenario,
     vectors: normalizeVectorsForLiveIo(
-      cloneVectors(Array.isArray(scenario.vectors) ? scenario.vectors : []),
+      rekeyVectorsForLiveIo(
+        cloneVectors(Array.isArray(scenario.vectors) ? scenario.vectors : []),
+        state.projectIoRows,
+        nextIoRows
+      ),
       nextIoRows
     ),
   }));
@@ -1910,6 +1989,7 @@ function commitDesignSnapshot(
     circuit: nextCircuit,
     projectIoRows: nextIoRows,
     projectVectors: nextProjectVectors,
+    customVectors: nextCustomVectors,
     scenarios: nextScenarios,
     macroInsertionCounts: cloneMacroInsertionCounts(snapshot.macroInsertionCounts),
     designPast: history.designPast,

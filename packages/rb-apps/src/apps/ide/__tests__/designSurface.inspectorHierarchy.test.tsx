@@ -197,7 +197,20 @@ afterEach(() => {
 });
 
 describe('DesignSurface inspector hierarchy', () => {
-  it('anchors selection identity with friendly title, subtitle, and raw id metadata', async () => {
+  it('keeps the empty inspector focused on identity and live simulation instead of filler sections', async () => {
+    const view = renderSurface(BASE_CIRCUIT);
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-inspector-empty')).toBeTruthy();
+    });
+
+    expect(view.queryByTestId('ide-design-inspector-health')).toBeNull();
+    expect(view.queryByTestId('ide-design-inspector-actions')).toBeNull();
+    expect(view.queryByTestId('ide-design-inspector-properties')).toBeNull();
+    expect(view.getByTestId('ide-design-live-sim-section')).toBeTruthy();
+  });
+
+  it('anchors selection identity with friendly title, subtitle, and student-safe reference metadata', async () => {
     const view = renderSurface(BASE_CIRCUIT);
 
     act(() => {
@@ -210,7 +223,7 @@ describe('DesignSurface inspector hierarchy', () => {
 
     expect(view.getByTestId('ide-design-inspector-identity-subtitle').textContent).toContain('Input');
     expect(view.getByTestId('ide-design-selection-type').textContent).toBe('Input');
-    expect(view.getByTestId('ide-design-selection-id').textContent).toBe('sw0_node');
+    expect(view.getByTestId('ide-design-selection-id').textContent).toBe('SW0');
   });
 
   it('prioritizes health guidance above signal/state metrics for broken selections', async () => {
@@ -221,7 +234,7 @@ describe('DesignSurface inspector hierarchy', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-inspector-health').textContent).toContain('Output has no driver');
+      expect(view.getByTestId('ide-design-inspector-health').textContent).toContain('Output not wired yet');
     });
 
     const health = view.getByTestId('ide-design-inspector-health');

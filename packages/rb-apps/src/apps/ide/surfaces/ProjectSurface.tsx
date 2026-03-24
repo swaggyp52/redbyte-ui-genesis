@@ -231,11 +231,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [sortedMappingRows]
   );
 
-  const verifyPassCurrent = health.lastVerify?.status === 'pass' && !health.dirtySinceVerify;
-  const verifyPassIncomplete =
-    verifyPassCurrent && readiness.verifyQualification === 'incomplete-mapping';
-  const verifyTrusted = verifyPassCurrent && !verifyPassIncomplete;
-  const verifyPass = readiness.verifyPass; // Keep for backward compatibility in display
+  const compareCurrent = Boolean(health.lastVerify) && !health.dirtySinceVerify;
+  const comparePassCurrent = health.lastVerify?.status === 'pass' && !health.dirtySinceVerify;
+  const comparePassIncomplete =
+    comparePassCurrent && readiness.verifyQualification === 'incomplete-mapping';
+  const compareMatches = comparePassCurrent && !comparePassIncomplete;
+  const compareDiffers = compareCurrent && health.lastVerify?.status === 'fail';
   const blockingIssues = useMemo(() => health.blockingIssues, [health.blockingIssues]);
   const topBlockingIssues = useMemo(() => blockingIssues.slice(0, 3), [blockingIssues]);
   const blockingIssue = topBlockingIssues[0] ?? null;
@@ -266,13 +267,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     readiness.hasCircuit &&
     readiness.hasIoMapping &&
     health.lastExport?.status !== 'blocked';
-  const exportReady =
+  const exportPackageCurrent =
     readiness.hasCircuit &&
     readiness.hasIoMapping &&
-    readiness.hasVectors &&
-    verifyTrusted &&
-    health.lastExport?.status !== 'blocked';
-  const hardwareReady = exportReady && !health.dirtySinceExport;
+    health.lastExport?.status === 'ok' &&
+    !health.dirtySinceExport;
+  const hardwareReady = exportPackageCurrent;
   const hardBlockingIssue = blockingIssues.find((issue) =>
     issue.code === 'RBP1000' ||
     issue.code === 'RBP1001' ||
@@ -285,24 +285,25 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     if (!readiness.hasCircuit) return 'No circuit loaded — start with an example or import HDL.';
     if (unmappedRequiredCount > 0)
       return `Circuit loaded — ${unmappedRequiredCount} required pin${unmappedRequiredCount !== 1 ? 's are' : ' is'} unmapped.`;
-    if (!readiness.hasIoMapping) return 'Circuit loaded — map pins before hardware trust is possible.';
+    if (!readiness.hasIoMapping) return 'Circuit loaded — map pins before hardware use.';
     if (!readiness.hasVectors)
-      return 'Mapping complete — Export is AVAILABLE for review, but not TRUSTED until Verify evidence is current.';
-    if (verifyPassIncomplete)
-      return 'Verify passed, but some outputs are still unmapped. Export is AVAILABLE, not TRUSTED.';
-    if (!verifyTrusted) return 'Verify is not trusted yet. Export files are AVAILABLE for review only.';
-    if (!exportReady) return 'Verify is trusted — open Export to build the hardware handoff bundle.';
-    if (!hardwareReady) return 'Export trusted — build bitstream and flash hardware.';
+      return 'Mapping complete — export files are available now. Add vectors when you want to compare observed outputs.';
+    if (comparePassIncomplete)
+      return 'Assertions matched, but some outputs are still unmapped. Finish mapping before relying on hardware behavior.';
+    if (compareDiffers)
+      return 'Assertions differ from observed outputs. Export is still available, but review the first difference before relying on the result.';
+    if (!compareCurrent) return 'Compare results are not current yet. Export files are still available.';
+    if (!exportPackageCurrent) return 'Compare results are current — open Export to build or refresh the submission package.';
     return 'All stages complete — bring up on hardware.';
   }, [
+    compareCurrent,
+    compareDiffers,
+    comparePassIncomplete,
+    exportPackageCurrent,
     readiness.hasCircuit,
     readiness.hasIoMapping,
     readiness.hasVectors,
     unmappedRequiredCount,
-    verifyPassIncomplete,
-    verifyTrusted,
-    exportReady,
-    hardwareReady,
   ]);
 
   const projectSummary = useMemo(() => {
@@ -314,12 +315,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   }, [activeExample?.summary, description, readiness.hasCircuit, topModuleName]);
 
   const verifySummary = useMemo(
-    () => getVerifySummary(health, verifyTrusted),
-    [health, verifyTrusted]
+    () => getVerifySummary(health, compareMatches, comparePassIncomplete),
+    [compareMatches, comparePassIncomplete, health]
   );
   const exportSummary = useMemo(
-    () => getExportSummary(health, exportAvailable, exportReady, hardwareReady),
-    [exportAvailable, exportReady, hardwareReady, health]
+    () => getExportSummary(health, exportAvailable, exportPackageCurrent, hardwareReady),
+    [exportAvailable, exportPackageCurrent, hardwareReady, health]
   );
   const showcaseInputSignals = useMemo(
     () => getShowcaseSignals(sortedMappingRows, 'in'),
@@ -342,8 +343,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     : hardwareReady
       ? 'Hardware ready'
       : exportAvailable
-        ? verifyTrusted
-          ? 'Trusted export'
+        ? compareDiffers
+          ? 'Review compare'
+          : compareCurrent
+            ? 'Export available'
           : 'Available export'
         : 'In progress';
   const heroAssistAction = useMemo(() => {
@@ -375,38 +378,44 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       },
       {
         label: 'Verify',
-        value: verifyTrusted
-          ? 'Trusted pass'
-          : verifyPassIncomplete
-            ? 'PASS (INCOMPLETE)'
-            : blockingIssue?.code === 'RBP1004'
-              ? 'Run again after changes'
-              : 'Still needed',
-        tone: verifyTrusted ? 'ok' : 'warn',
+        value: compareMatches
+          ? 'Assertions match'
+          : comparePassIncomplete
+            ? 'Match (mapping review)'
+            : compareDiffers
+              ? 'Assertions differ'
+              : compareCurrent
+                ? 'Simulation current'
+                : blockingIssue?.code === 'RBP1004'
+                  ? 'Run again after changes'
+                  : 'Not run',
+        tone: compareMatches ? 'ok' : 'warn',
       },
       {
         label: 'Export',
         value: hardwareReady
           ? 'Board handoff ready'
-          : exportReady
-            ? 'Trusted handoff ready'
+          : exportPackageCurrent
+            ? 'Current package'
             : exportAvailable
-              ? 'Available (not trusted yet)'
+              ? 'Available'
               : 'Map pins first',
-        tone: hardwareReady || exportReady ? 'ok' : exportAvailable ? 'warn' : 'idle',
+        tone: hardwareReady || exportPackageCurrent ? 'ok' : exportAvailable ? 'warn' : 'idle',
       },
     ],
     [
       blockingIssue?.code,
+      compareCurrent,
+      compareDiffers,
+      compareMatches,
+      comparePassIncomplete,
       exportAvailable,
-      exportReady,
+      exportPackageCurrent,
       hardwareReady,
       mappedRequiredCount,
       readiness.hasIoMapping,
       requiredCount,
       unmappedRequiredCount,
-      verifyPassIncomplete,
-      verifyTrusted,
     ]
   );
 
@@ -569,8 +578,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const designCardDone = readiness.hasCircuit && readiness.hasIoMapping;
   const completedMilestoneCount = [
     designCardDone,
-    verifyTrusted,
-    exportReady,
+    compareCurrent,
+    exportPackageCurrent,
     hardwareReady,
   ].filter(Boolean).length;
   const dockStageItems = useMemo(
@@ -588,14 +597,18 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         id: 'verify',
         step: '02',
         label: 'Verify',
-        meta: verifyTrusted
-          ? 'Trusted'
-          : verifyPassIncomplete
-            ? 'Pass incomplete'
-            : primaryCta.mode === 'verify'
-              ? 'Run now'
-              : 'Waiting',
-        state: verifyTrusted ? 'done' : primaryCta.mode === 'verify' ? 'active' : 'idle',
+        meta: compareMatches
+          ? 'Assertions match'
+          : comparePassIncomplete
+            ? 'Match review'
+            : compareDiffers
+              ? 'Assertions differ'
+              : compareCurrent
+                ? 'Simulation current'
+                : primaryCta.mode === 'verify'
+                  ? 'Run now'
+                  : 'Waiting',
+        state: compareCurrent ? 'done' : primaryCta.mode === 'verify' ? 'active' : 'idle',
         onClick: onOpenVerify,
         testId: 'ide-project-dock-nav-verify',
       },
@@ -603,8 +616,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         id: 'export',
         step: '03',
         label: 'Export',
-        meta: exportReady ? 'Trusted' : exportAvailable ? 'Open now' : primaryCta.mode === 'export' ? 'Next up' : 'Map pins',
-        state: exportReady ? 'done' : exportAvailable && primaryCta.mode === 'export' ? 'active' : 'idle',
+        meta: exportPackageCurrent ? 'Current' : exportAvailable ? 'Open now' : primaryCta.mode === 'export' ? 'Next up' : 'Map pins',
+        state: exportPackageCurrent ? 'done' : exportAvailable && primaryCta.mode === 'export' ? 'active' : 'idle',
         onClick: onOpenExport,
         testId: 'ide-project-dock-nav-export',
       },
@@ -621,7 +634,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [
       designCardDone,
       exportAvailable,
-      exportReady,
+      exportPackageCurrent,
       hardwareReady,
       onOpenDesign,
       onOpenExport,
@@ -629,8 +642,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       onOpenVerify,
       primaryCta.mode,
       readiness.hasCircuit,
-      verifyPassIncomplete,
-      verifyTrusted,
+      compareCurrent,
+      compareDiffers,
+      compareMatches,
+      comparePassIncomplete,
     ]
   );
   return (
@@ -728,8 +743,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           {studentName && (
             <span className="ide-project-identity-student">{studentName}</span>
           )}
-          <IdeStatusPill tone={verifyPass ? 'ok' : 'idle'}>
-            {verifyPass ? 'VERIFIED' : 'UNVERIFIED'}
+          <IdeStatusPill tone={compareCurrent ? 'ok' : 'idle'}>
+            {compareMatches ? 'ASSERTIONS MATCH' : compareCurrent ? 'COMPARE CURRENT' : 'COMPARE NOT RUN'}
           </IdeStatusPill>
         </div>
         {/* ── Sprint 10: 3-state layout — landing / loaded / submit ── */}
@@ -870,9 +885,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   <><span className="ide-qstat-sep" aria-hidden="true">·</span>
                   <span>{outputCount} output{outputCount !== 1 ? 's' : ''}</span></>
                 )}
-                {verifyPass && (
+                {compareMatches && (
                   <><span className="ide-qstat-sep" aria-hidden="true">·</span>
-                  <span className="ide-qstat-ok">✓ Verified</span></>
+                  <span className="ide-qstat-ok">✓ Assertions match</span></>
                 )}
                 {savedAgoLabel && (
                   <><span className="ide-qstat-sep" aria-hidden="true">·</span>
@@ -953,7 +968,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                       index < showcaseInputSignals.length &&
                       index < showcaseOutputSignals.length &&
                       readiness.hasIoMapping;
-                    const rowVerified = rowMapped && verifyPass;
+                    const rowVerified = rowMapped && compareMatches;
                     return (
                       <div
                         key={`${row.input}-${row.output}-${index}`}
@@ -1078,12 +1093,20 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <div className="ide-project-readiness-item">
                 <div className="ide-project-readiness-item-head">
                   <span>Verify</span>
-                  <IdeStatusPill tone={verifyTrusted ? 'ok' : 'warn'}>
-                    {verifyTrusted ? 'TRUSTED' : verifyPassIncomplete ? 'PASS (INCOMPLETE)' : 'NEEDS RUN'}
+                  <IdeStatusPill tone={compareMatches ? 'ok' : 'warn'}>
+                    {compareMatches
+                      ? 'ASSERTIONS MATCH'
+                      : comparePassIncomplete
+                        ? 'MATCH (MAPPING REVIEW)'
+                        : compareDiffers
+                          ? 'ASSERTIONS DIFFER'
+                          : compareCurrent
+                            ? 'SIMULATION CURRENT'
+                            : 'NOT RUN'}
                   </IdeStatusPill>
                 </div>
                 <p>{verifySummary}</p>
-                {!verifyTrusted && (
+                {!compareCurrent && (
                   <IdeButton
                     tone="ghost"
                     onClick={onOpenVerify}
@@ -1096,8 +1119,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <div className="ide-project-readiness-item">
                 <div className="ide-project-readiness-item-head">
                   <span>Export</span>
-                  <IdeStatusPill tone={exportReady ? 'ok' : exportAvailable ? 'warn' : 'warn'}>
-                    {exportReady ? 'TRUSTED' : exportAvailable ? 'AVAILABLE' : 'BLOCKED'}
+                  <IdeStatusPill tone={exportPackageCurrent ? 'ok' : exportAvailable ? 'warn' : 'warn'}>
+                    {exportPackageCurrent ? 'CURRENT PACKAGE' : exportAvailable ? 'AVAILABLE' : 'BLOCKED'}
                   </IdeStatusPill>
                 </div>
                 <p>{exportSummary}</p>
@@ -1106,13 +1129,13 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   data-testid="ide-project-export-explanation"
                   style={{ fontSize: 'var(--font-size-sm)', marginTop: '0.5rem', opacity: 0.85, fontStyle: 'italic' }}
                 >
-                  {exportReady
-                    ? 'TRUSTED — Verify passed and matches current design. Safe for hardware handoff.'
+                  {exportPackageCurrent
+                    ? 'CURRENT PACKAGE — Export artifacts match the current mapped design and are ready for hardware handoff.'
                     : exportAvailable
-                      ? 'AVAILABLE — Export files can be reviewed, but Verify has not confirmed correctness. Not a trusted handoff. Run Verify first to make this export trusted.'
+                      ? 'AVAILABLE — Export files can be reviewed or downloaded now. Compare results are advisory and do not block export.'
                       : 'Export is blocked until circuit and mapping are complete.'}
                 </p>
-                {exportAvailable && !exportReady && (
+                {exportAvailable && !compareCurrent && (
                   <IdeButton
                     tone="ghost"
                     onClick={onOpenVerify}
@@ -1589,38 +1612,47 @@ function getExamplePreview(exampleId: string): {
   }
 }
 
-function getVerifySummary(health: ProjectHealth, verifyPass: boolean): string {
-  if (!health.lastVerify) return 'No verify run yet — open Verify to define test vectors and confirm your circuit is correct.';
-  if (verifyPass) return 'Latest verify run passed and still matches the current design.';
-  if (health.lastVerify.status === 'fail') return 'Verify failed — go to Verify to see which outputs mismatched and fix the circuit.';
-  if (health.dirtySinceVerify) return 'Design changed since last verify — re-run Verify to restore export trust.';
-  return 'Verify still needs attention before export can be trusted.';
+function getVerifySummary(
+  health: ProjectHealth,
+  compareMatches: boolean,
+  comparePassIncomplete: boolean
+): string {
+  if (!health.lastVerify) return 'No comparison run yet — open Verify to define test vectors and compare observed outputs.';
+  if (compareMatches) return 'Latest comparison run matches the current design.';
+  if (comparePassIncomplete) {
+    return 'Assertions matched the live design, but some required outputs still need board mapping review.';
+  }
+  if (health.lastVerify.status === 'fail') {
+    return 'Assertions differ from observed outputs — open Verify to inspect the first difference.';
+  }
+  if (health.dirtySinceVerify) return 'Design changed since the last comparison run — rerun Verify before relying on the result.';
+  return 'Compare results still need attention before you rely on them.';
 }
 
 function getExportSummary(
   health: ProjectHealth,
   exportAvailable: boolean,
-  exportReady: boolean,
+  exportPackageCurrent: boolean,
   hardwareReady: boolean
 ): string {
   if (!health.lastExport) {
     if (!exportAvailable) return 'Export stays blocked until mapping is complete.';
-    return exportReady
+    return exportPackageCurrent
       ? 'Ready for the first export build.'
-      : 'Export can be opened now for file review. Verify is still recommended before trusting the handoff.';
+      : 'Export can be opened now for file review or download.';
   }
   if (health.lastExport.status === 'blocked') {
     return 'Latest export attempt was blocked. Open Export diagnostics before hardware.';
   }
   if (hardwareReady) return 'Latest export bundle is current and ready for hardware.';
   if (health.dirtySinceExport) {
-    return exportReady
+    return exportPackageCurrent
       ? 'A previous export exists, but the project changed since then.'
-      : 'A previous export exists, and Export can still be reopened while Verify catches up.';
+      : 'A previous export exists, and Export can still be reopened while compare results catch up.';
   }
-  return exportReady
+  return exportPackageCurrent
     ? 'Export can be opened for artifact review or rebuild.'
-    : 'Export is available for artifact review, but Verify is still advisory.';
+    : 'Export is available for artifact review or download.';
 }
 
 function toMappingKey(value: string): string {

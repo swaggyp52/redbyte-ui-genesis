@@ -89,18 +89,10 @@ export function deriveProjectHealth(
     });
   }
 
-  if (!readiness.hasVectors) {
-    blockingIssues.push({
-      code: 'RBP1002',
-      message: 'No verification vectors defined.',
-      fixPath: { mode: 'verify', actionLabel: 'Add Test Vectors' },
-    });
-  }
-
   if (isIncompleteMappingQualifiedPass) {
     blockingIssues.push({
       code: 'RBP1005',
-      message: 'Verify passed, but some output pins remain unmapped - hardware results may not reflect all outputs.',
+      message: 'Some required output pins remain unmapped. Finish mapping before relying on hardware behavior.',
       fixPath: { mode: 'hardware', actionLabel: 'Open Hardware' },
     });
   }
@@ -117,7 +109,7 @@ export function deriveProjectHealth(
     blockingIssues.push({
       code: 'RBP2002',
       message: 'Project changed since last successful export.',
-      fixPath: { mode: 'export', actionLabel: 'Build Evidence Capsule' },
+      fixPath: { mode: 'export', actionLabel: 'Build Submission Package' },
     });
   }
 
@@ -134,6 +126,13 @@ export function choosePrimaryProjectCta(
   if (!readiness.hasCircuit) {
     return { label: 'Load Example or Import HDL', mode: 'import', code: 'RBP3000' };
   }
+  const needsVerify =
+    health.dirtySinceVerify ||
+    (readiness.hasVectors &&
+      (!health.lastVerify || health.lastVerify.status !== 'pass'));
+  if (needsVerify) {
+    return { label: 'Verify', mode: 'verify', code: 'RBP1004' };
+  }
   if (!readiness.hasIoMapping) {
     return { label: 'Design', mode: 'design', code: 'RBP1001' };
   }
@@ -142,9 +141,6 @@ export function choosePrimaryProjectCta(
   }
   if (health.blockingIssues.some((issue) => issue.code === 'RBP1005')) {
     return { label: 'Hardware', mode: 'hardware', code: 'RBP1005' };
-  }
-  if (!health.lastVerify || health.lastVerify.status !== 'pass' || health.dirtySinceVerify) {
-    return { label: 'Verify', mode: 'verify', code: 'RBP1004' };
   }
   if (!health.lastExport || health.lastExport.status === 'blocked' || health.dirtySinceExport) {
     return { label: 'Export', mode: 'export', code: 'RBP2002' };

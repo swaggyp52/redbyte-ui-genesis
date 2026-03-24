@@ -2,6 +2,72 @@
 
 import { assert, runIdeGate, visible } from './_gateHarness.mjs';
 
+async function loadLogicGatesExample(page) {
+  const starterButton = page.locator('[data-testid="ide-project-load-start-logic-gates"]').first();
+  if (await starterButton.isVisible().catch(() => false)) {
+    await starterButton.click();
+    return 'logic-gates';
+  }
+
+  const examplesDisclosure = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
+  const disclosureVisible = await examplesDisclosure.isVisible().catch(() => false);
+  if (disclosureVisible) {
+    await examplesDisclosure.evaluate((element) => {
+      if (element instanceof HTMLDetailsElement) {
+        element.open = true;
+      }
+    });
+    await starterButton.scrollIntoViewIfNeeded();
+    await starterButton.click();
+    return 'logic-gates';
+  }
+
+  throw new Error('logic-gates starter entry point was not visible');
+}
+
+async function ensureVerifyVectorsReady(page) {
+  const candidates = [
+    '[data-testid="ide-verify-generate-basic-vectors"]',
+    '[data-testid="ide-verify-generate-basic-vectors-footer"]',
+    '[data-testid="ide-verify-trace-generate-basics"]',
+  ];
+  for (const selector of candidates) {
+    const button = page.locator(selector).first();
+    const isVisible = await button.isVisible().catch(() => false);
+    if (isVisible) {
+      await button.click();
+      return 'generated';
+    }
+  }
+
+  const runBar = page.locator('[data-testid="ide-verify-workstation-run-bar"]').first();
+  const runBarVisible = await runBar.isVisible().catch(() => false);
+  const runBarText = runBarVisible ? ((await runBar.textContent()) ?? '').trim() : '';
+  if (/vector/i.test(runBarText)) {
+    return 'existing';
+  }
+
+  throw new Error('verify had neither a visible generate-basics action nor an existing ready-vector state');
+}
+
+async function clickVerifyRun(page) {
+  const candidates = [
+    '[data-testid="ide-verify-run"]',
+    '[data-testid="ide-verify-run-secondary"]',
+    '[data-testid="ide-verify-empty-run"]',
+    '[data-testid="ide-verify-stale-primary-rerun"]',
+  ];
+  for (const selector of candidates) {
+    const button = page.locator(selector).first();
+    const isVisible = await button.isVisible().catch(() => false);
+    if (isVisible) {
+      await button.click();
+      return;
+    }
+  }
+  throw new Error('verify run button was not visible in any supported state');
+}
+
 await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }) => {
   // 1. Project: open the runtime examples catalog and load an example
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
@@ -11,15 +77,7 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-project-start-dock"]', { timeout: 10000 });
 
-  const loadRows = page.locator('[data-testid="ide-project-example-load"]');
-  const loadCount = await loadRows.count();
-  assert(loadCount >= 1, `expected >=1 quickstart load action, found ${loadCount}`);
-
-  const targetLoad = loadRows.nth(loadCount > 1 ? 1 : 0);
-  const targetExampleId = (await targetLoad.getAttribute('data-example-id')) ?? '';
-  assert(targetExampleId.length > 0, 'example load row must carry data-example-id');
-
-  await targetLoad.locator('button').first().click();
+  const targetExampleId = await loadLogicGatesExample(page);
 
   const ideConfirm = page.locator('[data-testid="ide-example-confirm"]').first();
   if (await ideConfirm.isVisible({ timeout: 2000 }).catch(() => false)) {
@@ -54,20 +112,40 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   const stripOnVerify = page.locator('[data-testid="ide-guided-strip"]').first();
   assert(await visible(stripOnVerify), 'guided strip must be visible on verify surface');
 
-  await page.locator('[data-testid="ide-verify-generate-basic-vectors"]').click();
+  await ensureVerifyVectorsReady(page);
   const vectorTable = page.locator('[data-testid="ide-verify-vectors-table"]').first();
-  assert(await visible(vectorTable), 'vector table must appear after generating basics');
+  const vectorTableVisible = await visible(vectorTable).catch(() => false);
+  const runFooter = page.locator('[data-testid="ide-verify-workstation-run-bar"]').first();
+  const runFooterVisible = await visible(runFooter).catch(() => false);
+  const runFooterText = runFooterVisible ? ((await runFooter.textContent()) ?? '').trim() : '';
+  assert(
+    vectorTableVisible || /vector/i.test(runFooterText),
+    'verify must surface authored vectors after generating basics',
+  );
 
-  await page.locator('[data-testid="ide-verify-run"]').click();
+  await clickVerifyRun(page);
   await page.waitForFunction(
     () => {
       const legacy = document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent ?? '';
       const summary = document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent ?? '';
       const combined = `${legacy} ${summary}`;
-      return /PASS|FAIL/i.test(combined);
+      return /PASS|TRACE|FAIL/i.test(combined);
     },
     { timeout: 10000 },
   );
+
+  const setOracle = page.locator('[data-testid="ide-verify-set-oracle"]').first();
+  if (await setOracle.isVisible().catch(() => false)) {
+    await setOracle.click();
+    await clickVerifyRun(page);
+    await page.waitForFunction(
+      () => {
+        const summary = document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent ?? '';
+        return /PASS|FAIL/i.test(summary);
+      },
+      { timeout: 10000 },
+    );
+  }
 
   const verifyBanner = page.locator('[data-testid="ide-verify-banner"]').first();
   assert(await visible(verifyBanner), 'verify summary banner must be visible after run');
@@ -170,4 +248,3 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
     'the Build → Verify → Export → Program path must be represented',
   );
 });
-

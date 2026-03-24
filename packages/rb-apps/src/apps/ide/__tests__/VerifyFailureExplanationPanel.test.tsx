@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, expect, it } from 'vitest';
-import { render } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, render } from '@testing-library/react';
 import { VerifyFailureExplanationPanel } from '../surfaces/VerifyFailureExplanationPanel';
 import { classifyVerifyFailure } from '../surfaces/verify-failure-classifier';
+
+afterEach(() => {
+  cleanup();
+});
 
 describe('VerifyFailureExplanationPanel', () => {
   it('shows required signal key, expected, actual, and likely reason', () => {
@@ -74,6 +78,6 @@ describe('VerifyFailureExplanationPanel', () => {
       <VerifyFailureExplanationPanel failure={null} classification={null} />
     );
 
-    expect(getByText('Select a failing vector row to inspect expected vs actual output.')).toBeTruthy();
+    expect(getByText('Select a failing row to inspect expected vs actual output.')).toBeTruthy();
   });
 });

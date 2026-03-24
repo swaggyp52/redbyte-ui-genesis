@@ -2,7 +2,7 @@ import type { Circuit, Connection } from '@redbyte/rb-logic-core';
 import { getDesignIssueSemantics } from './designChipMetadata';
 
 export type DesignIssueKind = 'floating-output' | 'multiple-drivers' | 'unconnected-input';
-export type DesignIssueSeverity = 'error' | 'warn';
+export type DesignIssueSeverity = 'error' | 'warn' | 'draft';
 
 export interface DesignIssueFocusTarget {
   nodeId: string;
@@ -14,6 +14,7 @@ export interface DesignIssue {
   portKey: string; // "nodeId.portName"
   kind: DesignIssueKind;
   severity: DesignIssueSeverity;
+  blocking: boolean;
   title: string;
   message: string;
   hint: string;
@@ -51,18 +52,28 @@ function addIssue(index: DesignIssueMap, issue: DesignIssue): void {
 
 function compareSeverity(left: DesignIssueSeverity, right: DesignIssueSeverity): number {
   if (left === right) return 0;
-  return left === 'error' ? -1 : 1;
+  const order: Record<DesignIssueSeverity, number> = {
+    error: 0,
+    warn: 1,
+    draft: 2,
+  };
+  return order[left] - order[right];
 }
 
 export function compareDesignIssues(left: DesignIssue, right: DesignIssue): number {
   const severityDiff = compareSeverity(left.severity, right.severity);
   if (severityDiff !== 0) return severityDiff;
+  const kindOrder: Record<DesignIssueKind, number> = {
+    'multiple-drivers': 0,
+    'floating-output': 1,
+    'unconnected-input': 2,
+  };
+  const kindDiff = kindOrder[left.kind] - kindOrder[right.kind];
+  if (kindDiff !== 0) return kindDiff;
   if (left.nodeId < right.nodeId) return -1;
   if (left.nodeId > right.nodeId) return 1;
   if (left.portKey < right.portKey) return -1;
   if (left.portKey > right.portKey) return 1;
-  if (left.kind < right.kind) return -1;
-  if (left.kind > right.kind) return 1;
   return 0;
 }
 
@@ -98,6 +109,7 @@ export function computeDesignIssues(circuit: Circuit): DesignIssueMap {
           portKey,
           kind: 'multiple-drivers',
           severity: 'error',
+          blocking: true,
           title: 'Input has multiple drivers',
           message: 'Only one signal can drive this input at a time.',
           hint: 'Remove the extra wire so this pin has one clear source.',
@@ -111,10 +123,11 @@ export function computeDesignIssues(circuit: Circuit): DesignIssueMap {
           nodeId: node.id,
           portKey,
           kind: 'unconnected-input',
-          severity: 'warn',
-          title: 'Input is still unconnected',
-          message: 'This input pin does not have a signal yet.',
-          hint: 'Connect a source before you trust the circuit behavior.',
+          severity: 'draft',
+          blocking: false,
+          title: 'Input not wired yet',
+          message: 'This input pin does not have a source yet.',
+          hint: 'Keep building, then connect a source before you verify or export.',
           focusTarget: { nodeId: node.id, portKey: portName },
         });
       }
@@ -130,10 +143,11 @@ export function computeDesignIssues(circuit: Circuit): DesignIssueMap {
           nodeId: node.id,
           portKey: primaryPortKey,
           kind: 'floating-output',
-          severity: 'error',
-          title: 'Output has no driver',
-          message: 'This output does not receive a signal from the circuit.',
-          hint: 'Wire a gate or input into this output before you verify or export.',
+          severity: 'draft',
+          blocking: false,
+          title: 'Output not wired yet',
+          message: 'This output is placed but does not receive a signal from the circuit yet.',
+          hint: 'Keep building, then connect a gate or input before you verify or export.',
           focusTarget: { nodeId: node.id, portKey: primaryInput },
         });
       }
@@ -157,5 +171,7 @@ export function nodeIssueSeverity(
 ): DesignIssueSeverity | null {
   const issues = issueMap.byNode.get(nodeId);
   if (!issues || issues.length === 0) return null;
-  return issues.some((issue) => issue.severity === 'error') ? 'error' : 'warn';
+  if (issues.some((issue) => issue.severity === 'error')) return 'error';
+  if (issues.some((issue) => issue.severity === 'warn')) return 'warn';
+  return 'draft';
 }

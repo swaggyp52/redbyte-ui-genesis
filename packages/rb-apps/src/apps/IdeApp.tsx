@@ -228,7 +228,7 @@ export const IdeApp: React.FC = () => {
       missingRequiredCount === 0,
     [missingRequiredCount, projectIoRows]
   );
-  const hasVectors = projectVectors.length > 0;
+  const hasVectors = projectVectors.length > 0 || customVectors.length > 0;
   const latestVerifyPass = projectHealthCore.lastVerify?.status === 'pass' && !projectHealthCore.dirtySinceVerify;
 
   const readiness = useMemo(
@@ -1091,8 +1091,8 @@ export const IdeApp: React.FC = () => {
     [exportViewModel.diagnostics]
   );
   const currentVerifyProjectHash = useMemo(
-    () => buildCurrentVerifyProjectHash({ circuit, projectVectors, projectIoRows }),
-    [circuit, projectIoRows, projectVectors]
+    () => buildCurrentVerifyProjectHash({ circuit, projectVectors, customVectors, projectIoRows }),
+    [circuit, customVectors, projectIoRows, projectVectors]
   );
   const latestVerifyLedgerEntry = verifyRunHistory[verifyRunHistory.length - 1];
   const verifyIsCurrent = useMemo(() => deriveVerifyCurrent({
@@ -1439,7 +1439,7 @@ export const IdeApp: React.FC = () => {
           <ErrorBoundary fallbackTitle="Verification crashed">
             <VerifySurface
               deterministicHash={determinismHash}
-              hasVectors={projectVectors.length > 0}
+              hasVectors={hasVectors}
               vectors={projectVectors}
               lastRun={verifyLastRun}
               mappingComplete={verifyMappingComplete}
@@ -1802,12 +1802,17 @@ export function deriveHasDff(
 export function buildCurrentVerifyProjectHash(input: {
   circuit: Circuit;
   projectVectors: TestVector[];
+  customVectors?: TestVector[];
   projectIoRows: ProjectIoRow[];
 }): string {
   return digestValue(
     stableSerialize({
       circuit: input.circuit,
-      vectors: input.projectVectors,
+      vectors: [...input.projectVectors, ...(input.customVectors ?? [])].map((vector) => ({
+        tick: vector.tick,
+        inputs: { ...(vector.inputs ?? {}) },
+        expected: { ...(vector.expected ?? {}) },
+      })),
       mapping: toProjectIoMapping(input.projectIoRows),
     })
   );

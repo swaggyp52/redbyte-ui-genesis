@@ -67,6 +67,18 @@ export interface BringUpArtifacts {
   expectedIo: BringUpExpectedIoReport;
 }
 
+export type BringUpGenerationMode =
+  | 'combinational'
+  | 'sequential-counter'
+  | 'sequential-register'
+  | 'sequential-stimulus-only';
+
+export interface BringUpGenerationResult {
+  vectors: TestVector[];
+  mode: BringUpGenerationMode;
+  guidance?: string;
+}
+
 const CLOCK_ALIASES = new Set(['clk', 'clock', 'clk100mhz']);
 const RESET_ALIASES = new Set(['rst', 'reset', 'rst_n', 'reset_n']);
 const ENABLE_ALIASES = new Set(['count_en', 'enable', 'en']);
@@ -83,6 +95,14 @@ export function generateBringUpVectors(params: {
   circuit: Circuit;
   existingVectors?: TestVector[];
 }): TestVector[] {
+  return buildBringUpGeneration(params).vectors;
+}
+
+export function buildBringUpGeneration(params: {
+  ioRows: BringUpIoRow[];
+  circuit: Circuit;
+  existingVectors?: TestVector[];
+}): BringUpGenerationResult {
   const inputRows = params.ioRows.filter((row) => row.direction === 'in');
   const inputSignals = sortSignals(
     inputRows
@@ -96,21 +116,34 @@ export function generateBringUpVectors(params: {
       .filter((value) => value.length > 0)
   );
 
-  if (inputSignals.length === 0) return [];
+  if (inputSignals.length === 0) {
+    return {
+      vectors: [],
+      mode: 'combinational',
+    };
+  }
 
   if (isSequentialDesign(params.circuit, inputSignals)) {
     const signalRoles = deriveIoSignalRoles(
       params.ioRows,
       deriveVerifySchedule(params.circuit, toIoMapping(params.ioRows))
     );
-    return buildSequentialBringUpVectors(inputSignals, outputSignals, signalRoles);
+    return buildSequentialBringUpGeneration(
+      params.circuit,
+      inputSignals,
+      outputSignals,
+      signalRoles
+    );
   }
 
-  return buildCombinationalBringUpVectors(
-    inputSignals,
-    outputSignals,
-    params.existingVectors ?? []
-  );
+  return {
+    vectors: buildCombinationalBringUpVectors(
+      inputSignals,
+      outputSignals,
+      params.existingVectors ?? []
+    ),
+    mode: 'combinational',
+  };
 }
 
 export function buildBringUpArtifacts(input: BringUpArtifactsInput): BringUpArtifacts {
@@ -260,50 +293,162 @@ function buildProgramAndTestTcl(project: RBProject): string {
   ].join('\n');
 }
 
-function buildSequentialBringUpVectors(
+interface SequentialControlSignals {
+  clock: string;
+  reset?: string;
+  enable?: string;
+  dataInputs: string[];
+}
+
+interface SequentialTimelineEntry {
+  tick: number;
+  inputs: Record<string, 0 | 1>;
+  risingEdge: boolean;
+  resetActive: boolean;
+  enableActive: boolean;
+  phaseIndex: number;
+}
+
+interface RegisterOutputMappingEntry {
+  signal: string;
+  sourceInput: string;
+  invert: boolean;
+}
+
+function buildSequentialBringUpGeneration(
+  circuit: Circuit,
   inputSignals: string[],
   outputSignals: string[],
   signalRoles: Record<string, 'clock' | 'reset' | 'input' | 'output'>
-): TestVector[] {
-  const vectors: TestVector[] = [];
+): BringUpGenerationResult {
+  const controlSignals = resolveSequentialControlSignals(inputSignals, signalRoles);
+  if (isCounterLikeSequentialDesign(circuit, controlSignals.dataInputs, outputSignals)) {
+    return {
+      vectors: buildCounterBringUpVectors(outputSignals, controlSignals),
+      mode: 'sequential-counter',
+    };
+  }
+
+  const registerMapping = inferRegisterOutputMapping(
+    controlSignals.dataInputs,
+    outputSignals
+  );
+  if (registerMapping.length > 0) {
+    return {
+      vectors: buildRegisterBringUpVectors(registerMapping, controlSignals),
+      mode: 'sequential-register',
+    };
+  }
+
+  return {
+    vectors: buildStimulusOnlySequentialVectors(controlSignals),
+    mode: 'sequential-stimulus-only',
+    guidance:
+      'Starter vectors include clocked stimulus only. Observe the waveform, then fill in expected outputs for your circuit.',
+  };
+}
+
+function resolveSequentialControlSignals(
+  inputSignals: string[],
+  signalRoles: Record<string, 'clock' | 'reset' | 'input' | 'output'>
+): SequentialControlSignals {
   const semanticClockSignals = new Set(
     Object.entries(signalRoles)
       .filter(([, role]) => role === 'clock')
+      .map(([signal]) => normalizeIoSignalKey(signal))
+  );
+  const semanticResetSignals = new Set(
+    Object.entries(signalRoles)
+      .filter(([, role]) => role === 'reset')
       .map(([signal]) => normalizeIoSignalKey(signal))
   );
   const clock =
     inputSignals.find((signal) => semanticClockSignals.has(normalizeIoSignalKey(signal))) ??
     inputSignals.find((signal) => CLOCK_ALIASES.has(signal)) ??
     inputSignals[0];
-  const reset = inputSignals.find((signal) => RESET_ALIASES.has(signal));
+  const reset =
+    inputSignals.find((signal) => semanticResetSignals.has(normalizeIoSignalKey(signal))) ??
+    inputSignals.find((signal) => RESET_ALIASES.has(signal));
   const enable = inputSignals.find((signal) => ENABLE_ALIASES.has(signal));
+  const dataInputs = inputSignals.filter(
+    (signal) => signal !== clock && signal !== reset && signal !== enable
+  );
 
-  let previousClock = 0;
-  let counterValue = 0;
-  const totalTicks = 18;
+  return {
+    clock,
+    reset,
+    enable,
+    dataInputs,
+  };
+}
+
+function buildSequentialTimeline(
+  controlSignals: SequentialControlSignals,
+  totalTicks: number
+): SequentialTimelineEntry[] {
+  const timeline: SequentialTimelineEntry[] = [];
+  let previousClock: 0 | 1 = 0;
 
   for (let tick = 0; tick < totalTicks; tick++) {
     const inputs: Record<string, 0 | 1> = {};
-    for (const signal of inputSignals) {
+    for (const signal of [
+      controlSignals.clock,
+      controlSignals.reset,
+      controlSignals.enable,
+      ...controlSignals.dataInputs,
+    ].filter((value): value is string => Boolean(value))) {
       inputs[signal] = 0;
     }
 
     const clockValue: 0 | 1 = tick % 2 === 0 ? 0 : 1;
-    inputs[clock] = clockValue;
-    if (reset) {
-      inputs[reset] = tick < 2 ? 1 : 0;
+    inputs[controlSignals.clock] = clockValue;
+    if (controlSignals.reset) {
+      inputs[controlSignals.reset] = tick < 2 ? 1 : 0;
     }
-    if (enable) {
-      inputs[enable] = tick >= 2 ? 1 : 0;
+    if (controlSignals.enable) {
+      inputs[controlSignals.enable] = tick >= 2 ? 1 : 0;
     }
 
-    const resetActive = reset ? inputs[reset] === 1 : false;
-    const enableActive = enable ? inputs[enable] === 1 : true;
+    const phaseIndex = Math.max(0, Math.floor(Math.max(0, tick - 2) / 2));
+    for (let index = 0; index < controlSignals.dataInputs.length; index++) {
+      const signal = controlSignals.dataInputs[index];
+      const patternValue =
+        controlSignals.dataInputs.length === 1
+          ? ((phaseIndex + 1) % 2)
+          : ((phaseIndex >> index) & 1);
+      inputs[signal] = (tick < 2 ? 0 : patternValue) as 0 | 1;
+    }
+
+    const resetActive = controlSignals.reset ? inputs[controlSignals.reset] === 1 : false;
+    const enableActive = controlSignals.enable ? inputs[controlSignals.enable] === 1 : true;
     const risingEdge = previousClock === 0 && clockValue === 1;
+    previousClock = clockValue;
 
-    if (resetActive) {
+    timeline.push({
+      tick,
+      inputs,
+      risingEdge,
+      resetActive,
+      enableActive,
+      phaseIndex,
+    });
+  }
+
+  return timeline;
+}
+
+function buildCounterBringUpVectors(
+  outputSignals: string[],
+  controlSignals: SequentialControlSignals
+): TestVector[] {
+  const vectors: TestVector[] = [];
+  const timeline = buildSequentialTimeline(controlSignals, 18);
+  let counterValue = 0;
+
+  for (const entry of timeline) {
+    if (entry.resetActive) {
       counterValue = 0;
-    } else if (risingEdge && enableActive) {
+    } else if (entry.risingEdge && entry.enableActive) {
       counterValue += 1;
     }
 
@@ -315,16 +460,64 @@ function buildSequentialBringUpVectors(
     }
 
     vectors.push({
-      id: `bringup-${String(tick + 1).padStart(2, '0')}`,
-      tick,
-      inputs,
+      id: `bringup-${String(entry.tick + 1).padStart(2, '0')}`,
+      tick: entry.tick,
+      inputs: entry.inputs,
       expected,
     });
-
-    previousClock = clockValue;
   }
 
   return vectors;
+}
+
+function buildRegisterBringUpVectors(
+  mapping: RegisterOutputMappingEntry[],
+  controlSignals: SequentialControlSignals
+): TestVector[] {
+  const vectors: TestVector[] = [];
+  const timeline = buildSequentialTimeline(controlSignals, 8);
+  const latchedInputs: Record<string, 0 | 1> = {};
+  for (const entry of mapping) {
+    latchedInputs[entry.sourceInput] = 0;
+  }
+
+  for (const entry of timeline) {
+    if (entry.resetActive) {
+      for (const sourceInput of Object.keys(latchedInputs)) {
+        latchedInputs[sourceInput] = 0;
+      }
+    } else if (entry.risingEdge && entry.enableActive) {
+      for (const sourceInput of Object.keys(latchedInputs)) {
+        latchedInputs[sourceInput] = entry.inputs[sourceInput] ?? 0;
+      }
+    }
+
+    const expected: Record<string, 0 | 1> = {};
+    for (const output of mapping) {
+      const sampled = latchedInputs[output.sourceInput] ?? 0;
+      expected[output.signal] = output.invert ? invertBit(sampled) : sampled;
+    }
+
+    vectors.push({
+      id: `bringup-${String(entry.tick + 1).padStart(2, '0')}`,
+      tick: entry.tick,
+      inputs: entry.inputs,
+      expected,
+    });
+  }
+
+  return vectors;
+}
+
+function buildStimulusOnlySequentialVectors(
+  controlSignals: SequentialControlSignals
+): TestVector[] {
+  return buildSequentialTimeline(controlSignals, 8).map((entry) => ({
+    id: `bringup-${String(entry.tick + 1).padStart(2, '0')}`,
+    tick: entry.tick,
+    inputs: entry.inputs,
+    expected: {},
+  }));
 }
 
 function buildCombinationalBringUpVectors(
@@ -420,6 +613,77 @@ function isSequentialDesign(circuit: Circuit, inputSignals: string[]): boolean {
   );
 }
 
+function isCounterLikeSequentialDesign(
+  circuit: Circuit,
+  dataInputs: string[],
+  outputSignals: string[]
+): boolean {
+  const hasCounterNode = circuit.nodes.some((node) => {
+    const normalizedType = normalizeIoSignalKey(node.type ?? '');
+    return normalizedType === 'counter4bit' || normalizedType === 'counter';
+  });
+  if (hasCounterNode) return true;
+  if (dataInputs.length > 0 || outputSignals.length === 0) return false;
+  return outputSignals.every((signal) => looksLikeCounterSignal(signal));
+}
+
+function inferRegisterOutputMapping(
+  dataInputs: string[],
+  outputSignals: string[]
+): RegisterOutputMappingEntry[] {
+  if (dataInputs.length === 0 || outputSignals.length === 0) return [];
+
+  if (outputSignals.length === 1 && dataInputs.length === 1) {
+    return [
+      {
+        signal: outputSignals[0],
+        sourceInput: dataInputs[0],
+        invert: isInvertedRegisterOutput(outputSignals[0]),
+      },
+    ];
+  }
+
+  const outputPairs = outputSignals.map((signal, index) => ({
+    signal,
+    invert: isInvertedRegisterOutput(signal),
+    suffix: readSignalSuffix(signal),
+    index,
+  }));
+  const inputPairs = dataInputs.map((signal, index) => ({
+    signal,
+    suffix: readSignalSuffix(signal),
+    index,
+  }));
+
+  if (
+    outputPairs.every((entry) => entry.suffix !== null) &&
+    inputPairs.every((entry) => entry.suffix !== null)
+  ) {
+    const mapped = outputPairs.map((output) => {
+      const input = inputPairs.find((candidate) => candidate.suffix === output.suffix);
+      if (!input) return null;
+      return {
+        signal: output.signal,
+        sourceInput: input.signal,
+        invert: output.invert,
+      } satisfies RegisterOutputMappingEntry;
+    });
+    if (mapped.every((entry): entry is RegisterOutputMappingEntry => entry !== null)) {
+      return mapped;
+    }
+  }
+
+  if (outputSignals.length === dataInputs.length) {
+    return outputSignals.map((signal, index) => ({
+      signal,
+      sourceInput: dataInputs[index],
+      invert: isInvertedRegisterOutput(signal),
+    }));
+  }
+
+  return [];
+}
+
 function inferCounterBitIndex(signal: string, fallbackIndex: number): number {
   const match = signal.match(/q(\d+)$/i);
   if (match?.[1]) {
@@ -451,6 +715,10 @@ function normalizeBit(value: unknown): 0 | 1 {
   return 0;
 }
 
+function invertBit(value: 0 | 1): 0 | 1 {
+  return value === 1 ? 0 : 1;
+}
+
 function normalizeBitSymbol(value: unknown): '0' | '1' | '-' {
   if (value === true || value === 1 || value === '1') return '1';
   if (value === false || value === 0 || value === '0') return '0';
@@ -459,6 +727,22 @@ function normalizeBitSymbol(value: unknown): '0' | '1' | '-' {
 
 function sortSignals(signals: string[]): string[] {
   return [...new Set(signals)].sort(compareCodepoint);
+}
+
+function looksLikeCounterSignal(signal: string): boolean {
+  return /^q\d+$/i.test(signal) || /^count\d+$/i.test(signal);
+}
+
+function isInvertedRegisterOutput(signal: string): boolean {
+  const normalized = normalizeIoSignalKey(signal);
+  return normalized === 'qinv' || normalized === 'q_inv' || normalized === 'qn';
+}
+
+function readSignalSuffix(signal: string): number | null {
+  const match = signal.match(/(\d+)$/);
+  if (!match?.[1]) return null;
+  const parsed = Number.parseInt(match[1], 10);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function toIoMapping(ioRows: BringUpIoRow[]): IoMapping {

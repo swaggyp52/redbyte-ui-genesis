@@ -140,11 +140,15 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-empty-state').textContent).toContain('Verify before trusting the circuit');
+    expect(getByTestId('ide-verify-empty-state').textContent).toContain('Click cells to edit');
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('comparing against project vectors');
+    expect(getByTestId('ide-verify-session-status').textContent).toContain('DRAFT');
+    expect(getByTestId('ide-verify-session-mode').textContent).toContain('ASSERTION MODE');
+    expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to verify');
     expect(getByTestId('ide-verify-empty-run').textContent).toContain('Run Verification');
-    expect(getByTestId('ide-verify-empty-open-vectors').textContent).toContain('Open Project vectors');
+    expect(getByTestId('ide-verify-empty-open-vectors').textContent).toContain('Import');
     expect(getByTestId('ide-verify-run').textContent).toContain('Run Verification');
+    expect(getByTestId('ide-verify-run').className).toContain('ide-button-primary');
   });
 
   it('labels trace-only verification as observation mode when no expected outputs are loaded', () => {
@@ -165,6 +169,136 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('observation only');
+    expect(getByTestId('ide-verify-session-status').textContent).toContain('DRAFT');
+    expect(getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION MODE');
+    expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to simulate');
+  });
+
+  it('shows capture mode with assertions incomplete after a trace-only run', () => {
+    const traceRun: RuntimeVerifyRun = {
+      scenarioId: 'trace-run',
+      scenarioName: 'Trace Run',
+      status: 'pass',
+      deterministicHash: 'abc123',
+      reportHash: 'rep-trace',
+      generatedAtIso: '2026-03-23T00:00:00.000Z',
+      schedule: 'combinational',
+      meta: {
+        circuitKind: 'combinational',
+        clockingProtocol: null,
+        samplePoint: 'steady-state',
+        tick0Meaning: null,
+        clockSignalName: null,
+      },
+      report: {
+        vectors: [
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {}, caseIndex: 0 },
+        ],
+        inputsAtTick: { 0: { sw0: 0 } },
+        inputsByVectorId: { 'vec-01': { sw0: 0 } },
+        signalRoles: { sw0: 'input', ld0: 'output' },
+        rows: [],
+      } as RuntimeVerifyRun['report'],
+      waveform: [{ tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] }],
+    };
+
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={traceRun}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {} },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        onVectorsChange={vi.fn()}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-session-status').textContent).toContain('ASSERTIONS INCOMPLETE');
+    expect(getByTestId('ide-verify-session-mode').textContent).toContain('CAPTURE MODE');
+    expect(getByTestId('ide-verify-session-title').textContent).toContain('assertions are incomplete');
+    expect(getByTestId('ide-verify-set-oracle').textContent).toContain('Capture outputs as expected');
+    expect(getByTestId('ide-verify-set-oracle').className).toContain('ide-button-primary');
+    expect(getByTestId('ide-verify-run-secondary').className).toContain('ide-button-secondary');
+  });
+
+  it('arms assertion checking immediately after capturing outputs as expected', () => {
+    const traceRun: RuntimeVerifyRun = {
+      scenarioId: 'trace-run',
+      scenarioName: 'Trace Run',
+      status: 'pass',
+      deterministicHash: 'abc123',
+      reportHash: 'rep-trace',
+      generatedAtIso: '2026-03-23T00:00:00.000Z',
+      schedule: 'combinational',
+      meta: {
+        circuitKind: 'combinational',
+        clockingProtocol: null,
+        samplePoint: 'steady-state',
+        tick0Meaning: null,
+        clockSignalName: null,
+      },
+      report: {
+        vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {}, caseIndex: 0 }],
+        inputsAtTick: { 0: { sw0: 0 } },
+        inputsByVectorId: { 'vec-01': { sw0: 0 } },
+        signalRoles: { sw0: 'input', ld0: 'output' },
+        rows: [],
+      } as RuntimeVerifyRun['report'],
+      waveform: [{ tick: 0, signals: { sw0: '0', ld0: '1' }, mismatches: [] }],
+    };
+
+    const onVectorsChange = vi.fn();
+    const initialVectors = [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {} }];
+    const { getByTestId, rerender } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={traceRun}
+        vectors={initialVectors}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        onVectorsChange={onVectorsChange}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    fireEvent.click(getByTestId('ide-verify-set-oracle'));
+    expect(onVectorsChange).toHaveBeenCalledTimes(1);
+
+    const updatedVectors = onVectorsChange.mock.calls[0]?.[0] as Array<{
+      id: string;
+      tick: number;
+      inputs: Record<string, 0 | 1>;
+      expected: Record<string, 0 | 1>;
+    }>;
+
+    rerender(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={traceRun}
+        vectors={updatedVectors}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        onVectorsChange={onVectorsChange}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-assertion-mode-toggle').textContent).toContain('Check Expected Outputs');
   });
 
   it('populates truth table rows for a passing run', () => {
@@ -232,6 +366,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-right-likely-reason').textContent).toContain('ld0');
     expect(getByTestId('ide-verify-right-likely-reason').textContent).toContain('t1');
     expect(getByTestId('ide-verify-right-next-step').textContent).toContain('ld0');
+    expect(getByTestId('ide-verify-advanced-debug').hasAttribute('open')).toBe(false);
 
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     fireEvent.click(getAllByText('Mismatches')[0]);
@@ -406,6 +541,135 @@ describe('VerifySurface workstation controls', () => {
       { ld0_node_in: 0 },
       { ld0_node_in: 1 },
     ]);
+  });
+
+  it('maps internal waveform output keys back to student-facing outputs when capturing expectations', () => {
+    const onVectorsChange = vi.fn();
+    const traceRun: RuntimeVerifyRun = {
+      scenarioId: 'trace-normalized',
+      scenarioName: 'Trace Normalized',
+      status: 'pass',
+      deterministicHash: 'abc123',
+      reportHash: 'rep-trace-normalized',
+      generatedAtIso: '2026-03-23T00:00:00.000Z',
+      schedule: 'combinational',
+      meta: {
+        circuitKind: 'combinational',
+        clockingProtocol: null,
+        samplePoint: 'steady-state',
+        tick0Meaning: null,
+        clockSignalName: null,
+      },
+      report: {
+        vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {}, caseIndex: 0 }],
+        inputsAtTick: { 0: { sw0: 0 } },
+        inputsByVectorId: { 'vec-01': { sw0: 0 } },
+        signalRoles: { sw0: 'input', ld0: 'output' },
+        rows: [],
+      } as RuntimeVerifyRun['report'],
+      waveform: [{ tick: 0, signals: { sw0: '0', ld0_node_in: '1' }, mismatches: [] }],
+      evidence: {
+        circuitHash: 'circuit-hash',
+        ioRows: [
+          { id: 'sw0', label: 'SW0', direction: 'in', nodeId: 'sw0_node' },
+          { id: 'ld0', label: 'LD0', direction: 'out', nodeId: 'ld0_node' },
+        ],
+        vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {}, caseIndex: 0 }],
+        normalizationMap: [
+          { role: 'input', rawKey: 'sw0', normalizedKey: 'sw0', matchedSignal: 'sw0' },
+          { role: 'output', rawKey: 'ld0', normalizedKey: 'ld0', matchedSignal: 'ld0_node_in' },
+        ],
+        preflight: [],
+        failures: [],
+      },
+    };
+
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={traceRun}
+        vectors={[{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {} }]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        onVectorsChange={onVectorsChange}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    fireEvent.click(getByTestId('ide-verify-set-oracle'));
+
+    expect(onVectorsChange).toHaveBeenCalledTimes(1);
+    const updatedVectors = onVectorsChange.mock.calls[0]?.[0] as Array<{
+      expected: Record<string, 0 | 1>;
+    }>;
+    expect(updatedVectors[0]?.expected).toEqual({ ld0: 1 });
+  });
+
+  it('falls back to output io-row node ids when capture sees sink-style waveform keys', () => {
+    const onVectorsChange = vi.fn();
+    const traceRun: RuntimeVerifyRun = {
+      scenarioId: 'trace-iorow-fallback',
+      scenarioName: 'Trace IO Row Fallback',
+      status: 'pass',
+      deterministicHash: 'abc123',
+      reportHash: 'rep-trace-iorow-fallback',
+      generatedAtIso: '2026-03-23T00:00:00.000Z',
+      schedule: 'combinational',
+      meta: {
+        circuitKind: 'combinational',
+        clockingProtocol: null,
+        samplePoint: 'steady-state',
+        tick0Meaning: null,
+        clockSignalName: null,
+      },
+      report: {
+        vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {}, caseIndex: 0 }],
+        inputsAtTick: { 0: { sw0: 0 } },
+        inputsByVectorId: { 'vec-01': { sw0: 0 } },
+        signalRoles: { sw0: 'input', ld0: 'output' },
+        rows: [],
+      } as RuntimeVerifyRun['report'],
+      waveform: [{ tick: 0, signals: { sw0: '0', ld0_node_in: '1' }, mismatches: [] }],
+      evidence: {
+        circuitHash: 'circuit-hash',
+        ioRows: [
+          { id: 'sw0', label: 'SW0', direction: 'in', nodeId: 'sw0_node' },
+          { id: 'ld0', label: 'LD0', direction: 'out', nodeId: 'ld0_node' },
+        ],
+        vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {}, caseIndex: 0 }],
+        normalizationMap: [],
+        preflight: [],
+        failures: [],
+      },
+    };
+
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={traceRun}
+        vectors={[{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {} }]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        onVectorsChange={onVectorsChange}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    fireEvent.click(getByTestId('ide-verify-set-oracle'));
+
+    expect(onVectorsChange).toHaveBeenCalledTimes(1);
+    const updatedVectors = onVectorsChange.mock.calls[0]?.[0] as Array<{
+      expected: Record<string, 0 | 1>;
+    }>;
+    expect(updatedVectors[0]?.expected).toEqual({ ld0: 1 });
   });
 
   it('shows explicit combos unavailability for sequential circuits', () => {

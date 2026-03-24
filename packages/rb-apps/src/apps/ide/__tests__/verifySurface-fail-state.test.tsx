@@ -23,17 +23,15 @@ function makeFailRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
-      rows: [
-        { tick: 0, signal: 'out_led', expected: '1', actual: '0', status: 'fail' },
-      ],
+      rows: [{ tick: 0, signal: 'out_led', expected: '1', actual: '0', status: 'fail' }],
     } as RuntimeVerifyRun['report'],
     waveform: [],
   };
 }
 
 describe('VerifySurface FAIL state (PR14 regression guard)', () => {
-  it('renders the FAIL summary card when lastRun is fail', () => {
-    const { getByTestId } = render(
+  it('renders the focused FAIL workspace when lastRun is fail', () => {
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -42,12 +40,14 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
         onFixPath={vi.fn()}
       />
     );
+
     expect(getByTestId('ide-verify-summary-status').textContent).toContain('FAIL');
-    expect(getByTestId('ide-verify-fail-summary-inline')).toBeTruthy();
+    expect(getByTestId('ide-verify-failure-explainer')).toBeTruthy();
+    expect(queryByTestId('ide-verify-fail-summary-inline')).toBeNull();
   });
 
-  it('has exactly one Jump CTA: in fail card, not in strip', () => {
-    const { queryByTestId, container } = render(
+  it('keeps detailed fail analysis collapsed by default while leaving the first mismatch jump visible', () => {
+    const { getAllByTestId, queryByTestId, container } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -56,9 +56,10 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
         onFixPath={vi.fn()}
       />
     );
-    // Canonical — must exist (in fail card)
-    expect(container.querySelector('[data-testid="ide-verify-jump-to-failure-card"]')).toBeTruthy();
-    // Strip duplicate — must NOT exist (removed in PR14 Task 1)
+
+    expect(getAllByTestId('ide-verify-jump-first-failure').length).toBeGreaterThan(0);
+    expect(getAllByTestId('ide-verify-drawer-toggle')[0]?.getAttribute('aria-expanded')).toBe('false');
+    expect(container.querySelector('[data-testid="ide-verify-jump-to-failure-card"]')).toBeNull();
     expect(queryByTestId('ide-verify-jump-to-failure')).toBeNull();
   });
 });

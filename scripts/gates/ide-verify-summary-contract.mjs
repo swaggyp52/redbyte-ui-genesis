@@ -6,6 +6,29 @@ async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
 }
 
+async function loadLogicGatesExample(page) {
+  const starterButton = page.locator('[data-testid="ide-project-load-start-logic-gates"]').first();
+  if (await starterButton.isVisible().catch(() => false)) {
+    await starterButton.click();
+    return;
+  }
+
+  const examplesDisclosure = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
+  const disclosureVisible = await examplesDisclosure.isVisible().catch(() => false);
+  if (disclosureVisible) {
+    await examplesDisclosure.evaluate((element) => {
+      if (element instanceof HTMLDetailsElement) {
+        element.open = true;
+      }
+    });
+    await starterButton.scrollIntoViewIfNeeded();
+    await starterButton.click();
+    return;
+  }
+
+  throw new Error('logic-gates starter entry point was not visible');
+}
+
 await runIdeGate('IDE verify summary contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
@@ -14,7 +37,7 @@ await runIdeGate('IDE verify summary contract satisfied', async ({ page, baseUrl
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
   await page.locator('[data-testid="mode-button-project"]').click();
-  await page.locator('[data-testid="ide-project-load-start-logic-gates"]').click();
+  await loadLogicGatesExample(page);
   const replaceModalVisible = await page
     .locator('[data-testid="ide-example-confirm-modal"]')
     .first()
@@ -55,4 +78,3 @@ await runIdeGate('IDE verify summary contract satisfied', async ({ page, baseUrl
     assert(beforeTick.length > 0, 'selected tick must be visible before jump');
   }
 });
-

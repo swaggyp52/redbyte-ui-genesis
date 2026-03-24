@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
+
+afterEach(() => {
+  cleanup();
+});
 
 function makeRepeatedFailureRun(): RuntimeVerifyRun {
   return {
@@ -37,10 +41,10 @@ function makeRepeatedFailureRun(): RuntimeVerifyRun {
         ld1: 'output',
       },
       rows: [
-        { tick: 1, signal: 'ld0', expected: '1', actual: '0', status: 'fail' },
-        { tick: 1, signal: 'ld1', expected: '0', actual: '0', status: 'pass' },
-        { tick: 5, signal: 'ld0', expected: '0', actual: '1', status: 'fail' },
-        { tick: 5, signal: 'ld1', expected: '1', actual: '0', status: 'fail' },
+        { tick: 1, signal: 'ld0', expected: '1', actual: '0', status: 'fail', vectorId: 'vec-01' },
+        { tick: 1, signal: 'ld1', expected: '0', actual: '0', status: 'pass', vectorId: 'vec-01' },
+        { tick: 5, signal: 'ld0', expected: '0', actual: '1', status: 'fail', vectorId: 'vec-02' },
+        { tick: 5, signal: 'ld1', expected: '1', actual: '0', status: 'fail', vectorId: 'vec-02' },
       ],
     } as RuntimeVerifyRun['report'],
     waveform: [
@@ -84,25 +88,62 @@ describe('VerifySurface failure context', () => {
     );
 
     expect(getByTestId('ide-verify-right-tick').textContent).toContain('t1');
-    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld0');
+    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('LD0');
 
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     fireEvent.click(getAllByText('Mismatches')[0]);
     fireEvent.click(getByTestId('ide-verify-mismatch-row-ld0_5'));
     expect(getByTestId('ide-verify-right-tick').textContent).toContain('t5');
-    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld0');
+    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('LD0');
     expect(getByTestId('ide-verify-right-expected').textContent).toContain('0');
     expect(getByTestId('ide-verify-right-actual').textContent).toContain('1');
-    expect(getByTestId('ide-verify-related-failure-ld1_5').textContent).toContain('ld1');
+    expect(getByTestId('ide-verify-related-failure-ld1_5').textContent).toContain('LD1');
 
     fireEvent.click(getByTestId('ide-verify-related-failure-ld1_5'));
     expect(getByTestId('ide-verify-right-tick').textContent).toContain('t5');
-    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld1');
+    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('LD1');
     expect(getByTestId('ide-verify-right-expected').textContent).toContain('1');
     expect(getByTestId('ide-verify-right-actual').textContent).toContain('0');
 
     fireEvent.click(getByTestId('ide-verify-fail-nav-first'));
     expect(getByTestId('ide-verify-right-tick').textContent).toContain('t1');
-    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld0');
+    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('LD0');
+  });
+
+  it('keeps the default fix path in Verify and only opens Design on an explicit secondary action', () => {
+    const onFixPath = vi.fn();
+    const { getByTestId, getAllByText } = render(
+      <VerifySurface
+        deterministicHash="det_repeat_fail"
+        hasVectors={true}
+        lastRun={makeRepeatedFailureRun()}
+        vectors={[
+          { id: 'vec-01', tick: 1, inputs: { sw0: 0 }, expected: { ld0: 1, ld1: 0 } },
+          { id: 'vec-02', tick: 5, inputs: { sw0: 1 }, expected: { ld0: 0, ld1: 1 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', label: 'SW0', direction: 'in' },
+          { id: 'ld0', label: 'LD0', direction: 'out' },
+          { id: 'ld1', label: 'LD1', direction: 'out' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+        onFixPath={onFixPath}
+      />
+    );
+
+    fireEvent.click(getByTestId('ide-verify-right-fix-action'));
+    expect(onFixPath).not.toHaveBeenCalled();
+    expect(getAllByText('Vectors')[0]).toBeTruthy();
+
+    fireEvent.click(getByTestId('ide-verify-right-open-design'));
+    expect(onFixPath).toHaveBeenCalledWith({
+      signal: 'ld0',
+      tick: 1,
+      expected: '1',
+      actual: '0',
+      vectorId: 'vec-01',
+      caseIndex: undefined,
+    });
   });
 });

@@ -23356,3 +23356,322 @@ button:disabled,
 .ide-verify-schema-change-msg {
   flex: 1 1 auto;
 }
+
+/* Final verify workbench authority override:
+   restore the horizontal three-panel workspace after older slice resets
+   forced it into a vertical flex stack. The waveform must own the center
+   area while keeping failure aids available but secondary. */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-workbench {
+  flex: 1 1 0 !important;
+  min-height: clamp(280px, 42vh, 760px) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel[data-has-left='0'][data-has-right='0'] {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1280px) {
+  .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel[data-has-left='1'][data-has-right='1'] {
+    grid-template-columns: clamp(144px, 14vw, 176px) minmax(0, 1fr) clamp(184px, 18vw, 224px) !important;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel[data-has-left='1'][data-has-right='0'] {
+    grid-template-columns: clamp(144px, 14vw, 176px) minmax(0, 1fr) !important;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel[data-has-left='0'][data-has-right='1'] {
+    grid-template-columns: minmax(0, 1fr) clamp(184px, 18vw, 224px) !important;
+  }
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel-left,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel-center,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel-right,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-console-frame,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-waveform-outer,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-frame,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
+  min-width: 0;
+  min-height: 0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel-center,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-console-frame,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-waveform-outer,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-frame {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100%;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
+  flex: 1 1 0 !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
+  flex: 1 1 0 !important;
+}
+
+/* Final Verify refinement:
+   keep the workflow calm by compressing top chrome, removing redundant
+   vector labels, and making the first mismatch read like one focused card. */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-session-hero {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px 14px !important;
+  padding: 8px 12px !important;
+  min-height: 0 !important;
+  border: 1px solid rgba(56, 189, 248, 0.12) !important;
+  border-radius: 10px !important;
+  background: rgba(7, 15, 25, 0.68) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-session-hero-main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  min-width: 0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-session-hero [data-testid='ide-verify-session-title'] {
+  font-size: 13px;
+  line-height: 1.2;
+  color: #f8fbff;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-session-hero [data-testid='ide-verify-session-summary'] {
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(186, 230, 253, 0.78);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-reference-mode-inline {
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(148, 163, 184, 0.78);
+  max-width: 340px;
+  text-align: right;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-status-strip {
+  align-items: center !important;
+  gap: 8px 10px !important;
+  padding: 8px 12px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-strip-actions {
+  gap: 8px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-strip-group--advanced summary {
+  font-size: 11px;
+  color: rgba(148, 163, 184, 0.82);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-zone-label[data-zone='vectors'] {
+  display: none !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-io-summary {
+  padding: 4px 0 0 !important;
+  border: none !important;
+  background: transparent !important;
+  font-size: 11px !important;
+  color: rgba(148, 163, 184, 0.82) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-testbench-zone-header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 0 0 8px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-empty-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(130, 170, 210, 0.62);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-empty-hint {
+  font-size: 12px;
+  color: rgba(186, 230, 253, 0.72);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-run-footer {
+  padding-top: 8px;
+  border-top: 1px solid rgba(56, 189, 248, 0.08);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-run-footer-actions {
+  gap: 8px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-failure-explanation-panel {
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 10px;
+  background: rgba(20, 8, 12, 0.44);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-failure-explainer-scroll .ide-kv-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-right-detail-group {
+  border-top: 1px solid rgba(248, 113, 113, 0.12);
+  padding-top: 8px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-right-detail-group > summary {
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(254, 202, 202, 0.84);
+}
+
+.ide-design-placement-ghost {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 10rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 0.65rem;
+  background: rgba(8, 18, 28, 0.88);
+  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.32);
+  color: rgba(226, 232, 240, 0.96);
+  transform: translate(-50%, -50%);
+}
+
+.ide-design-placement-hit-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: transparent;
+  cursor: crosshair;
+}
+
+.ide-design-placement-ghost strong {
+  color: #f8fbff;
+  font-size: 0.82rem;
+}
+
+.ide-design-placement-ghost span {
+  font-size: 0.7rem;
+  color: rgba(191, 219, 254, 0.74);
+}
+
+.ide-stimulus-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.55rem;
+  border-bottom: 1px solid var(--rb-border);
+  background: rgba(8, 20, 34, 0.62);
+}
+
+.ide-stimulus-toolbar-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.ide-stimulus-toolbar-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(191, 219, 254, 0.68);
+}
+
+.ide-stimulus-target-select {
+  min-width: 10rem;
+  padding: 0.32rem 0.45rem;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 0.45rem;
+  background: rgba(15, 23, 42, 0.82);
+  color: #e2e8f0;
+}
+
+.ide-stimulus-mini-btn {
+  padding: 0.3rem 0.55rem;
+  border: 1px solid rgba(96, 165, 250, 0.16);
+  border-radius: 0.45rem;
+  background: rgba(15, 23, 42, 0.78);
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.ide-stimulus-mini-btn:hover:not(:disabled) {
+  border-color: rgba(96, 165, 250, 0.38);
+  background: rgba(30, 41, 59, 0.92);
+}
+
+.ide-stimulus-mini-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ide-stimulus-toolbar-note {
+  font-size: 0.72rem;
+  color: rgba(191, 219, 254, 0.62);
+}
+
+.ide-stimulus-label-cell.is-selected,
+.ide-stimulus-label-cell--expected.is-selected {
+  color: #f8fbff !important;
+  background: rgba(59, 130, 246, 0.12) !important;
+}
+
+.ide-stimulus-tick-header.is-selected {
+  color: #f8fbff !important;
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.ide-stimulus-tick-actions {
+  position: absolute;
+  top: 0.1rem;
+  right: 0.2rem;
+  display: flex;
+  gap: 0.2rem;
+}
+
+.ide-stimulus-tick-actions button {
+  border: none;
+  border-radius: 0.3rem;
+  background: rgba(15, 23, 42, 0.86);
+  color: #cbd5f5;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1rem;
+}

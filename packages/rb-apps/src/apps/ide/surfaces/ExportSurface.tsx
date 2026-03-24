@@ -326,7 +326,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       : verifyResult?.status === 'pass' && dirtySinceVerify
         ? 'Stale — design changed'
         : isStarterScenarioFail
-          ? 'Unsealed — starter scenario'
+          ? 'Starter scenario only'
           : isNoRunYet
             ? 'Not run yet'
             : verifyResult
@@ -439,14 +439,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     : exportBlocked
       ? 'Resolve blockers before downloading the build package.'
       : isIncompleteMappingQualified
-        ? 'Export available — verification passed, but mapping evidence is incomplete.'
+        ? 'Export available — assertions match, but mapping review is still needed.'
       : isStaleButPassBefore
-        ? 'Previous sealed build available — circuit updated since.'
+        ? 'Previous submission package available — circuit updated since the last comparison run.'
       : isStarterScenarioFail
         ? 'Export available — scenario not yet authored.'
         : isNoRunYet
-          ? 'Export available — no verification run yet.'
-          : '⚠ Verify first — this export may fail in Vivado.';
+          ? 'Export available — no comparison run yet.'
+          : 'Export available — assertions differ from observed outputs.';
   const nextActionDetail = exportTrusted
     ? 'Download the Vivado Project, unzip it, then run the import script or open the project directly.'
     : exportBlocked
@@ -454,14 +454,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         ? 'The live design authority is incomplete. Fix the circuit or its mapped boundary IO before exporting.'
         : 'Use the blocker list and pin review below to clear mapping or clock issues before export.'
       : isIncompleteMappingQualified
-        ? 'Your last Verify run passed logically, but at least one required output pin was still unmapped. Complete the live pin mapping and rerun Verify before treating this handoff as sealed evidence.'
+        ? 'Your latest comparison run matched the live design, but at least one required output pin is still unmapped. Complete the live pin mapping before relying on hardware behavior.'
       : isStaleButPassBefore
-        ? 'Your last verified build passed. The circuit has changed since — re-run Verify and rebuild to seal the updated design, or download the previous build now.'
+        ? 'Your last comparison run aligned with the circuit at that time. The circuit has changed since — rerun Compare and rebuild when you want fresh evidence, or download the previous build now.'
       : isStarterScenarioFail
-        ? 'Your HDL was generated from your circuit design. The current test scenario used auto-generated starter vectors — this output is available to download, but it is not evidence-quality until you author a real scenario and get a PASS.'
-        : isNoRunYet
-          ? 'Your HDL is generated but has not been verified yet. Download is available, but run a verification scenario to get a trusted, sealed export.'
-          : 'This package has not been sealed by a passing Test run. Open Test, get a PASS result — then this export becomes trusted and safe to submit.';
+        ? 'Your HDL was generated from your circuit design. The current scenario still uses starter vectors, so this export is available to download but should be treated as a starter handoff until you author a real comparison scenario.'
+      : isNoRunYet
+          ? 'Your HDL is generated and ready to download. Run Compare when you want a checked expectation result, but export is already available.'
+          : 'Your HDL is generated and ready to download. Compare results differ from observed outputs, so review them before relying on behavior.';
   const vivadoCommand =
     'vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log';
   const projectDownloadLabel = isRebuilding
@@ -473,13 +473,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     ? 'Building…'
     : downloadDone && lastDownloadKind === 'project'
       ? 'Re-download'
-      : exportTrusted
-        ? 'Download Project ZIP'
-        : isStaleButPassBefore
-          ? 'Download Project ZIP (previous build)'
-        : isStarterScenarioFail || isNoRunYet
-          ? 'Download Project ZIP (unsealed)'
-          : '⚠ Verify first — this may fail in Vivado';
+      : isStaleButPassBefore
+        ? 'Download Project ZIP (previous build)'
+        : isStarterScenarioFail
+          ? 'Download Project ZIP (starter)'
+          : 'Download Project ZIP';
   const kitDownloadLabel = isRebuilding
     ? 'Building…'
     : downloadDone && lastDownloadKind === 'kit'
@@ -633,15 +631,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       const isVerifyMismatchNow = verifyResult?.status === 'fail';
       const isIncompleteMappingNow = verifyLastRun?.qualification === 'incomplete-mapping';
       if (isStarterFailNow) {
-        markStep('clock', 'warn', 'Unsealed — starter scenario');
+        markStep('clock', 'warn', 'Starter scenario only');
       } else if (isNoRunYetNow) {
-        markStep('clock', 'warn', 'Unsealed — verify not run');
+        markStep('clock', 'warn', 'Verify not run yet');
       } else if (isVerifyStaleNow) {
-        markStep('clock', 'warn', 'Unsealed — verify stale');
+        markStep('clock', 'warn', 'Verify needs rerun');
       } else if (isIncompleteMappingNow) {
-        markStep('clock', 'warn', 'Unsealed — mapping incomplete');
+        markStep('clock', 'warn', 'Mapping incomplete');
       } else if (isVerifyMismatchNow) {
-        markStep('clock', 'warn', 'Unsealed — verify mismatch');
+        markStep('clock', 'warn', 'Verify mismatch');
       } else {
         markStep('clock', 'done');
       }
@@ -758,7 +756,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           <header className="ide-workbench-placeholder-header">
             <h3>Handoff</h3>
             <IdeStatusPill tone={exportTrusted ? 'ok' : hasBlockingErrors ? 'error' : 'warn'}>
-              {exportTrusted ? 'READY' : hasBlockingErrors ? 'BLOCKED' : isStarterScenarioFail || isNoRunYet ? 'AVAILABLE' : 'UNVERIFIED'}
+              {exportTrusted ? 'COMPARE ALIGNED' : hasBlockingErrors ? 'BLOCKED' : 'EXPORT AVAILABLE'}
             </IdeStatusPill>
           </header>
           <div className="ide-kv-list">
@@ -789,9 +787,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 {!verifyResult
                   ? <span className="ide-export-provenance-none">Not run</span>
                   : dirtySinceVerify
-                    ? <span className="ide-export-provenance-stale" title="Circuit changed since last verify run">Previous build</span>
+                    ? <span className="ide-export-provenance-stale" title="Circuit changed since the last comparison run">Previous build</span>
                     : <span className={`ide-export-provenance-${verifyResult.status === 'pass' ? 'pass' : 'fail'}`}>
-                        {verifyResult.status === 'pass' ? 'PASS ✓' : 'FAIL ✗'}
+                        {verifyResult.status === 'pass' ? 'Assertions match' : 'Assertions differ'}
                       </span>
                 }
               </span>
@@ -850,13 +848,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             >
               {viewModel.exportedScenario.isStaleComparedToLastPass ? (
                 <IdeCallout tone="warn" testId="ide-export-scenario-stale-callout">
-                  <strong>Scenario changed since last Verify PASS.</strong>{' '}
-                  Testbench vectors reflect the current scenario but have not been re-verified.
-                  Re-run Verify to restore full provenance.
+                  <strong>Scenario changed since the last comparison run.</strong>{' '}
+                  Testbench vectors reflect the current scenario but have not been rechecked against live outputs.
+                  Re-run Compare to restore full provenance.
                 </IdeCallout>
               ) : (
                 <IdeCallout tone="ok" testId="ide-export-scenario-ok-callout">
-                  Testbench matches the verified scenario.
+                  Testbench matches the last compared scenario.
                 </IdeCallout>
               )}
               <div className="ide-kv-list" style={{ marginTop: 'var(--ide-space-2)' }}>
@@ -947,9 +945,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     : downloadDone
                       ? 'Downloaded'
                       : exportTrusted
-                        ? 'Trusted'
+                      ? 'Comparison aligned'
                         : downloadReady
-                          ? 'Unverified'
+                          ? 'Available'
                           : 'Blocked'}
                 </span>
               </div>
@@ -1008,7 +1006,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       <IdePanel
           title={
             exportTrusted
-              ? 'Export Handoff Ready'
+              ? 'Export Handoff Available'
               : exportBlocked
                 ? 'Export Handoff Blocked'
                 : 'Export Handoff Available'
@@ -1029,11 +1027,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           }
           right={
             exportTrusted ? (
-              <IdeStatusPill tone="ok">Ready</IdeStatusPill>
+              <IdeStatusPill tone="ok">Available</IdeStatusPill>
             ) : exportBlocked ? (
               <IdeStatusPill tone="error">Blocked</IdeStatusPill>
             ) : (
-              <IdeStatusPill tone="warn">Unverified</IdeStatusPill>
+              <IdeStatusPill tone="warn">Advisory</IdeStatusPill>
             )
           }
           testId="ide-export-panel"
@@ -1048,7 +1046,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <div className="ide-export-summary-copy">
                 <div className="ide-export-summary-eyebrow">
                   <IdeStatusPill tone={exportTrusted ? 'ok' : exportBlocked ? 'error' : 'warn'}>
-                    {exportTrusted ? 'READY FOR VIVADO' : exportBlocked ? 'BLOCKED' : isStarterScenarioFail || isNoRunYet ? 'AVAILABLE' : 'UNVERIFIED'}
+                    {exportTrusted ? 'EXPORT AVAILABLE' : exportBlocked ? 'BLOCKED' : 'EXPORT AVAILABLE'}
                   </IdeStatusPill>
                   <span>Engineering handoff</span>
                 </div>
@@ -1112,9 +1110,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           <section className="ide-export-trust-banner" data-testid="ide-export-trust-banner">
             {exportTrusted ? (
               <div className="ide-export-trust-row ide-export-trust-row--trusted">
-                <IdeStatusPill tone="ok">TRUSTED</IdeStatusPill>
+                <IdeStatusPill tone="ok">EXPORT AVAILABLE</IdeStatusPill>
                 <span className="ide-export-trust-message" data-testid="ide-export-trust-consequence">
-                  Verification passed and all required pins are mapped. This export is ready for Vivado.
+                  Assertions match observed outputs and all required pins are mapped. This export is ready for Vivado.
                 </span>
               </div>
             ) : downloadReady ? (
@@ -1122,10 +1120,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 <div className="ide-export-trust-header">
                   <IdeStatusPill tone="warn">
                     {isIncompleteMappingQualified
-                      ? 'AVAILABLE — MAPPING INCOMPLETE'
+                      ? 'AVAILABLE — MAPPING REVIEW'
                       : isStarterScenarioFail
-                        ? 'AVAILABLE — UNSEALED'
-                        : 'AVAILABLE — NOT TRUSTED'}
+                        ? 'AVAILABLE — STARTER'
+                        : isNoRunYet
+                          ? 'AVAILABLE — NOT COMPARED'
+                          : 'AVAILABLE — ASSERTIONS DIFFER'}
                   </IdeStatusPill>
                 </div>
                 {/* Readiness strip — 3-axis project readiness: design / scenario / verify */}
@@ -1151,32 +1151,32 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     data-testid="ide-export-readiness-verify"
                   >
                     {isIncompleteMappingQualified
-                      ? '~ Verify: mapping incomplete'
+                      ? '~ Compare: mapping review'
                       : isStarterScenarioFail
-                        ? '~ Verify: unsealed'
+                        ? '~ Compare: starter'
                         : isNoRunYet
-                          ? '— Verify: never run'
-                          : '✗ Verify: failed'}
+                          ? '— Compare: not run'
+                          : '✗ Compare: assertions differ'}
                   </span>
                 </div>
                 <div className="ide-export-trust-body">
                   <p className="ide-export-trust-reason" data-testid="ide-export-trust-reason">
-                    {evidenceDiagnostics[0]?.message ?? 'Verification has not passed.'}
+                    {evidenceDiagnostics[0]?.message ?? 'No comparison advisory is available yet.'}
                   </p>
                   <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
                     {isIncompleteMappingQualified
-                      ? 'Complete the live output pin mapping, then rerun Verify to seal this export as evidence.'
+                      ? 'Complete the live output pin mapping, then rerun Compare when you want refreshed comparison evidence.'
                       : isStarterScenarioFail
-                        ? 'Author a real test scenario in Verify and get a PASS — that seals this export as evidence.'
-                        : isNoRunYet
-                          ? 'Run a verification scenario to get a trusted, sealed export before submitting.'
-                          : 'Run Test with your vectors and get a PASS — then this export becomes trusted and safe to submit.'}
+                        ? 'Author a real test scenario in Verify before relying on this export for submission.'
+                      : isNoRunYet
+                          ? 'Run Compare when you want expected-output evidence for this export.'
+                          : 'Open Verify to inspect the differing assertions before relying on this export.'}
                   </p>
                 </div>
                 {onOpenVerify && (
                   <div className="ide-inline-actions">
                     <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-trust-go-verify">
-                      {isStarterScenarioFail ? 'Author a scenario in Verify →' : 'Open Test →'}
+                      {isStarterScenarioFail ? 'Author a scenario in Verify ->' : 'Open Verify ->'}
                     </IdeButton>
                   </div>
                 )}
@@ -1197,8 +1197,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 <div className="ide-export-trust-body">
                   <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
                     {designReady || hasBlockingErrors
-                      ? 'Fix the blockers below, then run Test to get a PASS — after that, this export will be trusted and ready to submit.'
-                      : 'Fix the live design authority first, then run Test to get a PASS — after that, this export will be trusted and ready to submit.'}
+                      ? 'Fix the blockers below, then return here to build the current export package.'
+                      : 'Fix the live design authority first, then return here to build the current export package.'}
                   </p>
                   {(unmappedRequiredPorts.length > 0 || viewModel.errors.length > 0) && (
                     <ul className="ide-export-trust-blocker-list" data-testid="ide-export-trust-blocker-list">
@@ -1287,9 +1287,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 )}
                 {!hasBlockingErrors && hasVerifyEvidenceWarning && (
                   <div data-testid="ide-export-blockers-callout">
-                    <IdeCallout tone="warn" title="Verification is required before trusted handoff" testId="ide-export-unverified-callout">
+                    <IdeCallout tone="warn" title="Comparison advisory available" testId="ide-export-unverified-callout">
                       <p className="ide-copy" style={{ margin: 0 }}>
-                        Your VHDL files are ready to inspect. Open Test and run your vectors — once you get a PASS, this export becomes trusted and safe to submit.
+                        Your VHDL files are ready to inspect or download now. Open Verify when you want to compare expected outputs against the live design.
                       </p>
                       {onOpenVerify && (
                         <div style={{ marginTop: 'var(--ide-space-2)' }}>
@@ -1732,9 +1732,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     </p>
                   </IdeCallout>
                 ) : downloadReady ? (
-                  <IdeCallout tone="warn" title="Artifacts available, but unverified" testId="ide-export-vivado-unverified-callout">
+                  <IdeCallout tone="warn" title="Artifacts available with advisory compare state" testId="ide-export-vivado-unverified-callout">
                     <p className="ide-copy" style={{ margin: 0 }} data-testid="ide-export-vivado-command">
-                      Your VHDL is ready to inspect. Open Test to confirm the logic — after a PASS, this kit is trusted for hardware bring-up.
+                      Your VHDL is ready to inspect or download now. Open Verify when you want to compare expected outputs before hardware bring-up.
                     </p>
                   </IdeCallout>
                 ) : (
@@ -2084,8 +2084,8 @@ function buildEvidenceDiagnostics(
   if (!verifyResult) {
     diagnostics.push(createEvidenceDiagnostic({
       code: 'RBEV1000',
-      message: 'No verification run found. Export files are still available, but the handoff is unverified.',
-      fix: 'Open Verify and run the deterministic vector suite before treating the package as final hardware evidence.',
+      message: 'No comparison run found. Export files are still available, but no expected-output evidence has been recorded yet.',
+      fix: 'Open Verify when you want to compare expected outputs against the live design before relying on the package as final hardware evidence.',
       severity: 'warning',
     }));
     return diagnostics;
@@ -2096,13 +2096,13 @@ function buildEvidenceDiagnostics(
     diagnostics.push(createEvidenceDiagnostic({
       code: 'RBEV1001',
       message: isStarterFail
-        ? 'Ran with auto-generated starter vectors — scenario not yet authored. Export is available but unsealed.'
+        ? 'Ran with auto-generated starter vectors — scenario not yet authored. Export is available, but the comparison evidence is still starter-grade.'
         : typeof verifyResult.failingTick === 'number'
-          ? `Latest verification failed at tick ${verifyResult.failingTick}. Export files remain viewable.`
-          : 'Latest verification failed. Export files remain viewable.',
+          ? `Latest comparison run differed at tick ${verifyResult.failingTick}. Export files remain available.`
+          : 'Latest comparison run differed from observed outputs. Export files remain available.',
       fix: isStarterFail
-        ? 'Author a real test scenario in Verify (not starter vectors) and get a PASS to seal this export as evidence.'
-        : 'Open Verify, inspect the failure diff, then rerun until PASS before relying on the bundle as trusted evidence.',
+        ? 'Author a real test scenario in Verify (not starter vectors) before treating this export as evidence-grade.'
+        : 'Open Verify, inspect the first difference, then rerun Compare when you want refreshed evidence.',
       severity: 'warning',
     }));
   }
@@ -2111,9 +2111,9 @@ function buildEvidenceDiagnostics(
     diagnostics.push(createEvidenceDiagnostic({
       code: 'RBEV1003',
       message:
-        'Latest verification PASS was qualified because required output mapping was incomplete. Export files are available, but the handoff is not sealed.',
+        'Latest comparison run matched the logic, but required output mapping was incomplete. Export files are available, but hardware interpretation is still incomplete.',
       fix:
-        'Complete the live output pin mapping, then rerun Verify so the export is sealed against the current design authority.',
+        'Complete the live output pin mapping, then rerun Compare when you want refreshed evidence against the current design.',
       severity: 'warning',
     }));
   }
@@ -2121,8 +2121,8 @@ function buildEvidenceDiagnostics(
   if (dirtySinceVerify) {
     diagnostics.push(createEvidenceDiagnostic({
       code: 'RBEV1002',
-      message: 'Design changed since the last PASS verification run. Export files remain available, but trust is stale.',
-      fix: 'Rerun verification to refresh deterministic evidence before using the bundle as your final hardware handoff.',
+      message: 'Design changed since the last comparison run. Export files remain available, but the comparison evidence is stale.',
+      fix: 'Rerun Compare to refresh deterministic evidence before using the bundle as your final hardware handoff.',
       severity: 'warning',
     }));
   }
