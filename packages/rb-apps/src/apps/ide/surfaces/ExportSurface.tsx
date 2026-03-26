@@ -330,7 +330,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       : isTraceOnly
         ? 'warn' as const
       : verifyResult?.status === 'pass' && dirtySinceVerify
-        ? 'error' as const
+        ? 'warn' as const
         : isStarterScenarioFail
           ? 'warn' as const
           : isNoRunYet
