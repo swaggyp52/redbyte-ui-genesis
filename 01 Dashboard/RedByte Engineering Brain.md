@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-03-25
+updated: 2026-03-26
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
@@ -58,11 +58,14 @@ For test work: [[Test Infrastructure]]
 
 ## What is the next action
 
-**Verify refactor close-out and BUG-003 audit are complete** - do not treat either area as emergency work without new evidence.
+**Verify is closed.** UX clarity pass (A/B/C), Verify debug pass, and render-suite cleanup are all done. Render baseline: 52 PASS / 9 suites / 0 red. Do not reopen Verify in this thread.
 
-1. [[2026-03-25 Verify Refactor Plan]] - keep as the historical close-out record for the Verify chapter
-2. [[BUG-003 React.act Infrastructure Failure]] - treat as a closed audit note, not as a reason for speculative dependency churn
-3. [[Test Infrastructure]] - if render-suite cleanup is needed later, treat the remaining red suites as normal behavior/test drift unless the literal `React.act` error returns
+Next priority — pick the one that hurts real student usage most:
+
+1. **Export/Vivado friction** — student confused between ZIP download and Vivado workflow; RBEX error codes surfaced but Vivado integration steps may still be unclear
+2. **Design-surface interaction** — known pain in large circuits; undo/redo, selection, node alignment
+3. **Onboarding / empty-state** — first-run experience and lab starters gallery
+4. **Import/submission clarity** — VHDL import parse errors, submission bundle feedback
 
 ---
 
@@ -91,7 +94,7 @@ Full install order: [[Operational Readiness Review]]
 
 ---
 
-## Test baseline (2026-03-25) - 168 pure-logic passing + 42 render passing
+## Test baseline (2026-03-26) - 168 pure-logic passing + 52 render passing (all green)
 
 ```
 export-authority-chain-contract  49   signal-inventory-contract   18
@@ -102,14 +105,11 @@ basys3-port-lint                  2   basys3-port-naming-phase1   10
 audit-determinism                 1   verifyContract.reset         8
 ```
 
-Render harness audit:
+Render harness (all 9 suites green):
 
-- `verifySurface-fail-state` 3 PASS
-- `verifySurface.failure-context` 2 PASS
-- `verifySurface.authoring` 11 PASS
-- `verifySurface.three-panel` 3 PASS
-- `verifySurface.workstation` 23 PASS
-- `verifySurface.hints-bridge` remains red for a suite-specific DOM expectation mismatch, not a React.act crash
+- `verifySurface-fail-state` 3 · `verifySurface.failure-context` 2 · `verifySurface.authoring` 11
+- `verifySurface.three-panel` 3 · `verifySurface.workstation` 23 · `verifySurface.hints-bridge` 3
+- `verifySurface.failure-patterns` 5 · `verifySurface.waveform-priority` 1 · `verifySurface.combo-kmap-provenance` 1
 
 ---
 
@@ -119,4 +119,4 @@ Render harness audit:
 
 **Stubs (expand when touching):** [[Export Contracts]] - [[Signal Inventory]] - [[Authority Chain]] - [[Bridge Protocol]] - [[Basys 3 Mapping]]
 
-**Decisions:** [[ADR-001 Enforce Structured Connection Format]]
+**Decisions:** [[ADR-001 Enforce Structured Connection Format]] - [[ADR-002 Truth Table Selection Does Not Auto-Switch Tabs]]
