@@ -4020,6 +4020,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           >
             <strong className="ide-verify-stale-banner-label">Circuit Updated</strong>
             <span>Results below were recorded before the last circuit change. Re-capture expected outputs from the current circuit or re-run to inspect the latest behavior.</span>
+            <span className="ide-verify-stale-note">These results do not indicate a failure — they are from an older build.</span>
             <IdeButton tone="primary" onClick={handleStaleRecapture} testId="ide-verify-stale-recapture">
               Re-capture outputs
             </IdeButton>
@@ -4273,21 +4274,22 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   </span>
                 ) : null}
               </div>
+              {/* Mode toggle — visible in toolbar so users know what the next run will do */}
+              <IdeButton
+                tone={nextRunUsesAssertions ? 'secondary' : 'ghost'}
+                onClick={() => setNextRunUsesAssertions((v) => !v)}
+                testId="ide-verify-assertion-mode-toggle"
+                title={nextRunUsesAssertions
+                  ? 'Next run: compare asserted outputs against the current circuit. Click to switch to trace-only.'
+                  : 'Next run: trace stimulus only, no output comparison. Click to enable output checking.'}
+              >
+                {nextRunUsesAssertions ? 'Mode: Check Outputs' : 'Mode: Trace Only'}
+              </IdeButton>
               {/* Group 2 — SECONDARY: tucked away, never the dominant focus */}
               {(hasResults || Boolean(lastRun)) && (
                 <details className="ide-verify-strip-group ide-verify-strip-group--advanced" data-testid="ide-verify-advanced-debug">
                   <summary>More actions</summary>
                   <div className="ide-inline-actions" style={{ marginTop: '0.75rem' }}>
-                  <IdeButton
-                    tone={nextRunUsesAssertions ? 'secondary' : 'ghost'}
-                    onClick={() => setNextRunUsesAssertions((v) => !v)}
-                    testId="ide-verify-assertion-mode-toggle"
-                    title={nextRunUsesAssertions
-                      ? 'Next run: compare asserted outputs against the current circuit.'
-                      : 'Next run: trace stimulus only and skip expected-output comparison.'}
-                  >
-                    {nextRunUsesAssertions ? 'Check Expected Outputs' : 'Trace Inputs Only'}
-                  </IdeButton>
                   {totalSteps > 0 && (
                     <IdeButton
                       tone={isStepMode ? 'secondary' : 'ghost'}
@@ -5173,6 +5175,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <div className="ide-verify-tab-panel">
               {verifyTab === 'mismatches' && (
                 <section className="ide-verify-mismatch-panel" data-testid="ide-verify-mismatch-table">
+                  {/* Mismatch guidance — top-level orientation before the detail */}
+                  {hasSessionFailureEvidence && (
+                    <div className="ide-verify-mismatch-guidance" data-testid="ide-verify-mismatch-guidance">
+                      <span>Your circuit produced unexpected outputs. Either fix the circuit in Design, or accept the observed output as correct if it was intended.</span>
+                      {onGoToDesign && (
+                        <IdeButton tone="ghost" onClick={onGoToDesign} testId="ide-verify-mismatch-goto-design">
+                          Open in Design
+                        </IdeButton>
+                      )}
+                    </div>
+                  )}
                   {/* Fail summary — compact selected-failure header */}
                   {hasSessionFailureEvidence && (
                     <div className="ide-verify-fail-summary" data-testid="ide-verify-fail-summary-inline">

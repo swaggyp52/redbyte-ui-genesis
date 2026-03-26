@@ -410,21 +410,25 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     {
       id: 'clock',
       label: 'Single clock domain',
+      tooltip: 'All flip-flops share one clock signal. Multiple clock domains can cause unpredictable synthesis results.',
       pass: !clockDiag,
     },
     {
       id: 'floating',
       label: 'No floating drivers',
+      tooltip: 'No output ports are left unconnected. Floating outputs cannot be synthesized correctly.',
       pass: !diagnosticsList.some((d) => /float/i.test(d.message)),
     },
     {
       id: 'pins',
       label: 'All mapped pins bound',
+      tooltip: 'Every declared I/O port has a Basys3 pin assignment. Unmapped ports block the constraints file.',
       pass: requiredCount === 0 || requiredMappedCount >= requiredCount,
     },
     {
       id: 'verify',
       label: 'Verify hash embedded',
+      tooltip: 'A passing Verify run has been completed for this exact circuit. Open Verify, run with Check Outputs enabled, and reach PASS to satisfy this.',
       pass: hasVerifyPass,
     },
   ], [clockDiag, diagnosticsList, requiredMappedCount, requiredCount, hasVerifyPass]);
@@ -1074,6 +1078,28 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 </div>
                 <h3>{nextActionTitle}</h3>
                 <p>{nextActionDetail}</p>
+                {exportBlocked && viewModel.errors.length > 0 && (() => {
+                  const err = viewModel.errors[0];
+                  const isHardwareIssue = err.code.startsWith('RBEX1');
+                  const isDesignIssue = err.code.startsWith('RBEX4');
+                  return (
+                    <div className="ide-export-first-blocker" data-testid="ide-export-first-blocker">
+                      <span className="ide-export-blocker-code">{err.code}</span>
+                      <strong className="ide-export-blocker-title">{err.title}</strong>
+                      {err.fix && <span className="ide-export-blocker-fix">{err.fix}</span>}
+                      {isHardwareIssue && onGoToHardware && (
+                        <IdeButton tone="ghost" onClick={onGoToHardware} testId="ide-export-blocker-goto-hardware">
+                          Fix in Hardware
+                        </IdeButton>
+                      )}
+                      {isDesignIssue && onGoToDesign && (
+                        <IdeButton tone="ghost" onClick={onGoToDesign} testId="ide-export-blocker-goto-design">
+                          Fix in Design
+                        </IdeButton>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               <div className="ide-export-summary-actions">
                 <span data-testid="ide-export-primary-handoff-cta">
@@ -1901,13 +1927,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
               <SurfacePanel className="ide-export-determinismChecks" testId="ide-export-determinism-checks">
                 <div className="ide-export-determinismHeader">DETERMINISM</div>
+                <div className="ide-export-determinismLegend">✓ satisfied &nbsp;·&nbsp; ⚠ required</div>
                 {deterministicChecks.map((check) => (
                   <div
                     key={check.id}
                     className={`ide-export-determinismRow ${check.pass ? 'is-pass' : 'is-fail'}`}
                     data-testid={`ide-export-determinism-${check.id}`}
+                    title={check.tooltip}
                   >
-                    <span className="ide-export-determinismIcon">{check.pass ? '✔' : '✗'}</span>
+                    <span className="ide-export-determinismIcon">{check.pass ? '✓' : '⚠'}</span>
                     <span className="ide-export-determinismLabel">{check.label}</span>
                   </div>
                 ))}

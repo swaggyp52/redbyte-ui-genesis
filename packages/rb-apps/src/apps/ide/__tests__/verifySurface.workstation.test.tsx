@@ -300,7 +300,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-assertion-mode-toggle').textContent).toContain('Check Expected Outputs');
+    expect(getByTestId('ide-verify-assertion-mode-toggle').textContent).toContain('Mode: Check Outputs');
   });
 
   it('preserves blank assertions when capture updates an existing assertion mask', () => {

@@ -947,6 +947,42 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             <h3>Hardware Console</h3>
             <span className="ide-workbench-console-mode">Hardware</span>
           </header>
+          {/* Dependency chain strip — shows the 3-step prerequisite chain at a glance */}
+          <div className="ide-hardware-dep-chain" data-testid="ide-hardware-dep-chain">
+            <button
+              className={`ide-hardware-dep-step ${compareMatches || compareCurrent ? 'is-ok' : verifyCurrent && !compareMatches ? 'is-warn' : 'is-missing'}`}
+              onClick={onOpenVerify}
+              title="Open Verify"
+            >
+              <span className="ide-hardware-dep-step__num">1</span>
+              <span className="ide-hardware-dep-step__label">Verify</span>
+              <span className="ide-hardware-dep-step__status">
+                {compareMatches ? '✓' : verifyCurrent ? '⚠' : '—'}
+              </span>
+            </button>
+            <span className="ide-hardware-dep-arrow" aria-hidden="true">→</span>
+            <button
+              className={`ide-hardware-dep-step ${hardwareState === 'ready' ? 'is-ok' : hardwareState === 'export-stale' ? 'is-warn' : 'is-missing'}`}
+              onClick={onOpenExport}
+              title="Open Export"
+            >
+              <span className="ide-hardware-dep-step__num">2</span>
+              <span className="ide-hardware-dep-step__label">Export</span>
+              <span className="ide-hardware-dep-step__status">
+                {hardwareState === 'ready' ? '✓' : hardwareState === 'export-stale' ? '⚠ Re-export needed' : '— Build needed'}
+              </span>
+            </button>
+            <span className="ide-hardware-dep-arrow" aria-hidden="true">→</span>
+            <span
+              className={`ide-hardware-dep-step ide-hardware-dep-step--terminal ${hardwareState === 'ready' && !hasBlocking ? 'is-ok' : 'is-locked'}`}
+            >
+              <span className="ide-hardware-dep-step__num">3</span>
+              <span className="ide-hardware-dep-step__label">Program</span>
+              <span className="ide-hardware-dep-step__status">
+                {hardwareState === 'ready' && !hasBlocking ? '✓ Ready' : '🔒 Locked'}
+              </span>
+            </span>
+          </div>
           <IdeCallout
             tone={readinessCallout.tone}
             title={readinessCallout.title}

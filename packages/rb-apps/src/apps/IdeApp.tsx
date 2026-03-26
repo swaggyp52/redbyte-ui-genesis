@@ -1273,7 +1273,7 @@ export const IdeApp: React.FC = () => {
     <div className="ide-root" data-testid="ide-root" data-redbyte-mode="ide">
       {autosaveAvailable && !hasCircuit && (
         <div className="ide-autosave-banner" data-testid="ide-autosave-banner">
-          <span>You have unsaved work from a previous session.</span>
+          <span><strong>Restore previous session?</strong> A circuit from your last session is available. Restore it or start fresh.</span>
           <button onClick={handleRestoreAutosave}>Restore</button>
           <button onClick={() => { setAutosaveAvailable(false); localStorage.removeItem('rb-autosave-circuit'); }}>Dismiss</button>
         </div>

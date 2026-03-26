@@ -76,7 +76,7 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
 
     fireEvent.click(getByTestId('ide-verify-assertion-mode-toggle'));
 
-    expect(getByTestId('ide-verify-assertion-mode-toggle').textContent).toContain('Trace Inputs Only');
+    expect(getByTestId('ide-verify-assertion-mode-toggle').textContent).toContain('Mode: Trace Only');
     expect(getByTestId('ide-verify-summary-status').textContent).toContain('ASSERTIONS DIFFER');
     expect(getByTestId('ide-verify-run-proof').className).toContain('ide-verify-run-proof--fail');
     expect(getByTestId('ide-verify-failure-explainer')).toBeTruthy();

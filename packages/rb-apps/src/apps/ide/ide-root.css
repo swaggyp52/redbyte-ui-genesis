@@ -8708,7 +8708,14 @@ details[open] summary .details-arrow {
   text-align: center;
 }
 .ide-export-determinismRow.is-pass .ide-export-determinismIcon { color: var(--ide-green-text, #4ade80); }
-.ide-export-determinismRow.is-fail .ide-export-determinismIcon { color: var(--ide-red-text, #f87171); }
+.ide-export-determinismRow.is-fail .ide-export-determinismIcon { color: var(--rb-warning, #fa0); }
+
+.ide-export-determinismLegend {
+  padding: 2px var(--ide-space-3) 4px;
+  font-size: 9px;
+  color: var(--ide-text-muted);
+  border-bottom: 1px solid var(--ide-border);
+}
 
 .ide-export-determinismLabel { color: var(--ide-text-dim, var(--ide-text-muted)); }
 
@@ -23695,4 +23702,121 @@ button:disabled,
   cursor: pointer;
   padding: 0 0.25rem;
   line-height: 1rem;
+}
+
+/* ─── UX Polish Pass — Change 3: Stale-not-failure sub-note ──────────── */
+.ide-verify-stale-note {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--ide-text-muted);
+  margin-top: 4px;
+}
+
+/* ─── UX Polish Pass — Change 4: Mismatch guidance callout ─────────────── */
+.ide-verify-mismatch-guidance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ide-space-2);
+  padding: var(--ide-space-2) var(--ide-space-3);
+  background: rgba(251, 191, 36, 0.06);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: var(--ide-radius);
+  margin-bottom: var(--ide-space-2);
+  font-size: 12px;
+  color: var(--ide-text-soft);
+}
+
+/* ─── UX Polish Pass — Change 5: Export first-blocker callout ───────────── */
+.ide-export-first-blocker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ide-space-1) var(--ide-space-2);
+  margin-top: var(--ide-space-2);
+  padding: var(--ide-space-2) var(--ide-space-3);
+  background: rgba(248, 113, 113, 0.07);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: var(--ide-radius);
+  font-size: 12px;
+}
+.ide-export-blocker-code {
+  font-family: var(--ide-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ide-text-muted);
+  letter-spacing: 0.06em;
+}
+.ide-export-blocker-title {
+  color: var(--ide-red-text, #f87171);
+}
+.ide-export-blocker-fix {
+  color: var(--ide-text-soft);
+  flex-basis: 100%;
+}
+
+/* ─── UX Polish Pass — Change 6: Hardware dependency chain strip ─────────── */
+.ide-hardware-dep-chain {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-1);
+  padding: var(--ide-space-2) 0;
+  margin-bottom: var(--ide-space-2);
+  flex-wrap: wrap;
+}
+.ide-hardware-dep-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--ide-space-1) var(--ide-space-2);
+  border-radius: var(--ide-radius);
+  border: 1px solid var(--ide-border);
+  background: none;
+  color: var(--ide-text-soft);
+  font-size: 11px;
+  cursor: pointer;
+  min-width: 72px;
+  text-align: center;
+  transition: background 0.1s;
+}
+.ide-hardware-dep-step:hover { background: rgba(255,255,255,0.04); }
+.ide-hardware-dep-step--terminal { cursor: default; }
+.ide-hardware-dep-step--terminal:hover { background: none; }
+.ide-hardware-dep-step.is-ok {
+  border-color: rgba(74, 222, 128, 0.35);
+  background: rgba(74, 222, 128, 0.05);
+  color: var(--ide-green-text, #4ade80);
+}
+.ide-hardware-dep-step.is-warn {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(251, 191, 36, 0.05);
+  color: var(--rb-warning, #fa0);
+}
+.ide-hardware-dep-step.is-missing {
+  border-color: var(--ide-border);
+  color: var(--ide-text-muted);
+}
+.ide-hardware-dep-step.is-locked {
+  border-color: var(--ide-border);
+  color: var(--ide-text-muted);
+  opacity: 0.6;
+}
+.ide-hardware-dep-step__num {
+  font-size: 9px;
+  font-weight: 700;
+  opacity: 0.6;
+}
+.ide-hardware-dep-step__label {
+  font-weight: 600;
+  font-size: 11px;
+}
+.ide-hardware-dep-step__status {
+  font-size: 10px;
+  font-family: var(--ide-font-mono);
+}
+.ide-hardware-dep-arrow {
+  color: var(--ide-text-muted);
+  font-size: 12px;
+  padding: 0 2px;
 }
