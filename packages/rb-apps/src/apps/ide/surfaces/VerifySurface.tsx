@@ -2773,7 +2773,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const isTraceOnly =
     lastRun !== undefined &&
     lastRunKind === 'trace' &&
-    !hasResults &&
     !hasNoTrace;
   /*
         ? 'Simulation complete — some outputs not yet mapped to board pins'
