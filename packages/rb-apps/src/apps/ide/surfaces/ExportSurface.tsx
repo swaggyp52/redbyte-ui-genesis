@@ -1806,9 +1806,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
                 <div className="ide-export-next-steps" data-testid="ide-export-vivado-steps">
                   <ol className="ide-export-checklist" data-testid="ide-export-vivado-checklist">
-                    <li>Open Vivado.</li>
-                    <li>Run <code>vivado_import.tcl</code> from the extracted project folder.</li>
-                    <li>Generate bitstream and program the Basys3.</li>
+                    <li>Open Vivado → <strong>File → Open Project</strong></li>
+                    <li>Select <code>{projectSlug}.xpr</code> inside the unzipped folder</li>
+                    <li>Run Synthesis → Implementation → Generate Bitstream → Program Device</li>
                   </ol>
                   <details className="ide-export-advanced-steps">
                     <summary>Advanced / full checklist</summary>
@@ -1838,15 +1838,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         <span><code>Vivado 2024.1+</code></span>
                       </div>
                     </div>
-                    <ol className="ide-export-checklist ide-export-checklist--advanced">
-                      <li>Unzip the download and keep the <code>{projectSlug}</code> folder intact</li>
-                      <li>Open Vivado → <strong>Open Project</strong></li>
-                      <li>Select <code>{projectSlug}.xpr</code> inside the unzipped folder</li>
-                      <li>Confirm the design sources and constraints load from <code>{projectSlug}.srcs</code></li>
-                      <li>Run Synthesis → Implementation → Generate Bitstream → Program Device</li>
-                    </ol>
-                    <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', marginTop: 'var(--ide-space-2)' }}>
-                      Fallback: run <code>{vivadoCommand}</code> from the extracted folder if Open Project is unavailable.
+                    <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', marginTop: 'var(--ide-space-2)', marginBottom: 0 }}>
+                      Unzip the download and keep the <code>{projectSlug}</code> folder intact before opening the project.
+                    </p>
+                    <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', marginTop: 'var(--ide-space-1)', marginBottom: 0 }}>
+                      Batch fallback: run <code>{vivadoCommand}</code> from the extracted folder.
                     </p>
                   </details>
                   {/* Gate contract compatibility: vivado command/readme must be findable */}
