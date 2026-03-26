@@ -244,6 +244,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   }, [viewModel.pinTable]);
 
   const hasBlockingErrors = viewModel.errors.length > 0;
+  // When export is hard-blocked, suppress RBEV evidence advisories from the visible list —
+  // students should focus on the RBEX blocker, not verify coverage they can't act on yet.
+  const visibleDiagnosticsList = hasBlockingErrors
+    ? [...viewModel.errors, ...viewModel.warnings]
+    : diagnosticsList;
   const isIncompleteMappingQualified = verifyLastRun?.qualification === 'incomplete-mapping';
   const verifyState = useMemo(
     () =>
@@ -1298,7 +1303,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 <header className="ide-export-section-header">
                   <h3>{hasBlockingErrors ? 'Blockers' : hasVerifyEvidenceWarning ? 'Advisories' : 'Checks'}</h3>
                   <span className="ide-export-section-meta">
-                    {diagnosticsList.length} diagnostics
+                    {visibleDiagnosticsList.length} diagnostics
                   </span>
                 </header>
 
@@ -1331,7 +1336,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                           Fix in Project
                         </IdeButton>
                       )}
-                      {onOpenVerify && diagnosticsList.length > 0 && (
+                      {onOpenVerify && visibleDiagnosticsList.length > 0 && (
                         <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-go-verify">
                           Re-run Verify
                         </IdeButton>
@@ -1369,7 +1374,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 )}
 
                 <div className="ide-export-diagnostic-list" data-testid="ide-export-blockers-list">
-                  {diagnosticsList.map((entry) => {
+                  {visibleDiagnosticsList.map((entry) => {
                     const portKey = entry.port ? toPortKey(entry.port) : undefined;
                     const mappingRow = portKey ? mappingIndex.get(portKey) : undefined;
                     const hasSuggestion =
