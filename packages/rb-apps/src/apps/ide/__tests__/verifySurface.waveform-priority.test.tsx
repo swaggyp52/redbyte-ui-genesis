@@ -194,6 +194,9 @@ describe('VerifySurface waveform lane priority', () => {
     expect(getByTestId('ide-verify-run-context-ticks_shown').textContent).toContain('Showing t0-t6 (fail window)');
     expect(getByTestId('ide-verify-run-context-why_these_ticks').textContent).toContain('t1');
 
+    // Inputs group is collapsed by default; expand it so inputs appear in the signal list and waveform lanes.
+    fireEvent.click(getByTestId('ide-verify-group-toggle-inputs'));
+
     expect(getSignalListOrder(container)).toEqual(['sw0', 'sw1', 'carry', 'sum', 'flag']);
     expect(getWaveformOrder(container).slice(0, 5)).toEqual(['carry', 'sum', 'flag', 'sw0', 'sw1']);
 

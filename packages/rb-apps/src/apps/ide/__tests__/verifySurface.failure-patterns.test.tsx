@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
 function renderVerify(run: RuntimeVerifyRun) {
-  return render(
+  const result = render(
     <VerifySurface
       deterministicHash={run.deterministicHash}
       hasVectors={true}
@@ -16,6 +16,10 @@ function renderVerify(run: RuntimeVerifyRun) {
       onFixPath={vi.fn()}
     />
   );
+  // The failure explainer lives inside the analysis drawer (mismatches tab).
+  // For fail+verify runs the tab auto-switches to 'mismatches'; open the drawer to render it.
+  fireEvent.click(result.getByTestId('ide-verify-drawer-toggle'));
+  return result;
 }
 
 function makeRepeatedFailureRun(): RuntimeVerifyRun {

@@ -1313,9 +1313,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     };
     const laneGroupPriority = (signal: string): number => {
       const direction = mappedSignalDirectionKeys.get(normalizeFieldId(signal));
-      if (direction === 'in') return 1;  // Stimulus
-      if (direction === 'out') return 2; // Observed
-      return 3;                          // Internal
+      if (direction === 'out') return 1; // Observed outputs before stimulus
+      if (direction === 'in') return 2;  // Stimulus inputs after outputs
+      return 3;                          // Internal last
     };
     return [...visibleSignalTimelineBase].sort((left, right) => {
       const leftManual = manualOrder.get(left.signal);

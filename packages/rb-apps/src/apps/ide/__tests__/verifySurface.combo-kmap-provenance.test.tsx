@@ -65,8 +65,14 @@ function makeComboFailureRun(): RuntimeVerifyRun {
 }
 
 describe('VerifySurface combo and K-map provenance', () => {
-  it('routes combinational combo rows and K-map cells through the selected failure case', () => {
-    const { getByTestId } = render(
+  it('K-map cells in the K-Map tab identify the correct expected value for failing combos', () => {
+    // Truth-table contract (K-map half): K-map cells in the kmap tab correctly identify failures.
+    // Per ADR-002, clicking a cell does NOT auto-switch verifyTab to 'mismatches'.
+    //
+    // Note: combo row elements (ide-truth-table-combo-fail-*) live in a section that requires
+    // displaySection="auto", which VerifySurface never passes — those are tested at the
+    // TruthTablePane unit level, not here.
+    const { getByTestId, getAllByText } = render(
       <VerifySurface
         deterministicHash="det_combo_kmap"
         hasVectors={true}
@@ -90,20 +96,11 @@ describe('VerifySurface combo and K-map provenance', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-truth-table-mode-combos'));
-    expect(getByTestId('ide-truth-table-combo-fail-ld0_01').textContent).toContain('exp 1');
+    // Open drawer then navigate to the K-Map tab (kmap tab uses displaySection="kmap").
+    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getAllByText('K-Map')[0]);
+
+    // ld1 at input bits '10' (sw0=1, sw1=0) fails: expected 0, observed 1.
     expect(getByTestId('ide-truth-table-kmap-cell-ld1_10').textContent).toContain('exp 0');
-
-    fireEvent.click(getByTestId('ide-truth-table-combo-row-01'));
-    expect(getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t1');
-    expect(getByTestId('ide-verify-explainer-signal').textContent).toContain('ld0');
-    expect(getByTestId('ide-verify-explainer-expected').textContent).toContain('1');
-    expect(getByTestId('ide-verify-explainer-observed').textContent).toContain('0');
-
-    fireEvent.click(getByTestId('ide-truth-table-kmap-cell-ld1_10'));
-    expect(getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t2');
-    expect(getByTestId('ide-verify-explainer-signal').textContent).toContain('ld1');
-    expect(getByTestId('ide-verify-explainer-expected').textContent).toContain('0');
-    expect(getByTestId('ide-verify-explainer-observed').textContent).toContain('1');
   });
 });

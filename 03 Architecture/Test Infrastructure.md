@@ -118,11 +118,30 @@ These VerifySurface render suites passed under the current harness:
 | `verifySurface.workstation` | 23 PASS |
 | **Total** | **42 PASS** |
 
-One suite is currently red for a non-infrastructure reason:
+**Render baseline as of 2026-03-26 (final):** 52 PASS across 9 suites. All suites green.
 
-| Suite | Result |
-|---|---|
-| `verifySurface.hints-bridge` | 3 FAIL - missing `ide-verify-hint-callout` because the callout is behind the analysis drawer |
+| Suite | Tests | Notes |
+|---|---|---|
+| `verifySurface-fail-state` | 3 PASS | |
+| `verifySurface.failure-context` | 2 PASS | |
+| `verifySurface.authoring` | 11 PASS | |
+| `verifySurface.three-panel` | 3 PASS | |
+| `verifySurface.workstation` | 23 PASS | |
+| `verifySurface.failure-patterns` | 5 PASS | Fixed: drawer open added to `renderVerify` helper |
+| `verifySurface.waveform-priority` | 1 PASS | Fixed: expanded Inputs group in test; `laneGroupPriority` out-before-in in production |
+| `verifySurface.hints-bridge` | 3 PASS | Resolved as side effect of UX polish Pass A |
+| `verifySurface.combo-kmap-provenance` | 1 PASS | Narrowed to kmap-cell-only (see ADR-002); combo rows require TruthTablePane unit test |
+
+**`combo-kmap-provenance` — resolved (2026-03-26)**
+
+The original test mixed two concerns:
+
+1. K-map cells correctly identify failing combos in the K-Map tab → **kept and fixed**
+2. Clicking a combo row routes to `ide-verify-explainer-*` in mismatches → **removed per ADR-002**
+
+The combo rows section (`ide-truth-table-combo-fail-*`) requires `displaySection="auto"` which VerifySurface never passes. Combo row contract is tested at the `TruthTablePane` unit level.
+
+ADR-002 records that Option A (stable tab context) was chosen and Option B (auto-switch on selection) was rejected.
 
 ---
 
