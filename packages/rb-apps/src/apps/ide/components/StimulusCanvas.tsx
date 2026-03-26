@@ -129,6 +129,114 @@ function buildOperationTicks(vectors: VerifyAuthorVector[], minimumCount: number
   return Array.from({ length: Math.max(1, minimumCount) }, (_, index) => index);
 }
 
+function buildClipboardText(
+  vectors: VerifyAuthorVector[],
+  inputFields: VerifyVectorDraftInput[],
+  outputFields: VerifyVectorDraftInput[]
+): string {
+  const header = [
+    'tick',
+    ...inputFields.map((field) => field.id),
+    ...outputFields.map((field) => `expected:${field.id}`),
+  ];
+  const rows = sortVectors(vectors).map((vector) => [
+    String(vector.tick),
+    ...inputFields.map((field) => String(vector.inputs[field.id] ?? 0)),
+    ...outputFields.map((field) => {
+      const value = vector.expected[field.id];
+      return value == null ? '' : String(value);
+    }),
+  ]);
+  return [header, ...rows].map((row) => row.join('\t')).join('\n');
+}
+
+function resolveClipboardFieldId(
+  rawValue: string,
+  fields: VerifyVectorDraftInput[]
+): string | null {
+  const normalizedValue = rawValue
+    .trim()
+    .replace(/^expected:/i, '')
+    .replace(/^exp:/i, '')
+    .replace(/\((?:exp|expected)\)$/i, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_');
+  if (!normalizedValue) return null;
+  const match = fields.find((field) => {
+    const normalizedId = field.id.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const normalizedLabel = field.label.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    return normalizedValue === normalizedId || normalizedValue === normalizedLabel;
+  });
+  return match?.id ?? null;
+}
+
+function parseClipboardText(input: {
+  text: string;
+  inputFields: VerifyVectorDraftInput[];
+  outputFields: VerifyVectorDraftInput[];
+}): VerifyAuthorVector[] {
+  const lines = input.text
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0);
+  if (lines.length === 0) return [];
+
+  const firstRow = lines[0].split('\t');
+  const firstCell = firstRow[0]?.trim().toLowerCase() ?? '';
+  const hasHeader = firstCell === 'tick' || Number.isNaN(Number.parseInt(firstCell, 10));
+  const dataLines = hasHeader ? lines.slice(1) : lines;
+  if (dataLines.length === 0) return [];
+
+  const fallbackColumns = [
+    'tick',
+    ...input.inputFields.map((field) => field.id),
+    ...input.outputFields.map((field) => `expected:${field.id}`),
+  ];
+  const headerColumns = hasHeader ? firstRow : fallbackColumns;
+  const columnDefinitions = headerColumns.map((column, index) => {
+    if (index === 0) return { kind: 'tick' as const, fieldId: null };
+    const inputFieldId = resolveClipboardFieldId(column, input.inputFields);
+    if (inputFieldId) return { kind: 'input' as const, fieldId: inputFieldId };
+    const outputFieldId = resolveClipboardFieldId(column, input.outputFields);
+    if (outputFieldId) return { kind: 'expected' as const, fieldId: outputFieldId };
+    return { kind: 'ignore' as const, fieldId: null };
+  });
+
+  const parsedVectors = dataLines.map((line, rowIndex) => {
+    const cells = line.split('\t');
+    const tickCell = cells[0]?.trim() ?? '';
+    const parsedTick = Number.parseInt(tickCell, 10);
+    const tick = Number.isFinite(parsedTick) ? Math.max(0, parsedTick) : rowIndex;
+    const vector: VerifyAuthorVector = {
+      id: makeId(),
+      tick,
+      inputs: emptyInputs(input.inputFields),
+      expected: {},
+    };
+
+    for (let columnIndex = 1; columnIndex < columnDefinitions.length; columnIndex += 1) {
+      const definition = columnDefinitions[columnIndex];
+      const fieldId = definition.fieldId;
+      if (!fieldId) continue;
+      const rawValue = cells[columnIndex]?.trim() ?? '';
+      if (definition.kind === 'input') {
+        vector.inputs[fieldId] = rawValue === '1' ? 1 : 0;
+        continue;
+      }
+      if (definition.kind === 'expected') {
+        if (rawValue === '0' || rawValue === '1') {
+          vector.expected[fieldId] = rawValue === '1' ? 1 : 0;
+        }
+      }
+    }
+
+    return vector;
+  });
+
+  return sortVectors(parsedVectors);
+}
+
 export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   inputFields,
   outputFields,
@@ -286,6 +394,26 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
     setPaintSession({ kind: 'expected', value });
   }, [commitVectors, inputFields]);
 
+  const handleCopyClipboard = useCallback(async () => {
+    const text = buildClipboardText(latestVectorsRef.current, inputFields, outputFields);
+    await navigator.clipboard?.writeText?.(text);
+  }, [inputFields, outputFields]);
+
+  const handlePasteClipboard = useCallback(async () => {
+    const text = await navigator.clipboard?.readText?.();
+    if (!text) return;
+    const nextVectors = parseClipboardText({
+      text,
+      inputFields,
+      outputFields,
+    });
+    latestVectorsRef.current = nextVectors;
+    onVectorsChange(nextVectors);
+    if (nextVectors.length > 0) {
+      setSelectedTick(nextVectors[0].tick);
+    }
+  }, [inputFields, onVectorsChange, outputFields]);
+
   if (inputFields.length === 0) {
     return <p className="ide-stimulus-empty" data-testid="ide-stimulus-empty">No IO mapping - add inputs in the Hardware surface first.</p>;
   }
@@ -326,6 +454,11 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
           <button type="button" className="ide-stimulus-mini-btn" onClick={handleBinaryCount} data-testid="ide-stimulus-pattern-binary">Binary count</button>
           <button type="button" className="ide-stimulus-mini-btn" onClick={() => commitVectors((vectors) => appendTick(vectors, inputFields))} data-testid="ide-stimulus-add-tick">Add tick</button>
           <span className="ide-stimulus-toolbar-note">Drag across cells to paint</span>
+        </div>
+        <div className="ide-stimulus-toolbar-group">
+          <span className="ide-stimulus-toolbar-label">Clipboard</span>
+          <button type="button" className="ide-stimulus-mini-btn" onClick={() => { void handleCopyClipboard(); }} data-testid="ide-stimulus-copy-grid">Copy TSV</button>
+          <button type="button" className="ide-stimulus-mini-btn" onClick={() => { void handlePasteClipboard(); }} data-testid="ide-stimulus-paste-grid">Paste TSV</button>
         </div>
       </div>
       <div style={{ minWidth: totalW, position: 'relative' }}>

@@ -135,6 +135,14 @@ const failResult: ProjectHealthVerifyResult = {
   ranAtIso: '2026-03-12T00:00:00.000Z',
 };
 
+const traceResult: ProjectHealthVerifyResult = {
+  status: 'pass',
+  runKind: 'trace',
+  hash: 'abc123trace',
+  reportHash: 'rep-trace',
+  ranAtIso: '2026-03-25T00:00:00.000Z',
+};
+
 describe('ExportSurface trust clarity', () => {
   afterEach(() => {
     cleanup();
@@ -219,6 +227,21 @@ describe('ExportSurface trust clarity', () => {
     const banner = getByTestId('ide-export-trust-banner');
     expect(banner.textContent).toContain('AVAILABLE');
     expect(banner.textContent).toContain('NOT COMPARED');
+  });
+
+  it('shows trace-only provenance instead of collapsing it into assertions match', () => {
+    const { getByTestId } = render(
+      <ExportSurface
+        project={buildMappedProject()}
+        determinismHash="ide-hash"
+        verifyResult={traceResult}
+        dirtySinceVerify={false}
+      />
+    );
+
+    expect(getByTestId('ide-export-provenance-verify').textContent).toContain('Trace only');
+    expect(getByTestId('ide-export-trust-reason').textContent).toContain('trace-only run');
+    expect(getByTestId('ide-export-trust-consequence').textContent).toContain('assertion-backed evidence');
   });
 
   it('mapping blocker points to Hardware', () => {

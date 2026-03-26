@@ -506,7 +506,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           <IdeCallout tone="info" title={calloutTitle} testId="ide-verify-first-run-callout">
             <p className="ide-copy" style={{ margin: 0 }}>
               {hasVectors
-                ? 'Run verification first. Step-through, waveform inspection, and oracle tools stay available after you have real evidence.'
+                ? 'Run simulation first. Step-through, waveform inspection, and capture tools stay available after you have real evidence.'
                 : 'Generate a starter set now, or use the timeline plus row and tick tools to author your own stimulus pattern.'}
             </p>
           </IdeCallout>
@@ -529,7 +529,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             {hasVectorsReady ? (
               <span data-testid="ide-verify-empty-run">
                 <IdeButton tone="primary" onClick={onRun} testId="ide-verify-run">
-                  Run Verification
+                  Run Simulation
                 </IdeButton>
               </span>
             ) : (

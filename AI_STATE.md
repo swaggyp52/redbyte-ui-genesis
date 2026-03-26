@@ -1,4 +1,870 @@
 # AI State
+## Change Log 2026-03-25 (Export authority-chain test fixtures aligned to runKind + signalInventory contracts)
+
+**Subsystem**: Export/Verify test contract
+
+### Problem
+
+While preparing the current Verify/export worktree for commit, a broader targeted validation pass found one remaining red suite:
+
+- `packages/rb-apps/src/__tests__/export-authority-chain-contract.test.ts`
+
+The failure was not a production regression. The suite still carried older fixture assumptions:
+
+- `makePassRun(...)` did not persist `runKind`, so the export note path could infer a trace-only run from `report.rows.length === 0`
+- the `buildVerifySessionViewModel(...)` calls still used the old `assertionMode` property name
+- those same pure test cases omitted `signalInventory` even though `totalVectorCount > 0`
+
+So the failure and warning noise were stale contract fixtures, not a new export-authority bug.
+
+### What changed
+
+- `packages/rb-apps/src/__tests__/export-authority-chain-contract.test.ts`
+  - `makePassRun(...)` now defaults to `runKind: 'verify'` so the fixture matches the suite's intended verify-pass/verify-fail authority cases.
+  - Added a minimal `makeSignalInventory(...)` helper.
+  - Updated pure session-viewmodel calls to use `nextRunUsesAssertions`.
+  - Passed `signalInventory` anywhere the fixture claims vectors already exist.
+
+### Recommendation
+
+- Treat this suite as another stale contract-alignment fix, not as a reason to reopen export/Verify production logic.
+- Remaining render-suite `signalInventory` warnings are now clearly a fixture-standardization follow-up, not a blocker for this commit.
+
+### Student-visible behavior
+
+- No student-facing behavior changed.
+- This slice only aligned the export authority-chain test file to the current run/session contracts.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/export-authority-chain-contract.test.ts`
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/export-authority-chain-contract.test.ts packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.test.tsx packages/rb-apps/src/apps/ide/__tests__/VerifyFailureExplanationPanel.test.tsx packages/rb-apps/src/apps/ide/__tests__/bringupArtifacts.canonical-naming.test.ts packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx packages/rb-apps/src/apps/ide/__tests__/invalidation-contract.test.ts packages/rb-apps/src/apps/ide/__tests__/projectHealth.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts packages/rb-apps/src/apps/ide/__tests__/signal-inventory-contract.test.ts packages/rb-apps/src/apps/ide/__tests__/verifyHints.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.hints-bridge.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.three-panel.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+
+## Change Log 2026-03-25 (Verify session warning reduced to stale pure-viewmodel fixture shape)
+
+**Subsystem**: Verify session viewmodel test contract
+
+### Problem
+
+The remaining `buildVerifySessionViewModel: signalInventory is absent...` stderr noise looked like a possible runtime/viewmodel contract issue after the hints-bridge seam was resolved.
+
+The warning guard in `buildVerifySessionViewModel.ts` is intentional: when vectors exist, callers are supposed to pass a pre-run `signalInventory` derived from `activeScenario + VerifyScheduleContract`.
+
+Audit showed the noise was coming from `packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts`, not from a reproduced live-shell/runtime path:
+
+- the pure test file calls `buildVerifySessionViewModel(...)` directly
+- several cases set `totalVectorCount > 0`
+- those same cases omitted `signalInventory`
+- `signal-inventory-contract.test.ts` already documented the intended invariant and passed
+
+So the warning was stale test fixture shape, not a new Verify behavior bug.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts`
+  - Added a minimal `makeSignalInventory(...)` fixture helper.
+  - All cases with `totalVectorCount > 0` now pass a matching `signalInventory`.
+  - No runtime/viewmodel behavior changed.
+
+### Recommendation
+
+- Keep the dev-mode warning in place. It is still the right guard for callers that try to render Verify with vectors but without the pre-run inventory contract.
+- Treat future occurrences as a fixture/caller contract audit first, not as an automatic Verify runtime bug.
+
+### Student-visible behavior
+
+- No student-facing behavior changed.
+- This slice only removed stale stderr noise from a pure test seam.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts packages/rb-apps/src/apps/ide/__tests__/signal-inventory-contract.test.ts`
+
+## Change Log 2026-03-25 (Hints bridge test aligned to current Verify analysis-drawer contract)
+
+**Subsystem**: VerifySurface hint test contract
+
+### Problem
+
+After the BUG-003 audit, the remaining red VerifySurface suite was `verifySurface.hints-bridge.test.tsx`.
+
+That suite was still expecting `ide-verify-hint-callout` to be present immediately after render, but current `VerifySurface` behavior only renders the hint callout inside the fail-analysis drawer.
+
+The code path already made that explicit:
+
+- `drawerOpen` defaults to `false`
+- post-run auto-shaping collapses the drawer on each new run
+- the hint callout renders only behind `drawerOpen && hasSessionFailureEvidence && verifyHint`
+
+So the failing suite was testing an old UI contract, not a live behavior regression.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.hints-bridge.test.tsx`
+  - Imported `fireEvent`.
+  - Added a small helper that opens the Verify analysis drawer through the real `ide-verify-drawer-toggle`.
+  - Each hint-bridge assertion now verifies the current contract:
+    - drawer starts collapsed
+    - opening the drawer reveals the hint callout
+
+- `03 Architecture/Verify Hint System.md`
+  - Corrected the stale wire-path note that said hints were shown "below waveform".
+  - The note now states the current UI truth: the hint string is shown inside Verify's fail-analysis drawer when that drawer is open.
+
+### Recommendation
+
+- Treat this as a stale test expectation fix, not as a Verify behavior bug.
+- If future hint UX changes move the callout again, update both the suite and `Verify Hint System.md` together so the note stays authoritative.
+
+### Student-visible behavior
+
+- No student-facing behavior changed.
+- This slice only aligned the test and architecture note to the current Verify workbench contract.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.hints-bridge.test.tsx`
+
+### Remaining concern
+
+- The separate `buildVerifySessionViewModel: signalInventory is absent...` stderr warnings remain outside this slice.
+
+## Change Log 2026-03-25 (BUG-003 audit: React.act crash note closed as stale, not a live blocker)
+
+**Subsystem**: Test infrastructure audit
+
+### Problem
+
+The repo dashboard and vault still treated `BUG-003 React.act Infrastructure Failure` as the next major blocker after Verify closed out.
+
+That note claimed every `render(<VerifySurface />)` test failed with `TypeError: React.act is not a function`, and it recommended a dependency upgrade to `@testing-library/react@^17` as the fix.
+
+Before changing dependencies, the repo needed a current audit of whether that failure was still real.
+
+### What changed
+
+- Audit outcome
+  - The documented `React.act is not a function` crash no longer reproduces in the current repo state.
+  - The current installed stack is:
+    - `react@19.2.1`
+    - `react-dom@19.2.1`
+    - `@testing-library/react@16.1.0`
+  - Direct runtime probes confirmed:
+    - `React.act` resolves to a function
+    - `react-dom/test-utils.act` resolves to a function
+  - The current installed `@testing-library/react/dist/act-compat.js` already prefers `React.act` when present.
+  - `vitest.config.ts` continues to force a single React / ReactDOM instance through explicit aliases.
+
+- Live test evidence
+  - These VerifySurface render suites now pass:
+    - `verifySurface-fail-state.test.tsx` (`3`)
+    - `verifySurface.failure-context.test.tsx` (`2`)
+    - `verifySurface.authoring.test.tsx` (`11`)
+    - `verifySurface.three-panel.test.tsx` (`3`)
+    - `verifySurface.workstation.test.tsx` (`23`)
+  - The remaining red suite reproduced in this audit was `verifySurface.hints-bridge.test.tsx`, but it fails because `ide-verify-hint-callout` is rendered only when the analysis drawer is open.
+  - That is a suite-level DOM expectation mismatch, not a React test harness failure.
+
+- Documentation updates
+  - `05 Bugs/BUG-003 React.act Infrastructure Failure.md`
+    - Reclassified from `open` to `fixed`.
+    - The note now records BUG-003 as a stale/non-reproducible infrastructure claim.
+    - The note explicitly says no dependency upgrade is justified by current evidence.
+  - `03 Architecture/Test Infrastructure.md`
+    - Replaced the stale "component render tests broken" guidance with the current render-harness baseline.
+    - Added the passing VerifySurface render suites and the one remaining non-infrastructure red suite.
+    - Switched the TypeScript check example to `pnpm exec tsc`.
+  - `01 Dashboard/RedByte Engineering Brain.md`
+    - Removed BUG-003 from the manual "broken right now" callout.
+    - Updated next-action guidance so the repo stops treating BUG-003 as an emergency blocker.
+
+### Recommendation
+
+- Do not change React test dependencies just to chase BUG-003.
+- Treat BUG-003 as closed unless the literal `React.act is not a function` error returns.
+- If the repo wants more render-suite cleanup, handle the current failing suites as ordinary behavior/test drift rather than as infrastructure collapse.
+
+### Student-visible behavior
+
+- No student-facing product behavior changed in this slice.
+- The effect is operational clarity: the repo now stops treating a stale React.act note as the next blocking workstream.
+
+### Proof
+
+- `pnpm exec node -e "const React=require('./packages/rb-apps/node_modules/react'); console.log(typeof React.act);"` -> `function`
+- `pnpm exec node -e "const ReactDOMTestUtils=require('./packages/rb-apps/node_modules/react-dom/test-utils'); console.log(typeof ReactDOMTestUtils.act);"` -> `function`
+- `pnpm exec node -e "const pkg=require('./node_modules/@testing-library/react/package.json'); console.log(pkg.version);"` -> `16.1.0`
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.failure-context.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.authoring.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.three-panel.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` -> PASS (`42 tests`)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.hints-bridge.test.tsx` -> FAIL (`3`) because the expected hint callout is not rendered with the drawer closed
+
+### Remaining concern
+
+- `verifySurface.hints-bridge.test.tsx` still needs either a behavior update or a test expectation update.
+- Many VerifySurface suites still emit `buildVerifySessionViewModel: signalInventory is absent...` stderr messages, which is a separate data-contract / UX warning issue and not part of BUG-003.
+
+## Change Log 2026-03-25 (Verify close-out: saved-state bridge formalized, BUG-006 closed, dashboard mojibake removed)
+
+**Subsystem**: Verify refactor close-out
+
+### Problem
+
+After the Phase 9 audit, the remaining Verify question was no longer an implementation bug. It was whether the repo should keep spending time trying to remove `projectVectors` from saved state even though the audit showed that mirror still had legitimate compatibility responsibilities.
+
+At the same time, the Verify dashboard note had visible mojibake that made the vault feel unreliable.
+
+### What changed
+
+- `05 Bugs/BUG-006 TRACE vs VERIFY Mode Collapse.md`
+  - Reclassified from `open` to `fixed`.
+  - The note now states plainly that the live TRACE vs VERIFY collapse is contained.
+  - The remaining `projectVectors` question is documented as a saved-state compatibility policy decision, not an active live-product failure.
+
+- `08 Agents + Prompts/2026-03-25 Verify Refactor Plan.md`
+  - Marked the handoff `done`.
+  - The plan now records the explicit decision: keep `projectVectors` as a declared saved-state compatibility bridge for now.
+  - Next action now redirects away from Verify toward `BUG-003` unless a separate scenario-first persistence/history migration is explicitly approved.
+
+- `03 Architecture/Verify Engine.md`
+  - Updated the open-questions section to reflect that BUG-006 is effectively fixed.
+  - Clarified that any future scenario-first persistence/history work should be treated as a separate migration track, not as unfinished Verify emergency work.
+
+- `01 Dashboard/RedByte Engineering Brain.md`
+  - Replaced the visible mojibake/corrupted symbols with plain ASCII text.
+  - Removed BUG-006 from the "broken right now" list because it is no longer open.
+  - Updated the next-action section to point at `BUG-003` and to treat the Verify refactor as a completed chapter unless a new migration is approved.
+
+### Recommendation
+
+- Treat `projectVectors` as a declared saved-state compatibility bridge for now.
+- Do not reopen Verify churn around that mirror unless the repo explicitly chooses a separate scenario-first persistence/history migration.
+
+### Student-visible behavior
+
+- No student-facing product behavior changed in this slice.
+- The effect is architectural and operational clarity in the engineering notes.
+
+### Proof
+
+- `git diff --check -- AI_STATE.md "01 Dashboard/RedByte Engineering Brain.md" "03 Architecture/Verify Engine.md" "05 Bugs/BUG-006 TRACE vs VERIFY Mode Collapse.md" "08 Agents + Prompts/2026-03-25 Verify Refactor Plan.md"` -> PASS
+
+### Remaining concern
+
+- `projectRuntime.history-authority.test.tsx` still carries some stale expectations from before the latest Verify terminology and vector-authority decisions.
+- If the repo later reopens scenario-first persistence/history work, refresh that suite first before treating it as authoritative.
+
+## Change Log 2026-03-25 (ProjectVectors saved-state audit: keep the persistence/history mirror on purpose)
+
+**Subsystem**: Verify scenario-model migration
+
+### Problem
+
+After the live shell stopped reading `projectVectors`, the remaining architectural question moved into saved state:
+
+1. persisted runtime state still stores `projectVectors`
+2. design-history snapshots still carry `projectVectors`
+3. import/load/export still have explicit compatibility paths around that mirror
+
+The real decision was no longer whether the scenario model was live. It was whether removing the saved-state mirror would actually be safe.
+
+### What changed
+
+- Audit outcome
+  - `projectVectors` is still **required** today as a saved-state compatibility bridge:
+    - `mergePersistedRuntimeState(...)` still restores `candidate.projectVectors`, normalizes them into `RBProject.vectors`, computes restored verify hash from them, and uses them to seed / repair the scenario library
+    - design-history snapshots still store optional `projectVectors`, and undo / redo still rekey those vectors back through the live IO shape
+    - `loadFromProject(...)` still seeds both `projectVectors` and the default scenario library from `project.vectors`
+    - `buildExportViewModel(...)` still uses `project.vectors` only as the no-active-scenario compatibility fallback
+  - no low-risk reduction in saved-state duplication was justified by the audit
+  - recommendation: keep `projectVectors` deliberately in saved state for now, on purpose
+
+- No code slice landed
+  - The audit did not support deleting or reducing the saved-state mirror without redesigning persistence/history/import/export together.
+  - This was intentionally an architecture-decision slice, not a speculative migration patch.
+
+- Validation
+  - `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts`
+    - PASS (`13 tests`)
+  - `packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx`
+    - PASS (`11 tests`)
+  - `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+    - FAIL (`9` assertions)
+    - failures are against stale expectations:
+      - older hardware text still expecting `Verify: STALE` instead of the current `Compare: STALE` wording
+      - older assertions that newly added outputs should be auto-invented into `projectVectors`
+    - no code was changed in this slice to chase that suite
+
+### Recommendation
+
+- Keep `projectVectors` deliberately in saved state for now as a **declared compatibility bridge**.
+- Do not remove it from persistence/history until scenario-first snapshots, restore, and export fallback are designed together.
+- The next decision is whether to formalize that bridge and close BUG-006 as effectively contained, or to split future scenario-first saved-state migration into its own follow-up track.
+
+### Student-visible behavior
+
+- No student-facing flow changed in this slice.
+- The effect is architectural clarity: the repo now has an explicit keep-for-now recommendation for the saved-state mirror instead of an accidental one.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts` -> PASS (`13 tests`)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx` -> PASS (`11 tests`)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx` -> FAIL (`9` stale assertions; no production code changed in this slice)
+
+### Remaining concern
+
+- `projectVectors` is no longer a live shell authority source, but it is still embedded in persisted runtime state, design-history snapshots, import/load repair, and export compatibility fallback.
+- The remaining work is to either:
+  1. formalize that saved-state mirror as a declared long-lived compatibility bridge
+  2. or stage a separate scenario-first persistence/history migration later
+
+## Change Log 2026-03-25 (ProjectVectors audit: keep the mirror deliberately, shrink live shell reads)
+
+**Subsystem**: Verify scenario-model migration
+
+### Problem
+
+After the scenario header and runtime scenario actions landed, the remaining architectural question was no longer whether the scenario model was real. It was whether `projectVectors` should still exist at all.
+
+Without an audit, that mirror could be:
+
+1. a necessary persistence/import/export bridge,
+2. a derived cache that should move behind the scenario store,
+3. or an accidental leftover still acting like live authority.
+
+### What changed
+
+- Audit outcome
+  - `projectVectors` is still **required** today in persistence/load/history/export compatibility paths:
+    - persisted runtime state still stores `projectVectors`
+    - design history snapshots still store `projectVectors`
+    - RBProject import/load still seeds the scenario library from `project.vectors`
+    - export still has an explicit no-active-scenario compatibility fallback from `project.vectors`
+  - `projectVectors` is a **derived mirror** in the live runtime/store path:
+    - `setVectors(...)`, `generateBringUpVectors()`, and scenario switching mirror the active scenario into `projectVectors`
+    - `commitScenarioSelection(...)` rehydrates the mirror from the selected scenario
+  - the old shell-level fallback in `IdeApp` was **obsolete** once the active-scenario invariant became trustworthy
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Removed the direct runtime subscription to `projectVectors` for live shell authority.
+  - `authoritativeProjectVectors` now comes from `activeScenario?.vectors ?? []` instead of falling back to the mirror.
+  - Result: the live shell no longer treats `projectVectors` as a second vector source once the scenario library is present.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx`
+    - kept the Verify/Export/Hardware scenario-authority flow green
+    - tightened the lazy Verify-surface wait for the now-live scenario header
+  - `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts`
+    - still passes, which matters because the audit recommendation keeps the mirror as a deliberate compatibility bridge for now
+
+### Recommendation
+
+- Keep `projectVectors` deliberately for now as a **compatibility bridge**, not as a live authority source.
+- Continue reducing its scope in staged phases:
+  1. remove remaining shell/runtime reads that are no longer needed
+  2. later decide whether design-history snapshots and persisted runtime state should store scenario-first data instead
+  3. only then consider removing export/load fallbacks
+
+### Student-visible behavior
+
+- No student-facing flow changed direction in this slice.
+- The main effect is architectural: the shell now trusts the active scenario directly instead of consulting the compatibility mirror.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx` -> PASS (`5 tests`)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts` -> PASS (`13 tests`)
+
+### Remaining concern
+
+- `projectVectors` is still stored in runtime persistence and history snapshots, so the scenario store is not yet the only vector authority in saved state.
+- Export still carries an explicit compatibility fallback when no active scenario is available.
+- The next decision point is whether to reduce the persistence/history mirror next, or to declare it a long-lived bridge and close BUG-006 as effectively contained.
+
+## Change Log 2026-03-25 (Scenario model migration: Verify header now drives real scenario actions)
+
+**Subsystem**: Verify scenario/session authority
+
+### Problem
+
+Even after scenario provenance was wired through the shell path, one structural gap remained:
+
+1. `VerifySurface` already exposed a scenario library header contract, but `IdeApp` did not pass `scenarios` or any scenario callbacks into it, so the header was effectively dead UI.
+2. `projectRuntime.runVerification(...)` and `generateBringUpVectors(...)` could still fall back to compatibility `projectVectors` even when an active scenario existed.
+3. That left the scenario model partially first-class in notes and props, but not yet as a real runtime authoring flow.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Added first-class scenario actions to the runtime store:
+    - `createScenario()`
+    - `duplicateScenario()`
+    - `renameScenario(name)`
+    - `deleteScenario(id)`
+    - `switchScenario(id)`
+  - Added `resolveActiveScenarioVectors(...)` and `commitScenarioSelection(...)` so the runtime can treat the active scenario as the primary vector authority while still mirroring into `projectVectors` for compatibility.
+  - `runVerification(...)` now prefers the resolved active scenario when callers omit `input.vectors`.
+  - `generateBringUpVectors()` now seeds from the active scenario instead of raw `projectVectors` when both exist.
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Verify now receives the full scenario library plus the runtime-backed scenario callbacks.
+  - Result: the existing scenario header in `VerifySurface` is now a real shell-path authoring surface rather than an unwired contract.
+  - Also switched the hardware expected-behavior summary to count the authoritative active-scenario vectors instead of the raw compatibility mirror.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts`
+    - added coverage for first-class scenario create / switch / duplicate / rename / delete behavior
+    - added coverage proving runtime verify fallback prefers active-scenario vectors when `projectVectors` drifts
+  - `packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx`
+    - added an integration test proving the Verify scenario library header is rendered, can create a scenario, and can switch back to the default scenario while re-authorizing `projectVectors` from the selected scenario
+    - tightened the existing Verify-path wait so it synchronizes on the now-live scenario header before clicking the first run button
+
+### Student-visible behavior
+
+- The scenario strip in Verify is now live: students can create, duplicate, rename, delete, and switch scenarios through the real runtime store.
+- Switching scenarios now rehydrates the compatibility vector mirror from the selected scenario instead of relying on stale shell assumptions.
+- Runtime verify and starter-vector generation now prefer the active scenario when callers do not explicitly pass vectors.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` -> PASS (`20 tests`)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx` -> PASS (`5 tests`)
+
+### Remaining concern
+
+- The repo still persists and mirrors `projectVectors`, so the scenario model is not yet the only vector state in storage.
+- `buildExportViewModel(...)` and persisted project load still keep explicit compatibility fallbacks for legacy/no-scenario cases.
+- The next cleanup is to decide whether the compatibility `projectVectors` mirror can be reduced in persistence/runtime APIs or whether it should remain as a deliberate migration bridge.
+
+## Change Log 2026-03-25 (VerifySurface next-run intent: local assertion mode no longer reads like session meaning)
+
+**Subsystem**: Verify surface/session-state authority
+
+### Problem
+
+After `DisplayStatus` was demoted, one local seam still remained:
+
+1. `VerifySurface` still used the name `assertionMode`, which blurred together next-run intent and current-run meaning.
+2. That local toggle still touched pre-run readiness/copy and session-viewmodel input, which made it look larger than it really was.
+3. One old readiness helper still consulted that toggle even though only the clock-warning branch was actually live.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Renamed the local toggle to `nextRunUsesAssertions`.
+  - Removed the dead readiness states that treated the toggle like a broader status source; only `nextRunNeedsClockActivity` remains for the sequential clock-warning strip.
+  - Updated reference/toggle copy so it explicitly talks about what the next run will do:
+    - compare asserted outputs
+    - or trace only
+  - Result: the local toggle now reads as authoring/run-intent state instead of a second session meaning model.
+
+- `packages/rb-apps/src/apps/ide/viewmodels/buildVerifySessionViewModel.ts`
+  - Renamed the input contract from `assertionMode` to `nextRunUsesAssertions`.
+  - Added inline documentation stating that `mode` is next-run intent while `status` remains the authoritative meaning of the persisted run/session.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts`
+    - renamed the viewmodel contract inputs to `nextRunUsesAssertions`
+    - added coverage proving a trace-only session stays `stimulus-only` even when the next run is armed for compare intent
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx`
+    - now also proves the run-proof card stays `--fail` after the next-run toggle is switched back to trace intent
+
+### Student-visible behavior
+
+- The advanced Verify toggle now describes next-run intent more explicitly.
+- Current run meaning still comes from the persisted session model even if the student changes what the next run is configured to do.
+- The old local readiness/status branch that implied a broader “assertion mode” state is gone.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` -> PASS (`34 tests`)
+
+### Remaining concern
+
+- The remaining structural debt is now mostly outside this local toggle: compatibility `projectVectors` assumptions and missing dedicated scenario actions.
+- Once that scenario-model migration lands, reassess whether BUG-006 can be closed and whether the draft-only `READY` / `BLOCKED` shim should survive.
+
+## Change Log 2026-03-25 (VerifySurface session authority: DisplayStatus no longer drives live behavior)
+
+**Subsystem**: Verify surface/session-state authority
+
+### Problem
+
+Phase 4 left a smaller but still real split inside `VerifySurface`:
+
+1. `DisplayStatus` still controlled summary pills, run-proof tone/copy, result-pane visibility, and trace-only CTA branching.
+2. That meant the surface still had a second local status authority even after `RuntimeVerifyRun.runKind` and `VerifySessionStatus` had become the real session model.
+3. `assertionMode` was still needed for next-run intent, but `DisplayStatus` no longer needed to participate in current-run meaning.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Summary pills now use shared session-derived helpers (`sessionStatusBadgeLabel`, `sessionStatusTone`) instead of `DisplayStatus`.
+  - Run-proof title/summary fall back to `verifySession.title` / `verifySession.summary` instead of the deleted display-status copy path.
+  - Run-proof tone/class, trace-only capture CTA, and result-pane visibility now derive from `VerifySessionStatus` plus persisted `runKind`.
+  - The old live `DisplayStatus` authority path is gone; only a draft-only `READY` / `BLOCKED` presentation shim remains.
+  - `assertionMode` still exists, but now as next-run authoring intent rather than current-run authority.
+
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - Added coverage proving a trace-only run renders `ASSERTIONS INCOMPLETE` in the summary strip and `ide-verify-run-proof--trace` on the proof card.
+  - Result: the test suite now proves those branches come from the shared session model, not from a local `TRACE` enum.
+
+### Student-visible behavior
+
+- Trace-only runs now present trace/capture state from the persisted session model in the status strip and run-proof card.
+- Current Verify behavior no longer depends on a separate local `DisplayStatus` enum for hero/status-copy or result-pane gating.
+- Draft sessions still keep `READY` / `BLOCKED` copy as pre-run convenience, but that is presentation-only.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` -> PASS (`33 tests`)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.three-panel.test.tsx` -> PASS (`3 tests`)
+
+### Remaining concern
+
+- `assertionMode` still influences pre-run readiness text, the advanced toggle label, and run intent wiring inside `VerifySurface`.
+- The next cleanup is to make that local state explicitly authoring/run-intent only, then continue replacing the last compatibility-only `projectVectors` assumptions with scenario actions.
+
+## Change Log 2026-03-25 (VerifySurface behavior authority: current compare evidence no longer depends on local toggle)
+
+**Subsystem**: Verify surface/session-state authority
+
+### Problem
+
+Phase 3 left a narrower but still important split inside Verify:
+
+1. `VerifySurface` still used local `assertionMode` and `DisplayStatus` for several post-run behavior branches, so a real compare failure could collapse back toward trace-like behavior if the next-run toggle changed.
+2. `buildVerifySessionViewModel(...)` still returned `draft` when live vector props were absent, even if a persisted compare run already existed.
+3. That combination meant sparse restore paths and local mode flips could weaken current compare evidence inside Verify itself.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/viewmodels/buildVerifySessionViewModel.ts`
+  - Persisted run evidence now stays authoritative even when `totalVectorCount === 0`.
+  - Result: restored compare runs no longer collapse back to `draft` just because the current surface props do not include live vectors.
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Current compare behavior now keys off shared session state (`VerifySessionStatus`) instead of the local next-run toggle for:
+    - failure workspace routing
+    - mismatch drawers and failure callouts
+    - compare-status strip copy
+    - waveform compare decorations
+    - assertion overlay visibility
+    - non-pass proof sections
+  - The auto-open fail-analysis effect now keys off persisted `runKind === 'verify'` instead of local `assertionMode`.
+  - Result: switching the next-run toggle back to trace intent no longer erases the failure workspace or compare evidence from the run that already happened.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts`
+    - added coverage for:
+      - compare-failure status remaining authoritative when the next run is set back to simulation
+      - persisted compare evidence remaining non-draft even when live vectors are absent
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx`
+    - added coverage proving fail evidence stays visible after toggling back to trace intent
+
+### Student-visible behavior
+
+- A completed compare failure remains a compare failure inside Verify even if the user flips the next-run toggle back to trace mode.
+- Restored compare evidence no longer disappears into `draft` when the current vector props are sparse or temporarily absent.
+- Fail drawers, waveform decorations, and compare overlays now stay aligned with the persisted run/session model more often.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.three-panel.test.tsx` -> PASS (`36 tests`)
+
+### Remaining concern
+
+- `DisplayStatus` still exists as a parallel presentation layer, especially for the pre-run `BLOCKED` / `READY` split and some status-label mapping.
+- `VerifySurface` still keeps a local next-run `assertionMode`, so the final cleanup is to make that clearly authoring intent only and collapse the remaining presentation mapping onto the shared session model.
+
+## Change Log 2026-03-25 (Scenario provenance authority: active scenario wired through normal Verify / Export / Hardware flow)
+
+**Subsystem**: Verify scenario/session authority in the normal shell path
+
+### Problem
+
+Phase 2 introduced real scenario provenance fields on `RuntimeVerifyRun`, but the normal shell path still weakened that model:
+
+1. `IdeApp` still consumed `projectVectors` directly and did not resolve/pass the active scenario into Verify / Export / Hardware.
+2. `projectRuntime.setVectors(...)` and `generateBringUpVectors(...)` updated `projectVectors` only, which left `scenarios[activeScenarioId]` stale and made `scenarioVersion` / `scenarioContentHash` unreliable during normal authoring.
+3. `VerifySurface` still used a local fail-state gate for its primary action path instead of consuming the shared session state it already builds.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Added `syncActiveScenarioVectors(...)`.
+  - `setVectors(...)` and `generateBringUpVectors(...)` now stamp the active scenario whenever the normal compatibility vector path changes.
+  - Result: `projectVectors` edits now keep `scenarios`, `scenarioVersion`, and `scenarioContentHash` truthful instead of leaving them latent.
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Now resolves `activeScenario = getActiveScenario(scenarios, activeScenarioId)`.
+  - Uses that resolved scenario as the normal shell vector authority for:
+    - `hasVectors`
+    - `exportProject.vectors`
+    - `currentVerifyProjectHash`
+    - `VerifySurface`
+    - `HardwareSurface`
+    - `ExportSurface`
+  - Result: Verify, Export, and Hardware now consume the same scenario provenance in the normal student flow.
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Primary failure/capture action gating now keys off `verifySession.status === 'assertions-differ'` instead of only the local `DisplayStatus === 'FAIL'`.
+  - Result: the shared session model now owns one more real decision path inside Verify, even though the full `DisplayStatus` cleanup is still open.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts`
+    - added coverage proving normal vector edits stamp the active scenario
+  - `packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx`
+    - added an end-to-end shell-path regression proving:
+      - first run is trace-first
+      - compare rerun persists active-scenario provenance
+      - Export shows the current scenario provenance
+      - Hardware detects scenario drift after the scenario changes again
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+    - updated one stale title assertion to the current session-model copy
+
+### Student-visible behavior
+
+- The normal Verify -> Export -> Hardware loop now carries real active-scenario identity/version/hash instead of silently dropping back to compatibility-only vector state.
+- Export provenance and Hardware drift callouts now reflect the same scenario that Verify actually compared.
+- Editing vectors in the normal shell path now advances the active scenario instead of leaving scenario provenance frozen behind the scenes.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` -> PASS (`65 tests`)
+
+### Remaining concern
+
+- `VerifySurface` still carries a parallel `DisplayStatus` layer and local `assertionMode` semantics, so the final TRACE vs VERIFY cleanup is not done yet.
+- Dedicated runtime actions for scenario create / duplicate / rename / delete / switch still do not exist, so the scenario model is authoritative in the normal shell path but not yet a complete first-class store API.
+
+## Change Log 2026-03-25 (Verify provenance split: persisted runKind + first-pass downstream consumer cleanup)
+
+**Subsystem**: Verify session provenance and downstream trust projection
+
+### Problem
+
+Verify still flattened too much meaning into `status: 'pass' | 'fail'`:
+
+1. Trace-only runs and assertion-backed compare runs were both persisted as generic pass/fail records.
+2. Project / Pipeline / Hardware / Export consumers could treat a clean trace-only run like a real verified pass.
+3. Scenario provenance fields existed in notes and ad hoc props, but were not part of the typed persisted run contract.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Extended the persisted verify contract with:
+    - `runKind?: 'trace' | 'verify'`
+    - `scenarioVersion?: number`
+    - `scenarioContentHash?: string`
+  - `runVerification(...)` now persists explicit trace vs verify intent and projects `runKind` into `projectHealthCore.lastVerify`.
+  - Added runtime-side inference for direct callers that do not pass `assertionMode`, so compare-intent runs still persist as `runKind='verify'`.
+  - Restore/clone helpers now preserve or infer `runKind` instead of relying on the old `traceWaveform` heuristic.
+
+- `packages/rb-apps/src/apps/ide/projectHealth.ts`
+  - Added a shared `deriveProjectVerifyState(...)` helper with explicit states:
+    - `not-run`
+    - `stale`
+    - `trace`
+    - `assertions-match`
+    - `assertions-differ`
+    - `verify-error`
+  - Primary CTA routing now treats current trace-only evidence as `Verify`, not as an export/hardware-ready pass.
+
+- Downstream consumers updated to use the provenance split for first-pass trust decisions:
+  - `packages/rb-apps/src/apps/IdeApp.tsx`
+  - `packages/rb-apps/src/apps/ide/components/PipelineStrip.tsx`
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`
+
+- `VerifySurface.tsx`
+  - Now emits explicit `runKind` on trace vs compare runs.
+  - Now derives local trace-vs-verify mode from persisted run provenance instead of only inferring from row counts.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts`
+    - added coverage for persisted trace-only provenance and CTA routing
+  - `packages/rb-apps/src/apps/ide/__tests__/projectHealth.test.ts`
+    - added coverage proving current trace-only evidence routes back to Verify
+  - `packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx`
+    - added coverage proving Export shows trace-only provenance instead of collapsing it into assertions-match
+
+### Student-visible behavior
+
+- A current trace-only run no longer counts as a passing compare in Project / Pipeline / Hardware / Export.
+- Export provenance now surfaces trace-only evidence explicitly instead of implying `Assertions match`.
+- Verify freshness remains independent from metadata-only project identity edits, and verify authority now preserves more of what kind of run actually happened.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectHealth.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` -> PASS (`62 tests`)
+
+### Remaining concern
+
+- Scenario provenance is still only partially live. `RuntimeVerifyRun` now has `scenarioVersion` / `scenarioContentHash`, but `IdeApp` still does not wire active scenario props through the normal Verify / Export / Hardware shell path, and `VerifySurface` still carries a parallel local display-state machine.
+
+## Change Log 2026-03-25 (Verify freshness authority cleanup: verify hash scope + metadata dirtiness split)
+
+**Subsystem**: Verify stale/current authority alignment
+
+### Problem
+
+Verify freshness had drifted into three competing models:
+
+1. `VerifySurface` used the full export/project hash, so non-verify metadata like project identity and export-only fields could mark Verify stale.
+2. `projectRuntime.setProjectIdentity(...)` dirtied Verify even when only project metadata changed.
+3. Project/Hardware freshness already had a narrower verify hash path, which meant different surfaces could disagree about whether Verify was current.
+
+### What changed
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Switched the hash passed into `VerifySurface` from the full `determinismHash` to `currentVerifyProjectHash`.
+  - Result: Verify stale detection now keys off `circuit + vectors + mapping` instead of export/project metadata.
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Updated `setProjectIdentity(...)` so project name/description edits dirty export only, not verify.
+  - Result: metadata edits no longer force a Verify rerun when the live circuit/testbench truth has not changed.
+
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts`
+  - Added regression coverage proving metadata-only identity edits preserve verify currentness while still dirtying export.
+
+### Student-visible behavior
+
+- Renaming or re-describing a project no longer makes Verify look stale by itself.
+- Verify stale state now tracks actual verify truth inputs more closely:
+  - circuit edits
+  - mapping edits
+  - vector edits
+- Export still becomes stale after metadata edits, which preserves the export/package provenance contract.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` -> PASS (`16 tests`)
+
+### Remaining concern
+
+- TRACE vs VERIFY is still not a durable persisted mode split. Trace-only runs can still collapse into `status: pass` outside the Verify surface, so the broader session-model refactor remains necessary.
+
+## Change Log 2026-03-24 (Closure pass: Verify lane authority + gate contract alignment)
+
+**Subsystem**: Verify waveform lane visibility + repo closure gate alignment
+
+### Problem
+
+After the design/runtime authority fix, local live behavior was improved, but repo-wide closure was still blocked by two classes of issues:
+
+1. Verify could still render a real waveform trace while the left signal dock showed `No signal data in the last run` because raw waveform keys were not always canonicalized back to student-facing I/O lanes.
+2. Several repo gates were stale relative to the current product contract:
+   - pre-run Verify is testbench-first
+   - post-run Verify is waveform-first
+   - export/readiness/student-loop gates no longer require grading-style PASS semantics before exportability
+   - starter example cards in built preview needed non-layout-sensitive click handling
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Added canonical waveform lane aliasing so raw trace keys resolve through `ioRows` / `normalizationMap` into student-facing signal lanes when available.
+  - Added an internal-lane fallback so Verify no longer hides the entire signal list when a trace contains only internal/runtime keys.
+  - Result: waveform trace authority and left-dock lane visibility now agree in both mapped-output and internal-only trace states.
+
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - Added regression coverage for:
+    - canonical signal-lane visibility when waveform samples use internal node keys
+    - internal-only trace runs remaining visible in the signal dock instead of collapsing to an empty state
+
+- Gate contracts
+  - `scripts/gates/ide-workbench-layout-contract.mjs`
+    - aligned with the current Verify pre-run/post-run layout truth
+  - `scripts/gates/ide-verify-workbench-contract.mjs`
+    - kept signal-list visibility coverage, but reduced duplicated geometry strictness now owned by the layout gate
+  - `scripts/gates/ide-evidence-capsule-contract.mjs`
+    - removed stale forced-PASS oracle assumption and aligned export evidence state labels with current Export surface copy
+  - `scripts/gates/ide-export-ready-contract.mjs`
+    - aligned with advisory export readiness semantics and robust starter-card click handling
+  - `scripts/gates/ide-student-loop-contract.mjs`
+    - aligned with current Verify status vocabulary / advisory compare flow instead of forcing PASS-or-FAIL grading semantics
+
+### Student-visible behavior
+
+- Verify no longer shows a blank signal dock while a real waveform trace is present.
+- Trace-only runs with internal/runtime keys still surface usable signal lanes instead of hiding the workbench context.
+- Local repo closure scripts now reflect the actual product loop students see:
+  - testbench first before run
+  - waveform first after run
+  - export/hardware remain available under current advisory compare semantics
+
+### Proof
+
+- `pnpm --filter @redbyte/rb-apps exec vitest run --environment jsdom src/apps/ide/__tests__/verifySurface.workstation.test.tsx` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `node scripts/gates/ide-workbench-layout-contract.mjs` -> PASS
+- `node scripts/gates/ide-verify-workbench-contract.mjs` -> PASS
+- `node scripts/gates/ide-evidence-capsule-contract.mjs` -> PASS
+- `node scripts/gates/ide-export-ready-contract.mjs` -> PASS
+- `node scripts/gates/ide-student-loop-contract.mjs` -> PASS
+- `pnpm repo:status` -> PASS (`39/39 checks passed`, repository status `HEALTHY`)
+
+### Remaining concern
+
+- Production parity is still pending shipment. The local runtime-authority and Verify closure fixes are proven in this environment, but the deployed site will continue showing the old behavior until these local changes are shipped through the normal remote-enabled workflow.
+
+## Change Log 2026-03-24 (Design/runtime authority fix: invalid-IR stale-state purge + sequential starter-vector simulation)
+
+**Subsystem**: IDE design mutation authority + runtime sim blocking semantics + bring-up vector generation
+
+### Problem
+
+Live Design was still leaking stale runtime state after graph mutations:
+
+1. When a design edit produced invalid IR, `projectRuntime` preserved the prior `sim.signals` and `sim.trace`, so Design could keep rendering hot wires / outputs from the old graph even though the current graph no longer supported them.
+2. Input changes made while the graph was invalid could be dropped because blocked recompute fell back to the previous sim snapshot instead of preserving the user's latest input intent.
+3. Generic sequential starter-vector generation still fell back to blank expected outputs for unclassified sequential circuits, which left custom D flip-flop style builds in `TRACE / ASSERTIONS INCOMPLETE` instead of producing an authoritative compare run from the current circuit.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Changed blocked runtime state construction so invalid-IR transitions no longer preserve stale live signals/trace by default.
+  - Invalid graph transitions now rebuild a blocked snapshot that keeps the current input intent while clearing stale downstream signal state.
+  - `setInput` / `toggleInput` now preserve the latest requested input value even when recompute is blocked, so live rewiring uses the student's current switch state instead of resurrecting the prior one.
+
+- `packages/rb-apps/src/apps/ide/sim/simEngineCore.ts`
+  - Added `buildBlockedRuntimeSnapshotFromModel(...)` so blocked runtime snapshots can be derived from the current circuit/model instead of cloning stale live outputs.
+  - This helper is now the authority source for blocked input/signal snapshots.
+
+- `packages/rb-apps/src/apps/ide/bringupArtifacts.ts`
+  - Replaced the generic sequential `stimulus-only` fallback with simulated expected outputs from the current circuit.
+  - Result: custom sequential bring-up flows now generate real asserted outputs instead of blank expectations when semantic output mapping is unavailable.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts`
+    - Updated invalid-IR expectations to assert stale-signal clearing and preserved input intent.
+    - Added rewiring coverage proving invalid-state input changes survive into the restored valid circuit.
+  - `packages/rb-apps/src/apps/ide/__tests__/bringupArtifacts.canonical-naming.test.ts`
+    - Added coverage for simulated sequential expected outputs, including generic D flip-flop outputs on plain board LEDs.
+
+### Student-visible behavior
+
+- Deleting or disconnecting part of a circuit no longer leaves old hot downstream state masquerading as the current graph.
+- While the graph is invalid, switch changes remain authoritative instead of being silently dropped.
+- Rewiring back to a valid circuit now uses the current switch state deterministically.
+- `Generate Basics` for custom D flip-flop style builds now writes real expected outputs from simulation, enabling a direct compare run instead of forcing an observation-only trace path.
+
+### Proof
+
+- `pnpm --filter @redbyte/rb-apps exec vitest run --environment jsdom src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` -> PASS
+- `pnpm --filter @redbyte/rb-apps exec vitest run --environment jsdom src/apps/ide/__tests__/projectRuntime.persistence.test.ts` -> PASS
+- `pnpm --filter @redbyte/rb-apps exec vitest run --environment jsdom src/apps/ide/__tests__/bringupArtifacts.canonical-naming.test.ts` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `ops/proof/design-runtime-authority-2026-03-24/summary.json`
+  - Local dev proof: stale invalid-IR hot state is cleared while preserving current inputs; custom half-adder, OR, and D flip-flop builds all reach `ASSERTIONS MATCH` with export still available.
+  - Production parity proof: deployed site still shows the stale invalid-IR hot-state bug until this local fix is shipped.
+
+### Remaining concern
+
+- `pnpm repo:status` now gets much further, but still fails on `IDE Workbench Layout Contract` because that gate still assumes the Verify waveform must be visible before the first run. The live product and proof bundle show the current truth: pre-run Verify is testbench-first, post-run Verify is waveform-first.
+
 ## Change Log 2026-03-23 (Production finish slice 1: advisory compare semantics and Verify decoupling)
 
 **Subsystem**: Verify student-facing semantics + Project/Export/Hardware policy split + status copy alignment
@@ -23706,5 +24572,93 @@ Key details:
 **Remaining concern**
 
 - The workspace-wide blocker after this slice is `scripts/gates/ide-project-health-live-contract.mjs`, which currently expects the Project continue target to route back to Verify after a design mutation but is seeing `Design` instead. That failure is outside the narrow VerifySession changes above and remains to be resolved in the broader worktree.
+
+- **Attribution**: Connor Angiel
+
+---
+
+## Change Log 2026-03-24 (Verify redesign v2: authoritative capture scopes, stale recapture, and starter-simulation truth)
+
+**Subsystem**: IDE Verify runtime authority + workbench repair + testbench authoring
+
+**Problem**
+
+- Combinational starter vectors still defaulted expected outputs to `0` when no prior expected values existed, so custom circuits could immediately compare wrong even when the design was correct.
+- Verify still only supported whole-testbench capture semantics in the main flow, which made stale repair and in-place expected-value fixes too coarse for a real workbench.
+- Stale circuit runs exposed a rerun CTA, but not a trustworthy one-click path that re-captured expectations from the current circuit and returned Verify to a current compare state.
+- The Verify workbench CSS still contained older layout overrides that fought the later three-panel grid and waveform-dominant design.
+- StimulusCanvas still lacked clipboard import/export, so students could not move authored testbenches in and out of Verify as a real tabular testbench.
+
+**Root-cause classification**
+
+- Bring-up generation bug in `bringupArtifacts.ts`: combinational starter generation had simulation context available upstream but did not forward it to the combinational path.
+- VerifySurface still treated capture as a single “set oracle” overwrite instead of an explicit scoped capture/edit system.
+- Stale repair had no queued trace -> capture -> compare loop tied to the current run hash and vector signature.
+- Verify CSS had contradictory older rules that reintroduced flex-column behavior and boxed the waveform viewport.
+- StimulusCanvas lacked any clipboard serialization/parsing layer.
+
+**Files changed**
+
+- packages/rb-apps/src/apps/ide/bringupArtifacts.ts
+- packages/rb-apps/src/apps/ide/components/StimulusCanvas.tsx
+- packages/rb-apps/src/apps/ide/ide-root.css
+- packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx
+- packages/rb-apps/src/apps/ide/surfaces/TruthTablePane.tsx
+- packages/rb-apps/src/apps/ide/surfaces/VerifyFailureExplanationPanel.tsx
+- packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx
+- packages/rb-apps/src/apps/ide/viewmodels/buildVerifySessionViewModel.ts
+- packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/VerifyFailureExplanationPanel.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/bringupArtifacts.canonical-naming.test.ts
+- packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts
+- packages/rb-apps/src/apps/ide/__tests__/verifySurface.three-panel.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx
+
+**What changed**
+
+- Forwarded `circuit` and `ioRows` into the combinational bring-up path, then derived starter expected outputs from deterministic simulation instead of using `0` as the truth source.
+- Added a combinational half-adder regression proving starter vectors now capture correct `sum` / `carry` expectations.
+- Reworked Verify capture into explicit scoped operations:
+  - `cell`
+  - `row`
+  - `signal`
+  - `all-asserted`
+  - `all-visible-outputs`
+- Kept blank expected cells unasserted by default:
+  - capture preserves the current assertion mask when asserted outputs already exist
+  - blank outputs are not auto-filled outside the chosen capture scope
+- Added stale recapture flow in `VerifySurface`:
+  - stale banner now offers `Re-capture outputs`
+  - Verify runs the current circuit in trace mode
+  - applies scoped expected-output capture against the current waveform
+  - then auto-runs compare again once the updated vector set is committed
+- Added in-place compare repair actions to the right panel:
+  - accept observed
+  - capture row
+  - capture signal
+  - expect `0`
+  - expect `1`
+  - clear assertion
+  - re-run compare
+- Preserved vector inputs while capturing expectations, instead of re-normalizing authored input keys into a different live label and silently changing stimulus.
+- Updated the student-facing Verify session model and copy to use `simulation`, `capture`, `assertions incomplete`, and `compare` language instead of older grading-style labels.
+- Updated the first-run ScenarioBuilder CTA to `Run Simulation`.
+- Added clipboard copy/paste for StimulusCanvas using tab-delimited testbench data, with blank expected cells preserved as unasserted on paste.
+- Tightened Verify layout CSS by neutralizing the older column-stack override and removing the final fixed min-height clamp so the waveform stage can stretch cleanly.
+
+**Why minimal**
+
+- No persistence schema migration.
+- No cross-surface runtime API expansion; the stale recapture loop stays inside VerifySurface using existing callbacks and state.
+- No redesign of the waveform renderer architecture; the change keeps the existing oscilloscope stack and makes it behave like the dominant workbench region.
+- Exportability/determinism stay anchored to the same deterministic simulation authority already used by Verify.
+
+**Validation**
+
+- `pnpm --filter @redbyte/rb-apps exec vitest run --environment jsdom "src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts" "src/apps/ide/__tests__/bringupArtifacts.canonical-naming.test.ts" "src/apps/ide/__tests__/StimulusCanvas.test.tsx" "src/apps/ide/__tests__/VerifyFailureExplanationPanel.test.tsx" "src/apps/ide/__tests__/verifySurface.workstation.test.tsx" "src/apps/ide/__tests__/verifySurface.three-panel.test.tsx"` -> PASS
+
+**Remaining concern**
+
+- This slice validated the Verify runtime/workbench/testbench surface directly, but it did not rerun broader non-Verify workspace gates or a full playground build in this continuation.
 
 - **Attribution**: Connor Angiel

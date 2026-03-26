@@ -37,6 +37,23 @@ export interface VerifyScheduleContract {
   resetHint?: VerifyResetHint;
   hasUnsupportedTemporal: boolean;
   temporalIssues: TemporalIssue[];
+  /**
+   * Explicit assertion mask — records which output signal names were actively asserted
+   * (i.e., had expected values) during the verify run that produced this contract.
+   *
+   * `true`  → the signal was compared; a mismatch here is a real failure.
+   * `false` → the signal was present in the IO mapping but left blank; it was not compared.
+   * absent  → the signal was not part of the assertion set at all.
+   *
+   * This field is set when the contract is stored inside a RuntimeVerifyRun and must be
+   * read by testbench generation to emit VHDL assertion statements only for asserted signals.
+   * Signals absent from the mask must never produce simulation failures in the generated
+   * testbench, preserving the rule that blank expected outputs are never compared.
+   *
+   * Populated at verify-run time (not at schedule-derivation time).
+   * Absent for contracts derived purely from circuit structure (no run context available).
+   */
+  assertionMask?: Record<string, boolean>;
 }
 
 export interface DeterministicVerifyContext {

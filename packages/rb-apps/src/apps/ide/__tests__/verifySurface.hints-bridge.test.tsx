@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -60,6 +60,13 @@ function makeRepeatedFailRun(): RuntimeVerifyRun {
 }
 
 describe('VerifySurface hint bridge', () => {
+  function openAnalysisDrawer(getByTestId: (id: string) => HTMLElement) {
+    const toggle = getByTestId('ide-verify-drawer-toggle');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  }
+
   it('surfaces the unmapped-pin hint from real mapping state', () => {
     const { getByTestId } = render(
       <VerifySurface
@@ -72,6 +79,7 @@ describe('VerifySurface hint bridge', () => {
       />
     );
 
+    openAnalysisDrawer(getByTestId);
     expect(getByTestId('ide-verify-hint-callout').textContent).toContain('Some pins are not mapped');
   });
 
@@ -87,6 +95,7 @@ describe('VerifySurface hint bridge', () => {
       />
     );
 
+    openAnalysisDrawer(getByTestId);
     expect(getByTestId('ide-verify-hint-callout').textContent).toContain('undriven');
   });
 
@@ -101,6 +110,7 @@ describe('VerifySurface hint bridge', () => {
       />
     );
 
+    openAnalysisDrawer(getByTestId);
     expect(getByTestId('ide-verify-hint-callout').textContent).toContain(
       'localized to one output failing repeatedly'
     );

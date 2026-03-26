@@ -122,6 +122,7 @@ function validateProjectForBasys3(project: RBProject): Basys3ExportError[] {
 
   errors.push(...validateSynthSubset(project, authority.ir, authority.simModel));
   errors.push(...validateTopPortWidths(project));
+  errors.push(...validateMultipleDrivers(project));
 
   for (const requiredPort of requiredPorts) {
     const mappedInput = findMappingRecord(inputMappings, requiredPort.normalized);
@@ -231,6 +232,28 @@ function validateProjectForBasys3(project: RBProject): Basys3ExportError[] {
     }
   }
 
+  // Duplicate physical pin detection — two ports sharing the same Basys3 package pin causes
+  // Vivado DRC failure at implementation time. Surface this as a hard error before export.
+  const pinToMappings = new Map<string, MappingRecord[]>();
+  for (const entry of [...inputMappings, ...outputMappings]) {
+    if (!entry.resolvedPackagePin) continue;
+    const existing = pinToMappings.get(entry.resolvedPackagePin) ?? [];
+    existing.push(entry);
+    pinToMappings.set(entry.resolvedPackagePin, existing);
+  }
+  for (const [packagePin, dupeEntries] of pinToMappings) {
+    if (dupeEntries.length < 2) continue;
+    const conflictList = dupeEntries
+      .map((e) => `"${displayMappingEntry(e)}" (${e.direction})`)
+      .sort((left, right) => compareCodepoint(left, right))
+      .join(', ');
+    errors.push({
+      type: 'constraint',
+      severity: 'error',
+      message: `Duplicate pin assignment: Basys3 package pin ${packagePin} is used by ${conflictList}. Each physical pin can only be assigned to one port.`,
+    });
+  }
+
   const unusedMappings = [...inputMappings, ...outputMappings]
     .filter((entry) => !matchedMappingKeys.has(entry.key))
     .sort((left, right) => compareCodepoint(left.key, right.key));
@@ -336,9 +359,27 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
     topVerilog: bundleResult.topV,
   };
 
-  // Generate testbench.vhd if vectors present.
-  // Pass the entity VHDL so that component/signal declarations mirror the entity exactly.
+  // ── Testbench compatibility fallback ─────────────────────────────────────────
+  // This is the ONLY alternate testbench generation path.
+  //
+  // Authority hierarchy for testbench.vhd:
+  //   1. buildRuntimeBackedTestbench (in buildExportViewModel) — PRIMARY path.
+  //      Uses activeScenario.vectors + VerifyScheduleContract from the last Verify run.
+  //      This path respects the assertionMask and carries full provenance.
+  //
+  //   2. This path (basys3ExportService) — COMPAT FALLBACK only.
+  //      Used when buildExportViewModel has no activeScenario and no runtimeVerifyRun.
+  //      Reads project.vectors directly; no assertionMask; schedule derived from circuit.
+  //      This path exists to ensure bundle.testbench is populated for legacy callers that
+  //      do not pass an activeScenario (e.g. raw export API calls, unit tests without run).
+  //
+  // Export is never blocked by Verify state — testbench is generated regardless of whether
+  // the last Verify run passed, failed, is stale, or has not run at all.
+  //
+  // DO NOT add a third testbench generation path. All future paths must go through
+  // buildRuntimeBackedTestbench or this documented compat fallback.
   if (project.vectors && project.vectors.length > 0) {
+    // Pass the entity VHDL so that component/signal declarations mirror the entity exactly.
     result.bundle.testbench = generateTestbenchVhdl(project, project.vectors, {
       entityVhd: result.bundle.topVhd,
     });
@@ -476,6 +517,40 @@ function normalizeMappings(project: RBProject, direction: MappingDirection): Map
     .sort((left, right) => compareCodepoint(left.key, right.key));
 }
 
+/**
+ * Multiple-driver detection for export constraint validation.
+ *
+ * Two connections to the same destination port produce an invalid net that would
+ * cause Vivado to fail during elaboration (cannot resolve multi-driven signal).
+ * The design canvas already catches this at the UI level via designIssues.ts, but
+ * export validation must also check it independently so the error surfaces with a
+ * clear Vivado-facing message even if the canvas guard was bypassed (e.g. programmatic
+ * project loading or HDL import paths).
+ */
+function validateMultipleDrivers(project: RBProject): Basys3ExportError[] {
+  const diagnostics: Basys3ExportError[] = [];
+  const driverCount = new Map<string, number>();
+
+  for (const conn of project.circuit?.connections ?? []) {
+    const key = `${conn.to?.nodeId ?? (conn as Record<string, unknown>).toNodeId}.${conn.to?.portName ?? (conn as Record<string, unknown>).toPort}`;
+    driverCount.set(key, (driverCount.get(key) ?? 0) + 1);
+  }
+
+  const multiDriven = Array.from(driverCount.entries())
+    .filter(([, count]) => count > 1)
+    .sort(([a], [b]) => compareCodepoint(a, b));
+
+  for (const [portKey, count] of multiDriven) {
+    diagnostics.push({
+      type: 'logic',
+      severity: 'error',
+      message: `Multiple drivers (${count}) on port "${portKey}". Fix: only one connection may drive each input port. Vivado will reject multi-driven signals during elaboration.`,
+    });
+  }
+
+  return diagnostics;
+}
+
 function validateSynthSubset(
   project: RBProject,
   ir: CircuitIR,
@@ -589,6 +664,17 @@ function validateClockResetContract(
       .map((binding) => binding.canonicalName ?? binding.netName ?? binding.primitiveId)
       .filter((binding): binding is string => typeof binding === 'string' && binding.length > 0),
   );
+
+  // Sequential circuit with no clock at all — this will produce a Vivado DRC error
+  // and an untestable testbench. Surface as a hard error before export.
+  // Constraint check: clock is a REQUIRED pin when any stateful primitive exists.
+  if (clockDrivers.size === 0) {
+    diagnostics.push({
+      type: 'constraint',
+      severity: 'error',
+      message: `Sequential circuit (${statefulPrimitives.length} stateful element${statefulPrimitives.length > 1 ? 's' : ''}) has no clock signal bound. Fix: add a Clock node to the circuit and map it to Basys3 pin CLK (W5) in IO mapping.`,
+    });
+  }
 
   if (clockDrivers.size > 1) {
     const sortedDrivers = Array.from(clockDrivers).sort((left, right) => compareCodepoint(left, right));

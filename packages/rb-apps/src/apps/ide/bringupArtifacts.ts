@@ -71,7 +71,7 @@ export type BringUpGenerationMode =
   | 'combinational'
   | 'sequential-counter'
   | 'sequential-register'
-  | 'sequential-stimulus-only';
+  | 'sequential-simulated';
 
 export interface BringUpGenerationResult {
   vectors: TestVector[];
@@ -130,6 +130,7 @@ export function buildBringUpGeneration(params: {
     );
     return buildSequentialBringUpGeneration(
       params.circuit,
+      params.ioRows,
       inputSignals,
       outputSignals,
       signalRoles
@@ -138,6 +139,8 @@ export function buildBringUpGeneration(params: {
 
   return {
     vectors: buildCombinationalBringUpVectors(
+      params.circuit,
+      params.ioRows,
       inputSignals,
       outputSignals,
       params.existingVectors ?? []
@@ -317,6 +320,7 @@ interface RegisterOutputMappingEntry {
 
 function buildSequentialBringUpGeneration(
   circuit: Circuit,
+  ioRows: BringUpIoRow[],
   inputSignals: string[],
   outputSignals: string[],
   signalRoles: Record<string, 'clock' | 'reset' | 'input' | 'output'>
@@ -341,10 +345,10 @@ function buildSequentialBringUpGeneration(
   }
 
   return {
-    vectors: buildStimulusOnlySequentialVectors(controlSignals),
-    mode: 'sequential-stimulus-only',
+    vectors: buildSimulatedSequentialVectors(circuit, ioRows, outputSignals, controlSignals),
+    mode: 'sequential-simulated',
     guidance:
-      'Starter vectors include clocked stimulus only. Observe the waveform, then fill in expected outputs for your circuit.',
+      'Starter vectors include clocked stimulus plus simulated expected outputs from the current circuit.',
   };
 }
 
@@ -520,7 +524,46 @@ function buildStimulusOnlySequentialVectors(
   }));
 }
 
+function buildSimulatedSequentialVectors(
+  circuit: Circuit,
+  ioRows: BringUpIoRow[],
+  outputSignals: string[],
+  controlSignals: SequentialControlSignals
+): TestVector[] {
+  const vectors = buildStimulusOnlySequentialVectors(controlSignals);
+  if (outputSignals.length === 0) {
+    return vectors;
+  }
+
+  const simulatedRows = simulateExpectedIoRows({
+    circuit,
+    ioRows,
+    vectors,
+  });
+  const simulatedExpectedByTick = new Map<number, Record<string, 0 | 1>>();
+  for (const row of simulatedRows) {
+    const bucket = simulatedExpectedByTick.get(row.tick) ?? {};
+    bucket[normalizeIoSignalKey(row.signal)] = row.expected === '1' ? 1 : 0;
+    simulatedExpectedByTick.set(row.tick, bucket);
+  }
+
+  return vectors.map((vector) => {
+    const simulatedExpected = simulatedExpectedByTick.get(vector.tick) ?? {};
+    const expected: Record<string, 0 | 1> = {};
+    for (const signal of outputSignals) {
+      const normalizedSignal = normalizeIoSignalKey(signal);
+      expected[signal] = simulatedExpected[normalizedSignal] ?? 0;
+    }
+    return {
+      ...vector,
+      expected,
+    };
+  });
+}
+
 function buildCombinationalBringUpVectors(
+  circuit: Circuit,
+  ioRows: BringUpIoRow[],
   inputSignals: string[],
   outputSignals: string[],
   existingVectors: TestVector[]
@@ -556,7 +599,43 @@ function buildCombinationalBringUpVectors(
     });
   }
 
-  return vectors;
+  if (outputSignals.length === 0) {
+    return vectors;
+  }
+
+  const simulatedRows = simulateExpectedIoRows({
+    circuit,
+    ioRows,
+    vectors,
+  });
+  const simulatedExpectedByTick = new Map<number, Record<string, 0 | 1>>();
+  for (const row of simulatedRows) {
+    const bucket = simulatedExpectedByTick.get(row.tick) ?? {};
+    bucket[normalizeIoSignalKey(row.signal)] = row.expected === '1' ? 1 : 0;
+    simulatedExpectedByTick.set(row.tick, bucket);
+  }
+
+  return vectors.map((vector) => {
+    const simulatedExpected = simulatedExpectedByTick.get(vector.tick) ?? {};
+    const expected: Record<string, 0 | 1> = {};
+    for (const signal of outputSignals) {
+      const normalizedSignal = normalizeIoSignalKey(signal);
+      if (normalizedSignal in simulatedExpected) {
+        expected[signal] = simulatedExpected[normalizedSignal] ?? 0;
+        continue;
+      }
+      if (signal in (vector.expected ?? {})) {
+        expected[signal] = normalizeBit(vector.expected?.[signal]);
+        continue;
+      }
+      expected[signal] = 0;
+    }
+
+    return {
+      ...vector,
+      expected,
+    };
+  });
 }
 
 function resolveExpectedValue(params: {

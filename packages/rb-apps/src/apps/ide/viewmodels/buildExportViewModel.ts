@@ -6,8 +6,10 @@ import {
 } from '../../../fpga/boards/basys3/basys3ExportService';
 import { generateTestbenchVhdl } from '../../../fpga/boards/basys3/testbenchGenerator';
 import { generateVivadoImportTcl } from '../../../fpga/boards/basys3/vivadoImportTcl';
-import type { RuntimeVerifyRun } from '../projectRuntime';
+import type { VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
+import { getRuntimeVerifyRunKind, type RuntimeVerifyRun } from '../projectRuntime';
 import { computeScenarioContentHash, type VerifyScenario } from '../verifyScenario';
+import type { TestVector } from '@redbyte/rb-utils';
 import {
   createIdeDiagnostic,
   type IdeDiagnostic,
@@ -49,9 +51,29 @@ export interface ExportPinTableRow {
   suggestedPin?: string;
 }
 
+/**
+ * Source category for a generated artifact, mirroring Vivado's project source classification.
+ *
+ * design-source     — Synthesizable HDL (top.vhd). Used for top.vhd, .xpr, vivado_import.tcl,
+ *                     and hardware/export preview. Governed by designTop.
+ * simulation-source — Simulation-only HDL (testbench.vhd). Never merged into the design
+ *                     source set. Governed by simulationTop.
+ * constraints       — Physical and timing constraints (top.xdc).
+ * build-artifact    — Derived project files: scripts, manifests, bring-up docs, project JSON.
+ */
+export type ExportArtifactCategory =
+  | 'design-source'
+  | 'simulation-source'
+  | 'constraints'
+  | 'build-artifact';
+
 export interface ExportArtifactView {
   path: string;
   kind: 'vhd' | 'xdc' | 'readme' | 'tb' | 'tcl' | 'md' | 'json';
+  /** Source category for this artifact. Used to group artifacts in the UI
+   *  and to enforce that simulation-source artifacts never contaminate the
+   *  design-source set in the generated Vivado project. */
+  category: ExportArtifactCategory;
   content: string;
   preview: string;
   status: 'ready' | 'blocked' | 'pending';
@@ -79,6 +101,20 @@ export interface ExportedScenarioProvenance {
   isStaleComparedToLastPass: boolean;
 }
 
+/**
+ * Provenance metadata embedded in the export viewmodel.
+ * Records the exact top-entity names used for design vs. simulation artifacts
+ * so consumers (UI, tests, Vivado) can verify authority separation.
+ */
+export interface ExportTopAuthority {
+  /** The synthesizable top-entity name used for top.vhd, top.xdc, .xpr, and vivado_import.tcl.
+   *  This is the canonical design authority and must never be redefined by simulation artifacts. */
+  designTop: string;
+  /** The testbench entity name used for testbench.vhd (typically <designTop>_tb).
+   *  Simulation-only. Must not appear in the design source set. */
+  simulationTop: string;
+}
+
 export interface ExportViewModel {
   status: 'ok' | 'blocked';
   diagnostics: IdeDiagnostic[];
@@ -87,6 +123,11 @@ export interface ExportViewModel {
   pinTable: ExportPinTableRow[];
   artifacts: ExportArtifactView[];
   exportHash?: string;
+  /**
+   * Explicit top-entity authority for design vs. simulation artifacts.
+   * Both fields are always present when an export result exists.
+   */
+  topAuthority: ExportTopAuthority;
   /**
    * Structured scenario provenance for the exported testbench.
    * Present when an active scenario and a passing Verify run are both available.
@@ -112,7 +153,10 @@ export function buildExportViewModel(
   const warnings = diagnostics.filter((entry) => entry.severity === 'warning');
   const requiredPorts = collectRequiredPorts(diagnostics);
   const pinTable = buildPinTable(flattenedProject, diagnostics, requiredPorts);
-  const artifacts = buildArtifacts(flattenedProject, exportResult, errors.length > 0, runtimeVerifyRun, activeScenario);
+  const designTop = resolveTopEntity(flattenedProject);
+  const simulationTop = `${designTop}_tb`;
+  const topAuthority: ExportTopAuthority = { designTop, simulationTop };
+  const artifacts = buildArtifacts(flattenedProject, exportResult, errors.length > 0, runtimeVerifyRun, activeScenario, topAuthority);
   const exportedScenario = buildScenarioProvenance(activeScenario, runtimeVerifyRun);
 
   return {
@@ -123,6 +167,7 @@ export function buildExportViewModel(
     pinTable,
     artifacts,
     exportHash: exportResult.determinismHash,
+    topAuthority,
     exportedScenario,
   };
 }
@@ -322,7 +367,8 @@ function buildArtifacts(
   exportResult: ReturnType<typeof exportProjectAsBasys3>,
   blocked: boolean,
   runtimeVerifyRun?: RuntimeVerifyRun,
-  activeScenario?: VerifyScenario
+  activeScenario?: VerifyScenario,
+  topAuthority?: ExportTopAuthority
 ): ExportArtifactView[] {
   const artifacts: ExportArtifactView[] = [];
   const bundle = exportResult.bundle;
@@ -349,94 +395,73 @@ function buildArtifacts(
     verifyRows: runtimeVerifyRun?.report.rows,
   });
 
+  // Provenance header fields — injected into every generated text artifact.
+  const provenanceBase = {
+    board: 'Basys3',
+    designTop: topAuthority?.designTop ?? topEntity,
+    projectName: project.name,
+    exportHash: exportResult.determinismHash,
+  };
+
   if (bundle) {
-    artifacts.push({
-      path: 'project.rbproj.json',
-      kind: 'json',
-      content: normalizeArtifactContent(rbprojJson),
-      preview: buildPreview(rbprojJson),
-      status: 'ready',
-      note: 'Canonical RedByte project snapshot for Save/Load roundtrip.',
-    });
+    // Design Sources
+    const topVhdHeader = buildProvenanceHeader('--', provenanceBase);
     artifacts.push({
       path: 'top.vhd',
       kind: 'vhd',
-      content: normalizeArtifactContent(bundle.topVhd),
+      category: 'design-source',
+      content: normalizeArtifactContent(topVhdHeader + bundle.topVhd),
       preview: buildPreview(bundle.topVhd),
       status: blocked ? 'blocked' : 'ready',
-      note: 'Canonical top-level VHDL export.',
+      note: `Synthesizable top-level VHDL. designTop=${topAuthority?.designTop ?? resolveTopEntity(project)}.`,
     });
+    // Constraints
+    const topXdcHeader = buildProvenanceHeader('#', provenanceBase);
     artifacts.push({
       path: 'top.xdc',
       kind: 'xdc',
-      content: normalizeArtifactContent(bundle.topXdc),
+      category: 'constraints',
+      content: normalizeArtifactContent(topXdcHeader + bundle.topXdc),
       preview: buildPreview(bundle.topXdc),
       status: blocked ? 'blocked' : 'ready',
-      note: 'Deterministic Basys3 constraints generated from IO mapping.',
+      note: 'Basys3 physical constraints derived from IO mapping.',
     });
-    artifacts.push({
-      path: 'README.txt',
-      kind: 'readme',
-      content: normalizeArtifactContent(bundle.readme),
-      preview: buildPreview(bundle.readme),
-      status: blocked ? 'blocked' : 'ready',
-      note: 'Vivado import instructions.',
-    });
-    artifacts.push({
-      path: 'vivado_import.tcl',
-      kind: 'tcl',
-      content: normalizeArtifactContent(vivadoImportTcl),
-      preview: buildPreview(vivadoImportTcl),
-      status: blocked ? 'blocked' : 'ready',
-      note: 'Vivado batch import script for Basys3 project setup.',
-    });
-    artifacts.push({
-      path: 'BRINGUP.md',
-      kind: 'md',
-      content: normalizeArtifactContent(bringUpArtifacts.bringupMarkdown),
-      preview: buildPreview(bringUpArtifacts.bringupMarkdown),
-      status: blocked ? 'blocked' : 'ready',
-      note: 'Fast board bring-up checklist and mapping summary.',
-    });
-    artifacts.push({
-      path: 'EXPECTED_IO.json',
-      kind: 'json',
-      content: normalizeArtifactContent(bringUpArtifacts.expectedIoJson),
-      preview: buildPreview(bringUpArtifacts.expectedIoJson),
-      status: blocked ? 'blocked' : 'ready',
-      note: 'Deterministic expected IO behavior for board bring-up vectors.',
-    });
-    artifacts.push({
-      path: 'program_and_test.tcl',
-      kind: 'tcl',
-      content: normalizeArtifactContent(bringUpArtifacts.programAndTestTcl),
-      preview: buildPreview(bringUpArtifacts.programAndTestTcl),
-      status: blocked ? 'blocked' : 'ready',
-      note: 'Hardware manager programming scaffold for Basys3 bring-up.',
+    // Simulation Sources — testbench.vhd
+    // Export is not blocked by compare state. A testbench is generated whenever vectors
+    // exist, regardless of whether the last Verify run passed, failed, or is stale.
+    const tbHeader = buildProvenanceHeader('--', {
+      ...provenanceBase,
+      simulationTop: topAuthority?.simulationTop ?? `${topEntity}_tb`,
     });
     if (runtimeBackedTestbench) {
       artifacts.push({
         path: 'testbench.vhd',
         kind: 'tb',
-        content: normalizeArtifactContent(runtimeBackedTestbench.content),
+        category: 'simulation-source',
+        content: normalizeArtifactContent(tbHeader + runtimeBackedTestbench.content),
         preview: buildPreview(runtimeBackedTestbench.content),
         status: blocked ? 'blocked' : 'ready',
         note: runtimeBackedTestbench.note,
       });
     } else if (bundle.testbench) {
+      // Compatibility fallback: generated by basys3ExportService from project.vectors
+      // when no activeScenario and no runtimeVerifyRun are available.
+      // Uses the same deterministic path as the runtime-backed testbench.
       artifacts.push({
         path: 'testbench.vhd',
         kind: 'tb',
-        content: normalizeArtifactContent(bundle.testbench),
+        category: 'simulation-source',
+        content: normalizeArtifactContent(tbHeader + bundle.testbench),
         preview: buildPreview(bundle.testbench),
         status: blocked ? 'blocked' : 'ready',
-        note: 'Deterministic verification schedule mirror.',
+        note: 'Deterministic schedule mirror from project vectors (no active scenario).',
       });
     } else {
       const hasVectors = (project.vectors?.length ?? 0) > 0;
       artifacts.push({
         path: 'testbench.vhd',
         kind: 'tb',
+        category: 'simulation-source',
         content: '',
         preview: '',
         status: hasVectors ? 'blocked' : 'pending',
@@ -445,82 +470,242 @@ function buildArtifacts(
           : 'Pending until vectors are provided.',
       });
     }
-  } else {
+    // Build Artifacts
+    const tclHeader = buildProvenanceHeader('#', provenanceBase);
+    artifacts.push({
+      path: 'vivado_import.tcl',
+      kind: 'tcl',
+      category: 'build-artifact',
+      content: normalizeArtifactContent(tclHeader + vivadoImportTcl),
+      preview: buildPreview(vivadoImportTcl),
+      status: blocked ? 'blocked' : 'ready',
+      note: 'Vivado batch import script for Basys3 project setup.',
+    });
+    artifacts.push({
+      path: 'README.txt',
+      kind: 'readme',
+      category: 'build-artifact',
+      content: normalizeArtifactContent(bundle.readme),
+      preview: buildPreview(bundle.readme),
+      status: blocked ? 'blocked' : 'ready',
+      note: 'Vivado import instructions.',
+    });
+    artifacts.push({
+      path: 'BRINGUP.md',
+      kind: 'md',
+      category: 'build-artifact',
+      content: normalizeArtifactContent(bringUpArtifacts.bringupMarkdown),
+      preview: buildPreview(bringUpArtifacts.bringupMarkdown),
+      status: blocked ? 'blocked' : 'ready',
+      note: 'Fast board bring-up checklist and mapping summary.',
+    });
+    artifacts.push({
+      path: 'EXPECTED_IO.json',
+      kind: 'json',
+      category: 'build-artifact',
+      content: normalizeArtifactContent(bringUpArtifacts.expectedIoJson),
+      preview: buildPreview(bringUpArtifacts.expectedIoJson),
+      status: blocked ? 'blocked' : 'ready',
+      note: 'Deterministic expected IO behavior for board bring-up vectors.',
+    });
+    artifacts.push({
+      path: 'program_and_test.tcl',
+      kind: 'tcl',
+      category: 'build-artifact',
+      content: normalizeArtifactContent(bringUpArtifacts.programAndTestTcl),
+      preview: buildPreview(bringUpArtifacts.programAndTestTcl),
+      status: blocked ? 'blocked' : 'ready',
+      note: 'Hardware manager programming scaffold for Basys3 bring-up.',
+    });
     artifacts.push({
       path: 'project.rbproj.json',
       kind: 'json',
+      category: 'build-artifact',
       content: normalizeArtifactContent(rbprojJson),
       preview: buildPreview(rbprojJson),
       status: 'ready',
       note: 'Canonical RedByte project snapshot for Save/Load roundtrip.',
     });
+  } else {
+    // Export diagnostics blocked the bundle — emit skeleton artifacts so the UI
+    // can still display all expected paths with their blocked status.
     artifacts.push({
-      path: 'top.vhd',
-      kind: 'vhd',
-      content: '',
-      preview: '',
-      status: 'blocked',
+      path: 'top.vhd', kind: 'vhd', category: 'design-source',
+      content: '', preview: '', status: 'blocked',
       note: 'Blocked by export diagnostics.',
     });
     artifacts.push({
-      path: 'top.xdc',
-      kind: 'xdc',
-      content: '',
-      preview: '',
-      status: 'blocked',
+      path: 'top.xdc', kind: 'xdc', category: 'constraints',
+      content: '', preview: '', status: 'blocked',
       note: 'Blocked by export diagnostics.',
     });
     artifacts.push({
-      path: 'README.txt',
-      kind: 'readme',
-      content: '',
-      preview: '',
-      status: 'blocked',
+      path: 'testbench.vhd', kind: 'tb', category: 'simulation-source',
+      content: '', preview: '', status: 'blocked',
       note: 'Blocked by export diagnostics.',
     });
     artifacts.push({
-      path: 'vivado_import.tcl',
-      kind: 'tcl',
-      content: '',
-      preview: '',
-      status: 'blocked',
+      path: 'vivado_import.tcl', kind: 'tcl', category: 'build-artifact',
+      content: '', preview: '', status: 'blocked',
       note: 'Blocked by export diagnostics.',
     });
     artifacts.push({
-      path: 'BRINGUP.md',
-      kind: 'md',
-      content: '',
-      preview: '',
-      status: 'blocked',
+      path: 'README.txt', kind: 'readme', category: 'build-artifact',
+      content: '', preview: '', status: 'blocked',
       note: 'Blocked by export diagnostics.',
     });
     artifacts.push({
-      path: 'EXPECTED_IO.json',
-      kind: 'json',
-      content: '',
-      preview: '',
-      status: 'blocked',
+      path: 'BRINGUP.md', kind: 'md', category: 'build-artifact',
+      content: '', preview: '', status: 'blocked',
       note: 'Blocked by export diagnostics.',
     });
     artifacts.push({
-      path: 'program_and_test.tcl',
-      kind: 'tcl',
-      content: '',
-      preview: '',
-      status: 'blocked',
+      path: 'EXPECTED_IO.json', kind: 'json', category: 'build-artifact',
+      content: '', preview: '', status: 'blocked',
       note: 'Blocked by export diagnostics.',
     });
     artifacts.push({
-      path: 'testbench.vhd',
-      kind: 'tb',
-      content: '',
-      preview: '',
-      status: 'blocked',
+      path: 'program_and_test.tcl', kind: 'tcl', category: 'build-artifact',
+      content: '', preview: '', status: 'blocked',
       note: 'Blocked by export diagnostics.',
+    });
+    artifacts.push({
+      path: 'project.rbproj.json', kind: 'json', category: 'build-artifact',
+      content: normalizeArtifactContent(rbprojJson),
+      preview: buildPreview(rbprojJson),
+      status: 'ready',
+      note: 'Canonical RedByte project snapshot for Save/Load roundtrip.',
     });
   }
 
   return artifacts;
+}
+
+/**
+ * The only permitted export from RuntimeVerifyRun into HDL content generation.
+ *
+ * This is a frozen, read-only view of VerifyScheduleContract. It contains ONLY
+ * timing and schedule policy — no compare results, no waveform, no status flags.
+ *
+ * Creation rule: extract via `extractExportScheduleView(runtimeVerifyRun)` — never
+ * spread a full RuntimeVerifyRun into a content-generation function directly.
+ */
+type ExportScheduleView = Readonly<VerifyScheduleContract>;
+
+/**
+ * Firewall function: extracts the ExportScheduleView from a RuntimeVerifyRun.
+ * This is the ONLY place in the export pipeline where a RuntimeVerifyRun may
+ * be read for HDL content purposes. The result is frozen to prevent mutation.
+ *
+ * All testbench VHDL content generation must receive this view — never the run.
+ */
+function extractExportScheduleView(run: RuntimeVerifyRun | undefined): ExportScheduleView | undefined {
+  if (!run?.scheduleContract) return undefined;
+  return Object.freeze({ ...run.scheduleContract }) as ExportScheduleView;
+}
+
+/**
+ * Pure testbench VHDL content generator — the canonical gate for HDL content authority.
+ *
+ * Inputs are structurally limited to:
+ *   - project (RBProject) — top-entity name, port list
+ *   - vectors (TestVector[]) — scenario vectors or compat project.vectors
+ *   - scheduleView (ExportScheduleView | undefined) — frozen schedule policy from firewall
+ *
+ * This function must NEVER receive RuntimeVerifyRun, waveform snapshots, compare
+ * results, report rows, or any derived verify state. Those exist only in buildTestbenchNote.
+ *
+ * AUDIT RULE: If the signature of this function gains a RuntimeVerifyRun parameter,
+ * or any field from RuntimeVerifyRun beyond the ExportScheduleView — that is a bug.
+ * The type system will catch direct RuntimeVerifyRun passing; the firewall comment
+ * catches structural cheats (e.g. manually spreading run fields here).
+ */
+function generateTestbenchContent(
+  project: RBProject,
+  vectors: TestVector[],
+  scheduleView: ExportScheduleView | undefined,
+  legacyRunSchedule?: { schedule: RuntimeVerifyRun['schedule']; clockSignalName?: string }
+): string {
+  return generateTestbenchVhdl(project, vectors, {
+    scheduleOverride: scheduleView
+      ? { ...scheduleView, reason: 'verify-last-run' as const }
+      : legacyRunSchedule
+        ? {
+            schedule: legacyRunSchedule.schedule,
+            reason: 'verify-last-run' as const,
+            clockSignalName: legacyRunSchedule.clockSignalName,
+          }
+        : undefined,
+  });
+}
+
+/**
+ * Builds the UI note string that accompanies the testbench artifact.
+ *
+ * This is the ONLY place in the export pipeline allowed to read RuntimeVerifyRun
+ * fields beyond scheduleContract (e.g. status, schedule, scenarioContentHash).
+ * The note is UI metadata only — it never affects VHDL content.
+ */
+function buildTestbenchNote(
+  activeScenario: VerifyScenario | undefined,
+  runtimeVerifyRun: RuntimeVerifyRun | undefined,
+  clockNote: string
+): string {
+  const runKind = getRuntimeVerifyRunKind(runtimeVerifyRun);
+  if (activeScenario) {
+    const contentHash = computeScenarioContentHash(activeScenario);
+    const runStatus = runtimeVerifyRun?.status ?? null;
+    const isStale =
+      runtimeVerifyRun && typeof runtimeVerifyRun.scenarioContentHash === 'string'
+        ? runtimeVerifyRun.scenarioContentHash !== contentHash
+        : false;
+
+    if (isStale) {
+      return (
+        `STALE — scenario '${activeScenario.name}' v${activeScenario.version} changed since ` +
+        `last Verify run. Vectors reflect the current scenario; re-run Verify to confirm alignment.`
+      );
+    }
+    if (runKind === 'trace') {
+      return (
+        `Scenario '${activeScenario.name}' v${activeScenario.version} (${contentHash})` +
+        ` â€” trace-only run recorded (${runtimeVerifyRun?.schedule ?? 'derived'}${clockNote}). ` +
+        `Expected-output comparison has not been confirmed yet.`
+      );
+    }
+    if (runStatus === 'pass') {
+      return (
+        `Scenario '${activeScenario.name}' v${activeScenario.version} (${contentHash})` +
+        ` — verified PASS (${runtimeVerifyRun!.schedule}${clockNote}).`
+      );
+    }
+    if (runStatus === 'fail') {
+      return (
+        `Scenario '${activeScenario.name}' v${activeScenario.version} (${contentHash})` +
+        ` — last Verify run had assertion differences (${runtimeVerifyRun!.schedule}${clockNote}). ` +
+        `Export is not blocked; re-run Verify to confirm.`
+      );
+    }
+    // No run yet — testbench generated from current scenario vectors with derived schedule.
+    return (
+      `Scenario '${activeScenario.name}' v${activeScenario.version} (${contentHash})` +
+      ` — no Verify run yet. Schedule derived from circuit structure.`
+    );
+  }
+
+  // No active scenario — vectors from project.vectors (compat fallback).
+  const runStatus = runtimeVerifyRun?.status ?? null;
+  const scheduleLabel = runtimeVerifyRun?.schedule ?? 'derived';
+  if (runKind === 'trace') {
+    return `Vectors from project â€” trace-only run recorded (${scheduleLabel}${clockNote}). Expected-output comparison has not been confirmed yet.`;
+  }
+  if (runStatus === 'pass') {
+    return `Deterministic schedule from last Verify PASS (${scheduleLabel}${clockNote}).`;
+  }
+  if (runStatus === 'fail') {
+    return `Vectors from project — last Verify run had assertion differences (${scheduleLabel}${clockNote}). Export is not blocked.`;
+  }
+  return `Vectors from project — no Verify run yet. Schedule derived from circuit structure.`;
 }
 
 function buildRuntimeBackedTestbench(
@@ -528,53 +713,73 @@ function buildRuntimeBackedTestbench(
   runtimeVerifyRun: RuntimeVerifyRun | undefined,
   activeScenario: VerifyScenario | undefined
 ): { content: string; note: string } | undefined {
-  if (!runtimeVerifyRun || runtimeVerifyRun.status !== 'pass') return undefined;
-
-  // When a scenario is available it is the authoritative vector source.
-  // project.vectors is the compat fallback only when no scenario is present.
+  // Vector source authority:
+  //   1. activeScenario.vectors — PRIMARY (scenario is the authoritative vector source)
+  //   2. project.vectors — COMPAT FALLBACK (when no scenario is present)
   const vectors = activeScenario ? activeScenario.vectors : project.vectors;
   if (!vectors || vectors.length === 0) return undefined;
 
-  const scheduleContract = runtimeVerifyRun.scheduleContract;
-  const content = generateTestbenchVhdl(project, vectors, {
-    scheduleOverride: scheduleContract
-      ? {
-          ...scheduleContract,
-          reason: 'verify-last-run',
-        }
-      : {
-          schedule: runtimeVerifyRun.schedule,
-          reason: 'verify-last-run',
-          clockSignalName: runtimeVerifyRun.meta.clockSignalName ?? undefined,
-        },
-  });
+  // Require at least a scenario or a runtime run to produce a runtime-backed testbench.
+  // Without either, fall through to the bundle.testbench compatibility path.
+  if (!runtimeVerifyRun && !activeScenario) return undefined;
 
+  // ── EXPORT AUTHORITY FIREWALL ────────────────────────────────────────────────
+  // Cross the authority boundary exactly once: extract a frozen ExportScheduleView
+  // from the runtime run. After this point, `runtimeVerifyRun` must NOT be passed
+  // to any content-generation function — only `scheduleView` is permitted.
+  // The assertionMask field on the view records which outputs were asserted and
+  // MUST be used by the testbench generator to restrict VHDL assertions.
+  const scheduleView = extractExportScheduleView(runtimeVerifyRun);
+  const legacyRunSchedule = runtimeVerifyRun && !scheduleView
+    ? { schedule: runtimeVerifyRun.schedule, clockSignalName: runtimeVerifyRun.meta.clockSignalName ?? undefined }
+    : undefined;
+
+  const content = generateTestbenchContent(project, vectors, scheduleView, legacyRunSchedule);
+  // ────────────────────────────────────────────────────────────────────────────
+
+  // ── NOTE ZONE (UI metadata only — may read any RuntimeVerifyRun field) ───────
+  // Everything below this line is note-string generation. It may freely read
+  // runtimeVerifyRun.status, .schedule, .scenarioContentHash, etc.
+  // None of these reads affect VHDL artifact content.
   const clockNote =
-    scheduleContract?.clockSignalName && scheduleContract.clockSignalName.length > 0
-      ? `, clock=${scheduleContract.clockSignalName}`
+    scheduleView?.clockSignalName && scheduleView.clockSignalName.length > 0
+      ? `, clock=${scheduleView.clockSignalName}`
       : '';
-
-  let note: string;
-  if (activeScenario) {
-    const contentHash = computeScenarioContentHash(activeScenario);
-    const isStale =
-      typeof runtimeVerifyRun.scenarioContentHash === 'string'
-        ? runtimeVerifyRun.scenarioContentHash !== contentHash
-        : false;
-    if (isStale) {
-      note =
-        `STALE — scenario '${activeScenario.name}' v${activeScenario.version} has changed since ` +
-        `last Verify PASS. Vectors reflect the current scenario; re-run Verify to confirm alignment.`;
-    } else {
-      note =
-        `Vectors from scenario '${activeScenario.name}' v${activeScenario.version} (${contentHash})` +
-        ` — matches Verify PASS (${runtimeVerifyRun.schedule}${clockNote}).`;
-    }
-  } else {
-    note = `Deterministic schedule mirrored from latest Verify PASS (${runtimeVerifyRun.schedule}${clockNote}).`;
-  }
+  const note = buildTestbenchNote(activeScenario, runtimeVerifyRun, clockNote);
+  // ────────────────────────────────────────────────────────────────────────────
 
   return { content, note };
+}
+
+/**
+ * Build a deterministic provenance header comment block for a generated artifact.
+ *
+ * The header records the authority chain state at export time so that any artifact
+ * file can be traced back to a specific project + scenario + board combination.
+ * Engineers reviewing an XDC or VHDL file in Vivado can immediately see which
+ * RedByte project and export invocation produced it.
+ *
+ * @param commentStyle '--' for VHDL, '#' for XDC/TCL
+ */
+function buildProvenanceHeader(
+  commentStyle: '--' | '#',
+  fields: {
+    board: string;
+    designTop: string;
+    simulationTop?: string;
+    projectName: string;
+    exportHash?: string;
+  }
+): string {
+  const c = commentStyle;
+  const sep = `${c} ${'='.repeat(62)}`;
+  const tbLine = fields.simulationTop
+    ? `${c} Board: ${fields.board} | designTop: ${fields.designTop} | simulationTop: ${fields.simulationTop}`
+    : `${c} Board: ${fields.board} | designTop: ${fields.designTop}`;
+  const projLine = fields.exportHash
+    ? `${c} Project: ${fields.projectName} | Export hash: ${fields.exportHash}`
+    : `${c} Project: ${fields.projectName}`;
+  return [sep, `${c} RedByte IDE Export`, tbLine, projLine, `${c} Generated automatically — do not edit by hand.`, sep, ''].join('\n');
 }
 
 /**
@@ -585,7 +790,14 @@ function buildScenarioProvenance(
   activeScenario: VerifyScenario | undefined,
   runtimeVerifyRun: RuntimeVerifyRun | undefined
 ): ExportedScenarioProvenance | undefined {
-  if (!activeScenario || !runtimeVerifyRun || runtimeVerifyRun.status !== 'pass') return undefined;
+  if (
+    !activeScenario ||
+    !runtimeVerifyRun ||
+    getRuntimeVerifyRunKind(runtimeVerifyRun) !== 'verify' ||
+    runtimeVerifyRun.status !== 'pass'
+  ) {
+    return undefined;
+  }
   const contentHash = computeScenarioContentHash(activeScenario);
   const isStaleComparedToLastPass =
     typeof runtimeVerifyRun.scenarioContentHash === 'string'

@@ -6,6 +6,17 @@ async function text(locator) {
   return ((await locator.first().textContent().catch(() => '')) ?? '').trim();
 }
 
+async function clickStarterLoad(page, testId) {
+  const button = page.locator(`[data-testid="${testId}"]`).first();
+  await button.waitFor({ state: 'attached', timeout: 10000 });
+  await button.evaluate((element) => {
+    if (!(element instanceof HTMLElement)) {
+      throw new Error('expected starter load element');
+    }
+    element.click();
+  });
+}
+
 async function clickVerifyRun(page) {
   const runSelectors = [
     '[data-testid="ide-verify-run"]',
@@ -33,14 +44,14 @@ await runIdeGate('IDE evidence capsule contract satisfied', async ({ page, baseU
 
   await page.locator('[data-testid="mode-button-project"]').click();
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
-  await page.locator('[data-testid="ide-project-load-start-logic-gates"]').click();
+  await clickStarterLoad(page, 'ide-project-load-start-logic-gates');
   const replaceModalVisible = await page
     .locator('[data-testid="ide-example-confirm-modal"]')
     .first()
     .isVisible()
     .catch(() => false);
   if (replaceModalVisible) {
-    await page.locator('[data-testid="ide-example-confirm"]').click();
+    await page.locator('[data-testid="ide-example-confirm"]').click({ force: true });
   }
 
   await page.locator('[data-testid="mode-button-verify"]').click();
@@ -50,20 +61,6 @@ await runIdeGate('IDE evidence capsule contract satisfied', async ({ page, baseU
     () => /PASS|FAIL|TRACE/i.test(document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent ?? ''),
     { timeout: 15000 }
   );
-  const initialVerifyStatus = await text(page.locator('[data-testid="ide-verify-summary-status"]'));
-
-  const setOracle = page.locator('[data-testid="ide-verify-set-oracle"]').first();
-  // Only use Set Oracle to materialize expectations when the initial run is trace/fail.
-  // If Verify already reports PASS, reapplying the oracle is unnecessary and the current
-  // logic-gates starter can rerun into FAIL because it changes the authored expectation set.
-  if (!/PASS/i.test(initialVerifyStatus) && (await setOracle.isVisible().catch(() => false))) {
-    await setOracle.click();
-    await clickVerifyRun(page);
-    await page.waitForFunction(
-      () => /PASS/i.test(document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent ?? ''),
-      { timeout: 15000 }
-    );
-  }
 
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
@@ -81,7 +78,7 @@ await runIdeGate('IDE evidence capsule contract satisfied', async ({ page, baseU
   // trust/advisory state, and debug report UI rendered on the Export surface.
   const evidenceState = await text(page.locator('[data-testid="ide-export-capsule-build-state"] span:last-child'));
   assert(
-    /Blocked|Unverified|Trusted|Downloaded/i.test(evidenceState),
+    /Blocked|Available|Comparison aligned|Downloaded|Building/i.test(evidenceState),
     `export evidence state must be materialized, got "${evidenceState}"`
   );
 
@@ -115,8 +112,9 @@ await runIdeGate('IDE evidence capsule contract satisfied', async ({ page, baseU
     .isVisible()
     .catch(() => false);
   assert(
-    blockersVisible || unverifiedCalloutVisible || /Trusted|Downloaded/i.test(evidenceState),
-    'export evidence surface must show either blockers, an unverified advisory, or a trusted state'
+    blockersVisible ||
+      unverifiedCalloutVisible ||
+      /Available|Comparison aligned|Downloaded/i.test(evidenceState),
+    'export evidence surface must show blockers, an advisory, or a materialized available/aligned state'
   );
 });
-

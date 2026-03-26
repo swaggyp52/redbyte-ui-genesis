@@ -2,11 +2,27 @@ import type { RuntimeVerifyRun } from '../projectRuntime';
 
 export type VerifySessionMode = 'simulation' | 'capture' | 'assertion';
 
+/**
+ * Student-facing Verify session states.
+ *
+ * DRAFT             — No vectors defined yet, or first-time session.
+ * STIMULUS_ONLY     — Vectors have input patterns but zero expected outputs.
+ *                     The session can run simulation but there is nothing to compare.
+ * ASSERTIONS_INCOMPLETE — Some outputs are expected (asserted); others remain blank.
+ *                         Only asserted outputs will be compared on next run.
+ * ASSERTIONS_MATCH  — Compare ran; every asserted output matched the observed design.
+ * ASSERTIONS_DIFFER — Compare ran; one or more asserted outputs differed from observed.
+ * STALE             — Circuit or testbench changed after the last run. Result is no longer
+ *                     authoritative; re-run before trusting it.
+ *
+ * RUNNING and structural-blocker states are transient and internal only — they must not
+ * be persisted or treated as canonical session outcomes.
+ */
 export type VerifySessionStatus =
   | 'draft'
   | 'running'
   | 'stale'
-  | 'simulation-complete'
+  | 'stimulus-only'
   | 'assertions-incomplete'
   | 'assertions-match'
   | 'assertions-differ';
@@ -23,36 +39,118 @@ export interface VerifySessionViewModel {
   recommendedNextAction: 'simulate' | 'capture' | 'verify';
 }
 
+/**
+ * A single signal lane visible in the active scenario's vector set.
+ * Used to build the pre-run inventory contract.
+ */
+export interface VerifySignalLane {
+  /** Signal name as it appears in scenario vectors (id/label key). */
+  name: string;
+  /** Direction relative to the circuit boundary. */
+  direction: 'input' | 'output';
+  /**
+   * True when this output signal has at least one tick in the active scenario
+   * where expected is non-null/non-empty. Stimulus-only signals have false here.
+   * Always false for input signals.
+   */
+  isAsserted: boolean;
+}
+
+/**
+ * Pre-run signal inventory — the contract that Verify must expose BEFORE running simulation.
+ *
+ * This tells the student exactly what will be simulated: which signals are present,
+ * which outputs will be compared, and what the timing policy is.
+ * If this contract is missing or stale, the Verify surface should surface a warning.
+ *
+ * Computed from activeScenario + circuit structure. Must NOT depend on any prior run.
+ */
+export interface VerifyPreRunInventory {
+  /** All signal lanes visible in the active scenario, grouped by direction. */
+  lanes: VerifySignalLane[];
+  /** Total number of ticks defined in the active scenario. */
+  tickCount: number;
+  /** Number of distinct output signals with at least one asserted tick. */
+  assertedOutputCount: number;
+  /** Total number of expected-value entries across all ticks (assertion coverage). */
+  totalAssertionCount: number;
+  /**
+   * Clock policy derived from the circuit structure via VerifyScheduleContract.
+   * 'combinational' — purely combinational, no clock signal required.
+   * 'clocked'       — sequential circuit; a clock signal drives flip-flops.
+   */
+  clockPolicy: 'combinational' | 'clocked';
+  /**
+   * Clock signal name when clockPolicy is 'clocked'.
+   * Undefined for combinational circuits.
+   * Populated from VerifyScheduleContract.clockSignalName when available.
+   */
+  clockSignalName?: string;
+}
+
 export interface BuildVerifySessionViewModelInput {
   totalVectorCount: number;
   totalExpectedCaseCount: number;
   runState: 'idle' | 'running' | 'complete';
   lastRun?: RuntimeVerifyRun;
-  assertionMode: boolean;
+  /**
+   * Local authoring / next-run intent from VerifySurface.
+   * This must not reinterpret the current persisted run; it only describes what
+   * the student's next run is currently configured to do.
+   */
+  nextRunUsesAssertions: boolean;
   isRunStale: boolean;
   isTraceOnly: boolean;
   hasResults: boolean;
   canSetOracle: boolean;
   failingRowCount: number;
+  /**
+   * Pre-run signal inventory — the Verify contract surface before simulation.
+   * When present, the UI can show students exactly what will be tested before they run.
+   * When absent, the surface should not attempt to render pre-run detail.
+   *
+   * Must be populated from activeScenario + VerifyScheduleContract.
+   * Must NOT be populated from prior run results.
+   */
+  signalInventory?: VerifyPreRunInventory;
 }
 
 export function buildVerifySessionViewModel(
   input: BuildVerifySessionViewModelInput
 ): VerifySessionViewModel {
+  // ── PRE-RUN CONTRACT GUARD (dev mode) ─────────────────────────────────────
+  // Verify must expose a signalInventory before rendering when vectors exist.
+  // If this warning fires, the caller needs to compute signalInventory from
+  // activeScenario + VerifyScheduleContract and pass it in before rendering.
+  // signalInventory must NOT be populated from prior run results — only from
+  // current scenario vectors and circuit structure.
+  if (process.env.NODE_ENV !== 'production' && input.totalVectorCount > 0 && !input.signalInventory) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[RedByte] buildVerifySessionViewModel: signalInventory is absent but vectors exist (%d ticks). ' +
+        'Populate signalInventory from activeScenario + VerifyScheduleContract before Verify renders. ' +
+        'Without it the pre-run UX contract (signal lanes, assertion coverage, clock policy) cannot be met.',
+      input.totalVectorCount
+    );
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   const hasVectors = input.totalVectorCount > 0;
   const hasAssertions = input.totalExpectedCaseCount > 0;
   const lastRunStatus = input.lastRun?.status ?? null;
 
-  const mode: VerifySessionMode = input.isTraceOnly && input.canSetOracle
+  // `mode` is the student's current next-run intent / authoring stance.
+  // `status` below remains the authoritative meaning of the persisted run/session.
+  const mode: VerifySessionMode = input.lastRun && input.isTraceOnly && input.canSetOracle
     ? 'capture'
-    : hasAssertions && (input.assertionMode || !input.lastRun)
+    : input.lastRun && hasAssertions && input.nextRunUsesAssertions
       ? 'assertion'
       : 'simulation';
 
   const recommendedNextAction: VerifySessionViewModel['recommendedNextAction'] =
-    input.isTraceOnly && input.canSetOracle
+    input.lastRun && input.isTraceOnly && input.canSetOracle
       ? 'capture'
-      : mode === 'assertion'
+      : input.lastRun && mode === 'assertion'
         ? 'verify'
         : 'simulate';
 
@@ -61,20 +159,18 @@ export function buildVerifySessionViewModel(
       ? 'running'
       : input.isRunStale
         ? 'stale'
-        : !hasVectors
-          ? 'draft'
-          : !input.lastRun
+        : !input.lastRun
             ? 'draft'
             : input.isTraceOnly
               ? hasAssertions
-                ? 'simulation-complete'
+                ? 'stimulus-only'
                 : 'assertions-incomplete'
               : lastRunStatus === 'fail'
                 ? 'assertions-differ'
                 : input.hasResults
                   ? 'assertions-match'
                   : hasAssertions
-                    ? 'simulation-complete'
+                    ? 'stimulus-only'
                     : 'assertions-incomplete';
 
   const tone: VerifySessionViewModel['tone'] =
@@ -93,12 +189,12 @@ export function buildVerifySessionViewModel(
       ? input.lastRun?.qualification === 'incomplete-mapping'
         ? 'ASSERTIONS MATCH (MAPPING REVIEW)'
         : 'ASSERTIONS MATCH'
-      : status === 'assertions-differ'
-        ? 'ASSERTIONS DIFFER'
+        : status === 'assertions-differ'
+          ? 'ASSERTIONS DIFFER'
         : status === 'assertions-incomplete'
-          ? 'EXPECTED OUTPUTS INCOMPLETE'
-          : status === 'simulation-complete'
-            ? 'SIMULATION COMPLETE'
+          ? 'ASSERTIONS INCOMPLETE'
+          : status === 'stimulus-only'
+            ? 'STIMULUS ONLY'
             : status === 'stale'
               ? 'STALE'
               : status === 'running'
@@ -110,56 +206,54 @@ export function buildVerifySessionViewModel(
       ? 'COMPARE'
       : mode === 'capture'
         ? 'CAPTURE'
-        : 'OBSERVE';
+        : 'SIMULATION';
 
   const title =
     status === 'assertions-match'
-      ? 'Assertions match observed outputs'
+      ? 'All asserted outputs matched'
       : status === 'assertions-differ'
-        ? 'Assertions differ from observed outputs'
+        ? 'Asserted outputs differ from observed'
         : status === 'assertions-incomplete'
-          ? 'Expected outputs are still incomplete'
-          : status === 'simulation-complete'
+          ? 'Assertion coverage is incomplete'
+          : status === 'stimulus-only'
             ? input.lastRun
-              ? 'Simulation complete'
+              ? 'Waveform recorded — no outputs asserted'
               : 'Ready to simulate'
             : status === 'stale'
               ? 'Results are stale'
               : status === 'running'
                 ? mode === 'assertion'
-                  ? 'Comparing outputs'
-                  : 'Running simulation'
+                  ? 'Comparing asserted outputs'
+                  : 'Recording waveform'
                 : hasVectors
-                  ? mode === 'assertion'
-                    ? 'Ready to compare'
-                    : 'Ready to simulate'
+                  ? 'Ready to simulate'
                   : 'Build a testbench';
 
   const summary =
     status === 'assertions-match'
       ? input.lastRun?.qualification === 'incomplete-mapping'
-        ? 'Observed outputs matched your assertions, but some board mappings are still incomplete.'
-        : 'Observed outputs matched every asserted expected value.'
+        ? 'Every asserted output matched. Some board IO mappings are still incomplete — hardware tests may not agree until mapping is finished.'
+        : 'Every asserted output matched the observed design. Blank outputs were not compared.'
       : status === 'assertions-differ'
         ? input.failingRowCount === 1
-          ? 'One asserted output differs from what the live design produced. Inspect that first difference before changing anything else.'
+          ? 'One asserted output differs from what the live design produced. Inspect that difference before changing anything else.'
           : `${input.failingRowCount} asserted outputs differ from what the live design produced. Start with the first difference.`
         : status === 'assertions-incomplete'
-          ? 'Only asserted outputs should be compared. Capture outputs or author expected values before treating this as a comparison run.'
-          : status === 'simulation-complete'
+          ? 'Some outputs have expected values; others remain blank. Only the asserted outputs will be compared on the next run.'
+          : status === 'stimulus-only'
             ? input.lastRun
-              ? 'Waveform recorded from the live design. Capture outputs as expected when you are ready to compare.'
+              ? 'Waveform recorded. No expected outputs are asserted yet — capture or author expected values to enable comparison.'
               : 'Add stimulus ticks, then run the circuit to record a waveform.'
             : status === 'stale'
               ? 'The circuit or testbench changed after the last run. Re-run before trusting the result.'
               : status === 'running'
                 ? mode === 'assertion'
-                  ? 'Comparing asserted outputs against the current live design.'
+                  ? 'Comparing asserted outputs against the current live design. Blank outputs are not compared.'
                   : 'Recording waveform data from the current live design.'
                 : hasVectors
                   ? mode === 'assertion'
-                    ? 'Expected outputs are loaded. Compare them against the current live design when you are ready.'
-                    : 'Add more ticks if needed, then run the circuit to record waveform behavior from the live design.'
+                    ? 'Expected outputs are loaded. Run the current circuit, then compare only the asserted outputs.'
+                    : 'Add more ticks if needed, then run the circuit to record waveform behavior.'
                   : 'Add ticks, input patterns, and optional expected outputs to start the session.';
 
   const runLabel =
@@ -167,8 +261,8 @@ export function buildVerifySessionViewModel(
       ? 'Re-run for current circuit'
       : mode === 'assertion'
         ? input.lastRun
-          ? 'Re-run Verification'
-          : 'Run Verification'
+          ? 'Re-run Compare'
+          : 'Run Compare'
         : input.lastRun
           ? 'Re-run Simulation'
           : 'Run Simulation';

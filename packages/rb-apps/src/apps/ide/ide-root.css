@@ -22279,17 +22279,29 @@ button:disabled,
 /* Waveform workbench: flex:1 fills all remaining space */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-workbench {
   flex: 1 1 0 !important;
-  min-height: 200px !important;
+  min-height: 0 !important;
   overflow: hidden !important;
 }
 
-/* Oscilloscope stage fills workbench vertically */
+/* Keep the three-panel workspace horizontal; the center waveform owns the height. */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel {
   flex: 1 1 0 !important;
   min-height: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
   overflow: hidden !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel[data-has-left='1'][data-has-right='0'] {
+  grid-template-columns: clamp(144px, 14vw, 200px) minmax(0, 1fr) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel[data-has-left='0'][data-has-right='1'] {
+  grid-template-columns: minmax(0, 1fr) clamp(184px, 18vw, 260px) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel[data-has-left='1'][data-has-right='1'] {
+  grid-template-columns: clamp(144px, 14vw, 200px) minmax(0, 1fr) clamp(184px, 18vw, 260px) !important;
 }
 
 /* The center waveform area of the three-panel must fill height */
@@ -23369,7 +23381,7 @@ button:disabled,
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-workbench {
   flex: 1 1 0 !important;
-  min-height: clamp(280px, 42vh, 760px) !important;
+  min-height: 0 !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel {
@@ -23431,6 +23443,15 @@ button:disabled,
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
   flex: 1 1 0 !important;
+  background:
+    linear-gradient(180deg, rgba(3, 9, 18, 0.98), rgba(1, 7, 14, 0.98)),
+    repeating-linear-gradient(
+      180deg,
+      rgba(87, 193, 255, 0.06) 0,
+      rgba(87, 193, 255, 0.06) 1px,
+      transparent 1px,
+      transparent 6px
+    ) !important;
 }
 
 /* Final Verify refinement:

@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import type { ProjectHealth } from '../projectHealth';
+import { deriveProjectVerifyState, type ProjectHealth } from '../projectHealth';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -278,9 +278,18 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
   const effectiveBoardSignal = hoverBoardSignal ?? activeBoardSignal;
 
-  const compareCurrent = Boolean(health.lastVerify) && verifyCurrent;
-  const compareMatches = compareCurrent && health.lastVerify?.status === 'pass';
-  const compareDiffers = compareCurrent && health.lastVerify?.status === 'fail';
+  const projectVerifyState = useMemo(() => {
+    if (!verifyCurrent) return health.lastVerify ? 'stale' : 'not-run';
+    return deriveProjectVerifyState({ ...health, dirtySinceVerify: false });
+  }, [health, verifyCurrent]);
+  const compareCurrent =
+    projectVerifyState === 'assertions-match' ||
+    projectVerifyState === 'assertions-differ' ||
+    projectVerifyState === 'verify-error';
+  const compareMatches = projectVerifyState === 'assertions-match';
+  const compareDiffers =
+    projectVerifyState === 'assertions-differ' || projectVerifyState === 'verify-error';
+  const compareTraceOnly = projectVerifyState === 'trace';
   const exportReady = health.lastExport?.status === 'ok' && exportCurrent;
 
   // ── Scenario drift detection ─────────────────────────────────────────
@@ -325,6 +334,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   // ── Verify status for callout ────────────────────────────────────────
   const verifyStatus = !health.lastVerify
     ? 'NOT RUN'
+    : compareTraceOnly
+      ? 'TRACE ONLY'
     : compareDiffers
       ? 'ASSERTIONS DIFFER'
       : compareMatches

@@ -45,6 +45,7 @@ import {
 import {
   choosePrimaryProjectCta,
   deriveProjectHealth,
+  deriveProjectVerifyState,
   type ProjectHealthExportResult,
   type ProjectHealthMode,
 } from './ide/projectHealth';
@@ -64,6 +65,7 @@ import {
   type LabSessionMeta,
 } from './ide/persistence/labSession';
 import { BoardSignalProvider } from './ide/BoardSignalContext';
+import { getActiveScenario } from './ide/verifyScenario';
 import { netlistFromCircuit } from '../export/netlistExport';
 import { vhdlFromNetlist } from '../export/vhdlExport';
 import { buildVhdlTopLevelBindings } from '../fpga/boards/basys3/basys3Bundle';
@@ -170,7 +172,8 @@ export const IdeApp: React.FC = () => {
   const lastSavedAt = useProjectRuntime((state) => state.lastSavedAt);
   const activeExampleId = useProjectRuntime((state) => state.activeExampleId);
   const projectIoRows = useProjectRuntime((state) => state.projectIoRows);
-  const projectVectors = useProjectRuntime((state) => state.projectVectors);
+  const scenarios = useProjectRuntime((state) => state.scenarios);
+  const activeScenarioId = useProjectRuntime((state) => state.activeScenarioId);
   const circuit = useProjectRuntime((state) => state.circuit);
   const verifyLastRun = useProjectRuntime((state) => state.verifyLastRun);
   const verifyRunHistory = useProjectRuntime((state) => state.verifyRunHistory);
@@ -185,6 +188,11 @@ export const IdeApp: React.FC = () => {
   const customVectors = useProjectRuntime((state) => state.customVectors);
   const setCustomVectors = useProjectRuntime((state) => state.setCustomVectors);
   const generateBringUpVectors = useProjectRuntime((state) => state.generateBringUpVectors);
+  const createVerifyScenario = useProjectRuntime((state) => state.createScenario);
+  const duplicateVerifyScenario = useProjectRuntime((state) => state.duplicateScenario);
+  const renameVerifyScenario = useProjectRuntime((state) => state.renameScenario);
+  const deleteVerifyScenario = useProjectRuntime((state) => state.deleteScenario);
+  const switchVerifyScenario = useProjectRuntime((state) => state.switchScenario);
   const applyCircuitMutation = useProjectRuntime((state) => state.applyCircuitMutation);
   const undoProjectEdit = useProjectRuntime((state) => state.undoProjectEdit);
   const redoProjectEdit = useProjectRuntime((state) => state.redoProjectEdit);
@@ -228,8 +236,17 @@ export const IdeApp: React.FC = () => {
       missingRequiredCount === 0,
     [missingRequiredCount, projectIoRows]
   );
-  const hasVectors = projectVectors.length > 0 || customVectors.length > 0;
-  const latestVerifyPass = projectHealthCore.lastVerify?.status === 'pass' && !projectHealthCore.dirtySinceVerify;
+  const activeScenario = useMemo(
+    () => getActiveScenario(scenarios, activeScenarioId),
+    [activeScenarioId, scenarios]
+  );
+  const authoritativeProjectVectors = activeScenario?.vectors ?? [];
+  const hasVectors = authoritativeProjectVectors.length > 0 || customVectors.length > 0;
+  const projectVerifyState = useMemo(
+    () => deriveProjectVerifyState(projectHealthCore),
+    [projectHealthCore]
+  );
+  const latestVerifyPass = projectVerifyState === 'assertions-match';
 
   const readiness = useMemo(
     () => ({
@@ -274,14 +291,20 @@ export const IdeApp: React.FC = () => {
   );
   const statusBarGateStatus = useMemo<'pass' | 'warn' | 'fail'>(() => {
     if (projectHealth.blockingIssues.length > 0) return 'fail';
-    if (projectHealthCore.lastVerify?.status === 'fail') return 'warn';
+    if (
+      projectVerifyState === 'assertions-differ' ||
+      projectVerifyState === 'verify-error' ||
+      projectVerifyState === 'trace'
+    ) {
+      return 'warn';
+    }
     if (projectHealth.dirtySinceVerify || projectHealth.dirtySinceExport) return 'warn';
     return 'pass';
   }, [
     projectHealth.blockingIssues.length,
     projectHealth.dirtySinceExport,
     projectHealth.dirtySinceVerify,
-    projectHealthCore.lastVerify?.status,
+    projectVerifyState,
   ]);
 
   const pendingExample = useMemo(
@@ -296,13 +319,13 @@ export const IdeApp: React.FC = () => {
   const hardwareExpectedBehavior = useMemo(() => {
     const fromExample = activeExample?.expectedBehavior?.trim();
     if (fromExample && fromExample.length > 0) return fromExample;
-    if (projectVectors.length > 0) {
-      return `Run ${projectVectors.length} deterministic bring-up vector${
-        projectVectors.length === 1 ? '' : 's'
+    if (authoritativeProjectVectors.length > 0) {
+      return `Run ${authoritativeProjectVectors.length} deterministic bring-up vector${
+        authoritativeProjectVectors.length === 1 ? '' : 's'
       } and confirm mapped outputs on Basys3.`;
     }
     return 'Generate bring-up vectors, run verify, then confirm mapped outputs on Basys3.';
-  }, [activeExample?.expectedBehavior, projectVectors.length]);
+  }, [activeExample?.expectedBehavior, authoritativeProjectVectors.length]);
 
   // Projects runtime authority into the editor cache. This stays safe because
   // DesignSurface mutations now hand the next circuit directly back to runtime,
@@ -381,7 +404,7 @@ export const IdeApp: React.FC = () => {
   }, [primaryProjectCta.mode]);
 
   const handleVectorsChange = useCallback(
-    (vectors: typeof projectVectors) => {
+    (vectors: TestVector[]) => {
       setVectors(vectors);
       setVectorsAreAutoGenerated(false);
     },
@@ -702,7 +725,7 @@ export const IdeApp: React.FC = () => {
             pin: entry.pin,
           })),
       },
-      vectors: projectVectors,
+      vectors: authoritativeProjectVectors,
       customComponents: customComponents.length > 0 ? customComponents : undefined,
       macros: macros.length > 0 ? macros : undefined,
       meta: {
@@ -720,7 +743,7 @@ export const IdeApp: React.FC = () => {
       projectId,
       projectIoRows,
       projectName,
-      projectVectors,
+      authoritativeProjectVectors,
       studentName,
       effectiveTopEntityName,
       fpgaConfig.board,
@@ -1030,8 +1053,8 @@ export const IdeApp: React.FC = () => {
   }, []);
 
   const exportViewModel = useMemo(
-    () => buildExportViewModel(exportProject, verifyLastRun),
-    [exportProject, verifyLastRun]
+    () => buildExportViewModel(exportProject, verifyLastRun, activeScenario ?? undefined),
+    [activeScenario, exportProject, verifyLastRun]
   );
   const hardwareExpectedIoRows = useMemo(
     () => extractExpectedIoRows(exportViewModel.artifacts),
@@ -1091,8 +1114,14 @@ export const IdeApp: React.FC = () => {
     [exportViewModel.diagnostics]
   );
   const currentVerifyProjectHash = useMemo(
-    () => buildCurrentVerifyProjectHash({ circuit, projectVectors, customVectors, projectIoRows }),
-    [circuit, customVectors, projectIoRows, projectVectors]
+    () =>
+      buildCurrentVerifyProjectHash({
+        circuit,
+        projectVectors: authoritativeProjectVectors,
+        customVectors,
+        projectIoRows,
+      }),
+    [authoritativeProjectVectors, circuit, customVectors, projectIoRows]
   );
   const latestVerifyLedgerEntry = verifyRunHistory[verifyRunHistory.length - 1];
   const verifyIsCurrent = useMemo(() => deriveVerifyCurrent({
@@ -1438,9 +1467,9 @@ export const IdeApp: React.FC = () => {
         ) : currentMode === 'verify' ? (
           <ErrorBoundary fallbackTitle="Verification crashed">
             <VerifySurface
-              deterministicHash={determinismHash}
+              deterministicHash={currentVerifyProjectHash}
               hasVectors={hasVectors}
-              vectors={projectVectors}
+              vectors={authoritativeProjectVectors}
               lastRun={verifyLastRun}
               mappingComplete={verifyMappingComplete}
               unmappedOutputLabels={unmappedOutputLabels}
@@ -1470,13 +1499,21 @@ export const IdeApp: React.FC = () => {
               onDeleteVector={(tickStr) => {
                 const tick = Number(tickStr);
                 let removed = false;
-                setVectors(projectVectors.filter((v) => {
+                setVectors(authoritativeProjectVectors.filter((v) => {
                   if (!removed && v.tick === tick) { removed = true; return false; }
                   return true;
                 }));
               }}
               customVectors={customVectors}
               onCustomVectorsChange={setCustomVectors}
+              scenarios={scenarios}
+              activeScenarioId={activeScenario?.id ?? null}
+              activeScenario={activeScenario}
+              onCreateScenario={createVerifyScenario}
+              onDuplicateScenario={duplicateVerifyScenario}
+              onRenameScenario={renameVerifyScenario}
+              onDeleteScenario={deleteVerifyScenario}
+              onSwitchScenario={switchVerifyScenario}
             />
           </ErrorBoundary>
         ) : currentMode === 'hardware' ? (
@@ -1486,7 +1523,7 @@ export const IdeApp: React.FC = () => {
               expectedBehavior={hardwareExpectedBehavior}
               mappingRows={projectIoRows}
               expectedIoRows={hardwareExpectedIoRows}
-              vectorsCount={projectVectors.length}
+              vectorsCount={authoritativeProjectVectors.length}
               health={projectHealth}
               verifyCurrent={verifyIsCurrent}
               exportCurrent={exportIsCurrent}
@@ -1499,6 +1536,8 @@ export const IdeApp: React.FC = () => {
               onSetMappingPin={handleMappingPinChange}
               signalRoles={liveSignalRoles}
               verifyLastRun={verifyLastRun}
+              activeScenario={activeScenario ?? undefined}
+              scenarios={scenarios}
             />
           </ErrorBoundary>
         ) : currentMode === 'export' ? (
@@ -1508,6 +1547,7 @@ export const IdeApp: React.FC = () => {
               verifyResult={projectHealthCore.lastVerify}
               verifyLastRun={verifyLastRun}
               designReady={readiness.hasCircuit && readiness.hasIoMapping}
+              activeScenario={activeScenario ?? undefined}
               dirtySinceVerify={projectHealthCore.dirtySinceVerify}
               determinismHash={determinismHash}
               onExportResult={handleExportResult}

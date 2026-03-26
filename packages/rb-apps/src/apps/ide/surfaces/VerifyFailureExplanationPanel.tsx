@@ -23,6 +23,12 @@ export interface VerifyFailureExplanationPanelProps {
   onSelectPeer?: (peer: VerifyFailureExplanationCase) => void;
   onJumpToFix?: (failure: VerifyFailureExplanationCase) => void;
   onOpenInDesign?: (failure: VerifyFailureExplanationCase) => void;
+  onAcceptObserved?: (failure: VerifyFailureExplanationCase) => void;
+  onCaptureRow?: (failure: VerifyFailureExplanationCase) => void;
+  onCaptureSignal?: (failure: VerifyFailureExplanationCase) => void;
+  onSetExpectedBit?: (failure: VerifyFailureExplanationCase, nextValue: 0 | 1) => void;
+  onClearExpected?: (failure: VerifyFailureExplanationCase) => void;
+  onRerunCompare?: () => void;
 }
 
 function displayObservedValue(value: string): string {
@@ -143,6 +149,12 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
   onSelectPeer,
   onJumpToFix,
   onOpenInDesign,
+  onAcceptObserved,
+  onCaptureRow,
+  onCaptureSignal,
+  onSetExpectedBit,
+  onClearExpected,
+  onRerunCompare,
 }) => {
   const likelyReasonText = failure
     ? buildLikelyReasonText({
@@ -167,7 +179,7 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
       data-testid="ide-verify-failure-explanation-panel"
     >
       <header className="ide-design-subheader ide-verify-three-panel-header">
-        <h3>Failure details</h3>
+        <h3>Compare details</h3>
         <span className="ide-copy">{failure ? `t${failure.tick}` : 'No selection'}</span>
       </header>
 
@@ -176,21 +188,80 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
         data-testid="ide-verify-failure-explainer"
       >
         {!failure ? (
-          <p className="ide-copy">Select a failing row to inspect expected vs actual output.</p>
+          <p className="ide-copy">Select a differing row to inspect expected vs observed output.</p>
         ) : (
           <div className="ide-kv-list">
             <p className="ide-verify-right-summary-text" data-testid="ide-verify-right-summary">
               At t{failure.tick}, {displaySignalLabel(failure)} expected {failure.expected} but observed {displayObservedValue(failure.actual)}
             </p>
-            {onJumpToFix || onOpenInDesign ? (
-              <div className="ide-inline-actions">
-                {onJumpToFix ? (
+            {onAcceptObserved || onCaptureRow || onCaptureSignal || onSetExpectedBit || onClearExpected || onRerunCompare ? (
+              <div className="ide-inline-actions" data-testid="ide-verify-right-capture-actions">
+                {onAcceptObserved ? (
                   <IdeButton
                     tone="primary"
+                    onClick={() => onAcceptObserved(failure)}
+                    disabled={failure.actual !== '0' && failure.actual !== '1'}
+                    testId="ide-verify-right-accept-observed"
+                  >
+                    Accept observed
+                  </IdeButton>
+                ) : null}
+                {onCaptureRow ? (
+                  <IdeButton
+                    tone="secondary"
+                    onClick={() => onCaptureRow(failure)}
+                    testId="ide-verify-right-capture-row"
+                  >
+                    Capture row
+                  </IdeButton>
+                ) : null}
+                {onCaptureSignal ? (
+                  <IdeButton
+                    tone="secondary"
+                    onClick={() => onCaptureSignal(failure)}
+                    testId="ide-verify-right-capture-signal"
+                  >
+                    Capture signal
+                  </IdeButton>
+                ) : null}
+                {onClearExpected ? (
+                  <IdeButton
+                    tone="ghost"
+                    onClick={() => onClearExpected(failure)}
+                    testId="ide-verify-right-clear-assertion"
+                  >
+                    Clear assertion
+                  </IdeButton>
+                ) : null}
+              </div>
+            ) : null}
+            {onSetExpectedBit || onJumpToFix || onOpenInDesign || onRerunCompare ? (
+              <div className="ide-inline-actions">
+                {onSetExpectedBit ? (
+                  <>
+                    <IdeButton
+                      tone="ghost"
+                      onClick={() => onSetExpectedBit(failure, 0)}
+                      testId="ide-verify-right-set-expected-0"
+                    >
+                      Expect 0
+                    </IdeButton>
+                    <IdeButton
+                      tone="ghost"
+                      onClick={() => onSetExpectedBit(failure, 1)}
+                      testId="ide-verify-right-set-expected-1"
+                    >
+                      Expect 1
+                    </IdeButton>
+                  </>
+                ) : null}
+                {onJumpToFix ? (
+                  <IdeButton
+                    tone="secondary"
                     onClick={() => onJumpToFix(failure)}
                     testId="ide-verify-right-fix-action"
                   >
-                    Review expected value
+                    Review in vectors
                   </IdeButton>
                 ) : null}
                 {onOpenInDesign ? (
@@ -200,6 +271,15 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
                     testId="ide-verify-right-open-design"
                   >
                     Open in Design
+                  </IdeButton>
+                ) : null}
+                {onRerunCompare ? (
+                  <IdeButton
+                    tone="primary"
+                    onClick={onRerunCompare}
+                    testId="ide-verify-right-rerun-compare"
+                  >
+                    Re-run compare
                   </IdeButton>
                 ) : null}
               </div>
@@ -270,7 +350,7 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
 
             {peers.length > 0 ? (
               <details className="ide-kv-row ide-verify-right-detail-group" data-testid="ide-verify-right-peer-list">
-                <summary>Also failing at t{failure.tick}</summary>
+                <summary>Also differing at t{failure.tick}</summary>
                 <div className="ide-inline-actions">
                   {peers.map((peer) => (
                     <button

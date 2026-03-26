@@ -410,7 +410,7 @@ export const TruthTablePane: React.FC<TruthTablePaneProps> = ({
         ) : isEmpty ? (
           <div className="ide-truth-table-empty" data-testid="ide-truth-table-empty">
             <p className="ide-truth-table-empty-msg">
-              {emptyReason ?? 'Run verification to populate this table.'}
+              {emptyReason ?? 'Run simulation to populate this table.'}
             </p>
           </div>
         ) : (

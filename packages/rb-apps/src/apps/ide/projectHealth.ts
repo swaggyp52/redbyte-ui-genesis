@@ -1,5 +1,14 @@
 import type { VerifyReport } from './verifyReport';
 
+export type VerifyRunKind = 'trace' | 'verify';
+export type ProjectVerifyState =
+  | 'not-run'
+  | 'stale'
+  | 'trace'
+  | 'assertions-match'
+  | 'assertions-differ'
+  | 'verify-error';
+
 export type ProjectHealthMode =
   | 'project'
   | 'design'
@@ -22,6 +31,7 @@ export interface ProjectHealthIssue {
 export interface ProjectHealthVerifyResult {
   status: 'pass' | 'fail';
   hash: string;
+  runKind?: VerifyRunKind;
   qualification?: 'incomplete-mapping';
   reportHash?: string;
   report?: VerifyReport;
@@ -62,15 +72,50 @@ export interface ProjectPrimaryCta {
   code: string;
 }
 
+export function getProjectVerifyRunKind(
+  result: ProjectHealthVerifyResult | undefined
+): VerifyRunKind | undefined {
+  if (!result) return undefined;
+  return result.runKind === 'trace' ? 'trace' : 'verify';
+}
+
+export function deriveProjectVerifyState(
+  core: Pick<ProjectHealthCore, 'lastVerify' | 'dirtySinceVerify'>
+): ProjectVerifyState {
+  if (!core.lastVerify) return 'not-run';
+  if (core.dirtySinceVerify) return 'stale';
+  if (getProjectVerifyRunKind(core.lastVerify) === 'trace') return 'trace';
+  if (core.lastVerify.status === 'pass') return 'assertions-match';
+  if (core.lastVerify.report && core.lastVerify.report.rows.length === 0) return 'verify-error';
+  return 'assertions-differ';
+}
+
+export function hasCurrentAssertionBackedVerify(
+  core: Pick<ProjectHealthCore, 'lastVerify' | 'dirtySinceVerify'>
+): boolean {
+  const state = deriveProjectVerifyState(core);
+  return (
+    state === 'assertions-match' ||
+    state === 'assertions-differ' ||
+    state === 'verify-error'
+  );
+}
+
+export function hasCurrentPassingVerify(
+  core: Pick<ProjectHealthCore, 'lastVerify' | 'dirtySinceVerify'>
+): boolean {
+  return deriveProjectVerifyState(core) === 'assertions-match';
+}
+
 export function deriveProjectHealth(
   core: ProjectHealthCore,
   readiness: ProjectReadinessState
 ): ProjectHealth {
   const blockingIssues: ProjectHealthIssue[] = [];
   const verifyQualification = readiness.verifyQualification ?? core.lastVerify?.qualification;
+  const verifyState = deriveProjectVerifyState(core);
   const isIncompleteMappingQualifiedPass =
-    core.lastVerify?.status === 'pass' &&
-    !core.dirtySinceVerify &&
+    verifyState === 'assertions-match' &&
     verifyQualification === 'incomplete-mapping';
 
   if (!readiness.hasCircuit) {
@@ -126,10 +171,12 @@ export function choosePrimaryProjectCta(
   if (!readiness.hasCircuit) {
     return { label: 'Load Example or Import HDL', mode: 'import', code: 'RBP3000' };
   }
+  const verifyState = deriveProjectVerifyState(health);
   const needsVerify =
-    health.dirtySinceVerify ||
+    verifyState === 'stale' ||
+    verifyState === 'trace' ||
     (readiness.hasVectors &&
-      (!health.lastVerify || health.lastVerify.status !== 'pass'));
+      verifyState !== 'assertions-match');
   if (needsVerify) {
     return { label: 'Verify', mode: 'verify', code: 'RBP1004' };
   }

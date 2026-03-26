@@ -9,7 +9,13 @@ import {
   BASYS3_SWITCH_PINS,
   resolveBasys3PackagePin,
 } from '../../../fpga/boards/basys3/basys3Pins';
-import type { ProjectHealth, ProjectHealthIssue, ProjectHealthMode, ProjectPrimaryCta } from '../projectHealth';
+import {
+  deriveProjectVerifyState,
+  type ProjectHealth,
+  type ProjectHealthIssue,
+  type ProjectHealthMode,
+  type ProjectPrimaryCta,
+} from '../projectHealth';
 import type { IdeDiagnosticRouteRequest } from '../diagnostics';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -231,12 +237,18 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [sortedMappingRows]
   );
 
-  const compareCurrent = Boolean(health.lastVerify) && !health.dirtySinceVerify;
-  const comparePassCurrent = health.lastVerify?.status === 'pass' && !health.dirtySinceVerify;
+  const projectVerifyState = useMemo(() => deriveProjectVerifyState(health), [health]);
+  const compareCurrent =
+    projectVerifyState === 'assertions-match' ||
+    projectVerifyState === 'assertions-differ' ||
+    projectVerifyState === 'verify-error';
+  const comparePassCurrent = projectVerifyState === 'assertions-match';
   const comparePassIncomplete =
     comparePassCurrent && readiness.verifyQualification === 'incomplete-mapping';
   const compareMatches = comparePassCurrent && !comparePassIncomplete;
-  const compareDiffers = compareCurrent && health.lastVerify?.status === 'fail';
+  const compareDiffers =
+    projectVerifyState === 'assertions-differ' || projectVerifyState === 'verify-error';
+  const compareTraceOnly = projectVerifyState === 'trace';
   const blockingIssues = useMemo(() => health.blockingIssues, [health.blockingIssues]);
   const topBlockingIssues = useMemo(() => blockingIssues.slice(0, 3), [blockingIssues]);
   const blockingIssue = topBlockingIssues[0] ?? null;
@@ -290,8 +302,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       return 'Mapping complete — export files are available now. Add vectors when you want to compare observed outputs.';
     if (comparePassIncomplete)
       return 'Assertions matched, but some outputs are still unmapped. Finish mapping before relying on hardware behavior.';
+    if (compareTraceOnly)
+      return 'Observation trace is current, but expected-output comparison has not run yet.';
     if (compareDiffers)
-      return 'Assertions differ from observed outputs. Export is still available, but review the first difference before relying on the result.';
+      return projectVerifyState === 'verify-error'
+        ? 'Latest verify run hit a verification error. Export is still available, but inspect Verify before relying on the result.'
+        : 'Assertions differ from observed outputs. Export is still available, but review the first difference before relying on the result.';
     if (!compareCurrent) return 'Compare results are not current yet. Export files are still available.';
     if (!exportPackageCurrent) return 'Compare results are current — open Export to build or refresh the submission package.';
     return 'All stages complete — bring up on hardware.';
@@ -299,7 +315,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     compareCurrent,
     compareDiffers,
     comparePassIncomplete,
+    compareTraceOnly,
     exportPackageCurrent,
+    projectVerifyState,
     readiness.hasCircuit,
     readiness.hasIoMapping,
     readiness.hasVectors,
@@ -315,8 +333,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   }, [activeExample?.summary, description, readiness.hasCircuit, topModuleName]);
 
   const verifySummary = useMemo(
-    () => getVerifySummary(health, compareMatches, comparePassIncomplete),
-    [compareMatches, comparePassIncomplete, health]
+    () => getVerifySummary(health, projectVerifyState, compareMatches, comparePassIncomplete),
+    [compareMatches, comparePassIncomplete, health, projectVerifyState]
   );
   const exportSummary = useMemo(
     () => getExportSummary(health, exportAvailable, exportPackageCurrent, hardwareReady),
@@ -743,8 +761,14 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           {studentName && (
             <span className="ide-project-identity-student">{studentName}</span>
           )}
-          <IdeStatusPill tone={compareCurrent ? 'ok' : 'idle'}>
-            {compareMatches ? 'ASSERTIONS MATCH' : compareCurrent ? 'COMPARE CURRENT' : 'COMPARE NOT RUN'}
+          <IdeStatusPill tone={compareMatches ? 'ok' : compareTraceOnly ? 'warn' : compareCurrent ? 'warn' : 'idle'}>
+            {compareMatches
+              ? 'ASSERTIONS MATCH'
+              : compareTraceOnly
+                ? 'TRACE ONLY'
+                : compareCurrent
+                  ? 'COMPARE CURRENT'
+                  : 'COMPARE NOT RUN'}
           </IdeStatusPill>
         </div>
         {/* ── Sprint 10: 3-state layout — landing / loaded / submit ── */}
@@ -1274,7 +1298,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <div className="ide-kv-row">
                 <span>Last verify</span>
                 <span data-testid="ide-project-last-verify-status">
-                  {(health.lastVerify?.status ?? 'none').toUpperCase()}
+                  {compareTraceOnly
+                    ? 'TRACE'
+                    : (health.lastVerify?.status ?? 'none').toUpperCase()}
                 </span>
               </div>
               <div className="ide-kv-row">
@@ -1614,6 +1640,7 @@ function getExamplePreview(exampleId: string): {
 
 function getVerifySummary(
   health: ProjectHealth,
+  projectVerifyState: ReturnType<typeof deriveProjectVerifyState>,
   compareMatches: boolean,
   comparePassIncomplete: boolean
 ): string {
@@ -1621,6 +1648,12 @@ function getVerifySummary(
   if (compareMatches) return 'Latest comparison run matches the current design.';
   if (comparePassIncomplete) {
     return 'Assertions matched the live design, but some required outputs still need board mapping review.';
+  }
+  if (projectVerifyState === 'trace') {
+    return 'A trace-only run is current. Expected-output comparison still needs to run before you rely on Verify.';
+  }
+  if (projectVerifyState === 'verify-error') {
+    return 'Latest verify run hit a verification error before a clean comparison result was produced.';
   }
   if (health.lastVerify.status === 'fail') {
     return 'Assertions differ from observed outputs — open Verify to inspect the first difference.';

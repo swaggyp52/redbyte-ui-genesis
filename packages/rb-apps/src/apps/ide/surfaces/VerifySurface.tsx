@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TestVector } from '@redbyte/rb-utils';
-import type { RunVerificationInput, RuntimeVerifyRun } from '../projectRuntime';
+import { getRuntimeVerifyRunKind, type RunVerificationInput, type RuntimeVerifyRun } from '../projectRuntime';
 import { buildVerifyTickSignalIndex, normalizeSignalKey, type VerifyTickSignalIndexEntry } from '../verifyReport';
 import { adaptVerifyPreflightIssue } from '../diagnostics';
 import type { IdeExampleDefinition } from '../examplesCatalog';
@@ -34,7 +34,11 @@ import { VerifyThreePanel } from './VerifyThreePanel';
 import { classifyVerifyFailure } from './verify-failure-classifier';
 import { TruthTablePane } from './TruthTablePane';
 import { buildVerifyStudentViewModel } from '../viewmodels/buildVerifyStudentViewModel';
-import { buildVerifySessionViewModel } from '../viewmodels/buildVerifySessionViewModel';
+import {
+  buildVerifySessionViewModel,
+  type VerifyPreRunInventory,
+  type VerifySignalLane,
+} from '../viewmodels/buildVerifySessionViewModel';
 import {
   ScenarioBuilderPanel,
   type VerifyVectorDraftInput,
@@ -155,6 +159,42 @@ interface WaveformSignalRow {
 type VerifyDrawerTab = 'mismatches' | 'vectors' | 'truth' | 'kmap' | 'details';
 type VerifyLayoutMode = 'wide' | 'standard' | 'compact';
 type SignalLaneGroup = 'Inputs' | 'Outputs' | 'Internal';
+type CaptureScopeKind =
+  | 'cell'
+  | 'row'
+  | 'signal'
+  | 'all-asserted'
+  | 'all-visible-outputs';
+
+interface CaptureScope {
+  kind: CaptureScopeKind;
+  tick?: number;
+  signal?: string;
+  vectorId?: string;
+  rerunCompare?: boolean;
+}
+
+type VectorOwner = 'project' | 'custom';
+
+interface OwnedVerifyVector extends VerifyAuthorVector {
+  owner: VectorOwner;
+}
+
+interface VerifyCaptureContext {
+  waveformByTick: Map<number, Record<string, string>>;
+  inputSignalKeys: Set<string>;
+  outputSignalKeys: Set<string>;
+  mappedNonInputKeys: Set<string>;
+  visibleOutputKeys: Set<string>;
+  canonicalOutputKeyByWaveSignal: Map<string, string>;
+}
+
+interface CaptureApplicationResult {
+  projectVectors: VerifyAuthorVector[];
+  customVectors: CustomTestVector[];
+  changed: boolean;
+  capturedAnyExpected: boolean;
+}
 
 const VERIFY_UI_STORAGE_KEY = 'rb.verify-ui.v2';
 const AUTO_VECTOR_DISMISS_KEY = 'rb.verify-autovector-dismissed.v1';
@@ -197,7 +237,7 @@ const WaveformViewer: React.FC<{
   onSelectSignal,
   rowHeight = 44,
   tickWidth = 54,
-  emptyMessage = 'Run verification to see waveforms',
+  emptyMessage = 'Run simulation to see waveforms',
   signalMeta,
   isSequential = false,
   clockSignals,
@@ -786,6 +826,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       customVectors.filter((vector) => Object.keys(vector.expected ?? {}).length > 0).length,
     [authoredVectors, customVectors]
   );
+  const vectorCollectionSignature = useMemo(
+    () => buildVectorCollectionSignature(authoredVectors, customVectors),
+    [authoredVectors, customVectors]
+  );
 
   const [selectedTick, setSelectedTick] = useState<number | null>(null);
   const [selectedSignal, setSelectedSignal] = useState<string | null>(null);
@@ -812,15 +856,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [tickWindowCenter, setTickWindowCenter] = useState<number | null>(null);
   const [truthTableMode, setTruthTableMode] = useState<TruthTableMode>('ticks');
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // Assertion mode: when false (default), Verify is an observation/simulation environment.
-  // When true, mismatch panels, failure hints, and grading language become visible.
-  const [assertionMode, setAssertionMode] = useState(
-    () =>
-      Boolean(
-        lastRun &&
-        (lastRun.status === 'pass' || lastRun.status === 'fail') &&
-        (lastRun.report?.rows?.length ?? 0) > 0
-      )
+  // Next-run compare intent. This is authoring state only; it does not describe
+  // the meaning of the persisted run currently shown in Verify.
+  const [nextRunUsesAssertions, setNextRunUsesAssertions] = useState(
+    () => getRuntimeVerifyRunKind(lastRun) === 'verify'
   );
   const [sidePanelTab, setSidePanelTab] = useState<'mismatches' | 'vectors' | 'details'>('mismatches');
   const [showAllVectorTicks, setShowAllVectorTicks] = useState(false);
@@ -841,6 +880,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [cursorB, setCursorB] = useState<number | null>(null);
   const [previewingVectorId, setPreviewingVectorId] = useState<string | null>(null);
   const [isStepMode, setIsStepMode] = useState(false);
+  const [pendingCaptureScope, setPendingCaptureScope] = useState<(CaptureScope & {
+    awaitNextReportHash: string | null;
+  }) | null>(null);
+  const [pendingAutoCompare, setPendingAutoCompare] = useState<{
+    awaitVectorSignature: string;
+  } | null>(null);
   const [sweepPreset, setSweepPreset] = useState<SweepPreset>('binary-count');
   const [sweepSeed, setSweepSeed] = useState('0');
   const [sweepHoldTicks, setSweepHoldTicks] = useState(1);
@@ -956,15 +1001,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const runRows = lastRun?.report.rows ?? [];
   useEffect(() => {
     if (!lastRun) return;
-    const hasVerificationRows = (lastRun.report?.rows?.length ?? 0) > 0;
-    if (hasVerificationRows && (lastRun.status === 'pass' || lastRun.status === 'fail')) {
-      setAssertionMode(true);
+    if (getRuntimeVerifyRunKind(lastRun) === 'verify') {
+      setNextRunUsesAssertions(true);
       return;
     }
-    if (!hasVerificationRows) {
-      setAssertionMode(false);
+    if (getRuntimeVerifyRunKind(lastRun) === 'trace') {
+      setNextRunUsesAssertions(false);
     }
-  }, [lastRun?.reportHash, lastRun?.status, lastRun?.report?.rows]);
+  }, [lastRun]);
   const tickIndex = useMemo(
     () => (lastRun?.report ? buildVerifyTickSignalIndex(lastRun.report) : { ticks: [], rowsByTick: {} }),
     [lastRun?.report]
@@ -976,12 +1020,24 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     for (const sample of source) ticks.add(sample.tick);
     return Array.from(ticks).sort((a, b) => a - b);
   }, [lastRun?.waveform]);
+  const canonicalWaveformSignalByRawKey = useMemo(
+    () =>
+      buildCanonicalWaveformSignalAliases({
+        lastRun,
+        inputFields,
+        outputFields,
+        mappedSignals,
+      }),
+    [inputFields, lastRun, mappedSignals, outputFields]
+  );
 
   const signalTimeline = useMemo(() => {
     const signalValueMap = new Map<string, Map<number, string>>();
     const waveformSource = lastRun?.waveform ?? [];
     for (const sample of waveformSource) {
-      for (const [signal, value] of Object.entries(sample.signals)) {
+      for (const [rawSignal, value] of Object.entries(sample.signals)) {
+        const signal =
+          canonicalWaveformSignalByRawKey.get(normalizeFieldId(rawSignal)) ?? rawSignal;
         const values = signalValueMap.get(signal) ?? new Map<number, string>();
         values.set(sample.tick, value);
         signalValueMap.set(signal, values);
@@ -998,7 +1054,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           value: values.get(tick) ?? '-',
         })),
       }));
-  }, [lastRun?.waveform, timelineTicks, waveformTicks]);
+  }, [canonicalWaveformSignalByRawKey, lastRun?.waveform, timelineTicks, waveformTicks]);
 
   const failingRows = useMemo(
     () => runRows.filter((row) => row.status === 'fail'),
@@ -1317,13 +1373,25 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return grouped;
   }, [laneGroupBySignal, visibleSignalTimeline]);
+  const effectiveCollapsedGroups = useMemo<Record<SignalLaneGroup, boolean>>(() => {
+    const onlyInternalLanes =
+      visibleSignalTimeline.length > 0 &&
+      visibleSignalTimeline.every(
+        (entry) => (laneGroupBySignal.get(entry.signal) ?? 'Internal') === 'Internal'
+      );
+    if (!onlyInternalLanes) return collapsedGroups;
+    return {
+      ...collapsedGroups,
+      Internal: false,
+    };
+  }, [collapsedGroups, laneGroupBySignal, visibleSignalTimeline]);
   const displaySignalTimeline = useMemo(() => {
     return visibleSignalTimeline.filter((entry) => {
       if (hiddenSignalSet.has(entry.signal)) return false;
       const group = laneGroupBySignal.get(entry.signal) ?? 'Internal';
-      return !collapsedGroups[group];
+      return !effectiveCollapsedGroups[group];
     });
-  }, [collapsedGroups, hiddenSignalSet, laneGroupBySignal, visibleSignalTimeline]);
+  }, [effectiveCollapsedGroups, hiddenSignalSet, laneGroupBySignal, visibleSignalTimeline]);
   const visibleSignalCount = displaySignalTimeline.length;
   const boardSignalByLane = useMemo(() => {
     const mapping = new Map<string, ReturnType<typeof resolveBoardSignal>>();
@@ -1344,6 +1412,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       return boardSignalByLane.get(signal) ?? resolveBoardSignal(signal);
     },
     [boardSignalByLane]
+  );
+  const captureContext = useMemo(
+    () =>
+      buildCaptureContext({
+        lastRun,
+        inputFields,
+        outputFields,
+        mappedSignals,
+        visibleSignals: displaySignalTimeline.map((entry) => entry.signal),
+      }),
+    [displaySignalTimeline, inputFields, lastRun, mappedSignals, outputFields]
   );
   const applyFailureSelection = useCallback((target: VerifyFailureTarget | VerifyRow | null) => {
     if (!target) return;
@@ -1578,11 +1657,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       setWaveformDensity('normal');
     }
 
-    if (lastRun.status === 'fail' && assertionMode) {
+    if (lastRun.status === 'fail' && getRuntimeVerifyRunKind(lastRun) === 'verify') {
       setVerifyTab('mismatches');
     }
     setDrawerOpen(false);
-  }, [assertionMode, lastRun?.generatedAtIso, lastRun?.reportHash, lastRun?.status]);
+  }, [lastRun?.generatedAtIso, lastRun?.reportHash, lastRun?.status]);
 
   // Reset step mode whenever a new run completes
   useEffect(() => {
@@ -1635,15 +1714,21 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // Constraint: only updates the specific (vectorId, signal) pair; leaves all other rows unchanged.
   const handleFixExpectation = useCallback(
     (vectorId: string, signal: string, actualValue: '0' | '1') => {
-      const normalizedSignal = normalizeFieldId(signal);
-      const updated = authoredVectors.map((v) => {
-        if (v.id !== vectorId) return v;
-        return { ...v, expected: { ...v.expected, [normalizedSignal]: (actualValue === '1' ? 1 : 0) as 0 | 1 } };
+      const result = updateExpectedCellInVectorSets({
+        projectVectors: authoredVectors,
+        customVectors,
+        tick: -1,
+        signal,
+        vectorId,
+        nextValue: actualValue === '1' ? 1 : 0,
       });
-      onVectorsChange?.(updated);
+      if (!result.changed) return;
+      onVectorsChange?.(result.projectVectors);
+      onCustomVectorsChange?.(result.customVectors);
+      setNextRunUsesAssertions(true);
       setOracleApplied(false);
     },
-    [authoredVectors, onVectorsChange]
+    [authoredVectors, customVectors, onCustomVectorsChange, onVectorsChange]
   );
 
   // ─── Inline cell toggle ──────────────────────────────────────────────────
@@ -1898,28 +1983,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return s;
   }, [signalRoleLookup]);
 
-  type VectorReadiness =
-    | 'ready-verify'
-    | 'ready-trace'
-    | 'missing-expected'
-    | 'no-stimulus'
-    | 'needs-clock'
-    | 'no-vectors';
-
-  const vectorReadiness = useMemo((): VectorReadiness => {
-    if (authoredVectors.length === 0) return 'no-vectors';
+  const nextRunNeedsClockActivity = useMemo(() => {
+    if (authoredVectors.length === 0) return false;
     if (hasDff && clockSignals.size > 0) {
       const clockKeys = Array.from(clockSignals);
       const hasClockActivity = authoredVectors.some((v) =>
         clockKeys.some((clk) => v.inputs[clk] !== undefined)
       );
-      if (!hasClockActivity) return 'needs-clock';
+      return !hasClockActivity;
     }
-    const hasExpected = authoredVectors.some((v) => Object.keys(v.expected ?? {}).length > 0);
-    if (!hasExpected && assertionMode) return 'missing-expected';
-    if (hasExpected && assertionMode) return 'ready-verify';
-    return 'ready-trace';
-  }, [authoredVectors, hasDff, clockSignals, assertionMode]);
+    return false;
+  }, [authoredVectors, hasDff, clockSignals]);
 
   // Schema-change detection: show banner when inputFields or outputFields IDs change across renders
   const prevInputFieldIdsRef = useRef<string>('');
@@ -1990,7 +2064,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [lastRun?.report.inputsAtTick, orderedTraceInputs]
   );
   const truthTableEmptyReason = useMemo(() => {
-    if (!lastRun) return 'Run verification to populate tick-by-tick expected and observed values.';
+    if (!lastRun) return 'Run simulation to populate tick-by-tick expected and observed values.';
     if (verifyPreflightIssues.length > 0) {
       return 'Verification is blocked by missing mapped or undriven outputs. Fix the listed issues, then run again.';
     }
@@ -2131,7 +2205,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return lookup;
   }, [runRows]);
   const combosUnavailableReason = useMemo(() => {
-    if (!lastRun) return 'Run verification first to build combinational combinations.';
+    if (!lastRun) return 'Run simulation first to build combinational combinations.';
     if (isSequentialRun) {
       return 'Combinational combos unavailable for sequential behavior (clocked circuit).';
     }
@@ -2695,33 +2769,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // Does NOT fire for runs with empty expectations (rows=[]) — that is a user
   // authoring state (vectors added but no expected values set), not a broken circuit.
   const hasNoTrace = lastRun !== undefined && runRows.length > 0 && signalTimeline.length === 0;
-  const isTraceOnly = lastRun !== undefined && !hasResults && !hasNoTrace;
-  type DisplayStatus = 'BLOCKED' | 'READY' | 'RUNNING' | 'PASS' | 'FAIL' | 'TRACE' | 'STALE';
-  const displayStatus: DisplayStatus =
-    runState === 'running'
-      ? 'RUNNING'
-      : isRunStale
-        ? 'STALE'
-        : isTraceOnly
-          ? 'TRACE'
-          : status === 'pass'
-            ? 'PASS'
-            : status === 'fail'
-              ? 'FAIL'
-              : authoredVectors.length === 0
-                ? 'BLOCKED'
-                : 'READY';
-  const displayTone: 'ok' | 'warn' | 'error' | 'idle' =
-    displayStatus === 'PASS'
-      ? lastRun?.qualification === 'incomplete-mapping' ? 'warn' : 'ok'
-      : displayStatus === 'FAIL'
-        ? 'error'
-        : displayStatus === 'BLOCKED'
-          ? 'warn'
-          : 'idle';
-  const displayStatusLabel =
-    displayStatus === 'PASS'
-      ? lastRun?.qualification === 'incomplete-mapping'
+  const lastRunKind = getRuntimeVerifyRunKind(lastRun);
+  const isTraceOnly =
+    lastRun !== undefined &&
+    lastRunKind === 'trace' &&
+    !hasResults &&
+    !hasNoTrace;
+  /*
         ? 'Simulation complete — some outputs not yet mapped to board pins'
         : 'Simulation complete — all outputs match expectations'
       : displayStatus === 'FAIL'
@@ -2738,6 +2792,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ? 'Add test vectors to run the simulation'
                 : 'Ready — vectors loaded, click Run to see the waveform';
 
+  */
   const vectorSourceLabel =
     totalVectorCount === 0
       ? 'Reference mode: no vectors saved yet'
@@ -2760,59 +2815,70 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     totalVectorCount === 0
       ? 'Add vectors to define the input stimulus for this run.'
       : totalExpectedCaseCount === 0
-        ? 'Your vectors have no expected outputs set. Switch to \u2018Check Expected Outputs\u2019 mode to enable pass/fail verification. You can capture the current waveform outputs using the capture button.'
-        : assertionMode
-          ? 'Mismatch means the current circuit differs from the selected reference. It does not mean the design graph or generated HDL is structurally invalid.'
-          : 'Vectors include expected values. Enable Assertions to compare observed outputs against them.';
-  useEffect(() => {
-    if (displayStatus === 'PASS' && failingRows.length === 0 && verifyTab === 'mismatches') {
-      setVerifyTab('truth');
-    }
-  }, [displayStatus, failingRows.length, verifyTab]);
+        ? 'Your vectors have no expected outputs set. Switch the next run to \u2018Check Expected Outputs\u2019 when you are ready to compare asserted outputs. You can capture the current waveform outputs using the capture button.'
+        : nextRunUsesAssertions
+          ? 'The next run will compare observed outputs against the asserted reference. A mismatch means the current circuit differs from that reference; it does not mean the design graph or generated HDL is structurally invalid.'
+          : 'Expected outputs are available, but the next run is currently set to trace only. Switch to Check Expected Outputs when you want the next run to compare them.';
+  const buildAllVectors = useCallback(
+    (): TestVector[] =>
+      [...authoredVectors, ...customVectors].map((vector) => ({
+        id: vector.id,
+        tick: vector.tick,
+        inputs: { ...(vector.inputs ?? {}) },
+        expected: { ...(vector.expected ?? {}) },
+      })),
+    [authoredVectors, customVectors]
+  );
 
-  const runVerification = () => {
-    setRunState('running');
-    // Merge project vectors with custom vectors (Phase 4)
-    const allVectors: TestVector[] = [...authoredVectors, ...customVectors].map((vector) => ({
-      tick: vector.tick,
-      inputs: { ...(vector.inputs ?? {}) },
-      expected: { ...(vector.expected ?? {}) },
-    }));
-    // When assertionMode is OFF, send zero rows → engine runs in pure TRACE mode.
-    // This prevents auto-generated expected values (from bringup vectors) from being
-    // silently compared against the student's circuit and producing false FAILs.
-    // Students must explicitly turn on Assertions to check expected vs actual.
-    const rows = assertionMode
-      ? allVectors.flatMap((vector) =>
-          Object.entries(vector.expected).map(([signal, expected]) => ({
-            tick: vector.tick,
-            signal,
-            expected: String(expected),
-            actual: '0',
-          }))
-        )
-      : [];
-    onRunVerification?.({
-      scenarioId: activeScenario?.id ?? `verify-${normalizeFieldId(verifyScenarioName)}-${deterministicHash.slice(0, 8)}`,
-      scenarioName: activeScenario?.name ?? verifyScenarioName,
-      scenarioVersion: activeScenario?.version,
-      scenarioContentHash: activeScenario ? computeScenarioContentHash(activeScenario) : undefined,
+  const runVerificationWithMode = useCallback(
+    (useAssertionsForNextRun: boolean) => {
+      setRunState('running');
+      const allVectors = buildAllVectors();
+      const rows = useAssertionsForNextRun
+        ? allVectors.flatMap((vector) =>
+            Object.entries(vector.expected).map(([signal, expected]) => ({
+              tick: vector.tick,
+              signal,
+              expected: String(expected),
+              actual: '0',
+            }))
+          )
+        : [];
+      onRunVerification?.({
+        scenarioId: activeScenario?.id ?? `verify-${normalizeFieldId(verifyScenarioName)}-${deterministicHash.slice(0, 8)}`,
+        scenarioName: activeScenario?.name ?? verifyScenarioName,
+        runKind: useAssertionsForNextRun ? 'verify' : 'trace',
+        scenarioVersion: activeScenario?.version,
+        scenarioContentHash: activeScenario ? computeScenarioContentHash(activeScenario) : undefined,
+        deterministicHash,
+        assertionMode: useAssertionsForNextRun,
+        vectors: allVectors,
+        rows,
+      });
+    },
+    [
+      activeScenario,
+      buildAllVectors,
       deterministicHash,
-      assertionMode,
-      vectors: allVectors,
-      rows,
-    });
-  };
+      onRunVerification,
+      verifyScenarioName,
+    ]
+  );
 
-  // Pre-run preflight: if vectors have orphaned signal references and assertionMode is on,
-  // warn the student before running rather than producing silently wrong pass/fail results.
-  const handleRunWithPreflight = () => {
-    if (someVectorsOrphaned && assertionMode) {
-      setOrphanPreflight(true);
-      return;
-    }
-    runVerification();
-  };
+  const handleRunWithPreflight = useCallback(
+    (useAssertionsForNextRun: boolean = nextRunUsesAssertions) => {
+      if (someVectorsOrphaned && useAssertionsForNextRun) {
+        setOrphanPreflight(true);
+        return;
+      }
+      runVerificationWithMode(useAssertionsForNextRun);
+    },
+    [nextRunUsesAssertions, runVerificationWithMode, someVectorsOrphaned]
+  );
+
+  const runVerification = useCallback(() => {
+    handleRunWithPreflight(nextRunUsesAssertions);
+  }, [nextRunUsesAssertions, handleRunWithPreflight]);
 
   const clearResults = () => {
     onClearVerification?.();
@@ -3066,157 +3132,262 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setOracleApplied(false);
   };
 
-  // Derive expected outputs from what the circuit actually produced on the last run.
-  // Overwrites every authored vector's `expected` map with the real oracle outputs —
-  // so future runs verify the circuit is still producing the same thing.
-  const handleSetOracleExpected = () => {
-    if (!lastRun?.waveform || lastRun.waveform.length === 0) return;
-
-    const sourceVectors = (vectors && vectors.length > 0 ? vectors : authoredVectors).map(
-      (vector, index): VerifyAuthorVector => {
-        const fallback = authoredVectors[index];
-        const id =
-          typeof vector.id === 'string' && vector.id.trim().length > 0
-            ? vector.id.trim()
-            : fallback?.id ?? `vec-${String(index + 1).padStart(2, '0')}`;
-        const tick = Number.isFinite(vector.tick)
-          ? Math.max(0, Math.floor(vector.tick))
-          : fallback?.tick ?? index;
-
-        const inputs: Record<string, 0 | 1> = {};
-        for (const [key, value] of Object.entries(vector.inputs ?? fallback?.inputs ?? {})) {
-          inputs[key] = normalizeBit(value);
-        }
-
-        const expected: Record<string, 0 | 1> = {};
-        for (const [key, value] of Object.entries(vector.expected ?? fallback?.expected ?? {})) {
-          expected[key] = normalizeBit(value);
-        }
-
-        return {
-          id,
-          tick,
-          inputs,
-          expected,
-        };
+  const commitVectorCollections = useCallback(
+    (result: CaptureApplicationResult): boolean => {
+      if (!result.changed) return false;
+      onVectorsChange?.(result.projectVectors);
+      onCustomVectorsChange?.(result.customVectors);
+      if (result.capturedAnyExpected) {
+        setNextRunUsesAssertions(true);
       }
-    );
+      setOracleApplied(result.capturedAnyExpected);
+      return true;
+    },
+    [onCustomVectorsChange, onVectorsChange]
+  );
 
-    // Build tick → full signal snapshot map
-    const waveformByTick = new Map<number, Record<string, string>>();
-    for (const sample of lastRun.waveform) {
-      const prev = waveformByTick.get(sample.tick) ?? {};
-      waveformByTick.set(sample.tick, { ...prev, ...sample.signals });
+  const applyScopedCapture = useCallback(
+    (scope: CaptureScope): boolean => {
+      if ((lastRun?.waveform?.length ?? 0) === 0) return false;
+      const result = applyCaptureScopeToVectorSets({
+        projectVectors: authoredVectors,
+        customVectors,
+        context: captureContext,
+        scope,
+      });
+      const changed = commitVectorCollections(result);
+      if (changed && scope.rerunCompare) {
+        setPendingAutoCompare({
+          awaitVectorSignature: buildVectorCollectionSignature(
+            result.projectVectors,
+            result.customVectors
+          ),
+        });
+      }
+      return changed;
+    },
+    [authoredVectors, captureContext, commitVectorCollections, customVectors, lastRun?.waveform?.length]
+  );
+
+  const applyExpectedCellValue = useCallback(
+    (input: {
+      tick: number;
+      signal: string;
+      vectorId?: string;
+      nextValue: 0 | 1 | null;
+      rerunCompare?: boolean;
+    }): boolean => {
+      const result = updateExpectedCellInVectorSets({
+        projectVectors: authoredVectors,
+        customVectors,
+        tick: input.tick,
+        signal: input.signal,
+        vectorId: input.vectorId,
+        nextValue: input.nextValue,
+      });
+      const changed = commitVectorCollections(result);
+      if (changed && input.rerunCompare) {
+        setPendingAutoCompare({
+          awaitVectorSignature: buildVectorCollectionSignature(
+            result.projectVectors,
+            result.customVectors
+          ),
+        });
+      }
+      return changed;
+    },
+    [authoredVectors, commitVectorCollections, customVectors]
+  );
+
+  const queueScopedCapture = useCallback(
+    (scope: CaptureScope) => {
+      if ((lastRun?.waveform?.length ?? 0) === 0) return;
+      setPendingCaptureScope({
+        ...scope,
+        awaitNextReportHash: lastRun?.reportHash ?? null,
+      });
+      runVerificationWithMode(false);
+    },
+    [lastRun?.reportHash, lastRun?.waveform?.length, runVerificationWithMode]
+  );
+
+  const buildDefaultCaptureScope = useCallback(
+    (rerunCompare = false): CaptureScope => ({
+      kind: totalExpectedCaseCount > 0 ? 'all-asserted' : 'all-visible-outputs',
+      rerunCompare,
+    }),
+    [totalExpectedCaseCount]
+  );
+
+  const handleSetOracleExpected = useCallback(() => {
+    applyScopedCapture(buildDefaultCaptureScope(false));
+  }, [applyScopedCapture, buildDefaultCaptureScope]);
+
+  const handleStaleRecapture = useCallback(() => {
+    if (!isRunStale) return;
+    queueScopedCapture(buildDefaultCaptureScope(true));
+  }, [buildDefaultCaptureScope, isRunStale, queueScopedCapture]);
+
+  const handleFailureAcceptObserved = useCallback(
+    (failure: VerifyFailureExplanationCase) => {
+      if (failure.actual !== '0' && failure.actual !== '1') return;
+      applyExpectedCellValue({
+        tick: failure.tick,
+        signal: failure.signal,
+        vectorId: failure.vectorId,
+        nextValue: failure.actual === '1' ? 1 : 0,
+      });
+    },
+    [applyExpectedCellValue]
+  );
+
+  const handleFailureCaptureRow = useCallback(
+    (failure: VerifyFailureExplanationCase) => {
+      applyScopedCapture({
+        kind: 'row',
+        tick: failure.tick,
+        vectorId: failure.vectorId,
+      });
+    },
+    [applyScopedCapture]
+  );
+
+  const handleFailureCaptureSignal = useCallback(
+    (failure: VerifyFailureExplanationCase) => {
+      applyScopedCapture({
+        kind: 'signal',
+        signal: failure.signal,
+      });
+    },
+    [applyScopedCapture]
+  );
+
+  const handleFailureSetExpectedBit = useCallback(
+    (failure: VerifyFailureExplanationCase, nextValue: 0 | 1) => {
+      applyExpectedCellValue({
+        tick: failure.tick,
+        signal: failure.signal,
+        vectorId: failure.vectorId,
+        nextValue,
+      });
+    },
+    [applyExpectedCellValue]
+  );
+
+  const handleFailureClearExpected = useCallback(
+    (failure: VerifyFailureExplanationCase) => {
+      applyExpectedCellValue({
+        tick: failure.tick,
+        signal: failure.signal,
+        vectorId: failure.vectorId,
+        nextValue: null,
+      });
+    },
+    [applyExpectedCellValue]
+  );
+
+  useEffect(() => {
+    if (!pendingCaptureScope || !lastRun?.reportHash) return;
+    if (
+      pendingCaptureScope.awaitNextReportHash &&
+      lastRun.reportHash === pendingCaptureScope.awaitNextReportHash
+    ) {
+      return;
     }
-
-    // Input signal keys to exclude
-    const inputSignalKeys = new Set(inputFields.map((f) => f.id));
-    for (const vector of sourceVectors) {
-      for (const key of Object.keys(vector.inputs ?? {})) {
-        inputSignalKeys.add(normalizeFieldId(key));
-      }
-    }
-    for (const signal of mappedSignals ?? []) {
-      if (signal.direction !== 'in') continue;
-      inputSignalKeys.add(normalizeFieldId(signal.id));
-      if (signal.label) inputSignalKeys.add(normalizeFieldId(signal.label));
-    }
-
-    // Priority 1: explicit output mappings from mappedSignals
-    const outputSignalKeys = new Set(
-      (mappedSignals ?? [])
-        .filter((s) => s.direction === 'out')
-        .flatMap((s) => [s.id, s.label ?? ''].map(normalizeFieldId).filter(Boolean))
-    );
-
-    // Priority 2 fallback: any mapped signal (input or output) that isn't an input
-    const mappedNonInputKeys = new Set(
-      (mappedSignals ?? [])
-        .flatMap((s) => [s.id, s.label ?? ''].map(normalizeFieldId).filter(Boolean))
-        .filter((key) => !inputSignalKeys.has(key))
-    );
-
-    const canonicalOutputKeyByWaveSignal = new Map<string, string>();
-    for (const row of lastRun.evidence?.ioRows ?? []) {
-      if (row.direction !== 'out') continue;
-      const canonicalCandidates = [row.id, row.label]
-        .map(normalizeFieldId)
-        .filter(Boolean);
-      const canonicalOutputKey =
-        canonicalCandidates.find((candidate) => outputSignalKeys.has(candidate)) ??
-        canonicalCandidates[0];
-      if (!canonicalOutputKey) continue;
-      for (const candidate of [
-        row.id,
-        row.label,
-        row.nodeId,
-        row.nodeId ? `${row.nodeId}.in` : '',
-        row.nodeId ? `${row.nodeId}_in` : '',
-      ]) {
-        const normalizedCandidate = normalizeFieldId(candidate);
-        if (!normalizedCandidate) continue;
-        canonicalOutputKeyByWaveSignal.set(normalizedCandidate, canonicalOutputKey);
-      }
-    }
-    for (const entry of lastRun.evidence?.normalizationMap ?? []) {
-      if (entry.role !== 'output') continue;
-      const canonicalOutputKey = normalizeFieldId(entry.rawKey);
-      const matchedSignalKey = normalizeFieldId(entry.matchedSignal ?? '');
-      if (!canonicalOutputKey) continue;
-      canonicalOutputKeyByWaveSignal.set(canonicalOutputKey, canonicalOutputKey);
-      if (matchedSignalKey) {
-        canonicalOutputKeyByWaveSignal.set(matchedSignalKey, canonicalOutputKey);
-      }
-    }
-
-    const updatedVectors = sourceVectors.map((vector) => {
-      const tickSignals = waveformByTick.get(vector.tick);
-      if (!tickSignals) return vector;
-
-      const expectedKeyByNormalized = new Map<string, string>();
-      for (const key of Object.keys(vector.expected ?? {})) {
-        const normalized = normalizeFieldId(key);
-        if (!normalized || expectedKeyByNormalized.has(normalized)) continue;
-        expectedKeyByNormalized.set(normalized, key);
-      }
-
-      const expected: Record<string, 0 | 1> = {};
-      for (const [signal, rawValue] of Object.entries(tickSignals)) {
-        // Skip tri-state / unknown / high-impedance values — only lock clean 0/1
-        if (rawValue !== '0' && rawValue !== '1') continue;
-        const key = normalizeFieldId(signal);
-        const canonicalOutputKey = canonicalOutputKeyByWaveSignal.get(key) ?? key;
-        // Skip inputs
-        if (inputSignalKeys.has(key) || inputSignalKeys.has(canonicalOutputKey)) continue;
-        // Apply scope filter: explicit outputs → mapped non-inputs → all non-inputs
-        if (outputSignalKeys.size > 0 && !outputSignalKeys.has(canonicalOutputKey)) continue;
-        if (
-          outputSignalKeys.size === 0 &&
-          mappedNonInputKeys.size > 0 &&
-          !mappedNonInputKeys.has(canonicalOutputKey)
-        ) {
-          continue;
-        }
-        const targetKey = expectedKeyByNormalized.get(canonicalOutputKey) ?? canonicalOutputKey;
-        expected[targetKey] = rawValue === '1' ? 1 : 0;
-      }
-
-      if (Object.keys(expected).length === 0) return vector;
-      return { ...vector, expected };
+    setPendingCaptureScope(null);
+    applyScopedCapture({
+      kind: pendingCaptureScope.kind,
+      tick: pendingCaptureScope.tick,
+      signal: pendingCaptureScope.signal,
+      vectorId: pendingCaptureScope.vectorId,
+      rerunCompare: pendingCaptureScope.rerunCompare,
     });
+  }, [applyScopedCapture, lastRun?.reportHash, pendingCaptureScope]);
 
-    const capturedAnyExpected = updatedVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0);
-    onVectorsChange?.(updatedVectors);
-    if (capturedAnyExpected) {
-      setAssertionMode(true);
-    }
-    setOracleApplied(true);
-  };
+  useEffect(() => {
+    if (!pendingAutoCompare) return;
+    if (vectorCollectionSignature !== pendingAutoCompare.awaitVectorSignature) return;
+    setPendingAutoCompare(null);
+    handleRunWithPreflight(true);
+  }, [handleRunWithPreflight, pendingAutoCompare, vectorCollectionSignature]);
 
   const canSetOracle =
     (lastRun?.waveform?.length ?? 0) > 0 &&
-    authoredVectors.length > 0 &&
-    onVectorsChange !== undefined;
+    ((authoredVectors.length > 0 && onVectorsChange !== undefined) ||
+      (customVectors.length > 0 && onCustomVectorsChange !== undefined));
+  // ── PRE-RUN SIGNAL INVENTORY ────────────────────────────────────────────────
+  // Computed from activeScenario vectors + liveSignalRoles + lastRun?.scheduleContract.
+  // Must NOT be derived from run results (waveform, report, status).
+  // This is the contract surface that VerifySurface exposes before any run happens.
+  const signalInventory = useMemo((): VerifyPreRunInventory | undefined => {
+    const vectors = activeScenario?.vectors ?? [];
+    if (vectors.length === 0) return undefined;
+
+    // Collect unique signal keys from all ticks
+    const inputKeys = new Set<string>();
+    const outputKeys = new Set<string>();
+    const assertedOutputs = new Set<string>();
+    let totalAssertionCount = 0;
+
+    for (const v of vectors) {
+      for (const key of Object.keys(v.inputs ?? {})) {
+        inputKeys.add(key);
+      }
+      for (const [key, val] of Object.entries(v.expected ?? {})) {
+        outputKeys.add(key);
+        if (val !== null && val !== undefined) {
+          assertedOutputs.add(key);
+          totalAssertionCount++;
+        }
+      }
+    }
+
+    // Augment direction info from liveSignalRoles for signals that appear in roles
+    // but may not have expected entries yet (newly added outputs).
+    const roles = liveSignalRoles ?? {};
+    for (const [key, role] of Object.entries(roles)) {
+      if (role === 'output' && !outputKeys.has(key) && !inputKeys.has(key)) {
+        outputKeys.add(key);
+      }
+    }
+
+    const lanes: VerifySignalLane[] = [];
+    // Input lanes — exclude clock/reset (they are infrastructure, not test signals)
+    for (const key of Array.from(inputKeys).sort()) {
+      const role = roles[key];
+      if (role === 'clock' || role === 'reset') continue;
+      lanes.push({ name: key, direction: 'input', isAsserted: false });
+    }
+    // Output lanes
+    for (const key of Array.from(outputKeys).sort()) {
+      lanes.push({ name: key, direction: 'output', isAsserted: assertedOutputs.has(key) });
+    }
+
+    // Clock policy — from lastRun?.scheduleContract (circuit structure, not result)
+    // Fallback: infer from liveSignalRoles if no prior run has produced a contract yet.
+    const contract = lastRun?.scheduleContract;
+    const isClocked =
+      contract != null
+        ? contract.reason === 'circuit-sequential' || contract.reason === 'hdl-sequential'
+        : Object.values(roles).some((r) => r === 'clock');
+
+    const clockPolicy: VerifyPreRunInventory['clockPolicy'] = isClocked ? 'clocked' : 'combinational';
+    const clockSignalName: string | undefined = isClocked
+      ? (contract?.clockSignalName ??
+          Object.entries(roles).find(([, r]) => r === 'clock')?.[0])
+      : undefined;
+
+    return {
+      lanes,
+      tickCount: vectors.length,
+      assertedOutputCount: assertedOutputs.size,
+      totalAssertionCount,
+      clockPolicy,
+      clockSignalName,
+    };
+  }, [activeScenario, liveSignalRoles, lastRun?.scheduleContract]);
+  // ────────────────────────────────────────────────────────────────────────────
+
   const verifySession = useMemo(
     () =>
       buildVerifySessionViewModel({
@@ -3224,15 +3395,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         totalExpectedCaseCount,
         runState,
         lastRun,
-        assertionMode,
+        nextRunUsesAssertions,
         isRunStale,
         isTraceOnly,
         hasResults,
         canSetOracle,
         failingRowCount: failingRows.length,
+        signalInventory,
       }),
     [
-      assertionMode,
+      nextRunUsesAssertions,
       canSetOracle,
       failingRows.length,
       hasResults,
@@ -3240,13 +3412,47 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       isTraceOnly,
       lastRun,
       runState,
+      signalInventory,
       totalExpectedCaseCount,
       totalVectorCount,
     ]
   );
-  const showFailureWorkbenchPanels = assertionMode && displayStatus === 'FAIL' && failingRows.length > 0;
-  const canInspectFirstMismatch =
-    assertionMode && displayStatus === 'FAIL' && failingRows.length > 0 && !isRunStale;
+  const sessionStatus = verifySession.status;
+  const sessionShowsAssertionMatch = sessionStatus === 'assertions-match';
+  const sessionSignalsAssertionFailure = sessionStatus === 'assertions-differ';
+  const sessionShowsCompareEvidence =
+    sessionShowsAssertionMatch || sessionSignalsAssertionFailure;
+  const sessionShowsTraceEvidence =
+    sessionStatus === 'stimulus-only' || sessionStatus === 'assertions-incomplete';
+  const isDraftSession = sessionStatus === 'draft';
+  const draftPresentationStatus = totalVectorCount > 0 ? 'READY' : 'BLOCKED';
+  const readyDraftCanRun = isDraftSession && draftPresentationStatus === 'READY';
+  const sessionStatusBadgeLabel = isDraftSession
+    ? draftPresentationStatus
+    : verifySession.statusBadge;
+  const sessionStatusTone: 'ok' | 'warn' | 'error' | 'idle' =
+    sessionSignalsAssertionFailure
+      ? 'error'
+      : sessionShowsAssertionMatch
+        ? lastRun?.qualification === 'incomplete-mapping' ? 'warn' : 'ok'
+        : isDraftSession && draftPresentationStatus === 'BLOCKED'
+          ? 'warn'
+          : verifySession.tone;
+  const runProofTone = sessionSignalsAssertionFailure
+    ? 'fail'
+    : sessionShowsAssertionMatch
+      ? 'pass'
+      : sessionStatus === 'stale'
+        ? 'stale'
+        : sessionStatus === 'running'
+          ? 'running'
+          : sessionShowsTraceEvidence
+            ? 'trace'
+            : 'draft';
+  const hasSessionFailureEvidence =
+    sessionSignalsAssertionFailure && failingRows.length > 0;
+  const showFailureWorkbenchPanels = hasSessionFailureEvidence;
+  const canInspectFirstMismatch = hasSessionFailureEvidence && !isRunStale;
   const captureIsPrimary =
     verifySession.recommendedNextAction === 'capture' && canSetOracle && !canInspectFirstMismatch;
   const primaryActionKind: 'run' | 'capture' | 'inspect' = canInspectFirstMismatch
@@ -3321,34 +3527,40 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     ]
   );
   const runProofTitle =
-    displayStatus === 'PASS'
+    sessionShowsAssertionMatch
       ? lastRun?.qualification === 'incomplete-mapping'
         ? 'Assertions match — mapping review still needed'
         : `Assertions match across ${runRows.length} vector${runRows.length === 1 ? '' : 's'}`
-      : displayStatus === 'FAIL'
+      : sessionSignalsAssertionFailure
         ? `Assertions differ in ${failingRows.length} of ${runRows.length} case${runRows.length === 1 ? '' : 's'}`
-        : displayStatus === 'STALE'
+        : sessionStatus === 'stale'
           ? 'This page is showing an older Verify run'
-          : displayStatus === 'TRACE'
+          : sessionShowsTraceEvidence
             ? 'Simulation ran, but no expected outputs were locked'
-            : displayStatusLabel;
+            : verifySession.title;
   const runProofSummary =
-    displayStatus === 'PASS'
+    sessionShowsAssertionMatch
       ? lastRun?.qualification === 'incomplete-mapping'
         ? `${unmappedOutputLabels.length > 0 ? `${unmappedOutputLabels.slice(0, 3).join(', ')}${unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''} ${unmappedOutputLabels.length === 1 ? 'is' : 'are'} not connected to board pins.` : 'Some outputs are not connected to board pins.'} Finish mapping in Hardware before trusting export or bring-up.`
         : 'Observed outputs matched every asserted expectation in this run.'
-      : displayStatus === 'FAIL'
+      : sessionSignalsAssertionFailure
         ? 'Assertions differ from observed outputs in the deterministic run below. Start with the first differing case.'
-      : displayStatus === 'STALE'
+      : sessionStatus === 'stale'
           ? 'The visible waveform belongs to the previously verified build hash. Re-run Verify so the evidence matches the current circuit again.'
-      : displayStatus === 'TRACE'
+      : sessionShowsTraceEvidence
             ? 'You have waveform evidence, but no expected outputs were defined, so this run is observation only.'
-            : displayStatusLabel;
+            : verifySession.summary;
+
+  useEffect(() => {
+    if (sessionShowsAssertionMatch && failingRows.length === 0 && verifyTab === 'mismatches') {
+      setVerifyTab('truth');
+    }
+  }, [failingRows.length, sessionShowsAssertionMatch, verifyTab]);
 
   return (
     <IdeSurfaceLayout
       mode="verify"
-      consoleHasBlocking={displayStatus === 'FAIL'}
+      consoleHasBlocking={sessionSignalsAssertionFailure}
       consoleHasEntries={false}
       rightDockMode="collapsed"
       dock={
@@ -3400,11 +3612,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       onClick={() => toggleLaneGroup(group)}
                       data-testid={`ide-verify-group-toggle-${toTestId(group)}`}
                     >
-                      {collapsedGroups[group] ? '▸' : '▾'} {group}
+                      {effectiveCollapsedGroups[group] ? '▸' : '▾'} {group}
                     </button>
                     <span className="ide-copy">{groupedVisibleSignals[group].length}</span>
                   </header>
-                  {!collapsedGroups[group] && (
+                  {!effectiveCollapsedGroups[group] && (
                     <div className="ide-verify-group-body">
                       {groupedVisibleSignals[group].length === 0 ? (
                         <p className="ide-copy">No {group.toLowerCase()} lanes.</p>
@@ -3464,7 +3676,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               ))
             )}
           </div>
-          {assertionMode && (
+          {sessionShowsCompareEvidence && (
             <>
               <header className="ide-design-subheader">
                 <h3>Failures</h3>
@@ -3501,7 +3713,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
       inspector={
         <IdeInspectorAccordion defaultOpenId="vectors">
-          {assertionMode && (
+          {sessionShowsCompareEvidence && (
             <IdeInspectorSection title="Mismatch Detail" accordionId="mismatch-detail">
             {selectedFailureCase ? (() => {
               return (
@@ -3670,12 +3882,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         <section className="ide-verify-console" data-testid="ide-verify-console">
           <header className="ide-design-diagnostics-drawer-header">
             <h3>Activity</h3>
-            <IdeStatusPill tone={displayTone} data-testid="ide-verify-console-status">
-              {displayStatus === 'PASS'
-                ? 'ASSERTIONS MATCH'
-                : displayStatus === 'FAIL'
-                  ? 'ASSERTIONS DIFFER'
-                  : displayStatus}
+            <IdeStatusPill tone={sessionStatusTone} data-testid="ide-verify-console-status">
+              {sessionStatusBadgeLabel}
             </IdeStatusPill>
           </header>
           <div className="ide-design-diagnostics-list">
@@ -3698,7 +3906,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </span>
                   </div>
                 </article>
-                {assertionMode && firstFailure ? (
+                {hasSessionFailureEvidence && firstFailure ? (
                   <article className="ide-design-diagnostic-row is-error">
                     <div className="ide-design-diagnostic-row-header">
                       <code>FIRST_FAIL</code>
@@ -3710,7 +3918,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ) : null}
               </>
             ) : (
-              <p className="ide-copy">Run verification to populate deterministic activity output.</p>
+              <p className="ide-copy">Run simulation to populate deterministic activity output.</p>
             )}
           </div>
         </section>
@@ -3811,8 +4019,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             role="alert"
           >
             <strong className="ide-verify-stale-banner-label">Circuit Updated</strong>
-            <span>Results below were recorded before the last circuit change — re-run to see current behavior.</span>
-            <IdeButton tone="primary" onClick={runVerification} testId="ide-verify-stale-rerun">
+            <span>Results below were recorded before the last circuit change. Re-capture expected outputs from the current circuit or re-run to inspect the latest behavior.</span>
+            <IdeButton tone="primary" onClick={handleStaleRecapture} testId="ide-verify-stale-recapture">
+              Re-capture outputs
+            </IdeButton>
+            <IdeButton tone="secondary" onClick={runVerification} testId="ide-verify-stale-rerun">
               Re-run for current circuit
             </IdeButton>
           </div>
@@ -3842,16 +4053,88 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </span>
         </div>
 
+        {/* Pre-run signal inventory panel ─────────────────────────────────────
+             Show when we have a signalInventory but haven't run yet (or are stale).
+             This lets students see exactly what will be simulated — signal lanes,
+             assertion coverage, tick count, and clock policy — before they commit
+             to running. Once a run exists and is current, the waveform carries
+             the same information in richer form, so we hide this panel. */}
+        {signalInventory && (!lastRun || isRunStale) && (
+          <div
+            className="ide-surface-panel ide-verify-prerun-inventory"
+            data-testid="ide-verify-prerun-inventory"
+          >
+            <div className="ide-verify-prerun-header">
+              <span className="ide-verify-prerun-title">Testbench Preview</span>
+              <span className="ide-verify-prerun-meta" data-testid="ide-verify-prerun-tick-count">
+                {signalInventory.tickCount} tick{signalInventory.tickCount !== 1 ? 's' : ''}
+              </span>
+              {signalInventory.clockPolicy === 'clocked' && (
+                <span
+                  className="ide-verify-prerun-clock-chip"
+                  data-testid="ide-verify-prerun-clock-chip"
+                  title={
+                    signalInventory.clockSignalName
+                      ? `Sequential circuit — clock signal: ${signalInventory.clockSignalName}`
+                      : 'Sequential circuit — clock-driven'
+                  }
+                >
+                  {signalInventory.clockSignalName
+                    ? `CLK: ${signalInventory.clockSignalName}`
+                    : 'Sequential'}
+                </span>
+              )}
+              <span
+                className={`ide-verify-prerun-assert-chip ${signalInventory.assertedOutputCount > 0 ? 'ide-verify-prerun-assert-chip--active' : 'ide-verify-prerun-assert-chip--none'}`}
+                data-testid="ide-verify-prerun-assert-summary"
+              >
+                {signalInventory.assertedOutputCount > 0
+                  ? `${signalInventory.assertedOutputCount} output${signalInventory.assertedOutputCount !== 1 ? 's' : ''} asserted`
+                  : 'No assertions yet'}
+              </span>
+            </div>
+            <div className="ide-verify-prerun-lanes" data-testid="ide-verify-prerun-lanes">
+              {signalInventory.lanes.map((lane) => (
+                <span
+                  key={lane.name}
+                  className={[
+                    'ide-verify-lane-chip',
+                    lane.direction === 'input'
+                      ? 'ide-verify-lane-chip--input'
+                      : lane.isAsserted
+                        ? 'ide-verify-lane-chip--output-asserted'
+                        : 'ide-verify-lane-chip--output-stimulus',
+                  ].join(' ')}
+                  data-direction={lane.direction}
+                  data-asserted={lane.isAsserted ? 'true' : 'false'}
+                  data-testid={`ide-verify-lane-chip-${lane.name}`}
+                  title={
+                    lane.direction === 'input'
+                      ? `Input: ${lane.name}`
+                      : lane.isAsserted
+                        ? `Output: ${lane.name} — asserted (will be compared)`
+                        : `Output: ${lane.name} — stimulus only (blank expected, not compared)`
+                  }
+                >
+                  <span className="ide-verify-lane-dir-badge">
+                    {lane.direction === 'input' ? 'IN' : 'OUT'}
+                  </span>
+                  <span className="ide-verify-lane-name">{lane.name}</span>
+                  {lane.direction === 'output' && (
+                    <span className="ide-verify-lane-assert-badge">
+                      {lane.isAsserted ? '✓' : '—'}
+                    </span>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Status strip — status-first, one primary CTA */}
         <div className="ide-verify-status-strip" data-testid="ide-verify-banner" data-zone="status">
-          <IdeStatusPill tone={displayTone} testId="ide-verify-summary-status">
-            {displayStatus === 'PASS'
-              ? lastRun?.qualification === 'incomplete-mapping'
-                ? 'ASSERTIONS MATCH (MAPPING REVIEW)'
-                : 'ASSERTIONS MATCH'
-              : displayStatus === 'FAIL'
-                ? 'ASSERTIONS DIFFER'
-                : displayStatus}
+          <IdeStatusPill tone={sessionStatusTone} testId="ide-verify-summary-status">
+            {sessionStatusBadgeLabel}
           </IdeStatusPill>
           {lastRun && (
             <>
@@ -3862,12 +4145,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </span>
               ) : (
                 <span className="ide-verify-strip-meta ide-verify-strip-pass" data-testid="ide-verify-strip-pass-count">
-                  {assertionMode
+                  {sessionShowsCompareEvidence
                     ? `${runRows.length - failingRows.length}/${runRows.length} match`
                     : `${runRows.length} vector${runRows.length !== 1 ? 's' : ''}`}
                 </span>
               )}
-              {!isRunStale && assertionMode && failingRows.length > 0 && (
+              {!isRunStale && hasSessionFailureEvidence && (
                 <>
                   <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
                   <span className="ide-verify-strip-meta ide-verify-strip-fail" data-testid="ide-verify-strip-fail-count">
@@ -3895,7 +4178,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </span>
             </>
           )}
-          {displayStatus === 'PASS' && lastRun?.qualification === 'incomplete-mapping' && (
+          {sessionShowsAssertionMatch && lastRun?.qualification === 'incomplete-mapping' && (
             <div
               className="ide-verify-incomplete-notice ide-surface-panel"
               data-testid="ide-verify-incomplete-mapping-notice"
@@ -3954,7 +4237,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       onClick={handleRunWithPreflight}
                       disabled={runState === 'running'}
                       testId={lastRun ? 'ide-verify-run-secondary' : 'ide-verify-run'}
-                      className={displayStatus === 'READY' ? 'is-pulsing' : undefined}
+                      className={readyDraftCanRun ? 'is-pulsing' : undefined}
                     >
                       {verifySession.runLabel}
                     </IdeButton>
@@ -3996,14 +4279,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   <summary>More actions</summary>
                   <div className="ide-inline-actions" style={{ marginTop: '0.75rem' }}>
                   <IdeButton
-                    tone={assertionMode ? 'secondary' : 'ghost'}
-                    onClick={() => setAssertionMode((v) => !v)}
+                    tone={nextRunUsesAssertions ? 'secondary' : 'ghost'}
+                    onClick={() => setNextRunUsesAssertions((v) => !v)}
                     testId="ide-verify-assertion-mode-toggle"
-                    title={assertionMode
-                      ? 'Pass/Fail Checking ON — compares expected outputs against actual circuit behavior'
-                      : 'Trace Inputs Only — runs stimulus and shows waveform, no pass/fail checking'}
+                    title={nextRunUsesAssertions
+                      ? 'Next run: compare asserted outputs against the current circuit.'
+                      : 'Next run: trace stimulus only and skip expected-output comparison.'}
                   >
-                    {assertionMode ? 'Check Expected Outputs' : 'Trace Inputs Only'}
+                    {nextRunUsesAssertions ? 'Check Expected Outputs' : 'Trace Inputs Only'}
                   </IdeButton>
                   {totalSteps > 0 && (
                     <IdeButton
@@ -4022,7 +4305,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           )}
         </div>
 
-        {drawerOpen && assertionMode && displayStatus === 'FAIL' && failureDiagnosis.length > 0 && (
+        {drawerOpen && hasSessionFailureEvidence && failureDiagnosis.length > 0 && (
           <div className="ide-verify-fail-diagnosis" data-testid="ide-verify-fail-diagnosis">
             <span className="ide-verify-fail-diagnosis-header" data-testid="ide-verify-fail-diagnosis-header">Issues found</span>
             {failureDiagnosis.map((item) => (
@@ -4034,13 +4317,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {drawerOpen && assertionMode && displayStatus === 'FAIL' && verifyHint && (
+        {drawerOpen && hasSessionFailureEvidence && verifyHint && (
           <IdeCallout tone="info" title="Something to investigate" testId="ide-verify-hint-callout" className="ide-callout--hint">
             {verifyHint}
           </IdeCallout>
         )}
 
-        {drawerOpen && assertionMode && displayStatus === 'FAIL' && vectorsAreAutoGenerated && (
+        {drawerOpen && hasSessionFailureEvidence && vectorsAreAutoGenerated && (
           <IdeCallout tone="warn" testId="ide-verify-auto-vector-fail-note">
             <span>
               <strong>Ran with starter vectors.</strong>{' '}
@@ -4051,7 +4334,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </IdeCallout>
         )}
 
-        {drawerOpen && assertionMode && displayStatus === 'FAIL' && (
+        {drawerOpen && hasSessionFailureEvidence && (
           <div className="ide-verify-readiness-strip" data-testid="ide-verify-readiness-strip">
             <span
               className={`ide-verify-readiness-axis ide-verify-readiness-axis--${mappingComplete !== false ? 'ok' : 'warn'}`}
@@ -4074,7 +4357,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {drawerOpen && assertionMode && displayStatus === 'FAIL' && mappingComplete !== false && onGoToExport && (
+        {drawerOpen && hasSessionFailureEvidence && mappingComplete !== false && onGoToExport && (
           <div className="ide-verify-export-available-note" data-testid="ide-verify-export-available">
             <span className="ide-verify-export-available-label">
               Your exported HDL is still available.{' '}
@@ -4088,7 +4371,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {!isFirstRunState && lastRun && displayStatus === 'PASS' && (
+        {!isFirstRunState && lastRun && sessionShowsAssertionMatch && (
           <section
             className={`ide-verify-run-proof ide-verify-run-proof--pass ide-verify-pass-hero${
               lastRun.qualification === 'incomplete-mapping' ? ' ide-verify-pass-hero--incomplete' : ''
@@ -4100,13 +4383,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <span className="ide-verify-run-proof-eyebrow">Verify run evidence</span>
                 <strong
                   className="ide-verify-run-proof-title"
-                  data-testid={displayStatus === 'PASS' ? 'ide-verify-pass-hero-title' : undefined}
+                  data-testid={sessionShowsAssertionMatch ? 'ide-verify-pass-hero-title' : undefined}
                 >
                   {runProofTitle}
                 </strong>
                 <p
                   className="ide-verify-run-proof-summary"
-                  data-testid={displayStatus === 'PASS' ? 'ide-verify-pass-hero-meta' : undefined}
+                  data-testid={sessionShowsAssertionMatch ? 'ide-verify-pass-hero-meta' : undefined}
                 >
                   {runProofSummary}
                 </p>
@@ -4118,7 +4401,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </p>
               </div>
               <div className="ide-verify-run-proof-actions">
-                {displayStatus === 'PASS' && (
+                {sessionShowsAssertionMatch && (
                   <>
                     <span data-testid="ide-verify-cta-continue">
                       <IdeButton
@@ -4138,7 +4421,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     )}
                   </>
                 )}
-                {assertionMode && displayStatus === 'FAIL' && failingRows.length > 0 && (
+                {hasSessionFailureEvidence && (
                   <>
                     <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-run-proof-inspect">
                       Inspect first mismatch
@@ -4150,7 +4433,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     )}
                   </>
                 )}
-                {displayStatus === 'TRACE' && canSetOracle && (
+                {sessionShowsTraceEvidence && canSetOracle && (
                   <IdeButton tone="primary" onClick={handleSetOracleExpected} testId="ide-verify-run-proof-oracle">
                     Capture observed outputs as expected
                   </IdeButton>
@@ -4185,7 +4468,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </section>
         )}
 
-        {displayStatus === 'FAIL' && oracleApplied && (
+        {sessionSignalsAssertionFailure && oracleApplied && (
           <IdeCallout tone="info" testId="ide-verify-oracle-applied-note">
             Expected values updated — re-run to confirm.
           </IdeCallout>
@@ -4230,7 +4513,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )}
 
         {/* Sequential clock-missing guidance when vectors exist but no clock activity */}
-        {hasDff && !isFirstRunState && vectorReadiness === 'needs-clock' && (
+        {hasDff && !isFirstRunState && nextRunNeedsClockActivity && (
           <IdeCallout tone="warn" testId="ide-verify-needs-clock">
             No clock activity detected in your vectors. Clocked circuits need CLK toggles to advance state.
             <div className="ide-inline-actions" style={{ marginTop: 6 }}>
@@ -4347,7 +4630,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           }
           onGoToHardware={onGoToHardware}
         />
-          {(displayStatus !== 'BLOCKED' && displayStatus !== 'READY') && <div
+          {!isDraftSession && <div
             className="ide-verify-workbench ide-verify-workbench-v2"
             data-testid="ide-verify-workbench"
             data-zone="results"
@@ -4370,7 +4653,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               centerPanel={(
             <div className="ide-verify-console-frame">
             <div className="ide-verify-instrument-deck">
-            <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={displayStatus === 'PASS' ? 'pass' : displayStatus === 'FAIL' ? 'fail' : 'idle'}>
+            <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
               {/* ── Oscilloscope instrument header ── */}
               <div className="ide-verify-scope-header" data-testid="ide-verify-scope-header">
                 <span className="ide-verify-scope-label">Waveform</span>
@@ -4399,7 +4682,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       Delta {cursorDeltaTicks} ticks
                     </code>
                   )}
-                  {assertionMode && failTicksSorted.length > 0 && currentFailIndex >= 0 && (
+                  {hasSessionFailureEvidence && failTicksSorted.length > 0 && currentFailIndex >= 0 && (
                     <span className="ide-verify-scope-fail-index">
                       fail {currentFailIndex + 1}/{failTicksSorted.length}
                     </span>
@@ -4437,7 +4720,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <div className="ide-verify-signal-digest" data-testid="ide-verify-signal-digest">
                   <span className="ide-verify-signal-digest-label">Signals</span>
                   {signalDigestRows.map((sig) => {
-                    const tone = !assertionMode || sig.isFailing === null ? 'idle' : sig.isFailing ? 'fail' : 'pass';
+                    const tone = !sessionShowsCompareEvidence || sig.isFailing === null ? 'idle' : sig.isFailing ? 'fail' : 'pass';
                     return (
                       <span
                         key={sig.key}
@@ -4455,7 +4738,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         {sig.pin && (
                           <span className="ide-verify-signal-chip-pin">{sig.pin}</span>
                         )}
-                        {assertionMode && sig.isFailing !== null && (
+                        {sessionShowsCompareEvidence && sig.isFailing !== null && (
                           <span className="ide-verify-signal-chip-status">
                             {sig.isFailing ? '✗' : '✓'}
                           </span>
@@ -4499,7 +4782,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 )}
                 {/* Left: Fail navigator */}
                 <div className="ide-verify-wfbar-group ide-verify-wfbar-left" data-testid="ide-verify-fail-nav">
-                  {assertionMode && failTicksSorted.length > 0 ? (
+                  {hasSessionFailureEvidence && failTicksSorted.length > 0 ? (
                     <>
                       <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-fail-nav-first">
                         First mismatch
@@ -4724,8 +5007,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <WaveformViewer
                   signals={displaySignalTimeline}
                   ticks={zoomedTicks}
-                  failTicks={assertionMode ? new Set(failingRows.map((row) => row.tick)) : new Set<number>()}
-                  failingSignalKeys={assertionMode ? failingSignalKeys : new Set<string>()}
+                  failTicks={sessionShowsCompareEvidence ? new Set(failingRows.map((row) => row.tick)) : new Set<number>()}
+                  failingSignalKeys={sessionShowsCompareEvidence ? failingSignalKeys : new Set<string>()}
                   selectedTick={selectedTick}
                   cursorA={cursorA}
                   cursorB={cursorB}
@@ -4743,7 +5026,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   emptyMessage={
                     lastRun
                       ? 'No waveform data in this run — check I/O mapping in Design'
-                      : 'Run verification to see waveforms'
+                      : 'Run simulation to see waveforms'
                   }
                   ghostSignals={
                     !lastRun && mappedSignals?.length
@@ -4757,7 +5040,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 />
                 </div>
                 {/* AssertionCanvas — read-only assertion overlay aligned with waveform (Slice 6) */}
-                {assertionMode && lastRun && outputFields.length > 0 && timelineTicks.length > 0 && (
+                {sessionShowsCompareEvidence && lastRun && outputFields.length > 0 && timelineTicks.length > 0 && (
                   <div
                     style={{
                       padding: '12px 12px 0 12px',
@@ -4770,7 +5053,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       getCellValue={getAssertionCellValue}
                       selectedTick={selectedTick}
                       selectedSignal={selectedSignal}
-                      assertionMode={assertionMode}
+                      assertionMode={sessionShowsCompareEvidence}
                       readOnly={true}
                     />
                   </div>
@@ -4825,6 +5108,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   onSelectPeer={(peer) => applyFailureSelection(peer)}
                   onJumpToFix={(failure) => reviewFailureInVerify(failure)}
                   onOpenInDesign={(failure) => openFailureInDesign(failure)}
+                  onAcceptObserved={handleFailureAcceptObserved}
+                  onCaptureRow={handleFailureCaptureRow}
+                  onCaptureSignal={handleFailureCaptureSignal}
+                  onSetExpectedBit={handleFailureSetExpectedBit}
+                  onClearExpected={handleFailureClearExpected}
+                  onRerunCompare={() => handleRunWithPreflight(true)}
                 />
               ) : null}
             />
@@ -4839,10 +5128,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               aria-expanded={drawerOpen}
             >
               <span className="ide-verify-drawer-summary">
-                {assertionMode && failingRows.length > 0 && (
+                {hasSessionFailureEvidence && (
                   <span className="ide-verify-drawer-badge">{failingRows.length} fail</span>
                 )}
-                {assertionMode && !drawerOpen && selectedFailureCase && (
+                {hasSessionFailureEvidence && !drawerOpen && selectedFailureCase && (
                   <span className="ide-verify-drawer-hint">
                     t{selectedFailureCase.tick} · {selectedFailureLabel ?? selectedFailureCase.signal} · expected <code>{selectedFailureCase.expected}</code> observed <code>{selectedFailureCase.actual}</code>
                   </span>
@@ -4885,7 +5174,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               {verifyTab === 'mismatches' && (
                 <section className="ide-verify-mismatch-panel" data-testid="ide-verify-mismatch-table">
                   {/* Fail summary — compact selected-failure header */}
-                  {assertionMode && displayStatus === 'FAIL' && failingRows.length > 0 && (
+                  {hasSessionFailureEvidence && (
                     <div className="ide-verify-fail-summary" data-testid="ide-verify-fail-summary-inline">
                       <span className="ide-verify-fail-summary__status">ASSERTIONS DIFFER</span>
                       <span className="ide-verify-fail-summary__count">
@@ -4909,7 +5198,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </div>
                   )}
                   {/* Failure explainer — assertion mode only */}
-                  {assertionMode && displayStatus === 'FAIL' && selectedFailureCase && (
+                  {hasSessionFailureEvidence && selectedFailureCase && (
                     <div className="ide-verify-failure-explainer" data-testid="ide-verify-failure-explainer-inline">
                       <header className="ide-verify-failure-explainer__header">
                         <strong>Failure explainer</strong>
@@ -5043,7 +5332,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   )}
                   {/* Mismatch table */}
                   {failingRows.length === 0 ? (
-                    assertionMode ? (
+                    sessionShowsCompareEvidence ? (
                       <IdeCallout tone="success" title="No differences in current run">
                         Assertions match observed outputs for this run.
                       </IdeCallout>
@@ -5152,7 +5441,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         data-testid="ide-verify-fix-expectation-btn"
                         title={`Set expected ${getFailureSignalLabel(selectedFailure)} = ${selectedFailure.actual} for this authored row`}
                       >
-                        Accept {selectedFailure.actual} as expected
+                        Accept observed {selectedFailure.actual}
                       </button>
                     </div>
                   )}
@@ -5254,7 +5543,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     />
                   </section>
 
-                  {displayStatus === 'FAIL' && (
+                  {sessionSignalsAssertionFailure && (
                     <section data-testid="ide-verify-diff-table">
                       <IdeCallout tone="error" title="Failure Diff">
                         <ul className="ide-list">
@@ -5298,9 +5587,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             )}
             </div>}
           </div>}
-          {lastRun && displayStatus !== 'PASS' && (
+          {lastRun && !sessionShowsAssertionMatch && (
             <section
-              className={`ide-verify-run-proof ide-verify-run-proof--${displayStatus.toLowerCase()}`}
+              className={`ide-verify-run-proof ide-verify-run-proof--${runProofTone}`}
               data-testid="ide-verify-run-proof"
             >
               <div className="ide-verify-run-proof-main">
@@ -5316,7 +5605,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   </p>
                 </div>
                 <div className="ide-verify-run-proof-actions">
-                  {assertionMode && displayStatus === 'FAIL' && failingRows.length > 0 && (
+                  {hasSessionFailureEvidence && (
                     <>
                       {onGoToDesign && (
                         <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-verify-run-proof-design">
@@ -5370,10 +5659,12 @@ function normalizeVectors(
     .map((vector, index) => ({
       id: `vec-${String(index + 1).padStart(2, '0')}`,
       tick: Number.isFinite(vector.tick) ? Math.max(0, Math.floor(vector.tick)) : index,
-      inputs: inputFields.reduce<Record<string, 0 | 1>>((acc, field) => {
-        acc[field.id] = normalizeBit(vector.inputs?.[field.id]);
-        return acc;
-      }, {}),
+      inputs: Object.fromEntries(
+        Object.entries(vector.inputs ?? {}).map(([key, value]) => [
+          normalizeFieldId(key),
+          normalizeBit(value),
+        ] as [string, 0 | 1])
+      ),
       expected: Object.fromEntries(
         Object.entries(vector.expected ?? {})
           .map(([key, value]) => [normalizeFieldId(key), normalizeBit(value)] as [string, 0 | 1])
@@ -5449,6 +5740,380 @@ function expectedRecordToDraftState(
       expected[field.id] === 1 ? '1' : expected[field.id] === 0 ? '0' : '';
     return acc;
   }, {});
+}
+
+function buildCanonicalWaveformSignalAliases(input: {
+  lastRun?: RuntimeVerifyRun;
+  inputFields: VerifyVectorDraftInput[];
+  outputFields: VerifyVectorDraftInput[];
+  mappedSignals?: VerifyMappedSignal[];
+}): Map<string, string> {
+  const aliases = new Map<string, string>();
+  const canonicalByNormalized = new Map<string, string>();
+  const registerCanonical = (canonical: string | null | undefined, ...candidates: Array<string | null | undefined>) => {
+    const canonicalName = typeof canonical === 'string' ? canonical.trim() : '';
+    if (!canonicalName) return;
+    for (const candidate of [canonicalName, ...candidates]) {
+      const normalized = normalizeFieldId(normalizeSignalKey(candidate ?? ''));
+      if (!normalized || canonicalByNormalized.has(normalized)) continue;
+      canonicalByNormalized.set(normalized, canonicalName);
+    }
+  };
+  const registerAlias = (canonical: string | null | undefined, ...candidates: Array<string | null | undefined>) => {
+    const canonicalName = typeof canonical === 'string' ? canonical.trim() : '';
+    if (!canonicalName) return;
+    registerCanonical(canonicalName);
+    for (const candidate of candidates) {
+      const normalized = normalizeFieldId(normalizeSignalKey(candidate ?? ''));
+      if (!normalized || aliases.has(normalized)) continue;
+      aliases.set(normalized, canonicalName);
+    }
+  };
+  const resolveCanonical = (...candidates: Array<string | null | undefined>) => {
+    for (const candidate of candidates) {
+      const normalized = normalizeFieldId(normalizeSignalKey(candidate ?? ''));
+      if (!normalized) continue;
+      const canonical = canonicalByNormalized.get(normalized);
+      if (canonical) return canonical;
+    }
+    return null;
+  };
+
+  for (const field of [...input.inputFields, ...input.outputFields]) {
+    registerCanonical(field.id, field.label);
+  }
+  for (const signal of input.mappedSignals ?? []) {
+    registerCanonical(signal.id, signal.label);
+  }
+
+  for (const row of input.lastRun?.evidence?.ioRows ?? []) {
+    const canonical =
+      resolveCanonical(row.id, row.label) ??
+      row.id.trim() ??
+      row.label.trim();
+    registerAlias(
+      canonical,
+      row.id,
+      row.label,
+      row.nodeId,
+      row.nodeId ? `${row.nodeId}.in` : '',
+      row.nodeId ? `${row.nodeId}.out` : '',
+      row.nodeId ? `${row.nodeId}_in` : '',
+      row.nodeId ? `${row.nodeId}_out` : '',
+      row.nodeId ? `${row.nodeId}:in` : '',
+      row.nodeId ? `${row.nodeId}:out` : ''
+    );
+  }
+
+  for (const entry of input.lastRun?.evidence?.normalizationMap ?? []) {
+    const canonical = resolveCanonical(entry.rawKey, entry.normalizedKey) ?? entry.rawKey;
+    registerAlias(canonical, entry.rawKey, entry.normalizedKey, entry.matchedSignal);
+  }
+
+  return aliases;
+}
+
+function buildCaptureContext(input: {
+  lastRun?: RuntimeVerifyRun;
+  inputFields: VerifyVectorDraftInput[];
+  outputFields: VerifyVectorDraftInput[];
+  mappedSignals?: VerifyMappedSignal[];
+  visibleSignals: string[];
+}): VerifyCaptureContext | null {
+  const { lastRun, inputFields, outputFields, mappedSignals = [], visibleSignals } = input;
+  if (!lastRun?.waveform || lastRun.waveform.length === 0) return null;
+
+  const waveformByTick = new Map<number, Record<string, string>>();
+  for (const sample of lastRun.waveform) {
+    const previous = waveformByTick.get(sample.tick) ?? {};
+    waveformByTick.set(sample.tick, { ...previous, ...sample.signals });
+  }
+
+  const inputSignalKeys = new Set(inputFields.map((field) => normalizeFieldId(field.id)));
+  for (const signal of mappedSignals) {
+    if (signal.direction !== 'in') continue;
+    inputSignalKeys.add(normalizeFieldId(signal.id));
+    if (signal.label) inputSignalKeys.add(normalizeFieldId(signal.label));
+  }
+
+  const outputSignalKeys = new Set(
+    [
+      ...outputFields.flatMap((field) => [field.id, field.label]),
+      ...mappedSignals
+        .filter((signal) => signal.direction === 'out')
+        .flatMap((signal) => [signal.id, signal.label ?? '']),
+    ]
+      .map(normalizeFieldId)
+      .filter(Boolean)
+  );
+
+  const mappedNonInputKeys = new Set(
+    mappedSignals
+      .flatMap((signal) => [signal.id, signal.label ?? ''])
+      .map(normalizeFieldId)
+      .filter((key) => key.length > 0 && !inputSignalKeys.has(key))
+  );
+
+  const visibleOutputKeys = new Set(
+    visibleSignals
+      .map(normalizeFieldId)
+      .filter((key) => key.length > 0 && (outputSignalKeys.size === 0 || outputSignalKeys.has(key)))
+  );
+
+  const canonicalOutputKeyByWaveSignal = new Map<string, string>();
+  for (const row of lastRun.evidence?.ioRows ?? []) {
+    if (row.direction !== 'out') continue;
+    const canonicalCandidates = [row.id, row.label]
+      .map(normalizeFieldId)
+      .filter(Boolean);
+    const canonicalOutputKey =
+      canonicalCandidates.find((candidate) => outputSignalKeys.has(candidate)) ??
+      canonicalCandidates[0];
+    if (!canonicalOutputKey) continue;
+    for (const candidate of [
+      row.id,
+      row.label,
+      row.nodeId,
+      row.nodeId ? `${row.nodeId}.in` : '',
+      row.nodeId ? `${row.nodeId}_in` : '',
+    ]) {
+      const normalizedCandidate = normalizeFieldId(candidate);
+      if (!normalizedCandidate) continue;
+      canonicalOutputKeyByWaveSignal.set(normalizedCandidate, canonicalOutputKey);
+    }
+  }
+  for (const entry of lastRun.evidence?.normalizationMap ?? []) {
+    if (entry.role !== 'output') continue;
+    const canonicalOutputKey = normalizeFieldId(entry.rawKey);
+    const matchedSignalKey = normalizeFieldId(entry.matchedSignal ?? '');
+    if (!canonicalOutputKey) continue;
+    canonicalOutputKeyByWaveSignal.set(canonicalOutputKey, canonicalOutputKey);
+    if (matchedSignalKey) {
+      canonicalOutputKeyByWaveSignal.set(matchedSignalKey, canonicalOutputKey);
+    }
+  }
+
+  return {
+    waveformByTick,
+    inputSignalKeys,
+    outputSignalKeys,
+    mappedNonInputKeys,
+    visibleOutputKeys,
+    canonicalOutputKeyByWaveSignal,
+  };
+}
+
+function buildOwnedVectors(
+  projectVectors: VerifyAuthorVector[],
+  customVectors: CustomTestVector[]
+): OwnedVerifyVector[] {
+  return [
+    ...projectVectors.map((vector) => ({ ...vector, owner: 'project' as const })),
+    ...customVectors.map((vector) => ({ ...vector, owner: 'custom' as const })),
+  ].sort((left, right) => {
+    if (left.tick !== right.tick) return left.tick - right.tick;
+    return compareText(left.id, right.id);
+  });
+}
+
+function matchesCapturedVectorScope(vector: VerifyAuthorVector, scope: CaptureScope): boolean {
+  if (scope.vectorId && vector.id !== scope.vectorId) return false;
+  if (scope.tick !== undefined && vector.tick !== scope.tick) return false;
+  return true;
+}
+
+function isVisibleCapturedOutput(
+  canonicalOutputKey: string,
+  context: VerifyCaptureContext
+): boolean {
+  if (context.visibleOutputKeys.size > 0) {
+    return context.visibleOutputKeys.has(canonicalOutputKey);
+  }
+  if (context.outputSignalKeys.size > 0) {
+    return context.outputSignalKeys.has(canonicalOutputKey);
+  }
+  if (context.mappedNonInputKeys.size > 0) {
+    return context.mappedNonInputKeys.has(canonicalOutputKey);
+  }
+  return true;
+}
+
+function shouldCaptureExpectedSignal(input: {
+  scope: CaptureScope;
+  vector: VerifyAuthorVector;
+  canonicalOutputKey: string;
+  existingExpectedKeys: Set<string>;
+  context: VerifyCaptureContext;
+}): boolean {
+  const { scope, vector, canonicalOutputKey, existingExpectedKeys, context } = input;
+  switch (scope.kind) {
+    case 'cell':
+      return (
+        matchesCapturedVectorScope(vector, scope) &&
+        normalizeFieldId(scope.signal ?? '') === canonicalOutputKey
+      );
+    case 'row':
+      return matchesCapturedVectorScope(vector, scope) && isVisibleCapturedOutput(canonicalOutputKey, context);
+    case 'signal':
+      return normalizeFieldId(scope.signal ?? '') === canonicalOutputKey;
+    case 'all-asserted':
+      return existingExpectedKeys.has(canonicalOutputKey);
+    case 'all-visible-outputs':
+      return isVisibleCapturedOutput(canonicalOutputKey, context);
+    default:
+      return false;
+  }
+}
+
+function applyCaptureScopeToVectorSets(input: {
+  projectVectors: VerifyAuthorVector[];
+  customVectors: CustomTestVector[];
+  context: VerifyCaptureContext;
+  scope: CaptureScope;
+}): CaptureApplicationResult {
+  const ownedVectors = buildOwnedVectors(input.projectVectors, input.customVectors);
+  let changed = false;
+  let capturedAnyExpected = false;
+
+  const updatedOwnedVectors = ownedVectors.map((vector) => {
+    const tickSignals = input.context.waveformByTick.get(vector.tick);
+    if (!tickSignals) return vector;
+
+    const expectedKeyByNormalized = new Map<string, string>();
+    for (const key of Object.keys(vector.expected ?? {})) {
+      const normalized = normalizeFieldId(key);
+      if (!normalized || expectedKeyByNormalized.has(normalized)) continue;
+      expectedKeyByNormalized.set(normalized, key);
+    }
+
+    if (input.scope.kind === 'all-asserted' && expectedKeyByNormalized.size === 0) {
+      return vector;
+    }
+
+    const nextExpected = { ...vector.expected };
+    let vectorChanged = false;
+    for (const [signal, rawValue] of Object.entries(tickSignals)) {
+      if (rawValue !== '0' && rawValue !== '1') continue;
+      const normalizedSignal = normalizeFieldId(signal);
+      const canonicalOutputKey =
+        input.context.canonicalOutputKeyByWaveSignal.get(normalizedSignal) ?? normalizedSignal;
+      if (
+        input.context.inputSignalKeys.has(normalizedSignal) ||
+        input.context.inputSignalKeys.has(canonicalOutputKey)
+      ) {
+        continue;
+      }
+      if (
+        input.context.outputSignalKeys.size > 0 &&
+        !input.context.outputSignalKeys.has(canonicalOutputKey)
+      ) {
+        continue;
+      }
+      if (
+        input.context.outputSignalKeys.size === 0 &&
+        input.context.mappedNonInputKeys.size > 0 &&
+        !input.context.mappedNonInputKeys.has(canonicalOutputKey)
+      ) {
+        continue;
+      }
+      if (
+        !shouldCaptureExpectedSignal({
+          scope: input.scope,
+          vector,
+          canonicalOutputKey,
+          existingExpectedKeys: new Set(expectedKeyByNormalized.keys()),
+          context: input.context,
+        })
+      ) {
+        continue;
+      }
+      const targetKey = expectedKeyByNormalized.get(canonicalOutputKey) ?? canonicalOutputKey;
+      const nextValue: 0 | 1 = rawValue === '1' ? 1 : 0;
+      if (nextExpected[targetKey] !== nextValue) {
+        nextExpected[targetKey] = nextValue;
+        vectorChanged = true;
+      }
+      capturedAnyExpected = true;
+    }
+
+    if (!vectorChanged) return vector;
+    changed = true;
+    return { ...vector, expected: nextExpected };
+  });
+
+  return {
+    projectVectors: updatedOwnedVectors
+      .filter((vector) => vector.owner === 'project')
+      .map(({ owner: _owner, ...vector }) => vector),
+    customVectors: updatedOwnedVectors
+      .filter((vector) => vector.owner === 'custom')
+      .map(({ owner: _owner, ...vector }) => vector),
+    changed,
+    capturedAnyExpected,
+  };
+}
+
+function updateExpectedCellInVectorSets(input: {
+  projectVectors: VerifyAuthorVector[];
+  customVectors: CustomTestVector[];
+  tick: number;
+  signal: string;
+  vectorId?: string;
+  nextValue: 0 | 1 | null;
+}): CaptureApplicationResult {
+  const normalizedSignal = normalizeFieldId(input.signal);
+  let changed = false;
+  let capturedAnyExpected = false;
+
+  const updatedOwnedVectors = buildOwnedVectors(input.projectVectors, input.customVectors).map((vector) => {
+    if (input.vectorId && vector.id !== input.vectorId) return vector;
+    if (!input.vectorId && vector.tick !== input.tick) return vector;
+    const expectedKeyByNormalized = new Map<string, string>();
+    for (const key of Object.keys(vector.expected ?? {})) {
+      const normalized = normalizeFieldId(key);
+      if (!normalized || expectedKeyByNormalized.has(normalized)) continue;
+      expectedKeyByNormalized.set(normalized, key);
+    }
+    const targetKey = expectedKeyByNormalized.get(normalizedSignal) ?? normalizedSignal;
+    const nextExpected = { ...vector.expected };
+    if (input.nextValue === null) {
+      if (!(targetKey in nextExpected)) return vector;
+      delete nextExpected[targetKey];
+    } else if (nextExpected[targetKey] === input.nextValue) {
+      return vector;
+    } else {
+      nextExpected[targetKey] = input.nextValue;
+      capturedAnyExpected = true;
+    }
+    changed = true;
+    return { ...vector, expected: nextExpected };
+  });
+
+  return {
+    projectVectors: updatedOwnedVectors
+      .filter((vector) => vector.owner === 'project')
+      .map(({ owner: _owner, ...vector }) => vector),
+    customVectors: updatedOwnedVectors
+      .filter((vector) => vector.owner === 'custom')
+      .map(({ owner: _owner, ...vector }) => vector),
+    changed,
+    capturedAnyExpected,
+  };
+}
+
+function buildVectorCollectionSignature(
+  projectVectors: VerifyAuthorVector[],
+  customVectors: CustomTestVector[]
+): string {
+  return JSON.stringify(
+    buildOwnedVectors(projectVectors, customVectors).map((vector) => ({
+      owner: vector.owner,
+      id: vector.id,
+      tick: vector.tick,
+      inputs: vector.inputs,
+      expected: vector.expected,
+    }))
+  );
 }
 
 function normalizeBit(value: unknown): 0 | 1 {
@@ -5588,7 +6253,7 @@ function formatTickWindowReason(input: {
   selectedTick: number | null;
 }): string {
   const { allTicks, shownTicks, tickZoom, focusedFailureTick, selectedTick } = input;
-  if (allTicks.length === 0 || shownTicks.length === 0) return 'Run verification to inspect a tick range.';
+  if (allTicks.length === 0 || shownTicks.length === 0) return 'Run simulation to inspect a tick range.';
   if (shownTicks.length === allTicks.length || tickZoom === 'all') {
     return 'Showing the full verification run.';
   }

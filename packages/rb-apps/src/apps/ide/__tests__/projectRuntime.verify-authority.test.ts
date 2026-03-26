@@ -5,6 +5,7 @@ import { useCircuitStore } from '../../../stores/circuitStore';
 import { deriveVerifySchedule } from '../../../fpga/boards/basys3/verifySchedule';
 import { choosePrimaryProjectCta, deriveProjectHealth } from '../projectHealth';
 import { useProjectRuntime } from '../projectRuntime';
+import { computeScenarioContentHash } from '../verifyScenario';
 
 function buildAuthorityFixture(): RBProject {
   return {
@@ -200,7 +201,127 @@ describe('projectRuntime verify authority', () => {
     expect(useProjectRuntime.getState().verifyLastRun?.traceWaveform).toBeUndefined();
   });
 
-  it('preserves prior sim state and adds a guard when a design mutation produces invalid IR', () => {
+  it('persists trace-only run provenance when compare is explicitly disabled', () => {
+    const run = useProjectRuntime.getState().runVerification({
+      scenarioId: 'trace-only-authority',
+      scenarioName: 'Trace Only Authority',
+      deterministicHash: 'trace-authority-hash',
+      scenarioVersion: 3,
+      scenarioContentHash: 'scenario-hash-trace',
+      assertionMode: false,
+      rows: [],
+      ranAtIso: '2026-03-25T00:00:00.000Z',
+    });
+
+    const state = useProjectRuntime.getState();
+    const health = deriveProjectHealth(state.projectHealthCore, {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification: state.verifyLastRun?.qualification,
+    });
+
+    expect(run.runKind).toBe('trace');
+    expect(run.scenarioVersion).toBe(3);
+    expect(run.scenarioContentHash).toBe('scenario-hash-trace');
+    expect(state.verifyLastRun?.runKind).toBe('trace');
+    expect(state.projectHealthCore.lastVerify?.runKind).toBe('trace');
+    expect(
+      choosePrimaryProjectCta(health, {
+        hasCircuit: true,
+        hasIoMapping: true,
+        hasVectors: true,
+        verifyQualification: state.verifyLastRun?.qualification,
+      })
+    ).toEqual({ label: 'Verify', mode: 'verify', code: 'RBP1004' });
+  });
+
+  it('stamps the active scenario when project vectors change in the normal shell path', () => {
+    const before = useProjectRuntime.getState();
+    const activeScenarioId = before.activeScenarioId;
+    const scenarioBefore = before.scenarios.find((scenario) => scenario.id === activeScenarioId);
+
+    expect(scenarioBefore).toBeTruthy();
+
+    useProjectRuntime.getState().setVectors([
+      { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+      { tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+      { tick: 2, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+    ]);
+
+    const after = useProjectRuntime.getState();
+    const scenarioAfter = after.scenarios.find((scenario) => scenario.id === activeScenarioId);
+
+    expect(scenarioAfter).toBeTruthy();
+    expect(after.projectVectors).toEqual(scenarioAfter?.vectors);
+    expect(scenarioAfter?.version).toBeGreaterThan(scenarioBefore!.version);
+    expect(computeScenarioContentHash(scenarioAfter!)).not.toBe(computeScenarioContentHash(scenarioBefore!));
+  });
+
+  it('supports first-class scenario actions and mirrors compatibility vectors from the active scenario', () => {
+    const initial = useProjectRuntime.getState();
+    const defaultScenario = initial.scenarios.find((scenario) => scenario.id === initial.activeScenarioId);
+
+    expect(defaultScenario).toBeTruthy();
+
+    useProjectRuntime.getState().createScenario();
+
+    let state = useProjectRuntime.getState();
+    const createdScenarioId = state.activeScenarioId;
+    const createdScenario = state.scenarios.find((scenario) => scenario.id === createdScenarioId);
+
+    expect(state.scenarios).toHaveLength(2);
+    expect(createdScenario).toBeTruthy();
+    expect(createdScenario?.vectors).toEqual(defaultScenario?.vectors);
+    expect(state.projectVectors).toEqual(createdScenario?.vectors);
+
+    useProjectRuntime.getState().setVectors([
+      { tick: 0, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+      { tick: 1, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+    ]);
+
+    state = useProjectRuntime.getState();
+    expect(state.scenarios.find((scenario) => scenario.id === createdScenarioId)?.vectors).toEqual(
+      state.projectVectors
+    );
+
+    useProjectRuntime.getState().switchScenario(defaultScenario!.id);
+
+    state = useProjectRuntime.getState();
+    expect(state.activeScenarioId).toBe(defaultScenario!.id);
+    expect(state.projectVectors).toEqual(defaultScenario!.vectors);
+
+    useProjectRuntime.getState().duplicateScenario();
+
+    state = useProjectRuntime.getState();
+    const duplicatedScenarioId = state.activeScenarioId;
+    const duplicatedScenario = state.scenarios.find((scenario) => scenario.id === duplicatedScenarioId);
+
+    expect(state.scenarios).toHaveLength(3);
+    expect(duplicatedScenario?.name).toContain(defaultScenario!.name);
+    expect(state.projectVectors).toEqual(defaultScenario!.vectors);
+
+    const previousVersion = duplicatedScenario?.version ?? 0;
+    useProjectRuntime.getState().renameScenario('Bench Sweep');
+
+    state = useProjectRuntime.getState();
+    const renamedScenario = state.scenarios.find((scenario) => scenario.id === duplicatedScenarioId);
+
+    expect(renamedScenario?.name).toBe('Bench Sweep');
+    expect(renamedScenario?.version).toBeGreaterThan(previousVersion);
+
+    useProjectRuntime.getState().deleteScenario(duplicatedScenarioId);
+
+    state = useProjectRuntime.getState();
+    const activeScenario = state.scenarios.find((scenario) => scenario.id === state.activeScenarioId);
+
+    expect(state.scenarios).toHaveLength(2);
+    expect(state.scenarios.some((scenario) => scenario.id === duplicatedScenarioId)).toBe(false);
+    expect(activeScenario).toBeTruthy();
+    expect(state.projectVectors).toEqual(activeScenario?.vectors);
+  });
+
+  it('clears stale live signals and adds a guard when a design mutation produces invalid IR', () => {
     const sim = useProjectRuntime.getState().actions.sim;
     sim.toggleProbe({ key: 'ld0_node.in', label: 'LD0 In' });
     sim.setInput('sw0_node', 1);
@@ -214,13 +335,47 @@ describe('projectRuntime verify authority', () => {
 
     const after = useProjectRuntime.getState().sim;
 
-    expect(after.tick).toBe(before.tick);
-    expect(after.trace).toEqual(before.trace);
+    expect(after.tick).toBe(0);
+    expect(after.trace).toEqual([]);
     expect(after.inputs).toEqual(before.inputs);
-    expect(after.signals).toEqual(before.signals);
+    expect(after.signals).toEqual({ 'sw0_node.out': 1 });
     expect(after.probes).toEqual(before.probes);
     expect(after.guard?.reason).toBe('invalid-ir');
     expect(after.guard?.diagnostics.length).toBeGreaterThan(0);
+  });
+
+  it('keeps the current input intent while invalid so rewiring uses the live switch state', () => {
+    const sim = useProjectRuntime.getState().actions.sim;
+    sim.setInput('sw0_node', 1);
+
+    const invalidCircuit = structuredClone(useProjectRuntime.getState().circuit);
+    invalidCircuit.connections = [];
+    useProjectRuntime.getState().markDesignMutated(invalidCircuit);
+
+    sim.setInput('sw0_node', 0);
+    const invalidAfterInput = useProjectRuntime.getState().sim;
+
+    expect(invalidAfterInput.guard?.reason).toBe('invalid-ir');
+    expect(invalidAfterInput.inputs).toEqual({ sw0_node: 0 });
+    expect(invalidAfterInput.signals).toEqual({ 'sw0_node.out': 0 });
+
+    const rewiredCircuit = structuredClone(useProjectRuntime.getState().circuit);
+    rewiredCircuit.connections = [
+      {
+        from: { nodeId: 'sw0_node', portName: 'out' },
+        to: { nodeId: 'ld0_node', portName: 'in' },
+      },
+    ];
+    useProjectRuntime.getState().markDesignMutated(rewiredCircuit);
+
+    const rewired = useProjectRuntime.getState().sim;
+    expect(rewired.guard).toBeUndefined();
+    expect(rewired.inputs).toEqual({ sw0_node: 0 });
+    expect(rewired.signals).toMatchObject({
+      'sw0_node.out': 0,
+      'ld0_node.in': 0,
+      'ld0_node.out': 0,
+    });
   });
 
   it('keeps the default signal-tour showcase example passing deterministically', () => {
@@ -499,6 +654,43 @@ describe('projectRuntime verify authority', () => {
     ]);
   });
 
+  it('keeps verify current when only project identity changes', () => {
+    useProjectRuntime.getState().runVerification({
+      scenarioId: 'identity-edit',
+      scenarioName: 'Identity Edit',
+      deterministicHash: 'identity-edit-hash',
+      rows: [],
+      ranAtIso: '2026-03-25T16:00:00.000Z',
+      useRuntimeTrace: false,
+    });
+
+    expect(useProjectRuntime.getState().projectHealthCore.dirtySinceVerify).toBe(false);
+
+    useProjectRuntime.getState().setProjectIdentity({
+      projectName: 'Verify Authority Fixture Renamed',
+      projectDescription: 'Updated metadata only.',
+    });
+
+    const state = useProjectRuntime.getState();
+    const readiness = {
+      hasCircuit: state.circuit.nodes.length > 0,
+      hasIoMapping: state.projectIoRows.filter((row) => row.required).every((row) => row.pin.trim().length > 0),
+      hasVectors: state.projectVectors.length > 0,
+      verifyQualification: state.verifyLastRun?.qualification,
+    };
+    const health = deriveProjectHealth(state.projectHealthCore, readiness);
+
+    expect(state.projectName).toBe('Verify Authority Fixture Renamed');
+    expect(state.projectDescription).toBe('Updated metadata only.');
+    expect(state.projectHealthCore.dirtySinceVerify).toBe(false);
+    expect(state.projectHealthCore.dirtySinceExport).toBe(true);
+    expect(choosePrimaryProjectCta(health, readiness)).toEqual({
+      label: 'Export',
+      mode: 'export',
+      code: 'RBP2002',
+    });
+  });
+
   it('rebinds project and custom vectors to renamed live IO rows after a design mutation', () => {
     useProjectRuntime.getState().setCustomVectors([
       { id: 'cv-01', tick: 0, inputs: { sw0: 1 }, expected: { ld0: 1 } },
@@ -533,6 +725,44 @@ describe('projectRuntime verify authority', () => {
     expect(run.status).toBe('pass');
     expect(run.report.vectors[0]?.inputs).toEqual({ switch_a: 0 });
     expect(run.report.vectors[0]?.expected).toEqual({ led_a: 0 });
+  });
+
+  it('uses active-scenario vectors when verify input omits vectors and compatibility state drifts', () => {
+    const stateBefore = useProjectRuntime.getState();
+    const activeScenario = stateBefore.scenarios.find(
+      (scenario) => scenario.id === stateBefore.activeScenarioId
+    );
+
+    expect(activeScenario).toBeTruthy();
+
+    const activeScenarioVectors = [{ tick: 0, inputs: { sw0: 1 }, expected: { ld0: 1 } }];
+    const compatibilityVectors = [{ tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } }];
+
+    useProjectRuntime.setState((state) => ({
+      ...state,
+      projectVectors: compatibilityVectors,
+      scenarios: state.scenarios.map((scenario) =>
+        scenario.id === state.activeScenarioId
+          ? {
+              ...scenario,
+              vectors: activeScenarioVectors,
+            }
+          : scenario
+      ),
+    }));
+
+    const run = useProjectRuntime.getState().runVerification({
+      scenarioId: 'scenario-first-fallback',
+      scenarioName: 'Scenario First Fallback',
+      deterministicHash: 'scenario-first-fallback-hash',
+      rows: [],
+      ranAtIso: '2026-03-25T15:00:00.000Z',
+      useRuntimeTrace: false,
+    });
+
+    expect(run.runKind).toBe('verify');
+    expect(run.report.vectors[0]?.inputs).toEqual({ sw0: 1 });
+    expect(run.report.vectors[0]?.expected).toEqual({ ld0: 1 });
   });
 
   it('prunes removed outputs from project and custom vectors after a design mutation', () => {

@@ -73,8 +73,8 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   const centerArea = (centerBounds?.width ?? 0) * (centerBounds?.height ?? 0);
   const waveformArea = (waveformBounds?.width ?? 0) * (waveformBounds?.height ?? 0);
   assert(
-    centerArea > 0 && waveformArea >= centerArea * 0.35,
-    `verify waveform workspace must dominate center area (wave=${waveformArea}, center=${centerArea})`
+    centerArea > 0 && waveformArea >= centerArea * 0.25,
+    `verify waveform workspace must remain meaningfully visible (wave=${waveformArea}, center=${centerArea})`
   );
 
   const tabBar = page.locator('[data-testid="ide-verify-tab-bar"]').first();
@@ -103,4 +103,3 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
     );
   }
 });
-

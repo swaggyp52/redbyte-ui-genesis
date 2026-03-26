@@ -31,6 +31,7 @@ import type {
   ProjectHealthCore,
   ProjectHealthExportResult,
   ProjectHealthVerifyResult,
+  VerifyRunKind,
 } from './projectHealth';
 import {
   buildVerifyReport,
@@ -42,6 +43,7 @@ import {
 import { deriveIoSignalRoles } from './ioSignalRoles';
 import { generateBringUpVectors } from './bringupArtifacts';
 import {
+  buildBlockedRuntimeSnapshotFromModel,
   DEFAULT_SIM_SPEED_HZ,
   advanceSimulationStateFromModel,
   recomputeSimulationStateFromModel,
@@ -54,9 +56,12 @@ import type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from 
 import { buildCanonicalVerifyWaveSamples } from './sim/traceContract';
 import {
   DEFAULT_SCENARIO_ID,
+  createScenario,
   createDefaultScenario,
+  getActiveScenario,
   migrateProjectVectorsToScenario,
   repairScenarioLibrary,
+  stampScenario,
   type VerifyScenario,
 } from './verifyScenario';
 import { exportProjectAsBasys3 } from '../../fpga/boards/basys3/basys3ExportService';
@@ -104,6 +109,9 @@ export interface VerifyRunMeta {
 export interface RuntimeVerifyRun {
   scenarioId: string;
   scenarioName: string;
+  runKind?: VerifyRunKind;
+  scenarioVersion?: number;
+  scenarioContentHash?: string;
   status: 'pass' | 'fail';
   /** Set when status is 'pass' but the result has a known limitation.
    *  'incomplete-mapping': some output IO rows have no FPGA pin assigned.
@@ -138,12 +146,24 @@ export function detectIncompleteMappingQualification(
   return hasUnmappedOutput ? 'incomplete-mapping' : undefined;
 }
 
+export function getRuntimeVerifyRunKind(
+  run: Pick<RuntimeVerifyRun, 'runKind' | 'report'> | undefined | null
+): VerifyRunKind | undefined {
+  if (!run) return undefined;
+  if (run.runKind === 'trace' || run.runKind === 'verify') return run.runKind;
+  return run.report.rows.length > 0 ? 'verify' : 'trace';
+}
+
 export interface RunVerificationInput {
   scenarioId: string;
   scenarioName: string;
+  runKind?: VerifyRunKind;
+  scenarioVersion?: number;
+  scenarioContentHash?: string;
   deterministicHash: string;
   scheduleContract?: VerifyScheduleContract;
   vectors?: TestVector[];
+  assertionMode?: boolean;
   rows: Array<{
     tick: number;
     signal: string;
@@ -202,6 +222,11 @@ export interface ProjectRuntimeState {
   setVectors: (vectors: TestVector[]) => void;
   setCustomVectors: (vectors: CustomTestVector[]) => void;
   generateBringUpVectors: () => TestVector[];
+  createScenario: () => void;
+  duplicateScenario: () => void;
+  renameScenario: (name: string) => void;
+  deleteScenario: (scenarioId: string) => void;
+  switchScenario: (scenarioId: string) => void;
   applyCircuitMutation: (circuit: Circuit) => void;
   markDesignMutated: (circuit: Circuit) => void;
   undoProjectEdit: () => void;
@@ -405,7 +430,16 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 }
               );
               return {
-                sim: applyInteractiveSimResult(state.sim, result, model),
+                sim: applyInteractiveSimResult(
+                  state.sim,
+                  result,
+                  model,
+                  undefined,
+                  {
+                    ...buildBlockedRuntimeSnapshotFromModel(state.circuit, model, nextInputs),
+                    lastAction: 'input',
+                  }
+                ),
               };
             });
           },
@@ -431,7 +465,16 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 }
               );
               return {
-                sim: applyInteractiveSimResult(state.sim, result, model),
+                sim: applyInteractiveSimResult(
+                  state.sim,
+                  result,
+                  model,
+                  undefined,
+                  {
+                    ...buildBlockedRuntimeSnapshotFromModel(state.circuit, model, nextInputs),
+                    lastAction: 'input',
+                  }
+                ),
               };
             });
           },
@@ -541,14 +584,24 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         }));
       },
       setVectors: (vectors) => {
-        set((state) => ({
-          projectVectors: normalizeVectorsForLiveIo(cloneVectors(vectors), state.projectIoRows),
-          projectHealthCore: {
-            ...state.projectHealthCore,
-            dirtySinceVerify: true,
-            dirtySinceExport: true,
-          },
-        }));
+        set((state) => {
+          const projectVectors = normalizeVectorsForLiveIo(cloneVectors(vectors), state.projectIoRows);
+          const nextScenarioState = syncActiveScenarioVectors(
+            state.scenarios,
+            state.activeScenarioId,
+            projectVectors
+          );
+          return {
+            projectVectors,
+            scenarios: nextScenarioState.scenarios,
+            activeScenarioId: nextScenarioState.activeScenarioId,
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              dirtySinceVerify: true,
+              dirtySinceExport: true,
+            },
+          };
+        });
       },
       setCustomVectors: (vectors) => {
         set((state) => ({
@@ -560,20 +613,88 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         }));
       },
       generateBringUpVectors: () => {
+        const state = get();
         const generated = generateBringUpVectors({
-          ioRows: get().projectIoRows,
-          circuit: get().circuit,
-          existingVectors: get().projectVectors,
+          ioRows: state.projectIoRows,
+          circuit: state.circuit,
+          existingVectors: resolveActiveScenarioVectors(state),
         });
-        set((state) => ({
-          projectVectors: normalizeVectorsForLiveIo(cloneVectors(generated), state.projectIoRows),
-          projectHealthCore: {
-            ...state.projectHealthCore,
-            dirtySinceVerify: true,
-            dirtySinceExport: true,
-          },
-        }));
+        set((state) => {
+          const projectVectors = normalizeVectorsForLiveIo(cloneVectors(generated), state.projectIoRows);
+          const nextScenarioState = syncActiveScenarioVectors(
+            state.scenarios,
+            state.activeScenarioId,
+            projectVectors
+          );
+          return {
+            projectVectors,
+            scenarios: nextScenarioState.scenarios,
+            activeScenarioId: nextScenarioState.activeScenarioId,
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              dirtySinceVerify: true,
+              dirtySinceExport: true,
+            },
+          };
+        });
         return generated;
+      },
+      createScenario: () => {
+        set((state) => {
+          const newScenario = createScenario('New Scenario', resolveActiveScenarioVectors(state));
+          return commitScenarioSelection(state, [...state.scenarios, newScenario], newScenario.id);
+        });
+      },
+      duplicateScenario: () => {
+        set((state) => {
+          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+          if (!activeScenario) return state;
+          const duplicate = createScenario(`${activeScenario.name} Copy`, activeScenario.vectors);
+          return commitScenarioSelection(state, [...state.scenarios, duplicate], duplicate.id);
+        });
+      },
+      renameScenario: (name) => {
+        set((state) => {
+          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+          const trimmedName = name.trim();
+          if (!activeScenario || trimmedName.length === 0 || trimmedName === activeScenario.name) {
+            return state;
+          }
+          const scenarios = state.scenarios.map((scenario) =>
+            scenario.id === activeScenario.id
+              ? stampScenario({
+                  ...scenario,
+                  name: trimmedName,
+                })
+              : scenario
+          );
+          return commitScenarioSelection(state, scenarios, activeScenario.id);
+        });
+      },
+      deleteScenario: (scenarioId) => {
+        set((state) => {
+          const deleteIndex = state.scenarios.findIndex((scenario) => scenario.id === scenarioId);
+          if (deleteIndex < 0 || state.scenarios.length <= 1) return state;
+          const scenarios = state.scenarios.filter((scenario) => scenario.id !== scenarioId);
+          const nextActiveScenarioId =
+            scenarioId === state.activeScenarioId
+              ? (scenarios[Math.max(0, deleteIndex - 1)] ?? scenarios[0]).id
+              : state.activeScenarioId;
+          return commitScenarioSelection(state, scenarios, nextActiveScenarioId);
+        });
+      },
+      switchScenario: (scenarioId) => {
+        set((state) => {
+          const activeScenario = getActiveScenario(state.scenarios, scenarioId);
+          if (!activeScenario) return state;
+          if (
+            activeScenario.id === state.activeScenarioId &&
+            stableSerialize(activeScenario.vectors) === stableSerialize(state.projectVectors)
+          ) {
+            return state;
+          }
+          return commitScenarioSelection(state, state.scenarios, activeScenario.id);
+        });
       },
       applyCircuitMutation: (circuit) => {
         set((state) => {
@@ -862,6 +983,15 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         set((state) => {
           const scenarioId = input.scenarioId.trim() || 'runtime-verify';
           const scenarioName = input.scenarioName.trim() || 'Runtime verification';
+          const scenarioVersion =
+            Number.isFinite(input.scenarioVersion)
+              ? Math.max(0, Math.floor(Number(input.scenarioVersion)))
+              : undefined;
+          const scenarioContentHash =
+            typeof input.scenarioContentHash === 'string' &&
+            input.scenarioContentHash.trim().length > 0
+              ? input.scenarioContentHash.trim()
+              : undefined;
           const circuitHash = digestValue(stableSerialize(state.circuit));
           const ioMapping = toIoMapping(state.projectIoRows);
           const verifyContext = buildDeterministicVerifyContext(
@@ -873,9 +1003,22 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             : verifyContext.schedule;
           const model = verifyContext.simModel;
           const runtimeVectors = normalizeVectorsForLiveIo(
-            cloneVectors(input.vectors ?? state.projectVectors),
+            cloneVectors(input.vectors ?? resolveActiveScenarioVectors(state)),
             state.projectIoRows
           );
+          const requestedVerifyRows = (input.rows ?? []).length > 0;
+          const hasExpectedVectorAssertions = runtimeVectors.some(
+            (vector) => Object.keys(vector.expected ?? {}).length > 0
+          );
+          const runKind =
+            input.runKind ??
+            (input.assertionMode === true
+              ? 'verify'
+              : input.assertionMode === false
+                ? 'trace'
+                : requestedVerifyRows || hasExpectedVectorAssertions
+                  ? 'verify'
+                  : 'trace');
           const deterministicResult =
             runtimeVectors.length > 0
               ? runDeterministicVerifyFromModel(
@@ -918,6 +1061,9 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           runtimeRun = {
             scenarioId: report.scenarioId,
             scenarioName: report.scenarioName,
+            runKind,
+            scenarioVersion,
+            scenarioContentHash,
             status: report.status,
             qualification: detectIncompleteMappingQualification(state.projectIoRows, report.status),
             deterministicHash: report.deterministicHash,
@@ -974,6 +1120,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               lastVerify: {
                 status: report.status,
                 hash: report.deterministicHash,
+                runKind,
                 reportHash: report.reportHash,
                 report,
                 failingTick: report.firstFailingTick,
@@ -986,6 +1133,24 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         return runtimeRun ?? {
           scenarioId: input.scenarioId,
           scenarioName: input.scenarioName,
+          runKind:
+            input.runKind ??
+            (input.assertionMode === true
+              ? 'verify'
+              : input.assertionMode === false
+                ? 'trace'
+                : (input.rows ?? []).length > 0
+                  ? 'verify'
+                  : 'trace'),
+          scenarioVersion:
+            Number.isFinite(input.scenarioVersion)
+              ? Math.max(0, Math.floor(Number(input.scenarioVersion)))
+              : undefined,
+          scenarioContentHash:
+            typeof input.scenarioContentHash === 'string' &&
+            input.scenarioContentHash.trim().length > 0
+              ? input.scenarioContentHash.trim()
+              : undefined,
           status: 'fail',
           deterministicHash: input.deterministicHash,
           reportHash: 'pending',
@@ -1036,6 +1201,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               ? ({
                   scenarioId: result.report.scenarioId,
                   scenarioName: result.report.scenarioName,
+                  runKind: result.runKind ?? getRuntimeVerifyRunKind(state.verifyLastRun) ?? 'verify',
                   status: result.status,
                   deterministicHash: result.hash,
                   reportHash: result.reportHash ?? result.report.reportHash,
@@ -1088,7 +1254,6 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             projectHealthCore: shouldMarkDirty
               ? {
                   ...state.projectHealthCore,
-                  dirtySinceVerify: true,
                   dirtySinceExport: true,
                 }
               : state.projectHealthCore,
@@ -1483,6 +1648,75 @@ function stateFromExample(
   };
 }
 
+function syncActiveScenarioVectors(
+  scenarios: VerifyScenario[],
+  activeScenarioId: string,
+  vectors: TestVector[]
+): { scenarios: VerifyScenario[]; activeScenarioId: string } {
+  const nextVectors = cloneVectors(vectors);
+  if (scenarios.length === 0) {
+    const defaultScenario = createDefaultScenario(nextVectors);
+    return {
+      scenarios: [defaultScenario],
+      activeScenarioId: defaultScenario.id,
+    };
+  }
+
+  const resolvedActiveScenarioId = scenarios.some((scenario) => scenario.id === activeScenarioId)
+    ? activeScenarioId
+    : scenarios[0].id;
+  const nextVectorsSignature = stableSerialize(nextVectors);
+
+  return {
+    activeScenarioId: resolvedActiveScenarioId,
+    scenarios: scenarios.map((scenario) => {
+      if (scenario.id !== resolvedActiveScenarioId) return scenario;
+      const currentVectors = cloneVectors(Array.isArray(scenario.vectors) ? scenario.vectors : []);
+      if (stableSerialize(currentVectors) === nextVectorsSignature) {
+        return {
+          ...scenario,
+          vectors: nextVectors,
+        };
+      }
+      return stampScenario({
+        ...scenario,
+        vectors: nextVectors,
+      });
+    }),
+  };
+}
+
+function resolveActiveScenarioVectors(
+  state: Pick<ProjectRuntimeState, 'scenarios' | 'activeScenarioId' | 'projectVectors'>
+): TestVector[] {
+  return cloneVectors(
+    getActiveScenario(state.scenarios, state.activeScenarioId)?.vectors ?? state.projectVectors
+  );
+}
+
+function commitScenarioSelection(
+  state: Pick<
+    ProjectRuntimeState,
+    'projectVectors' | 'projectHealthCore' | 'scenarios' | 'activeScenarioId'
+  >,
+  scenarios: VerifyScenario[],
+  activeScenarioId: string
+): Pick<ProjectRuntimeState, 'projectVectors' | 'projectHealthCore' | 'scenarios' | 'activeScenarioId'> {
+  const resolvedActiveScenario =
+    getActiveScenario(scenarios, activeScenarioId) ??
+    (scenarios.length > 0 ? scenarios[0] : createDefaultScenario(state.projectVectors));
+  return {
+    projectVectors: cloneVectors(resolvedActiveScenario.vectors),
+    scenarios,
+    activeScenarioId: resolvedActiveScenario.id,
+    projectHealthCore: {
+      ...state.projectHealthCore,
+      dirtySinceVerify: true,
+      dirtySinceExport: true,
+    },
+  };
+}
+
 function buildSimulationModelForCircuit(circuit: Circuit): SimulationModel {
   return buildSimulationModel(elaborateCircuit(circuit).ir);
 }
@@ -1507,13 +1741,22 @@ function buildEmptyRuntimeSimState(model: SimulationModel): RuntimeSimState {
 
 function buildBlockedRuntimeSimState(
   previous: RuntimeSimState | undefined,
-  model: SimulationModel
+  model: SimulationModel,
+  overrides?: Partial<RuntimeSimState>
 ): RuntimeSimState {
   const seed = previous ? cloneSimState(previous) : buildEmptyRuntimeSimState(model);
+  const trace = overrides?.trace ?? [];
+  const traceHash = `sim_${digestValue({ irHash: model.irHash, trace })}`;
   return {
     ...seed,
+    ...(overrides ?? {}),
+    tick: overrides?.tick ?? 0,
     running: false,
     stepMode: false,
+    irHash: model.irHash,
+    signals: overrides?.signals ?? {},
+    trace,
+    traceHash,
     guard: toRuntimeSimGuard(model),
   };
 }
@@ -1522,16 +1765,17 @@ function applyInteractiveSimResult(
   previous: RuntimeSimState | undefined,
   result: SimEngineResult<RuntimeSimState>,
   model: SimulationModel,
-  overrides?: Partial<RuntimeSimState>
+  okOverrides?: Partial<RuntimeSimState>,
+  blockedOverrides?: Partial<RuntimeSimState>
 ): RuntimeSimState {
   if (result.status === 'ok') {
     return {
       ...result.value,
-      ...(overrides ?? {}),
+      ...(okOverrides ?? {}),
       guard: undefined,
     };
   }
-  return buildBlockedRuntimeSimState(previous, model);
+  return buildBlockedRuntimeSimState(previous, model, blockedOverrides);
 }
 
 function initializeSimulationStateForCircuit(
@@ -1541,7 +1785,13 @@ function initializeSimulationStateForCircuit(
 ): RuntimeSimState {
   const model = buildSimulationModelForCircuit(circuit);
   const result = resetSimulationStateFromModel(circuit, model, ioRows, previous);
-  return applyInteractiveSimResult(previous, result, model);
+  return applyInteractiveSimResult(
+    previous,
+    result,
+    model,
+    undefined,
+    buildBlockedRuntimeSnapshotFromModel(circuit, model, previous?.inputs)
+  );
 }
 
 function normalizeMacroInsertionCounts(value: unknown): Record<string, number> {
@@ -2009,6 +2259,13 @@ function commitDesignSnapshot(
 function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
   return {
     ...run,
+    runKind: getRuntimeVerifyRunKind(run),
+    scenarioVersion:
+      Number.isFinite(run.scenarioVersion) ? Math.max(0, Math.floor(Number(run.scenarioVersion))) : undefined,
+    scenarioContentHash:
+      typeof run.scenarioContentHash === 'string' && run.scenarioContentHash.trim().length > 0
+        ? run.scenarioContentHash.trim()
+        : undefined,
     scheduleContract: run.scheduleContract
       ? cloneVerifyScheduleContract(run.scheduleContract)
       : undefined,
@@ -2071,6 +2328,40 @@ function cloneVerifyScheduleContract(contract: VerifyScheduleContract): VerifySc
   };
 }
 
+// ---------------------------------------------------------------------------
+// Verify Authority and Invalidation Rules
+// ---------------------------------------------------------------------------
+//
+// A Verify result is authoritative when ALL of the following hold:
+//   1. It has a non-empty scenarioId that is not the legacy 'runtime-trace' sentinel.
+//   2. Its deterministicHash is a valid non-legacy hash (does not start with 'sim_').
+//   3. Its reportHash is a non-empty string.
+//   4. It was produced by an assertion-backed verify run, not a trace-only run.
+//
+// A result loses authority — and must be demoted to STALE — immediately when any of:
+//   a. Circuit I/O shape changes (adds, removes, or renames input/output nodes).
+//      Detected by: lastRun.deterministicHash !== currentDeterministicHash.
+//   b. Active scenario lane set changes (vectors added, removed, or reordered).
+//      Detected by: lastRun.scenarioContentHash !== computeScenarioContentHash(activeScenario).
+//   c. Sequential/clock policy changes (clocking mode, clock net, reset policy).
+//      Detected by: deterministicHash mismatch (clock topology is baked into the hash).
+//   d. Mapped board IO changes (pin assignments for IO nodes are updated).
+//      Detected by: deterministicHash mismatch (ioMapping is included in hash).
+//
+// When a run is demoted to STALE:
+//   - Surviving stimulus vectors are preserved (only expected-output authority is dropped).
+//   - Orphaned expected outputs (for ports that no longer exist) are dropped on next run.
+//   - The UI must not display a bare PASS or FAIL badge; it must show STALE prominently.
+//
+// Invalidation is handled at two layers:
+//   1. Load-time: hasLegacyVerifyTrust() clears runs with pre-authoritative hash formats.
+//   2. Render-time: isRunStale in VerifySurface.tsx computes the live hash mismatch gate.
+//      See: packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx — isRunStale.
+//
+// These rules implement the principle that STALE ≠ FAIL. A stale result tells the student
+// "we don't know yet" — it must never be displayed as a circuit failure.
+// ---------------------------------------------------------------------------
+
 function isAuthoritativeVerifyHash(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0 && !value.startsWith('sim_');
 }
@@ -2080,11 +2371,11 @@ function isAuthoritativeVerifyRun(run: RuntimeVerifyRun | undefined | null): run
   if (run.scenarioId.trim().length === 0 || run.scenarioId === 'runtime-trace') return false;
   if (!isAuthoritativeVerifyHash(run.deterministicHash)) return false;
   if (typeof run.reportHash !== 'string' || run.reportHash.trim().length === 0) return false;
-  return !Array.isArray(run.traceWaveform);
+  return getRuntimeVerifyRunKind(run) === 'verify';
 }
 
 function isLegacyRuntimeTraceVerifyRun(run: RuntimeVerifyRun | undefined | null): boolean {
-  return Boolean(run) && !isAuthoritativeVerifyRun(run);
+  return Boolean(run) && getRuntimeVerifyRunKind(run) === 'trace';
 }
 
 function hasLegacyVerifyTrust(
@@ -2427,6 +2718,7 @@ function normalizePersistedProjectHealth(
         ? {
             status: verifyLastRun.status,
             hash: verifyLastRun.deterministicHash,
+            runKind: getRuntimeVerifyRunKind(verifyLastRun) ?? 'verify',
             reportHash: verifyLastRun.reportHash,
             report: verifyLastRun.report,
             failingTick: verifyLastRun.firstFailingTick,
@@ -2464,6 +2756,7 @@ function normalizePersistedLastVerify(
     return {
       status: verifyLastRun.status,
       hash: verifyLastRun.deterministicHash,
+      runKind: getRuntimeVerifyRunKind(verifyLastRun) ?? 'verify',
       reportHash: verifyLastRun.reportHash,
       qualification: verifyLastRun.qualification,
       report: verifyLastRun.report,
@@ -2482,6 +2775,10 @@ function normalizePersistedLastVerify(
   return {
     status: candidate.status,
     hash: candidate.hash,
+    runKind:
+      candidate.runKind === 'trace' || candidate.runKind === 'verify'
+        ? candidate.runKind
+        : getRuntimeVerifyRunKind(verifyLastRun) ?? 'verify',
     qualification: candidate.qualification === 'incomplete-mapping' ? 'incomplete-mapping' : undefined,
     reportHash: typeof candidate.reportHash === 'string' ? candidate.reportHash : undefined,
     report: verifyLastRun?.report,

@@ -120,6 +120,155 @@ describe('bringupArtifacts canonical naming', () => {
     ]);
   });
 
+  it('simulates combinational starter vectors for a half-adder instead of defaulting outputs to zero', () => {
+    const vectors = generateBringUpVectors({
+      circuit: {
+        nodes: [
+          {
+            id: 'a_node',
+            type: 'INPUT',
+            label: 'A',
+            position: { x: 0, y: 0 },
+            x: 0,
+            y: 0,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'b_node',
+            type: 'INPUT',
+            label: 'B',
+            position: { x: 0, y: 120 },
+            x: 0,
+            y: 120,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'xor_node',
+            type: 'XOR',
+            label: 'SUM',
+            position: { x: 220, y: 20 },
+            x: 220,
+            y: 20,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'and_node',
+            type: 'AND',
+            label: 'CARRY',
+            position: { x: 220, y: 150 },
+            x: 220,
+            y: 150,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'sum_node',
+            type: 'OUTPUT',
+            label: 'SUM',
+            position: { x: 420, y: 20 },
+            x: 420,
+            y: 20,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'carry_node',
+            type: 'OUTPUT',
+            label: 'CARRY',
+            position: { x: 420, y: 150 },
+            x: 420,
+            y: 150,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+        ],
+        connections: [
+          {
+            from: { nodeId: 'a_node', portName: 'out' },
+            to: { nodeId: 'xor_node', portName: 'a' },
+          },
+          {
+            from: { nodeId: 'b_node', portName: 'out' },
+            to: { nodeId: 'xor_node', portName: 'b' },
+          },
+          {
+            from: { nodeId: 'a_node', portName: 'out' },
+            to: { nodeId: 'and_node', portName: 'a' },
+          },
+          {
+            from: { nodeId: 'b_node', portName: 'out' },
+            to: { nodeId: 'and_node', portName: 'b' },
+          },
+          {
+            from: { nodeId: 'xor_node', portName: 'out' },
+            to: { nodeId: 'sum_node', portName: 'in' },
+          },
+          {
+            from: { nodeId: 'and_node', portName: 'out' },
+            to: { nodeId: 'carry_node', portName: 'in' },
+          },
+        ],
+      },
+      ioRows: [
+        {
+          id: 'a',
+          nodeId: 'a_node',
+          port: 'out',
+          label: 'A',
+          direction: 'in',
+          pin: 'SW0',
+          required: true,
+        },
+        {
+          id: 'b',
+          nodeId: 'b_node',
+          port: 'out',
+          label: 'B',
+          direction: 'in',
+          pin: 'SW1',
+          required: true,
+        },
+        {
+          id: 'sum',
+          nodeId: 'sum_node',
+          port: 'in',
+          label: 'SUM',
+          direction: 'out',
+          pin: 'LD0',
+          required: true,
+        },
+        {
+          id: 'carry',
+          nodeId: 'carry_node',
+          port: 'in',
+          label: 'CARRY',
+          direction: 'out',
+          pin: 'LD1',
+          required: true,
+        },
+      ],
+    });
+
+    expect(vectors.map((vector) => ({
+      inputs: vector.inputs,
+      expected: vector.expected,
+    }))).toEqual([
+      { inputs: { a: 0, b: 0 }, expected: { sum: 0, carry: 0 } },
+      { inputs: { a: 1, b: 0 }, expected: { sum: 1, carry: 0 } },
+      { inputs: { a: 0, b: 1 }, expected: { sum: 1, carry: 0 } },
+      { inputs: { a: 1, b: 1 }, expected: { sum: 0, carry: 1 } },
+    ]);
+  });
+
   it('drives the semantic clock input in sequential bring-up vectors even when its label is not clock-shaped', () => {
     const vectors = generateBringUpVectors({
       circuit: {
@@ -223,7 +372,7 @@ describe('bringupArtifacts canonical naming', () => {
     expect(vectors[3]?.expected.q).toBe(1);
   });
 
-  it('falls back to stimulus-only vectors for sequential designs it cannot classify safely', () => {
+  it('simulates expected outputs for sequential designs it cannot classify semantically', () => {
     const vectors = generateBringUpVectors({
       circuit: {
         nodes: [
@@ -345,6 +494,133 @@ describe('bringupArtifacts canonical naming', () => {
     expect(vectors).toHaveLength(8);
     expect(vectors[0]?.inputs.clk).toBe(0);
     expect(vectors[1]?.inputs.clk).toBe(1);
-    expect(vectors.every((vector) => Object.keys(vector.expected ?? {}).length === 0)).toBe(true);
+    expect(vectors.every((vector) => Object.keys(vector.expected ?? {}).length === 1)).toBe(true);
+    expect(vectors[0]?.expected.q).toBe(0);
+    expect(vectors.some((vector) => vector.expected?.q === 1)).toBe(true);
+  });
+
+  it('simulates generic D flip-flop outputs even when the output labels are plain board LEDs', () => {
+    const vectors = generateBringUpVectors({
+      circuit: {
+        nodes: [
+          {
+            id: 'data_node',
+            type: 'INPUT',
+            label: 'sw0',
+            position: { x: 0, y: 0 },
+            x: 0,
+            y: 0,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'clock_node',
+            type: 'Clock',
+            label: 'clk100mhz',
+            position: { x: 0, y: 100 },
+            x: 0,
+            y: 100,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'ff_node',
+            type: 'DFlipFlop',
+            label: 'ff0',
+            position: { x: 220, y: 40 },
+            x: 220,
+            y: 40,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'ld0_node',
+            type: 'OUTPUT',
+            label: 'ld0',
+            position: { x: 420, y: 0 },
+            x: 420,
+            y: 0,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+          {
+            id: 'ld1_node',
+            type: 'OUTPUT',
+            label: 'ld1',
+            position: { x: 420, y: 80 },
+            x: 420,
+            y: 80,
+            rotation: 0,
+            config: {},
+            state: {},
+          },
+        ],
+        connections: [
+          {
+            from: { nodeId: 'data_node', portName: 'out' },
+            to: { nodeId: 'ff_node', portName: 'D' },
+          },
+          {
+            from: { nodeId: 'clock_node', portName: 'out' },
+            to: { nodeId: 'ff_node', portName: 'CLK' },
+          },
+          {
+            from: { nodeId: 'ff_node', portName: 'Q' },
+            to: { nodeId: 'ld0_node', portName: 'in' },
+          },
+          {
+            from: { nodeId: 'ff_node', portName: 'Q_inv' },
+            to: { nodeId: 'ld1_node', portName: 'in' },
+          },
+        ],
+      },
+      ioRows: [
+        {
+          id: 'sw0',
+          nodeId: 'data_node',
+          port: 'out',
+          label: 'sw0',
+          direction: 'in',
+          pin: 'SW0',
+          required: true,
+        },
+        {
+          id: 'clk100mhz',
+          nodeId: 'clock_node',
+          port: 'out',
+          label: 'clk100mhz',
+          direction: 'in',
+          pin: 'CLK100MHZ',
+          required: true,
+        },
+        {
+          id: 'ld0',
+          nodeId: 'ld0_node',
+          port: 'in',
+          label: 'ld0',
+          direction: 'out',
+          pin: 'LD0',
+          required: true,
+        },
+        {
+          id: 'ld1',
+          nodeId: 'ld1_node',
+          port: 'in',
+          label: 'ld1',
+          direction: 'out',
+          pin: 'LD1',
+          required: true,
+        },
+      ],
+    });
+
+    expect(vectors).toHaveLength(8);
+    expect(vectors[0]?.expected).toEqual({ ld0: 0, ld1: 1 });
+    expect(vectors.every((vector) => Object.keys(vector.expected ?? {}).sort().join(',') === 'ld0,ld1')).toBe(true);
+    expect(vectors.every((vector) => vector.expected?.ld0 !== undefined && vector.expected?.ld1 !== undefined)).toBe(true);
   });
 });

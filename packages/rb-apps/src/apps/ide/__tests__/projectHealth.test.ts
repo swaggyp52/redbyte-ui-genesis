@@ -128,6 +128,38 @@ describe('projectHealth verify trust vs structural blockers', () => {
     ).toEqual({ label: 'Verify', mode: 'verify', code: 'RBP1004' });
   });
 
+  it('routes trace-only current evidence back to Verify instead of treating it like a pass', () => {
+    const health = deriveProjectHealth(
+      {
+        lastVerify: {
+          status: 'pass',
+          runKind: 'trace',
+          hash: 'verify-trace-hash',
+          ranAtIso: '2026-03-25T00:00:00.000Z',
+        },
+        lastExport: undefined,
+        dirtySinceVerify: false,
+        dirtySinceExport: false,
+      },
+      {
+        hasCircuit: true,
+        hasIoMapping: true,
+        hasVectors: true,
+        verifyQualification: undefined,
+      }
+    );
+
+    expect(health.blockingIssues).toEqual([]);
+    expect(
+      choosePrimaryProjectCta(health, {
+        hasCircuit: true,
+        hasIoMapping: true,
+        hasVectors: true,
+        verifyQualification: undefined,
+      })
+    ).toEqual({ label: 'Verify', mode: 'verify', code: 'RBP1004' });
+  });
+
   it('keeps stale verify out of structural blockingIssues while preserving export dirtiness', () => {
     const health = deriveProjectHealth(
       {

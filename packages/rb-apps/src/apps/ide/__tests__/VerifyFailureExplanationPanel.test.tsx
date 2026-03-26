@@ -78,6 +78,6 @@ describe('VerifyFailureExplanationPanel', () => {
       <VerifyFailureExplanationPanel failure={null} classification={null} />
     );
 
-    expect(getByText('Select a failing row to inspect expected vs actual output.')).toBeTruthy();
+    expect(getByText('Select a differing row to inspect expected vs observed output.')).toBeTruthy();
   });
 });

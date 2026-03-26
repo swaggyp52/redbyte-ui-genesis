@@ -3,7 +3,12 @@
 // Drop-in compatible: same props interface as IdeGuidedStrip.
 
 import React, { useMemo } from 'react';
-import type { ProjectHealth, ProjectHealthMode, ProjectPrimaryCta } from '../projectHealth';
+import {
+  deriveProjectVerifyState,
+  type ProjectHealth,
+  type ProjectHealthMode,
+  type ProjectPrimaryCta,
+} from '../projectHealth';
 import { IdeButton } from './IdePrimitives';
 
 export interface PipelineStripProps {
@@ -46,8 +51,12 @@ function deriveStageStatus(
   switch (stage.key) {
     case 'design':
       return !codes.has('RBP1000') && !codes.has('RBP1001') ? 'pass' : 'pending';
-    case 'verify':
-      return health.lastVerify && !health.dirtySinceVerify ? 'pass' : 'pending';
+    case 'verify': {
+      const verifyState = deriveProjectVerifyState(health);
+      if (verifyState === 'assertions-match') return 'pass';
+      if (verifyState === 'assertions-differ' || verifyState === 'verify-error') return 'blocked';
+      return 'pending';
+    }
     case 'hardware':
       // Hardware has no strong pass signal in the health model yet — keep pending unless verify passes
       return 'pending';

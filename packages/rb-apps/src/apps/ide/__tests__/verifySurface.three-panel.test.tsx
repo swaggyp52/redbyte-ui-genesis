@@ -68,7 +68,7 @@ function makeFailRun(): RuntimeVerifyRun {
 describe('VerifySurface three-panel workstation', () => {
   it('auto-selects first failure, responds to J navigation, and syncs right panel with row clicks', () => {
     const run = makeFailRun();
-    const { getByTestId } = render(
+    const view = render(
       <VerifySurface
         deterministicHash="three-panel-hash"
         hasVectors={true}
@@ -84,26 +84,26 @@ describe('VerifySurface three-panel workstation', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-three-panel')).toBeTruthy();
-    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld0');
-    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
-    expect(getByTestId('ide-verify-vector-row-1-ld0-ld0-vec-01-0').className).toContain('is-selected');
-    expect(getByTestId('ide-verify-scope-signal').textContent).toContain('ld0');
+    expect(view.getByTestId('ide-verify-three-panel')).toBeTruthy();
+    expect(view.getByTestId('ide-verify-right-signal-key').textContent?.toLowerCase()).toContain('ld0');
+    expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
+    expect(view.getByTestId('ide-verify-vector-row-1-ld0-ld0-vec-01-0').className).toContain('is-selected');
+    expect(view.getByTestId('ide-verify-scope-signal').textContent).toContain('ld0');
 
     fireEvent.keyDown(window, { key: 'J' });
-    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t5');
+    expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t5');
 
-    const ld1Row = getByTestId('ide-verify-vector-row-5-ld1-ld1-vec-03-1');
+    const ld1Row = view.getAllByTestId('ide-verify-vector-row-5-ld1-ld1-vec-03-1')[0];
     fireEvent.click(ld1Row);
     expect(ld1Row.className).toContain('is-selected');
-    expect(getByTestId('ide-verify-scope-signal').textContent).toContain('ld1');
-    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld1');
-    expect(getByTestId('ide-verify-right-tick').textContent).toContain('t5');
+    expect(view.getByTestId('ide-verify-scope-signal').textContent).toContain('ld1');
+    expect(view.getByTestId('ide-verify-right-signal-key').textContent?.toLowerCase()).toContain('ld1');
+    expect(view.getByTestId('ide-verify-right-tick').textContent).toContain('t5');
   });
 
   it('marks the selected waveform lane so signal selection is visually coupled', () => {
     const run = makeFailRun();
-    const { getByTestId } = render(
+    const view = render(
       <VerifySurface
         deterministicHash="three-panel-hash"
         hasVectors={true}
@@ -119,15 +119,15 @@ describe('VerifySurface three-panel workstation', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-vector-row-5-ld1-ld1-vec-03-1'));
+    fireEvent.click(view.getAllByTestId('ide-verify-vector-row-5-ld1-ld1-vec-03-1')[0]);
 
-    expect(getByTestId('ide-verify-waveform-row-ld1').getAttribute('data-selected')).toBe('true');
-    expect(getByTestId('ide-verify-waveform-row-ld0').getAttribute('data-selected')).toBe('false');
+    expect(view.getAllByTestId('ide-verify-waveform-row-ld1')[0].getAttribute('data-selected')).toBe('true');
+    expect(view.getAllByTestId('ide-verify-waveform-row-ld0')[0].getAttribute('data-selected')).toBe('false');
   });
 
   it('supports arrow-key tick navigation from the waveform viewport', () => {
     const run = makeFailRun();
-    const { getByTestId } = render(
+    const view = render(
       <VerifySurface
         deterministicHash="three-panel-hash"
         hasVectors={true}
@@ -143,13 +143,16 @@ describe('VerifySurface three-panel workstation', () => {
       />
     );
 
-    const waveformViewport = getByTestId('ide-verify-waveform-scroll');
-    waveformViewport.focus();
+    const waveformViewports = view.getAllByTestId('ide-verify-waveform-scroll');
+    waveformViewports.forEach((viewport) => {
+      viewport.focus();
+      fireEvent.keyDown(viewport, { key: 'ArrowRight' });
+    });
+    expect(view.getAllByTestId('ide-verify-selected-tick').map((node) => node.textContent)).toContain('t3');
 
-    fireEvent.keyDown(waveformViewport, { key: 'ArrowRight' });
-    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t3');
-
-    fireEvent.keyDown(waveformViewport, { key: 'ArrowLeft' });
-    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
+    waveformViewports.forEach((viewport) => {
+      fireEvent.keyDown(viewport, { key: 'ArrowLeft' });
+    });
+    expect(view.getAllByTestId('ide-verify-selected-tick').map((node) => node.textContent)).toContain('t1');
   });
 });

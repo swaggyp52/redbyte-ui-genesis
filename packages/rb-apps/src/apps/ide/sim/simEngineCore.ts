@@ -221,6 +221,27 @@ export function recomputeSimulationStateFromModel(
   };
 }
 
+export function buildBlockedRuntimeSnapshotFromModel(
+  executionCircuit: Circuit,
+  model: SimulationModel,
+  previousInputs?: Record<string, 0 | 1>
+): Pick<RuntimeSimState, 'tick' | 'irHash' | 'traceHash' | 'inputs' | 'signals' | 'trace'> {
+  const trace: RuntimeSimTraceSample[] = [];
+  const inputs = deriveSimulationInputsFromModel(model, executionCircuit, previousInputs);
+  const signals: Record<string, 0 | 1> = {};
+  for (const port of getExternallyDrivenPorts(model)) {
+    signals[`${port.sourceNodeId}.out`] = inputs[port.sourceNodeId] ?? 0;
+  }
+  return {
+    tick: 0,
+    irHash: model.irHash,
+    traceHash: computeTraceHash(model.irHash, trace),
+    inputs,
+    signals,
+    trace,
+  };
+}
+
 export function buildVerifyRowsFromRuntimeTrace(
   vectors: TestVector[],
   ioRows: SimulationIoRow[],

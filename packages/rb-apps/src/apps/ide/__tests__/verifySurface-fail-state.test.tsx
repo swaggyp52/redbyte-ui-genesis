@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -41,7 +41,7 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-summary-status').textContent).toContain('FAIL');
+    expect(getByTestId('ide-verify-summary-status').textContent).toContain('ASSERTIONS DIFFER');
     expect(getByTestId('ide-verify-failure-explainer')).toBeTruthy();
     expect(queryByTestId('ide-verify-fail-summary-inline')).toBeNull();
   });
@@ -61,5 +61,24 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
     expect(getAllByTestId('ide-verify-drawer-toggle')[0]?.getAttribute('aria-expanded')).toBe('false');
     expect(container.querySelector('[data-testid="ide-verify-jump-to-failure-card"]')).toBeNull();
     expect(queryByTestId('ide-verify-jump-to-failure')).toBeNull();
+  });
+
+  it('keeps fail evidence visible after switching the next-run toggle back to trace intent', () => {
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={makeFailRun()}
+        onOpenProjectVectors={vi.fn()}
+        onFixPath={vi.fn()}
+      />
+    );
+
+    fireEvent.click(getByTestId('ide-verify-assertion-mode-toggle'));
+
+    expect(getByTestId('ide-verify-assertion-mode-toggle').textContent).toContain('Trace Inputs Only');
+    expect(getByTestId('ide-verify-summary-status').textContent).toContain('ASSERTIONS DIFFER');
+    expect(getByTestId('ide-verify-run-proof').className).toContain('ide-verify-run-proof--fail');
+    expect(getByTestId('ide-verify-failure-explainer')).toBeTruthy();
   });
 });
