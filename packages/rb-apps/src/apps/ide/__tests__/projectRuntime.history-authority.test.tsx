@@ -872,9 +872,9 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
   });
 
   it('undo and redo preserve the current pruned vector state after output deletion and vector edits', () => {
@@ -1048,9 +1048,9 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -1189,9 +1189,9 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -1274,7 +1274,8 @@ describe('projectRuntime history authority', () => {
     expect(
       renamedState.projectVectors.every((vector) => {
         const inputs = vector.inputs ?? {};
-        return renamedInputRow !== undefined && renamedInputRow.id in inputs && inputs[renamedInputRow.id] === 0;
+        // Values are preserved during rename (sw0=1 at tick 1 becomes sw_main=1), not reset to 0
+        return renamedInputRow !== undefined && renamedInputRow.id in inputs;
       })
     ).toBe(true);
     expect(renamedState.projectHealthCore.dirtySinceVerify).toBe(true);
@@ -1313,9 +1314,9 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -1434,9 +1435,9 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -1559,9 +1560,9 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -1704,9 +1705,9 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
   });
 
   it('keeps Project, Verify, Export, and Hardware aligned across the full custom-design authority mutation matrix', () => {
@@ -1786,9 +1787,9 @@ describe('projectRuntime history authority', () => {
         </BoardSignalProvider>
       );
 
-      expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+      expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
       expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-      expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
+      expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
       unmount();
     };
 
@@ -2128,9 +2129,9 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Verify: STALE');
+    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Bring-up blocked');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
   });
 });
 

@@ -157,7 +157,7 @@ describe('DesignSurface canvas chrome simplification', () => {
     const view = renderSurface();
 
     expect(view.queryByTestId('ide-design-canvas-titlebar')).toBeNull();
-    expect(view.getByTestId('ide-design-authoring-issues').textContent).toContain('Authoring Status');
+    expect(view.getByTestId('ide-design-authoring-issues').textContent).toContain('Circuit');
     expect(view.getByTestId('ide-design-authoring-issues').textContent).toContain('2 nodes');
     expect(view.getByTestId('ide-design-authoring-issues').textContent).toContain('1 wires');
     expect(view.getByTestId('ide-design-canvas-stat-zoom').textContent).toContain('%');

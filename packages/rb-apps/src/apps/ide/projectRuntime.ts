@@ -2076,6 +2076,41 @@ function rekeyVectorsForLiveIo<T extends TestVector>(
   })) as T[];
 }
 
+function ensureVectorOutputCoverage<T extends TestVector>(
+  vectors: T[],
+  rows: ProjectIoRow[]
+): T[] {
+  const outputRows = rows.filter((row) => row.direction === 'out');
+  if (outputRows.length === 0) return cloneVectors(vectors);
+
+  return vectors.map((vector) => {
+    const nextExpected: Record<string, 0 | 1> = { ...(vector.expected ?? {}) };
+    const normalizedExpectedKeys = new Set(
+      Object.keys(nextExpected)
+        .map((key) => normalizePortToken(key))
+        .filter((key) => key.length > 0)
+    );
+
+    for (const row of outputRows) {
+      const aliases = [row.id, row.label, row.nodeId]
+        .map((key) => normalizePortToken(key))
+        .filter((key) => key.length > 0);
+      const hasCoverage = aliases.some((alias) => normalizedExpectedKeys.has(alias));
+      if (hasCoverage) continue;
+      const outputKey = row.id.trim();
+      if (!outputKey) continue;
+      nextExpected[outputKey] = 0;
+      normalizedExpectedKeys.add(normalizePortToken(outputKey));
+    }
+
+    return {
+      ...vector,
+      inputs: { ...(vector.inputs ?? {}) },
+      expected: nextExpected,
+    };
+  }) as T[];
+}
+
 function normalizeVectorsForLiveIo<T extends TestVector>(
   vectors: T[],
   rows: ProjectIoRow[]
@@ -2222,20 +2257,29 @@ function commitDesignSnapshot(
     ? cloneVectors(snapshot.projectVectors)
     : cloneVectors(state.projectVectors);
   const projectVectorRows = snapshot.projectVectors ? snapshot.projectIoRows : state.projectIoRows;
-  const nextProjectVectors = normalizeVectorsForLiveIo(
-    rekeyVectorsForLiveIo(sourceProjectVectors, projectVectorRows, nextIoRows),
+  const nextProjectVectors = ensureVectorOutputCoverage(
+    normalizeVectorsForLiveIo(
+      rekeyVectorsForLiveIo(sourceProjectVectors, projectVectorRows, nextIoRows),
+      nextIoRows
+    ),
     nextIoRows
   );
-  const nextCustomVectors = normalizeVectorsForLiveIo(
-    rekeyVectorsForLiveIo(cloneVectors(state.customVectors), state.projectIoRows, nextIoRows),
+  const nextCustomVectors = ensureVectorOutputCoverage(
+    normalizeVectorsForLiveIo(
+      rekeyVectorsForLiveIo(cloneVectors(state.customVectors), state.projectIoRows, nextIoRows),
+      nextIoRows
+    ),
     nextIoRows
   );
   const nextScenarios = state.scenarios.map((scenario) => ({
     ...scenario,
-    vectors: normalizeVectorsForLiveIo(
-      rekeyVectorsForLiveIo(
-        cloneVectors(Array.isArray(scenario.vectors) ? scenario.vectors : []),
-        state.projectIoRows,
+    vectors: ensureVectorOutputCoverage(
+      normalizeVectorsForLiveIo(
+        rekeyVectorsForLiveIo(
+          cloneVectors(Array.isArray(scenario.vectors) ? scenario.vectors : []),
+          state.projectIoRows,
+          nextIoRows
+        ),
         nextIoRows
       ),
       nextIoRows
