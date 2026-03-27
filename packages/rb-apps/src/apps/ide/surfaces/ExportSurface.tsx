@@ -783,7 +783,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       dock={
         <section className="ide-workbench-placeholder ide-export-sidecard" data-testid="ide-export-checks-dock">
           <header className="ide-workbench-placeholder-header">
-            <h3>Handoff</h3>
+            <h3>Export</h3>
             <IdeStatusPill tone={exportTrusted ? 'ok' : hasBlockingErrors ? 'error' : 'warn'}>
               {exportTrusted ? 'COMPARE ALIGNED' : hasBlockingErrors ? 'BLOCKED' : 'EXPORT AVAILABLE'}
             </IdeStatusPill>
