@@ -1,4 +1,49 @@
 # AI State
+## Change Log 2026-03-26 (Classroom trust handoff canonized and stale export-bug reopen drift removed)
+
+**Subsystem**: Docs / roadmap authority
+
+### Problem
+
+Verify close-out changed the repo's center of gravity, but the repo still lacked one canonical handoff for the next phase.
+
+That left three documentation problems:
+
+- there was no single planning and acceptance document for the shift from subsystem firefighting to classroom trust
+- `01 Dashboard/RedByte Engineering Brain.md` still listed `BUG-007`, `BUG-008`, and `BUG-009` as open export bugs even though the underlying bug notes were already closed and the fixes were committed
+- `docs/roadmap/ece141-gap-queue.md` was still easy to misread as the top-level roadmap even though it is a narrower Basys3/ECE141 execution queue
+
+### What changed
+
+- Added `docs/roadmap/redbyte-classroom-gap-handoff.md`
+  - Defines the next phase around classroom trust, not Verify reopening.
+  - Preserves the current four-surface architecture while declaring the student-facing five-step spine: `Design -> Verify -> Map Pins -> Export -> Program`.
+  - Distinguishes what `classroom:signoff` proves today from the broader classroom-trust evidence still missing.
+  - Locks the five ranked deficits, the execution order, and the evidence expectations for each gap.
+
+- Updated `01 Dashboard/RedByte Engineering Brain.md`
+  - Points to the new classroom trust handoff as the canonical next-phase roadmap.
+  - Replaces the older ad hoc next-priority list with the recommended implementation order from the new handoff.
+  - Reclassifies `BUG-007`, `BUG-008`, and `BUG-009` as recently resolved export-truth fixes that must be preserved, not reopened.
+
+- Updated `docs/roadmap/ece141-gap-queue.md`
+  - Added a short preface clarifying that the file remains a narrower Basys3/ECE141 execution queue under the broader classroom trust roadmap.
+
+### Recommendation
+
+- Use `docs/roadmap/redbyte-classroom-gap-handoff.md` as the canonical planning and acceptance document for the next phase.
+- Keep `docs/roadmap/ece141-gap-queue.md` focused on narrower execution slices rather than top-level product prioritization.
+- Do not reopen Verify or the resolved export-clarity bugs as the central roadmap theme unless new contradictory evidence appears.
+
+### Student-visible behavior
+
+- No runtime behavior changed.
+- This slice changes planning truth only: the repo now has one canonical next-phase handoff and no stale signal that already-resolved export bugs are still open.
+
+### Proof
+
+- `git diff --check -- AI_STATE.md "01 Dashboard/RedByte Engineering Brain.md" docs/roadmap/ece141-gap-queue.md docs/roadmap/redbyte-classroom-gap-handoff.md`
+
 ## Change Log 2026-03-25 (Export authority-chain test fixtures aligned to runKind + signalInventory contracts)
 
 **Subsystem**: Export/Verify test contract

@@ -4,6 +4,13 @@ Status: Active
 Date: 2026-02-18  
 Owner: Connor Angiel
 
+## Position In The Roadmap
+
+- Canonical next-phase product roadmap: `docs/roadmap/redbyte-classroom-gap-handoff.md`
+- This file remains a narrower Basys3/ECE141 execution queue.
+- Use the classroom trust handoff for top-level product ranking, workflow authority, onboarding expectations, and evidence standards.
+- Use this queue to execute the ECE141-specific slices that fall out of that broader handoff.
+
 ## Scope Lock
 
 - Basys3 only.

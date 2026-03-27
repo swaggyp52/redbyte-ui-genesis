@@ -91,3 +91,9 @@ playwright-report/
 
 # Claude Code IDE local settings
 .claude/settings.local.json
+
+# Obsidian vault local state
+.obsidian/
+
+# Obsidian base view files
+*.base

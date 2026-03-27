@@ -60,12 +60,19 @@ For test work: [[Test Infrastructure]]
 
 **Verify is closed.** UX clarity pass (A/B/C), Verify debug pass, and render-suite cleanup are all done. Render baseline: 52 PASS / 9 suites / 0 red. Do not reopen Verify in this thread.
 
-Next priority — pick the one that hurts real student usage most:
+Canonical next-phase roadmap:
 
-1. **Export/Vivado friction** — student confused between ZIP download and Vivado workflow; RBEX error codes surfaced but Vivado integration steps may still be unclear
-2. **Design-surface interaction** — known pain in large circuits; undo/redo, selection, node alignment
-3. **Onboarding / empty-state** — first-run experience and lab starters gallery
-4. **Import/submission clarity** — VHDL import parse errors, submission bundle feedback
+- `docs/roadmap/redbyte-classroom-gap-handoff.md`
+
+Use its recommended implementation order:
+
+1. **Workflow spine + shared step authority** - Project, left rail, pipeline strip, headers, and CTAs must agree on done / blocked / next / why
+2. **Design-surface interaction** - editor legitimacy for wires, selection, undo/redo, dense circuits, and sequential authoring
+3. **Hardware/export failure truth** - actionable failure taxonomy, recovery paths, and artifact/readiness clarity
+4. **Onboarding / empty-state** - first-run clarity, required vs optional steps, and known-good starter authority
+5. **Sequential / clocked trust** - consistent timing language and proof across Verify, Export, and Hardware
+
+Examples, starters, and classroom ops should ride inside those tracks as proof obligations, not as separate top-tier roadmap lanes.
 
 ---
 
@@ -107,9 +114,9 @@ audit-determinism                 1   verifyContract.reset         8
 
 Render harness (all 9 suites green):
 
-- `verifySurface-fail-state` 3 · `verifySurface.failure-context` 2 · `verifySurface.authoring` 11
-- `verifySurface.three-panel` 3 · `verifySurface.workstation` 23 · `verifySurface.hints-bridge` 3
-- `verifySurface.failure-patterns` 5 · `verifySurface.waveform-priority` 1 · `verifySurface.combo-kmap-provenance` 1
+- `verifySurface-fail-state` 3 - `verifySurface.failure-context` 2 - `verifySurface.authoring` 11
+- `verifySurface.three-panel` 3 - `verifySurface.workstation` 23 - `verifySurface.hints-bridge` 3
+- `verifySurface.failure-patterns` 5 - `verifySurface.waveform-priority` 1 - `verifySurface.combo-kmap-provenance` 1
 
 ---
 
@@ -120,3 +127,8 @@ Render harness (all 9 suites green):
 **Stubs (expand when touching):** [[Export Contracts]] - [[Signal Inventory]] - [[Authority Chain]] - [[Bridge Protocol]] - [[Basys 3 Mapping]]
 
 **Decisions:** [[ADR-001 Enforce Structured Connection Format]] - [[ADR-002 Truth Table Selection Does Not Auto-Switch Tabs]]
+
+**Recent export truth fixes (resolved 2026-03-26, preserve and do not reopen):**
+- [[BUG-007 Export Verify Gate Tone Mismatch]] - stale-after-pass export state is advisory `STALE`, not a red blocker (`b5cf70c7`)
+- [[BUG-008 Export Vivado Steps Mismatch Download Label]] - visible Vivado steps now prioritize the normal Open Project flow (`849eca4f`)
+- [[BUG-009 Export RBEV Diagnostics Shown When Blocked]] - advisory RBEV evidence no longer appears inside hard-blocker lists (`88d7a30f`)
