@@ -236,6 +236,29 @@ describe('projectRuntime verify authority', () => {
     ).toEqual({ label: 'Verify', mode: 'verify', code: 'RBP1004' });
   });
 
+  it('trace-only run produces no comparison failures even when expected values are wrong', () => {
+    // Override vectors with intentionally wrong expected values.
+    // Circuit is sw0→ld0 (pass-through): sw0=0 → ld0=0, sw0=1 → ld0=1.
+    // We set the inverse expectations so a verify run would produce 2 fail rows.
+    useProjectRuntime.getState().setVectors([
+      { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 1 } }, // wrong: circuit produces ld0=0
+      { tick: 1, inputs: { sw0: 1 }, expected: { ld0: 0 } }, // wrong: circuit produces ld0=1
+    ]);
+
+    const run = useProjectRuntime.getState().runVerification({
+      scenarioId: 'trace-only-wrong-expected',
+      scenarioName: 'Trace Only Wrong Expected',
+      deterministicHash: 'trace-wrong-expected-hash',
+      assertionMode: false,
+      rows: [],
+      ranAtIso: '2026-03-26T00:00:00.000Z',
+    });
+
+    expect(run.runKind).toBe('trace');
+    expect(run.status).toBe('pass');
+    expect(run.report.rows.filter((row) => row.status === 'fail').length).toBe(0);
+  });
+
   it('stamps the active scenario when project vectors change in the normal shell path', () => {
     const before = useProjectRuntime.getState();
     const activeScenarioId = before.activeScenarioId;

@@ -1019,13 +1019,19 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 : requestedVerifyRows || hasExpectedVectorAssertions
                   ? 'verify'
                   : 'trace');
+          // Trace runs must not consume expected values — strip them so the engine
+          // produces observed-only rows with no comparison failures.
+          const deterministicVectors =
+            runKind === 'trace'
+              ? runtimeVectors.map((v) => ({ ...v, expected: {} as Record<string, boolean | number> }))
+              : runtimeVectors;
           const deterministicResult =
-            runtimeVectors.length > 0
+            deterministicVectors.length > 0
               ? runDeterministicVerifyFromModel(
                   state.circuit,
                   model,
                   state.projectIoRows,
-                  runtimeVectors,
+                  deterministicVectors,
                   scheduleContract
                 )
               : null;

@@ -1,6 +1,6 @@
 ---
 type: bug
-status: investigating
+status: closed
 area: verify
 priority: critical
 updated: 2026-03-26
@@ -94,4 +94,4 @@ Fix 1 can be done first (UI gate only). Fix 2 is the more correct long-term fix 
 
 **Fix 1 — APPLIED** (`VerifySurface.tsx:2773`): Removed `!hasResults` guard from `isTraceOnly`. Now trusts `runKind` directly. Render suite held at 52 PASS / 9 suites / 0 red.
 
-**Fix 2 — STILL OPEN**: Runtime gate in `projectRuntime.ts:1032`. When `runKind === 'trace'`, the deterministic engine still runs unconditionally and still produces comparison rows with failures. `lastRun.report.rows` will be non-empty on a trace run if `vector.expected` is populated. Fix 2 must strip expected values before running or skip the comparison step entirely when `runKind === 'trace'`.
+**Fix 2 — APPLIED** (`projectRuntime.ts`): When `runKind === 'trace'`, `runtimeVectors` are mapped to `deterministicVectors` with `expected: {}` before being passed to `runDeterministicVerifyFromModel`. The engine still runs (waveforms and trace data produced) but has nothing to compare against, so `failedRows` is always empty and `status` is always `'pass'` on a trace run regardless of persisted expected values. Contract test added: `'trace-only run produces no comparison failures even when expected values are wrong'`.
