@@ -116,12 +116,18 @@ export const OnboardingOverlay: React.FC<{ mode?: IdeMode }> = ({ mode = 'projec
     setStep(0);
   }, [mode]);
 
+  useEffect(() => {
+    if (mode !== 'design') return;
+    try { localStorage.setItem(STORAGE_KEY, '1'); } catch { /* ignore */ }
+    setVisible(false);
+  }, [mode]);
+
   const dismiss = () => {
     try { localStorage.setItem(STORAGE_KEY, '1'); } catch { /* ignore */ }
     setVisible(false);
   };
 
-  if (!visible) return null;
+  if (!visible || mode === 'design') return null;
 
   const current = steps[step];
 

@@ -10,6 +10,12 @@ describe('OnboardingOverlay mode copy', () => {
     localStorage.clear();
   });
 
+  it('does not render the first-run overlay for Design mode', () => {
+    const { queryByTestId } = render(<OnboardingOverlay mode="design" />);
+
+    expect(queryByTestId('ide-onboarding-overlay')).toBeNull();
+  });
+
   it('shows import-specific guidance instead of design-only instructions on Import', () => {
     const { getByTestId, queryByText } = render(<OnboardingOverlay mode="import" />);
 

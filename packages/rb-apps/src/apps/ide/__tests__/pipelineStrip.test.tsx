@@ -6,6 +6,34 @@ import { render } from '@testing-library/react';
 import { PipelineStrip } from '../components/PipelineStrip';
 
 describe('PipelineStrip export availability semantics', () => {
+  it('hides blank-design blocker guidance when the student is already on Design', () => {
+    const { queryByTestId } = render(
+      <PipelineStrip
+        currentMode="design"
+        health={{
+          lastVerify: undefined,
+          lastExport: undefined,
+          dirtySinceVerify: false,
+          dirtySinceExport: false,
+          blockingIssues: [
+            {
+              code: 'RBP1000',
+              message: 'No circuit graph yet.',
+              fixPath: { mode: 'design', actionLabel: 'Open Design' },
+            },
+          ],
+        }}
+        primaryCta={{ label: 'Open Design', mode: 'design', code: 'RBP1000' }}
+        onNavigate={vi.fn()}
+      />
+    );
+
+    expect(queryByTestId('ide-guided-blocker')).toBeNull();
+    expect(queryByTestId('ide-guided-fix-link')).toBeNull();
+    expect(queryByTestId('ide-guided-primary-cta')).toBeNull();
+    expect(queryByTestId('ide-guided-ready')).toBeNull();
+  });
+
   it('treats stale or missing verify as pending instead of blocked while export remains navigable', () => {
     const { getByTestId, queryByTestId } = render(
       <PipelineStrip

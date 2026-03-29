@@ -67,11 +67,11 @@ Canonical next-phase roadmap:
 
 Latest completed Design slice:
 
-- `2026-03-29` - left dock simplification landed; search plus core parts now lead the Design first look, while Board Resources and Live Inputs default to collapsed and board search still auto-reveals inventory when needed.
+- `2026-03-29` - blank-state guidance de-duplication landed; blank Design now teaches with one primary in-canvas card while the Design modal, shortcut strip, duplicate idle-inspector coaching, and redundant pipeline CTA no longer compete on first look.
 
 Next Design chrome action:
 
-- blank-state guidance de-duplication
+- bottom console/footer demotion
 
 Use its recommended implementation order:
 

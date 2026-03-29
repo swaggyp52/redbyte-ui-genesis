@@ -2267,6 +2267,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     : toolMode === 'wire'
       ? 'Wire Mode'
       : 'Select Mode';
+  const showBlankStateCard = editorCircuit.nodes.length === 0 && !isPlacementMode;
   const zoomPercent = Math.round(camera.zoom * 100);
   const effectiveInteractionMode = isPlacementMode && interactionMode === 'idle' ? 'placing' : interactionMode;
   const interactionLabel =
@@ -3205,9 +3206,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             Select a node, wire, or signal.
           </p>
         </div>
-        <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
-          Start on the canvas first. Open Live Simulation only when you want to run the whole circuit.
-        </p>
+        {!showBlankStateCard ? (
+          <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+            Start on the canvas first. Open Live Simulation only when you want to run the whole circuit.
+          </p>
+        ) : null}
       </div>
     );
   };
@@ -5094,7 +5097,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <span>Esc cancels</span>
                       </div>
                     ) : null}
-                    {isCanvasWorkspace ? (
+                    {isCanvasWorkspace && !showBlankStateCard ? (
                       <div
                         className="ide-design-shortcut-strip ide-design-shortcut-strip--overlay"
                         data-testid="ide-design-shortcut-strip"
@@ -5110,7 +5113,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <span><code>G</code> snap</span>
                       </div>
                     ) : null}
-                    {editorCircuit.nodes.length === 0 && !isPlacementMode && (
+                    {showBlankStateCard && (
                       <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
                         <h3>Build a circuit in three steps</h3>
                         <ol className="ide-design-empty-steps" data-testid="ide-design-empty-checklist">

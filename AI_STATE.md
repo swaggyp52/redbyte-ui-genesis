@@ -1,4 +1,62 @@
 # AI State
+## Change Log 2026-03-29 (Blank Design now teaches with one primary onboarding element instead of stacked duplicate guidance)
+
+**Subsystem**: IDE Design surface / blank-state hierarchy / onboarding de-duplication
+
+### Problem
+
+After the top-stack and left-dock slices got quieter, blank Design still felt over-explained:
+
+- the canvas already showed a three-step empty-state card
+- the first-run Design onboarding overlay repeated the same `pick gates / drag wires` lesson on top of it
+- the idle inspector repeated `Start on the canvas first`
+- the bottom shortcut strip added another teaching layer before the student had done anything
+- the pipeline strip still surfaced a redundant blank-state Design affordance even while the student was already on the Design page
+
+This was a blank-state guidance conflict, not a theme pass or interaction rewrite.
+
+### What changed
+
+- Kept one primary onboarding element in blank Design:
+  - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - the in-canvas `Build a circuit in three steps` card remains the main first-action teacher
+
+- Removed duplicate blank-state teaching around it:
+  - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - the shortcut strip no longer renders while the blank-state card is visible
+  - the blank idle inspector keeps `Nothing selected`, but no longer repeats the extra next-step paragraph while the circuit is empty
+
+- Suppressed the competing Design first-run modal:
+  - `packages/rb-apps/src/apps/ide/components/OnboardingOverlay.tsx`
+  - Design mode no longer opens the modal onboarding lesson that duplicated the blank-state card
+
+- Removed redundant blank Design pipeline guidance:
+  - `packages/rb-apps/src/apps/ide/components/PipelineStrip.tsx`
+  - blank Design no longer shows the extra `No circuit graph yet / Open Design` right-side message while already on the Design page
+
+- Added regression coverage for the new blank-state contract:
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.blankState.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/OnboardingOverlay.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/pipelineStrip.test.tsx`
+
+### Student-visible behavior
+
+- Blank Design now teaches with one strong onboarding element: the in-canvas three-step card.
+- The first look is calmer because the Design modal, shortcut strip, and duplicate inspector coaching are out of the way.
+- The top pipeline strip still shows stage context, but no longer competes with the blank-state CTA using a redundant `Open Design` message from inside Design.
+
+### Proof
+
+- focused tests:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.blankState.test.tsx packages/rb-apps/src/apps/ide/__tests__/OnboardingOverlay.test.tsx packages/rb-apps/src/apps/ide/__tests__/pipelineStrip.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.placementMode.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx --reporter=json --outputFile C:/Users/conno/AppData/Local/Temp/redbyte-slice4-focused-tests.json`
+  - result: `34/34` tests passing
+- build:
+  - `pnpm --filter @redbyte/playground build`
+- before screenshots captured in:
+  - `C:\Users\conno\AppData\Local\Temp\redbyte-design-slice4-before`
+- after screenshots captured in:
+  - `C:\Users\conno\AppData\Local\Temp\redbyte-design-slice4-after`
+
 ## Change Log 2026-03-29 (Design left dock now leads with search and core parts instead of expanded inventory chrome)
 
 **Subsystem**: IDE Design surface / left dock hierarchy / palette simplification

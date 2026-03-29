@@ -115,8 +115,11 @@ export const PipelineStrip: React.FC<PipelineStripProps> = ({
   );
 
   const primaryBlocker = health.blockingIssues.find((issue) => hardBlockerCodes.has(issue.code)) ?? null;
+  const hideBlankDesignBlocker = currentMode === 'design' && primaryBlocker?.fixPath?.mode === 'design';
+  const visiblePrimaryBlocker = hideBlankDesignBlocker ? null : primaryBlocker;
   // Only show CTA when the recommended destination is different from current page
   const showCta = primaryCta.mode !== currentMode;
+  const showReadyState = !visiblePrimaryBlocker && !showCta && !hideBlankDesignBlocker;
 
   return (
     <section
@@ -155,15 +158,15 @@ export const PipelineStrip: React.FC<PipelineStripProps> = ({
 
       {/* Right side: blocker message + primary CTA */}
       <div className="ide-pipeline-right">
-        {primaryBlocker ? (
+        {visiblePrimaryBlocker ? (
           <span className="ide-pipeline-blocker" data-testid="ide-guided-blocker">
             <span className="ide-pipeline-blocker-pulse" aria-hidden="true" />
             <span
               className="ide-pipeline-blocker-message"
               data-testid="ide-guided-blocker-message"
-              title={primaryBlocker.message}
+              title={visiblePrimaryBlocker.message}
             >
-              {primaryBlocker.message}
+              {visiblePrimaryBlocker.message}
             </span>
             {health.blockingIssues.length > 1 && (
               <span className="ide-pipeline-blocker-count" data-testid="ide-guided-blocker-count">
@@ -181,20 +184,20 @@ export const PipelineStrip: React.FC<PipelineStripProps> = ({
           >
             {primaryCta.label} →
           </IdeButton>
-        ) : !primaryBlocker ? (
+        ) : showReadyState ? (
           <span className="ide-pipeline-all-pass" data-testid="ide-guided-ready">
             All stages current
           </span>
         ) : null}
 
-        {primaryBlocker?.fixPath ? (
+        {visiblePrimaryBlocker?.fixPath ? (
           <button
             type="button"
             className="ide-pipeline-fix-link"
-            onClick={() => onNavigate(primaryBlocker.fixPath!.mode)}
+            onClick={() => onNavigate(visiblePrimaryBlocker.fixPath!.mode)}
             data-testid="ide-guided-fix-link"
           >
-            {primaryBlocker.fixPath.actionLabel} →
+            {visiblePrimaryBlocker.fixPath.actionLabel} →
           </button>
         ) : null}
       </div>
