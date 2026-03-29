@@ -96,7 +96,6 @@ export function connectionRejectedMessage(reason: string): string {
 }
 
 export interface DesignSurfaceProps {
-  onOpenPalette?: () => void;
   onCircuitMutated?: (circuit: Circuit) => void;
   onRuntimeAddNode?: (nodeType: string, position: { x: number; y: number }) => void;
   onRuntimeAddIo?: (direction: 'input' | 'output', position: { x: number; y: number }) => void;
@@ -217,6 +216,8 @@ interface BoardPaletteGroup {
   description: string;
   entries: BoardIoPaletteItem[];
 }
+
+type DesignDockSectionId = 'board' | 'live-inputs';
 
 const CANVAS_PLACEMENT_BLOCK_SELECTOR =
   '[data-blocks-canvas-placement="1"], [data-blocks-macro-placement="1"]';
@@ -659,7 +660,6 @@ function readDesignDebugQueryParam(): boolean {
 }
 
 export const DesignSurface: React.FC<DesignSurfaceProps> = ({
-  onOpenPalette,
   onCircuitMutated,
   onRuntimeAddNode,
   onRuntimeAddIo,
@@ -781,6 +781,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [circuit, topEntityName, ioRows]);
 
   const [paletteQuery, setPaletteQuery] = useState('');
+  const [collapsedDockSections, setCollapsedDockSections] = useState<ReadonlySet<DesignDockSectionId>>(
+    () => new Set<DesignDockSectionId>(['board', 'live-inputs'])
+  );
   const canvasViewportRef = useRef<HTMLDivElement | null>(null);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const previousWireCountRef = useRef(editorCircuit.connections.length);
@@ -2933,6 +2936,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     runtimeSim.tick,
   ]);
   const paletteHasQuery = paletteQueryTerms.length > 0;
+  const boardResourcesCount = filteredBoardGroups.reduce((count, group) => count + group.entries.length, 0);
+  const boardResultsForcedOpen = paletteHasQuery && filteredBoardGroups.length > 0;
+  const isBoardSectionCollapsed = !boardResultsForcedOpen && collapsedDockSections.has('board');
+  const isLiveInputsSectionCollapsed = collapsedDockSections.has('live-inputs');
   const hasPaletteResults =
     filteredPaletteByCategory.logic.length > 0 ||
     filteredPaletteByCategory.sequential.length > 0 ||
@@ -2941,6 +2948,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     filteredCustomComponents.length > 0 ||
     filteredMacros.length > 0 ||
     filteredBoardGroups.length > 0;
+
+  const toggleDockSection = useCallback((sectionId: DesignDockSectionId) => {
+    setCollapsedDockSections((previous) => {
+      const next = new Set(previous);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      return next;
+    });
+  }, []);
 
   const renderNodePaletteCard = (
     item: Pick<PaletteItem, 'type' | 'title' | 'subtitle' | 'glyph'>,
@@ -3801,9 +3820,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div>
                 <h3>Build Library</h3>
               </div>
-              <IdeButton tone="ghost" onClick={onOpenPalette}>
-                Focus
-              </IdeButton>
             </header>
             <div className="ide-design-palette-toolbar">
               <input
@@ -3973,64 +3989,75 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <section
                   className="ide-palette-section ide-palette-section--board"
                   data-testid="ide-design-palette-section-board"
+                  data-collapsed={isBoardSectionCollapsed ? 'true' : 'false'}
                 >
                   <header className="ide-palette-section-header">
                     <div className="ide-palette-section-title-row">
                       <h4>{boardPaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
-                        {filteredBoardGroups.reduce((count, group) => count + group.entries.length, 0)}
-                      </span>
                     </div>
-                    <p className="ide-palette-section-copy">{boardPaletteSection.description}</p>
-                  </header>
-                  <div className="ide-palette-board-groups" data-testid="ide-design-board-io-palette">
-                    {filteredBoardGroups.map((group) => (
-                      <div
-                        key={group.id}
-                        className="ide-palette-board-group"
-                        data-testid={`ide-design-board-group-${group.id}`}
+                    <div className="ide-palette-section-meta">
+                      <span className="ide-palette-section-count">{boardResourcesCount}</span>
+                      <button
+                        type="button"
+                        className="ide-palette-section-toggle"
+                        data-testid="ide-design-palette-toggle-board"
+                        aria-expanded={isBoardSectionCollapsed ? 'false' : 'true'}
+                        onClick={() => toggleDockSection('board')}
                       >
-                        <div className="ide-palette-subsection-header">
-                          <div>
-                            <h5>{group.title}</h5>
-                            <p>{group.description}</p>
+                        {isBoardSectionCollapsed ? 'Show' : 'Hide'}
+                      </button>
+                    </div>
+                  </header>
+                  {!isBoardSectionCollapsed ? (
+                    <div className="ide-palette-board-groups" data-testid="ide-design-board-io-palette">
+                      {filteredBoardGroups.map((group) => (
+                        <div
+                          key={group.id}
+                          className="ide-palette-board-group"
+                          data-testid={`ide-design-board-group-${group.id}`}
+                        >
+                          <div className="ide-palette-subsection-header">
+                            <div>
+                              <h5>{group.title}</h5>
+                              <p>{group.description}</p>
+                            </div>
+                            <span className="ide-palette-subsection-count">{group.entries.length}</span>
                           </div>
-                          <span className="ide-palette-subsection-count">{group.entries.length}</span>
+                          <div className="ide-palette-board-grid">
+                            {group.entries.map((entry) => {
+                              const isPlaced = isBoardAliasPlaced(entry);
+                              const isPending =
+                                pendingPlacement?.kind === 'board-io' &&
+                                pendingPlacement.boardIoEntry?.alias === entry.alias &&
+                                pendingPlacement.boardIoEntry?.direction === entry.direction;
+                              const testId =
+                                entry.direction === 'in'
+                                  ? `ide-design-board-input-${entry.alias.toLowerCase()}`
+                                  : `ide-design-board-output-${entry.alias.toLowerCase()}`;
+                              return (
+                                <button
+                                  key={entry.alias}
+                                  className={`ide-palette-chip ide-palette-chip-board${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
+                                  type="button"
+                                  onClick={() => beginBoardIoPlacement(entry)}
+                                  data-testid={testId}
+                                  disabled={isPlaced}
+                                  title={
+                                    isPlaced
+                                      ? `${entry.alias} already placed`
+                                      : `${entry.alias} - ${describeBoardEntry(entry)}`
+                                  }
+                                  aria-pressed={isPending}
+                                >
+                                  {entry.alias}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                        <div className="ide-palette-board-grid">
-                          {group.entries.map((entry) => {
-                            const isPlaced = isBoardAliasPlaced(entry);
-                            const isPending =
-                              pendingPlacement?.kind === 'board-io' &&
-                              pendingPlacement.boardIoEntry?.alias === entry.alias &&
-                              pendingPlacement.boardIoEntry?.direction === entry.direction;
-                            const testId =
-                              entry.direction === 'in'
-                                ? `ide-design-board-input-${entry.alias.toLowerCase()}`
-                                : `ide-design-board-output-${entry.alias.toLowerCase()}`;
-                            return (
-                              <button
-                                key={entry.alias}
-                                className={`ide-palette-chip ide-palette-chip-board${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
-                                type="button"
-                                onClick={() => beginBoardIoPlacement(entry)}
-                                data-testid={testId}
-                                disabled={isPlaced}
-                                title={
-                                  isPlaced
-                                    ? `${entry.alias} already placed`
-                                    : `${entry.alias} - ${describeBoardEntry(entry)}`
-                                }
-                                aria-pressed={isPending}
-                              >
-                                {entry.alias}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
             </div>
@@ -4051,28 +4078,42 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
           {allLiveInputRows.length > 0 && (
             <SurfacePanel className="ide-design-input-panel" testId="ide-design-input-panel">
-              <header className="ide-design-subheader">
-                <h3>Live Inputs</h3>
+              <header className="ide-design-subheader ide-design-input-panel-header">
+                <div className="ide-design-input-panel-title-row">
+                  <h3>Live Inputs</h3>
+                  <span className="ide-palette-section-count">{allLiveInputRows.length}</span>
+                </div>
+                <button
+                  type="button"
+                  className="ide-palette-section-toggle"
+                  data-testid="ide-design-live-inputs-toggle"
+                  aria-expanded={isLiveInputsSectionCollapsed ? 'false' : 'true'}
+                  onClick={() => toggleDockSection('live-inputs')}
+                >
+                  {isLiveInputsSectionCollapsed ? 'Show' : 'Hide'}
+                </button>
               </header>
-              <div className="ide-design-input-toggle-list">
-                {allLiveInputRows.map((entry) => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    className={`ide-design-input-toggle ${entry.value === 1 ? 'is-on' : 'is-off'}`}
-                    data-testid={`ide-design-input-toggle-${entry.id}`}
-                    aria-pressed={entry.value === 1}
-                    onClick={() => {
-                      const next = entry.value === 1 ? 0 : 1;
-                      queueDesignDebugToggleSample(entry.id, next, 'dock');
-                      onRuntimeSimSetInput?.(entry.id, next);
-                    }}
-                  >
-                    <span className="ide-design-input-toggle-label">{entry.label}</span>
-                    <span className="ide-design-input-toggle-value">{entry.value}</span>
-                  </button>
-                ))}
-              </div>
+              {!isLiveInputsSectionCollapsed ? (
+                <div className="ide-design-input-toggle-list">
+                  {allLiveInputRows.map((entry) => (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      className={`ide-design-input-toggle ${entry.value === 1 ? 'is-on' : 'is-off'}`}
+                      data-testid={`ide-design-input-toggle-${entry.id}`}
+                      aria-pressed={entry.value === 1}
+                      onClick={() => {
+                        const next = entry.value === 1 ? 0 : 1;
+                        queueDesignDebugToggleSample(entry.id, next, 'dock');
+                        onRuntimeSimSetInput?.(entry.id, next);
+                      }}
+                    >
+                      <span className="ide-design-input-toggle-label">{entry.label}</span>
+                      <span className="ide-design-input-toggle-value">{entry.value}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </SurfacePanel>
           )}
         </>

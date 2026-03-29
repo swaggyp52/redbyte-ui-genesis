@@ -1,4 +1,65 @@
 # AI State
+## Change Log 2026-03-29 (Design left dock now leads with search and core parts instead of expanded inventory chrome)
+
+**Subsystem**: IDE Design surface / left dock hierarchy / palette simplification
+
+### Problem
+
+After the top-stack compression slice, the highest-value remaining Design chrome issue was the left dock:
+
+- `Build Library` framing and section counts still read like dashboard chrome instead of a parts tray
+- Board Resources stayed fully expanded, which made the palette taller and noisier than the student's first action required
+- Live Inputs also stayed expanded, even though it is secondary instrumentation rather than primary parts access
+- the `Focus` control competed with search without helping the common first-look flow
+
+This was a hierarchy and visual-weight problem in the Design dock, not an interaction rewrite.
+
+### What changed
+
+- Collapsed secondary left-dock sections by default:
+  - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Board Resources now starts collapsed by default
+  - Live Inputs now starts collapsed by default
+  - board inventory auto-reveals when the search query matches board terms like `led` or `sw0`
+
+- Kept the parts tray path primary:
+  - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - search remains visible
+  - Logic Gates, Sequential & Timing, and Inputs & Outputs remain open and directly usable
+  - the palette header no longer renders the competing `Focus` button
+
+- Softened left-dock chrome so the dock reads less like a dashboard:
+  - `packages/rb-apps/src/apps/ide/ide-root.css`
+  - section counts now read as quieter metadata instead of pill-style badges
+  - `Build Library` framing is lighter
+  - secondary disclosure controls use a subdued show/hide treatment instead of button-weight chrome
+
+- Added palette dock regression coverage:
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.paletteDock.test.tsx`
+  - tests now assert:
+    - secondary sections start collapsed
+    - search and core parts stay visible
+    - board search results auto-open Board Resources when needed
+
+### Student-visible behavior
+
+- The left dock now reads as search plus core parts first.
+- Board inventory and live inputs are available, but no longer compete with the initial parts-selection flow.
+- Searching for board terms still surfaces the hardware inventory immediately, so discoverability is preserved while default chrome stays quieter.
+
+### Proof
+
+- targeted tests:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.paletteDock.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+- build:
+  - `pnpm --filter @redbyte/playground build`
+- before/after screenshots captured for:
+  - blank
+  - `logic-gates`
+  - `two-bit-counter`
+  - at `1280x720` / `1440x900`
+  - at `100%` / `125%` page scale
+
 ## Change Log 2026-03-29 (Design top-of-canvas stack now yields the first look to the canvas instead of header chrome)
 
 **Subsystem**: IDE Design surface / top-of-canvas hierarchy / chrome compression

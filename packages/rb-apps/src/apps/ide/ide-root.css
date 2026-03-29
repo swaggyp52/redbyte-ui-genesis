@@ -22934,18 +22934,62 @@ button:disabled,
   font-size: 9px !important;
   opacity: 0.35 !important;
 }
+.ide-palette-section-meta,
+.ide-design-input-panel-title-row {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+.ide-palette-section-toggle {
+  border: 0 !important;
+  background: transparent !important;
+  color: rgba(130,170,210,0.52) !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  cursor: pointer !important;
+}
+.ide-palette-section-toggle:hover {
+  color: rgba(186,230,253,0.78) !important;
+}
+.ide-palette-section-toggle[aria-expanded='true'] {
+  color: rgba(186,230,253,0.64) !important;
+}
 /* Palette "Build Library" header: compact */
 [data-ide-mode-marker='design'] .ide-design-palette h3 {
   font-size: 12px !important;
   font-weight: 700 !important;
-  color: rgba(186,230,253,0.72) !important;
+  color: rgba(186,230,253,0.56) !important;
   margin: 0 !important;
 }
 [data-ide-mode-marker='design'] .ide-design-palette-header {
-  padding: 10px 12px 5px !important;
+  padding: 8px 12px 4px !important;
 }
 [data-ide-mode-marker='design'] .ide-design-palette-toolbar {
   padding: 0 10px 6px !important;
+}
+[data-ide-mode-marker='design'] .ide-palette-section-count,
+[data-ide-mode-marker='design'] .ide-palette-subsection-count {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: rgba(130,170,210,0.34) !important;
+}
+[data-ide-mode-marker='design'] .ide-design-input-panel {
+  border-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+[data-ide-mode-marker='design'] .ide-design-input-panel-header {
+  margin-bottom: 6px !important;
+}
+[data-ide-mode-marker='design'] .ide-design-input-toggle-list {
+  padding: 0 !important;
 }
 
 /* ── B4. Inspector no-selection: calm, minimal ────────────────── */

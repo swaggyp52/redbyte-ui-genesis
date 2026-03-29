@@ -1561,7 +1561,6 @@ export const IdeApp: React.FC = () => {
           <ErrorBoundary fallbackTitle="Design editor crashed">
             <ThrowOnce surface="design" />
             <DesignSurface
-              onOpenPalette={() => null}
               onCircuitMutated={handleDesignMutation}
               onRuntimeAddNode={addDesignNode}
               onRuntimeAddIo={addDesignIo}

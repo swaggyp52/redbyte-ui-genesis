@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-03-26
+updated: 2026-03-29
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
@@ -67,7 +67,11 @@ Canonical next-phase roadmap:
 
 Latest completed Design slice:
 
-- `2026-03-29` - top-of-canvas stack compression landed; preserve the contract in [[Design Surface]] so future Design work does not reintroduce a separate title band above the working toolbar.
+- `2026-03-29` - left dock simplification landed; search plus core parts now lead the Design first look, while Board Resources and Live Inputs default to collapsed and board search still auto-reveals inventory when needed.
+
+Next Design chrome action:
+
+- blank-state guidance de-duplication
 
 Use its recommended implementation order:
 

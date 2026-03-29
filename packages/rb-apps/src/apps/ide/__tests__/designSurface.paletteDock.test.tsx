@@ -197,6 +197,21 @@ describe('DesignSurface palette dock redesign', () => {
     expect(within(palette).getByTestId('ide-palette-group-custom')).toBeTruthy();
   });
 
+  it('keeps search and core parts visible while secondary dock sections start collapsed', () => {
+    const view = renderSurface();
+
+    expect(view.getByTestId('ide-design-search')).toBeTruthy();
+    expect(view.getByTestId('ide-design-palette-and')).toBeTruthy();
+    expect(view.getByTestId('ide-design-palette-dflipflop')).toBeTruthy();
+    expect(view.getByTestId('ide-design-palette-input')).toBeTruthy();
+
+    expect(view.getByTestId('ide-design-palette-toggle-board')).toHaveAttribute('aria-expanded', 'false');
+    expect(view.queryByTestId('ide-design-board-io-palette')).toBeNull();
+
+    expect(view.getByTestId('ide-design-live-inputs-toggle')).toHaveAttribute('aria-expanded', 'false');
+    expect(view.queryByTestId('ide-design-input-toggle-sw0')).toBeNull();
+  });
+
   it('matches search terms across primitives, macros, and board resources', () => {
     const view = renderSurface({
       macros: [FIXTURE_MACRO],
@@ -215,5 +230,21 @@ describe('DesignSurface palette dock redesign', () => {
     fireEvent.change(search, { target: { value: 'led' } });
     expect(view.getByTestId('ide-design-board-output-ld0')).toBeTruthy();
     expect(view.queryByTestId('ide-macro-library-card-macro-and-gate')).toBeNull();
+  });
+
+  it('auto-expands Board Resources when searching board inventory terms', () => {
+    const view = renderSurface();
+
+    const search = view.getByTestId('ide-design-search');
+    const boardToggle = view.getByTestId('ide-design-palette-toggle-board');
+
+    expect(boardToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(view.queryByTestId('ide-design-board-io-palette')).toBeNull();
+
+    fireEvent.change(search, { target: { value: 'led' } });
+
+    expect(boardToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(view.getByTestId('ide-design-board-io-palette')).toBeTruthy();
+    expect(view.getByTestId('ide-design-board-output-ld0')).toBeTruthy();
   });
 });
