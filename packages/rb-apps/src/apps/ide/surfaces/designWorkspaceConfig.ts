@@ -20,8 +20,6 @@ export interface DesignArtifactDescriptor {
 export interface DesignWorkspacePreset {
   mode: DesignWorkspaceMode;
   effectiveMode: DesignWorkspaceBodyMode;
-  title: string;
-  intent: string;
   leftDockMode: LeftDockMode;
   rightDockMode: RightDockMode;
   consoleMode: ConsoleMode;
@@ -64,12 +62,6 @@ export function resolveDesignWorkspacePreset(input: {
   return {
     mode: input.mode,
     effectiveMode: input.effectiveMode,
-    title: isCanvas ? 'Circuit Designer' : isCode ? 'Artifact Inspection' : 'Circuit and Code',
-    intent: isCanvas
-      ? 'Build the circuit on canvas with library and inspector support in view.'
-      : isCode
-        ? 'Inspect one generated artifact at a time with export actions and minimal authoring chrome.'
-        : 'Compare circuit structure against generated HDL with code slightly favored for readability.',
     leftDockMode: isCanvas ? 'visible' : 'collapsed',
     rightDockMode: isCanvas ? 'visible' : 'collapsed',
     consoleMode: 'collapsed',

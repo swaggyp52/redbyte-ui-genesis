@@ -53,6 +53,7 @@ Always:
 For verify work: [[Verify Engine]] + [[Verify Hint System]]
 For export work: [[Connection Model]] + [[Export Contracts]]
 For test work: [[Test Infrastructure]]
+For Design workflow hierarchy work: [[Design Surface]]
 
 ---
 
@@ -63,6 +64,10 @@ For test work: [[Test Infrastructure]]
 Canonical next-phase roadmap:
 
 - `docs/roadmap/redbyte-classroom-gap-handoff.md`
+
+Latest completed Design slice:
+
+- `2026-03-29` - top-of-canvas stack compression landed; preserve the contract in [[Design Surface]] so future Design work does not reintroduce a separate title band above the working toolbar.
 
 Use its recommended implementation order:
 
@@ -122,7 +127,7 @@ Render harness (all 9 suites green):
 
 ## Architecture map
 
-**Active:** [[Verify Engine]] - [[Connection Model]] - [[Verify Hint System]] - [[Test Infrastructure]] - [[Note Schema]] - [[Workspace Routing]] - [[Automation Strategy]]
+**Active:** [[Design Surface]] - [[Verify Engine]] - [[Connection Model]] - [[Verify Hint System]] - [[Test Infrastructure]] - [[Note Schema]] - [[Workspace Routing]] - [[Automation Strategy]]
 
 **Stubs (expand when touching):** [[Export Contracts]] - [[Signal Inventory]] - [[Authority Chain]] - [[Bridge Protocol]] - [[Basys 3 Mapping]]
 

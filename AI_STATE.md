@@ -1,4 +1,62 @@
 # AI State
+## Change Log 2026-03-29 (Design top-of-canvas stack now yields the first look to the canvas instead of header chrome)
+
+**Subsystem**: IDE Design surface / top-of-canvas hierarchy / chrome compression
+
+### Problem
+
+After the earlier Design inspector cleanup, the first thing a student still saw above the canvas was too much stacked chrome:
+
+- a dedicated `Circuit Designer` title band sat above the actual working toolbar
+- the authoring/status strip still surfaced node, wire, and zoom telemetry loudly before the student had even read the canvas
+- split and standard layouts were carrying similar state in more than one place, which made the top edge read like instrumentation instead of an editing surface
+
+This was a hierarchy and visual-weight problem, not a model-truth or interaction rewrite.
+
+### What changed
+
+- Removed the extra Design frame header:
+  - `packages/rb-apps/src/apps/ide/surfaces/DesignWorkspaceFrame.tsx`
+  - the standalone `Circuit Designer` band no longer renders above the working toolbar
+
+- Compressed the top authoring/status stack into one calmer first-look band plus a lighter secondary row:
+  - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - removed duplicate top-row node and wire counters
+  - moved the required zoom contract out of the louder authoring row and into the quieter canvas overlay indicator
+  - kept the active trace badge available without restoring the earlier title-band density
+  - preserved split-mode tick/mode visibility when the dedicated simulation strip is not present
+
+- Tightened the Design control-bar spacing so the canvas starts higher on screen:
+  - `packages/rb-apps/src/apps/ide/ide-root.css`
+  - reduced toolbar and status-row padding/min-height
+  - reduced authoring issue strip and simulation strip padding so the stack reads as support chrome rather than a separate dashboard
+
+- Updated the chrome regression coverage:
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+  - tests now assert that the old title band is gone, the compact status row remains, and split mode still exposes the essential tick/mode context
+
+### Student-visible behavior
+
+- Design now opens with less top-edge competition before the canvas.
+- The first look is effectively one working toolbar row plus one compact status row, instead of a title band plus duplicated telemetry.
+- Quiet telemetry still exists where it remains useful:
+  - zoom in the canvas overlay
+  - split-mode tick/mode in split layouts that do not show the dedicated sim strip
+
+### Proof
+
+- targeted tests:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+- build:
+  - `pnpm --filter @redbyte/playground build`
+- before/after screenshots captured for:
+  - blank
+  - `logic-gates`
+  - `two-bit-counter`
+  - at `1280x720` / `1440x900`
+  - at `100%` / `125%` page scale
+
 ## Change Log 2026-03-28 (Design idle inspector now stays quiet until the student actually selects something)
 
 **Subsystem**: IDE Design surface / idle inspector hierarchy / first-look chrome reduction

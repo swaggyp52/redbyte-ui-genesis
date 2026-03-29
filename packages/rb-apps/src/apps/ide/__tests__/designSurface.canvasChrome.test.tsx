@@ -153,14 +153,17 @@ beforeEach(() => {
 });
 
 describe('DesignSurface canvas chrome simplification', () => {
-  it('folds canvas stats into the authoring strip instead of a separate title bar', () => {
+  it('keeps the first look to one toolbar row plus a compact status row', () => {
     const view = renderSurface();
 
-    expect(view.queryByTestId('ide-design-canvas-titlebar')).toBeNull();
+    expect(view.queryByText('Circuit Designer')).toBeNull();
     expect(view.getByTestId('ide-design-authoring-issues').textContent).toContain('Circuit');
-    expect(view.getByTestId('ide-design-authoring-issues').textContent).toContain('2 nodes');
-    expect(view.getByTestId('ide-design-authoring-issues').textContent).toContain('1 wires');
-    expect(view.getByTestId('ide-design-canvas-stat-zoom').textContent).toContain('%');
+    expect(view.getByTestId('ide-design-authoring-issues').textContent).toContain('Ready to build');
+    expect(view.queryByTestId('ide-design-canvas-stat-nodes')).toBeNull();
+    expect(view.queryByTestId('ide-design-canvas-stat-wires')).toBeNull();
+    const zoomStat = view.getByTestId('ide-design-canvas-stat-zoom');
+    expect(zoomStat.closest('[data-testid="ide-design-authoring-issues"]')).toBeNull();
+    expect(zoomStat.textContent).toContain('%');
   });
 
   it('groups view controls in one canvas tray and keeps shortcut help off the top edge', () => {

@@ -407,6 +407,7 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.queryByTestId('ide-design-shortcut-strip')).toBeNull();
     expect(view.queryByTestId('ide-design-zoom-presets')).toBeNull();
     expect(view.getByTestId('ide-design-split-canvas-indicator').textContent).toContain('Circuit pane');
+    expect(view.queryByTestId('ide-design-sim-story-strip')).toBeNull();
     expect(view.getByTestId('ide-design-split-stat-tick').textContent).toContain('Tick 6');
     expect(view.getByTestId('ide-design-split-stat-mode').textContent).toContain('Paused');
   });

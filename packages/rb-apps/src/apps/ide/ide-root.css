@@ -18610,12 +18610,12 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   flex-wrap: wrap;
   align-items: stretch;
   gap: 8px;
-  padding: 6px 12px 8px;
+  padding: 4px 12px 6px;
 }
 
 [data-ide-mode-marker='design'] .ide-design-toolbar {
-  min-height: 36px;
-  padding: 5px 12px;
+  min-height: 34px;
+  padding: 4px 12px;
   border-bottom: 0;
   background: transparent;
 }
@@ -18676,12 +18676,12 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 [data-ide-mode-marker='design'] .ide-design-control-bar .ide-design-authoring-issues {
   flex: 1 1 420px;
   min-width: min(100%, 360px);
-  padding: 8px 10px;
+  padding: 6px 10px;
   gap: 6px;
 }
 
 [data-ide-mode-marker='design'] .ide-design-control-bar .ide-design-authoring-issues-summary {
-  gap: 8px 10px;
+  gap: 6px 8px;
 }
 
 [data-ide-mode-marker='design'] .ide-design-control-bar .ide-design-authoring-issues-primary {
@@ -18707,7 +18707,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 [data-ide-mode-marker='design'] .ide-design-control-bar .ide-design-sim-story-strip {
   flex: 1 1 360px;
   min-width: min(100%, 320px);
-  padding: 7px 10px 8px;
+  padding: 6px 10px;
   gap: 6px;
 }
 

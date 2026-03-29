@@ -4341,22 +4341,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         </section>
       }
     >
-        <DesignWorkspaceFrame
-          title={workspacePreset.title}
-          intent={workspacePreset.intent}
-          status={
-            isSplitWorkspace ? (
-              <IdeStatusPill tone={authoringIssueCounts.errorCount > 0 ? 'warn' : 'secondary'}>
-                Compare Mode
-              </IdeStatusPill>
-            ) : workspacePreset.showCanvasTools ? (
-              <IdeStatusPill tone={isPlacementMode || toolMode === 'wire' ? 'warn' : 'ok'}>
-                {activeModeLabel}
-              </IdeStatusPill>
-            ) : null
-          }
-          view={effectiveDesignView}
-        >
+        <DesignWorkspaceFrame view={effectiveDesignView}>
 
             {/* ── Compact primary toolbar ── */}
           <div
@@ -4546,23 +4531,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           {authoringStatusLabel}
                         </span>
                       </div>
-                      <div className="ide-design-authoring-canvas-meta">
-                        <span className="ide-design-authoring-canvas-meta-label">Canvas</span>
-                        <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-nodes">
-                          {editorCircuit.nodes.length} nodes
-                        </span>
-                        <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-wires">
-                          {editorCircuit.connections.length} wires
-                        </span>
-                        <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-zoom">
-                          {Math.round(camera.zoom * 100)}%
-                        </span>
-                        {traceState ? (
+                      {traceState ? (
+                        <div className="ide-design-authoring-canvas-meta">
                           <span className="ide-design-canvas-titlebar-stat is-trace" data-testid="ide-design-active-trace">
                             {traceState.label}
                           </span>
-                        ) : null}
-                      </div>
+                        </div>
+                      ) : null}
                     </div>
                     {liveHdlResult.error ? (
                       <div className="ide-design-authoring-inline-error" data-testid="ide-design-hdl-error-canvas">
@@ -4614,35 +4589,33 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           {authoringStatusLabel}
                         </span>
                       </div>
-                      <div className="ide-design-authoring-canvas-meta">
-                        <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-nodes">
-                          {editorCircuit.nodes.length} nodes
-                        </span>
-                        <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-wires">
-                          {editorCircuit.connections.length} wires
-                        </span>
-                        <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-canvas-stat-zoom">
-                          {Math.round(camera.zoom * 100)}%
-                        </span>
-                        {isSplitWorkspace ? (
-                          <>
-                            <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-split-stat-tick">
-                              Tick {simTick}
+                      {traceState || (isSplitWorkspace && !showSimulationStrip) ? (
+                        <div className="ide-design-authoring-canvas-meta">
+                          {traceState ? (
+                            <span className="ide-design-canvas-titlebar-stat is-trace" data-testid="ide-design-active-trace">
+                              {traceState.label}
                             </span>
-                            <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-split-stat-mode">
-                              {simRunning ? 'Running' : 'Paused'}
-                            </span>
-                            {activeVerifySignal ? (
-                              <span
-                                className="ide-design-canvas-titlebar-stat is-trace"
-                                data-testid="ide-design-split-stat-verify"
-                              >
-                                Verify {activeVerifySignal}
+                          ) : null}
+                          {isSplitWorkspace && !showSimulationStrip ? (
+                            <>
+                              <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-split-stat-tick">
+                                Tick {simTick}
                               </span>
-                            ) : null}
-                          </>
-                        ) : null}
-                      </div>
+                              <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-split-stat-mode">
+                                {simRunning ? 'Running' : 'Paused'}
+                              </span>
+                              {activeVerifySignal ? (
+                                <span
+                                  className="ide-design-canvas-titlebar-stat is-trace"
+                                  data-testid="ide-design-split-stat-verify"
+                                >
+                                  Verify {activeVerifySignal}
+                                </span>
+                              ) : null}
+                            </>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                     {liveHdlResult.error ? (
                       <div className="ide-design-authoring-inline-error" data-testid="ide-design-hdl-error-canvas">
@@ -4860,7 +4833,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           className="ide-design-canvas-zoom-indicator"
                           data-testid="ide-design-canvas-zoom-indicator"
                         >
-                          {zoomPercent}% zoom
+                          <span data-testid="ide-design-canvas-stat-zoom">{zoomPercent}%</span> zoom
                         </span>
                         {showSplitCompareToolbar ? (
                           <span
