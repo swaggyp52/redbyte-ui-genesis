@@ -6,8 +6,9 @@ export type VerifySessionMode = 'simulation' | 'capture' | 'assertion';
  * Student-facing Verify session states.
  *
  * DRAFT             — No vectors defined yet, or first-time session.
- * STIMULUS_ONLY     — Vectors have input patterns but zero expected outputs.
- *                     The session can run simulation but there is nothing to compare.
+ * STIMULUS_ONLY     — Live tracing / observation-only mode.
+ *                     The session can run simulation or show recorded waveform evidence,
+ *                     but no compare authority is active for the current run.
  * ASSERTIONS_INCOMPLETE — Some outputs are expected (asserted); others remain blank.
  *                         Only asserted outputs will be compared on next run.
  * ASSERTIONS_MATCH  — Compare ran; every asserted output matched the observed design.
@@ -143,14 +144,14 @@ export function buildVerifySessionViewModel(
   // `status` below remains the authoritative meaning of the persisted run/session.
   const mode: VerifySessionMode = input.lastRun && input.isTraceOnly && input.canSetOracle
     ? 'capture'
-    : input.lastRun && hasAssertions && input.nextRunUsesAssertions
+    : hasAssertions && input.nextRunUsesAssertions
       ? 'assertion'
       : 'simulation';
 
   const recommendedNextAction: VerifySessionViewModel['recommendedNextAction'] =
     input.lastRun && input.isTraceOnly && input.canSetOracle
       ? 'capture'
-      : input.lastRun && mode === 'assertion'
+      : mode === 'assertion'
         ? 'verify'
         : 'simulate';
 
@@ -161,15 +162,11 @@ export function buildVerifySessionViewModel(
         ? 'stale'
         : !input.lastRun
             ? 'draft'
-            : input.isTraceOnly
-              ? hasAssertions
-                ? 'stimulus-only'
-                : 'assertions-incomplete'
-              : lastRunStatus === 'fail'
+            : !input.isTraceOnly && lastRunStatus === 'fail'
                 ? 'assertions-differ'
-                : input.hasResults
+                : !input.isTraceOnly && input.hasResults
                   ? 'assertions-match'
-                  : hasAssertions
+                  : input.isTraceOnly || !hasAssertions
                     ? 'stimulus-only'
                     : 'assertions-incomplete';
 
@@ -194,7 +191,7 @@ export function buildVerifySessionViewModel(
         : status === 'assertions-incomplete'
           ? 'ASSERTIONS INCOMPLETE'
           : status === 'stimulus-only'
-            ? 'STIMULUS ONLY'
+            ? 'OBSERVATION ONLY'
             : status === 'stale'
               ? 'STALE'
               : status === 'running'
@@ -217,7 +214,7 @@ export function buildVerifySessionViewModel(
           ? 'Assertion coverage is incomplete'
           : status === 'stimulus-only'
             ? input.lastRun
-              ? 'Waveform recorded — no outputs asserted'
+              ? 'Waveform recorded — observation only'
               : 'Ready to simulate'
             : status === 'stale'
               ? 'Results are stale'
@@ -226,7 +223,9 @@ export function buildVerifySessionViewModel(
                   ? 'Comparing asserted outputs'
                   : 'Recording waveform'
                 : hasVectors
-                  ? 'Ready to simulate'
+                  ? mode === 'assertion'
+                    ? 'Ready to compare'
+                    : 'Ready to simulate'
                   : 'Build a testbench';
 
   const summary =
@@ -242,7 +241,7 @@ export function buildVerifySessionViewModel(
           ? 'Some outputs have expected values; others remain blank. Only the asserted outputs will be compared on the next run.'
           : status === 'stimulus-only'
             ? input.lastRun
-              ? 'Waveform recorded. No expected outputs are asserted yet — capture or author expected values to enable comparison.'
+              ? 'You ran the current circuit, but no expected outputs are being checked. Capture observed outputs or author expected values when you want a real compare.'
               : 'Add stimulus ticks, then run the circuit to record a waveform.'
             : status === 'stale'
               ? 'The circuit or testbench changed after the last run. Re-run before trusting the result.'

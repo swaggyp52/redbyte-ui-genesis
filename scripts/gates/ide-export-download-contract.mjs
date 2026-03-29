@@ -1,6 +1,25 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate } from './_gateHarness.mjs';
+import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
+import { waitForVerifyResult } from './_verifyStatus.mjs';
+
+async function ensureVerifyVectorsReady(page) {
+  const candidates = [
+    '[data-testid="ide-verify-generate-basic-vectors"]',
+    '[data-testid="ide-verify-generate-basic-vectors-footer"]',
+    '[data-testid="ide-verify-generate-all-combos"]',
+    '[data-testid="ide-verify-guided-clock-pattern"]',
+    '[data-testid="ide-verify-trace-generate-basics"]',
+  ];
+  for (const selector of candidates) {
+    const button = page.locator(selector).first();
+    const isVisible = await button.isVisible().catch(() => false);
+    if (isVisible) {
+      await button.click();
+      return;
+    }
+  }
+}
 
 await runIdeGate('IDE export download contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
@@ -9,20 +28,11 @@ await runIdeGate('IDE export download contract satisfied', async ({ page, baseUr
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
-  await page.locator('[data-testid="mode-button-project"]').click();
-  await page.locator('[data-testid="ide-project-load-start-logic-gates"]').click();
-  const replaceModalVisible = await page
-    .locator('[data-testid="ide-example-confirm-modal"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  if (replaceModalVisible) {
-    await page.locator('[data-testid="ide-example-confirm"]').click();
-  }
+  await loadStarterProject(page);
 
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
-  await page.locator('[data-testid="ide-verify-generate-basic-vectors"]').click();
+  await ensureVerifyVectorsReady(page);
   const runSelectors = ['[data-testid="ide-verify-run"]', '[data-testid="ide-verify-run-secondary"]', '[data-testid="ide-verify-empty-run"]'];
   let runClicked = false;
   for (const selector of runSelectors) {
@@ -35,10 +45,7 @@ await runIdeGate('IDE export download contract satisfied', async ({ page, baseUr
     }
   }
   assert(runClicked, 'verify run button must be visible before export checks');
-  await page.waitForFunction(
-    () => /PASS|FAIL|TRACE/i.test(document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent ?? ''),
-    { timeout: 15000 }
-  );
+  await waitForVerifyResult(page, { timeout: 15000 });
 
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });

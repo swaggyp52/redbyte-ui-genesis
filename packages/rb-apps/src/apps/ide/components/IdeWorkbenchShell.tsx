@@ -307,6 +307,8 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
 
   const shellStyle = useMemo(
     () => {
+      const usesCalmerNonDesignShell =
+        mode === 'project' || mode === 'hardware' || mode === 'export' || mode === 'import';
       const widthCaps =
         mode === 'design'
           ? layoutMode === 'wide'
@@ -314,11 +316,17 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             : layoutMode === 'standard'
               ? { left: { min: 172, max: 200 }, right: { min: 208, max: 240 } }
               : { left: { min: 160, max: 184 }, right: { min: 196, max: 224 } }
-          : layoutMode === 'wide'
-            ? { left: { min: 152, max: 172 }, right: { min: 196, max: 220 } }
-            : layoutMode === 'standard'
-              ? { left: { min: 144, max: 160 }, right: { min: 184, max: 208 } }
-              : { left: { min: 136, max: 152 }, right: { min: 176, max: 196 } };
+          : usesCalmerNonDesignShell
+            ? layoutMode === 'wide'
+              ? { left: { min: 140, max: 156 }, right: { min: 188, max: 208 } }
+              : layoutMode === 'standard'
+                ? { left: { min: 132, max: 148 }, right: { min: 180, max: 196 } }
+                : { left: { min: 124, max: 140 }, right: { min: 168, max: 184 } }
+            : layoutMode === 'wide'
+              ? { left: { min: 152, max: 172 }, right: { min: 196, max: 220 } }
+              : layoutMode === 'standard'
+                ? { left: { min: 144, max: 160 }, right: { min: 184, max: 208 } }
+                : { left: { min: 136, max: 152 }, right: { min: 176, max: 196 } };
       const effectiveLeftWidth = clampValue(layout.leftWidth, widthCaps.left);
       const effectiveRightWidth = clampValue(layout.rightWidth, widthCaps.right);
       const leftSlotWidth = showLeftDock ? effectiveLeftWidth : 0;
@@ -423,7 +431,11 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             Library
           </button>
         ) : (
-          <div className="ide-workbench-slot-spacer" aria-hidden="true" />
+          <div
+            className="ide-workbench-slot-spacer"
+            aria-hidden="true"
+            style={{ pointerEvents: 'none' }}
+          />
         )}
 
         <button
@@ -486,7 +498,11 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             Inspector
           </button>
         ) : (
-          <div className="ide-workbench-slot-spacer" aria-hidden="true" />
+          <div
+            className="ide-workbench-slot-spacer"
+            aria-hidden="true"
+            style={{ pointerEvents: 'none' }}
+          />
         )}
       </div>
 

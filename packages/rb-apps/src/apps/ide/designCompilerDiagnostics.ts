@@ -1,6 +1,7 @@
 import { elaborateCircuit } from '@redbyte/rb-logic-core';
 import type { RBProject } from '../../export/projectFormat';
 import { adaptIrDiagnostic, type IdeDiagnostic } from './diagnostics';
+import { canonicalizeSemanticCircuit } from '../../circuit/semanticCircuit';
 
 export function deriveDesignCompilerDiagnostics(project: RBProject): IdeDiagnostic[] {
   const pins = Object.fromEntries(
@@ -15,7 +16,7 @@ export function deriveDesignCompilerDiagnostics(project: RBProject): IdeDiagnost
       .filter(([key]) => key !== '.')
   );
 
-  return elaborateCircuit(project.circuit, { pins }).ir.diagnostics.map((diagnostic) =>
+  return elaborateCircuit(canonicalizeSemanticCircuit(project.circuit), { pins }).ir.diagnostics.map((diagnostic) =>
     adaptIrDiagnostic(diagnostic, { stage: 'design' })
   );
 }

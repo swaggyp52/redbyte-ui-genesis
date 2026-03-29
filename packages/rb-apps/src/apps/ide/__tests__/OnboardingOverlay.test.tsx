@@ -13,7 +13,7 @@ describe('OnboardingOverlay mode copy', () => {
   it('shows import-specific guidance instead of design-only instructions on Import', () => {
     const { getByTestId, queryByText } = render(<OnboardingOverlay mode="import" />);
 
-    expect(getByTestId('ide-onboarding-overlay').textContent).toContain('Start with a ZIP or HDL');
+    expect(getByTestId('ide-onboarding-overlay').textContent).toContain('Import a ZIP or paste HDL');
     expect(queryByText(/gate palette on the left/i)).toBeNull();
   });
 });

@@ -28,7 +28,7 @@ describe('projectHealth verify trust vs structural blockers', () => {
         code: 'RBP1005',
         message:
           'Some required output pins remain unmapped. Finish mapping before relying on hardware behavior.',
-        fixPath: { mode: 'hardware', actionLabel: 'Open Hardware' },
+        fixPath: { mode: 'hardware', actionLabel: 'Open Map Pins' },
       },
     ]);
     expect(
@@ -38,7 +38,7 @@ describe('projectHealth verify trust vs structural blockers', () => {
         hasVectors: true,
         verifyQualification: 'incomplete-mapping',
       })
-    ).toEqual({ label: 'Hardware', mode: 'hardware', code: 'RBP1005' });
+    ).toEqual({ label: 'Map Pins', mode: 'hardware', code: 'RBP1005' });
   });
 
   it('falls back to core lastVerify qualification when readiness qualification is unavailable', () => {
@@ -158,6 +158,40 @@ describe('projectHealth verify trust vs structural blockers', () => {
         verifyQualification: undefined,
       })
     ).toEqual({ label: 'Verify', mode: 'verify', code: 'RBP1004' });
+  });
+
+  it('routes a current, export-ready project to Program as the final student-facing CTA', () => {
+    const health = deriveProjectHealth(
+      {
+        lastVerify: {
+          status: 'pass',
+          hash: 'verify-pass-hash',
+          ranAtIso: '2026-03-27T00:00:00.000Z',
+        },
+        lastExport: {
+          status: 'ok',
+          hash: 'export-hash',
+          ranAtIso: '2026-03-27T00:05:00.000Z',
+        },
+        dirtySinceVerify: false,
+        dirtySinceExport: false,
+      },
+      {
+        hasCircuit: true,
+        hasIoMapping: true,
+        hasVectors: true,
+        verifyQualification: undefined,
+      }
+    );
+
+    expect(
+      choosePrimaryProjectCta(health, {
+        hasCircuit: true,
+        hasIoMapping: true,
+        hasVectors: true,
+        verifyQualification: undefined,
+      })
+    ).toEqual({ label: 'Program', mode: 'hardware', code: 'RBP4000' });
   });
 
   it('keeps stale verify out of structural blockingIssues while preserving export dirtiness', () => {

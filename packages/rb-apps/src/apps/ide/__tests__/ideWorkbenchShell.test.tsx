@@ -181,12 +181,15 @@ describe('IdeWorkbenchShell', () => {
   });
 
   it('removes both left dock and restore rail when the left dock is hidden', () => {
-    const { queryByTestId } = renderShell({
+    const { container, queryByTestId } = renderShell({
       leftDockMode: 'hidden',
     });
 
     expect(queryByTestId('ide-left-dock')).toBeNull();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
+    const spacer = container.querySelector('.ide-workbench-slot-spacer') as HTMLDivElement | null;
+    expect(spacer).toBeTruthy();
+    expect(spacer?.style.pointerEvents).toBe('none');
   });
 
   it('preserves the existing collapsed right dock restore flow', async () => {

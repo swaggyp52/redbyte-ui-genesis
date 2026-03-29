@@ -244,6 +244,25 @@ describe('ExportSurface trust clarity', () => {
     expect(getByTestId('ide-export-trust-consequence').textContent).toContain('assertion-backed evidence');
   });
 
+  it('surfaces stale verify evidence instead of old comparison failure after the design changes', () => {
+    const { getByTestId, queryByText } = render(
+      <ExportSurface
+        project={buildMappedProject()}
+        determinismHash="ide-hash"
+        verifyResult={failResult}
+        dirtySinceVerify={true}
+      />
+    );
+
+    expect(getByTestId('ide-export-trust-banner').textContent).toContain('VERIFY STALE');
+    expect(getByTestId('ide-export-trust-reason').textContent?.toLowerCase()).toContain('stale');
+    expect(getByTestId('ide-export-trust-reason').textContent?.toLowerCase()).not.toContain(
+      'differed at tick'
+    );
+    expect(getByTestId('ide-export-trust-consequence').textContent).toContain('Re-run Verify');
+    expect(queryByText(/assertions differ from observed outputs/i)).toBeNull();
+  });
+
   it('mapping blocker points to Hardware', () => {
     const onGoToHardware = vi.fn();
     const { getByTestId } = render(

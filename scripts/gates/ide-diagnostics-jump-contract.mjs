@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate } from './_gateHarness.mjs';
+import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
@@ -13,6 +13,7 @@ await runIdeGate('IDE diagnostics jump contract satisfied', async ({ page, baseU
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
+  await loadStarterProject(page);
   await page.locator('[data-testid="mode-button-project"]').click();
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
   await page.locator('[data-testid="ide-project-mapping-expand-btn"]').click();

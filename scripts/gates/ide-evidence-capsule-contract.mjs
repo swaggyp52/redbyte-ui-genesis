@@ -1,20 +1,10 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate } from './_gateHarness.mjs';
+import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
+import { waitForVerifyResult } from './_verifyStatus.mjs';
 
 async function text(locator) {
   return ((await locator.first().textContent().catch(() => '')) ?? '').trim();
-}
-
-async function clickStarterLoad(page, testId) {
-  const button = page.locator(`[data-testid="${testId}"]`).first();
-  await button.waitFor({ state: 'attached', timeout: 10000 });
-  await button.evaluate((element) => {
-    if (!(element instanceof HTMLElement)) {
-      throw new Error('expected starter load element');
-    }
-    element.click();
-  });
 }
 
 async function clickVerifyRun(page) {
@@ -42,29 +32,29 @@ await runIdeGate('IDE evidence capsule contract satisfied', async ({ page, baseU
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
-  await page.locator('[data-testid="mode-button-project"]').click();
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
-  await clickStarterLoad(page, 'ide-project-load-start-logic-gates');
-  const replaceModalVisible = await page
-    .locator('[data-testid="ide-example-confirm-modal"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  if (replaceModalVisible) {
-    await page.locator('[data-testid="ide-example-confirm"]').click({ force: true });
-  }
+  await loadStarterProject(page);
 
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
   await clickVerifyRun(page);
-  await page.waitForFunction(
-    () => /PASS|FAIL|TRACE/i.test(document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent ?? ''),
-    { timeout: 15000 }
-  );
+  await waitForVerifyResult(page, { timeout: 15000 });
 
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-export-panel"]', { timeout: 10000 });
+  const exportInspectorVisible = await page
+    .locator('[data-testid="ide-inspector"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  if (!exportInspectorVisible) {
+    const inspectorRail = page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first();
+    const railVisible = await inspectorRail.isVisible().catch(() => false);
+    if (railVisible) {
+      await inspectorRail.click();
+      await page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 10000 });
+    }
+  }
 
   const verifyHashContext = await text(page.locator('[data-testid="ide-export-context-verify-hash"]'));
   assert(

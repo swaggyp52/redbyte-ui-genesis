@@ -5,6 +5,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, waitFor, within } from '@testing-library/react';
 import { ImportSurface } from '../surfaces/ImportSurface';
 
+function enterImportWorkbench(view: ReturnType<typeof render>) {
+  fireEvent.click(view.getByTestId('ide-import-start-other-options-toggle'));
+  fireEvent.click(view.getByTestId('ide-import-start-secondary'));
+}
+
 describe('ImportSurface workstation redesign', () => {
   it('shows a workflow rail, promotes schematic review, and surfaces board detection after XDC parse', async () => {
     const view = render(<ImportSurface onImportProject={vi.fn()} />);
@@ -16,6 +21,7 @@ describe('ImportSurface workstation redesign', () => {
     expect(within(workflowRail).getByText('Review schematic')).toBeTruthy();
     expect(within(workflowRail).getByText('Apply import')).toBeTruthy();
 
+    enterImportWorkbench(view);
     fireEvent.click(view.getByTestId('ide-import-load-sample-and-gate'));
 
     await waitFor(() => {
@@ -27,6 +33,7 @@ describe('ImportSurface workstation redesign', () => {
     expect(view.getByTestId('ide-import-schematic-preview').textContent).toContain('top');
 
     fireEvent.click(view.getByTestId('ide-import-parse-xdc'));
+    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-right'));
 
     await waitFor(() => {
       expect(view.getByTestId('ide-import-board-detection').textContent).toContain('Basys3');
@@ -39,6 +46,7 @@ describe('ImportSurface workstation redesign', () => {
     const onGoToExport = vi.fn();
     const view = render(<ImportSurface onImportProject={vi.fn()} onGoToExport={onGoToExport} />);
 
+    enterImportWorkbench(view);
     fireEvent.click(view.getByTestId('ide-import-toggle-behavioral-samples'));
     fireEvent.click(view.getByTestId('ide-import-load-sample-edge-detect'));
 

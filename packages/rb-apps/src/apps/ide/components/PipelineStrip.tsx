@@ -10,6 +10,7 @@ import {
   type ProjectPrimaryCta,
 } from '../projectHealth';
 import { IdeButton } from './IdePrimitives';
+import { IDE_WORKFLOW_ROUTE_STEPS } from '../workflowStages';
 
 export interface PipelineStripProps {
   currentMode: ProjectHealthMode;
@@ -18,7 +19,7 @@ export interface PipelineStripProps {
   onNavigate: (mode: ProjectHealthMode) => void;
 }
 
-// Pipeline stages — Design, Verify, Hardware, Export (not project/import, those are entry points)
+// Pipeline stages — Design, Verify, Map Pins, Export (not project/import, those are entry points)
 type PipelineStage = 'design' | 'verify' | 'hardware' | 'export';
 type StageStatus = 'pass' | 'blocked' | 'active' | 'pending';
 
@@ -30,12 +31,18 @@ interface StageConfig {
   blockerCodes: string[];
 }
 
-const STAGES: StageConfig[] = [
-  { key: 'design', mode: 'design', letter: 'D', label: 'Design', blockerCodes: ['RBP1000', 'RBP1001'] },
-  { key: 'verify', mode: 'verify', letter: 'V', label: 'Verify', blockerCodes: [] },
-  { key: 'hardware', mode: 'hardware', letter: 'H', label: 'Hardware', blockerCodes: [] },
-  { key: 'export', mode: 'export', letter: 'E', label: 'Export', blockerCodes: ['RBP2001'] },
-];
+const STAGES: StageConfig[] = IDE_WORKFLOW_ROUTE_STEPS.map((stage) => ({
+  key: stage.id,
+  mode: stage.id,
+  letter: stage.id === 'design' ? 'D' : stage.id === 'verify' ? 'V' : stage.id === 'hardware' ? 'M' : 'E',
+  label: stage.label,
+  blockerCodes:
+    stage.id === 'design'
+      ? ['RBP1000', 'RBP1001']
+      : stage.id === 'export'
+        ? ['RBP2001']
+        : [],
+}));
 
 function deriveStageStatus(
   stage: StageConfig,
@@ -58,7 +65,7 @@ function deriveStageStatus(
       return 'pending';
     }
     case 'hardware':
-      // Hardware has no strong pass signal in the health model yet — keep pending unless verify passes
+      // Map Pins has no strong pass signal in the health model yet — keep pending unless verify passes
       return 'pending';
     case 'export':
       return health.lastExport?.status === 'ok' && !health.dirtySinceExport ? 'pass' : 'pending';

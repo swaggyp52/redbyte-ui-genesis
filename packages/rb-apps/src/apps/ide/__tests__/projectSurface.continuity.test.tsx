@@ -69,7 +69,17 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
 }
 
 describe('ProjectSurface — blocker-to-surface routing', () => {
-  it('unmapped output blocker (RBP1005) includes an action button pointing to Hardware', () => {
+  it('keeps the project console hidden by default so the landing workspace stays primary', () => {
+    const { queryByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface {...makeProps()} />
+      </BoardSignalProvider>
+    );
+
+    expect(queryByTestId('ide-workbench-console')).toBeNull();
+  });
+
+  it('unmapped output blocker (RBP1005) includes an action button pointing to Map Pins', () => {
     const onOpenHardware = vi.fn();
     const health = deriveProjectHealth(
       {
@@ -112,7 +122,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     // RBP1005 is auto-generated when verifyPassIncomplete — fixPath mode: 'hardware'
     const actionBtns = getAllByTestId('ide-project-blocker-0-action');
     const lastBtn = actionBtns[actionBtns.length - 1];
-    expect(lastBtn.textContent).toContain('Hardware');
+    expect(lastBtn.textContent).toContain('Map Pins');
     fireEvent.click(lastBtn);
     expect(onOpenHardware).toHaveBeenCalled();
   });
@@ -200,7 +210,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(onOpenVerify).toHaveBeenCalled();
   });
 
-  it('export trust explanation clearly names Verify as the dependency when AVAILABLE not TRUSTED', () => {
+  it('export trust explanation keeps export advisory when verification is not current', () => {
     const { getAllByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
@@ -234,12 +244,10 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
 
     const explanations = getAllByTestId('ide-project-export-explanation');
     const explanation = explanations[explanations.length - 1];
-    // Must say AVAILABLE (not TRUSTED)
+    // Export stays available, but the explanation should state that compare trust is advisory.
     expect(explanation.textContent).toContain('AVAILABLE');
-    // Must explain that Verify is the missing piece
-    expect(explanation.textContent).toContain('Verify');
-    // Must say it is not trusted
-    expect(explanation.textContent).toContain('Not a trusted handoff');
+    expect(explanation.textContent).toContain('Compare results are advisory');
+    expect(explanation.textContent).toContain('do not block export');
   });
 
   it('readiness panel shows Go to Verify action when verify is not trusted', () => {
@@ -304,5 +312,41 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(gotoVerifyForExport.length).toBeGreaterThan(0);
     fireEvent.click(gotoVerifyForExport[gotoVerifyForExport.length - 1]);
     expect(onOpenVerify).toHaveBeenCalled();
+  });
+
+  it('removes starter framing from detached custom projects', () => {
+    const examples = [
+      {
+        id: 'signal-tour',
+        name: 'Signal Tour: Switches → LEDs',
+        summary: 'Four-wire passthrough. Learn mapping, run Verify, and see the board light up.',
+        expectedBehavior: 'Starter guidance',
+        tags: ['starter'],
+        course: 'ECE 101',
+        lab: 'Lab 1',
+        concept: 'Combinational',
+      },
+    ];
+    const { getByTestId, queryByText, queryByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            projectName: 'Untitled Project',
+            description: '',
+            examples,
+            projectKind: 'custom',
+            sourceExampleId: 'signal-tour',
+            scenarioAuthority: 'stale',
+            activeExampleId: null,
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-project-hero').textContent).toContain('Custom Project');
+    expect(getByTestId('ide-project-hero').textContent).toContain('Untitled Project');
+    expect(getByTestId('ide-project-showcase-secondary-cta').textContent).toContain('Open Design');
+    expect(queryByText('From Signal Tour: Switches → LEDs')).toBeNull();
+    expect(queryByTestId('ide-project-examples-disclosure')).toBeNull();
   });
 });

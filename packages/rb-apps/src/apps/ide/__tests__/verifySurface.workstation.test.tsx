@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
+import { deriveTimingGuidance } from '../timingGuidance';
 
 function makePassRun(): RuntimeVerifyRun {
   return {
@@ -123,8 +124,8 @@ function makeFailRun(): RuntimeVerifyRun {
 describe('VerifySurface workstation controls', () => {
   afterEach(() => { cleanup(); });
 
-  it('shows a single first-run CTA before any verification evidence exists', () => {
-    const { getAllByText, getByTestId } = render(
+  it('focuses first-run compare guidance on the current vectors instead of generator tooling', () => {
+    const { getByTestId, queryByTestId, queryByText } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -140,19 +141,28 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-empty-state').textContent).toContain('Click cells to edit');
+    expect(getByTestId('ide-verify-empty-state').textContent).toContain(
+      'Only asserted expected cells will be checked when you run compare'
+    );
+    expect(getByTestId('ide-verify-guided-callout').textContent).toContain(
+      'Expected outputs are already loaded'
+    );
+    expect(queryByTestId('ide-verify-generate-all-combos')).toBeNull();
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('comparing against project vectors');
     expect(getByTestId('ide-verify-session-status').textContent).toContain('DRAFT');
-    expect(getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION');
-    expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to simulate');
-    expect(getByTestId('ide-verify-empty-run').textContent).toContain('Run Simulation');
-    expect(getByTestId('ide-verify-empty-open-vectors').textContent).toContain('Import');
-    expect(getByTestId('ide-verify-run').textContent).toContain('Run Simulation');
+    expect(getByTestId('ide-verify-session-mode').textContent).toContain('COMPARE');
+    expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to compare');
+    expect(getByTestId('ide-verify-empty-run').textContent).toContain('Run Compare');
+    expect(getByTestId('ide-verify-empty-open-vectors').textContent).toContain('Open vectors');
+    expect(getByTestId('ide-verify-run').textContent).toContain('Run Compare');
     expect(getByTestId('ide-verify-run').className).toContain('ide-button-primary');
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(queryByTestId('ide-inspector')).toBeNull();
+    expect(queryByText('Advanced vector tools')).toBeNull();
   });
 
   it('labels trace-only verification as observation mode when no expected outputs are loaded', () => {
-    const { getByTestId } = render(
+    const { container, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={false}
@@ -172,9 +182,133 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-session-status').textContent).toContain('DRAFT');
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION');
     expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to simulate');
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(queryByTestId('ide-inspector')).toBeNull();
   });
 
-  it('shows capture mode with assertions incomplete after a trace-only run', () => {
+  it('deduplicates canonical signal ids and display labels in the pre-run inventory', () => {
+    const { container, getByTestId, queryByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0, sw1: 1 }, expected: { ld0: 1 } },
+        ]}
+        mappedInputs={[
+          { id: 'sw0', label: 'SW0' },
+          { id: 'sw1', label: 'SW1' },
+        ]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'sw1', direction: 'in', label: 'SW1' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-guided-callout').textContent).toContain('Inputs: 2');
+    expect(getByTestId('ide-verify-prerun-lanes').textContent).toContain('SW0');
+    expect(getByTestId('ide-verify-prerun-lanes').textContent).toContain('SW1');
+    expect(getByTestId('ide-verify-prerun-lanes').textContent).toContain('LD0');
+    expect(getByTestId('ide-verify-lane-chip-SW0')).toBeTruthy();
+    expect(queryByTestId('ide-verify-lane-chip-sw0')).toBeNull();
+  });
+
+  it('describes supported latch control as EN rather than a generic clock', () => {
+    const latchGuidance = deriveTimingGuidance({
+      schedule: 'clocked_macro',
+      reason: 'circuit-sequential',
+      analysis: {
+        hasClockedMacros: true,
+        hasClockNet: true,
+        sequentialNodes: [{ id: 'dl0', type: 'DLatch', clockPort: 'EN' }],
+        clockSource: 'circuit',
+        clockNetName: 'EN',
+      },
+      needsSimClockInjection: false,
+      clockSignalName: 'EN',
+      samplePoint: 'post-rising-edge',
+      tick0Meaning: 'initial-state',
+      hasUnsupportedTemporal: false,
+      temporalIssues: [],
+    });
+
+    const { container, getByTestId, queryByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { d: 0, en: 0 }, expected: {} },
+        ]}
+        mappedInputs={[
+          { id: 'd', label: 'D' },
+          { id: 'en', label: 'EN' },
+        ]}
+        mappedSignals={[
+          { id: 'd', direction: 'in', label: 'D' },
+          { id: 'en', direction: 'in', label: 'EN' },
+          { id: 'q', direction: 'out', label: 'Q' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+        hasDff={true}
+        liveSignalRoles={{ d: 'input', en: 'clock', q: 'output' }}
+        timingGuidance={latchGuidance}
+      />
+    );
+
+    expect(getByTestId('ide-verify-prerun-clock-chip').textContent).toContain('EN: EN');
+    expect(getByTestId('ide-verify-sequential-helper').textContent).toContain('Latch behavior detected');
+    expect(getByTestId('ide-verify-insert-clock-pattern').textContent).toContain('Insert basic enable pattern');
+    expect(getByTestId('ide-verify-io-summary').textContent).toContain('Latch control:');
+    expect(getByTestId('ide-verify-guided-callout').textContent).toContain(
+      'already includes EN changes'
+    );
+    expect(queryByTestId('ide-verify-guided-clock-pattern')).toBeNull();
+    expect(getByTestId('ide-verify-sequential-context').textContent).toContain(
+      'latch-control changes'
+    );
+  });
+
+  it('warns in Verify when the current design has an unsupported feedback structure', () => {
+    const { container, getByTestId, queryByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={false}
+        customVectors={[{ id: 'cv-01', tick: 0, inputs: { r: 0, s: 0 }, expected: {} }]}
+        mappedInputs={[
+          { id: 'r', label: 'R' },
+          { id: 's', label: 'S' },
+        ]}
+        mappedSignals={[
+          { id: 'r', direction: 'in', label: 'R' },
+          { id: 's', direction: 'in', label: 'S' },
+          { id: 'q', direction: 'out', label: 'Q' },
+          { id: 'qbar', direction: 'out', label: 'Qbar' },
+        ]}
+        unsupportedFeedbackDiagnostic={{
+          title: 'Combinational loop detected',
+          message:
+            'use a supported sequential primitive (DLatch/DFlipFlop/RSLatch), the exact 4-NAND D-latch topology, or remove unsupported feedback.',
+        }}
+        onGoToDesign={vi.fn()}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-unsupported-feedback-banner')).toBeTruthy();
+    expect(getByTestId('ide-verify-unsupported-feedback').textContent).toContain(
+      'Combinational loop detected'
+    );
+    expect(getByTestId('ide-verify-unsupported-feedback').textContent).toContain(
+      'supported stateful topologies'
+    );
+    expect(getByTestId('ide-verify-unsupported-feedback-design').textContent).toContain(
+      'Open Design'
+    );
+  });
+
+  it('shows observation-only capture guidance after a trace-only run with no asserted outputs', () => {
     const traceRun: RuntimeVerifyRun = {
       scenarioId: 'trace-run',
       scenarioName: 'Trace Run',
@@ -202,7 +336,7 @@ describe('VerifySurface workstation controls', () => {
       waveform: [{ tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] }],
     };
 
-    const { getByTestId } = render(
+    const { container, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -220,14 +354,24 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-session-status').textContent).toContain('ASSERTIONS INCOMPLETE');
+    expect(getByTestId('ide-verify-session-status').textContent).toContain('OBSERVATION ONLY');
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('CAPTURE');
-    expect(getByTestId('ide-verify-session-title').textContent).toContain('Assertion coverage is incomplete');
-    expect(getByTestId('ide-verify-summary-status').textContent).toContain('ASSERTIONS INCOMPLETE');
+    expect(getByTestId('ide-verify-session-title').textContent).toContain('Waveform recorded — observation only');
+    expect(getByTestId('ide-verify-summary-status').textContent).toContain('OBSERVATION ONLY');
     expect(getByTestId('ide-verify-run-proof').className).toContain('ide-verify-run-proof--trace');
     expect(getByTestId('ide-verify-set-oracle').textContent).toContain('Capture outputs as expected');
     expect(getByTestId('ide-verify-set-oracle').className).toContain('ide-button-primary');
     expect(getByTestId('ide-verify-run-secondary').className).toContain('ide-button-secondary');
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(queryByTestId('ide-inspector')).toBeNull();
+
+    const testbenchSummary = container.querySelector('.ide-verify-scenario-builder-summary') as HTMLElement | null;
+    expect(testbenchSummary).toBeTruthy();
+    fireEvent.click(testbenchSummary as HTMLElement);
+
+    const advancedTools = getByTestId('ide-stimulus-toolbar-advanced') as HTMLDetailsElement;
+    expect(advancedTools.open).toBe(false);
+    expect(queryByTestId('ide-stimulus-toolbar')).toBeTruthy();
   });
 
   it('arms assertion checking immediately after capturing outputs as expected', () => {
@@ -303,6 +447,71 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-assertion-mode-toggle').textContent).toContain('Mode: Check Outputs');
   });
 
+  it('reruns in trace mode after the student switches the next run intent back to simulation', async () => {
+    const onRunVerification = vi.fn();
+    const { getByTestId, queryByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={makeFailRun()}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        onRunVerification={onRunVerification}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    fireEvent.click(getByTestId('ide-verify-assertion-mode-toggle'));
+    expect(getByTestId('ide-verify-assertion-mode-toggle').textContent).toContain('Mode: Trace Only');
+
+    fireEvent.click(getByTestId('ide-verify-run-secondary'));
+
+    await waitFor(() => expect(onRunVerification).toHaveBeenCalledTimes(1));
+    expect(onRunVerification.mock.calls[0]?.[0]).toMatchObject({
+      assertionMode: false,
+      runKind: 'trace',
+    });
+  });
+
+  it('describes saved assertions as inactive when the student switches back to trace mode', () => {
+    const { container, getByTestId, queryByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={makeFailRun()}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    fireEvent.click(getByTestId('ide-verify-assertion-mode-toggle'));
+
+    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain(
+      'saved expected outputs'
+    );
+    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).not.toContain(
+      'comparing against'
+    );
+    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain(
+      'current mode is trace only'
+    );
+  });
+
   it('preserves blank assertions when capture updates an existing assertion mask', () => {
     const traceRun: RuntimeVerifyRun = {
       scenarioId: 'trace-run',
@@ -345,7 +554,7 @@ describe('VerifySurface workstation controls', () => {
     };
 
     const onVectorsChange = vi.fn();
-    const { getByTestId } = render(
+    const { container, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -373,7 +582,7 @@ describe('VerifySurface workstation controls', () => {
 
   it('offers in-place compare fixes from the right panel', () => {
     const onVectorsChange = vi.fn();
-    const { getByTestId } = render(
+    const { container, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -392,11 +601,80 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    const testbenchSummary = container.querySelector('.ide-verify-scenario-builder-summary') as HTMLElement | null;
+    expect(testbenchSummary).toBeTruthy();
+    fireEvent.click(testbenchSummary as HTMLElement);
+    expect(queryByTestId('ide-stimulus-toolbar-advanced')).toBeNull();
+    expect(getByTestId('ide-stimulus-toolbar')).toBeTruthy();
+
     fireEvent.click(getByTestId('ide-verify-right-accept-observed'));
 
     expect(onVectorsChange).toHaveBeenCalledWith([
       { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
       { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 0 } },
+    ]);
+  });
+
+  it('demotes stale authored compare state back to trace-first with explicit stale-reference actions', async () => {
+    const onRunVerification = vi.fn();
+    const onVectorsChange = vi.fn();
+    const staleRun: RuntimeVerifyRun = {
+      ...makePassRun(),
+      deterministicHash: 'old-hash',
+      reportHash: 'stale-authored-report',
+      report: {
+        vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 1 }, caseIndex: 0 }],
+        inputsAtTick: { 0: { sw0: 0 } },
+        inputsByVectorId: { 'vec-01': { sw0: 0 } },
+        signalRoles: { sw0: 'input', ld0: 'output' },
+        rows: [{ tick: 0, signal: 'ld0', expected: '1', actual: '1', status: 'pass', vectorId: 'vec-01', caseIndex: 0 }],
+      } as RuntimeVerifyRun['report'],
+      waveform: [{ tick: 0, signals: { sw0: '0', ld0: '1' }, mismatches: [] }],
+    };
+
+    const { getByTestId, queryByTestId } = render(
+      <VerifySurface
+        deterministicHash="new-hash"
+        hasVectors={true}
+        lastRun={staleRun}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 1 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        onVectorsChange={onVectorsChange}
+        onRunVerification={onRunVerification}
+        onOpenProjectVectors={vi.fn()}
+        projectKind="custom"
+        scenarioAuthority="stale"
+      />
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('ide-verify-strip-stale-guidance').textContent).toContain('Older authored reference available');
+    });
+    expect(getByTestId('ide-verify-reference-mode').textContent).toContain('stale authored reference');
+    expect(getByTestId('ide-verify-stale-reference-mode').textContent).toContain('stimulus-only tracing');
+    expect(queryByTestId('ide-verify-stale-banner')).toBeNull();
+    expect(queryByTestId('ide-verify-prerun-inventory')).toBeNull();
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(queryByTestId('ide-inspector')).toBeNull();
+    expect(queryByTestId('ide-verify-assertion-mode-toggle')).toBeNull();
+    expect(queryByTestId('ide-verify-advanced-debug')).toBeNull();
+
+    fireEvent.click(getByTestId('ide-verify-stale-keep-reference'));
+    await waitFor(() => expect(onRunVerification).toHaveBeenCalledTimes(1));
+    expect(onRunVerification.mock.calls[0]?.[0]).toMatchObject({
+      assertionMode: true,
+      runKind: 'verify',
+    });
+
+    fireEvent.click(getByTestId('ide-verify-stale-reset-stimulus'));
+    expect(onVectorsChange).toHaveBeenCalledWith([
+      { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {} },
     ]);
   });
 
@@ -475,7 +753,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-stale-recapture'));
+    fireEvent.click(getByTestId('ide-verify-stale-recapture-reauthor'));
     expect(onRunVerification.mock.calls[0]?.[0]?.assertionMode).toBe(false);
 
     rerender(
@@ -948,8 +1226,8 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-signal-filter-state').textContent).toContain('1 relevant');
-    expect(getByTestId('ide-verify-signal-ld0')).toBeTruthy();
+    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+    expect(getByTestId('ide-verify-waveform-row-ld0')).toBeTruthy();
     expect(queryByText(/No signal data in the last run/i)).toBeNull();
   });
 
@@ -997,7 +1275,8 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-signal-ld0_node_in')).toBeTruthy();
+    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+    expect(getByTestId('ide-verify-waveform-row-ld0_node_in')).toBeTruthy();
     expect(queryByText(/No signal data in the last run/i)).toBeNull();
   });
 

@@ -21050,6 +21050,20 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   border-right: none !important;
   background: transparent !important;
 }
+[data-ide-mode-marker='hardware'] .ide-hardware-provenance-details {
+  margin: 4px 0 6px !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hardware-provenance-summary {
+  cursor: pointer !important;
+  list-style: none !important;
+  font-size: 10px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: rgba(130,170,210,0.52) !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hardware-provenance-summary::-webkit-details-marker {
+  display: none !important;
+}
 [data-ide-mode-marker='hardware'] [data-testid='ide-hardware-export-status']:has-text,
 [data-ide-mode-marker='hardware'] [data-testid='ide-hardware-export-status'] {
   font-family: var(--rb-font-mono) !important;
@@ -23819,4 +23833,277 @@ button:disabled,
   color: var(--ide-text-muted);
   font-size: 12px;
   padding: 0 2px;
+}
+
+/* Shell simplification pass: shared spacing/skeleton discipline for non-Design pages */
+.ide-workbench-shell:is(
+    [data-ide-mode-marker='project'],
+    [data-ide-mode-marker='hardware'],
+    [data-ide-mode-marker='export'],
+    [data-ide-mode-marker='import']
+  ) {
+  --ide-shell-main-max-width: 1320px;
+  --ide-shell-panel-header-padding: 12px 16px 8px;
+  --ide-shell-panel-actions-padding: 0 16px 8px;
+  --ide-shell-panel-body-padding: 0 16px 18px;
+  --ide-shell-panel-gap: 16px;
+  --ide-shell-dock-padding: 8px 8px 12px;
+  --ide-shell-dock-gap: 8px;
+  --ide-shell-action-row-min-height: 44px;
+}
+
+.ide-workbench-shell:is(
+    [data-ide-mode-marker='project'],
+    [data-ide-mode-marker='hardware'],
+    [data-ide-mode-marker='export'],
+    [data-ide-mode-marker='import']
+  )
+  .ide-workbench-dock {
+  padding: var(--ide-shell-dock-padding);
+  gap: var(--ide-shell-dock-gap);
+}
+
+.ide-workbench-shell:is(
+    [data-ide-mode-marker='project'],
+    [data-ide-mode-marker='hardware'],
+    [data-ide-mode-marker='export'],
+    [data-ide-mode-marker='import']
+  )
+  .ide-workbench-workspace
+  > .ide-panel {
+  inline-size: min(100%, var(--ide-shell-main-max-width));
+  margin-inline: auto;
+}
+
+.ide-workbench-shell:is(
+    [data-ide-mode-marker='project'],
+    [data-ide-mode-marker='import']
+  )
+  .ide-workbench-main.hide-right-dock {
+  width: min(100%, var(--ide-shell-main-max-width));
+}
+
+.ide-workbench-shell:is(
+    [data-ide-mode-marker='hardware'],
+    [data-ide-mode-marker='export'],
+    [data-ide-mode-marker='import']
+  )
+  .ide-workbench-workspace
+  > .ide-panel
+  > .ide-panel-header {
+  padding: var(--ide-shell-panel-header-padding);
+}
+
+.ide-workbench-shell:is(
+    [data-ide-mode-marker='hardware'],
+    [data-ide-mode-marker='export'],
+    [data-ide-mode-marker='import']
+  )
+  .ide-workbench-workspace
+  > .ide-panel
+  > .ide-panel-actions {
+  padding: var(--ide-shell-panel-actions-padding);
+  min-block-size: var(--ide-shell-action-row-min-height);
+}
+
+.ide-workbench-shell:is(
+    [data-ide-mode-marker='hardware'],
+    [data-ide-mode-marker='export'],
+    [data-ide-mode-marker='import']
+  )
+  .ide-workbench-workspace
+  > .ide-panel
+  > .ide-panel-body {
+  padding: var(--ide-shell-panel-body-padding);
+  gap: var(--ide-shell-panel-gap);
+}
+
+.ide-workbench-shell:is(
+    [data-ide-mode-marker='hardware'],
+    [data-ide-mode-marker='export'],
+    [data-ide-mode-marker='import']
+  )
+  .ide-surface-actions {
+  min-block-size: 28px;
+  align-items: center;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-workspace > .ide-panel > .ide-panel-body {
+  padding: 0 clamp(16px, 1.6vw, 22px) 20px;
+  gap: 16px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='hardware'] .ide-panel-body > *:first-child {
+  padding: 12px 16px 0 !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import']
+  .ide-workbench-workspace
+  > .ide-panel
+  > .ide-panel-body
+  > * {
+  max-width: 880px;
+}
+
+/* Import redesign pass: single-path intake surface before workbench details */
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-dock-v2--first-look {
+  gap: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import']
+  .ide-import-dock-v2--first-look
+  .ide-import-workflow-step-btn {
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px 10px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import']
+  .ide-import-dock-v2--first-look
+  .ide-import-workflow-step-copy
+  span,
+.ide-workbench-shell[data-ide-mode-marker='import']
+  .ide-import-dock-v2--first-look
+  .ide-import-workflow-step-btn
+  .ide-status-pill {
+  display: none;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import']
+  .ide-import-dock-v2--first-look
+  .ide-import-workflow-step-copy
+  strong {
+  font-size: 11px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-shell {
+  width: min(100%, 980px) !important;
+  max-width: 980px !important;
+  display: grid;
+  gap: 18px;
+  margin-inline: auto;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.25fr) auto;
+  align-items: center !important;
+  gap: 20px 24px !important;
+  min-height: clamp(220px, 30vh, 300px);
+  padding: clamp(24px, 3vw, 34px) clamp(24px, 3.2vw, 36px) !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(46, 196, 182, 0.16) !important;
+  background:
+    radial-gradient(circle at top right, rgba(46, 196, 182, 0.12), transparent 46%),
+    linear-gradient(180deg, rgba(6, 15, 27, 0.96), rgba(5, 11, 20, 0.98)) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero__copy {
+  display: grid;
+  gap: 12px;
+  max-width: 58ch;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero__eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(152, 220, 213, 0.84);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero__title {
+  font-size: clamp(22px, 3vw, 30px) !important;
+  line-height: 1.08;
+  margin-bottom: 0 !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero .ide-copy {
+  font-size: 14px !important;
+  color: rgba(182, 208, 231, 0.8) !important;
+  line-height: 1.6 !important;
+  max-width: 56ch;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero__actions {
+  display: grid !important;
+  justify-items: start;
+  align-content: center;
+  gap: 10px !important;
+  min-width: min(100%, 280px);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero__actions .ide-button-primary {
+  min-height: 48px !important;
+  min-width: 240px;
+  padding: 10px 24px !important;
+  font-size: 15px !important;
+  justify-content: center;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-other-options {
+  min-width: 0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-other-options .ide-inline-actions {
+  margin-top: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-guidance {
+  padding: 20px 22px !important;
+  min-height: 0 !important;
+  text-align: left !important;
+  border: 1px solid rgba(56, 189, 248, 0.14) !important;
+  border-radius: 14px !important;
+  background: rgba(6, 13, 23, 0.72) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-guidance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-guidance-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px 14px 15px;
+  border-radius: 12px;
+  border: 1px solid rgba(63, 96, 128, 0.24);
+  background: rgba(7, 16, 28, 0.82);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-guidance-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(136, 170, 205, 0.72);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-guidance-card strong {
+  font-size: 14px;
+  color: rgba(236, 245, 255, 0.94);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-guidance-card p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(170, 196, 220, 0.74);
+}
+
+@media (max-width: 1180px) {
+  .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start !important;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero__actions {
+    min-width: 0;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-guidance-grid {
+    grid-template-columns: 1fr;
+  }
 }

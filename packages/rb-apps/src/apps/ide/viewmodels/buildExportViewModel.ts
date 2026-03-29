@@ -1202,6 +1202,9 @@ function fixHintFor(
   if (lowered.includes('questionable') && lowered.includes('mapping')) {
     return 'Move this port to a direction-compatible Basys3 alias.';
   }
+  if (lowered.includes('combinational loop detected')) {
+    return 'Use DLatch, DFlipFlop, RSLatch, or the supported exact 4-NAND D-latch topology before exporting.';
+  }
   if (severity === 'error') {
     return 'Resolve this blocker before exporting.';
   }

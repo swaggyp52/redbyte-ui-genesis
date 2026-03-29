@@ -8,6 +8,7 @@ import {
 } from '@redbyte/rb-logic-core';
 import type { IoMapping, IoMappingEntry } from '@redbyte/rb-utils';
 import { compareCodepoint } from '../../../export/codepointSort';
+import { canonicalizeSemanticCircuit } from '../../../circuit/semanticCircuit';
 import { netlistFromIr, type Netlist } from '../../../export/netlistExport';
 import type {
   VhdlTopInputBinding,
@@ -56,7 +57,8 @@ export function buildBasys3ExportModel(
   circuit: Circuit,
   ioMapping: IoMapping,
 ): Basys3ExportModel {
-  const { ir } = elaborateCircuit(circuit, {
+  const semanticCircuit = canonicalizeSemanticCircuit(circuit);
+  const { ir } = elaborateCircuit(semanticCircuit, {
     pins: Object.fromEntries(
       [...ioMapping.inputs, ...ioMapping.outputs]
         .filter((entry) => typeof entry.pin === 'string' && entry.pin.trim().length > 0)

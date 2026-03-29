@@ -1,4 +1,1010 @@
 # AI State
+## Change Log 2026-03-28 (Export and Hardware now lead with guided student actions instead of workstation-heavy dashboard chrome)
+
+**Subsystem**: IDE Export / Hardware hierarchy / guided handoff workflow
+
+### Problem
+
+After the Import cleanup, Export and Hardware were still the most obviously internal-feeling pages in the IDE:
+
+- Export still spread attention across readiness gates, provenance metadata, artifact detail, and multiple download controls before making the main handoff action obvious
+- Hardware still opened like a mixed monitor/proof console, with mode competition and provenance chrome crowding the board-first next step
+- both pages were truthful, but they still answered internal state questions faster than student workflow questions such as:
+  - what do I do next?
+  - what do I need to know before I do it?
+  - where do the details live if I need them?
+
+This was a hierarchy/composition problem, not a new model-truth bug.
+
+### What changed
+
+- Reframed Export around one dominant top task:
+  - `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - moved the Vivado handoff into a new top-level `What To Do Next` section near the trust banner
+  - kept the main project download action dominant while demoting duplicate dock/right-column download buttons to secondary tone
+  - removed the header-level duplicate primary CTA from the main Export panel
+
+- Demoted Export metadata and readiness chrome:
+  - `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - moved the full gate stack into a lower `Readiness Details` section
+  - collapsed dock provenance into `Evidence snapshot`
+  - simplified advisory trust states so the page leads with one blocker/advisory reason and consequence instead of a denser three-axis readiness strip
+  - preserved blocker truth and existing trust logic
+
+- Reframed Hardware around the student’s next action:
+  - `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - hardware now chooses a more useful initial mode:
+    - `Map Pins` when required mappings are missing
+    - `Prepare Board` when mappings exist and guided vectors are available
+    - `Program Checklist` when proof is the next meaningful step
+  - added a unified next-action hero for blocked, mapping, drifted, bring-up, and programming states
+  - renamed mode labels to read like workflow steps instead of tools:
+    - `Map Pins`
+    - `Prepare Board`
+    - `Program Checklist`
+    - `Live Details`
+
+- Demoted Hardware secondary state feeds:
+  - `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - `packages/rb-apps/src/apps/ide/ide-root.css`
+  - added a dedicated `Map Pins` dock/inspector so mapping status stays central when the student is blocked on board assignments
+  - kept the right inspector collapsed and the console collapsed by default
+  - moved last Verify provenance behind a quiet `Last Verify evidence` disclosure so it no longer competes above the main hero
+  - preserved board truth, scenario drift warnings, and hardware blockers
+
+- Updated integration tests to match the newer Import/Export/Hardware shell behavior:
+  - `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx`
+  - app-level wiring tests now explicitly:
+    - leave Import first-look before using sample toggles
+    - open the collapsed Export inspector before asserting scenario provenance
+    - use the new Hardware `Map Pins` dock when checking mapping status
+
+### Student-visible behavior
+
+- Export now leads with one clearer answer:
+  - download the Vivado project first
+  - read one blocker/advisory reason near the top
+  - open readiness/package detail lower only if needed
+- Hardware now feels like a guided lab sequence instead of a live operations panel:
+  - map the board pins
+  - prepare the board with bring-up steps
+  - open the program checklist
+- Live instrumentation and provenance are still available, but they no longer dominate the first look.
+
+### Proof
+
+- focused tests:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx`
+- build:
+  - `pnpm --filter @redbyte/playground build`
+- slice gates:
+  - `pnpm -s ide:gate:export-ready-contract`
+  - `pnpm -s ide:gate:export-blockers-contract`
+  - `pnpm -s ide:gate:hardware-checklist-contract`
+- release authorities:
+  - `pnpm repo:status` -> `39/39 checks passed`
+  - `pnpm classroom:signoff --allow-dirty` -> `10/10 checks passed`, `CLASSROOM_READY`
+
+## Change Log 2026-03-28 (Import now opens as a single-path intake surface instead of a sparse workstation page)
+
+**Subsystem**: IDE Import surface hierarchy / first-look onboarding / import workbench entry
+
+### Problem
+
+After the shell-default and spacing passes, Import was still the weakest-looking page in the product:
+
+- first look still split attention between a small center card, a heavy left workflow rail, and a disabled top `Review Import...` action
+- the page still led with `paste HDL` language alongside the ZIP path instead of making one dominant starting action obvious
+- the right-side readiness/details rail was hidden, but the first impression still felt like a workstation shell waiting for work instead of an intentional intake step
+- deeper import tests still assumed the full sample/workstation controls were visible immediately, which no longer matched the intended first-look hierarchy
+
+This was an import-specific hierarchy/composition problem, not a new import-model or project-replacement logic bug.
+
+### What changed
+
+- Reframed the first-look import hero around one dominant intake path:
+  - `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+  - first-look copy now leads with `Start with a Vivado ZIP`
+  - `Select Vivado ZIP` remains the one dominant CTA
+  - `Paste HDL` remains available only inside `Other ways to start`
+  - the disabled top `Review Import...` header action is now suppressed during first look
+
+- Reduced first-look chrome in the left dock:
+  - `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+  - `packages/rb-apps/src/apps/ide/ide-root.css`
+  - first look now renders the workflow rail only
+  - dock actions, guidance, secondary tools, and sample cards stay out of the first impression until the student leaves first look
+
+- Added a larger centered intake shell and secondary guidance cards:
+  - `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+  - `packages/rb-apps/src/apps/ide/ide-root.css`
+  - the main intake surface now uses:
+    - one larger hero panel
+    - one supporting three-card guidance panel
+  - guidance now explains:
+    - fastest path (`Load a Vivado ZIP`)
+    - safe review (`Nothing is overwritten yet`)
+    - manual path (`Paste structural HDL if needed`)
+
+- Kept right-side import readiness hidden on first look, but available once import work begins:
+  - `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+  - `rightDockMode` is now:
+    - `hidden` on first look
+    - `collapsed` after the student enters the import workspace
+  - this keeps first impression calm without deleting secondary review detail once the student is actually working
+
+- Updated import-specific tests to match the intentional first-look workflow:
+  - `packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/importSurface.workstation.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/importSurface.verify-reset.test.tsx`
+  - deeper import workflow tests now explicitly leave first look before interacting with sample/workstation controls
+
+### Student-visible behavior
+
+- Import now answers `How do I start?` immediately:
+  - one dominant action: `Select Vivado ZIP`
+  - one secondary disclosure: `Other ways to start`
+- The page feels intentionally centered instead of abandoned:
+  - larger hero
+  - supporting guidance cards directly below
+  - no first-look workbench or review action competing above the fold
+- The right readiness/details rail does not appear until the student actually begins import work.
+- Once the student does begin import work, secondary details such as board detection are still available through the collapsed right rail.
+
+### Proof
+
+- targeted tests:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.verify-reset.test.tsx`
+- build:
+  - `pnpm --filter @redbyte/playground build`
+- import-specific gates:
+  - `pnpm -s ide:gate:primary-cta-contract`
+  - `pnpm -s ide:gate:import-actionable-targets-contract`
+  - `pnpm -s ide:gate:import-renders-schematic`
+- release authorities:
+  - `pnpm repo:status` -> `39/39 checks passed`
+  - `pnpm classroom:signoff --allow-dirty` -> `10/10 checks passed`, `CLASSROOM_READY`
+- before/after screenshots captured at:
+  - `1280x720` / `1440x900`
+  - `100%` / `125%` page scale
+  - directories:
+    - `%TEMP%/redbyte-import-slice1-before`
+    - `%TEMP%/redbyte-import-slice1-after`
+
+## Change Log 2026-03-28 (Non-Design shells now share a tighter width and spacing rhythm instead of four different page geometries)
+
+**Subsystem**: IDE shell spacing discipline / non-Design surface skeleton / shared workbench geometry
+
+### Problem
+
+After the first shell-default pass, non-Design surfaces were calmer but still did not feel like one product system:
+
+- Project, Hardware, Export, and Import were still using visibly different main-panel widths, body gutters, and section gaps
+- the left workbench dock was still heavier than necessary on wide screens, even after eager inspectors/consoles were removed
+- Export and Hardware still had a different top-of-panel rhythm than Import, while Project carried a much larger body gutter than the others
+- Import still felt visually stranded because its centered content card stayed too narrow relative to the new calmer shell
+
+This was a shell/layout rhythm problem, not a new page-logic or model-truth problem.
+
+### What changed
+
+- Narrowed non-Design dock caps in the shared shell component:
+  - `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+  - Project / Hardware / Export / Import now use lighter dock width caps than Verify/Design:
+    - wide: left `140..156`, right `188..208`
+    - standard: left `132..148`, right `180..196`
+    - compact: left `124..140`, right `168..184`
+
+- Added one late CSS override block for shared non-Design rhythm:
+  - `packages/rb-apps/src/apps/ide/ide-root.css`
+  - standardized:
+    - main content max width: `1320px`
+    - dock padding/gap: `8px 8px 12px`, gap `8px`
+    - panel header padding: `12px 16px 8px`
+    - panel action row padding: `0 16px 8px`
+    - panel body padding: `0 16px 18px`
+    - shared panel gap: `16px`
+  - Project body gutter now resolves to `clamp(16px, 1.6vw, 22px)` instead of the earlier wider `clamp(14px, 2vw, 28px)` rhythm
+  - Hardware keeps its board-first body layout, but the first section padding now aligns to the shared shell gutter (`12px 16px 0`)
+  - Import’s centered body children now cap at `880px` instead of `720px`, so the page no longer floats a tiny entry card in the middle of a much wider shell
+
+### Student-visible behavior
+
+- Project / Hardware / Export / Import now read more like one family of pages instead of four separate layout systems.
+- The left contextual dock is visibly lighter on non-Design surfaces, so the main workspace carries more visual weight.
+- Project and Import now feel less lopsided because their main content frame and body gutters are closer to Export/Hardware.
+- Export and Hardware keep the calmer shell defaults from the previous slice, but their main panels now share the same top-band and body spacing rhythm as Import.
+- No blocker truth was hidden or collapsed in this slice; the changes only standardized geometry and spacing.
+
+### Proof
+
+- targeted tests:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.verify-reset.test.tsx`
+- builds:
+  - `pnpm --filter @redbyte/playground build`
+  - `pnpm build`
+- shell/layout gates:
+  - `pnpm -s ide:gate:shell-density-contract`
+  - `pnpm -s ide:gate:workbench-layout-contract`
+  - `pnpm -s ide:gate:shell-chrome-contract`
+  - `pnpm -s ide:gate:layout-contract`
+- before/after screenshots captured at:
+  - `1280x720` / `1440x900`
+  - `100%` / `125%` page scale
+  - directories:
+    - `%TEMP%/redbyte-shell-slice2-before`
+    - `%TEMP%/redbyte-shell-slice2-after`
+- live geometry check after build:
+  - Project / Hardware / Export / Import wide-shell left dock now resolves to `156px`
+  - all four wide-shell main panels resolve to `1320px`
+
+### Validation nuance
+
+- A first `pnpm repo:status` failure in this session was caused by running `pnpm repo:status` and `pnpm classroom:signoff --allow-dirty` **in parallel**, which made both authority chains invoke nested builds at the same time.
+- After rerunning validation correctly:
+  - `pnpm build` passed
+  - shell/layout gates passed
+- However, later serial reruns of `pnpm repo:status` and `pnpm classroom:signoff --allow-dirty` timed out in-session, so this slice should not claim fresh full-authority closure beyond the successful targeted/build evidence above.
+
+## Change Log 2026-03-28 (Non-Design surfaces now start with calmer shell defaults instead of eager inspectors and consoles)
+
+**Subsystem**: IDE shell defaults / non-Design surface density / shell validation contracts
+
+### Problem
+
+After the Verify hierarchy cleanup, the remaining product-level problem was shell density:
+
+- non-Design pages still defaulted to workstation-heavy shell chrome even when the page already had a clear main action
+- Hardware and Export still opened with eager right inspectors and bottom diagnostics visible at the same time
+- Import still mounted an unnecessary readiness inspector before the student had done any work
+- Project still surfaced a bottom console even though the page already carried its own main status and CTA structure
+
+This was a shell-default problem, not a new model-truth problem.
+
+### What changed
+
+- Updated non-Design shell defaults at the surface call sites:
+  - `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+    - workbench console now hidden by default
+  - `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+    - inspector now starts collapsed behind the right rail
+    - console now starts collapsed unless blocking
+  - `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+    - inspector now starts collapsed behind the right rail
+    - console now starts collapsed unless blocking
+  - `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+    - right inspector now hidden by default
+    - console now hidden by default
+
+- Added surface-level regression coverage for the new shell policy:
+  - `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/importSurface.verify-reset.test.tsx`
+
+- Updated only the shell/layout validation contracts that explicitly encoded the old pane-heavy defaults:
+  - `scripts/gates/ide-workbench-layout-contract.mjs`
+  - `scripts/gates/ide-shell-chrome-contract.mjs`
+  - `scripts/gates/ide-console-autocollapse-contract.mjs`
+  - `scripts/gates/ide-layout-contract.mjs`
+  - `scripts/gates/ide-visual-contract.mjs`
+  - `scripts/gates/ide-evidence-capsule-contract.mjs`
+  - these gates now assert the current intended behavior:
+    - Project/Import can hide consoles by default
+    - Hardware/Export can start with collapsed inspectors
+    - Export evidence details remain testable by opening the collapsed inspector rail
+
+### Student-visible behavior
+
+- Project now opens without a bottom console competing with the landing workflow.
+- Hardware and Export now open with the main workspace centered first; their right-side detail panes are still available, but they no longer dominate the page on entry.
+- Import no longer opens with a right-side readiness/status rail before the student has started the import flow.
+- The app still preserves blocker truth:
+  - blocking/export-readiness reasons remain visible in the main workspace
+  - advanced/debug evidence remains accessible through the rail when needed
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.verify-reset.test.tsx`
+- `pnpm --filter @redbyte/playground build`
+- shell/layout gates:
+  - `pnpm -s ide:gate:shell-density-contract`
+  - `pnpm -s ide:gate:workbench-layout-contract`
+  - `pnpm -s ide:gate:shell-chrome-contract`
+  - `pnpm -s ide:gate:console-autocollapse-contract`
+  - `pnpm -s ide:gate:layout-contract`
+  - `pnpm -s ide:gate:visual-contract`
+  - `pnpm -s ide:gate:evidence-capsule-contract`
+- release authorities:
+  - `pnpm repo:status` → `39/39 checks passed`
+  - `pnpm classroom:signoff --allow-dirty` → `10/10 checks passed`, `CLASSROOM_READY`
+
+## Change Log 2026-03-28 (Verify stale-reference strip is now compact, and guided post-run testbench editing collapses advanced vector tools)
+
+**Subsystem**: IDE Verify hierarchy / guided authoring density / stale-reference workflow
+
+### Problem
+
+After the first Verify hierarchy slice, two student-facing density problems still remained:
+
+- stale authored reference states still carried a second action-heavy status strip underneath the explicit stale-reference panel, so the page had one truthful stale panel plus another smaller control bar competing for attention
+- once a student opened the post-run `Testbench` editor in guided flows, RedByte still exposed the full row/tick/pattern/clipboard toolbar immediately, which made observation/stale/pass follow-up work feel like raw internal tooling again
+
+This was still a hierarchy problem, not a new model-truth bug.
+
+### What changed
+
+- Compact stale-reference strip:
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - when `hasStaleAuthoredReference` is active, the Verify strip now stays visible only as compact context:
+    - keeps the `STALE` summary pill
+    - replaces the extra run/mode/debug controls with one short guidance line
+    - leaves the explicit stale-reference panel as the only actionable surface for that state
+
+- Guided post-run editing now collapses advanced vector tooling by default:
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - non-failure post-run Verify states now open the `Testbench` editor with `StimulusCanvas` in advanced-toolbar mode, so row/tick/pattern/clipboard controls stay behind `Advanced vector tools`
+  - mismatch/failure workflows still keep the full toolbar visible once the student opens the testbench, because those states are intentionally debug-heavy
+
+- Added regression coverage for the new hierarchy contract:
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - observation-only post-run now asserts the advanced toolbar disclosure exists and starts collapsed
+  - compare/fail keeps the full toolbar visible
+  - stale authored reference no longer shows the strip mode toggle / advanced debug group
+
+### Student-visible behavior
+
+- In stale authored reference mode, students now see one stale action panel instead of a stale panel plus a second strip full of controls. The strip still shows that the state is stale, but it no longer competes with the actual stale-decision workflow.
+- In non-failure post-run Verify states, opening `Testbench` no longer dumps the student directly into the full vector workstation toolbar. Advanced vector tools are still available, but they start collapsed.
+- Real compare/fail debugging remains instrumented on purpose.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.three-panel.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.authoring.test.tsx packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts`
+- `pnpm --filter @redbyte/playground build`
+- Live stale-reference repro on preview showed:
+  - compact stale strip text only, no strip mode toggle, no strip advanced-debug group
+  - opened `Testbench` shows `Advanced vector tools` disclosure collapsed by default
+- Before/after screenshots for the stale-reference + open-testbench state were captured at:
+  - `1280x720` / `1440x900`
+  - `100%` / `125%` zoom
+
+## Change Log 2026-03-28 (Verify guided states now suppress nonessential chrome and stale reference no longer stacks duplicate panels)
+
+**Subsystem**: IDE Verify hierarchy / workbench density / Verify shell validation
+
+### Problem
+
+After the earlier Verify truth fixes, the live page was still too dense for guided student workflows:
+
+- first-run custom and compare-ready Verify still showed the full workstation shell, so the left signal dock and right inspector competed with the single next action
+- stale authored reference states stacked multiple stale-specific surfaces at once (`Circuit Updated`, `Stale authored reference`, and the pre-run inventory), which made the page truthful but visually noisy
+- the first-run testbench canvas still surfaced advanced vector tooling too early
+- repo validation gates still assumed the old Verify shell shape and treated the new hidden Verify console / hidden guided-state dock layout as failures
+
+This was a hierarchy problem first, not a logic-model problem.
+
+### What changed
+
+- Added state-driven Verify shell layout policy:
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - guided states now reduce chrome by intent:
+    - first-run custom / compare-ready: left dock hidden, right inspector hidden, console hidden
+    - observation-only after a run: left dock collapsed to a rail, right inspector hidden, console hidden
+    - stale authored reference: left dock hidden, right inspector hidden, console hidden
+    - compare/fail: left dock remains visible, right side stays as a collapsed debug rail
+
+- Removed nonessential first-run vector toolbar chrome:
+  - `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - first-run Verify now renders the stimulus canvas without the advanced vector-tools summary bar competing above the primary action
+
+- Simplified stale authored reference presentation:
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - when stale authored reference is active:
+    - the generic `Circuit Updated` banner is suppressed
+    - the pre-run inventory panel is suppressed
+    - the page keeps one explicit stale-reference action panel plus the compact session hero
+  - inline reference-mode copy was shortened so the mode line reads like workflow guidance instead of an internal diagnostic paragraph
+
+- Updated targeted Verify tests to lock the new hierarchy:
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.three-panel.test.tsx`
+  - tests now assert:
+    - no left dock / inspector in guided first-run states
+    - collapsed left-rail behavior in observation-only trace states
+    - stale authored reference no longer shows the duplicate generic stale banner
+    - fail mode retains the signal dock and right debug rail
+
+- Aligned shell validation gates to the new Verify truth:
+  - `scripts/gates/ide-workbench-layout-contract.mjs`
+  - `scripts/gates/ide-shell-chrome-contract.mjs`
+  - `scripts/gates/ide-shell-density-contract.mjs`
+  - `scripts/gates/ide-console-autocollapse-contract.mjs`
+  - these gates now allow Verify’s guided states to hide the empty console and omit the left dock while still enforcing compact shell geometry and blocker-console behavior on Export
+
+### Student-visible behavior
+
+- First-run Verify is calmer: the student sees the page title, current mode, the testbench preview, and one dominant CTA instead of a full four-pane workstation.
+- Observation-only runs still surface the waveform and capture action, but the signal dock is reduced to a collapsed rail until the student explicitly opens it.
+- Stale authored reference now reads as one actionable state instead of a stack of overlapping stale panels.
+- Compare/fail stays instrumented: the signal list and mismatch debugging affordances remain available where they are actually needed.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.three-panel.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.authoring.test.tsx packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts`
+- `pnpm --filter @redbyte/playground build`
+- Individual gate reruns passed after alignment:
+  - `pnpm -s ide:gate:workbench-layout-contract`
+  - `pnpm -s ide:gate:shell-chrome-contract`
+  - `pnpm -s ide:gate:shell-density-contract`
+  - `pnpm -s ide:gate:console-autocollapse-contract`
+- Live browser repro on preview `http://127.0.0.1:4175/os/?mode=verify` confirmed:
+  - first-run custom: `Run Simulation`, no left dock, no inspector, no advanced vector-tools summary
+  - compare-ready: `Run Compare`, no left dock, no inspector
+  - observation-only: `Capture outputs as expected`, collapsed left signal rail, no inspector
+  - stale authored reference: one stale panel, no generic stale banner, no pre-run inventory
+  - compare/fail: `Inspect first mismatch`, visible left signal dock, collapsed right debug rail
+- Before/after screenshots were captured at `1280x720` and `1440x900` with `100%` and `125%` zoom checks for compare-ready and stale-reference states.
+
+## Change Log 2026-03-28 (Verify first-run hierarchy now prioritizes student workflow over raw tooling)
+
+**Subsystem**: IDE Verify surface hierarchy / first-run guidance / observation-only framing
+
+### Problem
+
+Live classroom testing on current HEAD showed that Verify was much more truthful than before, but still presented itself like internal tooling instead of a clean student workflow:
+
+- first-run Verify still exposed too many competing entry points, so compare-ready sessions could show generator-oriented guidance instead of a single obvious `Run Compare` path
+- successful trace-only runs with zero asserted outputs were still framed like incomplete comparison work, which made observation-only simulation look like a failed or half-finished verify step
+- the page hierarchy still over-emphasized raw vector machinery before students had a clear sense of whether they were tracing, comparing, or simply looking at recorded waveform evidence
+
+This was no longer a model-truth bug first; it was a classroom workflow clarity problem.
+
+### What changed
+
+- Reframed post-run zero-assertion sessions as observation-only instead of incomplete comparison:
+  - `packages/rb-apps/src/apps/ide/viewmodels/buildVerifySessionViewModel.ts`
+  - trace/capture runs with no active asserted outputs now surface:
+    - status `stimulus-only`
+    - badge `OBSERVATION ONLY`
+    - title `Waveform recorded — observation only`
+    - summary text that explicitly says no expected outputs are being checked yet
+
+- Tightened first-run Verify guidance so the page reflects the student's actual next step:
+  - `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - first-run guidance now distinguishes:
+    - build a starter testbench
+    - ready to simulate
+    - ready to compare
+  - compare-ready sessions no longer surface `Generate all input combinations` as a competing call-to-action
+  - footer copy now reinforces the active workflow (`compare checks only asserted outputs`, `run simulation to trace the current circuit`, etc.)
+
+- Updated Verify run-proof wording for observation-only runs:
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - trace runs with no asserted outputs now explicitly explain that they recorded live waveform behavior only, and that capture/authoring is the next step when comparison is desired
+
+- Added regression coverage for the student-facing hierarchy and wording changes:
+  - `packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts`
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+
+### Student-visible behavior
+
+- On first open, Verify now pushes one workflow-appropriate action instead of mixing generator tooling with compare-ready guidance.
+- When expected outputs already exist, the page reads `Ready to compare` and points directly at `Run Compare`.
+- When a student only traces the circuit, the recorded session now reads as `OBSERVATION ONLY` instead of looking like an incomplete comparison state.
+- The page better separates guided student workflow from advanced vector tooling without changing the underlying truth model.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.authoring.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx`
+- `pnpm --filter @redbyte/playground build`
+- Live browser repro on fresh preview `http://127.0.0.1:4175/os/?mode=verify`:
+  - compare-ready first-run state showed `Ready to compare`, `Run Compare`, and no competing `Generate all input combinations` CTA
+  - a custom project with no expected outputs produced `OBSERVATION ONLY` / `Waveform recorded — observation only` after running simulation
+
+## Change Log 2026-03-28 (Verify/Hardware/Export now distinguish latch control from true clocks and surface unsupported feedback early)
+
+**Subsystem**: IDE Verify / Hardware / Export timing guidance and unsupported feedback clarity
+
+### Problem
+
+Live classroom validation on current HEAD still showed two sequential-guidance problems after the earlier Verify authority fixes:
+
+- supported exact 4-NAND D-latch projects were being described with generic clock language in Verify, which made the control signal look like a free-running clock instead of latch enable behavior
+- unsupported feedback structures could be blocked correctly in Export but still drop students into generic first-run Verify guidance, so the product did not explain early enough why compare/export would remain blocked
+
+This was a student-facing truth issue: RedByte was technically classifying some stateful circuits correctly, but it was not explaining that behavior in the language a student would use when they built a latch.
+
+### What changed
+
+- Added shared timing guidance derivation:
+  - `packages/rb-apps/src/apps/ide/timingGuidance.ts`
+  - Verify, Hardware, and Export now derive one student-facing timing explanation that distinguishes:
+    - combinational
+    - true clocked sequential
+    - latch-control sequential
+    - generic stateful / sequential fallback
+
+- Reframed supported latch guidance away from generic clock wording:
+  - `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - the exact 4-NAND D-latch path now explains `EN` as latch control, not as a generic clock, and Hardware / Export use the same terminology
+
+- Surfaced unsupported feedback earlier in Verify:
+  - `packages/rb-apps/src/apps/IdeApp.tsx`
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Verify now receives the unsupported-feedback diagnostic derived from the current project/export analysis and shows an explicit banner before the testbench workflow
+
+- Fixed the live visibility regression for the new Verify warning:
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - the unsupported-feedback warning now renders inside a dedicated Verify banner container instead of as a direct panel-body callout, so it no longer gets hidden by Verify's broad `> .ide-callout { display: none }` noise-collapse CSS
+
+- Added targeted regression coverage:
+  - `packages/rb-apps/src/apps/ide/__tests__/timingGuidance.test.ts`
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx`
+
+### Student-visible behavior
+
+- A supported exact 4-NAND D-latch no longer reads like a generic clocked circuit. Verify tells the student that the stimulus needs `EN` changes, Hardware labels the special signal as `Latch control`, and Export reports `Stateful` / `Supported latch control` instead of generic clock truth.
+- Normal combinational circuits do not inherit latch/clock guidance.
+- Unsupported feedback structures now warn early in Verify with explicit guidance that tracing is still allowed, but compare/export stay blocked until the circuit is rewritten as a supported latch or flip-flop topology.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/timingGuidance.test.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/semanticCircuit.feedback-memory.test.ts packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx`
+- `pnpm --filter @redbyte/playground build`
+- Live browser repro on `http://127.0.0.1:4174/os/?mode=verify` and related Hardware / Export flows:
+  - supported 4-NAND D-latch shows `Latch control: EN` style guidance in Verify and matching terminology in Hardware / Export
+  - normal combinational AND shows no special sequential guidance
+  - unsupported NOR SR latch now shows `Combinational loop detected` as an early Verify banner before the testbench instead of only surfacing that truth in Export
+
+## Change Log 2026-03-27 (Workbench spacer no longer steals Reset-project clicks)
+
+**Subsystem**: IDE workbench shell / Project surface interaction trust
+
+### Problem
+
+Live classroom validation on current HEAD found a concrete shell-level pointer bug:
+
+- normal pointer clicks on `Reset project` could fail because the empty workbench spacer element (`ide-workbench-slot-spacer`) was sitting over the button's hit target
+- Playwright confirmed that `document.elementFromPoint(...)` on the center of the Reset button returned the spacer div instead of the button, so the action only worked when bypassed with a forced DOM click
+
+This was a real student-facing trust failure on a primary Project action, not a test artifact.
+
+### What changed
+
+- Made the empty workbench spacer pointer-transparent in the shell:
+  - `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+  - both hidden-dock spacer divs now render with `pointerEvents: 'none'` so they can preserve layout without consuming clicks meant for Project-surface actions underneath
+
+- Added a narrow regression guard:
+  - `packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx`
+  - verifies that the hidden-left-dock spacer still renders and is explicitly pointer-transparent
+
+### Student-visible behavior
+
+- `Reset project` can now be activated with a normal pointer click again.
+- The shell still preserves the same layout when a dock is hidden, but the empty spacer no longer blocks Project-surface controls.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx`
+- `pnpm --filter @redbyte/playground build`
+- Live browser repro on `http://127.0.0.1:4174/os/?mode=project`:
+  - before the fix, a normal click on `Reset project` timed out because `ide-workbench-slot-spacer` intercepted the pointer hit
+  - after the fix, a normal Playwright click opened the confirm dialog `Reset to the default example? All unsaved work will be lost.`
+
+## Change Log 2026-03-27 (Export and Hardware now treat stale Verify evidence as stale, not as current failure truth)
+
+**Subsystem**: IDE Verify -> Export / Hardware authority chain
+
+### Problem
+
+Live classroom flow testing still showed one major downstream contradiction after the earlier Verify fixes:
+
+- once a project had stale authored compare state, Export could still headline the state as `assertions differ from observed outputs` even when Verify had already demoted the session back to live stimulus tracing and marked the old reference stale
+- Export advisories could stack stale and old fail/trace messages together, which made stale evidence look current
+- students moving from stale Verify into Export / Hardware could not reliably tell whether they were looking at current truth or older evidence
+
+### What changed
+
+- Tightened stale Verify handling in the Export surface:
+  - `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - Export now derives a shared `isVerifyStale` state from `deriveProjectVerifyState(...)` and uses that stale authority in:
+    - the top export sidecard summary
+    - the main handoff heading/detail copy
+    - the Verify readiness row
+    - the export trust banner and next-step consequence copy
+
+- Stale Verify evidence now supersedes old fail/trace diagnostics:
+  - `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - `buildEvidenceDiagnostics(...)` now emits the stale advisory first and suppresses old fail / trace evidence messages while the design is dirty since Verify, so Export no longer mixes old compare truth into the current design state
+
+- Added regression coverage for the stale-export authority path:
+  - `packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx`
+  - verifies that a failed compare plus `dirtySinceVerify=true` renders `VERIFY STALE`, surfaces stale evidence text, and does not fall back to `assertions differ from observed outputs`
+
+### Student-visible behavior
+
+- After a circuit changes, Export now tells the student that Verify evidence is stale for the current circuit instead of implying that old assertion failures are still the active truth.
+- Export keeps downloads available when appropriate, but the next step is explicit: re-run Verify for current evidence.
+- Hardware now reads the same state coherently in the live workflow: stale compare evidence is shown as stale / edited-since-run, not as current proof.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+- Live browser repro on `http://127.0.0.1:4174/os/?mode=project`:
+  - booted a restored custom project with no starter framing
+  - moved into Verify and reproduced stale authored reference state
+  - opened Export and confirmed the surface now says `Export available — Verify evidence is stale for the current circuit`
+  - opened Hardware and confirmed it reports `Compare: STALE` / `Scenario edited since run` instead of treating old compare evidence as current
+
+## Change Log 2026-03-27 (Verify run-intent truth and pre-run inventory dedupe)
+
+**Subsystem**: IDE Verify surface / live classroom workflow
+
+### Problem
+
+Live browser testing on current HEAD still showed two classroom-facing Verify contradictions:
+
+- after a failed compare, switching the next-run toggle to `Trace Only` and pressing the main run CTA still executed compare mode because the click event was being passed into a boolean run-intent parameter
+- Verify's pre-run inventory mixed canonical ids and human labels, so a single signal could appear twice (`SW0` and `sw0`) and the guided summary could report the wrong input count
+
+These were high-value student-facing failures because they made Verify look procedurally dishonest even when the underlying simulation path was healthy.
+
+### What changed
+
+- Fixed the main Verify run CTA to preserve the selected next-run intent:
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - the primary run button now wraps `handleRunWithPreflight()` in a parameterless callback so React's click event cannot be misread as `useAssertionsForNextRun = true`
+
+- Normalized the pre-run signal inventory by canonical signal id:
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Verify now:
+    - deduplicates ids and labels through normalized lane maps
+    - prefers human-facing labels for display
+    - tracks asserted outputs by canonical key
+    - resolves clock labels through the same canonical lane map
+
+- Added regression coverage for the exact live failures:
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - verifies that:
+    - switching to `Trace Only` and re-running calls `onRunVerification` with `assertionMode: false` and `runKind: 'trace'`
+    - pre-run Verify inventory shows deduplicated lane chips and the correct input count for labeled signals
+
+### Student-visible behavior
+
+- When a student switches Verify to `Trace Only`, the next run now stays in simulation/capture semantics instead of silently dropping back into compare mode.
+- Verify's pre-run lane chips no longer show duplicate `SW0` / `sw0` aliases, and the guided summary now reports the intended signal count for labeled combinational projects.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts`
+- Live browser repro on `http://127.0.0.1:4174/os/?mode=project`:
+  - reproduced the old failure state
+  - toggled `Mode: Trace Only`
+  - re-ran Verify
+  - confirmed the session now returns to `STIMULUS ONLY / CAPTURE` instead of re-entering compare mode
+
+## Change Log 2026-03-27 (Verify authoring no longer reverts detached/custom projects back into starter compare mode)
+
+**Subsystem**: IDE Verify authoring / starter-detach trust boundary
+
+### Problem
+
+Two live Verify seams still made custom student projects feel like broken starter examples:
+
+- `Generate Basics` in Verify still called the bring-up generator, which fills expected outputs from simulation and silently turns student authoring into compare mode
+- the local `vectorsAreAutoGenerated` flag could outlive example identity, so detached/custom projects could keep auto-regenerating starter-style vectors after design edits
+- Verify’s failure/readiness trust strip still keyed starter messaging from the raw local auto-generated flag instead of the shared scenario authority
+
+That meant a student could edit away from an example, think they were in trace/stimulus mode, and still end up back in a compare-first flow with inherited or regenerated expectations.
+
+### What changed
+
+- Added a stimulus-only Verify generator:
+  - `packages/rb-apps/src/apps/ide/bringupArtifacts.ts`
+  - new `generateStimulusVectors(...)` reuses the same deterministic input-pattern generation as bring-up, but strips all expected outputs before handing vectors back to Verify
+
+- Wired the runtime store to expose the new authoring path:
+  - `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - new `generateStimulusVectors()` action updates the active scenario and project vectors without promoting the scenario to starter authority
+
+- Fixed the IDE shell authority bridge:
+  - `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Verify’s `Generate Basics` now uses `generateStimulusVectors()` and explicitly clears the auto-generated starter flag
+  - starter auto-regeneration now only runs while the project is still an active example (`projectKind === 'example'` with `activeExampleId`)
+  - leaving example identity now clears the local auto-generated flag instead of letting detached/custom projects keep starter behavior
+
+- Re-keyed Verify starter messaging to the shared authority:
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - the failure/readiness strip now treats `scenarioAuthority === 'starter'` as the student-facing signal for starter trust messaging instead of relying on the raw local auto-generated boolean
+
+- Added regression coverage for the two classroom-critical flows:
+  - `packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx`
+  - verifies that:
+    - custom projects using `Generate Basics` stay in simulation/trace-authoring mode with blank expected outputs
+    - starter examples detach cleanly after a structural edit and no longer show starter compare behavior in Verify
+
+### Recommendation
+
+- Use `generateStimulusVectors()` for student-facing Verify authoring flows.
+- Reserve `generateBringUpVectors()` for starter/example or hardware/bring-up workflows that intentionally need expected outputs.
+- Treat `scenarioAuthority` as the student-facing trust signal; do not reintroduce starter-vs-authored UI decisions from ad hoc local flags.
+
+### Student-visible behavior
+
+- `Generate Basics` in Verify now produces stimulus-only rows for custom/detached work, so the next run stays `Run Simulation` unless the student explicitly authors assertions.
+- Editing away from an example no longer lets Verify silently regenerate starter expectations on the next design mutation.
+- Verify’s starter warning strip now tracks the actual starter/custom authority boundary instead of stale local auto-generated state.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.authoring.test.tsx packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts`
+
+## Change Log 2026-03-27 (Classroom recovery: blank projects, guided Verify, 4-NAND D-latch support, and home-aware release gates)
+
+**Subsystem**: IDE classroom flow / Verify authoring / semantic circuit export path / release-contract alignment
+
+### Problem
+
+RedByte still behaved like an example-first lab demo instead of a project-first classroom IDE:
+
+- cold boot and empty-canvas flows still carried example identity too far, so deleting a design could feel like a broken recovery state instead of a valid blank project
+- Verify exposed the raw vector grid as the primary student surface, hid the meaning of assertions, and let inherited example expectations survive structural edits
+- a student-authored 4-NAND D-latch still exported as an unsupported combinational loop instead of being recognized as a valid memory primitive
+- release gates still assumed the old seeded-example startup path and legacy Verify/result wording, so the repo authorities no longer measured the live product accurately
+
+### What changed
+
+- Added project-identity and scenario-authority canon:
+  - `packages/rb-apps/src/apps/ide/projectIdentity.ts`
+  - runtime/persistence now normalize:
+    - `projectKind`
+    - `sourceExampleId`
+    - `scenarioAuthority`
+
+- Made the IDE project-first instead of example-first:
+  - `packages/rb-apps/src/apps/IdeApp.tsx`
+  - `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - cold boot now supports true blank/home flow
+  - `Build Fresh` starts an empty project directly into Design
+  - first structural edit detaches starter examples, preserves provenance only, clears inherited expected outputs, renames the project away from the example when appropriate, and demotes Verify authority to draft
+  - deleting back to an empty circuit keeps the project in blank/custom flow instead of forcing example recovery semantics
+
+- Reframed first-run Verify around guided authoring:
+  - `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - `packages/rb-apps/src/apps/ide/components/StimulusCanvas.tsx`
+  - the default Verify state now explains:
+    - what inputs/outputs are under test
+    - whether the circuit is combinational or sequential
+    - how many asserted cells exist
+    - what action to take next
+  - blank expected cells are explicitly described as ignored
+  - advanced row/tick/clipboard tooling moved behind `Advanced vector tools`
+  - guided actions now surface:
+    - `Generate all input combinations`
+    - `Insert basic clock pattern`
+    - `Capture observed as expected`
+    - `Open Design`
+
+- Fixed Verify signal inventory and blank-project wiring:
+  - `packages/rb-apps/src/apps/IdeApp.tsx`
+  - `packages/rb-apps/src/apps/ide/viewmodels/buildVerifySessionViewModel.ts`
+  - Verify now derives signals from all project I/O rows instead of only board-mapped rows, and pre-run inventory can come from the authored/custom vectors instead of only the active scenario shell
+
+- Added semantic canonicalization for the exact student-authored 4-NAND D-latch:
+  - `packages/rb-apps/src/circuit/semanticCircuit.ts`
+  - integrated into:
+    - `packages/rb-apps/src/apps/ide/designCompilerDiagnostics.ts`
+    - `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+    - `packages/rb-apps/src/apps/ide/sim/simEngineCore.ts`
+    - `packages/rb-apps/src/fpga/boards/basys3/verifySchedule.ts`
+    - `packages/rb-apps/src/fpga/boards/basys3/basys3ExportModel.ts`
+  - the exact 4-NAND D-latch topology now canonicalizes to `DLatch` before simulation, Verify, and export analysis, so supported student memory graphs no longer hit false combinational-loop blockers
+
+- Clarified unsupported feedback/export guidance:
+  - `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`
+  - `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`
+  - export blockers now explicitly distinguish supported sequential primitives / supported 4-NAND D-latch topology from unsupported feedback loops
+
+- Added regression coverage for the new classroom seams:
+  - `packages/rb-apps/src/apps/ide/__tests__/semanticCircuit.feedback-memory.test.ts`
+  - updated Verify/workflow/project tests to the guided Verify and project-identity contract
+
+- Aligned release gates to the new Project Home and guided Verify flow:
+  - `scripts/gates/_gateHarness.mjs`
+  - `scripts/gates/_verifyStatus.mjs`
+  - updated home-aware or guided-flow gate scripts including:
+    - `ide-project-overview-contract.mjs`
+    - `ide-project-health-live-contract.mjs`
+    - `ide-project-continue-cta-contract.mjs`
+    - `ide-primary-cta-contract.mjs`
+    - `ide-workbench-layout-contract.mjs`
+    - `ide-canvas-legibility-contract.mjs`
+    - `ide-canvas-lod-contract.mjs`
+    - `ide-diagnostics-jump-contract.mjs`
+    - `ide-design-wire-interaction-contract.mjs`
+    - `ide-evidence-capsule-contract.mjs`
+    - `ide-examples-contract.mjs`
+    - `ide-export-blockers-contract.mjs`
+    - `ide-export-download-contract.mjs`
+    - `ide-export-e2e-contract.mjs`
+    - `ide-export-generates-hdl.mjs`
+    - `ide-export-ready-contract.mjs`
+    - `ide-live-sim-contract.mjs`
+    - `ide-student-loop-contract.mjs`
+    - `ide-verify-no-trace-guard-contract.mjs`
+    - `ide-verify-reality-contract.mjs`
+    - `ide-verify-summary-contract.mjs`
+    - `ide-verify-workbench-contract.mjs`
+
+### Recommendation
+
+- Treat `projectIdentity.ts` as the authority for starter/example/custom/verified scenario state.
+- Treat `semanticCircuit.ts` as the place to expand supported student-authored memory canonicalization; exact 2-NAND SR latch and 2-NOR SR latch remain future additions.
+- Keep Verify’s advanced grid tooling, but continue treating the guided authoring callout as the default classroom surface.
+- Reuse `_gateHarness.mjs` and `_verifyStatus.mjs` for future release-contract updates instead of reintroducing stale entry buttons or old Verify wording.
+
+### Student-visible behavior
+
+- Blank projects are now first-class: students can start fresh, delete back to empty, and keep working without being forced into example-recovery language.
+- Starter examples detach cleanly on first structural edit, so Verify no longer keeps misleading inherited expected outputs after the student changes the circuit.
+- Verify now teaches what to do next and explicitly states that blank expected cells are ignored.
+- Supported student-authored 4-NAND D-latches now simulate, verify, and export through the semantic `DLatch` path instead of failing as raw combinational feedback.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/semanticCircuit.feedback-memory.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.authoring.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+- `pnpm repo:status`
+- `pnpm classroom:signoff --allow-dirty`
+
+## Change Log 2026-03-27 (Workflow stage authority unified around Design -> Verify -> Map Pins -> Export -> Program)
+
+**Subsystem**: IDE workflow chrome / route vocabulary
+
+### Problem
+
+The live IDE still taught multiple incompatible workflows at once:
+
+- `IdeTopBar` still rendered routed modes as `Build`, `Test`, and `Program`
+- the left rail and pipeline used a newer route order, but Project CTA copy, onboarding, keyboard shortcuts, Import, Export, Verify, and Design still leaked older routed names like `Hardware` and `Open Test`
+- the project hub route strip also ordered `Export` before `Hardware`, conflicting with the student-facing `Design -> Verify -> Map Pins -> Export -> Program` flow
+
+That left the repo with a working student loop but no single authoritative stage vocabulary.
+
+### What changed
+
+- Added `packages/rb-apps/src/apps/ide/workflowStages.ts`
+  - Canonicalizes:
+    - routed mode labels
+    - routed workflow order
+    - student-facing five-step spine
+    - CTA label mapping for `Map Pins` vs final `Program`
+
+- Updated chrome + route entry points to consume the shared authority:
+  - `packages/rb-apps/src/apps/ide/components/IdeTopBar.tsx`
+  - `packages/rb-apps/src/apps/ide/components/IdeLeftRail.tsx`
+  - `packages/rb-apps/src/apps/ide/components/PipelineStrip.tsx`
+  - `packages/rb-apps/src/apps/ide/components/OnboardingOverlay.tsx`
+  - `packages/rb-apps/src/apps/ide/startupMode.ts`
+  - `packages/rb-apps/src/apps/ide/projectHealth.ts`
+
+- Updated student-facing route copy to remove stale routed terms:
+  - `DesignSurface`, `ScenarioBuilderPanel`, `VerifySurface`, `ExportSurface`, `ImportSurface`, `VectorEditor`, `StimulusCanvas`, and `KeyboardShortcutsModal` now say `Map Pins` / `Verify` where they previously said `Hardware` / `Test` for routed navigation
+
+- Updated Project + shell stage wiring:
+  - `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+    - stage dock reordered to `Design`, `Verify`, `Map Pins`, `Export`
+    - shared flow copy now points at the full `Design -> Verify -> Map Pins -> Export -> Program` spine
+  - `packages/rb-apps/src/apps/IdeApp.tsx`
+    - left rail completion state now marks the hardware route from live IO-mapping readiness
+
+- Added regression coverage:
+  - `packages/rb-apps/src/apps/ide/__tests__/workflowStages.authority.test.tsx`
+  - updated:
+    - `projectHealth.test.ts`
+    - `projectSurface.submission.test.tsx`
+    - `importSurface.verify-reset.test.tsx`
+    - `OnboardingOverlay.test.tsx`
+
+### Recommendation
+
+- Treat `workflowStages.ts` as the only place to define routed IDE stage labels or the student-facing workflow spine.
+- Future copy changes should consume the shared helpers instead of introducing new `Hardware` / `Test` route strings ad hoc.
+
+### Student-visible behavior
+
+- The live routed workflow now reads consistently as:
+  - `Design`
+  - `Verify`
+  - `Map Pins`
+  - `Export`
+  - `Program`
+- The top bar, left rail, pipeline, project CTA, onboarding, Import/Export guidance, and cross-surface navigation no longer teach `Build`, `Test`, or `Hardware` as routed stage names.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/workflowStages.authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectHealth.test.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.verify-reset.test.tsx packages/rb-apps/src/apps/ide/__tests__/pipelineStrip.test.tsx packages/rb-apps/src/apps/ide/__tests__/OnboardingOverlay.test.tsx`
+- `pnpm --filter @redbyte/playground build`
+- `pnpm -s ide:gate:project-overview-contract`
+- `pnpm -s ide:gate:project-continue-cta-contract`
+- `pnpm -s ide:gate:student-loop-contract`
+
+## Change Log 2026-03-27 (Classroom release loop restored to current Verify compare contract)
+
+**Subsystem**: Verify session authority / live gate contract
+
+### Problem
+
+The repo had a working compare-first student loop in pieces, but the release authorities no longer matched the live product:
+
+- imported/example vectors could still carry expected-output aliases keyed by IO-row node ids instead of the canonical Verify field ids
+- first-run Verify still defaulted to simulation even when expected outputs were already authored, so starter/example projects landed in trace-only state unless students manually toggled compare mode
+- release gates still waited for legacy `PASS|FAIL|TRACE` labels even though Verify now renders `ASSERTIONS MATCH`, `ASSERTIONS DIFFER`, `ASSERTIONS INCOMPLETE`, and `STIMULUS ONLY`
+- the live project-health gate could switch back to Project before the Verify run had actually settled
+
+That made `ide:gate:verify-summary-contract`, `ide:gate:project-health-live-contract`, `ide:gate:export-ready-contract`, `repo:status`, and `classroom:signoff --allow-dirty` fail even though the underlying student loop was already close.
+
+### What changed
+
+- Restored expected-output alias compatibility in the live Verify path:
+  - `packages/rb-apps/src/apps/IdeApp.tsx`
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Verify now maps row ids / node ids / IO aliases back to canonical expected-output fields before compare runs execute
+
+- Made first-run Verify honor authored assertions:
+  - `packages/rb-apps/src/apps/ide/viewmodels/buildVerifySessionViewModel.ts`
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - When expected outputs already exist, the first live run now defaults to compare mode and labels the CTA `Run Compare`
+
+- Added regression coverage for the restored compare contract:
+  - `packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts`
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.authoring.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+
+- Added `scripts/gates/_verifyStatus.mjs`
+  - Canonicalizes the live Verify terminal-state vocabulary for gate scripts
+
+- Updated live gates to the current Verify compare contract:
+  - `scripts/gates/ide-verify-summary-contract.mjs`
+  - `scripts/gates/ide-project-health-live-contract.mjs`
+  - `scripts/gates/ide-export-ready-contract.mjs`
+  - `scripts/gates/ide-verify-workbench-contract.mjs`
+  - `scripts/gates/ide-evidence-capsule-contract.mjs`
+  - `scripts/gates/ide-export-download-contract.mjs`
+  - `scripts/gates/ide-export-e2e-contract.mjs`
+  - These now wait for current terminal compare labels and, where needed, wait for Verify to settle before asserting Project or Export state
+
+### Recommendation
+
+- Treat `ASSERTIONS MATCH`, `ASSERTIONS DIFFER`, `ASSERTIONS INCOMPLETE`, and `STIMULUS ONLY` as the current student-facing Verify contract.
+- Future gate updates should reuse `_verifyStatus.mjs` instead of reintroducing hard-coded legacy status regexes.
+
+### Student-visible behavior
+
+- Starter/example projects with authored expectations now open Verify ready to compare on the first run.
+- Project, Verify, and Export now regain current compare/hash/dirty state deterministically after a real compare run.
+- Release health now proves the same compare-first classroom loop the UI actually teaches.
+
+### Proof
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.authoring.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+- `pnpm --filter @redbyte/playground build`
+- `pnpm -s ide:gate:verify-summary-contract`
+- `pnpm -s ide:gate:project-health-live-contract`
+- `pnpm -s ide:gate:export-ready-contract`
+- `pnpm -s repo:status`
+- `pnpm classroom:signoff --allow-dirty`
 ## Change Log 2026-03-26 (Classroom trust handoff canonized and stale export-bug reopen drift removed)
 
 **Subsystem**: Docs / roadmap authority

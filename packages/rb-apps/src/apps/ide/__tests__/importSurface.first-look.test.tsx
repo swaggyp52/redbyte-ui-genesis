@@ -11,13 +11,14 @@ describe('ImportSurface first look', () => {
       <ImportSurface onImportProject={vi.fn()} />
     );
 
-    expect(getByTestId('ide-import-start-hero').textContent).toContain('Start with a Vivado ZIP or paste HDL');
+    expect(getByTestId('ide-import-start-shell')).toBeTruthy();
+    expect(getByTestId('ide-import-start-hero').textContent).toContain('Start with a Vivado ZIP');
     expect(getByTestId('ide-import-start-primary').textContent).toContain('Select Vivado ZIP');
     expect(getByTestId('ide-import-start-other-options').textContent).toContain('Other ways to start');
     expect(getByTestId('ide-import-start-secondary').textContent).toContain('Paste HDL');
+    expect(getByTestId('ide-import-start-guidance-review').textContent).toContain('Nothing is overwritten yet');
     expect(queryByTestId('ide-import-workbench')).toBeNull();
     expect(queryByTestId('ide-import-secondary-tools')).toBeNull();
-    expect(getByTestId('ide-import-replace-project').textContent).toContain('Review Import');
+    expect(queryByTestId('ide-import-replace-project')).toBeNull();
   });
 });
-

@@ -13,7 +13,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { assert, runIdeGate } from './_gateHarness.mjs';
+import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
+import { isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,6 +30,24 @@ const README_PATH_PATTERN = /(^|\/)readme\.txt$/i;
 const VIVADO_IMPORT_TCL_PATTERN = /(^|\/)vivado_import\.tcl$/i;
 const PROJECT_RBPROJ_PATTERN = /(^|\/)project\.rbproj\.json$/i;
 
+async function ensureVerifyVectorsReady(page) {
+  const selectors = [
+    '[data-testid="ide-verify-generate-basic-vectors"]',
+    '[data-testid="ide-verify-generate-basic-vectors-footer"]',
+    '[data-testid="ide-verify-generate-all-combos"]',
+    '[data-testid="ide-verify-guided-clock-pattern"]',
+    '[data-testid="ide-verify-trace-generate-basics"]',
+  ];
+  for (const selector of selectors) {
+    const button = page.locator(selector).first();
+    const isVisible = await button.isVisible().catch(() => false);
+    if (isVisible) {
+      await button.click();
+      return;
+    }
+  }
+}
+
 await runIdeGate('IDE export e2e contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
@@ -36,47 +55,30 @@ await runIdeGate('IDE export e2e contract satisfied', async ({ page, baseUrl }) 
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
 
-  await page.locator('[data-testid="ide-project-load-start-logic-gates"]').click();
-  const replaceModalVisible = await page
-    .locator('[data-testid="ide-example-confirm-modal"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  if (replaceModalVisible) {
-    await page.locator('[data-testid="ide-example-confirm"]').click();
-  }
+  await loadStarterProject(page);
 
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
-  await page.locator('[data-testid="ide-verify-generate-basic-vectors"]').click();
+  await ensureVerifyVectorsReady(page);
   await clickVerifyRun(page);
-  await page.waitForFunction(
-    () => {
-      const status = document.querySelector('[data-testid="ide-verify-summary-status"]');
-      return Boolean(status && /(PASS|TRACE|FAIL)/i.test(status.textContent || ''));
-    },
-    { timeout: 10000 }
-  );
+  await waitForVerifyResult(page, { timeout: 10000 });
 
   let verifyStatus = await text(page.locator('[data-testid="ide-verify-summary-status"]'));
-  if (!/PASS/i.test(verifyStatus)) {
+  if (!isVerifyPass(verifyStatus)) {
     const setOracle = page.locator('[data-testid="ide-verify-set-oracle"]').first();
     const oracleVisible = await setOracle.isVisible().catch(() => false);
     if (oracleVisible) {
       await setOracle.click();
       await clickVerifyRun(page);
-      await page.waitForFunction(
-        () => {
-          const status = document.querySelector('[data-testid="ide-verify-summary-status"]');
-          return Boolean(status && /PASS/i.test(status.textContent || ''));
-        },
-        { timeout: 10000 }
-      );
+      await waitForVerifyResult(page, { timeout: 10000 });
     }
   }
 
   verifyStatus = await text(page.locator('[data-testid="ide-verify-summary-status"]'));
-  assert(/PASS/i.test(verifyStatus), `verify must be PASS before export download, got "${verifyStatus}"`);
+  assert(
+    isVerifyPass(verifyStatus),
+    `verify must be assertions-match before export download, got "${verifyStatus}"`
+  );
 
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });

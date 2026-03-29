@@ -1,6 +1,9 @@
 import React from 'react';
 import { IdeButton, IdeCallout } from '../components/IdePrimitives';
 import { StimulusCanvas } from '../components/StimulusCanvas';
+import type { ScenarioAuthority } from '../projectIdentity';
+import type { TimingGuidance } from '../timingGuidance';
+import type { VerifyPreRunInventory } from '../viewmodels/buildVerifySessionViewModel';
 
 export interface VerifyVectorDraftInput {
   id: string;
@@ -38,9 +41,12 @@ export interface ScenarioBuilderPanelProps {
   onAddVector: () => void;
   onGenerateBasics: () => void;
   onRun: () => void;
+  runButtonLabel?: string;
   onOpenProjectVectors: () => void;
   // Auto-generate
   onAutoGenerate: () => void;
+  signalInventory?: VerifyPreRunInventory;
+  scenarioAuthority?: ScenarioAuthority;
   // Sweep generator
   sweepPreset: SweepPreset;
   sweepSeed: string;
@@ -69,6 +75,12 @@ export interface ScenarioBuilderPanelProps {
   isUsingFallbackSignals?: boolean;
   // Navigation: go to Hardware surface to map I/O
   onGoToHardware?: () => void;
+  onGoToDesign?: () => void;
+  onInsertClockPattern?: () => void;
+  onCaptureObserved?: () => void;
+  canCaptureObserved?: boolean;
+  timingGuidance?: TimingGuidance;
+  postRunToolbarMode?: 'visible' | 'advanced';
 }
 
 function normalizeFieldId(value: string): string {
@@ -93,8 +105,11 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   onAddVector,
   onGenerateBasics,
   onRun,
+  runButtonLabel = 'Run Simulation',
   onOpenProjectVectors,
   onAutoGenerate,
+  signalInventory,
+  scenarioAuthority = 'none',
   sweepPreset,
   sweepSeed,
   sweepHoldTicks,
@@ -115,9 +130,112 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   isSequential = false,
   isUsingFallbackSignals = false,
   onGoToHardware,
+  onGoToDesign,
+  onInsertClockPattern,
+  onCaptureObserved,
+  canCaptureObserved = false,
+  timingGuidance,
+  postRunToolbarMode = 'visible',
 }) => {
   const hasVectors = authoredVectors.length > 0;
   const canAutoGenerate = inputFields.length > 0 && inputFields.length <= 6;
+  const inputLaneCount =
+    signalInventory?.lanes.filter((lane) => lane.direction === 'input').length ?? inputFields.length;
+  const outputLaneCount =
+    signalInventory?.lanes.filter((lane) => lane.direction === 'output').length ?? outputFields.length;
+  const assertedOutputCount = signalInventory?.assertedOutputCount ?? 0;
+  const totalAssertionCount = signalInventory?.totalAssertionCount ?? 0;
+  const tickCount = signalInventory?.tickCount ?? authoredVectors.length;
+  const canShowClockPattern = Boolean(isSequential && onInsertClockPattern);
+  const isLatchControlled = timingGuidance?.kind === 'latch-control';
+  const latchControlName = timingGuidance?.signalName ?? 'EN';
+  const timingPatternLabel =
+    timingGuidance?.patternActionLabel ??
+    (isSequential ? 'Insert basic clock pattern' : 'Insert basic pattern');
+  const starterButtonLabel = canAutoGenerate
+    ? 'Generate all input combinations'
+    : canShowClockPattern
+      ? timingPatternLabel
+      : 'Generate starter vectors';
+  const authorityLabel = scenarioAuthority.charAt(0).toUpperCase() + scenarioAuthority.slice(1);
+  const sequentialHeroCopy = isLatchControlled
+    ? `This circuit has memory, so your stimulus needs ${latchControlName} changes to show when the latch is transparent versus holding state.`
+    : 'This circuit has memory, so your stimulus needs clock activity to move state forward.';
+  const sequentialChipCopy = isLatchControlled
+    ? 'Sequential — use latch-control changes in your stimulus'
+    : 'Sequential — use clock ticks in your stimulus';
+  const sequentialContextCopy = isLatchControlled
+    ? (
+        <>
+          <strong>Latch behavior detected.</strong>{' '}
+          Toggle {latchControlName} to show when the latch opens, when it holds state, and when outputs reflect stored values.
+          Starter vectors add a simple enable pattern so you can trace the behavior before comparing outputs.
+        </>
+      )
+    : (
+        <>
+          <strong>Sequential circuit detected.</strong>{' '}
+          Registers only change on clock edges — your test scenario must include clock transitions
+          to observe register outputs. Generate Basics creates a starter sequence with alternating
+          clock ticks.
+        </>
+      );
+  const hasAssertions = totalAssertionCount > 0;
+  const hasVectorsReady = hasVectors && !isUsingFallbackSignals;
+  const firstRunGuidanceMode: 'build' | 'simulate' | 'compare' =
+    !hasVectorsReady ? 'build' : hasAssertions ? 'compare' : 'simulate';
+  const firstRunCalloutTitle =
+    firstRunGuidanceMode === 'compare'
+      ? 'Ready to compare'
+      : firstRunGuidanceMode === 'simulate'
+        ? 'Ready to simulate'
+        : 'Build a starter testbench';
+  const firstRunCalloutCopy = isSequential
+    ? firstRunGuidanceMode === 'compare'
+      ? isLatchControlled
+        ? `Your testbench already includes ${latchControlName} activity and asserted outputs. Run Compare to check the asserted cells against the current latch behavior.`
+        : 'Your testbench already includes clock activity and asserted outputs. Run Compare to check the asserted cells against the current sequential behavior.'
+      : firstRunGuidanceMode === 'simulate'
+        ? isLatchControlled
+          ? `Your testbench already includes ${latchControlName} changes. Run Simulation to watch when the latch is transparent versus holding state before you capture or author expected outputs.`
+          : 'Your testbench already includes clock activity. Run Simulation to watch state change before you capture or author expected outputs.'
+        : sequentialHeroCopy
+    : firstRunGuidanceMode === 'compare'
+      ? 'Expected outputs are already loaded. Run Compare to check only the asserted output cells in this testbench.'
+      : firstRunGuidanceMode === 'simulate'
+        ? 'This testbench already has stimulus. Run Simulation to record live behavior, then capture or author expected outputs when you want comparison.'
+        : 'Start with a few input combinations, run the circuit once, then add expected outputs only when you want comparison.';
+  const firstRunHeaderHint = isUsingFallbackSignals
+    ? 'Add circuit input and output pins in Design before authoring a testbench.'
+    : firstRunGuidanceMode === 'compare'
+      ? 'Review the current vectors below. Only asserted expected cells will be checked when you run compare.'
+      : firstRunGuidanceMode === 'simulate'
+        ? 'Review or extend the stimulus below. Blank expected cells are ignored until you choose to check outputs.'
+        : 'Set input values across ticks below. Blank expected cells are ignored until you choose to check outputs.';
+  const footerHint = isUsingFallbackSignals
+    ? 'Add circuit I/O in Design first'
+    : firstRunGuidanceMode === 'compare'
+      ? `${authoredVectors.length} vector${authoredVectors.length !== 1 ? 's' : ''} ready - compare checks only asserted outputs`
+      : firstRunGuidanceMode === 'simulate'
+        ? `${authoredVectors.length} vector${authoredVectors.length !== 1 ? 's' : ''} ready - run simulation to trace the current circuit`
+        : isSequential
+          ? 'Set stimulus, then run to record how state evolves'
+          : 'Set inputs, run once, then add expected outputs only when you want a compare';
+  const showGuidedActions =
+    (!hasVectorsReady && canShowClockPattern) ||
+    (hasVectorsReady && canCaptureObserved && Boolean(onCaptureObserved));
+
+  const handleStarterAction = () => {
+    if (canAutoGenerate) {
+      onAutoGenerate();
+      return;
+    }
+    if (canShowClockPattern) {
+      onInsertClockPattern?.();
+      return;
+    }
+    onGenerateBasics();
+  };
 
   // Pre-run canvas: stripped down — just the StimulusCanvas, no toolbar eating height.
   // Generate Basics + Run are in the run footer below.
@@ -125,7 +243,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
     <div className="ide-verify-vector-form ide-verify-vector-form--canvas-only" data-testid="ide-verify-add-vector-form">
       {isSequential && (
         <div className="ide-verify-seq-chip" data-testid="ide-verify-sequential-context">
-          Sequential — use clock ticks in your stimulus
+          {sequentialChipCopy}
         </div>
       )}
       {onVectorsChange != null ? (
@@ -134,6 +252,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           outputFields={outputFields}
           authoredVectors={authoredVectors}
           onVectorsChange={onVectorsChange}
+          toolbarMode="hidden"
         />
       ) : (
         <p className="ide-verify-section-subheader" style={{ padding: '12px' }}>
@@ -153,10 +272,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
       {isSequential && (
         <IdeCallout tone="info" testId="ide-verify-sequential-context">
           <p className="ide-copy">
-            <strong>Sequential circuit detected.</strong>{' '}
-            Registers only change on clock edges — your test scenario must include clock transitions
-            to observe register outputs. Generate Basics creates a starter sequence with alternating
-            clock ticks.
+            {sequentialContextCopy}
           </p>
         </IdeCallout>
       )}
@@ -197,6 +313,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           outputFields={outputFields}
           authoredVectors={authoredVectors}
           onVectorsChange={onVectorsChange}
+          toolbarMode={postRunToolbarMode}
         />
       ) : (
         /* Fallback: show legacy draft form if canvas prop not wired */
@@ -454,10 +571,6 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   );
 
   if (isFirstRun) {
-    const hasVectorsReady = hasVectors && !isUsingFallbackSignals;
-    const calloutTitle = hasVectors
-      ? 'Run Verify on the current vectors'
-      : 'Start with a small vector set';
 
     return (
       <div
@@ -473,26 +586,67 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             </span>
           )}
           <span className="ide-verify-empty-hint" data-testid="ide-verify-empty-message">
-            {isUsingFallbackSignals
-              ? 'Map your circuit I/O to author stimulus against real signals.'
-              : hasVectors
-                ? 'Click cells to edit, or use row and tick tools above the grid.'
-                : 'Click cells or use the row and tick tools to build a testbench quickly.'}
+            {firstRunHeaderHint}
           </span>
         </div>
 
         {/* ── Unmapped signal warning — shown when circuit has no real I/O ── */}
+        {!isUsingFallbackSignals && (
+          <IdeCallout tone="info" title={firstRunCalloutTitle} testId="ide-verify-guided-callout">
+            <p className="ide-copy" style={{ margin: 0 }}>
+              {firstRunCalloutCopy}
+            </p>
+            <p className="ide-copy" style={{ margin: '8px 0 0 0' }}>
+              Inputs: <strong>{inputLaneCount}</strong> · Outputs: <strong>{outputLaneCount}</strong> · Ticks: <strong>{tickCount}</strong> · Scenario: <strong>{authorityLabel}</strong>
+            </p>
+            <p className="ide-copy" style={{ margin: '8px 0 0 0' }}>
+              Asserted outputs: <strong>{assertedOutputCount}</strong>
+              {totalAssertionCount > 0 ? ` across ${totalAssertionCount} checked cell${totalAssertionCount === 1 ? '' : 's'}` : ' (none yet)'}.
+              Blank expected cells are ignored.
+            </p>
+            {showGuidedActions && (
+              <div className="ide-inline-actions" data-testid="ide-verify-guided-actions" style={{ marginTop: 10 }}>
+                {!hasVectorsReady && canShowClockPattern && (
+                  <IdeButton tone="secondary" onClick={onInsertClockPattern} testId="ide-verify-guided-clock-pattern">
+                    {timingPatternLabel}
+                  </IdeButton>
+                )}
+                {hasVectorsReady && canCaptureObserved && onCaptureObserved && (
+                  <IdeButton tone="secondary" onClick={onCaptureObserved} testId="ide-verify-guided-capture">
+                    Capture observed outputs as expected
+                  </IdeButton>
+                )}
+              </div>
+            )}
+          </IdeCallout>
+        )}
+
         {isUsingFallbackSignals && (
+          <div className="ide-verify-sync-warning" data-testid="ide-verify-sync-warning">
+            <span className="ide-verify-sync-warning-icon">âš </span>
+            <span className="ide-verify-sync-warning-text">
+              This project does not expose any real circuit inputs yet. Add input and output pins in{' '}
+              <strong>Design</strong>, then come back to author vectors against your actual circuit.
+            </span>
+            {onGoToDesign && (
+              <IdeButton tone="ghost" onClick={onGoToDesign} testId="ide-verify-sync-go-design">
+                Open Design â†’
+              </IdeButton>
+            )}
+          </div>
+        )}
+
+        {false && isUsingFallbackSignals && (
           <div className="ide-verify-sync-warning" data-testid="ide-verify-sync-warning">
             <span className="ide-verify-sync-warning-icon">⚠</span>
             <span className="ide-verify-sync-warning-text">
               Your circuit has no mapped inputs yet. The rows below are placeholders — go to{' '}
-              <strong>Hardware</strong> to map your circuit's actual signals, then come back to
+              <strong>Map Pins</strong> to map your circuit's actual signals, then come back to
               author test vectors against your real design.
             </span>
             {onGoToHardware && (
               <IdeButton tone="ghost" onClick={onGoToHardware} testId="ide-verify-sync-go-hardware">
-                Open Hardware →
+                Open Map Pins →
               </IdeButton>
             )}
           </div>
@@ -503,11 +657,9 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
 
         {/* ── Callout kept in DOM for gate contracts, visually hidden ── */}
         <div style={{ display: 'none' }}>
-          <IdeCallout tone="info" title={calloutTitle} testId="ide-verify-first-run-callout">
+          <IdeCallout tone="info" title={firstRunCalloutTitle} testId="ide-verify-first-run-callout">
             <p className="ide-copy" style={{ margin: 0 }}>
-              {hasVectors
-                ? 'Run simulation first. Step-through, waveform inspection, and capture tools stay available after you have real evidence.'
-                : 'Generate a starter set now, or use the timeline plus row and tick tools to author your own stimulus pattern.'}
+              {firstRunCalloutCopy}
             </p>
           </IdeCallout>
         </div>
@@ -517,11 +669,11 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           <div className="ide-verify-run-footer-status">
             {hasVectors && !isUsingFallbackSignals ? (
               <span className="ide-verify-run-footer-ready">
-                {authoredVectors.length} vector{authoredVectors.length !== 1 ? 's' : ''} ready
+                {footerHint}
               </span>
             ) : (
               <span className="ide-verify-run-footer-hint">
-                {isUsingFallbackSignals ? 'Map I/O first' : 'Click signal cells to author stimulus'}
+                {footerHint}
               </span>
             )}
           </div>
@@ -529,20 +681,20 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             {hasVectorsReady ? (
               <span data-testid="ide-verify-empty-run">
                 <IdeButton tone="primary" onClick={onRun} testId="ide-verify-run">
-                  Run Simulation
+                  {runButtonLabel}
                 </IdeButton>
               </span>
             ) : (
               <IdeButton
                 tone="primary"
-                onClick={onGenerateBasics}
+                onClick={handleStarterAction}
                 testId="ide-verify-generate-basic-vectors-footer"
               >
-                Generate Basics
+                {starterButtonLabel}
               </IdeButton>
             )}
             <IdeButton tone="ghost" onClick={onOpenProjectVectors} testId="ide-verify-empty-open-vectors">
-              Import
+              Open vectors
             </IdeButton>
           </div>
         </div>

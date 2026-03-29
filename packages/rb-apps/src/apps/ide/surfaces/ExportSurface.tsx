@@ -13,6 +13,8 @@ import {
   deriveVivadoProjectSlug,
   resolveVivadoPart,
 } from '../../../fpga/vivado/vivadoProjectFolder';
+import { canonicalizeSemanticCircuit } from '../../../circuit/semanticCircuit';
+import { deriveVerifySchedule } from '../../../fpga/boards/basys3/verifySchedule';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import {
   buildExportViewModel,
@@ -23,6 +25,7 @@ import {
   type ExportPinStatus,
 } from '../viewmodels/buildExportViewModel';
 import type { VerifyScenario } from '../verifyScenario';
+import { deriveTimingGuidance, type TimingGuidance } from '../timingGuidance';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -55,6 +58,7 @@ export interface ExportSurfaceProps {
   onGoToProject?: () => void;
   onGoToDesign?: () => void;
   onUpdateMappingPin?: (rowId: string, pin: string) => void;
+  timingGuidance?: TimingGuidance;
 }
 
 const ARTIFACT_PLAN_FILES = [
@@ -89,7 +93,7 @@ interface ExportDesignSummary {
   inputs: number;
   outputs: number;
   gates: number;
-  clocked: number;
+  stateful: number;
 }
 
 interface RebuildStep {
@@ -135,6 +139,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   onGoToProject,
   onGoToDesign,
   onUpdateMappingPin,
+  timingGuidance,
 }) => {
   const surfaceRef = useRef<HTMLElement | null>(null);
   const baseViewModel = useMemo(
@@ -151,6 +156,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const viewModel = useMemo(
     () => buildExportViewModel(effectiveProject, verifyLastRun, activeScenario),
     [effectiveProject, verifyLastRun, activeScenario]
+  );
+  const effectiveTimingGuidance = useMemo(
+    () =>
+      timingGuidance ??
+      deriveTimingGuidance(
+        deriveVerifySchedule(project.circuit, project.ioMapping, project.hdl)
+      ),
+    [project, timingGuidance]
   );
   const evidenceDiagnostics = useMemo(
     () =>
@@ -261,6 +274,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const hasVerifyPass = verifyState === 'assertions-match' && !verifyLastRun?.qualification;
   /** True when no verify run has been recorded at all. */
   const isNoRunYet = verifyState === 'not-run';
+  const isVerifyStale = verifyState === 'stale';
   const isTraceOnly = verifyState === 'trace';
   /** True when the previous verify run passed but the circuit has since changed (STALE).
    *  Download is allowed but labeled as previous sealed build — not blocked. */
@@ -289,6 +303,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     return (pinOverrides[toPortKey(r.port)] ?? '').trim().length > 0;
   }).length;
   const clockDiag = diagnosticsList.find((d) => /clock/i.test(d.message));
+  const feedbackDiag = diagnosticsList.find(
+    (d) =>
+      d.code === 'RBEX4102' ||
+      /unsupported feedback|combinational loop/i.test(d.message)
+  );
   const artifactMap = useMemo(
     () => new Map(viewModel.artifacts.map((a) => [a.path.toLowerCase(), a])),
     [viewModel.artifacts]
@@ -332,9 +351,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       ? 'ok' as const
       : isIncompleteMappingQualified
         ? 'warn' as const
-      : isTraceOnly
+      : isVerifyStale
         ? 'warn' as const
-      : verifyResult?.status === 'pass' && dirtySinceVerify
+      : isTraceOnly
         ? 'warn' as const
         : isStarterScenarioFail
           ? 'warn' as const
@@ -347,8 +366,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       ? `Complete · ${verifyResult?.hash?.slice(0, 8) ?? ''}`
       : isIncompleteMappingQualified
         ? 'Pass incomplete — mapping'
-      : verifyResult?.status === 'pass' && dirtySinceVerify
-        ? 'Stale — design changed'
+      : isVerifyStale
+        ? 'Stale - rerun Verify'
         : isStarterScenarioFail
           ? 'Starter scenario only'
           : isNoRunYet
@@ -365,7 +384,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       requiredCount === 0 && viewModel.pinTable.length > 0
         ? `${mappedCount}/${viewModel.pinTable.length} mapped`
         : `${requiredMappedCount}/${requiredCount} required`;
-    const clockTone = clockDiag ? 'error' as const : 'ok' as const;
+    const clockTone = clockDiag || feedbackDiag ? 'error' as const : 'ok' as const;
     return [
       {
         id: 'verify',
@@ -385,20 +404,29 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       },
       {
         id: 'clock',
-        label: 'Clock Domain',
+        label: feedbackDiag ? 'State structure' : effectiveTimingGuidance.exportLabel,
         tone: clockTone,
-        detail: clockDiag ? clockDiag.message.slice(0, 55) : 'Single domain',
+        detail: feedbackDiag
+          ? 'Unsupported feedback loop'
+          : clockDiag
+            ? clockDiag.message.slice(0, 55)
+            : effectiveTimingGuidance.exportDetail,
         actionLabel: 'Details',
-        onAction: clockDiag
-          ? () => setOpenFixPathId((prev) => (prev === clockDiag.id ? null : clockDiag.id))
+        onAction: feedbackDiag
+          ? () => setOpenFixPathId((prev) => (prev === feedbackDiag.id ? null : feedbackDiag.id))
+          : clockDiag
+            ? () => setOpenFixPathId((prev) => (prev === clockDiag.id ? null : clockDiag.id))
           : undefined,
       },
     ];
   }, [
+    effectiveTimingGuidance.exportDetail,
+    effectiveTimingGuidance.exportLabel,
+    feedbackDiag,
     hasVerifyPass,
     isIncompleteMappingQualified,
+    isVerifyStale,
     verifyResult,
-    dirtySinceVerify,
     isStarterScenarioFail,
     isNoRunYet,
     requiredMappedCount,
@@ -414,9 +442,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const deterministicChecks = useMemo(() => [
     {
       id: 'clock',
-      label: 'Single clock domain',
-      tooltip: 'All flip-flops share one clock signal. Multiple clock domains can cause unpredictable synthesis results.',
-      pass: !clockDiag,
+      label: feedbackDiag
+        ? 'Supported state structure'
+        : effectiveTimingGuidance.kind === 'latch-control'
+          ? 'Supported latch control'
+          : 'Single clock domain',
+      tooltip: feedbackDiag
+        ? 'Unsupported feedback loops must be rewritten as supported latches or flip-flops before export.'
+        : effectiveTimingGuidance.exportTooltip,
+      pass: !clockDiag && !feedbackDiag,
     },
     {
       id: 'floating',
@@ -436,7 +470,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       tooltip: 'A passing Verify run has been completed for this exact circuit. Open Verify, run with Check Outputs enabled, and reach PASS to satisfy this.',
       pass: hasVerifyPass,
     },
-  ], [clockDiag, diagnosticsList, requiredMappedCount, requiredCount, hasVerifyPass]);
+  ], [clockDiag, diagnosticsList, effectiveTimingGuidance.exportTooltip, effectiveTimingGuidance.kind, feedbackDiag, requiredMappedCount, requiredCount, hasVerifyPass]);
   const selectedArtifact =
     viewModel.artifacts.find((artifact) => artifact.path === selectedArtifactPath) ??
     viewModel.artifacts[0];
@@ -469,8 +503,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       ? 'Resolve blockers before downloading the build package.'
       : isIncompleteMappingQualified
         ? 'Export available — assertions match, but mapping review is still needed.'
-      : isStaleButPassBefore
-        ? 'Previous submission package available — circuit updated since the last comparison run.'
+      : isVerifyStale
+        ? 'Export available — Verify evidence is stale for the current circuit.'
       : isStarterScenarioFail
         ? 'Export available — scenario not yet authored.'
         : isNoRunYet
@@ -484,8 +518,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         : 'Use the blocker list and pin review below to clear mapping or clock issues before export.'
       : isIncompleteMappingQualified
         ? 'Your latest comparison run matched the live design, but at least one required output pin is still unmapped. Complete the live pin mapping before relying on hardware behavior.'
-      : isStaleButPassBefore
-        ? 'Your last comparison run aligned with the circuit at that time. The circuit has changed since — rerun Compare and rebuild when you want fresh evidence, or download the previous build now.'
+      : isVerifyStale
+        ? 'The design changed after the last Verify run. Export files are still available, but the previous compare or trace evidence no longer describes the current circuit. Re-run Verify when you want current evidence for this export.'
       : isStarterScenarioFail
         ? 'Your HDL was generated from your circuit design. The current scenario still uses starter vectors, so this export is available to download but should be treated as a starter handoff until you author a real comparison scenario.'
       : isNoRunYet
@@ -512,6 +546,142 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     : downloadDone && lastDownloadKind === 'kit'
       ? 'Re-download'
       : 'Download Vivado Kit';
+  const gateStackSection = (
+    <section className="ide-export-section" data-testid="ide-export-readiness-details">
+      <header className="ide-export-section-header">
+        <div>
+          <h3>Readiness Details</h3>
+          <p className="ide-export-section-subcopy">
+            Expand the full gate readout when you want the exact reason Export is ready, advisory, or blocked.
+          </p>
+        </div>
+      </header>
+      <div className="ide-export-gate-stack" data-testid="ide-export-gate-stack">
+        {gateRows.map((gate) => (
+          <div
+            key={gate.id}
+            className={`ide-export-gate-row ${
+              gate.tone === 'ok' ? 'is-pass' : gate.tone === 'warn' ? 'is-warn' : 'is-fail'
+            }`}
+            data-testid={`ide-export-gate-${gate.id}`}
+          >
+            <IdeStatusPill tone={gate.tone}>
+              {gate.tone === 'ok'
+                ? 'READY'
+                : gate.tone === 'warn'
+                  ? 'STALE'
+                  : 'NEEDS FIX'}
+            </IdeStatusPill>
+            <span className="ide-export-gate-label">{gate.label}</span>
+            <span className="ide-export-gate-detail">{gate.detail}</span>
+            {gate.onAction && (
+              <IdeButton
+                tone="ghost"
+                onClick={gate.onAction}
+                testId={`ide-export-gate-action-${gate.id}`}
+              >
+                {gate.actionLabel}
+              </IdeButton>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+  const vivadoSection = (
+    <section className="ide-export-section" data-testid="ide-export-vivado-ready">
+      <header className="ide-export-section-header">
+        <div>
+          <h3>What To Do Next</h3>
+          <p className="ide-export-section-subcopy">
+            Start with the project download. The short Vivado handoff stays here; the package internals stay lower.
+          </p>
+        </div>
+        {downloadReady
+          ? <IdeStatusPill tone="ok">Ready</IdeStatusPill>
+          : <IdeStatusPill tone="error">Blocked</IdeStatusPill>
+        }
+      </header>
+
+      {exportTrusted ? (
+        <IdeCallout tone="success" title="Ready to program your Basys3" testId="ide-export-vivado-ready-callout">
+          <p className="ide-copy" style={{ margin: 0 }}>
+            Download the Vivado Project, unzip it, and follow the three-step handoff below.
+          </p>
+        </IdeCallout>
+      ) : downloadReady ? (
+        <IdeCallout tone="warn" title="Artifacts available with advisory compare state" testId="ide-export-vivado-unverified-callout">
+          <p className="ide-copy" style={{ margin: 0 }} data-testid="ide-export-vivado-command">
+            Your VHDL is ready to inspect or download now. Open Verify when you want to compare expected outputs before hardware bring-up.
+          </p>
+        </IdeCallout>
+      ) : (
+        <IdeCallout tone="warn" title="Resolve issues first" testId="ide-export-vivado-blocked-callout">
+          <p className="ide-copy" style={{ margin: 0 }} data-testid="ide-export-vivado-command">
+            Fix the blockers listed here before opening the project in Vivado.
+          </p>
+        </IdeCallout>
+      )}
+
+      <div className="ide-export-next-steps" data-testid="ide-export-vivado-steps">
+        <ol className="ide-export-checklist" data-testid="ide-export-vivado-checklist">
+          <li>Open Vivado → <strong>File → Open Project</strong></li>
+          <li>Select <code>{projectSlug}.xpr</code> inside the unzipped folder</li>
+          <li>Run Synthesis → Implementation → Generate Bitstream → Program Device</li>
+        </ol>
+        <details className="ide-export-advanced-steps">
+          <summary>Advanced / full checklist</summary>
+          <div className="ide-kv-list" style={{ marginTop: 'var(--ide-space-2)', marginBottom: 'var(--ide-space-2)' }}>
+            <div className="ide-kv-row">
+              <span>Board</span>
+              <span><code>Basys3</code></span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Part</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--ide-space-1)' }}>
+                <code data-testid="ide-export-part-number">{vivadoPart}</code>
+                <IdeButton
+                  tone="ghost"
+                  onClick={() => void copyToClipboard(vivadoPart, 'part-number')}
+                >
+                  {copiedTarget === 'part-number' ? 'Copied!' : 'Copy'}
+                </IdeButton>
+              </span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Top Module</span>
+              <span><code data-testid="ide-export-top-module">{topModule}</code></span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Tool</span>
+              <span><code>Vivado 2024.1+</code></span>
+            </div>
+          </div>
+          <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', marginTop: 'var(--ide-space-2)', marginBottom: 0 }}>
+            Unzip the download and keep the <code>{projectSlug}</code> folder intact before opening the project.
+          </p>
+          <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', marginTop: 'var(--ide-space-1)', marginBottom: 0 }}>
+            Batch fallback: run <code>{vivadoCommand}</code> from the extracted folder.
+          </p>
+        </details>
+        {downloadReady ? (
+          <div data-testid="ide-export-readme-preview" style={{ marginTop: 'var(--ide-space-1)' }}>
+            <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-muted)', margin: 0 }}
+               data-testid="ide-export-vivado-command">
+              Batch import: <code>{vivadoCommand}</code>
+            </p>
+          </div>
+        ) : (
+          <p
+            className="ide-copy ide-export-vivado-blocked-hint"
+            data-testid="ide-export-vivado-command"
+          >
+            Resolve all blockers before importing to Vivado.
+          </p>
+        )}
+      </div>
+    </section>
+  );
   const quickDebugReport = useMemo(() => {
     const mappingLines = [...viewModel.pinTable]
       .map((row) => {
@@ -780,10 +950,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       mode="export"
       consoleHasBlocking={hasBlockingErrors}
       consoleHasEntries={diagnosticsList.length > 0}
+      rightDockMode="collapsed"
+      consoleMode="collapsed"
       dock={
         <section className="ide-workbench-placeholder ide-export-sidecard" data-testid="ide-export-checks-dock">
           <header className="ide-workbench-placeholder-header">
-            <h3>Export</h3>
+            <h3>Quick status</h3>
             <IdeStatusPill tone={exportTrusted ? 'ok' : hasBlockingErrors ? 'error' : 'warn'}>
               {exportTrusted ? 'COMPARE ALIGNED' : hasBlockingErrors ? 'BLOCKED' : 'EXPORT AVAILABLE'}
             </IdeStatusPill>
@@ -805,42 +977,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <span>Artifacts</span>
               <span>{readyArtifactCount}/{viewModel.artifacts.length}</span>
             </div>
-            {/* Provenance status rows: Design | Verification | Build */}
-            <div className="ide-kv-row ide-export-provenance-row" data-testid="ide-export-provenance-design">
-              <span>Design</span>
-              <span className="ide-status-mono" title={`Current circuit: ${determinismHash}`}>{determinismHash.slice(0, 8)}</span>
-            </div>
-            <div className="ide-kv-row ide-export-provenance-row" data-testid="ide-export-provenance-verify">
-              <span>Verification</span>
-              <span>
-                {!verifyResult
-                  ? <span className="ide-export-provenance-none">Not run</span>
-                  : dirtySinceVerify
-                    ? <span className="ide-export-provenance-stale" title="Circuit changed since the last comparison run">Previous build</span>
-                    : verifyState === 'trace'
-                      ? <span className="ide-export-provenance-none">Trace only</span>
-                    : <span className={`ide-export-provenance-${verifyResult.status === 'pass' ? 'pass' : 'fail'}`}>
-                        {verifyResult.status === 'pass' ? 'Assertions match' : 'Assertions differ'}
-                      </span>
-                }
-              </span>
-            </div>
-            <div className="ide-kv-row ide-export-provenance-row" data-testid="ide-export-provenance-build">
-              <span>Build</span>
-              <span>
-                {!viewModel.exportHash
-                  ? <span className="ide-export-provenance-none">Not built</span>
-                  : viewModel.exportHash !== determinismHash
-                    ? <span className="ide-export-provenance-stale" title="Build is from a previous circuit version">Previous</span>
-                    : <span className="ide-export-provenance-pass">Current ✓</span>
-                }
-              </span>
-            </div>
           </div>
           <p className="ide-copy ide-export-sidecard-copy">{nextActionTitle}</p>
           <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
             <IdeButton
-              tone="primary"
+              tone="secondary"
               onClick={() => void handleDownloadExport('project')}
               disabled={!downloadReady || isRebuilding}
               testId="ide-export-dock-download"
@@ -848,6 +989,43 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               {isRebuilding ? <><IdeSpinner size="sm" testId="ide-export-rebuild-spinner" /> Building&hellip;</> : projectDownloadCompactLabel}
             </IdeButton>
           </div>
+          <details style={{ marginTop: 'var(--ide-space-2)' }}>
+            <summary style={{ cursor: 'pointer', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+              Evidence snapshot
+            </summary>
+            <div className="ide-kv-list" style={{ marginTop: 'var(--ide-space-2)' }}>
+              <div className="ide-kv-row ide-export-provenance-row" data-testid="ide-export-provenance-design">
+                <span>Design</span>
+                <span className="ide-status-mono" title={`Current circuit: ${determinismHash}`}>{determinismHash.slice(0, 8)}</span>
+              </div>
+              <div className="ide-kv-row ide-export-provenance-row" data-testid="ide-export-provenance-verify">
+                <span>Verification</span>
+                <span>
+                  {!verifyResult
+                    ? <span className="ide-export-provenance-none">Not run</span>
+                    : dirtySinceVerify
+                      ? <span className="ide-export-provenance-stale" title="Circuit changed since the last comparison run">Previous build</span>
+                      : verifyState === 'trace'
+                        ? <span className="ide-export-provenance-none">Trace only</span>
+                        : <span className={`ide-export-provenance-${verifyResult.status === 'pass' ? 'pass' : 'fail'}`}>
+                            {verifyResult.status === 'pass' ? 'Assertions match' : 'Assertions differ'}
+                          </span>
+                  }
+                </span>
+              </div>
+              <div className="ide-kv-row ide-export-provenance-row" data-testid="ide-export-provenance-build">
+                <span>Build</span>
+                <span>
+                  {!viewModel.exportHash
+                    ? <span className="ide-export-provenance-none">Not built</span>
+                    : viewModel.exportHash !== determinismHash
+                      ? <span className="ide-export-provenance-stale" title="Build is from a previous circuit version">Previous</span>
+                      : <span className="ide-export-provenance-pass">Current ✓</span>
+                  }
+                </span>
+              </div>
+            </div>
+          </details>
           <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
             {onGoToHardware && (
               <IdeButton
@@ -855,7 +1033,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 onClick={onGoToHardware}
                 testId="ide-export-go-hardware"
               >
-                Back to Hardware
+                Back to Map Pins
               </IdeButton>
             )}
             {onGoToProject && (
@@ -1035,32 +1213,19 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       }
     >
       <IdePanel
-          title={
-            exportTrusted
-              ? 'Export Handoff Available'
-              : exportBlocked
-                ? 'Export Handoff Blocked'
-                : 'Export Handoff Available'
-          }
-          description="Review the generated package, confirm readiness, and prepare the project for Vivado."
-          actions={
-            <>
-              <span data-testid="ide-primary-cta">
-                <IdeButton
-                  tone="primary"
-                  onClick={() => void handleDownloadExport('project')}
-                  disabled={!downloadReady || isRebuilding}
-                >
-                  {projectDownloadLabel}
-                </IdeButton>
-              </span>
-            </>
-          }
-          right={
-            exportTrusted ? (
-              <IdeStatusPill tone="ok">Available</IdeStatusPill>
-            ) : exportBlocked ? (
-              <IdeStatusPill tone="error">Blocked</IdeStatusPill>
+        title={
+          exportTrusted
+            ? 'Export Handoff Available'
+            : exportBlocked
+              ? 'Export Handoff Blocked'
+              : 'Export Handoff Available'
+        }
+        description="Review the generated package, confirm readiness, and prepare the project for Vivado."
+        right={
+          exportTrusted ? (
+            <IdeStatusPill tone="ok">Available</IdeStatusPill>
+          ) : exportBlocked ? (
+            <IdeStatusPill tone="error">Blocked</IdeStatusPill>
             ) : (
               <IdeStatusPill tone="warn">Advisory</IdeStatusPill>
             )
@@ -1094,7 +1259,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       {err.fix && <span className="ide-export-blocker-fix">{err.fix}</span>}
                       {isHardwareIssue && onGoToHardware && (
                         <IdeButton tone="ghost" onClick={onGoToHardware} testId="ide-export-blocker-goto-hardware">
-                          Fix in Hardware
+                          Fix in Map Pins
                         </IdeButton>
                       )}
                       {isDesignIssue && onGoToDesign && (
@@ -1127,39 +1292,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <SummaryStat label="Inputs" value={`${designSummary.inputs}`} />
               <SummaryStat label="Outputs" value={`${designSummary.outputs}`} />
               <SummaryStat label="Gates" value={`${designSummary.gates}`} />
-              <SummaryStat label="Clocked" value={`${designSummary.clocked}`} />
+              <SummaryStat label="Stateful" value={`${designSummary.stateful}`} />
             </div>
           </section>
-          <div className="ide-export-gate-stack" data-testid="ide-export-gate-stack">
-            {gateRows.map((gate) => (
-              <div
-                key={gate.id}
-                className={`ide-export-gate-row ${
-                  gate.tone === 'ok' ? 'is-pass' : gate.tone === 'warn' ? 'is-warn' : 'is-fail'
-                }`}
-                data-testid={`ide-export-gate-${gate.id}`}
-              >
-                <IdeStatusPill tone={gate.tone}>
-                  {gate.tone === 'ok'
-                    ? 'READY'
-                    : gate.tone === 'warn'
-                      ? 'STALE'
-                      : 'NEEDS FIX'}
-                </IdeStatusPill>
-                <span className="ide-export-gate-label">{gate.label}</span>
-                <span className="ide-export-gate-detail">{gate.detail}</span>
-                {gate.onAction && (
-                  <IdeButton
-                    tone="ghost"
-                    onClick={gate.onAction}
-                    testId={`ide-export-gate-action-${gate.id}`}
-                  >
-                    {gate.actionLabel}
-                  </IdeButton>
-                )}
-              </div>
-            ))}
-          </div>
           <section className="ide-export-trust-banner" data-testid="ide-export-trust-banner">
             {exportTrusted ? (
               <div className="ide-export-trust-row ide-export-trust-row--trusted">
@@ -1174,47 +1309,16 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <IdeStatusPill tone="warn">
                     {isIncompleteMappingQualified
                       ? 'AVAILABLE — MAPPING REVIEW'
+                      : isVerifyStale
+                        ? 'AVAILABLE — VERIFY STALE'
                       : isTraceOnly
                         ? 'AVAILABLE — TRACE ONLY'
                       : isStarterScenarioFail
                         ? 'AVAILABLE — STARTER'
-                        : isNoRunYet
+                      : isNoRunYet
                           ? 'AVAILABLE — NOT COMPARED'
                           : 'AVAILABLE — ASSERTIONS DIFFER'}
                   </IdeStatusPill>
-                </div>
-                {/* Readiness strip — 3-axis project readiness: design / scenario / verify */}
-                <div className="ide-export-readiness-strip" data-testid="ide-export-readiness-strip">
-                  <span
-                    className={`ide-export-readiness-axis ${designReady ? 'ide-export-readiness-axis--ok' : 'ide-export-readiness-axis--fail'}`}
-                    data-testid="ide-export-readiness-design"
-                  >
-                    {designReady ? '✓ Design: valid' : '✗ Design: incomplete'}
-                  </span>
-                  <span
-                    className={`ide-export-readiness-axis ${isStarterScenarioFail ? 'ide-export-readiness-axis--warn' : isNoRunYet ? 'ide-export-readiness-axis--idle' : 'ide-export-readiness-axis--ok'}`}
-                    data-testid="ide-export-readiness-scenario"
-                  >
-                    {isStarterScenarioFail
-                      ? '⚠ Scenario: starter'
-                      : isNoRunYet
-                        ? '— Scenario: none'
-                        : '✓ Scenario: authored'}
-                  </span>
-                  <span
-                    className={`ide-export-readiness-axis ${isIncompleteMappingQualified || isStarterScenarioFail || isTraceOnly ? 'ide-export-readiness-axis--warn' : isNoRunYet ? 'ide-export-readiness-axis--idle' : 'ide-export-readiness-axis--fail'}`}
-                    data-testid="ide-export-readiness-verify"
-                  >
-                    {isIncompleteMappingQualified
-                      ? '~ Compare: mapping review'
-                      : isTraceOnly
-                        ? '~ Compare: trace only'
-                      : isStarterScenarioFail
-                        ? '~ Compare: starter'
-                        : isNoRunYet
-                          ? '— Compare: not run'
-                          : '✗ Compare: assertions differ'}
-                  </span>
                 </div>
                 <div className="ide-export-trust-body">
                   <p className="ide-export-trust-reason" data-testid="ide-export-trust-reason">
@@ -1223,6 +1327,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
                     {isIncompleteMappingQualified
                       ? 'Complete the live output pin mapping, then rerun Compare when you want refreshed comparison evidence.'
+                      : isVerifyStale
+                        ? 'Re-run Verify to refresh current evidence before you rely on this export.'
                       : isTraceOnly
                         ? 'Run Compare when you want assertion-backed evidence for this export.'
                       : isStarterScenarioFail
@@ -1284,12 +1390,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   )}
                   {onGoToHardware && unmappedRequiredPorts.length > 0 && (
                     <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-export-trust-go-hardware">
-                      Map Pins in Hardware →
+                      Open Map Pins →
                     </IdeButton>
                   )}
                   {onOpenVerify && (
                     <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-trust-go-verify">
-                      Open Test →
+                      Open Verify →
                     </IdeButton>
                   )}
                 </div>
@@ -1298,6 +1404,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           </section>
           <div className="ide-export-layout">
             <div className="ide-export-left-col">
+              {vivadoSection}
 
               <section className="ide-export-section" data-testid="ide-export-build-output">
                 <header className="ide-export-section-header">
@@ -1318,7 +1425,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     </p>
                     <div style={{ marginTop: 'var(--ide-space-2)' }}>
                       <IdeButton tone="primary" onClick={onGoToHardware} testId="ide-export-go-map-pins">
-                        Map Pins in Hardware →
+                        Open Map Pins →
                       </IdeButton>
                     </div>
                   </IdeCallout>
@@ -1353,7 +1460,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       {onOpenVerify && (
                         <div style={{ marginTop: 'var(--ide-space-2)' }}>
                           <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-open-verify-advisory">
-                            Open Test
+                            Open Verify
                           </IdeButton>
                         </div>
                       )}
@@ -1465,6 +1572,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   })}
                 </div>
               </section>
+
+              {gateStackSection}
 
               <section
                 ref={mapSectionRef}
@@ -1770,100 +1879,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 )}
               </section>
 
-              <section className="ide-export-section" data-testid="ide-export-vivado-ready">
-                <header className="ide-export-section-header">
-                  <div>
-                    <h3>Next in Vivado</h3>
-                    <p className="ide-export-section-subcopy">
-                      Keep the handoff short at the top level. The full checklist is still available when you need it.
-                    </p>
-                  </div>
-                {downloadReady
-                    ? <IdeStatusPill tone="ok">Ready</IdeStatusPill>
-                    : <IdeStatusPill tone="error">Blocked</IdeStatusPill>
-                  }
-                </header>
-
-                {exportTrusted ? (
-                  <IdeCallout tone="success" title="Ready to program your Basys3" testId="ide-export-vivado-ready-callout">
-                    <p className="ide-copy" style={{ margin: 0 }}>
-                      Download the Vivado Project, unzip it, and follow the three-step handoff below.
-                    </p>
-                  </IdeCallout>
-                ) : downloadReady ? (
-                  <IdeCallout tone="warn" title="Artifacts available with advisory compare state" testId="ide-export-vivado-unverified-callout">
-                    <p className="ide-copy" style={{ margin: 0 }} data-testid="ide-export-vivado-command">
-                      Your VHDL is ready to inspect or download now. Open Verify when you want to compare expected outputs before hardware bring-up.
-                    </p>
-                  </IdeCallout>
-                ) : (
-                  <IdeCallout tone="warn" title="Resolve issues first" testId="ide-export-vivado-blocked-callout">
-                    <p className="ide-copy" style={{ margin: 0 }} data-testid="ide-export-vivado-command">
-                      Fix the blockers listed here before opening the project in Vivado.
-                    </p>
-                  </IdeCallout>
-                )}
-
-                <div className="ide-export-next-steps" data-testid="ide-export-vivado-steps">
-                  <ol className="ide-export-checklist" data-testid="ide-export-vivado-checklist">
-                    <li>Open Vivado → <strong>File → Open Project</strong></li>
-                    <li>Select <code>{projectSlug}.xpr</code> inside the unzipped folder</li>
-                    <li>Run Synthesis → Implementation → Generate Bitstream → Program Device</li>
-                  </ol>
-                  <details className="ide-export-advanced-steps">
-                    <summary>Advanced / full checklist</summary>
-                    <div className="ide-kv-list" style={{ marginTop: 'var(--ide-space-2)', marginBottom: 'var(--ide-space-2)' }}>
-                      <div className="ide-kv-row">
-                        <span>Board</span>
-                        <span><code>Basys3</code></span>
-                      </div>
-                      <div className="ide-kv-row">
-                        <span>Part</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--ide-space-1)' }}>
-                          <code data-testid="ide-export-part-number">{vivadoPart}</code>
-                          <IdeButton
-                            tone="ghost"
-                            onClick={() => void copyToClipboard(vivadoPart, 'part-number')}
-                          >
-                            {copiedTarget === 'part-number' ? 'Copied!' : 'Copy'}
-                          </IdeButton>
-                        </span>
-                      </div>
-                      <div className="ide-kv-row">
-                        <span>Top Module</span>
-                        <span><code data-testid="ide-export-top-module">{topModule}</code></span>
-                      </div>
-                      <div className="ide-kv-row">
-                        <span>Tool</span>
-                        <span><code>Vivado 2024.1+</code></span>
-                      </div>
-                    </div>
-                    <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', marginTop: 'var(--ide-space-2)', marginBottom: 0 }}>
-                      Unzip the download and keep the <code>{projectSlug}</code> folder intact before opening the project.
-                    </p>
-                    <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', marginTop: 'var(--ide-space-1)', marginBottom: 0 }}>
-                      Batch fallback: run <code>{vivadoCommand}</code> from the extracted folder.
-                    </p>
-                  </details>
-                  {/* Gate contract compatibility: vivado command/readme must be findable */}
-                  {downloadReady ? (
-                    <div data-testid="ide-export-readme-preview" style={{ marginTop: 'var(--ide-space-1)' }}>
-                      <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-muted)', margin: 0 }}
-                         data-testid="ide-export-vivado-command">
-                        Batch import: <code>{vivadoCommand}</code>
-                      </p>
-                    </div>
-                  ) : (
-                    <p
-                      className="ide-copy ide-export-vivado-blocked-hint"
-                      data-testid="ide-export-vivado-command"
-                    >
-                      Resolve all blockers before importing to Vivado.
-                    </p>
-                  )}
-                </div>
-              </section>
-
             </div>
 
             <div className="ide-export-right-col">
@@ -1873,7 +1888,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <span className="ide-export-buildTitle">Vivado Project (Open Project)</span>
                   <span data-testid="ide-primary-cta">
                     <IdeButton
-                      tone="primary"
+                      tone="secondary"
                       onClick={() => void handleDownloadExport('project')}
                       disabled={!downloadReady || isRebuilding}
                     >
@@ -2042,13 +2057,14 @@ function classifyArtifactGroup(artifact: ExportArtifactView): ExportArtifactGrou
 }
 
 function buildDesignSummary(project: RBProject): ExportDesignSummary {
-  const nodes = project.circuit?.nodes ?? [];
+  const rawNodes = project.circuit?.nodes ?? [];
+  const semanticNodes = canonicalizeSemanticCircuit(project.circuit ?? { nodes: [], connections: [] }).nodes ?? [];
   let inputs = 0;
   let outputs = 0;
   let gates = 0;
-  let clocked = 0;
+  let stateful = 0;
 
-  for (const node of nodes) {
+  for (const node of rawNodes) {
     if (LOGIC_INPUT_TYPES.has(node.type)) {
       inputs += 1;
       continue;
@@ -2065,11 +2081,17 @@ function buildDesignSummary(project: RBProject): ExportDesignSummary {
     gates += 1;
   }
 
+  for (const node of semanticNodes) {
+    if (CLOCKED_NODE_TYPES.has(node.type)) {
+      stateful += 1;
+    }
+  }
+
   return {
     inputs: Math.max(inputs, project.ioMapping?.inputs?.length ?? 0),
     outputs: Math.max(outputs, project.ioMapping?.outputs?.length ?? 0),
     gates,
-    clocked,
+    stateful,
   };
 }
 
@@ -2152,7 +2174,14 @@ function buildEvidenceDiagnostics(
     return diagnostics;
   }
 
-  if (verifyState === 'trace') {
+  if (dirtySinceVerify) {
+    diagnostics.push(createEvidenceDiagnostic({
+      code: 'RBEV1002',
+      message: 'Design changed since the last Verify run. Export files remain available, but that Verify evidence is stale for the current circuit.',
+      fix: 'Open Verify and rerun simulation or compare when you want current evidence for this export.',
+      severity: 'warning',
+    }));
+  } else if (verifyState === 'trace') {
     diagnostics.push(createEvidenceDiagnostic({
       code: 'RBEV1004',
       message: 'Latest Verify activity recorded a trace-only run. Export files are still available, but expected-output comparison has not been confirmed yet.',
@@ -2161,7 +2190,7 @@ function buildEvidenceDiagnostics(
     }));
   }
 
-  if (verifyResult.status !== 'pass') {
+  if (!dirtySinceVerify && verifyResult.status !== 'pass') {
     const isStarterFail = vectorsAreAutoGenerated;
     diagnostics.push(createEvidenceDiagnostic({
       code: 'RBEV1001',
@@ -2184,15 +2213,6 @@ function buildEvidenceDiagnostics(
         'Latest comparison run matched the logic, but required output mapping was incomplete. Export files are available, but hardware interpretation is still incomplete.',
       fix:
         'Complete the live output pin mapping, then rerun Compare when you want refreshed evidence against the current design.',
-      severity: 'warning',
-    }));
-  }
-
-  if (dirtySinceVerify) {
-    diagnostics.push(createEvidenceDiagnostic({
-      code: 'RBEV1002',
-      message: 'Design changed since the last comparison run. Export files remain available, but the comparison evidence is stale.',
-      fix: 'Rerun Compare to refresh deterministic evidence before using the bundle as your final hardware handoff.',
       severity: 'warning',
     }));
   }

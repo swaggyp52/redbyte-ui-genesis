@@ -1,5 +1,8 @@
 import type { VerifyReport } from './verifyReport';
 
+import { getOpenStageActionLabel, getWorkflowCtaLabel } from './workflowStages';
+import type { ProjectKind } from './projectIdentity';
+
 export type VerifyRunKind = 'trace' | 'verify';
 export type ProjectVerifyState =
   | 'not-run'
@@ -63,6 +66,7 @@ export interface ProjectReadinessState {
   hasCircuit: boolean;
   hasIoMapping: boolean;
   hasVectors: boolean;
+  projectKind?: ProjectKind;
   verifyQualification?: 'incomplete-mapping';
 }
 
@@ -121,7 +125,7 @@ export function deriveProjectHealth(
   if (!readiness.hasCircuit) {
     blockingIssues.push({
       code: 'RBP1000',
-      message: 'No circuit graph found.',
+      message: 'No circuit graph yet.',
       fixPath: { mode: 'design', actionLabel: 'Open Design' },
     });
   }
@@ -138,7 +142,7 @@ export function deriveProjectHealth(
     blockingIssues.push({
       code: 'RBP1005',
       message: 'Some required output pins remain unmapped. Finish mapping before relying on hardware behavior.',
-      fixPath: { mode: 'hardware', actionLabel: 'Open Hardware' },
+      fixPath: { mode: 'hardware', actionLabel: getOpenStageActionLabel('hardware') },
     });
   }
 
@@ -169,7 +173,11 @@ export function choosePrimaryProjectCta(
   readiness: ProjectReadinessState
 ): ProjectPrimaryCta {
   if (!readiness.hasCircuit) {
-    return { label: 'Load Example or Import HDL', mode: 'import', code: 'RBP3000' };
+    return {
+      label: readiness.projectKind === 'home' ? 'Build Fresh' : 'Open Design',
+      mode: 'design',
+      code: 'RBP3000',
+    };
   }
   const verifyState = deriveProjectVerifyState(health);
   const needsVerify =
@@ -187,10 +195,10 @@ export function choosePrimaryProjectCta(
     return { label: 'Verify', mode: 'verify', code: 'RBP1002' };
   }
   if (health.blockingIssues.some((issue) => issue.code === 'RBP1005')) {
-    return { label: 'Hardware', mode: 'hardware', code: 'RBP1005' };
+    return { label: getWorkflowCtaLabel('hardware', 'RBP1005'), mode: 'hardware', code: 'RBP1005' };
   }
   if (!health.lastExport || health.lastExport.status === 'blocked' || health.dirtySinceExport) {
     return { label: 'Export', mode: 'export', code: 'RBP2002' };
   }
-  return { label: 'Hardware', mode: 'hardware', code: 'RBP4000' };
+  return { label: getWorkflowCtaLabel('hardware', 'RBP4000'), mode: 'hardware', code: 'RBP4000' };
 }

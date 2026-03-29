@@ -10,6 +10,7 @@ import {
 } from '@redbyte/rb-logic-core';
 import type { IoMapping, VerifySchedule } from '@redbyte/rb-utils';
 import type { ToolchainProjectInput } from '../../toolchainBackend';
+import { canonicalizeSemanticCircuit } from '../../../circuit/semanticCircuit';
 
 export type { VerifySchedule } from '@redbyte/rb-utils';
 export { CLOCKED_MACRO_SEQUENCE } from '@redbyte/rb-utils';
@@ -67,7 +68,8 @@ export function buildDeterministicVerifyContext(
   ioMapping?: IoMapping,
   hdl?: ToolchainProjectInput
 ): DeterministicVerifyContext {
-  const ir = elaborateCircuit(circuit).ir;
+  const semanticCircuit = canonicalizeSemanticCircuit(circuit);
+  const ir = elaborateCircuit(semanticCircuit).ir;
   const simModel = buildSimulationModel(ir);
   return {
     ir,

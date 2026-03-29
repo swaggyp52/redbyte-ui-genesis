@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate } from './_gateHarness.mjs';
+import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
+import { waitForVerifyResult } from './_verifyStatus.mjs';
 
 await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
@@ -9,37 +10,23 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
-  await page.locator('[data-testid="mode-button-project"]').click();
-  const loadStarter = page.locator('[data-testid="ide-project-load-start-logic-gates"]').first();
-  await loadStarter.waitFor({ state: 'attached', timeout: 10000 });
-  await loadStarter.evaluate((button) => {
-    if (!(button instanceof HTMLElement)) {
-      throw new Error('expected starter load CTA element');
-    }
-    button.click();
-  });
-  const replaceModalVisible = await page
-    .locator('[data-testid="ide-example-confirm-modal"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  if (replaceModalVisible) {
-    await page.locator('[data-testid="ide-example-confirm"]').first().click({ force: true });
-  }
+  await loadStarterProject(page);
 
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-verify-panel"]', { timeout: 10000 });
 
   await page.locator('[data-testid="ide-verify-run"]').click();
+  await waitForVerifyResult(page, { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-verify-workspace-waveform"]', { timeout: 10000 });
   await page.waitForFunction(
     () => {
-      const label = document.querySelector('[data-testid="ide-verify-summary-status"]');
-      return Boolean(label && /PASS|FAIL|TRACE/i.test(label.textContent || ''));
+      const signalButtons = document.querySelectorAll('[data-testid^="ide-verify-signal-"]').length;
+      const showAll = document.querySelector('[data-testid="ide-verify-show-all-signals"]');
+      return signalButtons > 0 || Boolean(showAll);
     },
     { timeout: 10000 }
   );
-  await page.waitForSelector('[data-testid="ide-verify-workspace-waveform"]', { timeout: 10000 });
 
   const filterState = (
     (await page.locator('[data-testid="ide-verify-signal-filter-state"]').first().textContent().catch(() => '')) ??
@@ -50,12 +37,13 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
     `verify signal list must default to relevant signals, got "${filterState}"`
   );
 
-  const signalRowsBefore = await page.locator('[data-testid="ide-verify-signal-list"] button').count();
+  const signalRowsBefore = await page.locator('[data-testid^="ide-verify-signal-"]').count();
   const showAllButton = page.locator('[data-testid="ide-verify-show-all-signals"]').first();
   const showAllButtonVisible = await showAllButton.isVisible().catch(() => false);
   if (showAllButtonVisible) {
     await showAllButton.click();
-    const signalRowsAfter = await page.locator('[data-testid="ide-verify-signal-list"] button').count();
+    await page.waitForTimeout(150);
+    const signalRowsAfter = await page.locator('[data-testid^="ide-verify-signal-"]').count();
     assert(
       signalRowsAfter >= signalRowsBefore,
       `showing all signals must not reduce signal rows (before=${signalRowsBefore}, after=${signalRowsAfter})`

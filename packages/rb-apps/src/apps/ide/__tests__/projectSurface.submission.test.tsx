@@ -107,7 +107,7 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    expect(getAllByTestId('ide-project-showcase-primary-cta').at(-1)?.textContent).toContain('Continue to Hardware');
+    expect(getAllByTestId('ide-project-showcase-primary-cta').at(-1)?.textContent).toContain('Continue to Map Pins');
     expect(getByTestId('ide-project-console').textContent).toContain('Finish mapping before relying on hardware behavior');
   });
 

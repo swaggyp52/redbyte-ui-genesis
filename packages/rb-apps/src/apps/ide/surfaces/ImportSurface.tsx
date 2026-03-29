@@ -354,7 +354,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const [zipBusy, setZipBusy] = useState(false);
   const [pendingApplyImportResult, setPendingApplyImportResult] = useState<ImportedProjectCompilerResult | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
-  const [statusMessage, setStatusMessage] = useState<string>('Start with a Vivado ZIP or paste HDL.');
+  const [statusMessage, setStatusMessage] = useState<string>('Start with a Vivado ZIP, then review the import before replacing your project.');
   const [zipImportError, setZipImportError] = useState<string>('');
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'failed'>('idle');
   const zipInputRef = useRef<HTMLInputElement | null>(null);
@@ -1331,9 +1331,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     if (!hasParsedHdl && !hdlText.trim() && !hasZipInspection) {
       return {
         id: 'zip',
-        title: 'Start with a Vivado ZIP or paste HDL',
+        title: 'Start with a Vivado ZIP',
         body:
-          'Recommended: load a Vivado ZIP. You can also paste structural HDL manually. Nothing replaces your current project until you review the import.',
+          'Recommended: load a Vivado ZIP first. If you already have structural HDL, open Other ways to start and paste it manually. Nothing replaces your current project until you review the import.',
         primaryLabel: 'Select Vivado ZIP',
         primaryAction: () => {
           setTab('upload');
@@ -1410,6 +1410,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   ]);
 
   const isImportFirstLook = !importFirstLookDismissed && importEntryAction?.id === 'zip';
+  const showImportHeaderAction = !isImportFirstLook;
 
   useEffect(() => {
     if (importFirstLookDismissed) return;
@@ -1659,7 +1660,10 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   };
 
   const leftDockContent = (
-    <section className="ide-import-dock-v2" data-testid="ide-import-dock">
+    <section
+      className={`ide-import-dock-v2${isImportFirstLook ? ' ide-import-dock-v2--first-look' : ''}`}
+      data-testid="ide-import-dock"
+    >
       <header className="ide-workbench-placeholder-header">
         <h3>Import Workflow</h3>
       </header>
@@ -1688,134 +1692,122 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         ))}
       </ol>
 
-      <SurfacePanel className="ide-import-dock-actions" testId="ide-import-dock-actions">
-        <div className="ide-import-dock-actions-header">
-          <strong>Current step</strong>
-          <span>{workflowActiveLabel}</span>
-        </div>
-        {importEntryAction ? (
-          <>
-            <div className="ide-inline-actions">
-              <IdeButton tone="primary" onClick={runImportPrimaryAction} testId="ide-import-dock-primary">
-                {importEntryAction.primaryLabel}
-              </IdeButton>
-              {!isImportFirstLook ? (
-                <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-dock-secondary">
-                  {importEntryAction.secondaryLabel}
-                </IdeButton>
-              ) : null}
+      {!isImportFirstLook ? (
+        <>
+          <SurfacePanel className="ide-import-dock-actions" testId="ide-import-dock-actions">
+            <div className="ide-import-dock-actions-header">
+              <strong>Current step</strong>
+              <span>{workflowActiveLabel}</span>
             </div>
-            {isImportFirstLook ? (
-              <details className="ide-import-start-other-options" data-testid="ide-import-dock-other-options">
-                <summary data-testid="ide-import-dock-other-options-toggle">Other ways to start</summary>
+            {importEntryAction ? (
+              <>
                 <div className="ide-inline-actions">
+                  <IdeButton tone="primary" onClick={runImportPrimaryAction} testId="ide-import-dock-primary">
+                    {importEntryAction.primaryLabel}
+                  </IdeButton>
                   <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-dock-secondary">
                     {importEntryAction.secondaryLabel}
                   </IdeButton>
                 </div>
-              </details>
+                <p className="ide-copy" data-testid="ide-import-dock-mode-hint" style={{ margin: 0 }}>
+                  {importEntryAction.body}
+                </p>
+              </>
             ) : null}
-            <p className="ide-copy" data-testid="ide-import-dock-mode-hint" style={{ margin: 0 }}>
-              {importEntryAction.body}
-            </p>
-          </>
-        ) : null}
-        {!isImportFirstLook ? (
-          <div className="ide-inline-actions">
-            <IdeButton tone="ghost" onClick={parseHdl} testId="ide-import-parse">
-              Parse HDL
-            </IdeButton>
-            <IdeButton tone="ghost" onClick={() => parseXdc()} testId="ide-import-parse-xdc">
-              Parse XDC
-            </IdeButton>
-            <IdeButton
-              tone="ghost"
-              onClick={applySuggestions}
-              disabled={!canApplySuggestions}
-              testId="ide-import-apply-pins-only"
-            >
-              Apply Pins Only
-            </IdeButton>
-          </div>
-        ) : null}
-      </SurfacePanel>
+            <div className="ide-inline-actions">
+              <IdeButton tone="ghost" onClick={parseHdl} testId="ide-import-parse">
+                Parse HDL
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={() => parseXdc()} testId="ide-import-parse-xdc">
+                Parse XDC
+              </IdeButton>
+              <IdeButton
+                tone="ghost"
+                onClick={applySuggestions}
+                disabled={!canApplySuggestions}
+                testId="ide-import-apply-pins-only"
+              >
+                Apply Pins Only
+              </IdeButton>
+            </div>
+          </SurfacePanel>
 
-      <SurfacePanel className="ide-import-dock-guidance" testId="ide-import-expectations">
-        <strong>What happens when you import</strong>
-        <ul className="ide-bullets">
-          <li><b>Apply Pins Only</b> fills missing pin assignments on your current project.</li>
-          <li><b>Review Import...</b> shows the exact replacement before commit.</li>
-          <li><b>Confirm Replace Project</b> is the only step that swaps the active project.</li>
-        </ul>
-      </SurfacePanel>
+          <SurfacePanel className="ide-import-dock-guidance" testId="ide-import-expectations">
+            <strong>What happens when you import</strong>
+            <ul className="ide-bullets">
+              <li><b>Apply Pins Only</b> fills missing pin assignments on your current project.</li>
+              <li><b>Review Import...</b> shows the exact replacement before commit.</li>
+              <li><b>Confirm Replace Project</b> is the only step that swaps the active project.</li>
+            </ul>
+          </SurfacePanel>
 
-      {!isImportFirstLook ? (
-        <div className="ide-import-secondary-tools" data-testid="ide-import-secondary-tools">
-          <span className="ide-import-secondary-tools-label">Secondary tools</span>
-          <div className="ide-inline-actions">
-            <IdeButton tone="ghost" onClick={copyDiagnostics} testId="ide-import-copy-diagnostics">
-              Copy report
-            </IdeButton>
-            <IdeButton
-              tone="ghost"
-              onClick={() => void handleProcessDesign()}
-              disabled={pipelineActive || (!hdlText.trim() && !zipInspection)}
-              testId="ide-import-process-design"
-            >
-              {pipelineActive ? 'Processing…' : 'Process Design'}
-            </IdeButton>
+          <div className="ide-import-secondary-tools" data-testid="ide-import-secondary-tools">
+            <span className="ide-import-secondary-tools-label">Secondary tools</span>
+            <div className="ide-inline-actions">
+              <IdeButton tone="ghost" onClick={copyDiagnostics} testId="ide-import-copy-diagnostics">
+                Copy report
+              </IdeButton>
+              <IdeButton
+                tone="ghost"
+                onClick={() => void handleProcessDesign()}
+                disabled={pipelineActive || (!hdlText.trim() && !zipInspection)}
+                testId="ide-import-process-design"
+              >
+                {pipelineActive ? 'Processing…' : 'Process Design'}
+              </IdeButton>
+            </div>
           </div>
-        </div>
+
+          <section className="ide-import-samples-grid">
+            {IMPORT_SAMPLES.filter((s) => !s.behavioral).map((sample) => (
+              <button
+                key={sample.id}
+                type="button"
+                className="ide-import-sample-card"
+                onClick={() => {
+                  setHdlText(sample.hdl);
+                  setXdcText(sample.xdc);
+                  setTab('hdl');
+                  parseHdl(sample.hdl);
+                  if (sample.xdc.trim()) parseXdc(sample.xdc);
+                }}
+                data-testid={`ide-import-load-sample-${sample.id}`}
+              >
+                <span className="ide-import-sample-card-name">{sample.name}</span>
+                <span className="ide-import-sample-card-desc">{sample.desc}</span>
+                <span className="ide-import-sample-card-learn">Lesson: {sample.learn}</span>
+              </button>
+            ))}
+            {showBehavioralSamples && IMPORT_SAMPLES.filter((s) => s.behavioral).map((sample) => (
+              <button
+                key={sample.id}
+                type="button"
+                className="ide-import-sample-card ide-import-sample-card--behavioral"
+                onClick={() => {
+                  setHdlText(sample.hdl);
+                  setXdcText(sample.xdc);
+                  setTab('hdl');
+                  parseHdl(sample.hdl);
+                  if (sample.xdc.trim()) parseXdc(sample.xdc);
+                }}
+                data-testid={`ide-import-load-sample-${sample.id}`}
+              >
+                <span className="ide-import-sample-card-name">{sample.name}</span>
+                <span className="ide-import-sample-card-desc">{sample.desc}</span>
+                <span className="ide-import-sample-card-learn">Blocked: {sample.learn}</span>
+              </button>
+            ))}
+          </section>
+          <button
+            type="button"
+            className="ide-import-behavioral-toggle"
+            data-testid="ide-import-toggle-behavioral-samples"
+            onClick={() => setShowBehavioralSamples((prev) => !prev)}
+          >
+            {showBehavioralSamples ? 'Hide unsupported examples' : 'Show unsupported examples (blocked)'}
+          </button>
+        </>
       ) : null}
-
-      <section className="ide-import-samples-grid">
-        {IMPORT_SAMPLES.filter((s) => !s.behavioral).map((sample) => (
-          <button
-            key={sample.id}
-            type="button"
-            className="ide-import-sample-card"
-            onClick={() => {
-              setHdlText(sample.hdl);
-              setXdcText(sample.xdc);
-              setTab('hdl');
-              parseHdl(sample.hdl);
-              if (sample.xdc.trim()) parseXdc(sample.xdc);
-            }}
-            data-testid={`ide-import-load-sample-${sample.id}`}
-          >
-            <span className="ide-import-sample-card-name">{sample.name}</span>
-            <span className="ide-import-sample-card-desc">{sample.desc}</span>
-            <span className="ide-import-sample-card-learn">Lesson: {sample.learn}</span>
-          </button>
-        ))}
-        {showBehavioralSamples && IMPORT_SAMPLES.filter((s) => s.behavioral).map((sample) => (
-          <button
-            key={sample.id}
-            type="button"
-            className="ide-import-sample-card ide-import-sample-card--behavioral"
-            onClick={() => {
-              setHdlText(sample.hdl);
-              setXdcText(sample.xdc);
-              setTab('hdl');
-              parseHdl(sample.hdl);
-              if (sample.xdc.trim()) parseXdc(sample.xdc);
-            }}
-            data-testid={`ide-import-load-sample-${sample.id}`}
-          >
-            <span className="ide-import-sample-card-name">{sample.name}</span>
-            <span className="ide-import-sample-card-desc">{sample.desc}</span>
-            <span className="ide-import-sample-card-learn">Blocked: {sample.learn}</span>
-          </button>
-        ))}
-      </section>
-      <button
-        type="button"
-        className="ide-import-behavioral-toggle"
-        data-testid="ide-import-toggle-behavioral-samples"
-        onClick={() => setShowBehavioralSamples((prev) => !prev)}
-      >
-        {showBehavioralSamples ? 'Hide unsupported examples' : 'Show unsupported examples (blocked)'}
-      </button>
     </section>
   );
 
@@ -2492,6 +2484,8 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       mode="import"
       consoleHasBlocking={blockingErrors.length > 0}
       consoleHasEntries={blockingErrors.length > 0 || warnings.length > 0}
+      rightDockMode={isImportFirstLook ? 'hidden' : 'collapsed'}
+      consoleMode="hidden"
       dock={
         leftDockContent ?? (
         <section className="ide-workbench-placeholder" data-testid="ide-import-dock">
@@ -2825,75 +2819,105 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     >
       <IdePanel
         title="Import Design"
-        description="Start with a Vivado ZIP or paste HDL/XDC. RedByte will let you review changes before replacing the active project."
+        description="Start with a Vivado ZIP. Other ways to start stay available, and nothing replaces your current project until you review the import."
         actions={
-          <>
-            <span data-testid="ide-primary-cta">
-              <IdeButton
-                tone="primary"
-                onClick={requestApplyProject}
-                disabled={!canImport}
-                testId="ide-import-replace-project"
-              >
-                Review Import...
-              </IdeButton>
-            </span>
-            {!canImport && hasParsedHdl && (
-              <span className="ide-import-apply-reason" data-testid="ide-import-apply-disabled-reason">
-                {unmappedPorts.length > 0
-                  ? `${unmappedPorts.length} unmapped port${unmappedPorts.length > 1 ? 's' : ''}`
-                  : `${blockingErrors.length} blocking error${blockingErrors.length > 1 ? 's' : ''}`}
+          showImportHeaderAction ? (
+            <>
+              <span data-testid="ide-primary-cta">
+                <IdeButton
+                  tone="primary"
+                  onClick={requestApplyProject}
+                  disabled={!canImport}
+                  testId="ide-import-replace-project"
+                >
+                  Review Import...
+                </IdeButton>
               </span>
-            )}
-          </>
+              {!canImport && hasParsedHdl && (
+                <span className="ide-import-apply-reason" data-testid="ide-import-apply-disabled-reason">
+                  {unmappedPorts.length > 0
+                    ? `${unmappedPorts.length} unmapped port${unmappedPorts.length > 1 ? 's' : ''}`
+                    : `${blockingErrors.length} blocking error${blockingErrors.length > 1 ? 's' : ''}`}
+                </span>
+              )}
+            </>
+          ) : undefined
         }
         right={
-          canImport ? (
-            <IdeStatusPill tone="ok">Ready to Review</IdeStatusPill>
-          ) : (
-            <IdeStatusPill tone="warn">Needs Mapping</IdeStatusPill>
-          )
+          showImportHeaderAction
+            ? canImport ? (
+                <IdeStatusPill tone="ok">Ready to Review</IdeStatusPill>
+              ) : (
+                <IdeStatusPill tone="warn">Needs Mapping</IdeStatusPill>
+              )
+            : null
         }
         testId="ide-import-panel"
       >
         {importEntryAction && (
-          <SurfacePanel className="ide-import-start-hero" testId="ide-import-start-hero">
-            <div className="ide-import-start-hero__copy">
-              <strong className="ide-import-start-hero__title">{importEntryAction.title}</strong>
-              <p className="ide-copy" style={{ margin: 0 }}>
-                {importEntryAction.body}
-              </p>
-            </div>
-            <div className="ide-import-start-hero__actions">
-              <IdeButton tone="primary" onClick={runImportPrimaryAction} testId="ide-import-start-primary">
-                {importEntryAction.primaryLabel}
-              </IdeButton>
-              {isImportFirstLook ? (
-                <details className="ide-import-start-other-options" data-testid="ide-import-start-other-options">
-                  <summary data-testid="ide-import-start-other-options-toggle">Other ways to start</summary>
-                  <div className="ide-inline-actions">
-                    <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-start-secondary">
-                      {importEntryAction.secondaryLabel}
-                    </IdeButton>
-                  </div>
-                </details>
-              ) : (
-                <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-start-secondary">
-                  {importEntryAction.secondaryLabel}
+          <div className="ide-import-start-shell" data-testid="ide-import-start-shell">
+            <SurfacePanel className="ide-import-start-hero" testId="ide-import-start-hero">
+              <div className="ide-import-start-hero__copy">
+                {isImportFirstLook ? (
+                  <span className="ide-import-start-hero__eyebrow">Recommended path</span>
+                ) : null}
+                <strong className="ide-import-start-hero__title">{importEntryAction.title}</strong>
+                <p className="ide-copy" style={{ margin: 0 }}>
+                  {importEntryAction.body}
+                </p>
+              </div>
+              <div className="ide-import-start-hero__actions">
+                <IdeButton tone="primary" onClick={runImportPrimaryAction} testId="ide-import-start-primary">
+                  {importEntryAction.primaryLabel}
                 </IdeButton>
-              )}
-            </div>
-          </SurfacePanel>
+                {isImportFirstLook ? (
+                  <details className="ide-import-start-other-options" data-testid="ide-import-start-other-options">
+                    <summary data-testid="ide-import-start-other-options-toggle">Other ways to start</summary>
+                    <div className="ide-inline-actions">
+                      <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-start-secondary">
+                        {importEntryAction.secondaryLabel}
+                      </IdeButton>
+                    </div>
+                  </details>
+                ) : (
+                  <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-start-secondary">
+                    {importEntryAction.secondaryLabel}
+                  </IdeButton>
+                )}
+              </div>
+            </SurfacePanel>
+            {isImportFirstLook ? (
+              <SurfacePanel className="ide-import-start-guidance" testId="ide-import-start-guidance">
+                <div className="ide-import-start-guidance-grid">
+                  <article className="ide-import-start-guidance-card" data-testid="ide-import-start-guidance-zip">
+                    <span className="ide-import-start-guidance-eyebrow">Fastest path</span>
+                    <strong>Load a Vivado ZIP</strong>
+                    <p>RedByte can detect HDL, XDC, and top-module clues automatically before you replace anything.</p>
+                  </article>
+                  <article className="ide-import-start-guidance-card" data-testid="ide-import-start-guidance-review">
+                    <span className="ide-import-start-guidance-eyebrow">Safe review</span>
+                    <strong>Nothing is overwritten yet</strong>
+                    <p>Your current project stays intact until you reach Review Import and explicitly confirm the replacement.</p>
+                  </article>
+                  <article className="ide-import-start-guidance-card" data-testid="ide-import-start-guidance-hdl">
+                    <span className="ide-import-start-guidance-eyebrow">Manual path</span>
+                    <strong>Paste structural HDL if needed</strong>
+                    <p>Use Other ways to start only when you already have structural HDL text and want to build the preview by hand.</p>
+                  </article>
+                </div>
+              </SurfacePanel>
+            ) : null}
+          </div>
         )}
         {showVerifyResetNotice ? (
           <IdeCallout tone="info" title="Run Verify Again" testId="ide-import-verify-reset-notice">
             <p className="ide-copy" style={{ margin: 0 }}>
-              Verification results are not restored during import. Open Test and re-run your vectors — once you get a PASS, the export becomes trusted and ready.
+              Verification results are not restored during import. Open Verify and re-run your vectors — once you get a PASS, the export becomes trusted and ready.
             </p>
             {onGoToVerify ? (
               <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
                 <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-import-open-verify-after-import">
-                  Open Test
+                  Open Verify
                 </IdeButton>
               </div>
             ) : null}
@@ -3011,13 +3035,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
             {sourceStageContent}
             {reviewWorkspace}
           </div>
-        ) : (
-          <SurfacePanel className="ide-import-start-guidance" testId="ide-import-start-guidance">
-            <p className="ide-copy" style={{ margin: 0 }}>
-              Start with <strong>Select Vivado ZIP</strong>. If you already have HDL text, open <strong>Other ways to start</strong> and choose <strong>Paste HDL</strong>.
-            </p>
-          </SurfacePanel>
-        )}
+        ) : null}
         {false && (
         <>
         <p
@@ -3064,12 +3082,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
             testId="ide-import-verify-reset-notice"
           >
             <p className="ide-copy" style={{ margin: 0 }}>
-              Verification results are not restored during import. Open Test and re-run your vectors — once you get a PASS, the export becomes trusted and ready.
+              Verification results are not restored during import. Open Verify and re-run your vectors — once you get a PASS, the export becomes trusted and ready.
             </p>
             {onGoToVerify && (
               <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
                 <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-import-open-verify-after-import">
-                  Open Test
+                  Open Verify
                 </IdeButton>
               </div>
             )}

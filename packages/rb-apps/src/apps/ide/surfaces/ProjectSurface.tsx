@@ -31,6 +31,14 @@ import { useIoBus } from '../ioBus';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getStudentFacingIoLabel } from '../ioLabels';
 import { LAB_STARTERS } from '../labStarters';
+import { getProjectKindDisplayName, type ProjectKind, type ScenarioAuthority } from '../projectIdentity';
+import {
+  EXPORT_STAGE_LABEL,
+  MAP_PINS_STAGE_LABEL,
+  PROGRAM_STAGE_LABEL,
+  STUDENT_WORKFLOW_SUMMARY,
+  VERIFY_STAGE_LABEL,
+} from '../workflowStages';
 
 export interface ProjectMappingRow {
   id: string;
@@ -69,6 +77,9 @@ export interface ProjectSurfaceProps {
     lab: string;
     concept: string;
   }>;
+  projectKind?: ProjectKind;
+  sourceExampleId?: string | null;
+  scenarioAuthority?: ScenarioAuthority;
   activeExampleId: string | null;
   onOpenExample: (exampleId: string) => void;
   primaryCtaLabel: string;
@@ -81,6 +92,7 @@ export interface ProjectSurfaceProps {
   onOpenExport: () => void;
   onOpenHardware: () => void;
   onOpenImport: () => void;
+  onStartBlankProject?: () => void;
   recentProjects?: Array<{
     projectId: string;
     projectName: string;
@@ -137,6 +149,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   health,
   mappingRows,
   examples,
+  projectKind = 'blank',
+  scenarioAuthority = 'none',
   activeExampleId,
   onOpenExample,
   primaryCtaLabel,
@@ -149,6 +163,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onOpenExport,
   onOpenHardware,
   onOpenImport,
+  onStartBlankProject,
   recentProjects = [],
   onOpenSavedProjects,
   onOpenRecentProject,
@@ -256,6 +271,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     () => examples.find((example) => example.id === activeExampleId) ?? null,
     [activeExampleId, examples]
   );
+  const starterExample = projectKind === 'example' ? activeExample : null;
+  const showStarterGallery = examples.length > 0 && (projectKind === 'home' || projectKind === 'example');
   const missingRequiredRows = useMemo(
     () =>
       sortedMappingRows.filter((row) => row.required && row.pin.trim().length === 0).slice(0, 4),
@@ -294,12 +311,14 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   ) ?? null;
 
   const heroStatusMessage = useMemo((): string => {
-    if (!readiness.hasCircuit) return 'No circuit loaded — start with an example or import HDL.';
+    if (!readiness.hasCircuit) return 'No circuit loaded yet — build fresh, load an example, or import HDL.';
     if (unmappedRequiredCount > 0)
       return `Circuit loaded — ${unmappedRequiredCount} required pin${unmappedRequiredCount !== 1 ? 's are' : ' is'} unmapped.`;
     if (!readiness.hasIoMapping) return 'Circuit loaded — map pins before hardware use.';
     if (!readiness.hasVectors)
       return 'Mapping complete — export files are available now. Add vectors when you want to compare observed outputs.';
+    if (projectVerifyState === 'stale')
+      return 'Authored compare results are stale for the current circuit. Open Verify to trace the live design, refresh assertions, or intentionally keep the older reference.';
     if (comparePassIncomplete)
       return 'Assertions matched, but some outputs are still unmapped. Finish mapping before relying on hardware behavior.';
     if (compareTraceOnly)
@@ -327,10 +346,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const projectSummary = useMemo(() => {
     const trimmedDescription = description.trim();
     if (trimmedDescription.length > 0) return trimmedDescription;
-    if (activeExample?.summary) return activeExample.summary;
-    if (!readiness.hasCircuit) return 'Start from an example or import HDL to begin the project flow.';
+    if (starterExample?.summary) return starterExample.summary;
+    if (!readiness.hasCircuit) return 'Start from Project Home, then build fresh, load an example, or import HDL.';
     return `Top module ${topModuleName || 'top'} is loaded and ready for setup.`;
-  }, [activeExample?.summary, description, readiness.hasCircuit, topModuleName]);
+  }, [description, readiness.hasCircuit, starterExample?.summary, topModuleName]);
 
   const verifySummary = useMemo(
     () => getVerifySummary(health, projectVerifyState, compareMatches, comparePassIncomplete),
@@ -374,7 +393,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         onClick: onOpenImport,
       };
     }
-    if (examples.length > 0) {
+    if (showStarterGallery) {
       return {
         label: 'Explore examples',
         onClick: () => examplesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
@@ -384,7 +403,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       label: 'Open Design',
       onClick: onOpenDesign,
     };
-  }, [examples.length, onOpenDesign, onOpenImport, readiness.hasCircuit]);
+  }, [onOpenDesign, onOpenImport, readiness.hasCircuit, showStarterGallery]);
   const heroChecklistItems = useMemo(
     () => [
       {
@@ -631,22 +650,22 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         testId: 'ide-project-dock-nav-verify',
       },
       {
-        id: 'export',
-        step: '03',
-        label: 'Export',
-        meta: exportPackageCurrent ? 'Current' : exportAvailable ? 'Open now' : primaryCta.mode === 'export' ? 'Next up' : 'Map pins',
-        state: exportPackageCurrent ? 'done' : exportAvailable && primaryCta.mode === 'export' ? 'active' : 'idle',
-        onClick: onOpenExport,
-        testId: 'ide-project-dock-nav-export',
-      },
-      {
         id: 'hardware',
-        step: '04',
-        label: 'Hardware',
-        meta: hardwareReady ? 'Board ready' : primaryCta.mode === 'hardware' ? 'Go live' : 'Later',
+        step: '03',
+        label: MAP_PINS_STAGE_LABEL,
+        meta: hardwareReady ? 'Ready to program' : primaryCta.mode === 'hardware' ? 'Finish now' : 'Needs pins',
         state: hardwareReady ? 'done' : primaryCta.mode === 'hardware' ? 'active' : 'idle',
         onClick: onOpenHardware,
         testId: 'ide-project-dock-nav-hardware',
+      },
+      {
+        id: 'export',
+        step: '04',
+        label: EXPORT_STAGE_LABEL,
+        meta: exportPackageCurrent ? 'Current' : exportAvailable ? 'Open now' : primaryCta.mode === 'export' ? 'Next up' : 'Waiting',
+        state: exportPackageCurrent ? 'done' : exportAvailable && primaryCta.mode === 'export' ? 'active' : 'idle',
+        onClick: onOpenExport,
+        testId: 'ide-project-dock-nav-export',
       },
     ],
     [
@@ -655,8 +674,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       exportPackageCurrent,
       hardwareReady,
       onOpenDesign,
-      onOpenExport,
       onOpenHardware,
+      onOpenExport,
       onOpenVerify,
       primaryCta.mode,
       readiness.hasCircuit,
@@ -671,6 +690,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       mode="project"
       consoleHasBlocking={false}
       consoleHasEntries={false}
+      consoleMode="hidden"
       inspector={null}
       hideRightDock
       dock={
@@ -746,7 +766,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             </IdeCallout>
           ) : (
             <IdeCallout tone="success" title="Ready">
-              No blockers. Continue through Verify, Export, then Hardware.
+              No blockers. Continue through {STUDENT_WORKFLOW_SUMMARY}.
             </IdeCallout>
           )}
         </section>
@@ -776,9 +796,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           /* STATE A: No circuit — clean 3-option landing */
           <div className="ide-project-landing" data-testid="ide-project-landing">
             <div className="ide-project-landing-header">
-              <h2 className="ide-project-landing-title">Start your lab</h2>
+              <h2 className="ide-project-landing-title">
+                {projectKind === 'home' ? 'Project Home' : 'Start your lab'}
+              </h2>
               <p className="ide-project-landing-sub">
-                Pick a starting point to begin the full Design → Verify → Export flow.
+                Pick a starting point to begin the full {STUDENT_WORKFLOW_SUMMARY} workflow.
               </p>
             </div>
             {(recentProjects.length > 0 || onOpenSavedProjects) && (
@@ -844,13 +866,13 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <button
                 type="button"
                 className="ide-project-landing-option ide-project-landing-option--fresh"
-                onClick={onOpenDesign}
+                onClick={onStartBlankProject ?? onOpenDesign}
                 data-testid="ide-project-landing-fresh"
               >
                 <span className="ide-project-landing-option-eyebrow">Empty canvas</span>
                 <span className="ide-project-landing-option-title">Build Fresh</span>
                 <span className="ide-project-landing-option-sub">Start with gates and wires from scratch</span>
-                <span className="ide-project-landing-option-cta">Open Design →</span>
+                <span className="ide-project-landing-option-cta">Open blank Design →</span>
               </button>
               <button
                 type="button"
@@ -925,10 +947,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             <div className="ide-project-showcase-copy">
               <div className="ide-project-showcase-headline">
                 <span className="ide-project-showcase-eyebrow">
-                  {activeExample?.lab ?? activeExample?.course ?? 'Classroom project'}
+                  {starterExample?.lab ?? starterExample?.course ?? getProjectKindDisplayName(projectKind)}
                 </span>
                 <h2 className="ide-project-showcase-title">
-                  {activeExample?.name ?? projectName}
+                  {starterExample?.name ?? projectName}
                 </h2>
                 <p className="ide-project-showcase-body">{projectSummary}</p>
               </div>
@@ -940,10 +962,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               </div>
               <div className="ide-project-showcase-chip-row">
                 <span className="ide-project-context-tag">Basys3</span>
+                <span className="ide-project-context-tag">{getProjectKindDisplayName(projectKind)}</span>
+                <span className="ide-project-context-tag">Scenario: {scenarioAuthority}</span>
                 <span className="ide-project-context-tag">{inputCount} in / {outputCount} out</span>
                 <span className="ide-project-context-tag">{completedMilestoneCount}/4 milestones</span>
-                {activeExample?.concept && (
-                  <span className="ide-project-context-tag">{activeExample.concept}</span>
+                {starterExample?.concept && (
+                  <span className="ide-project-context-tag">{starterExample.concept}</span>
                 )}
               </div>
               <div className="ide-project-showcase-actions">
@@ -1008,7 +1032,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   })}
                 </div>
                 <p className="ide-project-board-preview-note">
-                  {activeExample?.expectedBehavior || 'Map the pins, run Verify, then export to hardware.'}
+                  {starterExample?.expectedBehavior || `Run ${VERIFY_STAGE_LABEL}, finish ${MAP_PINS_STAGE_LABEL}, then use ${EXPORT_STAGE_LABEL} before ${PROGRAM_STAGE_LABEL.toLowerCase()}.`}
                 </p>
               </div>
             </div>
@@ -1058,8 +1082,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               </IdeStatusPill>
             </div>
             <div className="ide-project-spotlight-copy">
-              <h3 className="ide-project-spotlight-title">
-                {activeExample?.name ?? projectName}
+                <h3 className="ide-project-spotlight-title">
+                {starterExample?.name ?? projectName}
               </h3>
               <p className="ide-project-spotlight-body">{projectSummary}</p>
             </div>
@@ -1068,11 +1092,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <span className="ide-project-context-tag">
                 {inputCount} in / {outputCount} out
               </span>
-              {activeExample?.concept && (
-                <span className="ide-project-context-tag">{activeExample.concept}</span>
+              {starterExample?.concept && (
+                <span className="ide-project-context-tag">{starterExample.concept}</span>
               )}
-              {activeExample?.lab && (
-                <span className="ide-project-context-tag">{activeExample.lab}</span>
+              {starterExample?.lab && (
+                <span className="ide-project-context-tag">{starterExample.lab}</span>
               )}
             </div>
             <dl className="ide-project-glance-list">
@@ -1083,7 +1107,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <div>
                 <dt>Expected behavior</dt>
                 <dd>
-                  {activeExample?.expectedBehavior || 'Use Verify to define the expected outputs.'}
+                  {starterExample?.expectedBehavior || 'Use Verify to define the expected outputs.'}
                 </dd>
               </div>
               <div>
@@ -1191,7 +1215,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </SurfacePanel>
         </div>
 
-        {examples.length > 0 && (
+        {showStarterGallery && (
           <details
             ref={examplesSectionRef}
             className="ide-project-examples-disclosure"
@@ -1648,6 +1672,9 @@ function getVerifySummary(
   if (compareMatches) return 'Latest comparison run matches the current design.';
   if (comparePassIncomplete) {
     return 'Assertions matched the live design, but some required outputs still need board mapping review.';
+  }
+  if (projectVerifyState === 'stale') {
+    return 'The last authored comparison belongs to an older design state. Open Verify to trace the current circuit, reset to stimulus-only, or intentionally rerun against the older reference.';
   }
   if (projectVerifyState === 'trace') {
     return 'A trace-only run is current. Expected-output comparison still needs to run before you rely on Verify.';

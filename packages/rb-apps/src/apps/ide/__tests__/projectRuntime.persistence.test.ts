@@ -117,6 +117,141 @@ describe('mergePersistedRuntimeState', () => {
     expect(merged.sim.probes).toEqual([{ key: 'ld0.in', label: 'ld0.in' }]);
   });
 
+  it('migrates detached starter restores into custom identity and clears starter framing', () => {
+    const current = useProjectRuntime.getState();
+
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-detached-starter',
+        projectName: 'Signal Tour: Switches → LEDs',
+        projectDescription: 'Four-wire passthrough. Learn mapping, run Verify, and see the board light up.',
+        projectKind: 'saved',
+        activeExampleId: 'signal-tour',
+        sourceExampleId: null,
+        projectIoRows: current.projectIoRows,
+        projectVectors: current.projectVectors,
+        circuit: current.circuit,
+        projectHealthCore: {
+          dirtySinceVerify: true,
+          dirtySinceExport: true,
+        },
+      },
+      current
+    );
+
+    expect(merged.projectKind).toBe('custom');
+    expect(merged.activeExampleId).toBeNull();
+    expect(merged.sourceExampleId).toBe('signal-tour');
+    expect(merged.projectName).toBe('Untitled Project');
+    expect(merged.projectDescription).toBe('');
+  });
+
+  it('sanitizes detached starter identity when loading a saved project snapshot', () => {
+    useProjectRuntime.getState().loadFromProject({
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-03-28T00:00:00.000Z',
+      updatedAt: '2026-03-28T00:00:00.000Z',
+      name: 'Signal Tour: Switches → LEDs',
+      description: 'Four-wire passthrough. Learn mapping, run Verify, and see the board light up.',
+      circuit: {
+        nodes: [
+          { id: 'sw0_node', type: 'INPUT', x: 0, y: 0, label: 'SW0', config: {}, state: {} },
+          { id: 'sw1_node', type: 'INPUT', x: 0, y: 100, label: 'SW1', config: {}, state: {} },
+          { id: 'ld0_node', type: 'OUTPUT', x: 240, y: 0, label: 'ld0', config: {}, state: {} },
+          { id: 'ld1_node', type: 'OUTPUT', x: 240, y: 100, label: 'ld1', config: {}, state: {} },
+          { id: 'nand0', type: 'NAND', x: 120, y: 0, config: {}, state: {} },
+        ],
+        connections: [
+          { from: { nodeId: 'sw0_node', portName: 'out' }, to: { nodeId: 'nand0', portName: 'a' } },
+          { from: { nodeId: 'sw1_node', portName: 'out' }, to: { nodeId: 'nand0', portName: 'b' } },
+          { from: { nodeId: 'nand0', portName: 'out' }, to: { nodeId: 'ld0_node', portName: 'in' } },
+          { from: { nodeId: 'sw1_node', portName: 'out' }, to: { nodeId: 'ld1_node', portName: 'in' } },
+        ],
+      },
+      ioMapping: {
+        inputs: [
+          { id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'SW0', pin: 'V17' },
+          { id: 'sw1', nodeId: 'sw1_node', port: 'out', label: 'SW1', pin: 'V16' },
+        ],
+        outputs: [
+          { id: 'ld0', nodeId: 'ld0_node', port: 'in', label: 'ld0', pin: 'LD0' },
+          { id: 'ld1', nodeId: 'ld1_node', port: 'in', label: 'ld1', pin: 'LD1' },
+        ],
+      },
+      vectors: [
+        { tick: 0, inputs: { sw0: 1, sw1: 1 }, expected: { ld0: 0, ld1: 1 } },
+      ],
+      meta: {
+        projectId: 'rb-detached-starter-snapshot',
+        projectKind: 'saved',
+        scenarioAuthority: 'authored',
+      },
+    });
+
+    const loaded = useProjectRuntime.getState();
+
+    expect(loaded.projectKind).toBe('custom');
+    expect(loaded.activeExampleId).toBeNull();
+    expect(loaded.sourceExampleId).toBe('signal-tour');
+    expect(loaded.projectName).toBe('Untitled Project');
+    expect(loaded.projectDescription).toBe('');
+    expect(loaded.scenarioAuthority).toBe('draft');
+    expect(loaded.projectVectors[0]?.expected).toEqual({});
+    expect(loaded.scenarios[0]?.vectors[0]?.expected).toEqual({});
+  });
+
+  it('resets inherited starter compare state for detached custom restores that already carry starter provenance', () => {
+    useProjectRuntime.getState().loadFromProject({
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-03-28T00:00:00.000Z',
+      updatedAt: '2026-03-28T00:00:00.000Z',
+      name: 'Untitled Project',
+      description: '',
+      circuit: {
+        nodes: [
+          { id: 'sw0_node', type: 'INPUT', x: 0, y: 0, label: 'SW0', config: {}, state: {} },
+          { id: 'sw1_node', type: 'INPUT', x: 0, y: 100, label: 'SW1', config: {}, state: {} },
+          { id: 'ld0_node', type: 'OUTPUT', x: 240, y: 0, label: 'ld0', config: {}, state: {} },
+          { id: 'ld1_node', type: 'OUTPUT', x: 240, y: 100, label: 'ld1', config: {}, state: {} },
+        ],
+        connections: [
+          { from: { nodeId: 'sw0_node', portName: 'out' }, to: { nodeId: 'ld0_node', portName: 'in' } },
+          { from: { nodeId: 'sw1_node', portName: 'out' }, to: { nodeId: 'ld1_node', portName: 'in' } },
+        ],
+      },
+      ioMapping: {
+        inputs: [
+          { id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'SW0', pin: 'V17' },
+          { id: 'sw1', nodeId: 'sw1_node', port: 'out', label: 'SW1', pin: 'V16' },
+        ],
+        outputs: [
+          { id: 'ld0', nodeId: 'ld0_node', port: 'in', label: 'ld0', pin: 'LD0' },
+          { id: 'ld1', nodeId: 'ld1_node', port: 'in', label: 'ld1', pin: 'LD1' },
+        ],
+      },
+      vectors: [
+        { tick: 0, inputs: { sw0: 1, sw1: 1 }, expected: { ld0: 1, ld1: 1 } },
+      ],
+      meta: {
+        projectId: 'rb-detached-starter-second-boot',
+        projectKind: 'custom',
+        sourceExampleId: 'signal-tour',
+        scenarioAuthority: 'authored',
+      },
+    });
+
+    const loaded = useProjectRuntime.getState();
+
+    expect(loaded.projectKind).toBe('custom');
+    expect(loaded.sourceExampleId).toBe('signal-tour');
+    expect(loaded.scenarioAuthority).toBe('draft');
+    expect(loaded.verifyLastRun).toBeUndefined();
+    expect(loaded.projectVectors[0]?.expected).toEqual({});
+    expect(loaded.scenarios[0]?.vectors[0]?.expected).toEqual({});
+  });
+
   it('invalidates legacy runtime-backed verify trust on restore', () => {
     const current = useProjectRuntime.getState();
 

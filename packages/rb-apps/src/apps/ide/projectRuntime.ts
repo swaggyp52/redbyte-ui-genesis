@@ -41,7 +41,7 @@ import {
   type VerifyWaveSample,
 } from './verifyReport';
 import { deriveIoSignalRoles } from './ioSignalRoles';
-import { generateBringUpVectors } from './bringupArtifacts';
+import { generateBringUpVectors, generateStimulusVectors } from './bringupArtifacts';
 import {
   buildBlockedRuntimeSnapshotFromModel,
   DEFAULT_SIM_SPEED_HZ,
@@ -65,7 +65,16 @@ import {
   type VerifyScenario,
 } from './verifyScenario';
 import { exportProjectAsBasys3 } from '../../fpga/boards/basys3/basys3ExportService';
+import { canonicalizeSemanticCircuit } from '../../circuit/semanticCircuit';
 import { flattenProjectMacros } from './macros/macroFlattener';
+import {
+  deriveScenarioAuthority,
+  normalizeProjectKind,
+  normalizeScenarioAuthority,
+  stripExpectedOutputs,
+  type ProjectKind,
+  type ScenarioAuthority,
+} from './projectIdentity';
 
 export type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
 
@@ -199,6 +208,9 @@ export interface ProjectRuntimeState {
   projectName: string;
   projectDescription: string;
   lastSavedAt: string;
+  projectKind: ProjectKind;
+  sourceExampleId: string | null;
+  scenarioAuthority: ScenarioAuthority;
   activeExampleId: string | null;
   projectIoRows: ProjectIoRow[];
   projectVectors: TestVector[];
@@ -222,6 +234,7 @@ export interface ProjectRuntimeState {
   setVectors: (vectors: TestVector[]) => void;
   setCustomVectors: (vectors: CustomTestVector[]) => void;
   generateBringUpVectors: () => TestVector[];
+  generateStimulusVectors: () => TestVector[];
   createScenario: () => void;
   duplicateScenario: () => void;
   renameScenario: (name: string) => void;
@@ -253,8 +266,13 @@ export interface ProjectRuntimeState {
     projectId?: string;
     projectName?: string;
     projectDescription?: string;
+    projectKind?: ProjectKind;
+    sourceExampleId?: string | null;
+    scenarioAuthority?: ScenarioAuthority;
+    activeExampleId?: string | null;
     markDirty?: boolean;
   }) => void;
+  startBlankProject: () => void;
   setLastSavedAt: (label: string) => void;
   resetToActiveExample: () => void;
   clearUnsavedState: (label?: string) => void;
@@ -279,6 +297,9 @@ interface PersistedRuntimeState {
   projectName: string;
   projectDescription: string;
   lastSavedAt: string;
+  projectKind?: ProjectKind;
+  sourceExampleId?: string | null;
+  scenarioAuthority?: ScenarioAuthority;
   activeExampleId: string | null;
   projectIoRows: ProjectIoRow[];
   projectVectors: TestVector[];
@@ -318,7 +339,7 @@ interface RuntimeSeedState extends PersistedRuntimeState {
 export const useProjectRuntime = create<ProjectRuntimeState>()(
   persist(
     (set, get) => ({
-      ...stateFromExample(DEFAULT_EXAMPLE),
+      ...createEmptyProjectState(),
       actions: {
         verify: {
           run: (input) => get().runVerification(input),
@@ -520,6 +541,66 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         const circuit = cloneCircuit(project.circuit);
         const projectIoRows = synchronizeProjectIoRows(circuit, ioRowsFromProject(project));
         const incomingProjectId = (project.meta?.projectId ?? '').trim();
+        const persistedProjectKind = normalizeProjectKind(project.meta?.projectKind, 'saved');
+        const rawSourceExampleId =
+          typeof project.meta?.sourceExampleId === 'string' && project.meta.sourceExampleId.trim().length > 0
+            ? project.meta.sourceExampleId.trim()
+            : null;
+        const inferredDetachedExample = inferDetachedExampleProvenance({
+          projectKind: persistedProjectKind,
+          sourceExampleId: rawSourceExampleId,
+          activeExampleId: null,
+          projectName: project.name || 'Imported project',
+          projectDescription: project.description ?? '',
+        });
+        const sourceExampleId = rawSourceExampleId ?? inferredDetachedExample?.id ?? null;
+        const projectKind =
+          persistedProjectKind !== 'example' && inferredDetachedExample
+            ? 'custom'
+            : persistedProjectKind;
+        const activeExampleId = projectKind === 'example' ? sourceExampleId : null;
+        const sourceProjectVectors = cloneVectors(project.vectors ?? []);
+        const shouldSanitizeDetachedExampleIdentity = Boolean(
+          inferredDetachedExample &&
+          projectKind !== 'example' &&
+          (project.name || '').trim() === inferredDetachedExample.name &&
+          (project.description ?? '').trim() === inferredDetachedExample.summary.trim()
+        );
+        const shouldResetDetachedStarterCompareState =
+          projectKind !== 'example' &&
+          Boolean(sourceExampleId) &&
+          sourceProjectVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0);
+        const projectVectors = shouldResetDetachedStarterCompareState
+          ? stripExpectedOutputs(sourceProjectVectors)
+          : sourceProjectVectors;
+        const scenarioAuthority = shouldResetDetachedStarterCompareState
+          ? deriveScenarioAuthority({
+              projectKind,
+              activeExampleId,
+              hasVectors: projectVectors.length > 0,
+              hasAssertions: false,
+              dirtySinceVerify: true,
+              verifyStatus: null,
+              vectorsAreAutoGenerated: false,
+            })
+          : normalizeScenarioAuthority(
+              project.meta?.scenarioAuthority,
+              deriveScenarioAuthority({
+                projectKind,
+                activeExampleId,
+                hasVectors: projectVectors.length > 0,
+                hasAssertions: projectVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0),
+                dirtySinceVerify: true,
+                verifyStatus: null,
+                vectorsAreAutoGenerated: projectKind === 'example',
+              })
+            );
+        const loadedProjectName = shouldSanitizeDetachedExampleIdentity
+          ? 'Untitled Project'
+          : project.name || 'Imported project';
+        const loadedProjectDescription = shouldSanitizeDetachedExampleIdentity
+          ? ''
+          : project.description ?? '';
         // Register any custom components from the project
         for (const def of (project.customComponents ?? [])) {
           try {
@@ -532,14 +613,17 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           projectId:
             incomingProjectId.length > 0
               ? incomingProjectId
-              : createProjectId(project.name || 'imported'),
-          projectName: project.name || 'Imported project',
-          projectDescription: project.description ?? '',
-          lastSavedAt: `Imported: ${project.name || 'project'}`,
-          activeExampleId: null,
+              : createProjectId(loadedProjectName || 'imported'),
+          projectName: loadedProjectName,
+          projectDescription: loadedProjectDescription,
+          lastSavedAt: `Imported: ${loadedProjectName || 'project'}`,
+          projectKind,
+          sourceExampleId,
+          scenarioAuthority,
+          activeExampleId,
           projectIoRows,
-          projectVectors: cloneVectors(project.vectors ?? []),
-          ...migrateProjectVectorsToScenario(project.vectors ?? []),
+          projectVectors,
+          ...migrateProjectVectorsToScenario(projectVectors),
           customVectors: [],
           circuit,
           designPast: [],
@@ -562,6 +646,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           projectIoRows: state.projectIoRows.map((entry) =>
             entry.id === rowId ? { ...entry, pin } : entry
           ),
+          scenarioAuthority:
+            state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
           projectHealthCore: {
             ...state.projectHealthCore,
             dirtySinceVerify: true,
@@ -576,6 +662,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               ? entry
               : { ...entry, pin: suggestBasys3Pin(entry, index) }
           ),
+          scenarioAuthority:
+            state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
           projectHealthCore: {
             ...state.projectHealthCore,
             dirtySinceVerify: true,
@@ -595,6 +683,15 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             projectVectors,
             scenarios: nextScenarioState.scenarios,
             activeScenarioId: nextScenarioState.activeScenarioId,
+            scenarioAuthority: deriveScenarioAuthority({
+              projectKind: state.projectKind,
+              activeExampleId: state.activeExampleId,
+              hasVectors: projectVectors.length > 0,
+              hasAssertions: projectVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0),
+              dirtySinceVerify: true,
+              verifyStatus: null,
+              vectorsAreAutoGenerated: state.projectKind === 'example' && Boolean(state.activeExampleId),
+            }),
             projectHealthCore: {
               ...state.projectHealthCore,
               dirtySinceVerify: true,
@@ -606,6 +703,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       setCustomVectors: (vectors) => {
         set((state) => ({
           customVectors: normalizeVectorsForLiveIo(cloneVectors(vectors), state.projectIoRows),
+          scenarioAuthority:
+            state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
           projectHealthCore: {
             ...state.projectHealthCore,
             dirtySinceVerify: true,
@@ -630,6 +729,51 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             projectVectors,
             scenarios: nextScenarioState.scenarios,
             activeScenarioId: nextScenarioState.activeScenarioId,
+            scenarioAuthority: deriveScenarioAuthority({
+              projectKind: state.projectKind,
+              activeExampleId: state.activeExampleId,
+              hasVectors: projectVectors.length > 0,
+              hasAssertions: projectVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0),
+              dirtySinceVerify: true,
+              verifyStatus: null,
+              vectorsAreAutoGenerated: state.projectKind === 'example' && Boolean(state.activeExampleId),
+            }),
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              dirtySinceVerify: true,
+              dirtySinceExport: true,
+            },
+          };
+        });
+        return generated;
+      },
+      generateStimulusVectors: () => {
+        const state = get();
+        const generated = generateStimulusVectors({
+          ioRows: state.projectIoRows,
+          circuit: state.circuit,
+          existingVectors: resolveActiveScenarioVectors(state),
+        });
+        set((state) => {
+          const projectVectors = normalizeVectorsForLiveIo(cloneVectors(generated), state.projectIoRows);
+          const nextScenarioState = syncActiveScenarioVectors(
+            state.scenarios,
+            state.activeScenarioId,
+            projectVectors
+          );
+          return {
+            projectVectors,
+            scenarios: nextScenarioState.scenarios,
+            activeScenarioId: nextScenarioState.activeScenarioId,
+            scenarioAuthority: deriveScenarioAuthority({
+              projectKind: state.projectKind,
+              activeExampleId: state.activeExampleId,
+              hasVectors: projectVectors.length > 0,
+              hasAssertions: projectVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0),
+              dirtySinceVerify: true,
+              verifyStatus: null,
+              vectorsAreAutoGenerated: false,
+            }),
             projectHealthCore: {
               ...state.projectHealthCore,
               dirtySinceVerify: true,
@@ -1117,6 +1261,18 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           return {
             verifyLastRun: runtimeRun,
             verifyRunHistory: nextHistory,
+            scenarioAuthority:
+              report.status === 'pass' && runKind === 'verify'
+                ? 'verified'
+                : deriveScenarioAuthority({
+                    projectKind: state.projectKind,
+                    activeExampleId: state.activeExampleId,
+                    hasVectors: runtimeVectors.length > 0,
+                    hasAssertions: runtimeVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0),
+                    dirtySinceVerify: false,
+                    verifyStatus: report.status,
+                    vectorsAreAutoGenerated: state.projectKind === 'example' && Boolean(state.activeExampleId),
+                  }),
             sim: {
               ...state.sim,
               running: false,
@@ -1184,6 +1340,15 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       clearVerification: () => {
         set((state) => ({
           verifyLastRun: undefined,
+          scenarioAuthority: deriveScenarioAuthority({
+            projectKind: state.projectKind,
+            activeExampleId: state.activeExampleId,
+            hasVectors: state.projectVectors.length > 0,
+            hasAssertions: state.projectVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0),
+            dirtySinceVerify: true,
+            verifyStatus: null,
+            vectorsAreAutoGenerated: state.projectKind === 'example' && Boolean(state.activeExampleId),
+          }),
           sim: {
             ...state.sim,
             running: false,
@@ -1227,6 +1392,18 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
 
           return {
             verifyLastRun: nextRun,
+            scenarioAuthority:
+              result.status === 'pass' && (result.runKind ?? 'verify') === 'verify'
+                ? 'verified'
+                : deriveScenarioAuthority({
+                    projectKind: state.projectKind,
+                    activeExampleId: state.activeExampleId,
+                    hasVectors: state.projectVectors.length > 0,
+                    hasAssertions: state.projectVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0),
+                    dirtySinceVerify: false,
+                    verifyStatus: result.status,
+                    vectorsAreAutoGenerated: state.projectKind === 'example' && Boolean(state.activeExampleId),
+                  }),
             projectHealthCore: {
               ...state.projectHealthCore,
               lastVerify: result,
@@ -1249,6 +1426,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const nextProjectId = (input.projectId ?? '').trim();
           const nextName = (input.projectName ?? '').trim();
           const nextDescription = input.projectDescription;
+          const nextProjectKind = input.projectKind;
+          const hasSourceExampleId = Object.prototype.hasOwnProperty.call(input, 'sourceExampleId');
+          const hasScenarioAuthority = Object.prototype.hasOwnProperty.call(input, 'scenarioAuthority');
+          const hasActiveExampleId = Object.prototype.hasOwnProperty.call(input, 'activeExampleId');
           const shouldMarkDirty = input.markDirty ?? true;
           return {
             projectId: nextProjectId.length > 0 ? nextProjectId : state.projectId,
@@ -1257,12 +1438,50 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               typeof nextDescription === 'string'
                 ? nextDescription
                 : state.projectDescription,
+            projectKind:
+              nextProjectKind !== undefined ? nextProjectKind : state.projectKind,
+            sourceExampleId:
+              hasSourceExampleId
+                ? input.sourceExampleId ?? null
+                : state.sourceExampleId,
+            scenarioAuthority:
+              hasScenarioAuthority
+                ? input.scenarioAuthority ?? state.scenarioAuthority
+                : state.scenarioAuthority,
+            activeExampleId:
+              hasActiveExampleId
+                ? input.activeExampleId ?? null
+                : state.activeExampleId,
             projectHealthCore: shouldMarkDirty
               ? {
                   ...state.projectHealthCore,
+                  dirtySinceVerify: true,
                   dirtySinceExport: true,
                 }
               : state.projectHealthCore,
+          };
+        });
+      },
+      startBlankProject: () => {
+        set((state) => {
+          if (state.projectKind === 'blank' || state.projectKind === 'custom') return state;
+          const example = state.activeExampleId ? getIdeExampleById(state.activeExampleId) : null;
+          return {
+            ...state,
+            projectKind: 'blank',
+            sourceExampleId: null,
+            scenarioAuthority: state.projectVectors.length > 0 ? 'draft' : 'none',
+            activeExampleId: null,
+            projectName:
+              state.projectName.trim().length > 0 &&
+              state.projectName !== DEFAULT_EXAMPLE.name
+                ? state.projectName
+                : 'Untitled Project',
+            projectDescription:
+              state.projectDescription.trim().length > 0 &&
+              state.projectDescription !== example?.summary
+                ? state.projectDescription
+                : '',
           };
         });
       },
@@ -1380,6 +1599,9 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         projectName: state.projectName,
         projectDescription: state.projectDescription,
         lastSavedAt: state.lastSavedAt,
+        projectKind: state.projectKind,
+        sourceExampleId: state.sourceExampleId,
+        scenarioAuthority: state.scenarioAuthority,
         activeExampleId: state.activeExampleId,
         projectIoRows: cloneIoRows(state.projectIoRows),
         projectVectors: cloneVectors(state.projectVectors),
@@ -1535,40 +1757,120 @@ export function mergePersistedRuntimeState(
       projectIoRows
     ),
   }));
+  const persistedProjectKind = normalizeProjectKind(
+    candidate.projectKind ?? normalizedProject.meta?.projectKind,
+    currentState.projectKind
+  );
+  const rawPersistedSourceExampleId =
+    typeof candidate.sourceExampleId === 'string'
+      ? candidate.sourceExampleId
+      : typeof normalizedProject.meta?.sourceExampleId === 'string'
+        ? normalizedProject.meta.sourceExampleId
+        : typeof candidate.activeExampleId === 'string'
+          ? candidate.activeExampleId
+          : null;
+  const inferredDetachedExample = inferDetachedExampleProvenance({
+    projectKind: persistedProjectKind,
+    sourceExampleId: rawPersistedSourceExampleId,
+    activeExampleId:
+      typeof candidate.activeExampleId === 'string' ? candidate.activeExampleId : null,
+    projectName: normalizedProject.name,
+    projectDescription: normalizedProject.description ?? '',
+  });
+  const persistedSourceExampleId =
+    rawPersistedSourceExampleId ?? inferredDetachedExample?.id ?? null;
+  const restoredProjectKind =
+    persistedProjectKind !== 'example' && inferredDetachedExample
+      ? 'custom'
+      : persistedProjectKind;
+  const persistedScenarioAuthority = normalizeScenarioAuthority(
+    candidate.scenarioAuthority ?? normalizedProject.meta?.scenarioAuthority,
+    deriveScenarioAuthority({
+      projectKind: restoredProjectKind,
+      activeExampleId: restoredProjectKind === 'example' ? persistedSourceExampleId : null,
+      hasVectors: projectVectors.length > 0,
+      hasAssertions: projectVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0),
+      dirtySinceVerify: projectHealthCore.dirtySinceVerify,
+      verifyStatus: projectHealthCore.lastVerify?.status ?? null,
+      vectorsAreAutoGenerated: restoredProjectKind === 'example',
+    })
+  );
+  const shouldSanitizeDetachedExampleIdentity = Boolean(
+    inferredDetachedExample &&
+    restoredProjectKind !== 'example' &&
+    normalizedProject.name.trim() === inferredDetachedExample.name &&
+    (normalizedProject.description ?? '').trim() === inferredDetachedExample.summary.trim()
+  );
+  const shouldResetDetachedStarterCompareState =
+    restoredProjectKind !== 'example' &&
+    Boolean(persistedSourceExampleId) &&
+    projectVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0);
+  const detachedProjectVectors = shouldResetDetachedStarterCompareState
+    ? stripExpectedOutputs(projectVectors)
+    : projectVectors;
+  const detachedScenarios = shouldResetDetachedStarterCompareState
+    ? scenarios.map((scenario) => ({
+        ...scenario,
+        vectors: stripExpectedOutputs(scenario.vectors),
+      }))
+    : scenarios;
+  const detachedCustomVectors = normalizeVectorsForLiveIo(
+    cloneVectors(
+      Array.isArray(candidate.customVectors) ? (candidate.customVectors as CustomTestVector[]) : []
+    ).map((vector) => ({
+      ...vector,
+      expected: shouldResetDetachedStarterCompareState ? {} : vector.expected,
+    })),
+    projectIoRows
+  );
+  const detachedScenarioAuthority = shouldResetDetachedStarterCompareState
+    ? deriveScenarioAuthority({
+        projectKind: restoredProjectKind,
+        activeExampleId: restoredProjectKind === 'example' ? persistedSourceExampleId : null,
+        hasVectors: detachedProjectVectors.length > 0,
+        hasAssertions: false,
+        dirtySinceVerify: true,
+        verifyStatus: null,
+        vectorsAreAutoGenerated: false,
+      })
+    : persistedScenarioAuthority;
+  const detachedVerifyLastRun = shouldResetDetachedStarterCompareState ? undefined : verifyLastRun;
+  const detachedVerifyRunHistory = shouldResetDetachedStarterCompareState ? [] : verifyRunHistory;
+  const detachedProjectHealthCore = shouldResetDetachedStarterCompareState
+    ? {
+        ...projectHealthCore,
+        lastVerify: undefined,
+        dirtySinceVerify: true,
+        dirtySinceExport: true,
+      }
+    : projectHealthCore;
 
   return {
     ...currentState,
     projectId:
       normalizedProject.meta?.projectId?.trim() || currentState.projectId,
-    projectName: normalizedProject.name,
-    projectDescription: normalizedProject.description ?? '',
+    projectName: shouldSanitizeDetachedExampleIdentity ? 'Untitled Project' : normalizedProject.name,
+    projectDescription: shouldSanitizeDetachedExampleIdentity ? '' : normalizedProject.description ?? '',
     lastSavedAt:
       typeof candidate.lastSavedAt === 'string' && candidate.lastSavedAt.trim().length > 0
         ? candidate.lastSavedAt.trim()
         : currentState.lastSavedAt,
-    activeExampleId:
-      typeof candidate.activeExampleId === 'string'
-        ? candidate.activeExampleId
-        : candidate.activeExampleId === null
-          ? null
-          : currentState.activeExampleId,
+    projectKind: restoredProjectKind,
+    sourceExampleId: persistedSourceExampleId,
+    scenarioAuthority: detachedScenarioAuthority,
+    activeExampleId: restoredProjectKind === 'example' ? persistedSourceExampleId : null,
     projectIoRows,
-    projectVectors,
-    scenarios,
+    projectVectors: detachedProjectVectors,
+    scenarios: detachedScenarios,
     activeScenarioId,
-    customVectors: normalizeVectorsForLiveIo(
-      cloneVectors(
-        Array.isArray(candidate.customVectors) ? (candidate.customVectors as CustomTestVector[]) : []
-      ),
-      projectIoRows
-    ),
+    customVectors: detachedCustomVectors,
     circuit,
     designPast,
     designFuture,
     maxDesignHistory,
     designRevision,
-    verifyLastRun,
-    verifyRunHistory,
+    verifyLastRun: detachedVerifyLastRun,
+    verifyRunHistory: detachedVerifyRunHistory,
     sim,
     projectHealthCore:
       hasRestoredVerifyTrustWithoutLedger ||
@@ -1576,7 +1878,7 @@ export function mergePersistedRuntimeState(
       hasRestoredLegacyExportWithoutHash ||
       hasRestoredExportHashMismatch
         ? {
-            ...projectHealthCore,
+            ...detachedProjectHealthCore,
             ...(
               hasRestoredVerifyTrustWithoutLedger || hasRestoredVerifyProjectHashMismatch
                 ? { dirtySinceVerify: true }
@@ -1590,7 +1892,7 @@ export function mergePersistedRuntimeState(
                 : {}
             ),
           }
-        : projectHealthCore,
+        : detachedProjectHealthCore,
     macros: normalizedProject.macros ?? [],
     macroInsertionCounts: normalizeMacroInsertionCounts(candidate.macroInsertionCounts),
     customComponents: normalizedProject.customComponents ?? [],
@@ -1612,6 +1914,76 @@ function computeRestoredExportHash(project: RBProject): string | undefined {
   }
 }
 
+function inferDetachedExampleProvenance(input: {
+  projectKind: ProjectKind;
+  sourceExampleId: string | null;
+  activeExampleId: string | null;
+  projectName: string;
+  projectDescription: string;
+}): IdeExampleDefinition | null {
+  if (input.projectKind === 'example') {
+    return getIdeExampleById(input.sourceExampleId ?? input.activeExampleId ?? '');
+  }
+  const directExampleId = input.sourceExampleId ?? input.activeExampleId;
+  if (directExampleId) {
+    return getIdeExampleById(directExampleId);
+  }
+  const normalizedName = input.projectName.trim().toLowerCase();
+  const normalizedDescription = input.projectDescription.trim().toLowerCase();
+  if (!normalizedName || !normalizedDescription) return null;
+  return (
+    IDE_EXAMPLES.find(
+      (example) =>
+        example.name.trim().toLowerCase() === normalizedName &&
+        example.summary.trim().toLowerCase() === normalizedDescription
+    ) ?? null
+  );
+}
+
+function createEmptyProjectState(
+  input: {
+    projectId?: string;
+    projectName?: string;
+    projectKind?: ProjectKind;
+    lastSavedAt?: string;
+  } = {}
+): RuntimeSeedState {
+  const circuit: Circuit = { nodes: [], connections: [] };
+  const projectIoRows: ProjectIoRow[] = [];
+  const projectVectors: TestVector[] = [];
+  const defaultScenario = createDefaultScenario(projectVectors);
+  return {
+    projectId: input.projectId ?? createProjectId('blank'),
+    projectName: input.projectName ?? 'Untitled Project',
+    projectDescription: '',
+    lastSavedAt: input.lastSavedAt ?? 'Project home',
+    projectKind: input.projectKind ?? 'home',
+    sourceExampleId: null,
+    scenarioAuthority: 'none',
+    activeExampleId: null,
+    projectIoRows,
+    projectVectors,
+    scenarios: [defaultScenario],
+    activeScenarioId: defaultScenario.id,
+    customVectors: [],
+    circuit,
+    designPast: [],
+    designFuture: [],
+    maxDesignHistory: DEFAULT_MAX_DESIGN_HISTORY,
+    designRevision: 0,
+    verifyLastRun: undefined,
+    verifyRunHistory: [],
+    sim: initializeSimulationStateForCircuit(circuit, projectIoRows),
+    projectHealthCore: {
+      dirtySinceVerify: false,
+      dirtySinceExport: false,
+    },
+    macros: [],
+    macroInsertionCounts: {},
+    customComponents: [],
+  };
+}
+
 function stateFromExample(
   example: IdeExampleDefinition,
   projectId = createProjectId(example.id)
@@ -1630,6 +2002,9 @@ function stateFromExample(
     projectName: example.name,
     projectDescription: example.summary,
     lastSavedAt: 'Seeded example',
+    projectKind: 'example',
+    sourceExampleId: example.id,
+    scenarioAuthority: example.vectors.length > 0 ? 'starter' : 'none',
     activeExampleId: example.id,
     projectIoRows,
     projectVectors: cloneVectors(example.vectors),
@@ -1724,7 +2099,7 @@ function commitScenarioSelection(
 }
 
 function buildSimulationModelForCircuit(circuit: Circuit): SimulationModel {
-  return buildSimulationModel(elaborateCircuit(circuit).ir);
+  return buildSimulationModel(elaborateCircuit(canonicalizeSemanticCircuit(circuit)).ir);
 }
 
 function buildEmptyRuntimeSimState(model: SimulationModel): RuntimeSimState {
@@ -2249,6 +2624,12 @@ function commitDesignSnapshot(
   | 'designFuture'
   | 'designRevision'
   | 'sim'
+  | 'projectName'
+  | 'projectDescription'
+  | 'projectKind'
+  | 'sourceExampleId'
+  | 'scenarioAuthority'
+  | 'activeExampleId'
   | 'projectHealthCore'
 > {
   const nextCircuit = cloneCircuit(snapshot.circuit);
@@ -2285,12 +2666,50 @@ function commitDesignSnapshot(
       nextIoRows
     ),
   }));
+  const isDetachingFromExample = state.projectKind === 'example' && Boolean(state.activeExampleId);
+  const detachedProjectVectors = isDetachingFromExample
+    ? stripExpectedOutputs(nextProjectVectors)
+    : nextProjectVectors;
+  const detachedCustomVectors = isDetachingFromExample
+    ? stripExpectedOutputs(nextCustomVectors)
+    : nextCustomVectors;
+  const detachedScenarios = isDetachingFromExample
+    ? nextScenarios.map((scenario) => ({
+        ...scenario,
+        vectors: stripExpectedOutputs(scenario.vectors),
+      }))
+    : nextScenarios;
+  const activeExample = state.activeExampleId ? getIdeExampleById(state.activeExampleId) : null;
+  const nextProjectKind = isDetachingFromExample
+    ? (nextCircuit.nodes.length > 0 ? 'custom' : 'blank')
+    : state.projectKind === 'home' && nextCircuit.nodes.length > 0
+      ? 'blank'
+      : state.projectKind;
+  const nextSourceExampleId = isDetachingFromExample
+    ? (state.sourceExampleId ?? state.activeExampleId ?? null)
+    : state.sourceExampleId;
+  const nextActiveExampleId = isDetachingFromExample ? null : state.activeExampleId;
+  const nextScenarioAuthority = isDetachingFromExample
+    ? (nextCircuit.nodes.length > 0 && detachedProjectVectors.length > 0 ? 'draft' : 'none')
+    : state.scenarioAuthority === 'verified'
+      ? 'stale'
+      : state.scenarioAuthority;
+  const nextProjectName = isDetachingFromExample
+    ? !state.projectName.trim() || state.projectName === activeExample?.name
+      ? 'Untitled Project'
+      : state.projectName
+    : state.projectName;
+  const nextProjectDescription = isDetachingFromExample
+    ? !state.projectDescription.trim() || state.projectDescription === activeExample?.summary
+      ? ''
+      : state.projectDescription
+    : state.projectDescription;
   return {
     circuit: nextCircuit,
     projectIoRows: nextIoRows,
-    projectVectors: nextProjectVectors,
-    customVectors: nextCustomVectors,
-    scenarios: nextScenarios,
+    projectVectors: detachedProjectVectors,
+    customVectors: detachedCustomVectors,
+    scenarios: detachedScenarios,
     macroInsertionCounts: cloneMacroInsertionCounts(snapshot.macroInsertionCounts),
     designPast: history.designPast,
     designFuture: history.designFuture,
@@ -2298,6 +2717,12 @@ function commitDesignSnapshot(
     // intentionally advance this counter just like forward edits.
     designRevision: state.designRevision + 1,
     sim: initializeSimulationStateForCircuit(nextCircuit, nextIoRows, state.sim),
+    projectName: nextProjectName,
+    projectDescription: nextProjectDescription,
+    projectKind: nextProjectKind,
+    sourceExampleId: nextSourceExampleId,
+    scenarioAuthority: nextScenarioAuthority,
+    activeExampleId: nextActiveExampleId,
     projectHealthCore: {
       ...state.projectHealthCore,
       dirtySinceVerify: true,

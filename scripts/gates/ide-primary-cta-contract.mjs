@@ -55,21 +55,54 @@ await runIdeGate('IDE primary CTA contract satisfied', async ({ page, baseUrl })
       continue;
     }
     if (mode === 'verify') {
-      const runButton = modeRoot.locator('[data-testid="ide-verify-run"]').first();
-      assert(await runButton.isVisible().catch(() => false), 'mode=verify verify-run button must be visible');
+      const selectors = [
+        '[data-testid="ide-verify-run"]',
+        '[data-testid="ide-verify-empty-run"]',
+        '[data-testid="ide-verify-generate-basic-vectors-footer"]',
+        '[data-testid="ide-verify-generate-all-combos"]',
+        '[data-testid="ide-verify-guided-clock-pattern"]',
+        '[data-testid="ide-verify-sync-go-design"]',
+      ];
+      let verifyCtaVisible = false;
+      for (const selector of selectors) {
+        const cta = modeRoot.locator(selector).first();
+        if (await cta.isVisible().catch(() => false)) {
+          verifyCtaVisible = true;
+          break;
+        }
+      }
+      assert(
+        verifyCtaVisible,
+        'mode=verify expected a guided verify CTA or run action to be visible'
+      );
       continue;
     }
     if (mode === 'hardware') {
       const modeToggle = modeRoot.locator('[data-testid="ide-hw-mode-toggle"]').first();
-      assert(await modeToggle.isVisible().catch(() => false), 'mode=hardware mode toggle must be visible');
+      const blockedPrimary = modeRoot.locator('[data-testid="ide-hardware-blocked-primary"]').first();
+      const blockedSecondary = modeRoot.locator('[data-testid="ide-hardware-blocked-secondary"]').first();
+      const modeToggleVisible = await modeToggle.isVisible().catch(() => false);
+      const blockedPrimaryVisible = await blockedPrimary.isVisible().catch(() => false);
+      const blockedSecondaryVisible = await blockedSecondary.isVisible().catch(() => false);
+      assert(
+        modeToggleVisible || blockedPrimaryVisible || blockedSecondaryVisible,
+        'mode=hardware expected either the hardware mode toggle or a blocked-state CTA to be visible'
+      );
       continue;
     }
     if (mode === 'export') {
       const rebuild = modeRoot.locator('[data-testid="ide-export-rebuild-btn"]').first();
       const generic = modeRoot.locator('[data-testid="ide-primary-cta"]').first();
+      const goDesign = modeRoot.locator('[data-testid="ide-export-trust-go-design"]').first();
+      const goVerify = modeRoot.locator('[data-testid="ide-export-trust-go-verify"]').first();
       const rebuildVisible = await rebuild.isVisible().catch(() => false);
       const genericVisible = await generic.isVisible().catch(() => false);
-      assert(rebuildVisible || genericVisible, 'mode=export expected export CTA to be visible');
+      const goDesignVisible = await goDesign.isVisible().catch(() => false);
+      const goVerifyVisible = await goVerify.isVisible().catch(() => false);
+      assert(
+        rebuildVisible || genericVisible || goDesignVisible || goVerifyVisible,
+        'mode=export expected an export CTA or blank-state guidance CTA to be visible'
+      );
       continue;
     }
     if (mode === 'import') {

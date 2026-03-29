@@ -64,8 +64,70 @@ function buildProject(): RBProject {
   };
 }
 
+function buildRawFourNandLatchProject(): RBProject {
+  return {
+    kind: 'rb-project',
+    version: 1,
+    createdAt: '2026-03-27T00:00:00.000Z',
+    updatedAt: '2026-03-27T00:00:00.000Z',
+    name: 'supported-four-nand-latch',
+    description: 'Supported exact 4-NAND latch fixture',
+    circuit: {
+      nodes: [
+        { id: 'd_in', type: 'INPUT', x: 0, y: 0, label: 'D', config: {}, state: {} },
+        { id: 'en_in', type: 'INPUT', x: 0, y: 120, label: 'EN', config: {}, state: {} },
+        { id: 'n1', type: 'NAND', x: 180, y: 0, label: 'n1', config: {}, state: {} },
+        { id: 'n2', type: 'NAND', x: 180, y: 120, label: 'n2', config: {}, state: {} },
+        { id: 'n3', type: 'NAND', x: 360, y: 0, label: 'n3', config: {}, state: {} },
+        { id: 'n4', type: 'NAND', x: 360, y: 120, label: 'n4', config: {}, state: {} },
+        { id: 'q_out', type: 'OUTPUT', x: 560, y: 0, label: 'Q', config: {}, state: {} },
+      ],
+      connections: [
+        { from: { nodeId: 'd_in', portName: 'out' }, to: { nodeId: 'n1', portName: 'a' } },
+        { from: { nodeId: 'en_in', portName: 'out' }, to: { nodeId: 'n1', portName: 'b' } },
+        { from: { nodeId: 'n1', portName: 'out' }, to: { nodeId: 'n2', portName: 'a' } },
+        { from: { nodeId: 'en_in', portName: 'out' }, to: { nodeId: 'n2', portName: 'b' } },
+        { from: { nodeId: 'n1', portName: 'out' }, to: { nodeId: 'n3', portName: 'a' } },
+        { from: { nodeId: 'n4', portName: 'out' }, to: { nodeId: 'n3', portName: 'b' } },
+        { from: { nodeId: 'n2', portName: 'out' }, to: { nodeId: 'n4', portName: 'a' } },
+        { from: { nodeId: 'n3', portName: 'out' }, to: { nodeId: 'n4', portName: 'b' } },
+        { from: { nodeId: 'n3', portName: 'out' }, to: { nodeId: 'q_out', portName: 'in' } },
+      ],
+    },
+    ioMapping: {
+      inputs: [
+        { id: 'd', nodeId: 'd_in', port: 'out', label: 'D', pin: 'V17' },
+        { id: 'en', nodeId: 'en_in', port: 'out', label: 'EN', pin: 'W16' },
+      ],
+      outputs: [{ id: 'q', nodeId: 'q_out', port: 'in', label: 'Q', pin: 'U16' }],
+    },
+    vectors: [],
+    hdl: {
+      top: 'top',
+      sources: [
+        {
+          path: 'top.vhd',
+          language: 'vhdl',
+          text: 'entity top is end top; architecture rtl of top is begin end rtl;',
+        },
+      ],
+    },
+    fpga: { board: 'basys3', top: 'top' },
+  };
+}
+
 describe('ExportSurface workstation redesign', () => {
   afterEach(() => { cleanup(); });
+
+  it('starts with the export inspector collapsed and the console minimized so the download flow stays primary', () => {
+    const { getByTestId, queryByTestId } = render(
+      <ExportSurface project={buildProject()} determinismHash="ide-hash" />
+    );
+
+    expect(queryByTestId('ide-inspector')).toBeNull();
+    expect(getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
+    expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'collapsed');
+  });
 
   it('shows the summary hero, grouped artifacts, key copy actions, and compact Vivado guidance', () => {
     const { getByTestId, getByText } = render(
@@ -102,7 +164,7 @@ describe('ExportSurface workstation redesign', () => {
     );
     expect(getByTestId('ide-export-blockers-callout')).toBeTruthy();
     expect(getByTestId('ide-export-unverified-callout').textContent).toContain(
-      'Verification is required before trusted handoff'
+      'Open Verify when you want to compare expected outputs against the live design'
     );
     expect(getByText('Advisories')).toBeTruthy();
     expect(queryByTestId('ide-export-vivado-blocked-callout')).toBeNull();
@@ -191,7 +253,7 @@ describe('ExportSurface workstation redesign', () => {
     );
 
     expect(getByTestId('ide-export-trust-reason').textContent).toMatch(/mapped|mapping|unsealed/i);
-    expect(getByTestId('ide-export-blockers-callout').textContent).toMatch(/mapping|unsealed|trusted/i);
+    expect(getByTestId('ide-export-blockers-callout').textContent).toMatch(/compare|download now|advisory/i);
     expect(getByTestId('ide-export-gate-verify').textContent).not.toContain('Outputs differ');
   });
 
@@ -215,5 +277,15 @@ describe('ExportSurface workstation redesign', () => {
     // The kit button still exists on the page — in the download block, collapsed under Other outputs
     expect(getByTestId('ide-export-download-kit-btn')).toBeTruthy();
     expect(getByTestId('ide-export-other-outputs')).toBeTruthy();
+  });
+
+  it('labels supported 4-NAND latches as latch-controlled and counts them as stateful', () => {
+    const { getByTestId } = render(
+      <ExportSurface project={buildRawFourNandLatchProject()} determinismHash="ide-hash" />
+    );
+
+    expect(getByTestId('ide-export-design-summary').textContent).toContain('Stateful');
+    expect(getByTestId('ide-export-design-summary').textContent).toContain('1');
+    expect(getByTestId('ide-export-gate-stack').textContent).toContain('Latch control');
   });
 });

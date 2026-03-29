@@ -1,42 +1,10 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
+import { waitForVerifyResult } from './_verifyStatus.mjs';
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
-}
-
-async function loadLogicGatesExample(page) {
-  const starterButton = page.locator('[data-testid="ide-project-load-start-logic-gates"]').first();
-  if (await starterButton.isVisible().catch(() => false)) {
-    await starterButton.evaluate((element) => {
-      if (!(element instanceof HTMLElement)) {
-        throw new Error('expected starter load element');
-      }
-      element.click();
-    });
-    return;
-  }
-
-  const examplesDisclosure = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
-  const disclosureVisible = await examplesDisclosure.isVisible().catch(() => false);
-  if (disclosureVisible) {
-    await examplesDisclosure.evaluate((element) => {
-      if (element instanceof HTMLDetailsElement) {
-        element.open = true;
-      }
-    });
-    await starterButton.scrollIntoViewIfNeeded();
-    await starterButton.evaluate((element) => {
-      if (!(element instanceof HTMLElement)) {
-        throw new Error('expected starter load element');
-      }
-      element.click();
-    });
-    return;
-  }
-
-  throw new Error('logic-gates starter entry point was not visible');
 }
 
 async function clickVerifyRun(page) {
@@ -61,6 +29,8 @@ async function ensureVerifyVectorsReady(page) {
   const candidates = [
     '[data-testid="ide-verify-generate-basic-vectors"]',
     '[data-testid="ide-verify-generate-basic-vectors-footer"]',
+    '[data-testid="ide-verify-generate-all-combos"]',
+    '[data-testid="ide-verify-guided-clock-pattern"]',
     '[data-testid="ide-verify-trace-generate-basics"]',
   ];
   for (const selector of candidates) {
@@ -89,27 +59,13 @@ await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
 
-  await loadLogicGatesExample(page);
-  const replaceModalVisible = await page
-    .locator('[data-testid="ide-example-confirm-modal"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  if (replaceModalVisible) {
-    await page.locator('[data-testid="ide-example-confirm"]').click({ force: true });
-  }
+  await loadStarterProject(page);
 
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
   await ensureVerifyVectorsReady(page);
   await clickVerifyRun(page);
-  await page.waitForFunction(
-    () => {
-      const status = document.querySelector('[data-testid="ide-verify-summary-status"]');
-      return Boolean(status && /(PASS|TRACE|FAIL)/i.test(status.textContent || ''));
-    },
-    { timeout: 10000 }
-  );
+  await waitForVerifyResult(page, { timeout: 10000 });
 
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });

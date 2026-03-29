@@ -13,22 +13,25 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
   const examplesPanel = page.locator('[data-testid="ide-project-start-dock"]');
   assert(await visible(examplesPanel), 'project start dock should be visible');
 
-  const cards = page.locator('[data-testid="ide-project-example-card"]');
-  const cardCount = await cards.count();
-  assert(cardCount >= 3, `expected >=3 example cards, found ${cardCount}`);
+  const landingExamples = page.locator('[data-testid^="ide-project-landing-example-"]');
+  const landingCount = await landingExamples.count();
+  assert(landingCount >= 3, `expected >=3 landing example actions, found ${landingCount}`);
 
-  const loadRows = page.locator('[data-testid="ide-project-example-load"]');
-  const loadCount = await loadRows.count();
-  assert(loadCount >= 3, `expected >=3 example load actions, found ${loadCount}`);
+  const initialTarget = landingExamples.nth(1);
+  const initialTargetId =
+    (await initialTarget.getAttribute('data-testid'))
+      ?.replace('ide-project-landing-example-', '')
+      .trim() ?? '';
+  assert(initialTargetId.length > 0, 'landing example action must encode an example id');
 
-  await page.locator('[data-testid="mode-button-design"]').click();
+  await initialTarget.click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-design-workspace"]', { timeout: 10000 });
 
   await page.locator('[data-testid="mode-button-project"]').click();
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
 
-  await page.waitForSelector('[data-testid="ide-project-start-dock"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-project-showcase"]', { timeout: 10000 });
 
   const targetLoad = page.locator('[data-testid="ide-project-example-load"]').nth(1);
   const targetExampleId = (await targetLoad.getAttribute('data-example-id')) ?? '';

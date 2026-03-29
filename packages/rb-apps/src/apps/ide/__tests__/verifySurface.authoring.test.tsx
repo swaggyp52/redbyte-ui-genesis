@@ -122,6 +122,33 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
     expect(firstEdit[0]?.expected).toEqual({ ld0: 1 });
   });
 
+  it('preserves imported/example vector expectations that still use io-row node ids', () => {
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0_node: 0 }, expected: { ld0_node: 1 } },
+        ]}
+        lastRun={makePassRun()}
+        mappedInputs={[{ id: 'sw0', label: 'SW0', nodeId: 'sw0_node' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' as const, label: 'SW0', nodeId: 'sw0_node' },
+          { id: 'ld0', direction: 'out' as const, label: 'LD0', nodeId: 'ld0_node' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+        onVectorsChange={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain(
+      'comparing against project vectors'
+    );
+    expect(getByTestId('ide-stimulus-expected-ld0-t0').getAttribute('title')).toContain(
+      '1'
+    );
+  });
+
   it('does not show expected grid when no output signals are mapped', () => {
     const { queryByTestId } = render(
       <VerifySurface

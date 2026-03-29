@@ -87,6 +87,9 @@ export interface RBProject {
     appSurface?: string;
     studentName?: string;  // optional, manually entered — stored in project meta
     labCode?: string;      // optional instructor-defined e.g. "ECE347-L3-2026-02"
+    projectKind?: 'home' | 'blank' | 'example' | 'custom' | 'import' | 'saved';
+    sourceExampleId?: string | null;
+    scenarioAuthority?: 'none' | 'starter' | 'draft' | 'authored' | 'verified' | 'stale';
   };
 }
 

@@ -12,6 +12,7 @@ import {
   getStudentFacingIoLabel,
   normalizeIoSignalKey,
 } from './ioLabels';
+import { stripExpectedOutputs } from './projectIdentity';
 
 export interface BringUpIoRow {
   id: string;
@@ -96,6 +97,14 @@ export function generateBringUpVectors(params: {
   existingVectors?: TestVector[];
 }): TestVector[] {
   return buildBringUpGeneration(params).vectors;
+}
+
+export function generateStimulusVectors(params: {
+  ioRows: BringUpIoRow[];
+  circuit: Circuit;
+  existingVectors?: TestVector[];
+}): TestVector[] {
+  return stripExpectedOutputs(buildBringUpGeneration(params).vectors);
 }
 
 export function buildBringUpGeneration(params: {

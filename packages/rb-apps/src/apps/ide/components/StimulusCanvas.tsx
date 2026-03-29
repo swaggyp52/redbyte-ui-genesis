@@ -10,12 +10,14 @@ const ADD_COL_W = 40;
 type LaneKind = 'input' | 'expected';
 type PaintSession = { kind: LaneKind; value: 0 | 1 | null };
 type LaneOption = { key: string; kind: LaneKind; fieldId: string; label: string };
+type StimulusToolbarMode = 'visible' | 'advanced' | 'hidden';
 
 export interface StimulusCanvasProps {
   inputFields: VerifyVectorDraftInput[];
   outputFields: VerifyVectorDraftInput[];
   authoredVectors: VerifyAuthorVector[];
   onVectorsChange: (vectors: VerifyAuthorVector[]) => void;
+  toolbarMode?: StimulusToolbarMode;
 }
 
 function makeId(): string {
@@ -242,6 +244,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   outputFields,
   authoredVectors,
   onVectorsChange,
+  toolbarMode = 'visible',
 }) => {
   const latestVectorsRef = useRef(authoredVectors);
   const [hoveredTick, setHoveredTick] = useState<number | null>(null);
@@ -415,52 +418,62 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   }, [inputFields, onVectorsChange, outputFields]);
 
   if (inputFields.length === 0) {
-    return <p className="ide-stimulus-empty" data-testid="ide-stimulus-empty">No IO mapping - add inputs in the Hardware surface first.</p>;
+    return <p className="ide-stimulus-empty" data-testid="ide-stimulus-empty">No IO mapping - add inputs in Map Pins first.</p>;
   }
+
+  const toolbar = (
+    <div className="ide-stimulus-toolbar" data-testid="ide-stimulus-toolbar">
+      <div className="ide-stimulus-toolbar-group">
+        <span className="ide-stimulus-toolbar-label">Row tools</span>
+        <select className="ide-stimulus-target-select" value={selectedLane?.key ?? ''} onChange={(event) => setSelectedLaneKey(event.target.value)} data-testid="ide-stimulus-row-target">
+          {laneOptions.map((option) => <option key={option.key} value={option.key}>{option.kind === 'input' ? 'Stimulus' : 'Expected'}: {option.label}</option>)}
+        </select>
+        <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(0)} data-testid="ide-stimulus-row-fill-0">Fill 0</button>
+        <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(1)} data-testid="ide-stimulus-row-fill-1">Fill 1</button>
+        {selectedLane?.kind === 'input' ? (
+          <>
+            <button type="button" className="ide-stimulus-mini-btn" onClick={handleRowToggle} data-testid="ide-stimulus-row-toggle">Toggle</button>
+            <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleInputPattern((index) => index % 2 === 0 ? 0 : 1)} data-testid="ide-stimulus-pattern-alternating">Alternating</button>
+            <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleInputPattern((index) => index % 2 === 0 ? 0 : 1)} data-testid="ide-stimulus-pattern-clock">Clock pattern</button>
+          </>
+        ) : (
+          <button type="button" className="ide-stimulus-mini-btn" onClick={handleExpectedClear} data-testid="ide-stimulus-row-clear">Clear</button>
+        )}
+      </div>
+      <div className="ide-stimulus-toolbar-group">
+        <span className="ide-stimulus-toolbar-label">Tick tools</span>
+        <select className="ide-stimulus-target-select" value={String(selectedTick)} onChange={(event) => setSelectedTick(Number(event.target.value || '0'))} data-testid="ide-stimulus-tick-target">
+          {(ticks.length > 0 ? ticks : [0]).map((tick) => <option key={tick} value={tick}>t{tick}</option>)}
+        </select>
+        <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('fill0')} data-testid="ide-stimulus-column-fill-0">Fill 0</button>
+        <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('fill1')} data-testid="ide-stimulus-column-fill-1">Fill 1</button>
+        <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('toggle')} data-testid="ide-stimulus-column-toggle">Toggle</button>
+        <button type="button" className="ide-stimulus-mini-btn" onClick={() => { commitVectors((vectors) => duplicateTick(vectors, inputFields, selectedTick)); setSelectedTick((value) => value + 1); }} data-testid="ide-stimulus-duplicate-tick">Duplicate</button>
+        <button type="button" className="ide-stimulus-mini-btn" onClick={() => commitVectors((vectors) => removeTick(vectors, selectedTick))} disabled={ticks.length === 0} data-testid="ide-stimulus-delete-selected-tick">Delete</button>
+      </div>
+      <div className="ide-stimulus-toolbar-group">
+        <span className="ide-stimulus-toolbar-label">Patterns</span>
+        <button type="button" className="ide-stimulus-mini-btn" onClick={handleBinaryCount} data-testid="ide-stimulus-pattern-binary">Binary count</button>
+        <button type="button" className="ide-stimulus-mini-btn" onClick={() => commitVectors((vectors) => appendTick(vectors, inputFields))} data-testid="ide-stimulus-add-tick">Add tick</button>
+        <span className="ide-stimulus-toolbar-note">Drag across cells to paint</span>
+      </div>
+      <div className="ide-stimulus-toolbar-group">
+        <span className="ide-stimulus-toolbar-label">Clipboard</span>
+        <button type="button" className="ide-stimulus-mini-btn" onClick={() => { void handleCopyClipboard(); }} data-testid="ide-stimulus-copy-grid">Copy TSV</button>
+        <button type="button" className="ide-stimulus-mini-btn" onClick={() => { void handlePasteClipboard(); }} data-testid="ide-stimulus-paste-grid">Paste TSV</button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="ide-stimulus-canvas" data-testid="ide-stimulus-canvas" style={{ overflowX: 'auto', userSelect: 'none' }}>
-      <div className="ide-stimulus-toolbar" data-testid="ide-stimulus-toolbar">
-        <div className="ide-stimulus-toolbar-group">
-          <span className="ide-stimulus-toolbar-label">Row tools</span>
-          <select className="ide-stimulus-target-select" value={selectedLane?.key ?? ''} onChange={(event) => setSelectedLaneKey(event.target.value)} data-testid="ide-stimulus-row-target">
-            {laneOptions.map((option) => <option key={option.key} value={option.key}>{option.kind === 'input' ? 'Stimulus' : 'Expected'}: {option.label}</option>)}
-          </select>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(0)} data-testid="ide-stimulus-row-fill-0">Fill 0</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(1)} data-testid="ide-stimulus-row-fill-1">Fill 1</button>
-          {selectedLane?.kind === 'input' ? (
-            <>
-              <button type="button" className="ide-stimulus-mini-btn" onClick={handleRowToggle} data-testid="ide-stimulus-row-toggle">Toggle</button>
-              <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleInputPattern((index) => index % 2 === 0 ? 0 : 1)} data-testid="ide-stimulus-pattern-alternating">Alternating</button>
-              <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleInputPattern((index) => index % 2 === 0 ? 0 : 1)} data-testid="ide-stimulus-pattern-clock">Clock pattern</button>
-            </>
-          ) : (
-            <button type="button" className="ide-stimulus-mini-btn" onClick={handleExpectedClear} data-testid="ide-stimulus-row-clear">Clear</button>
-          )}
-        </div>
-        <div className="ide-stimulus-toolbar-group">
-          <span className="ide-stimulus-toolbar-label">Tick tools</span>
-          <select className="ide-stimulus-target-select" value={String(selectedTick)} onChange={(event) => setSelectedTick(Number(event.target.value || '0'))} data-testid="ide-stimulus-tick-target">
-            {(ticks.length > 0 ? ticks : [0]).map((tick) => <option key={tick} value={tick}>t{tick}</option>)}
-          </select>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('fill0')} data-testid="ide-stimulus-column-fill-0">Fill 0</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('fill1')} data-testid="ide-stimulus-column-fill-1">Fill 1</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('toggle')} data-testid="ide-stimulus-column-toggle">Toggle</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => { commitVectors((vectors) => duplicateTick(vectors, inputFields, selectedTick)); setSelectedTick((value) => value + 1); }} data-testid="ide-stimulus-duplicate-tick">Duplicate</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => commitVectors((vectors) => removeTick(vectors, selectedTick))} disabled={ticks.length === 0} data-testid="ide-stimulus-delete-selected-tick">Delete</button>
-        </div>
-        <div className="ide-stimulus-toolbar-group">
-          <span className="ide-stimulus-toolbar-label">Patterns</span>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={handleBinaryCount} data-testid="ide-stimulus-pattern-binary">Binary count</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => commitVectors((vectors) => appendTick(vectors, inputFields))} data-testid="ide-stimulus-add-tick">Add tick</button>
-          <span className="ide-stimulus-toolbar-note">Drag across cells to paint</span>
-        </div>
-        <div className="ide-stimulus-toolbar-group">
-          <span className="ide-stimulus-toolbar-label">Clipboard</span>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => { void handleCopyClipboard(); }} data-testid="ide-stimulus-copy-grid">Copy TSV</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => { void handlePasteClipboard(); }} data-testid="ide-stimulus-paste-grid">Paste TSV</button>
-        </div>
-      </div>
+      {toolbarMode === 'visible' ? toolbar : null}
+      {toolbarMode === 'advanced' ? (
+        <details className="ide-stimulus-toolbar-details" data-testid="ide-stimulus-toolbar-advanced">
+          <summary className="ide-verify-more-actions-summary">Advanced vector tools</summary>
+          {toolbar}
+        </details>
+      ) : null}
       <div style={{ minWidth: totalW, position: 'relative' }}>
         <div className="ide-stimulus-row ide-stimulus-row--header" style={{ display: 'flex', height: GROUP_H + 8, alignItems: 'center' }}>
           <div style={{ width: LABEL_W, flexShrink: 0 }} />

@@ -23,6 +23,36 @@ await runIdeGate('IDE project overview contract satisfied', async ({ page, baseU
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
   await dismissOnboardingIfPresent(page);
 
+  const landingVisible = await page
+    .locator('[data-testid="ide-project-landing"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+
+  if (landingVisible) {
+    const landingTitle = await text(page.locator('.ide-project-landing-title'));
+    assert(
+      /project home|start your lab/i.test(landingTitle),
+      `project landing title should explain the start state, got "${landingTitle}"`
+    );
+
+    const buildFreshVisible = await page
+      .locator('[data-testid="ide-project-landing-fresh"]')
+      .first()
+      .isVisible()
+      .catch(() => false);
+    assert(buildFreshVisible, 'project landing must offer Build Fresh');
+
+    const importVisible = await page
+      .locator('[data-testid="ide-project-landing-import"]')
+      .first()
+      .isVisible()
+      .catch(() => false);
+    assert(importVisible, 'project landing must offer Import Project');
+
+    return;
+  }
+
   const identityVisible = await page
     .locator('[data-testid="ide-project-panel-identity"]')
     .first()

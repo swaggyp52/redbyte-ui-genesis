@@ -13,6 +13,24 @@ await runIdeGate('IDE project continue CTA contract satisfied', async ({ page, b
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
 
+  const landingVisible = await page
+    .locator('[data-testid="ide-project-landing"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+
+  if (landingVisible) {
+    const buildFresh = page.locator('[data-testid="ide-project-landing-fresh"]').first();
+    const buildFreshText = await text(buildFresh);
+    assert(
+      buildFreshText.toLowerCase().includes('build fresh'),
+      `project landing must expose Build Fresh, got "${buildFreshText}"`
+    );
+    await buildFresh.click();
+    await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
+    return;
+  }
+
   const continueCta = page.locator('[data-testid="ide-project-continue-cta"]').first();
   const ctaText = await text(continueCta);
   assert(

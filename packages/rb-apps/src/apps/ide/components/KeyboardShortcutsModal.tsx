@@ -17,7 +17,7 @@ const SHORTCUT_SECTIONS: ShortcutSection[] = [
       { action: 'Switch to Design', keys: '1' },
       { action: 'Switch to Verify', keys: '2' },
       { action: 'Switch to Export', keys: '3' },
-      { action: 'Switch to Hardware', keys: '4' },
+      { action: 'Switch to Map Pins', keys: '4' },
       { action: 'Switch to Import', keys: '5' },
       { action: 'Save project', keys: 'Ctrl+S' },
       { action: 'Undo', keys: 'Ctrl+Z' },

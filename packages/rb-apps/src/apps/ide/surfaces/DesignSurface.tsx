@@ -4075,7 +4075,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 {onGoToHardware && (
                   <div className="ide-design-board-signal-actions">
                     <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-design-go-hardware">
-                      Go to Hardware
+                      Go to Map Pins
                     </IdeButton>
                   </div>
                 )}

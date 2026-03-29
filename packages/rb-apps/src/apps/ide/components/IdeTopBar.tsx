@@ -1,6 +1,6 @@
 import React from 'react';
-import type { IdeMode } from './IdeLeftRail';
 import type { IdeBuildIdentity } from '../buildIdentity';
+import { getIdeModeLabel, type IdeMode } from '../workflowStages';
 
 export interface IdeTopBarProps {
   projectName: string;
@@ -17,15 +17,6 @@ export interface IdeTopBarProps {
   onExport?: () => void;
   onHelp?: () => void;
 }
-
-const MODE_LABELS: Record<IdeMode, string> = {
-  project: 'Project',
-  design: 'Build',
-  verify: 'Test',
-  hardware: 'Program',
-  export: 'Export',
-  import: 'Import',
-};
 
 // Geometric logomark — circuit-trace hex
 const RbLogomark: React.FC = () => (
@@ -65,7 +56,7 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
         ? 'ide-save-dot--saving'
         : 'ide-save-dot--unsaved';
 
-  const modeLabel = currentMode ? MODE_LABELS[currentMode] : null;
+  const modeLabel = currentMode ? getIdeModeLabel(currentMode) : null;
 
   return (
     <header className="ide-top-bar" data-testid="ide-top-bar" data-save-state={saveState}>

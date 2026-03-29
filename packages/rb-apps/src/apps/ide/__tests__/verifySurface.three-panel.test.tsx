@@ -85,6 +85,8 @@ describe('VerifySurface three-panel workstation', () => {
     );
 
     expect(view.getByTestId('ide-verify-three-panel')).toBeTruthy();
+    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
     expect(view.getByTestId('ide-verify-right-signal-key').textContent?.toLowerCase()).toContain('ld0');
     expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
     expect(view.getByTestId('ide-verify-vector-row-1-ld0-ld0-vec-01-0').className).toContain('is-selected');

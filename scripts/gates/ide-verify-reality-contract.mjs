@@ -1,6 +1,25 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
+import { waitForVerifyResult } from './_verifyStatus.mjs';
+
+async function ensureVerifyVectorsReady(page) {
+  const candidates = [
+    '[data-testid="ide-verify-generate-basic-vectors"]',
+    '[data-testid="ide-verify-generate-basic-vectors-footer"]',
+    '[data-testid="ide-verify-generate-all-combos"]',
+    '[data-testid="ide-verify-guided-clock-pattern"]',
+    '[data-testid="ide-verify-trace-generate-basics"]',
+  ];
+  for (const selector of candidates) {
+    const button = page.locator(selector).first();
+    const isVisible = await button.isVisible().catch(() => false);
+    if (isVisible) {
+      await button.click();
+      return;
+    }
+  }
+}
 
 await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
@@ -9,15 +28,7 @@ await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
 
-  await page.locator('[data-testid="ide-project-load-start-logic-gates"]').click();
-  const confirmVisible = await page
-    .locator('[data-testid="ide-example-confirm-modal"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  if (confirmVisible) {
-    await page.locator('[data-testid="ide-example-confirm"]').click();
-  }
+  await loadStarterProject(page);
 
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
@@ -30,28 +41,21 @@ await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl
     `pre-run status must be BLOCKED or READY, got "${preRunStatus}"`
   );
 
-  await page.locator('[data-testid="ide-verify-generate-basic-vectors"]').click();
-  const tickInput = page.locator('[data-testid="ide-verify-add-vector-tick"]').first();
-  const addBtn = page.locator('[data-testid="ide-verify-add-vector-submit"]').first();
-  for (const tick of [5, 10, 15, 20, 25]) {
-    await tickInput.fill(String(tick));
-    await addBtn.click();
-    await page.waitForTimeout(70);
-  }
+  await ensureVerifyVectorsReady(page);
 
   const runBtn = page.locator('[data-testid="ide-verify-run"]').first();
   assert(!(await runBtn.isDisabled().catch(() => false)), 'run button must be enabled once vectors exist');
 
   await runBtn.click();
-  await page.waitForFunction(
-    () => /PASS|FAIL|TRACE/i.test(document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent ?? ''),
-    { timeout: 15000 }
-  );
+  await waitForVerifyResult(page, { timeout: 15000 });
 
   const statusLabel = (
     await page.locator('[data-testid="ide-verify-summary-status"]').first().textContent().catch(() => '')
   )?.trim() ?? '';
-  assert(/PASS|FAIL|TRACE/i.test(statusLabel), `status must be PASS/FAIL/TRACE after run, got "${statusLabel}"`);
+  assert(
+    /ASSERTIONS|STIMULUS|PASS|FAIL|TRACE/i.test(statusLabel),
+    `status must reflect a completed verify state, got "${statusLabel}"`
+  );
 
   const noTraceGuard = page.locator('[data-testid="ide-verify-no-trace-guard"]').first();
   assert(
@@ -76,4 +80,3 @@ await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl
   const signalRows = await page.locator('[data-testid^="ide-verify-signal-"]').count().catch(() => 0);
   assert(signalRows >= 1, `signal list must show at least one signal, got ${signalRows}`);
 });
-

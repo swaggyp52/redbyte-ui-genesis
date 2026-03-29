@@ -11,6 +11,7 @@ import {
 } from '../../IdeApp';
 import { BoardSignalProvider } from '../BoardSignalContext';
 import { HardwareSurface } from '../surfaces/HardwareSurface';
+import { deriveTimingGuidance } from '../timingGuidance';
 
 function makeVerifyRunWithRoles(
   signalRoles: Record<string, 'clock' | 'reset' | 'input' | 'output'>
@@ -68,6 +69,33 @@ function makeHealth(overrides: Partial<ProjectHealth> = {}): ProjectHealth {
 }
 
 describe('HardwareSurface readiness', () => {
+  it('starts with the inspector collapsed and the console minimized so mapping stays central', () => {
+    const { getByTestId, queryByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Hardware Layout Defaults"
+          expectedBehavior="Map pins, then program the board."
+          mappingRows={[
+            { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true },
+            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={1}
+          health={makeHealth({ blockingIssues: [] })}
+          verifyCurrent={true}
+          exportCurrent={true}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(queryByTestId('ide-inspector')).toBeNull();
+    expect(getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
+    expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'collapsed');
+  });
+
   it('treats export evidence as stale when the project changes after export but verification is rerun', () => {
     const circuit = { nodes: [], connections: [] } as any;
     const vectors = [{ tick: 0, inputs: { in_a: '0' }, expected: { out_y: '0' } }] as any;
@@ -179,7 +207,7 @@ describe('HardwareSurface readiness', () => {
   });
 
   it('does not claim clock is mapped when a required clock row is still missing a pin', () => {
-    const { getAllByText } = render(
+    const { getAllByTestId, getByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Partially Mapped Clocks"
@@ -204,11 +232,13 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getAllByText('Clock').at(-1)?.parentElement?.textContent).toContain('Missing');
+    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
+    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Clock');
+    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Missing');
   });
 
   it('claims clock is mapped when all required clock rows have pins', () => {
-    const { getAllByText } = render(
+    const { getAllByTestId, getByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Fully Mapped Clocks"
@@ -233,11 +263,60 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getAllByText('Clock').at(-1)?.parentElement?.textContent).toContain('Mapped');
+    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
+    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Clock');
+    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Mapped');
+  });
+
+  it('labels supported latch control explicitly instead of generic clock wording', () => {
+    const latchGuidance = deriveTimingGuidance({
+      schedule: 'clocked_macro',
+      reason: 'circuit-sequential',
+      analysis: {
+        hasClockedMacros: true,
+        hasClockNet: true,
+        sequentialNodes: [{ id: 'dl0', type: 'DLatch', clockPort: 'EN' }],
+        clockSource: 'circuit',
+        clockNetName: 'EN',
+      },
+      needsSimClockInjection: false,
+      clockSignalName: 'EN',
+      samplePoint: 'post-rising-edge',
+      tick0Meaning: 'initial-state',
+      hasUnsupportedTemporal: false,
+      temporalIssues: [],
+    });
+
+    const { getAllByTestId, getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Latch Hardware"
+          expectedBehavior="Q holds its last value when EN is low."
+          mappingRows={[
+            { id: 'd', label: 'D', direction: 'in', pin: 'V17', required: true },
+            { id: 'en', label: 'EN', direction: 'in', pin: 'W16', required: true },
+            { id: 'q', label: 'Q', direction: 'out', pin: 'U16', required: true },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={4}
+          health={makeHealth()}
+          verifyCurrent={true}
+          exportCurrent={false}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+          signalRoles={{ d: 'input', en: 'clock', q: 'output' }}
+          timingGuidance={latchGuidance}
+        />
+      </BoardSignalProvider>
+    );
+
+    fireEvent.click(getAllByTestId('ide-hw-mode-btn-live').at(-1)!);
+    expect(getByTestId('ide-hw-live-dock').textContent).toContain('Latch control');
   });
 
   it('uses semantic verify signal roles so non-regex clock labels still count as clock mapping', () => {
-    const { getAllByText } = render(
+    const { getAllByTestId, getByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Semantic Clock Role"
@@ -267,7 +346,9 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getAllByText('Clock').at(-1)?.parentElement?.textContent).toContain('Mapped');
+    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
+    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Clock');
+    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Mapped');
   });
 
   it('groups semantic clock rows into the Clock section in map mode even before a pin is assigned', () => {

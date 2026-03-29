@@ -9,6 +9,7 @@ import {
   type SimulationModelPortRef,
 } from '@redbyte/rb-logic-core';
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
+import { canonicalizeSemanticCircuit } from '../../../circuit/semanticCircuit';
 import { digestValue } from '../../../utils/digest';
 import {
   buildDeterministicVerifyContext,
@@ -62,8 +63,9 @@ export function resetSimulationState(
   ioRows: SimulationIoRow[],
   previous?: RuntimeSimState
 ): SimEngineResult<RuntimeSimState> {
-  const model = buildSimulationModel(elaborateCircuit(circuit).ir);
-  return resetSimulationStateFromModel(circuit, model, ioRows, previous);
+  const semanticCircuit = canonicalizeSemanticCircuit(circuit);
+  const model = buildSimulationModel(elaborateCircuit(semanticCircuit).ir);
+  return resetSimulationStateFromModel(semanticCircuit, model, ioRows, previous);
 }
 
 // TODO(slice-7): Retained — projectRuntime.ts caller not yet migrated to pass SimulationModel.
@@ -73,8 +75,9 @@ export function advanceSimulationState(
   sim: RuntimeSimState,
   requestedTicks: number
 ): SimEngineResult<RuntimeSimState> {
-  const model = buildSimulationModel(elaborateCircuit(circuit).ir);
-  return advanceSimulationStateFromModel(circuit, model, ioRows, sim, requestedTicks);
+  const semanticCircuit = canonicalizeSemanticCircuit(circuit);
+  const model = buildSimulationModel(elaborateCircuit(semanticCircuit).ir);
+  return advanceSimulationStateFromModel(semanticCircuit, model, ioRows, sim, requestedTicks);
 }
 
 // TODO(slice-7): Retained — projectRuntime.ts caller not yet migrated to pass SimulationModel.
@@ -83,8 +86,9 @@ export function recomputeSimulationState(
   ioRows: SimulationIoRow[],
   sim: RuntimeSimState
 ): SimEngineResult<RuntimeSimState> {
-  const model = buildSimulationModel(elaborateCircuit(circuit).ir);
-  return recomputeSimulationStateFromModel(circuit, model, ioRows, sim);
+  const semanticCircuit = canonicalizeSemanticCircuit(circuit);
+  const model = buildSimulationModel(elaborateCircuit(semanticCircuit).ir);
+  return recomputeSimulationStateFromModel(semanticCircuit, model, ioRows, sim);
 }
 
 export function resetSimulationStateFromModel(
@@ -97,13 +101,14 @@ export function resetSimulationStateFromModel(
     return buildBlockedSimResult(model);
   }
 
-  const inputs = deriveSimulationInputsFromModel(model, executionCircuit, previous?.inputs);
+  const semanticExecutionCircuit = canonicalizeSemanticCircuit(executionCircuit);
+  const inputs = deriveSimulationInputsFromModel(model, semanticExecutionCircuit, previous?.inputs);
   const resetNodeId = resolveResetNodeIdFromModel(model, ioRows);
   if (resetNodeId) {
     inputs[resetNodeId] = 1;
   }
 
-  runtimeSimEngine = new CircuitEngine(cloneExecutionCircuit(executionCircuit));
+  runtimeSimEngine = new CircuitEngine(cloneExecutionCircuit(semanticExecutionCircuit));
   runtimeSimIrHash = model.irHash;
   applyInputsToEngine(runtimeSimEngine, inputs);
   runtimeSimEngine.tick();
@@ -227,7 +232,11 @@ export function buildBlockedRuntimeSnapshotFromModel(
   previousInputs?: Record<string, 0 | 1>
 ): Pick<RuntimeSimState, 'tick' | 'irHash' | 'traceHash' | 'inputs' | 'signals' | 'trace'> {
   const trace: RuntimeSimTraceSample[] = [];
-  const inputs = deriveSimulationInputsFromModel(model, executionCircuit, previousInputs);
+  const inputs = deriveSimulationInputsFromModel(
+    model,
+    canonicalizeSemanticCircuit(executionCircuit),
+    previousInputs
+  );
   const signals: Record<string, 0 | 1> = {};
   for (const port of getExternallyDrivenPorts(model)) {
     signals[`${port.sourceNodeId}.out`] = inputs[port.sourceNodeId] ?? 0;
@@ -324,7 +333,13 @@ export function runDeterministicVerifyFromModel(
     return buildUnsupportedTemporalResult(ioRows, vectors, contract);
   }
 
-  const cases = simulateVectorCasesFromModel(executionCircuit, model, ioRows, vectors, contract);
+  const cases = simulateVectorCasesFromModel(
+    canonicalizeSemanticCircuit(executionCircuit),
+    model,
+    ioRows,
+    vectors,
+    contract
+  );
   const traceByTick = new Map<number, RuntimeSimTraceSample>();
   for (const entry of cases) {
     traceByTick.set(entry.sample.tick, {
@@ -574,7 +589,7 @@ function simulateVectorCasesFromModel(
   expected: Record<string, 0 | 1>;
   sample: RuntimeSimTraceSample;
 }> {
-  const simCircuit = cloneExecutionCircuit(executionCircuit);
+  const simCircuit = cloneExecutionCircuit(canonicalizeSemanticCircuit(executionCircuit));
   if (scheduleContract.needsSimClockInjection) {
     injectSimClock(
       simCircuit,

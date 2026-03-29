@@ -1,18 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-
-export type IdeMode =
-  | 'project'
-  | 'design'
-  | 'verify'
-  | 'hardware'
-  | 'export'
-  | 'import';
-
-export interface IdeModeDefinition {
-  id: IdeMode;
-  label: string;
-  shortLabel: string;
-}
+import {
+  IDE_MODE_DEFINITIONS,
+  IDE_WORKFLOW_ROUTE_STEPS,
+  type IdeMode,
+  type IdeModeDefinition,
+} from '../workflowStages';
 
 interface WorkflowStep {
   id: IdeMode;
@@ -85,25 +77,25 @@ const ImportIcon = () => (
 
 // ─── Mode definitions ─────────────────────────────────────────────────────────
 
-const WORKFLOW_STEPS: WorkflowStep[] = [
-  { id: 'design',   label: 'Design',   step: 1, icon: <DesignIcon />   },
-  { id: 'verify',   label: 'Verify',   step: 2, icon: <VerifyIcon />   },
-  { id: 'hardware', label: 'Hardware', step: 3, icon: <HardwareIcon /> },
-  { id: 'export',   label: 'Export',   step: 4, icon: <ExportIcon />   },
-];
+const WORKFLOW_STEPS: WorkflowStep[] = IDE_WORKFLOW_ROUTE_STEPS.map((step) => ({
+  ...step,
+  icon:
+    step.id === 'design'
+      ? <DesignIcon />
+      : step.id === 'verify'
+        ? <VerifyIcon />
+        : step.id === 'hardware'
+          ? <HardwareIcon />
+          : <ExportIcon />,
+}));
 
 const PROJECT_ENTRY: UtilityEntry = { id: 'project', label: 'Project', icon: <ProjectIcon /> };
 const IMPORT_ENTRY: UtilityEntry  = { id: 'import',  label: 'Import',  icon: <ImportIcon />  };
 
+export type { IdeMode } from '../workflowStages';
+
 // Backward-compat export
-export const MODES: IdeModeDefinition[] = [
-  { id: 'project',  label: 'Project',  shortLabel: 'P' },
-  { id: 'design',   label: 'Design',   shortLabel: 'D' },
-  { id: 'verify',   label: 'Verify',   shortLabel: 'V' },
-  { id: 'hardware', label: 'Hardware', shortLabel: 'H' },
-  { id: 'export',   label: 'Export',   shortLabel: 'E' },
-  { id: 'import',   label: 'Import',   shortLabel: 'I' },
-];
+export const MODES: IdeModeDefinition[] = IDE_MODE_DEFINITIONS;
 
 const STORAGE_KEY = 'rb.ide.left-rail.expanded';
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { assert, runIdeGate } from './_gateHarness.mjs';
+import { waitForVerifyResult } from './_verifyStatus.mjs';
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
@@ -33,6 +34,15 @@ async function clickVerifyRun(page) {
 }
 
 async function authorMinimalVerifyVector(page) {
+  const runAlreadyVisible = await page
+    .locator('[data-testid="ide-verify-run"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  if (runAlreadyVisible) {
+    return;
+  }
+
   const legacyTickInput = page.locator('[data-testid="ide-verify-add-vector-tick"]').first();
   const legacyTickVisible = await legacyTickInput.isVisible().catch(() => false);
 
@@ -49,6 +59,16 @@ async function authorMinimalVerifyVector(page) {
 
   const addTickButton = page.locator('[data-testid="ide-stimulus-add-tick"]').first();
   const addTickVisible = await addTickButton.isVisible().catch(() => false);
+  const guidedGenerateButton = page
+    .locator(
+      '[data-testid="ide-verify-generate-basic-vectors-footer"], [data-testid="ide-verify-generate-all-combos"], [data-testid="ide-verify-guided-clock-pattern"]'
+    )
+    .first();
+  const guidedGenerateVisible = await guidedGenerateButton.isVisible().catch(() => false);
+  if (guidedGenerateVisible) {
+    await guidedGenerateButton.click();
+    return;
+  }
   if (!addTickVisible) {
     throw new Error('verify authoring controls unavailable (neither legacy form nor StimulusCanvas found)');
   }
@@ -60,7 +80,11 @@ async function authorMinimalVerifyVector(page) {
 }
 
 async function clickGenerateBasicsIfVisible(page) {
-  const button = page.locator('[data-testid="ide-verify-generate-basic-vectors"]').first();
+  const button = page
+    .locator(
+      '[data-testid="ide-verify-generate-basic-vectors"], [data-testid="ide-verify-generate-basic-vectors-footer"], [data-testid="ide-verify-generate-all-combos"]'
+    )
+    .first();
   const isVisible = await button.isVisible().catch(() => false);
   if (isVisible) {
     await button.click();
@@ -151,6 +175,22 @@ await runIdeGate('IDE project health live contract satisfied', async ({ page, ba
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
   await dismissOnboardingIfPresent(page);
 
+  const landingVisible = await page
+    .locator('[data-testid="ide-project-landing"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+
+  if (landingVisible) {
+    const firstExample = page.locator('[data-testid^="ide-project-landing-example-"]').first();
+    const exampleVisible = await firstExample.isVisible().catch(() => false);
+    assert(exampleVisible, 'project landing must surface at least one starter example');
+    await firstExample.click();
+    await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
+    await page.locator('[data-testid="mode-button-project"]').click();
+    await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
+  }
+
   const initialCta = await text(page.locator('[data-testid="ide-project-continue-target"]'));
   assert(
     initialCta.toLowerCase().includes('verify'),
@@ -164,6 +204,7 @@ await runIdeGate('IDE project health live contract satisfied', async ({ page, ba
   await authorMinimalVerifyVector(page);
   await clickGenerateBasicsIfVisible(page);
   await clickVerifyRun(page);
+  await waitForVerifyResult(page, { timeout: 10000 });
 
   await page.locator('[data-testid="mode-button-project"]').click();
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
@@ -208,4 +249,3 @@ await runIdeGate('IDE project health live contract satisfied', async ({ page, ba
     `expected project continue target to route Verify after design mutation, got "${ctaAfterMutation}"`
   );
 });
-

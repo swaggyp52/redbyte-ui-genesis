@@ -586,7 +586,7 @@ function validateSynthSubset(
       type: 'logic',
       severity: 'error',
       message:
-        'Combinational loop detected. Fix: break the loop with a sequential element (DFlipFlop) or remove feedback.',
+        'Combinational loop detected. Fix: use a supported sequential primitive (DLatch/DFlipFlop/RSLatch), the exact 4-NAND D-latch topology, or remove unsupported feedback.',
     });
   }
 

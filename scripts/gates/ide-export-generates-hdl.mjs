@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
 
 await runIdeGate('IDE export generates HDL contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
@@ -9,18 +9,7 @@ await runIdeGate('IDE export generates HDL contract satisfied', async ({ page, b
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
-  await page.locator('[data-testid="mode-button-project"]').click();
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
-  await page.locator('[data-testid="ide-project-load-start-logic-gates"]').click();
-
-  const confirmVisible = await page
-    .locator('[data-testid="ide-example-confirm"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  if (confirmVisible) {
-    await page.locator('[data-testid="ide-example-confirm"]').first().click();
-  }
+  await loadStarterProject(page);
 
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });

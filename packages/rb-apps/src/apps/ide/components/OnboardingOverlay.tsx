@@ -1,5 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import type { IdeMode } from './IdeLeftRail';
+import {
+  MAP_PINS_STAGE_LABEL,
+  PROGRAM_STAGE_LABEL,
+  STUDENT_WORKFLOW_SUMMARY,
+  VERIFY_STAGE_LABEL,
+  type IdeMode,
+} from '../workflowStages';
 
 const STORAGE_KEY = 'rb-onboarding-v1-seen';
 
@@ -12,11 +18,11 @@ const MODE_STEPS: Record<IdeMode, OnboardingStep[]> = {
   project: [
     {
       title: 'This is your project hub.',
-      body: 'See your circuit\'s status and jump to Build, Verify, or Export from here.',
+      body: `See your circuit's status and jump into ${STUDENT_WORKFLOW_SUMMARY} from here.`,
     },
     {
       title: 'Follow the workflow.',
-      body: 'Build your circuit → verify it → export a Vivado project. Each step unlocks the next.',
+      body: `${STUDENT_WORKFLOW_SUMMARY}. Each step unlocks the next.`,
     },
     {
       title: 'Export saves your work.',
@@ -30,11 +36,11 @@ const MODE_STEPS: Record<IdeMode, OnboardingStep[]> = {
     },
     {
       title: 'Run verification.',
-      body: 'Switch to Verify, add test vectors in the stimulus grid, and see waveforms fill in.',
+      body: `Switch to ${VERIFY_STAGE_LABEL}, add test vectors in the stimulus grid, and see waveforms fill in.`,
     },
     {
-      title: 'Export to Vivado when your circuit passes.',
-      body: 'A green PASS run in Verify means you\'re ready — Export builds the Basys3 project.',
+      title: 'Map pins, then export.',
+      body: `After ${VERIFY_STAGE_LABEL}, finish ${MAP_PINS_STAGE_LABEL}, then use Export to build the Basys3 project you will ${PROGRAM_STAGE_LABEL.toLowerCase()}.`,
     },
   ],
   verify: [
@@ -47,22 +53,22 @@ const MODE_STEPS: Record<IdeMode, OnboardingStep[]> = {
       body: 'Each column is one clock tick — trace any mismatch back to the first failing row.',
     },
     {
-      title: 'Pass here before exporting.',
-      body: 'A green PASS confirms correctness and unlocks a trusted hardware export.',
+      title: 'Compare here before exporting.',
+      body: `Run Compare here, then continue to ${MAP_PINS_STAGE_LABEL}, Export, and ${PROGRAM_STAGE_LABEL}.`,
     },
   ],
   hardware: [
     {
-      title: 'Check readiness first.',
-      body: 'You need a passing Verify run and a current export bundle before programming the board.',
+      title: `This is ${MAP_PINS_STAGE_LABEL}.`,
+      body: `Assign each logic signal to a Basys3 pin before Export and ${PROGRAM_STAGE_LABEL}.`,
     },
     {
-      title: 'Map your I/O.',
-      body: 'Assign each logic signal to a Basys3 pin — unmapped signals block the export.',
+      title: 'Finish the board map.',
+      body: `Unmapped required signals block Export, and incomplete output mapping keeps ${PROGRAM_STAGE_LABEL.toLowerCase()} untrusted.`,
     },
     {
-      title: 'Program from Export.',
-      body: 'Download the Vivado project, open the .xpr, then run bitstream generation in Vivado.',
+      title: `${PROGRAM_STAGE_LABEL} after Export.`,
+      body: `Export generates the Vivado project. ${PROGRAM_STAGE_LABEL} is the final step after the current bundle is ready.`,
     },
   ],
   export: [

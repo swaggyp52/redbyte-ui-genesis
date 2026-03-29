@@ -39,7 +39,29 @@ describe('buildVerifySessionViewModel', () => {
     expect(model.runLabel).toBe('Run Simulation');
   });
 
-  it('treats trace-only runs without expected outputs as assertions incomplete', () => {
+  it('treats first-run sessions with expected outputs armed as draft compare work', () => {
+    const model = buildVerifySessionViewModel({
+      totalVectorCount: 1,
+      totalExpectedCaseCount: 1,
+      signalInventory: makeSignalInventory(1, 1),
+      runState: 'idle',
+      nextRunUsesAssertions: true,
+      isRunStale: false,
+      isTraceOnly: false,
+      hasResults: false,
+      canSetOracle: false,
+      failingRowCount: 0,
+    });
+
+    expect(model.mode).toBe('assertion');
+    expect(model.status).toBe('draft');
+    expect(model.statusBadge).toBe('DRAFT');
+    expect(model.title).toBe('Ready to compare');
+    expect(model.runLabel).toBe('Run Compare');
+    expect(model.recommendedNextAction).toBe('verify');
+  });
+
+  it('treats trace-only runs without expected outputs as observation-only capture work', () => {
     const model = buildVerifySessionViewModel({
       totalVectorCount: 2,
       totalExpectedCaseCount: 0,
@@ -78,8 +100,9 @@ describe('buildVerifySessionViewModel', () => {
     });
 
     expect(model.mode).toBe('capture');
-    expect(model.status).toBe('assertions-incomplete');
-    expect(model.statusBadge).toBe('ASSERTIONS INCOMPLETE');
+    expect(model.status).toBe('stimulus-only');
+    expect(model.statusBadge).toBe('OBSERVATION ONLY');
+    expect(model.title).toBe('Waveform recorded — observation only');
     expect(model.recommendedNextAction).toBe('capture');
   });
 
@@ -213,12 +236,13 @@ describe('buildVerifySessionViewModel', () => {
 
   it('shows stimulus-only when a run exists but no outputs are asserted', () => {
     // A run happened (simulation trace), stimulus is defined, but zero expected outputs
-    // are authored. This should surface as STIMULUS ONLY, not assertions-incomplete or
+    // are authored. This should surface as observation-only trace evidence, not
+    // assertions-incomplete or
     // simulation-complete. The badge must not imply "success" or "failure".
     const model = buildVerifySessionViewModel({
       totalVectorCount: 3,
-      totalExpectedCaseCount: 1,
-      signalInventory: makeSignalInventory(3, 1),
+      totalExpectedCaseCount: 0,
+      signalInventory: makeSignalInventory(3, 0),
       runState: 'complete',
       lastRun: {
         scenarioId: 'trace-run-with-assertions',
@@ -253,7 +277,7 @@ describe('buildVerifySessionViewModel', () => {
     });
 
     expect(model.status).toBe('stimulus-only');
-    expect(model.statusBadge).toBe('STIMULUS ONLY');
+    expect(model.statusBadge).toBe('OBSERVATION ONLY');
     expect(model.tone).toBe('idle');
     expect(model.recommendedNextAction).toBe('capture');
   });
@@ -298,7 +322,7 @@ describe('buildVerifySessionViewModel', () => {
 
     expect(model.mode).toBe('capture');
     expect(model.status).toBe('stimulus-only');
-    expect(model.statusBadge).toBe('STIMULUS ONLY');
+    expect(model.statusBadge).toBe('OBSERVATION ONLY');
   });
 
   it('marks outdated compare evidence as stale', () => {

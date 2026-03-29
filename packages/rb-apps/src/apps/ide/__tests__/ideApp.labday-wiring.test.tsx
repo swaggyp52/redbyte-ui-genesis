@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { act, fireEvent, render, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import type { RBProject } from '../../../export/projectFormat';
 import { IdeApp } from '../../IdeApp';
 import { useProjectRuntime } from '../projectRuntime';
@@ -155,27 +155,130 @@ function buildScenarioAuthorityProject(): RBProject {
   };
 }
 
+function buildDraftAuthoringProject(): RBProject {
+  return {
+    kind: 'rb-project',
+    version: 1,
+    createdAt: '2026-03-27T00:00:00.000Z',
+    updatedAt: '2026-03-27T00:00:00.000Z',
+    name: 'Draft Authoring Project',
+    description: 'Blank-authoring verify fixture with no expected outputs.',
+    circuit: {
+      nodes: [
+        {
+          id: 'sw0_node',
+          type: 'INPUT',
+          label: 'sw0',
+          position: { x: 0, y: 0 },
+          x: 0,
+          y: 0,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+        {
+          id: 'sw1_node',
+          type: 'INPUT',
+          label: 'sw1',
+          position: { x: 0, y: 100 },
+          x: 0,
+          y: 100,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+        {
+          id: 'ld0_node',
+          type: 'OUTPUT',
+          label: 'ld0',
+          position: { x: 180, y: 50 },
+          x: 180,
+          y: 50,
+          rotation: 0,
+          config: {},
+          state: {},
+        },
+      ],
+      connections: [],
+    },
+    ioMapping: {
+      inputs: [
+        { id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'sw0', pin: 'SW0' },
+        { id: 'sw1', nodeId: 'sw1_node', port: 'out', label: 'sw1', pin: 'SW1' },
+      ],
+      outputs: [{ id: 'ld0', nodeId: 'ld0_node', port: 'in', label: 'ld0', pin: 'LD0' }],
+    },
+    vectors: [],
+    meta: {
+      projectId: 'rb-draft-authoring-project',
+      projectKind: 'custom',
+      activeExampleId: null,
+      sourceExampleId: null,
+      scenarioAuthority: 'none',
+    },
+  };
+}
+
 function seedIdeRoute(mode: 'project' | 'import') {
   window.history.replaceState({}, '', `/os/?mode=${mode}`);
+}
+
+function enterImportWorkbench(view: ReturnType<typeof render>) {
+  fireEvent.click(view.getByTestId('ide-import-start-other-options-toggle'));
+  fireEvent.click(view.getByTestId('ide-import-start-secondary'));
+}
+
+async function findVerifyRunAction(view: ReturnType<typeof render>) {
+  const selectors = [
+    'ide-verify-run',
+    'ide-verify-run-secondary',
+    'ide-verify-empty-run',
+    'ide-verify-stale-primary-rerun',
+    'ide-verify-scenario-stale-rerun',
+    'ide-verify-wrong-scenario-rerun',
+    'ide-verify-stale-rerun',
+    'ide-verify-stale-run-simulation',
+  ] as const;
+
+  await waitFor(() => {
+    const available = selectors.some((selector) => Boolean(view.queryByTestId(selector)));
+    expect(available).toBe(true);
+  }, { timeout: 5000 });
+
+  const target = selectors
+    .map((selector) => view.queryByTestId(selector))
+    .find((node): node is HTMLElement => Boolean(node));
+
+  expect(target).toBeTruthy();
+  return target!;
 }
 
 describe('IdeApp lab-day wiring', () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
+    useProjectRuntime.persist.clearStorage();
+    useProjectRuntime.setState(useProjectRuntime.getInitialState(), true);
     localStorage.setItem('rb-onboarding-v1-seen', '1');
     seedIdeRoute('project');
   });
 
   afterEach(() => {
+    cleanup();
+    useProjectRuntime.persist.clearStorage();
+    useProjectRuntime.setState(useProjectRuntime.getInitialState(), true);
     localStorage.clear();
+    sessionStorage.clear();
     window.history.replaceState({}, '', '/');
   });
 
   it('routes the ports-only rescue CTA from Import to Export', async () => {
-    seedIdeRoute('import');
     const view = render(<IdeApp />);
 
-    fireEvent.click(await view.findByTestId('ide-import-toggle-behavioral-samples'));
+    fireEvent.click(await view.findByTestId('mode-button-import'));
+    await view.findByTestId('ide-import-panel', {}, { timeout: 5000 });
+    enterImportWorkbench(view);
+    fireEvent.click(await view.findByTestId('ide-import-toggle-behavioral-samples', {}, { timeout: 5000 }));
     fireEvent.click(view.getByTestId('ide-import-load-sample-edge-detect'));
 
     await waitFor(() => {
@@ -185,12 +288,20 @@ describe('IdeApp lab-day wiring', () => {
     fireEvent.click(view.getByTestId('ide-import-go-to-export'));
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-export-panel')).toBeTruthy();
+      expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Export');
     });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-export-panel')).toBeTruthy();
+    }, { timeout: 10000 });
   });
 
   it('propagates Project top and part edits into the Export handoff summary', async () => {
     const view = render(<IdeApp />);
+
+    await act(async () => {
+      useProjectRuntime.getState().loadFromProject(buildDraftAuthoringProject());
+    });
 
     fireEvent.change(await view.findByTestId('ide-project-fpga-top'), {
       target: { value: 'lab_day_top' },
@@ -217,9 +328,12 @@ describe('IdeApp lab-day wiring', () => {
     });
 
     fireEvent.click(await view.findByTestId('mode-button-hardware'));
+    await view.findByTestId('ide-hardware-panel');
+    fireEvent.click(view.getByTestId('ide-hw-mode-btn-map'));
 
     await waitFor(() => {
-      expect(view.getByText('Clock').parentElement?.textContent).toContain('Mapped');
+      expect(view.getByTestId('ide-hw-map-dock').textContent).toContain('Clock');
+      expect(view.getByTestId('ide-hw-map-dock').textContent).toContain('Mapped');
     });
   });
 
@@ -243,19 +357,10 @@ describe('IdeApp lab-day wiring', () => {
     expect(scenarioBeforeRun?.version).toBeGreaterThan(1);
 
     fireEvent.click(await view.findByTestId('mode-button-verify'));
-    await view.findByTestId('ide-scenario-library-header', {}, { timeout: 3000 });
+    await view.findByTestId('ide-verify-panel', {}, { timeout: 5000 });
 
     await act(async () => {
-      fireEvent.click(await view.findByTestId('ide-verify-run', {}, { timeout: 3000 }));
-    });
-
-    await waitFor(() => {
-      expect(useProjectRuntime.getState().verifyLastRun?.runKind).toBe('trace');
-    });
-
-    await act(async () => {
-      fireEvent.click(await view.findByTestId('ide-verify-assertion-mode-toggle'));
-      fireEvent.click(await view.findByTestId('ide-verify-run-secondary'));
+      fireEvent.click(await findVerifyRunAction(view));
     });
 
     await waitFor(() => {
@@ -272,6 +377,7 @@ describe('IdeApp lab-day wiring', () => {
     });
 
     fireEvent.click(view.getByTestId('mode-button-export'));
+    fireEvent.click(await view.findByTestId('ide-workbench-dock-toggle-right'));
 
     await waitFor(() => {
       expect(view.getByTestId('ide-export-testbench-source')).toBeTruthy();
@@ -315,6 +421,10 @@ describe('IdeApp lab-day wiring', () => {
 
     fireEvent.click(await view.findByTestId('mode-button-verify'));
 
+    await act(async () => {
+      fireEvent.click(await view.findByTestId('ide-verify-run', {}, { timeout: 3000 }));
+    });
+
     await waitFor(() => {
       expect(view.getByTestId('ide-scenario-library-header')).toBeTruthy();
     });
@@ -353,5 +463,66 @@ describe('IdeApp lab-day wiring', () => {
       expect(state.projectVectors).toEqual(activeScenario?.vectors);
       expect(createdScenario?.vectors).not.toEqual(activeScenario?.vectors);
     });
+  });
+
+  it('keeps Verify Generate Basics in trace-authoring mode for custom projects', async () => {
+    const view = render(<IdeApp />);
+
+    await act(async () => {
+      useProjectRuntime.getState().loadFromProject(buildDraftAuthoringProject());
+    });
+
+    fireEvent.click(await view.findByTestId('mode-button-verify'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION');
+    });
+
+    fireEvent.click(view.getByTestId('ide-verify-generate-basic-vectors'));
+
+    await waitFor(() => {
+      const state = useProjectRuntime.getState();
+      expect(state.projectVectors.length).toBeGreaterThan(0);
+      expect(state.projectVectors.every((vector) => Object.keys(vector.expected ?? {}).length === 0)).toBe(true);
+    });
+
+    expect(view.getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION');
+    expect(view.getByTestId('ide-verify-empty-run').textContent).toContain('Run Simulation');
+  });
+
+  it('detaches starter examples without leaving Verify stuck in starter compare mode', async () => {
+    const view = render(<IdeApp />);
+
+    await view.findByTestId('ide-project-landing');
+    fireEvent.click(await view.findByTestId('ide-project-landing-example-signal-tour'));
+
+    await waitFor(() => {
+      expect(view.queryByTestId('ide-example-confirm-modal')).toBeNull();
+    });
+
+    await waitFor(() => {
+      expect(useProjectRuntime.getState().activeExampleId).toBe('signal-tour');
+    });
+
+    await act(async () => {
+      useProjectRuntime.getState().addDesignNode('AND', { x: 480, y: 180 });
+    });
+
+    fireEvent.click(await view.findByTestId('mode-button-verify'));
+
+    await waitFor(() => {
+      const state = useProjectRuntime.getState();
+      expect(state.projectKind).toBe('custom');
+      expect(state.activeExampleId).toBeNull();
+      expect(state.projectVectors.every((vector) => Object.keys(vector.expected ?? {}).length === 0)).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(view.queryByTestId('ide-verify-auto-vector-notice')).toBeNull();
+    });
+
+    expect(view.getByTestId('ide-verify-session-status').textContent).toContain('DRAFT');
+    expect(view.getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION');
+    expect(view.getByTestId('ide-verify-empty-run').textContent).toContain('Run Simulation');
   });
 });
