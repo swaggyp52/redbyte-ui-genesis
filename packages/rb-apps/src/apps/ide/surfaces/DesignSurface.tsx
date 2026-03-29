@@ -2723,6 +2723,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const hasSingleSelectedNode = !!selectedNode && selection.nodes.size === 1;
   const hasMultiNodeSelection = selection.nodes.size > 1;
   const hasMultiWireSelection = !hasMultiNodeSelection && selectedWireIds.length > 1;
+  const hasInspectorSelectionContext =
+    hasSingleSelectedNode ||
+    hasMultiNodeSelection ||
+    hasMultiWireSelection ||
+    !!selectedWireContext ||
+    !!activeInspectorSignalKey;
   const primarySelectionIssue = selectionAuthoringIssues[0] ?? null;
   const primarySelectionDiagnostic = selectedNodeDiagnostics[0] ?? null;
   const selectionStatusLabel = primarySelectionIssue
@@ -2735,7 +2741,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       ? primarySelectionDiagnostic.severity === 'error'
         ? 'Compiler issue'
         : 'Compiler warning'
-      : hasSingleSelectedNode || selectedWireContext || activeInspectorSignalKey || hasMultiNodeSelection || hasMultiWireSelection
+      : hasInspectorSelectionContext
         ? 'Ready'
         : 'Idle';
   const selectionStatusTone =
@@ -3180,6 +3186,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             Select a node, wire, or signal.
           </p>
         </div>
+        <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+          Start on the canvas first. Open Live Simulation only when you want to run the whole circuit.
+        </p>
       </div>
     );
   };
@@ -3700,6 +3709,79 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       </div>
     </div>
   );
+  const renderLiveSimulationContent = () => (
+    <>
+      <div className="ide-inline-actions">
+        {simRunning ? (
+          <IdeButton tone="secondary" onClick={pauseSimulation} testId="ide-design-sim-pause">
+            Pause
+          </IdeButton>
+        ) : (
+          <IdeButton tone="primary" onClick={startSimulation} testId="ide-design-sim-run">
+            Run
+          </IdeButton>
+        )}
+        <IdeButton tone="ghost" onClick={stepSimulation} testId="ide-design-sim-step">
+          Step{runtimeSim.stepMode ? ` t${simTick}` : ''}
+        </IdeButton>
+        <IdeButton tone="ghost" onClick={resetSimulation} testId="ide-design-sim-reset">
+          Reset
+        </IdeButton>
+      </div>
+      <label className="ide-verify-field">
+        Speed (ticks/s)
+        <input
+          type="range"
+          min={1}
+          max={40}
+          step={1}
+          value={simSpeed}
+          onChange={(event) => onRuntimeSimSetSpeed?.(Number(event.target.value))}
+          data-testid="ide-design-sim-speed"
+        />
+      </label>
+      <div className="ide-kv-list ide-design-live-summary">
+        <div className="ide-kv-row">
+          <span>Tick</span>
+          <span data-testid="ide-design-sim-tick">{simTick}</span>
+        </div>
+        <div className="ide-kv-row">
+          <span>Mode</span>
+          <span>{simRunning ? 'Running' : 'Paused'}</span>
+        </div>
+        <div className="ide-kv-row">
+          <span>Last change</span>
+          <span data-testid="ide-design-last-change">{simulationStory.summary}</span>
+        </div>
+      </div>
+      <div className="ide-design-live-state-table" data-testid="ide-design-live-state-table">
+        <div className="ide-design-live-state-group">
+          <div className="ide-design-live-state-group-title">Inputs</div>
+          {liveIoSignals.inputRows.map((entry) => (
+            <div className="ide-kv-row" key={`in-${entry.id}`} data-testid={`ide-design-live-input-${entry.id}`}>
+              <span>
+                {entry.label}
+                {entry.pinAlias ? <span className="ide-design-live-pin"> {entry.pinAlias}</span> : null}
+              </span>
+              <code>{entry.value}</code>
+            </div>
+          ))}
+        </div>
+        <div className="ide-design-live-state-group">
+          <div className="ide-design-live-state-group-title">Outputs</div>
+          {liveIoSignals.outputRows.map((entry) => (
+            <div className="ide-kv-row" key={`out-${entry.id}`} data-testid={`ide-design-live-output-${entry.id}`}>
+              <span>
+                {entry.label}
+                {entry.pinAlias ? <span className="ide-design-live-pin"> {entry.pinAlias}</span> : null}
+              </span>
+              <code>{entry.value}</code>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <>
@@ -4022,227 +4104,172 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </IdeInspectorSection>
             ) : null;
           })()}
-          <IdeInspectorSection title="Signal / State" testId="ide-design-context-inspector" collapsible={false}>
-            {renderSelectionState()}
-          </IdeInspectorSection>
-          <IdeInspectorSection title="Board Signal" testId="ide-design-board-signal" defaultOpen={false}>
-            {(() => {
-              if (!selectedNode) {
-                return (
-                  <p className="ide-copy ide-design-board-signal-empty">
-                    Select a node to see its board pin mapping.
-                  </p>
-                );
-              }
-              const ioRow = (ioRows ?? []).find((r) => r.nodeId === selectedNode.id);
-              if (!ioRow) {
-                return (
-                  <p className="ide-copy ide-design-board-signal-empty">
-                    No board mapping for this node.
-                  </p>
-                );
-              }
-              const liveValue: 0 | 1 =
-                (runtimeSim.inputs[ioRow.nodeId] ??
-                runtimeSim.signals[ioRow.nodeId] ??
-                runtimeSim.signals[`${ioRow.nodeId}.out`] ??
-                0) === 1 ? 1 : 0;
-              return (
-                <>
-                <div className="ide-kv-list">
-                  <div className="ide-kv-row">
-                    <span>Label</span>
-                    <code className="ide-design-board-signal-code">{ioRow.label}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Pin</span>
-                    <code className="ide-design-board-signal-code">{ioRow.pin || '—'}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Dir</span>
-                    <span>{ioRow.direction === 'in' ? 'IN' : 'OUT'}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Value</span>
-                    <span
-                      data-testid="ide-design-board-signal-value"
-                      className={`ide-design-board-signal-value ${liveValue ? 'is-high' : 'is-low'}`}
-                    >
-                      {liveValue ? 'HIGH' : 'LOW'}
-                    </span>
-                  </div>
-                </div>
-                {onGoToHardware && (
-                  <div className="ide-design-board-signal-actions">
-                    <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-design-go-hardware">
-                      Go to Map Pins
-                    </IdeButton>
-                  </div>
-                )}
-                </>
-              );
-            })()}
-          </IdeInspectorSection>
-          <IdeInspectorSection title="Advanced Details" testId="ide-design-inspector-advanced" defaultOpen={false}>
-            {renderAdvancedDetails()}
-          </IdeInspectorSection>
+          {hasInspectorSelectionContext ? (
+            <React.Fragment key="design-inspector-selection-context">
+              <IdeInspectorSection title="Signal / State" testId="ide-design-context-inspector" collapsible={false}>
+                {renderSelectionState()}
+              </IdeInspectorSection>
+              <IdeInspectorSection title="Board Signal" testId="ide-design-board-signal" defaultOpen={false}>
+                {(() => {
+                  if (!selectedNode) {
+                    return (
+                      <p className="ide-copy ide-design-board-signal-empty">
+                        Select a node to see its board pin mapping.
+                      </p>
+                    );
+                  }
+                  const ioRow = (ioRows ?? []).find((r) => r.nodeId === selectedNode.id);
+                  if (!ioRow) {
+                    return (
+                      <p className="ide-copy ide-design-board-signal-empty">
+                        No board mapping for this node.
+                      </p>
+                    );
+                  }
+                  const liveValue: 0 | 1 =
+                    (runtimeSim.inputs[ioRow.nodeId] ??
+                    runtimeSim.signals[ioRow.nodeId] ??
+                    runtimeSim.signals[`${ioRow.nodeId}.out`] ??
+                    0) === 1 ? 1 : 0;
+                  return (
+                    <>
+                    <div className="ide-kv-list">
+                      <div className="ide-kv-row">
+                        <span>Label</span>
+                        <code className="ide-design-board-signal-code">{ioRow.label}</code>
+                      </div>
+                      <div className="ide-kv-row">
+                        <span>Pin</span>
+                        <code className="ide-design-board-signal-code">{ioRow.pin || '—'}</code>
+                      </div>
+                      <div className="ide-kv-row">
+                        <span>Dir</span>
+                        <span>{ioRow.direction === 'in' ? 'IN' : 'OUT'}</span>
+                      </div>
+                      <div className="ide-kv-row">
+                        <span>Value</span>
+                        <span
+                          data-testid="ide-design-board-signal-value"
+                          className={`ide-design-board-signal-value ${liveValue ? 'is-high' : 'is-low'}`}
+                        >
+                          {liveValue ? 'HIGH' : 'LOW'}
+                        </span>
+                      </div>
+                    </div>
+                    {onGoToHardware && (
+                      <div className="ide-design-board-signal-actions">
+                        <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-design-go-hardware">
+                          Go to Map Pins
+                        </IdeButton>
+                      </div>
+                    )}
+                    </>
+                  );
+                })()}
+              </IdeInspectorSection>
+              <IdeInspectorSection title="Advanced Details" testId="ide-design-inspector-advanced" defaultOpen={false}>
+                {renderAdvancedDetails()}
+              </IdeInspectorSection>
 
-          {/* Student-loop contract: live simulation must stay directly reachable even when
-              other inspector sections participate in shared accordion behavior. */}
-          <IdeInspectorSection
-            title="Live Simulation"
-            testId="ide-design-live-sim-section"
-            defaultOpen
-            disableCollapse
-          >
-            <div className="ide-inline-actions">
-              {simRunning ? (
-                <IdeButton tone="secondary" onClick={pauseSimulation} testId="ide-design-sim-pause">
-                  Pause
-                </IdeButton>
-              ) : (
-                <IdeButton tone="primary" onClick={startSimulation} testId="ide-design-sim-run">
-                  Run
-                </IdeButton>
-              )}
-              <IdeButton tone="ghost" onClick={stepSimulation} testId="ide-design-sim-step">
-                Step{runtimeSim.stepMode ? ` t${simTick}` : ''}
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={resetSimulation} testId="ide-design-sim-reset">
-                Reset
-              </IdeButton>
-            </div>
-            <label className="ide-verify-field">
-              Speed (ticks/s)
-              <input
-                type="range"
-                min={1}
-                max={40}
-                step={1}
-                value={simSpeed}
-                onChange={(event) => onRuntimeSimSetSpeed?.(Number(event.target.value))}
-                data-testid="ide-design-sim-speed"
-              />
-            </label>
-            <div className="ide-kv-list ide-design-live-summary">
-              <div className="ide-kv-row">
-                <span>Tick</span>
-                <span data-testid="ide-design-sim-tick">{simTick}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Mode</span>
-                <span>{simRunning ? 'Running' : 'Paused'}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Last change</span>
-                <span data-testid="ide-design-last-change">{simulationStory.summary}</span>
-              </div>
-            </div>
-            <div className="ide-design-live-state-table" data-testid="ide-design-live-state-table">
-              <div className="ide-design-live-state-group">
-                <div className="ide-design-live-state-group-title">Inputs</div>
-                {liveIoSignals.inputRows.map((entry) => (
-                  <div className="ide-kv-row" key={`in-${entry.id}`} data-testid={`ide-design-live-input-${entry.id}`}>
-                    <span>
-                      {entry.label}
-                      {entry.pinAlias ? <span className="ide-design-live-pin"> {entry.pinAlias}</span> : null}
-                    </span>
-                    <code>{entry.value}</code>
-                  </div>
-                ))}
-              </div>
-              <div className="ide-design-live-state-group">
-                <div className="ide-design-live-state-group-title">Outputs</div>
-                {liveIoSignals.outputRows.map((entry) => (
-                  <div className="ide-kv-row" key={`out-${entry.id}`} data-testid={`ide-design-live-output-${entry.id}`}>
-                    <span>
-                      {entry.label}
-                      {entry.pinAlias ? <span className="ide-design-live-pin"> {entry.pinAlias}</span> : null}
-                    </span>
-                    <code>{entry.value}</code>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </IdeInspectorSection>
+              {/* Student-loop contract: live simulation must stay directly reachable even when
+                  other inspector sections participate in shared accordion behavior. */}
+              <IdeInspectorSection
+                title="Live Simulation"
+                testId="ide-design-live-sim-section"
+                defaultOpen
+                disableCollapse
+              >
+                {renderLiveSimulationContent()}
+              </IdeInspectorSection>
 
-          <IdeInspectorSection title="Signal Probe" testId="ide-design-signal-probe" defaultOpen={false}>
-            {selectedSignalKey ? (
-              <>
-                <div className="ide-kv-list">
-                  <div className="ide-kv-row">
-                    <span>Signal</span>
-                    <code data-testid="ide-design-signal-selected">{selectedSignalKey}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Current</span>
-                    <code data-testid="ide-design-signal-current-value">{selectedSignalValue}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Previous</span>
-                    <code>{activeInspectorSignalSnapshot?.previousValue ?? selectedSignalValue}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Transition</span>
-                    <span>{activeInspectorSignalSnapshot?.transition ?? 'stable'}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Last transition</span>
-                    <span>{activeInspectorSignalSnapshot?.lastTransitionTick ?? '—'}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Samples</span>
-                    <span>{selectedSignalHistory.length}</span>
-                  </div>
-                </div>
-                <div className="ide-design-signal-history" data-testid="ide-design-signal-history">
-                  {selectedSignalHistory.length > 0 ? (
-                    selectedSignalHistory.map((entry) => (
-                      <button
-                        key={`${selectedSignalKey}-${entry.tick}`}
-                        type="button"
-                        className={`ide-verify-waveform-point ${entry.value === 1 ? 'is-selected' : ''}`}
-                        onClick={() => onRuntimeSimSetSelectedSignal?.(selectedSignalKey)}
-                        data-testid="ide-design-signal-history-point"
+              <IdeInspectorSection title="Signal Probe" testId="ide-design-signal-probe" defaultOpen={false}>
+                {selectedSignalKey ? (
+                  <>
+                    <div className="ide-kv-list">
+                      <div className="ide-kv-row">
+                        <span>Signal</span>
+                        <code data-testid="ide-design-signal-selected">{selectedSignalKey}</code>
+                      </div>
+                      <div className="ide-kv-row">
+                        <span>Current</span>
+                        <code data-testid="ide-design-signal-current-value">{selectedSignalValue}</code>
+                      </div>
+                      <div className="ide-kv-row">
+                        <span>Previous</span>
+                        <code>{activeInspectorSignalSnapshot?.previousValue ?? selectedSignalValue}</code>
+                      </div>
+                      <div className="ide-kv-row">
+                        <span>Transition</span>
+                        <span>{activeInspectorSignalSnapshot?.transition ?? 'stable'}</span>
+                      </div>
+                      <div className="ide-kv-row">
+                        <span>Last transition</span>
+                        <span>{activeInspectorSignalSnapshot?.lastTransitionTick ?? '—'}</span>
+                      </div>
+                      <div className="ide-kv-row">
+                        <span>Samples</span>
+                        <span>{selectedSignalHistory.length}</span>
+                      </div>
+                    </div>
+                    <div className="ide-design-signal-history" data-testid="ide-design-signal-history">
+                      {selectedSignalHistory.length > 0 ? (
+                        selectedSignalHistory.map((entry) => (
+                          <button
+                            key={`${selectedSignalKey}-${entry.tick}`}
+                            type="button"
+                            className={`ide-verify-waveform-point ${entry.value === 1 ? 'is-selected' : ''}`}
+                            onClick={() => onRuntimeSimSetSelectedSignal?.(selectedSignalKey)}
+                            data-testid="ide-design-signal-history-point"
+                          >
+                            {entry.value}
+                          </button>
+                        ))
+                      ) : (
+                        <p className="ide-copy">No trace samples yet. Run or step simulation to populate history.</p>
+                      )}
+                    </div>
+                    <div className="ide-inline-actions">
+                      <IdeButton
+                        tone="secondary"
+                        onClick={() =>
+                          onRuntimeSimToggleProbe?.({
+                            key: selectedSignalKey,
+                            label: selectedSignalKey,
+                          })
+                        }
+                        testId="ide-design-signal-pin"
                       >
-                        {entry.value}
-                      </button>
-                    ))
-                  ) : (
-                    <p className="ide-copy">No trace samples yet. Run or step simulation to populate history.</p>
-                  )}
-                </div>
-                <div className="ide-inline-actions">
-                  <IdeButton
-                    tone="secondary"
-                    onClick={() =>
-                      onRuntimeSimToggleProbe?.({
-                        key: selectedSignalKey,
-                        label: selectedSignalKey,
-                      })
-                    }
-                    testId="ide-design-signal-pin"
-                  >
-                    Pin signal
-                  </IdeButton>
-                </div>
-              </>
-            ) : (
-              <p className="ide-copy">
-                Select a wire or probe a node port to inspect live value and recent tick history.
-              </p>
-            )}
-            {pinnedProbeRows.length > 0 ? (
-              <div className="ide-kv-list ide-copy-top-gap" data-testid="ide-design-probe-list">
-                {pinnedProbeRows.map((probe) => (
-                  <div className="ide-kv-row" key={probe.key}>
-                    <code>{probe.label}</code>
-                    <span>{probe.value}</span>
+                        Pin signal
+                      </IdeButton>
+                    </div>
+                  </>
+                ) : (
+                  <p className="ide-copy">
+                    Select a wire or probe a node port to inspect live value and recent tick history.
+                  </p>
+                )}
+                {pinnedProbeRows.length > 0 ? (
+                  <div className="ide-kv-list ide-copy-top-gap" data-testid="ide-design-probe-list">
+                    {pinnedProbeRows.map((probe) => (
+                      <div className="ide-kv-row" key={probe.key}>
+                        <code>{probe.label}</code>
+                        <span>{probe.value}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : null}
-          </IdeInspectorSection>
+                ) : null}
+              </IdeInspectorSection>
+            </React.Fragment>
+          ) : (
+            <React.Fragment key="design-inspector-idle-context">
+              <IdeInspectorSection title="Live Simulation" testId="ide-design-live-sim-section" defaultOpen={false}>
+                {renderLiveSimulationContent()}
+              </IdeInspectorSection>
+              <IdeInspectorSection title="Advanced Details" testId="ide-design-inspector-advanced" defaultOpen={false}>
+                {renderAdvancedDetails()}
+              </IdeInspectorSection>
+            </React.Fragment>
+          )}
 
         </>
       }

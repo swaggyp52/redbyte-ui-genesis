@@ -199,7 +199,7 @@ describe('DesignSurface workstation redesign', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-selection-inspector')).toBeTruthy();
+      expect(view.getByTestId('ide-design-context-current').textContent).toBe('1');
     });
 
     expect(view.getByTestId('ide-design-context-current').textContent).toBe('1');

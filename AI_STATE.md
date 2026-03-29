@@ -1,4 +1,70 @@
 # AI State
+## Change Log 2026-03-28 (Design idle inspector now stays quiet until the student actually selects something)
+
+**Subsystem**: IDE Design surface / idle inspector hierarchy / first-look chrome reduction
+
+### Problem
+
+After the non-Design simplification work, the first Design-specific chrome problem was the idle right inspector:
+
+- with nothing selected, the rail still read like an active control center instead of quiet support for the canvas
+- `Signal / State` repeated the same empty guidance already shown by the identity card
+- `Board Signal` and `Signal Probe` advertised empty instrumentation before a student had selected anything
+- `Live Simulation` opened as a full workstation even when the studentâ€™s actual next step was just to start editing on the canvas
+
+This was a hierarchy/presentation problem inside Design, not a new interaction or model-truth bug.
+
+### What changed
+
+- Reduced the idle inspector to a smaller first-look stack:
+  - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - the no-selection card now carries one concise next-step line so the rail still explains what to do without duplicating whole sections
+  - the idle inspector now shows only:
+    - the minimal no-selection summary
+    - a collapsed `Live Simulation` disclosure
+    - a collapsed `Advanced Details` disclosure
+
+- Hid selection-empty instrumentation until it becomes useful:
+  - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - `Signal / State`, `Board Signal`, and `Signal Probe` no longer render in the idle state
+  - once a node, wire, or signal is selected, the richer inspector sections still return in their existing order
+
+- Preserved selected-state usefulness:
+  - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - selected-node / selected-wire / selected-signal inspector flows still expose:
+    - actions
+    - properties
+    - signal/state context
+    - board mapping
+    - live simulation
+    - probing tools
+  - keyed the idle vs selected inspector branch so section open/closed state does not leak across branch switches
+
+- Updated Design inspector expectations:
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+  - idle hierarchy tests now assert the calmer no-selection stack
+  - workstation coverage still asserts that selected-state context metrics remain available
+
+### Student-visible behavior
+
+- When nothing is selected, the right rail now stays quiet:
+  - one minimal summary
+  - `Live Simulation` hidden behind a disclosure
+  - `Advanced Details` hidden behind a disclosure
+- The canvas reads more clearly as the first thing to look at.
+- As soon as the student selects a node, wire, or signal, the richer inspector tools come back without losing current editability.
+
+### Proof
+
+- targeted tests:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+- build:
+  - `pnpm --filter @redbyte/playground build`
+- before/after screenshots captured at:
+  - `1280x720` / `1440x900`
+  - `100%` / `125%` page scale
+
 ## Change Log 2026-03-28 (Export and Hardware now lead with guided student actions instead of workstation-heavy dashboard chrome)
 
 **Subsystem**: IDE Export / Hardware hierarchy / guided handoff workflow

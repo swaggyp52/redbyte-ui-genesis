@@ -197,7 +197,7 @@ afterEach(() => {
 });
 
 describe('DesignSurface inspector hierarchy', () => {
-  it('keeps the empty inspector focused on identity and live simulation instead of filler sections', async () => {
+  it('keeps the empty inspector focused on identity while collapsing idle tooling', async () => {
     const view = renderSurface(BASE_CIRCUIT);
 
     await waitFor(() => {
@@ -207,7 +207,11 @@ describe('DesignSurface inspector hierarchy', () => {
     expect(view.queryByTestId('ide-design-inspector-health')).toBeNull();
     expect(view.queryByTestId('ide-design-inspector-actions')).toBeNull();
     expect(view.queryByTestId('ide-design-inspector-properties')).toBeNull();
-    expect(view.getByTestId('ide-design-live-sim-section')).toBeTruthy();
+    expect(view.queryByTestId('ide-design-context-inspector')).toBeNull();
+    expect(view.queryByTestId('ide-design-board-signal')).toBeNull();
+    expect(view.queryByTestId('ide-design-signal-probe')).toBeNull();
+    expect(view.getByTestId('ide-design-inspector-next-step').textContent).toContain('Start on the canvas first');
+    expect(view.getByTestId('ide-design-live-sim-section').getAttribute('data-open')).toBe('false');
   });
 
   it('anchors selection identity with friendly title, subtitle, and student-safe reference metadata', async () => {
