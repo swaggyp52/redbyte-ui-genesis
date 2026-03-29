@@ -19,7 +19,7 @@ function makeSignalInventory(
 }
 
 describe('buildVerifySessionViewModel', () => {
-  it('treats pre-run sessions as draft simulation work', () => {
+  it('treats pre-run sessions as draft testbench work', () => {
     const model = buildVerifySessionViewModel({
       totalVectorCount: 1,
       totalExpectedCaseCount: 1,
@@ -36,7 +36,9 @@ describe('buildVerifySessionViewModel', () => {
     expect(model.mode).toBe('simulation');
     expect(model.status).toBe('draft');
     expect(model.statusBadge).toBe('DRAFT');
-    expect(model.runLabel).toBe('Run Simulation');
+    expect(model.title).toBe('Ready to run this testbench');
+    expect(model.summary).toContain('Add expected outputs when you want Compare to check them.');
+    expect(model.runLabel).toBe('Run Testbench');
   });
 
   it('treats first-run sessions with expected outputs armed as draft compare work', () => {

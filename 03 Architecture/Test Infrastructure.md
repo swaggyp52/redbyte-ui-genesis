@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-03-25
+updated: 2026-03-29
 related:
   - "[[BUG-003 React.act Infrastructure Failure]]"
   - "[[BUG-001 Connection Fixture Format Mismatch]]"
@@ -54,6 +54,27 @@ pnpm -w exec vitest run --config vitest.config.ts \
 ```
 
 > **Note:** The vitest binary at `node_modules/.bin/vitest` has Windows-specific paths hardcoded. It only works from the Windows side via `pnpm`. It cannot be invoked from the Linux VM sandbox directly.
+
+## Preview-backed Gate Validation
+
+Preview-backed authorities do **not** run against Vitest source transforms. They run against the built `@redbyte/playground` preview bundle.
+
+- `scripts/gates/*.mjs`
+- `scripts/repo-status.mjs`
+- `pnpm -s classroom:signoff`
+
+After UI/source edits that affect preview-backed gates, rebuild the playground before rerunning those authorities:
+
+```bash
+pnpm --filter @redbyte/playground build
+```
+
+Current gate-maintenance rules:
+
+- prefer `loadStarterProject(page, options)` from `scripts/gates/_gateHarness.mjs` over hardcoded starter selectors
+- quiet Design may hide the empty workbench console completely; only real compiler diagnostics should reclaim it
+- Board Resources may start collapsed in Design and must be explicitly opened by board-placement gates
+- Verify left-dock gates may need to restore the left dock from the rail before asserting signal-list chrome
 
 ---
 

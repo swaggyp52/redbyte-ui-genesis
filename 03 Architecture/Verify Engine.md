@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: verify
-updated: 2026-03-25
+updated: 2026-03-29
 related:
   - "[[Verify Hint System]]"
   - "[[Connection Model]]"
@@ -33,6 +33,12 @@ The latest Phase 7 slice moved the scenario model one layer deeper into the real
 - `projectRuntime.runVerification(...)` now prefers the resolved active scenario when callers omit vectors
 - `projectRuntime.generateBringUpVectors()` now seeds from the active scenario before falling back to compatibility `projectVectors`
 - the live shell no longer reads `projectVectors` directly for Verify authority; `IdeApp` now trusts the active-scenario invariant and uses `activeScenario?.vectors ?? []`
+
+The latest pre-lab trust slice tightened the first-run student contract:
+
+- draft trace-authoring sessions now use testbench wording (`Ready to run this testbench` / `Run Testbench`) instead of generic simulation wording
+- compare wording remains reserved for asserted sessions that actually have expected outputs loaded
+- the first-run builder/footer now consumes authoritative total vector + assertion state from `VerifySurface`, so custom-vector sessions cannot drift into a `READY` hero with a missing primary run CTA
 
 ## Canonical Shape / Contract
 
@@ -114,13 +120,17 @@ assertions-differ
 - The live schematic plus current IO mapping are the simulation truth source. `projectRuntime.runVerification(...)` rebuilds `buildDeterministicVerifyContext(...)` from the current circuit at run time; it does not trust old interactive trace state.
 - Verify freshness must only depend on the inputs that change verify truth: circuit structure, IO mapping, and the vector set actually used for the run.
 - Project identity edits are export metadata changes, not verify-truth changes. They may dirty export, but they must not dirty verify freshness.
-- IO rows are derived from the live circuit boundary via `synchronizeProjectIoRows(...)`. Vector keys are normalized and rekeyed through `row.id`, `row.label`, and `row.nodeId`, which is why IO rename/remove flows now survive design edits without zombie keys.
+- IO rows are derived from the live circuit boundary via `synchronizeProjectIoRows(...)`. Bare `input` / `output` labels and internal `node-v2-*` style ids are not acceptable student-facing boundary names; unlabeled or legacy rows must promote to deterministic labels such as `Input 1`, `Input 2`, `Output 1`, or `Clock`.
+- Vector keys are normalized and rekeyed through `row.id`, `row.label`, and `row.nodeId`, which is why IO rename/remove flows now survive design edits without zombie keys.
+- Restore/import paths must rekey project vectors, scenario vectors, and custom vectors against the sanitized live IO rows during load/merge. A saved project may arrive with old boundary ids, but the in-memory Verify state must not keep those stale keys after normalization.
 - Trace-only observation and asserted comparison now persist a distinct `runKind` on `RuntimeVerifyRun`, and `ProjectHealth` carries that projection into Project / Pipeline / Hardware / Export.
 - `status` still matters inside a given run kind: `runKind='verify'` plus `status='pass' | 'fail'` distinguishes assertions-match vs assertions-differ, while stale remains a freshness overlay computed from the live project hash.
 - `projectRuntime.setVectors(...)` and `generateBringUpVectors(...)` now stamp the active scenario in lockstep with `projectVectors`, so `scenarioVersion` and `scenarioContentHash` no longer lag behind the normal shell authoring path.
 - Verify scenario lifecycle is now partially first-class in the runtime store: create / duplicate / rename / delete / switch all operate on `scenarios + activeScenarioId`, then mirror the selected scenario back into `projectVectors` as a compatibility bridge.
 - `IdeApp.tsx` now resolves `activeScenario = getActiveScenario(scenarios, activeScenarioId)` and uses that scenario as the shell-level vector authority for Verify / Export / Hardware. The compatibility `projectVectors` path still exists, but the normal shell flow no longer drops scenario provenance on the floor.
 - Export artifact generation is already decoupled from verify PASS/FAIL. Verify affects provenance notes and advisory copy only; it should not block artifact generation.
+- Draft trace-authoring sessions must speak in testbench language. Reserve compare wording for asserted sessions and reserve observation-only wording for recorded trace evidence.
+- First-run CTA readiness must derive from the total live vector authority (`activeScenario` / project vectors + custom vectors), not just project-authored vectors, so custom-vector sessions still expose the correct primary action.
 
 ## ProjectVectors Audit
 
@@ -169,6 +179,7 @@ The current repo state does **not** support deleting `projectVectors` outright y
   - now stamps the active scenario whenever the compatibility `projectVectors` path changes
   - now exposes the first real scenario library actions used by the shell (`createScenario`, `duplicateScenario`, `renameScenario`, `deleteScenario`, `switchScenario`)
   - now prefers active-scenario vectors before falling back to compatibility `projectVectors` in runtime verify and bring-up generation
+  - now promotes unlabeled/legacy boundary rows to student-facing labels during load/restore and rekeys restored vectors against the sanitized IO row ids
 - `packages/rb-apps/src/apps/ide/sim/simEngineCore.ts`
   - runs deterministic verify from the current `SimulationModel`
   - resolves IO keys through `getIoSignalLookupKeys(...)` + model-port aliases
@@ -178,9 +189,12 @@ The current repo state does **not** support deleting `projectVectors` outright y
   - summary pills, run-proof hero/copy, result-pane visibility, and trace capture CTA no longer use live `DisplayStatus` branches
   - next-run intent now drives only pre-run/reference copy, compare-vs-trace run wiring, and the advanced toggle state
   - the remaining local split is mostly draft-only `READY` / `BLOCKED` presentation plus compatibility `projectVectors` paths
+- `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - first-run footer/copy now consumes authoritative vector/assertion counts from `VerifySurface` instead of inferring readiness from project-authored vectors alone
 - `packages/rb-apps/src/apps/ide/viewmodels/buildVerifySessionViewModel.ts`
   - intended student-facing source of truth for session state
   - now keeps persisted compare evidence authoritative even when live vector props are temporarily absent
+  - now defines the draft trace-authoring contract using testbench language instead of generic simulation wording
 - `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`
   - correctly keeps export content decoupled from verify status
   - now refuses to treat `runKind='trace'` as verified PASS provenance

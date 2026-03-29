@@ -28,8 +28,19 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
     { timeout: 10000 }
   );
 
+  const signalFilterState = page.locator('[data-testid="ide-verify-signal-filter-state"]').first();
+  const signalFilterVisible = await signalFilterState.isVisible().catch(() => false);
+  if (!signalFilterVisible) {
+    const leftDockToggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
+    const leftDockToggleVisible = await leftDockToggle.isVisible().catch(() => false);
+    if (leftDockToggleVisible) {
+      await leftDockToggle.click();
+      await signalFilterState.waitFor({ state: 'visible', timeout: 10000 });
+    }
+  }
+
   const filterState = (
-    (await page.locator('[data-testid="ide-verify-signal-filter-state"]').first().textContent().catch(() => '')) ??
+    (await signalFilterState.textContent().catch(() => '')) ??
     ''
   ).toLowerCase();
   assert(

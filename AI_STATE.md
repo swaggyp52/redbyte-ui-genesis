@@ -1,4 +1,275 @@
 # AI State
+## Change Log 2026-03-29 (classroom signoff proof recovered after harness + gate truth repair)
+
+**Subsystem**: classroom signoff / repo-status gates / Design idle live simulation / gate harness
+
+### Problem
+
+The next pre-lab blocker after the Verify wording slice was the repo's own proof chain:
+
+- `scripts/gates/_gateHarness.mjs` did not export `loadStarterProject(...)`, so multiple gates failed before they could evaluate the real student loop
+- once that export bug was fixed, the broader student-loop gate still failed because idle Design rendered `Live Simulation` closed by default, which hid the first `ide-design-live-input-*` rows from the gate and from a first-arrival student flow
+- after those two root causes were cleared, the remaining repo-status / signoff failures were stale gate assumptions rather than live product regressions:
+  - quiet Design console gates still assumed the empty console was rendered by default
+  - board-placement gates still assumed Board Resources were open by default
+  - some gates still hardcoded older starter selectors instead of the current Project landing flow
+  - Verify workbench gating assumed the left signal dock was always already open
+  - canvas-legibility gating enforced an older label-size threshold than the current logic-canvas minimum
+
+### What changed
+
+- `scripts/gates/_gateHarness.mjs`
+  - now exports `loadStarterProject(page, options)` for shared Project-surface starter loading
+  - now reports which starter selectors were attempted when none are visible
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - idle inspector path now keeps `Live Simulation` open and non-collapsible so live IO rows stay directly reachable on first arrival
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx`
+  - now carries a regression asserting idle Design leaves live simulation reachable and renders live input/output rows
+- gate contracts aligned to current product truth:
+  - `scripts/gates/ide-workbench-layout-contract.mjs`
+  - `scripts/gates/ide-design-workbench-contract.mjs`
+  - `scripts/gates/ide-design-fit-contract.mjs`
+  - `scripts/gates/ide-design-build-fast-contract.mjs`
+  - `scripts/gates/ide-design-live-sim-contract.mjs`
+  - `scripts/gates/ide-design-multiselect-contract.mjs`
+  - `scripts/gates/ide-diagnostics-jump-contract.mjs`
+  - `scripts/gates/ide-canvas-legibility-contract.mjs`
+  - `scripts/gates/ide-verify-workbench-contract.mjs`
+
+### Student-visible behavior
+
+- starter-loaded Design now exposes live simulation rows immediately even when no node is selected
+- classroom signoff no longer fails on stale harness/gate assumptions before reaching the real student loop
+- repo-status and signoff now prove the current Design -> Verify -> Export -> Program flow against the product that students actually see
+
+### Proof
+
+- focused tests:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+  - result: `23 passed`
+- repo health:
+  - `node .\\scripts\\repo-status.mjs`
+  - result: `39/39 checks passed`, `Repository Status: HEALTHY (product is shippable)`
+- classroom signoff:
+  - `pnpm -s classroom:signoff --allow-dirty`
+  - result: `10/10 checks passed`, `FINAL VERDICT: CLASSROOM_READY`
+
+### Remaining pre-lab priority
+
+1. live Basys3 bring-up proof on the actual bridge/toolchain setup
+2. strict clean-tree `classroom:signoff` rerun once the current batch is committed / the working tree is clean
+
+## Change Log 2026-03-29 (Verify draft sessions now speak in testbench language, and first-run CTA readiness follows the real vector authority)
+
+**Subsystem**: Verify session model / Verify first-run builder / custom-vector draft flow
+
+### Problem
+
+The pre-lab audit showed that Verify still talked like a power-user tool at the exact moment a student needed one obvious next move:
+
+- draft trace-authoring sessions still said `Ready to simulate` / `Run Simulation`, which framed Verify as a generic sim console instead of a concrete testbench flow
+- the first-run footer decided whether to show the primary run CTA from `authoredVectors.length`, so a valid draft built from `customVectors` could show a ready session hero while the footer still hid the run button behind `Generate Basics`
+
+### What changed
+
+- `buildVerifySessionViewModel.ts`
+  - draft trace-authoring sessions now use testbench wording: `Ready to run this testbench` and `Run Testbench`
+  - asserted sessions keep the compare-specific wording (`Ready to compare` / `Run Compare`)
+  - draft trace summaries now explicitly teach that expected outputs are optional until the student wants Compare to check them
+
+- `ScenarioBuilderPanel.tsx`
+  - first-run copy now frames the work as building or refining a testbench instead of generic simulation
+  - compare guidance only appears when asserted expected cells actually exist
+  - the footer button label now comes from the Verify session model instead of hardcoding `Run Simulation`
+  - the secondary action now reads `Open vectors` instead of `Import`
+  - the first-run footer now accepts authoritative total vector / assertion counts so it can surface the correct CTA even when the active draft comes from custom vectors
+
+- `VerifySurface.tsx`
+  - now passes total vector count and assertion state into the first-run builder so the footer and the session hero agree about whether the student already has a runnable testbench
+
+### Student-visible behavior
+
+- a draft trace-first Verify session now reads like testbench authoring, not like detached simulator jargon
+- students who already have a draft made from custom vectors now see the primary run CTA immediately instead of being pushed back toward `Generate Basics`
+- compare wording still stays reserved for sessions that actually have asserted expected outputs loaded
+
+### Proof
+
+- focused tests:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx -t "treats pre-run sessions as draft testbench work|treats first-run sessions with expected outputs armed as draft compare work|labels trace-only verification as observation mode when no expected outputs are loaded|keeps Verify Generate Basics in trace-authoring mode for custom projects|detaches starter examples without leaving Verify stuck in starter compare mode" --reporter=basic`
+  - result: `5 passed`
+
+### Remaining pre-lab priority
+
+1. classroom signoff harness repair and proof-gate recovery
+2. rerun signoff and close any additional student-path blockers it exposes
+3. live Basys3 bring-up proof on the actual bridge/toolchain setup
+
+## Change Log 2026-03-29 (Blank-origin projects now stay truthful, and boundary IO labels no longer leak generic/internal names into the student path)
+
+**Subsystem**: Project surface / project runtime / boundary IO identity / restore normalization
+
+### Problem
+
+The pre-lab audit found two fast trust killers in the student path:
+
+- loaded scratch projects could still present themselves as `Blank Project` and fall back to `Top module top is loaded and ready for setup`, which read as contradictory and fake-blank
+- unlabeled or legacy boundary rows could still surface as bare `input` / `output` labels or internal ids like `node-v2-1`, and restored vectors could keep those stale keys even after the live IO rows were cleaned up
+
+### What changed
+
+- `ProjectSurface.tsx`
+  - loaded blank-origin projects now present `Fresh Project` instead of `Blank Project`
+  - blank-origin fallback copy now says the circuit started from a blank canvas instead of pretending a generic top-module load is the useful truth
+  - custom/import/saved fallback summaries now describe the actual next-step workflow instead of collapsing everything into the same top-module sentence
+
+- `projectRuntime.ts`
+  - `synchronizeProjectIoRows(...)` now rejects bare `input` / `output` and internal `node-v2-*` style boundary labels as student-facing names
+  - unlabeled or legacy boundary rows now get deterministic fallback names like `Input 1`, `Input 2`, and `Output 1`
+  - load/restore paths now rekey project vectors, scenarios, and custom vectors against the sanitized live IO row ids so restored Verify state stays aligned with the renamed rows
+
+- `ioLabels.ts`
+  - student-facing label fallback no longer exposes internal `node-v2-*` / `node_v2_*` ids when a safer fallback is available
+
+### Student-visible behavior
+
+- a loaded scratch project no longer claims to be a blank placeholder
+- Project / Verify / Map Pins / Export can now inherit numbered student-facing boundary labels instead of duplicate `input` / `output` rows or raw runtime ids
+- saved projects that carried old boundary ids now normalize back to stable student-facing row ids during restore instead of leaving Verify vectors on stale internal keys
+
+### Proof
+
+- focused tests:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/ioLabels.test.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts`
+  - result: `35/35` tests passing
+
+### Remaining pre-lab priority
+
+1. Verify testbench flow simplification / clarification
+2. classroom signoff harness repair and proof-gate recovery
+3. live Basys3 bring-up proof on the actual bridge/toolchain setup
+
+## Change Log 2026-03-29 (Pre-lab audit says RedByte is not yet trustworthy for a scratch student lab flow)
+
+**Subsystem**: Project / Verify / Map Pins / Export / classroom signoff / hardware readiness
+
+### Problem
+
+A live student-path audit plus the repo's own classroom signoff show that RedByte is still short of classroom trust for a lab where students start from scratch and rely on the app without TA interpretation.
+
+The highest-risk failures are not visual polish gaps. They are truth and reliability gaps:
+
+- Project currently presents a contradictory blank-state story:
+  - the Project surface labels the current state as `Blank Project`
+  - the same screen also says `Top module rb_2_bit_up_counter is loaded and ready for setup`
+  - the same screen shows `Scenario: verified` and a `Continue to Design` CTA even though required mappings are still missing
+- Live signal identity is still confusing in student-facing places:
+  - Project signal preview showed duplicate `input` labels plus synthetic-looking labels like `OUT1` / `OUT2`
+  - Verify showed `Inputs: input, input`
+  - Map Pins showed duplicate `input` rows and the export path exposed unmapped/internal-looking names such as `node-v2-1`, `node-v2-2`, and `node-v2-4`
+- Verify is functional but still reads as a power-user workstation instead of one obvious first-time testbench flow:
+  - the live page exposed a dense control stack with hidden scenario/testbench authoring behind compact controls
+  - expected-output authoring exists, but the student path is not visually obvious enough for first-run trust
+- Real hardware is not proven in the current environment:
+  - `classroom:hw:check` reported `Basys3 detected: UNKNOWN (bridge unavailable)`
+  - dry-run programming is covered, but live board readiness is not established by this audit
+- The repo cannot currently prove the student loop with its own signoff:
+  - `classroom:signoff` returned `NOT_READY`
+  - multiple signoff gates fail before product truth is even evaluated because `scripts/gates/_gateHarness.mjs` does not export `loadStarterProject`, yet several gate scripts import it
+
+### What changed
+
+- No product code changed in this audit.
+- Captured and verified the current pre-lab blocker set using:
+  - live browser inspection of Project, Verify, Map Pins, and Export
+  - repo signoff and targeted lab-readiness gates
+
+### Student-visible behavior confirmed in the live app
+
+- A supposedly blank project can still look preloaded and partially complete.
+- Verify can still show duplicate signal identities and overly dense authoring controls.
+- Map Pins can still present ambiguous rows that look unsafe for a first-time student to map confidently.
+- Export blocking is generally honest, but the upstream state feeding it is still confusing enough to reduce trust.
+
+### Proof
+
+- live audit:
+  - Project showed `Blank Project` while also showing `Top module rb_2_bit_up_counter is loaded and ready for setup.`
+  - Verify showed duplicate input identity: `Inputs: input, input`
+  - Map Pins showed duplicate `input` rows and missing mappings while Hardware still framed the next step around Export/programming dependency
+  - browser console recorded runtime issues including duplicate React keys, passive-listener errors, and boot/engine warnings
+- signoff:
+  - `pnpm -s classroom:signoff`
+  - result: `FINAL VERDICT: NOT_READY`
+- targeted gates:
+  - `pnpm -s proj:autosave-recovery-gate` → PASS
+  - `pnpm -s hw:dryrun-program-flow-gate` → PASS
+  - `pnpm -s classroom:hw:check` → bridge unavailable / Basys3 unknown / simulation mode only
+  - `pnpm -s ide:gate:viewport-overflow-contract` → PASS
+  - `pnpm -s ui:console-budget-gate` → PASS (source-budget only; does not cover runtime browser errors)
+
+### Immediate pre-lab priority
+
+Before more chrome work, clear these in order:
+
+1. blank-project honesty and starter-state truth
+2. boundary signal naming / duplicate row cleanup across Project, Verify, Map Pins, and Export
+3. one obvious testbench authoring path in Verify
+4. classroom signoff repair so the repo can actually prove the student loop again
+5. real Basys3 bring-up proof on a live bridge/board setup
+
+## Change Log 2026-03-29 (Design quiet states no longer reserve bottom-edge chrome for an empty console and repetitive footer)
+
+**Subsystem**: IDE Design surface / bottom-edge hierarchy / console and footer demotion
+
+### Problem
+
+After the top-stack, left-dock, and blank-state cleanup slices, quiet Design still spent bottom-edge space on chrome that was not helping the student author a circuit:
+
+- blank and healthy Design still rendered a collapsed workbench console with `Console / Show` even when there were no compiler diagnostics to inspect
+- the global footer repeated `Mode` and `Project Hash` metadata that the shell already exposed elsewhere
+- together, the bottom edge still felt like workstation scaffolding instead of secondary support for the canvas
+
+This was a Design-only hierarchy issue, not a shared-shell refactor.
+
+### What changed
+
+- Hid the empty Design console instead of reserving a dead bottom row:
+  - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - quiet Design now passes `consoleMode="hidden"` whenever there are no compiler warnings, errors, or visible diagnostics rows
+  - warnings/errors still preserve the existing collapsed/blocking console path
+
+- Quieted the Design footer chrome:
+  - `packages/rb-apps/src/apps/ide/components/IdeStatusBar.tsx`
+  - Design mode now renders the footer as a readiness pill only
+  - non-Design modes keep the full footer details unchanged
+
+- Added the smallest footer layout hook needed for the quiet variant:
+  - `packages/rb-apps/src/apps/ide/ide-root.css`
+
+- Added regression coverage for the new bottom-edge contract:
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.blankState.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/IdeStatusBar.test.tsx`
+
+### Student-visible behavior
+
+- Blank Design no longer shows the dead `Console / Show` strip when there is nothing to inspect.
+- Healthy Design stays canvas-first at the bottom edge as well as the top edge.
+- If compiler diagnostics appear, the Design console still comes back so fix paths remain reachable.
+- The footer in Design now reads as a quiet readiness signal instead of another metadata bar.
+
+### Proof
+
+- focused tests:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.blankState.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/IdeStatusBar.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx`
+  - result: `28/28` tests passing
+- build:
+  - `pnpm --filter @redbyte/playground build`
+- live audit:
+  - blank Design no longer renders `ide-workbench-console`
+  - after `Add AND Starter`, healthy Design still keeps the bottom edge quiet while pipeline truth remains visible
+
 ## Change Log 2026-03-29 (Blank Design now teaches with one primary onboarding element instead of stacked duplicate guidance)
 
 **Subsystem**: IDE Design surface / blank-state hierarchy / onboarding de-duplication

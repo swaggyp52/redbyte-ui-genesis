@@ -25,8 +25,6 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
   const inspector = modeRoot.locator('[data-testid="ide-inspector"]').first();
   const workspace = modeRoot.locator('[data-testid="ide-mode-body"]').first();
   const paneRow = modeRoot.locator('[data-testid="ide-design-pane-row"]').first();
-  const consolePanel = modeRoot.locator('[data-testid="ide-design-console-diagnostics"]').first();
-  const diagnosticsList = modeRoot.locator('[data-testid="ide-design-console-list"]').first();
   const canvas = modeRoot.locator('[data-testid="ide-design-live-canvas"]').first();
 
   assert(await visible(leftDockPalette), 'design left dock palette marker missing');
@@ -40,11 +38,9 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
     'design surface should opt into edge-to-edge framing'
   );
   const consoleCount = await modeRoot.locator('[data-testid="ide-workbench-console"]').count();
-  assert(consoleCount >= 1, 'design console container missing');
-  const consoleState = await modeRoot.locator('[data-testid="ide-workbench-console"]').first().getAttribute('data-console-state');
-  assert(consoleState === 'collapsed', `design console should default collapsed, saw "${consoleState ?? ''}"`);
+  assert(consoleCount === 0, 'quiet design should hide the empty workbench console by default');
   const diagnosticsCount = await modeRoot.locator('[data-testid="ide-design-console-list"]').count();
-  assert(diagnosticsCount >= 1, 'design diagnostics list container missing');
+  assert(diagnosticsCount === 0, 'quiet design should not render diagnostics chrome when there are no diagnostics');
   assert(await visible(canvas), 'design canvas marker missing');
 
   const canvasReady = await page

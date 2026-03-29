@@ -3537,6 +3537,10 @@
   background: rgba(10, 17, 24, 0.95);
 }
 
+.ide-status-bar--quiet {
+  justify-content: flex-end;
+}
+
 .ide-status-item {
   font-size: 10px;
   color: var(--ide-text-soft);

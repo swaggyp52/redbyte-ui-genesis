@@ -53,6 +53,13 @@ await runIdeGate('IDE design live sim contract satisfied', async ({ page, baseUr
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await page.locator('[data-testid="ide-design-live-sim-section-toggle"]').click();
 
+  const boardPalette = page.locator('[data-testid="ide-design-board-io-palette"]').first();
+  const boardPaletteVisible = await boardPalette.isVisible().catch(() => false);
+  if (!boardPaletteVisible) {
+    await page.locator('[data-testid="ide-design-palette-toggle-board"]').first().click();
+    await boardPalette.waitFor({ state: 'visible', timeout: 10000 });
+  }
+
   // Place two switch inputs from the board palette — they render switch-toggle-* handles
   // and create live-input-* rows in the inspector.
   await placeBoardInput(page, '[data-testid="ide-design-board-input-sw0"]', 0.24, 0.38);

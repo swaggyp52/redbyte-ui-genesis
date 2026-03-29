@@ -197,7 +197,7 @@ afterEach(() => {
 });
 
 describe('DesignSurface inspector hierarchy', () => {
-  it('keeps the empty inspector focused on identity while collapsing idle tooling', async () => {
+  it('keeps the empty inspector focused on identity while leaving live simulation reachable', async () => {
     const view = renderSurface(BASE_CIRCUIT);
 
     await waitFor(() => {
@@ -211,7 +211,13 @@ describe('DesignSurface inspector hierarchy', () => {
     expect(view.queryByTestId('ide-design-board-signal')).toBeNull();
     expect(view.queryByTestId('ide-design-signal-probe')).toBeNull();
     expect(view.getByTestId('ide-design-inspector-next-step').textContent).toContain('Start on the canvas first');
-    expect(view.getByTestId('ide-design-live-sim-section').getAttribute('data-open')).toBe('false');
+    expect(view.getByTestId('ide-design-live-sim-section').getAttribute('data-open')).toBe('true');
+    const liveInputRows = Array.from(view.container.querySelectorAll('[data-testid^="ide-design-live-input-"]'));
+    const liveOutputRows = Array.from(view.container.querySelectorAll('[data-testid^="ide-design-live-output-"]'));
+    expect(liveInputRows).toHaveLength(1);
+    expect(liveOutputRows).toHaveLength(1);
+    expect(liveInputRows[0]?.textContent).toContain('SW0');
+    expect(liveOutputRows[0]?.textContent).toContain('LD0');
   });
 
   it('anchors selection identity with friendly title, subtitle, and student-safe reference metadata', async () => {

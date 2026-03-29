@@ -370,6 +370,92 @@ describe('mergePersistedRuntimeState', () => {
     expect(merged.projectHealthCore.dirtySinceExport).toBe(false);
   });
 
+  it('assigns numbered boundary labels to unlabeled boundary nodes on load', () => {
+    useProjectRuntime.getState().loadFromProject({
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-03-29T00:00:00.000Z',
+      updatedAt: '2026-03-29T00:00:00.000Z',
+      name: 'Untitled Project',
+      description: '',
+      circuit: {
+        nodes: [
+          { id: 'node-v2-1', type: 'INPUT', x: 0, y: 0, config: {}, state: {} },
+          { id: 'node-v2-2', type: 'INPUT', x: 0, y: 120, config: {}, state: {} },
+          { id: 'node-v2-3', type: 'OUTPUT', x: 240, y: 0, config: {}, state: {} },
+        ],
+        connections: [],
+      },
+      ioMapping: {
+        inputs: [],
+        outputs: [],
+      },
+      vectors: [],
+      meta: {
+        projectId: 'rb-unlabeled-boundaries',
+        projectKind: 'blank',
+        scenarioAuthority: 'none',
+      },
+    });
+
+    const loaded = useProjectRuntime.getState();
+
+    expect(loaded.projectIoRows.map((row) => row.label)).toEqual(['Input 1', 'Input 2', 'Output 1']);
+    expect(loaded.projectIoRows.map((row) => row.id)).toEqual(['input_1', 'input_2', 'output_1']);
+  });
+
+  it('upgrades legacy internal boundary labels to student-facing names on load', () => {
+    useProjectRuntime.getState().loadFromProject({
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-03-29T00:00:00.000Z',
+      updatedAt: '2026-03-29T00:00:00.000Z',
+      name: 'Untitled Project',
+      description: '',
+      circuit: {
+        nodes: [
+          { id: 'node-v2-1', type: 'INPUT', x: 0, y: 0, config: {}, state: {} },
+          { id: 'node-v2-2', type: 'INPUT', x: 0, y: 120, config: {}, state: {} },
+          { id: 'node-v2-3', type: 'OUTPUT', x: 240, y: 0, config: {}, state: {} },
+        ],
+        connections: [],
+      },
+      ioMapping: {
+        inputs: [
+          { id: 'node-v2-1', nodeId: 'node-v2-1', port: 'out', label: 'node-v2-1', pin: '' },
+          { id: 'input', nodeId: 'node-v2-2', port: 'out', label: 'input', pin: '' },
+        ],
+        outputs: [
+          { id: 'output', nodeId: 'node-v2-3', port: 'in', label: 'output', pin: '' },
+        ],
+      },
+      vectors: [
+        {
+          tick: 0,
+          inputs: {
+            'node-v2-1': 1,
+            input: 0,
+          },
+          expected: {
+            output: 1,
+          },
+        },
+      ],
+      meta: {
+        projectId: 'rb-legacy-boundary-labels',
+        projectKind: 'saved',
+        scenarioAuthority: 'draft',
+      },
+    });
+
+    const loaded = useProjectRuntime.getState();
+
+    expect(loaded.projectIoRows.map((row) => row.label)).toEqual(['Input 1', 'Input 2', 'Output 1']);
+    expect(loaded.projectIoRows.map((row) => row.id)).toEqual(['input_1', 'input_2', 'output_1']);
+    expect(loaded.projectVectors[0]?.inputs).toEqual({ input_1: 1, input_2: 0 });
+    expect(loaded.projectVectors[0]?.expected).toEqual({ output_1: 1 });
+  });
+
   it('preserves incomplete-mapping qualification in restored project health', () => {
     const current = useProjectRuntime.getState();
 

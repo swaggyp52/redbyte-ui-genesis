@@ -32,8 +32,11 @@ await runIdeGate('IDE diagnostics jump contract satisfied', async ({ page, baseU
 
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-design-console-diagnostics"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-design-console-list"]', { timeout: 10000 });
+  const designConsoleCount = await page.locator('[data-testid="ide-design-console-diagnostics"]').count();
+  assert(
+    designConsoleCount === 0,
+    'mapping-only drift should not fabricate Design compiler diagnostics'
+  );
 
   const designAction = page.locator('[data-testid^="ide-design-diagnostic-action-"]').first();
   const designActionVisible = await designAction.isVisible().catch(() => false);

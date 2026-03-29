@@ -17,6 +17,38 @@ export async function visible(locator) {
   return locator.first().isVisible().catch(() => false);
 }
 
+export async function loadStarterProject(page, options = {}) {
+  const { preferredLabStarterTestId } = options;
+
+  await ensureProjectMode(page);
+
+  const starterSelectors = [
+    preferredLabStarterTestId ? `[data-testid="${preferredLabStarterTestId}"]` : null,
+    '[data-testid="ide-project-load-start-signal-tour"]',
+    '[data-testid="ide-project-landing-example-signal-tour"]',
+    '[data-testid="ide-project-load-start-logic-gates"]',
+    '[data-testid^="ide-project-landing-example-"]',
+    '[data-testid="ide-project-example-load"] button',
+    '[data-testid^="ide-project-lab-card-"]',
+  ].filter(Boolean);
+
+  for (const selector of starterSelectors) {
+    const starter = page.locator(selector).first();
+    if (!(await starter.isVisible().catch(() => false))) {
+      continue;
+    }
+
+    await clickLocatorElement(starter);
+    await confirmExampleReplacementIfNeeded(page);
+    await waitForStarterToLoad(page);
+    return;
+  }
+
+  throw new Error(
+    `starter project CTA was not visible in any supported Project surface state. Tried: ${starterSelectors.join(', ')}`
+  );
+}
+
 export async function runIdeGate(name, runScenario) {
   let browser;
   let context;
@@ -94,6 +126,52 @@ async function resolveIdeBaseUrl(rootBaseUrl) {
     // fall through to root URL
   }
   return normalizedRoot;
+}
+
+async function ensureProjectMode(page) {
+  const projectMode = page.locator('[data-testid="ide-mode-project"]').first();
+  if (await projectMode.isVisible().catch(() => false)) {
+    return;
+  }
+
+  const projectButton = page.locator('[data-testid="mode-button-project"]').first();
+  if (!(await projectButton.isVisible().catch(() => false))) {
+    throw new Error('project mode button was not visible while trying to load a starter project');
+  }
+
+  await clickLocatorElement(projectButton);
+  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
+}
+
+async function clickLocatorElement(locator) {
+  await locator.waitFor({ state: 'attached', timeout: 10000 });
+  await locator.evaluate((element) => {
+    if (!(element instanceof HTMLElement)) {
+      throw new Error('expected clickable HTMLElement');
+    }
+    element.click();
+  });
+}
+
+async function confirmExampleReplacementIfNeeded(page) {
+  const confirmButton = page.locator('[data-testid="ide-example-confirm"]').first();
+  if (!(await confirmButton.isVisible({ timeout: 1500 }).catch(() => false))) {
+    return;
+  }
+
+  await confirmButton.click({ force: true });
+  await page.locator('[data-testid="ide-example-confirm-modal"]').first().waitFor({
+    state: 'hidden',
+    timeout: 5000,
+  }).catch(() => null);
+}
+
+async function waitForStarterToLoad(page) {
+  await Promise.race([
+    page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 }),
+    page.waitForSelector('[data-testid="ide-design-workspace"]', { timeout: 10000 }),
+    page.waitForSelector('[data-node-id]', { timeout: 10000 }),
+  ]).catch(() => null);
 }
 
 async function reservePort() {

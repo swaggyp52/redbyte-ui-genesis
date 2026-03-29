@@ -122,5 +122,6 @@ describe('DesignSurface blank-state guidance', () => {
     expect(view.queryByTestId('ide-design-shortcut-strip')).toBeNull();
     expect(view.getByTestId('ide-design-inspector-empty').textContent).toContain('Nothing selected');
     expect(view.queryByTestId('ide-design-inspector-next-step')).toBeNull();
+    expect(view.queryByTestId('ide-workbench-console')).toBeNull();
   });
 });

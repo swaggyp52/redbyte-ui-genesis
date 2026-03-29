@@ -5,7 +5,7 @@ import { assert, runIdeGate, visible } from './_gateHarness.mjs';
 const MODES = ['project', 'design', 'verify', 'hardware', 'export', 'import'];
 const MODE_EXPECTATIONS = {
   project: { leftDock: 'visible', rightDock: 'hidden', console: 'hidden' },
-  design: { leftDock: 'visible', rightDock: 'visible', console: 'visible' },
+  design: { leftDock: 'visible', rightDock: 'visible', console: 'hidden' },
   hardware: { leftDock: 'visible', rightDock: 'collapsed', console: 'visible' },
   export: { leftDock: 'visible', rightDock: 'collapsed', console: 'visible' },
   import: { leftDock: 'visible', rightDock: 'hidden', console: 'hidden' },

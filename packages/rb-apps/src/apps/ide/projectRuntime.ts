@@ -539,7 +539,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       },
       loadFromProject: (project) => {
         const circuit = cloneCircuit(project.circuit);
-        const projectIoRows = synchronizeProjectIoRows(circuit, ioRowsFromProject(project));
+        const legacyProjectIoRows = ioRowsFromProject(project);
+        const projectIoRows = synchronizeProjectIoRows(circuit, legacyProjectIoRows);
         const incomingProjectId = (project.meta?.projectId ?? '').trim();
         const persistedProjectKind = normalizeProjectKind(project.meta?.projectKind, 'saved');
         const rawSourceExampleId =
@@ -559,7 +560,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             ? 'custom'
             : persistedProjectKind;
         const activeExampleId = projectKind === 'example' ? sourceExampleId : null;
-        const sourceProjectVectors = cloneVectors(project.vectors ?? []);
+        const sourceProjectVectors = normalizeVectorsForLiveIo(
+          rekeyVectorsForLiveIo(cloneVectors(project.vectors ?? []), legacyProjectIoRows, projectIoRows),
+          projectIoRows
+        );
         const shouldSanitizeDetachedExampleIdentity = Boolean(
           inferredDetachedExample &&
           projectKind !== 'example' &&
@@ -1692,8 +1696,12 @@ export function mergePersistedRuntimeState(
   }
 
   const circuit = cloneCircuit(normalizedProject.circuit);
-  const projectIoRows = synchronizeProjectIoRows(circuit, ioRowsFromProject(normalizedProject));
-  const projectVectors = cloneVectors(normalizedProject.vectors ?? []);
+  const legacyProjectIoRows = ioRowsFromProject(normalizedProject);
+  const projectIoRows = synchronizeProjectIoRows(circuit, legacyProjectIoRows);
+  const projectVectors = normalizeVectorsForLiveIo(
+    rekeyVectorsForLiveIo(cloneVectors(normalizedProject.vectors ?? []), legacyProjectIoRows, projectIoRows),
+    projectIoRows
+  );
   const rawVerifyLastRun = tryCloneVerifyRun(candidate.verifyLastRun);
   const invalidateVerifyTrust = hasLegacyVerifyTrust(rawVerifyLastRun, candidate.projectHealthCore);
   const verifyLastRun = invalidateVerifyTrust ? undefined : rawVerifyLastRun;
@@ -1753,7 +1761,11 @@ export function mergePersistedRuntimeState(
   const scenarios = repairedScenarios.map((scenario) => ({
     ...scenario,
     vectors: normalizeVectorsForLiveIo(
-      cloneVectors(Array.isArray(scenario.vectors) ? scenario.vectors : []),
+      rekeyVectorsForLiveIo(
+        cloneVectors(Array.isArray(scenario.vectors) ? scenario.vectors : []),
+        legacyProjectIoRows,
+        projectIoRows
+      ),
       projectIoRows
     ),
   }));
@@ -1815,12 +1827,16 @@ export function mergePersistedRuntimeState(
       }))
     : scenarios;
   const detachedCustomVectors = normalizeVectorsForLiveIo(
-    cloneVectors(
-      Array.isArray(candidate.customVectors) ? (candidate.customVectors as CustomTestVector[]) : []
-    ).map((vector) => ({
-      ...vector,
-      expected: shouldResetDetachedStarterCompareState ? {} : vector.expected,
-    })),
+    rekeyVectorsForLiveIo(
+      cloneVectors(
+        Array.isArray(candidate.customVectors) ? (candidate.customVectors as CustomTestVector[]) : []
+      ).map((vector) => ({
+        ...vector,
+        expected: shouldResetDetachedStarterCompareState ? {} : vector.expected,
+      })),
+      legacyProjectIoRows,
+      projectIoRows
+    ),
     projectIoRows
   );
   const detachedScenarioAuthority = shouldResetDetachedStarterCompareState
@@ -2541,6 +2557,70 @@ function chooseCanonicalIoRow(rows: ProjectIoRow[]): ProjectIoRow | null {
   return bestRow;
 }
 
+function isUsableBoundaryStudentLabel(value: string | undefined): boolean {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (trimmed.length === 0) return false;
+
+  const normalized = trimmed.toLowerCase();
+  if (normalized === 'input' || normalized === 'output') {
+    return false;
+  }
+
+  return !/^node(?:[-_]?v?\d+)+(?:[-_]\d+)*$/i.test(normalized);
+}
+
+function getBoundaryFallbackBase(node: Circuit['nodes'][number]): 'Input' | 'Output' | 'Clock' {
+  if (node.type === 'Clock') return 'Clock';
+  return node.type === 'OUTPUT' ? 'Output' : 'Input';
+}
+
+function getNextBoundaryFallbackLabel(
+  node: Circuit['nodes'][number],
+  counts: Map<'Input' | 'Output' | 'Clock', number>
+): string {
+  const base = getBoundaryFallbackBase(node);
+  const nextCount = (counts.get(base) ?? 0) + 1;
+  counts.set(base, nextCount);
+
+  if (base === 'Clock' && nextCount === 1) {
+    return 'Clock';
+  }
+
+  return `${base} ${nextCount}`;
+}
+
+function resolveBoundaryStudentLabel(
+  node: Circuit['nodes'][number],
+  canonicalRow: ProjectIoRow | null | undefined,
+  counts: Map<'Input' | 'Output' | 'Clock', number>
+): string {
+  const preferredLabel = [node.label, canonicalRow?.label, canonicalRow?.id].find((candidate) =>
+    isUsableBoundaryStudentLabel(candidate)
+  );
+
+  return preferredLabel?.trim() || getNextBoundaryFallbackLabel(node, counts);
+}
+
+function shouldRekeyBoundaryRowId(row: ProjectIoRow, nextLabel: string): boolean {
+  const currentIdToken = normalizePortToken(row.id);
+  const currentLabelToken = normalizePortToken(row.label);
+  const nextRowIdToken = normalizePortToken(normalizeBoardRowId(nextLabel));
+
+  if (currentIdToken.length === 0) {
+    return true;
+  }
+
+  if (currentIdToken === nextRowIdToken) {
+    return false;
+  }
+
+  return (
+    currentIdToken === currentLabelToken ||
+    /^node(?:_?v?\d+)+$/i.test(currentIdToken) ||
+    /^(input|output|clock)_?\d*$/i.test(currentIdToken)
+  );
+}
+
 function synchronizeProjectIoRows(circuit: Circuit, rows: ProjectIoRow[]): ProjectIoRow[] {
   const boundaryNodes = new Map(
     circuit.nodes
@@ -2565,19 +2645,12 @@ function synchronizeProjectIoRows(circuit: Circuit, rows: ProjectIoRow[]): Proje
   }
 
   const synchronized: ProjectIoRow[] = [];
+  const fallbackLabelCounts = new Map<'Input' | 'Output' | 'Clock', number>();
   for (const [normalizedNodeId, { node, shape }] of boundaryNodes.entries()) {
     const canonicalRow = chooseCanonicalIoRow(rowsByNodeId.get(normalizedNodeId) ?? []);
+    const nextLabel = resolveBoundaryStudentLabel(node, canonicalRow, fallbackLabelCounts);
     if (canonicalRow) {
-      const nextLabel = node.label?.trim() || canonicalRow.label.trim() || canonicalRow.id;
-      const canonicalRowId = normalizePortToken(canonicalRow.id);
-      const canonicalRowLabel = normalizePortToken(canonicalRow.label);
-      const nextLabelToken = normalizePortToken(nextLabel);
-      const shouldRekeyLabelDerivedId =
-        canonicalRowId.length > 0 &&
-        canonicalRowLabel.length > 0 &&
-        canonicalRowId === canonicalRowLabel &&
-        canonicalRowId !== nextLabelToken;
-      const nextRowId = shouldRekeyLabelDerivedId
+      const nextRowId = shouldRekeyBoundaryRowId(canonicalRow, nextLabel)
         ? getNextIoRowId(synchronized, nextLabel)
         : canonicalRow.id;
       synchronized.push({
@@ -2592,8 +2665,6 @@ function synchronizeProjectIoRows(circuit: Circuit, rows: ProjectIoRow[]): Proje
       continue;
     }
 
-    const fallbackLabel = shape.direction === 'in' ? 'input' : 'output';
-    const nextLabel = node.label?.trim() || fallbackLabel;
     synchronized.push({
       id: getNextIoRowId(synchronized, nextLabel),
       nodeId: node.id,

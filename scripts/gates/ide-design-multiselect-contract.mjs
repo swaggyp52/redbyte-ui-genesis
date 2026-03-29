@@ -53,6 +53,13 @@ async function runDeterministicPass(page, baseUrl) {
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
 
+  const boardPalette = page.locator('[data-testid="ide-design-board-io-palette"]').first();
+  const boardPaletteVisible = await boardPalette.isVisible().catch(() => false);
+  if (!boardPaletteVisible) {
+    await page.locator('[data-testid="ide-design-palette-toggle-board"]').first().click();
+    await boardPalette.waitFor({ state: 'visible', timeout: 10000 });
+  }
+
   await ensureSnapEnabled(page);
 
   // Board-first palette: selecting board chips enters placement mode; clicking blank

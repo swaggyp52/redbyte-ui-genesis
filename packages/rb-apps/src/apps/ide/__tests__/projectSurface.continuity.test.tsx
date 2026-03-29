@@ -314,6 +314,27 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(onOpenVerify).toHaveBeenCalled();
   });
 
+  it('removes blank-project framing from loaded blank-origin projects', () => {
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            projectKind: 'blank',
+            scenarioAuthority: 'draft',
+            description: '',
+            topModuleName: 'top',
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    const hero = getByTestId('ide-project-hero');
+    expect(hero.textContent).toContain('Fresh Project');
+    expect(hero.textContent).toContain('started from a blank canvas');
+    expect(hero.textContent).not.toContain('Blank Project');
+    expect(hero.textContent).not.toContain('Top module top is loaded and ready for setup.');
+  });
+
   it('removes starter framing from detached custom projects', () => {
     const examples = [
       {

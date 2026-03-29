@@ -52,6 +52,13 @@ await runIdeGate('IDE design build-fast contract satisfied', async ({ page, base
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
 
+  const boardPalette = page.locator('[data-testid="ide-design-board-io-palette"]').first();
+  const boardPaletteVisible = await boardPalette.isVisible().catch(() => false);
+  if (!boardPaletteVisible) {
+    await page.locator('[data-testid="ide-design-palette-toggle-board"]').first().click();
+    await boardPalette.waitFor({ state: 'visible', timeout: 10000 });
+  }
+
   // Board-first palette: selecting board chips enters placement mode, then clicking
   // blank canvas commits the Switch/Lamp nodes into the circuit.
   await placePaletteEntry(page, '[data-testid="ide-design-board-input-sw0"]', 0.22, 0.34);

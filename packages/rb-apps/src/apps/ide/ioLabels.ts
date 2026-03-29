@@ -14,15 +14,26 @@ export function getStudentFacingIoLabel(
   fallback = ''
 ): string {
   const label = typeof row?.label === 'string' ? row.label.trim() : '';
-  if (label.length > 0) return label;
+  if (isStudentFacingIoToken(label)) return label;
 
   const port = typeof row?.port === 'string' ? row.port.trim() : '';
   if (port.length > 0) return port;
 
   const id = typeof row?.id === 'string' ? row.id.trim() : '';
-  if (id.length > 0) return id;
+  if (isStudentFacingIoToken(id)) return id;
 
   return fallback.trim();
+}
+
+function isStudentFacingIoToken(value: string): boolean {
+  if (value.length === 0) return false;
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'input' || normalized === 'output') {
+    return false;
+  }
+
+  return !/^node(?:[-_]?v?\d+)+(?:[-_]\d+)*$/i.test(normalized);
 }
 
 export function normalizeIoSignalKey(value: string): string {

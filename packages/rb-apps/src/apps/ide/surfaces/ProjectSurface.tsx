@@ -272,6 +272,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [activeExampleId, examples]
   );
   const starterExample = projectKind === 'example' ? activeExample : null;
+  const projectContextLabel = useMemo(() => {
+    if (projectKind === 'blank' && readiness.hasCircuit) {
+      return 'Fresh Project';
+    }
+    return getProjectKindDisplayName(projectKind);
+  }, [projectKind, readiness.hasCircuit]);
   const showStarterGallery = examples.length > 0 && (projectKind === 'home' || projectKind === 'example');
   const missingRequiredRows = useMemo(
     () =>
@@ -348,8 +354,20 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     if (trimmedDescription.length > 0) return trimmedDescription;
     if (starterExample?.summary) return starterExample.summary;
     if (!readiness.hasCircuit) return 'Start from Project Home, then build fresh, load an example, or import HDL.';
+    if (projectKind === 'blank') {
+      return 'This circuit started from a blank canvas. Continue authoring, then map pins and verify before export.';
+    }
+    if (projectKind === 'custom') {
+      return 'This is your authored circuit. Continue mapping, verify the current behavior, and refresh export when ready.';
+    }
+    if (projectKind === 'import') {
+      return 'Imported circuit loaded. Review pins, verify the live behavior, and refresh export before hardware handoff.';
+    }
+    if (projectKind === 'saved') {
+      return 'Saved circuit restored. Pick up at the next required stage before exporting or programming hardware.';
+    }
     return `Top module ${topModuleName || 'top'} is loaded and ready for setup.`;
-  }, [description, readiness.hasCircuit, starterExample?.summary, topModuleName]);
+  }, [description, projectKind, readiness.hasCircuit, starterExample?.summary, topModuleName]);
 
   const verifySummary = useMemo(
     () => getVerifySummary(health, projectVerifyState, compareMatches, comparePassIncomplete),
@@ -947,7 +965,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             <div className="ide-project-showcase-copy">
               <div className="ide-project-showcase-headline">
                 <span className="ide-project-showcase-eyebrow">
-                  {starterExample?.lab ?? starterExample?.course ?? getProjectKindDisplayName(projectKind)}
+                  {starterExample?.lab ?? starterExample?.course ?? projectContextLabel}
                 </span>
                 <h2 className="ide-project-showcase-title">
                   {starterExample?.name ?? projectName}
@@ -962,7 +980,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               </div>
               <div className="ide-project-showcase-chip-row">
                 <span className="ide-project-context-tag">Basys3</span>
-                <span className="ide-project-context-tag">{getProjectKindDisplayName(projectKind)}</span>
+                <span className="ide-project-context-tag">{projectContextLabel}</span>
                 <span className="ide-project-context-tag">Scenario: {scenarioAuthority}</span>
                 <span className="ide-project-context-tag">{inputCount} in / {outputCount} out</span>
                 <span className="ide-project-context-tag">{completedMilestoneCount}/4 milestones</span>

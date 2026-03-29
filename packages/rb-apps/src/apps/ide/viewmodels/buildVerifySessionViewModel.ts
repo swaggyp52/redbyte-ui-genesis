@@ -215,7 +215,7 @@ export function buildVerifySessionViewModel(
           : status === 'stimulus-only'
             ? input.lastRun
               ? 'Waveform recorded — observation only'
-              : 'Ready to simulate'
+              : 'Ready to run this testbench'
             : status === 'stale'
               ? 'Results are stale'
               : status === 'running'
@@ -225,7 +225,7 @@ export function buildVerifySessionViewModel(
                 : hasVectors
                   ? mode === 'assertion'
                     ? 'Ready to compare'
-                    : 'Ready to simulate'
+                    : 'Ready to run this testbench'
                   : 'Build a testbench';
 
   const summary =
@@ -242,7 +242,7 @@ export function buildVerifySessionViewModel(
           : status === 'stimulus-only'
             ? input.lastRun
               ? 'You ran the current circuit, but no expected outputs are being checked. Capture observed outputs or author expected values when you want a real compare.'
-              : 'Add stimulus ticks, then run the circuit to record a waveform.'
+                : 'Run this testbench to see what the circuit does. Add expected outputs when you want Compare to check them.'
             : status === 'stale'
               ? 'The circuit or testbench changed after the last run. Re-run before trusting the result.'
               : status === 'running'
@@ -252,8 +252,8 @@ export function buildVerifySessionViewModel(
                 : hasVectors
                   ? mode === 'assertion'
                     ? 'Expected outputs are loaded. Run the current circuit, then compare only the asserted outputs.'
-                    : 'Add more ticks if needed, then run the circuit to record waveform behavior.'
-                  : 'Add ticks, input patterns, and optional expected outputs to start the session.';
+                      : 'Run this testbench to see how the circuit behaves. Add expected outputs when you want Compare to check them.'
+                    : 'Add ticks, input patterns, and optional expected outputs to build the first testbench.';
 
   const runLabel =
     input.isRunStale
@@ -263,8 +263,8 @@ export function buildVerifySessionViewModel(
           ? 'Re-run Compare'
           : 'Run Compare'
         : input.lastRun
-          ? 'Re-run Simulation'
-          : 'Run Simulation';
+          ? 'Re-run Testbench'
+          : 'Run Testbench';
 
   return {
     mode,

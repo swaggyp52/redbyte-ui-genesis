@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { DesignSurface } from '../surfaces/DesignSurface';
+import type { IdeDiagnostic } from '../diagnostics';
 import type { RuntimeSimState } from '../projectRuntime';
 import type { MacroDefinition } from '../macros/MacroLibrary';
 import { useCircuitStore } from '../../../stores/circuitStore';
@@ -156,6 +157,40 @@ const FIXTURE_MACRO: MacroDefinition = {
     ],
     connections: [],
   },
+};
+
+const WARNING_DIAGNOSTIC: IdeDiagnostic = {
+  id: 'warn-floating-output',
+  severity: 'warn',
+  blocking: false,
+  code: 'RBD2001',
+  title: 'Floating output',
+  message: 'Output pin is not driven.',
+  hint: ['Connect a driver before relying on this output.'],
+  owner: {
+    kind: 'node',
+    nodeId: 'ld0_node',
+  },
+  origin: 'ir',
+  stage: 'design',
+  actions: [],
+};
+
+const ERROR_DIAGNOSTIC: IdeDiagnostic = {
+  id: 'error-floating-output',
+  severity: 'error',
+  blocking: true,
+  code: 'RBD1001',
+  title: 'Unconnected output',
+  message: 'Output pin has no source driver.',
+  hint: ['Wire a gate or input into this output pin.'],
+  owner: {
+    kind: 'node',
+    nodeId: 'ld0_node',
+  },
+  origin: 'ir',
+  stage: 'design',
+  actions: [],
 };
 
 beforeEach(() => {
@@ -342,7 +377,7 @@ describe('DesignSurface workstation redesign', () => {
     });
     expect(modeRoot.getAttribute('data-shell-density')).toBe('immersive');
     expect(modeRoot.getAttribute('data-surface-frame')).toBe('edge-to-edge');
-    expect(view.getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('collapsed');
+    expect(view.queryByTestId('ide-workbench-console')).toBeNull();
 
     await waitFor(() => {
       expect(view.queryByTestId('ide-left-dock')).toBeNull();
@@ -389,6 +424,45 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
     expect(view.queryByTestId('ide-inspector')).toBeNull();
     expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
+    expect(view.queryByTestId('ide-workbench-console')).toBeNull();
+  });
+
+  it('keeps the Design console available when compiler diagnostics exist', async () => {
+    const view = renderSurface({
+      compilerStatus: {
+        dirtySinceVerify: true,
+        dirtySinceExport: true,
+        errorCount: 0,
+        warningCount: 1,
+        diagnostics: [WARNING_DIAGNOSTIC],
+      },
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-workbench-console')).toBeTruthy();
+    });
+
+    expect(view.getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('collapsed');
+    expect(view.getByTestId('ide-design-console-list').textContent).toContain('Floating output');
+  });
+
+  it('surfaces the Design console in blocking mode when compiler errors exist', async () => {
+    const view = renderSurface({
+      compilerStatus: {
+        dirtySinceVerify: true,
+        dirtySinceExport: true,
+        errorCount: 1,
+        warningCount: 0,
+        diagnostics: [ERROR_DIAGNOSTIC],
+      },
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-workbench-console')).toBeTruthy();
+    });
+
+    expect(view.getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('blocking');
+    expect(view.getByTestId('ide-design-console-list').textContent).toContain('Unconnected output');
   });
 
   it('renders comparison-focused chrome in split mode', async () => {

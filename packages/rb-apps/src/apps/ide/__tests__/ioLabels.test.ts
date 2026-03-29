@@ -40,6 +40,30 @@ describe('getStudentFacingIoLabel', () => {
   it('uses provided fallback when row is missing', () => {
     expect(getStudentFacingIoLabel(undefined, 'fallback_label')).toBe('fallback_label');
   });
+
+  it('uses the provided fallback instead of exposing internal node ids', () => {
+    expect(
+      getStudentFacingIoLabel(
+        {
+          label: '',
+          port: ' ',
+          id: 'node-v2-1',
+        },
+        'Input 1'
+      )
+    ).toBe('Input 1');
+
+    expect(
+      getStudentFacingIoLabel(
+        {
+          label: '',
+          port: ' ',
+          id: 'node_v2_1',
+        },
+        'Input 2'
+      )
+    ).toBe('Input 2');
+  });
 });
 
 describe('normalizeIoSignalKey', () => {

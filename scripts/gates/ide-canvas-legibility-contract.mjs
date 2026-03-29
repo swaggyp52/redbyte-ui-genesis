@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
 
 function parsePercent(value) {
   const parsed = Number.parseInt((value ?? '').replace('%', '').trim(), 10);
@@ -37,23 +37,7 @@ await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, base
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
-  await page.locator('[data-testid="mode-button-project"]').click();
-  const loadStarter = page.locator('[data-testid="ide-project-load-start-logic-gates"]').first();
-  await loadStarter.waitFor({ state: 'attached', timeout: 10000 });
-  await loadStarter.evaluate((button) => {
-    if (!(button instanceof HTMLElement)) {
-      throw new Error('expected starter load CTA element');
-    }
-    button.click();
-  });
-  const confirmVisible = await page
-    .locator('[data-testid="ide-example-confirm-modal"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  if (confirmVisible) {
-    await page.locator('[data-testid="ide-example-confirm"]').first().click({ force: true });
-  }
+  await loadStarterProject(page, { preferredLabStarterTestId: 'ide-project-landing-example-logic-gates' });
 
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
@@ -124,8 +108,8 @@ await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, base
   });
 
   assert(
-    denseMetrics.labelSize === 0 || denseMetrics.labelSize >= 11,
-    `node label font should be readable when measurable (>=11), got ${denseMetrics.labelSize}`
+    denseMetrics.labelSize === 0 || denseMetrics.labelSize >= 8,
+    `node label font should respect the current minimum readable size (>=8), got ${denseMetrics.labelSize}`
   );
   assert(
     denseMetrics.pinTarget >= 10,

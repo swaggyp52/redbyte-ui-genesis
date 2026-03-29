@@ -2568,6 +2568,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => resolveDesignWorkspacePreset({ mode: designView, effectiveMode: effectiveDesignView }),
     [designView, effectiveDesignView]
   );
+  const hasVisibleDiagnosticsConsole =
+    compilerErrorCount > 0 || compilerWarningCount > 0 || diagnosticsDrawerRows.length > 0;
+  const designConsoleMode = hasVisibleDiagnosticsConsole ? workspacePreset.consoleMode : 'hidden';
   const showFullAuthoringStatus = workspacePreset.showFullAuthoringStatus;
   const showCompactAuthoringStatus = workspacePreset.showCompactAuthoringStatus;
   const isCanvasWorkspace = workspacePreset.mode === 'canvas';
@@ -3813,7 +3816,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         consoleHasEntries={diagnosticsDrawerRows.length > 0}
         leftDockMode={workspacePreset.leftDockMode}
         rightDockMode={workspacePreset.rightDockMode}
-        consoleMode={workspacePreset.consoleMode}
+        consoleMode={designConsoleMode}
         shellDensity={workspacePreset.shellDensity}
         surfaceFrame={workspacePreset.surfaceFrame}
         dock={
@@ -4306,7 +4309,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </React.Fragment>
           ) : (
             <React.Fragment key="design-inspector-idle-context">
-              <IdeInspectorSection title="Live Simulation" testId="ide-design-live-sim-section" defaultOpen={false}>
+              <IdeInspectorSection
+                title="Live Simulation"
+                testId="ide-design-live-sim-section"
+                defaultOpen
+                disableCollapse
+              >
                 {renderLiveSimulationContent()}
               </IdeInspectorSection>
               <IdeInspectorSection title="Advanced Details" testId="ide-design-inspector-advanced" defaultOpen={false}>

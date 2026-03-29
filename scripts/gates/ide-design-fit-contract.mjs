@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
@@ -13,23 +13,7 @@ await runIdeGate('IDE design fit contract satisfied', async ({ page, baseUrl }) 
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
-  await page.locator('[data-testid="mode-button-project"]').click();
-  const loadStarter = page.locator('[data-testid="ide-project-load-start-logic-gates"]').first();
-  await loadStarter.waitFor({ state: 'attached', timeout: 10000 });
-  await loadStarter.evaluate((button) => {
-    if (!(button instanceof HTMLElement)) {
-      throw new Error('expected starter load CTA element');
-    }
-    button.click();
-  });
-  const replaceModalVisible = await page
-    .locator('[data-testid="ide-example-confirm-modal"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  if (replaceModalVisible) {
-    await page.locator('[data-testid="ide-example-confirm"]').first().click({ force: true });
-  }
+  await loadStarterProject(page);
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await page.waitForSelector('[data-node-id]', { timeout: 15000 });

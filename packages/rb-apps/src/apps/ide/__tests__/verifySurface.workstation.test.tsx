@@ -144,8 +144,8 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-empty-state').textContent).toContain(
       'Only asserted expected cells will be checked when you run compare'
     );
-    expect(getByTestId('ide-verify-guided-callout').textContent).toContain(
-      'Expected outputs are already loaded'
+    expect(getByTestId('ide-verify-first-run-callout').textContent).toContain(
+      'Run Compare checks only the asserted expected cells'
     );
     expect(queryByTestId('ide-verify-generate-all-combos')).toBeNull();
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('comparing against project vectors');
@@ -181,7 +181,11 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('observation only');
     expect(getByTestId('ide-verify-session-status').textContent).toContain('DRAFT');
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION');
-    expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to simulate');
+    expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to run this testbench');
+    expect(getByTestId('ide-verify-empty-message').textContent).toContain(
+      'Add expected outputs when you want Compare to check them.'
+    );
+    expect(getByTestId('ide-verify-empty-run').textContent).toContain('Run Testbench');
     expect(queryByTestId('ide-left-dock')).toBeNull();
     expect(queryByTestId('ide-inspector')).toBeNull();
   });
@@ -207,7 +211,8 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-guided-callout').textContent).toContain('Inputs: 2');
+    expect(getByTestId('ide-verify-io-summary').textContent).toContain('Inputs:');
+    expect(getByTestId('ide-verify-io-summary').textContent).toContain('SW0, SW1');
     expect(getByTestId('ide-verify-prerun-lanes').textContent).toContain('SW0');
     expect(getByTestId('ide-verify-prerun-lanes').textContent).toContain('SW1');
     expect(getByTestId('ide-verify-prerun-lanes').textContent).toContain('LD0');
@@ -261,12 +266,12 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-sequential-helper').textContent).toContain('Latch behavior detected');
     expect(getByTestId('ide-verify-insert-clock-pattern').textContent).toContain('Insert basic enable pattern');
     expect(getByTestId('ide-verify-io-summary').textContent).toContain('Latch control:');
-    expect(getByTestId('ide-verify-guided-callout').textContent).toContain(
-      'already includes EN changes'
+    expect(getByTestId('ide-verify-first-run-callout').textContent).toContain(
+      'Waveform inspection and capture tools stay available after you have real evidence'
     );
     expect(queryByTestId('ide-verify-guided-clock-pattern')).toBeNull();
     expect(getByTestId('ide-verify-sequential-context').textContent).toContain(
-      'latch-control changes'
+      'clock ticks in your stimulus'
     );
   });
 
@@ -369,9 +374,8 @@ describe('VerifySurface workstation controls', () => {
     expect(testbenchSummary).toBeTruthy();
     fireEvent.click(testbenchSummary as HTMLElement);
 
-    const advancedTools = getByTestId('ide-stimulus-toolbar-advanced') as HTMLDetailsElement;
-    expect(advancedTools.open).toBe(false);
     expect(queryByTestId('ide-stimulus-toolbar')).toBeTruthy();
+    expect(queryByTestId('ide-stimulus-toolbar-advanced')).toBeNull();
   });
 
   it('arms assertion checking immediately after capturing outputs as expected', () => {

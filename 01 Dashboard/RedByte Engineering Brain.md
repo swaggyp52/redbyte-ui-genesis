@@ -59,19 +59,41 @@ For Design workflow hierarchy work: [[Design Surface]]
 
 ## What is the next action
 
-**Verify is closed.** UX clarity pass (A/B/C), Verify debug pass, and render-suite cleanup are all done. Render baseline: 52 PASS / 9 suites / 0 red. Do not reopen Verify in this thread.
+**Pre-lab trust work is active.** Do not spend the next batch on Design chrome until signoff proof and hardware truth are restored.
+
+Pre-lab audit override (2026-03-29):
+
+- Do not spend the next batch on more Design chrome polish until the student path is trustworthy.
+- Completed in this batch:
+  - loaded blank-origin projects now use truthful `Fresh Project` framing instead of `Blank Project`
+  - boundary IO rows now normalize to student-facing labels (`Input N` / `Output N`) and restored vectors rekey to those sanitized ids
+  - draft Verify trace sessions now frame the work as a runnable testbench instead of generic simulation
+  - Verify first-run CTA readiness now follows the real vector authority, so custom-vector sessions no longer hide the primary run action
+  - classroom signoff harness now exports shared starter loading, idle Design keeps `Live Simulation` directly reachable, and repo-status gate contracts have been realigned to current product truth
+  - `node .\scripts\repo-status.mjs` now returns `39/39 checks passed`, and `pnpm -s classroom:signoff --allow-dirty` now returns `10/10 checks passed` / `CLASSROOM_READY`
+- Remaining pre-lab blockers confirmed by live audit + signoff:
+  - live hardware remains unproven in this environment (`classroom:hw:check` reports bridge unavailable / Basys3 unknown)
+  - strict clean-tree classroom signoff still needs a clean working tree before operator use without `--allow-dirty`
+
+Pre-lab must-fix order:
+
+1. live Basys3 rehearsal on the actual bridge/toolchain setup
+2. rerun `classroom:signoff` from a clean working tree before release / classroom handoff
 
 Canonical next-phase roadmap:
 
 - `docs/roadmap/redbyte-classroom-gap-handoff.md`
 
-Latest completed Design slice:
+Latest completed classroom-trust slices:
 
-- `2026-03-29` - blank-state guidance de-duplication landed; blank Design now teaches with one primary in-canvas card while the Design modal, shortcut strip, duplicate idle-inspector coaching, and redundant pipeline CTA no longer compete on first look.
+- `2026-03-29` - bottom console/footer demotion landed; quiet Design now hides the empty workbench console, keeps diagnostic access when warnings/errors exist, and reduces the footer to a readiness-only signal.
+- `2026-03-29` - blank-project truth + boundary-label cleanup landed; loaded scratch projects now present `Fresh Project`, unlabeled/legacy boundary IO rows promote to student-facing labels, and restored vectors rekey to sanitized IO ids.
+- `2026-03-29` - first-run Verify draft sessions now use testbench language for trace authoring, and the first-run footer uses total live vector authority so custom-vector sessions still surface the primary run CTA.
+- `2026-03-29` - classroom signoff proof recovered; shared starter loading, idle Design live-simulation reachability, and gate-truth alignment now drive `repo-status` and dirty-tree `classroom:signoff` green again.
 
 Next Design chrome action:
 
-- bottom console/footer demotion
+- workflow spine + shared step authority alignment
 
 Use its recommended implementation order:
 
