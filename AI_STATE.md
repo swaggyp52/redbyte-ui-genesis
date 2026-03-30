@@ -1,4 +1,68 @@
 # AI State
+## Change Log 2026-03-30 (Slice 4: Testbench Preview garbled text — missing CSS added)
+
+**Subsystem**: Verify surface / IDE CSS
+
+### Problem
+
+The Testbench Preview panel on the Verify surface rendered as an unreadable blob: "Testbench Preview16 ticks4 outputs asserted" and "INSW0INSW1INSW2INSW3OUTLD0✓OUTLD1✓OUTLD2✓OUTLD3✓". All CSS class definitions for the `ide-verify-prerun-*` and `ide-verify-lane-*` elements were completely missing — the component markup existed in `VerifySurface.tsx` but the corresponding styles were never added to `ide-root.css`.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Added "Phase 19A-pre" CSS block with styles for all Testbench Preview classes:
+    - `.ide-verify-prerun-inventory` — flex column layout
+    - `.ide-verify-prerun-header` — flex row with gap for title / tick count / assert chip
+    - `.ide-verify-prerun-title`, `.ide-verify-prerun-meta` — typography
+    - `.ide-verify-prerun-clock-chip` — info-colored pill for clock policy
+    - `.ide-verify-prerun-assert-chip` / `--active` / `--none` — success/muted badge
+    - `.ide-verify-prerun-lanes` — flex-wrap container with gap
+    - `.ide-verify-lane-chip` / `--input` / `--output-asserted` / `--output-stimulus` — colored pills (info/success/warning)
+    - `.ide-verify-lane-dir-badge`, `.ide-verify-lane-name`, `.ide-verify-lane-assert-badge` — inline badge elements
+
+### Student-visible behavior
+
+- Testbench Preview now renders as a clean panel with a properly spaced header ("Testbench Preview  16 ticks  4 outputs asserted") and individual signal pills showing direction badges (IN/OUT), signal names, and assertion status with color coding (blue for inputs, green for asserted outputs, amber for stimulus-only outputs)
+
+### Proof
+
+- Visual: live app at localhost:5173 confirms proper rendering after hot reload
+- No TS/TSX changes — CSS-only fix, no regression risk
+
+## Change Log 2026-03-30 (Slice 3: HDL/XDC mismatch warnings now correctly classified as scaffold warnings for projection-only exports)
+
+**Subsystem**: Basys3 export / scaffold warning filter / export viewmodel
+
+### Problem
+
+The Export page showed a false contradiction for valid starter examples like Signal Tour: it simultaneously claimed the Basys3 handoff was available while displaying "HDL ports missing in XDC" and "XDC ports missing in HDL" warning messages and a "Bundle validation failed" error.
+
+The root cause was that `isHdlProjectionScaffoldWarning()` did not recognize the HDL/XDC port-mismatch messages as scaffold warnings. When `IdeApp.tsx` generates stub VHDL for INPUT/OUTPUT-only circuits via `vhdlFromNetlist()`, the entity ports naturally diverge from the XDC pin mappings. These messages are expected and harmless for projection-only exports, but the filter missed them.
+
+### What changed
+
+- `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`
+  - Added two regex patterns to `isHdlProjectionScaffoldWarning()`:
+    - `/^HDL ports missing in XDC: .+$/i`
+    - `/^XDC ports missing in HDL: .+$/i`
+
+- `packages/rb-apps/src/__tests__/basys3-hdl-projection-warning-filter.test.ts`
+  - Added both HDL/XDC mismatch patterns to the known scaffold warnings list
+
+- `packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts`
+  - Added regression test: Signal Tour with stub HDL (mirroring live app path where `fpga.top = 'top'`) must export with `status: 'ok'` and no HDL/XDC mismatch warnings or "Bundle validation failed" errors
+
+### Student-visible behavior
+
+- Signal Tour and other INPUT/OUTPUT-only starter examples no longer show false "HDL ports missing in XDC" / "XDC ports missing in HDL" warnings on the Export page
+- The Export page status correctly shows 'ok' instead of 'blocked' for these projection-only circuits
+
+### Proof
+
+- `pnpm -w exec vitest run packages/rb-apps/src/__tests__/basys3-hdl-projection-warning-filter.test.ts packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts`
+- Result: 12 passed (2 filter tests + 10 canonical naming tests including Signal Tour regression)
+- Adjacent export test suite: 138 passed, 2 pre-existing `stimulus-only` failures (unrelated)
+
 ## Change Log 2026-03-30 (Slice 2 closed: Basys3 export now routes a real six-case Vivado matrix with generalized switch/button clock policy and legal port naming)
 
 **Subsystem**: Basys3 export / Vivado XDC policy / top-port naming / export reliability proof
