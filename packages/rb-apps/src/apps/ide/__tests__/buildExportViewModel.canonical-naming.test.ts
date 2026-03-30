@@ -588,6 +588,35 @@ describe('buildExportViewModel canonical naming', () => {
     expect(validateArtifactConsistency(topVhd, testbenchVhd)).toEqual([]);
   });
 
+  it('suppresses projection-only HDL/XDC mismatch warnings for live Signal Tour export', () => {
+    const project = createProjectFromExample('signal-tour');
+    // Mirror the live app: fpga.top and hdl.top are both 'top', and the
+    // generated VHDL entity is also named 'top'.  The entity has no ports
+    // because INPUT/OUTPUT-only circuits produce stub VHDL that merely
+    // reserves the entity name.  The scaffold-warning filter must suppress
+    // every resulting HDL/XDC mismatch warning so the export stays 'ok'.
+    project.hdl = {
+      top: 'top',
+      sources: [
+        {
+          path: 'top.vhd',
+          language: 'vhdl',
+          text: 'entity top is end top; architecture rtl of top is begin end rtl;',
+        },
+      ],
+    };
+
+    const viewModel = buildExportViewModel(project);
+    const warningMessages = viewModel.warnings.map((warning) => warning.message);
+    const errorMessages = viewModel.errors.map((error) => error.message);
+
+    expect(viewModel.status).toBe('ok');
+    expect(errorMessages).toEqual([]);
+    expect(warningMessages.some((message) => /HDL ports missing in XDC/i.test(message))).toBe(false);
+    expect(warningMessages.some((message) => /XDC ports missing in HDL/i.test(message))).toBe(false);
+    expect(warningMessages.some((message) => /Bundle validation failed/i.test(message))).toBe(false);
+  });
+
   it('resolves duplicate-label stable vector ids onto declared entity refs', () => {
     const project = createDuplicateLabelStableIdFixture();
     const topVhd = getArtifactContent(project, 'top.vhd');

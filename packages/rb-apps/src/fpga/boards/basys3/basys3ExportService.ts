@@ -758,7 +758,9 @@ export function isHdlProjectionScaffoldWarning(message: string): boolean {
     /^Unsupported node: .+ \(OUTPUT\)$/i.test(trimmed) ||
     /^Output ".+" \(id: .+\) has no driver .*$/i.test(trimmed) ||
     /^Top output port ".+" has no driver .*$/i.test(trimmed) ||
-    /^Top output port ".+" has unresolved driver .+$/i.test(trimmed)
+    /^Top output port ".+" has unresolved driver .+$/i.test(trimmed) ||
+    /^HDL ports missing in XDC: .+$/i.test(trimmed) ||
+    /^XDC ports missing in HDL: .+$/i.test(trimmed)
   );
 }
 

@@ -11,6 +11,8 @@ describe('HDL projection scaffold warning filter', () => {
       'Output "port_out_q0_in" (id: port_out_q0) has no driver — will default to \"0\"',
       'Top output port "port_out_q0_in" has no driver — output will be tied low',
       'Top output port "port_out_q0_in" has unresolved driver helper_1.out',
+      'HDL ports missing in XDC: ld0_node_in, sw0_node_out',
+      'XDC ports missing in HDL: LD0, SW0',
     ];
 
     for (const warning of scaffoldWarnings) {
