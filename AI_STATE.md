@@ -1,4 +1,69 @@
 # AI State
+## Change Log 2026-03-30 (Slice 1 closed: exported testbench now resolves stable ids to entity refs and compiles on the live Windows machine)
+
+**Subsystem**: Basys3 export / entity-based testbench generation / export artifact consistency
+
+### Problem
+
+Live Windows-machine export reproduced a structural mismatch inside `testbench.vhd` for the blank-project AND circuit:
+
+- `top.vhd` declared grouped entity ports `SW` and `LED`
+- `testbench.vhd` component + signal declarations mirrored those entity ports correctly
+- stimulus still emitted raw stable vector ids like `input_1` and `input_1_2`
+- Vivado `xvhdl` failed on the browser-exported files with `VRFC 10-2989` undeclared-identifier errors
+
+The root cause was not Vivado or packaging. The entity-based testbench path only resolved vector keys through labels, while the student flow was exporting stable row ids. The artifact guard also stopped too early: it checked component ports vs. entity ports, but never validated stimulus or assertion targets.
+
+### What changed
+
+- `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts`
+  - entity-based key resolution now accepts stable row ids, node ids, canonical `nodeId_port` names, unique labels, and Basys3 alias/package-pin hints
+  - blank-label exports can now recover canonical entity refs even when top-level ports come from `nodeId_port` naming
+  - duplicate student-facing labels remain non-authoritative lookup keys
+
+- `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`
+  - artifact consistency validation now checks stimulus/assertion targets, not just component/entity port parity
+  - export now rejects undeclared targets, scalar/vector misuse, out-of-range vector refs, and wrong-direction signal use
+
+- `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`
+  - the runtime-backed testbench path now runs through the same consistency guard as the bundle fallback path, so the live Export surface cannot present a structurally broken UI-only testbench as ready
+
+- regression coverage added in:
+  - `packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts`
+
+### Student-visible behavior
+
+- the live Export surface for the blank AND circuit now shows `SW(0)` / `SW(1)` stimulus instead of raw `input_*` ids
+- duplicate-label projects can still export a compilable testbench because the HDL path now follows stable ids and pin/entity authority rather than ambiguous labels
+- runtime-backed export and fallback export now share the same structural safety check
+
+### Proof
+
+- focused regression tests:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts`
+  - result: `9 passed`
+
+- adjacent export/consistency suites:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts packages/rb-apps/src/__tests__/ide-vivado-artifact-consistency.test.ts`
+  - result: `19 passed`
+
+- live Windows-machine rebuild:
+  - `pnpm --filter @redbyte/playground build`
+  - result: successful playground rebuild
+
+- live UI export truth source:
+  - browser Export surface now emits `SW(0)` / `SW(1)` in `testbench.vhd` for the reproduced blank-project AND circuit
+
+- Vivado compile on browser-exported artifacts:
+  - `C:\Xilinx\Vivado\2024.2\bin\xvhdl.bat -2008 top.vhd testbench.vhd`
+  - result: both `untitled_project` and `tb_untitled_project` analyze cleanly with no undeclared-target errors
+
+### Remaining ordered priority
+
+1. Slice 2 - fix duplicate student-facing IO labels across Design / Verify / Map Pins / Export
+2. Slice 3 - fix Verify compare-state ownership / drift
+3. rerun the broader hardware-path / autosave reassessment after those upstream truth fixes land
+
 ## Change Log 2026-03-29 (classroom signoff proof recovered after harness + gate truth repair)
 
 **Subsystem**: classroom signoff / repo-status gates / Design idle live simulation / gate harness

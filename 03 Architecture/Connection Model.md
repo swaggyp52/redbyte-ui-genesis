@@ -2,10 +2,11 @@
 type: architecture
 status: active
 area: export
-updated: 2026-03-25
+updated: 2026-03-30
 related:
   - "[[ADR-001 Enforce Structured Connection Format]]"
   - "[[BUG-001 Connection Fixture Format Mismatch]]"
+  - "[[BUG-011 Export Testbench Stable-ID Stimulus Drift]]"
   - "[[Export Contracts]]"
   - "[[Verify Engine]]"
 ---
@@ -95,9 +96,29 @@ Violations surface as `{ type: 'logic', severity: 'error' }` in constraint valid
 
 ---
 
+## Export Signal Identity Contract
+
+The circuit connection shape is not enough on its own to keep export trustworthy. When Verify or project vectors are turned into `testbench.vhd`, those vector keys may arrive as:
+
+- stable IO row ids
+- boundary node ids
+- canonical `nodeId_port` names
+- unique student-facing labels
+
+Entity-based testbench generation must translate those keys onto the declared entity refs before emitting stimulus or assertions.
+
+Rules:
+
+- duplicate student-facing labels are never authoritative lookup keys
+- Basys3 aliases or package pins may be used to recover the entity ref when labels are blank or the entity is board-grouped (`SW`, `LED`)
+- unresolved raw keys are an export consistency failure, not acceptable emitted VHDL
+
+---
+
 ## Related
 
 - [[ADR-001 Enforce Structured Connection Format]]
 - [[BUG-001 Connection Fixture Format Mismatch]]
+- [[BUG-011 Export Testbench Stable-ID Stimulus Drift]]
 - [[Export Contracts]]
 - [[Authority Chain]]

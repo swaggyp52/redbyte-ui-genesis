@@ -3,6 +3,12 @@ import type { RBProject } from '../../../export/projectFormat';
 import { compareCodepoint } from '../../../export/codepointSort';
 import { exportBasys3Bundle } from './basys3Bundle';
 import {
+  BASYS3_CLOCK_PIN,
+  BASYS3_LED_PINS,
+  BASYS3_SWITCH_PINS,
+  resolveBasys3PackagePin,
+} from './basys3Pins';
+import {
   CLOCKED_MACRO_SEQUENCE,
   deriveVerifySchedule,
   type VerifyScheduleContract,
@@ -67,13 +73,13 @@ function parseEntityPortInfos(topVhd: string): EntityPortInfo[] {
 }
 
 /**
- * Build a mapping from IO label strings (e.g. "SW0", "LD0") → VHDL port references
- * (e.g. "SW(0)", "LD(0)") using the entity port declarations as authority.
+ * Build a mapping from stable IO/vector keys (row ids, node ids, labels, pins) →
+ * VHDL port references using the entity declaration as authority.
  *
  * Supports both vector ports (SW0 → SW(0)) and scalar ports (CLK → clk).
  */
 function buildLabelToEntityRef(
-  ioMapping: RBProject['ioMapping'],
+  project: RBProject,
   entityPorts: EntityPortInfo[],
 ): Map<string, string> {
   const portsByBase = new Map<string, EntityPortInfo>();
@@ -82,36 +88,129 @@ function buildLabelToEntityRef(
   }
   const result = new Map<string, string>();
 
-  const processEntries = (entries: Array<{ label?: string }>) => {
-    for (const entry of entries) {
-      const label = (entry.label ?? '').trim();
-      if (!label) continue;
-      // Try vector pattern: {base}{index}, e.g. SW0 → SW(0)
-      const m = label.match(/^([A-Za-z_]+)(\d+)$/);
-      if (m) {
-        const base = m[1].toUpperCase();
-        const idx = parseInt(m[2], 10);
-        const port = portsByBase.get(base.toLowerCase());
-        if (port) {
-          const ref = port.isVector ? `${port.name}(${idx})` : port.name;
-          result.set(label, ref);
-          result.set(label.toUpperCase(), ref);
-          result.set(label.toLowerCase(), ref);
-          continue;
-        }
-      }
-      // Try exact match (case-insensitive scalar, e.g. CLK100MHZ)
-      const port = portsByBase.get(label.toLowerCase());
-      if (port) {
-        result.set(label, port.name);
-        result.set(label.toUpperCase(), port.name);
-        result.set(label.toLowerCase(), port.name);
+  const nodeLabelsById = new Map(
+    (project.circuit.nodes ?? []).map((node) => [node.id, (node.label ?? '').trim()] as const),
+  );
+  const ambiguousLabels = new Set<string>();
+  const labelCounts = new Map<string, number>();
+
+  const countLabelAlias = (alias: string | undefined) => {
+    const trimmed = alias?.trim() ?? '';
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase();
+    const nextCount = (labelCounts.get(key) ?? 0) + 1;
+    labelCounts.set(key, nextCount);
+    if (nextCount > 1) {
+      ambiguousLabels.add(key);
+    }
+  };
+
+  const registerAlias = (alias: string | undefined, ref: string, allowAmbiguous = true) => {
+    const trimmed = alias?.trim() ?? '';
+    if (!trimmed) return;
+    if (!allowAmbiguous && ambiguousLabels.has(trimmed.toLowerCase())) return;
+
+    const variants = [trimmed, trimmed.toUpperCase(), trimmed.toLowerCase()];
+    for (const variant of variants) {
+      const existing = result.get(variant);
+      if (!existing || existing === ref) {
+        result.set(variant, ref);
       }
     }
   };
 
-  processEntries(ioMapping?.inputs ?? []);
-  processEntries(ioMapping?.outputs ?? []);
+  const resolveBasys3AliasFromPin = (pin: string | undefined, direction: 'in' | 'out'): string | undefined => {
+    const trimmed = pin?.trim() ?? '';
+    if (!trimmed) return undefined;
+
+    const packagePin = resolveBasys3PackagePin(trimmed);
+    if (!packagePin) return trimmed;
+
+    if (direction === 'in') {
+      if (packagePin === BASYS3_CLOCK_PIN) {
+        return 'CLK100MHZ';
+      }
+      const switchIndex = BASYS3_SWITCH_PINS.indexOf(packagePin as (typeof BASYS3_SWITCH_PINS)[number]);
+      if (switchIndex >= 0) {
+        return `SW${switchIndex}`;
+      }
+    }
+
+    if (direction === 'out') {
+      const ledIndex = BASYS3_LED_PINS.indexOf(packagePin as (typeof BASYS3_LED_PINS)[number]);
+      if (ledIndex >= 0) {
+        return `LD${ledIndex}`;
+      }
+    }
+
+    return trimmed;
+  };
+
+  const resolveEntityRef = (candidate: string | undefined): string | undefined => {
+    const trimmed = candidate?.trim() ?? '';
+    if (!trimmed) return undefined;
+
+    const directPort = portsByBase.get(trimmed.toLowerCase());
+    if (directPort) {
+      return directPort.name;
+    }
+
+    const indexedMatch =
+      trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)\((\d+)\)$/) ??
+      trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)\[(\d+)\]$/) ??
+      trimmed.match(/^([A-Za-z_]+)(\d+)$/);
+    if (!indexedMatch) return undefined;
+
+    const rawBase = indexedMatch[1] ?? '';
+    const normalizedBase = rawBase.toLowerCase() === 'ld' ? 'led' : rawBase.toLowerCase();
+    const bitIndex = Number.parseInt(indexedMatch[2] ?? '0', 10);
+    const port = portsByBase.get(normalizedBase);
+    if (!port) return undefined;
+    return port.isVector ? `${port.name}(${bitIndex})` : port.name;
+  };
+
+  const allEntries = [
+    ...(project.ioMapping?.inputs ?? []).map((entry) => ({ ...entry, direction: 'in' as const })),
+    ...(project.ioMapping?.outputs ?? []).map((entry) => ({ ...entry, direction: 'out' as const })),
+  ];
+
+  for (const entry of allEntries) {
+    countLabelAlias(entry.label);
+    countLabelAlias(nodeLabelsById.get(entry.nodeId ?? ''));
+  }
+
+  const processEntries = (
+    entries: Array<{ id?: string; nodeId?: string; port?: string; label?: string; pin?: string }>,
+    direction: 'in' | 'out',
+  ) => {
+    for (const entry of entries) {
+      const nodeLabel = nodeLabelsById.get(entry.nodeId ?? '');
+      const basys3Alias = resolveBasys3AliasFromPin(entry.pin, direction);
+      const canonicalPortHint = entry.label?.trim()
+        ? toVhdlIdentifier(entry.label.trim())
+        : toVhdlIdentifier(`${entry.nodeId ?? ''}_${entry.port ?? ''}`);
+      const ref =
+        resolveEntityRef(canonicalPortHint) ??
+        resolveEntityRef(basys3Alias) ??
+        resolveEntityRef(entry.pin) ??
+        resolveEntityRef(entry.label) ??
+        resolveEntityRef(nodeLabel);
+      if (!ref) continue;
+
+      registerAlias(ref, ref);
+      registerAlias(canonicalPortHint, ref);
+      registerAlias(basys3Alias, ref);
+      registerAlias(entry.pin, ref);
+      registerAlias(entry.id, ref);
+      registerAlias(entry.nodeId, ref);
+      registerAlias(toVhdlIdentifier(`${entry.nodeId ?? ''}_${entry.port ?? ''}`), ref);
+      registerAlias(entry.label, ref, false);
+      registerAlias(nodeLabel, ref, false);
+    }
+  };
+
+  processEntries(project.ioMapping?.inputs ?? [], 'in');
+  processEntries(project.ioMapping?.outputs ?? [], 'out');
   return result;
 }
 
@@ -248,7 +347,7 @@ function generateTestbenchFromEntity(
   topModule: string,
 ): string {
   const entityPorts = parseEntityPortInfos(topVhd);
-  const labelToRef = buildLabelToEntityRef(project.ioMapping, entityPorts);
+  const labelToRef = buildLabelToEntityRef(project, entityPorts);
 
   // Resolve clock signal name if needed
   let clockPortRef: string | undefined;
