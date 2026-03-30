@@ -1,4 +1,60 @@
 # AI State
+## Change Log 2026-03-30 (Slice 2 closed: Basys3 export now routes a real six-case Vivado matrix with generalized switch/button clock policy and legal port naming)
+
+**Subsystem**: Basys3 export / Vivado XDC policy / top-port naming / export reliability proof
+
+### Problem
+
+The first latch-specific Basys3 repair was not enough to claim exporter reliability.
+
+- the XDC rule that suppressed inappropriate clock buffering only applied to latch-classified designs, which left switch/button-driven sequential exports vulnerable to Vivado treating those ports as clock-like and inserting illegal BUFG paths on non-CCIO pins
+- a broader real-Vivado audit exposed a second export bug in a shipped example: label-derived top-port names such as `RST (BTNC)` sanitized into `RST__BTNC_`, which is not a legal VHDL basic identifier and broke synthesis before implementation could even begin
+
+### What changed
+
+- `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts`
+  - `CLOCK_BUFFER_TYPE NONE` now emits for every switch and button input port, not just latch-classified designs
+  - XDC policy comments now state the real contract: switch/button ports are board controls, not clocks
+  - Basys3 top-port sanitization now collapses repeated separators, trims edge underscores, and prefixes non-letter-leading identifiers
+
+- `packages/rb-apps/src/fpga/boards/basys3/basys3ExportModel.ts`
+  - top-port naming now follows the same hardened VHDL-safe identifier rules as the XDC bundle path
+  - empty post-sanitization labels now fall back to canonical `nodeId_port`-style names instead of emitting broken identifiers
+
+- regression coverage added or updated in:
+  - `packages/rb-apps/src/__tests__/vivado-clean-export-gate.test.ts`
+  - `packages/rb-apps/src/__tests__/basys3-port-naming-phase1.test.ts`
+
+### Student-visible behavior
+
+- switch-driven Basys3 exports are no longer one fragile latch-only exception; the same safe XDC policy now covers switch/button-controlled combinational, latch, and sequential examples
+- label-derived port names in exported HDL/XDC/README artifacts no longer leak Vivado-illegal names like `RST__BTNC_`
+- the shipped `two-bit-counter` example now regenerates into a project that actually synthesizes and routes under real Vivado instead of failing on the top entity
+
+### Proof
+
+- focused regression tests:
+  - `pnpm -w exec vitest run packages/rb-apps/src/__tests__/basys3-port-naming-phase1.test.ts packages/rb-apps/src/__tests__/vivado-clean-export-gate.test.ts`
+  - result: `33 passed`
+
+- adjacent build proof:
+  - `pnpm --filter @redbyte/playground build`
+  - result: successful playground rebuild
+
+- real Vivado matrix proof from regenerated Basys3 project folders under `C:\rb-matrix-20260330`:
+  - `signal-tour` -> routed
+  - `two-bit-counter` -> routed
+  - switch-driven `DLatch` -> routed
+  - switch-driven `DFlipFlop` -> routed
+  - switch-driven `TFlipFlop` -> routed
+  - switch-driven `JKFlipFlop` -> routed
+
+### Remaining ordered priority
+
+1. turn the current manual six-case Vivado matrix into a reusable validation harness instead of relying on ad hoc reruns
+2. align any other label-to-identifier export paths with the new Basys3 naming contract so student text cannot reintroduce HDL-illegal names elsewhere
+3. continue the broader supported-matrix audit so Export, Verify, Hardware, and Project only promise what real Vivado and board bring-up can prove
+
 ## Change Log 2026-03-30 (Slice 1 closed: exported testbench now resolves stable ids to entity refs and compiles on the live Windows machine)
 
 **Subsystem**: Basys3 export / entity-based testbench generation / export artifact consistency

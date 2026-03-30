@@ -21,7 +21,15 @@ export interface Basys3BundleResult {
 }
 
 function sanitizeIdentifier(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^(\d)/, '_$1');
+  const normalized = name
+    .trim()
+    .replace(/[^A-Za-z0-9_]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  if (normalized.length === 0) return '';
+  if (/^[A-Za-z]/.test(normalized)) return normalized;
+  return `sig_${normalized}`;
 }
 
 function mappingKey(entry: IoMappingEntry): string {
@@ -38,7 +46,10 @@ function parsePackagePin(line: string): string | null {
 }
 
 function toSignalName(entry: IoMappingEntry): string {
-  if (entry.label?.trim()) return sanitizeIdentifier(entry.label.trim());
+  if (entry.label?.trim()) {
+    const sanitizedLabel = sanitizeIdentifier(entry.label.trim());
+    if (sanitizedLabel.length > 0) return sanitizedLabel;
+  }
   return sanitizeIdentifier(`${entry.nodeId}_${entry.port}`);
 }
 
@@ -104,12 +115,12 @@ function buildTopXdc(
     lines.push('# Timing: Sequential design (clocked) — create_clock constraint generated below.');
   } else if (classification === 'sequential-latch') {
     lines.push('# Timing: Sequential design (latch-based) — create_clock intentionally omitted.');
-    lines.push('# CLOCK_BUFFER_TYPE NONE applied to switch/button ports to prevent synthesis clock-buffer insertion.');
     lines.push('# Vivado timing/power warnings for unconstrained paths are expected and non-blocking.');
   } else {
     lines.push('# Timing: Combinational design — create_clock intentionally omitted.');
     lines.push('# Vivado timing/power warnings for unconstrained paths are expected and non-blocking.');
   }
+  lines.push('# CLOCK_BUFFER_TYPE NONE applied to all switch/button ports to prevent synthesis clock-buffer insertion.');
   lines.push('');
 
   type TaggedEntry = { entry: IoMappingEntry; dir: 'in' | 'out' };
@@ -131,9 +142,7 @@ function buildTopXdc(
     if (!entries || entries.length === 0) continue;
 
     lines.push(`## ${groupName}`);
-    const needsClockBufferNone =
-      (groupName === 'Switches' || groupName === 'Buttons') &&
-      classification === 'sequential-latch';
+    const isNonClockInputGroup = groupName === 'Switches' || groupName === 'Buttons';
     for (const { entry, dir } of entries) {
       if (!entry.pin) {
         warnings.push(`Missing pin mapping for ${entry.nodeId}.${entry.port}`);
@@ -147,7 +156,11 @@ function buildTopXdc(
       const portRef = portRefMap?.get(entry.id) ?? toSignalName(entry);
       lines.push(`set_property PACKAGE_PIN ${packagePin} [get_ports {${portRef}}]`);
       lines.push(`set_property IOSTANDARD LVCMOS33 [get_ports {${portRef}}]`);
-      if (needsClockBufferNone && dir === 'in') {
+      // SW/BTN ports are never clock sources — always suppress BUFG inference.
+      // Without this, Vivado synthesis may insert clock buffers on high-fanout
+      // switch/button paths, causing placement failures (BUFG vs IBUF conflict).
+      // This is safe for all design classifications: combinational, latch, and clocked.
+      if (isNonClockInputGroup && dir === 'in') {
         lines.push(`set_property CLOCK_BUFFER_TYPE NONE [get_ports {${portRef}}]`);
       }
       if (packagePin === 'W5') {

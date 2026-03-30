@@ -72,8 +72,21 @@ describe('Phase 1 — port naming: label takes precedence over nodeId_port', () 
       outputs: [],
     };
     const result = exportBasys3Bundle(makeCircuitWithNode('g1'), ioMapping);
-    // Sanitized: my_signal_ (hyphens and ! replaced with _)
-    expect(result.topXdc).toContain('[get_ports {my_signal_}]');
+    expect(result.topXdc).toContain('[get_ports {my_signal}]');
+    expect(result.topVhd).toContain('my_signal : in');
+  });
+
+  it('collapses repeated separators so student labels stay legal in Vivado VHDL', () => {
+    const ioMapping: IoMapping = {
+      inputs: [{ id: 'rst', nodeId: 'g1', port: 'in1', label: 'RST (BTNC)', pin: 'BTNC' }],
+      outputs: [],
+    };
+    const result = exportBasys3Bundle(makeCircuitWithNode('g1'), ioMapping);
+
+    expect(result.topXdc).toContain('[get_ports {RST_BTNC}]');
+    expect(result.topVhd).toContain('RST_BTNC : in');
+    expect(result.topXdc).not.toContain('RST__BTNC_');
+    expect(result.topVhd).not.toContain('RST__BTNC_');
   });
 });
 

@@ -5,7 +5,10 @@ area: export
 updated: 2026-03-30
 related:
   - "[[Connection Model]]"
+  - "[[Basys 3 Mapping]]"
   - "[[BUG-011 Export Testbench Stable-ID Stimulus Drift]]"
+  - "[[BUG-012 Basys3 Switch and Button Clock Buffer Inference]]"
+  - "[[BUG-013 Basys3 Export Port Sanitizer Produced Vivado-Illegal Identifiers]]"
   - "[[RedByte Engineering Brain]]"
 ---
 
@@ -23,6 +26,7 @@ The export contract exists so the live UI export surface, the compatibility fall
 ## Canonical Shape / Contract
 
 - `top.vhd` entity ports are the naming authority for `testbench.vhd` component ports and signal declarations.
+- Basys3 top-level port names derived from labels must already be legal VHDL basic identifiers before they reach `top.vhd`, `top.xdc`, or downstream Vivado packaging.
 - `testbench.vhd` may come from either:
   - the runtime-backed scenario path in `buildExportViewModel.ts`
   - the compatibility fallback path in `basys3ExportService.ts`
@@ -38,6 +42,7 @@ The export contract exists so the live UI export surface, the compatibility fall
 
 - There are only two valid testbench generation paths: runtime-backed and documented compatibility fallback.
 - Export may remain advisory when Verify is stale or missing, but structural artifact mismatches must block export.
+- Basys3 switch and button input ports must always emit `CLOCK_BUFFER_TYPE NONE`; only the real board clock input should remain clock-buffer eligible.
 - Duplicate student-facing labels are never authoritative lookup keys for HDL emission. Stable ids and node ids must survive label collisions.
 - Stimulus targets must resolve to declared testbench input signals.
 - Assertion targets must resolve to declared testbench output signals.
@@ -49,6 +54,8 @@ The export contract exists so the live UI export surface, the compatibility fall
 
 - `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts`
 - `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`
+- `packages/rb-apps/src/fpga/boards/basys3/basys3ExportModel.ts`
+- `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts`
 - `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`
 - `packages/rb-apps/src/fpga/vivado/vivadoProjectFolder.ts`
 
@@ -56,3 +63,4 @@ The export contract exists so the live UI export surface, the compatibility fall
 
 - Duplicate student-facing IO labels across Design / Verify / Map Pins / Export remain a separate student-path cleanup slice.
 - Verify compare-state ownership still needs an explicit cross-surface contract so export advisories stay truthful without leaking runtime-only state into HDL generation.
+- The current local Vivado proof matrix covers `signal-tour`, `two-bit-counter`, and switch-driven `DLatch` / `DFF` / `TFF` / `JKFF`; broader classroom-starter proof should be automated rather than rerun manually.

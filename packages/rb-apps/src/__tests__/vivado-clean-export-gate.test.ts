@@ -256,6 +256,44 @@ describe('Vivado clean export — XDC clock constraint policy', () => {
     // Must NOT say combinational
     expect(bundle.topXdc).not.toContain('Combinational design');
   });
+
+  it('combinational design XDC emits CLOCK_BUFFER_TYPE NONE for switch input ports', () => {
+    const circuit = buildCombinationalCircuit();
+    const ioMapping = buildCombinationalIoMapping();
+    const bundle = exportBasys3Bundle(circuit, ioMapping);
+    // SW/BTN ports must always get CLOCK_BUFFER_TYPE NONE to prevent Vivado
+    // from inserting BUFG on non-clock paths (even in combinational designs).
+    const bufNoneLines = bundle.topXdc
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('#'))
+      .filter((line) => line.includes('CLOCK_BUFFER_TYPE NONE'));
+    // SW0 + SW1 = 2 switch input ports
+    expect(bufNoneLines).toHaveLength(2);
+  });
+
+  it('sequential-clocked design XDC emits CLOCK_BUFFER_TYPE NONE for switch ports (not for CLK)', () => {
+    const circuit = buildCombinationalCircuit();
+    const ioMapping = buildSequentialIoMapping();
+    const bundle = exportBasys3Bundle(circuit, ioMapping);
+    const bufNoneLines = bundle.topXdc
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('#'))
+      .filter((line) => line.includes('CLOCK_BUFFER_TYPE NONE'));
+    // sw0 = 1 switch input port; CLK100MHZ must NOT get CLOCK_BUFFER_TYPE NONE
+    expect(bufNoneLines).toHaveLength(1);
+    // CLK port must not have CLOCK_BUFFER_TYPE NONE (it needs the BUFG)
+    expect(bufNoneLines.join('\n')).not.toContain('clk');
+  });
+
+  it('all design classifications include CLOCK_BUFFER_TYPE policy comment in XDC', () => {
+    const circuit = buildCombinationalCircuit();
+    // Combinational
+    const combBundle = exportBasys3Bundle(circuit, buildCombinationalIoMapping());
+    expect(combBundle.topXdc).toContain('CLOCK_BUFFER_TYPE NONE applied to all switch/button ports');
+    // Sequential-clocked
+    const seqBundle = exportBasys3Bundle(circuit, buildSequentialIoMapping());
+    expect(seqBundle.topXdc).toContain('CLOCK_BUFFER_TYPE NONE applied to all switch/button ports');
+  });
 });
 
 // ─── README: student-safe guidance ───────────────────────────────────────────
