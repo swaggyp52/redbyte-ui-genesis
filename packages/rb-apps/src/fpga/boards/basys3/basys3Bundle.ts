@@ -3,6 +3,7 @@ import { toCircuitV1 } from '@redbyte/rb-logic-core';
 import { circuitToVerilog } from '@redbyte/rb-fpga-toolchain';
 import type { IoMapping, IoMappingEntry } from '@redbyte/rb-utils';
 import { compareCodepoint } from '../../../export/codepointSort';
+import type { Netlist } from '../../../export/netlistExport';
 import { vhdlFromNetlist } from '../../../export/vhdlExport';
 import { BASYS3_ALLOWED_PACKAGE_PINS, resolveBasys3PackagePin } from './basys3Pins';
 import { buildBasys3ExportModel } from './basys3ExportModel';
@@ -69,6 +70,12 @@ function detectSignalGroup(entry: IoMappingEntry): string {
   return 'Other';
 }
 
+const STATEFUL_NODE_TYPES = new Set(['DLatch', 'DFlipFlop', 'TFlipFlop', 'JKFlipFlop']);
+
+function hasStatefulNodes(netlist: Netlist): boolean {
+  return netlist.nodes.some((node) => STATEFUL_NODE_TYPES.has(node.type));
+}
+
 function hasClockInput(ioMapping: IoMapping): boolean {
   return ioMapping.inputs.some((entry) => {
     const alias = (entry.pin ?? '').toUpperCase().trim();
@@ -76,16 +83,29 @@ function hasClockInput(ioMapping: IoMapping): boolean {
   });
 }
 
+type DesignClassification = 'sequential-clocked' | 'sequential-latch' | 'combinational';
+
+function classifyDesign(ioMapping: IoMapping, netlist: Netlist): DesignClassification {
+  if (hasClockInput(ioMapping)) return 'sequential-clocked';
+  if (hasStatefulNodes(netlist)) return 'sequential-latch';
+  return 'combinational';
+}
+
 function buildTopXdc(
   ioMapping: IoMapping,
   warnings: string[],
   portRefMap: Map<string, string> | null,
+  classification: DesignClassification,
 ): string {
   const lines: string[] = [];
   lines.push('# RedByte Basys3 Constraints (deterministic)');
   lines.push('# Generated for top module: top');
-  if (hasClockInput(ioMapping)) {
-    lines.push('# Timing: Sequential design — create_clock constraint generated below.');
+  if (classification === 'sequential-clocked') {
+    lines.push('# Timing: Sequential design (clocked) — create_clock constraint generated below.');
+  } else if (classification === 'sequential-latch') {
+    lines.push('# Timing: Sequential design (latch-based) — create_clock intentionally omitted.');
+    lines.push('# CLOCK_BUFFER_TYPE NONE applied to switch/button ports to prevent synthesis clock-buffer insertion.');
+    lines.push('# Vivado timing/power warnings for unconstrained paths are expected and non-blocking.');
   } else {
     lines.push('# Timing: Combinational design — create_clock intentionally omitted.');
     lines.push('# Vivado timing/power warnings for unconstrained paths are expected and non-blocking.');
@@ -111,7 +131,10 @@ function buildTopXdc(
     if (!entries || entries.length === 0) continue;
 
     lines.push(`## ${groupName}`);
-    for (const { entry } of entries) {
+    const needsClockBufferNone =
+      (groupName === 'Switches' || groupName === 'Buttons') &&
+      classification === 'sequential-latch';
+    for (const { entry, dir } of entries) {
       if (!entry.pin) {
         warnings.push(`Missing pin mapping for ${entry.nodeId}.${entry.port}`);
         continue;
@@ -124,6 +147,9 @@ function buildTopXdc(
       const portRef = portRefMap?.get(entry.id) ?? toSignalName(entry);
       lines.push(`set_property PACKAGE_PIN ${packagePin} [get_ports {${portRef}}]`);
       lines.push(`set_property IOSTANDARD LVCMOS33 [get_ports {${portRef}}]`);
+      if (needsClockBufferNone && dir === 'in') {
+        lines.push(`set_property CLOCK_BUFFER_TYPE NONE [get_ports {${portRef}}]`);
+      }
       if (packagePin === 'W5') {
         lines.push(
           `create_clock -period 10.000 -name sys_clk -waveform {0.000 5.000} [get_ports {${portRef}}]`,
@@ -232,7 +258,8 @@ export function exportBasys3Bundle(
     xdcPortRefMap.set(ref.entryId, ref.xdcRef);
   }
 
-  const topXdc = buildTopXdc(ioMapping, warnings, xdcPortRefMap);
+  const classification = classifyDesign(ioMapping, exportModel.netlist);
+  const topXdc = buildTopXdc(ioMapping, warnings, xdcPortRefMap, classification);
   const lint = lintBasys3ProjectPorts(
     {
       sources: [{ path: 'top.v', language: 'verilog', text: verilog.verilog }],
