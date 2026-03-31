@@ -8197,7 +8197,16 @@ details[open] summary .details-arrow {
   flex-shrink: 0;
   background: rgba(0,0,0,0.15);
   padding: 0 var(--ide-space-2);
-  margin-bottom: var(--ide-space-1);
+  margin-bottom: 0;
+}
+.ide-hw-mode-hint {
+  margin: 0;
+  padding: var(--ide-space-1) var(--ide-space-2);
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(180, 208, 228, 0.6);
+  background: rgba(0,0,0,0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 .ide-hw-mode-btn {
   padding: 6px 14px;

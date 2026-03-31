@@ -1276,6 +1276,17 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           )}
         </div>
 
+        {/* ── Mode hint — brief description of the active mode ── */}
+        <p className="ide-hw-mode-hint" data-testid="ide-hw-mode-hint">
+          {hwMode === 'map'
+            ? 'Assign each circuit signal to a physical Basys3 pin — switches, LEDs, buttons, or clock.'
+            : hwMode === 'bringup'
+              ? 'Walk through each test vector step-by-step: set the switches, press buttons, and confirm the LEDs match.'
+              : hwMode === 'proof'
+                ? 'Review the export checklist and Vivado commands needed to program the Basys3 board.'
+                : 'Interact with the board view in real time — toggle switches and watch LED outputs update.'}
+        </p>
+
         {/* ── Scenario provenance strip — hidden on map tab ── */}
         {hwMode !== 'map' && verifyLastRun && (
           <details className="ide-hardware-provenance-details" data-testid="ide-hardware-provenance-details">
