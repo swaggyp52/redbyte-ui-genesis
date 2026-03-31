@@ -6859,6 +6859,98 @@ details[open] summary .details-arrow {
    status strip, control bar, typography discipline
    ════════════════════════════════════════════════════════════════ */
 
+/* ── Phase 19A-pre: Testbench Preview — pre-run signal inventory ── */
+.ide-verify-prerun-inventory {
+  /* inherits .ide-surface-panel grid; override to vertical stack */
+  display: flex;
+  flex-direction: column;
+  gap: var(--ide-space-1);
+}
+.ide-verify-prerun-header {
+  display: flex;
+  align-items: center;
+  gap: var(--ide-space-2);
+  flex-wrap: wrap;
+}
+.ide-verify-prerun-title {
+  font-size: var(--rb-font-size-2);
+  font-weight: var(--rb-font-weight-semibold);
+  color: var(--rb-text-1);
+}
+.ide-verify-prerun-meta {
+  font-size: var(--rb-font-size-1);
+  font-family: var(--rb-font-mono);
+  color: var(--rb-text-3);
+}
+.ide-verify-prerun-clock-chip {
+  font-size: var(--rb-font-size-1);
+  font-family: var(--rb-font-mono);
+  color: var(--rb-info);
+  background: var(--rb-info-bg);
+  border: 1px solid var(--rb-info-border);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.ide-verify-prerun-assert-chip {
+  font-size: var(--rb-font-size-1);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.ide-verify-prerun-assert-chip--active {
+  color: var(--rb-success);
+  background: var(--rb-success-bg);
+  border: 1px solid var(--rb-success-border);
+}
+.ide-verify-prerun-assert-chip--none {
+  color: var(--rb-text-3);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.ide-verify-prerun-lanes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ide-verify-lane-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--rb-font-size-1);
+  font-family: var(--rb-font-mono);
+  border-radius: 999px;
+  padding: 2px 8px;
+  line-height: var(--rb-line-height-1);
+}
+.ide-verify-lane-chip--input {
+  color: var(--rb-info);
+  background: var(--rb-info-bg);
+  border: 1px solid var(--rb-info-border);
+}
+.ide-verify-lane-chip--output-asserted {
+  color: var(--rb-success);
+  background: var(--rb-success-bg);
+  border: 1px solid var(--rb-success-border);
+}
+.ide-verify-lane-chip--output-stimulus {
+  color: var(--rb-warning);
+  background: var(--rb-warning-bg);
+  border: 1px solid var(--rb-warning-border);
+}
+.ide-verify-lane-dir-badge {
+  font-size: 9px;
+  font-weight: var(--rb-font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.ide-verify-lane-name {
+  font-weight: var(--rb-font-weight-medium);
+}
+.ide-verify-lane-assert-badge {
+  font-size: 10px;
+  opacity: 0.65;
+}
+
 /* ── Phase 19A: Status strip — status-first layout ── */
 .ide-verify-status-strip {
   display: flex;
@@ -8250,6 +8342,12 @@ details[open] summary .details-arrow {
 }
 .ide-hw-confidence-row.is-pass .ide-hw-confidence-icon { color: rgba(61,186,110,0.9); }
 .ide-hw-confidence-row.is-pending .ide-hw-confidence-icon { color: rgba(255,255,255,0.2); }
+.ide-hw-confidence-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
 .ide-hw-confidence-row.is-pass .ide-hw-confidence-label { color: var(--ide-text-soft); }
 .ide-hw-confidence-row.is-pending .ide-hw-confidence-label { color: rgba(255,255,255,0.3); }
 
@@ -12483,6 +12581,29 @@ details[open].ide-export-evidence-details > summary::before {
 /* Export redesign — handoff workspace */
 .ide-export-sidecard {
   gap: var(--ide-space-2);
+  min-width: 0;
+}
+/* Value column in dock kv-rows must compress so ellipsis can fire */
+.ide-export-sidecard .ide-kv-row span:last-child {
+  min-width: 0;
+}
+/* Module name in dock key-value list — truncate with ellipsis */
+.ide-export-sidecard .ide-status-mono {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  max-width: 100%;
+}
+/* Buttons in dock should wrap, not truncate */
+.ide-export-sidecard .ide-button {
+  white-space: normal;
+  text-align: center;
+}
+/* Dock header: allow status pill to wrap below title */
+.ide-export-sidecard .ide-workbench-placeholder-header {
+  flex-wrap: wrap;
+  gap: var(--ide-space-1);
 }
 
 .ide-export-sidecard-copy {
@@ -20856,6 +20977,18 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   padding: 2px 8px !important;
   font-size: 11px !important;
   font-family: var(--rb-font-mono) !important;
+}
+/* Left dock tables (bringup step, map missing) — same compact treatment as right dock */
+[data-ide-mode-marker='hardware'] .ide-workbench-dock-left .ide-table-wrap th {
+  font-size: 9px !important;
+  letter-spacing: 0.07em !important;
+  opacity: 0.65 !important;
+  text-transform: uppercase !important;
+  padding: 2px 6px !important;
+}
+[data-ide-mode-marker='hardware'] .ide-workbench-dock-left .ide-table-wrap td {
+  padding: 2px 6px !important;
+  font-size: 10px !important;
 }
 [data-ide-mode-marker='hardware'] .ide-workbench-dock-right {
   opacity: 0.82 !important;

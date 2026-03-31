@@ -421,7 +421,8 @@ export function validateArtifactConsistency(topVhd: string, testbenchVhd: string
     return inconsistencies;
   }
 
-  const entityPorts = extractVhdlEntityPortNames(topVhd);
+  const entityPorts = extractVhdlEntityPortInfos(topVhd);
+  const entityPortNames = entityPorts.map((port) => port.name);
 
   // Locate component block; if absent (empty testbench / no vectors) there is nothing to check.
   const componentMatch = testbenchVhd.match(
@@ -436,24 +437,19 @@ export function validateArtifactConsistency(topVhd: string, testbenchVhd: string
     );
   }
 
-  const componentPorts = componentMatch[2]
-    .split(';')
-    .map((e) => e.trim())
-    .filter((e) => e.length > 0)
-    .map((e) => e.split(':')[0]?.trim() ?? '')
-    .filter((e) => e.length > 0);
+  const componentPorts = extractDeclaredPortNames(componentMatch[2]);
 
-  const entityPortSet = new Set(entityPorts.map((p) => p.toLowerCase()));
+  const entityPortSet = new Set(entityPortNames.map((p) => p.toLowerCase()));
   const componentPortSet = new Set(componentPorts.map((p) => p.toLowerCase()));
 
   for (const port of componentPorts) {
     if (!entityPortSet.has(port.toLowerCase())) {
       inconsistencies.push(
-        `Artifact consistency: testbench component port "${port}" not found in top.vhd entity ports [${entityPorts.join(', ')}].`
+        `Artifact consistency: testbench component port "${port}" not found in top.vhd entity ports [${entityPortNames.join(', ')}].`
       );
     }
   }
-  for (const port of entityPorts) {
+  for (const port of entityPortNames) {
     if (!componentPortSet.has(port.toLowerCase())) {
       inconsistencies.push(
         `Artifact consistency: top.vhd entity port "${port}" missing from testbench component declaration.`
@@ -461,18 +457,166 @@ export function validateArtifactConsistency(topVhd: string, testbenchVhd: string
     }
   }
 
+  inconsistencies.push(
+    ...validateTestbenchSignalTargets(testbenchVhd, entityPorts),
+  );
+
   return inconsistencies;
 }
 
 function extractVhdlEntityPortNames(vhdlText: string): string[] {
+  return extractVhdlEntityPortInfos(vhdlText).map((port) => port.name);
+}
+
+interface VhdlPortInfo {
+  name: string;
+  direction: 'in' | 'out' | 'inout';
+  isVector: boolean;
+  vectorWidth?: number;
+}
+
+interface VhdlSignalInfo {
+  name: string;
+  isVector: boolean;
+  vectorWidth?: number;
+}
+
+function extractVhdlEntityPortInfos(vhdlText: string): VhdlPortInfo[] {
   const portBlock = vhdlText.match(/Port\s*\(([^]*?)\)\s*;\s*end\s+entity/i);
   if (!portBlock) return [];
-  return portBlock[1]
-    .split(';')
-    .map((e) => e.trim())
-    .filter((e) => e.length > 0)
-    .map((e) => e.split(':')[0]?.trim() ?? '')
-    .filter((e) => e.length > 0);
+  return parseVhdlPortInfos(portBlock[1]);
+}
+
+function extractDeclaredPortNames(portBlock: string): string[] {
+  return parseVhdlPortInfos(portBlock).map((port) => port.name);
+}
+
+function parseVhdlPortInfos(portBlock: string): VhdlPortInfo[] {
+  const ports: VhdlPortInfo[] = [];
+
+  for (const entry of portBlock.split(';').map((value) => value.trim()).filter((value) => value.length > 0)) {
+    const colonIndex = entry.indexOf(':');
+    if (colonIndex < 0) continue;
+
+    const names = entry
+      .slice(0, colonIndex)
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
+    const remainder = entry.slice(colonIndex + 1).trim();
+    const directionMatch = remainder.match(/^(in|out|inout)\s+(.+)$/i);
+    if (!directionMatch) continue;
+
+    const direction = directionMatch[1].toLowerCase() as VhdlPortInfo['direction'];
+    const typeDecl = directionMatch[2].trim().toLowerCase();
+    const isVector = typeDecl.includes('vector');
+    const widthMatch = typeDecl.match(/\((\d+)\s+downto\s+0\)/);
+    const vectorWidth = widthMatch ? Number.parseInt(widthMatch[1], 10) + 1 : undefined;
+
+    for (const name of names) {
+      ports.push({
+        name,
+        direction,
+        isVector,
+        vectorWidth,
+      });
+    }
+  }
+
+  return ports;
+}
+
+function extractTestbenchSignalInfos(testbenchVhd: string): Map<string, VhdlSignalInfo> {
+  const signals = new Map<string, VhdlSignalInfo>();
+
+  for (const match of testbenchVhd.matchAll(/\bsignal\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^;]+);/gi)) {
+    const name = match[1]?.trim();
+    const typeDecl = match[2]?.trim().toLowerCase() ?? '';
+    if (!name) continue;
+
+    const isVector = typeDecl.includes('vector');
+    const widthMatch = typeDecl.match(/\((\d+)\s+downto\s+0\)/);
+    const vectorWidth = widthMatch ? Number.parseInt(widthMatch[1], 10) + 1 : undefined;
+    signals.set(name.toLowerCase(), { name, isVector, vectorWidth });
+  }
+
+  return signals;
+}
+
+function extractSignalRef(rawRef: string): { base: string; index?: number } | null {
+  const trimmed = rawRef.trim();
+  const indexedMatch = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)\((\d+)\)$/);
+  if (indexedMatch) {
+    return {
+      base: indexedMatch[1],
+      index: Number.parseInt(indexedMatch[2], 10),
+    };
+  }
+
+  const bareMatch = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)$/);
+  if (!bareMatch) return null;
+  return { base: bareMatch[1] };
+}
+
+function validateTestbenchSignalTargets(
+  testbenchVhd: string,
+  entityPorts: VhdlPortInfo[],
+): string[] {
+  const issues: string[] = [];
+  const signals = extractTestbenchSignalInfos(testbenchVhd);
+  const entityPortsByName = new Map(entityPorts.map((port) => [port.name.toLowerCase(), port] as const));
+
+  const validateTarget = (kind: 'stimulus' | 'assertion', rawRef: string) => {
+    const ref = extractSignalRef(rawRef);
+    if (!ref) return;
+
+    const signal = signals.get(ref.base.toLowerCase());
+    if (!signal) {
+      issues.push(
+        `Artifact consistency: testbench ${kind} target "${rawRef}" is not declared in testbench signal declarations.`
+      );
+      return;
+    }
+
+    if (typeof ref.index === 'number') {
+      if (!signal.isVector) {
+        issues.push(
+          `Artifact consistency: testbench ${kind} target "${rawRef}" indexes scalar signal "${signal.name}".`
+        );
+        return;
+      }
+      if (typeof signal.vectorWidth === 'number' && ref.index >= signal.vectorWidth) {
+        issues.push(
+          `Artifact consistency: testbench ${kind} target "${rawRef}" is out of range for signal "${signal.name}".`
+        );
+        return;
+      }
+    }
+
+    const port = entityPortsByName.get(ref.base.toLowerCase());
+    if (!port) return;
+
+    if (kind === 'stimulus' && port.direction === 'out') {
+      issues.push(
+        `Artifact consistency: testbench stimulus target "${rawRef}" references output port "${port.name}".`
+      );
+    }
+    if (kind === 'assertion' && port.direction === 'in') {
+      issues.push(
+        `Artifact consistency: testbench assertion target "${rawRef}" references input port "${port.name}".`
+      );
+    }
+  };
+
+  for (const match of testbenchVhd.matchAll(/^\s*([A-Za-z_][A-Za-z0-9_]*(?:\(\d+\))?)\s*<=/gm)) {
+    validateTarget('stimulus', match[1]);
+  }
+
+  for (const match of testbenchVhd.matchAll(/^\s*assert\s+([A-Za-z_][A-Za-z0-9_]*(?:\(\d+\))?)\s*=/gm)) {
+    validateTarget('assertion', match[1]);
+  }
+
+  return issues;
 }
 
 function normalizeMappings(project: RBProject, direction: MappingDirection): MappingRecord[] {
@@ -614,7 +758,9 @@ export function isHdlProjectionScaffoldWarning(message: string): boolean {
     /^Unsupported node: .+ \(OUTPUT\)$/i.test(trimmed) ||
     /^Output ".+" \(id: .+\) has no driver .*$/i.test(trimmed) ||
     /^Top output port ".+" has no driver .*$/i.test(trimmed) ||
-    /^Top output port ".+" has unresolved driver .+$/i.test(trimmed)
+    /^Top output port ".+" has unresolved driver .+$/i.test(trimmed) ||
+    /^HDL ports missing in XDC: .+$/i.test(trimmed) ||
+    /^XDC ports missing in HDL: .+$/i.test(trimmed)
   );
 }
 

@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-03-29
+updated: 2026-03-30
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
@@ -86,6 +86,8 @@ Canonical next-phase roadmap:
 
 Latest completed classroom-trust slices:
 
+- `2026-03-30` - Basys3 export now treats every switch/button input as non-clock in XDC and sanitizes label-derived top ports into Vivado-legal identifiers; real Vivado routed a six-case matrix (`signal-tour`, `two-bit-counter`, `DLatch`, `DFF`, `TFF`, `JKFF`) after regeneration.
+- `2026-03-30` - exported entity-based testbench generation now resolves stable ids and Basys3 pin-derived aliases onto declared entity refs; the live browser export for the blank AND circuit now emits `SW(0)` / `SW(1)` stimulus and compiles cleanly under Vivado `xvhdl`.
 - `2026-03-29` - bottom console/footer demotion landed; quiet Design now hides the empty workbench console, keeps diagnostic access when warnings/errors exist, and reduces the footer to a readiness-only signal.
 - `2026-03-29` - blank-project truth + boundary-label cleanup landed; loaded scratch projects now present `Fresh Project`, unlabeled/legacy boundary IO rows promote to student-facing labels, and restored vectors rekey to sanitized IO ids.
 - `2026-03-29` - first-run Verify draft sessions now use testbench language for trace authoring, and the first-run footer uses total live vector authority so custom-vector sessions still surface the primary run CTA.
@@ -160,6 +162,9 @@ Render harness (all 9 suites green):
 **Decisions:** [[ADR-001 Enforce Structured Connection Format]] - [[ADR-002 Truth Table Selection Does Not Auto-Switch Tabs]]
 
 **Recent export truth fixes (resolved 2026-03-26, preserve and do not reopen):**
+- [[BUG-013 Basys3 Export Port Sanitizer Produced Vivado-Illegal Identifiers]] - Basys3 export now collapses separator runs and trims edge underscores before label-derived names reach `top.vhd` / `top.xdc`; the shipped `two-bit-counter` example now synthesizes and routes in real Vivado (`2026-03-30`)
+- [[BUG-012 Basys3 Switch and Button Clock Buffer Inference]] - switch/button input ports now always emit `CLOCK_BUFFER_TYPE NONE`, and real Vivado implementation now routes switch-driven `DLatch` / `DFF` / `TFF` / `JKFF` matrix cases without `Place 30-574` (`2026-03-30`)
+- [[BUG-011 Export Testbench Stable-ID Stimulus Drift]] - entity-based export now resolves stable vector ids against declared entity refs and blocks undeclared stimulus/assertion targets (`2026-03-30`)
 - [[BUG-007 Export Verify Gate Tone Mismatch]] - stale-after-pass export state is advisory `STALE`, not a red blocker (`b5cf70c7`)
 - [[BUG-008 Export Vivado Steps Mismatch Download Label]] - visible Vivado steps now prioritize the normal Open Project flow (`849eca4f`)
 - [[BUG-009 Export RBEV Diagnostics Shown When Blocked]] - advisory RBEV evidence no longer appears inside hard-blocker lists (`88d7a30f`)

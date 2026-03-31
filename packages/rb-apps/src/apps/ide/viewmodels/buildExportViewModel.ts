@@ -3,6 +3,7 @@ import { compareCodepoint } from '../../../export/codepointSort';
 import {
   exportProjectAsBasys3,
   type Basys3ExportError,
+  validateArtifactConsistency,
 } from '../../../fpga/boards/basys3/basys3ExportService';
 import { generateTestbenchVhdl } from '../../../fpga/boards/basys3/testbenchGenerator';
 import { generateVivadoImportTcl } from '../../../fpga/boards/basys3/vivadoImportTcl';
@@ -146,8 +147,17 @@ export function buildExportViewModel(
   activeScenario?: VerifyScenario
 ): ExportViewModel {
   const flattenedProject = flattenProjectMacros(project);
+  const runtimeBackedTestbench = buildRuntimeBackedTestbench(flattenedProject, runtimeVerifyRun, activeScenario);
   const exportResult = exportProjectAsBasys3(flattenedProject);
-  const diagnostics = collectDiagnostics(flattenedProject, exportResult.errors, exportResult.warnings);
+  const runtimeBackedTestbenchErrors = buildRuntimeBackedTestbenchErrors(
+    exportResult.bundle?.topVhd,
+    runtimeBackedTestbench,
+  );
+  const diagnostics = collectDiagnostics(
+    flattenedProject,
+    [...exportResult.errors, ...runtimeBackedTestbenchErrors],
+    exportResult.warnings,
+  );
   const canonicalDiagnostics = diagnostics.map((entry) => entry.canonical);
   const errors = diagnostics.filter((entry) => entry.severity === 'error');
   const warnings = diagnostics.filter((entry) => entry.severity === 'warning');
@@ -156,7 +166,15 @@ export function buildExportViewModel(
   const designTop = resolveTopEntity(flattenedProject);
   const simulationTop = `${designTop}_tb`;
   const topAuthority: ExportTopAuthority = { designTop, simulationTop };
-  const artifacts = buildArtifacts(flattenedProject, exportResult, errors.length > 0, runtimeVerifyRun, activeScenario, topAuthority);
+  const artifacts = buildArtifacts(
+    flattenedProject,
+    exportResult,
+    errors.length > 0,
+    runtimeBackedTestbench,
+    runtimeVerifyRun,
+    activeScenario,
+    topAuthority,
+  );
   const exportedScenario = buildScenarioProvenance(activeScenario, runtimeVerifyRun);
 
   return {
@@ -170,6 +188,21 @@ export function buildExportViewModel(
     topAuthority,
     exportedScenario,
   };
+}
+
+function buildRuntimeBackedTestbenchErrors(
+  topVhd: string | undefined,
+  runtimeBackedTestbench: { content: string; note: string } | undefined,
+): Basys3ExportError[] {
+  if (!topVhd || !runtimeBackedTestbench) {
+    return [];
+  }
+
+  return validateArtifactConsistency(topVhd, runtimeBackedTestbench.content).map((message) => ({
+    type: 'unknown' as const,
+    severity: 'error' as const,
+    message,
+  }));
 }
 
 // TODO(slice-8): Move port/owner extraction earlier — enrich Basys3ExportError with port?: string
@@ -366,6 +399,7 @@ function buildArtifacts(
   project: RBProject,
   exportResult: ReturnType<typeof exportProjectAsBasys3>,
   blocked: boolean,
+  runtimeBackedTestbench: { content: string; note: string } | undefined,
   runtimeVerifyRun?: RuntimeVerifyRun,
   activeScenario?: VerifyScenario,
   topAuthority?: ExportTopAuthority
@@ -373,7 +407,6 @@ function buildArtifacts(
   const artifacts: ExportArtifactView[] = [];
   const bundle = exportResult.bundle;
   const rbprojJson = encodeRBProject(project);
-  const runtimeBackedTestbench = buildRuntimeBackedTestbench(project, runtimeVerifyRun, activeScenario);
   const topEntity = resolveTopEntity(project);
   const vhdlSourcePaths: string[] = ['top.vhd'];
   const vivadoImportTcl = generateVivadoImportTcl({

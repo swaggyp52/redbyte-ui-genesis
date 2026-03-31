@@ -100,6 +100,190 @@ The Hardware page had four student-visible clarity issues:
 - Hardware tests: `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/hardwareSurface` → 11 passed
 - All test IDs preserved — no gate breakage expected
 - Pre-existing failures unchanged (submissionViewer, importSurface.honesty, exportSurface.mapping-trust, projectRuntime.history-authority, projectSurface.submission)
+## Change Log 2026-03-30 (Slice 4: Testbench Preview garbled text — missing CSS added)
+
+**Subsystem**: Verify surface / IDE CSS
+
+### Problem
+
+The Testbench Preview panel on the Verify surface rendered as an unreadable blob: "Testbench Preview16 ticks4 outputs asserted" and "INSW0INSW1INSW2INSW3OUTLD0✓OUTLD1✓OUTLD2✓OUTLD3✓". All CSS class definitions for the `ide-verify-prerun-*` and `ide-verify-lane-*` elements were completely missing — the component markup existed in `VerifySurface.tsx` but the corresponding styles were never added to `ide-root.css`.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Added "Phase 19A-pre" CSS block with styles for all Testbench Preview classes:
+    - `.ide-verify-prerun-inventory` — flex column layout
+    - `.ide-verify-prerun-header` — flex row with gap for title / tick count / assert chip
+    - `.ide-verify-prerun-title`, `.ide-verify-prerun-meta` — typography
+    - `.ide-verify-prerun-clock-chip` — info-colored pill for clock policy
+    - `.ide-verify-prerun-assert-chip` / `--active` / `--none` — success/muted badge
+    - `.ide-verify-prerun-lanes` — flex-wrap container with gap
+    - `.ide-verify-lane-chip` / `--input` / `--output-asserted` / `--output-stimulus` — colored pills (info/success/warning)
+    - `.ide-verify-lane-dir-badge`, `.ide-verify-lane-name`, `.ide-verify-lane-assert-badge` — inline badge elements
+
+### Student-visible behavior
+
+- Testbench Preview now renders as a clean panel with a properly spaced header ("Testbench Preview  16 ticks  4 outputs asserted") and individual signal pills showing direction badges (IN/OUT), signal names, and assertion status with color coding (blue for inputs, green for asserted outputs, amber for stimulus-only outputs)
+
+### Proof
+
+- Visual: live app at localhost:5173 confirms proper rendering after hot reload
+- No TS/TSX changes — CSS-only fix, no regression risk
+
+## Change Log 2026-03-30 (Slice 3: HDL/XDC mismatch warnings now correctly classified as scaffold warnings for projection-only exports)
+
+**Subsystem**: Basys3 export / scaffold warning filter / export viewmodel
+
+### Problem
+
+The Export page showed a false contradiction for valid starter examples like Signal Tour: it simultaneously claimed the Basys3 handoff was available while displaying "HDL ports missing in XDC" and "XDC ports missing in HDL" warning messages and a "Bundle validation failed" error.
+
+The root cause was that `isHdlProjectionScaffoldWarning()` did not recognize the HDL/XDC port-mismatch messages as scaffold warnings. When `IdeApp.tsx` generates stub VHDL for INPUT/OUTPUT-only circuits via `vhdlFromNetlist()`, the entity ports naturally diverge from the XDC pin mappings. These messages are expected and harmless for projection-only exports, but the filter missed them.
+
+### What changed
+
+- `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`
+  - Added two regex patterns to `isHdlProjectionScaffoldWarning()`:
+    - `/^HDL ports missing in XDC: .+$/i`
+    - `/^XDC ports missing in HDL: .+$/i`
+
+- `packages/rb-apps/src/__tests__/basys3-hdl-projection-warning-filter.test.ts`
+  - Added both HDL/XDC mismatch patterns to the known scaffold warnings list
+
+- `packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts`
+  - Added regression test: Signal Tour with stub HDL (mirroring live app path where `fpga.top = 'top'`) must export with `status: 'ok'` and no HDL/XDC mismatch warnings or "Bundle validation failed" errors
+
+### Student-visible behavior
+
+- Signal Tour and other INPUT/OUTPUT-only starter examples no longer show false "HDL ports missing in XDC" / "XDC ports missing in HDL" warnings on the Export page
+- The Export page status correctly shows 'ok' instead of 'blocked' for these projection-only circuits
+
+### Proof
+
+- `pnpm -w exec vitest run packages/rb-apps/src/__tests__/basys3-hdl-projection-warning-filter.test.ts packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts`
+- Result: 12 passed (2 filter tests + 10 canonical naming tests including Signal Tour regression)
+- Adjacent export test suite: 138 passed, 2 pre-existing `stimulus-only` failures (unrelated)
+
+## Change Log 2026-03-30 (Slice 2 closed: Basys3 export now routes a real six-case Vivado matrix with generalized switch/button clock policy and legal port naming)
+
+**Subsystem**: Basys3 export / Vivado XDC policy / top-port naming / export reliability proof
+
+### Problem
+
+The first latch-specific Basys3 repair was not enough to claim exporter reliability.
+
+- the XDC rule that suppressed inappropriate clock buffering only applied to latch-classified designs, which left switch/button-driven sequential exports vulnerable to Vivado treating those ports as clock-like and inserting illegal BUFG paths on non-CCIO pins
+- a broader real-Vivado audit exposed a second export bug in a shipped example: label-derived top-port names such as `RST (BTNC)` sanitized into `RST__BTNC_`, which is not a legal VHDL basic identifier and broke synthesis before implementation could even begin
+
+### What changed
+
+- `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts`
+  - `CLOCK_BUFFER_TYPE NONE` now emits for every switch and button input port, not just latch-classified designs
+  - XDC policy comments now state the real contract: switch/button ports are board controls, not clocks
+  - Basys3 top-port sanitization now collapses repeated separators, trims edge underscores, and prefixes non-letter-leading identifiers
+
+- `packages/rb-apps/src/fpga/boards/basys3/basys3ExportModel.ts`
+  - top-port naming now follows the same hardened VHDL-safe identifier rules as the XDC bundle path
+  - empty post-sanitization labels now fall back to canonical `nodeId_port`-style names instead of emitting broken identifiers
+
+- regression coverage added or updated in:
+  - `packages/rb-apps/src/__tests__/vivado-clean-export-gate.test.ts`
+  - `packages/rb-apps/src/__tests__/basys3-port-naming-phase1.test.ts`
+
+### Student-visible behavior
+
+- switch-driven Basys3 exports are no longer one fragile latch-only exception; the same safe XDC policy now covers switch/button-controlled combinational, latch, and sequential examples
+- label-derived port names in exported HDL/XDC/README artifacts no longer leak Vivado-illegal names like `RST__BTNC_`
+- the shipped `two-bit-counter` example now regenerates into a project that actually synthesizes and routes under real Vivado instead of failing on the top entity
+
+### Proof
+
+- focused regression tests:
+  - `pnpm -w exec vitest run packages/rb-apps/src/__tests__/basys3-port-naming-phase1.test.ts packages/rb-apps/src/__tests__/vivado-clean-export-gate.test.ts`
+  - result: `33 passed`
+
+- adjacent build proof:
+  - `pnpm --filter @redbyte/playground build`
+  - result: successful playground rebuild
+
+- real Vivado matrix proof from regenerated Basys3 project folders under `C:\rb-matrix-20260330`:
+  - `signal-tour` -> routed
+  - `two-bit-counter` -> routed
+  - switch-driven `DLatch` -> routed
+  - switch-driven `DFlipFlop` -> routed
+  - switch-driven `TFlipFlop` -> routed
+  - switch-driven `JKFlipFlop` -> routed
+
+### Remaining ordered priority
+
+1. turn the current manual six-case Vivado matrix into a reusable validation harness instead of relying on ad hoc reruns
+2. align any other label-to-identifier export paths with the new Basys3 naming contract so student text cannot reintroduce HDL-illegal names elsewhere
+3. continue the broader supported-matrix audit so Export, Verify, Hardware, and Project only promise what real Vivado and board bring-up can prove
+
+## Change Log 2026-03-30 (Slice 1 closed: exported testbench now resolves stable ids to entity refs and compiles on the live Windows machine)
+
+**Subsystem**: Basys3 export / entity-based testbench generation / export artifact consistency
+
+### Problem
+
+Live Windows-machine export reproduced a structural mismatch inside `testbench.vhd` for the blank-project AND circuit:
+
+- `top.vhd` declared grouped entity ports `SW` and `LED`
+- `testbench.vhd` component + signal declarations mirrored those entity ports correctly
+- stimulus still emitted raw stable vector ids like `input_1` and `input_1_2`
+- Vivado `xvhdl` failed on the browser-exported files with `VRFC 10-2989` undeclared-identifier errors
+
+The root cause was not Vivado or packaging. The entity-based testbench path only resolved vector keys through labels, while the student flow was exporting stable row ids. The artifact guard also stopped too early: it checked component ports vs. entity ports, but never validated stimulus or assertion targets.
+
+### What changed
+
+- `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts`
+  - entity-based key resolution now accepts stable row ids, node ids, canonical `nodeId_port` names, unique labels, and Basys3 alias/package-pin hints
+  - blank-label exports can now recover canonical entity refs even when top-level ports come from `nodeId_port` naming
+  - duplicate student-facing labels remain non-authoritative lookup keys
+
+- `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`
+  - artifact consistency validation now checks stimulus/assertion targets, not just component/entity port parity
+  - export now rejects undeclared targets, scalar/vector misuse, out-of-range vector refs, and wrong-direction signal use
+
+- `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`
+  - the runtime-backed testbench path now runs through the same consistency guard as the bundle fallback path, so the live Export surface cannot present a structurally broken UI-only testbench as ready
+
+- regression coverage added in:
+  - `packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts`
+
+### Student-visible behavior
+
+- the live Export surface for the blank AND circuit now shows `SW(0)` / `SW(1)` stimulus instead of raw `input_*` ids
+- duplicate-label projects can still export a compilable testbench because the HDL path now follows stable ids and pin/entity authority rather than ambiguous labels
+- runtime-backed export and fallback export now share the same structural safety check
+
+### Proof
+
+- focused regression tests:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts`
+  - result: `9 passed`
+
+- adjacent export/consistency suites:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts packages/rb-apps/src/__tests__/ide-vivado-artifact-consistency.test.ts`
+  - result: `19 passed`
+
+- live Windows-machine rebuild:
+  - `pnpm --filter @redbyte/playground build`
+  - result: successful playground rebuild
+
+- live UI export truth source:
+  - browser Export surface now emits `SW(0)` / `SW(1)` in `testbench.vhd` for the reproduced blank-project AND circuit
+
+- Vivado compile on browser-exported artifacts:
+  - `C:\Xilinx\Vivado\2024.2\bin\xvhdl.bat -2008 top.vhd testbench.vhd`
+  - result: both `untitled_project` and `tb_untitled_project` analyze cleanly with no undeclared-target errors
+
+### Remaining ordered priority
+
+1. Slice 2 - fix duplicate student-facing IO labels across Design / Verify / Map Pins / Export
+2. Slice 3 - fix Verify compare-state ownership / drift
+3. rerun the broader hardware-path / autosave reassessment after those upstream truth fixes land
 
 ## Change Log 2026-03-29 (classroom signoff proof recovered after harness + gate truth repair)
 

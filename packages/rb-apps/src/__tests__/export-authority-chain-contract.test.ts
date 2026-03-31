@@ -374,7 +374,7 @@ describe('VerifySessionStatus stimulus-only', () => {
       failingRowCount: 0,
     });
     expect(model.statusBadge).not.toBe(oldBadge);
-    // Explicitly check that "OBSERVATION ONLY" is used
+    // Explicitly check that "OBSERVATION ONLY" is used (renamed from "STIMULUS ONLY")
     expect(model.statusBadge).toBe('OBSERVATION ONLY');
     // Suppress TS unused variable warning
     void allStatuses;

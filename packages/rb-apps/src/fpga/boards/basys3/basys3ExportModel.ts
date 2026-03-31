@@ -292,12 +292,23 @@ function stableSortMapping(entries: IoMappingEntry[]): IoMappingEntry[] {
 
 function toSignalName(entry: IoMappingEntry): string {
   const trimmedLabel = entry.label?.trim() ?? '';
-  if (trimmedLabel.length > 0) return sanitizeIdentifier(trimmedLabel);
+  if (trimmedLabel.length > 0) {
+    const sanitizedLabel = sanitizeIdentifier(trimmedLabel);
+    if (sanitizedLabel.length > 0) return sanitizedLabel;
+  }
   return sanitizeIdentifier(`${entry.nodeId}_${entry.port}`);
 }
 
 function sanitizeIdentifier(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^(\d)/, '_$1');
+  const normalized = name
+    .trim()
+    .replace(/[^A-Za-z0-9_]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  if (normalized.length === 0) return '';
+  if (/^[A-Za-z]/.test(normalized)) return normalized;
+  return `sig_${normalized}`;
 }
 
 function compareBindingRef(left: Basys3ExportBindingRef, right: Basys3ExportBindingRef): number {

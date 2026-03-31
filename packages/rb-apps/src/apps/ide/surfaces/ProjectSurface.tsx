@@ -287,6 +287,17 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 
   const inputCount = useMemo(() => mappingRows.filter((r) => r.direction === 'in').length, [mappingRows]);
   const outputCount = useMemo(() => mappingRows.filter((r) => r.direction === 'out').length, [mappingRows]);
+  const savedAgoLabel = useMemo(() => {
+    if (!lastSavedAt) return null;
+    try {
+      const ts = new Date(lastSavedAt).getTime();
+      if (isNaN(ts)) return null;
+      const mins = Math.floor((Date.now() - ts) / 60000);
+      if (mins < 1) return 'just now';
+      if (mins < 60) return `${mins} min ago`;
+      return `${Math.floor(mins / 60)}h ago`;
+    } catch { return null; }
+  }, [lastSavedAt]);
   const exportAvailable =
     readiness.hasCircuit &&
     readiness.hasIoMapping &&
@@ -411,6 +422,58 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       onClick: onOpenDesign,
     };
   }, [onOpenDesign, onOpenImport, readiness.hasCircuit, showStarterGallery]);
+  const heroChecklistItems = useMemo(
+    () => [
+      {
+        label: 'Pins mapped',
+        value: readiness.hasIoMapping
+          ? `${mappedRequiredCount}/${requiredCount || mappedRequiredCount} assigned`
+          : `${unmappedRequiredCount} remaining`,
+        tone: readiness.hasIoMapping ? 'ok' : 'warn',
+      },
+      {
+        label: 'Verify',
+        value: compareMatches
+          ? 'Assertions match'
+          : comparePassIncomplete
+            ? 'Match (mapping review)'
+            : compareDiffers
+              ? 'Assertions differ'
+              : compareCurrent
+                ? 'Simulation current'
+                : blockingIssue?.code === 'RBP1004'
+                  ? 'Run again after changes'
+                  : 'Not run',
+        tone: compareMatches ? 'ok' : 'warn',
+      },
+      {
+        label: 'Export',
+        value: hardwareReady
+          ? 'Board handoff ready'
+          : exportPackageCurrent
+            ? 'Current package'
+            : exportAvailable
+              ? 'Available'
+              : 'Map pins first',
+        tone: hardwareReady || exportPackageCurrent ? 'ok' : exportAvailable ? 'warn' : 'idle',
+      },
+    ],
+    [
+      blockingIssue?.code,
+      compareCurrent,
+      compareDiffers,
+      compareMatches,
+      comparePassIncomplete,
+      exportAvailable,
+      exportPackageCurrent,
+      hardwareReady,
+      mappedRequiredCount,
+      readiness.hasIoMapping,
+      requiredCount,
+      unmappedRequiredCount,
+    ]
+  );
+
   const handleProjectModeAction = useCallback(
     (mode: ProjectHealthMode) => {
       switch (mode) {
@@ -568,6 +631,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   );
 
   const designCardDone = readiness.hasCircuit && readiness.hasIoMapping;
+  const completedMilestoneCount = [
+    designCardDone,
+    compareCurrent,
+    exportPackageCurrent,
+    hardwareReady,
+  ].filter(Boolean).length;
   const dockStageItems = useMemo(
     () => [
       {
@@ -870,6 +939,26 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         ) : (
           /* STATE B/C — circuit loaded */
           <>
+            {/* Quick-stats strip */}
+            {(inputCount > 0 || outputCount > 0 || savedAgoLabel) && (
+              <div className="ide-project-quick-stats" data-testid="ide-project-quick-stats">
+                {inputCount > 0 && (
+                  <span>{inputCount} input{inputCount !== 1 ? 's' : ''}</span>
+                )}
+                {outputCount > 0 && (
+                  <><span className="ide-qstat-sep" aria-hidden="true">·</span>
+                  <span>{outputCount} output{outputCount !== 1 ? 's' : ''}</span></>
+                )}
+                {compareMatches && (
+                  <><span className="ide-qstat-sep" aria-hidden="true">·</span>
+                  <span className="ide-qstat-ok">✓ Assertions match</span></>
+                )}
+                {savedAgoLabel && (
+                  <><span className="ide-qstat-sep" aria-hidden="true">·</span>
+                  <span>Saved {savedAgoLabel}</span></>
+                )}
+              </div>
+            )}
         {/* ── Hero Onboarding Panel ── */}
         <SurfacePanel className="ide-project-hero" testId="ide-project-hero">
           <div className="ide-project-showcase" data-testid="ide-project-showcase">
@@ -889,6 +978,14 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   {heroStatusMessage}
                 </span>
               </div>
+              <div className="ide-project-showcase-chip-row">
+                <span className="ide-project-context-tag">Basys3</span>
+                <span className="ide-project-context-tag">{projectContextLabel}</span>
+                <span className="ide-project-context-tag">{inputCount} in / {outputCount} out</span>
+                {starterExample?.concept && (
+                  <span className="ide-project-context-tag">{starterExample.concept}</span>
+                )}
+              </div>
               <div className="ide-project-showcase-actions">
                 <span data-testid="ide-project-continue-cta">
                   <IdeButton
@@ -906,6 +1003,20 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 >
                   {heroAssistAction.label}
                 </IdeButton>
+              </div>
+              <div className="ide-project-showcase-checklist">
+                {heroChecklistItems.map((item) => (
+                  <div
+                    key={item.label}
+                    className={`ide-project-showcase-checkpoint is-${item.tone}`}
+                  >
+                    <span className="ide-project-showcase-checkpoint-dot" aria-hidden="true" />
+                    <div>
+                      <strong>{item.label}</strong>
+                      <span>{item.value}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -982,9 +1093,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           <SurfacePanel className="ide-project-spotlight" testId="ide-project-context">
             <div className="ide-project-spotlight-header">
               <span className="ide-project-spotlight-eyebrow">Project context</span>
-              <IdeStatusPill tone={simRunning ? 'ok' : 'idle'}>
-                {simRunning ? 'SIM RUNNING' : 'SIM IDLE'}
-              </IdeStatusPill>
             </div>
             <div className="ide-project-spotlight-copy">
                 <h3 className="ide-project-spotlight-title">
