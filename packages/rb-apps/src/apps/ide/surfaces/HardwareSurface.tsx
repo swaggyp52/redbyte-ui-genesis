@@ -801,14 +801,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         </div>
       </div>
       <div className="ide-inline-actions">
-        <IdeButton tone="secondary" onClick={() => setHwMode('map')} testId="ide-hardware-map-dock-primary">
-          Keep mapping
-        </IdeButton>
-        {onGoToDesign && (
-          <IdeButton tone="ghost" onClick={onGoToDesign}>
+        {mappingReady ? (
+          <IdeButton tone="secondary" onClick={() => setHwMode('proof')} testId="ide-hardware-map-dock-primary">
+            Program Checklist →
+          </IdeButton>
+        ) : onGoToDesign ? (
+          <IdeButton tone="ghost" onClick={onGoToDesign} testId="ide-hardware-map-dock-primary">
             Open Design
           </IdeButton>
-        )}
+        ) : null}
       </div>
     </SurfacePanel>
   );
@@ -1285,7 +1286,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         )}
 
         {/* ── Mode toggle bar ── */}
-        <SurfacePanel
+        {/* Don't show the next-action hero on the Map Pins tab — the student is
+            actively completing a prerequisite and the hero would conflict. */}
+        {hwMode !== 'map' && <SurfacePanel
           className="ide-hardware-blocked-hero"
           testId={blockedHero ? 'ide-hardware-blocked-hero' : 'ide-hardware-next-hero'}
         >
@@ -1313,7 +1316,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               </IdeButton>
             )}
           </div>
-        </SurfacePanel>
+        </SurfacePanel>}
         <div className="ide-hw-mode-toggle" data-testid="ide-hw-mode-toggle">
           {(['map', 'bringup', 'proof', 'live'] as const).map((m) => (
             <IdeButton
