@@ -5453,6 +5453,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             {drawerOpen && (
             <>
             <div className="ide-verify-drawer-body">
+            {/* Prominent tab navigation — visible immediately when drawer opens */}
+            <nav className="ide-verify-analysis-tab-nav" data-testid="ide-verify-analysis-tab-nav">
+              {drawerTabs.map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  className={`ide-verify-analysis-tab${verifyTab === tab ? ' is-active' : ''}`}
+                  onClick={() => setVerifyTab(tab)}
+                >
+                  {tab === 'mismatches' ? 'Mismatches'
+                    : tab === 'vectors' ? 'Vectors'
+                    : tab === 'truth' ? 'Truth Table'
+                    : tab === 'kmap' ? 'K-Map'
+                    : 'Details'}
+                </button>
+              ))}
+            </nav>
             <div className="ide-verify-tab-panel">
               {verifyTab === 'mismatches' && (
                 <section className="ide-verify-mismatch-panel" data-testid="ide-verify-mismatch-table">

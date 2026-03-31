@@ -24309,3 +24309,34 @@ button:disabled,
   flex-wrap: wrap;
   gap: var(--ide-space-1);
 }
+
+/* --- Verify analysis tab bar (prominent nav inside drawer body) --- */
+.ide-verify-analysis-tab-nav {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  padding: 8px 12px 0;
+  border-bottom: 1px solid rgba(48, 77, 107, 0.32);
+  flex-shrink: 0;
+}
+.ide-verify-analysis-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--rb-text-muted, #7a95b0);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 4px 12px 8px;
+  margin-bottom: -1px;
+  transition: color 0.12s, border-color 0.12s;
+}
+.ide-verify-analysis-tab:hover {
+  color: var(--rb-text-primary, #c8daea);
+}
+.ide-verify-analysis-tab.is-active {
+  border-bottom-color: var(--rb-accent, #3b82f6);
+  color: var(--rb-text-primary, #c8daea);
+  font-weight: 600;
+}
