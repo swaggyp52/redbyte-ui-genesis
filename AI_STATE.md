@@ -1,4 +1,39 @@
 # AI State
+
+## Change Log 2026-03-31 (Verify truth fix — BUG-004 code applied + HW callout always shows Compare status)
+
+**Subsystem**: Verify freshness authority, Hardware callout honesty
+
+### Problem
+
+Two functional truth issues discovered during nontrivial flow audit:
+
+1. **BUG-004 code never applied**: AI_STATE.md and BUG-004.md documented that `setProjectIdentity` was fixed to only dirty export (not verify) for identity-only changes. The documentation was written but the code change was never actually applied — `setProjectIdentity` still unconditionally set `dirtySinceVerify: true` for ALL calls including name/description-only edits.
+
+2. **HW callout hid Compare/Export in map mode**: The 2026-03-30 nav clarity slice added `hwMode !== 'map'` gate on the callout's Compare/Export status. When a circuit mutation adds a new I/O port, the new row has no pin mapped, so `resolveInitialHardwareMode` returns `'map'` — hiding the stale status from the student. This caused 3 test failures in `projectRuntime.history-authority` and violates the "Verify does not lie" principle.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - Added `changesCircuitTruth` flag to `setProjectIdentity`: detects whether circuit-truth-relevant fields (projectKind, sourceExampleId, scenarioAuthority) are being changed
+  - Identity-only edits (name, description, projectId) now dirty export but preserve existing `dirtySinceVerify` state
+  - Circuit-truth edits continue to dirty both verify and export
+
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - Removed `hwMode !== 'map'` gate on Compare/Export status in the callout strip
+  - Compare/Export status is now always visible regardless of tab, ensuring students see stale state
+
+### Student-visible behavior
+
+- Renaming or re-describing a project no longer falsely stales Verify
+- Hardware callout always shows Compare and Export status, even on the Map Pins tab
+
+### Proof
+
+- `pnpm -w exec vitest run projectRuntime.verify-authority projectRuntime.history-authority` → 50 tests PASS (was 4 failures)
+- `pnpm -w exec vitest run verifyContract lab-probe-sampling simEngine.verify-diagnostics projectRuntime.verify-authority projectRuntime.history-authority` → 78 tests PASS
+- `pnpm --filter @redbyte/playground build` → EXIT 0
+
 ## Change Log 2026-03-30 (Hardware page nav clarity — tabs above hero, sim state honesty, map-tab noise reduction)
 
 **Subsystem**: Hardware surface layout and student-facing clarity

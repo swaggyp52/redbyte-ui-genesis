@@ -4,7 +4,7 @@ status: fixed
 area: verify
 priority: high
 source: implementation
-updated: 2026-03-25
+updated: 2026-03-31
 related:
   - "[[Verify Engine]]"
   - "[[2026-03-25 Verify Refactor Plan]]"
@@ -37,16 +37,15 @@ Project identity and export metadata are export concerns, not verify-truth conce
 
 ## Fix
 
-Phase-1 freshness cleanup landed two code changes:
+Phase-1 freshness cleanup (2026-03-25) landed the IdeApp hash fix but the `setProjectIdentity` code change was documented but never applied.
 
-- `IdeApp.tsx` now passes `currentVerifyProjectHash(...)` into `VerifySurface` instead of the full export hash.
-- `projectRuntime.ts -> setProjectIdentity(...)` now dirties export only, not verify.
+Phase-2 (2026-03-31) applied the actual code fix:
+
+- `projectRuntime.ts -> setProjectIdentity(...)` now computes `changesCircuitTruth` to detect whether circuit-truth-relevant fields (projectKind, sourceExampleId, scenarioAuthority) are being changed. Identity-only edits (name, description) dirty export but preserve existing `dirtySinceVerify` state.
 
 Targeted proof:
 
-- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts`
-
-The broader freshness model still needs consolidation into a shared helper, but the immediate non-circuit stale trigger is fixed.
+- `pnpm -w exec vitest run projectRuntime.verify-authority projectRuntime.history-authority` → 50 tests PASS (was 4 failures)
 
 ## Links
 

@@ -1237,8 +1237,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           <span className="ide-hw-callout-name">{projectName}</span>
           <span className="ide-hw-callout-sep" aria-hidden="true">·</span>
           <span>{mappingRows.length} mapped rows</span>
-          {/* Hide Compare/Export noise while doing pin mapping */}
-          {hwMode !== 'map' && verifyStatus !== undefined && (
+          {verifyStatus !== undefined && (
             <>
               <span className="ide-hw-callout-sep" aria-hidden="true">·</span>
               <span className={compareMatches ? 'ide-hw-callout-pass' : compareDiffers ? 'ide-hw-callout-fail' : ''}>

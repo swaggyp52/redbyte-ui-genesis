@@ -1435,6 +1435,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const hasScenarioAuthority = Object.prototype.hasOwnProperty.call(input, 'scenarioAuthority');
           const hasActiveExampleId = Object.prototype.hasOwnProperty.call(input, 'activeExampleId');
           const shouldMarkDirty = input.markDirty ?? true;
+          const changesCircuitTruth = nextProjectKind !== undefined || hasSourceExampleId || hasScenarioAuthority;
           return {
             projectId: nextProjectId.length > 0 ? nextProjectId : state.projectId,
             projectName: nextName.length > 0 ? nextName : state.projectName,
@@ -1459,7 +1460,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             projectHealthCore: shouldMarkDirty
               ? {
                   ...state.projectHealthCore,
-                  dirtySinceVerify: true,
+                  dirtySinceVerify: changesCircuitTruth ? true : state.projectHealthCore.dirtySinceVerify,
                   dirtySinceExport: true,
                 }
               : state.projectHealthCore,
