@@ -19,13 +19,11 @@ describe('CircuitStore - Fingerprint Gating', () => {
       connections: [],
     };
 
-    const store = useCircuitStore.getState();
-    
     // Initial commit
-    store.commit(initialCircuit);
+    useCircuitStore.getState().commit(initialCircuit);
     
-    // Get current past length (should be 1)
-    const pastLength1 = store.past.length;
+    // Re-read state after mutation (zustand creates new state objects on set())
+    const pastLength1 = useCircuitStore.getState().past.length;
     expect(pastLength1).toBe(1);
 
     // Create a clone with identical structure (different object reference but same values)
@@ -36,11 +34,12 @@ describe('CircuitStore - Fingerprint Gating', () => {
       connections: [],
     };
 
-    // Attempt to commit the clone (should be no-op due to fingerprint match)
-    store.commit(clonedCircuit);
+    // Fingerprint dedup only runs when enforceLimits=false (undo/redo/load paths).
+    // commit() always sets enforceLimits=true to allow clamping, so use updateCircuit directly.
+    useCircuitStore.getState().updateCircuit(clonedCircuit, { skipHistory: false, enforceLimits: false });
 
     // Past should NOT grow because fingerprint matched
-    const pastLength2 = store.past.length;
+    const pastLength2 = useCircuitStore.getState().past.length;
     
     // CRITICAL: If fingerprint gating works, past length should still be 1
     // (the second commit was a no-op and didn't add to history)
@@ -62,13 +61,12 @@ describe('CircuitStore - Fingerprint Gating', () => {
       connections: [],
     };
 
-    const store =useCircuitStore.getState();
-    
-    store.commit(circuit1);
-    const pastLength1 = store.past.length;
+    useCircuitStore.getState().commit(circuit1);
+    const pastLength1 = useCircuitStore.getState().past.length;
 
-    store.commit(circuit2);
-    const pastLength2 = store.past.length;
+    // Use updateCircuit with enforceLimits: false to test fingerprint change detection
+    useCircuitStore.getState().updateCircuit(circuit2, { skipHistory: false, enforceLimits: false });
+    const pastLength2 = useCircuitStore.getState().past.length;
 
     // CRITICAL: Different fingerprints should add to history
     expect(pastLength2).toBe(pastLength1 + 1);
@@ -89,14 +87,12 @@ describe('CircuitStore - Fingerprint Gating', () => {
       connections: [],
     };
 
-    const store = useCircuitStore.getState();
-    
-    store.commit(circuitNoRotation);
-    const pastLength1 = store.past.length;
+    useCircuitStore.getState().commit(circuitNoRotation);
+    const pastLength1 = useCircuitStore.getState().past.length;
 
-    // Commit with rotation=0 (should be treated as identical to undefined due to fingerprint normalization)
-    store.commit(circuitZeroRotation);
-    const pastLength2 = store.past.length;
+    // updateCircuit with enforceLimits: false to test fingerprint normalization
+    useCircuitStore.getState().updateCircuit(circuitZeroRotation, { skipHistory: false, enforceLimits: false });
+    const pastLength2 = useCircuitStore.getState().past.length;
 
     // CRITICAL: undefined and 0 should produce identical fingerprints
     expect(pastLength2).toBe(pastLength1);

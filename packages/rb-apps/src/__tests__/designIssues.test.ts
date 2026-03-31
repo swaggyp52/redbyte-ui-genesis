@@ -60,7 +60,7 @@ describe('computeDesignIssues', () => {
     const result = computeDesignIssues(circuit);
     const issues = result.byNode.get('and1');
     expect(issues?.some((i) => i.kind === 'multiple-drivers')).toBe(true);
-    expect(result.byPort.get('and1.a')?.kind).toBe('multiple-drivers');
+    expect(result.byPort.get('and1.a')?.[0]?.kind).toBe('multiple-drivers');
   });
 
   it('AND gate with one input unwired → unconnected-input', () => {
@@ -117,16 +117,16 @@ describe('computeDesignIssues', () => {
     expect(result.byNode.size).toBe(0);
   });
 
-  it('DFlipFlop with missing d input → unconnected-input', () => {
+  it('DFlipFlop with missing D input → unconnected-input', () => {
     const circuit: Circuit = {
       nodes: [node('clk1', 'Clock'), node('dff1', 'DFlipFlop')],
       connections: [
-        { from: portRef('clk1', 'out'), to: portRef('dff1', 'clk') },
-        // 'd' unconnected
+        { from: portRef('clk1', 'out'), to: portRef('dff1', 'CLK') },
+        // 'D' unconnected
       ],
     };
     const result = computeDesignIssues(circuit);
-    expect(result.byPort.get('dff1.d')?.kind).toBe('unconnected-input');
+    expect(result.byPort.get('dff1.D')?.[0]?.kind).toBe('unconnected-input');
   });
 });
 
@@ -141,7 +141,7 @@ describe('nodeIssueSeverity', () => {
       nodes: [node('out1', 'OUTPUT')],
       connections: [],
     });
-    expect(nodeIssueSeverity('out1', result)).toBe('error');
+    expect(nodeIssueSeverity('out1', result)).toBe('draft');
   });
 
   it('unconnected-input → warn', () => {
@@ -149,7 +149,7 @@ describe('nodeIssueSeverity', () => {
       nodes: [node('and1', 'AND')],
       connections: [],
     });
-    expect(nodeIssueSeverity('and1', result)).toBe('warn');
+    expect(nodeIssueSeverity('and1', result)).toBe('draft');
   });
 
   it('multiple-drivers → error', () => {

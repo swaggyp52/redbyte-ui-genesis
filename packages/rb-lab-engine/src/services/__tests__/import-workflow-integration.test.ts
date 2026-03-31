@@ -628,7 +628,7 @@ describe('Import Workflow Integration', () => {
       const { integrity } = await importEvidenceCapsule(blob);
 
       expect(integrity.status).toBe('verified');
-      expect(integrity.message).toContain('✅');
+      expect(integrity.message).toContain('Integrity verified');
     });
 
     it('should preserve integrity metadata across import', async () => {

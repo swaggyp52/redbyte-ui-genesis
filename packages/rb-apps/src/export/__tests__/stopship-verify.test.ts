@@ -355,9 +355,17 @@ describe('STOP-SHIP 6 — HDL pane VHDL equals export top.vhd', () => {
 });
 
 // ─── STOP-SHIP 7 — All IDE examples verify clean (no failures) ──────────────
+// Only test examples with solved circuits (non-empty connections).
+// Lab starters with empty connections are intentionally unsolved — students
+// build the logic themselves. Their pre-populated vectors validate the
+// student's solution, not the starter scaffold.
+
+const SOLVED_EXAMPLES = IDE_EXAMPLES.filter(
+  (e) => e.circuit.connections.length > 0 || e.vectors.length === 0,
+);
 
 describe('STOP-SHIP 7 — All IDE examples verify clean', () => {
-  for (const example of IDE_EXAMPLES) {
+  for (const example of SOLVED_EXAMPLES) {
     it(`[${example.id}] verifies with 0 failures`, async () => {
       const result = await runTestVectors(example.circuit, example.vectors);
       if (result.failures.length > 0) {

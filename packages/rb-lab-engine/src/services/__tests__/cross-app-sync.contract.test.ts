@@ -107,8 +107,8 @@ describe('Cross-app sync contract', () => {
     expect(back.nodes).toHaveLength(baseCircuit.nodes.length);
     expect(back.connections).toHaveLength(baseCircuit.connections.length);
     expect(back.nodes[0].id).toBe('sw1');
-    expect(back.connections[0].from).toBe('sw1');
-    expect(back.connections[0].to).toBe('lamp1');
+    expect((back.connections[0].from as { nodeId: string }).nodeId).toBe('sw1');
+    expect((back.connections[0].to as { nodeId: string }).nodeId).toBe('lamp1');
   });
 
   it('round-trips circuit Unified -> Playground -> Unified without loss', () => {
@@ -126,6 +126,6 @@ describe('Cross-app sync contract', () => {
 
     expect(prepared.project.projectId).toBe('proj-sync');
     expect(prepared.circuit.nodes).toHaveLength(baseProject.circuit.nodes.length);
-    expect(prepared.circuit.connections[0].to).toBe('lamp1');
+    expect((prepared.circuit.connections[0].to as { nodeId: string }).nodeId).toBe('lamp1');
   });
 });

@@ -295,7 +295,7 @@ describe('scenario → testbench alignment contract', () => {
 
     expect(tb!.note).toContain(scenario.name);
     expect(tb!.note).toContain(`v${scenario.version}`);
-    expect(tb!.note).toContain('matches Verify PASS');
+    expect(tb!.note).toContain('verified PASS');
   });
 
   it('falls back to project.vectors when activeScenario is absent (compat path)', () => {

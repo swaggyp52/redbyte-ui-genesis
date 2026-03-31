@@ -271,6 +271,9 @@ describe('RBProject roundtrip serialization (IDE)', () => {
     const p1 = createSameProject();
     const p2 = createSameProject();
 
+    // Normalize updatedAt so timestamp jitter doesn't cause false mismatches
+    p2.updatedAt = p1.updatedAt;
+
     const enc1 = encodeRBProject(p1);
     const enc2 = encodeRBProject(p2);
 
