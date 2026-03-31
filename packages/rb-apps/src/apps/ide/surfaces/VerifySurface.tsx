@@ -914,9 +914,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [pendingCaptureScope, setPendingCaptureScope] = useState<(CaptureScope & {
     awaitNextReportHash: string | null;
   }) | null>(null);
-  const [pendingAutoCompare, setPendingAutoCompare] = useState<{
-    awaitVectorSignature: string;
-  } | null>(null);
+  const [pendingAssertionRun, setPendingAssertionRun] = useState(false);
   const [sweepPreset, setSweepPreset] = useState<SweepPreset>('binary-count');
   const [sweepSeed, setSweepSeed] = useState('0');
   const [sweepHoldTicks, setSweepHoldTicks] = useState(1);
@@ -3263,12 +3261,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       });
       const changed = commitVectorCollections(result);
       if (changed && scope.rerunCompare) {
-        setPendingAutoCompare({
-          awaitVectorSignature: buildVectorCollectionSignature(
-            result.projectVectors,
-            result.customVectors
-          ),
-        });
+        setPendingAssertionRun(true);
       }
       return changed;
     },
@@ -3293,12 +3286,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       });
       const changed = commitVectorCollections(result);
       if (changed && input.rerunCompare) {
-        setPendingAutoCompare({
-          awaitVectorSignature: buildVectorCollectionSignature(
-            result.projectVectors,
-            result.customVectors
-          ),
-        });
+        setPendingAssertionRun(true);
       }
       return changed;
     },
@@ -3411,11 +3399,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [applyScopedCapture, lastRun?.reportHash, pendingCaptureScope]);
 
   useEffect(() => {
-    if (!pendingAutoCompare) return;
-    if (vectorCollectionSignature !== pendingAutoCompare.awaitVectorSignature) return;
-    setPendingAutoCompare(null);
+    if (!pendingAssertionRun) return;
+    setPendingAssertionRun(false);
     handleRunWithPreflight(true);
-  }, [handleRunWithPreflight, pendingAutoCompare, vectorCollectionSignature]);
+  }, [handleRunWithPreflight, pendingAssertionRun]);
 
   const canSetOracle =
     (lastRun?.waveform?.length ?? 0) > 0 &&
