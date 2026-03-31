@@ -497,22 +497,26 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const exportBlocked = hasBlockingErrors || !designReady;
   const downloadReady = !exportBlocked;
   const exportTrusted = downloadReady && hasVerifyPass;
-  const nextActionTitle = exportTrusted
-    ? 'Open Vivado and import the generated project.'
-    : exportBlocked
-      ? 'Resolve blockers before downloading the build package.'
-      : isIncompleteMappingQualified
-        ? 'Export available — assertions match, but mapping review is still needed.'
-      : isVerifyStale
-        ? 'Export available — Verify evidence is stale for the current circuit.'
-      : isStarterScenarioFail
-        ? 'Export available — scenario not yet authored.'
-        : isNoRunYet
-          ? 'Export available — no comparison run yet.'
-          : 'Export available — assertions differ from observed outputs.';
-  const nextActionDetail = exportTrusted
-    ? 'Download the Vivado Project, unzip it, then run the import script or open the project directly.'
-    : exportBlocked
+  const nextActionTitle = downloadDone
+    ? `Project downloaded — open ${projectSlug}.xpr in Vivado to continue.`
+    : exportTrusted
+      ? 'Open Vivado and import the generated project.'
+      : exportBlocked
+        ? 'Resolve blockers before downloading the build package.'
+        : isIncompleteMappingQualified
+          ? 'Export available — assertions match, but mapping review is still needed.'
+        : isVerifyStale
+          ? 'Export available — Verify evidence is stale for the current circuit.'
+        : isStarterScenarioFail
+          ? 'Export available — scenario not yet authored.'
+          : isNoRunYet
+            ? 'Export available — no comparison run yet.'
+            : 'Export available — assertions differ from observed outputs.';
+  const nextActionDetail = downloadDone
+    ? 'Unzip the ZIP, then open the .xpr file in Vivado. Run Flow → Generate Bitstream, then program your Basys3 board using the Hardware Manager.'
+    : exportTrusted
+      ? 'Download the Vivado Project, unzip it, then run the import script or open the project directly.'
+      : exportBlocked
       ? !designReady && !hasBlockingErrors
         ? 'The live design authority is incomplete. Fix the circuit or its mapped boundary IO before exporting.'
         : 'Use the blocker list and pin review below to clear mapping or clock issues before export.'
@@ -1214,24 +1218,48 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     >
       <IdePanel
         title={
-          exportTrusted
-            ? 'Export Handoff Available'
+          downloadDone
+            ? 'Vivado Project Downloaded'
             : exportBlocked
               ? 'Export Handoff Blocked'
               : 'Export Handoff Available'
         }
-        description="Review the generated package, confirm readiness, and prepare the project for Vivado."
+        description={
+          downloadDone
+            ? 'Your ZIP is ready. Unzip it and open the project in Vivado to continue.'
+            : 'Review the generated package, confirm readiness, and prepare the project for Vivado.'
+        }
         right={
-          exportTrusted ? (
+          downloadDone ? (
+            <IdeStatusPill tone="ok">Downloaded</IdeStatusPill>
+          ) : exportTrusted ? (
             <IdeStatusPill tone="ok">Available</IdeStatusPill>
           ) : exportBlocked ? (
             <IdeStatusPill tone="error">Blocked</IdeStatusPill>
-            ) : (
-              <IdeStatusPill tone="warn">Advisory</IdeStatusPill>
-            )
-          }
-          testId="ide-export-panel"
-        >
+          ) : (
+            <IdeStatusPill tone="warn">Advisory</IdeStatusPill>
+          )
+        }
+        testId="ide-export-panel"
+      >
+          {downloadDone && (
+            <IdeCallout
+              tone="success"
+              title={lastDownloadKind === 'project' ? 'Vivado project downloaded' : 'VHDL kit downloaded'}
+              testId="ide-export-download-success"
+            >
+              {lastDownloadKind === 'project' ? (
+                <>
+                  Unzip the file, then open <code>{projectSlug}.xpr</code> in Vivado.{' '}
+                  Run <strong>Flow &rarr; Generate Bitstream</strong>, then program your Basys3.{' '}
+                  The full workflow is in the Vivado steps below.
+                </>
+              ) : (
+                'Your VHDL files are ready. See the README in the ZIP for Vivado instructions.'
+              )}
+            </IdeCallout>
+          )}
+
           <section
             ref={surfaceRef}
             className="ide-export-summary-hero"
