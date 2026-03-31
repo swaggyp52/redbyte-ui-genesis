@@ -981,9 +981,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <div className="ide-project-showcase-chip-row">
                 <span className="ide-project-context-tag">Basys3</span>
                 <span className="ide-project-context-tag">{projectContextLabel}</span>
-                <span className="ide-project-context-tag">Scenario: {scenarioAuthority}</span>
                 <span className="ide-project-context-tag">{inputCount} in / {outputCount} out</span>
-                <span className="ide-project-context-tag">{completedMilestoneCount}/4 milestones</span>
                 {starterExample?.concept && (
                   <span className="ide-project-context-tag">{starterExample.concept}</span>
                 )}
@@ -1095,9 +1093,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           <SurfacePanel className="ide-project-spotlight" testId="ide-project-context">
             <div className="ide-project-spotlight-header">
               <span className="ide-project-spotlight-eyebrow">Project context</span>
-              <IdeStatusPill tone={simRunning ? 'ok' : 'idle'}>
-                {simRunning ? 'SIM RUNNING' : 'SIM IDLE'}
-              </IdeStatusPill>
             </div>
             <div className="ide-project-spotlight-copy">
                 <h3 className="ide-project-spotlight-title">
