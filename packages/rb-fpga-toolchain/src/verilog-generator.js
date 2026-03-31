@@ -22,7 +22,7 @@ export function circuitToVerilog(circuit, ioMapping, options = {}) {
     // I/O node types: these are module ports, not logic primitives.
     // They must not be flagged as unsupported synthesis nodes and must not
     // trigger "no driver" warnings.
-    const IO_NODE_TYPES = new Set(['INPUT', 'OUTPUT', 'Lamp', 'Switch', 'InputPin', 'Clock']);
+    const IO_NODE_TYPES = new Set(['INPUT', 'OUTPUT', 'Lamp', 'Switch', 'InputPin', 'Clock', 'Wire']);
     // Filter out unsupported node types (IO nodes are silently excluded — they become ports)
     const supportedTypes = new Set(getSupportedNodeTypes());
     const supportedNodes = sortedNodes.filter((node) => {

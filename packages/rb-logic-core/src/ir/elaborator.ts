@@ -53,14 +53,16 @@ const VALID_PRIMITIVE_TYPES = new Set<string>([
   'FullAdder', 'MUX4',
   'DFlipFlop', 'DLatch', 'TFlipFlop', 'JKFlipFlop', 'Counter4Bit', 'Delay',
   'INPUT', 'OUTPUT', 'Switch', 'Clock', 'PowerSource', 'Ground', 'Lamp',
+  'Wire',
 ]);
 
 /** Node types that become IRPorts (design-level I/O boundary). */
-const BOUNDARY_TYPES = new Set<string>(['INPUT', 'OUTPUT', 'Switch', 'Clock', 'Lamp']);
+const BOUNDARY_TYPES = new Set<string>(['INPUT', 'OUTPUT', 'Switch', 'Clock', 'Lamp', 'Wire']);
 
 const PORT_KIND_MAP: Partial<Record<string, IRPortKind>> = {
   INPUT:  'input',
   Switch: 'input',
+  Wire:   'input',
   OUTPUT: 'output',
   Lamp:   'output',
   Clock:  'clock',

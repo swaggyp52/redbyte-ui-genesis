@@ -44,7 +44,8 @@ describe('RC E1 classroom golden Basys3 ALU export gate', () => {
 
     const bundle = exportBasys3Bundle(normalized.circuit, ioMapping as IoMapping);
     expect(bundle.valid).toBe(true);
-    expect(bundle.warnings.some((warning) => warning.includes('Unsupported node type "Wire"'))).toBe(true);
+    // Wire nodes are now properly recognized as input boundary nodes — no unsupported warnings
+    expect(bundle.warnings.every((w) => !w.includes('Unsupported'))).toBe(true);
 
     expect(bundle.topVhd).toContain('library IEEE;');
     expect(bundle.topVhd).toContain('entity top is');
