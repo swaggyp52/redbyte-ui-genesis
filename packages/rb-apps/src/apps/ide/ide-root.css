@@ -19443,11 +19443,11 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
    underneath. Uses CSS order to restack without TSX changes.
    ════════════════════════════════════════════════════════════════ */
 
-/* Panel body: explicit flex column, hidden overflow so waveform clips cleanly */
+/* Panel body: flex column, scroll allowed so tall waveforms aren't clipped */
 .ide-workbench-workspace > .ide-verify-panel .ide-panel-body {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
 }
 
 /* ── Stacking order: status strip → waveform → supporting sections ── */
