@@ -925,20 +925,16 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       </div>
       <div className="ide-hw-cert-slab" data-testid="ide-hw-cert-slab">
         <div className="ide-hw-cert-row">
-          <span className="ide-hw-cert-key">VERIFY</span>
-          <code className="ide-hw-cert-val">{health.lastVerify?.hash?.slice(0, 16) ?? '—'}</code>
-        </div>
-        <div className="ide-hw-cert-row">
-          <span className="ide-hw-cert-key">EXPORT</span>
-          <code className="ide-hw-cert-val">{health.lastExport?.hash?.slice(0, 16) ?? '—'}</code>
-        </div>
-        <div className="ide-hw-cert-row">
           <span className="ide-hw-cert-key">ASSERT</span>
           <code className="ide-hw-cert-val">{hasAssertionData ? `${assertionPassCount}P ${assertionFailCount}F` : '—'}</code>
         </div>
         <div className="ide-hw-cert-row">
-          <span className="ide-hw-cert-key">STATUS</span>
-          <code className="ide-hw-cert-val">{verifyStatus}/{exportStatus}</code>
+          <span className="ide-hw-cert-key">COMPARE</span>
+          <code className="ide-hw-cert-val">{verifyStatus}</code>
+        </div>
+        <div className="ide-hw-cert-row">
+          <span className="ide-hw-cert-key">EXPORT</span>
+          <code className="ide-hw-cert-val">{exportStatus}</code>
         </div>
         <div className="ide-hw-cert-row" data-testid="ide-hardware-cert-scenario">
           <span className="ide-hw-cert-key">SCENARIO</span>
@@ -1503,32 +1499,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     ? 'PROOF VALID'
                     : 'PROOF INVALID'}
               </span>
-              <div className="ide-hw-proof-verdict-meta">
-                <div className="ide-hw-proof-verdict-row">
-                  <span className="ide-hw-cert-key">CONFIDENCE</span>
-                  <code className="ide-hw-cert-val">
-                    {confidenceScore}%{confidenceScore === 100 ? ' \u220E' : ''}
-                  </code>
-                </div>
-                <div className="ide-hw-proof-verdict-row">
-                  <span className="ide-hw-cert-key">ASSERTIONS</span>
-                  <code className="ide-hw-cert-val">
-                    {hasAssertionData ? `${assertionPassCount}P ${assertionFailCount}F` : '\u2014'}
-                  </code>
-                </div>
-                <div className="ide-hw-proof-verdict-row">
-                  <span className="ide-hw-cert-key">HASH</span>
-                  <code className="ide-hw-cert-val">
-                    {health.lastVerify?.hash?.slice(0, 16) ?? '\u2014'}
-                  </code>
-                </div>
-                <div className="ide-hw-proof-verdict-row">
-                  <span className="ide-hw-cert-key">STATUS</span>
-                  <code className="ide-hw-cert-val">
-                    {verifyStatus}/{exportStatus}
-                  </code>
-                </div>
-              </div>
             </div>
           )}
         </div>
