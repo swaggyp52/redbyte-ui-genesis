@@ -8342,6 +8342,12 @@ details[open] summary .details-arrow {
 }
 .ide-hw-confidence-row.is-pass .ide-hw-confidence-icon { color: rgba(61,186,110,0.9); }
 .ide-hw-confidence-row.is-pending .ide-hw-confidence-icon { color: rgba(255,255,255,0.2); }
+.ide-hw-confidence-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
 .ide-hw-confidence-row.is-pass .ide-hw-confidence-label { color: var(--ide-text-soft); }
 .ide-hw-confidence-row.is-pending .ide-hw-confidence-label { color: rgba(255,255,255,0.3); }
 
@@ -20971,6 +20977,18 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   padding: 2px 8px !important;
   font-size: 11px !important;
   font-family: var(--rb-font-mono) !important;
+}
+/* Left dock tables (bringup step, map missing) — same compact treatment as right dock */
+[data-ide-mode-marker='hardware'] .ide-workbench-dock-left .ide-table-wrap th {
+  font-size: 9px !important;
+  letter-spacing: 0.07em !important;
+  opacity: 0.65 !important;
+  text-transform: uppercase !important;
+  padding: 2px 6px !important;
+}
+[data-ide-mode-marker='hardware'] .ide-workbench-dock-left .ide-table-wrap td {
+  padding: 2px 6px !important;
+  font-size: 10px !important;
 }
 [data-ide-mode-marker='hardware'] .ide-workbench-dock-right {
   opacity: 0.82 !important;
