@@ -799,15 +799,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           {studentName && (
             <span className="ide-project-identity-student">{studentName}</span>
           )}
-          <IdeStatusPill tone={compareMatches ? 'ok' : compareTraceOnly ? 'warn' : compareCurrent ? 'warn' : 'idle'}>
-            {compareMatches
-              ? 'ASSERTIONS MATCH'
-              : compareTraceOnly
-                ? 'TRACE ONLY'
-                : compareCurrent
-                  ? 'COMPARE CURRENT'
-                  : 'COMPARE NOT RUN'}
-          </IdeStatusPill>
         </div>
         {/* ── Sprint 10: 3-state layout — landing / loaded / submit ── */}
         {!readiness.hasCircuit ? (
@@ -1092,25 +1083,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         <div className="ide-project-flightdeck" data-testid="ide-project-flightdeck">
           <SurfacePanel className="ide-project-spotlight" testId="ide-project-context">
             <div className="ide-project-spotlight-header">
-              <span className="ide-project-spotlight-eyebrow">Project context</span>
-            </div>
-            <div className="ide-project-spotlight-copy">
-                <h3 className="ide-project-spotlight-title">
-                {starterExample?.name ?? projectName}
-              </h3>
-              <p className="ide-project-spotlight-body">{projectSummary}</p>
-            </div>
-            <div className="ide-project-context-tags">
-              <span className="ide-project-context-tag">Basys3</span>
-              <span className="ide-project-context-tag">
-                {inputCount} in / {outputCount} out
-              </span>
-              {starterExample?.concept && (
-                <span className="ide-project-context-tag">{starterExample.concept}</span>
-              )}
-              {starterExample?.lab && (
-                <span className="ide-project-context-tag">{starterExample.lab}</span>
-              )}
+              <span className="ide-project-spotlight-eyebrow">Project reference</span>
             </div>
             <dl className="ide-project-glance-list">
               <div>
