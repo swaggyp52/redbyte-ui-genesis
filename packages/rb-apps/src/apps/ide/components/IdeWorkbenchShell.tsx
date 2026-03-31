@@ -307,8 +307,6 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
 
   const shellStyle = useMemo(
     () => {
-      const usesCalmerNonDesignShell =
-        mode === 'project' || mode === 'hardware' || mode === 'export' || mode === 'import';
       const widthCaps =
         mode === 'design'
           ? layoutMode === 'wide'
@@ -316,7 +314,13 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             : layoutMode === 'standard'
               ? { left: { min: 172, max: 200 }, right: { min: 208, max: 240 } }
               : { left: { min: 160, max: 184 }, right: { min: 196, max: 224 } }
-          : usesCalmerNonDesignShell
+          : mode === 'export' || mode === 'hardware'
+            ? layoutMode === 'wide'
+              ? { left: { min: 200, max: 228 }, right: { min: 188, max: 212 } }
+              : layoutMode === 'standard'
+                ? { left: { min: 188, max: 216 }, right: { min: 180, max: 200 } }
+                : { left: { min: 176, max: 204 }, right: { min: 168, max: 188 } }
+          : mode === 'project' || mode === 'import'
             ? layoutMode === 'wide'
               ? { left: { min: 140, max: 156 }, right: { min: 188, max: 208 } }
               : layoutMode === 'standard'

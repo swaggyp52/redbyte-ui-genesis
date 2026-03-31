@@ -24155,3 +24155,24 @@ button:disabled,
     grid-template-columns: 1fr;
   }
 }
+
+/* ─── Export sidecard: button overflow fix ───────────────────────────────────
+   The left dock for export is ~200px. Long download labels ("Download Project
+   ZIP (previous build)") exceed that even at widened widths. Allow wrapping so
+   the full label is always legible instead of clipping mid-word.
+*/
+.ide-export-sidecard .ide-button {
+  white-space: normal;
+  text-align: left;
+  justify-content: flex-start;
+  height: auto;
+  min-height: var(--rb-control-h);
+}
+
+/* Status pill in the sidecard header: shrink to fit so it doesn't push out of
+   the header row when the dock is at minimum width. */
+.ide-export-sidecard .ide-workbench-placeholder-header {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--ide-space-1);
+}
