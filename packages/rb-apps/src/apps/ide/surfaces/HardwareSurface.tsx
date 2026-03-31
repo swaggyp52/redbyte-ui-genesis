@@ -724,8 +724,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     <SurfacePanel className="ide-workbench-placeholder" testId="ide-hw-live-dock">
       <header className="ide-workbench-placeholder-header">
         <h3>Live details</h3>
-        <IdeStatusPill tone={sim.running ? 'ok' : 'warn'}>
-          {sim.running ? 'Sim running' : 'Sim paused'}
+        <IdeStatusPill tone={sim.running ? 'ok' : sim.tick > 0 ? 'warn' : 'idle'}>
+          {sim.running ? 'Sim running' : sim.tick > 0 ? 'Sim paused' : 'Not started'}
         </IdeStatusPill>
       </header>
       <div className="ide-kv-list">
@@ -1237,7 +1237,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           <span className="ide-hw-callout-name">{projectName}</span>
           <span className="ide-hw-callout-sep" aria-hidden="true">·</span>
           <span>{mappingRows.length} mapped rows</span>
-          {verifyStatus !== undefined && (
+          {/* Hide Compare/Export noise while doing pin mapping */}
+          {hwMode !== 'map' && verifyStatus !== undefined && (
             <>
               <span className="ide-hw-callout-sep" aria-hidden="true">·</span>
               <span className={compareMatches ? 'ide-hw-callout-pass' : compareDiffers ? 'ide-hw-callout-fail' : ''}>
@@ -1251,8 +1252,33 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           )}
         </div>
 
-        {/* ── Scenario provenance strip ── */}
-        {verifyLastRun && (
+        {/* ── Mode toggle bar — primary nav, stays at top ── */}
+        <div className="ide-hw-mode-toggle" data-testid="ide-hw-mode-toggle">
+          {(['map', 'bringup', 'proof', 'live'] as const).map((m) => (
+            <IdeButton
+              key={m}
+              tone={hwMode === m ? 'primary' : 'ghost'}
+              onClick={() => { setHwMode(m); setSelectedMappingRowId(null); }}
+              testId={`ide-hw-mode-btn-${m}`}
+            >
+              {m === 'map'
+                ? 'Map Pins'
+                : m === 'bringup'
+                  ? 'Prepare Board'
+                  : m === 'proof'
+                    ? 'Program Checklist'
+                    : 'Live Details'}
+            </IdeButton>
+          ))}
+          {sim.tick > 0 && (
+            <span className="ide-hw-tick-badge" data-testid="ide-hw-tick-badge">
+              t{sim.tick}
+            </span>
+          )}
+        </div>
+
+        {/* ── Scenario provenance strip — hidden on map tab ── */}
+        {hwMode !== 'map' && verifyLastRun && (
           <details className="ide-hardware-provenance-details" data-testid="ide-hardware-provenance-details">
             <summary className="ide-hardware-provenance-summary">Last Verify evidence</summary>
             <div className="ide-hardware-provenance-strip" data-testid="ide-hardware-provenance-strip">
@@ -1285,9 +1311,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </details>
         )}
 
-        {/* ── Mode toggle bar ── */}
-        {/* Don't show the next-action hero on the Map Pins tab — the student is
-            actively completing a prerequisite and the hero would conflict. */}
+        {/* ── Next-action hero — hidden on Map Pins tab ── */}
         {hwMode !== 'map' && <SurfacePanel
           className="ide-hardware-blocked-hero"
           testId={blockedHero ? 'ide-hardware-blocked-hero' : 'ide-hardware-next-hero'}
@@ -1317,29 +1341,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             )}
           </div>
         </SurfacePanel>}
-        <div className="ide-hw-mode-toggle" data-testid="ide-hw-mode-toggle">
-          {(['map', 'bringup', 'proof', 'live'] as const).map((m) => (
-            <IdeButton
-              key={m}
-              tone={hwMode === m ? 'primary' : 'ghost'}
-              onClick={() => { setHwMode(m); setSelectedMappingRowId(null); }}
-              testId={`ide-hw-mode-btn-${m}`}
-            >
-              {m === 'map'
-                ? 'Map Pins'
-                : m === 'bringup'
-                  ? 'Prepare Board'
-                  : m === 'proof'
-                    ? 'Program Checklist'
-                    : 'Live Details'}
-            </IdeButton>
-          ))}
-          {sim.tick > 0 && (
-            <span className="ide-hw-tick-badge" data-testid="ide-hw-tick-badge">
-              t{sim.tick}
-            </span>
-          )}
-        </div>
 
         {/* ── Scenario drift callout ── */}
         {scenarioDrifted && verifyLastRun && (

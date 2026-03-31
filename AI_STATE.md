@@ -1,4 +1,38 @@
 # AI State
+## Change Log 2026-03-30 (Hardware page nav clarity — tabs above hero, sim state honesty, map-tab noise reduction)
+
+**Subsystem**: Hardware surface layout and student-facing clarity
+
+### Problem
+
+The Hardware page had four student-visible clarity issues:
+
+1. **Mode tabs buried below hero card** — The mode toggle (Map Pins / Prepare Board / Program Checklist / Live Details) rendered after the next-action hero card, pushing primary navigation below a large contextual banner. Students couldn't find the tab they needed at a glance.
+2. **"Sim paused" for never-run state** — The Live Details dock showed "Sim paused" when no simulation had ever been run (`sim.tick === 0`), implying the student started and stopped a sim. Should say "Not started".
+3. **Compare/Export noise on Map Pins tab** — The callout strip showed `Compare: — | Export: —` while the student was doing pin mapping, adding cognitive noise to a focused task.
+4. **Provenance strip on Map Pins tab** — "Last Verify evidence" details were shown on the map tab where they're irrelevant.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - Moved mode toggle bar above the hero card and provenance strip so tabs are always the first interactive element after the callout strip
+  - Changed Live Details dock pill from `'Sim paused'` to `'Not started'` (tone `'idle'`) when `sim.tick === 0`
+  - Gated Compare/Export status in the callout strip behind `hwMode !== 'map'`
+  - Gated provenance strip behind `hwMode !== 'map'`
+
+### Student-visible behavior
+
+- Mode tabs are now immediately visible below the project callout strip — the hero card and provenance strip appear below them
+- Live Details dock honestly shows "Not started" instead of "Sim paused" for a never-run simulation
+- Map Pins tab is now focused: no Compare/Export noise, no provenance strip clutter
+
+### Proof
+
+- Build: `pnpm --filter @redbyte/playground build` → EXIT 0
+- Hardware tests: `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/hardwareSurface` → 11 passed
+- All test IDs preserved — no gate breakage expected
+- Pre-existing failures unchanged (submissionViewer, importSurface.honesty, exportSurface.mapping-trust, projectRuntime.history-authority, projectSurface.submission)
+
 ## Change Log 2026-03-29 (classroom signoff proof recovered after harness + gate truth repair)
 
 **Subsystem**: classroom signoff / repo-status gates / Design idle live simulation / gate harness
