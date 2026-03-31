@@ -2102,7 +2102,6 @@ function buildDesignSummary(project: RBProject): ExportDesignSummary {
       continue;
     }
     if (CLOCKED_NODE_TYPES.has(node.type)) {
-      clocked += 1;
       gates += 1;
       continue;
     }

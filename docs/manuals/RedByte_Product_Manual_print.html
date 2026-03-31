@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RedByte Product Manual</title>
+<style>
+/* ═══════════════════════════════════════════════
+   RedByte Product Manual — Print-Ready Stylesheet
+   ═══════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --rb-red: #dc2626;
+  --rb-red-dark: #991b1b;
+  --rb-red-light: #fef2f2;
+  --rb-slate-900: #0f172a;
+  --rb-slate-800: #1e293b;
+  --rb-slate-700: #334155;
+  --rb-slate-600: #475569;
+  --rb-slate-500: #64748b;
+  --rb-slate-400: #94a3b8;
+  --rb-slate-300: #cbd5e1;
+  --rb-slate-200: #e2e8f0;
+  --rb-slate-100: #f1f5f9;
+  --rb-slate-50: #f8fafc;
+  --rb-cyan: #22d3ee;
+  --rb-emerald: #10b981;
+  --rb-amber: #f59e0b;
+  --rb-blue: #3b82f6;
+}
+
+/* ── Page / Print Setup ── */
+@page {
+  size: letter;
+  margin: 1in 0.9in 1in 0.9in;
+  @bottom-center { content: counter(page); font-family: 'Inter', sans-serif; font-size: 9pt; color: #64748b; }
+}
+@page :first { margin-top: 0; @bottom-center { content: none; } }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.65;
+  color: var(--rb-slate-800);
+  background: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Cover Page ── */
+.cover-page {
+  page-break-after: always;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(160deg, var(--rb-slate-900) 0%, #1a0a0a 40%, var(--rb-red-dark) 100%);
+  color: #fff;
+  text-align: center;
+  padding: 3rem;
+  position: relative;
+  overflow: hidden;
+}
+.cover-page::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -20%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(circle, rgba(220,38,38,0.15) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.cover-page::after {
+  content: '';
+  position: absolute;
+  bottom: -10%;
+  left: -10%;
+  width: 40%;
+  height: 40%;
+  background: radial-gradient(circle, rgba(34,211,238,0.08) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.cover-logo {
+  font-size: 4.5rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.25rem;
+  position: relative;
+  z-index: 1;
+}
+.cover-logo span { color: var(--rb-red); }
+.cover-subtitle {
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--rb-slate-400);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 3rem;
+  position: relative;
+  z-index: 1;
+}
+.cover-title {
+  font-size: 2.4rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 0.75rem;
+  position: relative;
+  z-index: 1;
+}
+.cover-edition {
+  font-size: 1rem;
+  color: var(--rb-slate-400);
+  margin-bottom: 4rem;
+  position: relative;
+  z-index: 1;
+}
+.cover-meta {
+  position: relative;
+  z-index: 1;
+  font-size: 0.85rem;
+  color: var(--rb-slate-500);
+  line-height: 1.8;
+}
+.cover-divider {
+  width: 80px;
+  height: 3px;
+  background: var(--rb-red);
+  margin: 2rem auto;
+  border-radius: 2px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Document Control Page ── */
+.doc-control {
+  page-break-after: always;
+  padding: 2.5rem 0;
+}
+.doc-control h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--rb-slate-800);
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 2px solid var(--rb-red);
+  padding-bottom: 0.5rem;
+  display: inline-block;
+}
+.doc-control table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 2rem;
+}
+.doc-control td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--rb-slate-200);
+  font-size: 0.9rem;
+}
+.doc-control td:first-child {
+  font-weight: 600;
+  color: var(--rb-slate-700);
+  width: 180px;
+}
+
+/* ── Table of Contents ── */
+.toc-page {
+  page-break-after: always;
+  padding: 2rem 0;
+}
+.toc-page h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--rb-slate-900);
+  margin-bottom: 2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 3px solid var(--rb-red);
+}
+.toc-list { list-style: none; }
+.toc-list li {
+  padding: 0.35rem 0;
+  border-bottom: 1px dotted var(--rb-slate-300);
+  font-size: 0.95rem;
+}
+.toc-list li a {
+  color: var(--rb-slate-700);
+  text-decoration: none;
+  display: flex;
+  justify-content: space-between;
+}
+.toc-list li a:hover { color: var(--rb-red); }
+.toc-section {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-top: 0.75rem;
+  color: var(--rb-slate-900);
+  border-bottom: none !important;
+  padding-top: 0.5rem;
+}
+.toc-sub { padding-left: 1.5rem; font-size: 0.9rem; }
+
+/* ── Section Headers ── */
+.section-break {
+  page-break-before: always;
+  page-break-after: avoid;
+}
+h1 {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--rb-slate-900);
+  margin: 2.5rem 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 3px solid var(--rb-red);
+  page-break-after: avoid;
+}
+h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--rb-slate-900);
+  margin: 2rem 0 0.75rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--rb-slate-200);
+  page-break-after: avoid;
+}
+h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--rb-slate-800);
+  margin: 1.5rem 0 0.5rem;
+  page-break-after: avoid;
+}
+h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--rb-slate-700);
+  margin: 1.25rem 0 0.4rem;
+}
+
+/* ── Body Content ── */
+p { margin: 0 0 0.75rem; }
+strong { font-weight: 600; color: var(--rb-slate-900); }
+
+/* ── Tables ── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 1.5rem;
+  font-size: 0.9rem;
+  page-break-inside: avoid;
+}
+thead th {
+  background: var(--rb-slate-100);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 2px solid var(--rb-slate-300);
+  color: var(--rb-slate-800);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+tbody td {
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--rb-slate-200);
+  vertical-align: top;
+}
+tbody tr:nth-child(even) { background: var(--rb-slate-50); }
+
+/* ── Code ── */
+code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.85em;
+  background: var(--rb-slate-100);
+  color: var(--rb-red-dark);
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+  border: 1px solid var(--rb-slate-200);
+}
+pre {
+  background: var(--rb-slate-900);
+  color: var(--rb-slate-300);
+  padding: 1rem 1.25rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 1rem 0 1.5rem;
+  page-break-inside: avoid;
+}
+pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  border: none;
+  font-size: inherit;
+}
+
+/* ── Callout Boxes ── */
+.callout {
+  padding: 0.85rem 1rem 0.85rem 1rem;
+  border-radius: 6px;
+  margin: 1rem 0 1.25rem;
+  font-size: 0.9rem;
+  page-break-inside: avoid;
+  border-left: 4px solid;
+}
+.callout-note {
+  background: #eff6ff;
+  border-color: var(--rb-blue);
+  color: #1e3a5f;
+}
+.callout-warning {
+  background: #fffbeb;
+  border-color: var(--rb-amber);
+  color: #78350f;
+}
+.callout-caution {
+  background: var(--rb-red-light);
+  border-color: var(--rb-red);
+  color: var(--rb-red-dark);
+}
+.callout-tip {
+  background: #ecfdf5;
+  border-color: var(--rb-emerald);
+  color: #064e3b;
+}
+.callout-label {
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.3rem;
+  display: block;
+}
+
+/* ── Workflow Diagram ── */
+.workflow-diagram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 1.5rem 0 2rem;
+  flex-wrap: wrap;
+  page-break-inside: avoid;
+}
+.workflow-stage {
+  background: var(--rb-slate-900);
+  color: #fff;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-align: center;
+  min-width: 90px;
+}
+.workflow-stage.active { background: var(--rb-red); }
+.workflow-arrow {
+  color: var(--rb-slate-400);
+  font-size: 1.4rem;
+  padding: 0 0.3rem;
+  font-weight: 300;
+}
+
+/* ── Layer Diagram ── */
+.layer-diagram {
+  border: 2px solid var(--rb-slate-300);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 1.5rem 0 2rem;
+  page-break-inside: avoid;
+}
+.layer-row {
+  display: flex;
+  border-bottom: 1px solid var(--rb-slate-200);
+  font-size: 0.85rem;
+}
+.layer-row:last-child { border-bottom: none; }
+.layer-label {
+  width: 140px;
+  min-width: 140px;
+  padding: 0.6rem 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+.layer-content {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  color: var(--rb-slate-700);
+}
+.layer-e .layer-label { background: var(--rb-red); }
+.layer-d .layer-label { background: #b91c1c; }
+.layer-c .layer-label { background: var(--rb-slate-800); }
+.layer-b .layer-label { background: var(--rb-slate-700); }
+.layer-a .layer-label { background: var(--rb-slate-600); }
+
+/* ── Feature Badge ── */
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.badge-pass { background: #d1fae5; color: #065f46; }
+.badge-fail { background: #fee2e2; color: #991b1b; }
+.badge-info { background: #dbeafe; color: #1e40af; }
+.badge-warn { background: #fef3c7; color: #92400e; }
+
+/* ── Numbered Procedures ── */
+ol.procedure {
+  counter-reset: procedure;
+  list-style: none;
+  padding-left: 0;
+  margin: 0.75rem 0 1.25rem;
+}
+ol.procedure > li {
+  counter-increment: procedure;
+  padding: 0.4rem 0 0.4rem 2.5rem;
+  position: relative;
+  border-left: 2px solid var(--rb-slate-200);
+  margin-left: 0.75rem;
+}
+ol.procedure > li::before {
+  content: counter(procedure);
+  position: absolute;
+  left: -14px;
+  top: 0.35rem;
+  width: 26px;
+  height: 26px;
+  background: var(--rb-red);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+.result-box {
+  background: #ecfdf5;
+  border-left: 4px solid var(--rb-emerald);
+  padding: 0.6rem 1rem;
+  margin: 0.75rem 0 1rem;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.9rem;
+  page-break-inside: avoid;
+}
+.result-box strong { color: #065f46; }
+
+/* ── Lists ── */
+ul { margin: 0.5rem 0 1rem 1.5rem; }
+ul li { margin-bottom: 0.3rem; }
+
+/* ── Utility ── */
+.page-break { page-break-before: always; }
+.no-break { page-break-inside: avoid; }
+.text-muted { color: var(--rb-slate-500); }
+.text-sm { font-size: 0.9rem; }
+.mt-2 { margin-top: 1.5rem; }
+.mb-1 { margin-bottom: 0.75rem; }
+
+/* ── Print Overrides ── */
+@media print {
+  body { font-size: 10pt; }
+  .cover-page { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .layer-label { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .workflow-stage { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .callout { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  ol.procedure > li::before { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  pre { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  a { color: inherit; text-decoration: none; }
+  .no-print { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ COVER PAGE ═══════════════════════ -->
+<div class="cover-page">
+  <div class="cover-logo"><span>Red</span>Byte</div>
+  <div class="cover-subtitle">FPGA Educational IDE</div>
+  <div class="cover-divider"></div>
+  <div class="cover-title">Product Manual</div>
+  <div class="cover-edition">Version 1.0 · March 2026</div>
+  <div class="cover-meta">
+    Target Platform: Digilent Basys 3 (Artix-7 XC7A35T)<br>
+    Toolchain: AMD Vivado ML Standard Edition<br>
+    Copyright © 2025–2026 Connor Angiel. All rights reserved.
+  </div>
+</div>
+
+<!-- ═══════════════════════ DOCUMENT CONTROL ═══════════════════════ -->
+<div class="doc-control">
+  <h2>Document Control</h2>
+  <table>
+    <tbody>
+      <tr><td>Document ID</td><td>RB-MAN-001</td></tr>
+      <tr><td>Version</td><td>1.0</td></tr>
+      <tr><td>Date</td><td>2026-03-31</td></tr>
+      <tr><td>Classification</td><td>Product Reference</td></tr>
+      <tr><td>Repository</td><td><code>redbyte-ui</code> monorepo</td></tr>
+      <tr><td>Primary Package</td><td><code>packages/rb-apps</code></td></tr>
+      <tr><td>Target Board</td><td>Digilent Basys 3 (Artix-7 XC7A35T)</td></tr>
+      <tr><td>Part Number</td><td><code>xc7a35t-1cpg236-1</code></td></tr>
+      <tr><td>License</td><td>RedByte Proprietary License (RPL-1.0)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Conventions</h2>
+  <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
+    <div class="callout callout-note" style="flex: 1; min-width: 200px;"><span class="callout-label">Note</span> Supplementary information or clarification.</div>
+    <div class="callout callout-warning" style="flex: 1; min-width: 200px;"><span class="callout-label">Warning</span> Important information that may affect results.</div>
+    <div class="callout callout-caution" style="flex: 1; min-width: 200px;"><span class="callout-label">Caution</span> Action that may cause data loss or errors.</div>
+    <div class="callout callout-tip" style="flex: 1; min-width: 200px;"><span class="callout-label">Tip</span> Best practice or recommended approach.</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ TABLE OF CONTENTS ═══════════════════════ -->
+<div class="toc-page">
+  <h2>Table of Contents</h2>
+  <ul class="toc-list">
+    <li class="toc-section"><a href="#s1">1. Introduction</a></li>
+    <li class="toc-section"><a href="#s2">2. Product Overview</a></li>
+    <li class="toc-sub"><a href="#s2-1">2.1 What RedByte Is</a></li>
+    <li class="toc-sub"><a href="#s2-2">2.2 Core Capabilities</a></li>
+    <li class="toc-sub"><a href="#s2-3">2.3 Design Philosophy</a></li>
+    <li class="toc-section"><a href="#s3">3. Intended Users and Usage Contexts</a></li>
+    <li class="toc-section"><a href="#s4">4. Core Concepts and Operating Model</a></li>
+    <li class="toc-sub"><a href="#s4-1">4.1 The Canonical Workflow</a></li>
+    <li class="toc-sub"><a href="#s4-2">4.2 Simulation Model</a></li>
+    <li class="toc-sub"><a href="#s4-3">4.3 Verification Model</a></li>
+    <li class="toc-sub"><a href="#s4-4">4.4 Architecture Layers</a></li>
+    <li class="toc-section"><a href="#s5">5. Getting Started</a></li>
+    <li class="toc-section"><a href="#s6">6. Workspace and Interface Overview</a></li>
+    <li class="toc-section"><a href="#s7">7. Detailed Surface Reference</a></li>
+    <li class="toc-sub"><a href="#s7-1">7.1 Project Surface</a></li>
+    <li class="toc-sub"><a href="#s7-2">7.2 Design Surface</a></li>
+    <li class="toc-sub"><a href="#s7-3">7.3 Verify Surface</a></li>
+    <li class="toc-sub"><a href="#s7-4">7.4 Hardware Surface</a></li>
+    <li class="toc-sub"><a href="#s7-5">7.5 Export Surface</a></li>
+    <li class="toc-sub"><a href="#s7-6">7.6 Import Surface</a></li>
+    <li class="toc-section"><a href="#s8">8. Circuit Design Workflow</a></li>
+    <li class="toc-section"><a href="#s9">9. Verification Workflow</a></li>
+    <li class="toc-section"><a href="#s10">10. Hardware Mapping and Board Preparation</a></li>
+    <li class="toc-section"><a href="#s11">11. Vivado Export and External Tool Workflow</a></li>
+    <li class="toc-section"><a href="#s12">12. Import and Reuse Workflows</a></li>
+    <li class="toc-section"><a href="#s13">13. Submission, Review, and Instructor Workflows</a></li>
+    <li class="toc-section"><a href="#s14">14. Files, Packages, and Generated Outputs</a></li>
+    <li class="toc-section"><a href="#s15">15. Troubleshooting and Error Resolution</a></li>
+    <li class="toc-section"><a href="#s16">16. Best Practices</a></li>
+    <li class="toc-section"><a href="#s17">17. Glossary</a></li>
+    <li class="toc-section"><a href="#s18">18. Appendices</a></li>
+    <li class="toc-sub"><a href="#sA">A. Logic Primitive Reference</a></li>
+    <li class="toc-sub"><a href="#sB">B. Basys 3 Pin Reference</a></li>
+    <li class="toc-sub"><a href="#sC">C. Generated File Specifications</a></li>
+    <li class="toc-sub"><a href="#sD">D. Import Fidelity Reference</a></li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════ SECTION 1 ═══════════════════════ -->
+<div class="section-break" id="s1">
+<h1>1. Introduction</h1>
+
+<p>This manual is the canonical product reference for RedByte, a browser-based digital logic design, simulation, verification, and FPGA hardware-preparation environment. It describes the product as it exists, explains its operating model, documents each major surface and workflow, and provides reference material for all audiences.</p>
+
+<p><strong>Students</strong> beginning their first project should read Sections 2 through 6, then follow the workflow sections (8 through 11) in order. <strong>Instructors and graders</strong> should additionally read Section 13 for submission and review workflows. <strong>Evaluators and developers</strong> will find the appendices and glossary useful as standing reference material.</p>
+</div>
+
+<!-- ═══════════════════════ SECTION 2 ═══════════════════════ -->
+<div class="section-break" id="s2">
+<h1>2. Product Overview</h1>
+
+<h2 id="s2-1">2.1 What RedByte Is</h2>
+
+<p>RedByte is an interactive digital logic circuit design and verification environment that runs entirely in a web browser. It provides a unified workspace where users design combinational and sequential circuits from primitive logic gates, verify their behavior against test vectors, map circuit ports to physical FPGA board pins, and export a complete file set for synthesis and programming in AMD Vivado.</p>
+
+<p>RedByte targets the <strong>Digilent Basys 3</strong> development board (Xilinx Artix-7 XC7A35T FPGA). It replaces the fragmented workflow of separate schematic editors, simulation tools, and manual constraint-file authoring with a single integrated environment.</p>
+
+<h2 id="s2-2">2.2 Core Capabilities</h2>
+
+<table>
+  <thead>
+    <tr><th>Capability</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Circuit Design</strong></td><td>Visual drag-and-drop canvas for constructing digital circuits from 25+ logic primitives including gates, flip-flops, and timing elements.</td></tr>
+    <tr><td><strong>Deterministic Simulation</strong></td><td>Tick-based engine using topological-sort evaluation. Same circuit + same inputs = same outputs, every time, on every machine.</td></tr>
+    <tr><td><strong>Truth Table Verification</strong></td><td>Automated testing against expected truth table vectors with per-row pass/fail reporting. Supports combinational and sequential schedules.</td></tr>
+    <tr><td><strong>Hardware Pin Mapping</strong></td><td>Dedicated interface for assigning circuit ports to Basys 3 physical pins — switches, LEDs, buttons, 7-segment display, clock.</td></tr>
+    <tr><td><strong>Vivado Export</strong></td><td>Complete export pipeline generating synthesizable VHDL, pin constraints (XDC), and a VHDL testbench in a single ZIP.</td></tr>
+    <tr><td><strong>Project Import</strong></td><td>Import VHDL, XDC, or RedByte project archives with explicit fidelity reporting (Full, Reconstructed, or Partial).</td></tr>
+    <tr><td><strong>Submission Packaging</strong></td><td>Deterministic, tamper-evident submission export with SHA-256 integrity hashing for instructor review.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="s2-3">2.3 Design Philosophy</h2>
+
+<div class="no-break">
+<table>
+  <thead><tr><th>Principle</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Determinism by Design</strong></td><td>Every simulation tick is reproducible. No hidden randomness, no race conditions, no undefined behavior.</td></tr>
+    <tr><td><strong>One Truth, Many Views</strong></td><td>The circuit is the single source of truth. Every surface is a projection of the same data.</td></tr>
+    <tr><td><strong>Truth over Simplification</strong></td><td>Gates have propagation delay. Circuits stabilize over ticks. Students learn correct mental models.</td></tr>
+    <tr><td><strong>Local-First Operation</strong></td><td>All computation happens in the browser. No server, no account, no data leaves the machine.</td></tr>
+  </tbody>
+</table>
+</div>
+</div>
+
+<!-- ═══════════════════════ SECTION 3 ═══════════════════════ -->
+<div class="section-break" id="s3">
+<h1>3. Intended Users and Usage Contexts</h1>
+
+<table>
+  <thead><tr><th>Audience</th><th>Primary Context</th><th>Key Activities</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Students</strong></td><td>IdeApp, LabWorkspaceApp</td><td>Design circuits, verify truth tables, map pins, export for Vivado, submit lab work.</td></tr>
+    <tr><td><strong>Instructors / TAs</strong></td><td>SubmissionInspectorApp</td><td>Review submissions, verify integrity, inspect gate verdicts, grade with full diagnostics.</td></tr>
+    <tr><td><strong>Self-Learners</strong></td><td>LogicPlaygroundApp</td><td>Open-ended circuit exploration with no submission pipeline.</td></tr>
+    <tr><td><strong>Evaluators</strong></td><td>All contexts</td><td>Assess product capabilities, review workflows, evaluate platform for adoption.</td></tr>
+  </tbody>
+</table>
+
+<h2>Application Contexts</h2>
+
+<table>
+  <thead><tr><th>Context</th><th>Purpose</th><th>Submission System</th><th>Diagnostic Detail</th></tr></thead>
+  <tbody>
+    <tr><td><strong>IdeApp</strong></td><td>Full six-surface IDE for lab assignments</td><td>Yes</td><td>Student-appropriate (simplified)</td></tr>
+    <tr><td><strong>LogicPlaygroundApp</strong></td><td>Open-ended sandbox</td><td>No</td><td>Minimal</td></tr>
+    <tr><td><strong>LabWorkspaceApp</strong></td><td>Guided lab with step tracking</td><td>Yes</td><td>Student-appropriate</td></tr>
+    <tr><td><strong>SubmissionInspectorApp</strong></td><td>Instructor grading tool</td><td>Read-only review</td><td>Full (hashes, verdicts, tamper detection)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ═══════════════════════ SECTION 4 ═══════════════════════ -->
+<div class="section-break" id="s4">
+<h1>4. Core Concepts and Operating Model</h1>
+
+<h2 id="s4-1">4.1 The Canonical Workflow</h2>
+
+<div class="workflow-diagram">
+  <div class="workflow-stage">Project</div>
+  <div class="workflow-arrow">→</div>
+  <div class="workflow-stage active">Design</div>
+  <div class="workflow-arrow">→</div>
+  <div class="workflow-stage">Verify</div>
+  <div class="workflow-arrow">→</div>
+  <div class="workflow-stage">Hardware</div>
+  <div class="workflow-arrow">→</div>
+  <div class="workflow-stage">Export</div>
+</div>
+
+<p>RedByte organizes work into a linear progression of six surfaces. A sixth surface, <strong>Import</strong>, is available at any time for bringing external HDL or previously exported projects into the environment. Users may navigate between surfaces freely; the system tracks completion status for each stage.</p>
+
+<h2 id="s4-2">4.2 Simulation Model</h2>
+
+<p>RedByte's simulation engine operates on discrete <strong>ticks</strong>. Each tick, the engine evaluates every node in <strong>topological order</strong> — nodes whose inputs depend only on already-evaluated nodes are evaluated first. This ordering guarantees deterministic, race-free signal propagation.</p>
+
+<div class="callout callout-note">
+  <span class="callout-label">Note</span>
+  For <strong>combinational circuits</strong>, evaluation typically stabilizes within one or two ticks. For <strong>sequential circuits</strong>, the engine detects clock edges by comparing the current clock value against the previous tick's value. A rising edge (0→1) triggers data capture in flip-flops.
+</div>
+
+<h2 id="s4-3">4.3 Verification Model</h2>
+
+<p>Verification compares actual circuit outputs against expected values defined in <strong>test vectors</strong>. RedByte automatically selects the correct verification schedule:</p>
+
+<table>
+  <thead><tr><th>Schedule</th><th>Circuit Type</th><th>Behavior per Vector Row</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Combinational</strong></td><td>No flip-flops</td><td>Apply inputs → one tick → read outputs</td></tr>
+    <tr><td><strong>Clocked Macro</strong></td><td>Contains flip-flops</td><td>Apply inputs → CLK=0 tick → CLK=1 tick → CLK=0 tick → read outputs</td></tr>
+  </tbody>
+</table>
+
+<h2 id="s4-4">4.4 Architecture Layers</h2>
+
+<div class="layer-diagram">
+  <div class="layer-row layer-e"><div class="layer-label">Layer E — UX Shell</div><div class="layer-content">Student-facing surfaces (IdeApp.tsx + 6 surfaces). No internal diagnostic language in default view.</div></div>
+  <div class="layer-row layer-d"><div class="layer-label">Layer D — Submission</div><div class="layer-content">Deterministic ZIP bundling with integrity hashes. Tamper detection and gate verdicts.</div></div>
+  <div class="layer-row layer-c"><div class="layer-label">Layer C — Vivado Adapter</div><div class="layer-content">VHDL generation, XDC constraints, testbench generation, sequential analysis.</div></div>
+  <div class="layer-row layer-b"><div class="layer-label">Layer B — Verification</div><div class="layer-content">Truth table comparison, pass/fail per vector, failing node identification.</div></div>
+  <div class="layer-row layer-a"><div class="layer-label">Layer A — Logic Core</div><div class="layer-content">Deterministic circuit simulation. Gate evaluation, topological sort, signal propagation.</div></div>
+</div>
+
+<p>Each layer depends only on layers below it. The Logic Core has no upward dependencies. The UX Shell orchestrates calls to all lower layers on user actions.</p>
+
+<h2>4.5 Import Fidelity Model</h2>
+
+<table>
+  <thead><tr><th>Level</th><th>Name</th><th>Source</th><th>What Is Preserved</th></tr></thead>
+  <tbody>
+    <tr><td><span class="badge badge-pass">1</span></td><td>Full</td><td>RedByte project archive (<code>.rbproj.json</code>)</td><td>All state: circuit, layout, vectors, probes, mappings.</td></tr>
+    <tr><td><span class="badge badge-info">2</span></td><td>Reconstructed</td><td>Structural VHDL (component instantiation)</td><td>Topology correct. Auto-layout. No vectors.</td></tr>
+    <tr><td><span class="badge badge-warn">3</span></td><td>Partial</td><td>Behavioral VHDL / concurrent assignments</td><td>I/O port names and directions only.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ═══════════════════════ SECTION 5 ═══════════════════════ -->
+<div class="section-break" id="s5">
+<h1>5. Getting Started</h1>
+
+<h2>5.1 System Requirements</h2>
+
+<p>RedByte runs in any modern web browser with JavaScript enabled (Chrome, Edge, or Firefox recommended). For FPGA synthesis, <strong>AMD Vivado ML Standard Edition</strong> (2024.1+) and a USB connection to the Basys 3 board are required.</p>
+
+<h2>5.2 Development Installation</h2>
+<pre><code>git clone &lt;repository-url&gt;
+cd redbyte-ui
+pnpm install
+pnpm dev</code></pre>
+<p>The development server starts at <code>http://localhost:5173</code>.</p>
+
+<h2>5.3 Starter Examples</h2>
+
+<table>
+  <thead><tr><th>Example</th><th>Description</th><th>Type</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Signal Tour</strong></td><td>Four-wire passthrough (SW→LD)</td><td>Combinational</td></tr>
+    <tr><td><strong>Logic Gates</strong></td><td>AND, OR, XOR with 2 switches, 3 LEDs</td><td>Combinational</td></tr>
+    <tr><td><strong>Half Adder</strong></td><td>Sum and carry from two inputs</td><td>Combinational</td></tr>
+    <tr><td><strong>Full Adder</strong></td><td>1-bit addition with carry-in/out</td><td>Combinational</td></tr>
+    <tr><td><strong>Two-Bit Counter</strong></td><td>2-bit counter with clock and reset</td><td>Sequential</td></tr>
+  </tbody>
+</table>
+
+<h2>5.4 Quick Walkthrough: AND Gate to Vivado Export</h2>
+
+<ol class="procedure">
+  <li>Open RedByte and navigate to the <strong>Design</strong> surface.</li>
+  <li>Drag two <strong>Switch</strong> nodes and one <strong>AND</strong> gate from the palette onto the canvas.</li>
+  <li>Drag one <strong>Lamp</strong> node onto the canvas.</li>
+  <li>Wire each Switch output to an AND gate input. Wire the AND output to the Lamp input.</li>
+  <li>Navigate to <strong>Verify</strong>. Add truth table vectors or use defaults. Click <strong>Run Verify</strong>.</li>
+  <li>Navigate to <strong>Hardware</strong>. Assign switches to SW0/SW1 and the lamp to LD0.</li>
+  <li>Navigate to <strong>Export</strong>. Click <strong>Download Vivado Kit</strong>.</li>
+</ol>
+
+<div class="result-box"><strong>Result:</strong> A ZIP file containing <code>top.vhd</code>, <code>constraints.xdc</code>, and <code>testbench.vhd</code>, ready for Vivado import.</div>
+</div>
+
+<!-- ═══════════════════════ SECTION 6 ═══════════════════════ -->
+<div class="section-break" id="s6">
+<h1>6. Workspace and Interface Overview</h1>
+
+<h2>6.1 Global Shell</h2>
+
+<p>The IDE shell consists of four persistent regions visible on every surface:</p>
+
+<table>
+  <thead><tr><th>Region</th><th>Location</th><th>Content</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Top Bar</strong></td><td>Top</td><td>Product mark, project name, save state, contextual actions (Run Verify, Export, Help).</td></tr>
+    <tr><td><strong>Left Rail</strong></td><td>Left</td><td>Six mode entries: Project, Design, Verify, Hardware, Export, Import. Active marker and progress indicators.</td></tr>
+    <tr><td><strong>Main Content</strong></td><td>Center</td><td>Active surface content. Changes entirely when switching surfaces.</td></tr>
+    <tr><td><strong>Status Bar</strong></td><td>Bottom</td><td>Application version, last verification status.</td></tr>
+  </tbody>
+</table>
+
+<h2>6.2 Navigation and Status</h2>
+
+<p>Surface switching is always explicit — the user clicks a mode entry in the left rail. The system does not auto-switch surfaces. Each surface displays a maximum of <strong>three status pills</strong> (circuit health, verify result, export readiness) using deterministic language: PASS, FAIL, READY, BLOCKED.</p>
+</div>
+
+<!-- ═══════════════════════ SECTION 7 ═══════════════════════ -->
+<div class="section-break" id="s7">
+<h1>7. Detailed Surface Reference</h1>
+
+<h2 id="s7-1">7.1 Project Surface</h2>
+
+<table>
+  <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Purpose</strong></td><td>Project-level overview, metadata management, starter example selection, submission export.</td></tr>
+    <tr><td><strong>When to Use</strong></td><td>Session start, project creation, readiness review, metadata changes.</td></tr>
+    <tr><td><strong>Main Area</strong></td><td>Summary cards: project identity, Basys 3 target, last verification, IO mapping completeness.</td></tr>
+    <tr><td><strong>Controls</strong></td><td>Edit name/description. Open starter example (with overwrite guard). Review readiness.</td></tr>
+    <tr><td><strong>Outputs</strong></td><td>Updated metadata. Readiness assessment. Submission export.</td></tr>
+    <tr><td><strong>Student View</strong></td><td>Lab name, student name input, verify status, "Export Submission" button. Hash data in Advanced panel only.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="s7-2">7.2 Design Surface</h2>
+
+<table>
+  <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Purpose</strong></td><td>Circuit construction via drag-and-drop gate placement and wiring.</td></tr>
+    <tr><td><strong>When to Use</strong></td><td>Whenever the circuit needs to be created or modified.</td></tr>
+    <tr><td><strong>Main Area</strong></td><td>Circuit canvas with tool row (select, wire, delete, zoom). Left: searchable component palette. Right: selected element properties.</td></tr>
+    <tr><td><strong>Controls</strong></td><td>Place components, wire ports, select/move/delete, undo/redo (50 levels).</td></tr>
+    <tr><td><strong>Wiring Rules</strong></td><td>Output→Input valid. Fan-out allowed. Self-loops rejected. One connection per input port.</td></tr>
+    <tr><td><strong>Health Indicator</strong></td><td>"Circuit OK" or "Issues found" (floating outputs, missing I/O).</td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-tip">
+  <span class="callout-label">Tip</span>
+  When navigating to Design from a failing verify result, the system highlights the relevant gate and displays a diagnostic callout.
+</div>
+
+<h2 id="s7-3">7.3 Verify Surface</h2>
+
+<table>
+  <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Purpose</strong></td><td>Run truth table verification, present pass/fail verdicts, enable failure analysis.</td></tr>
+    <tr><td><strong>When to Use</strong></td><td>After building or modifying a circuit, before hardware mapping or export.</td></tr>
+    <tr><td><strong>Main Area</strong></td><td>Top: PASS/FAIL banner with run summary. Center: truth table with per-row results. Right: signal picker and waveform preview.</td></tr>
+    <tr><td><strong>Controls</strong></td><td>Run Verify, Jump to failing node, Inspect failure diffs, Edit vectors, Scenario Builder.</td></tr>
+    <tr><td><strong>Schedule</strong></td><td>Auto-detected: combinational (1 tick) or clocked-macro (3-tick clock sequence) based on flip-flop presence.</td></tr>
+    <tr><td><strong>Hints</strong></td><td>Up to 7 fact-grounded hints on FAIL. Sequential circuit banner when DFF detected.</td></tr>
+    <tr><td><strong>Freshness</strong></td><td>Stale indicator when circuit modified since last verify. Name/description changes do not stale.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="s7-4">7.4 Hardware Surface</h2>
+
+<table>
+  <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Purpose</strong></td><td>Map circuit ports to physical Basys 3 pins. Required before export.</td></tr>
+    <tr><td><strong>When to Use</strong></td><td>After circuit is designed and verified.</td></tr>
+    <tr><td><strong>Tabs</strong></td><td>Map Pins, Prepare Board, Program Checklist, Live Details. Tabs appear above the hero card.</td></tr>
+    <tr><td><strong>Controls</strong></td><td>Pin assignment dropdowns (filtered by direction), pin presets, clear mapping.</td></tr>
+    <tr><td><strong>Callout Strip</strong></td><td>Compare and Export status always visible regardless of active tab.</td></tr>
+    <tr><td><strong>Available Pins</strong></td><td>16 switches, 16 LEDs, 5 buttons, 7-segment display (7 cathodes + 4 anodes + DP), CLK100MHZ.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="s7-5">7.5 Export Surface</h2>
+
+<table>
+  <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Purpose</strong></td><td>Validate readiness, preview generated artifacts, produce Vivado Kit ZIP.</td></tr>
+    <tr><td><strong>When to Use</strong></td><td>After design, verification, and complete pin mapping.</td></tr>
+    <tr><td><strong>Main Area</strong></td><td>Top: READY/WARNING/BLOCKED status. Center: artifact preview (<code>top.vhd</code>, <code>constraints.xdc</code>, <code>testbench.vhd</code>). Right: pin table, validation.</td></tr>
+    <tr><td><strong>Primary CTA</strong></td><td><strong>Download Vivado Kit</strong> — downloads ZIP. Enabled only at READY status.</td></tr>
+    <tr><td><strong>Single Path</strong></td><td>One generation path. Preview shows exact bytes that appear in the ZIP.</td></tr>
+    <tr><td><strong>Scaffold Warnings</strong></td><td>HDL/XDC port mismatch warnings for projection-only exports are informational, not blocking.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="s7-6">7.6 Import Surface</h2>
+
+<table>
+  <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Purpose</strong></td><td>Import external HDL, constraint files, or RedByte project archives.</td></tr>
+    <tr><td><strong>Tabs</strong></td><td>"Write HDL" (paste/type VHDL), "Upload ZIP" (file picker), "Paste XDC" (constraint text).</td></tr>
+    <tr><td><strong>Main Area</strong></td><td>Parsed ports table, schematic preview, diagnostics list with plain-language errors.</td></tr>
+    <tr><td><strong>Fidelity</strong></td><td>Full (project archive), Reconstructed (structural VHDL), Partial (behavioral VHDL). Reported explicitly.</td></tr>
+    <tr><td><strong>Submission Detection</strong></td><td>Identifies RedByte submission ZIPs and reports integrity status.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-warning">
+  <span class="callout-label">Warning</span>
+  RedByte's own exported <code>top.vhd</code> uses concurrent signal assignments optimized for synthesis. It imports at <strong>Partial</strong> fidelity only. For full-fidelity re-import, use the <code>.rbproj.json</code> file from the same export ZIP.
+</div>
+</div>
+
+<!-- ═══════════════════════ SECTION 8 ═══════════════════════ -->
+<div class="section-break" id="s8">
+<h1>8. Circuit Design Workflow</h1>
+
+<h2>8.1 Placing Components</h2>
+<ol class="procedure">
+  <li>Open the <strong>Design</strong> surface.</li>
+  <li>Locate the desired component in the left palette (use search to filter by name).</li>
+  <li>Drag the component onto the canvas and release to place.</li>
+  <li>Repeat for all required components.</li>
+</ol>
+
+<h2>8.2 Wiring Components</h2>
+<ol class="procedure">
+  <li>Click on an <strong>output port</strong> (right side of a gate, or Switch output).</li>
+  <li>Drag to the target <strong>input port</strong> (left side of a gate, or Lamp input).</li>
+  <li>Release on the target port.</li>
+</ol>
+<div class="result-box"><strong>Result:</strong> A wire appears. The signal flows from source to destination. Invalid connections are rejected with feedback.</div>
+
+<h2>8.3 Sequential Elements</h2>
+
+<p>When building circuits with flip-flops:</p>
+
+<ol class="procedure">
+  <li>Place the flip-flop (e.g., D Flip-Flop) on the canvas.</li>
+  <li>Connect the <strong>D</strong> (data) port to the source signal.</li>
+  <li>Connect the <strong>CLK</strong> port to a Clock node or designated clock switch.</li>
+  <li>Optionally connect <strong>EN</strong> (enable) and <strong>RST</strong> (reset) ports.</li>
+  <li>Connect the <strong>Q</strong> output to downstream logic or output indicators.</li>
+</ol>
+
+<div class="callout callout-note">
+  <span class="callout-label">Note</span>
+  The D flip-flop captures input on the <strong>rising edge</strong> (0→1 transition) of the clock. Between edges, output Q holds its value. The complementary output Q̄ is also available.
+</div>
+</div>
+
+<!-- ═══════════════════════ SECTION 9 ═══════════════════════ -->
+<div class="section-break" id="s9">
+<h1>9. Verification Workflow</h1>
+
+<ol class="procedure">
+  <li>Navigate to the <strong>Verify</strong> surface.</li>
+  <li>Review or author test vectors in the truth table. Each row specifies inputs and expected outputs.</li>
+  <li>Click <strong>Run Verify</strong>.</li>
+  <li>Review results: ✓ per passing row, ✗ per failing row.</li>
+  <li>For failures: use <strong>Jump to failing node</strong> to navigate to the Design surface with the relevant gate highlighted.</li>
+  <li>Fix the circuit and re-verify until all vectors pass.</li>
+</ol>
+
+<div class="result-box"><strong>Result:</strong> A <span class="badge badge-pass">PASS</span> verdict confirms the circuit is correct for all tested input combinations. A <span class="badge badge-fail">FAIL</span> verdict identifies specific rows and signals that do not match expectations.</div>
+
+<h2>Verification Determinism</h2>
+<p>Results are deterministic. Running the same circuit with the same vectors produces the same results every time, on every machine. The Verify surface displays a deterministic run hash to confirm reproducibility.</p>
+</div>
+
+<!-- ═══════════════════════ SECTION 10 ═══════════════════════ -->
+<div class="section-break" id="s10">
+<h1>10. Hardware Mapping and Board Preparation</h1>
+
+<ol class="procedure">
+  <li>Navigate to the <strong>Hardware</strong> surface, <strong>Map Pins</strong> tab.</li>
+  <li>For each circuit port, select a Basys 3 pin from the dropdown. Inputs map to switches/buttons; outputs map to LEDs/display segments.</li>
+  <li>For sequential circuits, assign the clock port to <strong>CLK100MHZ</strong> (pin W5).</li>
+  <li>Confirm "Mapping complete" status.</li>
+</ol>
+
+<div class="callout callout-note">
+  <span class="callout-label">Note</span>
+  The export pipeline automatically emits <code>CLOCK_BUFFER_TYPE NONE</code> for switch and button inputs. This prevents Vivado from inserting illegal BUFG paths on non-clock-capable pins.
+</div>
+</div>
+
+<!-- ═══════════════════════ SECTION 11 ═══════════════════════ -->
+<div class="section-break" id="s11">
+<h1>11. Vivado Export and External Tool Workflow</h1>
+
+<h2>11.1 Generated Files</h2>
+
+<table>
+  <thead><tr><th>File</th><th>Type</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>top.vhd</code></td><td>Design Source</td><td>Synthesizable VHDL top-level entity.</td></tr>
+    <tr><td><code>constraints.xdc</code></td><td>Constraints</td><td>Pin assignments with LVCMOS33 I/O standard.</td></tr>
+    <tr><td><code>testbench.vhd</code></td><td>Simulation Source</td><td>VHDL testbench from truth table vectors.</td></tr>
+  </tbody>
+</table>
+
+<h2>11.2 Importing into Vivado</h2>
+
+<ol class="procedure">
+  <li><strong>Download the Vivado Kit</strong> from the Export surface and extract the ZIP.</li>
+  <li>Open Vivado → <strong>Create Project</strong> → RTL Project.</li>
+  <li>Add <code>top.vhd</code> as Design Source. Add <code>constraints.xdc</code> as Constraints.</li>
+  <li>Select part: <code>xc7a35t-1cpg236-1</code> (or board "Basys3").</li>
+  <li><strong>Run Synthesis</strong> → <strong>Run Implementation</strong> → <strong>Generate Bitstream</strong>.</li>
+  <li>Open Hardware Manager → connect board → <strong>Program Device</strong> with the generated <code>.bit</code> file.</li>
+</ol>
+
+<div class="result-box"><strong>Result:</strong> The FPGA is programmed. Toggle physical switches and observe LEDs to verify the design matches simulation.</div>
+
+<h2>11.3 Common Vivado Errors</h2>
+
+<table>
+  <thead><tr><th>Error</th><th>Likely Cause</th><th>Resolution</th></tr></thead>
+  <tbody>
+    <tr><td>"Port X not found in entity"</td><td>Port name mismatch</td><td>Re-map in Hardware surface and re-export.</td></tr>
+    <tr><td>"Multiple drivers on net"</td><td>Combinational loop</td><td>Fix the loop in Design, re-verify, re-export.</td></tr>
+    <tr><td>"Timing not met"</td><td>Excessive logic depth</td><td>Simplify combinational path or add pipeline registers.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ═══════════════════════ SECTION 12 ═══════════════════════ -->
+<div class="section-break" id="s12">
+<h1>12. Import and Reuse Workflows</h1>
+
+<h2>12.1 Full-Fidelity Re-import</h2>
+<p>Upload the <code>.rbproj.zip</code> archive on the Import surface's "Upload ZIP" tab. The system detects the project manifest and restores all state.</p>
+
+<h2>12.2 Structural VHDL Import</h2>
+<p>Paste structural VHDL with component instantiation on the "Write HDL" tab. The parser maps 26 component types through a built-in library. Topology is reconstructed; positions are auto-assigned; test vectors must be re-authored.</p>
+
+<h2>12.3 XDC Constraint Import</h2>
+<p>Paste constraint file content on the "Paste XDC" tab. Pin assignments are imported and applied to matching circuit ports.</p>
+</div>
+
+<!-- ═══════════════════════ SECTION 13 ═══════════════════════ -->
+<div class="section-break" id="s13">
+<h1>13. Submission, Review, and Instructor Workflows</h1>
+
+<h2>13.1 Student Submission</h2>
+<ol class="procedure">
+  <li>Complete circuit design and achieve a <span class="badge badge-pass">PASS</span> verification.</li>
+  <li>Navigate to the <strong>Project</strong> surface.</li>
+  <li>Click <strong>Export Submission</strong>.</li>
+  <li>Upload the downloaded archive to the institutional LMS.</li>
+</ol>
+
+<p>The submission is <strong>deterministic</strong>: same project state always produces the same bytes. This enables tamper detection.</p>
+
+<h2>13.2 Instructor Review</h2>
+<ol class="procedure">
+  <li>Open the <strong>Submission Inspector</strong>.</li>
+  <li>Import the student's submission archive.</li>
+  <li>Review: gate verdict, pass/fail per requirement, integrity status, hash verification, tamper detection.</li>
+  <li>Click <strong>Export Grading Report</strong> to download a JSON summary.</li>
+</ol>
+
+<h2>13.3 Integrity Properties</h2>
+<table>
+  <thead><tr><th>Property</th><th>Mechanism</th></tr></thead>
+  <tbody>
+    <tr><td>Deterministic packaging</td><td>Same state → identical output bytes.</td></tr>
+    <tr><td>Content-addressed hashing</td><td>SHA-256 hash per file in manifest.</td></tr>
+    <tr><td>Tamper detection</td><td>Any file modification invalidates checksums.</td></tr>
+    <tr><td>Optional signing</td><td>Ed25519 signatures. Unsigned accepted but marked.</td></tr>
+  </tbody>
+</table>
+
+<h2>13.4 Gate Verdicts</h2>
+<table>
+  <thead><tr><th>Context</th><th>Display</th></tr></thead>
+  <tbody>
+    <tr><td>Student view (IdeApp)</td><td>"Ready to submit" / "Submission needs attention"</td></tr>
+    <tr><td>Instructor view (Inspector)</td><td>Raw PASS/FAIL with detailed breakdown</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ═══════════════════════ SECTION 14 ═══════════════════════ -->
+<div class="section-break" id="s14">
+<h1>14. Files, Packages, and Generated Outputs</h1>
+
+<h2>14.1 Vivado Kit ZIP</h2>
+<pre><code>vivado-kit.zip
+├── top.vhd              # Synthesizable VHDL
+├── constraints.xdc      # Basys 3 pin constraints
+└── testbench.vhd        # Simulation testbench</code></pre>
+
+<h2>14.2 Submission Package</h2>
+<pre><code>submission.rbproj.zip
+├── rb-project.json       # Complete project state
+├── verify-ledger.json    # Verification results
+├── manifest.json         # File hashes / integrity
+└── [metadata files]      # Gate verdicts, run counts</code></pre>
+
+<h2>14.3 RB Lab ZIP (Bridge MVP)</h2>
+<pre><code>&lt;lab&gt;.rb-lab.zip
+├── manifest.json
+├── trace/hw_trace.ndjson
+├── bitstream/design.bit
+├── meta/board_profile.json
+└── integrity/
+    ├── capsule.json
+    └── signature.sig</code></pre>
+</div>
+
+<!-- ═══════════════════════ SECTION 15 ═══════════════════════ -->
+<div class="section-break" id="s15">
+<h1>15. Troubleshooting and Error Resolution</h1>
+
+<h2>15.1 Circuit Design Issues</h2>
+<table>
+  <thead><tr><th>Symptom</th><th>Cause</th><th>Resolution</th></tr></thead>
+  <tbody>
+    <tr><td>Wire will not connect</td><td>Invalid direction</td><td>Source must be output port, target must be input port.</td></tr>
+    <tr><td>"Issues found" health</td><td>Floating outputs / missing I/O</td><td>Connect all outputs; add INPUT/OUTPUT nodes for hardware ports.</td></tr>
+    <tr><td>Flip-flop output unchanged</td><td>No clock edge</td><td>Ensure Clock node connected to CLK port and value transitions 0→1.</td></tr>
+  </tbody>
+</table>
+
+<h2>15.2 Verification Issues</h2>
+<table>
+  <thead><tr><th>Symptom</th><th>Cause</th><th>Resolution</th></tr></thead>
+  <tbody>
+    <tr><td>All vectors fail</td><td>Wiring error</td><td>Trace signal paths in Design surface.</td></tr>
+    <tr><td>Sequential test fails</td><td>Missing clock</td><td>Connect clock to all flip-flops.</td></tr>
+    <tr><td>Stale indicator</td><td>Circuit modified</td><td>Re-run verification.</td></tr>
+  </tbody>
+</table>
+
+<h2>15.3 Export Issues</h2>
+<table>
+  <thead><tr><th>Symptom</th><th>Cause</th><th>Resolution</th></tr></thead>
+  <tbody>
+    <tr><td>Export BLOCKED</td><td>Incomplete prerequisites</td><td>Complete design, verify, and pin mapping.</td></tr>
+    <tr><td>"HDL ports missing in XDC"</td><td>Scaffold warning</td><td>Expected for simple circuits. Does not block export.</td></tr>
+    <tr><td>Port name error in VHDL</td><td>Invalid characters</td><td>Use lowercase letters and underscores only in port labels.</td></tr>
+  </tbody>
+</table>
+
+<h2>15.4 Vivado Issues</h2>
+<table>
+  <thead><tr><th>Symptom</th><th>Cause</th><th>Resolution</th></tr></thead>
+  <tbody>
+    <tr><td>Synthesis: "Port not found"</td><td>Name mismatch</td><td>Re-export from RedByte.</td></tr>
+    <tr><td>Routing errors</td><td>Complex logic / loops</td><td>Simplify circuit; check for combinational loops.</td></tr>
+    <tr><td>Board unresponsive after program</td><td>Wrong FPGA part</td><td>Verify Vivado project targets <code>xc7a35t-1cpg236-1</code>.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ═══════════════════════ SECTION 16 ═══════════════════════ -->
+<div class="section-break" id="s16">
+<h1>16. Best Practices</h1>
+
+<div class="callout callout-tip">
+  <span class="callout-label">Design</span>
+  Begin with INPUT and OUTPUT nodes to define the circuit boundary before adding internal logic. Use meaningful labels — they propagate to exported HDL port names.
+</div>
+
+<div class="callout callout-tip">
+  <span class="callout-label">Verification</span>
+  Define test vectors before building complex circuits. Test edge cases: all-zero, all-one, and boundary conditions. Re-verify after every design change.
+</div>
+
+<div class="callout callout-tip">
+  <span class="callout-label">Hardware</span>
+  Assign clock ports first for sequential designs. Use pin presets for standard lab configurations.
+</div>
+
+<div class="callout callout-tip">
+  <span class="callout-label">Export</span>
+  Use <code>.rbproj.json</code> for re-import, not <code>top.vhd</code>. Keep the exported ZIP alongside the Vivado project as a design record.
+</div>
+
+<div class="callout callout-tip">
+  <span class="callout-label">Submission</span>
+  Fill in the student name field before exporting. Do not manually modify files inside the ZIP — any change invalidates integrity hashes.
+</div>
+</div>
+
+<!-- ═══════════════════════ SECTION 17 ═══════════════════════ -->
+<div class="section-break" id="s17">
+<h1>17. Glossary</h1>
+
+<table>
+  <thead><tr><th>Term</th><th>Definition</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Basys 3</strong></td><td>Digilent FPGA development board (Artix-7 XC7A35T). The target hardware platform for RedByte exports.</td></tr>
+    <tr><td><strong>Circuit</strong></td><td>A collection of nodes and connections representing a digital logic design. The single source of truth.</td></tr>
+    <tr><td><strong>Clocked-macro schedule</strong></td><td>Verification schedule for sequential circuits. Three-tick clock sequence per vector row.</td></tr>
+    <tr><td><strong>Connection</strong></td><td>Directional link from output port to input port. Format: <code>{ from: { nodeId, portName }, to: { nodeId, portName } }</code>.</td></tr>
+    <tr><td><strong>Determinism</strong></td><td>Identical inputs always produce identical results, across runs and machines.</td></tr>
+    <tr><td><strong>Fidelity level</strong></td><td>Import quality classification: Full, Reconstructed, or Partial.</td></tr>
+    <tr><td><strong>Gate verdict</strong></td><td>Summary judgment of whether work meets lab requirements.</td></tr>
+    <tr><td><strong>LVCMOS33</strong></td><td>3.3V low-voltage CMOS I/O standard used by the Basys 3 board.</td></tr>
+    <tr><td><strong>Node</strong></td><td>Any logic element: gate, flip-flop, switch, lamp, clock, or delay.</td></tr>
+    <tr><td><strong>Port</strong></td><td>Named input or output connection point on a node.</td></tr>
+    <tr><td><strong>Rising edge</strong></td><td>Clock transition from 0 to 1. Triggers data capture in flip-flops.</td></tr>
+    <tr><td><strong>Surface</strong></td><td>One of the six primary IDE screens: Project, Design, Verify, Hardware, Export, Import.</td></tr>
+    <tr><td><strong>Test vector</strong></td><td>A truth table row specifying input values and expected output values.</td></tr>
+    <tr><td><strong>Tick</strong></td><td>One discrete simulation time step. All nodes evaluated once per tick in topological order.</td></tr>
+    <tr><td><strong>Topological sort</strong></td><td>Algorithm ensuring nodes are evaluated after their input dependencies.</td></tr>
+    <tr><td><strong>Vivado Kit</strong></td><td>The exported ZIP containing <code>top.vhd</code>, <code>constraints.xdc</code>, and <code>testbench.vhd</code>.</td></tr>
+    <tr><td><strong>XDC</strong></td><td>Xilinx Design Constraints file format for pin assignments and I/O standards.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ═══════════════════════ SECTION 18 ═══════════════════════ -->
+<div class="section-break" id="s18">
+<h1>18. Appendices</h1>
+
+<h2 id="sA">Appendix A: Logic Primitive Reference</h2>
+
+<h3>A.1 Basic Logic Gates (2-Input)</h3>
+<table>
+  <thead><tr><th>Primitive</th><th>Inputs</th><th>Output</th><th>Behavior</th></tr></thead>
+  <tbody>
+    <tr><td>AND</td><td>a, b</td><td>out</td><td>1 when both inputs are 1.</td></tr>
+    <tr><td>OR</td><td>a, b</td><td>out</td><td>1 when at least one input is 1.</td></tr>
+    <tr><td>NOT</td><td>in</td><td>out</td><td>Complement of input.</td></tr>
+    <tr><td>NAND</td><td>a, b</td><td>out</td><td>0 only when both inputs are 1.</td></tr>
+    <tr><td>NOR</td><td>a, b</td><td>out</td><td>0 when at least one input is 1.</td></tr>
+    <tr><td>XOR</td><td>a, b</td><td>out</td><td>1 when inputs differ.</td></tr>
+    <tr><td>XNOR</td><td>a, b</td><td>out</td><td>1 when inputs are equal.</td></tr>
+  </tbody>
+</table>
+
+<h3>A.2 Three-Input Gates</h3>
+<table>
+  <thead><tr><th>Primitive</th><th>Inputs</th><th>Output</th><th>Behavior</th></tr></thead>
+  <tbody>
+    <tr><td>AND3</td><td>a, b, c</td><td>out</td><td>1 when all three inputs are 1.</td></tr>
+    <tr><td>OR3</td><td>a, b, c</td><td>out</td><td>1 when any input is 1.</td></tr>
+    <tr><td>NAND3</td><td>a, b, c</td><td>out</td><td>0 when all three inputs are 1.</td></tr>
+    <tr><td>NOR3</td><td>a, b, c</td><td>out</td><td>0 when any input is 1.</td></tr>
+    <tr><td>XOR3</td><td>a, b, c</td><td>out</td><td>1 for odd number of high inputs.</td></tr>
+  </tbody>
+</table>
+
+<h3>A.3 Sequential Elements</h3>
+<table>
+  <thead><tr><th>Primitive</th><th>Inputs</th><th>Outputs</th><th>Behavior</th></tr></thead>
+  <tbody>
+    <tr><td>D Flip-Flop</td><td>D, CLK, EN, RST</td><td>Q, Q̄</td><td>Captures D on rising CLK edge. RST=1 forces Q=0. EN gates capture.</td></tr>
+    <tr><td>T Flip-Flop</td><td>T, CLK, CLR</td><td>Q, Q̄</td><td>T=1 toggles Q on rising edge. T=0 holds.</td></tr>
+    <tr><td>JK Flip-Flop</td><td>J, K, CLK, CLR</td><td>Q, Q̄</td><td>J=1,K=0: set. J=0,K=1: reset. J=K=1: toggle. J=K=0: hold.</td></tr>
+  </tbody>
+</table>
+
+<h3>A.4 I/O and Signal Elements</h3>
+<table>
+  <thead><tr><th>Primitive</th><th>Ports</th><th>Behavior</th></tr></thead>
+  <tbody>
+    <tr><td>Switch</td><td>out</td><td>User-toggled input (0 or 1).</td></tr>
+    <tr><td>Lamp</td><td>in, out</td><td>Visual output indicator. Mirrors input.</td></tr>
+    <tr><td>INPUT</td><td>out</td><td>External input source.</td></tr>
+    <tr><td>OUTPUT</td><td>in</td><td>Terminal output sink.</td></tr>
+    <tr><td>Power Source</td><td>out</td><td>Constant 1.</td></tr>
+    <tr><td>Ground</td><td>out</td><td>Constant 0.</td></tr>
+    <tr><td>Clock</td><td>out</td><td>Periodic oscillation (configurable period).</td></tr>
+    <tr><td>Delay</td><td>in, out</td><td>Pass-through with configurable delay (default: 1 tick).</td></tr>
+    <tr><td>Wire</td><td>in, out</td><td>Simple pass-through. Output equals input.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="sB">Appendix B: Basys 3 Pin Reference</h2>
+
+<h3>B.1 Slide Switches</h3>
+<table>
+  <thead><tr><th>Signal</th><th>FPGA Pin</th></tr></thead>
+  <tbody>
+    <tr><td>SW0</td><td>V17</td></tr>
+    <tr><td>SW1</td><td>V16</td></tr>
+    <tr><td>SW2</td><td>W16</td></tr>
+    <tr><td>SW3</td><td>W17</td></tr>
+    <tr><td>SW4–SW15</td><td>See Basys 3 Reference Manual</td></tr>
+  </tbody>
+</table>
+
+<h3>B.2 LEDs</h3>
+<table>
+  <thead><tr><th>Signal</th><th>FPGA Pin</th></tr></thead>
+  <tbody>
+    <tr><td>LD0</td><td>U16</td></tr>
+    <tr><td>LD1</td><td>E19</td></tr>
+    <tr><td>LD2</td><td>U19</td></tr>
+    <tr><td>LD3</td><td>V19</td></tr>
+    <tr><td>LD4–LD15</td><td>See Basys 3 Reference Manual</td></tr>
+  </tbody>
+</table>
+
+<h3>B.3 Push Buttons and Clock</h3>
+<table>
+  <thead><tr><th>Signal</th><th>FPGA Pin</th><th>Function</th></tr></thead>
+  <tbody>
+    <tr><td>BTNC</td><td>U18</td><td>Center button</td></tr>
+    <tr><td>BTNU</td><td>T18</td><td>Up button</td></tr>
+    <tr><td>BTNL</td><td>W19</td><td>Left button</td></tr>
+    <tr><td>BTNR</td><td>T17</td><td>Right button</td></tr>
+    <tr><td>BTND</td><td>U17</td><td>Down button</td></tr>
+    <tr><td>CLK100MHZ</td><td>W5</td><td>100 MHz on-board oscillator</td></tr>
+  </tbody>
+</table>
+
+<h3>B.4 Part Number</h3>
+<table>
+  <thead><tr><th>Attribute</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Device</td><td>xc7a35t</td></tr>
+    <tr><td>Package</td><td>cpg236</td></tr>
+    <tr><td>Speed Grade</td><td>-1</td></tr>
+    <tr><td>Full Part String</td><td><code>xc7a35t-1cpg236-1</code></td></tr>
+  </tbody>
+</table>
+
+<h2 id="sC">Appendix C: Generated File Specifications</h2>
+
+<table>
+  <thead><tr><th>File</th><th>Entity</th><th>Key Properties</th></tr></thead>
+  <tbody>
+    <tr><td><code>top.vhd</code></td><td><code>top</code></td><td>Synthesizable. Ports match Hardware surface. LVCMOS33 (via XDC). No behavioral process blocks.</td></tr>
+    <tr><td><code>constraints.xdc</code></td><td>—</td><td>One <code>set_property PACKAGE_PIN</code> per port. <code>CLOCK_BUFFER_TYPE NONE</code> for switch/button inputs.</td></tr>
+    <tr><td><code>testbench.vhd</code></td><td><code>top_tb</code></td><td>Simulation only. Exercises all truth table rows. 10 ns clock period for sequential circuits.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="sD">Appendix D: Import Fidelity Reference</h2>
+
+<table>
+  <thead><tr><th>Source</th><th>Fidelity</th><th>Circuit</th><th>Layout</th><th>Vectors</th><th>Pins</th></tr></thead>
+  <tbody>
+    <tr><td><code>.rbproj.json</code> from ZIP</td><td><span class="badge badge-pass">Full</span></td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+    <tr><td>Structural VHDL</td><td><span class="badge badge-info">Reconstructed</span></td><td>✓ (topology)</td><td>Auto</td><td>—</td><td>—</td></tr>
+    <tr><td>Behavioral VHDL</td><td><span class="badge badge-warn">Partial</span></td><td>Ports only</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>RedByte <code>top.vhd</code></td><td><span class="badge badge-warn">Partial</span></td><td>Ports only</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>XDC file</td><td>—</td><td>—</td><td>—</td><td>—</td><td>✓ (if match)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ═══════════════════════ FOOTER ═══════════════════════ -->
+<div class="section-break" style="text-align: center; padding: 3rem 0; color: var(--rb-slate-500); font-size: 0.85rem;">
+  <div style="margin-bottom: 1rem;">
+    <span style="font-size: 1.5rem; font-weight: 900; color: var(--rb-slate-900);"><span style="color: var(--rb-red);">Red</span>Byte</span>
+  </div>
+  <p>Product Manual · Version 1.0 · March 2026</p>
+  <p>Copyright © 2025–2026 Connor Angiel. All rights reserved.</p>
+  <p>RedByte Proprietary License (RPL-1.0)</p>
+</div>
+
+</body>
+</html>
