@@ -5255,48 +5255,6 @@ details[open] summary .details-arrow {
 }
 
 /* Waveform legend strip */
-.ide-verify-waveform-legend {
-  display: flex;
-  align-items: center;
-  gap: var(--ide-space-2);
-  padding: 4px var(--ide-space-2);
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  background: rgba(0,0,0,0.15);
-}
-.ide-verify-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 10px;
-  font-family: IBM Plex Mono, monospace;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
-.ide-verify-legend-item::before {
-  content: '';
-  display: inline-block;
-  width: 18px;
-  height: 3px;
-  border-radius: 2px;
-}
-.ide-verify-legend-pass {
-  color: rgba(46,196,182,0.7);
-}
-.ide-verify-legend-pass::before {
-  background: #2ec4b6;
-}
-.ide-verify-legend-fail {
-  color: rgba(255,107,107,0.8);
-}
-.ide-verify-legend-fail::before {
-  background: #ff6b6b;
-}
-.ide-verify-legend-select {
-  color: rgba(56,189,248,0.75);
-}
-.ide-verify-legend-select::before {
-  background: rgba(56,189,248,0.85);
-}
 
 /* ── Phase 8.3 — Top bar hierarchy ─────────────────────────────────────────── */
 .ide-project-name {
@@ -7609,15 +7567,6 @@ details[open] summary .details-arrow {
 .ide-verify-waveform-hero {
   border-color: rgba(24,44,72,0.7);
 }
-/* Waveform legend: steel-blue tokens */
-.ide-verify-waveform-legend {
-  font-size: 10px;
-  padding: 4px var(--ide-space-2);
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.ide-verify-legend-pass { color: rgba(46,196,182,0.7); }
-.ide-verify-legend-fail { color: rgba(252,107,107,0.8); }
-.ide-verify-legend-select { color: rgba(56,189,248,0.8); }
 
 /* ══════════════════════════════════════════════════════════════════
    Phase 24 — Console frame · 70/30 deck · Taller scope ·
@@ -7714,73 +7663,6 @@ details[open] summary .details-arrow {
 .ide-verify-scope-debug-btn:hover {
   background: rgba(46,196,182,0.14);
   border-color: rgba(46,196,182,0.45);
-}
-
-/* ── Sprint 11: Signal digest strip — per-signal pass/fail row ── */
-.ide-verify-signal-digest {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 5px var(--ide-space-2);
-  background: rgba(2,6,14,0.82);
-  border-bottom: 1px solid rgba(255,255,255,0.055);
-  flex-shrink: 0;
-  min-height: 32px;
-}
-.ide-verify-signal-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 7px 2px 5px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-family: var(--rb-font-mono);
-  border: 1px solid transparent;
-  cursor: default;
-  transition: border-color 0.1s;
-}
-.ide-verify-signal-chip--pass {
-  background: rgba(46,196,182,0.07);
-  border-color: rgba(46,196,182,0.18);
-  color: rgba(46,196,182,0.85);
-}
-.ide-verify-signal-chip--fail {
-  background: rgba(255,80,80,0.09);
-  border-color: rgba(255,80,80,0.35);
-  color: rgba(255,130,130,0.95);
-}
-.ide-verify-signal-chip--idle {
-  background: rgba(255,255,255,0.03);
-  border-color: rgba(255,255,255,0.08);
-  color: rgba(160,180,210,0.5);
-}
-.ide-verify-signal-chip-dir {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  opacity: 0.65;
-}
-.ide-verify-signal-chip-pin {
-  font-size: 9px;
-  opacity: 0.5;
-  margin-left: 2px;
-}
-.ide-verify-signal-chip-status {
-  font-size: 9px;
-  font-weight: 700;
-  opacity: 0.8;
-}
-/* Digest label before chips */
-.ide-verify-signal-digest-label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(100,160,220,0.45);
-  flex-shrink: 0;
-  margin-right: 2px;
 }
 
 /* ── Supporting strip drawer ── */
@@ -10059,25 +9941,6 @@ details[open] summary .details-arrow {
   color: var(--rb-warning, #fa0);
 }
 
-.ide-verify-tick-explainer-summary {
-  cursor: pointer;
-  user-select: none;
-  color: var(--ide-text-soft);
-  font-size: var(--rb-font-size-1);
-  padding: 2px 0;
-}
-
-.ide-verify-tick-explainer-copy {
-  margin: 4px 0 4px 12px;
-  font-size: var(--rb-font-size-1);
-}
-
-.ide-verify-waveform-legend-meta {
-  margin-left: auto;
-  font-size: 10px;
-  opacity: 0.5;
-}
-
 .ide-hw-live-design-link {
   margin-top: var(--ide-space-2);
 }
@@ -10988,58 +10851,11 @@ details[open].ide-export-evidence-details > summary::before {
   background: rgba(248, 113, 113, 0.12);
   border-color: rgba(248, 113, 113, 0.25);
 }
-.ide-verify-scope-bus-strip {
-  display: flex;
-  gap: 6px;
-  padding: 4px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(2, 8, 16, 0.9);
-  overflow-x: auto;
-}
-.ide-verify-scope-bus-chip {
-  font-family: var(--rb-font-mono);
-  font-size: 10px;
-  color: rgba(190, 210, 230, 0.82);
-  border: 1px solid rgba(100, 130, 160, 0.35);
-  border-radius: 3px;
-  padding: 2px 6px;
-  white-space: nowrap;
-}
 
 .ide-verify-cursor-controls {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-}
-
-.ide-verify-cursor-readout {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(3, 9, 18, 0.82);
-  max-height: 160px;
-  overflow: auto;
-}
-.ide-verify-cursor-readout-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: var(--rb-font-mono);
-  font-size: 10px;
-}
-.ide-verify-cursor-readout-table th,
-.ide-verify-cursor-readout-table td {
-  padding: 3px 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  text-align: left;
-  white-space: nowrap;
-}
-.ide-verify-cursor-readout-table th {
-  position: sticky;
-  top: 0;
-  background: rgba(6, 14, 26, 0.95);
-  color: rgba(140, 165, 200, 0.75);
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .ide-verify-sweep-controls {
@@ -13302,61 +13118,6 @@ details[open].ide-export-evidence-details > summary::before {
   border-color: rgba(46, 196, 182, 0.5);
 }
 
-/* ── B2.3: Signal digest strip ── */
-.ide-verify-oscilloscope-stage > .ide-verify-signal-digest {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 5px;
-  padding: 5px 12px;
-  background: rgba(2, 6, 15, 0.96);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  flex-shrink: 0;
-  min-height: 30px;
-}
-.ide-verify-signal-digest-label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(80, 120, 160, 0.6);
-  font-family: var(--rb-font-mono);
-  margin-right: 2px;
-}
-.ide-verify-signal-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px 2px 5px;
-  border-radius: 5px;
-  font-size: 10px;
-  font-family: var(--rb-font-mono);
-  border: 1px solid transparent;
-  cursor: default;
-}
-.ide-verify-signal-chip--pass {
-  background: rgba(46, 196, 182, 0.09);
-  border-color: rgba(46, 196, 182, 0.25);
-  color: rgba(46, 196, 182, 0.9);
-}
-.ide-verify-signal-chip--fail {
-  background: rgba(255, 80, 80, 0.1);
-  border-color: rgba(255, 80, 80, 0.35);
-  color: rgba(255, 130, 130, 1.0);
-}
-.ide-verify-signal-chip--idle {
-  background: rgba(255, 255, 255, 0.035);
-  border-color: rgba(255, 255, 255, 0.08);
-  color: rgba(140, 170, 200, 0.55);
-}
-.ide-verify-signal-chip-dir { opacity: 0.7; font-size: 9px; }
-.ide-verify-signal-chip-pin {
-  color: rgba(56, 150, 200, 0.7);
-  font-size: 9px;
-  margin-left: 2px;
-}
-.ide-verify-signal-chip-status { margin-left: 3px; font-size: 9px; font-weight: 700; }
-
 /* ── B2.4: Waveform outer fill ── */
 .ide-verify-oscilloscope-stage > .ide-waveform-outer {
   flex: 1 1 auto;
@@ -13859,65 +13620,6 @@ details[open].ide-export-evidence-details > summary::before {
   color: rgba(100, 140, 180, 0.6);
   max-width: 400px;
   line-height: 1.5;
-}
-
-/* ── B2.17: Tick explainer ── */
-.ide-verify-tick-explainer-summary {
-  font-size: 11px;
-  color: rgba(80, 140, 200, 0.7);
-  cursor: pointer;
-  padding: 4px 0;
-  user-select: none;
-}
-.ide-verify-tick-explainer-copy {
-  font-size: 11px;
-  color: rgba(140, 175, 215, 0.7);
-  line-height: 1.5;
-  padding: 4px 0 6px;
-}
-
-/* ── B2.18: Waveform legend ── */
-.ide-verify-waveform-legend {
-  display: flex;
-  align-items: center;
-  gap: var(--ide-space-3);
-  padding: 4px 10px;
-  font-size: 10px;
-  background: rgba(2, 6, 14, 0.9);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  flex-shrink: 0;
-}
-.ide-verify-legend-pass { color: rgba(46, 196, 182, 0.82); }
-.ide-verify-legend-fail { color: rgba(252, 107, 107, 0.9); }
-.ide-verify-legend-select { color: rgba(56, 189, 248, 0.88); }
-.ide-verify-legend-item::before {
-  content: '●';
-  margin-right: 4px;
-  font-size: 8px;
-}
-
-/* ── B2.19: Cursor readout table ── */
-.ide-verify-cursor-readout {
-  padding: 6px 10px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  flex-shrink: 0;
-}
-.ide-verify-cursor-readout-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 11px;
-  font-family: var(--rb-font-mono);
-}
-.ide-verify-cursor-readout-table th {
-  font-size: 9px;
-  text-transform: uppercase;
-  color: rgba(80, 130, 180, 0.7);
-  padding: 2px 6px;
-  text-align: left;
-}
-.ide-verify-cursor-readout-table td {
-  padding: 2px 6px;
-  color: rgba(160, 200, 240, 0.85);
 }
 
 /* ── B2.20: Scrubber ── */
@@ -14979,19 +14681,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   color: #d9f4ff;
 }
 
-.ide-verify-cursor-readout {
-  align-self: start;
-  max-width: 420px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(42, 75, 110, 0.48);
-  background: rgba(6, 16, 28, 0.84);
-}
-
-.ide-verify-cursor-readout-table {
-  width: 100%;
-}
-
 .ide-verify-mismatch-panel,
 .ide-verify-run-context,
 .ide-verify-tab-panel > .ide-table-wrap {
@@ -15580,11 +15269,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   max-height: min(48vh, 520px);
 }
 
-.ide-workbench-shell[data-layout-mode='standard'] .ide-verify-cursor-readout,
-.ide-workbench-shell[data-layout-mode='compact'] .ide-verify-cursor-readout {
-  padding: 10px;
-}
-
 .ide-hw-callout {
   padding: 6px 12px;
 }
@@ -16086,22 +15770,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   background:
     linear-gradient(180deg, rgba(2, 8, 18, 0.98), rgba(2, 10, 22, 0.98)),
     radial-gradient(circle at top, rgba(56, 189, 248, 0.08), transparent 58%);
-}
-
-.ide-verify-waveform-legend {
-  gap: 14px;
-  padding: 0 2px;
-}
-
-.ide-verify-cursor-readout {
-  max-width: none;
-  padding: 12px 14px;
-  border-radius: 14px;
-}
-
-.ide-verify-cursor-readout-table th,
-.ide-verify-cursor-readout-table td {
-  padding: 7px 8px;
 }
 
 .ide-verify-supporting-strip {
@@ -19541,12 +19209,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   padding: 0 16px;
 }
 
-/* Signal chips: slightly larger */
-.ide-verify-signal-chip {
-  font-size: 12px;
-  padding: 2px 8px;
-}
-
 /* Run-proof: compact header only, no overflow scroll */
 .ide-verify-run-proof-eyebrow {
   font-size: 10px;
@@ -19726,26 +19388,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
    waveform-legend is also redundant with signal row colors.
    ════════════════════════════════════════════════════════════════ */
 
-/* Remove the 160px blocker before the waveform scroll */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-cursor-readout {
-  display: none !important;
-}
-
-/* Remove the redundant legend strip (16px) */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-legend {
-  display: none !important;
-}
-
-/* Compact the tick-explainer to just its summary row when closed */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-tick-explainer {
-  max-height: 24px;
-  overflow: hidden;
-}
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-tick-explainer[open] {
-  max-height: 200px;
-  overflow: auto;
-}
-
 /* Waveform bar: tighten the controls row */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-bar {
   padding-top: 4px;
@@ -19845,11 +19487,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
    of overhead before the waveform canvas. Collapse non-essential rows.
    ════════════════════════════════════════════════════════════════ */
 
-/* Collapse scope-bus-strip — bus decode text is rarely actioned */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-scope-bus-strip {
-  display: none !important;
-}
-
 /* Tighten oscilloscope-stage internal spacing */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
   gap: 6px !important;
@@ -19865,15 +19502,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 
 /* Collapse tick-explainer inside waveform-frame (it's open by default) */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-tick-explainer {
-  max-height: 28px !important;
-  overflow: hidden !important;
-}
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-tick-explainer[open] {
-  max-height: 160px !important;
-  overflow: auto !important;
-}
-
 /* ════════════════════════════════════════════════════════════════════════════
    VERIFY WORKSTATION — HARD RESET (v2 — follow-up patch applied)
    One fixed screen. No vertical page scroll, ever.
@@ -20168,17 +19796,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   text-transform: uppercase !important;
   letter-spacing: 0.1em !important;
   color: rgba(56, 189, 248, 0.6) !important;
-}
-
-/* Signal digest chips: compact pill row */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-digest {
-  padding: 3px 12px !important;
-  gap: 4px !important;
-  background: rgba(2, 12, 26, 0.8) !important;
-  border-bottom: 1px solid rgba(48, 77, 107, 0.3) !important;
-  min-height: 0 !important;
-  max-height: 30px !important;
-  overflow: hidden !important;
 }
 
 /* Waveform scroll: pristine dark canvas */
@@ -21989,92 +21606,13 @@ button:disabled,
    instrument header, control grouping, empty state polish
    ════════════════════════════════════════════════════════════ */
 
-/* ── A. Signal chip semantic identity ──────────────────────────
-   Chips now carry data-direction='in'|'out' (added in TSX).
-   Category color layers under the existing tone modifiers.
-   ─────────────────────────────────────────────────────────── */
-
-/* Base: slightly increase chip contrast + readable padding */
-.ide-verify-signal-chip {
-  font-size: 11px !important;
-  min-width: 0 !important;
-  border-width: 1px !important;
-  border-style: solid !important;
-  padding: 2px 7px !important;
-  border-radius: 12px !important;
-  font-weight: 500 !important;
-  transition: border-color 120ms ease, background 120ms ease !important;
-}
-
-/* INPUT chips: cool cyan identity */
-.ide-verify-signal-chip[data-direction='in'] {
-  border-color: rgba(56,189,248,0.38) !important;
-  background: rgba(56,189,248,0.07) !important;
-  color: rgba(185,230,255,0.88) !important;
-}
-.ide-verify-signal-chip[data-direction='in'] .ide-verify-signal-chip-dir {
-  color: rgba(100,210,255,0.9) !important;
-}
-
-/* OUTPUT chips: teal/green identity */
-.ide-verify-signal-chip[data-direction='out'] {
-  border-color: rgba(46,196,182,0.38) !important;
-  background: rgba(46,196,182,0.07) !important;
-  color: rgba(180,242,230,0.88) !important;
-}
-.ide-verify-signal-chip[data-direction='out'] .ide-verify-signal-chip-dir {
-  color: rgba(46,196,182,0.95) !important;
-}
-
-/* ASSERTION FAIL: red override — shape still identifies category */
-.ide-verify-signal-chip--fail {
-  border-color: rgba(255,107,107,0.52) !important;
-  background: rgba(255,107,107,0.1) !important;
-  color: rgba(255,170,170,0.92) !important;
-}
-.ide-verify-signal-chip--fail .ide-verify-signal-chip-dir {
-  color: rgba(255,140,140,0.8) !important;
-}
-
-/* ASSERTION PASS: boost category colour slightly */
-.ide-verify-signal-chip--pass[data-direction='in'] {
-  border-color: rgba(56,189,248,0.58) !important;
-  background: rgba(56,189,248,0.12) !important;
-}
-.ide-verify-signal-chip--pass[data-direction='out'] {
-  border-color: rgba(46,196,182,0.58) !important;
-  background: rgba(46,196,182,0.12) !important;
-}
-
-/* Direction glyph: consistent size */
-.ide-verify-signal-chip-dir {
-  font-size: 9px !important;
-  margin-right: 3px !important;
-  opacity: 0.85 !important;
-}
-
-/* Pin badge: muted monospace */
-.ide-verify-signal-chip-pin {
-  font-size: 9px !important;
-  opacity: 0.52 !important;
-  margin-left: 4px !important;
-  font-family: var(--rb-font-mono) !important;
-}
-
-/* Status check/cross */
-.ide-verify-signal-chip-status {
-  margin-left: 3px !important;
-  font-size: 10px !important;
-}
-
 /* ── B. Waveform header consolidation ──────────────────────────
-   Merge scope-header + signal-digest + waveform-bar into one
-   coherent instrument header zone.
-   ─────────────────────────────────────────────────────────── */
+  Merge scope-header + waveform-bar into one coherent instrument
+  header zone.
+  ─────────────────────────────────────────────────────────── */
 
 /* Shared header background */
 .ide-verify-scope-header,
-.ide-verify-signal-digest,
 .ide-verify-waveform-bar {
   background: rgba(8,20,34,0.55) !important;
 }
@@ -22084,26 +21622,6 @@ button:disabled,
   border-bottom: none !important;
   padding-bottom: 6px !important;
   padding-top: 8px !important;
-}
-
-/* Signal digest: flows directly below header */
-.ide-verify-signal-digest {
-  border-top: none !important;
-  padding-top: 3px !important;
-  padding-bottom: 6px !important;
-  gap: 5px !important;
-  flex-wrap: wrap !important;
-}
-
-/* Signal digest label: small, muted section label */
-.ide-verify-signal-digest-label {
-  font-size: 9px !important;
-  letter-spacing: 0.08em !important;
-  text-transform: uppercase !important;
-  color: rgba(130,170,210,0.38) !important;
-  font-weight: 600 !important;
-  align-self: center !important;
-  margin-right: 4px !important;
 }
 
 /* Waveform bar: single thin separator marks end of header zone */
@@ -22272,37 +21790,6 @@ button:disabled,
   letter-spacing: 0.06em !important;
   font-style: normal !important;
   font-family: var(--rb-font-mono) !important;
-}
-
-/* ── B. Clock signal chip identity ─────────────────────────────
-   Clock chips: amber/gold — same amber as waveform clock rails.
-   data-is-clock='true' is set in TSX.
-   ─────────────────────────────────────────────────────────── */
-
-.ide-verify-signal-chip[data-is-clock='true'] {
-  border-color: rgba(251,191,36,0.42) !important;
-  background: rgba(251,191,36,0.07) !important;
-  color: rgba(254,220,100,0.88) !important;
-}
-.ide-verify-signal-chip[data-is-clock='true'] .ide-verify-signal-chip-dir {
-  color: rgba(251,191,36,0.92) !important;
-  font-size: 10px !important;
-}
-/* Clock + assertion fail: red beats amber */
-.ide-verify-signal-chip--fail[data-is-clock='true'] {
-  border-color: rgba(255,107,107,0.52) !important;
-  background: rgba(255,107,107,0.10) !important;
-  color: rgba(255,170,170,0.92) !important;
-}
-
-/* ── C. Waveform header final tightening ───────────────────────
-   Remove any residual double-border between digest and waveform-bar
-   ─────────────────────────────────────────────────────────── */
-
-/* Ensure no gap / border stacking at the seam */
-.ide-verify-signal-digest + .ide-verify-waveform-bar {
-  border-top: 1px solid rgba(56,189,248,0.08) !important;
-  margin-top: 0 !important;
 }
 
 /* Scope header left meta cluster: tighter gap */
@@ -22785,35 +22272,6 @@ button:disabled,
   color: rgba(130,170,210,0.9) !important;
 }
 
-/* ── Signal chips — instrument controls, not UI badges ──────── */
-.ide-verify-signal-digest {
-  gap: 6px !important;
-  padding: 6px 0 !important;
-}
-.ide-verify-signal-chip {
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  padding: 5px 12px !important;
-  border-radius: 6px !important;
-  letter-spacing: 0.01em !important;
-  cursor: pointer !important;
-  transition: background 0.12s, border-color 0.12s !important;
-  user-select: none !important;
-}
-/* Active chip: clear selection identity */
-.ide-verify-signal-chip.is-active,
-.ide-verify-signal-chip[data-active='true'] {
-  background: rgba(56,189,248,0.14) !important;
-  border-color: rgba(56,189,248,0.5) !important;
-  color: rgba(186,230,253,0.95) !important;
-}
-/* Direction glyph: instrument indicator */
-.ide-verify-signal-chip .ide-verify-chip-dir {
-  opacity: 0.5 !important;
-  font-size: 9px !important;
-  margin-right: 2px !important;
-}
-
 /* ── Verify waveform header: unified zone ───────────────────── */
 /* Remove visual gap between chip bar and waveform */
 .ide-verify-scope-header {
@@ -22898,9 +22356,6 @@ button:disabled,
 
 /* ── A7. Remove "What is a tick?" from instrument viewport ──── */
 /* It pollutes prime waveform space — belongs in help docs */
-.ide-verify-tick-explainer {
-  display: none !important;
-}
 
 /* ── A2. Testbench summary bar: authority and intent ─────────── */
 .ide-verify-scenario-builder-details--postrun > summary.ide-verify-scenario-builder-summary {
@@ -22946,14 +22401,6 @@ button:disabled,
 
 /* ── A5. Signal chip bar: respect group state ────────────────── */
 /* "Signals" label is redundant — chips ARE the signals */
-.ide-verify-signal-digest-label {
-  display: none !important;
-}
-.ide-verify-signal-digest {
-  padding: 3px 0 5px !important;
-  gap: 5px !important;
-  flex-wrap: wrap !important;
-}
 
 /* ── A3. StimulusCanvas: stronger visual identity ────────────── */
 .ide-stimulus-tick-header {
@@ -23171,14 +22618,6 @@ button:disabled,
 }
 
 /* ── C3. Waveform legend: minimal, not decorative ────────────── */
-.ide-verify-waveform-legend {
-  padding: 2px 0 !important;
-  gap: 10px !important;
-}
-.ide-verify-legend-item {
-  font-size: 9px !important;
-  letter-spacing: 0.06em !important;
-}
 
 /* ── C5. Status strip meta: cleaner hierarchy ────────────────── */
 .ide-verify-strip-meta {

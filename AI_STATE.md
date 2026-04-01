@@ -1,5 +1,51 @@
 # AI State
 
+## Change Log 2026-04-01 (Phase 6B-final — waveform orphan CSS removal and completion check)
+
+**Subsystem**: Verify waveform stylesheet hygiene / phase-exit verification
+
+### Problem
+
+After the waveform chrome-reduction slice landed, `VerifySurface.tsx` no longer rendered the signal digest, legend, tick explainer, cursor readout, or bus strip, but `ide-root.css` still carried multiple generations of dead rules and verify-only overrides for those removed elements.
+
+That left the Verify surface in an awkward state:
+
+1. the live markup and stylesheet no longer matched, which makes future waveform edits harder to reason about
+2. the CSS file still contained duplicate legacy blocks for removed scope chrome, including selector-specific hide rules that no longer had any target
+3. Phase 6B still needed a final evidence pass before leaving Verify: confirm the cleanup did not break tests/build and confirm the reduced waveform surface still reads correctly in the browser
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Removed orphaned Verify waveform selectors for:
+    - `ide-verify-signal-digest` and its chip variants
+    - `ide-verify-waveform-legend` and legend-item variants
+    - `ide-verify-tick-explainer` helper text styles
+    - `ide-verify-cursor-readout` table styles
+    - `ide-verify-scope-bus-strip` and bus-chip styles
+  - Removed later verify-only override blocks that were only hiding or reshaping those deleted elements
+  - Preserved the shared RedByte design tokens after review confirmed they are still globally referenced across the IDE
+
+### Student-visible behavior
+
+- No new behavior was added in this slice; it is a cleanup pass that makes the stylesheet match the already-landed reduced waveform UI
+- The Verify surface keeps the simpler waveform viewport from slice 2 without carrying dead stylesheet baggage behind it
+
+### Proof
+
+- Focused Verify regression batch:
+  - `pnpm -w exec vitest run --reporter=basic packages/rb-apps/src/__tests__/AssertionCanvas.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - result: `45 passed`
+
+- Build proof:
+  - `pnpm --filter @redbyte/playground build`
+  - result: `EXIT 0`
+
+- Browser smoke:
+  - loaded `http://127.0.0.1:4175/os/` in the built playground
+  - confirmed the sequential Verify workspace still loads and the waveform viewport remains the dominant artifact area on a passing compare run
+  - confirmed the removed chrome bands do not reappear in the live waveform view
+
 ## Change Log 2026-04-01 (Phase 6B — waveform legitimacy slice 2: scope chrome reduction and responsive ghost viewport)
 
 **Subsystem**: Verify waveform legibility / oscilloscope viewport discipline
