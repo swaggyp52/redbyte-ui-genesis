@@ -1,5 +1,56 @@
 # AI State
 
+## Change Log 2026-04-01 (Phase 6B — waveform legitimacy slice 2: scope chrome reduction and responsive ghost viewport)
+
+**Subsystem**: Verify waveform legibility / oscilloscope viewport discipline
+
+### Problem
+
+After the geometry-sync slice, the waveform was no longer lying about tick alignment, but it still spent too much of the viewport on repeated chrome instead of evidence:
+
+1. the scope rendered redundant bands for signal digest chips, a legend strip, and a tick explainer inside the waveform frame
+2. the cursor readout table duplicated information already present in the waveform and header
+3. the idle ghost state still used a fixed-width decorative track with `ARMED · AWAITING RUN` chrome, which felt synthetic rather than tool-like
+4. fail-column emphasis was still too weak on dark backgrounds
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Removed the redundant signal digest strip above the waveform
+  - Removed the in-frame tick explainer, legend strip, and cursor readout table
+  - Removed the bus summary strip from the oscilloscope stage
+  - Moved the remaining help semantics into the scope-label tooltip instead of consuming viewport height
+  - Simplified the idle ghost scope and made its track width respond to the real container width instead of a hardcoded 600 px value
+  - Increased fail-column and fail-row overlay opacity so mismatch regions are visually dominant without adding more controls
+  - Removed dead bus/readout helpers left behind by the chrome removal
+
+- Tests updated:
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+    - now proves fail runs keep the useful navigation/cursor controls while omitting redundant scope chrome (`cursor-readout`, `signal-digest`, `waveform-legend`, `tick-explainer`)
+
+### Student-visible behavior
+
+- The waveform viewport now devotes more vertical space to traces and assertion evidence instead of redundant helper bands
+- Fail windows are easier to spot because the red mismatch overlays read more clearly against the scope background
+- Idle waveform state now feels like a real ready viewport instead of a fixed-width decorative mock panel
+- Scope help still exists, but it no longer occupies the live oscilloscope frame
+
+### Proof
+
+- Focused Verify regression batch:
+  - `pnpm -w exec vitest run packages/rb-apps/src/__tests__/AssertionCanvas.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx --reporter=basic`
+  - result: `45 passed`
+
+- Build proof:
+  - `pnpm --filter @redbyte/playground build`
+  - result: `EXIT 0`
+
+- Manual smoke checklist:
+  - fail run: confirm no signal-digest / legend / tick-explainer / cursor table bands remain inside the waveform frame
+  - fail run: confirm the first mismatch column is immediately obvious without zooming
+  - idle waveform state: confirm the ready viewport stretches to the available width and no longer shows fixed-width `ARMED · AWAITING RUN` chrome
+  - sequential run: confirm the Sequential badge and clocked trace remain readable after the chrome reduction
+
 ## Change Log 2026-04-01 (Phase 6B — waveform legitimacy slice 1: assertion overlay now matches waveform viewport geometry)
 
 **Subsystem**: Verify waveform / assertion overlay evidence contract

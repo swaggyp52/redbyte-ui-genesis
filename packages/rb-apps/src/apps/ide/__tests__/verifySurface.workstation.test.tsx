@@ -903,7 +903,7 @@ describe('VerifySurface workstation controls', () => {
   });
 
   it('shows mismatch navigation and cursor controls on fail runs', () => {
-    const { getAllByText, getByTestId } = render(
+    const { getAllByText, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -925,7 +925,10 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-fail-nav-first')).toBeTruthy();
     expect(getByTestId('ide-verify-set-cursor-a')).toBeTruthy();
     expect(getByTestId('ide-verify-set-cursor-b')).toBeTruthy();
-    expect(getByTestId('ide-verify-cursor-readout')).toBeTruthy();
+    expect(queryByTestId('ide-verify-cursor-readout')).toBeNull();
+    expect(queryByTestId('ide-verify-signal-digest')).toBeNull();
+    expect(queryByTestId('ide-verify-waveform-legend')).toBeNull();
+    expect(queryByTestId('ide-verify-tick-explainer')).toBeNull();
     expect(getByTestId('ide-verify-failure-explainer')).toBeTruthy();
     expect(getByTestId('ide-verify-right-tick').textContent).toContain('t1');
     expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld0');
@@ -999,6 +1002,7 @@ describe('VerifySurface workstation controls', () => {
 
     expect(onGoToDesign).toHaveBeenCalledTimes(1);
   });
+
 
   it('generates deterministic sweep vectors from presets', () => {
     const onVectorsChange = vi.fn();

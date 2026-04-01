@@ -101,3 +101,24 @@ Document that Phase 6B first slice established a waveform evidence contract: the
 **Step 2: Record proof**
 
 Include the focused test command and build command results.
+
+---
+
+## Follow-up Slice: Waveform Chrome Reduction
+
+**Goal:** Remove repeated scope chrome so the waveform viewport gives more space and attention to actual debugging evidence.
+
+**Implementation:**
+- Remove the redundant signal-digest strip, in-frame tick explainer, legend strip, and cursor readout table from `VerifySurface.tsx`
+- Simplify the idle ghost scope and make its width responsive to the real container instead of a fixed decorative track
+- Strengthen fail overlay opacity directly in the waveform SVG
+
+**Verification:**
+- `pnpm -w exec vitest run packages/rb-apps/src/__tests__/AssertionCanvas.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx --reporter=basic`
+- `pnpm --filter @redbyte/playground build`
+
+**Manual smoke checklist:**
+- Fail run: no signal digest, no legend strip, no tick explainer, no cursor readout table inside the waveform frame
+- Fail run: mismatch columns are immediately visible without opening extra panels
+- Idle waveform: ready viewport stretches to available width and does not show fixed-width `ARMED · AWAITING RUN` chrome
+- Sequential run: sequential badge and trace readability remain intact after the chrome reduction

@@ -111,6 +111,13 @@ P6 waveform / oscilloscope legitimacy — first slice landed (2026-04-01):
 - Fail-window investigation now renders the assertion overlay against `zoomedTicks`, not the full timeline, so the evidence panel describes the same visible window as the waveform itself.
 - Targeted coverage now guards both parts of this contract: AssertionCanvas runtime geometry and VerifySurface fail-window tick sync.
 
+P6 waveform / oscilloscope legitimacy — second slice landed (2026-04-01):
+
+- The waveform frame now removes redundant chrome bands: no signal digest strip, no in-frame tick explainer, no legend strip, and no cursor readout table competing with the traces.
+- The idle ghost viewport now sizes to the real container width and drops the fixed-width `ARMED · AWAITING RUN` treatment.
+- Fail-window emphasis is stronger directly in the scope, so mismatch regions are easier to spot before opening any side panels.
+- Targeted workstation coverage now guards the subtractive chrome contract so those bands do not quietly reappear.
+
 P5 design editor legitimacy landed (2026-04-01, commit 006c571c):
 
 - **Drag undo granularity fixed**: RAF-batched node moves now use `isIntermediate: true`, skipping `emitCircuitMutation`. New `handleNodeMoveCommit` fires once at pointer-up (cancels pending RAF, commits with `isIntermediate: false`). One undo entry per drag, not ~120.

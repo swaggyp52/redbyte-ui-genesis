@@ -310,15 +310,29 @@ const WaveformViewer: React.FC<{
 
   const width = LABEL_W + ticks.length * TICK_W;
   const height = totalHeight;
+  const ghostViewportRef = useRef<HTMLDivElement | null>(null);
+  const [ghostTrackWidth, setGhostTrackWidth] = useState(640);
+
+  useEffect(() => {
+    if (signals.length !== 0 || !ghostSignals || ghostSignals.length === 0) return;
+    const measure = () => {
+      const containerWidth = ghostViewportRef.current?.clientWidth ?? 0;
+      const nextWidth = containerWidth > LABEL_W ? containerWidth - LABEL_W : 640;
+      setGhostTrackWidth(Math.max(360, nextWidth));
+    };
+    measure();
+    if (typeof window === 'undefined') return;
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [ghostSignals, signals.length, LABEL_W]);
 
   if (signals.length === 0) {
     // Ghost lanes: if mapped signals exist, render empty instrument channels waiting for data
     if (ghostSignals && ghostSignals.length > 0) {
       const GHOST_LABEL_W = 140;
       const GHOST_ROW_H = ROW_H;
-      const GHOST_HEADER_H = 28;
-      const GHOST_TRACK_W = 600; // fixed width; overflows scrollably
-      const totalGhostH = GHOST_HEADER_H + ghostSignals.length * GHOST_ROW_H;
+      const GHOST_HEADER_H = 16;
+      const GHOST_TRACK_W = ghostTrackWidth;
       const inputs = ghostSignals.filter(s => s.direction === 'in');
       const outputs = ghostSignals.filter(s => s.direction === 'out' || s.direction === 'internal');
 
@@ -342,37 +356,27 @@ const WaveformViewer: React.FC<{
       appendGroup('Observed', outputs);
 
       return (
-        <div className="ide-verify-waveform-ghost" data-testid="ide-verify-waveform-empty" style={{ width: '100%', overflowX: 'auto' }}>
+        <div
+          ref={ghostViewportRef}
+          className="ide-verify-waveform-ghost"
+          data-testid="ide-verify-waveform-empty"
+          style={{ width: '100%', overflowX: 'auto' }}
+        >
           <svg
             width={GHOST_LABEL_W + GHOST_TRACK_W}
             height={gy}
             style={{ display: 'block', fontFamily: 'IBM Plex Mono, monospace', overflow: 'visible', minWidth: '100%' }}
           >
-            <defs>
-              <linearGradient id="ghostTrackFade" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="rgba(56,189,248,0.18)" />
-                <stop offset="60%" stopColor="rgba(56,189,248,0.06)" />
-                <stop offset="100%" stopColor="rgba(56,189,248,0)" />
-              </linearGradient>
-              <pattern id="ghostDash" x="0" y="0" width="20" height="1" patternUnits="userSpaceOnUse">
-                <line x1="0" y1="0.5" x2="12" y2="0.5" stroke="rgba(56,189,248,0.22)" strokeWidth="1" />
-              </pattern>
-            </defs>
-
-            {/* Header row */}
-            <rect x={0} y={0} width={GHOST_LABEL_W + GHOST_TRACK_W} height={GHOST_HEADER_H} fill="rgba(5,14,26,0.95)" />
-            <line x1={0} y1={GHOST_HEADER_H - 1} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={GHOST_HEADER_H - 1} stroke="rgba(56,189,248,0.18)" strokeWidth={1} />
-            <text x={GHOST_LABEL_W + 14} y={GHOST_HEADER_H / 2 + 4} fill="rgba(56,189,248,0.5)" fontSize={10} fontWeight={700} letterSpacing={2}>
-              ARMED · AWAITING RUN
-            </text>
+            <rect x={0} y={0} width={GHOST_LABEL_W + GHOST_TRACK_W} height={gy} fill="#020b18" />
+            <line x1={0} y1={GHOST_HEADER_H - 1} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={GHOST_HEADER_H - 1} stroke="rgba(56,189,248,0.14)" strokeWidth={1} />
 
             {ghostRows.map((row, i) => {
               if (row.kind === 'group-header') {
                 return (
                   <g key={`gh-${i}`}>
-                    <rect x={0} y={row.y} width={GHOST_LABEL_W + GHOST_TRACK_W} height={20} fill="rgba(6,16,30,0.95)" />
-                    <line x1={0} y1={row.y} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={row.y} stroke="rgba(56,189,248,0.12)" strokeWidth={1} />
-                    <text x={10} y={row.y + 13} fill="rgba(56,189,248,0.45)" fontSize={9} fontWeight={700} letterSpacing={2}>
+                    <rect x={0} y={row.y} width={GHOST_LABEL_W + GHOST_TRACK_W} height={20} fill="rgba(6,16,30,0.82)" />
+                    <line x1={0} y1={row.y} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={row.y} stroke="rgba(56,189,248,0.10)" strokeWidth={1} />
+                    <text x={10} y={row.y + 13} fill="rgba(56,189,248,0.40)" fontSize={9} fontWeight={700} letterSpacing={2}>
                       {row.label.toUpperCase()}
                     </text>
                   </g>
@@ -398,13 +402,11 @@ const WaveformViewer: React.FC<{
                     strokeWidth={1} />
                   {/* Divider */}
                   <line x1={GHOST_LABEL_W} y1={y} x2={GHOST_LABEL_W} y2={y + GHOST_ROW_H} stroke="rgba(40,70,100,0.35)" strokeWidth={1} />
-                  {/* Baseline track fill */}
-                  <rect x={GHOST_LABEL_W} y={y} width={GHOST_TRACK_W} height={GHOST_ROW_H} fill="url(#ghostTrackFade)" opacity={0.55} />
-                  {/* Dashed center baseline — stronger */}
+                  {/* Single quiet baseline to show where trace data will appear */}
                   <line x1={GHOST_LABEL_W + 8} y1={midY} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={midY}
                     stroke={isInput ? 'rgba(56,189,248,0.28)' : 'rgba(34,211,238,0.22)'}
                     strokeWidth={1}
-                    strokeDasharray="8 6" />
+                    strokeDasharray="6 8" />
                   {/* Row bottom border */}
                   <line x1={0} y1={y + GHOST_ROW_H} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={y + GHOST_ROW_H} stroke="rgba(30,55,80,0.28)" strokeWidth={1} />
                 </g>
@@ -474,7 +476,7 @@ const WaveformViewer: React.FC<{
           y={HEADER_H}
           width={TICK_W}
           height={height - HEADER_H}
-          fill="rgba(255,55,55,0.13)"
+          fill="rgba(255,55,55,0.22)"
         />
       ) : null)}
 
@@ -622,7 +624,7 @@ const WaveformViewer: React.FC<{
                 <g key={`${signalRow.signal}-${point.tick}`}>
                   {/* Fail segment highlight */}
                   {isFail && (
-                    <rect x={tickX} y={y} width={TICK_W} height={ROW_H} fill="rgba(255,80,80,0.26)" />
+                    <rect x={tickX} y={y} width={TICK_W} height={ROW_H} fill="rgba(255,80,80,0.34)" />
                   )}
 
                   {/* Selected tick column highlight */}
@@ -1271,30 +1273,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return keys;
   }, [selectedFailurePeers]);
-
-  // Sprint 11: per-signal digest — direction, pin, pass/fail status
-  const signalDigestRows = useMemo(() => {
-    if (!mappedSignals?.length) return [];
-    const seen = new Set<string>();
-    return mappedSignals.flatMap((sig) => {
-      // Respect group collapse state: suppress chips for collapsed groups
-      if (sig.direction === 'in' && collapsedGroups.Inputs) return [];
-      if (sig.direction === 'out' && collapsedGroups.Outputs) return [];
-      const digestKey = `${sig.direction}:${sig.label ?? sig.id}:${sig.pin ?? ''}:${sig.id}`;
-      if (seen.has(digestKey)) return [];
-      seen.add(digestKey);
-      const norm = normalizeFieldId(sig.label ?? sig.id);
-      const isFailing = lastRun ? failingSignalKeys.has(norm) : null;
-      return [{
-        key: digestKey,
-        id: sig.id,
-        label: sig.label,
-        direction: sig.direction,
-        pin: sig.pin,
-        isFailing,
-      }];
-    });
-  }, [mappedSignals, failingSignalKeys, lastRun, collapsedGroups]);
 
   // Sprint 11: signalMeta map keyed by display name for WaveformViewer
   const signalMetaMap = useMemo(() => {
@@ -2568,42 +2546,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setCursorA(null);
     setCursorB(null);
   };
-  const signalValueLookup = useMemo(() => {
-    const lookup = new Map<string, Map<number, string>>();
-    for (const row of displaySignalTimeline) {
-      const perTick = new Map<number, string>();
-      for (const value of row.values) perTick.set(value.tick, value.value);
-      lookup.set(row.signal, perTick);
-    }
-    return lookup;
-  }, [displaySignalTimeline]);
-  const cursorReadoutRows = useMemo(
-    () =>
-      displaySignalTimeline.map((row) => {
-        const ticks = signalValueLookup.get(row.signal);
-        const valueA = cursorA !== null ? ticks?.get(cursorA) ?? '-' : '-';
-        const valueB = cursorB !== null ? ticks?.get(cursorB) ?? '-' : '-';
-        const delta = valueA === '-' || valueB === '-' ? '--' : valueA === valueB ? 'steady' : 'toggle';
-        return {
-          signal: row.signal,
-          valueA,
-          valueB,
-          delta,
-        };
-      }),
-    [cursorA, cursorB, displaySignalTimeline, signalValueLookup]
-  );
   const cursorDeltaTicks =
     cursorA !== null && cursorB !== null ? Math.abs(cursorB - cursorA) : null;
-  const busReadouts = useMemo(() => {
-    const buses = deriveSignalBuses(displaySignalTimeline.map((row) => row.signal));
-    return buses.map((bus) => ({
-      name: `${bus.prefix.toUpperCase()}[${bus.maxIndex}:${bus.minIndex}]`,
-      selected: selectedTick !== null ? formatBusValue(bus, signalValueLookup, selectedTick) : null,
-      cursorA: cursorA !== null ? formatBusValue(bus, signalValueLookup, cursorA) : null,
-      cursorB: cursorB !== null ? formatBusValue(bus, signalValueLookup, cursorB) : null,
-    }));
-  }, [cursorA, cursorB, displaySignalTimeline, selectedTick, signalValueLookup]);
 
   // Phase 8.1: Zoomed tick window
   const allWaveformTicks = useMemo(
@@ -4941,7 +4885,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
               {/* ── Oscilloscope instrument header ── */}
               <div className="ide-verify-scope-header" data-testid="ide-verify-scope-header">
-                <span className="ide-verify-scope-label">Waveform</span>
+                <span
+                  className="ide-verify-scope-label"
+                  title={
+                    isSequentialRun
+                      ? 'Waveform viewport. One tick is one sampled clock step. Teal traces are steady evidence, red marks failing checks, and blue marks the selected tick.'
+                      : 'Waveform viewport. One tick is one simulation step. Teal traces are steady evidence, red marks failing checks, and blue marks the selected tick.'
+                  }
+                >
+                  Waveform
+                </span>
                 {isSequentialRun && (
                   <span className="ide-verify-scope-seq-badge" data-testid="ide-verify-seq-badge">
                     Sequential
@@ -5000,51 +4953,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   )}
                 </span>
               </div>
-              {/* Sprint 11: Signal digest — per-signal direction/pin/status row */}
-              {signalDigestRows.length > 0 && (
-                <div className="ide-verify-signal-digest" data-testid="ide-verify-signal-digest">
-                  <span className="ide-verify-signal-digest-label">Signals</span>
-                  {signalDigestRows.map((sig) => {
-                    const tone = !sessionShowsCompareEvidence || sig.isFailing === null ? 'idle' : sig.isFailing ? 'fail' : 'pass';
-                    return (
-                      <span
-                        key={sig.key}
-                        className={`ide-verify-signal-chip ide-verify-signal-chip--${tone}`}
-                        data-direction={sig.direction}
-                        data-is-clock={clockSignals.has(normalizeFieldId(sig.label ?? sig.id)) ? 'true' : undefined}
-                        title={sig.pin ? `${sig.id} → FPGA pin ${sig.pin}` : sig.id}
-                        onMouseEnter={() => handleSignalHover(sig.label ?? sig.id)}
-                        onMouseLeave={() => handleSignalHover(null)}
-                      >
-                        <span className="ide-verify-signal-chip-dir">
-                          {clockSignals.has(normalizeFieldId(sig.label ?? sig.id)) ? '◷' : sig.direction === 'in' ? '▲' : '▼'}
-                        </span>
-                        {sig.label ?? sig.id}
-                        {sig.pin && (
-                          <span className="ide-verify-signal-chip-pin">{sig.pin}</span>
-                        )}
-                        {sessionShowsCompareEvidence && sig.isFailing !== null && (
-                          <span className="ide-verify-signal-chip-status">
-                            {sig.isFailing ? '✗' : '✓'}
-                          </span>
-                        )}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-              {busReadouts.length > 0 && (
-                <div className="ide-verify-scope-bus-strip" data-testid="ide-verify-bus-strip">
-                  {busReadouts.slice(0, 3).map((bus) => (
-                    <span key={bus.name} className="ide-verify-scope-bus-chip">
-                      {bus.name}
-                      {bus.selected ? ` T=${bus.selected}` : ''}
-                      {bus.cursorA ? ` A=${bus.cursorA}` : ''}
-                      {bus.cursorB ? ` B=${bus.cursorB}` : ''}
-                    </span>
-                  ))}
-                </div>
-              )}
               <div className="ide-verify-waveform-bar" data-testid="ide-verify-waveform-bar">
                 {/* Step-through navigator — shown when step mode is active */}
                 {isStepMode && totalSteps > 0 && (
@@ -5233,53 +5141,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 data-testid="ide-verify-waveform-preview"
                 data-verify-trace-only={isTraceOnly ? '1' : '0'}
               >
-                {/* Student onboarding: tick explanation */}
-                <details className="ide-verify-tick-explainer" data-testid="ide-verify-tick-explainer">
-                  <summary className="ide-verify-tick-explainer-summary">
-                    What is a tick?
-                  </summary>
-                  <p className="ide-copy ide-verify-tick-explainer-copy">
-                    A <strong>tick</strong> is one simulation step. For combinational logic, one tick
-                    settles all outputs. For sequential logic (flip-flops), each clock edge is one tick.
-                    Expected values are checked at the end of each tick — a mismatch means the circuit
-                    produced a different value than specified.
-                  </p>
-                </details>
-                {/* Legend */}
-                {displaySignalTimeline.length > 0 && (
-                  <div className="ide-verify-waveform-legend" data-testid="ide-verify-waveform-legend">
-                    <span className="ide-verify-legend-item ide-verify-legend-pass">PASS</span>
-                    <span className="ide-verify-legend-item ide-verify-legend-fail">FAIL</span>
-                    <span className="ide-verify-legend-item ide-verify-legend-select">SELECTED</span>
-                    <span className="ide-copy ide-verify-waveform-legend-meta">
-                      {waveformWindowLabel}
-                    </span>
-                  </div>
-                )}
-                {cursorReadoutRows.length > 0 && (
-                  <div className="ide-verify-cursor-readout" data-testid="ide-verify-cursor-readout">
-                    <table className="ide-verify-cursor-readout-table">
-                      <thead>
-                        <tr>
-                          <th>Signal</th>
-                          <th>A</th>
-                          <th>B</th>
-                          <th>Delta</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {cursorReadoutRows.slice(0, 8).map((row) => (
-                          <tr key={row.signal}>
-                            <td><code>{row.signal}</code></td>
-                            <td><code>{row.valueA}</code></td>
-                            <td><code>{row.valueB}</code></td>
-                            <td>{row.delta}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
                 <div
                   className="ide-verify-waveform-scroll"
                   ref={waveformScrollRef}
@@ -6550,60 +6411,6 @@ function grayCodes(bitCount: number): string[] {
     codes.push(gray.toString(2).padStart(bitCount, '0'));
   }
   return codes;
-}
-
-interface SignalBusDescriptor {
-  prefix: string;
-  minIndex: number;
-  maxIndex: number;
-  indices: number[];
-}
-
-function deriveSignalBuses(signals: string[]): SignalBusDescriptor[] {
-  const grouped = new Map<string, Set<number>>();
-  for (const signal of signals) {
-    const match = /^([a-z_]+)(\d+)$/i.exec(signal.trim());
-    if (!match) continue;
-    const prefix = match[1].toLowerCase();
-    const index = Number.parseInt(match[2], 10);
-    if (!Number.isFinite(index)) continue;
-    const next = grouped.get(prefix) ?? new Set<number>();
-    next.add(index);
-    grouped.set(prefix, next);
-  }
-
-  const buses: SignalBusDescriptor[] = [];
-  for (const [prefix, values] of grouped.entries()) {
-    const indices = Array.from(values).sort((left, right) => left - right);
-    if (indices.length < 2) continue;
-    buses.push({
-      prefix,
-      minIndex: indices[0],
-      maxIndex: indices[indices.length - 1],
-      indices,
-    });
-  }
-  buses.sort((left, right) => compareText(left.prefix, right.prefix));
-  return buses;
-}
-
-function formatBusValue(
-  bus: SignalBusDescriptor,
-  signalValueLookup: Map<string, Map<number, string>>,
-  tick: number
-): string | null {
-  let value = 0;
-  let hasValue = false;
-  for (const bit of bus.indices) {
-    const signalName = `${bus.prefix}${bit}`;
-    const signalTicks = signalValueLookup.get(signalName);
-    const raw = signalTicks?.get(tick);
-    if (raw !== '0' && raw !== '1') continue;
-    hasValue = true;
-    if (raw === '1') value |= 1 << (bit - bus.minIndex);
-  }
-  if (!hasValue) return null;
-  return `0x${value.toString(16).toUpperCase()}`;
 }
 
 function buildFailWindowTicks(ticks: number[], failureTick: number | null): number[] {
