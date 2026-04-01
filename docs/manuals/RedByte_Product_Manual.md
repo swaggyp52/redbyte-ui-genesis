@@ -660,6 +660,18 @@ For T flip-flops, the T input controls toggling: T=1 toggles Q on each clock edg
 
 For JK flip-flops: J=1,K=0 sets Q to 1; J=0,K=1 resets Q to 0; J=1,K=1 toggles Q; J=0,K=0 holds Q.
 
+**Sequential Support Boundary.** RedByte v1 supports a single-clock, rising-edge, active-high-reset sequential model. The following patterns are explicitly not supported and will be blocked by the Verify and Export surfaces:
+
+- Falling-edge clock triggers
+- Multiple clock domains (more than one clock source)
+- Active-low resets (signal names like `reset_n` or `rst_n`, or reset through a NOT gate)
+
+All reset ports (RST, CLR) are asynchronous and active-high: asserting RST=1 immediately forces Q=0 regardless of the clock state. Synchronous reset is not available.
+
+The DLatch is level-sensitive, not edge-triggered: it is transparent when EN=1 and holds when EN=0. It does not use a clock.
+
+For the full boundary specification, see `docs/contracts/Sequential_Support_Boundary.md`.
+
 ### 8.5 Saving Work
 
 Projects are auto-saved to browser local storage. The save state indicator in the top bar confirms that the project is saved. Explicit save actions are also available. For portable storage, export the project as a RedByte project archive from the Project surface.

@@ -413,14 +413,8 @@ const COMPOSITE_PALETTE_ITEMS: PaletteItem[] = [
     glyph: 'ADD',
     searchTerms: ['adder', 'arithmetic', 'sum', 'carry'],
   },
-  {
-    type: 'Counter4Bit',
-    title: '4-Bit Counter',
-    category: 'Components',
-    subtitle: 'Reusable counter block for quick sequential experiments.',
-    glyph: 'CTR',
-    searchTerms: ['counter', 'register', 'state', 'sequential'],
-  },
+  // Counter4Bit removed from palette — stub implementation (no real counting logic).
+  // Restore when Counter4Bit composite is properly implemented with flip-flops.
 ];
 
 const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [

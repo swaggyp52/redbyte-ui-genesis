@@ -15,18 +15,19 @@ RedByte is a **substantially implemented FPGA educational IDE** with a sound arc
 
 The core engine and pipeline are legitimate. The documentation system (manual + audit + traceability) is more rigorous than most projects this size. The IDE-era spec documents under `docs/ide/` are current-truth and enforced.
 
-But: the repo's front door lies about the product (README claims 3D editing, time-travel debugging, OS-era branding). The manual overclaims features that don't exist (Export Grading Report, verification replay, FPGA Bridge). Design-time feedback for critical circuit errors is missing. The sequential path has unsupported boundaries that are detected but not blocked. And the documentation does not separate current-state truth from target-state contract.
+Design-time feedback for critical circuit errors is still missing. Two classroom blockers remain (Basys3 rehearsal, clean-tree signoff).
 
 - [x] product-legit in its core student workflow
+- [x] documentation truthful (P0 complete — README rewritten, manual overclaims removed)
+- [x] sequential boundaries enforced (P1 complete — falling-edge/multi-clock/active-low blocked in both Verify and Export)
 - [ ] classroom-trustworthy (two pre-lab blockers remain)
-- [ ] manual/screenshot-worthy (trust and visual gaps remain)
-- [ ] visually credible as a real tool (not assessed in this audit — runtime inspection needed)
-- [ ] internally coherent across workflow, terminology, and generated outputs (README/manual/obsidian disagree)
+- [ ] manual/screenshot-worthy (visual gaps remain)
+- [ ] visually credible as a real tool (not assessed — runtime inspection needed)
 
-### Primary blockers
-1. README lies about the product — every visitor sees OS-era claims
-2. Manual overclaims features that don't exist
-3. Sequential path boundaries detected but not blocked (falling-edge, multi-clock, active-low reset)
+### Primary blockers (remaining after P0+P1)
+1. Design-time circuit error feedback missing (GAP-006)
+2. Export not gated on verify pass (GAP-007)
+3. Two classroom blockers: Basys3 rehearsal + clean-tree signoff (GAP-013, GAP-014)
 
 ### Immediate recommendation
 Fix the README and remove manual overclaims (P0 truth fixes). These are the highest-leverage, lowest-risk changes. They can be done in a single batch and immediately improve credibility for anyone reading the repo or the manual.
@@ -67,16 +68,17 @@ Claims in this audit are based on:
 - 220 tests green
 
 ### What RedByte currently pretends to do better than it actually does
-- README claims 3D editing, time-travel debugging, automatic bug localization — none exist
-- Manual documents Export Grading Report, verification replay, FPGA Bridge as shipped features — no code evidence
-- Manual lists LabWorkspaceApp and LogicPlaygroundApp as application contexts — no evidence they function independently
-- DOC_INDEX references OS-era architecture concepts as current
+- ~~README claims 3D editing, time-travel debugging, automatic bug localization~~ **FIXED (P0)**
+- ~~Manual documents Export Grading Report, verification replay, FPGA Bridge as shipped features~~ **FIXED (P0)**
+- ~~Manual lists LabWorkspaceApp and LogicPlaygroundApp as application contexts~~ **FIXED (P0)**
+- ~~DOC_INDEX references OS-era architecture concepts as current~~ **FIXED (P0)**
 
 ### What is functional but not yet legitimate
-- Sequential path: rising-edge works, but falling-edge/multi-clock/active-low reset are detected and flagged without blocking — students can get wrong results
+- ~~Sequential path: rising-edge works, but falling-edge/multi-clock/active-low reset are detected and flagged without blocking~~ **FIXED (P1) — all three now block in both Verify and Export**
+- ~~Counter4Bit in palette as non-functional stub~~ **FIXED (P1) — removed from palette**
 - Design-time feedback: circuit errors (driver conflicts, combinational loops, floating drivers) only caught at export
 - Export: downloads allowed without verify pass
-- Latch execution: uses clocked_macro path — unclear if level-sensitive semantics are correct
+- Latch execution: uses level-sensitive schedule — separate from clocked_macro but needs further validation
 
 ### What is actively blocking pride / release / final-manual visuals
 1. README is the repo's front door and it lies
@@ -173,15 +175,16 @@ Claims in this audit are based on:
 
 | ID | Area | Gap | Severity | Evidence | Likely Files | Status |
 |---|---|---|---|---|---|---|
-| GAP-001 | Docs | README claims OS-era features (3D, time-travel, bug localization) | critical | code inspection | `README.md` | open |
-| GAP-002 | Docs | Manual overclaims Export Grading Report, verify replay, FPGA Bridge | critical | code inspection | `docs/manuals/RedByte_Product_Manual.md` | open |
-| GAP-003 | Sequential | Falling-edge detected but not blocked | high | code: vectorRunner.ts | `verifySchedule.ts`, `vectorRunner.ts` | open |
-| GAP-004 | Sequential | Multi-clock detected but not blocked | high | code: verifySchedule.ts | `verifySchedule.ts`, `basys3Bundle.ts` | open |
-| GAP-005 | Sequential | Active-low reset available but no reset-aware simulation | high | code: vectorRunner.ts | `vectorRunner.ts`, palette | open |
+| GAP-001 | Docs | README claims OS-era features (3D, time-travel, bug localization) | critical | code inspection | `README.md` | **closed (P0)** |
+| GAP-002 | Docs | Manual overclaims Export Grading Report, verify replay, FPGA Bridge | critical | code inspection | `docs/manuals/RedByte_Product_Manual.md` | **closed (P0)** |
+| GAP-003 | Sequential | Falling-edge detected but not blocked | high | code: vectorRunner.ts | `verifySchedule.ts`, `basys3ExportService.ts` | **closed (P1)** — Verify blocks via hasUnsupportedTemporal; Export blocks via falling_edge() HDL check |
+| GAP-004 | Sequential | Multi-clock detected but not blocked | high | code: verifySchedule.ts | `verifySchedule.ts`, `basys3ExportService.ts` | **closed (P1)** — both Verify and Export block on multi-clock |
+| GAP-005 | Sequential | Active-low reset available but not blocked | high | code: vectorRunner.ts | `verifySchedule.ts`, `basys3ExportService.ts` | **closed (P1)** — Verify blocks via temporal issue; Export blocks via naming + NOT-gate checks |
+| GAP-005b | Sequential | Counter4Bit stub in palette | medium | code: composite-defs.ts | `DesignSurface.tsx` | **closed (P1)** — removed from palette |
 | GAP-006 | Design | Circuit errors only detected at export, not design time | high | code: basys3ExportService.ts | `DesignSurface.tsx`, export service | open |
 | GAP-007 | Export | Export not gated on verify pass | medium | code: ExportSurface.tsx | `ExportSurface.tsx` | open |
 | GAP-008 | Export | Pin override / HardwareSurface reconciliation missing | medium | code inspection | `ExportSurface.tsx`, `HardwareSurface.tsx` | open |
-| GAP-009 | Docs | DOC_INDEX uses OS-era naming and references | medium | doc inspection | `docs/DOC_INDEX.md` | open |
+| GAP-009 | Docs | DOC_INDEX uses OS-era naming and references | medium | doc inspection | `docs/DOC_INDEX.md` | **closed (P0)** |
 | GAP-010 | Docs | 7+ obsolete spec docs in `docs/` | medium | doc inspection | see Section 3.4 | open |
 | GAP-011 | Obsidian | Canonical Notes Policy missing ADR-002 and 5 architecture notes | medium | doc inspection | `08 Agents + Prompts/Canonical Notes Policy.md` | open |
 | GAP-012 | Docs | Manual has ~50+ unaudited claims in sections 5-8, 14-17, App D-E | low | doc inspection | `MANUAL_TRACEABILITY_MATRIX.md` | open |
@@ -199,12 +202,12 @@ Claims in this audit are based on:
 | Workflow coherence | 3 | Surfaces work, dependency chain enforced, but workflow spine not audited at runtime |
 | Design editor legitimacy | 3 | Full palette, grid snap, macros — but interaction quality needs runtime assessment |
 | Verify trust | 4 | 14 hints, drift detection, waveforms, pass/fail states — solid with minor language gaps |
-| Sequential/clocked trust | 2 | Rising-edge works, but 3 unsupported boundaries pass silently |
-| Export/Vivado trust | 4 | Pipeline works, cross-artifact checks, 6-case Vivado proof — minor gate gaps |
+| Sequential/clocked trust | 4 | Rising-edge single-clock enforced across Verify + Export; falling-edge/multi-clock/active-low blocked; Counter4Bit stub removed |
+| Export/Vivado trust | 4 | Pipeline works, cross-artifact checks, 6-case Vivado proof, sequential boundaries enforced |
 | Hardware mapping clarity | 3 | 4 modes, pin assignment, dependency chain — unproven on real hardware |
 | Import clarity | 3 | Fidelity levels, behavioral blockers — not deeply assessed |
 | Visual professionalism | ? | Not assessed — needs runtime inspection |
-| Documentation truthfulness | 2 | Manual suite is rigorous but overclaims; README lies; no truth model separation |
+| Documentation truthfulness | 4 | README rewritten (P0), manual overclaims removed (P0), target-state contract exists, truth model separation done |
 | Final-manual screenshot readiness | 1 | Trust blockers and visual assessment both unresolved |
 
 ### Screenshot freeze decision
@@ -217,17 +220,17 @@ Claims in this audit are based on:
 
 ## 7. Recommended Phase Order
 
-### Phase 0 — Truth setup
+### Phase 0 — Truth setup ✅ COMPLETE
+- **Completed:** 2026-04-01 (commit d2bd7b5a)
 - **Goals:** Remove all documentation lies and overclaims. Separate current-truth from target-state.
 - **Scope:** README rewrite, manual overclaim removal, Product Contract creation, Obsidian alignment
-- **Proof obligations:** README matches current product. Manual has zero unverifiable claims. Product Contract exists as separate target doc.
-- **Exit criteria:** GAP-001, GAP-002, GAP-009, GAP-011 closed. Product Contract skeleton approved.
+- **Closed:** GAP-001, GAP-002, GAP-009, GAP-011
 
-### Phase 1 — Student-path trust restoration
-- **Goals:** Ensure sequential path boundaries are enforced. Add design-time circuit feedback.
-- **Scope:** Block or warn on falling-edge/multi-clock/active-low reset. Surface driver conflicts, combinational loops, floating drivers during design.
-- **Proof obligations:** No unsupported sequential design reaches export without explicit warning. Design-time errors catch all export-blocking conditions.
-- **Exit criteria:** GAP-003, GAP-004, GAP-005, GAP-006 closed.
+### Phase 1 — Sequential boundary enforcement ✅ COMPLETE
+- **Completed:** 2026-04-01
+- **Goals:** Enforce sequential path boundaries in both Verify and Export. Remove stub component from palette.
+- **Scope:** Export-path falling-edge + active-low-reset blocking, Counter4Bit palette removal, Sequential Support Boundary doc, 3 new enforcement tests.
+- **Closed:** GAP-003, GAP-004, GAP-005, GAP-005b
 
 ### Phase 2 — Workflow spine alignment (needs runtime assessment first)
 - **Goals:** Unify Project / rail / headers / CTA hierarchy / progress authority.

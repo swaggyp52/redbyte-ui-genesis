@@ -738,6 +738,36 @@ function validateSynthSubset(
     pushDiagnostic(diagnostic);
   }
 
+  // Sequential boundary enforcement: block export on unsupported temporal patterns.
+  // These mirror the temporal issue checks in verifySchedule.ts so that Export and Verify
+  // agree on what is supported. Verify blocks via hasUnsupportedTemporal; Export blocks here.
+  if (project.hdl?.sources) {
+    for (const source of project.hdl.sources) {
+      if (/falling_edge\s*\(/i.test(source.text ?? '')) {
+        pushDiagnostic({
+          type: 'logic',
+          severity: 'error',
+          message:
+            'Unsupported temporal construct: falling_edge(). RedByte v1 only supports rising-edge-triggered sequential logic.',
+        });
+        break;
+      }
+    }
+  }
+
+  const activeLowResetPattern = /^(reset_n|rst_n|nreset|nrst)$/i;
+  for (const binding of simModel.resetBindings) {
+    const signalName = binding.canonicalName ?? binding.netName ?? '';
+    if (activeLowResetPattern.test(signalName)) {
+      pushDiagnostic({
+        type: 'logic',
+        severity: 'error',
+        message: `Unsupported reset convention: "${signalName}" suggests active-low reset. RedByte v1 only supports active-high reset signals.`,
+      });
+      break;
+    }
+  }
+
   return diagnostics.sort((left, right) => compareCodepoint(left.message, right.message));
 }
 

@@ -48,7 +48,8 @@ Defines what RedByte must become. Separate from the current-state manual.
 | File | Purpose |
 |------|---------|
 | [contracts/RedByte_Product_Contract.md](./contracts/RedByte_Product_Contract.md) | Target-state blueprint — quality bar, surface contracts, release gates |
-| [roadmap/RedByte_Gap_Audit.md](./roadmap/RedByte_Gap_Audit.md) | Honest product-legitimacy audit (14 gaps, scorecard) |
+| [contracts/Sequential_Support_Boundary.md](./contracts/Sequential_Support_Boundary.md) | Enforced sequential model: single-clock, rising-edge, active-high-reset |
+| [roadmap/RedByte_Gap_Audit.md](./roadmap/RedByte_Gap_Audit.md) | Honest product-legitimacy audit (14 gaps, scorecard — P0+P1 closed) |
 
 ---
 
