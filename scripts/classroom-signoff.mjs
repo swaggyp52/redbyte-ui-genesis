@@ -6,6 +6,7 @@ import path from 'node:path';
 
 const ROOT = process.cwd();
 const ALLOW_DIRTY = process.argv.includes('--allow-dirty');
+const REQUIRE_BASYS3 = process.argv.includes('--require-basys3');
 const COMMAND_TIMEOUT_MS = 10 * 60 * 1000;
 const GIT_CHECK_TIMEOUT_MS = 30 * 1000;
 
@@ -323,6 +324,9 @@ function main() {
   if (ALLOW_DIRTY) {
     console.log('NOTE: --allow-dirty enabled. Clean-tree check will be reported but not blocking.');
   }
+  if (REQUIRE_BASYS3) {
+    console.log('NOTE: --require-basys3 enabled. Live hardware readiness is blocking.');
+  }
 
   const results = [];
 
@@ -350,6 +354,15 @@ function main() {
       section: check.section,
       name: check.name,
       ...commandResult,
+    });
+  }
+
+  if (REQUIRE_BASYS3) {
+    const hardwareResult = runCommand('pnpm -s classroom:hw:check -- --strict');
+    results.push({
+      section: 'Classroom Hardware',
+      name: 'Basys3 live readiness check',
+      ...hardwareResult,
     });
   }
 

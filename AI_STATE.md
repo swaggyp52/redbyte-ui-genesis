@@ -1,5 +1,41 @@
 # AI State
 
+## Change Log 2026-04-01 (GAP-013 slice 1 — strict Basys3 readiness gate for classroom handoff)
+
+**Subsystem**: Classroom signoff / hardware readiness truth
+
+### Problem
+
+`GAP-013` remained high risk because live Basys3 rehearsal was still unproven, while the hardware probe script treated missing/unknown board state as non-blocking.
+That created a false-ready risk for classroom handoff: operators could run signoff workflows without an explicit hard failure on unavailable board readiness.
+
+### What changed
+
+- `scripts/classroom-hw-check.ts`
+  - Added `--strict` mode.
+  - In strict mode, `Basys3 detected: NO` and `Basys3 detected: UNKNOWN` now exit non-zero and report `status: NOT_READY`.
+  - Default mode remains non-blocking for simulation-only/dev contexts.
+
+- `scripts/classroom-signoff.mjs`
+  - Added `--require-basys3` mode.
+  - When enabled, signoff runs `classroom:hw:check -- --strict` as a blocking `Classroom Hardware` check.
+
+- `package.json`
+  - Added `classroom:signoff:hardware` shortcut script: `node ./scripts/classroom-signoff.mjs --require-basys3`.
+
+### Student/instructor-visible impact
+
+- Classroom handoff can now require live hardware truth explicitly.
+- `UNKNOWN` bridge state no longer has to be silently tolerated in handoff mode.
+- This does not close `GAP-013` yet; it reduces false-ready risk until real Basys3 rehearsal evidence is captured.
+
+### Proof
+
+- Pre-fix baseline:
+  - `pnpm -s classroom:hw:check` (non-strict/default mode) returned `EXIT:0` even on `Basys3 detected: UNKNOWN`, so hardware uncertainty stayed non-blocking.
+- Post-fix behavior:
+  - `pnpm -s classroom:hw:check -- --strict` returns `EXIT:1` on `Basys3 detected: UNKNOWN (bridge unavailable)` and prints `status: NOT_READY`.
+
 ## Change Log 2026-04-01 (GAP-008 slice 2 — pin authority is now visible in Export)
 
 **Subsystem**: Export mapping clarity / student-facing authority truth

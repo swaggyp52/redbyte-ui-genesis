@@ -187,12 +187,12 @@ Claims in this audit are based on:
 | GAP-005b | Sequential | Counter4Bit stub in palette | medium | code: composite-defs.ts | `DesignSurface.tsx` | **closed (P1)** — removed from palette |
 | GAP-006 | Design | Circuit errors only detected at export, not design time | high | code: basys3ExportService.ts | `elaborator.ts`, `designIssues.ts`, `DesignSurface.tsx` | **closed (P2)** — combinational loops (IR006), multiple drivers, floating outputs, unconnected inputs all detected live during design; compiler diagnostics drawer shows IR001-IR006 |
 | GAP-007 | Export | Export not gated on verify pass | medium | code: ExportSurface.tsx | `ExportSurface.tsx` | closed |
-| GAP-008 | Export | Pin override / HardwareSurface reconciliation missing | medium | code inspection | `ExportSurface.tsx`, `HardwareSurface.tsx` | open |
+| GAP-008 | Export | Pin override / HardwareSurface reconciliation missing | medium | code inspection | `ExportSurface.tsx`, `HardwareSurface.tsx` | **closed (P6/GAP-008 slices 1-2)** — Export now reconciles to shared project authority and shows active authority/upstream pin-update cues |
 | GAP-009 | Docs | DOC_INDEX uses OS-era naming and references | medium | doc inspection | `docs/DOC_INDEX.md` | **closed (P0)** |
 | GAP-010 | Docs | 7+ obsolete spec docs in `docs/` | medium | doc inspection | see Section 3.4 | open |
 | GAP-011 | Obsidian | Canonical Notes Policy missing ADR-002 and 5 architecture notes | medium | doc inspection | `08 Agents + Prompts/Canonical Notes Policy.md` | open |
 | GAP-012 | Docs | Manual has ~50+ unaudited claims in sections 5-8, 14-17, App D-E | low | doc inspection | `MANUAL_TRACEABILITY_MATRIX.md` | open |
-| GAP-013 | Classroom | Live Basys3 rehearsal unproven | high | Engineering Brain | hardware setup | open |
+| GAP-013 | Classroom | Live Basys3 rehearsal unproven | high | Engineering Brain | hardware setup | **open (mitigated)** — strict hardware readiness gating added to `classroom:hw:check -- --strict` and optional `classroom:signoff -- --require-basys3` |
 | GAP-014 | Classroom | Clean-tree classroom signoff not validated | medium | Engineering Brain | build/signoff scripts | open |
 
 ---
@@ -283,7 +283,7 @@ Claims in this audit are based on:
 - **Callout title/body**: Changed from generic "Artifacts available with advisory compare state" to per-state specific language: "Verify has not run" / "Verify is stale" / "Assertions differ" with plain, direct body text.
 - **8 new tests** in `projectHealth.test.ts` covering all four verify states via `deriveProjectVerifyState` and `hasCurrentPassingVerify`.
 
-**Remaining (open):** GAP-008, GAP-013, GAP-014.
+**Remaining (open):** GAP-013, GAP-014.
 
 ### Phase 7 — Product polish (needs runtime assessment)
 - **Goals:** Layout, spacing, visual hierarchy, empty states, status language consistency.
