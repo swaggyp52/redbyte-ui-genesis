@@ -2,4 +2,4 @@ fixture=packages/rb-apps/src/fixtures/classroom/golden-basys3-switch-and.rbproj
 zip.entries=README.txt,top.vhd,top.xdc
 zip.order=lexicographic
 zip.timestamp=2026-01-01T00:00:00.000Z
-sha256=0fdcaf54119c0edcf1ad5b4a87bff603e6031fc912af9feafef98e5ceb240d96
+sha256=5ed760d5f4d15fee08930461baef52cf3ded9cb99107bc540fd88b235a9914bc

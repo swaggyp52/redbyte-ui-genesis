@@ -615,13 +615,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         </IdeCallout>
       ) : downloadReady ? (
         <IdeCallout tone="warn" title="Artifacts available with advisory compare state" testId="ide-export-vivado-unverified-callout">
-          <p className="ide-copy" style={{ margin: 0 }} data-testid="ide-export-vivado-command">
+          <p className="ide-copy" style={{ margin: 0 }}>
             Your VHDL is ready to inspect or download now. Open Verify when you want to compare expected outputs before hardware bring-up.
           </p>
         </IdeCallout>
       ) : (
         <IdeCallout tone="warn" title="Resolve issues first" testId="ide-export-vivado-blocked-callout">
-          <p className="ide-copy" style={{ margin: 0 }} data-testid="ide-export-vivado-command">
+          <p className="ide-copy" style={{ margin: 0 }}>
             Fix the blockers listed here before opening the project in Vivado.
           </p>
         </IdeCallout>
@@ -658,7 +658,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </div>
             <div className="ide-kv-row">
               <span>Tool</span>
-              <span><code>Vivado 2024.1+</code></span>
+              <span><code>Vivado 2024.2+</code></span>
             </div>
           </div>
           <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', marginTop: 'var(--ide-space-2)', marginBottom: 0 }}>
@@ -678,7 +678,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         ) : (
           <p
             className="ide-copy ide-export-vivado-blocked-hint"
-            data-testid="ide-export-vivado-command"
           >
             Resolve all blockers before importing to Vivado.
           </p>
