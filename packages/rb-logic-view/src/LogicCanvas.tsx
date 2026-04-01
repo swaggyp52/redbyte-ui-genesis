@@ -27,7 +27,8 @@ export interface LogicCanvasProps {
   showToolbar?: boolean;
   getChipMetadata?: (nodeType: string) => ChipMetadata | undefined;
   onNodeDoubleClick?: (nodeId: string) => void;
-  onCircuitChange?: (circuit: Circuit) => void; // Callback to propagate circuit updates
+  onCircuitChange?: (circuit: Circuit, opts?: { isIntermediate?: boolean }) => void; // Callback to propagate circuit updates
+  onDeleteFeedback?: (message: string) => void; // Toast feedback on keyboard delete
   onSignalsUpdated?: (signals: Map<string, 0 | 1>, reason: 'input' | 'tick') => void; // Signal update notification
   showHints?: boolean;
   onDismissHints?: () => void;
@@ -187,6 +188,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   changedNodeIds,
   nodeIssueSeverities,
   issuePortSeverities,
+  onDeleteFeedback,
 }) => {
   trackRender('LogicCanvas');
   const uiTick = useUiTickStore((state) => state.uiTick);
@@ -381,14 +383,14 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
    * Centralized circuit mutation handler - ALL mutations MUST go through this
    * Ensures proper propagation to engine + parent/store
    */
-  const commitCircuit = React.useCallback((nextCircuit: Circuit) => {
+  const commitCircuit = React.useCallback((nextCircuit: Circuit, opts?: { isIntermediate?: boolean }) => {
     // Update engine
     engine.setCircuit(nextCircuit);
 
     // Propagate to parent/store (controlled mode) or update internal state
     if (externalCircuit) {
       // Controlled mode: MUST have callback (enforced by dev invariant above)
-      onCircuitChange!(nextCircuit);
+      onCircuitChange!(nextCircuit, opts);
     } else {
       // Uncontrolled mode: update internal state
       setInternalCircuit(nextCircuit);
@@ -485,6 +487,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
   // Stable ref for handleNodeMove (defined below) so canvasInput doesn't re-create on every render
   const handleNodeMoveRef = React.useRef<(nodeId: string, x: number, y: number) => void>(() => {});
+  // Stable ref for handleNodeMoveCommit — fires once at drag-end to push a single undo entry
+  const handleNodeMoveCommitRef = React.useRef<(nodeId: string, x: number, y: number) => void>(() => {});
 
   // Unified canvas input controller (RC-P4)
   const canvasInput = useCanvasInput({
@@ -493,7 +497,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     circuitNodes: circuit.nodes,
     selectedNodeIds: selection.nodes,
     onNodeMoveEnd: React.useCallback((nodeId: string, x: number, y: number) => {
-      handleNodeMoveRef.current(nodeId, x, y);
+      handleNodeMoveCommitRef.current(nodeId, x, y);
     }, []),
     onNodeSelect: selectNode,
     onPan: pan,
@@ -587,10 +591,46 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           return n;
         }),
       };
-      commitCircuit(updatedCircuit);
+      // Intermediate update: update visual/engine but do NOT push to undo stack
+      commitCircuit(updatedCircuit, { isIntermediate: true });
     });
   }, [circuit, shouldSnap, isCtrlPressed, gridSize, selection.nodes, commitCircuit, isReplayMode]);
   handleNodeMoveRef.current = handleNodeMove;
+
+  // Drag-end commit: cancels any pending intermediate RAF, then commits the final position once to the undo stack
+  const handleNodeMoveCommit = React.useCallback((nodeId: string, x: number, y: number) => {
+    if (isReplayMode) return;
+    // Cancel any pending intermediate RAF so it doesn't overwrite the commit
+    if (dragMoveRaf.current !== null) {
+      window.cancelAnimationFrame(dragMoveRaf.current);
+      dragMoveRaf.current = null;
+    }
+    lastDragArgs.current = null;
+    const snapEnabled = shouldSnap && !isCtrlPressed;
+    const newX = snapEnabled ? snapPointToGrid(x, gridSize) : x;
+    const newY = snapEnabled ? snapPointToGrid(y, gridSize) : y;
+    const draggedNode = circuit.nodes.find(n => n.id === nodeId);
+    if (!draggedNode) return;
+    const dx = newX - draggedNode.position.x;
+    const dy = newY - draggedNode.position.y;
+    const isNodeSelected = selection.nodes.has(nodeId);
+    const hasMultipleSelected = selection.nodes.size > 1;
+    const updatedCircuit = {
+      ...circuit,
+      nodes: circuit.nodes.map((n) => {
+        if (n.id === nodeId) {
+          return { ...n, position: { x: newX, y: newY } };
+        }
+        if (isNodeSelected && hasMultipleSelected && selection.nodes.has(n.id)) {
+          return { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } };
+        }
+        return n;
+      }),
+    };
+    // Final commit: push one undo entry for the entire drag
+    commitCircuit(updatedCircuit, { isIntermediate: false });
+  }, [circuit, shouldSnap, isCtrlPressed, gridSize, selection.nodes, commitCircuit, isReplayMode]);
+  handleNodeMoveCommitRef.current = handleNodeMoveCommit;
 
   // Clean up RAF on unmount
   React.useEffect(() => {
@@ -812,9 +852,17 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     }
 
     let updatedCircuit = circuit;
+    let nodeCount = 0;
+    let cascadeWireCount = 0;
+    let directWireCount = 0;
 
     // Delete selected nodes (and their connections)
     if (selection.nodes.size > 0) {
+      nodeCount = selection.nodes.size;
+      cascadeWireCount = circuit.connections.filter((connection) => {
+        const { fromNodeId, toNodeId } = resolveConnectionEndpoints(connection);
+        return selection.nodes.has(fromNodeId) || selection.nodes.has(toNodeId);
+      }).length;
       updatedCircuit = {
         nodes: circuit.nodes.filter((n) => !selection.nodes.has(n.id)),
         connections: circuit.connections.filter(
@@ -828,6 +876,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
     // Delete selected wires
     if (selection.wires.size > 0) {
+      directWireCount = selection.wires.size;
       updatedCircuit = {
         ...updatedCircuit,
         connections: updatedCircuit.connections.filter((connection) => {
@@ -840,8 +889,19 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     if (selection.nodes.size > 0 || selection.wires.size > 0) {
       commitCircuit(updatedCircuit);
       clearSelection();
+      if (onDeleteFeedback) {
+        if (nodeCount > 0 && cascadeWireCount > 0) {
+          const nodeLabel = nodeCount === 1 ? '1 node' : `${nodeCount} nodes`;
+          const wireLabel = cascadeWireCount === 1 ? '1 wire' : `${cascadeWireCount} wires`;
+          onDeleteFeedback(`Removed ${nodeLabel} and ${wireLabel}.`);
+        } else if (nodeCount > 0) {
+          onDeleteFeedback(nodeCount === 1 ? 'Removed 1 node.' : `Removed ${nodeCount} nodes.`);
+        } else if (directWireCount > 0) {
+          onDeleteFeedback(directWireCount === 1 ? 'Removed 1 wire.' : `Removed ${directWireCount} wires.`);
+        }
+      }
     }
-  }, [circuit, selection.nodes, selection.wires, commitCircuit, clearSelection, isReplayMode]);
+  }, [circuit, selection.nodes, selection.wires, commitCircuit, clearSelection, isReplayMode, onDeleteFeedback]);
 
   // Fit circuit to view
   const fitToView = React.useCallback(() => {
@@ -1340,7 +1400,14 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             const startNode = circuit.nodes.find(n => n.id === editingState.wireStartPort!.nodeId);
             if (!startNode || !startNode.position) return null;
 
-            const startX = startNode.position.x * camera.zoom + camera.x;
+            // Align preview to the actual port position (output = +24, input = -24 from node center)
+            const startPortXOffset = isInputPort(
+              editingState.wireStartPort!.nodeId,
+              editingState.wireStartPort!.portName,
+              circuit,
+              getChipMetadata
+            ) ? -24 : 24;
+            const startX = (startNode.position.x + startPortXOffset) * camera.zoom + camera.x;
             const startY = startNode.position.y * camera.zoom + camera.y;
 
             let isValid = true;

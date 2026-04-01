@@ -1548,12 +1548,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [cancelActivePlacement, isPlacementMode, toolMode]);
 
   const handleCircuitChange = useCallback(
-    (nextCircuit: Circuit) => {
+    (nextCircuit: Circuit, opts?: { isIntermediate?: boolean }) => {
       updateCircuit(normalizeCircuitForCanvas(nextCircuit), {
         skipHistory: true,
         enforceLimits: true,
       });
-      emitCircuitMutation(normalizeCircuitForCanvas(nextCircuit));
+      if (!opts?.isIntermediate) {
+        emitCircuitMutation(normalizeCircuitForCanvas(nextCircuit));
+      }
       lastTracedPortRef.current = null;
       setTraceState(null);
       setWireContextMenu(null);
@@ -5035,6 +5037,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       showToolbar={false}
                       getChipMetadata={getChipMetadata}
                       onCircuitChange={handleCircuitChange}
+                      onDeleteFeedback={setActionToast}
                       onSignalsUpdated={handleSignalsUpdated}
                       onInputToggled={handleInputToggled}
                       onProbeToggle={(nodeId, portName, label) =>
