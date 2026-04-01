@@ -97,7 +97,15 @@ P5 design editor legitimacy landed (2026-04-01, commit 006c571c):
 - **Wire preview aligned to port**: Preview line now starts at ±24 world-unit port offset (uses `isInputPort()` from wireValidation.ts) instead of node body center.
 - **Deletion feedback counts cascade wires**: Keyboard Delete shows "Removed 2 nodes and 5 wires." via `onDeleteFeedback` prop wired to `setActionToast` in DesignSurface.
 
-Gap audit updated: Phase 5 complete. Next: Phase 6 (Export/hardware/Vivado legitimacy — GAP-007, 008, 013, 014).
+P6 export/hardware legitimacy — initial slice landed (2026-04-01, commit 404c44a8):
+
+- **Preview README rewrite**: `basys3Bundle.ts:buildReadme` was describing a manual "Create new RTL project" Vivado setup that does not match the actual ZIP format (a pre-configured project folder). Now describes the correct "Open Project" workflow with the right artifact list. Golden SHAs for both golden export tests regenerated.
+- **Tool version aligned**: ExportSurface was showing `Vivado 2024.1+` while the project folder targets `2024.2+`. Fixed display string.
+- **Test ID dedup**: `ide-export-vivado-command` was on 4 elements across 3 render branches; now only on the actual command element.
+- **Regression test**: `basys3-bundle-gate.test.ts` now asserts README contains "Open Project" and not "Create a new RTL project" (5/5 passing).
+- Remaining open: GAP-007, GAP-008, GAP-013, GAP-014 (export gating, hardware proof, classroom blockers).
+
+Gap audit updated: Phase 6 initial slice complete. Next: Phase 6 remaining (GAP-007, 008, 013, 014).
 
 P4 design-time canvas health landed (2026-04-01):
 

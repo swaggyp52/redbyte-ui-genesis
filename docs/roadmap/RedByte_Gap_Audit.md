@@ -21,12 +21,15 @@ Design-time feedback for critical circuit errors is now live (P2). Two classroom
 - [x] documentation truthful (P0 complete — README rewritten, manual overclaims removed)
 - [x] sequential boundaries enforced (P1 complete — falling-edge/multi-clock/active-low blocked in both Verify and Export)
 - [x] design-time circuit health feedback (P2 complete — combinational loops, multiple drivers, floating outputs detected live)
+- [x] workflow spine truthful (P3 complete — done-conditions aligned, CTA misdirection fixed)
+- [x] canvas health visible (P4 complete — IR diagnostics drive node glow + status bar)
 - [x] design editor legitimacy (P5 complete — undo granularity fixed, wire preview aligned, deletion feedback counts)
+- [x] export handoff truth improved (P6 initial slice — preview README, tool version, test ID dedup)
 - [ ] classroom-trustworthy (two pre-lab blockers remain)
 - [ ] manual/screenshot-worthy (visual gaps remain)
 - [ ] visually credible as a real tool (not assessed — runtime inspection needed)
 
-### Primary blockers (remaining after P0+P1+P2+P3)
+### Primary blockers (remaining after P0+P1+P2+P3+P4+P5+P6-initial)
 1. Export not gated on verify pass (GAP-007)
 2. Two classroom blockers: Basys3 rehearsal + clean-tree signoff (GAP-013, GAP-014)
 
@@ -268,6 +271,14 @@ Claims in this audit are based on:
 - **Goals:** Gate export on verify, reconcile pin overrides, validate fallback testbench, prove hardware path.
 - **Proof obligations:** Basys3 rehearsal completed. Clean-tree signoff validated.
 - **Exit criteria:** GAP-007, GAP-008, GAP-013, GAP-014 closed.
+
+**Initial slice completed 2026-04-01 (commit 404c44a8):**
+- **Preview README rewrite** (`basys3Bundle.ts`): Was describing a manual "Create new RTL project" Vivado setup flow that does not match the actual generated ZIP (a pre-configured Vivado project folder). Now describes the correct "Open Project" workflow with the right artifact list (`basys3.xdc`, `vivado_import.tcl`, `testbench.vhd`). Golden SHAs regenerated.
+- **Tool version alignment** (`ExportSurface.tsx`): ExportSurface was displaying "Vivado 2024.1+" while `vivadoProjectFolder.ts` targets "Vivado 2024.2+". Aligned the display.
+- **Test ID dedup** (`ExportSurface.tsx`): `ide-export-vivado-command` appeared on 4 elements across 3 render branches. Removed from 3 non-command elements; gate contract ID now points only at the actual command text.
+- **Regression test added** to `basys3-bundle-gate.test.ts` asserting README describes "Open Project" workflow.
+
+**Remaining (open):** GAP-007, GAP-008, GAP-013, GAP-014 — not closed in this slice.
 
 ### Phase 7 — Product polish (needs runtime assessment)
 - **Goals:** Layout, spacing, visual hierarchy, empty states, status language consistency.
