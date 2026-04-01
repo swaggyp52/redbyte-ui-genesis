@@ -2213,12 +2213,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   // Phase 3 + Batch 1: real-time canvas issue glow — O(n+e), runs once per circuit mutation.
   const nodeIssueSeverities = useMemo(() => {
     const result = new Map<string, 'error' | 'warn'>();
+    // System A: connectivity issues (multiple-drivers, floating-output, unconnected-input)
     for (const nodeId of designIssueMap.byNode.keys()) {
       const sev = nodeIssueSeverity(nodeId, designIssueMap);
       if (sev) result.set(nodeId, sev === 'error' ? 'error' : 'warn');
     }
+    // System B: IR compiler diagnostics (combinational loops, missing clock, unknown type, etc.)
+    // Nodes with IR errors get red glow; warn gets yellow only if not already red from System A.
+    for (const [nodeId, diags] of diagnosticsByNode.entries()) {
+      if (diags.some((d) => d.severity === 'error')) {
+        result.set(nodeId, 'error');
+      } else if (diags.some((d) => d.severity === 'warn') && !result.has(nodeId)) {
+        result.set(nodeId, 'warn');
+      }
+    }
     return result;
-  }, [designIssueMap]);
+  }, [designIssueMap, diagnosticsByNode]);
   const issuePortSeverities = useMemo(() => {
     const result = new Map<string, 'error' | 'warn'>();
     for (const [portKey, issues] of designIssueMap.byPort.entries()) {
@@ -2410,18 +2420,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     ? describeVerifyDebugSummary(activeDebugContext)
     : simulationStory.summary;
   const authoringStatusToneClass =
-    authoringIssueCounts.errorCount > 0
+    authoringIssueCounts.errorCount > 0 || compilerErrorCount > 0
       ? 'has-errors'
-      : authoringIssueCounts.warningCount > 0
+      : authoringIssueCounts.warningCount > 0 || compilerWarningCount > 0
         ? 'has-warnings'
         : authoringIssueCounts.draftCount > 0
           ? 'has-drafts'
         : 'is-clean';
   const topAuthoringIssue = authoringIssueCounts.topIssues[0] ?? null;
   const authoringStatusLabel =
-    authoringIssueCounts.errorCount > 0
+    authoringIssueCounts.errorCount > 0 || compilerErrorCount > 0
       ? 'Blocking circuit issue'
-      : authoringIssueCounts.warningCount > 0
+      : authoringIssueCounts.warningCount > 0 || compilerWarningCount > 0
         ? 'Circuit needs review'
         : authoringIssueCounts.draftCount > 0
           ? 'Draft wiring in progress'
