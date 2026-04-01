@@ -601,9 +601,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             Start with the project download. The short Vivado handoff stays here; the package internals stay lower.
           </p>
         </div>
-        {downloadReady
+        {exportTrusted
           ? <IdeStatusPill tone="ok">Ready</IdeStatusPill>
-          : <IdeStatusPill tone="error">Blocked</IdeStatusPill>
+          : downloadReady
+            ? <IdeStatusPill tone="warn">Available</IdeStatusPill>
+            : <IdeStatusPill tone="error">Blocked</IdeStatusPill>
         }
       </header>
 
@@ -614,9 +616,17 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           </p>
         </IdeCallout>
       ) : downloadReady ? (
-        <IdeCallout tone="warn" title="Artifacts available with advisory compare state" testId="ide-export-vivado-unverified-callout">
+        <IdeCallout
+          tone="warn"
+          title={isNoRunYet ? 'Verify has not run' : isVerifyStale ? 'Verify is stale' : 'Assertions differ'}
+          testId="ide-export-vivado-unverified-callout"
+        >
           <p className="ide-copy" style={{ margin: 0 }}>
-            Your VHDL is ready to inspect or download now. Open Verify when you want to compare expected outputs before hardware bring-up.
+            {isNoRunYet
+              ? 'This design has not been verified. Export is available but circuit behaviour is unconfirmed. Run Verify first.'
+              : isVerifyStale
+                ? 'The circuit changed since the last passing Verify run. Rerun Verify before relying on this export.'
+                : 'Verify assertions differ from observed outputs. Resolve in Verify before relying on this export.'}
           </p>
         </IdeCallout>
       ) : (

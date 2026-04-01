@@ -1,5 +1,61 @@
 import { describe, expect, it } from 'vitest';
-import { choosePrimaryProjectCta, deriveProjectHealth } from '../projectHealth';
+import { choosePrimaryProjectCta, deriveProjectHealth, deriveProjectVerifyState, hasCurrentPassingVerify } from '../projectHealth';
+
+describe('deriveProjectVerifyState — four canonical verify states (GAP-007)', () => {
+  const passedLastVerify = {
+    status: 'pass' as const,
+    hash: 'abc',
+    ranAtIso: '2026-04-01T00:00:00.000Z',
+  };
+  const failedLastVerify = {
+    status: 'fail' as const,
+    hash: 'abc',
+    ranAtIso: '2026-04-01T00:00:00.000Z',
+  };
+
+  it('returns not-run when lastVerify is undefined', () => {
+    expect(deriveProjectVerifyState({ lastVerify: undefined, dirtySinceVerify: false })).toBe('not-run');
+  });
+
+  it('returns stale when lastVerify exists but circuit changed since (dirtySinceVerify)', () => {
+    expect(deriveProjectVerifyState({ lastVerify: passedLastVerify, dirtySinceVerify: true })).toBe('stale');
+  });
+
+  it('returns assertions-differ when verify failed and not stale', () => {
+    expect(deriveProjectVerifyState({ lastVerify: failedLastVerify, dirtySinceVerify: false })).toBe('assertions-differ');
+  });
+
+  it('returns assertions-match when verify passed and circuit is current', () => {
+    expect(deriveProjectVerifyState({ lastVerify: passedLastVerify, dirtySinceVerify: false })).toBe('assertions-match');
+  });
+});
+
+describe('hasCurrentPassingVerify — export trust authority (GAP-007)', () => {
+  it('returns false when verify has not run', () => {
+    expect(hasCurrentPassingVerify({ lastVerify: undefined, dirtySinceVerify: false })).toBe(false);
+  });
+
+  it('returns false when verify is stale (design changed after pass)', () => {
+    expect(hasCurrentPassingVerify({
+      lastVerify: { status: 'pass', hash: 'abc', ranAtIso: '2026-04-01T00:00:00.000Z' },
+      dirtySinceVerify: true,
+    })).toBe(false);
+  });
+
+  it('returns false when verify assertions differ', () => {
+    expect(hasCurrentPassingVerify({
+      lastVerify: { status: 'fail', hash: 'abc', ranAtIso: '2026-04-01T00:00:00.000Z' },
+      dirtySinceVerify: false,
+    })).toBe(false);
+  });
+
+  it('returns true only when verify passed and circuit is current', () => {
+    expect(hasCurrentPassingVerify({
+      lastVerify: { status: 'pass', hash: 'abc', ranAtIso: '2026-04-01T00:00:00.000Z' },
+      dirtySinceVerify: false,
+    })).toBe(true);
+  });
+});
 
 describe('projectHealth verify trust vs structural blockers', () => {
   it('treats pass-with-incomplete-mapping as a hardware trust blocker in shared project health', () => {
