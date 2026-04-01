@@ -2,7 +2,7 @@
 type: handoff
 status: active
 area: infrastructure
-updated: 2026-03-25
+updated: 2026-04-01
 related:
   - "[[Note Schema]]"
   - "[[RedByte Engineering Brain]]"
@@ -12,6 +12,34 @@ related:
 # Canonical Notes Policy
 
 This file defines which notes are the permanent "source of truth" for each system area, and which notes are designated hub notes that must be kept current at all times. Claude must consult this before creating any new note.
+
+---
+
+## Product Manual (External Canonical Source)
+
+The canonical user-facing product reference lives at `docs/manuals/` in the repo — not in this vault. The vault architecture notes are internal engineering notes; the manual is the external product record.
+
+| File | Purpose | Status |
+|---|---|---|
+| `docs/manuals/RedByte_Product_Manual.md` | Canonical product reference — all surfaces, workflows, export, import, submission | verified v1.0 |
+| `docs/manuals/MANUAL_CLAIM_AUDIT.md` | Fact-audit record | v1.0 (2026-03-31) |
+| `docs/manuals/MANUAL_TRACEABILITY_MATRIX.md` | Claim → source file mapping (49 claims) | v1.0 |
+| `docs/manuals/MANUAL_CONFORMANCE.md` | Rules for keeping manual current | v1.0 |
+
+When a manual section contradicts a vault architecture note, the manual takes precedence for user-facing claims; the vault note should be updated to align.
+
+---
+
+## Product Contract and Gap Audit (Target-State Sources)
+
+These documents define the target product standard and the gap between current reality and that target. They live in `docs/` and are separate from the current-state manual.
+
+| File | Purpose | Status |
+|---|---|---|
+| `docs/contracts/RedByte_Product_Contract.md` | Target-state blueprint — what RedByte must become | draft v0.1 |
+| `docs/roadmap/RedByte_Gap_Audit.md` | Brutally honest product-legitimacy audit | complete v1 (2026-04-01) |
+
+The manual documents current truth. The product contract defines target truth. When these disagree, it means there is work to do — not that either document is wrong.
 
 ---
 
@@ -29,6 +57,11 @@ These notes must be updated in place. Do not create parallel or competing notes 
 | `03 Architecture/Bridge Protocol.md` | Bridge layer between design and runtime | stub |
 | `03 Architecture/Basys 3 Mapping.md` | FPGA port mapping, XDC, Vivado output | stub |
 | `03 Architecture/Note Schema.md` | Vault metadata schema, field reference | active |
+| `03 Architecture/Design Surface.md` | Design editor architecture, tools, interaction model | active |
+| `03 Architecture/Workspace Routing.md` | Obsidian workspace configuration and note routing | active |
+| `03 Architecture/Automation Strategy.md` | Build, CI, and automation approach | active |
+| `03 Architecture/Signal Inventory.md` | Signal tracking and inventory model | stub |
+| `03 Architecture/Authority Chain.md` | Decision authority and ownership chain | stub |
 
 ---
 
@@ -37,6 +70,7 @@ These notes must be updated in place. Do not create parallel or competing notes 
 | File | Decision | Status |
 |---|---|---|
 | `04 Decisions/ADR-001 Enforce Structured Connection Format.md` | Nested connection shape enforced everywhere | active |
+| `04 Decisions/ADR-002 Truth Table Selection Does Not Auto-Switch Tabs.md` | Truth table selection preserves current tab | active |
 
 ---
 

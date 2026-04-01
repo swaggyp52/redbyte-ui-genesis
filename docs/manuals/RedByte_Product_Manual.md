@@ -103,7 +103,7 @@ RedByte provides these capabilities in a single integrated environment:
 
 **Hardware Pin Mapping.** A dedicated surface for assigning circuit input and output ports to physical Basys 3 board pins — switches, LEDs, push buttons, seven-segment display segments, and the on-board clock.
 
-**Vivado Export.** A complete export pipeline that generates synthesizable VHDL (`top.vhd`), pin constraints (`constraints.xdc`), and a VHDL testbench (`testbench.vhd`) packaged in a ZIP file ready for import into AMD Vivado.
+**Vivado Export.** A complete export pipeline that generates synthesizable VHDL (`top.vhd`), pin constraints (`top.xdc`), and a VHDL testbench (`testbench.vhd`), along with automation scripts and documentation files, packaged in a ZIP file ready for import into AMD Vivado.
 
 **Project Import.** Support for importing VHDL source files, Xilinx constraint files (XDC), and RedByte project archives, with explicit fidelity reporting that tells the user exactly what was and was not preserved during import.
 
@@ -146,11 +146,11 @@ RedByte runs in four application contexts, each suited to a different usage scen
 | Context | Purpose | Primary User |
 |---------|---------|-------------|
 | **IdeApp** | Full six-surface IDE for lab assignments | Students |
-| **LogicPlaygroundApp** | Open-ended sandbox with no submission system | Students, self-learners |
-| **LabWorkspaceApp** | Guided lab context with step tracking | Students (structured assignments) |
 | **SubmissionInspectorApp** | Grading tool with full diagnostic detail | Instructors, TAs |
 
-The IdeApp is the primary context documented in this manual. The LogicPlaygroundApp offers the same design and simulation capabilities without the submission, hardware, or export pipeline. The SubmissionInspectorApp exposes all diagnostic information that the student view intentionally hides.
+The IdeApp is the primary context documented in this manual. The SubmissionInspectorApp is an architecturally defined context whose inspector functionality is currently delivered through the IDE's Project surface; it exposes diagnostic information that the student view intentionally hides.
+
+> **Note:** LogicPlaygroundApp and LabWorkspaceApp are defined in the architecture as additional application contexts but are not separately documented here. Their capabilities are delivered through the IdeApp.
 
 ---
 
@@ -215,13 +215,24 @@ Pin mapping is a prerequisite for export. The export pipeline uses the mapping t
 
 ### 4.6 Export Model
 
-The export pipeline converts the circuit graph, pin mapping, and test vectors into three files:
+The export pipeline converts the circuit graph, pin mapping, and test vectors into a ZIP file containing three primary HDL/constraint files and several support files:
+
+**Primary files:**
 
 - **`top.vhd`** — Synthesizable VHDL describing the circuit as a top-level entity.
-- **`constraints.xdc`** — Xilinx constraint file mapping ports to Basys 3 physical pins with LVCMOS33 I/O standard.
+- **`top.xdc`** — Xilinx constraint file mapping ports to Basys 3 physical pins with LVCMOS33 I/O standard.
 - **`testbench.vhd`** — A VHDL testbench that exercises the truth table vectors for simulation in Vivado.
 
-These files are packaged into a ZIP file. There is one generation path — the HDL preview shown on the Export surface displays the exact bytes that appear in the downloaded ZIP.
+**Support files:**
+
+- **`vivado_import.tcl`** — Tcl script for automated Vivado project creation.
+- **`program_and_test.tcl`** — Tcl script for programming and testing the board.
+- **`README.txt`** — Quick-start instructions for the Vivado import workflow.
+- **`BRINGUP.md`** — Detailed board bring-up guide.
+- **`EXPECTED_IO.json`** — Machine-readable I/O expectations for automated verification.
+- **`project.rbproj.json`** — RedByte project snapshot for round-trip import.
+
+There is one generation path — the HDL preview shown on the Export surface displays the exact bytes that appear in the downloaded ZIP.
 
 ### 4.7 Import Fidelity Model
 
@@ -294,7 +305,7 @@ This walkthrough produces a working AND gate, verifies it, maps it to hardware, 
 13. Navigate to the **Export** surface.
 14. Review the readiness checklist. All items should show as complete.
 15. Click **Download Vivado Kit**.
-16. Extract the downloaded ZIP. It contains `top.vhd`, `constraints.xdc`, and `testbench.vhd`.
+16. Extract the downloaded ZIP. It contains `top.vhd`, `top.xdc`, `testbench.vhd`, automation scripts, and documentation files (see Section 11.2 for the complete file list).
 
 Result: A complete Vivado-ready project. See Section 11 for instructions on importing these files into Vivado and programming the board.
 
@@ -383,13 +394,13 @@ Each surface displays a maximum of three status pills summarizing the current st
 - **Wire two ports:** Click an output port, drag to an input port, and release. The system validates the connection before committing it.
 - **Select and move:** Click a node to select it; drag to reposition. Multi-select with a selection box.
 - **Delete:** Select one or more elements and press Delete, or use the delete tool.
-- **Undo/Redo:** Standard keyboard shortcuts (Ctrl+Z / Ctrl+Shift+Z). History supports 50 levels.
+- **Undo/Redo:** Standard keyboard shortcuts (Ctrl+Z / Ctrl+Shift+Z). History supports up to 100 levels.
 
 **Available Components.** The component palette contains the following categories:
 
 | Category | Components |
 |----------|-----------|
-| Basic Gates | AND, OR, NOT, NAND, NOR, XOR, XNOR |
+| Basic Gates | AND, OR, NOT, NAND, XOR |
 | 3-Input Gates | AND3, OR3, NAND3, NOR3, XOR3 |
 | Sequential | D Flip-Flop, T Flip-Flop, JK Flip-Flop |
 | I/O | Switch (input toggle), Lamp (output indicator), INPUT, OUTPUT |
@@ -447,7 +458,7 @@ See Appendix A for a complete reference of each primitive, including port names 
 
 **Testbench Preview.** Before running verification, the Testbench Preview panel displays the testbench structure: total ticks, number of asserted outputs, clock policy, and color-coded signal pills (blue for inputs, green for asserted outputs, amber for stimulus-only outputs).
 
-**Hint System.** On a FAIL result, the system displays up to seven fact-grounded hints to guide the student toward the error. Hints reference specific circuit behaviors rather than generic advice.
+**Hint System.** On a FAIL result, the system evaluates 14 diagnostic conditions and displays matching fact-grounded hints to guide the student toward the error. Hints reference specific circuit behaviors — such as unconnected outputs, inverted logic, or missing clock connections — rather than generic advice.
 
 **Sequential Circuit Banner.** When the circuit contains D flip-flops or other sequential elements, a banner displays indicating that clocked verification is active.
 
@@ -520,7 +531,7 @@ See Appendix B for the complete pin reference table.
 **Major UI Regions.**
 
 - *Top readiness strip:* Displays READY, WARNING, or BLOCKED status with a count of blocking issues.
-- *Main center:* Artifact tree with preview panes for `top.vhd`, `constraints.xdc`, and `testbench.vhd`. Each file is viewable in full and supports copy-to-clipboard.
+- *Main center:* Artifact tree with preview panes for `top.vhd`, `top.xdc`, and `testbench.vhd`. Each file is viewable in full and supports copy-to-clipboard.
 - *Right inspector:* Pin table, validation details, and warning list.
 - *"Open in Vivado" panel:* Collapsible step-by-step instructions for using the exported files in Vivado (shown after download).
 
@@ -565,7 +576,7 @@ Each blocking issue includes a direct navigation link to the surface where the i
 
 **Major UI Regions.**
 
-- *Left input panel:* Three tabs — "Write HDL" (paste or type VHDL), "Upload ZIP" (drag-and-drop or file picker for ZIP archives), and "Paste XDC" (paste constraint file content).
+- *Left input panel:* Three tabs — "Upload ZIP" (drag-and-drop or file picker for ZIP archives), "Paste HDL" (paste VHDL source), and "Paste XDC" (paste constraint file content).
 - *Main center:* Parsed ports table showing detected port names, directions, and widths. Schematic preview panel showing the reconstructed circuit topology.
 - *Right inspector:* Diagnostics list (parse errors, warnings, suggestions) and Basys 3 pin suggestions for detected ports.
 
@@ -681,7 +692,7 @@ Result: A PASS verdict if all asserted outputs match across all vectors. A FAIL 
 
 **PASS.** All test vectors produced the expected outputs. The circuit behaves correctly for the tested input combinations.
 
-**FAIL.** One or more test vectors produced incorrect outputs. The Verify surface highlights failing rows in the truth table and identifies which output signals did not match. The hint system provides up to seven fact-grounded suggestions for diagnosing the failure.
+**FAIL.** One or more test vectors produced incorrect outputs. The Verify surface highlights failing rows in the truth table and identifies which output signals did not match. The hint system evaluates 14 diagnostic conditions and displays matching fact-grounded suggestions for diagnosing the failure.
 
 ### 9.4 Navigating from Failure to Design
 
@@ -728,7 +739,7 @@ Top-level entity ports in the generated VHDL follow these naming rules:
 
 - Port names use lowercase letters and underscores only.
 - Hyphens, spaces, and special characters are not permitted.
-- Reserved VHDL keywords are not permitted as port names.
+- The default entity name `top` avoids VHDL reserved words. Port names derived from labels are sanitized but not validated against the full VHDL reserved-word list.
 - Label-derived port names are sanitized: repeated underscores are collapsed, leading/trailing underscores are trimmed, and names that do not begin with a letter receive a safe prefix.
 - If sanitization produces an empty string, the system falls back to a canonical identifier based on the node ID and port name.
 
@@ -745,10 +756,16 @@ RedByte generates a complete file set for AMD Vivado. The student downloads a ZI
 | File | Type | Purpose |
 |------|------|---------|
 | `top.vhd` | Design Source | Synthesizable VHDL top-level entity matching the student's circuit. |
-| `constraints.xdc` | Constraints | Pin assignments for all mapped ports with LVCMOS33 I/O standard. |
+| `top.xdc` | Constraints | Pin assignments for all mapped ports with LVCMOS33 I/O standard. |
 | `testbench.vhd` | Simulation Source | VHDL testbench generated from truth table vectors. |
+| `vivado_import.tcl` | Automation | Tcl script for automated Vivado project creation. |
+| `program_and_test.tcl` | Automation | Tcl script for board programming and test. |
+| `README.txt` | Documentation | Quick-start instructions for the Vivado import workflow. |
+| `BRINGUP.md` | Documentation | Detailed board bring-up guide. |
+| `EXPECTED_IO.json` | Metadata | Machine-readable I/O expectations for automated verification. |
+| `project.rbproj.json` | Project | RedByte project snapshot for round-trip import. |
 
-The `top.vhd` entity is always named `top`. The `testbench.vhd` entity is always named `top_tb`.
+The `top.vhd` entity is always named `top`. The `testbench.vhd` entity is always named `tb_top`.
 
 ### 11.3 Step-by-Step: Importing into Vivado
 
@@ -764,7 +781,7 @@ Prerequisites: Vivado 2024.1 or later installed. Basys 3 board available.
    c. Ensure it is classified as "Design Sources."
 6. **Add constraints:**
    a. Click "Add Files."
-   b. Select `constraints.xdc`.
+   b. Select `top.xdc`.
    c. Ensure it is classified as "Constraints."
 7. **Select the target part:**
    a. In the "Default Part" screen, search for `xc7a35t-1cpg236-1`.
@@ -786,7 +803,7 @@ Result: The FPGA is programmed. Toggle the physical switches and observe the LED
 The testbench file is for simulation only — it is not synthesized. To run it:
 
 1. In Vivado, add `testbench.vhd` as a "Simulation Source."
-2. Set `top_tb` as the simulation top module.
+2. Set `tb_top` as the simulation top module.
 3. Flow Navigator → Simulation → Run Behavioral Simulation.
 4. Observe waveforms in the Wave window.
 
@@ -822,9 +839,9 @@ Result: Full fidelity import. All circuit elements, positions, test vectors, and
 To reconstruct a circuit from VHDL that uses component instantiation:
 
 1. Navigate to the Import surface.
-2. Select the "Write HDL" tab.
+2. Select the "Paste HDL" tab.
 3. Paste or type the VHDL source.
-4. The parser detects component instantiation patterns (e.g., `U1: AND2 port map (...)`) and maps them through a 26-type component library.
+4. The parser detects component instantiation patterns (e.g., `U1: AND2 port map (...)`) and maps them through a component library that recognizes 37 HDL name variants (e.g., `and2`, `AND`, `and_gate`) resolving to 9 distinct RedByte node types.
 5. Review the parsed ports table and reconstructed schematic preview.
 6. Click "Apply."
 
@@ -860,7 +877,7 @@ The submission package is deterministic: the same project state always produces 
 
 ### 13.2 Instructor Review with Submission Inspector
 
-Instructors use the SubmissionInspectorApp to review student submissions:
+Instructors use the Submission Inspector context (accessed through the IDE's Project surface) to review student submissions:
 
 1. Open the Submission Inspector.
 2. Import the student's `.rb-lab.zip` or `.rbproj.zip`.
@@ -872,8 +889,6 @@ Instructors use the SubmissionInspectorApp to review student submissions:
    - Full manifest with file hashes and sizes.
    - Bundle ID and submission ID.
    - Tamper detection details.
-5. Optionally replay the student's verification run to confirm results.
-6. Click **Export Grading Report** to download a JSON summary.
 
 The Submission Inspector shows all diagnostic information that the student view intentionally hides, including raw hash values, capsule state, and pipeline details.
 
@@ -893,7 +908,7 @@ The submission system computes a **gate verdict** summarizing whether the studen
 | Context | Presentation |
 |---------|-------------|
 | Student view (IdeApp) | "Ready to submit" or "Submission needs attention" |
-| Instructor view (SubmissionInspectorApp) | Raw gate verdict (PASS/FAIL) with detailed breakdown |
+| Instructor view (Submission Inspector) | Raw gate verdict (PASS/FAIL) with detailed breakdown |
 
 ---
 
@@ -922,9 +937,15 @@ Projects are serialized with stable key ordering for deterministic output.
 
 ```
 vivado-kit.zip
-├── top.vhd              Synthesizable VHDL
-├── constraints.xdc      Basys 3 pin constraints
-└── testbench.vhd        Simulation testbench
+├── top.vhd                Synthesizable VHDL
+├── top.xdc                Basys 3 pin constraints
+├── testbench.vhd          Simulation testbench
+├── vivado_import.tcl      Automated Vivado project creation
+├── program_and_test.tcl   Board programming and test script
+├── README.txt             Quick-start instructions
+├── BRINGUP.md             Board bring-up guide
+├── EXPECTED_IO.json       Machine-readable I/O expectations
+└── project.rbproj.json    RedByte project snapshot
 ```
 
 ### 14.3 Submission Package Structure
@@ -935,24 +956,6 @@ submission.rbproj.zip
 ├── verify-ledger.json    Verification results
 ├── manifest.json         File hashes and integrity data
 └── [additional files]    Gate verdicts, run metadata
-```
-
-### 14.4 RB Lab ZIP Structure (Bridge MVP)
-
-For hardware-connected workflows using the FPGA Bridge:
-
-```
-<lab>.rb-lab.zip
-├── manifest.json
-├── trace/
-│   └── hw_trace.ndjson
-├── bitstream/
-│   └── design.bit
-├── meta/
-│   └── board_profile.json
-└── integrity/
-    ├── capsule.json
-    └── signature.sig
 ```
 
 ---
@@ -1005,14 +1008,6 @@ For hardware-connected workflows using the FPGA Bridge:
 | Synthesis fails with "Port not found" | Port name mismatch | Re-export from RedByte and re-import into Vivado. |
 | Implementation fails with routing errors | Complex combinational logic | Simplify the circuit or check for combinational loops. |
 | Board does not respond after programming | Wrong part selected in Vivado | Ensure the project targets `xc7a35t-1cpg236-1` or the "Basys3" board file. |
-
-### 15.7 FPGA Bridge (Hardware Connection)
-
-| Symptom | Cause | Resolution |
-|---------|-------|------------|
-| Bridge shows "offline" | Bridge agent not running | Start the bridge agent: `cd packages/rb-fpga-bridge && pnpm dev`. |
-| "Port already in use" | COM port locked by another process | Disconnect other serial connections and retry. |
-| No telemetry packets | FPGA not programmed or UART not active | Verify the bitstream is programmed and that the UART module is operational. |
 
 ---
 
@@ -1090,7 +1085,7 @@ For hardware-connected workflows using the FPGA Bridge:
 
 **Topological sort.** The algorithm RedByte uses to determine the evaluation order of nodes. Guarantees that a node is evaluated only after all its input dependencies have been evaluated.
 
-**Vivado Kit.** The ZIP file produced by the Export surface, containing `top.vhd`, `constraints.xdc`, and `testbench.vhd`.
+**Vivado Kit.** The ZIP file produced by the Export surface, containing `top.vhd`, `top.xdc`, `testbench.vhd`, automation scripts (`vivado_import.tcl`, `program_and_test.tcl`), and documentation files.
 
 **XDC.** Xilinx Design Constraints file format. Specifies physical pin assignments and I/O standards for FPGA synthesis.
 
@@ -1108,9 +1103,9 @@ For hardware-connected workflows using the FPGA Bridge:
 | OR | a (in1), b (in2) | out | Output is 1 when at least one input is 1. |
 | NOT | in | out | Output is the complement of the input. |
 | NAND | a (in1), b (in2) | out | Output is 0 only when both inputs are 1. |
-| NOR | a (in1), b (in2) | out | Output is 0 when at least one input is 1. |
 | XOR | a (in1), b (in2) | out | Output is 1 when inputs differ. |
-| XNOR | a (in1), b (in2) | out | Output is 1 when inputs are equal. |
+
+Note: NOR and XNOR are defined in the type system but are not currently registered in the active component palette. Use NOT + OR or NOT + XOR combinations, or use the three-input NOR3 variant which is registered.
 
 #### A.2 Three-Input Gates
 
@@ -1218,7 +1213,7 @@ For hardware-connected workflows using the FPGA Bridge:
 - **Synthesizable:** Yes. No behavioral `process` blocks that prevent synthesis.
 - **I/O Standard:** All ports expect LVCMOS33 (defined in XDC, not in VHDL).
 
-#### C.2 constraints.xdc
+#### C.2 top.xdc (Pin Constraints)
 
 - **Format:** One `set_property PACKAGE_PIN` line per mapped port.
 - **I/O Standard:** `LVCMOS33` for all pins.
@@ -1227,7 +1222,7 @@ For hardware-connected workflows using the FPGA Bridge:
 
 #### C.3 testbench.vhd
 
-- **Entity name:** `top_tb`
+- **Entity name:** `tb_top` (pattern: `tb_` + top module name)
 - **Simulation only:** Not synthesized.
 - **Structure:** Drives each truth table input row as a sequence of signal assignments. Asserts expected output after propagation delay.
 - **Clock period:** 10 ns (matching 100 MHz) for sequential circuits.
@@ -1237,13 +1232,44 @@ For hardware-connected workflows using the FPGA Bridge:
 
 ### Appendix D: Keyboard Shortcuts
 
+**Global**
+
 | Action | Shortcut |
 |--------|----------|
+| Switch to Design | 1 |
+| Switch to Verify | 2 |
+| Switch to Export | 3 |
+| Switch to Map Pins | 4 |
+| Switch to Import | 5 |
+| Save project | Ctrl+S |
 | Undo | Ctrl+Z |
 | Redo | Ctrl+Shift+Z |
-| Delete selected | Delete |
+| Show keyboard shortcuts | ? |
+
+**Design Surface**
+
+| Action | Shortcut |
+|--------|----------|
+| Select tool | S |
+| Wire tool | W |
+| Toggle grid snap | G |
+| Rotate selected gate | R |
+| Delete selected | Delete / Backspace |
 | Select all | Ctrl+A |
-| Save project | Ctrl+S |
+| Copy selection | Ctrl+C |
+| Paste | Ctrl+V |
+| Duplicate selection | Ctrl+D |
+| Escape / deselect | Esc |
+| Pan canvas | Space+drag |
+
+**Verify Surface**
+
+| Action | Shortcut |
+|--------|----------|
+| Next failure | J / Down arrow |
+| Previous failure | K / Up arrow |
+| Fit waveform to view | F |
+| Step through ticks | Left / Right arrow |
 
 ---
 

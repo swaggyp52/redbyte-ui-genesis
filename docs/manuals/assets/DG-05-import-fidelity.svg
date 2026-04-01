@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 340" width="760" height="340" font-family="Inter, Segoe UI, Arial, sans-serif">
+  <!-- Background -->
+  <rect width="760" height="340" fill="#f8f9fa" rx="8"/>
+
+  <!-- Title -->
+  <text x="380" y="30" text-anchor="middle" font-size="15" font-weight="700" fill="#1a1a2e">Import Fidelity Levels</text>
+  <text x="380" y="48" text-anchor="middle" font-size="11" fill="#666">DG-05 · hdlToCircuit.ts · IdeApp.tsx · ImportSurface.tsx</text>
+
+  <!-- Header row -->
+  <text x="140" y="74" text-anchor="middle" font-size="11" font-weight="700" fill="#374151">Import Source</text>
+  <text x="330" y="74" text-anchor="middle" font-size="11" font-weight="700" fill="#374151">Fidelity Level</text>
+  <text x="480" y="74" text-anchor="middle" font-size="11" font-weight="700" fill="#374151">What Is Preserved</text>
+  <text x="660" y="74" text-anchor="middle" font-size="11" font-weight="700" fill="#374151">Internal Level</text>
+  <line x1="20" y1="80" x2="740" y2="80" stroke="#e5e7eb" stroke-width="1"/>
+
+  <!-- Row 1: Full fidelity -->
+  <rect x="20" y="88" width="720" height="62" rx="4" fill="#d1fae5"/>
+  <text x="140" y="110" text-anchor="middle" font-size="11" fill="#065f46">.rbproj.json</text>
+  <text x="140" y="127" text-anchor="middle" font-size="10" fill="#047857">(RedByte archive)</text>
+  <text x="140" y="143" text-anchor="middle" font-size="10" fill="#047857">Upload ZIP tab</text>
+
+  <rect x="270" y="96" width="90" height="28" rx="14" fill="#059669"/>
+  <text x="315" y="115" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">FULL</text>
+
+  <text x="480" y="108" text-anchor="middle" font-size="10" fill="#065f46">Circuit graph ✓   Node layout ✓</text>
+  <text x="480" y="124" text-anchor="middle" font-size="10" fill="#065f46">Test vectors ✓   Pin mapping ✓</text>
+  <text x="480" y="140" text-anchor="middle" font-size="10" fill="#065f46">All metadata ✓</text>
+
+  <rect x="600" y="100" width="140" height="24" rx="4" fill="#fff" stroke="#059669" stroke-width="1"/>
+  <text x="670" y="117" text-anchor="middle" font-size="10" fill="#065f46">'full' (internal)</text>
+
+  <!-- Row 2: Reconstructed -->
+  <rect x="20" y="158" width="720" height="62" rx="4" fill="#fef3c7"/>
+  <text x="140" y="178" text-anchor="middle" font-size="11" fill="#92400e">Structural VHDL</text>
+  <text x="140" y="195" text-anchor="middle" font-size="10" fill="#b45309">(component instantiation)</text>
+  <text x="140" y="211" text-anchor="middle" font-size="10" fill="#b45309">Paste HDL tab</text>
+
+  <rect x="264" y="166" width="102" height="28" rx="14" fill="#d97706"/>
+  <text x="315" y="185" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">RECONSTRUCTED</text>
+
+  <text x="480" y="178" text-anchor="middle" font-size="10" fill="#92400e">Circuit graph ✓   Node layout ✗</text>
+  <text x="480" y="194" text-anchor="middle" font-size="10" fill="#92400e">Test vectors ✗   Pin mapping ✗</text>
+  <text x="480" y="210" text-anchor="middle" font-size="10" fill="#92400e">37 HDL variants → 9 node types</text>
+
+  <rect x="600" y="170" width="140" height="24" rx="4" fill="#fff" stroke="#d97706" stroke-width="1"/>
+  <text x="670" y="187" text-anchor="middle" font-size="10" fill="#92400e">'ports-only' (internal)</text>
+
+  <!-- Row 3: Partial -->
+  <rect x="20" y="228" width="720" height="62" rx="4" fill="#fee2e2"/>
+  <text x="140" y="248" text-anchor="middle" font-size="11" fill="#991b1b">Behavioral VHDL</text>
+  <text x="140" y="265" text-anchor="middle" font-size="10" fill="#b91c1c">or RedByte top.vhd</text>
+  <text x="140" y="281" text-anchor="middle" font-size="10" fill="#b91c1c">Paste HDL tab</text>
+
+  <rect x="270" y="236" width="90" height="28" rx="14" fill="#dc2626"/>
+  <text x="315" y="255" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">PARTIAL</text>
+
+  <text x="480" y="248" text-anchor="middle" font-size="10" fill="#991b1b">Circuit graph ✗   Node layout ✗</text>
+  <text x="480" y="264" text-anchor="middle" font-size="10" fill="#991b1b">Test vectors ✗   Pin mapping ✗</text>
+  <text x="480" y="280" text-anchor="middle" font-size="10" fill="#991b1b">Port names &amp; directions only ✓</text>
+
+  <rect x="600" y="240" width="140" height="24" rx="4" fill="#fff" stroke="#dc2626" stroke-width="1"/>
+  <text x="670" y="257" text-anchor="middle" font-size="10" fill="#991b1b">'empty' (internal)</text>
+
+  <!-- Footer -->
+  <text x="380" y="315" text-anchor="middle" font-size="10" fill="#888">UI layer labels (Full/Reconstructed/Partial) are mapped from internal levels (full/ports-only/empty) in IdeApp.tsx.</text>
+  <text x="380" y="330" text-anchor="middle" font-size="10" fill="#888">Source: hdlToCircuit.ts L43 · IdeApp.tsx L101 · ImportSurface.tsx</text>
+</svg>

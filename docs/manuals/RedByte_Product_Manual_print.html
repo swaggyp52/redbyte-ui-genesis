@@ -628,9 +628,9 @@ ul li { margin-bottom: 0.3rem; }
 <table>
   <thead><tr><th>Audience</th><th>Primary Context</th><th>Key Activities</th></tr></thead>
   <tbody>
-    <tr><td><strong>Students</strong></td><td>IdeApp, LabWorkspaceApp</td><td>Design circuits, verify truth tables, map pins, export for Vivado, submit lab work.</td></tr>
-    <tr><td><strong>Instructors / TAs</strong></td><td>SubmissionInspectorApp</td><td>Review submissions, verify integrity, inspect gate verdicts, grade with full diagnostics.</td></tr>
-    <tr><td><strong>Self-Learners</strong></td><td>LogicPlaygroundApp</td><td>Open-ended circuit exploration with no submission pipeline.</td></tr>
+    <tr><td><strong>Students</strong></td><td>IdeApp</td><td>Design circuits, verify truth tables, map pins, export for Vivado, submit lab work.</td></tr>
+    <tr><td><strong>Instructors / TAs</strong></td><td>Submission Inspector (via Project surface)</td><td>Review submissions, verify integrity, inspect gate verdicts, grade with full diagnostics.</td></tr>
+    <tr><td><strong>Self-Learners</strong></td><td>IdeApp</td><td>Open-ended circuit exploration using the full IDE.</td></tr>
     <tr><td><strong>Evaluators</strong></td><td>All contexts</td><td>Assess product capabilities, review workflows, evaluate platform for adoption.</td></tr>
   </tbody>
 </table>
@@ -641,9 +641,7 @@ ul li { margin-bottom: 0.3rem; }
   <thead><tr><th>Context</th><th>Purpose</th><th>Submission System</th><th>Diagnostic Detail</th></tr></thead>
   <tbody>
     <tr><td><strong>IdeApp</strong></td><td>Full six-surface IDE for lab assignments</td><td>Yes</td><td>Student-appropriate (simplified)</td></tr>
-    <tr><td><strong>LogicPlaygroundApp</strong></td><td>Open-ended sandbox</td><td>No</td><td>Minimal</td></tr>
-    <tr><td><strong>LabWorkspaceApp</strong></td><td>Guided lab with step tracking</td><td>Yes</td><td>Student-appropriate</td></tr>
-    <tr><td><strong>SubmissionInspectorApp</strong></td><td>Instructor grading tool</td><td>Read-only review</td><td>Full (hashes, verdicts, tamper detection)</td></tr>
+    <tr><td><strong>SubmissionInspectorApp</strong></td><td>Instructor grading tool (inspector functionality delivered via Project surface)</td><td>Read-only review</td><td>Full (hashes, verdicts, tamper detection)</td></tr>
   </tbody>
 </table>
 </div>
@@ -753,7 +751,7 @@ pnpm dev</code></pre>
   <li>Navigate to <strong>Export</strong>. Click <strong>Download Vivado Kit</strong>.</li>
 </ol>
 
-<div class="result-box"><strong>Result:</strong> A ZIP file containing <code>top.vhd</code>, <code>constraints.xdc</code>, and <code>testbench.vhd</code>, ready for Vivado import.</div>
+<div class="result-box"><strong>Result:</strong> A ZIP file containing <code>top.vhd</code>, <code>top.xdc</code>, <code>testbench.vhd</code>, automation scripts, and documentation files, ready for Vivado import. See Section 11.1 for the complete file list.</div>
 </div>
 
 <!-- ═══════════════════════ SECTION 6 ═══════════════════════ -->
@@ -805,7 +803,7 @@ pnpm dev</code></pre>
     <tr><td><strong>Purpose</strong></td><td>Circuit construction via drag-and-drop gate placement and wiring.</td></tr>
     <tr><td><strong>When to Use</strong></td><td>Whenever the circuit needs to be created or modified.</td></tr>
     <tr><td><strong>Main Area</strong></td><td>Circuit canvas with tool row (select, wire, delete, zoom). Left: searchable component palette. Right: selected element properties.</td></tr>
-    <tr><td><strong>Controls</strong></td><td>Place components, wire ports, select/move/delete, undo/redo (50 levels).</td></tr>
+    <tr><td><strong>Controls</strong></td><td>Place components, wire ports, select/move/delete, undo/redo (100 levels).</td></tr>
     <tr><td><strong>Wiring Rules</strong></td><td>Output→Input valid. Fan-out allowed. Self-loops rejected. One connection per input port.</td></tr>
     <tr><td><strong>Health Indicator</strong></td><td>"Circuit OK" or "Issues found" (floating outputs, missing I/O).</td></tr>
   </tbody>
@@ -826,7 +824,7 @@ pnpm dev</code></pre>
     <tr><td><strong>Main Area</strong></td><td>Top: PASS/FAIL banner with run summary. Center: truth table with per-row results. Right: signal picker and waveform preview.</td></tr>
     <tr><td><strong>Controls</strong></td><td>Run Verify, Jump to failing node, Inspect failure diffs, Edit vectors, Scenario Builder.</td></tr>
     <tr><td><strong>Schedule</strong></td><td>Auto-detected: combinational (1 tick) or clocked-macro (3-tick clock sequence) based on flip-flop presence.</td></tr>
-    <tr><td><strong>Hints</strong></td><td>Up to 7 fact-grounded hints on FAIL. Sequential circuit banner when DFF detected.</td></tr>
+    <tr><td><strong>Hints</strong></td><td>14 diagnostic conditions evaluated on FAIL; matching fact-grounded hints displayed. Sequential circuit banner when DFF detected.</td></tr>
     <tr><td><strong>Freshness</strong></td><td>Stale indicator when circuit modified since last verify. Name/description changes do not stale.</td></tr>
   </tbody>
 </table>
@@ -852,7 +850,7 @@ pnpm dev</code></pre>
   <tbody>
     <tr><td><strong>Purpose</strong></td><td>Validate readiness, preview generated artifacts, produce Vivado Kit ZIP.</td></tr>
     <tr><td><strong>When to Use</strong></td><td>After design, verification, and complete pin mapping.</td></tr>
-    <tr><td><strong>Main Area</strong></td><td>Top: READY/WARNING/BLOCKED status. Center: artifact preview (<code>top.vhd</code>, <code>constraints.xdc</code>, <code>testbench.vhd</code>). Right: pin table, validation.</td></tr>
+    <tr><td><strong>Main Area</strong></td><td>Top: READY/WARNING/BLOCKED status. Center: artifact preview for primary files (<code>top.vhd</code>, <code>top.xdc</code>, <code>testbench.vhd</code>). Right: pin table, validation.</td></tr>
     <tr><td><strong>Primary CTA</strong></td><td><strong>Download Vivado Kit</strong> — downloads ZIP. Enabled only at READY status.</td></tr>
     <tr><td><strong>Single Path</strong></td><td>One generation path. Preview shows exact bytes that appear in the ZIP.</td></tr>
     <tr><td><strong>Scaffold Warnings</strong></td><td>HDL/XDC port mismatch warnings for projection-only exports are informational, not blocking.</td></tr>
@@ -865,7 +863,7 @@ pnpm dev</code></pre>
   <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
   <tbody>
     <tr><td><strong>Purpose</strong></td><td>Import external HDL, constraint files, or RedByte project archives.</td></tr>
-    <tr><td><strong>Tabs</strong></td><td>"Write HDL" (paste/type VHDL), "Upload ZIP" (file picker), "Paste XDC" (constraint text).</td></tr>
+    <tr><td><strong>Tabs</strong></td><td>"Upload ZIP" (file picker), "Paste HDL" (paste VHDL source), "Paste XDC" (constraint text).</td></tr>
     <tr><td><strong>Main Area</strong></td><td>Parsed ports table, schematic preview, diagnostics list with plain-language errors.</td></tr>
     <tr><td><strong>Fidelity</strong></td><td>Full (project archive), Reconstructed (structural VHDL), Partial (behavioral VHDL). Reported explicitly.</td></tr>
     <tr><td><strong>Submission Detection</strong></td><td>Identifies RedByte submission ZIPs and reports integrity status.</td></tr>
@@ -962,8 +960,14 @@ pnpm dev</code></pre>
   <thead><tr><th>File</th><th>Type</th><th>Purpose</th></tr></thead>
   <tbody>
     <tr><td><code>top.vhd</code></td><td>Design Source</td><td>Synthesizable VHDL top-level entity.</td></tr>
-    <tr><td><code>constraints.xdc</code></td><td>Constraints</td><td>Pin assignments with LVCMOS33 I/O standard.</td></tr>
+    <tr><td><code>top.xdc</code></td><td>Constraints</td><td>Pin assignments with LVCMOS33 I/O standard.</td></tr>
     <tr><td><code>testbench.vhd</code></td><td>Simulation Source</td><td>VHDL testbench from truth table vectors.</td></tr>
+    <tr><td><code>vivado_import.tcl</code></td><td>Automation</td><td>Tcl script for automated Vivado project creation.</td></tr>
+    <tr><td><code>program_and_test.tcl</code></td><td>Automation</td><td>Tcl script for board programming and test.</td></tr>
+    <tr><td><code>README.txt</code></td><td>Documentation</td><td>Quick-start instructions for the Vivado workflow.</td></tr>
+    <tr><td><code>BRINGUP.md</code></td><td>Documentation</td><td>Detailed board bring-up guide.</td></tr>
+    <tr><td><code>EXPECTED_IO.json</code></td><td>Metadata</td><td>Machine-readable I/O expectations for automated verification.</td></tr>
+    <tr><td><code>project.rbproj.json</code></td><td>Project</td><td>RedByte project snapshot for round-trip import.</td></tr>
   </tbody>
 </table>
 
@@ -972,7 +976,7 @@ pnpm dev</code></pre>
 <ol class="procedure">
   <li><strong>Download the Vivado Kit</strong> from the Export surface and extract the ZIP.</li>
   <li>Open Vivado → <strong>Create Project</strong> → RTL Project.</li>
-  <li>Add <code>top.vhd</code> as Design Source. Add <code>constraints.xdc</code> as Constraints.</li>
+  <li>Add <code>top.vhd</code> as Design Source. Add <code>top.xdc</code> as Constraints.</li>
   <li>Select part: <code>xc7a35t-1cpg236-1</code> (or board "Basys3").</li>
   <li><strong>Run Synthesis</strong> → <strong>Run Implementation</strong> → <strong>Generate Bitstream</strong>.</li>
   <li>Open Hardware Manager → connect board → <strong>Program Device</strong> with the generated <code>.bit</code> file.</li>
@@ -1000,7 +1004,7 @@ pnpm dev</code></pre>
 <p>Upload the <code>.rbproj.zip</code> archive on the Import surface's "Upload ZIP" tab. The system detects the project manifest and restores all state.</p>
 
 <h2>12.2 Structural VHDL Import</h2>
-<p>Paste structural VHDL with component instantiation on the "Write HDL" tab. The parser maps 26 component types through a built-in library. Topology is reconstructed; positions are auto-assigned; test vectors must be re-authored.</p>
+<p>Paste structural VHDL with component instantiation on the "Paste HDL" tab. The parser maps 37 HDL name variants (e.g., <code>and2</code>, <code>AND</code>, <code>and_gate</code>) to 9 RedByte node types through a built-in component library. Topology is reconstructed; positions are auto-assigned; test vectors must be re-authored.</p>
 
 <h2>12.3 XDC Constraint Import</h2>
 <p>Paste constraint file content on the "Paste XDC" tab. Pin assignments are imported and applied to matching circuit ports.</p>
@@ -1025,7 +1029,6 @@ pnpm dev</code></pre>
   <li>Open the <strong>Submission Inspector</strong>.</li>
   <li>Import the student's submission archive.</li>
   <li>Review: gate verdict, pass/fail per requirement, integrity status, hash verification, tamper detection.</li>
-  <li>Click <strong>Export Grading Report</strong> to download a JSON summary.</li>
 </ol>
 
 <h2>13.3 Integrity Properties</h2>
@@ -1055,9 +1058,15 @@ pnpm dev</code></pre>
 
 <h2>14.1 Vivado Kit ZIP</h2>
 <pre><code>vivado-kit.zip
-├── top.vhd              # Synthesizable VHDL
-├── constraints.xdc      # Basys 3 pin constraints
-└── testbench.vhd        # Simulation testbench</code></pre>
+├── top.vhd                # Synthesizable VHDL
+├── top.xdc                # Basys 3 pin constraints
+├── testbench.vhd          # Simulation testbench
+├── vivado_import.tcl      # Automated Vivado project creation
+├── program_and_test.tcl   # Board programming and test script
+├── README.txt             # Quick-start instructions
+├── BRINGUP.md             # Board bring-up guide
+├── EXPECTED_IO.json       # Machine-readable I/O expectations
+└── project.rbproj.json    # RedByte project snapshot</code></pre>
 
 <h2>14.2 Submission Package</h2>
 <pre><code>submission.rbproj.zip
@@ -1065,16 +1074,6 @@ pnpm dev</code></pre>
 ├── verify-ledger.json    # Verification results
 ├── manifest.json         # File hashes / integrity
 └── [metadata files]      # Gate verdicts, run counts</code></pre>
-
-<h2>14.3 RB Lab ZIP (Bridge MVP)</h2>
-<pre><code>&lt;lab&gt;.rb-lab.zip
-├── manifest.json
-├── trace/hw_trace.ndjson
-├── bitstream/design.bit
-├── meta/board_profile.json
-└── integrity/
-    ├── capsule.json
-    └── signature.sig</code></pre>
 </div>
 
 <!-- ═══════════════════════ SECTION 15 ═══════════════════════ -->
@@ -1174,7 +1173,7 @@ pnpm dev</code></pre>
     <tr><td><strong>Test vector</strong></td><td>A truth table row specifying input values and expected output values.</td></tr>
     <tr><td><strong>Tick</strong></td><td>One discrete simulation time step. All nodes evaluated once per tick in topological order.</td></tr>
     <tr><td><strong>Topological sort</strong></td><td>Algorithm ensuring nodes are evaluated after their input dependencies.</td></tr>
-    <tr><td><strong>Vivado Kit</strong></td><td>The exported ZIP containing <code>top.vhd</code>, <code>constraints.xdc</code>, and <code>testbench.vhd</code>.</td></tr>
+    <tr><td><strong>Vivado Kit</strong></td><td>The exported ZIP containing <code>top.vhd</code>, <code>top.xdc</code>, <code>testbench.vhd</code>, automation scripts, and documentation files.</td></tr>
     <tr><td><strong>XDC</strong></td><td>Xilinx Design Constraints file format for pin assignments and I/O standards.</td></tr>
   </tbody>
 </table>
@@ -1194,11 +1193,10 @@ pnpm dev</code></pre>
     <tr><td>OR</td><td>a, b</td><td>out</td><td>1 when at least one input is 1.</td></tr>
     <tr><td>NOT</td><td>in</td><td>out</td><td>Complement of input.</td></tr>
     <tr><td>NAND</td><td>a, b</td><td>out</td><td>0 only when both inputs are 1.</td></tr>
-    <tr><td>NOR</td><td>a, b</td><td>out</td><td>0 when at least one input is 1.</td></tr>
     <tr><td>XOR</td><td>a, b</td><td>out</td><td>1 when inputs differ.</td></tr>
-    <tr><td>XNOR</td><td>a, b</td><td>out</td><td>1 when inputs are equal.</td></tr>
   </tbody>
 </table>
+<p class="note"><strong>Note:</strong> NOR and XNOR are defined in the type system but are not currently registered in the active component palette. Use NOT+OR or NOT+XOR combinations as equivalents, or use the three-input NOR3 variant which is registered.</p>
 
 <h3>A.2 Three-Input Gates</h3>
 <table>
@@ -1294,8 +1292,8 @@ pnpm dev</code></pre>
   <thead><tr><th>File</th><th>Entity</th><th>Key Properties</th></tr></thead>
   <tbody>
     <tr><td><code>top.vhd</code></td><td><code>top</code></td><td>Synthesizable. Ports match Hardware surface. LVCMOS33 (via XDC). No behavioral process blocks.</td></tr>
-    <tr><td><code>constraints.xdc</code></td><td>—</td><td>One <code>set_property PACKAGE_PIN</code> per port. <code>CLOCK_BUFFER_TYPE NONE</code> for switch/button inputs.</td></tr>
-    <tr><td><code>testbench.vhd</code></td><td><code>top_tb</code></td><td>Simulation only. Exercises all truth table rows. 10 ns clock period for sequential circuits.</td></tr>
+    <tr><td><code>top.xdc</code></td><td>—</td><td>One <code>set_property PACKAGE_PIN</code> per port. <code>CLOCK_BUFFER_TYPE NONE</code> for switch/button inputs.</td></tr>
+    <tr><td><code>testbench.vhd</code></td><td><code>tb_top</code></td><td>Simulation only. Exercises all truth table rows. 10 ns clock period for sequential circuits.</td></tr>
   </tbody>
 </table>
 

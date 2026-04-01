@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-03-25
+updated: 2026-04-01
 related:
   - "[[RedByte Engineering Brain]]"
   - "[[Canonical Notes Policy]]"
@@ -20,7 +20,7 @@ This is the canonical metadata schema for all notes in the RedByte vault. Every 
 ---
 type: bug
 status: open          # open | investigating | blocked | fixed | done
-area: verify          # verify | export | design | bridge | vivado | infrastructure | other
+area: verify          # verify | export | design | hardware | import | project | bridge | vivado | infrastructure | other
 priority: high        # low | medium | high | critical
 source: test-run      # test-run | manual-debug | implementation | discussion
 updated: YYYY-MM-DD
@@ -46,7 +46,7 @@ related:
 ---
 type: architecture
 status: active        # active | draft | deprecated
-area: verify          # verify | export | design | bridge | vivado | infrastructure | other
+area: verify          # verify | export | design | hardware | import | project | bridge | vivado | infrastructure | other
 updated: YYYY-MM-DD
 related:
   - "[[Other Architecture Notes]]"
@@ -71,7 +71,7 @@ related:
 ---
 type: decision
 status: active        # active | superseded
-area: verify          # verify | export | design | bridge | vivado | infrastructure | other
+area: verify          # verify | export | design | hardware | import | project | bridge | vivado | infrastructure | other
 updated: YYYY-MM-DD
 related:
   - "[[Architecture Note]]"
@@ -94,7 +94,7 @@ related:
 ---
 type: handoff
 status: queued        # queued | active | done
-area: verify          # verify | export | design | bridge | vivado | infrastructure | other
+area: verify          # verify | export | design | hardware | import | project | bridge | vivado | infrastructure | other
 updated: YYYY-MM-DD
 related:
   - "[[Bug Note]]"
@@ -121,7 +121,7 @@ related:
 | `status` (architecture) | `active`, `draft`, `deprecated` |
 | `status` (decision) | `active`, `superseded` |
 | `status` (handoff) | `queued`, `active`, `done` |
-| `area` | `verify`, `export`, `design`, `bridge`, `vivado`, `infrastructure`, `other` |
+| `area` | `verify`, `export`, `design`, `hardware`, `import`, `project`, `bridge`, `vivado`, `infrastructure`, `other` |
 | `priority` | `low`, `medium`, `high`, `critical` |
 | `source` | `test-run`, `manual-debug`, `implementation`, `discussion` |
 

@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" width="760" height="400" font-family="Inter, Segoe UI, Arial, sans-serif">
+  <!-- Background -->
+  <rect width="760" height="400" fill="#f8f9fa" rx="8"/>
+
+  <!-- Title -->
+  <text x="380" y="30" text-anchor="middle" font-size="15" font-weight="700" fill="#1a1a2e">Vivado Export Pipeline</text>
+  <text x="380" y="48" text-anchor="middle" font-size="11" fill="#666">DG-04 · basys3Bundle.ts · vhdlGenerator.ts · testbenchGenerator.ts · vivadoProjectFolder.ts</text>
+
+  <!-- Input: Circuit data -->
+  <rect x="30" y="68" width="150" height="100" rx="8" fill="#6366f1" stroke="#4338ca" stroke-width="1.5"/>
+  <text x="105" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">Circuit Data</text>
+  <text x="105" y="112" text-anchor="middle" font-size="10" fill="#c7d2fe">Circuit graph</text>
+  <text x="105" y="128" text-anchor="middle" font-size="10" fill="#c7d2fe">Pin mapping</text>
+  <text x="105" y="144" text-anchor="middle" font-size="10" fill="#c7d2fe">Test vectors</text>
+  <text x="105" y="160" text-anchor="middle" font-size="10" fill="#c7d2fe">Project metadata</text>
+
+  <!-- Arrow to pipeline -->
+  <line x1="180" y1="118" x2="216" y2="118" stroke="#4338ca" stroke-width="2" marker-end="url(#vp-arrow)"/>
+
+  <!-- Pipeline box -->
+  <rect x="216" y="68" width="320" height="100" rx="8" fill="#059669" stroke="#047857" stroke-width="1.5"/>
+  <text x="376" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">Basys 3 Bundle Generator</text>
+  <text x="376" y="112" text-anchor="middle" font-size="10" fill="#d1fae5">basys3Bundle.ts → entity name: 'top' (default)</text>
+  <text x="376" y="128" text-anchor="middle" font-size="10" fill="#d1fae5">LVCMOS33 I/O standard · CLOCK_BUFFER_TYPE NONE</text>
+  <text x="376" y="144" text-anchor="middle" font-size="10" fill="#d1fae5">for switch/button inputs (prevent illegal BUFG)</text>
+  <text x="376" y="160" text-anchor="middle" font-size="10" fill="#d1fae5">vivadoProjectFolder.ts → ZIP packaging</text>
+
+  <!-- Arrow to outputs -->
+  <line x1="536" y1="118" x2="570" y2="118" stroke="#047857" stroke-width="2" marker-end="url(#vp-arrow-green)"/>
+
+  <!-- Output box -->
+  <rect x="570" y="68" width="160" height="100" rx="8" fill="#f59e0b" stroke="#d97706" stroke-width="1.5"/>
+  <text x="650" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">Vivado Kit ZIP</text>
+  <text x="650" y="110" text-anchor="middle" font-size="9" fill="#fef3c7">top.vhd (entity: top)</text>
+  <text x="650" y="124" text-anchor="middle" font-size="9" fill="#fef3c7">top.xdc</text>
+  <text x="650" y="138" text-anchor="middle" font-size="9" fill="#fef3c7">testbench.vhd (entity: tb_top)</text>
+  <text x="650" y="152" text-anchor="middle" font-size="9" fill="#fef3c7">vivado_import.tcl + scripts</text>
+  <text x="650" y="166" text-anchor="middle" font-size="9" fill="#fef3c7">project.rbproj.json + docs</text>
+
+  <!-- ===== Downstream Vivado flow ===== -->
+  <line x1="380" y1="168" x2="380" y2="198" stroke="#d97706" stroke-width="2" marker-end="url(#vp-arrow-amber)"/>
+
+  <!-- Vivado steps row -->
+  <text x="380" y="220" text-anchor="middle" font-size="12" font-weight="600" fill="#374151">Vivado Downstream Flow</text>
+
+  <!-- Step boxes -->
+  <rect x="30" y="234" width="120" height="60" rx="6" fill="#fff" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="90" y="258" text-anchor="middle" font-size="11" font-weight="600" fill="#4f46e5">Create Project</text>
+  <text x="90" y="274" text-anchor="middle" font-size="9" fill="#6b7280">RTL Project</text>
+  <text x="90" y="287" text-anchor="middle" font-size="9" fill="#6b7280">xc7a35t-1cpg236-1</text>
+
+  <line x1="150" y1="264" x2="176" y2="264" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#vp-grey)"/>
+
+  <rect x="176" y="234" width="110" height="60" rx="6" fill="#fff" stroke="#0ea5e9" stroke-width="1.5"/>
+  <text x="231" y="258" text-anchor="middle" font-size="11" font-weight="600" fill="#0284c7">Synthesis</text>
+  <text x="231" y="274" text-anchor="middle" font-size="9" fill="#6b7280">Add top.vhd</text>
+  <text x="231" y="287" text-anchor="middle" font-size="9" fill="#6b7280">Add top.xdc</text>
+
+  <line x1="286" y1="264" x2="312" y2="264" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#vp-grey)"/>
+
+  <rect x="312" y="234" width="110" height="60" rx="6" fill="#fff" stroke="#10b981" stroke-width="1.5"/>
+  <text x="367" y="254" text-anchor="middle" font-size="11" font-weight="600" fill="#059669">Implementation</text>
+  <text x="367" y="270" text-anchor="middle" font-size="9" fill="#6b7280">Place &amp; Route</text>
+  <text x="367" y="284" text-anchor="middle" font-size="9" fill="#6b7280">Timing Analysis</text>
+
+  <line x1="422" y1="264" x2="448" y2="264" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#vp-grey)"/>
+
+  <rect x="448" y="234" width="110" height="60" rx="6" fill="#fff" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="503" y="254" text-anchor="middle" font-size="11" font-weight="600" fill="#d97706">Bitstream</text>
+  <text x="503" y="270" text-anchor="middle" font-size="9" fill="#6b7280">Generate .bit</text>
+  <text x="503" y="284" text-anchor="middle" font-size="9" fill="#6b7280">file</text>
+
+  <line x1="558" y1="264" x2="584" y2="264" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#vp-grey)"/>
+
+  <rect x="584" y="234" width="146" height="60" rx="6" fill="#dc2626" stroke="#b91c1c" stroke-width="1.5"/>
+  <text x="657" y="258" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Program Basys 3</text>
+  <text x="657" y="274" text-anchor="middle" font-size="9" fill="#fee2e2">Hardware Manager</text>
+  <text x="657" y="287" text-anchor="middle" font-size="9" fill="#fee2e2">Auto Connect → Program</text>
+
+  <!-- Simulation branch -->
+  <line x1="231" y1="294" x2="231" y2="324" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#vp-grey)"/>
+  <rect x="176" y="324" width="170" height="52" rx="6" fill="#fff" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="261" y="346" text-anchor="middle" font-size="11" font-weight="600" fill="#7c3aed">Simulation (Optional)</text>
+  <text x="261" y="362" text-anchor="middle" font-size="9" fill="#6b7280">Add testbench.vhd · Set top: tb_top</text>
+  <text x="261" y="374" text-anchor="middle" font-size="9" fill="#6b7280">Behavioral Simulation → waveforms</text>
+
+  <!-- Footer -->
+  <text x="380" y="395" text-anchor="middle" font-size="10" fill="#888">Source: basys3Bundle.ts · vivadoProjectFolder.ts · testbenchGenerator.ts (entity: tb_top)</text>
+
+  <defs>
+    <marker id="vp-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#4338ca"/>
+    </marker>
+    <marker id="vp-arrow-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#047857"/>
+    </marker>
+    <marker id="vp-arrow-amber" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#d97706"/>
+    </marker>
+    <marker id="vp-grey" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+</svg>

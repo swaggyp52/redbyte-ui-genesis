@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 360" width="760" height="360" font-family="Inter, Segoe UI, Arial, sans-serif">
+  <!-- Background -->
+  <rect width="760" height="360" fill="#f8f9fa" rx="8"/>
+
+  <!-- Title -->
+  <text x="380" y="30" text-anchor="middle" font-size="15" font-weight="700" fill="#1a1a2e">Deterministic Simulation Tick Model</text>
+  <text x="380" y="48" text-anchor="middle" font-size="11" fill="#666">DG-03 · simulationEngine.ts · Kahn's topological sort</text>
+
+  <!-- ===== Left side: Topological evaluation order ===== -->
+  <text x="190" y="76" text-anchor="middle" font-size="12" font-weight="600" fill="#374151">Topological Evaluation Order</text>
+
+  <!-- Node A (Input) -->
+  <rect x="60" y="90" width="80" height="36" rx="6" fill="#6366f1"/>
+  <text x="100" y="114" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">INPUT A</text>
+
+  <!-- Node B (Input) -->
+  <rect x="60" y="144" width="80" height="36" rx="6" fill="#6366f1"/>
+  <text x="100" y="168" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">INPUT B</text>
+
+  <!-- Arrow to AND -->
+  <line x1="140" y1="108" x2="178" y2="140" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#sm-arrow)"/>
+  <line x1="140" y1="162" x2="178" y2="152" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#sm-arrow)"/>
+
+  <!-- AND Gate -->
+  <rect x="178" y="126" width="80" height="36" rx="6" fill="#0ea5e9"/>
+  <text x="218" y="150" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">AND</text>
+
+  <!-- Arrow to OR -->
+  <line x1="258" y1="144" x2="296" y2="144" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#sm-arrow)"/>
+
+  <!-- Node C (Input) -->
+  <rect x="60" y="198" width="80" height="36" rx="6" fill="#6366f1"/>
+  <text x="100" y="222" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">INPUT C</text>
+
+  <!-- Arrow C to OR -->
+  <line x1="140" y1="216" x2="296" y2="168" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#sm-arrow)"/>
+
+  <!-- OR Gate -->
+  <rect x="296" y="126" width="80" height="36" rx="6" fill="#10b981"/>
+  <text x="336" y="150" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">OR</text>
+
+  <!-- Arrow to OUTPUT -->
+  <line x1="376" y1="144" x2="414" y2="144" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#sm-arrow)"/>
+
+  <!-- OUTPUT -->
+  <rect x="414" y="126" width="80" height="36" rx="6" fill="#f59e0b"/>
+  <text x="454" y="150" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">OUTPUT</text>
+
+  <!-- Evaluation order labels -->
+  <text x="100" y="88" text-anchor="middle" font-size="9" fill="#6366f1" font-weight="600">Tier 1</text>
+  <text x="218" y="124" text-anchor="middle" font-size="9" fill="#0ea5e9" font-weight="600">Tier 2</text>
+  <text x="336" y="124" text-anchor="middle" font-size="9" fill="#10b981" font-weight="600">Tier 3</text>
+  <text x="454" y="124" text-anchor="middle" font-size="9" fill="#f59e0b" font-weight="600">Tier 4</text>
+
+  <!-- Divider -->
+  <line x1="520" y1="60" x2="520" y2="310" stroke="#e5e7eb" stroke-width="1.5" stroke-dasharray="6,3"/>
+
+  <!-- ===== Right side: Verification schedules ===== -->
+  <text x="638" y="76" text-anchor="middle" font-size="12" font-weight="600" fill="#374151">Verification Schedules</text>
+
+  <!-- Combinational -->
+  <rect x="530" y="90" width="210" height="90" rx="6" fill="#fff" stroke="#10b981" stroke-width="2"/>
+  <text x="635" y="112" text-anchor="middle" font-size="11" font-weight="700" fill="#059669">Combinational</text>
+  <text x="635" y="130" text-anchor="middle" font-size="10" fill="#374151">One tick per vector row</text>
+  <text x="635" y="148" text-anchor="middle" font-size="10" fill="#374151">No flip-flops in circuit</text>
+  <text x="635" y="166" text-anchor="middle" font-size="9" fill="#6b7280">single-tick evaluation → assert outputs</text>
+
+  <!-- Clocked macro -->
+  <rect x="530" y="196" width="210" height="110" rx="6" fill="#fff" stroke="#f59e0b" stroke-width="2"/>
+  <text x="635" y="218" text-anchor="middle" font-size="11" font-weight="700" fill="#d97706">Clocked Macro</text>
+  <text x="635" y="236" text-anchor="middle" font-size="10" fill="#374151">Three-tick sequence per row</text>
+  <!-- Tick sequence boxes -->
+  <rect x="545" y="246" width="52" height="28" rx="4" fill="#fef3c7" stroke="#f59e0b" stroke-width="1"/>
+  <text x="571" y="265" text-anchor="middle" font-size="10" fill="#92400e">CLK=0</text>
+  <text x="571" y="276" text-anchor="middle" font-size="8" fill="#92400e">Tick 1</text>
+
+  <line x1="597" y1="260" x2="613" y2="260" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#sm-amber)"/>
+
+  <rect x="613" y="246" width="52" height="28" rx="4" fill="#fde68a" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="639" y="265" text-anchor="middle" font-size="10" font-weight="700" fill="#92400e">CLK=1</text>
+  <text x="639" y="276" text-anchor="middle" font-size="8" fill="#92400e">↑ EDGE</text>
+
+  <line x1="665" y1="260" x2="681" y2="260" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#sm-amber)"/>
+
+  <rect x="681" y="246" width="52" height="28" rx="4" fill="#fef3c7" stroke="#f59e0b" stroke-width="1"/>
+  <text x="707" y="265" text-anchor="middle" font-size="10" fill="#92400e">CLK=0</text>
+  <text x="707" y="276" text-anchor="middle" font-size="8" fill="#92400e">Tick 3</text>
+
+  <text x="635" y="298" text-anchor="middle" font-size="9" fill="#6b7280">→ assert outputs after Tick 3</text>
+
+  <!-- Bottom note -->
+  <text x="380" y="330" text-anchor="middle" font-size="10" fill="#888">All ticks evaluated in topological order. Determinism guaranteed by integer-only signal values.</text>
+  <text x="380" y="346" text-anchor="middle" font-size="10" fill="#888">Source: verifyEngine.ts · simulationEngine.ts · verifyHints.ts (14 diagnostic conditions)</text>
+
+  <defs>
+    <marker id="sm-arrow" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="sm-amber" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#f59e0b"/>
+    </marker>
+  </defs>
+</svg>

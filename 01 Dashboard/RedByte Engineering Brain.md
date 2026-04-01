@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-03-30
+updated: 2026-04-01
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
@@ -83,6 +83,39 @@ Pre-lab must-fix order:
 Canonical next-phase roadmap:
 
 - `docs/roadmap/redbyte-classroom-gap-handoff.md`
+
+Gap audit and product contract (2026-04-01):
+
+- `docs/roadmap/RedByte_Gap_Audit.md` — brutally honest product-legitimacy audit. 14 gaps identified, scorecard produced. Screenshot freeze: **not approved**.
+- `docs/contracts/RedByte_Product_Contract.md` — target-state blueprint defining what RedByte must become. Separate from the current-state Product Manual.
+- Two-layer truth model established: current-state docs (manual, traceability, conformance) stay factual; target-state docs (product contract) stay aspirational but testable.
+- Key findings: README claims OS-era features (3D editing, time-travel debugging). Manual overclaims 6+ non-existent features. Sequential path boundaries (falling-edge, multi-clock, active-low reset) are detected but not blocked. Design-time circuit errors (driver conflicts, combinational loops, floating drivers) only surface at export time.
+
+P0 truth fixes landed (2026-04-01):
+
+- README.md — complete rewrite removing OS Genesis branding, 3D editor claims, time-travel debugging, automatic bug localization, wrong dev commands, wrong test count (433→220), Student Portal URL, Logic Playground workflow. Replaced with accurate six-surface IDE description.
+- Product Manual — removed 6 overclaims: Export Grading Report, verify replay, FPGA Bridge troubleshooting section, RB Lab ZIP section, LogicPlaygroundApp/LabWorkspaceApp as standalone contexts. Fixed undo history 50→100 levels. Expanded keyboard shortcuts from 5 to 24 (3 sections verified against KeyboardShortcutsModal.tsx).
+- Print HTML — matching changes to HTML companion.
+- DOC_INDEX.md — complete rewrite. Two-layer truth model documented. Stale/OS-era docs explicitly marked. Product contract + gap audit sections added.
+- Note Schema — added `hardware`, `import`, `project` to area field values.
+- Canonical Notes Policy — added ADR-002, 5 missing architecture notes, product contract section.
+
+Next: P1 sequential boundary enforcement / trust restoration (not visual polish).
+
+Latest completed documentation work:
+
+- `2026-04-01` — Product manual hardened to verified state. 9 factual corrections applied to both `.md` and `.html`. PDF regenerated (408 KB). 6 architecture SVG diagrams created. Traceability matrix (49 claims), conformance governance doc, and claim audit doc produced. Manual wired into README.md and DOC_INDEX.md. `pnpm docs:manual:pdf` build script added.
+
+  Corrections applied (source-verified):
+  - `constraints.xdc` → `top.xdc` (basys3Bundle.ts L191)
+  - `top_tb` → `tb_top` (testbenchGenerator.ts L292-293, vivadoProjectFolder.ts L36)
+  - "Write HDL" → "Paste HDL" (ImportSurface.tsx L1990)
+  - "up to 7 hints" → "14 diagnostic conditions" (verifyHints.ts L48-121)
+  - NOR/XNOR removed from active palette list; noted as type-defined but unregistered
+  - COMPONENT_MAP: "26 types" → "37 HDL name variants → 9 node types"
+  - VHDL keyword validation claim removed (not implemented)
+  - SubmissionInspectorApp: clarified as architectural context, not separate launch target
+  - ZIP contents: expanded from 3 to 9 files
 
 Latest completed classroom-trust slices:
 

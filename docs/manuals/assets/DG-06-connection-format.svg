@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 280" width="760" height="280" font-family="Inter, Segoe UI, Arial, sans-serif">
+  <!-- Background -->
+  <rect width="760" height="280" fill="#f8f9fa" rx="8"/>
+
+  <!-- Title -->
+  <text x="380" y="30" text-anchor="middle" font-size="15" font-weight="700" fill="#1a1a2e">Canonical Connection Format</text>
+  <text x="380" y="48" text-anchor="middle" font-size="11" fill="#666">DG-06 · projectFormat.ts · normalizePortRef · CLAUDE.md (enforced)</text>
+
+  <!-- Left: Visual circuit connection -->
+  <text x="175" y="78" text-anchor="middle" font-size="12" font-weight="600" fill="#374151">Visual Representation</text>
+
+  <!-- Node A -->
+  <rect x="40" y="92" width="100" height="60" rx="8" fill="#6366f1"/>
+  <text x="90" y="118" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">AND Gate</text>
+  <text x="90" y="135" text-anchor="middle" font-size="9" fill="#c7d2fe">nodeId: "and-01"</text>
+  <!-- Output port indicator -->
+  <circle cx="140" cy="122" r="5" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="152" y="120" font-size="9" fill="#f59e0b">out</text>
+
+  <!-- Wire -->
+  <line x1="158" y1="122" x2="210" y2="122" stroke="#fbbf24" stroke-width="2.5" marker-end="url(#cf-arrow)"/>
+
+  <!-- Node B -->
+  <rect x="210" y="92" width="100" height="60" rx="8" fill="#10b981"/>
+  <text x="260" y="118" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">OR Gate</text>
+  <text x="260" y="135" text-anchor="middle" font-size="9" fill="#d1fae5">nodeId: "or-01"</text>
+  <!-- Input port indicator -->
+  <circle cx="210" cy="122" r="5" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="176" y="120" font-size="9" text-anchor="end" fill="#f59e0b">in1</text>
+
+  <!-- Connection ID label -->
+  <text x="184" y="112" text-anchor="middle" font-size="8" fill="#6b7280">id: "conn-abc"</text>
+
+  <!-- Divider -->
+  <line x1="360" y1="60" x2="360" y2="230" stroke="#e5e7eb" stroke-width="1.5" stroke-dasharray="5,3"/>
+
+  <!-- Right: JSON format -->
+  <text x="560" y="78" text-anchor="middle" font-size="12" font-weight="600" fill="#374151">Canonical JSON Shape</text>
+
+  <rect x="380" y="90" width="360" height="130" rx="8" fill="#1e293b"/>
+  <text x="400" y="116" font-size="12" fill="#94a3b8" font-family="JetBrains Mono, Fira Code, monospace">{"</text>
+  <text x="418" y="132" font-size="12" fill="#7dd3fc" font-family="JetBrains Mono, Fira Code, monospace">  "id": </text>
+  <text x="490" y="132" font-size="12" fill="#fbbf24" font-family="JetBrains Mono, Fira Code, monospace">"conn-abc",</text>
+  <text x="418" y="148" font-size="12" fill="#7dd3fc" font-family="JetBrains Mono, Fira Code, monospace">  "from": </text>
+  <text x="492" y="148" font-size="12" fill="#94a3b8" font-family="JetBrains Mono, Fira Code, monospace">{ </text>
+  <text x="508" y="148" font-size="12" fill="#a5f3fc" font-family="JetBrains Mono, Fira Code, monospace">nodeId: "and-01",</text>
+  <text x="418" y="162" font-size="12" fill="#94a3b8" font-family="JetBrains Mono, Fira Code, monospace">           </text>
+  <text x="492" y="162" font-size="12" fill="#a5f3fc" font-family="JetBrains Mono, Fira Code, monospace">portName: "out" },</text>
+  <text x="418" y="178" font-size="12" fill="#7dd3fc" font-family="JetBrains Mono, Fira Code, monospace">  "to":   </text>
+  <text x="492" y="178" font-size="12" fill="#94a3b8" font-family="JetBrains Mono, Fira Code, monospace">{ </text>
+  <text x="508" y="178" font-size="12" fill="#86efac" font-family="JetBrains Mono, Fira Code, monospace">nodeId: "or-01",</text>
+  <text x="418" y="194" font-size="12" fill="#94a3b8" font-family="JetBrains Mono, Fira Code, monospace">           </text>
+  <text x="492" y="194" font-size="12" fill="#86efac" font-family="JetBrains Mono, Fira Code, monospace">portName: "in1" }</text>
+  <text x="400" y="210" font-size="12" fill="#94a3b8" font-family="JetBrains Mono, Fira Code, monospace">}</text>
+
+  <!-- Invalid shape callout -->
+  <rect x="380" y="232" width="360" height="30" rx="6" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="560" y="252" text-anchor="middle" font-size="11" fill="#dc2626">✗ INVALID: flat shape (fromNodeId, toNodeId) — normalizePortRef will throw</text>
+
+  <!-- Footer note under visual -->
+  <text x="175" y="200" text-anchor="middle" font-size="10" fill="#6b7280">Output port fans out to</text>
+  <text x="175" y="214" text-anchor="middle" font-size="10" fill="#6b7280">multiple input ports allowed.</text>
+  <text x="175" y="230" text-anchor="middle" font-size="10" fill="#6b7280">Input port accepts at most one</text>
+  <text x="175" y="244" text-anchor="middle" font-size="10" fill="#6b7280">connection (validated).</text>
+
+  <text x="380" y="272" font-size="10" fill="#888">Source: CLAUDE.md (permanent rule) · projectFormat.ts · normalizePortRef · all test fixtures</text>
+
+  <defs>
+    <marker id="cf-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#fbbf24"/>
+    </marker>
+  </defs>
+</svg>

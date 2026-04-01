@@ -56,6 +56,8 @@
         "capture:screenshots": "tsx scripts/capture-screenshots.ts",
         "perf:soak": "tsx scripts/perf-soak.ts",
         "ship:verify": "pnpm --filter @redbyte/playground build",
+        "docs:manual": "node scripts/build-manual.mjs",
+        "docs:manual:pdf": "node scripts/build-manual.mjs --pdf-only",
         "ship:gate": "tsx scripts/ship-gate.ts",
         "release:gate": "pnpm typecheck && pnpm lint && pnpm test && pnpm --filter @redbyte/playground build",
         "repo:status": "node ./scripts/repo-status.mjs",

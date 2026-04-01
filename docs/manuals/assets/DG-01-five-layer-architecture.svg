@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 540" width="760" height="540" font-family="Inter, Segoe UI, Arial, sans-serif">
+  <!-- Background -->
+  <rect width="760" height="540" fill="#f8f9fa" rx="8"/>
+
+  <!-- Title -->
+  <text x="380" y="36" text-anchor="middle" font-size="17" font-weight="700" fill="#1a1a2e">RedByte Five-Layer Architecture</text>
+  <text x="380" y="56" text-anchor="middle" font-size="12" fill="#666">DG-01 · packages/rb-apps · packages/rb-logic-core</text>
+
+  <!-- Layer E — Student UX Shell -->
+  <rect x="40" y="76" width="680" height="72" rx="6" fill="#4f46e5" opacity="0.9"/>
+  <text x="380" y="104" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Layer E — Student UX Shell</text>
+  <text x="380" y="122" text-anchor="middle" font-size="11" fill="#c7d2fe">IdeApp · LogicPlaygroundApp · LabWorkspaceApp · SubmissionInspectorApp</text>
+  <text x="380" y="138" text-anchor="middle" font-size="10" fill="#a5b4fc">Student-appropriate vocabulary · Simplified diagnostics · Surface routing</text>
+
+  <!-- Arrow E→D -->
+  <line x1="380" y1="148" x2="380" y2="164" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Layer D — Submission Engine -->
+  <rect x="40" y="164" width="680" height="72" rx="6" fill="#0891b2" opacity="0.9"/>
+  <text x="380" y="192" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Layer D — Submission Engine</text>
+  <text x="380" y="210" text-anchor="middle" font-size="11" fill="#cffafe">submissionBundle.ts · submissionPackager.ts</text>
+  <text x="380" y="226" text-anchor="middle" font-size="10" fill="#a5f3fc">SHA-256 deterministic hashing · Ed25519 signing · Tamper-evident manifest</text>
+
+  <!-- Arrow D→C -->
+  <line x1="380" y1="236" x2="380" y2="252" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Layer C — Vivado Adapter -->
+  <rect x="40" y="252" width="680" height="72" rx="6" fill="#059669" opacity="0.9"/>
+  <text x="380" y="280" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Layer C — Vivado Adapter</text>
+  <text x="380" y="298" text-anchor="middle" font-size="11" fill="#d1fae5">basys3Bundle.ts · vhdlGenerator.ts · testbenchGenerator.ts · vivadoProjectFolder.ts</text>
+  <text x="380" y="314" text-anchor="middle" font-size="10" fill="#a7f3d0">top.vhd · top.xdc · testbench.vhd (entity: tb_top) · vivado_import.tcl</text>
+
+  <!-- Arrow C→B -->
+  <line x1="380" y1="324" x2="380" y2="340" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Layer B — Verification -->
+  <rect x="40" y="340" width="680" height="72" rx="6" fill="#d97706" opacity="0.9"/>
+  <text x="380" y="368" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Layer B — Verification Engine</text>
+  <text x="380" y="386" text-anchor="middle" font-size="11" fill="#fef3c7">verifyEngine.ts · verifyHints.ts · truthTableRunner.ts</text>
+  <text x="380" y="402" text-anchor="middle" font-size="10" fill="#fde68a">Combinational schedule · Clocked-macro schedule · 14 diagnostic conditions</text>
+
+  <!-- Arrow B→A -->
+  <line x1="380" y1="412" x2="380" y2="428" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Layer A — Logic Core -->
+  <rect x="40" y="428" width="680" height="72" rx="6" fill="#dc2626" opacity="0.9"/>
+  <text x="380" y="456" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">Layer A — Logic Core</text>
+  <text x="380" y="474" text-anchor="middle" font-size="11" fill="#fee2e2">builtins.ts · simulationEngine.ts · projectFormat.ts · normalizePortRef</text>
+  <text x="380" y="490" text-anchor="middle" font-size="10" fill="#fecaca">26 registered primitives · Topological sort (Kahn) · Deterministic tick evaluation</text>
+
+  <!-- Legend -->
+  <text x="40" y="524" font-size="10" fill="#888">Source: docs/ARCHITECTURE.md · packages/rb-apps · packages/rb-logic-core</text>
+
+  <!-- Arrow marker -->
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+</svg>

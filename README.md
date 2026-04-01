@@ -1,146 +1,161 @@
-# RedByte OS Genesis
+# RedByte
 
-**An interactive digital logic circuit simulation and construction platform**
-
----
-
-## AI Usage Notice
-
-**Any AI agent (Claude, Codex, ChatGPT, etc.) working with this repository MUST:**
-
-1. **Read [PROJECT_CHRONICLE.md](./PROJECT_CHRONICLE.md) FIRST**   This is the comprehensive living documentation for the entire project
-2. **Reference [AI_STATE.md](./AI_STATE.md)** for detailed phase/contract specifications
-3. **Update PROJECT_CHRONICLE.md after completing work**   Add your changes to the "Chronicle of Changes" and "AI Contributions Log"
+**A deterministic FPGA educational IDE for digital logic design and Basys3 deployment**
 
 ---
 
-## What is RedByte OS Genesis?
+## What is RedByte?
 
-RedByte OS Genesis is an educational platform for learning digital logic and computer architecture through interactive circuit simulation. Built as a browser-based "operating system," it provides:
+RedByte is a browser-based IDE for designing, simulating, and verifying digital logic circuits, then exporting them as Vivado-ready project packages for the Digilent Basys3 FPGA board.
 
-- Interactive 2D and 3D circuit editor
-- Real-time signal simulation
-- Time-travel debugging with recording/replay
-- Automatic bug localization
-- Learning mode with tutorials and examples
-- Circuit health analysis and suggestions
+It provides:
 
-**Live Preview:** [redbyteapps.dev](https://redbyteapps.dev)
+- Schematic circuit editor with combinational and sequential components
+- Deterministic tick-based simulation (topological sort, integer-only signals)
+- Verification engine with pass/fail semantics, waveform viewer, and diagnostic hints
+- Interactive Basys3 hardware pin mapping
+- Vivado Kit export (VHDL, XDC constraints, testbench, TCL project script)
+- VHDL import with fidelity reporting
+
+**Live:** [redbyteapps.dev](https://redbyteapps.dev)
 
 ---
 
 ## Quick Start
-
-**Canonical Install Guide:** [`docs/INSTALL_QUICK.md`](docs/INSTALL_QUICK.md)
-
-**For running v1 release execution:** start with [`docs/release/v1-release-checklist.md`](docs/release/v1-release-checklist.md).
-
-- **Web Demo:** [https://redbyteapps.dev](https://redbyteapps.dev) (Simulation Only)
-- **Student Portal:** [https://redbyte.os/students](https://redbyte.os/students)
-
-### Development
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
+Build for production:
+
+```bash
+pnpm build:unified
+```
+
+Run tests:
+
+```bash
+pnpm -w exec vitest run
+```
+
+---
+
+## IDE Surfaces
+
+RedByte uses a six-surface workflow inside a single IDE shell:
+
+| Surface | Purpose |
+|---------|---------|
+| **Project** | Student identity, lab metadata, starter examples, readiness checklist |
+| **Design** | Schematic editor — place, wire, and configure circuit components |
+| **Verify** | Run test scenarios, view pass/fail results, inspect waveforms |
+| **Hardware** | Map circuit I/O to Basys3 pins (switches, LEDs, buttons, 7-segment) |
+| **Export** | Generate and download a Vivado Kit ZIP for synthesis and programming |
+| **Import** | Paste VHDL to import circuits with fidelity reporting |
+
+---
+
+## Student Workflow
+
+1. Open or create a project on the **Project** surface
+2. Build a circuit on the **Design** surface
+3. Verify behavior on the **Verify** surface
+4. Map I/O to Basys3 pins on the **Hardware** surface
+5. Export a Vivado Kit ZIP on the **Export** surface
+6. Open the exported project in AMD Vivado, synthesize, and program the board
+
+RedByte generates the Vivado project files. Synthesis and board programming happen inside Vivado (requires AMD Vivado WebPACK, free for Basys3).
+
 ---
 
 ## Instructor Workflow
 
-- Export a submission archive: Logic Playground -> Export -> Project Archive (.rbproj.zip).
-- Review a submission: unzip the archive and open `rb-project.json` via Logic Playground -> Open Project.
-- Hardware grading: use the Hardware Panel to synthesize and program a Basys 3 board (requires Vivado WebPACK or openFPGALoader).
-
-## FPGA Programming
-
-- Install AMD Vivado WebPACK and ensure Vivado is on your PATH.
-- Open Hardware Panel to confirm toolchain detection, then run Synthesize and Program.
-- Digital circuits only: analog nodes are simulation-only and are not synthesized.
+- Students export submission archives from the **Export** surface
+- Import student projects via the **Project** surface or **Import** surface
+- Submissions include SHA-256 integrity hashes for verification
 
 ---
 
 ## Documentation
 
-- **[PROJECT_CHRONICLE.md](./PROJECT_CHRONICLE.md)**   Comprehensive living documentation (START HERE)
-- **[AI_STATE.md](./AI_STATE.md)**   Legacy state ledger with detailed contracts
-- **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)**   System architecture
-- **[docs/PROJECT_MODEL.md](./docs/PROJECT_MODEL.md)**   Data model specifications
-- **[docs/LEARNING_GUIDE.md](./docs/LEARNING_GUIDE.md)**   Educational content
+### Product Manual
+
+The canonical product reference is maintained in `docs/manuals/`:
+
+| File | Description |
+|------|-------------|
+| [RedByte_Product_Manual.md](./docs/manuals/RedByte_Product_Manual.md) | Canonical reference (Markdown) |
+| [RedByte_Product_Manual_print.html](./docs/manuals/RedByte_Product_Manual_print.html) | Print-polished HTML |
+| [RedByte_Product_Manual.pdf](./docs/manuals/RedByte_Product_Manual.pdf) | Generated PDF |
+| [MANUAL_CLAIM_AUDIT.md](./docs/manuals/MANUAL_CLAIM_AUDIT.md) | Fact-audit — claims verified against source |
+| [MANUAL_TRACEABILITY_MATRIX.md](./docs/manuals/MANUAL_TRACEABILITY_MATRIX.md) | Claim → source file mapping |
+| [MANUAL_CONFORMANCE.md](./docs/manuals/MANUAL_CONFORMANCE.md) | Rules for keeping the manual accurate |
+
+### Architecture & Specs
+
+| File | Description |
+|------|-------------|
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Five-layer architecture (A–E) |
+| [docs/STUDENT_UX_LAYER.md](./docs/STUDENT_UX_LAYER.md) | Student-facing content rules |
+| [docs/VIVADO_INTEGRATION.md](./docs/VIVADO_INTEGRATION.md) | Vivado export workflow and generated files |
+| [docs/DOC_INDEX.md](./docs/DOC_INDEX.md) | Full documentation navigation hub |
+
+### Product Contract & Gap Audit
+
+| File | Description |
+|------|-------------|
+| [docs/contracts/RedByte_Product_Contract.md](./docs/contracts/RedByte_Product_Contract.md) | Target-state blueprint — what RedByte must become |
+| [docs/roadmap/RedByte_Gap_Audit.md](./docs/roadmap/RedByte_Gap_Audit.md) | Honest product-legitimacy audit |
 
 ---
 
 ## Project Structure
 
-This is a monorepo using pnpm workspaces:
+Monorepo using pnpm workspaces:
 
 ```
 redbyte-ui/
-%%% apps/
-%       %%% playground/             # Main web application
-%       %%% studio/                     # Studio application
-%       %%% docs/                         # Documentation site
-%%% packages/
-%       %%% rb-logic-core/       # Circuit simulation engine
-%       %%% rb-logic-view/       # 2D circuit canvas
-%       %%% rb-logic-3d/           # 3D visualization
-%       %%% rb-apps/                   # Application components
-%       %%% rb-shell/                 # OS shell wrapper
-%       %%% ...
-%%% tools/config/                 # Shared build configs
+├── apps/
+│   └── playground/              # Dev entry point
+├── packages/
+│   ├── rb-apps/                 # IDE application (IdeApp + 6 surfaces)
+│   ├── rb-logic-core/           # Circuit simulation engine
+│   ├── rb-logic-view/           # 2D circuit canvas
+│   ├── rb-fpga-toolchain/       # VHDL/XDC generation
+│   ├── rb-fpga-bridge/          # Hardware bridge (in development)
+│   ├── rb-primitives/           # Shared UI primitives
+│   ├── rb-tokens/               # Design tokens
+│   └── ...                      # Other packages
+├── docs/                        # Documentation
+├── scripts/                     # Build and CI scripts
+└── CLAUDE.md                    # AI agent instructions
 ```
+
+The primary package under active development is `packages/rb-apps`.
 
 ---
 
 ## Technology Stack
 
-- **React 19**   UI framework
-- **TypeScript 5**   Type safety
-- **Vite 7**   Build tool
-- **Zustand 5**   State management
-- **Three.js**   3D rendering
-- **Vitest**   Testing
-- **Tailwind CSS**   Styling
-
----
-
-## Development Workflow
-
-### Common Commands
-
-```bash
-pnpm --filter @redbyte/playground dev                       # Start dev server
-pnpm test                     # Run tests
-pnpm test:watch         # Watch mode
-pnpm coverage             # Generate coverage report
-pnpm lint                     # Run linter
-pnpm typecheck           # Type check
-pnpm build                   # Build for production
-```
-
-### Making Changes
-
-1. Read [PROJECT_CHRONICLE.md](./PROJECT_CHRONICLE.md)
-2. Create a feature branch
-3. Make your changes
-4. Write tests
-5. Run `pnpm test` and `pnpm build`
-6. Commit with descriptive message
-7. Create pull request
-8. Update PROJECT_CHRONICLE.md
+- **React 19** — UI framework
+- **TypeScript 5** — Strict mode throughout
+- **Vite** — Build tooling
+- **Zustand** — State management
+- **Vitest** — Testing (220 tests across 21 suites)
 
 ---
 
 ## Testing
 
-433+ tests across 66 test files:
-- Unit tests for core logic
-- Component tests for React components
-- Integration tests for features
-- E2E tests with Playwright
+```bash
+pnpm -w exec vitest run              # Run all tests
+pnpm --filter rb-apps test           # Run rb-apps tests only
+pnpm rc:check                        # Release candidate gate (tests + verify:gates)
+```
 
-**All tests must pass before merging.**
+Test baseline: 168 pure-logic tests + 52 render tests = 220 total, all green.
 
 ---
 
@@ -148,18 +163,12 @@ pnpm build                   # Build for production
 
 **RedByte Proprietary License (RPL-1.0)**
 
-Copyright © 2025 Connor Angiel. All rights reserved.
+Copyright 2025-2026 Connor Angiel. All rights reserved.
 
 ---
 
 ## Contact
 
 **Owner:** Connor Angiel
-
-**Repository:** https://github.com/swaggyp52/redbyte-ui-genesis
-
-**Live Preview:** [redbyteapps.dev](https://redbyteapps.dev)
-
----
-
-**For comprehensive documentation, see [PROJECT_CHRONICLE.md](./PROJECT_CHRONICLE.md)**
+**Repository:** [github.com/swaggyp52/redbyte-ui-genesis](https://github.com/swaggyp52/redbyte-ui-genesis)
+**Live:** [redbyteapps.dev](https://redbyteapps.dev)
