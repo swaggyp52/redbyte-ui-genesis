@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: verify
-updated: 2026-03-29
+updated: 2026-04-01
 related:
   - "[[Verify Hint System]]"
   - "[[Connection Model]]"
@@ -39,6 +39,13 @@ The latest pre-lab trust slice tightened the first-run student contract:
 - draft trace-authoring sessions now use testbench wording (`Ready to run this testbench` / `Run Testbench`) instead of generic simulation wording
 - compare wording remains reserved for asserted sessions that actually have expected outputs loaded
 - the first-run builder/footer now consumes authoritative total vector + assertion state from `VerifySurface`, so custom-vector sessions cannot drift into a `READY` hero with a missing primary run CTA
+
+The latest Verify workflow legitimacy slice hardened post-failure recovery:
+
+- assertion mismatches now expose `Edit expected outputs` as an explicit Verify-side recovery path from both the fail hero and the mismatch panel
+- `Open in Design` remains available for genuine logic defects, but only as a secondary action in mismatch cases
+- stale runs remain explicitly non-failure states and stay on rerun / re-author / keep-reference recovery paths rather than collapsing into generic FAIL guidance
+- unsupported feedback structures and structural preflight failures remain design-side problems and continue to route to Design rather than pretending the fix lives in vector authoring
 
 ## Canonical Shape / Contract
 
@@ -131,6 +138,31 @@ assertions-differ
 - Export artifact generation is already decoupled from verify PASS/FAIL. Verify affects provenance notes and advisory copy only; it should not block artifact generation.
 - Draft trace-authoring sessions must speak in testbench language. Reserve compare wording for asserted sessions and reserve observation-only wording for recorded trace evidence.
 - First-run CTA readiness must derive from the total live vector authority (`activeScenario` / project vectors + custom vectors), not just project-authored vectors, so custom-vector sessions still expose the correct primary action.
+- Verify must not collapse all bad outcomes into a single failure bucket. Current UI routing must preserve at least these classes:
+  - `design defect` — observed circuit behavior is wrong for the intended expectation; Design is a valid secondary destination
+  - `verify authoring defect` — expected outputs or authored tick sequence are wrong; recovery stays in Verify first
+  - `unsupported verify setup` — blocked topology / unsupported temporal structure; recovery goes to Design
+  - `stale verification state` — previous evidence no longer describes the current circuit or scenario; recovery is rerun / recapture / re-author, not failure triage
+  - `ambiguous or mixed failure` — keep both Verify and Design actions visible, but default focus stays on inspecting the first mismatch and current testbench
+- Assertion mismatch CTAs must keep Verify recoverable. `Edit expected outputs` is the primary authoring recovery for assertion-backed mismatches; `Open in Design` is secondary unless the surface has explicit structural evidence that Verify cannot evaluate the circuit truth.
+- Stale is not fail. Any stale branch must say the visible evidence belongs to an older build or scenario and must not reuse the language or CTA hierarchy of live assertion failures.
+- Unsupported feedback and verify preflight failures are not testbench-authoring errors. They should surface as blocked or structural states with Design-directed recovery.
+
+## Failure Taxonomy And Routing
+
+Current Verify legitimacy contract:
+
+| Category | Typical trigger | Student-facing meaning | Primary recovery | Secondary recovery |
+|---|---|---|---|---|
+| Design defect | Live assertion mismatch against a current circuit | The circuit produced a different value than the asserted expectation | Inspect first mismatch / Compare details in Verify | Open in Design |
+| Verify authoring defect | Wrong expected outputs or wrong authored sequential tick pattern | The testbench expectation may be wrong even if the circuit is fine | Edit expected outputs / adjust vectors in Verify | Open in Design |
+| Unsupported verify setup | Unsupported feedback topology or blocked temporal contract | Verify cannot judge this circuit with the current supported model | Open in Design | None |
+| Stale verification state | Circuit or scenario changed after the last run | Older evidence is visible, but it is not a live failure verdict | Re-run / re-author / recapture | Keep old reference |
+| Ambiguous or mixed failure | A mismatch without enough structural evidence to disambiguate logic vs expectation | The first task is to inspect the concrete mismatch before editing | Inspect first mismatch | Edit expected outputs, Open in Design |
+
+Sequential-specific rule:
+
+- When `classifyVerifyFailure(...)` returns `timing-mismatch`, the explanation layer must frame the issue as clock/sample alignment work around a specific tick, not as a generic combinational logic failure.
 
 ## ProjectVectors Audit
 
@@ -188,6 +220,8 @@ The current repo state does **not** support deleting `projectVectors` outright y
   - current compare behavior now keys off `VerifySessionStatus` plus persisted `runKind`
   - summary pills, run-proof hero/copy, result-pane visibility, and trace capture CTA no longer use live `DisplayStatus` branches
   - next-run intent now drives only pre-run/reference copy, compare-vs-trace run wiring, and the advanced toggle state
+  - fail-state CTA routing now distinguishes Verify authoring recovery (`Edit expected outputs`) from Design recovery (`Open in Design`)
+  - stale authored references now demote back to trace-first recovery with explicit rerun / re-author / keep-reference actions
   - the remaining local split is mostly draft-only `READY` / `BLOCKED` presentation plus compatibility `projectVectors` paths
 - `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
   - first-run footer/copy now consumes authoritative vector/assertion counts from `VerifySurface` instead of inferring readiness from project-authored vectors alone

@@ -1,5 +1,64 @@
 # AI State
 
+## Change Log 2026-04-01 (Phase 6A — Verify workflow legitimacy: verify-first recovery, stale separation, unsupported routing)
+
+**Subsystem**: Verify surface workflow legitimacy / failure recovery / current-state docs
+
+### Problem
+
+Verify still mixed together several different bad states:
+
+1. assertion mismatches could route students straight back to Design even when the meaningful fix lived in Verify authoring
+2. one alternate fail-state branch still used the old Design-first recovery CTA stack
+3. structural preflight failures documented as Design-side problems did not provide a direct Design recovery action
+4. the current-state docs described Verify trust broadly but did not state the explicit failure taxonomy or routing contract
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - Added optional `detailsRef` prop and wired the post-run testbench `<details>` element to it so Verify can programmatically reopen the editor after a failure
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Added `scenarioBuilderDetailsRef` plus `handleEditExpectedOutputs()` to reopen and scroll to the post-run testbench editor
+  - Updated both fail-state run-proof branches to expose:
+    - `Inspect first mismatch`
+    - `Edit expected outputs`
+    - `Open in Design` as secondary/ghost action
+  - Rewrote mismatch guidance copy to distinguish expectation-authoring fixes from circuit-logic fixes
+  - Added `Open in Design` CTA to the generic verify preflight guard so structural verify failures have a documented recovery path
+
+- Tests added/updated:
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+    - unsupported verify setup does not expose Verify-authoring CTAs
+    - fail-state CTAs reopen the Verify testbench editor instead of immediately routing to Design
+    - stale authored reference remains `STALE` and avoids Design CTAs
+    - preflight diagnostics now expose and exercise Design recovery
+  - `packages/rb-apps/src/apps/ide/__tests__/VerifyFailureExplanationPanel.test.tsx`
+    - sequential timing mismatches now prove clock/reset/enable alignment guidance
+
+- Current-state docs updated:
+  - `03 Architecture/Verify Engine.md`
+  - `docs/contracts/Sequential_Support_Boundary.md`
+  - `docs/roadmap/RedByte_Gap_Audit.md`
+  - `01 Dashboard/RedByte Engineering Brain.md`
+
+### Student-visible behavior
+
+- Assertion mismatches now keep students in Verify first with an explicit `Edit expected outputs` recovery path
+- `Open in Design` remains available when the circuit logic may be wrong, but it is no longer the only mismatch action
+- Stale verify evidence remains explicitly distinct from failure and stays on rerun / re-author / keep-reference recovery paths
+- Structural preflight problems now offer a direct route back to Design
+
+### Proof
+
+- Focused Verify suites:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/VerifyFailureExplanationPanel.test.tsx`
+  - result: `35 passed`
+
+- Build proof:
+  - `pnpm --filter @redbyte/playground build`
+  - result: `EXIT 0`
+
 ## Change Log 2026-03-31 (Test sweep — 15 stale test expectations realigned)
 
 **Subsystem**: Test suite health (no implementation changes)

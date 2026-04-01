@@ -59,7 +59,13 @@ For Design workflow hierarchy work: [[Design Surface]]
 
 ## What is the next action
 
-**Pre-lab trust work is active.** Do not spend the next batch on Design chrome until signoff proof and hardware truth are restored.
+**Verify workflow legitimacy is the active product priority.** Do not jump back to export or hardware gap cleanup before the Verify failure-recovery contract and waveform readability are both credible.
+
+Immediate sequence:
+
+1. finish Verify workflow legitimacy proof and docs
+2. execute the waveform / oscilloscope overhaul
+3. only then return to remaining export / hardware legitimacy gaps
 
 Pre-lab audit override (2026-03-29):
 
@@ -90,6 +96,14 @@ Gap audit and product contract (2026-04-01):
 - `docs/contracts/RedByte_Product_Contract.md` — target-state blueprint defining what RedByte must become. Separate from the current-state Product Manual.
 - Two-layer truth model established: current-state docs (manual, traceability, conformance) stay factual; target-state docs (product contract) stay aspirational but testable.
 - Key findings: README claims OS-era features (3D editing, time-travel debugging). Manual overclaims 6+ non-existent features. Sequential path boundaries (falling-edge, multi-clock, active-low reset) are detected but not blocked. Design-time circuit errors (driver conflicts, combinational loops, floating drivers) only surface at export time.
+
+P6 verify workflow legitimacy — Phase 6A landed (2026-04-01):
+
+- Assertion mismatches now keep the student in Verify first. Fail-state CTAs expose `Edit expected outputs` from both the fail hero and mismatch panel.
+- `Open in Design` remains available for live logic defects, but it is no longer the only recovery path for assertion-backed failures.
+- Stale verify evidence remains explicitly distinct from failure. Stale authored references stay on rerun / re-author / keep-reference actions rather than collapsing into generic FAIL guidance.
+- Unsupported verify setups remain design-side problems and continue to surface an `Open Design` recovery path instead of pretending the testbench is fixable in Verify.
+- Targeted render coverage now guards: Verify-first mismatch recovery, stale-state messaging, unsupported routing, and sequential timing guidance.
 
 P5 design editor legitimacy landed (2026-04-01, commit 006c571c):
 

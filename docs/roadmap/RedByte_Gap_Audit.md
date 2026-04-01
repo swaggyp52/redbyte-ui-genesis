@@ -205,7 +205,7 @@ Claims in this audit are based on:
 |---|---:|---|
 | Workflow coherence | 4 | Rail, dock, and CTA hierarchy now agree on done conditions across all four steps; P3 fixed four divergence bugs |
 | Design editor legitimacy | 4 | Full palette, grid snap, macros, live circuit health feedback (multiple drivers, loops, floating, unconnected) — interaction quality needs runtime assessment |
-| Verify trust | 4 | 14 hints, drift detection, waveforms, pass/fail states — solid with minor language gaps |
+| Verify trust | 4 | 14 hints, drift detection, waveforms, pass/fail states, explicit stale-vs-fail routing, and Verify-first mismatch recovery — waveform readability and overall visual quality still need work |
 | Sequential/clocked trust | 4 | Rising-edge single-clock enforced across Verify + Export; falling-edge/multi-clock/active-low blocked; Counter4Bit stub removed |
 | Export/Vivado trust | 4 | Pipeline works, cross-artifact checks, 6-case Vivado proof, sequential boundaries enforced |
 | Hardware mapping clarity | 3 | 4 modes, pin assignment, dependency chain — unproven on real hardware |

@@ -55,6 +55,11 @@ RedByte v1 supports a **single-clock, rising-edge, active-high-reset** sequentia
 - When verify runs, the clocked macro sequence is `[0, 1, 0]` (setup → rising edge capture → post-edge stabilization).
 - Sample point is `post-rising-edge`. State accumulates across vectors.
 - If no external clock is mapped, sim clock injection provides a synthetic `__sim_clk__` node.
+- Sequential expectation mismatches are treated as Verify-authoring-or-timing issues first, not automatically as Design failures. The current Verify contract is:
+  - unsupported temporal structure → block Verify and send the student back to Design
+  - stale sequential evidence → show `STALE` and require rerun / recapture, never reuse FAIL wording
+  - live clocked expectation mismatch → keep the student in Verify with explicit `Edit expected outputs` recovery, while still allowing `Open in Design` as a secondary path when circuit logic may be wrong
+- Sequential mismatch guidance must speak in tick and edge language. The explanation layer should direct the student to inspect clock, reset, and enable alignment around the failing tick.
 
 ### Export Surface
 

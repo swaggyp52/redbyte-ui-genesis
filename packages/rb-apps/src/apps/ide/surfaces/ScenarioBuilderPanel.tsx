@@ -72,6 +72,9 @@ export interface ScenarioBuilderPanelProps {
   isUsingFallbackSignals?: boolean;
   // Navigation: go to Hardware surface to map I/O
   onGoToHardware?: () => void;
+  // Programmatic expansion: when set, the post-run <details> uses this ref
+  // so the parent can call ref.current.open = true to reveal the editor.
+  detailsRef?: React.RefObject<HTMLDetailsElement>;
 }
 
 function normalizeFieldId(value: string): string {
@@ -121,6 +124,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   isSequential = false,
   isUsingFallbackSignals = false,
   onGoToHardware,
+  detailsRef,
 }) => {
   const effectiveVectorCount = totalVectorCount ?? authoredVectors.length;
   const hasVectors = effectiveVectorCount > 0;
@@ -566,7 +570,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
 
   // Post-run: collapsed by default so waveform dominates; user opens to edit
   return (
-    <details className="ide-verify-scenario-builder-details ide-verify-scenario-builder-details--postrun">
+    <details ref={detailsRef} className="ide-verify-scenario-builder-details ide-verify-scenario-builder-details--postrun">
       <summary className="ide-verify-scenario-builder-summary">
         <span className="ide-verify-scenario-builder-summary-label">Testbench</span>
         {authoredVectors.length > 0 && (

@@ -6,6 +6,13 @@ import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 import { deriveTimingGuidance } from '../timingGuidance';
 
+if (!HTMLElement.prototype.scrollIntoView) {
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: vi.fn(),
+  });
+}
+
 function makePassRun(): RuntimeVerifyRun {
   return {
     scenarioId: 'pass-scenario',
@@ -311,6 +318,58 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-unsupported-feedback-design').textContent).toContain(
       'Open Design'
     );
+    expect(queryByTestId('ide-verify-run-proof-edit-vectors')).toBeNull();
+    expect(queryByTestId('ide-verify-mismatch-edit-vectors')).toBeNull();
+  });
+
+  it('keeps assertion mismatch recovery in Verify by opening the testbench editor from fail-state CTAs', () => {
+    const onGoToDesign = vi.fn();
+    const scrollIntoViewMock = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoViewMock,
+    });
+
+    const { container, getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={makeFailRun()}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        onGoToDesign={onGoToDesign}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    const details = container.querySelector(
+      '.ide-verify-scenario-builder-details--postrun'
+    ) as HTMLDetailsElement | null;
+
+    expect(details).toBeTruthy();
+    expect(details?.open).toBe(false);
+
+    fireEvent.click(getByTestId('ide-verify-run-proof-edit-vectors'));
+
+    expect(details?.open).toBe(true);
+    expect(scrollIntoViewMock).toHaveBeenCalled();
+    expect(onGoToDesign).not.toHaveBeenCalled();
+
+    details!.open = false;
+    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-mismatch-edit-vectors'));
+
+    expect(details?.open).toBe(true);
+    expect(scrollIntoViewMock).toHaveBeenCalled();
+    expect(onGoToDesign).not.toHaveBeenCalled();
+    expect(getByTestId('ide-verify-mismatch-goto-design').textContent).toContain('Open in Design');
   });
 
   it('shows observation-only capture guidance after a trace-only run with no asserted outputs', () => {
@@ -660,6 +719,7 @@ describe('VerifySurface workstation controls', () => {
     await waitFor(() => {
       expect(getByTestId('ide-verify-strip-stale-guidance').textContent).toContain('Older authored reference available');
     });
+    expect(getByTestId('ide-verify-session-status').textContent).toContain('STALE');
     expect(getByTestId('ide-verify-reference-mode').textContent).toContain('stale authored reference');
     expect(getByTestId('ide-verify-stale-reference-mode').textContent).toContain('stimulus-only tracing');
     expect(queryByTestId('ide-verify-stale-banner')).toBeNull();
@@ -668,6 +728,8 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(queryByTestId('ide-verify-assertion-mode-toggle')).toBeNull();
     expect(queryByTestId('ide-verify-advanced-debug')).toBeNull();
+    expect(queryByTestId('ide-verify-run-proof-design')).toBeNull();
+    expect(queryByTestId('ide-verify-mismatch-goto-design')).toBeNull();
 
     fireEvent.click(getByTestId('ide-verify-stale-keep-reference'));
     await waitFor(() => expect(onRunVerification).toHaveBeenCalledTimes(1));
@@ -884,6 +946,7 @@ describe('VerifySurface workstation controls', () => {
   });
 
   it('shows explicit preflight diagnostics when outputs cannot be verified', () => {
+    const onGoToDesign = vi.fn();
     const preflightRun: RuntimeVerifyRun = {
       ...makeFailRun(),
       reportHash: 'rep-preflight',
@@ -923,12 +986,18 @@ describe('VerifySurface workstation controls', () => {
           { id: 'sw0', direction: 'in' },
           { id: 'ld0', direction: 'out' },
         ]}
+        onGoToDesign={onGoToDesign}
         onOpenProjectVectors={vi.fn()}
       />
     );
 
     expect(getByTestId('ide-verify-preflight-guard').textContent).toContain('VPRE1002');
     expect(getByTestId('ide-verify-preflight-guard').textContent).toContain('Cannot verify: output ld0');
+    expect(getByTestId('ide-verify-preflight-open-design').textContent).toContain('Open in Design');
+
+    fireEvent.click(getByTestId('ide-verify-preflight-open-design'));
+
+    expect(onGoToDesign).toHaveBeenCalledTimes(1);
   });
 
   it('generates deterministic sweep vectors from presets', () => {

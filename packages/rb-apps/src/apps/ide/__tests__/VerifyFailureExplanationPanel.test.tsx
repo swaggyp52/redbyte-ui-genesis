@@ -73,6 +73,26 @@ describe('VerifyFailureExplanationPanel', () => {
     expect(getByTestId('ide-verify-right-next-step').textContent).toContain('inspect the carry path transition');
   });
 
+  it('frames sequential expectation failures as timing alignment work', () => {
+    const classification = classifyVerifyFailure({
+      expected: '1',
+      actual: '0',
+      isSequential: true,
+      clockingProtocol: 'clocked_macro',
+      samplePoint: 'post-rising-edge',
+    });
+
+    const { getByTestId } = render(
+      <VerifyFailureExplanationPanel
+        failure={{ tick: 2, signal: 'Q', expected: '1', actual: '0' }}
+        classification={classification}
+      />
+    );
+
+    expect(getByTestId('ide-verify-right-likely-reason').textContent).toContain('Clock or sample timing likely differs');
+    expect(getByTestId('ide-verify-right-next-step').textContent).toContain('Inspect clock, reset, and enable alignment around t2');
+  });
+
   it('shows an empty-state message when no failure is selected', () => {
     const { getByText } = render(
       <VerifyFailureExplanationPanel failure={null} classification={null} />

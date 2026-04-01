@@ -931,6 +931,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   });
   const waveformScrollRef = useRef<HTMLDivElement | null>(null);
   const draggedSignalRef = useRef<string | null>(null);
+  const scenarioBuilderDetailsRef = useRef<HTMLDetailsElement>(null);
 
   // N2 — restore oscilloscope UI state from sessionStorage on mount
   useEffect(() => {
@@ -1490,6 +1491,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     },
     [onFixPath]
   );
+
+  // Reveal the testbench editor (ScenarioBuilderPanel) which collapses post-run.
+  // Used by "Edit expected outputs" CTAs to route the student back into Verify authoring.
+  const handleEditExpectedOutputs = useCallback(() => {
+    const details = scenarioBuilderDetailsRef.current;
+    if (details) {
+      details.open = true;
+      details.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
   const handleThreePanelFailureSelect = useCallback(
     (failureKey: string) => {
       const target = failingRows.find(
@@ -4649,9 +4660,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-run-proof-inspect">
                       Inspect first mismatch
                     </IdeButton>
+                    <IdeButton tone="secondary" onClick={handleEditExpectedOutputs} testId="ide-verify-run-proof-edit-vectors">
+                      Edit expected outputs
+                    </IdeButton>
                     {onGoToDesign && (
-                      <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-verify-run-proof-design">
-                        Back to Design
+                      <IdeButton tone="ghost" onClick={onGoToDesign} testId="ide-verify-run-proof-design">
+                        Open in Design
                       </IdeButton>
                     )}
                   </>
@@ -4899,6 +4913,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           canCaptureObserved={Boolean(lastRun && sessionShowsTraceEvidence && canSetOracle)}
           timingGuidance={effectiveTimingGuidance}
           postRunToolbarMode={postRunToolbarMode}
+          detailsRef={scenarioBuilderDetailsRef}
         />
           {!isDraftSession && <div
             className="ide-verify-workbench ide-verify-workbench-v2"
@@ -5179,6 +5194,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       </li>
                     ))}
                   </ul>
+                  {onGoToDesign && (
+                    <div className="ide-inline-actions">
+                      <IdeButton
+                        tone="secondary"
+                        onClick={onGoToDesign}
+                        testId="ide-verify-preflight-open-design"
+                      >
+                        Open in Design
+                      </IdeButton>
+                    </div>
+                  )}
                 </IdeCallout>
               )}
               {hasNoTrace && (
@@ -5463,12 +5489,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   {/* Mismatch guidance — top-level orientation before the detail */}
                   {hasSessionFailureEvidence && (
                     <div className="ide-verify-mismatch-guidance" data-testid="ide-verify-mismatch-guidance">
-                      <span>Your circuit produced unexpected outputs. Either fix the circuit in Design, or accept the observed output as correct if it was intended.</span>
-                      {onGoToDesign && (
-                        <IdeButton tone="ghost" onClick={onGoToDesign} testId="ide-verify-mismatch-goto-design">
-                          Open in Design
+                      <span>Assertions differ. If the expected outputs are wrong, edit the testbench below. If the circuit logic is wrong, open Design.</span>
+                      <div className="ide-inline-actions">
+                        <IdeButton tone="secondary" onClick={handleEditExpectedOutputs} testId="ide-verify-mismatch-edit-vectors">
+                          Edit expected outputs
                         </IdeButton>
-                      )}
+                        {onGoToDesign && (
+                          <IdeButton tone="ghost" onClick={onGoToDesign} testId="ide-verify-mismatch-goto-design">
+                            Open in Design
+                          </IdeButton>
+                        )}
+                      </div>
                     </div>
                   )}
                   {/* Fail summary — compact selected-failure header */}
@@ -5905,9 +5936,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <div className="ide-verify-run-proof-actions">
                   {hasSessionFailureEvidence && (
                     <>
+                      <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-run-proof-inspect">
+                        Inspect first mismatch
+                      </IdeButton>
+                      <IdeButton tone="secondary" onClick={handleEditExpectedOutputs} testId="ide-verify-run-proof-edit-vectors">
+                        Edit expected outputs
+                      </IdeButton>
                       {onGoToDesign && (
-                        <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-verify-run-proof-design">
-                          Back to Design
+                        <IdeButton tone="ghost" onClick={onGoToDesign} testId="ide-verify-run-proof-design">
+                          Open in Design
                         </IdeButton>
                       )}
                     </>
