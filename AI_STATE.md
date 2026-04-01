@@ -1,5 +1,79 @@
 # AI State
 
+## Change Log 2026-04-01 (GAP-008 slice 2 — pin authority is now visible in Export)
+
+**Subsystem**: Export mapping clarity / student-facing authority truth
+
+### Problem
+
+GAP-008 slice 1 fixed internal authority reconciliation, but students still could not clearly answer:
+
+- which pin source Export is currently using
+- whether a pin changed because of Project/Map Pins updates upstream
+- whether Export is in shared authority mode or standalone local preview mode
+
+That left room for the same trust problem in perception even after internal data flow was corrected.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - Added a compact `Active pin source` callout at the top of the mapping section.
+  - Added plain-language authority messaging:
+    - shared mode: Export uses mapping from Project/Map Pins
+    - standalone mode: Export uses local preview mapping
+  - Added upstream reconciliation visibility:
+    - detects when authoritative project mapping values change between renders
+    - shows summary text for changed pin count
+    - marks affected rows with `Updated from Project / Map Pins.`
+  - Kept UI low-noise: no additional panels/routes, only one callout and targeted row note.
+
+- `packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx`
+  - Added focused tests for authority messaging and upstream-change visibility.
+
+### Student-visible behavior
+
+- Export now states which pin source is active right now.
+- When pins are updated upstream, Export explicitly tells the student that those updates came from Project/Map Pins.
+- Standalone/test mode still works, but now clearly labels that it is local preview mapping.
+
+### Proof
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx`
+  - result: `4 passed`
+
+## Change Log 2026-04-01 (GAP-008 slice 1 — export pin authority now prefers live project mapping)
+
+**Subsystem**: Export mapping authority and pin override reconciliation
+
+### Problem
+
+`ExportSurface` was maintaining local pin override state even when the parent already provided a live mapping update callback.
+That made authority ambiguous: the table and generated artifacts could be driven by local transient state while Project/Hardware mapping truth lived elsewhere.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - Added explicit authority mode detection (`hasExternalMappingAuthority` based on `onUpdateMappingPin`).
+  - Enforced one active authority chain in callback-wired mode: read pins from project/viewmodel authority, not local overlay state.
+  - Kept local draft behavior only for standalone contexts where no callback exists (tests/tools previewing Export in isolation).
+  - Unified mapping-derived counts, diagnostics suggestions, debug report lines, and table cell rendering through one effective pin map so every Export read path follows the same source.
+  - Reset local draft cache when switching to external-authority mode to avoid stale hidden draft carryover.
+
+- `packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx`
+  - Updated fixture to a stable mapped INPUT->OUTPUT project shape aligned with current Export truth model.
+  - Added authority regression coverage proving callback-driven pin edits are reflected only after parent project mapping updates.
+
+### Student-visible behavior
+
+- In normal IDE wiring, pin edits in Export now follow the same mapping authority as Project/Hardware.
+- Export no longer silently acts as an independent pin-authority island when parent mapping state is available.
+- Standalone/test rendering without parent wiring still supports local pin draft preview behavior.
+
+### Proof
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx`
+  - result: `2 passed`
+
 ## Change Log 2026-04-01 (Phase 6B-final — waveform orphan CSS removal and completion check)
 
 **Subsystem**: Verify waveform stylesheet hygiene / phase-exit verification

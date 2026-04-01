@@ -142,20 +142,24 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   timingGuidance,
 }) => {
   const surfaceRef = useRef<HTMLElement | null>(null);
+  const hasExternalMappingAuthority = Boolean(onUpdateMappingPin);
   const baseViewModel = useMemo(
     () => buildExportViewModel(project, verifyLastRun, activeScenario),
     [project, verifyLastRun, activeScenario]
   );
-  const [pinOverrides, setPinOverrides] = useState<Record<string, string>>(() =>
+  const [pinDrafts, setPinDrafts] = useState<Record<string, string>>(() =>
     createPinOverrideMap(baseViewModel.pinTable)
   );
-  const effectiveProject = useMemo(
-    () => applyPinOverridesToProject(project, pinOverrides),
-    [pinOverrides, project]
+  const localPreviewProject = useMemo(
+    () => applyPinOverridesToProject(project, pinDrafts),
+    [pinDrafts, project]
   );
   const viewModel = useMemo(
-    () => buildExportViewModel(effectiveProject, verifyLastRun, activeScenario),
-    [effectiveProject, verifyLastRun, activeScenario]
+    () =>
+      hasExternalMappingAuthority
+        ? baseViewModel
+        : buildExportViewModel(localPreviewProject, verifyLastRun, activeScenario),
+    [activeScenario, baseViewModel, hasExternalMappingAuthority, localPreviewProject, verifyLastRun]
   );
   const effectiveTimingGuidance = useMemo(
     () =>
@@ -205,9 +209,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
   useEffect(() => {
     const nextOverrides = createPinOverrideMap(baseViewModel.pinTable);
-    setPinOverrides(nextOverrides);
+    if (hasExternalMappingAuthority) {
+      // External authority mode reads directly from project mapping state.
+      setPinDrafts({});
+    } else {
+      // Standalone mode keeps local drafts so preview updates without parent wiring.
+      setPinDrafts(nextOverrides);
+    }
     setInvalidPins(buildInvalidPinSet(nextOverrides, editablePortKeys));
-  }, [baseViewModel.pinTable, editablePortKeys]);
+  }, [baseViewModel.pinTable, editablePortKeys, hasExternalMappingAuthority]);
 
   useEffect(() => {
     if (viewModel.artifacts.length === 0) {
@@ -255,6 +265,56 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     }
     return index;
   }, [viewModel.pinTable]);
+  const authoritativePinsByPortKey = useMemo(() => {
+    const pins: Record<string, string> = {};
+    for (const row of viewModel.pinTable) {
+      pins[toPortKey(row.port)] = row.pin ?? '';
+    }
+    return pins;
+  }, [viewModel.pinTable]);
+  const [recentlyReconciledPins, setRecentlyReconciledPins] = useState<Set<string>>(new Set());
+  const previousAuthoritativePins = useRef<Record<string, string> | null>(null);
+
+  useEffect(() => {
+    const previous = previousAuthoritativePins.current;
+    previousAuthoritativePins.current = authoritativePinsByPortKey;
+    if (!hasExternalMappingAuthority) {
+      setRecentlyReconciledPins(new Set());
+      return;
+    }
+    if (!previous) return;
+
+    const nextChangedPins = new Set<string>();
+    const keys = new Set<string>([
+      ...Object.keys(previous),
+      ...Object.keys(authoritativePinsByPortKey),
+    ]);
+    for (const key of keys) {
+      if (!editablePortKeys.has(key)) continue;
+      const before = (previous[key] ?? '').trim();
+      const after = (authoritativePinsByPortKey[key] ?? '').trim();
+      if (before !== after) {
+        nextChangedPins.add(key);
+      }
+    }
+    setRecentlyReconciledPins(nextChangedPins);
+  }, [authoritativePinsByPortKey, editablePortKeys, hasExternalMappingAuthority]);
+  const effectivePinsByPortKey = useMemo(() => {
+    const pins: Record<string, string> = {};
+    for (const row of viewModel.pinTable) {
+      const portKey = toPortKey(row.port);
+      const authoritativePin = row.pin ?? '';
+      // GAP-008 authority rule:
+      // - when a parent mapping updater exists, the project prop is the only source of truth;
+      // - otherwise, local drafts can drive preview edits for standalone contexts.
+      if (hasExternalMappingAuthority || !editablePortKeys.has(portKey)) {
+        pins[portKey] = authoritativePin;
+        continue;
+      }
+      pins[portKey] = pinDrafts[portKey] ?? authoritativePin;
+    }
+    return pins;
+  }, [editablePortKeys, hasExternalMappingAuthority, pinDrafts, viewModel.pinTable]);
 
   const hasBlockingErrors = viewModel.errors.length > 0;
   // When export is hard-blocked, suppress RBEV evidence advisories from the visible list —
@@ -294,13 +354,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const hasVerifyEvidenceWarning = evidenceDiagnostics.length > 0;
   const mappedCount = viewModel.pinTable.filter((row) => {
     const key = toPortKey(row.port);
-    const pinValue = (pinOverrides[key] ?? '').trim();
+    const pinValue = (effectivePinsByPortKey[key] ?? '').trim();
     return row.status !== 'unused' && pinValue.length > 0;
   }).length;
   const requiredCount = viewModel.pinTable.filter((r) => r.required).length;
   const requiredMappedCount = viewModel.pinTable.filter((r) => {
     if (!r.required) return false;
-    return (pinOverrides[toPortKey(r.port)] ?? '').trim().length > 0;
+    return (effectivePinsByPortKey[toPortKey(r.port)] ?? '').trim().length > 0;
   }).length;
   const clockDiag = diagnosticsList.find((d) => /clock/i.test(d.message));
   const feedbackDiag = diagnosticsList.find(
@@ -318,9 +378,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         (r) =>
           editablePortKeys.has(toPortKey(r.port)) &&
           r.suggestedPin &&
-          (pinOverrides[toPortKey(r.port)] ?? '').trim().length === 0
+          (effectivePinsByPortKey[toPortKey(r.port)] ?? '').trim().length === 0
       ).length,
-    [editablePortKeys, viewModel.pinTable, pinOverrides]
+    [editablePortKeys, effectivePinsByPortKey, viewModel.pinTable]
   );
   const projectMappingMissingRows = useMemo(
     () => viewModel.pinTable.filter((row) => row.required && !editablePortKeys.has(toPortKey(row.port))),
@@ -329,10 +389,16 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const unmappedRequiredPorts = useMemo(
     () =>
       viewModel.pinTable.filter(
-        (r) => r.required && (pinOverrides[toPortKey(r.port)] ?? '').trim().length === 0
+        (r) => r.required && (effectivePinsByPortKey[toPortKey(r.port)] ?? '').trim().length === 0
       ),
-    [viewModel.pinTable, pinOverrides]
+    [effectivePinsByPortKey, viewModel.pinTable]
   );
+  const mappingAuthoritySummary = hasExternalMappingAuthority
+    ? 'Export is using pin mapping from Project and Map Pins. Changes here follow that shared mapping.'
+    : 'Export is using a local preview mapping. This view is editable, but changes stay local to this Export session.';
+  const mappingAuthorityUpdateSummary = recentlyReconciledPins.size > 0
+    ? `${recentlyReconciledPins.size} pin ${recentlyReconciledPins.size === 1 ? 'was' : 'were'} updated from Project or Map Pins.`
+    : '';
 
   const appEnv = (import.meta as ImportMeta & {
     env?: { VITE_APP_VERSION?: string; VITE_GIT_SHA?: string };
@@ -699,7 +765,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     const mappingLines = [...viewModel.pinTable]
       .map((row) => {
         const portKey = toPortKey(row.port);
-        const pinValue = (pinOverrides[portKey] ?? row.pin ?? '').trim();
+        const pinValue = (effectivePinsByPortKey[portKey] ?? row.pin ?? '').trim();
         const resolvedPin = pinValue.length > 0 ? pinValue : 'UNMAPPED';
         const requiredTag = row.required ? ' required' : ' optional';
         return `${row.port} (${row.direction}, ${row.status}${requiredTag}) -> ${resolvedPin}`;
@@ -719,7 +785,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       ...mappingLines,
     ].join('\n');
   }, [
-    pinOverrides,
+    effectivePinsByPortKey,
     project.name,
     redbyteCommit,
     redbyteVersion,
@@ -746,12 +812,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     (portKey: string, newVal: string) => {
       if (!editablePortKeys.has(portKey)) return;
       const row = mappingIndex.get(portKey);
-      setPinOverrides((prev) => ({ ...prev, [portKey]: newVal }));
+      if (!hasExternalMappingAuthority) {
+        setPinDrafts((prev) => ({ ...prev, [portKey]: newVal }));
+      }
       if (row?.rowId) {
         onUpdateMappingPin?.(row.rowId, newVal.trim());
       }
     },
-    [editablePortKeys, mappingIndex, onUpdateMappingPin]
+    [editablePortKeys, hasExternalMappingAuthority, mappingIndex, onUpdateMappingPin]
   );
 
   const applySuggestion = (portKey: string) => {
@@ -768,13 +836,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       const key = toPortKey(row.port);
       if (!editablePortKeys.has(key)) continue;
       if (!row.suggestedPin) continue;
-      if ((pinOverrides[key] ?? '').trim().length === 0) {
+      if ((effectivePinsByPortKey[key] ?? '').trim().length === 0) {
         toApply.push({ key, rowId: row.rowId, pin: row.suggestedPin });
       }
     }
     if (toApply.length === 0) return;
-    const overridePatch = Object.fromEntries(toApply.map(({ key, pin }) => [key, pin]));
-    setPinOverrides((prev) => ({ ...prev, ...overridePatch }));
+    if (!hasExternalMappingAuthority) {
+      const overridePatch = Object.fromEntries(toApply.map(({ key, pin }) => [key, pin]));
+      setPinDrafts((prev) => ({ ...prev, ...overridePatch }));
+    }
     for (const { rowId, pin } of toApply) {
       if (rowId) onUpdateMappingPin?.(rowId, pin);
     }
@@ -1523,7 +1593,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     const mappingRow = portKey ? mappingIndex.get(portKey) : undefined;
                     const hasSuggestion =
                       Boolean(mappingRow?.suggestedPin) &&
-                      (pinOverrides[portKey ?? ''] ?? '').trim().length === 0;
+                      (effectivePinsByPortKey[portKey ?? ''] ?? '').trim().length === 0;
 
                     return (
                       <article
@@ -1623,6 +1693,20 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     {mappedCount}/{viewModel.pinTable.length} mapped
                   </span>
                 </header>
+                <IdeCallout
+                  tone={hasExternalMappingAuthority ? 'ok' : 'warn'}
+                  title="Active pin source"
+                  testId="ide-export-mapping-authority-callout"
+                >
+                  <p className="ide-copy" style={{ margin: 0 }} data-testid="ide-export-mapping-authority-text">
+                    {mappingAuthoritySummary}
+                  </p>
+                  {mappingAuthorityUpdateSummary.length > 0 && (
+                    <p className="ide-copy" style={{ margin: 'var(--ide-space-1) 0 0' }} data-testid="ide-export-mapping-authority-updates">
+                      {mappingAuthorityUpdateSummary}
+                    </p>
+                  )}
+                </IdeCallout>
                 {applySuggestionCount > 0 && (
                   <div className="ide-inline-actions" style={{ marginBottom: 'var(--ide-space-1)' }}>
                     <IdeButton
@@ -1657,11 +1741,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     <tbody>
                       {viewModel.pinTable.map((row) => {
                         const portKey = toPortKey(row.port);
-                        const pinValue = pinOverrides[portKey] ?? '';
+                        const pinValue = effectivePinsByPortKey[portKey] ?? '';
                         const status = resolveRowStatus(row.status, pinValue);
                         const conf = getPinConfidence(row.suggestedPin, pinValue);
                         const isPinInvalid = invalidPins.has(portKey);
                         const isEditable = editablePortKeys.has(portKey);
+                        const changedByAuthority = hasExternalMappingAuthority && recentlyReconciledPins.has(portKey);
                         return (
                           <tr
                             key={row.port}
@@ -1727,6 +1812,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                             </td>
                             <td className="ide-export-notes-cell">
                               {row.notes && <div>{row.notes}</div>}
+                              {changedByAuthority && (
+                                <div
+                                  className="ide-export-suggestion"
+                                  data-testid={`ide-export-pin-updated-upstream-${portKey}`}
+                                >
+                                  Updated from Project / Map Pins.
+                                </div>
+                              )}
                               {!isEditable && (
                                 <div className="ide-export-suggestion">
                                   Add this mapping in Project or Design before assigning a pin.
