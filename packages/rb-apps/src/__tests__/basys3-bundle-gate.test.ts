@@ -189,13 +189,13 @@ describe('RC D2 basys3 bundle gate', () => {
     });
   });
 
-  // Regression: preview README previously described a manual "Create new RTL project" workflow
-  // that does not match the actual Vivado project-folder ZIP format ("Open Project").
-  it('preview README describes Open Project workflow, not manual Create RTL Project flow', () => {
+  // Regression: preview README previously described a manual "Create new RTL project" workflow.
+  // The flat kit ZIP contains top.xdc (not basys3.xdc), so the README must reference top.xdc.
+  it('preview README describes Import Kit workflow with correct filenames', () => {
     const result = exportBasys3Bundle(validCircuit, validMapping);
     expect(result.readme).not.toContain('Create a new RTL project');
     expect(result.readme).toContain('Open Project');
-    expect(result.readme).toContain('basys3.xdc');
+    expect(result.readme).toContain('top.xdc');
     expect(result.readme).not.toContain('Add `top.xdc`');
   });
 });
