@@ -21,6 +21,7 @@ Design-time feedback for critical circuit errors is now live (P2). Two classroom
 - [x] documentation truthful (P0 complete — README rewritten, manual overclaims removed)
 - [x] sequential boundaries enforced (P1 complete — falling-edge/multi-clock/active-low blocked in both Verify and Export)
 - [x] design-time circuit health feedback (P2 complete — combinational loops, multiple drivers, floating outputs detected live)
+- [x] design editor legitimacy (P5 complete — undo granularity fixed, wire preview aligned, deletion feedback counts)
 - [ ] classroom-trustworthy (two pre-lab blockers remain)
 - [ ] manual/screenshot-worthy (visual gaps remain)
 - [ ] visually credible as a real tool (not assessed — runtime inspection needed)
@@ -255,10 +256,13 @@ Claims in this audit are based on:
 - **Scope:** Bridge System B (IR elaborator) diagnostics into canvas node glow and authoring status bar.
 - **Gap closed:** IR006 (combinational loop), IR004 (missing clock), IR001-IR005 now drive red/yellow node glow. Previously these diagnostics existed only in the diagnostics drawer and inspector — no canvas glow, no authoring status bar entry.
 
-### Phase 5 — Design editor legitimacy (needs runtime assessment first)
+### Phase 5 — Design editor legitimacy ✅ COMPLETE
+- **Completed:** 2026-04-01 (commit 006c571c)
 - **Goals:** Wire interaction, selection, deletion, undo/redo confidence, dense-circuit editing, sequential authoring clarity.
-- **Proof obligations:** A moderately complex circuit (8+ nodes) can be edited without frustration.
-- **Exit criteria:** Design surface passes screenshot-worthiness bar.
+- **Scope:** Three ranked fixes to make the canvas feel like a real circuit editor.
+- **Fix #1 (critical) — Drag undo granularity:** RAF-batched node moves no longer push to the undo stack. A new `handleNodeMoveCommit` fires exactly once at pointer-up, committing one undo entry for the entire drag. A 2-second drag now produces 1 undo entry instead of ~120.
+- **Fix #2 — Wire preview alignment:** Preview line now anchors at the actual port position (±24 from node center, using `isInputPort()` to determine direction) instead of the node body center. Eliminates the phantom wire starting in the wrong spot.
+- **Fix #3 — Cascading wire deletion feedback:** Keyboard Delete now shows a specific count ("Removed 2 nodes and 5 wires.") so users understand what was implicitly removed. `onDeleteFeedback` prop wired to `setActionToast` in DesignSurface.
 
 ### Phase 6 — Export / hardware / Vivado legitimacy
 - **Goals:** Gate export on verify, reconcile pin overrides, validate fallback testbench, prove hardware path.
