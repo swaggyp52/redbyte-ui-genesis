@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, within } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -209,5 +209,40 @@ describe('VerifySurface waveform lane priority', () => {
     expect(getWaveformOrder(container).slice(0, 5)).toEqual(['flag', 'sum', 'carry', 'sw0', 'sw1']);
     expect(getByTestId('ide-verify-run-context-ticks_shown').textContent).toContain('Showing t2-t8 (fail window)');
     expect(getByTestId('ide-verify-run-context-why_these_ticks').textContent).toContain('t8');
+  });
+
+  it('keeps assertion tick headers in sync with the fail-window waveform viewport', () => {
+    const { getAllByText, getByTestId } = render(
+      <VerifySurface
+        deterministicHash="det_wave_priority"
+        hasVectors={true}
+        lastRun={makeWaveformPriorityRun()}
+        vectors={makeWaveformPriorityRun().report.vectors}
+        probeSignals={[{ key: 'tap', label: 'Tap probe' }]}
+        mappedInputs={[
+          { id: 'sw0', label: 'SW0' },
+          { id: 'sw1', label: 'SW1' },
+        ]}
+        mappedSignals={[
+          { id: 'sw0', label: 'SW0', direction: 'in' },
+          { id: 'sw1', label: 'SW1', direction: 'in' },
+          { id: 'carry', label: 'Carry', direction: 'out' },
+          { id: 'sum', label: 'Sum', direction: 'out' },
+          { id: 'flag', label: 'Flag', direction: 'out' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getAllByText('Details')[0]);
+    fireEvent.click(getByTestId('ide-verify-failure-sum_8'));
+
+    const assertionCanvas = getByTestId('ide-assertion-canvas');
+    const assertionScope = within(assertionCanvas);
+    expect(assertionScope.getByText('t2')).toBeInTheDocument();
+    expect(assertionScope.getByText('t8')).toBeInTheDocument();
+    expect(assertionScope.queryByText('t0')).not.toBeInTheDocument();
+    expect(assertionScope.queryByText('t1')).not.toBeInTheDocument();
   });
 });

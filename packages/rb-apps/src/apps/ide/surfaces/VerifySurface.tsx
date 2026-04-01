@@ -5336,7 +5336,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 />
                 </div>
                 {/* AssertionCanvas — read-only assertion overlay aligned with waveform (Slice 6) */}
-                {sessionShowsCompareEvidence && lastRun && outputFields.length > 0 && timelineTicks.length > 0 && (
+                {sessionShowsCompareEvidence && lastRun && outputFields.length > 0 && zoomedTicks.length > 0 && (
                   <div
                     style={{
                       padding: '12px 12px 0 12px',
@@ -5345,7 +5345,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   >
                     <AssertionCanvas
                       outputFields={outputFields}
-                      ticks={timelineTicks}
+                      ticks={zoomedTicks}
+                      tickWidth={tickWidth}
                       getCellValue={getAssertionCellValue}
                       selectedTick={selectedTick}
                       selectedSignal={selectedSignal}

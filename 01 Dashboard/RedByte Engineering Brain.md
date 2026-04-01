@@ -63,8 +63,8 @@ For Design workflow hierarchy work: [[Design Surface]]
 
 Immediate sequence:
 
-1. finish Verify workflow legitimacy proof and docs
-2. execute the waveform / oscilloscope overhaul
+1. continue the waveform / oscilloscope overhaul
+2. finish the remaining Verify readability / professionalism gaps
 3. only then return to remaining export / hardware legitimacy gaps
 
 Pre-lab audit override (2026-03-29):
@@ -104,6 +104,12 @@ P6 verify workflow legitimacy — Phase 6A landed (2026-04-01):
 - Stale verify evidence remains explicitly distinct from failure. Stale authored references stay on rerun / re-author / keep-reference actions rather than collapsing into generic FAIL guidance.
 - Unsupported verify setups remain design-side problems and continue to surface an `Open Design` recovery path instead of pretending the testbench is fixable in Verify.
 - Targeted render coverage now guards: Verify-first mismatch recovery, stale-state messaging, unsupported routing, and sequential timing guidance.
+
+P6 waveform / oscilloscope legitimacy — first slice landed (2026-04-01):
+
+- The assertion overlay now inherits the live waveform `tickWidth`, so zooming the oscilloscope no longer leaves expected/observed cells on a stale 48 px grid.
+- Fail-window investigation now renders the assertion overlay against `zoomedTicks`, not the full timeline, so the evidence panel describes the same visible window as the waveform itself.
+- Targeted coverage now guards both parts of this contract: AssertionCanvas runtime geometry and VerifySurface fail-window tick sync.
 
 P5 design editor legitimacy landed (2026-04-01, commit 006c571c):
 

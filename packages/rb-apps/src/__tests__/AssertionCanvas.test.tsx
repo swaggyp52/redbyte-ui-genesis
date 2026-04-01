@@ -45,6 +45,13 @@ describe('AssertionCanvas', () => {
     expect(screen.getByText('t3')).toBeInTheDocument();
   });
 
+  it('uses the supplied tick width for layout geometry', () => {
+    const { container } = render(<AssertionCanvas {...baseProps} tickWidth={72} />);
+    const layoutRoot = container.querySelector('[data-testid="ide-assertion-canvas"] > div');
+    expect(layoutRoot).not.toBeNull();
+    expect(layoutRoot).toHaveStyle({ minWidth: '464px' });
+  });
+
   it('renders output signal rows', () => {
     render(<AssertionCanvas {...baseProps} />);
     expect(screen.getByText('y')).toBeInTheDocument();

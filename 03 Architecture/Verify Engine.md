@@ -47,6 +47,12 @@ The latest Verify workflow legitimacy slice hardened post-failure recovery:
 - stale runs remain explicitly non-failure states and stay on rerun / re-author / keep-reference recovery paths rather than collapsing into generic FAIL guidance
 - unsupported feedback structures and structural preflight failures remain design-side problems and continue to route to Design rather than pretending the fix lives in vector authoring
 
+The latest waveform legitimacy slice hardened the actual evidence viewport:
+
+- `AssertionCanvas` now inherits the live waveform `tickWidth` instead of assuming a fixed 48 px column width
+- the assertion overlay now renders `zoomedTicks`, not the full timeline, so fail-window investigation shows the same tick set in both surfaces
+- Verify now has an explicit evidence-geometry contract: the waveform viewport is the layout authority and any aligned overlays must use the same runtime tick window and column width
+
 ## Canonical Shape / Contract
 
 ### Run pipeline
@@ -147,6 +153,7 @@ assertions-differ
 - Assertion mismatch CTAs must keep Verify recoverable. `Edit expected outputs` is the primary authoring recovery for assertion-backed mismatches; `Open in Design` is secondary unless the surface has explicit structural evidence that Verify cannot evaluate the circuit truth.
 - Stale is not fail. Any stale branch must say the visible evidence belongs to an older build or scenario and must not reuse the language or CTA hierarchy of live assertion failures.
 - Unsupported feedback and verify preflight failures are not testbench-authoring errors. They should surface as blocked or structural states with Design-directed recovery.
+- The waveform viewport is the evidence-layout authority. Any overlay that claims to align with it must consume the same visible tick window and the same runtime tick width.
 
 ## Failure Taxonomy And Routing
 

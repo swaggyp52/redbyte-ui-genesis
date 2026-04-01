@@ -2,7 +2,7 @@
  * AssertionCanvas — read-only assertion/expected output overlay aligned with waveform timeline.
  *
  * Row-per-signal × column-per-tick grid showing expected values from verification run.
- * Layout constants mirror WaveformViewer: LABEL_W=140, TICK_W=48, ROW_H=34.
+ * Layout constants mirror WaveformViewer: LABEL_W=140, ROW_H=34.
  *
  * - Rendered when assertionMode is enabled.
  * - Shows expected vs actual comparison for output signals only.
@@ -22,7 +22,6 @@ import type { VerifyVectorDraftInput } from '../surfaces/ScenarioBuilderPanel';
 
 // ── Layout constants (mirror WaveformViewer + StimulusCanvas) ────────────────
 const LABEL_W = 140;
-const TICK_W = 48;
 const ROW_H = 34;
 const GROUP_H = 20;
 const ADD_COL_W = 36; // Reserve space for alignment with StimulusCanvas
@@ -40,6 +39,8 @@ export interface AssertionCanvasProps {
   outputFields: VerifyVectorDraftInput[];
   /** Tick numbers to render as columns. */
   ticks: number[];
+  /** Runtime waveform tick width, kept in sync with the oscilloscope viewport. */
+  tickWidth?: number;
   /** Get cell value for (tick, signal). */
   getCellValue: (tick: number, signal: string) => AssertionCellValue;
   /** Currently selected tick (for highlight). */
@@ -107,7 +108,12 @@ function analyzeCell(value: AssertionCellValue, assertionMode: boolean, fieldLab
 /**
  * Render visual indicator for a cell: mismatch "✗", pass "✓", or value square.
  */
-function renderCellContent(value: AssertionCellValue, isSelected: boolean, assertionMode: boolean) {
+function renderCellContent(
+  value: AssertionCellValue,
+  isSelected: boolean,
+  assertionMode: boolean,
+  tickWidth: number
+) {
   // If no assertion, show dash
   if (value.expected === null) {
     return <span style={{ fontSize: '0.72em', color: 'var(--rb-text-tertiary)' }}>—</span>;
@@ -118,7 +124,7 @@ function renderCellContent(value: AssertionCellValue, isSelected: boolean, asser
     return (
       <div
         style={{
-          width: TICK_W - 8,
+          width: tickWidth - 8,
           height: ROW_H - 10,
           borderRadius: 3,
           background: value.expected === 1 ? 'var(--rb-accent)' : 'transparent',
@@ -138,7 +144,7 @@ function renderCellContent(value: AssertionCellValue, isSelected: boolean, asser
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        width: TICK_W - 8,
+        width: tickWidth - 8,
         height: ROW_H - 10,
         borderRadius: 3,
         background: 'var(--rb-error-light, rgba(220, 50, 50, 0.1))',
@@ -158,6 +164,7 @@ function renderCellContent(value: AssertionCellValue, isSelected: boolean, asser
 export const AssertionCanvas: React.FC<AssertionCanvasProps> = ({
   outputFields,
   ticks,
+  tickWidth = 48,
   getCellValue,
   selectedTick,
   selectedSignal,
@@ -170,6 +177,7 @@ export const AssertionCanvas: React.FC<AssertionCanvasProps> = ({
     return null;
   }
 
+  const TICK_W = tickWidth;
   const totalW = LABEL_W + ticks.length * TICK_W + ADD_COL_W;
 
   return (
@@ -305,7 +313,7 @@ export const AssertionCanvas: React.FC<AssertionCanvasProps> = ({
                       justifyContent: 'center',
                     }}
                   >
-                    {renderCellContent(cellValue, isSelected, assertionMode)}
+                    {renderCellContent(cellValue, isSelected, assertionMode, TICK_W)}
                   </div>
                 </button>
               );

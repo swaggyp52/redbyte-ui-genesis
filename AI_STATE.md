@@ -1,5 +1,55 @@
 # AI State
 
+## Change Log 2026-04-01 (Phase 6B — waveform legitimacy slice 1: assertion overlay now matches waveform viewport geometry)
+
+**Subsystem**: Verify waveform / assertion overlay evidence contract
+
+### Problem
+
+The Verify oscilloscope and its assertion overlay were describing different evidence:
+
+1. `AssertionCanvas` hardcoded `TICK_W = 48` even though the waveform viewport uses runtime `tickWidth` and allows zooming
+2. the assertion overlay always rendered `timelineTicks` while the waveform itself rendered `zoomedTicks`
+3. in fail-window investigation, students could be looking at a 7-tick waveform while the assertion grid still showed off-window ticks from the full run
+
+This was a real product-legitimacy defect, not just styling drift. The expected/observed grid could visually imply the wrong tick alignment.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/components/AssertionCanvas.tsx`
+  - Added optional `tickWidth` prop with backward-compatible default `48`
+  - Replaced the hardcoded file-level tick width assumption with runtime geometry inside the component and its cell renderer
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - `AssertionCanvas` now receives `tickWidth={tickWidth}` so its columns stay locked to the oscilloscope zoom level
+  - `AssertionCanvas` now receives `ticks={zoomedTicks}` instead of `timelineTicks` so its column set matches the visible waveform window
+
+- Tests added/updated:
+  - `packages/rb-apps/src/__tests__/AssertionCanvas.test.tsx`
+    - proves the canvas layout width follows the supplied runtime tick width
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx`
+    - proves fail-window inspection keeps assertion tick headers in sync with the waveform viewport
+
+### Student-visible behavior
+
+- The assertion overlay now describes the same tick columns the student sees in the waveform viewport
+- Fail-window investigation no longer shows off-window assertion columns that contradict the selected waveform slice
+- Tick zoom changes keep the waveform and assertion grid aligned instead of letting them drift apart
+
+### Proof
+
+- Focused waveform legitimacy tests:
+  - `pnpm -w exec vitest run packages/rb-apps/src/__tests__/AssertionCanvas.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx`
+  - result: `15 passed`
+
+- Adjacent Verify regression:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - result: passed
+
+- Build proof:
+  - `pnpm --filter @redbyte/playground build`
+  - result: `EXIT 0`
+
 ## Change Log 2026-04-01 (Phase 6A — Verify workflow legitimacy: verify-first recovery, stale separation, unsupported routing)
 
 **Subsystem**: Verify surface workflow legitimacy / failure recovery / current-state docs
