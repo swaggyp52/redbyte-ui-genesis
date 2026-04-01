@@ -419,7 +419,13 @@ See Appendix A for a complete reference of each primitive, including port names 
 
 **Diagnostic Callouts.** When navigating to Design from a failing verification result, the system displays a diagnostic callout identifying the failing gate and suggesting the user check its inputs. This callout uses student-appropriate language.
 
-**Circuit Health.** A health indicator displays one of two states: "Circuit OK" or "Issues found." Issues include floating outputs, missing required I/O nodes, and invalid wire targets.
+**Circuit Health.** The Design surface provides live circuit health feedback through two systems:
+
+1. **Authoring issues** (status bar + node glow): Detects multiple drivers on a single input (blocking error), unconnected inputs (draft), and floating outputs (draft). Affected nodes glow and ports highlight with severity colors. The status bar shows "Blocking circuit issue," "Circuit needs review," "Draft wiring in progress," or "Ready to build."
+
+2. **Compiler diagnostics** (bottom drawer): The IR elaborator runs on every circuit change and detects structural errors including unknown primitives (IR001), multiple driver conflicts (IR002), floating output ports (IR003), missing clock connections on sequential elements (IR004), disconnected required inputs (IR005), and combinational feedback loops (IR006). Each diagnostic shows severity, code, title, hint, and a focus button to navigate to the affected node.
+
+The inspector panel shows per-selection health: primary issue with severity pill, fix hint, and focus button. Issues found during design will also block Verify and Export downstream.
 
 **Common Mistakes.**
 

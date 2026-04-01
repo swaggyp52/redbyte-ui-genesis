@@ -15,19 +15,19 @@ RedByte is a **substantially implemented FPGA educational IDE** with a sound arc
 
 The core engine and pipeline are legitimate. The documentation system (manual + audit + traceability) is more rigorous than most projects this size. The IDE-era spec documents under `docs/ide/` are current-truth and enforced.
 
-Design-time feedback for critical circuit errors is still missing. Two classroom blockers remain (Basys3 rehearsal, clean-tree signoff).
+Design-time feedback for critical circuit errors is now live (P2). Two classroom blockers remain (Basys3 rehearsal, clean-tree signoff).
 
 - [x] product-legit in its core student workflow
 - [x] documentation truthful (P0 complete — README rewritten, manual overclaims removed)
 - [x] sequential boundaries enforced (P1 complete — falling-edge/multi-clock/active-low blocked in both Verify and Export)
+- [x] design-time circuit health feedback (P2 complete — combinational loops, multiple drivers, floating outputs detected live)
 - [ ] classroom-trustworthy (two pre-lab blockers remain)
 - [ ] manual/screenshot-worthy (visual gaps remain)
 - [ ] visually credible as a real tool (not assessed — runtime inspection needed)
 
-### Primary blockers (remaining after P0+P1)
-1. Design-time circuit error feedback missing (GAP-006)
-2. Export not gated on verify pass (GAP-007)
-3. Two classroom blockers: Basys3 rehearsal + clean-tree signoff (GAP-013, GAP-014)
+### Primary blockers (remaining after P0+P1+P2)
+1. Export not gated on verify pass (GAP-007)
+2. Two classroom blockers: Basys3 rehearsal + clean-tree signoff (GAP-013, GAP-014)
 
 ### Immediate recommendation
 Fix the README and remove manual overclaims (P0 truth fixes). These are the highest-leverage, lowest-risk changes. They can be done in a single batch and immediately improve credibility for anyone reading the repo or the manual.
@@ -76,7 +76,7 @@ Claims in this audit are based on:
 ### What is functional but not yet legitimate
 - ~~Sequential path: rising-edge works, but falling-edge/multi-clock/active-low reset are detected and flagged without blocking~~ **FIXED (P1) — all three now block in both Verify and Export**
 - ~~Counter4Bit in palette as non-functional stub~~ **FIXED (P1) — removed from palette**
-- Design-time feedback: circuit errors (driver conflicts, combinational loops, floating drivers) only caught at export
+- ~~Design-time feedback: circuit errors only caught at export~~ **FIXED (P2) — IR006 combinational loop + multiple drivers + floating outputs + unconnected inputs all surfaced live during design**
 - Export: downloads allowed without verify pass
 - Latch execution: uses level-sensitive schedule — separate from clocked_macro but needs further validation
 
@@ -181,7 +181,7 @@ Claims in this audit are based on:
 | GAP-004 | Sequential | Multi-clock detected but not blocked | high | code: verifySchedule.ts | `verifySchedule.ts`, `basys3ExportService.ts` | **closed (P1)** — both Verify and Export block on multi-clock |
 | GAP-005 | Sequential | Active-low reset available but not blocked | high | code: vectorRunner.ts | `verifySchedule.ts`, `basys3ExportService.ts` | **closed (P1)** — Verify blocks via temporal issue; Export blocks via naming + NOT-gate checks |
 | GAP-005b | Sequential | Counter4Bit stub in palette | medium | code: composite-defs.ts | `DesignSurface.tsx` | **closed (P1)** — removed from palette |
-| GAP-006 | Design | Circuit errors only detected at export, not design time | high | code: basys3ExportService.ts | `DesignSurface.tsx`, export service | open |
+| GAP-006 | Design | Circuit errors only detected at export, not design time | high | code: basys3ExportService.ts | `elaborator.ts`, `designIssues.ts`, `DesignSurface.tsx` | **closed (P2)** — combinational loops (IR006), multiple drivers, floating outputs, unconnected inputs all detected live during design; compiler diagnostics drawer shows IR001-IR006 |
 | GAP-007 | Export | Export not gated on verify pass | medium | code: ExportSurface.tsx | `ExportSurface.tsx` | open |
 | GAP-008 | Export | Pin override / HardwareSurface reconciliation missing | medium | code inspection | `ExportSurface.tsx`, `HardwareSurface.tsx` | open |
 | GAP-009 | Docs | DOC_INDEX uses OS-era naming and references | medium | doc inspection | `docs/DOC_INDEX.md` | **closed (P0)** |
@@ -200,7 +200,7 @@ Claims in this audit are based on:
 | Category | Score | Notes |
 |---|---:|---|
 | Workflow coherence | 3 | Surfaces work, dependency chain enforced, but workflow spine not audited at runtime |
-| Design editor legitimacy | 3 | Full palette, grid snap, macros — but interaction quality needs runtime assessment |
+| Design editor legitimacy | 4 | Full palette, grid snap, macros, live circuit health feedback (multiple drivers, loops, floating, unconnected) — interaction quality needs runtime assessment |
 | Verify trust | 4 | 14 hints, drift detection, waveforms, pass/fail states — solid with minor language gaps |
 | Sequential/clocked trust | 4 | Rising-edge single-clock enforced across Verify + Export; falling-edge/multi-clock/active-low blocked; Counter4Bit stub removed |
 | Export/Vivado trust | 4 | Pipeline works, cross-artifact checks, 6-case Vivado proof, sequential boundaries enforced |
@@ -232,7 +232,13 @@ Claims in this audit are based on:
 - **Scope:** Export-path falling-edge + active-low-reset blocking, Counter4Bit palette removal, Sequential Support Boundary doc, 3 new enforcement tests.
 - **Closed:** GAP-003, GAP-004, GAP-005, GAP-005b
 
-### Phase 2 — Workflow spine alignment (needs runtime assessment first)
+### Phase 2 — Design-time circuit error feedback ✅ COMPLETE
+- **Completed:** 2026-04-01
+- **Goals:** Surface structural circuit problems during authoring instead of leaving them to Export/Verify.
+- **Scope:** IR006 combinational loop diagnostic in elaborator (with cycle node IDs), live design-time compiler diagnostics (IR001-IR006), 8 new feedback tests.
+- **Closed:** GAP-006
+
+### Phase 3 — Workflow spine alignment (needs runtime assessment first)
 - **Goals:** Unify Project / rail / headers / CTA hierarchy / progress authority.
 - **Proof obligations:** No surface contradicts another about done/blocked/next/why.
 - **Exit criteria:** All surface transitions are consistent. Rail, header, and CTAs agree.

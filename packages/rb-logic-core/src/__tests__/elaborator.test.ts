@@ -288,18 +288,17 @@ describe('IR Elaborator', () => {
   });
 
   // ─── Test 9: combinational loop ───────────────────────────────────────────
-  it('combinational loop sets hasCombinationalLoop=true with no blocking error', () => {
+  it('combinational loop sets hasCombinationalLoop=true and emits IR006 error', () => {
     const { ir } = elaborateCircuit(makeCombinationalLoopCircuit());
 
     expect(ir.features.hasCombinationalLoop).toBe(true);
 
-    // Loop itself is not a blocking error in elaboration (sim handles it at runtime)
-    const loopErrors = ir.diagnostics.filter(
-      d => d.severity === 'error' && d.code !== 'IR003' && d.code !== 'IR004'
-    );
-    // There should be no non-IR003/IR004 blocking errors solely due to the loop
-    // (IR003 may fire because the loop nodes have no boundary outputs)
-    expect(loopErrors.every(d => d.code !== 'LOOP_ERROR')).toBe(true);
+    // IR006: combinational loop is now a blocking error at elaboration
+    const ir006 = ir.diagnostics.find(d => d.code === 'IR006');
+    expect(ir006).toBeDefined();
+    expect(ir006!.severity).toBe('error');
+    expect(ir006!.message).toMatch(/combinational feedback loop/i);
+    expect(ir006!.nodeId).toBeDefined();
   });
 
   // ─── Test 10: disconnected required input → IR005 warning, isValid true ──

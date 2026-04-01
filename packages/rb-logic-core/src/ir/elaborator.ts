@@ -221,14 +221,21 @@ function deriveNetName(driver: IRNetEndpoint, nodeMap: Map<string, Node>): strin
 // Combinational loop detection
 // ---------------------------------------------------------------------------
 
+interface CombinationalLoopResult {
+  hasLoop: boolean;
+  /** Node IDs participating in the first detected cycle (empty when no loop). */
+  cycleNodeIds: string[];
+}
+
 /**
  * Detect cycles in the combinational subgraph.
  * Sequential primitives break cycle traversal at their state boundary.
+ * Returns the node IDs in the first detected cycle for diagnostic localization.
  */
 function detectCombinationalLoop(
   nodes: Node[],
   normedConns: Array<{ from: PortRef; to: PortRef }>,
-): boolean {
+): CombinationalLoopResult {
   // Only traverse combinational nodes
   const combNodeIds = new Set<string>(
     nodes.filter(n => !isSequentialNodeType(n.type)).map(n => n.id)
@@ -245,26 +252,37 @@ function detectCombinationalLoop(
     }
   }
 
-  // DFS cycle detection
+  // DFS cycle detection with path tracking
   const visited = new Set<string>();
   const inStack = new Set<string>();
+  const path: string[] = [];
 
-  function dfs(nodeId: string): boolean {
-    if (inStack.has(nodeId)) return true;   // back-edge → cycle
-    if (visited.has(nodeId)) return false;
+  function dfs(nodeId: string): string[] | null {
+    if (inStack.has(nodeId)) {
+      // Extract cycle from path
+      const cycleStart = path.indexOf(nodeId);
+      return cycleStart >= 0 ? path.slice(cycleStart) : [nodeId];
+    }
+    if (visited.has(nodeId)) return null;
     visited.add(nodeId);
     inStack.add(nodeId);
+    path.push(nodeId);
     for (const next of (adj.get(nodeId) ?? [])) {
-      if (dfs(next)) return true;
+      const cycle = dfs(next);
+      if (cycle) return cycle;
     }
+    path.pop();
     inStack.delete(nodeId);
-    return false;
+    return null;
   }
 
   for (const id of combNodeIds) {
-    if (!visited.has(id) && dfs(id)) return true;
+    if (!visited.has(id)) {
+      const cycle = dfs(id);
+      if (cycle) return { hasLoop: true, cycleNodeIds: cycle };
+    }
   }
-  return false;
+  return { hasLoop: false, cycleNodeIds: [] };
 }
 
 // ---------------------------------------------------------------------------
@@ -581,7 +599,21 @@ export function elaborateCircuit(
 
   // ─── Pass 8: Combinational loop detection ─────────────────────────────────
 
-  const hasCombinationalLoop = detectCombinationalLoop(nodes, normedConns);
+  const loopResult = detectCombinationalLoop(nodes, normedConns);
+  const hasCombinationalLoop = loopResult.hasLoop;
+
+  // IR006: combinational loop detected
+  if (hasCombinationalLoop) {
+    const cycleLabels = loopResult.cycleNodeIds
+      .map(id => nodeMap.get(id)?.label || id)
+      .join(' → ');
+    diagnostics.push({
+      code: 'IR006',
+      severity: 'error',
+      message: `Combinational feedback loop detected: ${cycleLabels}. Use a DFlipFlop, DLatch, or RSLatch to break the loop.`,
+      nodeId: loopResult.cycleNodeIds[0],
+    });
+  }
 
   // ─── Pass 9: Features summary ──────────────────────────────────────────────
 
