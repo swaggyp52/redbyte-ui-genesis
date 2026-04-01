@@ -97,6 +97,12 @@ P5 design editor legitimacy landed (2026-04-01, commit 006c571c):
 - **Wire preview aligned to port**: Preview line now starts at ±24 world-unit port offset (uses `isInputPort()` from wireValidation.ts) instead of node body center.
 - **Deletion feedback counts cascade wires**: Keyboard Delete shows "Removed 2 nodes and 5 wires." via `onDeleteFeedback` prop wired to `setActionToast` in DesignSurface.
 
+P6 export/hardware legitimacy — GAP-007 closed (2026-04-01, commit 7e152e14):
+
+- **Export header pill now three-state**: `exportTrusted → Ready (green)` / `downloadReady && !trusted → Available (warn)` / `blocked → Blocked (error)`. No longer shows green "Ready" when verify has not passed.
+- **Callout title/body per-state**: "Verify has not run" / "Verify is stale" / "Assertions differ" with specific, plain body text. Was generic "advisory compare state".
+- **8 new tests** in `projectHealth.test.ts`: all four verify states via `deriveProjectVerifyState` + `hasCurrentPassingVerify` authority contract.
+
 P6 export/hardware legitimacy — initial slice landed (2026-04-01, commit 404c44a8):
 
 - **Preview README rewrite**: `basys3Bundle.ts:buildReadme` was describing a manual "Create new RTL project" Vivado setup that does not match the actual ZIP format (a pre-configured project folder). Now describes the correct "Open Project" workflow with the right artifact list. Golden SHAs for both golden export tests regenerated.
