@@ -25,7 +25,7 @@ Design-time feedback for critical circuit errors is now live (P2). Two classroom
 - [ ] manual/screenshot-worthy (visual gaps remain)
 - [ ] visually credible as a real tool (not assessed — runtime inspection needed)
 
-### Primary blockers (remaining after P0+P1+P2)
+### Primary blockers (remaining after P0+P1+P2+P3)
 1. Export not gated on verify pass (GAP-007)
 2. Two classroom blockers: Basys3 rehearsal + clean-tree signoff (GAP-013, GAP-014)
 
@@ -199,7 +199,7 @@ Claims in this audit are based on:
 
 | Category | Score | Notes |
 |---|---:|---|
-| Workflow coherence | 3 | Surfaces work, dependency chain enforced, but workflow spine not audited at runtime |
+| Workflow coherence | 4 | Rail, dock, and CTA hierarchy now agree on done conditions across all four steps; P3 fixed four divergence bugs |
 | Design editor legitimacy | 4 | Full palette, grid snap, macros, live circuit health feedback (multiple drivers, loops, floating, unconnected) — interaction quality needs runtime assessment |
 | Verify trust | 4 | 14 hints, drift detection, waveforms, pass/fail states — solid with minor language gaps |
 | Sequential/clocked trust | 4 | Rising-edge single-clock enforced across Verify + Export; falling-edge/multi-clock/active-low blocked; Counter4Bit stub removed |
@@ -238,28 +238,40 @@ Claims in this audit are based on:
 - **Scope:** IR006 combinational loop diagnostic in elaborator (with cycle node IDs), live design-time compiler diagnostics (IR001-IR006), 8 new feedback tests.
 - **Closed:** GAP-006
 
-### Phase 3 — Workflow spine alignment (needs runtime assessment first)
+### Phase 3 — Workflow spine alignment ✅ COMPLETE
+- **Completed:** 2026-04-01 (commit 4c33d590)
 - **Goals:** Unify Project / rail / headers / CTA hierarchy / progress authority.
 - **Proof obligations:** No surface contradicts another about done/blocked/next/why.
-- **Exit criteria:** All surface transitions are consistent. Rail, header, and CTAs agree.
+- **Scope:** Four done-condition bugs in dock stage grid + RBP1001 CTA misdirection corrected.
+- **Bugs fixed:**
+  - Design dock gated on `hasIoMapping` (step 3 condition on step 1) → `hasCircuit` only
+  - Verify dock accepted any run including fail as done → strict `comparePassCurrent` (assertions-match)
+  - Hardware/Map Pins dock required export build to show done → `readiness.hasIoMapping` (pins filled)
+  - RBP1001 primary CTA sent student to Design surface when mapping is on Project surface → fixed
 
-### Phase 3 — Design editor legitimacy (needs runtime assessment first)
+### Phase 4 — Design-time canvas health visibility ✅ COMPLETE
+- **Completed:** 2026-04-01 (commit 6e3062ab)
+- **Goals:** Make IR compiler diagnostics visible on the canvas, not just in the drawer.
+- **Scope:** Bridge System B (IR elaborator) diagnostics into canvas node glow and authoring status bar.
+- **Gap closed:** IR006 (combinational loop), IR004 (missing clock), IR001-IR005 now drive red/yellow node glow. Previously these diagnostics existed only in the diagnostics drawer and inspector — no canvas glow, no authoring status bar entry.
+
+### Phase 5 — Design editor legitimacy (needs runtime assessment first)
 - **Goals:** Wire interaction, selection, deletion, undo/redo confidence, dense-circuit editing, sequential authoring clarity.
 - **Proof obligations:** A moderately complex circuit (8+ nodes) can be edited without frustration.
 - **Exit criteria:** Design surface passes screenshot-worthiness bar.
 
-### Phase 4 — Export / hardware / Vivado legitimacy
+### Phase 6 — Export / hardware / Vivado legitimacy
 - **Goals:** Gate export on verify, reconcile pin overrides, validate fallback testbench, prove hardware path.
 - **Proof obligations:** Basys3 rehearsal completed. Clean-tree signoff validated.
 - **Exit criteria:** GAP-007, GAP-008, GAP-013, GAP-014 closed.
 
-### Phase 5 — Product polish (needs runtime assessment)
+### Phase 7 — Product polish (needs runtime assessment)
 - **Goals:** Layout, spacing, visual hierarchy, empty states, status language consistency.
 - **Exit criteria:** All surfaces pass screenshot-worthiness bar.
 
-### Phase 6 — Manual-grade visuals
+### Phase 8 — Manual-grade visuals
 - **Goals:** Capture canonical screenshots, update manual visuals, regenerate PDF.
-- **Prerequisites:** Phase 0-4 complete. Phase 5 substantially complete.
+- **Prerequisites:** Phase 0-6 complete. Phase 7 substantially complete.
 - **Exit criteria:** Manual contains only screenshots of product-worthy states.
 
 ---
