@@ -630,12 +630,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [effectiveBoardSignal, highlightedMappingKey, ioBus, onGoToHardware, onUpdateMappingPin, sortedMappingRows]
   );
 
-  const designCardDone = readiness.hasCircuit && readiness.hasIoMapping;
+  const designCardDone = readiness.hasCircuit;
   const completedMilestoneCount = [
     designCardDone,
-    compareCurrent,
+    comparePassCurrent,
+    readiness.hasIoMapping,
     exportPackageCurrent,
-    hardwareReady,
   ].filter(Boolean).length;
   const dockStageItems = useMemo(
     () => [
@@ -643,7 +643,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         id: 'design',
         step: '01',
         label: 'Design',
-        meta: designCardDone ? 'Mapped' : readiness.hasCircuit ? 'In progress' : 'Start here',
+        meta: designCardDone ? 'Complete' : 'Start here',
         state: designCardDone ? 'done' : primaryCta.mode === 'design' ? 'active' : 'idle',
         onClick: onOpenDesign,
         testId: 'ide-project-dock-nav-design',
@@ -663,7 +663,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 : primaryCta.mode === 'verify'
                   ? 'Run now'
                   : 'Waiting',
-        state: compareCurrent ? 'done' : primaryCta.mode === 'verify' ? 'active' : 'idle',
+        state: comparePassCurrent ? 'done' : primaryCta.mode === 'verify' ? 'active' : 'idle',
         onClick: onOpenVerify,
         testId: 'ide-project-dock-nav-verify',
       },
@@ -671,8 +671,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         id: 'hardware',
         step: '03',
         label: MAP_PINS_STAGE_LABEL,
-        meta: hardwareReady ? 'Ready to program' : primaryCta.mode === 'hardware' ? 'Finish now' : 'Needs pins',
-        state: hardwareReady ? 'done' : primaryCta.mode === 'hardware' ? 'active' : 'idle',
+        meta: readiness.hasIoMapping
+          ? hardwareReady ? 'Ready to program' : 'Pins mapped'
+          : primaryCta.mode === 'hardware' ? 'Map now' : 'Needs pins',
+        state: readiness.hasIoMapping ? 'done' : primaryCta.mode === 'hardware' ? 'active' : 'idle',
         onClick: onOpenHardware,
         testId: 'ide-project-dock-nav-hardware',
       },
@@ -697,7 +699,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       onOpenVerify,
       primaryCta.mode,
       readiness.hasCircuit,
+      readiness.hasIoMapping,
       compareCurrent,
+      comparePassCurrent,
       compareDiffers,
       compareMatches,
       comparePassIncomplete,

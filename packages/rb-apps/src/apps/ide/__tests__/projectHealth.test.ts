@@ -91,8 +91,8 @@ describe('projectHealth verify trust vs structural blockers', () => {
 
     expect(health.blockingIssues.map((issue) => issue.code)).toEqual(['RBP1001', 'RBP1005']);
     expect(choosePrimaryProjectCta(health, readiness)).toEqual({
-      label: 'Design',
-      mode: 'design',
+      label: 'Fix Mapping',
+      mode: 'project',
       code: 'RBP1001',
     });
   });

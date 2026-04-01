@@ -189,7 +189,7 @@ export function choosePrimaryProjectCta(
     return { label: 'Verify', mode: 'verify', code: 'RBP1004' };
   }
   if (!readiness.hasIoMapping) {
-    return { label: 'Design', mode: 'design', code: 'RBP1001' };
+    return { label: 'Fix Mapping', mode: 'project', code: 'RBP1001' };
   }
   if (!readiness.hasVectors) {
     return { label: 'Verify', mode: 'verify', code: 'RBP1002' };
