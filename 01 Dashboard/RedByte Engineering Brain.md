@@ -71,7 +71,7 @@ Completed in this batch:
 
 Immediate sequence:
 
-1. rerun clean-tree classroom signoff after commit to confirm `CLASSROOM_READY`
+1. clean-tree classroom signoff is now confirmed (`CLASSROOM_READY`)
 2. continue remaining product-hardening slices from gap audit / product contract tracks, not generic chrome work
 3. keep runtime board current as new live defects are discovered
 

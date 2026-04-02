@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-04-02 (clean-tree classroom signoff confirmed)
+
+**Subsystem**: Release readiness / classroom gates
+
+### What changed
+
+- Committed the pending runtime and documentation work into four focused commits:
+  - `fix: close runtime board regressions in verify and import`
+  - `docs: sync runtime board and verify/import behavior notes`
+  - `docs: add LLC prep and product positioning pack`
+  - `chore: remove bulky reference binaries and tighten ignores`
+- Removed transient local helper artifacts so the working tree is clean.
+
+### Outcome
+
+- `node ./scripts/classroom-signoff.mjs` on a clean tree now returns:
+  - `Summary: 10/10 checks passed`
+  - `FINAL VERDICT: CLASSROOM_READY`
+
+### Follow-up
+
+- Keep runtime issue board updates tied to live inspections.
+- Continue from remaining product-hardening slices in `docs/roadmap/RedByte_Gap_Audit.md`.
+
 ## Change Log 2026-04-02 (RIB-004 — Import orphaned file chooser removed)
 
 **Subsystem**: Import first-look UX / file-input visibility safety
