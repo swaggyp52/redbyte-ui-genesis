@@ -591,6 +591,7 @@ Each blocking issue includes a direct navigation link to the surface where the i
 **Primary Controls.**
 
 - **Paste or upload input:** Enter VHDL text, upload a ZIP file, or paste XDC content.
+- **First-look quick demos:** The first-look shell exposes one-click sample demos for both structural import and blocked behavioral examples, so students can immediately see what reconstructs versus what is intentionally blocked.
 - **Review parsed ports:** Inspect the detected ports and their properties.
 - **Apply import:** Commit the imported content to the current project.
 

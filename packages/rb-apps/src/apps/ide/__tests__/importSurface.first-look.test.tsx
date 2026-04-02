@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render, waitFor } from '@testing-library/react';
 import { ImportSurface } from '../surfaces/ImportSurface';
 
 describe('ImportSurface first look', () => {
@@ -20,5 +20,31 @@ describe('ImportSurface first look', () => {
     expect(queryByTestId('ide-import-workbench')).toBeNull();
     expect(queryByTestId('ide-import-secondary-tools')).toBeNull();
     expect(queryByTestId('ide-import-replace-project')).toBeNull();
+  });
+
+  it('offers quick sample demos from first look, including blocked behavioral examples', async () => {
+    const view = render(<ImportSurface onImportProject={vi.fn()} />);
+
+    fireEvent.click(view.getByTestId('ide-import-toggle-behavioral-samples'));
+
+    await waitFor(() => {
+      expect(view.queryByTestId('ide-import-load-sample-edge-detect')).toBeTruthy();
+    });
+
+    fireEvent.click(view.getByTestId('ide-import-load-sample-edge-detect'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-import-ports-only-warning')).toBeTruthy();
+    });
+  });
+
+  it('loads a structural sample directly from first look without opening secondary tools', async () => {
+    const view = render(<ImportSurface onImportProject={vi.fn()} />);
+
+    fireEvent.click(view.getByTestId('ide-import-load-sample-and-gate'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-import-recon-full')).toBeTruthy();
+    });
   });
 });

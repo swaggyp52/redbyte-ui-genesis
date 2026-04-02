@@ -1431,6 +1431,17 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     importEntryAction.secondaryAction();
   };
 
+  const loadImportSample = useCallback((sampleId: string) => {
+    const sample = IMPORT_SAMPLES.find((entry) => entry.id === sampleId);
+    if (!sample) return;
+    setImportFirstLookDismissed(true);
+    setHdlText(sample.hdl);
+    setXdcText(sample.xdc);
+    setTab('hdl');
+    parseHdl(sample.hdl);
+    if (sample.xdc.trim()) parseXdc(sample.xdc);
+  }, [parseHdl, parseXdc]);
+
   const handleZipInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -1764,13 +1775,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 key={sample.id}
                 type="button"
                 className="ide-import-sample-card"
-                onClick={() => {
-                  setHdlText(sample.hdl);
-                  setXdcText(sample.xdc);
-                  setTab('hdl');
-                  parseHdl(sample.hdl);
-                  if (sample.xdc.trim()) parseXdc(sample.xdc);
-                }}
+                onClick={() => loadImportSample(sample.id)}
                 data-testid={`ide-import-load-sample-${sample.id}`}
               >
                 <span className="ide-import-sample-card-name">{sample.name}</span>
@@ -1783,13 +1788,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 key={sample.id}
                 type="button"
                 className="ide-import-sample-card ide-import-sample-card--behavioral"
-                onClick={() => {
-                  setHdlText(sample.hdl);
-                  setXdcText(sample.xdc);
-                  setTab('hdl');
-                  parseHdl(sample.hdl);
-                  if (sample.xdc.trim()) parseXdc(sample.xdc);
-                }}
+                onClick={() => loadImportSample(sample.id)}
                 data-testid={`ide-import-load-sample-${sample.id}`}
               >
                 <span className="ide-import-sample-card-name">{sample.name}</span>
@@ -2617,13 +2616,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 key={sample.id}
                 type="button"
                 className="ide-import-sample-card"
-                onClick={() => {
-                  setHdlText(sample.hdl);
-                  setXdcText(sample.xdc);
-                  setTab('hdl');
-                  parseHdl(sample.hdl);
-                  if (sample.xdc.trim()) parseXdc(sample.xdc);
-                }}
+                onClick={() => loadImportSample(sample.id)}
                 data-testid={`ide-import-load-sample-${sample.id}`}
               >
                 <span className="ide-import-sample-card-name">{sample.name}</span>
@@ -2636,13 +2629,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 key={sample.id}
                 type="button"
                 className="ide-import-sample-card ide-import-sample-card--behavioral"
-                onClick={() => {
-                  setHdlText(sample.hdl);
-                  setXdcText(sample.xdc);
-                  setTab('hdl');
-                  parseHdl(sample.hdl);
-                  if (sample.xdc.trim()) parseXdc(sample.xdc);
-                }}
+                onClick={() => loadImportSample(sample.id)}
                 data-testid={`ide-import-load-sample-${sample.id}`}
                 style={{ opacity: 0.7, borderStyle: 'dashed' }}
               >
@@ -2904,6 +2891,31 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     <strong>Paste structural HDL if needed</strong>
                     <p>Use Other ways to start only when you already have structural HDL text and want to build the preview by hand.</p>
                   </article>
+                </div>
+                <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
+                  <IdeButton
+                    tone="ghost"
+                    onClick={() => loadImportSample('and-gate')}
+                    testId="ide-import-load-sample-and-gate"
+                  >
+                    Try structural sample
+                  </IdeButton>
+                  <IdeButton
+                    tone="ghost"
+                    onClick={() => setShowBehavioralSamples((prev) => !prev)}
+                    testId="ide-import-toggle-behavioral-samples"
+                  >
+                    {showBehavioralSamples ? 'Hide unsupported examples' : 'Show unsupported examples (blocked)'}
+                  </IdeButton>
+                  {showBehavioralSamples ? (
+                    <IdeButton
+                      tone="ghost"
+                      onClick={() => loadImportSample('edge-detect')}
+                      testId="ide-import-load-sample-edge-detect"
+                    >
+                      Try blocked behavioral sample
+                    </IdeButton>
+                  ) : null}
                 </div>
               </SurfacePanel>
             ) : null}

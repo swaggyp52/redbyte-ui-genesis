@@ -67,6 +67,25 @@ for the ZIP uploader that is not properly hidden/positioned via CSS.
 **Proof:** `importSurface.submission.test.tsx` now includes `keeps the ZIP input intrinsically hidden from layout` and passes.  
 **Status:** FIXED in this session.
 
+### RIB-007 · First-look import flow hid sample honesty demos behind secondary navigation
+**Surface:** Import first-look onboarding
+**File:** `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+**Impact:** New students landed on the first-look shell but could not immediately run structural vs blocked-behavioral sample demos without switching into the workbench path first. This made the import honesty story harder to discover during first contact.
+**Root cause:** Sample controls (`ide-import-load-sample-*`, behavioral toggle) only rendered in non-first-look workbench sections.
+**Fix applied:** First-look guidance now includes direct quick-demo actions for:
+- structural sample (`ide-import-load-sample-and-gate`)
+- unsupported-example toggle (`ide-import-toggle-behavioral-samples`)
+- blocked behavioral sample (`ide-import-load-sample-edge-detect`)
+
+All sample loading now goes through one helper path (`loadImportSample`) to keep first-look and workbench behavior consistent.
+**Proof:** import suites pass with first-look + honesty expectations:
+- `importSurface.first-look.test.tsx`
+- `importSurface.honesty.test.tsx`
+- `importSurface.workstation.test.tsx`
+- `importSurface.verify-reset.test.tsx`
+- `importSurface.submission.test.tsx`
+**Status:** FIXED in this session.
+
 ---
 
 ## LOW / INFORMATIONAL
@@ -92,6 +111,7 @@ are pre-hardware steps requiring physical hardware — they cannot be auto-check
 | RIB-002 | HIGH | Export, Import, Pipeline | **FIXED** |
 | RIB-003 | HIGH | Verify waveform | **FIXED** |
 | RIB-004 | MEDIUM | Import | **FIXED** |
+| RIB-007 | MEDIUM | Import first-look | **FIXED** |
 | RIB-005 | LOW | Export | **FIXED** (via RIB-002) |
 | RIB-006 | LOW | Hardware | Known / Acceptable |
 

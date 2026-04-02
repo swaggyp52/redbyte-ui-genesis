@@ -1,5 +1,38 @@
 # AI State
 
+## Change Log 2026-04-02 (RIB-007 — Import first-look now exposes quick sample demos)
+
+**Subsystem**: Import onboarding / honesty legibility
+
+### Problem
+
+Import first-look emphasized ZIP-first onboarding, but structural and blocked-behavioral sample demos were only available after switching into the workbench controls. That hid a high-value trust path ("what imports cleanly vs what gets blocked") behind extra navigation during first contact.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+  - Added first-look quick demo actions in the guidance panel for:
+    - structural sample (`ide-import-load-sample-and-gate`)
+    - unsupported-example toggle (`ide-import-toggle-behavioral-samples`)
+    - blocked behavioral sample (`ide-import-load-sample-edge-detect`)
+  - Introduced a shared `loadImportSample` helper so first-look and workbench sample paths run the same import-loading logic.
+
+- `packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx`
+  - Added regression coverage for first-look quick-demo availability and blocked behavioral sample path.
+
+### Outcome
+
+- Focused import suites:
+  - `importSurface.first-look.test.tsx` ✅
+  - `importSurface.honesty.test.tsx` ✅
+  - `importSurface.submission.test.tsx` ✅
+  - `importSurface.verify-reset.test.tsx` ✅
+  - `importSurface.workstation.test.tsx` ✅
+
+### Runtime board sync
+
+- `RIB-007` recorded and marked FIXED in `docs/roadmap/RedByte_Runtime_Issue_Board_2026-04-02.md`.
+
 ## Change Log 2026-04-02 (clean-tree classroom signoff confirmed)
 
 **Subsystem**: Release readiness / classroom gates

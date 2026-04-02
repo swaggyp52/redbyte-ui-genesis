@@ -98,6 +98,7 @@
 | Manual Claim | Source File(s) | Key Lines | Test Coverage | Status |
 |-------------|----------------|-----------|---------------|--------|
 | Three tabs: Upload ZIP, Paste HDL, Paste XDC | `ImportSurface.tsx` | L1990 | — | CORRECTED (was "Write HDL") |
+| First-look exposes quick sample demos for structural and blocked behavioral import paths | `ImportSurface.tsx` | first-look guidance quick actions + `loadImportSample` helper | `importSurface.first-look.test.tsx`, `importSurface.honesty.test.tsx` | VERIFIED |
 
 ---
 

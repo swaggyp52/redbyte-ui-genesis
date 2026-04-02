@@ -68,6 +68,7 @@ Completed in this batch:
 3. captured runtime issue board at `docs/roadmap/RedByte_Runtime_Issue_Board_2026-04-02.md`
 4. fixed RIB-003 so PASS waveform now shows mapped input stimulus lanes by default
 5. fixed RIB-004 by making the Import ZIP file input intrinsically hidden in markup (no CSS-only hiding dependency)
+6. fixed RIB-007 by exposing first-look quick sample demos (including blocked behavioral examples) without hidden workbench-only navigation
 
 Immediate sequence:
 
