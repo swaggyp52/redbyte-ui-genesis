@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, within } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
@@ -153,6 +153,27 @@ function makeWaveformPriorityRun(): RuntimeVerifyRun {
   };
 }
 
+function makeWaveformPassRun(): RuntimeVerifyRun {
+  const base = makeWaveformPriorityRun();
+  return {
+    ...base,
+    status: 'pass',
+    firstFailingTick: null,
+    report: {
+      ...base.report,
+      rows: base.report.rows.map((row) => ({
+        ...row,
+        expected: row.actual,
+        status: 'pass' as const,
+      })),
+    },
+    waveform: base.waveform.map((entry) => ({
+      ...entry,
+      mismatches: [],
+    })),
+  };
+}
+
 function getSignalListOrder(container: HTMLElement): string[] {
   return Array.from(container.querySelectorAll('[data-testid="ide-verify-signal-list"] .ide-signal-row')).map(
     (node) => node.textContent?.trim() ?? ''
@@ -166,6 +187,110 @@ function getWaveformOrder(container: HTMLElement): string[] {
 }
 
 describe('VerifySurface waveform lane priority', () => {
+  beforeEach(() => {
+    window.sessionStorage.clear();
+  });
+
+  it('shows mapped input stimulus lanes by default on PASS runs', () => {
+    const { container } = render(
+      <VerifySurface
+        deterministicHash="det_wave_priority_pass"
+        hasVectors={true}
+        lastRun={makeWaveformPassRun()}
+        vectors={makeWaveformPassRun().report.vectors}
+        mappedInputs={[
+          { id: 'sw0', label: 'SW0' },
+          { id: 'sw1', label: 'SW1' },
+        ]}
+        mappedSignals={[
+          { id: 'sw0', label: 'SW0', direction: 'in' },
+          { id: 'sw1', label: 'SW1', direction: 'in' },
+          { id: 'carry', label: 'Carry', direction: 'out' },
+          { id: 'sum', label: 'Sum', direction: 'out' },
+          { id: 'flag', label: 'Flag', direction: 'out' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    const lanes = getWaveformOrder(container);
+    expect(lanes).toContain('sw0');
+    expect(lanes).toContain('sw1');
+  });
+
+  it('keeps mapped input stimulus lanes collapsed by default on FAIL runs', () => {
+    const { container } = render(
+      <VerifySurface
+        deterministicHash="det_wave_priority_fail"
+        hasVectors={true}
+        lastRun={makeWaveformPriorityRun()}
+        vectors={makeWaveformPriorityRun().report.vectors}
+        mappedInputs={[
+          { id: 'sw0', label: 'SW0' },
+          { id: 'sw1', label: 'SW1' },
+        ]}
+        mappedSignals={[
+          { id: 'sw0', label: 'SW0', direction: 'in' },
+          { id: 'sw1', label: 'SW1', direction: 'in' },
+          { id: 'carry', label: 'Carry', direction: 'out' },
+          { id: 'sum', label: 'Sum', direction: 'out' },
+          { id: 'flag', label: 'Flag', direction: 'out' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    const lanes = getWaveformOrder(container);
+    expect(lanes).toContain('carry');
+    expect(lanes).toContain('sum');
+    expect(lanes).toContain('flag');
+    expect(lanes).not.toContain('sw0');
+    expect(lanes).not.toContain('sw1');
+  });
+
+  it('auto-expands mapped inputs once per PASS run and preserves manual collapse on rerender', () => {
+    const passRun = makeWaveformPassRun();
+    const props = {
+      deterministicHash: passRun.deterministicHash,
+      hasVectors: true,
+      lastRun: passRun,
+      vectors: passRun.report.vectors,
+      mappedInputs: [
+        { id: 'sw0', label: 'SW0' },
+        { id: 'sw1', label: 'SW1' },
+      ],
+      mappedSignals: [
+        { id: 'sw0', label: 'SW0', direction: 'in' as const },
+        { id: 'sw1', label: 'SW1', direction: 'in' as const },
+        { id: 'carry', label: 'Carry', direction: 'out' as const },
+        { id: 'sum', label: 'Sum', direction: 'out' as const },
+        { id: 'flag', label: 'Flag', direction: 'out' as const },
+      ],
+      onOpenProjectVectors: vi.fn(),
+    };
+
+    const { container, getByTestId, rerender } = render(<VerifySurface {...props} />);
+
+    // PASS run auto-expands mapped inputs once.
+    expect(getWaveformOrder(container)).toContain('sw0');
+    expect(getWaveformOrder(container)).toContain('sw1');
+
+    const leftDockToggle = container.querySelector('[data-testid="ide-workbench-dock-toggle-left"]');
+    if (leftDockToggle instanceof HTMLElement) {
+      fireEvent.click(leftDockToggle);
+    }
+
+    // Student manually collapses inputs.
+    fireEvent.click(getByTestId('ide-verify-group-toggle-inputs'));
+    expect(getWaveformOrder(container)).not.toContain('sw0');
+    expect(getWaveformOrder(container)).not.toContain('sw1');
+
+    // Re-rendering the same run should preserve student choice.
+    rerender(<VerifySurface {...props} />);
+    expect(getWaveformOrder(container)).not.toContain('sw0');
+    expect(getWaveformOrder(container)).not.toContain('sw1');
+  });
+
   it('prioritizes selected failures, peer failures, probes, and manual pins in one ordering model', () => {
     const { container, getAllByText, getByTestId } = render(
       <VerifySurface

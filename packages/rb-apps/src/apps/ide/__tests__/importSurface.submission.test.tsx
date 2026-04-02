@@ -34,6 +34,15 @@ describe('ImportSurface submission ZIP handling', () => {
     expect(getAllByTestId('ide-import-zip-input')).toHaveLength(1);
   });
 
+  it('keeps the ZIP input intrinsically hidden from layout', () => {
+    const { getByTestId } = render(
+      <ImportSurface onImportSubmission={vi.fn()} />
+    );
+
+    const zipInput = getByTestId('ide-import-zip-input') as HTMLInputElement;
+    expect(zipInput.hasAttribute('hidden')).toBe(true);
+  });
+
   it('shows an actionable integrity failure message for tampered submissions', async () => {
     mockedParseIdeSubmissionZip.mockRejectedValue(
       new SubmissionIntegrityError('hash mismatch for "project.rbproj.json"')

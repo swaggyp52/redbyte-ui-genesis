@@ -65,8 +65,9 @@ function deriveStageStatus(
       return 'pending';
     }
     case 'hardware':
-      // Map Pins has no strong pass signal in the health model yet — keep pending unless verify passes
-      return 'pending';
+      // RBP1001 is added to blockingIssues when hasIoMapping is false (unfilled required pins).
+      // Its absence means all required I/O is mapped — consistent with the left-rail ✓ signal.
+      return !codes.has('RBP1001') ? 'pass' : 'pending';
     case 'export':
       return health.lastExport?.status === 'ok' && !health.dirtySinceExport ? 'pass' : 'pending';
     default:

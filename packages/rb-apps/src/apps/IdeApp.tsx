@@ -1734,7 +1734,7 @@ export const IdeApp: React.FC = () => {
         ref={importFileInputRef}
         type="file"
         accept=".rbproj,.rbproj.json,.json,application/json"
-        className="ide-hidden-file-input"
+        hidden
         onChange={(event) => {
           void handleProjectFileSelected(event);
         }}

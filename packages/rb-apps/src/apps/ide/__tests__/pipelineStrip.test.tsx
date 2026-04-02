@@ -66,4 +66,53 @@ describe('PipelineStrip export availability semantics', () => {
     expect(queryByTestId('ide-guided-blocker')).toBeNull();
     expect(getByTestId('ide-guided-primary-cta').textContent).toContain('Verify');
   });
+
+  it('marks Map Pins as pass when required mapping issue is absent', () => {
+    const { getByTestId } = render(
+      <PipelineStrip
+        currentMode="export"
+        health={{
+          lastVerify: {
+            status: 'pass',
+            report: { rows: [] },
+            tickCount: 8,
+            scenarioName: 'Signal Tour',
+          },
+          lastExport: undefined,
+          dirtySinceVerify: false,
+          dirtySinceExport: false,
+          blockingIssues: [],
+        }}
+        primaryCta={{ label: 'Export', mode: 'export', code: 'RBP2002' }}
+        onNavigate={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-pipeline-stage-hardware').getAttribute('aria-label')).toBe('Map Pins — pass');
+  });
+
+  it('keeps Map Pins pending when RBP1001 indicates incomplete mapping', () => {
+    const { getByTestId } = render(
+      <PipelineStrip
+        currentMode="verify"
+        health={{
+          lastVerify: undefined,
+          lastExport: undefined,
+          dirtySinceVerify: false,
+          dirtySinceExport: false,
+          blockingIssues: [
+            {
+              code: 'RBP1001',
+              message: 'Required Basys3 I/O mappings are missing.',
+              fixPath: { mode: 'project', actionLabel: 'Fix Mapping' },
+            },
+          ],
+        }}
+        primaryCta={{ label: 'Fix Mapping', mode: 'project', code: 'RBP1001' }}
+        onNavigate={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-pipeline-stage-hardware').getAttribute('aria-label')).toBe('Map Pins — pending');
+  });
 });

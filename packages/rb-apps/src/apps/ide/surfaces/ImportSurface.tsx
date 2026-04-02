@@ -3024,7 +3024,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
           ref={zipInputRef}
           type="file"
           accept=".zip,application/zip"
-          className="ide-hidden-file-input"
+          hidden
           onChange={(event) => {
             void handleZipInputChange(event);
           }}

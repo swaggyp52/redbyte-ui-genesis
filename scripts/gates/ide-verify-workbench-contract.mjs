@@ -19,15 +19,9 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   await page.locator('[data-testid="ide-verify-run"]').click();
   await waitForVerifyResult(page, { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-verify-workspace-waveform"]', { timeout: 10000 });
-  await page.waitForFunction(
-    () => {
-      const signalButtons = document.querySelectorAll('[data-testid^="ide-verify-signal-"]').length;
-      const showAll = document.querySelector('[data-testid="ide-verify-show-all-signals"]');
-      return signalButtons > 0 || Boolean(showAll);
-    },
-    { timeout: 10000 }
-  );
 
+  // After a PASS run the left dock is collapsed and signal buttons are not in the DOM.
+  // Open the dock first, then verify its contents.
   const signalFilterState = page.locator('[data-testid="ide-verify-signal-filter-state"]').first();
   const signalFilterVisible = await signalFilterState.isVisible().catch(() => false);
   if (!signalFilterVisible) {

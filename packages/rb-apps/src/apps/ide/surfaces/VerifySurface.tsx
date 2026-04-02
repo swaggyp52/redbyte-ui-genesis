@@ -933,6 +933,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   });
   const waveformScrollRef = useRef<HTMLDivElement | null>(null);
   const draggedSignalRef = useRef<string | null>(null);
+  const lastAutoExpandedPassRunRef = useRef<string | null>(null);
   const scenarioBuilderDetailsRef = useRef<HTMLDetailsElement>(null);
 
   // N2 — restore oscilloscope UI state from sessionStorage on mount
@@ -1381,6 +1382,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return grouped;
   }, [laneGroupBySignal, visibleSignalTimeline]);
+  const passRunWithNoMismatches = (lastRun?.status ?? 'idle') === 'pass' && failingRows.length === 0;
   const effectiveCollapsedGroups = useMemo<Record<SignalLaneGroup, boolean>>(() => {
     const onlyInternalLanes =
       visibleSignalTimeline.length > 0 &&
@@ -1393,6 +1395,22 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       Internal: false,
     };
   }, [collapsedGroups, laneGroupBySignal, visibleSignalTimeline]);
+
+  useEffect(() => {
+    if (!passRunWithNoMismatches) return;
+    if (groupedVisibleSignals.Inputs.length === 0) return;
+    const runKey = lastRun?.reportHash ?? lastRun?.deterministicHash ?? null;
+    if (!runKey || lastAutoExpandedPassRunRef.current === runKey) return;
+    setCollapsedGroups((previous) =>
+      previous.Inputs ? { ...previous, Inputs: false } : previous
+    );
+    lastAutoExpandedPassRunRef.current = runKey;
+  }, [
+    groupedVisibleSignals.Inputs.length,
+    lastRun?.deterministicHash,
+    lastRun?.reportHash,
+    passRunWithNoMismatches,
+  ]);
   const displaySignalTimeline = useMemo(() => {
     return visibleSignalTimeline.filter((entry) => {
       if (hiddenSignalSet.has(entry.signal)) return false;

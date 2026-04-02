@@ -3294,14 +3294,6 @@
   gap: var(--ide-space-2);
 }
 
-.ide-hidden-file-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
 .ide-load-project-modal {
   display: grid;
   gap: var(--ide-space-3);
