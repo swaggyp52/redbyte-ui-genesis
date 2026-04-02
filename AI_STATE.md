@@ -1,5 +1,42 @@
 # AI State
 
+## Change Log 2026-04-01 (repo:status timeout fix — signoff blocker is now a named gate failure, not an opaque timeout)
+
+**Subsystem**: Classroom signoff / repo-status reliability
+
+### Problem
+
+`pnpm -s repo:status` (called as the first check in `classroom-signoff.mjs`) was timing out after 10 minutes before any verdict was produced. The timeout was caused by the `pnpm build` step inside `repo-status.mjs` having no subprocess time limit. On this machine the build takes well over 10 minutes, consuming the signoff window before any gate checks reported.
+
+### What changed
+
+- `scripts/repo-status.mjs`
+  - Added `--skip-build` flag. When set, the build step prints `[SKIP]` rather than running. Artifact existence is still validated in step 5, so the skip cannot silently hide a missing build.
+
+- `scripts/classroom-signoff.mjs`
+  - Changed the first CHECKS entry from `pnpm -s repo:status` to `pnpm -s repo:status --skip-build`.
+  - Added a comment stating the precondition: dist artifacts must be pre-built before running signoff.
+
+### Outcome
+
+- `repo:status --skip-build` completes in ~7.8 minutes (within the 10-minute signoff window).
+- Signoff verdict is now `NOT_READY` (specific named check failure) instead of a timeout kill.
+- 9/10 signoff checks now pass.
+- Remaining single blocker: **IDE Verify Workbench Contract** (Playwright gate — waveform signal buttons do not appear within 30s after running verify). This is a bounded, named, actionable failure.
+
+### Proof
+
+```
+Summary: 9/10 checks passed
+[FAIL] Repo Health :: Repository status chain (469901ms)
+  [FAIL] IDE Verify Workbench Contract  ← only failing check inside repo:status
+FINAL VERDICT: NOT_READY
+```
+
+### Commit
+
+`1eeb3121`: fix: add --skip-build flag to repo:status, use in classroom-signoff
+
 ## Change Log 2026-04-01 (GAP-014 slice 1 — clean-tree signoff truth is now unmistakable)
 
 **Subsystem**: Classroom signoff / dirty-tree discipline
