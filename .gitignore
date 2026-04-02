@@ -89,6 +89,24 @@ playwright-report/
 /Labs.zip
 /FullAdderHDL.txt
 
+# Reference folder — external vendor docs, internal business docs, not source code
+_reference/
+
+# Vendor reference PDFs in archive (not source code)
+archive/pdfs/basys3_rm*.pdf
+
+# Additional build/CI output files (local-only)
+/demo-result.txt
+/gate_output.txt
+/screenshot-output.txt
+/test-files-list.txt
+/test-output.txt
+/build.log
+/build_output.log
+/vivado-getting-started-en-us-2025.1.pdf
+/ECE348_GECE598_Refer_VHDL_quick_start.pdf
+/*.exe
+
 # Claude Code IDE local settings
 .claude/settings.local.json
 
