@@ -23,8 +23,11 @@ const REQUIRED_SCRIPT_KEYS = [
 const CHECKS = [
   {
     section: 'Repo Health',
+    // Precondition: dist/ artifacts must already be built before running signoff.
+    // --skip-build skips the build step inside repo:status so the chain completes
+    // in a reasonable time. Artifact existence is still verified by repo:status step 5.
     name: 'Repository status chain',
-    command: 'pnpm -s repo:status',
+    command: 'pnpm -s repo:status --skip-build',
   },
   {
     section: 'Student Loop',

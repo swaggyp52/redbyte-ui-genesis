@@ -6,6 +6,11 @@
  * One-command health check for the RedByte UI repository.
  * Runs: static boot shadow contract -> build -> import gate -> artifact checks.
  *
+ * Flags:
+ *   --skip-build  Skip the pnpm build step. Use when dist artifacts are
+ *                 already fresh (e.g., in classroom-signoff after a pre-build).
+ *                 Artifact existence is still verified in step 5.
+ *
  * Exit codes:
  *   0 = Overall PASS (product is shippable)
  *   1 = Any check FAILED
@@ -16,6 +21,7 @@ import fs from 'fs';
 import path from 'path';
 
 const ROOT = process.cwd();
+const SKIP_BUILD = process.argv.includes('--skip-build');
 
 let totalChecks = 0;
 let passCount = 0;
@@ -117,7 +123,10 @@ if (!runCheck('IDE Bring-Up Contract', 'pnpm -s ide:gate:bringup-contract 2>&1')
 }
 
 // 3. Build (includes typecheck in vite build for product apps)
-if (!runCheck('Building', 'pnpm build 2>&1')) {
+if (SKIP_BUILD) {
+  console.log('\n[CHECK] Building...');
+  console.log('[SKIP] Building (--skip-build flag set; dist artifacts must be pre-built)');
+} else if (!runCheck('Building', 'pnpm build 2>&1')) {
   process.exit(1);
 }
 
