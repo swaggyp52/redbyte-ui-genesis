@@ -193,7 +193,7 @@ Claims in this audit are based on:
 | GAP-011 | Obsidian | Canonical Notes Policy missing ADR-002 and 5 architecture notes | medium | doc inspection | `08 Agents + Prompts/Canonical Notes Policy.md` | open |
 | GAP-012 | Docs | Manual has ~50+ unaudited claims in sections 5-8, 14-17, App D-E | low | doc inspection | `MANUAL_TRACEABILITY_MATRIX.md` | open |
 | GAP-013 | Classroom | Live Basys3 rehearsal unproven | high | Engineering Brain | hardware setup | **open (mitigated)** — strict hardware readiness gating added to `classroom:hw:check -- --strict` and optional `classroom:signoff -- --require-basys3` |
-| GAP-014 | Classroom | Clean-tree classroom signoff not validated | medium | Engineering Brain | build/signoff scripts | **closed (proof recorded)** — clean-tree signoff run from synced `main` now executes truthfully; result was `NOT_READY` due a concrete repo gate failure (`ide-design-workbench-contract` palette order drift), not dirty-tree ambiguity |
+| GAP-014 | Classroom | Clean-tree classroom signoff not validated | medium | Engineering Brain | build/signoff scripts | **closed (proof recorded)** — clean-tree signoff run from synced `main` executes truthfully; current `NOT_READY` is from bounded repo-health execution timeout (`pnpm -s repo:status` at 600000ms), not dirty-tree ambiguity |
 
 ---
 

@@ -72,6 +72,36 @@ GAP-014 semantics were improved, but clean-tree signoff evidence from synced `ma
   - result: `NOT_READY` (single failing gate)
   - run in this environment remained `NOT_READY` due an unrelated failing repo-status gate (`IDE Design Workbench Contract`), which is consistent with signoff truth and does not affect bypass-verdict logic
 
+## Change Log 2026-04-01 (Design workbench contract drift removed; next residual blocker is repo-status timeout)
+
+**Subsystem**: Clean-tree signoff residual blocker isolation
+
+### Problem
+
+After GAP-014 discipline proof, clean-tree signoff was still failing due `IDE Design Workbench Contract` expecting a stale palette section order.
+
+### What changed
+
+- Updated `scripts/gates/ide-design-workbench-contract.mjs` expected section order to match current intended product truth:
+  - `logic -> board -> sequential -> io -> reusable`
+- Re-ran direct gate proof:
+  - `node ./scripts/gates/ide-design-workbench-contract.mjs`
+  - result: `PASS`
+
+### Proof
+
+- Clean-tree signoff rerun:
+  - `node ./scripts/classroom-signoff.mjs`
+  - result: `Summary: 9/10 checks passed`, `FINAL VERDICT: NOT_READY`
+- New bounded blocker:
+  - `Repo Health :: Repository status chain`
+  - detail: `Command timed out after 600000ms: pnpm -s repo:status`
+
+### Impact
+
+- Palette-order contract drift is removed from the blocker path.
+- Remaining signoff blocker is now a smaller operational gate-runtime issue (repo-status timeout) plus still-open GAP-013 hardware rehearsal evidence.
+
 ## Change Log 2026-04-01 (GAP-013 slice 1 — strict Basys3 readiness gate for classroom handoff)
 
 **Subsystem**: Classroom signoff / hardware readiness truth
