@@ -50,6 +50,7 @@ export interface ImportSurfaceProps {
   projectIoRows?: IdeExampleIoRow[];
   onApplySuggestions?: (items: Array<{ rowId: string; pin: string }>) => void;
   onGoToProject?: () => void;
+  onGoToDesign?: () => void;
   onGoToVerify?: () => void;
   onGoToExport?: () => void;
 }
@@ -341,6 +342,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   projectIoRows,
   onApplySuggestions,
   onGoToProject,
+  onGoToDesign,
   onGoToVerify,
   onGoToExport,
 }) => {
@@ -2997,9 +2999,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     </ul>
                   </details>
                 ) : null}
-                {onGoToProject && (
+                {onGoToDesign && (
                   <div style={{ marginTop: 'var(--ide-space-2)' }}>
-                    <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-import-blocker-go-design">
+                    <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-import-blocker-go-design">
                       Start fresh in Design →
                     </IdeButton>
                   </div>
@@ -3197,9 +3199,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     </p>
                   </details>
                 )}
-                {onGoToProject && (
+                {onGoToDesign && (
                   <div style={{ marginTop: 'var(--ide-space-2)' }}>
-                    <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-import-blocker-go-design">
+                    <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-import-blocker-go-design">
                       Start fresh in Design →
                     </IdeButton>
                   </div>

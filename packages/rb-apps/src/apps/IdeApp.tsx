@@ -1720,6 +1720,7 @@ export const IdeApp: React.FC = () => {
               projectIoRows={projectIoRows}
               onApplySuggestions={handleApplySuggestions}
               onGoToProject={() => setCurrentMode('project')}
+              onGoToDesign={() => setCurrentMode('design')}
               onGoToVerify={() => setCurrentMode('verify')}
               onGoToExport={() => setCurrentMode('export')}
             />

@@ -13,6 +13,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { ImportSurface } from '../surfaces/ImportSurface';
 
+function enterImportWorkbench(view: ReturnType<typeof render>) {
+  fireEvent.click(view.getByTestId('ide-import-start-other-options-toggle'));
+  fireEvent.click(view.getByTestId('ide-import-start-secondary'));
+}
+
 describe('Import honesty — ports-only', () => {
   it('shows explicit ports-only message when behavioral HDL is loaded', async () => {
     const view = render(<ImportSurface onImportProject={vi.fn()} />);
@@ -90,5 +95,39 @@ describe('Import honesty — full structural reconstruction', () => {
     const notice = view.getByTestId('ide-import-recon-full');
     expect(notice.textContent).toContain('Structural HDL');
     expect(notice.textContent).toContain('gates and connections');
+  });
+});
+
+describe('Import honesty — blocker recovery routing', () => {
+  it('routes the blocker recovery CTA to Design instead of Project', async () => {
+    const onGoToProject = vi.fn();
+    const onGoToDesign = vi.fn();
+    const view = render(
+      <ImportSurface
+        onImportProject={vi.fn()}
+        onGoToProject={onGoToProject}
+        onGoToDesign={onGoToDesign}
+      />
+    );
+
+    enterImportWorkbench(view);
+    fireEvent.click(view.getByTestId('ide-import-toggle-behavioral-samples'));
+    fireEvent.click(view.getByTestId('ide-import-load-sample-edge-detect'));
+    fireEvent.click(view.getByTestId('ide-import-parse-xdc'));
+
+    await waitFor(() => {
+      expect((view.getByTestId('ide-import-replace-project') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    fireEvent.click(view.getByTestId('ide-import-replace-project'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-import-behavioral-blocker')).toBeTruthy();
+    });
+
+    fireEvent.click(view.getByTestId('ide-import-blocker-go-design'));
+
+    expect(onGoToDesign).toHaveBeenCalledTimes(1);
+    expect(onGoToProject).not.toHaveBeenCalled();
   });
 });

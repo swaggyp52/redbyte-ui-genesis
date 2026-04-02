@@ -70,6 +70,7 @@ Completed in this batch:
 5. fixed RIB-004 by making the Import ZIP file input intrinsically hidden in markup (no CSS-only hiding dependency)
 6. fixed RIB-007 by exposing first-look quick sample demos (including blocked behavioral examples) without hidden workbench-only navigation
 7. fixed RIB-008 by aligning first-look manual-path guidance copy with the now-visible quick-demo actions
+8. fixed RIB-009 by wiring the behavioral-import blocker CTA to actual Design navigation (label/route contract now truthful)
 
 Immediate sequence:
 

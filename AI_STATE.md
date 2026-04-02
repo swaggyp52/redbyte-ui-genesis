@@ -1,5 +1,39 @@
 # AI State
 
+## Change Log 2026-04-02 (RIB-009 — Import behavioral blocker CTA now routes to Design)
+
+**Subsystem**: Import blocker recovery truth
+
+### Problem
+
+The behavioral-import blocker callout showed the CTA text `Start fresh in Design →` but invoked Project navigation. This broke workflow trust by sending students to a different surface than the one explicitly promised.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+  - Added `onGoToDesign?: () => void` to `ImportSurfaceProps`.
+  - Rewired both blocker CTA render paths (`ide-import-blocker-go-design`) to use `onGoToDesign` instead of `onGoToProject`.
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Import surface wiring now passes `onGoToDesign={() => setCurrentMode('design')}`.
+
+- `packages/rb-apps/src/apps/ide/__tests__/importSurface.honesty.test.tsx`
+  - Added regression test: `routes the blocker recovery CTA to Design instead of Project`.
+
+### Outcome
+
+- Focused import suites: `17 passed (17)` across
+  - `importSurface.honesty.test.tsx`
+  - `importSurface.first-look.test.tsx`
+  - `importSurface.verify-reset.test.tsx`
+  - `importSurface.workstation.test.tsx`
+  - `importSurface.submission.test.tsx`
+- Broader build check: `pnpm -w --filter @redbyte/playground build` passed.
+
+### Runtime board sync
+
+- `RIB-009` recorded and marked FIXED in `docs/roadmap/RedByte_Runtime_Issue_Board_2026-04-02.md`.
+
 ## Change Log 2026-04-02 (RIB-008 — Import first-look guidance copy now matches visible actions)
 
 **Subsystem**: Import onboarding copy truth

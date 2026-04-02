@@ -613,6 +613,7 @@ Each blocking issue includes a direct navigation link to the surface where the i
 
 - Attempting to re-import RedByte's own exported `top.vhd` expecting full reconstruction. The exported VHDL uses concurrent signal assignments for Vivado synthesis, which cannot be reconstructed into gate-level topology. Use the `.rbproj.json` file from the same export ZIP for full-fidelity re-import.
 - Importing behavioral VHDL and expecting the full circuit to appear. Behavioral code only yields port-level information.
+- When behavioral constructs trigger an import blocker, use the callout action `Start fresh in Design` to recover directly in the schematic editor before re-verifying and exporting.
 
 ---
 

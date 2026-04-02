@@ -97,6 +97,17 @@ All sample loading now goes through one helper path (`loadImportSample`) to keep
 **Proof:** `importSurface.first-look.test.tsx` now asserts the first-look guidance includes “quick demos”, and focused import suites remain green.
 **Status:** FIXED in this session.
 
+### RIB-009 · Behavioral import blocker CTA promised Design but routed to Project
+**Surface:** Import blocker recovery path
+**Files:**
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+**Impact:** The blocker callout button label said `Start fresh in Design →`, but the handler used the Project navigation callback. That contradiction breaks recovery trust at exactly the moment students need clear next-step guidance.
+**Root cause:** The blocker CTA was wired to `onGoToProject` while copy and intent were design-surface recovery.
+**Fix applied:** Added explicit `onGoToDesign` support to ImportSurface and rewired blocker CTA handlers to use it. IdeApp now passes `onGoToDesign={() => setCurrentMode('design')}` to ImportSurface.
+**Proof:** `importSurface.honesty.test.tsx` now includes `routes the blocker recovery CTA to Design instead of Project` and focused import suites pass (`17 passed`).
+**Status:** FIXED in this session.
+
 ---
 
 ## LOW / INFORMATIONAL
@@ -124,7 +135,8 @@ are pre-hardware steps requiring physical hardware — they cannot be auto-check
 | RIB-004 | MEDIUM | Import | **FIXED** |
 | RIB-007 | MEDIUM | Import first-look | **FIXED** |
 | RIB-008 | LOW | Import first-look copy truth | **FIXED** |
+| RIB-009 | MEDIUM | Import blocker recovery CTA | **FIXED** |
 | RIB-005 | LOW | Export | **FIXED** (via RIB-002) |
 | RIB-006 | LOW | Hardware | Known / Acceptable |
 
-Four issues fixed across the current runtime board session set. Remaining low-priority note: RIB-006 (known/acceptable).
+Seven issues fixed across the current runtime board session set. Remaining low-priority note: RIB-006 (known/acceptable).
