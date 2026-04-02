@@ -117,6 +117,7 @@ function checkGitWorkingTree() {
         pass: true,
         elapsed: elapsedMs(startedAt),
         details: '',
+        bypassed: false,
       };
     }
 
@@ -125,6 +126,7 @@ function checkGitWorkingTree() {
         pass: true,
         elapsed: elapsedMs(startedAt),
         details: `ALLOW_DIRTY override active. Current changes:\n${output}`,
+        bypassed: true,
       };
     }
 
@@ -132,6 +134,7 @@ function checkGitWorkingTree() {
       pass: false,
       elapsed: elapsedMs(startedAt),
       details: `Working tree is not clean:\n${output}`,
+      bypassed: false,
     };
   } catch (error) {
     if (error?.code === 'ETIMEDOUT' || error?.killed) {
@@ -373,11 +376,21 @@ function main() {
 
   const failed = results.filter((result) => !result.pass);
   const passed = results.length - failed.length;
+  const workingTreeResult = results.find((result) => result.name === 'Working tree clean');
+  const degradedBypassMode = Boolean(workingTreeResult?.bypassed);
 
   console.log('');
   console.log(`Summary: ${passed}/${results.length} checks passed`);
+  if (ALLOW_DIRTY && !degradedBypassMode) {
+    console.log('NOTE: --allow-dirty was set, but no dirty-tree bypass was used in this run.');
+  }
 
   if (failed.length === 0) {
+    if (degradedBypassMode) {
+      console.log('FINAL VERDICT: DEV_BYPASS_ONLY');
+      console.log('CLASSROOM_READY: NO (allow-dirty bypass mode)');
+      process.exit(0);
+    }
     console.log('FINAL VERDICT: CLASSROOM_READY');
     process.exit(0);
   }

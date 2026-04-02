@@ -144,6 +144,7 @@
         "classroom:rehearse:lab4": "pnpm exec tsx ./scripts/classroom-rehearse-lab4.ts",
         "classroom:gate": "node ./scripts/classroom-gate.mjs",
         "classroom:signoff": "node ./scripts/classroom-signoff.mjs",
+        "classroom:signoff:dev": "node ./scripts/classroom-signoff.mjs --allow-dirty",
         "classroom:signoff:hardware": "node ./scripts/classroom-signoff.mjs --require-basys3",
         "gen-license-snapshot": "node scripts/gen-license-snapshot.mjs",
         "verify:all": "pnpm -s verify:gates",

@@ -1,5 +1,45 @@
 # AI State
 
+## Change Log 2026-04-01 (GAP-014 slice 1 — clean-tree signoff truth is now unmistakable)
+
+**Subsystem**: Classroom signoff / dirty-tree discipline
+
+### Problem
+
+`classroom:signoff` supported `--allow-dirty` for developer workflows, but successful bypass runs could still look too close to real classroom certification.
+That made it too easy to misread a degraded run as release-safe readiness.
+
+### What changed
+
+- `scripts/classroom-signoff.mjs`
+  - Added explicit dirty-bypass state tracking from the working-tree check.
+  - Enforced verdict discipline:
+    - clean run with all checks passing => `FINAL VERDICT: CLASSROOM_READY`
+    - dirty-tree run using `--allow-dirty` with checks passing => `FINAL VERDICT: DEV_BYPASS_ONLY`
+    - clean-tree run with `--allow-dirty` set but unused bypass remains eligible for `CLASSROOM_READY` and now prints an explicit note
+  - Added explicit line: `CLASSROOM_READY: NO (allow-dirty bypass mode)` in degraded bypass success mode.
+
+- `package.json`
+  - Added explicit developer shortcut script: `classroom:signoff:dev`.
+
+- `docs/roadmap/RedByte_Gap_Audit.md`
+  - Updated GAP-014 row to `open (mitigated)` with the new verdict semantics.
+
+- `01 Dashboard/RedByte Engineering Brain.md`
+  - Added the GAP-014 mitigation note so operators do not mistake dirty bypass output for classroom-ready truth.
+
+### Student/instructor-visible impact
+
+- Only clean-tree signoff can now emit `CLASSROOM_READY`.
+- Dirty-tree bypass keeps developer utility but is visibly and semantically downgraded.
+
+### Proof
+
+- Script-level runtime check:
+  - `node ./scripts/classroom-signoff.mjs --allow-dirty`
+  - output shows dirty-tree bypass details under `Working tree clean` check and does not present `CLASSROOM_READY` in bypassed state
+  - run in this environment remained `NOT_READY` due an unrelated failing repo-status gate (`IDE Design Workbench Contract`), which is consistent with signoff truth and does not affect bypass-verdict logic
+
 ## Change Log 2026-04-01 (GAP-013 slice 1 — strict Basys3 readiness gate for classroom handoff)
 
 **Subsystem**: Classroom signoff / hardware readiness truth

@@ -193,7 +193,7 @@ Claims in this audit are based on:
 | GAP-011 | Obsidian | Canonical Notes Policy missing ADR-002 and 5 architecture notes | medium | doc inspection | `08 Agents + Prompts/Canonical Notes Policy.md` | open |
 | GAP-012 | Docs | Manual has ~50+ unaudited claims in sections 5-8, 14-17, App D-E | low | doc inspection | `MANUAL_TRACEABILITY_MATRIX.md` | open |
 | GAP-013 | Classroom | Live Basys3 rehearsal unproven | high | Engineering Brain | hardware setup | **open (mitigated)** — strict hardware readiness gating added to `classroom:hw:check -- --strict` and optional `classroom:signoff -- --require-basys3` |
-| GAP-014 | Classroom | Clean-tree classroom signoff not validated | medium | Engineering Brain | build/signoff scripts | open |
+| GAP-014 | Classroom | Clean-tree classroom signoff not validated | medium | Engineering Brain | build/signoff scripts | **open (mitigated)** — `--allow-dirty` now produces explicit `DEV_BYPASS_ONLY` verdict and cannot emit `CLASSROOM_READY` |
 
 ---
 
