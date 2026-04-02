@@ -11,6 +11,7 @@ import {
 } from '../../../fpga/boards/basys3/basys3Pins';
 import {
   deriveProjectVerifyState,
+  deriveStageCompletion,
   type ProjectHealth,
   type ProjectHealthIssue,
   type ProjectHealthMode,
@@ -630,12 +631,13 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [effectiveBoardSignal, highlightedMappingKey, ioBus, onGoToHardware, onUpdateMappingPin, sortedMappingRows]
   );
 
-  const designCardDone = readiness.hasCircuit;
+  const stageCompletion = deriveStageCompletion(health, readiness);
+  const designCardDone = stageCompletion.design;
   const completedMilestoneCount = [
-    designCardDone,
-    comparePassCurrent,
-    readiness.hasIoMapping,
-    exportPackageCurrent,
+    stageCompletion.design,
+    stageCompletion.verify,
+    stageCompletion.hardware,
+    stageCompletion.export,
   ].filter(Boolean).length;
   const dockStageItems = useMemo(
     () => [
@@ -643,8 +645,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         id: 'design',
         step: '01',
         label: 'Design',
-        meta: designCardDone ? 'Complete' : 'Start here',
-        state: designCardDone ? 'done' : primaryCta.mode === 'design' ? 'active' : 'idle',
+        meta: stageCompletion.design ? 'Complete' : 'Start here',
+        state: stageCompletion.design ? 'done' : primaryCta.mode === 'design' ? 'active' : 'idle',
         onClick: onOpenDesign,
         testId: 'ide-project-dock-nav-design',
       },
@@ -663,7 +665,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 : primaryCta.mode === 'verify'
                   ? 'Run now'
                   : 'Waiting',
-        state: comparePassCurrent ? 'done' : primaryCta.mode === 'verify' ? 'active' : 'idle',
+        state: stageCompletion.verify ? 'done' : primaryCta.mode === 'verify' ? 'active' : 'idle',
         onClick: onOpenVerify,
         testId: 'ide-project-dock-nav-verify',
       },
@@ -671,10 +673,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         id: 'hardware',
         step: '03',
         label: MAP_PINS_STAGE_LABEL,
-        meta: readiness.hasIoMapping
+        meta: stageCompletion.hardware
           ? hardwareReady ? 'Ready to program' : 'Pins mapped'
           : primaryCta.mode === 'hardware' ? 'Map now' : 'Needs pins',
-        state: readiness.hasIoMapping ? 'done' : primaryCta.mode === 'hardware' ? 'active' : 'idle',
+        state: stageCompletion.hardware ? 'done' : primaryCta.mode === 'hardware' ? 'active' : 'idle',
         onClick: onOpenHardware,
         testId: 'ide-project-dock-nav-hardware',
       },
@@ -682,26 +684,22 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         id: 'export',
         step: '04',
         label: EXPORT_STAGE_LABEL,
-        meta: exportPackageCurrent ? 'Current' : exportAvailable ? 'Open now' : primaryCta.mode === 'export' ? 'Next up' : 'Waiting',
-        state: exportPackageCurrent ? 'done' : exportAvailable && primaryCta.mode === 'export' ? 'active' : 'idle',
+        meta: stageCompletion.export ? 'Current' : exportAvailable ? 'Open now' : primaryCta.mode === 'export' ? 'Next up' : 'Waiting',
+        state: stageCompletion.export ? 'done' : exportAvailable && primaryCta.mode === 'export' ? 'active' : 'idle',
         onClick: onOpenExport,
         testId: 'ide-project-dock-nav-export',
       },
     ],
     [
-      designCardDone,
+      stageCompletion,
       exportAvailable,
-      exportPackageCurrent,
       hardwareReady,
       onOpenDesign,
       onOpenHardware,
       onOpenExport,
       onOpenVerify,
       primaryCta.mode,
-      readiness.hasCircuit,
-      readiness.hasIoMapping,
       compareCurrent,
-      comparePassCurrent,
       compareDiffers,
       compareMatches,
       comparePassIncomplete,

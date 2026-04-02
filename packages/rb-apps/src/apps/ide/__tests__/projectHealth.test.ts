@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { choosePrimaryProjectCta, deriveProjectHealth, deriveProjectVerifyState, hasCurrentPassingVerify } from '../projectHealth';
+import { choosePrimaryProjectCta, deriveProjectHealth, deriveProjectVerifyState, deriveStageCompletion, hasCurrentPassingVerify } from '../projectHealth';
 
 describe('deriveProjectVerifyState — four canonical verify states (GAP-007)', () => {
   const passedLastVerify = {
@@ -306,5 +306,100 @@ describe('projectHealth verify trust vs structural blockers', () => {
       mode: 'verify',
       code: 'RBP1004',
     });
+  });
+});
+
+describe('deriveStageCompletion — unified progress signal for all three nav systems', () => {
+  it('marks only design as complete when circuit exists but nothing else is done', () => {
+    const health = deriveProjectHealth(
+      { lastVerify: undefined, lastExport: undefined, dirtySinceVerify: false, dirtySinceExport: false },
+      { hasCircuit: true, hasIoMapping: false, hasVectors: false }
+    );
+    const completion = deriveStageCompletion(health, { hasCircuit: true, hasIoMapping: false, hasVectors: false });
+    expect(completion).toEqual({ design: true, verify: false, hardware: false, export: false });
+  });
+
+  it('marks design as incomplete when no circuit exists', () => {
+    const health = deriveProjectHealth(
+      { lastVerify: undefined, lastExport: undefined, dirtySinceVerify: false, dirtySinceExport: false },
+      { hasCircuit: false, hasIoMapping: false, hasVectors: false }
+    );
+    const completion = deriveStageCompletion(health, { hasCircuit: false, hasIoMapping: false, hasVectors: false });
+    expect(completion.design).toBe(false);
+  });
+
+  it('does NOT require mapping for design completion (pipeline-strip bug fix)', () => {
+    const health = deriveProjectHealth(
+      { lastVerify: undefined, lastExport: undefined, dirtySinceVerify: false, dirtySinceExport: false },
+      { hasCircuit: true, hasIoMapping: false, hasVectors: false }
+    );
+    const completion = deriveStageCompletion(health, { hasCircuit: true, hasIoMapping: false, hasVectors: false });
+    expect(completion.design).toBe(true);
+  });
+
+  it('marks verify as complete only when assertions match (not stale, not trace, not differ)', () => {
+    const passCurrent = deriveProjectHealth(
+      { lastVerify: { status: 'pass', hash: 'h1', ranAtIso: '2026-04-01T00:00:00Z' }, lastExport: undefined, dirtySinceVerify: false, dirtySinceExport: false },
+      { hasCircuit: true, hasIoMapping: true, hasVectors: true }
+    );
+    expect(deriveStageCompletion(passCurrent, { hasCircuit: true, hasIoMapping: true, hasVectors: true }).verify).toBe(true);
+
+    const passStale = deriveProjectHealth(
+      { lastVerify: { status: 'pass', hash: 'h1', ranAtIso: '2026-04-01T00:00:00Z' }, lastExport: undefined, dirtySinceVerify: true, dirtySinceExport: false },
+      { hasCircuit: true, hasIoMapping: true, hasVectors: true }
+    );
+    expect(deriveStageCompletion(passStale, { hasCircuit: true, hasIoMapping: true, hasVectors: true }).verify).toBe(false);
+
+    const failed = deriveProjectHealth(
+      { lastVerify: { status: 'fail', hash: 'h1', ranAtIso: '2026-04-01T00:00:00Z' }, lastExport: undefined, dirtySinceVerify: false, dirtySinceExport: false },
+      { hasCircuit: true, hasIoMapping: true, hasVectors: true }
+    );
+    expect(deriveStageCompletion(failed, { hasCircuit: true, hasIoMapping: true, hasVectors: true }).verify).toBe(false);
+  });
+
+  it('marks hardware complete when IO mapping exists', () => {
+    const health = deriveProjectHealth(
+      { lastVerify: undefined, lastExport: undefined, dirtySinceVerify: false, dirtySinceExport: false },
+      { hasCircuit: true, hasIoMapping: true, hasVectors: false }
+    );
+    expect(deriveStageCompletion(health, { hasCircuit: true, hasIoMapping: true, hasVectors: false }).hardware).toBe(true);
+  });
+
+  it('marks export as complete only when export is ok and not dirty', () => {
+    const exportOk = deriveProjectHealth(
+      {
+        lastVerify: { status: 'pass', hash: 'h1', ranAtIso: '2026-04-01T00:00:00Z' },
+        lastExport: { status: 'ok', hash: 'e1', ranAtIso: '2026-04-01T00:05:00Z' },
+        dirtySinceVerify: false,
+        dirtySinceExport: false,
+      },
+      { hasCircuit: true, hasIoMapping: true, hasVectors: true }
+    );
+    expect(deriveStageCompletion(exportOk, { hasCircuit: true, hasIoMapping: true, hasVectors: true }).export).toBe(true);
+
+    const exportDirty = deriveProjectHealth(
+      {
+        lastVerify: { status: 'pass', hash: 'h1', ranAtIso: '2026-04-01T00:00:00Z' },
+        lastExport: { status: 'ok', hash: 'e1', ranAtIso: '2026-04-01T00:05:00Z' },
+        dirtySinceVerify: false,
+        dirtySinceExport: true,
+      },
+      { hasCircuit: true, hasIoMapping: true, hasVectors: true }
+    );
+    expect(deriveStageCompletion(exportDirty, { hasCircuit: true, hasIoMapping: true, hasVectors: true }).export).toBe(false);
+  });
+
+  it('marks all stages complete for a fully-done project', () => {
+    const health = deriveProjectHealth(
+      {
+        lastVerify: { status: 'pass', hash: 'h1', ranAtIso: '2026-04-01T00:00:00Z' },
+        lastExport: { status: 'ok', hash: 'e1', ranAtIso: '2026-04-01T00:05:00Z' },
+        dirtySinceVerify: false,
+        dirtySinceExport: false,
+      },
+      { hasCircuit: true, hasIoMapping: true, hasVectors: true }
+    );
+    const completion = deriveStageCompletion(health, { hasCircuit: true, hasIoMapping: true, hasVectors: true });
+    expect(completion).toEqual({ design: true, verify: true, hardware: true, export: true });
   });
 });

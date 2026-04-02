@@ -1,6 +1,7 @@
 import type { VerifyReport } from './verifyReport';
 
 import { getOpenStageActionLabel, getWorkflowCtaLabel } from './workflowStages';
+import type { IdeWorkflowRouteMode } from './workflowStages';
 import type { ProjectKind } from './projectIdentity';
 
 export type VerifyRunKind = 'trace' | 'verify';
@@ -165,6 +166,23 @@ export function deriveProjectHealth(
   return {
     ...core,
     blockingIssues,
+  };
+}
+
+/**
+ * Single source of truth for workflow stage completion.
+ * All progress indicators (PipelineStrip, IdeLeftRail, ProjectSurface dock)
+ * must consume this to avoid contradictory done/pass signals.
+ */
+export function deriveStageCompletion(
+  health: ProjectHealth,
+  readiness: ProjectReadinessState
+): Record<IdeWorkflowRouteMode, boolean> {
+  return {
+    design: readiness.hasCircuit,
+    verify: deriveProjectVerifyState(health) === 'assertions-match',
+    hardware: readiness.hasIoMapping,
+    export: health.lastExport?.status === 'ok' && !health.dirtySinceExport,
   };
 }
 

@@ -23,6 +23,7 @@ describe('PipelineStrip export availability semantics', () => {
             },
           ],
         }}
+        readiness={{ hasCircuit: false, hasIoMapping: false, hasVectors: false }}
         primaryCta={{ label: 'Open Design', mode: 'design', code: 'RBP1000' }}
         onNavigate={vi.fn()}
       />
@@ -56,6 +57,7 @@ describe('PipelineStrip export availability semantics', () => {
             },
           ],
         }}
+        readiness={{ hasCircuit: true, hasIoMapping: true, hasVectors: false }}
         primaryCta={{ label: 'Verify', mode: 'verify', code: 'RBP1002' }}
         onNavigate={vi.fn()}
       />
@@ -83,6 +85,7 @@ describe('PipelineStrip export availability semantics', () => {
           dirtySinceExport: false,
           blockingIssues: [],
         }}
+        readiness={{ hasCircuit: true, hasIoMapping: true, hasVectors: true }}
         primaryCta={{ label: 'Export', mode: 'export', code: 'RBP2002' }}
         onNavigate={vi.fn()}
       />
@@ -108,6 +111,7 @@ describe('PipelineStrip export availability semantics', () => {
             },
           ],
         }}
+        readiness={{ hasCircuit: true, hasIoMapping: false, hasVectors: false }}
         primaryCta={{ label: 'Fix Mapping', mode: 'project', code: 'RBP1001' }}
         onNavigate={vi.fn()}
       />

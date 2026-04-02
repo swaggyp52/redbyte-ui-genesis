@@ -5,9 +5,11 @@
 import React, { useMemo } from 'react';
 import {
   deriveProjectVerifyState,
+  deriveStageCompletion,
   type ProjectHealth,
   type ProjectHealthMode,
   type ProjectPrimaryCta,
+  type ProjectReadinessState,
 } from '../projectHealth';
 import { IdeButton } from './IdePrimitives';
 import { IDE_WORKFLOW_ROUTE_STEPS } from '../workflowStages';
@@ -15,6 +17,7 @@ import { IDE_WORKFLOW_ROUTE_STEPS } from '../workflowStages';
 export interface PipelineStripProps {
   currentMode: ProjectHealthMode;
   health: ProjectHealth;
+  readiness: ProjectReadinessState;
   primaryCta: ProjectPrimaryCta;
   onNavigate: (mode: ProjectHealthMode) => void;
 }
@@ -28,6 +31,7 @@ interface StageConfig {
   mode: ProjectHealthMode;
   letter: string;
   label: string;
+  /** Hard blocker codes that override completion — shown as "blocked" even when on the active page. */
   blockerCodes: string[];
 }
 
@@ -38,7 +42,7 @@ const STAGES: StageConfig[] = IDE_WORKFLOW_ROUTE_STEPS.map((stage) => ({
   label: stage.label,
   blockerCodes:
     stage.id === 'design'
-      ? ['RBP1000', 'RBP1001']
+      ? ['RBP1000']           // Design only blocked by missing circuit, NOT by missing mapping
       : stage.id === 'export'
         ? ['RBP2001']
         : [],
@@ -47,6 +51,7 @@ const STAGES: StageConfig[] = IDE_WORKFLOW_ROUTE_STEPS.map((stage) => ({
 function deriveStageStatus(
   stage: StageConfig,
   health: ProjectHealth,
+  readiness: ProjectReadinessState,
   currentMode: ProjectHealthMode
 ): StageStatus {
   const codes = new Set(health.blockingIssues.map((i) => i.code));
@@ -55,24 +60,17 @@ function deriveStageStatus(
   if (stage.blockerCodes.some((c) => codes.has(c))) return 'blocked';
   if (currentMode === stage.mode) return 'active';
 
-  switch (stage.key) {
-    case 'design':
-      return !codes.has('RBP1000') && !codes.has('RBP1001') ? 'pass' : 'pending';
-    case 'verify': {
-      const verifyState = deriveProjectVerifyState(health);
-      if (verifyState === 'assertions-match') return 'pass';
-      if (verifyState === 'assertions-differ' || verifyState === 'verify-error') return 'blocked';
-      return 'pending';
-    }
-    case 'hardware':
-      // RBP1001 is added to blockingIssues when hasIoMapping is false (unfilled required pins).
-      // Its absence means all required I/O is mapped — consistent with the left-rail ✓ signal.
-      return !codes.has('RBP1001') ? 'pass' : 'pending';
-    case 'export':
-      return health.lastExport?.status === 'ok' && !health.dirtySinceExport ? 'pass' : 'pending';
-    default:
-      return 'pending';
+  // Use the unified completion signal — same thresholds as IdeLeftRail and ProjectSurface dock
+  const completion = deriveStageCompletion(health, readiness);
+  if (completion[stage.key]) return 'pass';
+
+  // Verify has an intermediate "blocked" state for failures (not just "pending")
+  if (stage.key === 'verify') {
+    const verifyState = deriveProjectVerifyState(health);
+    if (verifyState === 'assertions-differ' || verifyState === 'verify-error') return 'blocked';
   }
+
+  return 'pending';
 }
 
 // Checkmark icon for passing stages
@@ -99,6 +97,7 @@ const WarnIcon: React.FC = () => (
 export const PipelineStrip: React.FC<PipelineStripProps> = ({
   currentMode,
   health,
+  readiness,
   primaryCta,
   onNavigate,
 }) => {
@@ -110,9 +109,9 @@ export const PipelineStrip: React.FC<PipelineStripProps> = ({
     () =>
       STAGES.map((stage) => ({
         stage,
-        status: deriveStageStatus(stage, health, currentMode),
+        status: deriveStageStatus(stage, health, readiness, currentMode),
       })),
-    [health, currentMode]
+    [health, readiness, currentMode]
   );
 
   const primaryBlocker = health.blockingIssues.find((issue) => hardBlockerCodes.has(issue.code)) ?? null;
@@ -187,7 +186,7 @@ export const PipelineStrip: React.FC<PipelineStripProps> = ({
           </IdeButton>
         ) : showReadyState ? (
           <span className="ide-pipeline-all-pass" data-testid="ide-guided-ready">
-            All stages current
+            All stages complete
           </span>
         ) : null}
 
