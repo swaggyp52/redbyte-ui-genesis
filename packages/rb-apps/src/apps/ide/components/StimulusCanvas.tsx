@@ -16,6 +16,7 @@ export interface StimulusCanvasProps {
   outputFields: VerifyVectorDraftInput[];
   authoredVectors: VerifyAuthorVector[];
   onVectorsChange: (vectors: VerifyAuthorVector[]) => void;
+  onNavigateToMapping?: () => void;
 }
 
 function makeId(): string {
@@ -242,6 +243,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   outputFields,
   authoredVectors,
   onVectorsChange,
+  onNavigateToMapping,
 }) => {
   const latestVectorsRef = useRef(authoredVectors);
   const [hoveredTick, setHoveredTick] = useState<number | null>(null);
@@ -415,7 +417,20 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   }, [inputFields, onVectorsChange, outputFields]);
 
   if (inputFields.length === 0) {
-    return <p className="ide-stimulus-empty" data-testid="ide-stimulus-empty">No IO mapping - add inputs in the Hardware surface first.</p>;
+    return (
+      <p className="ide-stimulus-empty" data-testid="ide-stimulus-empty">
+        No IO mapping yet — add inputs and outputs in{' '}
+        <button
+          type="button"
+          className="ide-stimulus-empty-link"
+          onClick={() => onNavigateToMapping?.()}
+          data-testid="ide-stimulus-empty-nav"
+        >
+          Map Pins
+        </button>{' '}
+        first.
+      </p>
+    );
   }
 
   return (
@@ -432,7 +447,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
             <>
               <button type="button" className="ide-stimulus-mini-btn" onClick={handleRowToggle} data-testid="ide-stimulus-row-toggle">Toggle</button>
               <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleInputPattern((index) => index % 2 === 0 ? 0 : 1)} data-testid="ide-stimulus-pattern-alternating">Alternating</button>
-              <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleInputPattern((index) => index % 2 === 0 ? 0 : 1)} data-testid="ide-stimulus-pattern-clock">Clock pattern</button>
+              <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleInputPattern((index) => Math.floor(index / 2) % 2 === 0 ? 0 : 1)} data-testid="ide-stimulus-pattern-clock">Clock pattern</button>
             </>
           ) : (
             <button type="button" className="ide-stimulus-mini-btn" onClick={handleExpectedClear} data-testid="ide-stimulus-row-clear">Clear</button>

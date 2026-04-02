@@ -1,5 +1,24 @@
 # AI State
 
+## Change Log 2026-04-02 (RIB-013–021 — Student-facing language legitimacy overhaul)
+
+**Subsystem**: Cross-surface user-facing text, Verify, StimulusCanvas, Shell
+
+### Problem
+
+RedByte systematically used internal developer jargon in student-facing text — wrong surface names, alarming labels, engine-internal concepts shown to students.
+
+### What changed
+
+- `VerifySurface.tsx`: "in Design" → "in Map Pins" (2×), `'BLOCKED'` → `'NOT STARTED'`, all `vectorSourceLabel` branches rewritten (no more "Reference mode:"), `truthTableEmptyReason` jargon removed, stale reference panel rewritten with recommendation
+- `StimulusCanvas.tsx`: "Hardware surface" → "Map Pins", added `onNavigateToMapping` prop with clickable nav button
+- `IdeApp.tsx`: Suspense fallback uses `getIdeModeLabel()`, all 6 ErrorBoundary titles use student-facing labels + "encountered an error"
+- `PipelineStrip.tsx`: "All stages current" → "All stages complete"
+
+### Tests
+
+- New: `studentLanguage.test.ts` (5 tests), fixed `pipelineStrip.test.tsx` (4 tests), 82/82 passing, build EXIT 0
+
 ## Change Log 2026-04-02 (RIB-009 — Import behavioral blocker CTA now routes to Design)
 
 **Subsystem**: Import blocker recovery truth

@@ -2136,12 +2136,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     if (runRows.length > 0) return '';
     if (waveformTicks.length > 0) {
-      return 'Verification ran without expectations. Capture observed outputs as expected, then run again.';
+      return 'No expected outputs were set for this run. Set expected values in the test vectors, then run again.';
     }
     if (isSequentialRun) {
       return 'No evaluable rows yet. Add vectors with expected outputs for this sequential circuit.';
     }
-    return 'No deterministic rows were produced for this run. Verify vectors and expected outputs.';
+    return 'No output rows were produced. Check that your test vectors include expected outputs, then run again.';
   }, [isSequentialRun, lastRun, runRows.length, verifyPreflightIssues.length, waveformTicks.length]);
   const firstFailureTick = firstFailure?.tick ?? lastRun?.firstFailingTick;
   const selectedFailureInputs = useMemo(() => {
@@ -2834,18 +2834,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   */
   const vectorSourceLabel =
     totalVectorCount === 0
-      ? 'Reference mode: no vectors saved yet'
+      ? 'No test vectors saved yet'
       : hasStaleAuthoredReference
-        ? `Reference state: stale ${isStarterScenario ? 'starter' : 'authored'} reference (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'})`
+        ? `Stale ${isStarterScenario ? 'starter' : 'authored'} test vectors (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}) — circuit has changed since these were written`
       : totalExpectedCaseCount === 0
-        ? 'Reference mode: observation only (no expected outputs loaded)'
+        ? 'Observation only — no expected outputs set'
         : !nextRunUsesAssertions
-          ? `Reference state: saved expected outputs (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), current mode is trace only`
+          ? `Saved expected outputs (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), current mode is trace only`
         : authoredVectors.length > 0 && customVectorCount > 0
-          ? `Reference mode: comparing against project + custom vectors (${totalVectorCount} total)`
+          ? `Comparing against project + custom vectors (${totalVectorCount} total)`
           : customVectorCount > 0
-            ? `Reference mode: comparing against custom vectors (${customVectorCount})`
-            : `Reference mode: comparing against project vectors (${authoredVectors.length})`;
+            ? `Comparing against custom vectors (${customVectorCount})`
+            : `Comparing against project vectors (${authoredVectors.length})`;
   const verifyScenarioName =
     totalExpectedCaseCount === 0
       ? 'Observation Trace'
@@ -3518,7 +3518,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const sessionShowsTraceEvidence =
     sessionStatus === 'stimulus-only' || sessionStatus === 'assertions-incomplete';
   const isDraftSession = sessionStatus === 'draft';
-  const draftPresentationStatus = totalVectorCount > 0 ? 'READY' : 'BLOCKED';
+  const draftPresentationStatus = totalVectorCount > 0 ? 'READY' : 'NOT STARTED';
   const readyDraftCanRun = isDraftSession && draftPresentationStatus === 'READY';
   const sessionStatusBadgeLabel = isDraftSession
     ? draftPresentationStatus
@@ -3528,7 +3528,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ? 'error'
       : sessionShowsAssertionMatch
         ? lastRun?.qualification === 'incomplete-mapping' ? 'warn' : 'ok'
-        : isDraftSession && draftPresentationStatus === 'BLOCKED'
+        : isDraftSession && draftPresentationStatus === 'NOT STARTED'
           ? 'warn'
           : verifySession.tone;
   const runProofTone = sessionSignalsAssertionFailure
@@ -4194,26 +4194,26 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             data-testid="ide-verify-stale-reference-panel"
             role="note"
           >
-            <strong data-testid="ide-verify-stale-reference-label">Stale authored reference</strong>
+            <strong data-testid="ide-verify-stale-reference-label">Test vectors need updating</strong>
             <span data-testid="ide-verify-stale-reference-copy">
-              These expected outputs were authored before the latest circuit change. Verify has switched back to live stimulus tracing so you can inspect the current circuit before deciding whether to keep, refresh, or discard the older reference.
+              Your expected outputs were written before the latest circuit change. Run the simulation to see how the current circuit behaves, then decide whether to update your expected values.
             </span>
             <span className="ide-copy" data-testid="ide-verify-stale-reference-mode">
-              Current live mode: {nextRunUsesAssertions ? 'keep the older reference for compare' : 'stimulus-only tracing'}
+              Recommended: click <strong>Run Simulation</strong> to inspect the current circuit first.
             </span>
             <div className="ide-inline-actions">
               <IdeButton tone="primary" onClick={handleRunCurrentTrace} testId="ide-verify-stale-run-simulation">
                 Run Simulation
               </IdeButton>
               <IdeButton tone="secondary" onClick={handleStaleRecapture} testId="ide-verify-stale-recapture-reauthor">
-                Re-author assertions
+                Update expected outputs
               </IdeButton>
               <IdeButton tone="ghost" onClick={handleKeepOlderReference} testId="ide-verify-stale-keep-reference">
-                Keep old reference
+                Keep previous values
               </IdeButton>
               {canResetToStimulusOnly && (
                 <IdeButton tone="ghost" onClick={handleResetToStimulusOnly} testId="ide-verify-stale-reset-stimulus">
-                  Reset to stimulus-only
+                  Reset to trace only
                 </IdeButton>
               )}
             </div>
@@ -5137,7 +5137,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <IdeCallout tone="error" title="No trace generated" testId="ide-verify-no-trace-guard">
                   <p className="ide-copy">The run completed but produced no waveform data.</p>
                   <ul className="ide-list">
-                    <li>Circuit has no outputs mapped to IO signals — check I/O mapping in Design</li>
+                    <li>Circuit has no outputs mapped to IO signals — check I/O mapping in Map Pins</li>
                     <li>{sequentialGuidanceCopy.noTraceHint}</li>
                     <li>Circuit has unconnected gates — verify all nodes are wired</li>
                   </ul>
@@ -5200,7 +5200,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   selectedSignal={selectedSignal}
                   emptyMessage={
                     lastRun
-                      ? 'No waveform data in this run — check I/O mapping in Design'
+                      ? 'No waveform data in this run — check I/O mapping in Map Pins'
                       : 'Run simulation to see waveforms'
                   }
                   ghostSignals={

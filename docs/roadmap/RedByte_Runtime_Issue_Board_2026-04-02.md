@@ -140,3 +140,59 @@ are pre-hardware steps requiring physical hardware — they cannot be auto-check
 | RIB-006 | LOW | Hardware | Known / Acceptable |
 
 Seven issues fixed across the current runtime board session set. Remaining low-priority note: RIB-006 (known/acceptable).
+
+---
+
+## Session 3 — Student-Facing Language Legitimacy Audit
+
+Product-wide audit found systematic use of internal developer jargon in student-facing text. Nine issues fixed:
+
+### RIB-013 · Verify sends students to "Design" instead of "Map Pins"
+**Severity:** CRITICAL · **Files:** `VerifySurface.tsx` · **Status:** FIXED
+Two error messages said "check I/O mapping in Design" — mapping is on Map Pins. Fixed both.
+
+### RIB-014 · StimulusCanvas empty state says "Hardware surface" (no CTA)
+**Severity:** HIGH · **Files:** `StimulusCanvas.tsx` · **Status:** FIXED
+Changed to "Map Pins", added clickable navigation button.
+
+### RIB-015 · Shell fallback shows internal mode names ("Loading hardware workspace...")
+**Severity:** HIGH · **Files:** `IdeApp.tsx` · **Status:** FIXED
+Now uses `getIdeModeLabel()` → "Loading Map Pins workspace..."
+
+### RIB-016 · ErrorBoundary titles use "crashed" / wrong surface names
+**Severity:** HIGH · **Files:** `IdeApp.tsx` · **Status:** FIXED
+All six titles now use student-facing labels and "encountered an error" instead of "crashed".
+
+### RIB-017 · Verify shows "BLOCKED" when student hasn't started adding vectors
+**Severity:** HIGH · **Files:** `VerifySurface.tsx` · **Status:** FIXED
+Changed to "NOT STARTED" — nothing is blocked, the student just hasn't begun.
+
+### RIB-018 · "Reference mode:" jargon in vector source labels
+**Severity:** HIGH · **Files:** `VerifySurface.tsx` · **Status:** FIXED
+All 7 branches rewritten. "Reference mode" → direct language about test vectors and expected outputs.
+
+### RIB-019 · "deterministic rows" / "expectations" jargon in empty-reason messages
+**Severity:** MEDIUM · **Files:** `VerifySurface.tsx` · **Status:** FIXED
+
+### RIB-020 · Stale reference panel: jargon title, no recommendation
+**Severity:** MEDIUM · **Files:** `VerifySurface.tsx` · **Status:** FIXED
+Title: "Stale authored reference" → "Test vectors need updating". Added recommended action. Button labels simplified.
+
+### RIB-021 · PipelineStrip "All stages current" → "All stages complete"
+**Severity:** LOW · **Files:** `PipelineStrip.tsx` · **Status:** FIXED
+
+### Session 3 Summary
+
+| ID | Severity | Surface | Status |
+|----|----------|---------|--------|
+| RIB-013 | CRITICAL | Verify | **FIXED** |
+| RIB-014 | HIGH | Verify / StimulusCanvas | **FIXED** |
+| RIB-015 | HIGH | Shell | **FIXED** |
+| RIB-016 | HIGH | Shell | **FIXED** |
+| RIB-017 | HIGH | Verify | **FIXED** |
+| RIB-018 | HIGH | Verify | **FIXED** |
+| RIB-019 | MEDIUM | Verify | **FIXED** |
+| RIB-020 | MEDIUM | Verify | **FIXED** |
+| RIB-021 | LOW | PipelineStrip | **FIXED** |
+
+Nine issues fixed. The systematic problem: RedByte used internal jargon where students see it. All affected strings now use the student-facing vocabulary from `workflowStages.ts`.

@@ -13,6 +13,7 @@ import './ide/ide-root.css';
 import { projectRuntimeCircuitToEditorStore } from './ide/circuitProjection';
 import { deriveDesignCompilerDiagnostics } from './ide/designCompilerDiagnostics';
 import { IdeLeftRail, type IdeMode } from './ide/components/IdeLeftRail';
+import { getIdeModeLabel } from './ide/workflowStages';
 import { IdeTopBar } from './ide/components/IdeTopBar';
 import { IdeStatusBar } from './ide/components/IdeStatusBar';
 import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
@@ -46,6 +47,7 @@ import {
   choosePrimaryProjectCta,
   deriveProjectHealth,
   deriveProjectVerifyState,
+  deriveStageCompletion,
   type ProjectHealthExportResult,
   type ProjectHealthMode,
 } from './ide/projectHealth';
@@ -1431,22 +1433,18 @@ export const IdeApp: React.FC = () => {
         <IdeLeftRail
           currentMode={currentMode}
           onModeChange={setCurrentMode}
-          stepsCompleted={{
-            design: hasCircuit,
-            verify: Boolean(latestVerifyPass),
-            hardware: readiness.hasIoMapping,
-            export: exportIsCurrent,
-          }}
+          stepsCompleted={deriveStageCompletion(projectHealth, readiness)}
         />
         <div className="ide-surface-column">
           <PipelineStrip
             currentMode={currentMode as ProjectHealthMode}
             health={projectHealth}
+            readiness={readiness}
             primaryCta={primaryProjectCta}
             onNavigate={(mode) => setCurrentMode(mode as IdeMode)}
           />
         {currentMode === 'project' ? (
-          <ErrorBoundary fallbackTitle="Project editor crashed">
+          <ErrorBoundary fallbackTitle="Project workspace encountered an error">
             <ProjectSurface
               projectName={projectName}
               description={projectDescription}
@@ -1553,12 +1551,12 @@ export const IdeApp: React.FC = () => {
           <Suspense
             fallback={
               <div className="ide-copy" data-testid="ide-surface-loading">
-                Loading {currentMode} workspace...
+                Loading {getIdeModeLabel(currentMode)} workspace...
               </div>
             }
           >
           {currentMode === 'design' ? (
-          <ErrorBoundary fallbackTitle="Design editor crashed">
+          <ErrorBoundary fallbackTitle="Design workspace encountered an error">
             <ThrowOnce surface="design" />
             <DesignSurface
               onCircuitMutated={handleDesignMutation}
@@ -1608,7 +1606,7 @@ export const IdeApp: React.FC = () => {
             />
           </ErrorBoundary>
         ) : currentMode === 'verify' ? (
-          <ErrorBoundary fallbackTitle="Verification crashed">
+          <ErrorBoundary fallbackTitle="Verify workspace encountered an error">
             <VerifySurface
               deterministicHash={currentVerifyProjectHash}
               hasVectors={hasVectors}
@@ -1667,7 +1665,7 @@ export const IdeApp: React.FC = () => {
             />
           </ErrorBoundary>
         ) : currentMode === 'hardware' ? (
-          <ErrorBoundary fallbackTitle="Hardware surface crashed">
+          <ErrorBoundary fallbackTitle="Map Pins workspace encountered an error">
             <HardwareSurface
               projectName={projectName}
               expectedBehavior={hardwareExpectedBehavior}
@@ -1692,7 +1690,7 @@ export const IdeApp: React.FC = () => {
             />
           </ErrorBoundary>
         ) : currentMode === 'export' ? (
-          <ErrorBoundary fallbackTitle="Export surface crashed">
+          <ErrorBoundary fallbackTitle="Export workspace encountered an error">
             <ExportSurface
               project={exportProject}
               verifyResult={projectHealthCore.lastVerify}
@@ -1713,7 +1711,7 @@ export const IdeApp: React.FC = () => {
             />
           </ErrorBoundary>
         ) : (
-          <ErrorBoundary fallbackTitle="Import surface crashed">
+          <ErrorBoundary fallbackTitle="Import workspace encountered an error">
             <ImportSurface
               onImportProject={handleImportProject}
               onImportCommitted={handleImportCommitted}
