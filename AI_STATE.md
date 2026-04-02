@@ -1,5 +1,36 @@
 # AI State
 
+## Change Log 2026-04-02 (RIB-008 — Import first-look guidance copy now matches visible actions)
+
+**Subsystem**: Import onboarding copy truth
+
+### Problem
+
+After first-look quick demos were added, the manual-path guidance card still implied students should use only “Other ways to start,” which contradicted the now-visible quick-demo actions on the same first-look panel.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+  - Updated first-look manual-path guidance copy to reflect both valid paths:
+    - manual HDL paste via “Other ways to start”
+    - quick demos for supported structural imports vs blocked behavioral examples
+
+- `packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx`
+  - Added regression assertion that first-look guidance includes “quick demos”.
+
+### Outcome
+
+- Focused import suites: `16 passed (16)` across
+  - `importSurface.first-look.test.tsx`
+  - `importSurface.honesty.test.tsx`
+  - `importSurface.submission.test.tsx`
+  - `importSurface.verify-reset.test.tsx`
+  - `importSurface.workstation.test.tsx`
+
+### Runtime board sync
+
+- `RIB-008` recorded and marked FIXED in `docs/roadmap/RedByte_Runtime_Issue_Board_2026-04-02.md`.
+
 ## Change Log 2026-04-02 (RIB-007 — Import first-look now exposes quick sample demos)
 
 **Subsystem**: Import onboarding / honesty legibility

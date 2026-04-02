@@ -47,4 +47,12 @@ describe('ImportSurface first look', () => {
       expect(view.getByTestId('ide-import-recon-full')).toBeTruthy();
     });
   });
+
+  it('describes manual path guidance without hiding first-look quick demos', () => {
+    const { getByTestId } = render(
+      <ImportSurface onImportProject={vi.fn()} />
+    );
+
+    expect(getByTestId('ide-import-start-guidance-hdl').textContent).toContain('quick demos');
+  });
 });

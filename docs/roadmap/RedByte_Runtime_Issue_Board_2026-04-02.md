@@ -86,6 +86,17 @@ All sample loading now goes through one helper path (`loadImportSample`) to keep
 - `importSurface.submission.test.tsx`
 **Status:** FIXED in this session.
 
+### RIB-008 · First-look manual-path guidance contradicted visible quick-demo affordances
+**Surface:** Import first-look onboarding copy
+**File:** `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+**Impact:** The guidance card still told students to use “Other ways to start only…” for manual path even after quick-demo buttons were promoted into first-look. That copy understated available onboarding actions and created a trust/legibility mismatch.
+**Root cause:** Guidance copy predated RIB-007 quick-demo controls and was not updated when those controls moved into first-look.
+**Fix applied:** Updated first-look manual-path guidance to explicitly mention both routes:
+- manual HDL paste via “Other ways to start”
+- quick demos for supported structural vs blocked behavioral examples
+**Proof:** `importSurface.first-look.test.tsx` now asserts the first-look guidance includes “quick demos”, and focused import suites remain green.
+**Status:** FIXED in this session.
+
 ---
 
 ## LOW / INFORMATIONAL
@@ -112,6 +123,7 @@ are pre-hardware steps requiring physical hardware — they cannot be auto-check
 | RIB-003 | HIGH | Verify waveform | **FIXED** |
 | RIB-004 | MEDIUM | Import | **FIXED** |
 | RIB-007 | MEDIUM | Import first-look | **FIXED** |
+| RIB-008 | LOW | Import first-look copy truth | **FIXED** |
 | RIB-005 | LOW | Export | **FIXED** (via RIB-002) |
 | RIB-006 | LOW | Hardware | Known / Acceptable |
 

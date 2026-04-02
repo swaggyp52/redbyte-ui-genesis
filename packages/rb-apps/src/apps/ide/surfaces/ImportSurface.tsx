@@ -2889,7 +2889,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                   <article className="ide-import-start-guidance-card" data-testid="ide-import-start-guidance-hdl">
                     <span className="ide-import-start-guidance-eyebrow">Manual path</span>
                     <strong>Paste structural HDL if needed</strong>
-                    <p>Use Other ways to start only when you already have structural HDL text and want to build the preview by hand.</p>
+                    <p>Use Other ways to start for manual HDL paste, or run the quick demos below to compare supported structural imports against blocked behavioral examples.</p>
                   </article>
                 </div>
                 <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
