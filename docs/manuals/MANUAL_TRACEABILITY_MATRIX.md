@@ -83,6 +83,7 @@
 | 14 diagnostic conditions (hint system) | `verifyHints.ts` | L48-121 (HINTS array) | hint tests | CORRECTED (was "up to 7") |
 | Freshness tracking: only topology/type/scenario changes stale result | `projectRuntime.ts` | L1438 (`changesCircuitTruth`) | runtime tests | VERIFIED |
 | Testbench preview: total ticks, asserted outputs, clock policy | `VerifySurface.tsx` | preview panel | — | VERIFIED |
+| PASS waveform keeps mapped stimulus inputs visible by default alongside outputs | `VerifySurface.tsx` | pass-run lane visibility override (`passRunWithNoMismatches`) | `verifySurface.waveform-priority.test.tsx` | VERIFIED |
 
 #### §7.4 Hardware Surface
 

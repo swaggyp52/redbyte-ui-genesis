@@ -1,5 +1,116 @@
 # AI State
 
+## Change Log 2026-04-02 (RIB-004 — Import orphaned file chooser removed)
+
+**Subsystem**: Import first-look UX / file-input visibility safety
+
+### Problem
+
+Import had a runtime hygiene risk where the ZIP picker `<input type="file">` depended on CSS-only hiding
+(`ide-hidden-file-input`). If stylesheet application/order failed, the native control could appear at page
+bottom as an orphaned "Choose File" affordance outside the intended surface actions.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+  - Switched the ZIP input to intrinsic markup hiding (`hidden` attribute) instead of class-only hiding.
+  - Programmatic picker flow is unchanged (`zipInputRef.current?.click()` path still drives selection).
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Switched the project import file input to intrinsic markup hiding (`hidden`) for consistency.
+
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Removed now-unused `.ide-hidden-file-input` CSS helper after both callers migrated to intrinsic hiding.
+
+- `packages/rb-apps/src/apps/ide/__tests__/importSurface.submission.test.tsx`
+  - Added regression test: `keeps the ZIP input intrinsically hidden from layout`.
+
+### Outcome
+
+- Focused submission-import test file: `3 passed (3)`
+- Build: `@redbyte/playground built in 8.62s`
+
+### Runtime board sync
+
+- `RIB-004` in `docs/roadmap/RedByte_Runtime_Issue_Board_2026-04-02.md` moved from OPEN to FIXED.
+
+## Change Log 2026-04-02 (RIB-003 — PASS waveform now shows mapped stimulus inputs by default)
+
+**Subsystem**: Verify waveform legibility / student causality reading
+
+### Problem
+
+After a passing compare run, the waveform viewport rendered only output lanes by default.
+Mapped input stimulus lanes existed but were hidden behind collapsed signal groups, which meant students
+could not directly read "what input caused this output" without extra interaction.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Added pass-run default lane visibility rule: when a run is `pass` and there are no mismatches,
+    mapped `Inputs` lanes are forced visible in the waveform viewport.
+  - Existing failure-first behavior is preserved for mismatch runs.
+
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx`
+  - Added regression test: `shows mapped input stimulus lanes by default on PASS runs`.
+
+### Outcome
+
+- Focused test file: `3 passed`
+- Related regression suites: `46 passed`
+- Build: `@redbyte/playground built in 8.18s`
+
+### Runtime board sync
+
+- `RIB-003` in `docs/roadmap/RedByte_Runtime_Issue_Board_2026-04-02.md` moved from OPEN to FIXED.
+
+## Change Log 2026-04-02 (signoff gate unblocked + Map Pins pipeline progress fix)
+
+**Subsystem**: Classroom signoff / Playwright gate reliability + pipeline strip UX
+
+### Problem 1 — IDE Verify Workbench Contract gate was always timing out after a PASS run
+
+`scripts/gates/ide-verify-workbench-contract.mjs` called `page.waitForFunction` looking for
+`[data-testid^="ide-verify-signal-"]` buttons immediately after the waveform appeared.
+On a PASS run, `verifyLayoutPolicy` sets `leftDockMode: 'collapsed'`, which removes dock content from
+the DOM. The signal buttons did not exist in the DOM. The `waitForFunction` timed out after 10s.
+Correct dock-expansion code existed directly below but was unreachable — the timeout threw first.
+
+### What changed (fix 1)
+
+- `scripts/gates/ide-verify-workbench-contract.mjs`
+  - Deleted the premature `waitForFunction` that was blocking on absent DOM elements.
+  - Moved dock-expansion logic (`ide-workbench-dock-toggle-left` click + wait for
+    `ide-verify-signal-filter-state`) immediately after `waitForSelector('ide-verify-workspace-waveform')`.
+  - The gate now opens the dock first, then verifies signal filter state and signal rows.
+
+### Problem 2 — Map Pins pipeline progress strip always showed "pending"
+
+`PipelineStrip.tsx` `deriveStageStatus` case `hardware` unconditionally returned `pending` with
+the comment "Map Pins has no strong pass signal in the health model yet". The left-rail nav correctly
+showed ✓ using `hasIoMapping`, but the pipeline strip never reflected completion state.
+
+`hasIoMapping` being false causes `RBP1001` to be pushed to `blockingIssues`. The signal was
+therefore already present in the health model — the pipeline strip just was not reading it.
+
+### What changed (fix 2)
+
+- `packages/rb-apps/src/apps/ide/components/PipelineStrip.tsx`
+  - Changed `case 'hardware'` to return `pass` when `!codes.has('RBP1001')` and `pending` otherwise,
+    matching the left-rail completion condition.
+
+### Outcome
+
+- `node ./scripts/gates/ide-verify-workbench-contract.mjs` — result: `PASS`
+- `node ./scripts/classroom-signoff.mjs --allow-dirty` — result: `10/10 checks passed`
+- Build: `built in 12.52s` (GREEN)
+- All Playwright gates pass; signoff shows `DEV_BYPASS_ONLY` only because the working tree is dirty.
+
+### Docs created
+
+- `docs/roadmap/RedByte_Runtime_Issue_Board_2026-04-02.md` — runtime issue board from live inspection
+  of all six surfaces.
+
 ## Change Log 2026-04-01 (repo:status timeout fix — signoff blocker is now a named gate failure, not an opaque timeout)
 
 **Subsystem**: Classroom signoff / repo-status reliability

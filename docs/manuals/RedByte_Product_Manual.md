@@ -466,6 +466,8 @@ The inspector panel shows per-selection health: primary issue with severity pill
 
 **Hint System.** On a FAIL result, the system evaluates 14 diagnostic conditions and displays matching fact-grounded hints to guide the student toward the error. Hints reference specific circuit behaviors — such as unconnected outputs, inverted logic, or missing clock connections — rather than generic advice.
 
+**PASS waveform visibility.** On PASS runs with mapped I/O, the waveform viewport auto-expands mapped stimulus inputs alongside observed outputs by default, so students can read input-to-output cause/effect without expanding hidden signal groups. On FAIL runs, mismatch-focused output lanes remain the default emphasis.
+
 **Sequential Circuit Banner.** When the circuit contains D flip-flops or other sequential elements, a banner displays indicating that clocked verification is active.
 
 **Freshness Tracking.** The Verify surface tracks whether the circuit has been modified since the last verification run. If the circuit changes, the previous verification result is marked stale. Renaming or re-describing a project does not stale the verification — only changes that affect circuit truth (topology, node types, scenario authority) trigger staleness.

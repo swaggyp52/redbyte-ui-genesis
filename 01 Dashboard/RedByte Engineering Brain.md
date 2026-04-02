@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-04-01
+updated: 2026-04-02
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
@@ -59,13 +59,21 @@ For Design workflow hierarchy work: [[Design Surface]]
 
 ## What is the next action
 
-**Verify workflow legitimacy is the active product priority.** Do not jump back to export or hardware gap cleanup before the Verify failure-recovery contract and waveform readability are both credible.
+**Runtime hardening moved from planning into closure work.**
+
+Completed in this batch:
+
+1. fixed the failing `ide-verify-workbench-contract` gate by opening the left verify dock before querying signal rows
+2. fixed pipeline strip drift so Map Pins now shows `pass` when required mapping is complete (`RBP1001` absent)
+3. captured runtime issue board at `docs/roadmap/RedByte_Runtime_Issue_Board_2026-04-02.md`
+4. fixed RIB-003 so PASS waveform now shows mapped input stimulus lanes by default
+5. fixed RIB-004 by making the Import ZIP file input intrinsically hidden in markup (no CSS-only hiding dependency)
 
 Immediate sequence:
 
-1. continue the waveform / oscilloscope overhaul
-2. finish the remaining Verify readability / professionalism gaps
-3. only then return to remaining export / hardware legitimacy gaps
+1. rerun clean-tree classroom signoff after commit to confirm `CLASSROOM_READY`
+2. continue remaining product-hardening slices from gap audit / product contract tracks, not generic chrome work
+3. keep runtime board current as new live defects are discovered
 
 Pre-lab audit override (2026-03-29):
 

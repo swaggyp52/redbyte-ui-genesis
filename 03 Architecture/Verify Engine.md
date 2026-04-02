@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: verify
-updated: 2026-04-01
+updated: 2026-04-02
 related:
   - "[[Verify Hint System]]"
   - "[[Connection Model]]"
@@ -58,6 +58,12 @@ The latest legibility slice then removed repeated viewport chrome:
 - the waveform frame no longer spends vertical space on a duplicated signal digest, legend strip, tick explainer, or cursor readout table
 - the idle ghost scope now sizes to the real container width instead of using a hardcoded decorative track
 - fail overlays were strengthened so mismatch regions remain visually dominant in the scope itself
+
+The latest runtime-hardening slice closed RIB-003 waveform causality visibility:
+
+- PASS runs now keep mapped stimulus input lanes visible in the waveform viewport by default (when no mismatches exist)
+- this prevents "outputs-only" PASS evidence and restores immediate input-to-output causality reading without requiring signal-group expansion
+- mismatch-first runs still retain failure-focused lane behavior
 
 ## Canonical Shape / Contract
 
@@ -161,6 +167,7 @@ assertions-differ
 - Unsupported feedback and verify preflight failures are not testbench-authoring errors. They should surface as blocked or structural states with Design-directed recovery.
 - The waveform viewport is the evidence-layout authority. Any overlay that claims to align with it must consume the same visible tick window and the same runtime tick width.
 - The waveform frame should not spend prime viewport height on information already visible in the scope itself. Repeated legends, explainer copy, digest chips, and readout tables belong outside the live evidence area or in tooltips/drawers.
+- PASS evidence must include both mapped stimulus inputs and observed outputs in the default viewport whenever no mismatches are present.
 
 ## Failure Taxonomy And Routing
 
