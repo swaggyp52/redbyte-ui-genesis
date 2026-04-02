@@ -136,7 +136,7 @@ P6 export/hardware legitimacy — initial slice landed (2026-04-01, commit 404c4
 - **Tool version aligned**: ExportSurface was showing `Vivado 2024.1+` while the project folder targets `2024.2+`. Fixed display string.
 - **Test ID dedup**: `ide-export-vivado-command` was on 4 elements across 3 render branches; now only on the actual command element.
 - **Regression test**: `basys3-bundle-gate.test.ts` now asserts README contains "Open Project" and not "Create a new RTL project" (5/5 passing).
-- Remaining open: GAP-013, GAP-014 (classroom hardware proof + clean-tree release discipline).
+- Remaining open: GAP-013 (live Basys3 rehearsal proof). GAP-014 clean-tree discipline is validated; current clean-tree signoff blocker is a specific repo gate failure (`ide-design-workbench-contract` palette order drift), not dirty-tree ambiguity.
 - GAP-014 mitigation landed: `classroom:signoff --allow-dirty` is now explicitly degraded (`DEV_BYPASS_ONLY`) and can no longer emit `CLASSROOM_READY`.
 
 Gap audit updated: Phase 6 initial slice complete. Next: Phase 6 remaining (GAP-007, 008, 013, 014).

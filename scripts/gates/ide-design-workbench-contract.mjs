@@ -64,10 +64,10 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
     .evaluateAll((elements) => elements.map((element) => element.getAttribute('data-testid')));
   const expectedSectionOrder = [
     'ide-design-palette-section-logic',
+    'ide-design-palette-section-board',
     'ide-design-palette-section-sequential',
     'ide-design-palette-section-io',
     'ide-design-palette-section-reusable',
-    'ide-design-palette-section-board',
   ];
   assert(
     JSON.stringify(sectionOrder) === JSON.stringify(expectedSectionOrder),

@@ -38,6 +38,38 @@ That made it too easy to misread a degraded run as release-safe readiness.
 - Script-level runtime check:
   - `node ./scripts/classroom-signoff.mjs --allow-dirty`
   - output shows dirty-tree bypass details under `Working tree clean` check and does not present `CLASSROOM_READY` in bypassed state
+
+## Change Log 2026-04-01 (GAP-014 proof pass — clean-tree signoff evidence from synced main)
+
+**Subsystem**: Classroom signoff truth / clean-tree evidence
+
+### Problem
+
+GAP-014 semantics were improved, but clean-tree signoff evidence from synced `main` had not yet been captured.
+
+### What changed
+
+- Ran clean-tree proof command:
+  - `node ./scripts/classroom-signoff.mjs`
+- Result:
+  - `Summary: 9/10 checks passed`
+  - `FINAL VERDICT: NOT_READY`
+- Isolated failing gate:
+  - `node ./scripts/gates/ide-design-workbench-contract.mjs`
+  - failure detail: unexpected palette section order
+
+### Student/instructor-visible impact
+
+- Release discipline is now evidenced on clean tree: remaining not-ready status is due to a concrete product gate, not bypass ambiguity.
+
+### Proof
+
+- Hardware strict availability probe:
+  - `pnpm -s classroom:hw:check -- --strict`
+  - result: `Basys3 detected: UNKNOWN`, `status: NOT_READY`, `EXIT:1`
+- Clean-tree signoff:
+  - `node ./scripts/classroom-signoff.mjs`
+  - result: `NOT_READY` (single failing gate)
   - run in this environment remained `NOT_READY` due an unrelated failing repo-status gate (`IDE Design Workbench Contract`), which is consistent with signoff truth and does not affect bypass-verdict logic
 
 ## Change Log 2026-04-01 (GAP-013 slice 1 — strict Basys3 readiness gate for classroom handoff)
