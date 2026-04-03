@@ -1,5 +1,31 @@
 # AI State
 
+## Change Log 2026-04-02 (SPI-003/004/007 — Trust signal honesty and export jargon elimination)
+
+**Subsystem**: PipelineStrip, ExportSurface, ProjectSurface, gate contracts
+
+### Problem
+
+Three related trust-signal failures:
+1. PipelineStrip showed "blocked" (warning icon) when verify ran and assertions differed — misleading students into thinking verify could not run when it actually failed
+2. ExportSurface used developer jargon ("COMPARE ALIGNED", "Comparison aligned", "Evidence snapshot") in student-facing labels
+3. ExportSurface showed identical "EXPORT AVAILABLE" label for both trusted and advisory trust states, destroying the distinction
+
+### What changed
+
+- `PipelineStrip.tsx`: Added `'fail'` to `StageStatus`. Verify `assertions-differ`/`verify-error` → `'fail'` (was `'blocked'`). New `FailIcon` (X mark) for fail state. CSS: new `--fail` class with red tones.
+- `ExportSurface.tsx`: Dock pill `COMPARE ALIGNED` → `VERIFIED`, `EXPORT AVAILABLE` → `NEEDS REVIEW`. Inspector `Comparison aligned` → `Verified`. Eyebrow trusted `EXPORT AVAILABLE` → `READY`, advisory → `NEEDS REVIEW`. Trust banner `EXPORT AVAILABLE` → `READY`. Details `Evidence snapshot` → `Build details`.
+- `ProjectSurface.tsx`: Readiness spotlight `EXPORT AVAILABLE` → `READY TO EXPORT`.
+- `ide-root.css`: Added `.ide-pipeline-stage--fail` styles (red, distinct from amber blocked).
+- `ide-evidence-capsule-contract.mjs`: Updated regex patterns.
+
+### Tests
+
+- `pipelineStrip.test.tsx`: 2 new tests (6/6 total)
+- `exportSurface.trust-clarity.test.tsx`: 5 new tests (16/16 total)
+- `studentLanguage.test.ts`: 3 jargon terms added to ban list (5/5 pass)
+- Build: EXIT 0
+
 ## Change Log 2026-04-02 (RIB-013–021 — Student-facing language legitimacy overhaul)
 
 **Subsystem**: Cross-surface user-facing text, Verify, StimulusCanvas, Shell

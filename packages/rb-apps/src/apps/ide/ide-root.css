@@ -1246,6 +1246,13 @@
 }
 .ide-pipeline-stage--blocked .ide-pipeline-label { color: var(--rb-warning); }
 
+.ide-pipeline-stage--fail .ide-pipeline-badge {
+  background: rgba(248, 113, 113, 0.14);
+  color: var(--rb-error, #f87171);
+  border: 1px solid rgba(248, 113, 113, 0.28);
+}
+.ide-pipeline-stage--fail .ide-pipeline-label { color: var(--rb-error, #f87171); }
+
 .ide-pipeline-stage--pending .ide-pipeline-badge {
   background: rgba(255, 255, 255, 0.05);
   color: var(--ide-text-soft);
@@ -10290,6 +10297,9 @@ details[open].ide-project-identity-details > summary::before { content: '▼ '; 
 .ide-pipeline-stage--blocked {
   background: rgba(248, 113, 113, 0.08);
 }
+.ide-pipeline-stage--fail {
+  background: rgba(248, 113, 113, 0.08);
+}
 .ide-pipeline-stage--pending {
   opacity: 0.4;
 }
@@ -13657,6 +13667,20 @@ details[open].ide-export-evidence-details > summary::before {
 }
 .ide-pipeline-stage--blocked .ide-pipeline-label {
   color: rgba(244, 185, 66, 0.9);
+}
+
+/* Fail: red — verify ran but assertions did not match */
+.ide-pipeline-stage--fail {
+  background: rgba(248, 113, 113, 0.08);
+  box-shadow: inset 0 -2px 0 rgba(248, 113, 113, 0.6);
+}
+.ide-pipeline-stage--fail .ide-pipeline-badge {
+  background: rgba(248, 113, 113, 0.18);
+  color: rgba(248, 113, 113, 0.95);
+  border-color: rgba(248, 113, 113, 0.4);
+}
+.ide-pipeline-stage--fail .ide-pipeline-label {
+  color: rgba(248, 113, 113, 0.9);
 }
 
 /* Pending: undo opacity collapse, keep dim but readable */

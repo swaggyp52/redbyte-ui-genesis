@@ -32,6 +32,9 @@ describe('student-facing language contracts', () => {
       'deterministic rows',
       'Hardware surface',
       'Design surface',
+      'COMPARE ALIGNED',
+      'Comparison aligned',
+      'Evidence snapshot',
     ];
 
     // These files contain the student-facing messages. The actual runtime

@@ -24,7 +24,7 @@ export interface PipelineStripProps {
 
 // Pipeline stages — Design, Verify, Map Pins, Export (not project/import, those are entry points)
 type PipelineStage = 'design' | 'verify' | 'hardware' | 'export';
-type StageStatus = 'pass' | 'blocked' | 'active' | 'pending';
+type StageStatus = 'pass' | 'fail' | 'blocked' | 'active' | 'pending';
 
 interface StageConfig {
   key: PipelineStage;
@@ -64,10 +64,10 @@ function deriveStageStatus(
   const completion = deriveStageCompletion(health, readiness);
   if (completion[stage.key]) return 'pass';
 
-  // Verify has an intermediate "blocked" state for failures (not just "pending")
+  // Verify that ran and failed is "fail" — distinct from "blocked" (cannot run) and "pending" (not yet run)
   if (stage.key === 'verify') {
     const verifyState = deriveProjectVerifyState(health);
-    if (verifyState === 'assertions-differ' || verifyState === 'verify-error') return 'blocked';
+    if (verifyState === 'assertions-differ' || verifyState === 'verify-error') return 'fail';
   }
 
   return 'pending';
@@ -91,6 +91,13 @@ const WarnIcon: React.FC = () => (
   <svg width="9" height="9" viewBox="0 0 9 9" fill="none" aria-hidden="true">
     <path d="M4.5 1.5V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     <circle cx="4.5" cy="7" r="0.75" fill="currentColor" />
+  </svg>
+);
+
+// Cross icon for failed stages
+const FailIcon: React.FC = () => (
+  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" aria-hidden="true">
+    <path d="M2 2L7 7M7 2L2 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 );
 
@@ -148,7 +155,7 @@ export const PipelineStrip: React.FC<PipelineStripProps> = ({
               aria-label={`${stage.label} — ${status}`}
             >
               <span className="ide-pipeline-badge" aria-hidden="true">
-                {status === 'pass' ? <CheckIcon /> : status === 'blocked' ? <WarnIcon /> : stage.letter}
+                {status === 'pass' ? <CheckIcon /> : status === 'fail' ? <FailIcon /> : status === 'blocked' ? <WarnIcon /> : stage.letter}
               </span>
               <span className="ide-pipeline-label">{stage.label}</span>
             </button>

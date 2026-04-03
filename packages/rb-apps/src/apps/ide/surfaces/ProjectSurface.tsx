@@ -1109,7 +1109,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             <div className="ide-project-spotlight-header">
               <span className="ide-project-spotlight-eyebrow">Readiness</span>
               <IdeStatusPill tone={hardwareReady ? 'ok' : hardBlockingIssue ? 'warn' : exportAvailable ? 'warn' : 'idle'}>
-                {hardwareReady ? 'BOARD READY' : hardBlockingIssue ? 'ACTION NEEDED' : exportAvailable ? 'EXPORT AVAILABLE' : 'IN PROGRESS'}
+                {hardwareReady ? 'BOARD READY' : hardBlockingIssue ? 'ACTION NEEDED' : exportAvailable ? 'READY TO EXPORT' : 'IN PROGRESS'}
               </IdeStatusPill>
             </div>
             <div className="ide-project-readiness-list">

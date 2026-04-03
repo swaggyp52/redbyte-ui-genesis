@@ -196,3 +196,54 @@ Title: "Stale authored reference" → "Test vectors need updating". Added recomm
 | RIB-021 | LOW | PipelineStrip | **FIXED** |
 
 Nine issues fixed. The systematic problem: RedByte used internal jargon where students see it. All affected strings now use the student-facing vocabulary from `workflowStages.ts`.
+
+---
+
+## Session 4 — Trust Signal Honesty & Export Jargon Elimination
+
+Product hardening audit across all six surfaces found three related trust-signal issues:
+
+### SPI-003 · PipelineStrip shows "blocked" icon when verify ran and failed
+**Severity:** HIGH · **Surface:** PipelineStrip
+**Files:** `PipelineStrip.tsx`, `ide-root.css`
+**Impact:** When verify runs and assertions differ (test fails), the pipeline strip showed a "blocked" (warning/exclamation) icon. This told students "verify cannot run" when it actually ran and produced a failing result. The correct signal is "fail" — a distinct visual state with a red X icon.
+**Fix applied:** Added `'fail'` status to `StageStatus` type. Verify `assertions-differ` and `verify-error` now map to `'fail'` instead of `'blocked'`. New `FailIcon` (X mark) renders in red tones, visually distinct from the amber blocked state.
+**Proof:** `pipelineStrip.test.tsx` — 2 new tests: `shows verify as fail (not blocked) when assertions differ` and `verify fail uses distinct visual from blocked (X instead of !)`.
+**Status:** FIXED in this session.
+
+### SPI-004 · ExportSurface uses developer jargon in student-facing labels
+**Severity:** HIGH · **Surface:** Export
+**Files:** `ExportSurface.tsx`
+**Impact:** Five instances of developer jargon in student-visible text:
+- Dock pill: "COMPARE ALIGNED" → students don't know what this means
+- Inspector: "Comparison aligned" → same jargon
+- Summary eyebrow: duplicate "EXPORT AVAILABLE" for both trusted and advisory states
+- Details section: "Evidence snapshot" → internal term
+**Fix applied:**
+- Dock pill: `COMPARE ALIGNED` → `VERIFIED` (trusted), `EXPORT AVAILABLE` → `NEEDS REVIEW` (advisory)
+- Inspector: `Comparison aligned` → `Verified`
+- Summary eyebrow: `EXPORT AVAILABLE` (trusted) → `READY`, duplicate advisory → `NEEDS REVIEW`
+- Trust banner: `EXPORT AVAILABLE` → `READY` (when trusted)
+- Details summary: `Evidence snapshot` → `Build details`
+**Proof:** `exportSurface.trust-clarity.test.tsx` — 5 new tests for student-facing labels, 16/16 pass.
+**Status:** FIXED in this session.
+
+### SPI-007 · ExportSurface eyebrow shows same label for two different trust states
+**Severity:** MEDIUM · **Surface:** Export
+**Files:** `ExportSurface.tsx`
+**Impact:** Both trusted and advisory states showed "EXPORT AVAILABLE" — the trust distinction was invisible to students.
+**Fix applied:** Trusted → `READY`, advisory → `NEEDS REVIEW`. Tests enforce the distinction.
+**Status:** FIXED in this session (combined with SPI-004).
+
+### Additional changes
+- **ProjectSurface**: readiness spotlight `EXPORT AVAILABLE` → `READY TO EXPORT` for consistency
+- **Gate contract** (`ide-evidence-capsule-contract.mjs`): regex patterns updated to match new labels
+- **studentLanguage.test.ts**: added `COMPARE ALIGNED`, `Comparison aligned`, `Evidence snapshot` to banned jargon list
+
+### Session 4 Summary
+
+| ID | Severity | Surface | Status |
+|----|----------|---------|--------|
+| SPI-003 | HIGH | PipelineStrip | **FIXED** |
+| SPI-004 | HIGH | Export | **FIXED** |
+| SPI-007 | MEDIUM | Export | **FIXED** |

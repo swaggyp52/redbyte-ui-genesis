@@ -1040,7 +1040,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           <header className="ide-workbench-placeholder-header">
             <h3>Quick status</h3>
             <IdeStatusPill tone={exportTrusted ? 'ok' : hasBlockingErrors ? 'error' : 'warn'}>
-              {exportTrusted ? 'COMPARE ALIGNED' : hasBlockingErrors ? 'BLOCKED' : 'EXPORT AVAILABLE'}
+              {exportTrusted ? 'VERIFIED' : hasBlockingErrors ? 'BLOCKED' : 'NEEDS REVIEW'}
             </IdeStatusPill>
           </header>
           <div className="ide-kv-list">
@@ -1074,7 +1074,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           </div>
           <details style={{ marginTop: 'var(--ide-space-2)' }}>
             <summary style={{ cursor: 'pointer', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-              Evidence snapshot
+              Build details
             </summary>
             <div className="ide-kv-list" style={{ marginTop: 'var(--ide-space-2)' }}>
               <div className="ide-kv-row ide-export-provenance-row" data-testid="ide-export-provenance-design">
@@ -1237,7 +1237,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     : downloadDone
                       ? 'Downloaded'
                       : exportTrusted
-                      ? 'Comparison aligned'
+                      ? 'Verified'
                         : downloadReady
                           ? 'Available'
                           : 'Blocked'}
@@ -1349,7 +1349,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <div className="ide-export-summary-copy">
                 <div className="ide-export-summary-eyebrow">
                   <IdeStatusPill tone={exportTrusted ? 'ok' : exportBlocked ? 'error' : 'warn'}>
-                    {exportTrusted ? 'EXPORT AVAILABLE' : exportBlocked ? 'BLOCKED' : 'EXPORT AVAILABLE'}
+                    {exportTrusted ? 'READY' : exportBlocked ? 'BLOCKED' : 'NEEDS REVIEW'}
                   </IdeStatusPill>
                   <span>Engineering handoff</span>
                 </div>
@@ -1405,7 +1405,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           <section className="ide-export-trust-banner" data-testid="ide-export-trust-banner">
             {exportTrusted ? (
               <div className="ide-export-trust-row ide-export-trust-row--trusted">
-                <IdeStatusPill tone="ok">EXPORT AVAILABLE</IdeStatusPill>
+                <IdeStatusPill tone="ok">READY</IdeStatusPill>
                 <span className="ide-export-trust-message" data-testid="ide-export-trust-consequence">
                   Assertions match observed outputs and all required pins are mapped. This export is ready for Vivado.
                 </span>

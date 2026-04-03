@@ -119,4 +119,57 @@ describe('PipelineStrip export availability semantics', () => {
 
     expect(getByTestId('ide-pipeline-stage-hardware').getAttribute('aria-label')).toBe('Map Pins — pending');
   });
+
+  it('shows verify as fail (not blocked) when assertions differ', () => {
+    const { getByTestId } = render(
+      <PipelineStrip
+        currentMode="project"
+        health={{
+          lastVerify: {
+            status: 'fail',
+            report: { rows: [{ tick: 0, signal: 'ld0', expected: 1, actual: 0 }] },
+            tickCount: 4,
+            scenarioName: 'test',
+          },
+          lastExport: undefined,
+          dirtySinceVerify: false,
+          dirtySinceExport: false,
+          blockingIssues: [],
+        }}
+        readiness={{ hasCircuit: true, hasIoMapping: true, hasVectors: true }}
+        primaryCta={{ label: 'Fix Verify', mode: 'verify', code: 'RBP1002' }}
+        onNavigate={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-pipeline-stage-verify').getAttribute('aria-label')).toBe('Verify — fail');
+  });
+
+  it('verify fail uses distinct visual from blocked (X instead of !)', () => {
+    const { getByTestId } = render(
+      <PipelineStrip
+        currentMode="export"
+        health={{
+          lastVerify: {
+            status: 'fail',
+            report: { rows: [{ tick: 0, signal: 'ld0', expected: 1, actual: 0 }] },
+            tickCount: 4,
+            scenarioName: 'test',
+          },
+          lastExport: undefined,
+          dirtySinceVerify: false,
+          dirtySinceExport: false,
+          blockingIssues: [],
+        }}
+        readiness={{ hasCircuit: true, hasIoMapping: true, hasVectors: true }}
+        primaryCta={{ label: 'Fix Verify', mode: 'verify', code: 'RBP1002' }}
+        onNavigate={vi.fn()}
+      />
+    );
+
+    const verifyStage = getByTestId('ide-pipeline-stage-verify');
+    // Should have fail class, not blocked class
+    expect(verifyStage.className).toContain('--fail');
+    expect(verifyStage.className).not.toContain('--blocked');
+  });
 });

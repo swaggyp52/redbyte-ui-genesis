@@ -200,7 +200,7 @@ describe('ExportSurface trust clarity', () => {
     expect(view.queryByTestId('ide-export-capsule-error')).toBeNull();
   }
 
-  it('compare-aligned export state renders as available without blocked copy', () => {
+  it('compare-aligned export state renders as READY without blocked copy', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={buildMappedProject()}
@@ -211,7 +211,7 @@ describe('ExportSurface trust clarity', () => {
     );
 
     const banner = getByTestId('ide-export-trust-banner');
-    expect(banner.textContent).toContain('EXPORT AVAILABLE');
+    expect(banner.textContent).toContain('READY');
     expect(banner.textContent).not.toContain('BLOCKED');
   });
 
@@ -376,5 +376,86 @@ describe('ExportSurface trust clarity', () => {
     expect(banner.textContent).toContain('ASSERTIONS DIFFER');
     expect(banner.textContent).not.toContain('BLOCKED');
     expect(getByTestId('ide-export-dock-download').hasAttribute('disabled')).toBe(false);
+  });
+
+  it('dock pill uses student-facing labels without jargon', () => {
+    const { getByTestId: getVerified } = render(
+      <ExportSurface
+        project={buildMappedProject()}
+        determinismHash="ide-hash"
+        verifyResult={passResult}
+        dirtySinceVerify={false}
+      />
+    );
+    const dock = getVerified('ide-export-checks-dock');
+    expect(dock.textContent).toContain('VERIFIED');
+    expect(dock.textContent).not.toContain('COMPARE ALIGNED');
+
+    cleanup();
+
+    const { getByTestId: getAdvisory } = render(
+      <ExportSurface
+        project={buildMappedProject()}
+        determinismHash="ide-hash"
+        // No verifyResult → advisory state
+      />
+    );
+    const advisoryDock = getAdvisory('ide-export-checks-dock');
+    expect(advisoryDock.textContent).toContain('NEEDS REVIEW');
+    expect(advisoryDock.textContent).not.toContain('EXPORT AVAILABLE');
+  });
+
+  it('summary eyebrow distinguishes trusted READY from advisory NEEDS REVIEW', () => {
+    const { getByTestId: getTrusted } = render(
+      <ExportSurface
+        project={buildMappedProject()}
+        determinismHash="ide-hash"
+        verifyResult={passResult}
+        dirtySinceVerify={false}
+      />
+    );
+    expect(getTrusted('ide-export-summary-card').textContent).toContain('READY');
+
+    cleanup();
+
+    const { getByTestId: getAdvisory } = render(
+      <ExportSurface
+        project={buildMappedProject()}
+        determinismHash="ide-hash"
+        // No verifyResult → advisory state
+      />
+    );
+    expect(getAdvisory('ide-export-summary-card').textContent).toContain('NEEDS REVIEW');
+  });
+
+  it('inspector uses Verified for trusted export (not jargon Comparison aligned)', () => {
+    const { queryByTestId } = render(
+      <ExportSurface
+        project={buildMappedProject()}
+        determinismHash="ide-hash"
+        verifyResult={passResult}
+        dirtySinceVerify={false}
+      />
+    );
+    const buildState = queryByTestId('ide-export-capsule-build-state');
+    // Inspector may not render in minimal test layout — if it does, verify no jargon
+    if (buildState) {
+      expect(buildState.textContent).toContain('Verified');
+      expect(buildState.textContent).not.toContain('Comparison aligned');
+    }
+  });
+
+  it('build details section uses student-friendly label', () => {
+    const { getByTestId } = render(
+      <ExportSurface
+        project={buildMappedProject()}
+        determinismHash="ide-hash"
+        verifyResult={passResult}
+        dirtySinceVerify={false}
+      />
+    );
+    const dock = getByTestId('ide-export-checks-dock');
+    expect(dock.textContent).toContain('Build details');
+    expect(dock.textContent).not.toContain('Evidence snapshot');
   });
 });
