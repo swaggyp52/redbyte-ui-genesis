@@ -1608,6 +1608,7 @@ export const IdeApp: React.FC = () => {
         ) : currentMode === 'verify' ? (
           <ErrorBoundary fallbackTitle="Verify workspace encountered an error">
             <VerifySurface
+              circuitGraph={circuit}
               deterministicHash={currentVerifyProjectHash}
               hasVectors={hasVectors}
               vectors={authoritativeProjectVectors}

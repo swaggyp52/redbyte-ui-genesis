@@ -1,5 +1,44 @@
 # AI State
 
+## Change Log 2026-04-03 (Verify workspace architecture pass — region hierarchy + calmer status)
+
+**Subsystem**: Verify surface layout/workflow
+
+### Problem
+
+Verify was still visually and structurally monolithic: stacked banners, dense inline layout branching, and weak separation of authoring vs analysis workflow. Observe mode also still exposed expected-output authoring controls in parts of the stimulus UI.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Added explicit product regions (`header`, `stimulus`, `waveform`, `inspector`) in the render hierarchy.
+  - Added a prioritized single `primaryStatus` model and surfaced it via a new primary status component.
+  - Suppressed legacy stacked top banners in favor of one calm status area.
+  - Kept inspector tabs mode-aware so `Mismatches` is omitted in Observe mode.
+
+- `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyRegionLayout.tsx` (new)
+  - Added typed region wrappers for header/stimulus composition seams.
+
+- `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyPrimaryStatusArea.tsx` (new)
+  - Added unified status callout component with compact action buttons.
+
+- `packages/rb-apps/src/apps/ide/components/StimulusCanvas.tsx`
+  - Observe mode now hides expected-output lanes in the timeline canvas when `readOnlyOutputs` is true.
+
+- `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - Observe mode now hides expected-output authoring controls in the Add Case form.
+
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - Added region-level layout rules so waveform remains the dominant area.
+
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx` (new)
+  - Added 6 integration tests for region hierarchy, mode-aware inspector behavior, primary-status consolidation, sequential helper visibility, waveform presence, and Observe-mode expected-output lockout.
+
+### Tests
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx` ✅ (6/6)
+- `pnpm -w exec vitest run observe-first verifySurface.waveform-priority` ✅ (21/21)
+
 ## Change Log 2026-04-02 (SPI-003/004/007 — Trust signal honesty and export jargon elimination)
 
 **Subsystem**: PipelineStrip, ExportSurface, ProjectSurface, gate contracts

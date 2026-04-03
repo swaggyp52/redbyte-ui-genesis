@@ -203,7 +203,7 @@ export function buildVerifySessionViewModel(
       ? 'COMPARE'
       : mode === 'capture'
         ? 'CAPTURE'
-        : 'SIMULATION';
+        : 'OBSERVE';
 
   const title =
     status === 'assertions-match'
@@ -260,11 +260,11 @@ export function buildVerifySessionViewModel(
       ? 'Re-run for current circuit'
       : mode === 'assertion'
         ? input.lastRun
-          ? 'Re-run Compare'
-          : 'Run Compare'
+          ? 'Compare again'
+          : 'Compare'
         : input.lastRun
-          ? 'Re-run Testbench'
-          : 'Run Testbench';
+          ? 'Run circuit again'
+          : 'Run circuit';
 
   return {
     mode,

@@ -5093,6 +5093,119 @@ details[open] summary .details-arrow {
 }
 
 /* ════════════════════════════════════════════════════════════════
+   Why Inspector Panel (Phase 2 — causal explanation)
+   ════════════════════════════════════════════════════════════════ */
+.ide-why-panel {
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #c8dff4;
+}
+.ide-why-panel--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+}
+.ide-why-empty-message {
+  margin: 0;
+  color: rgba(200, 223, 244, 0.5);
+  font-style: italic;
+  text-align: center;
+}
+.ide-why-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ide-why-signal-name code {
+  font-size: 14px;
+  font-weight: 600;
+  color: #94d2ff;
+}
+.ide-why-tick {
+  font-size: 11px;
+  color: rgba(200, 223, 244, 0.6);
+}
+.ide-why-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ide-why-badge--combinational { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+.ide-why-badge--sequential { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+.ide-why-badge--input { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+.ide-why-badge--unchanged { background: rgba(200, 223, 244, 0.08); color: rgba(200, 223, 244, 0.5); }
+.ide-why-badge--partial { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+.ide-why-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ide-why-value-code {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e0f2fe;
+}
+.ide-why-value-change {
+  font-size: 12px;
+  color: #fbbf24;
+}
+.ide-why-value-change code {
+  color: rgba(200, 223, 244, 0.6);
+}
+.ide-why-value-held {
+  font-size: 12px;
+  color: rgba(200, 223, 244, 0.4);
+}
+.ide-why-summary {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  background: rgba(14, 28, 48, 0.5);
+  border-left: 3px solid rgba(56, 189, 248, 0.3);
+  border-radius: 0 4px 4px 0;
+  font-size: 12px;
+  color: #c8dff4;
+}
+.ide-why-clock-edge,
+.ide-why-prior-state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 4px 8px;
+  background: rgba(168, 85, 247, 0.08);
+  border-radius: 4px;
+  font-size: 12px;
+  color: #c4b5fd;
+}
+.ide-why-clock-edge code,
+.ide-why-prior-state code {
+  color: #a855f7;
+}
+.ide-why-clock-icon {
+  font-size: 14px;
+}
+.ide-why-steps {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  list-style: decimal;
+}
+.ide-why-step {
+  margin-bottom: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(200, 223, 244, 0.85);
+}
+
+/* ════════════════════════════════════════════════════════════════
    Phase 7C — Project quick-start cards
    ════════════════════════════════════════════════════════════════ */
 .ide-project-quickstart {
@@ -19143,6 +19256,78 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   overflow: auto;
 }
 
+.ide-verify-region {
+  display: block;
+}
+
+.ide-verify-region--header {
+  order: 1;
+  flex-shrink: 0;
+}
+
+/* Inline status chip — replaces full IdeCallout banner */
+.ide-verify-status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ide-verify-status-chip--info {
+  background: rgba(56, 152, 236, 0.15);
+  color: #7ec8f8;
+}
+.ide-verify-status-chip--warn {
+  background: rgba(230, 172, 60, 0.18);
+  color: #f0cb6a;
+}
+.ide-verify-status-chip--error {
+  background: rgba(220, 60, 60, 0.18);
+  color: #f28b8b;
+}
+
+.ide-verify-region--stimulus {
+  order: 2;
+  flex-shrink: 0;
+  overflow-y: auto;
+  transition: max-height 0.2s ease;
+}
+.ide-verify-region--stimulus:has(.ide-vfr-panel) {
+  max-height: none;
+  overflow: visible;
+}
+.ide-verify-region--stimulus.is-collapsed {
+  max-height: 40px;
+  overflow: hidden;
+}
+
+.ide-verify-region--waveform {
+  order: 3;
+  flex: 1;
+  min-height: 120px;
+}
+.ide-verify-region--waveform:has(.ide-vwp) {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
+.ide-verify-region--inspector {
+  order: 4;
+  flex: 0 0 auto;
+  max-height: min(40vh, 360px);
+  overflow-y: auto;
+}
+
+.ide-verify-primary-status {
+  margin: 0 0 var(--rb-space-2, 8px) 0;
+}
+
 /* ── Stacking order: status strip → waveform → supporting sections ── */
 
 /* Reference-mode callout: demote to bottom, very compact */
@@ -23803,4 +23988,890 @@ button:disabled,
   border-bottom-color: var(--rb-accent, #3b82f6);
   color: var(--rb-text-primary, #c8daea);
   font-weight: 600;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Verify Command Bar — always-visible action strip
+   ════════════════════════════════════════════════════════════════ */
+
+.ide-verify-command-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px;
+  background: rgba(15, 25, 42, 0.65);
+  border-bottom: 1px solid rgba(48, 77, 107, 0.35);
+  flex-shrink: 0;
+  min-height: 38px;
+}
+
+.ide-vcb-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ide-vcb-group--actions {
+  gap: 6px;
+}
+
+/* Mode toggle — segmented control */
+.ide-vcb-mode-toggle {
+  display: inline-flex;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(48, 77, 107, 0.5);
+}
+
+.ide-vcb-mode-btn {
+  background: transparent;
+  border: none;
+  color: var(--rb-text-muted, #7a95b0);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 14px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.ide-vcb-mode-btn:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--rb-text-primary, #c8daea);
+}
+.ide-vcb-mode-btn.is-active {
+  background: rgba(59, 130, 246, 0.22);
+  color: #7ec8f8;
+  font-weight: 600;
+}
+.ide-vcb-mode-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Status chip */
+.ide-vcb-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ide-vcb-status--ok {
+  background: rgba(34, 197, 94, 0.15);
+  color: #6ee7a0;
+}
+.ide-vcb-status--warn {
+  background: rgba(230, 172, 60, 0.18);
+  color: #f0cb6a;
+}
+.ide-vcb-status--error {
+  background: rgba(220, 60, 60, 0.18);
+  color: #f28b8b;
+}
+.ide-vcb-status--idle {
+  background: rgba(100, 116, 139, 0.18);
+  color: #94a3b8;
+}
+
+/* Sequential chip */
+.ide-vcb-seq-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(139, 92, 246, 0.18);
+  color: #c4b5fd;
+}
+
+/* Pulsing run button */
+.ide-verify-command-bar .is-pulsing {
+  animation: vcb-pulse 1.2s ease-in-out infinite;
+}
+@keyframes vcb-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Verify First-Run Panel — hero card for cold-start students
+   ════════════════════════════════════════════════════════════════ */
+
+.ide-vfr-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 16px;
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+/* Hero */
+.ide-vfr-hero {
+  text-align: center;
+}
+.ide-vfr-hero-icon {
+  font-size: 20px;
+  margin-bottom: 2px;
+}
+.ide-vfr-hero-title {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--rb-text-primary, #c8daea);
+}
+.ide-vfr-hero-desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--rb-text-muted, #7a95b0);
+  line-height: 1.3;
+}
+
+/* Signal preview */
+.ide-vfr-signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.ide-vfr-signal-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ide-vfr-signal-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rb-text-muted, #7a95b0);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.ide-vfr-signal-list {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.ide-vfr-signal-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--rb-font-mono, 'JetBrains Mono', monospace);
+}
+.ide-vfr-signal-chip--in {
+  background: rgba(20, 184, 166, 0.15);
+  color: #5eead4;
+}
+.ide-vfr-signal-chip--out {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fcd34d;
+}
+.ide-vfr-signal-chip--clk {
+  background: rgba(139, 92, 246, 0.18);
+  color: #c4b5fd;
+}
+
+/* Actions */
+.ide-vfr-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.ide-vfr-action-hint {
+  font-size: 12px;
+  color: var(--rb-text-muted, #7a95b0);
+}
+
+/* Sequential presets */
+.ide-vfr-seq-presets {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.ide-vfr-presets-label {
+  font-size: 11px;
+  color: var(--rb-text-muted, #7a95b0);
+}
+.ide-vfr-presets-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+/* Workflow steps */
+.ide-vfr-steps {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  padding-top: 4px;
+  border-top: 1px solid rgba(48, 77, 107, 0.25);
+}
+.ide-vfr-step {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  font-size: 10px;
+  color: var(--rb-text-muted, #7a95b0);
+  opacity: 0.55;
+}
+.ide-vfr-step.is-current {
+  opacity: 1;
+  color: var(--rb-text-primary, #c8daea);
+  font-weight: 600;
+}
+.ide-vfr-step.is-done {
+  opacity: 0.7;
+  color: #6ee7a0;
+}
+.ide-vfr-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  background: rgba(100, 116, 139, 0.2);
+}
+.ide-vfr-step.is-current .ide-vfr-step-num {
+  background: rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+}
+.ide-vfr-step.is-done .ide-vfr-step-num {
+  background: rgba(34, 197, 94, 0.2);
+  color: #6ee7a0;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Verify Waveform Placeholder — scaffold lanes + overlay CTA
+   ════════════════════════════════════════════════════════════════ */
+
+.ide-vwp {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 80px;
+  max-height: 140px;
+  overflow: hidden;
+}
+
+/* Scaffold lanes */
+.ide-vwp-lanes {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  opacity: 0.35;
+  pointer-events: none;
+  padding: 8px 0;
+}
+.ide-vwp-lane {
+  display: flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(48, 77, 107, 0.15);
+}
+.ide-vwp-lane-label {
+  width: 80px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--rb-text-muted, #7a95b0);
+}
+.ide-vwp-lane-label code {
+  font-family: var(--rb-font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+}
+.ide-vwp-lane-trace {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.ide-vwp-lane-bar {
+  width: 100%;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(100, 116, 139, 0.25);
+}
+
+/* Kind-based lane coloring */
+.ide-vwp-lane--clk .ide-vwp-lane-label { color: #a78bfa; }
+.ide-vwp-lane--clk .ide-vwp-lane-bar { background: rgba(139, 92, 246, 0.3); }
+
+.ide-vwp-lane--in .ide-vwp-lane-label { color: #5eead4; }
+.ide-vwp-lane--in .ide-vwp-lane-bar { background: rgba(20, 184, 166, 0.3); }
+
+.ide-vwp-lane--out .ide-vwp-lane-label { color: #fcd34d; }
+.ide-vwp-lane--out .ide-vwp-lane-bar { background: rgba(251, 191, 36, 0.3); }
+
+.ide-vwp-lane--empty .ide-vwp-lane-label {
+  color: var(--rb-text-muted, #7a95b0);
+  font-style: italic;
+}
+
+/* Overlay CTA */
+.ide-vwp-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 18, 30, 0.55);
+  backdrop-filter: blur(2px);
+}
+.ide-vwp-overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: rgba(15, 25, 42, 0.8);
+  border: 1px solid rgba(48, 77, 107, 0.4);
+}
+.ide-vwp-overlay-icon {
+  font-size: 18px;
+}
+.ide-vwp-overlay-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--rb-text-muted, #7a95b0);
+  text-align: center;
+  max-width: 280px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Scenario Library Header — styled dropdown, tabs, CRUD actions
+   ════════════════════════════════════════════════════════════════ */
+
+.ide-scenario-library-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: rgba(15, 25, 42, 0.5);
+  border-bottom: 1px solid rgba(48, 77, 107, 0.3);
+  flex-shrink: 0;
+  min-height: 32px;
+}
+
+/* Switcher — dropdown button */
+.ide-scenario-switcher {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ide-scenario-switcher-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(30, 50, 80, 0.55);
+  border: 1px solid rgba(48, 77, 107, 0.5);
+  border-radius: 6px;
+  color: var(--rb-text-primary, #c8daea);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.ide-scenario-switcher-btn:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+.ide-scenario-switcher-name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ide-scenario-switcher-meta {
+  font-size: 10px;
+  color: var(--rb-text-muted, #7a95b0);
+  font-weight: 400;
+}
+.ide-scenario-switcher-caret {
+  font-size: 10px;
+  color: var(--rb-text-muted, #7a95b0);
+  margin-left: 2px;
+}
+
+/* Rename input */
+.ide-scenario-rename-input {
+  padding: 3px 8px;
+  background: rgba(15, 25, 42, 0.9);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  border-radius: 5px;
+  color: var(--rb-text-primary, #c8daea);
+  font-size: 12px;
+  font-family: inherit;
+  width: 160px;
+  outline: none;
+}
+.ide-scenario-rename-input:focus {
+  border-color: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+/* Dropdown list */
+.ide-scenario-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  min-width: 180px;
+  max-width: 280px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(12, 20, 35, 0.96);
+  border: 1px solid rgba(48, 77, 107, 0.55);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  padding: 4px;
+  backdrop-filter: blur(8px);
+}
+.ide-scenario-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  color: var(--rb-text-secondary, #94a3b8);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.1s;
+}
+.ide-scenario-dropdown-item:hover {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--rb-text-primary, #c8daea);
+}
+.ide-scenario-dropdown-item.is-active {
+  background: rgba(59, 130, 246, 0.18);
+  color: #7ec8f8;
+  font-weight: 600;
+}
+.ide-scenario-dropdown-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ide-scenario-dropdown-item-meta {
+  font-size: 10px;
+  color: var(--rb-text-muted, #7a95b0);
+  flex-shrink: 0;
+}
+
+/* CRUD action buttons */
+.ide-scenario-library-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+.ide-scenario-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--rb-text-muted, #7a95b0);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.ide-scenario-action-btn:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(48, 77, 107, 0.4);
+  color: var(--rb-text-primary, #c8daea);
+}
+.ide-scenario-action-btn--danger:hover:not(:disabled) {
+  background: rgba(220, 60, 60, 0.12);
+  border-color: rgba(220, 60, 60, 0.3);
+  color: #f28b8b;
+}
+.ide-scenario-action-btn:disabled,
+.ide-scenario-action-btn.is-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   IO Summary — styled signal chips instead of plain text
+   ════════════════════════════════════════════════════════════════ */
+
+.ide-verify-io-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: var(--rb-text-muted, #7a95b0);
+  background: rgba(15, 25, 42, 0.35);
+  border-bottom: 1px solid rgba(48, 77, 107, 0.2);
+}
+.ide-verify-io-summary-section {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ide-verify-io-summary-label {
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rb-text-muted, #7a95b0);
+  opacity: 0.8;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Fix broken direct-child selectors — VerifyStimulusRegion wrapper
+   The region sections (.ide-verify-region--stimulus, --header) now
+   wrap children, so selectors that used > .child on .ide-panel-body
+   no longer match. Override with descendant selectors.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Scenario library: show it properly (un-hide the broken max-height:0 rule) */
+.ide-verify-region--stimulus .ide-scenario-library-header {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+/* Scenario builder details: restore proper sizing inside region wrapper */
+.ide-verify-region--stimulus .ide-verify-scenario-builder-details {
+  position: static;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  max-height: none;
+  background: var(--rb-elevation-2, #0c1623);
+  border-top: 1px solid rgba(56, 189, 248, 0.10);
+}
+
+/* Zone labels inside stimulus region */
+.ide-verify-region--stimulus .ide-verify-zone-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--rb-text-muted, #7a95b0);
+  padding: 3px 10px 1px;
+  margin: 0;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+/* Stimulus region internal layout */
+.ide-verify-region--stimulus {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Hide old status-strip inline actions — replaced by VerifyCommandBar
+   Keep in DOM for testid compatibility but visually hidden.
+   ════════════════════════════════════════════════════════════════ */
+
+.ide-verify-strip-actions {
+  display: none !important;
+}
+
+/* Also hide the old inline mode toggle — command bar has its own */
+.ide-verify-mode-segmented {
+  display: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Status strip cleanup — compact, single-line, no overflow
+   ════════════════════════════════════════════════════════════════ */
+
+.ide-verify-region--header .ide-verify-status-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  min-height: 28px;
+  max-height: 36px;
+  overflow: hidden;
+  flex-wrap: nowrap;
+  border-bottom: 1px solid rgba(48, 77, 107, 0.25);
+}
+
+/* Truncate long status messages */
+.ide-verify-region--header .ide-verify-status-chip {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Stale note / pass count — truncate */
+.ide-verify-region--header .ide-verify-strip-meta {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Incomplete mapping notice — collapse to one line */
+.ide-verify-region--header .ide-verify-incomplete-notice {
+  display: none;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   REGION OVERRIDE — Scenario Builder inside VerifyStimulusRegion
+   These override the broken .ide-panel-body > .ide-verify-scenario-builder-details
+   direct-child selectors that no longer match through the region wrapper.
+   ════════════════════════════════════════════════════════════════ */
+
+/* First-run container (div, not details) — fill stimulus region */
+.ide-verify-region--stimulus .ide-verify-scenario-builder-details--first-run {
+  max-height: none !important;
+  flex: 1 1 auto !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+}
+
+/* Post-run details — collapsed state shows summary, open state shows editor */
+.ide-verify-region--stimulus .ide-verify-scenario-builder-details--postrun {
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  position: static !important;
+  background: var(--rb-elevation-2, #0c1623) !important;
+  border-top: 1px solid rgba(56, 189, 248, 0.10) !important;
+}
+.ide-verify-region--stimulus .ide-verify-scenario-builder-details--postrun:not([open]) {
+  max-height: 38px !important;
+  overflow: hidden !important;
+}
+.ide-verify-region--stimulus .ide-verify-scenario-builder-details--postrun[open] {
+  max-height: 45vh !important;
+  overflow-y: auto !important;
+}
+
+/* Summary bar — strong interactive affordance */
+.ide-verify-region--stimulus .ide-verify-scenario-builder-summary {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 12px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  color: rgba(120, 175, 220, 0.85) !important;
+  background: rgba(4, 12, 24, 0.7) !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.15) !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  list-style: none !important;
+  transition: background 0.12s !important;
+}
+.ide-verify-region--stimulus .ide-verify-scenario-builder-summary:hover {
+  background: rgba(59, 130, 246, 0.12) !important;
+  color: #93c5fd !important;
+}
+.ide-verify-region--stimulus .ide-verify-scenario-builder-summary::marker,
+.ide-verify-region--stimulus .ide-verify-scenario-builder-summary::-webkit-details-marker {
+  display: none !important;
+}
+
+/* Summary label */
+.ide-verify-scenario-builder-summary-label {
+  font-weight: 700;
+}
+
+/* Vector count chip */
+.ide-verify-scenario-builder-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(56, 189, 248, 0.12);
+  color: #7ec8f8;
+}
+
+/* Edit cue */
+.ide-verify-scenario-builder-summary-cue {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(59, 130, 246, 0.65);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ide-verify-scenario-builder-details[open] .ide-verify-scenario-builder-summary-cue {
+  display: none;
+}
+
+/* Arrow indicators */
+.ide-verify-region--stimulus .ide-verify-scenario-builder-details:not([open]) > .ide-verify-scenario-builder-summary::after {
+  content: '▸' !important;
+  margin-left: 4px !important;
+  opacity: 0.5 !important;
+  font-size: 10px !important;
+}
+.ide-verify-region--stimulus .ide-verify-scenario-builder-details[open] > .ide-verify-scenario-builder-summary::after {
+  content: '▾' !important;
+  margin-left: 4px !important;
+  opacity: 0.5 !important;
+  font-size: 10px !important;
+}
+
+/* Vector form inside open details — fill available space */
+.ide-verify-region--stimulus .ide-verify-vector-form {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding: 6px 10px 4px !important;
+  gap: 6px !important;
+}
+
+/* Canvas-only variant */
+.ide-verify-region--stimulus .ide-verify-vector-form--canvas-only {
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+/* Seq chip */
+.ide-verify-region--stimulus .ide-verify-seq-chip {
+  flex: 0 0 auto !important;
+  font-size: 10px !important;
+  color: rgba(147, 197, 253, 0.8) !important;
+  background: rgba(56, 189, 248, 0.07) !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.12) !important;
+  padding: 3px 10px !important;
+  min-height: 0 !important;
+}
+
+/* Run footer — always visible at bottom of stimulus */
+.ide-verify-region--stimulus .ide-verify-run-footer {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  padding: 4px 10px !important;
+  background: rgba(4, 12, 24, 0.5) !important;
+  border-top: 1px solid rgba(48, 77, 107, 0.3) !important;
+  min-height: 32px !important;
+}
+.ide-verify-run-footer-status {
+  font-size: 11px;
+  color: var(--rb-text-muted, #7a95b0);
+}
+.ide-verify-run-footer-ready {
+  color: #6ee7a0;
+  font-weight: 600;
+}
+.ide-verify-run-footer-hint {
+  font-style: italic;
+  opacity: 0.7;
+}
+.ide-verify-run-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Testbench zone header — compact labeled header */
+.ide-verify-testbench-zone-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: rgba(4, 12, 24, 0.5);
+  border-bottom: 1px solid rgba(48, 77, 107, 0.25);
+  flex-shrink: 0;
+}
+.ide-verify-empty-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(56, 189, 248, 0.7);
+}
+.ide-verify-testbench-vector-count {
+  display: inline-flex;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(56, 189, 248, 0.12);
+  color: #7ec8f8;
+}
+.ide-verify-empty-hint {
+  font-size: 11px;
+  color: var(--rb-text-muted, #7a95b0);
+  opacity: 0.7;
+}
+
+/* Sync warning — compact inline banner */
+.ide-verify-sync-warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(230, 172, 60, 0.08);
+  border-left: 3px solid rgba(230, 172, 60, 0.5);
+  font-size: 11px;
+  color: var(--rb-text-muted, #7a95b0);
+  flex-shrink: 0;
+}
+.ide-verify-sync-warning-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.ide-verify-sync-warning-text {
+  flex: 1;
+  line-height: 1.3;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Stimulus region height management
+   ════════════════════════════════════════════════════════════════ */
+
+/* First-run: stimulus gets more space, waveform is just a placeholder */
+.ide-verify-region--stimulus:has(.ide-verify-scenario-builder-details--first-run) {
+  max-height: none !important;
+  flex: 1 1 55% !important;
+  overflow: hidden !important;
+}
+
+/* Post-run: stimulus is compact, waveform dominates */
+.ide-verify-region--stimulus:has(.ide-verify-scenario-builder-details--postrun) {
+  max-height: none !important;
+  flex: 0 1 auto !important;
+  overflow: visible !important;
 }

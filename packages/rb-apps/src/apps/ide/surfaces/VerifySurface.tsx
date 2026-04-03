@@ -66,6 +66,17 @@ import type {
   TruthTableRow,
   TruthTableTraceInput,
 } from './TruthTablePane';
+import {
+  VerifyHeaderRegion,
+  VerifyStimulusRegion,
+} from './verify/VerifyRegionLayout';
+import { type VerifyPrimaryStatusAreaProps } from './verify/VerifyPrimaryStatusArea';
+import { WaveformViewer, type WaveformSignalRow, type SignalLaneGroup } from './verify/WaveformInstrument';
+import { explainSignal, type ExplainerCircuitGraph, type ExplainerSignalMapping } from './verify/signalExplainer';
+import { WhyInspectorPanel } from './verify/WhyInspectorPanel';
+import { VerifyCommandBar } from './verify/VerifyCommandBar';
+import { VerifyFirstRunPanel } from './verify/VerifyFirstRunPanel';
+import { VerifyWaveformPlaceholder } from './verify/VerifyWaveformPlaceholder';
 
 interface VerifyRow {
   tick: number;
@@ -173,18 +184,21 @@ export interface VerifySurfaceProps {
     title: string;
     message: string;
   } | null;
+  /** Circuit graph for causal explanation (Why tab). Accepts raw Circuit shape. */
+  circuitGraph?: {
+    readonly nodes: ReadonlyArray<{ readonly id: string; readonly type: string; readonly label?: string; readonly config?: Record<string, unknown> }>;
+    readonly connections: ReadonlyArray<{
+      readonly from: string | { readonly nodeId: string; readonly portName?: string; readonly port?: string };
+      readonly to: string | { readonly nodeId: string; readonly portName?: string; readonly port?: string };
+      readonly fromPin?: string; readonly toPin?: string; readonly fromPort?: string; readonly toPort?: string;
+    }>;
+  };
 }
 
-// ─── SVG WaveformViewer ──────────────────────────────────────────────────────
+// ─── SVG WaveformViewer (extracted to verify/WaveformInstrument.tsx) ─────────
 
-interface WaveformSignalRow {
-  signal: string;
-  values: Array<{ tick: number; value: string }>;
-}
-
-type VerifyDrawerTab = 'mismatches' | 'vectors' | 'truth' | 'kmap' | 'details';
+type VerifyDrawerTab = 'why' | 'mismatches' | 'vectors' | 'truth' | 'kmap' | 'details';
 type VerifyLayoutMode = 'wide' | 'standard' | 'compact';
-type SignalLaneGroup = 'Inputs' | 'Outputs' | 'Internal';
 type CaptureScopeKind =
   | 'cell'
   | 'row'
@@ -224,542 +238,6 @@ interface CaptureApplicationResult {
 
 const VERIFY_UI_STORAGE_KEY = 'rb.verify-ui.v2';
 const AUTO_VECTOR_DISMISS_KEY = 'rb.verify-autovector-dismissed.v1';
-
-// WaveformViewer is intentionally defined inline in VerifySurface (not a separate component file).
-// It is an SVG-based pure function that renders waveform data from the last verify run.
-// Data flows: projectRuntime.ts → buildVerifyReport() → buildVerifyWaveSamples() → this viewer.
-// Do NOT split this into a separate file — it is co-located with VerifySurface by design.
-const WaveformViewer: React.FC<{
-  signals: WaveformSignalRow[];
-  ticks: number[];
-  failTicks: Set<number>;
-  failingSignalKeys: Set<string>;
-  selectedTick: number | null;
-  cursorA: number | null;
-  cursorB: number | null;
-  pinnedSignals: Set<string>;
-  onSelectTick: (tick: number) => void;
-  onSelectSignal: (signal: string) => void;
-  rowHeight?: number;
-  tickWidth?: number;
-  emptyMessage?: string;
-  signalMeta?: Map<string, { direction: 'in' | 'out'; pin?: string }>;
-  isSequential?: boolean;
-  clockSignals?: Set<string>;
-  onHoverSignal?: (signal: string | null) => void;
-  selectedSignal?: string | null;
-  signalGroups?: Map<string, SignalLaneGroup>;
-  ghostSignals?: Array<{ signal: string; label?: string; direction: 'in' | 'out' | 'internal' }>;
-}> = ({
-  signals,
-  ticks,
-  failTicks,
-  failingSignalKeys,
-  selectedTick,
-  cursorA,
-  cursorB,
-  pinnedSignals,
-  onSelectTick,
-  onSelectSignal,
-  rowHeight = 44,
-  tickWidth = 54,
-  emptyMessage = 'Run simulation to see waveforms',
-  signalMeta,
-  isSequential = false,
-  clockSignals,
-  onHoverSignal,
-  selectedSignal = null,
-  signalGroups,
-  ghostSignals,
-}) => {
-  const LABEL_W = 140;
-  const ROW_H = rowHeight;
-  const ROW_HI = Math.round(ROW_H * 0.22);
-  const ROW_LO = Math.round(ROW_H * 0.78);
-  const HEADER_H = 28;
-  const TICK_W = tickWidth;
-  const GROUP_HEADER_H = 20;
-
-  const GROUP_LABELS: Record<SignalLaneGroup, string> = {
-    Inputs: 'Stimulus',
-    Outputs: 'Observed',
-    Internal: 'Internal',
-  };
-
-  type LayoutRow =
-    | { kind: 'header'; group: SignalLaneGroup; y: number }
-    | { kind: 'signal'; signalRow: WaveformSignalRow; stripeIndex: number; y: number };
-
-  const { layoutRows, totalHeight } = (() => {
-    const rows: LayoutRow[] = [];
-    let y = HEADER_H;
-    let lastGroup: SignalLaneGroup | null = null;
-    let stripeIndex = 0;
-    for (const signalRow of signals) {
-      const group = signalGroups?.get(signalRow.signal) ?? 'Internal';
-      if (group !== lastGroup && signalGroups) {
-        rows.push({ kind: 'header', group, y });
-        y += GROUP_HEADER_H;
-        lastGroup = group;
-      }
-      rows.push({ kind: 'signal', signalRow, stripeIndex: stripeIndex++, y });
-      y += ROW_H;
-    }
-    return { layoutRows: rows, totalHeight: y };
-  })();
-
-  const width = LABEL_W + ticks.length * TICK_W;
-  const height = totalHeight;
-  const ghostViewportRef = useRef<HTMLDivElement | null>(null);
-  const [ghostTrackWidth, setGhostTrackWidth] = useState(640);
-
-  useEffect(() => {
-    if (signals.length !== 0 || !ghostSignals || ghostSignals.length === 0) return;
-    const measure = () => {
-      const containerWidth = ghostViewportRef.current?.clientWidth ?? 0;
-      const nextWidth = containerWidth > LABEL_W ? containerWidth - LABEL_W : 640;
-      setGhostTrackWidth(Math.max(360, nextWidth));
-    };
-    measure();
-    if (typeof window === 'undefined') return;
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, [ghostSignals, signals.length, LABEL_W]);
-
-  if (signals.length === 0) {
-    // Ghost lanes: if mapped signals exist, render empty instrument channels waiting for data
-    if (ghostSignals && ghostSignals.length > 0) {
-      const GHOST_LABEL_W = 140;
-      const GHOST_ROW_H = ROW_H;
-      const GHOST_HEADER_H = 16;
-      const GHOST_TRACK_W = ghostTrackWidth;
-      const inputs = ghostSignals.filter(s => s.direction === 'in');
-      const outputs = ghostSignals.filter(s => s.direction === 'out' || s.direction === 'internal');
-
-      // Build rows with group headers
-      type GhostRow =
-        | { kind: 'group-header'; label: string; y: number }
-        | { kind: 'lane'; sig: typeof ghostSignals[0]; y: number; stripe: number };
-      const ghostRows: GhostRow[] = [];
-      let gy = GHOST_HEADER_H;
-      let stripe = 0;
-      const appendGroup = (label: string, sigs: typeof ghostSignals) => {
-        if (sigs.length === 0) return;
-        ghostRows.push({ kind: 'group-header', label, y: gy });
-        gy += 20;
-        for (const sig of sigs) {
-          ghostRows.push({ kind: 'lane', sig, y: gy, stripe: stripe++ });
-          gy += GHOST_ROW_H;
-        }
-      };
-      appendGroup('Stimulus', inputs);
-      appendGroup('Observed', outputs);
-
-      return (
-        <div
-          ref={ghostViewportRef}
-          className="ide-verify-waveform-ghost"
-          data-testid="ide-verify-waveform-empty"
-          style={{ width: '100%', overflowX: 'auto' }}
-        >
-          <svg
-            width={GHOST_LABEL_W + GHOST_TRACK_W}
-            height={gy}
-            style={{ display: 'block', fontFamily: 'IBM Plex Mono, monospace', overflow: 'visible', minWidth: '100%' }}
-          >
-            <rect x={0} y={0} width={GHOST_LABEL_W + GHOST_TRACK_W} height={gy} fill="#020b18" />
-            <line x1={0} y1={GHOST_HEADER_H - 1} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={GHOST_HEADER_H - 1} stroke="rgba(56,189,248,0.14)" strokeWidth={1} />
-
-            {ghostRows.map((row, i) => {
-              if (row.kind === 'group-header') {
-                return (
-                  <g key={`gh-${i}`}>
-                    <rect x={0} y={row.y} width={GHOST_LABEL_W + GHOST_TRACK_W} height={20} fill="rgba(6,16,30,0.82)" />
-                    <line x1={0} y1={row.y} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={row.y} stroke="rgba(56,189,248,0.10)" strokeWidth={1} />
-                    <text x={10} y={row.y + 13} fill="rgba(56,189,248,0.40)" fontSize={9} fontWeight={700} letterSpacing={2}>
-                      {row.label.toUpperCase()}
-                    </text>
-                  </g>
-                );
-              }
-              const { sig, y, stripe: s } = row;
-              const midY = y + GHOST_ROW_H / 2;
-              const label = sig.label ?? sig.signal;
-              const isInput = sig.direction === 'in';
-              return (
-                <g key={`gl-${i}`}>
-                  {/* Lane stripe */}
-                  <rect x={0} y={y} width={GHOST_LABEL_W + GHOST_TRACK_W} height={GHOST_ROW_H}
-                    fill={s % 2 === 0 ? 'rgba(6,16,28,0.7)' : 'rgba(5,13,24,0.55)'} />
-                  {/* Label */}
-                  <text x={12} y={midY + 4} fill="rgba(160,195,230,0.65)" fontSize={11} fontWeight={500}>
-                    {label.length > 14 ? label.slice(0, 13) + '…' : label}
-                  </text>
-                  {/* Direction dot */}
-                  <circle cx={GHOST_LABEL_W - 12} cy={midY} r={3.5}
-                    fill={isInput ? 'rgba(56,189,248,0.45)' : 'rgba(34,211,238,0.4)'}
-                    stroke={isInput ? 'rgba(56,189,248,0.2)' : 'rgba(34,211,238,0.18)'}
-                    strokeWidth={1} />
-                  {/* Divider */}
-                  <line x1={GHOST_LABEL_W} y1={y} x2={GHOST_LABEL_W} y2={y + GHOST_ROW_H} stroke="rgba(40,70,100,0.35)" strokeWidth={1} />
-                  {/* Single quiet baseline to show where trace data will appear */}
-                  <line x1={GHOST_LABEL_W + 8} y1={midY} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={midY}
-                    stroke={isInput ? 'rgba(56,189,248,0.28)' : 'rgba(34,211,238,0.22)'}
-                    strokeWidth={1}
-                    strokeDasharray="6 8" />
-                  {/* Row bottom border */}
-                  <line x1={0} y1={y + GHOST_ROW_H} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={y + GHOST_ROW_H} stroke="rgba(30,55,80,0.28)" strokeWidth={1} />
-                </g>
-              );
-            })}
-          </svg>
-        </div>
-      );
-    }
-    return (
-      <div className="ide-verify-waveform-empty" data-testid="ide-verify-waveform-empty">
-        <span>{emptyMessage}</span>
-      </div>
-    );
-  }
-
-  return (
-    <svg
-      width={width}
-      height={height}
-      style={{ display: 'block', fontFamily: 'IBM Plex Mono, monospace', overflow: 'visible' }}
-      data-testid="ide-verify-waveform-svg"
-    >
-      <defs>
-        <filter id="wfCursorGlow" x="-30%" y="0%" width="160%" height="100%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-      {/* Dark PCB-style background */}
-      <rect width={width} height={height} fill="#020b18" />
-      {/* Header strip — distinct background */}
-      <rect width={width} height={HEADER_H} fill="rgba(3,8,18,0.98)" />
-      {/* Label column background */}
-      <rect x={0} y={HEADER_H} width={LABEL_W} height={height - HEADER_H} fill="rgba(4,10,22,0.9)" />
-
-      {/* Minor + major vertical grid lines (steel-blue, not teal) */}
-      {ticks.map((tick, i) => (
-        <line key={`grid-${tick}`}
-          x1={LABEL_W + i * TICK_W} y1={HEADER_H} x2={LABEL_W + i * TICK_W} y2={height}
-          stroke="rgba(56,189,248,0.13)" strokeWidth="1" />
-      ))}
-      {ticks.map((tick, i) => i % 5 === 0 ? (
-        <line key={`grid-major-${tick}`}
-          x1={LABEL_W + i * TICK_W} y1={HEADER_H} x2={LABEL_W + i * TICK_W} y2={height}
-          stroke="rgba(90,180,255,0.3)" strokeWidth="1.2" />
-      ) : null)}
-
-      {/* Fail markers in header rail */}
-      {ticks.map((tick, i) => failTicks.has(tick) ? (
-        <line
-          key={`fail-marker-${tick}`}
-          x1={LABEL_W + i * TICK_W + TICK_W / 2}
-          y1={2}
-          x2={LABEL_W + i * TICK_W + TICK_W / 2}
-          y2={HEADER_H}
-          stroke="rgba(255,98,98,0.92)"
-          strokeWidth="2"
-        />
-      ) : null)}
-
-      {/* Fail column full-height overlay — drawn before signal rows so it sits behind traces */}
-      {ticks.map((tick, i) => failTicks.has(tick) ? (
-        <rect
-          key={`fcol-${tick}`}
-          x={LABEL_W + i * TICK_W}
-          y={HEADER_H}
-          width={TICK_W}
-          height={height - HEADER_H}
-          fill="rgba(255,55,55,0.22)"
-        />
-      ) : null)}
-
-      {/* Clock edge markers — small ↑ glyphs for sequential circuits */}
-      {isSequential && ticks.map((tick, i) => (
-        <text
-          key={`clk-${tick}`}
-          x={LABEL_W + i * TICK_W + TICK_W / 2}
-          y={HEADER_H - 4}
-          textAnchor="middle"
-          fontSize={7}
-          fill="rgba(46,196,182,0.5)"
-          style={{ pointerEvents: 'none', userSelect: 'none' }}
-        >
-          ↑
-        </text>
-      ))}
-
-      {/* Tick labels in header — number every 5th, dot otherwise */}
-      {ticks.map((tick, i) => i % 5 === 0 ? (
-        <text
-          key={`label-${tick}`}
-          x={LABEL_W + i * TICK_W + TICK_W / 2}
-          y={15}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fill="rgba(56,189,248,0.5)"
-          fontSize={11}
-          style={{ pointerEvents: 'none', userSelect: 'none' }}
-        >
-          {tick}
-        </text>
-      ) : (
-        <circle
-          key={`label-${tick}`}
-          cx={LABEL_W + i * TICK_W + TICK_W / 2}
-          cy={15}
-          r={1.5}
-          fill="rgba(56,189,248,0.2)"
-        />
-      ))}
-
-      {/* Signal rows with group headers */}
-      {layoutRows.map((layoutRow) => {
-        if (layoutRow.kind === 'header') {
-          const { group, y } = layoutRow;
-          return (
-            <g key={`group-header-${group}`}>
-              <rect x={0} y={y} width={width} height={GROUP_HEADER_H}
-                fill="rgba(56,189,248,0.04)" />
-              <line x1={0} y1={y} x2={width} y2={y}
-                stroke="rgba(56,189,248,0.15)" strokeWidth="1" />
-              <text
-                x={LABEL_W - 8}
-                y={y + GROUP_HEADER_H / 2}
-                textAnchor="end"
-                dominantBaseline="middle"
-                fontSize="9"
-                fontWeight="600"
-                fill="rgba(56,189,248,0.45)"
-                style={{ pointerEvents: 'none', userSelect: 'none' } as React.CSSProperties}
-              >
-                {GROUP_LABELS[group]}
-              </text>
-              <line x1={LABEL_W} y1={y} x2={LABEL_W} y2={y + GROUP_HEADER_H}
-                stroke="rgba(30,80,140,0.7)" strokeWidth="1.5" />
-            </g>
-          );
-        }
-
-        const { signalRow, stripeIndex, y } = layoutRow;
-        const normalizedKey = signalRow.signal.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
-        const isFailing = failingSignalKeys.has(normalizedKey);
-        const isPinned = pinnedSignals.has(signalRow.signal);
-        const isClockSignal = clockSignals?.has(normalizedKey) ?? false;
-
-        return (
-          <g
-            key={signalRow.signal}
-            data-testid={`ide-verify-waveform-row-${toTestId(signalRow.signal)}`}
-            data-selected={selectedSignal === signalRow.signal ? 'true' : 'false'}
-          >
-            {/* Alternating row background */}
-            <rect
-              x={0}
-              y={y}
-              width={width}
-              height={ROW_H}
-              fill={stripeIndex % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent'}
-            />
-            {/* Row separator */}
-            <line x1={0} y1={y + ROW_H - 1} x2={width} y2={y + ROW_H - 1}
-              stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-
-          {/* Signal label column */}
-            <g
-              style={{ cursor: 'pointer' }}
-              onClick={() => onSelectSignal(signalRow.signal)}
-              onMouseEnter={() => onHoverSignal?.(signalRow.signal)}
-              onMouseLeave={() => onHoverSignal?.(null)}
-            >
-              <title>{signalRow.signal}</title>
-              {/* Name */}
-              <text
-                x={LABEL_W - 8}
-                y={y + (signalMeta?.has(signalRow.signal) ? Math.round(ROW_H * 0.38) : Math.round(ROW_H / 2) + 4)}
-                textAnchor="end"
-                fontSize="11"
-                fill={isFailing ? '#ff9090' : isClockSignal ? 'rgba(251,191,36,0.9)' : 'rgba(180,200,220,0.85)'}
-              >
-                {`${isPinned ? '★ ' : ''}${isClockSignal ? '⏱ ' : ''}${
-                  signalRow.signal.length > 14 ? `${signalRow.signal.slice(0, 13)}…` : signalRow.signal
-                }`}
-              </text>
-              {/* Direction + pin sub-line */}
-              {(() => {
-                const meta = signalMeta?.get(signalRow.signal);
-                if (!meta) return null;
-                const dirLabel = meta.direction === 'in' ? '▲ IN' : '▼ OUT';
-                const pinLabel = meta.pin ? ` · ${meta.pin}` : '';
-                return (
-                  <text
-                    x={LABEL_W - 8}
-                    y={y + Math.round(ROW_H * 0.7)}
-                    textAnchor="end"
-                    fontSize="9"
-                    fill={isFailing ? 'rgba(255,130,130,0.65)' : 'rgba(46,196,182,0.45)'}
-                  >
-                    {`${dirLabel}${pinLabel}`}
-                  </text>
-                );
-              })()}
-            </g>
-
-            {/* Signal trace */}
-            {signalRow.values.map((point, i) => {
-              const isHigh = point.value === '1';
-              const tickX = LABEL_W + i * TICK_W;
-              const isFail = failTicks.has(point.tick);
-              const isSelected = point.tick === selectedTick;
-              const prevValue = i > 0 ? signalRow.values[i - 1]?.value : null;
-              const hasTransition = prevValue !== null && prevValue !== point.value;
-
-              return (
-                <g key={`${signalRow.signal}-${point.tick}`}>
-                  {/* Fail segment highlight */}
-                  {isFail && (
-                    <rect x={tickX} y={y} width={TICK_W} height={ROW_H} fill="rgba(255,80,80,0.34)" />
-                  )}
-
-                  {/* Selected tick column highlight */}
-                  {isSelected && (
-                    <rect
-                      x={tickX}
-                      y={HEADER_H}
-                      width={TICK_W}
-                      height={height - HEADER_H}
-                      fill="rgba(56,189,248,0.18)"
-                    />
-                  )}
-
-                  {/* Signal rail — 3px horizontal line at hi or lo position */}
-                  {point.value !== '-' && (
-                    <line
-                      x1={tickX + 2}          y1={isHigh ? y + ROW_HI : y + ROW_LO}
-                      x2={tickX + TICK_W - 2} y2={isHigh ? y + ROW_HI : y + ROW_LO}
-                      stroke={isFail ? (isHigh ? '#ff6b6b' : 'rgba(255,107,107,0.7)') : isClockSignal ? (isHigh ? '#fbbf24' : 'rgba(251,191,36,0.72)') : (isHigh ? '#2ec4b6' : 'rgba(46,196,182,0.85)')}
-                      strokeWidth="5.5" strokeLinecap="round"
-                    />
-                  )}
-
-                  {/* Transition vertical line connecting rail positions */}
-                  {hasTransition && (
-                    <line
-                      x1={tickX} y1={y + ROW_HI} x2={tickX} y2={y + ROW_LO}
-                      stroke={isFail ? '#ff6b6b' : isClockSignal ? 'rgba(251,191,36,0.82)' : 'rgba(46,196,182,0.75)'}
-                      strokeWidth="2.5" strokeLinecap="round"
-                    />
-                  )}
-
-                  {/* Transparent click target */}
-                  <rect
-                    x={tickX}
-                    y={y}
-                    width={TICK_W}
-                    height={ROW_H}
-                    fill="transparent"
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => {
-                      onSelectTick(point.tick);
-                      onSelectSignal(signalRow.signal);
-                    }}
-                    onMouseEnter={() => onHoverSignal?.(signalRow.signal)}
-                    onMouseLeave={() => onHoverSignal?.(null)}
-                    data-testid="ide-verify-waveform-point"
-                    data-value={String(point.value)}
-                  />
-                </g>
-              );
-            })}
-          </g>
-        );
-      })}
-
-      {/* A/B cursors */}
-      {([
-        { id: 'A', tick: cursorA, stroke: 'rgba(251,191,36,0.95)', fill: 'rgba(251,191,36,0.16)' },
-        { id: 'B', tick: cursorB, stroke: 'rgba(248,113,113,0.92)', fill: 'rgba(248,113,113,0.14)' },
-      ] as const).map((cursor) => {
-        if (cursor.tick === null) return null;
-        const i = ticks.indexOf(cursor.tick);
-        if (i < 0) return null;
-        const cx = LABEL_W + i * TICK_W + TICK_W / 2;
-        return (
-          <g key={`cursor-${cursor.id}`} style={{ pointerEvents: 'none' }}>
-            <line
-              x1={cx}
-              y1={HEADER_H}
-              x2={cx}
-              y2={height}
-              stroke={cursor.stroke}
-              strokeWidth="1.25"
-              strokeDasharray="4 3"
-            />
-            <rect x={cx - 9} y={2} width={18} height={12} rx={2} fill={cursor.fill} />
-            <text
-              x={cx}
-              y={8}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill={cursor.stroke}
-              fontSize={9}
-              fontWeight="700"
-            >
-              {cursor.id}
-            </text>
-          </g>
-        );
-      })}
-
-      {/* Selected tick vertical cursor + badge */}
-      {selectedTick !== null && (() => {
-        const i = ticks.indexOf(selectedTick);
-        if (i < 0) return null;
-        const cx = LABEL_W + i * TICK_W + TICK_W / 2;
-        return (
-          <g style={{ pointerEvents: 'none' }}>
-            <line
-              x1={cx} y1={HEADER_H}
-              x2={cx} y2={height}
-              stroke="rgba(56,189,248,0.9)"
-              strokeWidth="1.5"
-              filter="url(#wfCursorGlow)"
-            />
-            {/* Tick badge pinned to top of cursor */}
-            <rect x={cx - 14} y={1} width={28} height={14} rx={3} fill="rgba(56,189,248,0.18)" />
-            <text
-              x={cx} y={9}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill="rgba(56,189,248,0.9)"
-              fontSize={9}
-              fontWeight="700"
-              style={{ userSelect: 'none' }}
-            >
-              t{selectedTick}
-            </text>
-          </g>
-        );
-      })()}
-
-      {/* Label column separator */}
-      <line
-        x1={LABEL_W}
-        y1={0}
-        x2={LABEL_W}
-        y2={height}
-        stroke="rgba(30,80,140,0.7)"
-        strokeWidth="1.5"
-      />
-    </svg>
-  );
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -806,6 +284,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   sourceExampleId = null,
   scenarioAuthority = 'none',
   unsupportedFeedbackDiagnostic = null,
+  circuitGraph,
 }) => {
   const { setHoverBoardSignal } = useBoardSignal();
   const inputFieldSeed = useMemo(
@@ -880,8 +359,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [draftExpected, setDraftExpected] = useState<Record<string, VerifyExpectedDraftValue>>(() =>
     createDraftExpected(outputFields)
   );
-  const [verifyTab, setVerifyTab] = useState<VerifyDrawerTab>('truth');
-  const [kitTipOpen, setKitTipOpen] = useState(false);
+  const [verifyTab, setVerifyTab] = useState<VerifyDrawerTab>('why');
   const [layoutMode, setLayoutMode] = useState<VerifyLayoutMode>(() => resolveVerifyLayoutMode());
   const [waveformDensity, setWaveformDensity] = useState<'small' | 'normal' | 'large'>('normal');
   const [tickZoom, setTickZoom] = useState<'all' | 'fail' | 'window'>('all');
@@ -2468,9 +1946,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     vectorsAreAutoGenerated,
   ]);
 
-  const isShowcaseKit = example?.category === 'showcase';
-  const kitGoals = (example?.goals ?? []).filter(Boolean);
-
   const handleJumpToFirstFailure = () => {
     if (firstFailureTick == null) return;
     if (firstFailure) {
@@ -2669,19 +2144,65 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     },
     [resolveLaneBoardSignal, setHoverBoardSignal]
   );
-  const drawerTabs = useMemo<VerifyDrawerTab[]>(
-    () => (
-      isSequentialRun
-        ? ['mismatches', 'vectors', 'truth', 'details']
-        : ['mismatches', 'vectors', 'truth', 'kmap', 'details']
-    ),
-    [isSequentialRun]
-  );
+  const drawerTabs = useMemo<VerifyDrawerTab[]>(() => {
+    // In Observe mode (no assertions), the mismatches tab is irrelevant — omit it.
+    const includesMismatches = nextRunUsesAssertions;
+    if (isSequentialRun) {
+      return includesMismatches
+        ? ['why', 'mismatches', 'vectors', 'truth', 'details']
+        : ['why', 'vectors', 'truth', 'details'];
+    }
+    return includesMismatches
+      ? ['why', 'mismatches', 'vectors', 'truth', 'kmap', 'details']
+      : ['why', 'vectors', 'truth', 'kmap', 'details'];
+  }, [isSequentialRun, nextRunUsesAssertions]);
   useEffect(() => {
     if (!drawerTabs.includes(verifyTab)) {
       setVerifyTab(drawerTabs[0] ?? 'mismatches');
     }
   }, [drawerTabs, verifyTab]);
+
+  // ─── Why inspector: signal explanation ───────────────────────────────────
+  const normalizedCircuitGraph = useMemo<ExplainerCircuitGraph | undefined>(() => {
+    if (!circuitGraph) return undefined;
+    return {
+      nodes: circuitGraph.nodes,
+      connections: circuitGraph.connections.map((conn) => {
+        const fromObj = typeof conn.from === 'string'
+          ? { nodeId: conn.from, portName: conn.fromPin ?? conn.fromPort ?? 'out' }
+          : { nodeId: conn.from.nodeId, portName: conn.from.portName ?? conn.from.port ?? conn.fromPin ?? conn.fromPort ?? 'out' };
+        const toObj = typeof conn.to === 'string'
+          ? { nodeId: conn.to, portName: conn.toPin ?? conn.toPort ?? 'in' }
+          : { nodeId: conn.to.nodeId, portName: conn.to.portName ?? conn.to.port ?? conn.toPin ?? conn.toPort ?? 'in' };
+        return { from: fromObj, to: toObj };
+      }),
+    };
+  }, [circuitGraph]);
+
+  const explainerSignalMappings = useMemo<ExplainerSignalMapping[]>(() => {
+    return (mappedSignals ?? []).map((sig) => ({
+      signalName: sig.label ?? sig.id,
+      nodeId: sig.nodeId ?? sig.id,
+      direction: sig.direction,
+      pin: sig.pin,
+    }));
+  }, [mappedSignals]);
+
+  const signalExplanation = useMemo(() => {
+    if (selectedSignal === null || selectedTick === null || !lastRun) return null;
+    const signalRoles = lastRun.report.signalRoles ?? {};
+    return explainSignal({
+      selectedSignal,
+      tick: selectedTick,
+      waveform: lastRun.waveform,
+      signalRoles,
+      signalMappings: explainerSignalMappings,
+      circuitGraph: normalizedCircuitGraph,
+      circuitKind: lastRun.meta?.circuitKind,
+      clockSignalName: lastRun.meta?.clockSignalName,
+    });
+  }, [selectedSignal, selectedTick, lastRun, explainerSignalMappings, normalizedCircuitGraph]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -3054,6 +2575,55 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       id: `vec-clk-${String(startTick + offset).padStart(2, '0')}`,
       tick: startTick + offset,
       inputs: { [clkKey]: (offset % 2) as 0 | 1 },
+      expected: {},
+    }));
+    onVectorsChange?.([...authoredVectors, ...clkVectors]);
+    setOracleApplied(false);
+  }, [authoredVectors, clockSignals, onVectorsChange]);
+
+  const handleInsertClockHoldLow = useCallback(() => {
+    if (clockSignals.size === 0) return;
+    const clkKey = Array.from(clockSignals)[0];
+    const startTick = authoredVectors.length > 0
+      ? Math.max(...authoredVectors.map((v) => v.tick)) + 1
+      : 0;
+    const clkVectors: typeof authoredVectors = [0, 1, 2, 3].map((offset) => ({
+      id: `vec-clk-${String(startTick + offset).padStart(2, '0')}`,
+      tick: startTick + offset,
+      inputs: { [clkKey]: 0 },
+      expected: {},
+    }));
+    onVectorsChange?.([...authoredVectors, ...clkVectors]);
+    setOracleApplied(false);
+  }, [authoredVectors, clockSignals, onVectorsChange]);
+
+  const handleInsertClockHoldHigh = useCallback(() => {
+    if (clockSignals.size === 0) return;
+    const clkKey = Array.from(clockSignals)[0];
+    const startTick = authoredVectors.length > 0
+      ? Math.max(...authoredVectors.map((v) => v.tick)) + 1
+      : 0;
+    const clkVectors: typeof authoredVectors = [0, 1, 2, 3].map((offset) => ({
+      id: `vec-clk-${String(startTick + offset).padStart(2, '0')}`,
+      tick: startTick + offset,
+      inputs: { [clkKey]: 1 },
+      expected: {},
+    }));
+    onVectorsChange?.([...authoredVectors, ...clkVectors]);
+    setOracleApplied(false);
+  }, [authoredVectors, clockSignals, onVectorsChange]);
+
+  const handleInsertClockPulse = useCallback(() => {
+    if (clockSignals.size === 0) return;
+    const clkKey = Array.from(clockSignals)[0];
+    const startTick = authoredVectors.length > 0
+      ? Math.max(...authoredVectors.map((v) => v.tick)) + 1
+      : 0;
+    const pulseValues: Array<0 | 1> = [0, 1, 0];
+    const clkVectors: typeof authoredVectors = pulseValues.map((val, offset) => ({
+      id: `vec-clk-${String(startTick + offset).padStart(2, '0')}`,
+      tick: startTick + offset,
+      inputs: { [clkKey]: val },
       expected: {},
     }));
     onVectorsChange?.([...authoredVectors, ...clkVectors]);
@@ -3714,6 +3284,88 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
   }, [failingRows.length, sessionShowsAssertionMatch, verifyTab]);
 
+  const primaryStatus = useMemo<VerifyPrimaryStatusAreaProps | null>(() => {
+    if (unsupportedFeedbackDiagnostic) {
+      return {
+        tone: 'error',
+        title: unsupportedFeedbackDiagnostic.title,
+        message: unsupportedFeedbackDiagnostic.message,
+        actions: onGoToDesign
+          ? [{ label: 'Open Design', onClick: onGoToDesign, tone: 'secondary', testId: 'ide-verify-primary-status-design' }]
+          : [],
+      };
+    }
+
+    if (hasStaleAuthoredReference) {
+      return {
+        tone: 'warn',
+        title: 'Circuit changed after saved expected outputs',
+        message: 'Your saved expected outputs came from an older build. Re-capture from current outputs or run in Observe mode first.',
+        actions: [
+          { label: 'Re-capture outputs', onClick: handleStaleRecapture, tone: 'primary', testId: 'ide-verify-primary-status-recapture' },
+          { label: 'Run current circuit', onClick: handleRunCurrentTrace, tone: 'secondary', testId: 'ide-verify-primary-status-rerun' },
+        ],
+      };
+    }
+
+    if (isRunStale) {
+      return {
+        tone: 'info',
+        title: 'Results are from an older build',
+        message: 'The circuit changed since this run. Re-run to inspect current behavior.',
+        actions: [{ label: 'Run current circuit', onClick: handleRunCurrentTrace, tone: 'primary', testId: 'ide-verify-primary-status-run-current' }],
+      };
+    }
+
+    if (isWrongScenario) {
+      return {
+        tone: 'info',
+        title: 'Results belong to another scenario',
+        message: `Active scenario is ${activeScenario?.name ?? 'different'}. Re-run for the active scenario to refresh this workspace.`,
+        actions: [
+          ...(lastRunScenarioId && onSwitchScenario
+            ? [{ label: `Switch to ${lastRunScenarioName ?? 'run scenario'}`, onClick: () => onSwitchScenario(lastRunScenarioId), tone: 'secondary' as const, testId: 'ide-verify-primary-status-switch-scenario' }]
+            : []),
+          { label: 'Re-run active scenario', onClick: runVerification, tone: 'primary', testId: 'ide-verify-primary-status-rerun-active' },
+        ],
+      };
+    }
+
+    if (isScenarioStale && !isRunStale) {
+      return {
+        tone: 'info',
+        title: 'Scenario vectors changed',
+        message: 'The current vectors changed since the last run. Run again to refresh waveform evidence.',
+        actions: [{ label: 'Run circuit again', onClick: runVerification, tone: 'primary', testId: 'ide-verify-primary-status-rerun' }],
+      };
+    }
+
+    if (!mappingComplete) {
+      return {
+        tone: 'info',
+        title: 'Pin mapping incomplete',
+        message: 'Verification can run, but unmapped outputs may not match hardware behavior yet.',
+      };
+    }
+
+    return null;
+  }, [
+    activeScenario?.name,
+    handleRunCurrentTrace,
+    handleStaleRecapture,
+    hasStaleAuthoredReference,
+    isRunStale,
+    isScenarioStale,
+    isWrongScenario,
+    lastRunScenarioId,
+    lastRunScenarioName,
+    mappingComplete,
+    onGoToDesign,
+    onSwitchScenario,
+    runVerification,
+    unsupportedFeedbackDiagnostic,
+  ]);
+
   return (
     <IdeSurfaceLayout
       mode="verify"
@@ -4087,240 +3739,22 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         className="ide-verify-panel"
         testId="ide-verify-panel"
       >
-        {isShowcaseKit && kitGoals.length > 0 && (
-          <div className="ide-verify-kit-tip" data-testid="ide-verify-kit-tip">
-            <button
-              type="button"
-              className="ide-verify-kit-tip-toggle"
-              onClick={() => setKitTipOpen((v) => !v)}
-              data-testid="ide-verify-kit-tip-toggle"
-            >
-              <span className="ide-verify-kit-tip-icon" aria-hidden="true">ℹ</span>
-              <span>Showcase Kit — why is this failing?</span>
-              <span className="ide-verify-kit-tip-arrow" aria-hidden="true">{kitTipOpen ? '▲' : '▼'}</span>
-            </button>
-            {kitTipOpen && (
-              <ul className="ide-verify-kit-tip-body" data-testid="ide-verify-kit-goals">
-                {kitGoals.slice(0, 4).map((g) => (
-                  <li key={g} className="ide-copy">{g}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-
-        {/* Pre-flight: incomplete pin mapping banner.
-            Shown whenever outputs are not fully mapped to board pins, regardless of run state.
-            Informs the student BEFORE they run that results may not reflect hardware behavior. */}
-        {!mappingComplete && (
-          <div
-            className="ide-verify-incomplete-banner ide-surface-panel"
-            data-testid="ide-verify-incomplete-mapping-banner"
-            role="note"
-          >
-            <span>Some outputs are not mapped to board pins. Verification will run, but results may not match hardware.</span>
-          </div>
-        )}
-
-        {/* Scenario-stale banner: same scenario, vectors edited since the last run.
-            The waveform is still from this scenario but it no longer matches the current vectors. */}
-        {isScenarioStale && !isRunStale && (
-          <div
-            className="ide-verify-scenario-stale-banner"
-            data-testid="ide-verify-scenario-stale-banner"
-            role="alert"
-          >
-            <strong className="ide-verify-scenario-stale-banner-label">SCENARIO CHANGED</strong>
-            <span>Vectors were edited since the last run. Waveform reflects an older version of this scenario.</span>
-            <IdeButton tone="secondary" onClick={runVerification} testId="ide-verify-scenario-stale-rerun">
-              Re-run now
-            </IdeButton>
-          </div>
-        )}
-
-        {/* Wrong-scenario banner: waveform belongs to a different scenario than the active one.
-            "Switch back" CTA only appears when the old scenario still exists in the library. */}
-        {isWrongScenario && !isRunStale && (
-          <div
-            className="ide-verify-wrong-scenario-banner"
-            data-testid="ide-verify-wrong-scenario-banner"
-            role="status"
-          >
-            <span>
-              {'Results shown for '}
-              <strong>{lastRun?.scenarioName ?? 'another scenario'}</strong>
-              {' — active scenario is '}
-              <strong>{activeScenario?.name ?? 'different'}</strong>
-              {'.'}
-            </span>
-            {lastRunScenarioId && (
-              <IdeButton
-                tone="secondary"
-                onClick={() => onSwitchScenario?.(lastRunScenarioId)}
-                testId="ide-verify-wrong-scenario-switch-back"
-              >
-                Switch to &ldquo;{lastRunScenarioName}&rdquo;
-              </IdeButton>
-            )}
-            <IdeButton tone="primary" onClick={runVerification} testId="ide-verify-wrong-scenario-rerun">
-              Re-run for &ldquo;{activeScenario?.name}&rdquo;
-            </IdeButton>
-          </div>
-        )}
-
-        {/* STOP-SHIP: Stale verify result banner.
-            If the circuit changed since the last run, the result is outdated.
-            The badge must never show PASS/FAIL for a circuit that has since changed. */}
-        {isRunStale && !hasStaleAuthoredReference && (
-          <div
-            className="ide-verify-stale-banner ide-verify-stale-hero ide-surface-panel"
-            data-testid="ide-verify-stale-banner"
-            role="alert"
-          >
-            <strong className="ide-verify-stale-banner-label">Circuit Updated</strong>
-            <span>Results below were recorded before the last circuit change. Re-capture expected outputs from the current circuit or re-run to inspect the latest behavior.</span>
-            <span className="ide-verify-stale-note">These results do not indicate a failure — they are from an older build.</span>
-            <IdeButton tone="primary" onClick={handleStaleRecapture} testId="ide-verify-stale-recapture">
-              Re-capture outputs
-            </IdeButton>
-            <IdeButton tone="secondary" onClick={handleRunCurrentTrace} testId="ide-verify-stale-rerun">
-              Re-run for current circuit
-            </IdeButton>
-          </div>
-        )}
-        {hasStaleAuthoredReference && (
-          <div
-            className="ide-surface-panel ide-verify-stale-reference-panel"
-            data-testid="ide-verify-stale-reference-panel"
-            role="note"
-          >
-            <strong data-testid="ide-verify-stale-reference-label">Test vectors need updating</strong>
-            <span data-testid="ide-verify-stale-reference-copy">
-              Your expected outputs were written before the latest circuit change. Run the simulation to see how the current circuit behaves, then decide whether to update your expected values.
-            </span>
-            <span className="ide-copy" data-testid="ide-verify-stale-reference-mode">
-              Recommended: click <strong>Run Simulation</strong> to inspect the current circuit first.
-            </span>
-            <div className="ide-inline-actions">
-              <IdeButton tone="primary" onClick={handleRunCurrentTrace} testId="ide-verify-stale-run-simulation">
-                Run Simulation
-              </IdeButton>
-              <IdeButton tone="secondary" onClick={handleStaleRecapture} testId="ide-verify-stale-recapture-reauthor">
-                Update expected outputs
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={handleKeepOlderReference} testId="ide-verify-stale-keep-reference">
-                Keep previous values
-              </IdeButton>
-              {canResetToStimulusOnly && (
-                <IdeButton tone="ghost" onClick={handleResetToStimulusOnly} testId="ide-verify-stale-reset-stimulus">
-                  Reset to trace only
-                </IdeButton>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div
-          className="ide-surface-panel ide-verify-session-hero"
-          data-testid="ide-verify-session-hero"
-          data-status={verifySession.status}
-          data-mode={verifySession.mode}
-        >
-          <div className="ide-verify-session-hero-main">
-            <IdeStatusPill tone={verifySession.tone} testId="ide-verify-session-status">
-              {verifySession.statusBadge}
-            </IdeStatusPill>
-            <span
-              className={`ide-verify-mode-chip ide-verify-mode-chip--${verifySession.mode === 'assertion' ? 'verify' : 'trace'}`}
-              data-testid="ide-verify-session-mode"
-            >
-              {verifySession.modeLabel}
-            </span>
-            <strong data-testid="ide-verify-session-title">{verifySession.title}</strong>
-            <span data-testid="ide-verify-session-summary">{verifySession.summary}</span>
-          </div>
-          <span className="ide-verify-reference-mode-inline" data-testid="ide-verify-reference-mode">
-            {vectorSourceLabel}. {verifyReferenceNote}
-          </span>
-        </div>
-
-        {/* Pre-run signal inventory panel ─────────────────────────────────────
-             Show when we have a signalInventory but haven't run yet (or are stale).
-             This lets students see exactly what will be simulated — signal lanes,
-             assertion coverage, tick count, and clock policy — before they commit
-             to running. Once a run exists and is current, the waveform carries
-             the same information in richer form, so we hide this panel. */}
-        {signalInventory && (!lastRun || (isRunStale && !hasStaleAuthoredReference)) && (
-          <div
-            className="ide-surface-panel ide-verify-prerun-inventory"
-            data-testid="ide-verify-prerun-inventory"
-          >
-            <div className="ide-verify-prerun-header">
-              <span className="ide-verify-prerun-title">Testbench Preview</span>
-              <span className="ide-verify-prerun-meta" data-testid="ide-verify-prerun-tick-count">
-                {signalInventory.tickCount} tick{signalInventory.tickCount !== 1 ? 's' : ''}
-              </span>
-              {signalInventory.clockPolicy === 'clocked' && (
-                <span
-                  className="ide-verify-prerun-clock-chip"
-                  data-testid="ide-verify-prerun-clock-chip"
-                  title={formatTimingTooltip(effectiveTimingGuidance)}
-                >
-                  {formatTimingBadge(effectiveTimingGuidance)}
-                </span>
-              )}
-              <span
-                className={`ide-verify-prerun-assert-chip ${signalInventory.assertedOutputCount > 0 ? 'ide-verify-prerun-assert-chip--active' : 'ide-verify-prerun-assert-chip--none'}`}
-                data-testid="ide-verify-prerun-assert-summary"
-              >
-                {signalInventory.assertedOutputCount > 0
-                  ? `${signalInventory.assertedOutputCount} output${signalInventory.assertedOutputCount !== 1 ? 's' : ''} asserted`
-                  : 'No assertions yet'}
-              </span>
-            </div>
-            <div className="ide-verify-prerun-lanes" data-testid="ide-verify-prerun-lanes">
-              {signalInventory.lanes.map((lane) => (
-                <span
-                  key={lane.name}
-                  className={[
-                    'ide-verify-lane-chip',
-                    lane.direction === 'input'
-                      ? 'ide-verify-lane-chip--input'
-                      : lane.isAsserted
-                        ? 'ide-verify-lane-chip--output-asserted'
-                        : 'ide-verify-lane-chip--output-stimulus',
-                  ].join(' ')}
-                  data-direction={lane.direction}
-                  data-asserted={lane.isAsserted ? 'true' : 'false'}
-                  data-testid={`ide-verify-lane-chip-${lane.name}`}
-                  title={
-                    lane.direction === 'input'
-                      ? `Input: ${lane.name}`
-                      : lane.isAsserted
-                        ? `Output: ${lane.name} — asserted (will be compared)`
-                        : `Output: ${lane.name} — stimulus only (blank expected, not compared)`
-                  }
-                >
-                  <span className="ide-verify-lane-dir-badge">
-                    {lane.direction === 'input' ? 'IN' : 'OUT'}
-                  </span>
-                  <span className="ide-verify-lane-name">{lane.name}</span>
-                  {lane.direction === 'output' && (
-                    <span className="ide-verify-lane-assert-badge">
-                      {lane.isAsserted ? '✓' : '—'}
-                    </span>
-                  )}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Status strip — status-first, one primary CTA */}
+        <VerifyHeaderRegion>
+        {/* ── Compact header strip ─────────────────────────────────────────── */}
+        {/* Status strip — compact primary bar, ~48px */}
         <div className="ide-verify-status-strip" data-testid="ide-verify-banner" data-zone="status">
           <IdeStatusPill tone={sessionStatusTone} testId="ide-verify-summary-status">
             {sessionStatusBadgeLabel}
           </IdeStatusPill>
+          {primaryStatus && (
+            <span
+              className={`ide-verify-status-chip ide-verify-status-chip--${primaryStatus.tone}`}
+              data-testid="ide-verify-status-chip"
+              title={primaryStatus.message}
+            >
+              {primaryStatus.title}
+            </span>
+          )}
           {usesCompactStaleStrip ? (
             <>
               <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
@@ -4450,9 +3884,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     tone={captureActionTone}
                     onClick={handleSetOracleExpected}
                     testId="ide-verify-set-oracle"
-                    title="Capture the current waveform outputs into expected values for this testbench."
+                    title="Save the current waveform outputs as expected values for this testbench."
                   >
-                    Capture outputs as expected
+                    Save this run as expected
                   </IdeButton>
                 ) : null}
                 {primaryActionKind === 'capture' ? (
@@ -4461,24 +3895,34 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       tone="primary"
                       onClick={handleSetOracleExpected}
                       testId="ide-verify-set-oracle"
-                      title="Capture the current waveform outputs into expected values for this testbench."
+                      title="Save the current waveform outputs as expected values for this testbench."
                     >
-                      Capture outputs as expected
+                      Save this run as expected
                     </IdeButton>
                   </span>
                 ) : null}
               </div>
-              {/* Mode toggle — visible in toolbar so users know what the next run will do */}
-              <IdeButton
-                tone={nextRunUsesAssertions ? 'secondary' : 'ghost'}
-                onClick={() => setNextRunUsesAssertions((v) => !v)}
-                testId="ide-verify-assertion-mode-toggle"
-                title={nextRunUsesAssertions
-                  ? 'Next run: compare asserted outputs against the current circuit. Click to switch to trace-only.'
-                  : 'Next run: trace stimulus only, no output comparison. Click to enable output checking.'}
-              >
-                {nextRunUsesAssertions ? 'Mode: Check Outputs' : 'Mode: Trace Only'}
-              </IdeButton>
+              {/* Mode toggle — Observe / Compare segmented control */}
+              <div className="ide-verify-mode-segmented" data-testid="ide-verify-mode-segmented">
+                <button
+                  type="button"
+                  className={`ide-verify-mode-seg-btn${!nextRunUsesAssertions ? ' is-active' : ''}`}
+                  onClick={() => setNextRunUsesAssertions(false)}
+                  data-testid="ide-verify-mode-observe"
+                >
+                  Observe
+                </button>
+                <button
+                  type="button"
+                  className={`ide-verify-mode-seg-btn${nextRunUsesAssertions ? ' is-active' : ''}`}
+                  onClick={() => setNextRunUsesAssertions(true)}
+                  data-testid="ide-verify-mode-compare"
+                  disabled={totalExpectedCaseCount === 0}
+                  title={totalExpectedCaseCount === 0 ? 'Save a run as expected first to use Compare' : undefined}
+                >
+                  Compare
+                </button>
+              </div>
               {/* Group 2 — SECONDARY: tucked away, never the dominant focus */}
               {(hasResults || Boolean(lastRun)) && (
                 <details className="ide-verify-strip-group ide-verify-strip-group--advanced" data-testid="ide-verify-advanced-debug">
@@ -4500,7 +3944,28 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </div>
           )}
         </div>
+        {/* ── Always-visible command bar ── */}
+        <VerifyCommandBar
+          isCompareMode={nextRunUsesAssertions}
+          onSetObserve={() => setNextRunUsesAssertions(false)}
+          onSetCompare={() => setNextRunUsesAssertions(true)}
+          compareAvailable={totalExpectedCaseCount > 0}
+          onRun={() => handleRunWithPreflight()}
+          runLabel={verifySession.runLabel}
+          runDisabled={runState === 'running'}
+          runPulsing={readyDraftCanRun}
+          onGenerate={handleGenerateBasicVectors}
+          generateLabel={isSequentialRun ? 'Generate 8-tick starter' : 'Initialize inputs'}
+          showGenerate={isFirstRunState || totalVectorCount === 0}
+          onSaveAsExpected={canSetOracle ? handleSetOracleExpected : undefined}
+          showSaveAsExpected={Boolean(canSetOracle && !isFirstRunState)}
+          statusLabel={sessionStatusBadgeLabel}
+          statusTone={sessionStatusTone}
+          isSequential={isSequentialRun}
+        />
+        </VerifyHeaderRegion>
 
+        {/* ── Contextual panels (below compact header, above stimulus) ────── */}
         {drawerOpen && hasSessionFailureEvidence && failureDiagnosis.length > 0 && (
           <div className="ide-verify-fail-diagnosis" data-testid="ide-verify-fail-diagnosis">
             <span className="ide-verify-fail-diagnosis-header" data-testid="ide-verify-fail-diagnosis-header">Issues found</span>
@@ -4693,10 +4158,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
+        <VerifyStimulusRegion>
+
+        {/* ── First-run hero panel ── */}
+        {isFirstRunState && !lastRun && (
+          <VerifyFirstRunPanel
+            isSequential={isSequentialRun}
+            inputNames={inputFields.map((f) => f.label ?? f.id)}
+            outputNames={outputFields.map((f) => f.label ?? f.id)}
+            clockName={clockSignals.size > 0 ? Array.from(clockSignals)[0] : undefined}
+            onGenerateStarter={handleGenerateBasicVectors}
+            onRunCircuit={() => handleRunWithPreflight()}
+            runLabel={verifySession.runLabel}
+            onAlternatingClock={isSequentialRun ? handleInsertClockPattern : undefined}
+            onHoldLow={isSequentialRun ? handleInsertClockHoldLow : undefined}
+            onHoldHigh={isSequentialRun ? handleInsertClockHoldHigh : undefined}
+            onSinglePulse={isSequentialRun ? handleInsertClockPulse : undefined}
+            hasVectors={totalVectorCount > 0}
+          />
+        )}
+
         {/* TRACE callout moved to bottom workbench area — canonical position after results zone */}
 
-        {/* Sequential first-run helper strip */}
-        {hasDff && isFirstRunState && (
+        {/* Sequential first-run helper strip — hidden when VerifyFirstRunPanel is present */}
+        {hasDff && isFirstRunState && lastRun && (
           <IdeCallout tone="info" testId="ide-verify-sequential-helper">
             <strong>{sequentialGuidanceCopy.introTitle}</strong>
             <ul className="ide-copy" style={{ margin: '4px 0 4px 16px', padding: 0 }}>
@@ -4705,7 +4190,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </ul>
             <div className="ide-inline-actions">
               <IdeButton tone="secondary" onClick={handleInsertClockPattern} testId="ide-verify-insert-clock-pattern">
-                {effectiveTimingGuidance.patternActionLabel}
+                Alternating clock
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={handleInsertClockHoldLow} testId="ide-verify-insert-clock-hold-low">
+                Hold low
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={handleInsertClockHoldHigh} testId="ide-verify-insert-clock-hold-high">
+                Hold high
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={handleInsertClockPulse} testId="ide-verify-insert-clock-pulse">
+                Single pulse
               </IdeButton>
             </div>
           </IdeCallout>
@@ -4717,7 +4211,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             {sequentialGuidanceCopy.missingActivity}
             <div className="ide-inline-actions" style={{ marginTop: 6 }}>
               <IdeButton tone="secondary" onClick={handleInsertClockPattern} testId="ide-verify-insert-clock-pattern-warn">
-                {effectiveTimingGuidance.patternActionLabel}
+                Alternating clock
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={handleInsertClockHoldLow} testId="ide-verify-insert-clock-hold-low-warn">
+                Hold low
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={handleInsertClockHoldHigh} testId="ide-verify-insert-clock-hold-high-warn">
+                Hold high
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={handleInsertClockPulse} testId="ide-verify-insert-clock-pulse-warn">
+                Single pulse
               </IdeButton>
             </div>
           </IdeCallout>
@@ -4728,8 +4231,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           <h4 className="ide-verify-zone-label" data-zone="vectors">Test Vectors</h4>
         )}
 
-        {/* Live circuit I/O summary — anchors vectors to the current design */}
-        {inputFields.length > 0 && (
+        {/* Live circuit I/O summary — anchors vectors to the current design (hidden during first-run hero) */}
+        {inputFields.length > 0 && !(!lastRun && isFirstRunState) && (
           <div className="ide-verify-io-summary" data-testid="ide-verify-io-summary">
             <span className="ide-verify-io-summary-section">
               <span className="ide-verify-io-summary-label">Inputs:</span>
@@ -4791,7 +4294,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           />
         )}
 
-        {unsupportedFeedbackDiagnostic && (
+        {!primaryStatus && unsupportedFeedbackDiagnostic && (
           <div
             className="ide-verify-unsupported-feedback-banner"
             data-testid="ide-verify-unsupported-feedback-banner"
@@ -4876,8 +4379,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           timingGuidance={effectiveTimingGuidance}
           postRunToolbarMode={postRunToolbarMode}
           detailsRef={scenarioBuilderDetailsRef}
+          hideExpectedLanes={!nextRunUsesAssertions}
         />
-          {!isDraftSession && <div
+        </VerifyStimulusRegion>
+
+        <div className="ide-verify-region ide-verify-region--waveform" data-zone="waveform" data-testid="ide-verify-region-waveform">
+          {isDraftSession ? (
+            <VerifyWaveformPlaceholder
+              inputNames={inputFields.map((f) => f.label ?? f.id)}
+              outputNames={outputFields.map((f) => f.label ?? f.id)}
+              clockName={clockSignals.size > 0 ? Array.from(clockSignals)[0] : undefined}
+              isSequential={isSequentialRun}
+              onGenerate={handleGenerateBasicVectors}
+              onRun={() => handleRunWithPreflight()}
+              hasVectors={totalVectorCount > 0}
+              runLabel={verifySession.runLabel}
+            />
+          ) : <div
             className="ide-verify-workbench ide-verify-workbench-v2"
             data-testid="ide-verify-workbench"
             data-zone="results"
@@ -5294,7 +4812,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               ) : null}
             />
 
-            {Boolean(lastRun) && <div className={`ide-verify-supporting-strip ${drawerOpen ? 'is-open' : ''}`}>
+            {Boolean(lastRun) && <div className={`ide-verify-supporting-strip ${drawerOpen ? 'is-open' : ''}`} data-zone="inspector" data-testid="ide-verify-region-inspector">
             {/* Drawer toggle header — only shown after first run */}
             <button
               type="button"
@@ -5320,15 +4838,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         className={`ide-verify-drawer-tab ${verifyTab === tab ? 'is-active' : ''}`}
                         onClick={(event) => { event.stopPropagation(); setVerifyTab(tab); setDrawerOpen(true); }}
                       >
-                        {tab === 'mismatches'
-                          ? 'Mismatches'
-                          : tab === 'vectors'
-                            ? 'Vectors'
-                            : tab === 'truth'
-                              ? 'Truth Table'
-                              : tab === 'kmap'
-                                ? 'K-Map'
-                                : 'Details'}
+                        {tab === 'why'
+                          ? 'Why'
+                          : tab === 'mismatches'
+                            ? 'Mismatches'
+                            : tab === 'vectors'
+                              ? 'Vectors'
+                              : tab === 'truth'
+                                ? 'Truth Table'
+                                : tab === 'kmap'
+                                  ? 'K-Map'
+                                  : 'Details'}
                       </span>
                     ))}
                   </span>
@@ -5355,7 +4875,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   className={`ide-verify-analysis-tab${verifyTab === tab ? ' is-active' : ''}`}
                   onClick={() => setVerifyTab(tab)}
                 >
-                  {tab === 'mismatches' ? 'Mismatches'
+                  {tab === 'why' ? 'Why'
+                    : tab === 'mismatches' ? 'Mismatches'
                     : tab === 'vectors' ? 'Vectors'
                     : tab === 'truth' ? 'Truth Table'
                     : tab === 'kmap' ? 'K-Map'
@@ -5364,12 +4885,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               ))}
             </nav>
             <div className="ide-verify-tab-panel">
+              {verifyTab === 'why' && (
+                <WhyInspectorPanel explanation={signalExplanation} />
+              )}
               {verifyTab === 'mismatches' && (
                 <section className="ide-verify-mismatch-panel" data-testid="ide-verify-mismatch-table">
                   {/* Mismatch guidance — top-level orientation before the detail */}
                   {hasSessionFailureEvidence && (
                     <div className="ide-verify-mismatch-guidance" data-testid="ide-verify-mismatch-guidance">
-                      <span>Assertions differ. If the expected outputs are wrong, edit the testbench below. If the circuit logic is wrong, open Design.</span>
+                      <span>Outputs don't match the expected values. If the expected values are wrong, update them below. If the circuit is wrong, fix it in Design.</span>
                       <div className="ide-inline-actions">
                         <IdeButton tone="secondary" onClick={handleEditExpectedOutputs} testId="ide-verify-mismatch-edit-vectors">
                           Edit expected outputs
@@ -5385,7 +4909,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   {/* Fail summary — compact selected-failure header */}
                   {hasSessionFailureEvidence && (
                     <div className="ide-verify-fail-summary" data-testid="ide-verify-fail-summary-inline">
-                      <span className="ide-verify-fail-summary__status">ASSERTIONS DIFFER</span>
+                      <span className="ide-verify-fail-summary__status">Outputs differ</span>
                       <span className="ide-verify-fail-summary__count">
                         {failingRows.length} of {runRows.length} vectors failing
                       </span>
@@ -5542,12 +5066,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   {/* Mismatch table */}
                   {failingRows.length === 0 ? (
                     sessionShowsCompareEvidence ? (
-                      <IdeCallout tone="success" title="No differences in current run">
-                        Assertions match observed outputs for this run.
+                      <IdeCallout tone="success" title="All outputs matched">
+                        Every observed output matched the saved expected values.
                       </IdeCallout>
                     ) : (
                       <IdeCallout tone="info" title="Run complete">
-                        Enable Assertions to compare observed outputs against asserted values.
+                        Switch to Compare mode to check observed outputs against expected values.
                       </IdeCallout>
                     )
                   ) : (
@@ -5556,7 +5080,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         <tr>
                           <th>Tick</th>
                           <th>Signal</th>
-                          <th>Asserted</th>
+                          <th>Expected</th>
                           <th>Observed</th>
                           {onFixPath && <th />}
                         </tr>
@@ -5655,7 +5179,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </div>
                   )}
                   <IdeDataTable
-                    columns={['Tick', 'Signal', 'Asserted', 'Observed', 'Status']}
+                    columns={['Tick', 'Signal', 'Expected', 'Observed', 'Status']}
                     rows={resultRows}
                     testId="ide-verify-results-table"
                   />
@@ -5742,7 +5266,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   )}
                   <section data-testid="ide-verify-signal-table">
                     <IdeDataTable
-                      columns={['Signal', `Tick ${selectedTick ?? '-'}`, 'Asserted', 'Observed']}
+                      columns={['Signal', `Tick ${selectedTick ?? '-'}`, 'Expected', 'Observed']}
                       rows={selectedTickRows.map((row) => [
                         row.signal,
                         String(row.tick),
@@ -5858,6 +5382,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </dl>
             </section>
           )}
+        </div>
       </IdePanel>
     </IdeSurfaceLayout>
   );

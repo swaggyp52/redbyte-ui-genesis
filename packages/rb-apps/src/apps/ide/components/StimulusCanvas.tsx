@@ -17,6 +17,8 @@ export interface StimulusCanvasProps {
   authoredVectors: VerifyAuthorVector[];
   onVectorsChange: (vectors: VerifyAuthorVector[]) => void;
   onNavigateToMapping?: () => void;
+  /** When true, expected-output lanes are hidden so students can only paint inputs (Observe mode). */
+  readOnlyOutputs?: boolean;
 }
 
 function makeId(): string {
@@ -244,6 +246,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   authoredVectors,
   onVectorsChange,
   onNavigateToMapping,
+  readOnlyOutputs = false,
 }) => {
   const latestVectorsRef = useRef(authoredVectors);
   const [hoveredTick, setHoveredTick] = useState<number | null>(null);
@@ -266,9 +269,9 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   const laneOptions = useMemo<LaneOption[]>(
     () => [
       ...inputFields.map((field) => ({ key: `input:${field.id}`, kind: 'input' as const, fieldId: field.id, label: field.label })),
-      ...outputFields.map((field) => ({ key: `expected:${field.id}`, kind: 'expected' as const, fieldId: field.id, label: field.label })),
+      ...(readOnlyOutputs ? [] : outputFields.map((field) => ({ key: `expected:${field.id}`, kind: 'expected' as const, fieldId: field.id, label: field.label }))),
     ],
-    [inputFields, outputFields]
+    [inputFields, outputFields, readOnlyOutputs]
   );
   const selectedLane = laneOptions.find((option) => option.key === selectedLaneKey) ?? laneOptions[0] ?? null;
 
@@ -520,7 +523,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
             <div style={{ width: ADD_COL_W, flexShrink: 0 }} />
           </div>
         ))}
-        {outputFields.length > 0 ? (
+        {outputFields.length > 0 && !readOnlyOutputs ? (
           <>
             <div className="ide-stimulus-group-header ide-stimulus-group-header--asserted" style={{ display: 'flex', height: GROUP_H, alignItems: 'center', background: 'var(--rb-surface-2, transparent)' }}>
               <div style={{ width: LABEL_W, flexShrink: 0, paddingLeft: 8, fontSize: '0.68em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>Expected outputs</div>

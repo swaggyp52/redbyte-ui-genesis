@@ -75,6 +75,8 @@ export interface ScenarioBuilderPanelProps {
   // Programmatic expansion: when set, the post-run <details> uses this ref
   // so the parent can call ref.current.open = true to reveal the editor.
   detailsRef?: React.RefObject<HTMLDetailsElement>;
+  /** Observe mode: hide expected-output lanes so students can only paint inputs. */
+  hideExpectedLanes?: boolean;
 }
 
 function normalizeFieldId(value: string): string {
@@ -101,7 +103,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   onAddVector,
   onGenerateBasics,
   onRun,
-  runButtonLabel = 'Run Testbench',
+  runButtonLabel = 'Run circuit',
   onOpenProjectVectors,
   onAutoGenerate,
   sweepPreset,
@@ -125,6 +127,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   isUsingFallbackSignals = false,
   onGoToHardware,
   detailsRef,
+  hideExpectedLanes = false,
 }) => {
   const effectiveVectorCount = totalVectorCount ?? authoredVectors.length;
   const hasVectors = effectiveVectorCount > 0;
@@ -148,6 +151,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           outputFields={outputFields}
           authoredVectors={authoredVectors}
           onVectorsChange={onVectorsChange}
+          readOnlyOutputs={hideExpectedLanes}
         />
       ) : (
         <p className="ide-verify-section-subheader" style={{ padding: '12px' }}>
@@ -211,6 +215,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           outputFields={outputFields}
           authoredVectors={authoredVectors}
           onVectorsChange={onVectorsChange}
+          readOnlyOutputs={hideExpectedLanes}
         />
       ) : (
         /* Fallback: show legacy draft form if canvas prop not wired */
@@ -305,7 +310,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
                 </label>
               ))}
             </div>
-            {outputFields.length > 0 && (
+            {outputFields.length > 0 && !hideExpectedLanes && (
               <>
                 <p className="ide-verify-section-subheader">Expected outputs (optional)</p>
                 <div className="ide-verify-vector-grid ide-verify-vector-grid--expected">
