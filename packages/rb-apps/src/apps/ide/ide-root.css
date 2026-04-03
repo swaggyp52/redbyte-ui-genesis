@@ -19306,6 +19306,17 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   max-height: 40px;
   overflow: hidden;
 }
+/* Post-run workbench: let it shrink so waveform fills remaining space */
+.ide-verify-region--stimulus:has(.ide-verify-workbench-live) {
+  flex-shrink: 1;
+  max-height: min(42vh, 380px);
+  overflow: hidden;
+}
+/* When workbench is collapsed (no body), shrink to header only */
+.ide-verify-region--stimulus:has(.ide-verify-workbench-live:not(:has(.ide-verify-workbench-body))) {
+  max-height: 40px;
+  flex-shrink: 0;
+}
 
 .ide-verify-region--waveform {
   order: 3;
@@ -22558,29 +22569,95 @@ button:disabled,
 /* ── A7. Remove "What is a tick?" from instrument viewport ──── */
 /* It pollutes prime waveform space — belongs in help docs */
 
-/* ── A2. Testbench summary bar: authority and intent ─────────── */
-.ide-verify-scenario-builder-details--postrun > summary.ide-verify-scenario-builder-summary {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  padding: 7px 12px !important;
-  background: rgba(15,23,42,0.55) !important;
-  border: 1px solid rgba(56,189,248,0.1) !important;
-  border-radius: 6px !important;
-  cursor: pointer !important;
-  list-style: none !important;
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  color: rgba(186,230,253,0.7) !important;
-  user-select: none !important;
+/* ── A2. Stimulus Workbench: always-visible post-run editor ───── */
+
+/* ── Workbench container: constrain height, let waveform breathe ── */
+.ide-verify-workbench-live {
+  display: flex;
+  flex-direction: column;
+  max-height: min(42vh, 380px);
+  overflow: hidden;
 }
-.ide-verify-scenario-builder-details--postrun > summary.ide-verify-scenario-builder-summary::-webkit-details-marker {
-  display: none !important;
+
+/* ── Header bar: toggle + actions on one compact row ── */
+.ide-verify-workbench-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 10px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.1);
+  border-radius: 6px;
+  flex-shrink: 0;
 }
-.ide-verify-scenario-builder-details--postrun > summary.ide-verify-scenario-builder-summary:hover {
-  background: rgba(15,23,42,0.75) !important;
-  color: rgba(186,230,253,0.95) !important;
+
+/* ── Toggle button: expand/collapse the workbench ── */
+.ide-verify-workbench-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
 }
+.ide-verify-workbench-toggle:hover {
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.ide-verify-workbench-toggle-arrow {
+  font-size: 11px;
+  color: rgba(56, 189, 248, 0.6);
+  transition: transform 0.15s;
+}
+
+.ide-verify-workbench-toggle-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(186, 230, 253, 0.8);
+}
+
+.ide-verify-workbench-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(148, 163, 184, 0.65);
+  background: rgba(56, 189, 248, 0.09);
+  padding: 1px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* ── Action buttons: Generate + Run ── */
+.ide-verify-workbench-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.ide-verify-workbench-actions .ide-btn {
+  font-size: 11px;
+  padding: 3px 10px;
+}
+
+/* ── Body: scrollable editing area ── */
+.ide-verify-workbench-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 0 0;
+}
+
+/* ── When collapsed, hide the body but keep header visible ── */
+.ide-verify-workbench-live:not(:has(.ide-verify-workbench-body)) {
+  max-height: none;
+}
+
+/* ── Legacy summary classes (keep for existing count chip) ── */
 .ide-verify-scenario-builder-summary-label {
   font-weight: 700 !important;
   color: rgba(186,230,253,0.85) !important;
@@ -22591,13 +22668,6 @@ button:disabled,
   background: rgba(56,189,248,0.07) !important;
   padding: 1px 7px !important;
   border-radius: 4px !important;
-}
-.ide-verify-scenario-builder-summary-cue {
-  margin-left: auto !important;
-  font-size: 10px !important;
-  opacity: 0.35 !important;
-  font-weight: 500 !important;
-  letter-spacing: 0.02em !important;
 }
 
 /* ── A5. Signal chip bar: respect group state ────────────────── */

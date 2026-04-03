@@ -573,19 +573,46 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
     );
   }
 
-  // Post-run: collapsed by default so waveform dominates; user opens to edit
+  // Post-run: always-visible editable workbench — students must be able to
+  // edit → rerun without hunting for a collapsed accordion.
+  const [workbenchExpanded, setWorkbenchExpanded] = React.useState(true);
+
   return (
-    <details ref={detailsRef} className="ide-verify-scenario-builder-details ide-verify-scenario-builder-details--postrun">
-      <summary className="ide-verify-scenario-builder-summary">
-        <span className="ide-verify-scenario-builder-summary-label">Testbench</span>
-        {authoredVectors.length > 0 && (
-          <span className="ide-verify-scenario-builder-count">
-            {authoredVectors.length} vector{authoredVectors.length !== 1 ? 's' : ''}
+    <div className="ide-verify-scenario-builder-details ide-verify-scenario-builder-details--postrun ide-verify-workbench-live" data-testid="ide-verify-stimulus-workbench">
+      {/* ── Workbench header bar ── */}
+      <div className="ide-verify-workbench-header">
+        <button
+          type="button"
+          className="ide-verify-workbench-toggle"
+          onClick={() => setWorkbenchExpanded((prev) => !prev)}
+          aria-expanded={workbenchExpanded}
+          data-testid="ide-verify-workbench-toggle"
+        >
+          <span className="ide-verify-workbench-toggle-arrow" aria-hidden="true">
+            {workbenchExpanded ? '▾' : '▸'}
           </span>
-        )}
-        <span className="ide-verify-scenario-builder-summary-cue" aria-hidden="true">Edit ›</span>
-      </summary>
-      {authoringForm}
-    </details>
+          <span className="ide-verify-workbench-toggle-label">Stimulus Workbench</span>
+          {authoredVectors.length > 0 && (
+            <span className="ide-verify-workbench-count">
+              {authoredVectors.length} vector{authoredVectors.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </button>
+        <div className="ide-verify-workbench-actions">
+          <IdeButton tone="ghost" onClick={onGenerateBasics} testId="ide-verify-workbench-generate">
+            Generate
+          </IdeButton>
+          <IdeButton tone="primary" onClick={onRun} testId="ide-verify-workbench-run">
+            {runButtonLabel}
+          </IdeButton>
+        </div>
+      </div>
+      {/* ── Editable stimulus region — always mounted, toggles visibility ── */}
+      {workbenchExpanded && (
+        <div className="ide-verify-workbench-body" data-testid="ide-verify-workbench-body">
+          {authoringForm}
+        </div>
+      )}
+    </div>
   );
 };

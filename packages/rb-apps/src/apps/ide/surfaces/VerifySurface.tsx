@@ -4461,32 +4461,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       fail {currentFailIndex + 1}/{failTicksSorted.length}
                     </span>
                   )}
-                  {/* Sprint 11: Debug in Design — jump to selected tick in Design canvas */}
-                  {onDebugTickSelected && selectedTick !== null && (
-                    <button
-                      type="button"
-                      className="ide-verify-scope-debug-btn"
-                      data-testid="ide-verify-debug-in-design"
-                      onClick={() => {
-                        const tickSignals: Record<string, 0 | 1> = {};
-                        for (const row of displaySignalTimeline) {
-                          const pt = row.values.find((v) => v.tick === selectedTick);
-                          if (pt?.value === '1') tickSignals[row.signal] = 1;
-                          else if (pt?.value === '0') tickSignals[row.signal] = 0;
-                        }
-                        onDebugTickSelected(
-                          selectedTick,
-                          tickSignals,
-                          selectedDebugContext && selectedDebugContext.tick === selectedTick
-                            ? selectedDebugContext
-                            : null
-                        );
-                        onGoToDesign?.();
-                      }}
-                    >
-                      Debug t{selectedTick} in Design →
-                    </button>
-                  )}
+
                 </span>
               </div>
               <div className="ide-verify-waveform-bar" data-testid="ide-verify-waveform-bar">
@@ -4546,6 +4521,34 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       {mode === 'all' ? 'All ticks' : mode === 'fail' ? 'Fail window' : 'Selected'}
                     </button>
                   ))}
+                  {/* Zoom +/- for tick width */}
+                  <button
+                    type="button"
+                    className="ide-verify-zoom-btn"
+                    onClick={() => setTickWidth((prev) => clampTickWidth(prev - 8))}
+                    data-testid="ide-verify-zoom-out"
+                    title="Zoom out (narrower ticks)"
+                  >
+                    −
+                  </button>
+                  <button
+                    type="button"
+                    className="ide-verify-zoom-btn"
+                    onClick={() => setTickWidth((prev) => clampTickWidth(prev + 8))}
+                    data-testid="ide-verify-zoom-in"
+                    title="Zoom in (wider ticks)"
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    className="ide-verify-zoom-btn"
+                    onClick={fitWaveformView}
+                    data-testid="ide-verify-zoom-fit"
+                    title="Fit all ticks in view"
+                  >
+                    Fit
+                  </button>
                   <span className="ide-verify-zoom-label ide-copy" style={{ marginLeft: 'var(--ide-space-2)' }}>Rows</span>
                   {(['small', 'normal', 'large'] as const).map((d) => (
                     <button
