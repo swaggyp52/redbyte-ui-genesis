@@ -108,7 +108,7 @@ describe('ProjectSurface workspace panels', () => {
     );
 
     expect(getAllByTestId('ide-project-showcase-primary-cta').at(-1)?.textContent).toContain('Continue to Map Pins');
-    expect(getByTestId('ide-project-console').textContent).toContain('Finish mapping before relying on hardware behavior');
+    expect(getByTestId('ide-project-hero-blocker').textContent).toContain('Finish mapping before relying on hardware behavior');
   });
 
   it('keeps the hero CTA dominant while surfacing the active example context', () => {
@@ -129,6 +129,7 @@ describe('ProjectSurface workspace panels', () => {
             },
             primaryCtaLabel: 'Verify',
             primaryCta: { label: 'Verify', mode: 'verify', code: 'RBP1004' },
+            projectKind: 'example',
             examples: [
               {
                 id: 'signal-tour',
@@ -156,7 +157,7 @@ describe('ProjectSurface workspace panels', () => {
     );
 
     const context = getAllByTestId('ide-project-context').at(-1)!;
-    expect(context.textContent).toContain('Signal Tour: Switches -> LEDs');
+    expect(context.textContent).toContain('Expected behavior');
     expect(context.textContent).toContain('Flip switches and the matching LEDs follow immediately.');
   });
 
@@ -388,7 +389,7 @@ describe('ProjectSurface workspace panels', () => {
 
     const readinessSummaryList = getAllByTestId('ide-project-readiness-summary');
     const readinessSummary = readinessSummaryList[readinessSummaryList.length - 1];
-    expect(readinessSummary?.textContent).toContain('EXPORT AVAILABLE');
+    expect(readinessSummary?.textContent).toContain('AVAILABLE');
     expect(readinessSummary?.textContent).toContain(
       'Export can be opened now for file review'
     );

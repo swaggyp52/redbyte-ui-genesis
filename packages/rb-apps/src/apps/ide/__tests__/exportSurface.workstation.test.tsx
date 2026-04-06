@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, within } from '@testing-library/react';
 import type { RBProject } from '../../../export/projectFormat';
 import { ExportSurface } from '../surfaces/ExportSurface';
+import type { ProjectHealthVerifyResult } from '../projectHealth';
+import { deriveProjectWorkflowAuthority } from '../projectWorkflowAuthority';
 
 function buildProject(): RBProject {
   return {
@@ -116,6 +118,45 @@ function buildRawFourNandLatchProject(): RBProject {
   };
 }
 
+function makeWorkflowAuthority(options: {
+  verifyResult?: ProjectHealthVerifyResult;
+  verifyQualification?: 'complete' | 'incomplete-mapping';
+  hasSuccessfulExportBundle?: boolean;
+} = {}) {
+  const verifyResult = options.verifyResult;
+  const verifyHash = verifyResult?.hash ?? null;
+  return deriveProjectWorkflowAuthority({
+    projectHealthCore: {
+      lastVerify: verifyResult
+        ? {
+            ...verifyResult,
+            qualification: options.verifyQualification === 'incomplete-mapping' ? 'incomplete-mapping' : undefined,
+          }
+        : undefined,
+      lastExport: options.hasSuccessfulExportBundle === false
+        ? undefined
+        : {
+            status: 'ok',
+            hash: 'export-current-hash',
+            ranAtIso: '2026-03-12T00:10:00.000Z',
+          },
+      dirtySinceVerify: false,
+      dirtySinceExport: false,
+    },
+    readiness: {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      verifyQualification:
+        options.verifyQualification === 'incomplete-mapping' ? 'incomplete-mapping' : undefined,
+    },
+    verifyLastRun: verifyResult,
+    verifyRunHistory: verifyHash ? [{ projectHash: verifyHash }] : undefined,
+    currentVerifyProjectHash: verifyHash,
+    currentExportHash: 'export-current-hash',
+  });
+}
+
 describe('ExportSurface workstation redesign', () => {
   afterEach(() => { cleanup(); });
 
@@ -155,12 +196,16 @@ describe('ExportSurface workstation redesign', () => {
 
   it('keeps project export available when verify has not run yet', () => {
     const { getByTestId, getByText, queryByTestId } = render(
-      <ExportSurface project={buildProject()} determinismHash="ide-hash" />
+      <ExportSurface
+        project={buildProject()}
+        determinismHash="ide-hash"
+        workflowAuthority={makeWorkflowAuthority()}
+      />
     );
 
     expect(getByTestId('ide-export-dock-download').hasAttribute('disabled')).toBe(false);
     expect(getByTestId('ide-export-vivado-unverified-callout').textContent).toContain(
-      'Artifacts available'
+      'Run Verify before relying on this handoff'
     );
     expect(getByTestId('ide-export-blockers-callout')).toBeTruthy();
     expect(getByTestId('ide-export-unverified-callout').textContent).toContain(
@@ -206,6 +251,10 @@ describe('ExportSurface workstation redesign', () => {
         verifyLastRun={incompletePassRun}
         verifyResult={{ status: 'pass', hash: 'abc123', reportHash: 'rep-pass' }}
         dirtySinceVerify={false}
+        workflowAuthority={makeWorkflowAuthority({
+          verifyResult: { status: 'pass', hash: 'abc123', reportHash: 'rep-pass' },
+          verifyQualification: 'incomplete-mapping',
+        })}
       />
     );
 
@@ -249,10 +298,14 @@ describe('ExportSurface workstation redesign', () => {
         verifyLastRun={incompletePassRun}
         verifyResult={{ status: 'pass', hash: 'abc123', reportHash: 'rep-pass' }}
         dirtySinceVerify={false}
+        workflowAuthority={makeWorkflowAuthority({
+          verifyResult: { status: 'pass', hash: 'abc123', reportHash: 'rep-pass' },
+          verifyQualification: 'incomplete-mapping',
+        })}
       />
     );
 
-    expect(getByTestId('ide-export-trust-reason').textContent).toMatch(/mapped|mapping|unsealed/i);
+    expect(getByTestId('ide-export-trust-reason').textContent).toMatch(/mapping/i);
     expect(getByTestId('ide-export-blockers-callout').textContent).toMatch(/compare|download now|advisory/i);
     expect(getByTestId('ide-export-gate-verify').textContent).not.toContain('Outputs differ');
   });

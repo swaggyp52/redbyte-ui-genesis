@@ -44,10 +44,8 @@ import {
   getIdeExampleById,
 } from './ide/examplesCatalog';
 import {
-  choosePrimaryProjectCta,
   deriveProjectHealth,
   deriveProjectVerifyState,
-  deriveStageCompletion,
   type ProjectHealthExportResult,
   type ProjectHealthMode,
 } from './ide/projectHealth';
@@ -57,7 +55,8 @@ import {
 } from './ide/projectIdentity';
 import { deriveIoSignalRoles } from './ide/ioSignalRoles';
 import { deriveTimingGuidance } from './ide/timingGuidance';
-import { useProjectRuntime, type ProjectIoRow, type VerifyRunLedgerEntry } from './ide/projectRuntime';
+import { useProjectRuntime, type ProjectIoRow } from './ide/projectRuntime';
+import { deriveProjectWorkflowAuthority } from './ide/projectWorkflowAuthority';
 import {
   decodePersistedIdeProject,
   listIdeProjectSnapshots,
@@ -312,35 +311,6 @@ export const IdeApp: React.FC = () => {
       }),
     [projectHealthCore, readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors, readiness.projectKind, readiness.verifyQualification]
   );
-
-  const primaryProjectCta = useMemo(
-    () =>
-      choosePrimaryProjectCta(projectHealth, {
-        hasCircuit: readiness.hasCircuit,
-        hasIoMapping: readiness.hasIoMapping,
-        hasVectors: readiness.hasVectors,
-        projectKind: readiness.projectKind,
-        verifyQualification: readiness.verifyQualification,
-      }),
-    [projectHealth, readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors, readiness.projectKind, readiness.verifyQualification]
-  );
-  const statusBarGateStatus = useMemo<'pass' | 'warn' | 'fail'>(() => {
-    if (projectHealth.blockingIssues.length > 0) return 'fail';
-    if (
-      projectVerifyState === 'assertions-differ' ||
-      projectVerifyState === 'verify-error' ||
-      projectVerifyState === 'trace'
-    ) {
-      return 'warn';
-    }
-    if (projectHealth.dirtySinceVerify || projectHealth.dirtySinceExport) return 'warn';
-    return 'pass';
-  }, [
-    projectHealth.blockingIssues.length,
-    projectHealth.dirtySinceExport,
-    projectHealth.dirtySinceVerify,
-    projectVerifyState,
-  ]);
 
   const pendingExample = useMemo(
     () => (pendingExampleId ? getIdeExampleById(pendingExampleId) : undefined),
@@ -1268,27 +1238,37 @@ export const IdeApp: React.FC = () => {
       }),
     [authoritativeProjectVectors, circuit, customVectors, projectIoRows]
   );
-  const latestVerifyLedgerEntry = verifyRunHistory[verifyRunHistory.length - 1];
-  const verifyIsCurrent = useMemo(() => deriveVerifyCurrent({
-    hasVerifyRun: Boolean(verifyLastRun),
-    latestVerifyLedgerEntry,
-    currentVerifyProjectHash,
-    dirtySinceVerify: projectHealthCore.dirtySinceVerify,
-  }), [
-    currentVerifyProjectHash,
-    latestVerifyLedgerEntry,
-    projectHealthCore.dirtySinceVerify,
-    verifyLastRun,
-  ]);
-  const exportIsCurrent = useMemo(() => deriveExportCurrent({
-    lastExport: projectHealthCore.lastExport,
-    currentExportHash: exportViewModel.exportHash,
-    dirtySinceExport: projectHealthCore.dirtySinceExport,
-  }), [
-    exportViewModel.exportHash,
-    projectHealthCore.dirtySinceExport,
-    projectHealthCore.lastExport,
-  ]);
+  const workflowAuthority = useMemo(
+    () =>
+      deriveProjectWorkflowAuthority({
+        projectHealthCore,
+        readiness: {
+          hasCircuit: readiness.hasCircuit,
+          hasIoMapping: readiness.hasIoMapping,
+          hasVectors: readiness.hasVectors,
+          projectKind: readiness.projectKind,
+          verifyQualification: readiness.verifyQualification,
+        },
+        verifyLastRun,
+        verifyRunHistory,
+        currentVerifyProjectHash,
+        currentExportHash: exportViewModel.exportHash,
+      }),
+    [
+      currentVerifyProjectHash,
+      exportViewModel.exportHash,
+      projectHealthCore,
+      readiness.hasCircuit,
+      readiness.hasIoMapping,
+      readiness.hasVectors,
+      readiness.projectKind,
+      readiness.verifyQualification,
+      verifyLastRun,
+      verifyRunHistory,
+    ]
+  );
+  const primaryProjectCta = workflowAuthority.primaryCta;
+  const statusBarGateStatus = workflowAuthority.statusBarGateStatus;
 
   const handleVerifyFixPath = useCallback(
     (target: VerifyFailureTarget) => {
@@ -1433,7 +1413,7 @@ export const IdeApp: React.FC = () => {
         <IdeLeftRail
           currentMode={currentMode}
           onModeChange={setCurrentMode}
-          stepsCompleted={deriveStageCompletion(projectHealth, readiness)}
+          stepsCompleted={workflowAuthority.stageCompletion}
         />
         <div className="ide-surface-column">
           <PipelineStrip
@@ -1473,6 +1453,7 @@ export const IdeApp: React.FC = () => {
               onOpenExample={handleOpenExample}
               primaryCtaLabel={primaryProjectCta.label}
               primaryCta={primaryProjectCta}
+              workflowAuthority={workflowAuthority}
               onPrimaryCta={handleProjectPrimaryAction}
               onUpdateMappingPin={handleMappingPinChange}
               onAutoSuggestMapping={handleAutoSuggestMapping}
@@ -1674,8 +1655,7 @@ export const IdeApp: React.FC = () => {
               expectedIoRows={hardwareExpectedIoRows}
               vectorsCount={authoritativeProjectVectors.length}
               health={projectHealth}
-              verifyCurrent={verifyIsCurrent}
-              exportCurrent={exportIsCurrent}
+              workflowAuthority={workflowAuthority}
               runtimeSim={runtimeSim}
               onSimSetInput={setRuntimeSimInput}
               onGenerateBringUpVectors={handleGenerateBringUpVectors}
@@ -1697,6 +1677,7 @@ export const IdeApp: React.FC = () => {
               verifyResult={projectHealthCore.lastVerify}
               verifyLastRun={verifyLastRun}
               designReady={readiness.hasCircuit && readiness.hasIoMapping}
+              workflowAuthority={workflowAuthority}
               activeScenario={activeScenario ?? undefined}
               dirtySinceVerify={projectHealthCore.dirtySinceVerify}
               determinismHash={determinismHash}
@@ -2008,31 +1989,6 @@ export function buildCurrentVerifyProjectHash(input: {
       mapping: toProjectIoMapping(input.projectIoRows),
     })
   );
-}
-
-export function deriveVerifyCurrent(input: {
-  hasVerifyRun: boolean;
-  latestVerifyLedgerEntry?: Pick<VerifyRunLedgerEntry, 'projectHash'> | null;
-  currentVerifyProjectHash: string;
-  dirtySinceVerify: boolean;
-}): boolean {
-  if (!input.hasVerifyRun) return false;
-  if (input.latestVerifyLedgerEntry) {
-    return input.latestVerifyLedgerEntry.projectHash === input.currentVerifyProjectHash;
-  }
-  return !input.dirtySinceVerify;
-}
-
-export function deriveExportCurrent(input: {
-  lastExport?: ProjectHealthExportResult;
-  currentExportHash?: string | null;
-  dirtySinceExport: boolean;
-}): boolean {
-  if (input.lastExport?.status !== 'ok') return false;
-  if (input.lastExport.hash && input.currentExportHash) {
-    return input.lastExport.hash === input.currentExportHash;
-  }
-  return !input.dirtySinceExport;
 }
 
 function formatSavedAtLabel(savedAtIso: string): string {

@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-04-02
+updated: 2026-04-06
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
@@ -187,9 +187,12 @@ Latest completed classroom-trust slices:
 - `2026-03-29` - first-run Verify draft sessions now use testbench language for trace authoring, and the first-run footer uses total live vector authority so custom-vector sessions still surface the primary run CTA.
 - `2026-03-29` - classroom signoff proof recovered; shared starter loading, idle Design live-simulation reachability, and gate-truth alignment now drive `repo-status` and dirty-tree `classroom:signoff` green again.
 
-Next Design chrome action:
+Latest product-hardening completions (2026-04-06):
 
-- workflow spine + shared step authority alignment
+- workflow spine + shared step authority alignment landed in the shared `projectWorkflowAuthority` path
+- Design-surface interaction landed its first contract slice through sequential inspector hardening
+- Hardware / Export failure truth now uses one dominant status / CTA taxonomy across both surfaces
+- `pnpm repo:status` is still blocked by the existing `ide:gate:project-overview-contract` preview gate in the live dirty baseline
 
 Use its recommended implementation order:
 
@@ -200,6 +203,10 @@ Use its recommended implementation order:
 5. **Sequential / clocked trust** - consistent timing language and proof across Verify, Export, and Hardware
 
 Examples, starters, and classroom ops should ride inside those tracks as proof obligations, not as separate top-tier roadmap lanes.
+
+Next product-hardening action:
+
+- onboarding / empty-state cleanup, with Project loaded-state readability and Import entry-path coherence first
 
 ---
 

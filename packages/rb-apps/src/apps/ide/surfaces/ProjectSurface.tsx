@@ -10,14 +10,17 @@ import {
   resolveBasys3PackagePin,
 } from '../../../fpga/boards/basys3/basys3Pins';
 import {
-  deriveProjectVerifyState,
-  deriveStageCompletion,
   type ProjectHealth,
   type ProjectHealthIssue,
   type ProjectHealthMode,
   type ProjectPrimaryCta,
+  type ProjectVerifyState,
 } from '../projectHealth';
 import type { IdeDiagnosticRouteRequest } from '../diagnostics';
+import {
+  deriveProjectWorkflowAuthority,
+  type ProjectWorkflowAuthority,
+} from '../projectWorkflowAuthority';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -67,6 +70,7 @@ export interface ProjectSurfaceProps {
     missingRequiredCount: number;
   };
   health: ProjectHealth;
+  workflowAuthority?: ProjectWorkflowAuthority;
   mappingRows: ProjectMappingRow[];
   examples: Array<{
     id: string;
@@ -148,6 +152,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   simRunning,
   readiness,
   health,
+  workflowAuthority,
   mappingRows,
   examples,
   projectKind = 'blank',
@@ -252,19 +257,29 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     () => sortedMappingRows.filter((row) => row.required).length,
     [sortedMappingRows]
   );
-
-  const projectVerifyState = useMemo(() => deriveProjectVerifyState(health), [health]);
-  const compareCurrent =
-    projectVerifyState === 'assertions-match' ||
-    projectVerifyState === 'assertions-differ' ||
-    projectVerifyState === 'verify-error';
-  const comparePassCurrent = projectVerifyState === 'assertions-match';
-  const comparePassIncomplete =
-    comparePassCurrent && readiness.verifyQualification === 'incomplete-mapping';
-  const compareMatches = comparePassCurrent && !comparePassIncomplete;
-  const compareDiffers =
-    projectVerifyState === 'assertions-differ' || projectVerifyState === 'verify-error';
-  const compareTraceOnly = projectVerifyState === 'trace';
+  const resolvedWorkflowAuthority = useMemo(
+    () =>
+      workflowAuthority ??
+      deriveProjectWorkflowAuthority({
+        projectHealthCore: health,
+        readiness: {
+          hasCircuit: readiness.hasCircuit,
+          hasIoMapping: readiness.hasIoMapping,
+          hasVectors: readiness.hasVectors,
+          verifyQualification: readiness.verifyQualification,
+        },
+        verifyLastRun: health.lastVerify,
+      }),
+    [health, readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors, readiness.verifyQualification, workflowAuthority]
+  );
+  const projectVerifyState = resolvedWorkflowAuthority.verifyState;
+  const compareCurrent = resolvedWorkflowAuthority.compareCurrent;
+  const comparePassIncomplete = resolvedWorkflowAuthority.comparePassIncomplete;
+  const compareMatches = resolvedWorkflowAuthority.compareMatches;
+  const compareDiffers = resolvedWorkflowAuthority.compareDiffers;
+  const compareTraceOnly = resolvedWorkflowAuthority.compareTraceOnly;
+  const activePrimaryCta = workflowAuthority?.primaryCta ?? primaryCta;
+  const activePrimaryCtaLabel = workflowAuthority?.primaryCta.label ?? primaryCtaLabel;
   const blockingIssues = useMemo(() => health.blockingIssues, [health.blockingIssues]);
   const topBlockingIssues = useMemo(() => blockingIssues.slice(0, 3), [blockingIssues]);
   const blockingIssue = topBlockingIssues[0] ?? null;
@@ -299,16 +314,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       return `${Math.floor(mins / 60)}h ago`;
     } catch { return null; }
   }, [lastSavedAt]);
-  const exportAvailable =
-    readiness.hasCircuit &&
-    readiness.hasIoMapping &&
-    health.lastExport?.status !== 'blocked';
-  const exportPackageCurrent =
-    readiness.hasCircuit &&
-    readiness.hasIoMapping &&
-    health.lastExport?.status === 'ok' &&
-    !health.dirtySinceExport;
-  const hardwareReady = exportPackageCurrent;
+  const exportAvailable = resolvedWorkflowAuthority.exportAvailable;
+  const exportPackageCurrent = resolvedWorkflowAuthority.exportPackageCurrent;
+  const hardwareReady = resolvedWorkflowAuthority.hardwareReady;
   const hardBlockingIssue = blockingIssues.find((issue) =>
     issue.code === 'RBP1000' ||
     issue.code === 'RBP1001' ||
@@ -631,7 +639,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [effectiveBoardSignal, highlightedMappingKey, ioBus, onGoToHardware, onUpdateMappingPin, sortedMappingRows]
   );
 
-  const stageCompletion = deriveStageCompletion(health, readiness);
+  const stageCompletion = resolvedWorkflowAuthority.stageCompletion;
   const designCardDone = stageCompletion.design;
   const completedMilestoneCount = [
     stageCompletion.design,
@@ -646,7 +654,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         step: '01',
         label: 'Design',
         meta: stageCompletion.design ? 'Complete' : 'Start here',
-        state: stageCompletion.design ? 'done' : primaryCta.mode === 'design' ? 'active' : 'idle',
+        state: stageCompletion.design ? 'done' : activePrimaryCta.mode === 'design' ? 'active' : 'idle',
         onClick: onOpenDesign,
         testId: 'ide-project-dock-nav-design',
       },
@@ -662,10 +670,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               ? 'Assertions differ'
               : compareCurrent
                 ? 'Simulation current'
-                : primaryCta.mode === 'verify'
+                : activePrimaryCta.mode === 'verify'
                   ? 'Run now'
                   : 'Waiting',
-        state: stageCompletion.verify ? 'done' : primaryCta.mode === 'verify' ? 'active' : 'idle',
+        state: stageCompletion.verify ? 'done' : activePrimaryCta.mode === 'verify' ? 'active' : 'idle',
         onClick: onOpenVerify,
         testId: 'ide-project-dock-nav-verify',
       },
@@ -675,8 +683,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         label: MAP_PINS_STAGE_LABEL,
         meta: stageCompletion.hardware
           ? hardwareReady ? 'Ready to program' : 'Pins mapped'
-          : primaryCta.mode === 'hardware' ? 'Map now' : 'Needs pins',
-        state: stageCompletion.hardware ? 'done' : primaryCta.mode === 'hardware' ? 'active' : 'idle',
+          : activePrimaryCta.mode === 'hardware' ? 'Map now' : 'Needs pins',
+        state: stageCompletion.hardware ? 'done' : activePrimaryCta.mode === 'hardware' ? 'active' : 'idle',
         onClick: onOpenHardware,
         testId: 'ide-project-dock-nav-hardware',
       },
@@ -684,8 +692,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         id: 'export',
         step: '04',
         label: EXPORT_STAGE_LABEL,
-        meta: stageCompletion.export ? 'Current' : exportAvailable ? 'Open now' : primaryCta.mode === 'export' ? 'Next up' : 'Waiting',
-        state: stageCompletion.export ? 'done' : exportAvailable && primaryCta.mode === 'export' ? 'active' : 'idle',
+        meta: stageCompletion.export ? 'Current' : exportAvailable ? 'Open now' : activePrimaryCta.mode === 'export' ? 'Next up' : 'Waiting',
+        state: stageCompletion.export ? 'done' : exportAvailable && activePrimaryCta.mode === 'export' ? 'active' : 'idle',
         onClick: onOpenExport,
         testId: 'ide-project-dock-nav-export',
       },
@@ -698,7 +706,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       onOpenHardware,
       onOpenExport,
       onOpenVerify,
-      primaryCta.mode,
+      activePrimaryCta.mode,
       compareCurrent,
       compareDiffers,
       compareMatches,
@@ -986,7 +994,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     onClick={onPrimaryCta}
                     testId="ide-project-showcase-primary-cta"
                   >
-                    Continue to {primaryCtaLabel} →
+                    Continue to {activePrimaryCtaLabel} →
                   </IdeButton>
                 </span>
                 <IdeButton
@@ -1048,7 +1056,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </div>
 
           {/* Gate sentinel — text content only, not displayed */}
-          <span style={{ display: 'none' }} data-testid="ide-project-continue-target">{primaryCtaLabel}</span>
+          <span style={{ display: 'none' }} data-testid="ide-project-continue-target">{activePrimaryCtaLabel}</span>
 
           {topBlockingIssues.length > 0 && (
             <IdeCallout 
@@ -1652,7 +1660,7 @@ function getExamplePreview(exampleId: string): {
 
 function getVerifySummary(
   health: ProjectHealth,
-  projectVerifyState: ReturnType<typeof deriveProjectVerifyState>,
+  projectVerifyState: ProjectVerifyState,
   compareMatches: boolean,
   comparePassIncomplete: boolean
 ): string {

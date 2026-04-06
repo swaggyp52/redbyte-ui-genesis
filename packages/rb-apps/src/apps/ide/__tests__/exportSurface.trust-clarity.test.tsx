@@ -5,6 +5,7 @@ import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react
 import type { RBProject } from '../../../export/projectFormat';
 import { ExportSurface } from '../surfaces/ExportSurface';
 import type { ProjectHealthVerifyResult } from '../projectHealth';
+import { deriveProjectWorkflowAuthority } from '../projectWorkflowAuthority';
 
 /** Fully mapped project — produces no RBEX errors. */
 function buildMappedProject(): RBProject {
@@ -143,6 +144,53 @@ const traceResult: ProjectHealthVerifyResult = {
   ranAtIso: '2026-03-25T00:00:00.000Z',
 };
 
+function makeWorkflowAuthority(options: {
+  verifyResult?: ProjectHealthVerifyResult;
+  verifyQualification?: 'complete' | 'incomplete-mapping';
+  hasSuccessfulExportBundle?: boolean;
+  exportCurrent?: boolean;
+  dirtySinceVerify?: boolean;
+  designReady?: boolean;
+} = {}) {
+  const verifyResult = options.verifyResult;
+  const exportHash = options.exportCurrent === false ? 'export-old-hash' : 'export-current-hash';
+  const currentExportHash = options.exportCurrent === false ? 'export-new-hash' : exportHash;
+  const verifyHash = verifyResult?.hash ?? null;
+  const currentVerifyProjectHash =
+    options.dirtySinceVerify && verifyHash ? `${verifyHash}-current` : verifyHash;
+
+  return deriveProjectWorkflowAuthority({
+    projectHealthCore: {
+      lastVerify: verifyResult
+        ? {
+            ...verifyResult,
+            qualification: options.verifyQualification === 'incomplete-mapping' ? 'incomplete-mapping' : undefined,
+          }
+        : undefined,
+      lastExport: options.hasSuccessfulExportBundle === false
+        ? undefined
+        : {
+            status: 'ok',
+            hash: exportHash,
+            ranAtIso: '2026-03-12T00:10:00.000Z',
+          },
+      dirtySinceVerify: options.dirtySinceVerify ?? false,
+      dirtySinceExport: options.exportCurrent === false,
+    },
+    readiness: {
+      hasCircuit: true,
+      hasIoMapping: options.designReady ?? true,
+      hasVectors: true,
+      verifyQualification:
+        options.verifyQualification === 'incomplete-mapping' ? 'incomplete-mapping' : undefined,
+    },
+    verifyLastRun: verifyResult,
+    verifyRunHistory: verifyHash ? [{ projectHash: verifyHash }] : undefined,
+    currentVerifyProjectHash,
+    currentExportHash,
+  });
+}
+
 describe('ExportSurface trust clarity', () => {
   afterEach(() => {
     cleanup();
@@ -207,6 +255,7 @@ describe('ExportSurface trust clarity', () => {
         determinismHash="ide-hash"
         verifyResult={passResult}
         dirtySinceVerify={false}
+        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
       />
     );
 
@@ -220,13 +269,13 @@ describe('ExportSurface trust clarity', () => {
       <ExportSurface
         project={buildMappedProject()}
         determinismHash="ide-hash"
-        // No verifyResult -> available with advisory compare state
+        workflowAuthority={makeWorkflowAuthority()}
       />
     );
 
     const banner = getByTestId('ide-export-trust-banner');
-    expect(banner.textContent).toContain('AVAILABLE');
-    expect(banner.textContent).toContain('NOT COMPARED');
+    expect(banner.textContent).toContain('NEEDS REVIEW');
+    expect(banner.textContent).toContain('Expected-output comparison has not run');
   });
 
   it('shows trace-only provenance instead of collapsing it into assertions match', () => {
@@ -236,6 +285,7 @@ describe('ExportSurface trust clarity', () => {
         determinismHash="ide-hash"
         verifyResult={traceResult}
         dirtySinceVerify={false}
+        workflowAuthority={makeWorkflowAuthority({ verifyResult: traceResult })}
       />
     );
 
@@ -251,15 +301,16 @@ describe('ExportSurface trust clarity', () => {
         determinismHash="ide-hash"
         verifyResult={failResult}
         dirtySinceVerify={true}
+        workflowAuthority={makeWorkflowAuthority({ verifyResult: failResult, dirtySinceVerify: true })}
       />
     );
 
-    expect(getByTestId('ide-export-trust-banner').textContent).toContain('VERIFY STALE');
+    expect(getByTestId('ide-export-trust-banner').textContent).toContain('NEEDS REVIEW');
     expect(getByTestId('ide-export-trust-reason').textContent?.toLowerCase()).toContain('stale');
     expect(getByTestId('ide-export-trust-reason').textContent?.toLowerCase()).not.toContain(
       'differed at tick'
     );
-    expect(getByTestId('ide-export-trust-consequence').textContent).toContain('Re-run Verify');
+    expect(getByTestId('ide-export-trust-consequence').textContent).toContain('Refresh Verify');
     expect(queryByText(/assertions differ from observed outputs/i)).toBeNull();
   });
 
@@ -287,12 +338,12 @@ describe('ExportSurface trust clarity', () => {
         project={buildMappedProject()}
         determinismHash="ide-hash"
         onOpenVerify={onOpenVerify}
-        // No verifyResult -> advisory AVAILABLE state
+        workflowAuthority={makeWorkflowAuthority()}
       />
     );
 
     const banner = getByTestId('ide-export-trust-banner');
-    expect(banner.textContent).toContain('AVAILABLE');
+    expect(banner.textContent).toContain('NEEDS REVIEW');
     // Verify routing button must be visible
     expect(getByTestId('ide-export-trust-go-verify')).toBeTruthy();
   });
@@ -302,13 +353,13 @@ describe('ExportSurface trust clarity', () => {
       <ExportSurface
         project={buildMappedProject()}
         determinismHash="ide-hash"
-        // No verifyResult -> available with advisory compare state
+        workflowAuthority={makeWorkflowAuthority()}
       />
     );
 
     const banner = getByTestId('ide-export-trust-banner');
     // Must show AVAILABLE, not BLOCKED
-    expect(banner.textContent).toContain('AVAILABLE');
+    expect(banner.textContent).toContain('NEEDS REVIEW');
     expect(banner.textContent).not.toContain('BLOCKED');
     // Consequence language must guide student to next action
     const consequence = getByTestId('ide-export-trust-consequence');
@@ -321,7 +372,11 @@ describe('ExportSurface trust clarity', () => {
     const project = buildMappedProject();
 
     await runProjectDownloadInView(
-      <ExportSurface project={project} determinismHash="ide-hash" />,
+      <ExportSurface
+        project={project}
+        determinismHash="ide-hash"
+        workflowAuthority={makeWorkflowAuthority()}
+      />,
       undefined
     );
   });
@@ -330,7 +385,12 @@ describe('ExportSurface trust clarity', () => {
     const project = buildMappedProject();
 
     await runProjectDownloadInView(
-      <ExportSurface project={project} determinismHash="ide-hash" verifyResult={failResult} />,
+      <ExportSurface
+        project={project}
+        determinismHash="ide-hash"
+        verifyResult={failResult}
+        workflowAuthority={makeWorkflowAuthority({ verifyResult: failResult })}
+      />,
       undefined
     );
   });
@@ -344,6 +404,7 @@ describe('ExportSurface trust clarity', () => {
         determinismHash="ide-hash"
         verifyResult={passResult}
         dirtySinceVerify={true}
+        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult, dirtySinceVerify: true })}
       />,
       undefined
     );
@@ -368,12 +429,13 @@ describe('ExportSurface trust clarity', () => {
         project={buildMappedProject()}
         determinismHash="ide-hash"
         verifyResult={failResult}
+        workflowAuthority={makeWorkflowAuthority({ verifyResult: failResult })}
       />
     );
 
     const banner = getByTestId('ide-export-trust-banner');
-    expect(banner.textContent).toContain('AVAILABLE');
-    expect(banner.textContent).toContain('ASSERTIONS DIFFER');
+    expect(banner.textContent).toContain('NEEDS REVIEW');
+    expect(getByTestId('ide-export-trust-reason').textContent).toContain('differed at tick');
     expect(banner.textContent).not.toContain('BLOCKED');
     expect(getByTestId('ide-export-dock-download').hasAttribute('disabled')).toBe(false);
   });
@@ -385,10 +447,11 @@ describe('ExportSurface trust clarity', () => {
         determinismHash="ide-hash"
         verifyResult={passResult}
         dirtySinceVerify={false}
+        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
       />
     );
     const dock = getVerified('ide-export-checks-dock');
-    expect(dock.textContent).toContain('VERIFIED');
+    expect(dock.textContent).toContain('READY');
     expect(dock.textContent).not.toContain('COMPARE ALIGNED');
 
     cleanup();
@@ -397,7 +460,7 @@ describe('ExportSurface trust clarity', () => {
       <ExportSurface
         project={buildMappedProject()}
         determinismHash="ide-hash"
-        // No verifyResult → advisory state
+        workflowAuthority={makeWorkflowAuthority()}
       />
     );
     const advisoryDock = getAdvisory('ide-export-checks-dock');
@@ -412,6 +475,7 @@ describe('ExportSurface trust clarity', () => {
         determinismHash="ide-hash"
         verifyResult={passResult}
         dirtySinceVerify={false}
+        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
       />
     );
     expect(getTrusted('ide-export-summary-card').textContent).toContain('READY');
@@ -422,25 +486,26 @@ describe('ExportSurface trust clarity', () => {
       <ExportSurface
         project={buildMappedProject()}
         determinismHash="ide-hash"
-        // No verifyResult → advisory state
+        workflowAuthority={makeWorkflowAuthority()}
       />
     );
     expect(getAdvisory('ide-export-summary-card').textContent).toContain('NEEDS REVIEW');
   });
 
-  it('inspector uses Verified for trusted export (not jargon Comparison aligned)', () => {
+  it('inspector uses READY for trusted export (not jargon Comparison aligned)', () => {
     const { queryByTestId } = render(
       <ExportSurface
         project={buildMappedProject()}
         determinismHash="ide-hash"
         verifyResult={passResult}
         dirtySinceVerify={false}
+        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
       />
     );
     const buildState = queryByTestId('ide-export-capsule-build-state');
     // Inspector may not render in minimal test layout — if it does, verify no jargon
     if (buildState) {
-      expect(buildState.textContent).toContain('Verified');
+      expect(buildState.textContent).toContain('READY');
       expect(buildState.textContent).not.toContain('Comparison aligned');
     }
   });
@@ -452,6 +517,7 @@ describe('ExportSurface trust clarity', () => {
         determinismHash="ide-hash"
         verifyResult={passResult}
         dirtySinceVerify={false}
+        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
       />
     );
     const dock = getByTestId('ide-export-checks-dock');

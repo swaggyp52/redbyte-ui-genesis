@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { deriveProjectVerifyState, type ProjectHealth } from '../projectHealth';
+import type { ProjectHealth } from '../projectHealth';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -18,6 +18,11 @@ import { Basys3BoardView } from '../components/Basys3BoardView';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getIoSignalLookupKeys, getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
 import type { IoSignalRole } from '../ioSignalRoles';
+import {
+  deriveHardwareExportFailureTruth,
+  deriveProjectWorkflowAuthority,
+  type ProjectWorkflowAuthority,
+} from '../projectWorkflowAuthority';
 import { createClockTimingGuidance, deriveTimingGuidanceFromRun, type TimingGuidance } from '../timingGuidance';
 import {
   EXPORT_STAGE_LABEL,
@@ -45,8 +50,7 @@ export interface HardwareSurfaceProps {
   }>;
   vectorsCount: number;
   health: ProjectHealth;
-  verifyCurrent: boolean;
-  exportCurrent: boolean;
+  workflowAuthority?: ProjectWorkflowAuthority;
   runtimeSim?: RuntimeSimState;
   onSimSetInput?: (nodeId: string, v: 0 | 1) => void;
   onGenerateBringUpVectors: () => void;
@@ -135,8 +139,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   expectedIoRows,
   vectorsCount,
   health,
-  verifyCurrent,
-  exportCurrent,
+  workflowAuthority,
   runtimeSim,
   onSimSetInput,
   onGenerateBringUpVectors,
@@ -315,20 +318,36 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     [ioBus.meta.ldNodeIds]
   );
   const effectiveBoardSignal = hoverBoardSignal ?? activeBoardSignal;
-
-  const projectVerifyState = useMemo(() => {
-    if (!verifyCurrent) return health.lastVerify ? 'stale' : 'not-run';
-    return deriveProjectVerifyState({ ...health, dirtySinceVerify: false });
-  }, [health, verifyCurrent]);
-  const compareCurrent =
-    projectVerifyState === 'assertions-match' ||
-    projectVerifyState === 'assertions-differ' ||
-    projectVerifyState === 'verify-error';
-  const compareMatches = projectVerifyState === 'assertions-match';
-  const compareDiffers =
-    projectVerifyState === 'assertions-differ' || projectVerifyState === 'verify-error';
-  const compareTraceOnly = projectVerifyState === 'trace';
-  const exportReady = health.lastExport?.status === 'ok' && exportCurrent;
+  const inferredReadiness = useMemo(
+    () => ({
+      hasCircuit: !health.blockingIssues.some((issue) => issue.code === 'RBP1000'),
+      hasIoMapping:
+        mappingRows.filter((row) => row.required).length > 0 &&
+        mappingRows.every((row) => !row.required || row.pin.trim().length > 0),
+      hasVectors: vectorsCount > 0,
+      verifyQualification: health.lastVerify?.qualification,
+    }),
+    [health.blockingIssues, health.lastVerify?.qualification, mappingRows, vectorsCount]
+  );
+  const resolvedWorkflowAuthority = useMemo(
+    () =>
+      workflowAuthority ??
+      deriveProjectWorkflowAuthority({
+        projectHealthCore: health,
+        readiness: inferredReadiness,
+        verifyLastRun: health.lastVerify,
+      }),
+    [health, inferredReadiness, workflowAuthority]
+  );
+  const projectVerifyState = resolvedWorkflowAuthority.verifyState;
+  const verifyCurrent = resolvedWorkflowAuthority.verifyCurrent;
+  const compareCurrent = resolvedWorkflowAuthority.compareCurrent;
+  const compareMatches =
+    resolvedWorkflowAuthority.comparePassCurrent && !resolvedWorkflowAuthority.comparePassIncomplete;
+  const compareDiffers = resolvedWorkflowAuthority.compareDiffers;
+  const compareTraceOnly = resolvedWorkflowAuthority.compareTraceOnly;
+  const exportCurrent = resolvedWorkflowAuthority.exportCurrent;
+  const exportReady = resolvedWorkflowAuthority.exportPackageCurrent;
 
   // ── Scenario drift detection ─────────────────────────────────────────
   // Two distinct drift kinds produce different copy and CTAs.
@@ -367,12 +386,72 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     : health.lastExport?.status === 'ok'
       ? 'export-stale'
       : 'export-needed';
-  const hasBlocking = effectiveBlockingIssues.length > 0 || hardwareState !== 'ready';
   const unmappedRequiredPins = useMemo(
     () => mappingRows.filter((row) => row.required && row.pin.trim().length === 0),
     [mappingRows]
   );
   const mappingReady = hasClockMapping && hasOutputMapping && unmappedRequiredPins.length === 0;
+  const hasOtherBlockingIssue = useMemo(
+    () =>
+      effectiveBlockingIssues.some(
+        (issue) =>
+          issue.code !== 'RBP1001' &&
+          issue.code !== 'RBP1005' &&
+          issue.code !== 'RBP1004' &&
+          issue.code !== 'RBP2002'
+      ),
+    [effectiveBlockingIssues]
+  );
+  const failureTruth = useMemo(
+    () =>
+      deriveHardwareExportFailureTruth({
+        workflowAuthority: resolvedWorkflowAuthority,
+        hasRequiredMappingGap: !mappingReady,
+        hasOtherBlockingIssue,
+      }),
+    [hasOtherBlockingIssue, mappingReady, resolvedWorkflowAuthority]
+  );
+  const hasBlocking = failureTruth.severity === 'blocked';
+  const readinessCalloutTone = failureTruth.severity === 'ready'
+    ? 'success'
+    : failureTruth.severity === 'blocked'
+      ? 'error'
+      : 'warn';
+  const dominantPrimaryAction = useMemo(() => {
+    switch (failureTruth.primaryCtaIntent) {
+      case 'map-pins':
+        return () => {
+          setHwMode('map');
+          setSelectedMappingRowId(null);
+        };
+      case 'design':
+        return onGoToDesign ?? (() => {});
+      case 'build-current-bundle':
+      case 're-export-current-bundle':
+        return onOpenExport;
+      case 'verify':
+        return onOpenVerify;
+      case 'program-handoff':
+        return () => setHwMode('proof');
+      default:
+        return () => {};
+    }
+  }, [failureTruth.primaryCtaIntent, onGoToDesign, onOpenExport, onOpenVerify]);
+  const showBlockedHero = failureTruth.severity === 'blocked';
+  const heroSecondaryAction =
+    showBlockedHero && failureTruth.primaryCtaIntent !== 'design' && onGoToDesign
+      ? onGoToDesign
+      : null;
+  const heroSecondaryLabel = heroSecondaryAction ? 'Open Design' : null;
+  const blockedHero = showBlockedHero
+    ? {
+        title: failureTruth.title,
+        body: failureTruth.message,
+        primaryLabel: failureTruth.primaryCtaLabel,
+        primaryAction: dominantPrimaryAction,
+        primaryTestId: 'ide-hardware-blocked-primary',
+      }
+    : null;
 
   // ── Verify status for callout ────────────────────────────────────────
   const verifyStatus = !health.lastVerify
@@ -393,45 +472,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     : health.lastExport?.status === 'blocked'
       ? 'BLOCKED'
       : 'MISSING';
-  const readinessCallout = useMemo(() => {
-    if (hardwareState === 'export-stale') {
-      return {
-        tone: 'warn' as const,
-        title: 'Re-export required',
-        message:
-          'The hardware bundle was built from an older version. Re-export from Export, then return here to program the board.',
-      };
-    }
-    if (hardwareState === 'export-needed') {
-      return {
-        tone: 'warn' as const,
-        title: 'Export required',
-        message:
-          effectiveBlockingIssues[0]?.message ??
-          'Build the hardware bundle in Export, then return here to program the board.',
-      };
-    }
-    return {
-      tone: 'success' as const,
-      title: 'Ready for hardware',
-      message: compareDiffers
-        ? 'Programming is available. Assertions differ from observed outputs, so review the comparison before relying on behavior.'
-        : 'Programming is available for this project state.',
-    };
-  }, [compareDiffers, effectiveBlockingIssues, hardwareState]);
-  const blockedHero = useMemo(() => {
-    if (!hasBlocking) return null;
-    return {
-      title: hardwareState === 'export-stale' ? 'Re-export this project now' : 'Build the hardware bundle first',
-      body:
-        hardwareState === 'export-stale'
-          ? 'Your circuit changed since the last bundle was built. Re-export from Export, then return here to program the board.'
-          : 'Open Export, build the current bundle once, then return here to program the board.',
-      primaryLabel: hardwareState === 'export-stale' ? 'Re-export Current Bundle' : 'Open Export',
-      primaryAction: onOpenExport,
-      primaryTestId: 'ide-hardware-blocked-primary',
-    };
-  }, [hasBlocking, hardwareState, onOpenExport]);
   const nextActionHero = useMemo(() => {
     if (blockedHero) {
       return {
@@ -946,17 +986,17 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         </div>
       </div>
       <div className="ide-inline-actions">
-        {exportReady ? (
+        {failureTruth.condition === 'ready' ? (
           <IdeButton tone="primary" onClick={onOpenExport} testId="ide-hardware-build-export">
             Open Export Bundle
           </IdeButton>
         ) : (
-          <IdeButton tone="primary" onClick={onOpenExport} testId="ide-hardware-build-export">
-            {hardwareState === 'export-stale' ? 'Re-export Current Bundle' : 'Open Export'}
+          <IdeButton tone="primary" onClick={dominantPrimaryAction} testId="ide-hardware-build-export">
+            {failureTruth.primaryCtaLabel}
           </IdeButton>
         )}
       </div>
-      {hardwareState === 'ready' && effectiveBlockingIssues.length === 0 && (
+      {failureTruth.condition === 'ready' && (
         <div className="ide-hw-program-handoff" data-testid="ide-hardware-program-handoff-cta">
           <p className="ide-copy">
             Open the <code>.bit</code> file in{' '}
@@ -1202,21 +1242,21 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             </button>
             <span className="ide-hardware-dep-arrow" aria-hidden="true">→</span>
             <span
-              className={`ide-hardware-dep-step ide-hardware-dep-step--terminal ${hardwareState === 'ready' && !hasBlocking ? 'is-ok' : 'is-locked'}`}
+              className={`ide-hardware-dep-step ide-hardware-dep-step--terminal ${failureTruth.condition === 'ready' ? 'is-ok' : 'is-locked'}`}
             >
               <span className="ide-hardware-dep-step__num">3</span>
               <span className="ide-hardware-dep-step__label">{PROGRAM_STAGE_LABEL}</span>
               <span className="ide-hardware-dep-step__status">
-                {hardwareState === 'ready' && !hasBlocking ? '✓ Ready' : '🔒 Locked'}
+                {failureTruth.condition === 'ready' ? '✓ Ready' : 'Locked'}
               </span>
             </span>
           </div>
           <IdeCallout
-            tone={readinessCallout.tone}
-            title={readinessCallout.title}
+            tone={readinessCalloutTone}
+            title={failureTruth.title}
             testId="ide-hardware-readiness-callout"
           >
-            {readinessCallout.message}
+            {failureTruth.message}
           </IdeCallout>
         </section>
       }
@@ -1225,8 +1265,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         title="Hardware"
         description="Map pins, prepare the board, and program the Basys3."
         right={
-          <IdeStatusPill tone={hardwareState === 'ready' ? 'ok' : 'warn'}>
-            {hardwareState === 'ready' ? 'Ready' : 'Needs Action'}
+          <IdeStatusPill tone={failureTruth.severity === 'ready' ? 'ok' : failureTruth.severity === 'blocked' ? 'error' : 'warn'}>
+            {failureTruth.statusLabel}
           </IdeStatusPill>
         }
         testId="ide-hardware-panel"
@@ -1324,29 +1364,29 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         {/* ── Next-action hero — hidden on Map Pins tab ── */}
         {hwMode !== 'map' && <SurfacePanel
           className="ide-hardware-blocked-hero"
-          testId={blockedHero ? 'ide-hardware-blocked-hero' : 'ide-hardware-next-hero'}
+          testId={showBlockedHero ? 'ide-hardware-blocked-hero' : 'ide-hardware-next-hero'}
         >
           <div className="ide-hardware-blocked-hero__copy">
-            <strong className="ide-hardware-blocked-hero__title">{nextActionHero.title}</strong>
+            <strong className="ide-hardware-blocked-hero__title">{failureTruth.title}</strong>
             <p className="ide-copy" style={{ margin: 0 }}>
-              {nextActionHero.body}
+              {failureTruth.message}
             </p>
           </div>
           <div className="ide-hardware-blocked-hero__actions">
             <IdeButton
               tone="primary"
-              onClick={nextActionHero.primaryAction}
-              testId={nextActionHero.primaryTestId}
+              onClick={dominantPrimaryAction}
+              testId={showBlockedHero ? 'ide-hardware-blocked-primary' : 'ide-hardware-next-primary'}
             >
-              {nextActionHero.primaryLabel}
+              {failureTruth.primaryCtaLabel}
             </IdeButton>
-            {nextActionHero.secondaryLabel && nextActionHero.secondaryAction && (
+            {heroSecondaryLabel && heroSecondaryAction && (
               <IdeButton
                 tone="secondary"
-                onClick={nextActionHero.secondaryAction}
-                testId={blockedHero ? 'ide-hardware-blocked-secondary' : 'ide-hardware-next-secondary'}
+                onClick={heroSecondaryAction}
+                testId={showBlockedHero ? 'ide-hardware-blocked-secondary' : 'ide-hardware-next-secondary'}
               >
-                {nextActionHero.secondaryLabel}
+                {heroSecondaryLabel}
               </IdeButton>
             )}
           </div>

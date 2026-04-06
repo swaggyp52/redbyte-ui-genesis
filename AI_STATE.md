@@ -1,5 +1,71 @@
 # AI State
 
+## Change Log 2026-04-06 (Hardware and Export failure-truth unification)
+
+**Subsystem**: Hardware / Export workflow recovery truth
+
+### Problem
+
+The workflow-authority baseline existed locally, but Hardware and Export were still telling slightly different stories about the same project condition. Missing mapping, stale verify evidence, stale export bundles, and ready-to-program states could surface different dominant labels, different primary CTAs, and duplicated or conflicting recovery copy across the two surfaces.
+
+### What changed
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Folded the already-local workflow-authority shell wiring into the committed authority chain for this slice.
+
+- `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts` (new)
+  - Integrated the shared workflow-authority selector baseline.
+  - Added `deriveHardwareExportFailureTruth(...)` so Hardware and Export can read one dominant cross-surface contract for:
+    - condition
+    - severity
+    - status label
+    - dominant title / message
+    - dominant CTA label / intent
+  - Added `hasSuccessfulExportBundle` so the helper can distinguish missing export from stale export while staying inside the existing selector path.
+
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - Folded the already-local `workflowAuthority` adoption into the same integrated authority-chain commit without expanding Project behavior beyond that baseline.
+
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - Replaced local dominant readiness / blocked-hero / CTA derivation with the shared failure-truth helper.
+  - Unified dominant Hardware CTA labels with Export:
+    - `Open Map Pins`
+    - `Open Design`
+    - `Build Current Bundle`
+    - `Re-export Current Bundle`
+    - `Open Verify`
+    - `Open Program Handoff`
+  - Kept map / bring-up / proof regions as secondary context instead of letting them override the dominant recovery story.
+
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - Replaced local trust-banner / hero / readiness wording with the shared failure-truth helper.
+  - Collapsed the dominant status taxonomy to:
+    - `BLOCKED`
+    - `NEEDS REVIEW`
+    - `READY`
+  - Changed the healthy dominant CTA to `Open Program Handoff`, while keeping download/build controls available as secondary export actions.
+  - Routed dominant recovery actions to the correct surface without reopening shell architecture.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts` (new)
+    - Added shared failure-truth contract coverage for mapping incomplete, export missing, verify stale, and ready/current conditions.
+  - Updated:
+    - `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+    - `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`
+    - `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+    - `packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx`
+    - `packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx`
+  - These suites now assert that the same workflow condition produces the same dominant label / CTA story in Hardware and Export.
+
+### Tests
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx` OK (34/34)
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx` OK (87/87)
+
+### Remaining concern
+
+- `pnpm repo:status` still fails the existing `ide:gate:project-overview-contract` gate in the live dirty baseline. That preview/runtime gate failure was observed during this continuation, but it was not reopened inside the Hardware/Export truth slice.
+
 ## Change Log 2026-04-06 (Design sequential inspector hardening)
 
 **Subsystem**: Design surface inspector / sequential authoring guidance

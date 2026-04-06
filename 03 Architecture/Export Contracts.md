@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: export
-updated: 2026-03-30
+updated: 2026-04-06
 related:
   - "[[Connection Model]]"
   - "[[Basys 3 Mapping]]"
@@ -50,6 +50,34 @@ The export contract exists so the live UI export surface, the compatibility fall
   - entity/component/port-map parity
   - stimulus/assertion target validity
 
+## Hardware / Export Failure Truth
+
+- Hardware and Export must read the same dominant workflow condition from `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts`.
+- The shared dominant taxonomy is:
+  - `BLOCKED`
+  - `NEEDS REVIEW`
+  - `READY`
+- Condition precedence is fixed:
+  1. required mapping incomplete
+  2. other design/export blockers
+  3. export stale
+  4. export missing
+  5. verify not run
+  6. verify stale
+  7. assertions differ / verify error
+  8. trace-only evidence
+  9. compare pass with mapping review still required
+  10. ready/current handoff
+- Dominant CTA labels are shared across both surfaces:
+  - `Open Map Pins`
+  - `Open Design`
+  - `Re-export Current Bundle`
+  - `Build Current Bundle`
+  - `Open Verify`
+  - `Open Program Handoff`
+- Export may keep download/build controls visible as secondary actions, but the dominant status label, title, message, and primary CTA must still match Hardware for the same workflow condition.
+- This contract is UI workflow authority only. It must not leak compare/runtime state back into HDL generation semantics.
+
 ## Consumption Sites
 
 - `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts`
@@ -62,5 +90,4 @@ The export contract exists so the live UI export surface, the compatibility fall
 ## Open Questions / Stubs
 
 - Duplicate student-facing IO labels across Design / Verify / Map Pins / Export remain a separate student-path cleanup slice.
-- Verify compare-state ownership still needs an explicit cross-surface contract so export advisories stay truthful without leaking runtime-only state into HDL generation.
 - The current local Vivado proof matrix covers `signal-tour`, `two-bit-counter`, and switch-driven `DLatch` / `DFF` / `TFF` / `JKFF`; broader classroom-starter proof should be automated rather than rerun manually.
