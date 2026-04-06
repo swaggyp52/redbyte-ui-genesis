@@ -1,5 +1,147 @@
 # AI State
 
+## Change Log 2026-04-06 (Design sequential inspector hardening)
+
+**Subsystem**: Design surface inspector / sequential authoring guidance
+
+### Problem
+
+The Design surface already exposed sequential parts in the palette, but the live inspector still treated clocks, flip-flops, and latches like generic nodes. That left sequential authoring without timing-aware language, control-path context, or a direct next step, which undercut the Engineering Brain's "Design interaction before chrome" order.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Added an internal sequential inspector classifier for:
+    - `Clock`
+    - `DFlipFlop`
+    - `TFlipFlop`
+    - `JKFlipFlop`
+    - `DLatch`
+    - `RSLatch` / `SRLatch`
+  - Hardened the inspector identity card so sequential selections now show:
+    - timing role
+    - timing context / mapped source summary
+    - sequential-specific next-step copy
+  - Hardened the `Signal / State` section so sequential selections now use timing-aware terminology:
+    - flip-flops use clock / edge language
+    - latches use enable / set-reset language
+    - clocks show timing-source and board-context summaries
+  - Added one direct sequential next-step action in the inspector when applicable:
+    - `Trace control path` for state-holding elements
+    - `Go to Map Pins` for unmapped clock sources
+  - Added the missing student-facing label for `RSLatch` so it no longer falls back to the raw internal type string.
+
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.sequentialInspector.test.tsx` (new)
+  - Added regression coverage for:
+    - flip-flop timing guidance
+    - latch enable-oriented guidance
+    - mapped clock timing-role / board-context summary
+    - unmapped clock direct `Go to Map Pins` action
+
+- `03 Architecture/Design Surface.md`
+  - Recorded the canonical sequential-inspector contract so future Design work extends the live interaction model instead of reintroducing generic-node treatment for sequential parts.
+
+### Tests
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.sequentialInspector.test.tsx` ✅ (4/4)
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.sequentialInspector.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.blankState.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.paletteDock.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.placementMode.test.tsx` ✅ (47/47)
+
+## Change Log 2026-04-06 (IDE workflow authority consolidation)
+
+**Subsystem**: Project / Hardware / Export workflow authority
+
+### Problem
+
+Project, Hardware, Export, and the shell were re-deriving overlapping workflow truth independently. Verify currentness, export currentness, readiness copy, stage completion, and CTA state could drift because each surface recomputed its own version from partial inputs.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts` (new)
+  - Added the shared workflow selector that centralizes derived authority for:
+    - verify state/currentness
+    - compare trust states
+    - export currentness / package currentness
+    - design-ready / hardware-ready flags
+    - stage completion
+    - primary CTA
+    - status-bar gate status
+  - Moved `deriveVerifyCurrent` and `deriveExportCurrent` out of `IdeApp.tsx`.
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Computes one `workflowAuthority` object from runtime truth plus current verify/export hashes.
+  - Uses that shared authority for left-rail stage completion, primary CTA, and status bar gate status.
+  - Passes `workflowAuthority` into Project, Hardware, and Export surfaces.
+
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - Replaced local verify/export/stage derivations with `workflowAuthority`.
+  - Kept existing low-level health/readiness props for evidence and blocker detail, but stopped recomputing workflow trust locally.
+
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - Replaced `verifyCurrent` / `exportCurrent` props with `workflowAuthority`.
+  - Uses the shared authority for compare/export readiness instead of local override math.
+  - Added a local fallback derivation path for isolated tests that render the surface without the shell.
+
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - Added `workflowAuthority` input.
+  - Switched verify/readiness copy to shared authority while preserving export-specific artifact diagnostics and download gating.
+  - Added a local fallback derivation path for isolated tests that render the surface without the shell.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts` (new)
+    - Added the shared workflow-authority contract suite covering not-run, trace-only, failed compare, passing/current, stale-after-change, stale-export-with-current-verify, and CTA/stage alignment cases.
+  - Updated hardware/runtime/export/project surface tests to consume the new shared selector location and the new surface prop shape.
+
+### Tests
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectHealth.test.ts packages/rb-apps/src/apps/ide/__tests__/pipelineStrip.test.tsx` ✅ (125/125)
+
+## Change Log 2026-04-03 (Verify Phase 5 — Stimulus Workbench 2.0 selection + range editing sync)
+
+**Subsystem**: Verify stimulus authoring loop / waveform synchronization
+
+### Problem
+
+Verify had capable row/tick tools but no first-class shared selection model, so range editing and waveform↔stimulus navigation still felt pieced together. "Edit expected outputs" expanded the workbench but did not focus a concrete expected lane/tick target.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/stimulusSelection.ts` (new)
+  - Added shared selection contract (`selectedTick`, `selectedLaneKey`, `selectedCell`, `tickRange`, `focusToken`) and helpers for range normalization, range tick resolution, and focus-token bumps.
+
+- `packages/rb-apps/src/apps/ide/stimulusOps.ts` (new)
+  - Added range-aware pure ops for lane fill/toggle/clear, duplicate/delete tick range, and insert tick after.
+
+- `packages/rb-apps/src/apps/ide/components/StimulusCanvas.tsx`
+  - Added optional shared selection props (`selection`, `onSelectionChange`) for Verify-level synchronization.
+  - Added shift-click tick-range selection in the header.
+  - Added range-aware toolbar behavior for duplicate/delete and fill/toggle/clear operations.
+  - Added insert-before/insert-after tick controls.
+  - Added focus-target scrolling for expected lane/tick targeting via `focusToken`.
+  - Added explicit tick-header test ids for deterministic interaction tests.
+
+- `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - Added pass-through props for shared stimulus selection state and callback, wired through both StimulusCanvas render paths.
+  - Fixed JSX syntax contract regression in hidden gate-callout region.
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Added shared `stimulusSelection` state and bidirectional mapping between waveform signal/tick picks and stimulus lane/tick selection.
+  - Routed waveform tick/signal callbacks through shared sync handlers.
+  - Upgraded "Edit expected outputs" to target expected lane/tick focus (not only expansion/scroll).
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.test.tsx`
+    - Added range duplicate/delete tests, insert-tick action test, selection callback sync test.
+  - `packages/rb-apps/src/apps/ide/__tests__/stimulusSelection.test.ts` (new)
+    - Added selection + focus-token reducer contracts.
+  - `packages/rb-apps/src/apps/ide/__tests__/stimulusOps.range.test.ts` (new)
+    - Added range-op contracts for fill/toggle/clear/duplicate/delete/insert.
+  - `packages/rb-apps/src/apps/ide/__tests__/verifyWorkbenchContracts.test.ts`
+    - Added contract check for shared stimulus selection props.
+
+### Tests
+
+- `pnpm -w exec vitest run StimulusCanvas stimulusSelection stimulusOps.range verifyWorkbenchContracts` ✅ (34/34)
+
 ## Change Log 2026-04-03 (Verify workspace architecture pass — region hierarchy + calmer status)
 
 **Subsystem**: Verify surface layout/workflow

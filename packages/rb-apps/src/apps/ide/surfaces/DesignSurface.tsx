@@ -74,6 +74,7 @@ function nodeTypeLabel(nodeType: string): string {
     DFlipFlop: 'D flip-flop',
     TFlipFlop: 'T flip-flop',
     JKFlipFlop: 'JK flip-flop',
+    RSLatch: 'RS latch',
     SRLatch: 'SR latch',
     MUX: 'Multiplexer',
     DEMUX: 'Demultiplexer',
@@ -630,6 +631,24 @@ interface DesignSimulationStory {
   summary: string;
   clockEvent: 'rising' | 'falling' | null;
   clockLabel: string | null;
+}
+
+interface DesignSequentialInspectorContext {
+  kind: 'clock' | 'flip-flop' | 'latch' | 'rs-latch';
+  roleLabel: string;
+  behaviorSummary: string;
+  nextStep: string;
+  controlLabel: string | null;
+  controlSourceLabel: string | null;
+  controlActivity: string | null;
+  ioSummaryLabel: string;
+  ioSummary: string;
+  stateSummaryLabel: string;
+  stateSummary: string;
+  timingContext: string;
+  actionKind: 'trace-control' | 'go-to-hardware' | null;
+  actionLabel: string | null;
+  actionPort: string | null;
 }
 
 function resolveDesignDebugSample(
@@ -2151,6 +2170,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       value: liveSignals.get(`${selectedNode.id}.${port}`) ?? null,
     }));
   }, [selectedNode, editorCircuit, liveSignals]);
+  const selectedNodeSignalMap = useMemo(
+    () =>
+      new Map<string, 0 | 1 | null>(
+        (selectedNodeSignals ?? []).map((entry) => [entry.port, entry.value])
+      ),
+    [selectedNodeSignals]
+  );
   const selectedNodeProperties = useMemo(
     () => (selectedNode ? describeNodeProperties(selectedNode) : []),
     [selectedNode]
@@ -2629,6 +2655,31 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (!selectedNode) return null;
     return describeNodeConnectionSummary(selectedNode.id, editorCircuit, resolveConnectionEndpoint);
   }, [editorCircuit, resolveConnectionEndpoint, selectedNode]);
+  const selectedSequentialInspector = useMemo(
+    () =>
+      buildSequentialInspectorContext({
+        node: selectedNode,
+        nodeSignals: selectedNodeSignalMap,
+        ioRow: selectedNodeIoRow,
+        connectionSummary: selectedNodeConnectionSummary,
+        circuit: editorCircuit,
+        ioRowByNodeId,
+        trace: runtimeSim.trace,
+        runtimeSignals: runtimeSim.signals,
+        liveSignals,
+      }),
+    [
+      editorCircuit,
+      ioRowByNodeId,
+      liveSignals,
+      runtimeSim.signals,
+      runtimeSim.trace,
+      selectedNode,
+      selectedNodeConnectionSummary,
+      selectedNodeIoRow,
+      selectedNodeSignalMap,
+    ]
+  );
   const primarySelectedWireId = selectedWireIds[0] ?? null;
   const selectedWireContext = useMemo(() => {
     if (!primarySelectedWireId) return null;
@@ -3015,10 +3066,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       const boardSummary = selectedNodeIoRow
         ? `${selectedNodeIoRow.label} -> ${selectedNodeIoRow.pin || 'unmapped'}`
         : 'No board mapping';
-      const nextStep = primarySelectionIssue?.hint
+      const defaultNextStep = primarySelectionIssue?.hint
         ?? (selectedNodeIoRow
           ? 'Rename it, inspect its mapped signal, or trace the connected net next.'
           : 'Rename it, inspect its pins, or trace the connected net next.');
+      const nextStep = selectedSequentialInspector?.nextStep ?? defaultNextStep;
       return (
         <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
           <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
@@ -3062,6 +3114,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <span className="ide-design-inspector-meta-label">Board mapping</span>
                 <span className="ide-design-inspector-meta-value">{boardSummary}</span>
               </div>
+              {selectedSequentialInspector ? (
+                <>
+                  <div className="ide-design-inspector-meta-card">
+                    <span className="ide-design-inspector-meta-label">Timing role</span>
+                    <span className="ide-design-inspector-meta-value" data-testid="ide-design-sequential-role">
+                      {selectedSequentialInspector.roleLabel}
+                    </span>
+                  </div>
+                  <div className="ide-design-inspector-meta-card">
+                    <span className="ide-design-inspector-meta-label">Timing context</span>
+                    <span className="ide-design-inspector-meta-value" data-testid="ide-design-sequential-timing-context">
+                      {selectedSequentialInspector.timingContext}
+                    </span>
+                  </div>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
@@ -3305,6 +3373,33 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </IdeButton>
             </div>
           </div>
+          {selectedSequentialInspector?.actionLabel &&
+          ((selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort) ||
+            (selectedSequentialInspector.actionKind === 'go-to-hardware' && onGoToHardware)) ? (
+            <div className="ide-design-inspector-action-group" data-testid="ide-design-sequential-action-group">
+              <span className="ide-design-inspector-group-label">Sequential next step</span>
+              <div className="ide-design-inspector-action-grid">
+                {selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort ? (
+                  <IdeButton
+                    tone="secondary"
+                    onClick={() => handlePortClick(selectedNode.id, selectedSequentialInspector.actionPort)}
+                    testId="ide-design-context-sequential-action"
+                  >
+                    {selectedSequentialInspector.actionLabel}
+                  </IdeButton>
+                ) : null}
+                {selectedSequentialInspector.actionKind === 'go-to-hardware' && onGoToHardware ? (
+                  <IdeButton
+                    tone="secondary"
+                    onClick={onGoToHardware}
+                    testId="ide-design-context-sequential-action"
+                  >
+                    {selectedSequentialInspector.actionLabel}
+                  </IdeButton>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           <div className="ide-design-inspector-action-group ide-design-inspector-group--danger" data-testid="ide-design-inspector-danger-group">
             <span className="ide-design-inspector-group-label">Danger</span>
             <div className="ide-design-inspector-action-grid">
@@ -3445,6 +3540,104 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   };
   const renderSelectionState = () => {
     if (hasSingleSelectedNode && selectedNode) {
+      if (selectedSequentialInspector) {
+        return (
+          <div className="ide-design-inspector-section-stack">
+            <IdeCallout
+              tone="info"
+              title="Sequential guidance"
+              testId="ide-design-sequential-guidance"
+            >
+              <span data-testid="ide-design-sequential-guidance-copy">
+                {selectedSequentialInspector.behaviorSummary}
+              </span>
+            </IdeCallout>
+            <div className="ide-design-live-summary">
+              <div className="ide-kv-list">
+                <div className="ide-kv-row">
+                  <span>Role</span>
+                  <span>{selectedSequentialInspector.roleLabel}</span>
+                </div>
+                {selectedSequentialInspector.controlLabel ? (
+                  <div className="ide-kv-row">
+                    <span>{selectedSequentialInspector.controlLabel}</span>
+                    <span data-testid="ide-design-sequential-control-source">
+                      {selectedSequentialInspector.controlSourceLabel ?? 'No source wired'}
+                    </span>
+                  </div>
+                ) : null}
+                {selectedSequentialInspector.controlLabel && selectedSequentialInspector.controlActivity ? (
+                  <div className="ide-kv-row">
+                    <span>Control activity</span>
+                    <span data-testid="ide-design-sequential-control-activity">
+                      {selectedSequentialInspector.controlActivity}
+                    </span>
+                  </div>
+                ) : !selectedSequentialInspector.controlLabel && selectedSequentialInspector.controlActivity ? (
+                  <div className="ide-kv-row">
+                    <span>Signal activity</span>
+                    <span data-testid="ide-design-sequential-control-activity">
+                      {selectedSequentialInspector.controlActivity}
+                    </span>
+                  </div>
+                ) : null}
+                <div className="ide-kv-row">
+                  <span>{selectedSequentialInspector.ioSummaryLabel}</span>
+                  <span data-testid="ide-design-sequential-input-summary">{selectedSequentialInspector.ioSummary}</span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>{selectedSequentialInspector.stateSummaryLabel}</span>
+                  <span data-testid="ide-design-sequential-output-summary">{selectedSequentialInspector.stateSummary}</span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Timing context</span>
+                  <span>{selectedSequentialInspector.timingContext}</span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Current</span>
+                  <code data-testid="ide-design-context-current">{selectedNodeSignalSnapshot?.currentValue ?? 0}</code>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Previous</span>
+                  <code data-testid="ide-design-context-previous">{selectedNodeSignalSnapshot?.previousValue ?? 0}</code>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Transition</span>
+                  <span data-testid="ide-design-context-transition">{selectedNodeSignalSnapshot?.transition ?? 'stable'}</span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Last transition</span>
+                  <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? 'â€”'}</span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Trace state</span>
+                  <span data-testid="ide-design-context-trace-state">
+                    {traceState?.nodeIds.has(selectedNode.id) ? traceState.label : 'No trace locked'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            {selectedNodeSignals && selectedNodeSignals.length > 0 ? (
+              <div className="ide-design-selection-pins" data-testid="ide-design-selection-pins">
+                {selectedNodeSignals.map((entry) => {
+                  const val = entry.value;
+                  const valStr = val === 1 ? '1' : val === 0 ? '0' : '?';
+                  return (
+                    <span
+                      key={`${selectedNode.id}-${entry.port}`}
+                      className={`ide-design-pin-pill ide-design-pin-pill--val${val === 1 ? '-hi' : val === 0 ? '-lo' : '-unk'}`}
+                      data-testid={`ide-design-pin-pill-${selectedNode.id}-${entry.port}`}
+                    >
+                      {entry.port}
+                      <span className="ide-design-pin-pill-value">{valStr}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        );
+      }
       return (
         <div className="ide-design-inspector-section-stack">
           <div className="ide-design-live-summary">
@@ -5919,6 +6112,204 @@ function describeNodeForStudents(node: Node | undefined, ioRow?: DesignIoRow | n
   const preferred = ioRow?.label?.trim() || node.label?.trim();
   if (preferred) return preferred;
   return nodeTypeLabel(node.type);
+}
+
+function buildSequentialInspectorContext(input: {
+  node: Node | undefined;
+  nodeSignals: Map<string, 0 | 1 | null>;
+  ioRow: DesignIoRow | null;
+  connectionSummary: DesignNodeConnectionSummary | null;
+  circuit: Circuit;
+  ioRowByNodeId: Map<string, DesignIoRow>;
+  trace: RuntimeSimState['trace'];
+  runtimeSignals: Record<string, 0 | 1>;
+  liveSignals: Map<string, 0 | 1>;
+}): DesignSequentialInspectorContext | null {
+  const { node, nodeSignals, ioRow, connectionSummary, circuit, ioRowByNodeId, trace, runtimeSignals, liveSignals } = input;
+  if (!node) return null;
+
+  if (node.type === 'Clock') {
+    const outputSnapshot = describeSignalSnapshot(`${node.id}.out`, trace, runtimeSignals, liveSignals);
+    const boardSummary = ioRow ? `${ioRow.label} -> ${ioRow.pin || 'unmapped'}` : 'No board timing source mapped yet';
+    const fanout = connectionSummary?.fanOut ?? 0;
+    return {
+      kind: 'clock',
+      roleLabel: 'Timing source',
+      behaviorSummary: ioRow
+        ? 'This clock is the named timing source for the sequential logic it drives.'
+        : 'This clock drives timing edges, but it is not mapped to a board timing source yet.',
+      nextStep: ioRow
+        ? 'Trace the fanout into the state elements this clock drives next.'
+        : 'Map this clock to a board timing source before trusting board-level timing behavior.',
+      controlLabel: null,
+      controlSourceLabel: null,
+      controlActivity: describeSequentialActivity(outputSnapshot),
+      ioSummaryLabel: 'Output state',
+      ioSummary: `Clock output=${formatInspectorBinaryValue(nodeSignals.get('out'))}`,
+      stateSummaryLabel: 'Fan-out',
+      stateSummary: `${fanout} downstream ${fanout === 1 ? 'path' : 'paths'}`,
+      timingContext: boardSummary,
+      actionKind: ioRow ? null : 'go-to-hardware',
+      actionLabel: ioRow ? null : 'Go to Map Pins',
+      actionPort: null,
+    };
+  }
+
+  const controlPort =
+    node.type === 'DLatch'
+      ? 'EN'
+      : node.type === 'RSLatch' || node.type === 'SRLatch'
+        ? resolveSequentialRsControlPort(nodeSignals)
+        : node.type === 'DFlipFlop' || node.type === 'TFlipFlop' || node.type === 'JKFlipFlop'
+          ? 'CLK'
+          : null;
+  if (!controlPort) return null;
+
+  const controlSource = resolveNodeInputSource(node.id, controlPort, circuit, ioRowByNodeId);
+  const controlSignalKey = controlSource?.signalKey ?? `${node.id}.${controlPort}`;
+  const controlSnapshot = describeSignalSnapshot(controlSignalKey, trace, runtimeSignals, liveSignals);
+  const commonControl = {
+    controlSourceLabel: controlSource?.label ?? `No ${describePortForStudents(controlPort).toLowerCase()} source wired`,
+    controlActivity: describeSequentialActivity(controlSnapshot),
+  };
+
+  if (node.type === 'DLatch') {
+    return {
+      kind: 'latch',
+      roleLabel: 'Level-sensitive latch',
+      behaviorSummary: 'The latch is transparent while Enable is high and holds state when Enable returns low.',
+      nextStep: 'Trace the enable path next so you can confirm when this latch should pass data versus hold state.',
+      controlLabel: 'Enable',
+      ioSummaryLabel: 'Inputs',
+      ioSummary: summarizeSequentialPorts(nodeSignals, ['D', 'EN']),
+      stateSummaryLabel: 'State outputs',
+      stateSummary: summarizeSequentialPorts(nodeSignals, ['Q', 'Q_inv']),
+      timingContext: controlSource?.label ?? 'No enable source named yet',
+      actionKind: 'trace-control',
+      actionLabel: 'Trace control path',
+      actionPort: 'EN',
+      ...commonControl,
+    };
+  }
+
+  if (node.type === 'RSLatch' || node.type === 'SRLatch') {
+    return {
+      kind: 'rs-latch',
+      roleLabel: 'Level-sensitive latch',
+      behaviorSummary: 'Set and Reset drive the stored state directly, so those control levels must stay intentional.',
+      nextStep: 'Trace the active Set or Reset path next so you can confirm which control line is driving the stored state.',
+      controlLabel: 'Set / Reset',
+      ioSummaryLabel: 'Inputs',
+      ioSummary: summarizeSequentialPorts(nodeSignals, ['S', 'R']),
+      stateSummaryLabel: 'State outputs',
+      stateSummary: summarizeSequentialPorts(nodeSignals, ['Q', 'Q_inv']),
+      timingContext: controlSource?.label ?? 'No Set or Reset source named yet',
+      actionKind: 'trace-control',
+      actionLabel: 'Trace control path',
+      actionPort: controlPort,
+      ...commonControl,
+    };
+  }
+
+  const flipFlopCopy =
+    node.type === 'DFlipFlop'
+      ? {
+          roleLabel: 'Edge-triggered state',
+          behaviorSummary: 'This flip-flop captures D on the active clock edge and holds Q between clock edges.',
+          ioPorts: ['D', 'CLK'],
+        }
+      : node.type === 'TFlipFlop'
+        ? {
+            roleLabel: 'Edge-triggered toggle state',
+            behaviorSummary: 'This flip-flop toggles its stored state on clock edges according to T and optional Clear.',
+            ioPorts: ['T', 'CLK', 'CLR'],
+          }
+        : {
+            roleLabel: 'Edge-triggered JK state',
+            behaviorSummary: 'This flip-flop uses J and K on the active clock edge to decide the next stored state.',
+            ioPorts: ['J', 'K', 'CLK', 'CLR'],
+          };
+
+  return {
+    kind: 'flip-flop',
+    roleLabel: flipFlopCopy.roleLabel,
+    behaviorSummary: flipFlopCopy.behaviorSummary,
+    nextStep: 'Trace the clock path next so you can confirm which edge should update the stored output.',
+    controlLabel: 'Clock',
+    ioSummaryLabel: 'Inputs',
+    ioSummary: summarizeSequentialPorts(nodeSignals, flipFlopCopy.ioPorts),
+    stateSummaryLabel: 'State outputs',
+    stateSummary: summarizeSequentialPorts(nodeSignals, ['Q', 'Q_inv']),
+    timingContext: controlSource?.label ?? 'No clock source named yet',
+    actionKind: 'trace-control',
+    actionLabel: 'Trace control path',
+    actionPort: controlPort,
+    ...commonControl,
+  };
+}
+
+function resolveSequentialRsControlPort(
+  nodeSignals: Map<string, 0 | 1 | null>
+): string {
+  if (nodeSignals.has('S')) return 'S';
+  if (nodeSignals.has('R')) return 'R';
+  return 'S';
+}
+
+function resolveNodeInputSource(
+  nodeId: string,
+  portName: string,
+  circuit: Circuit,
+  ioRowByNodeId: Map<string, DesignIoRow>
+): { signalKey: string; label: string } | null {
+  for (const connection of circuit.connections) {
+    const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+    const toPort =
+      typeof connection.to === 'string'
+        ? connection.toPort ?? connection.toPin ?? 'in'
+        : connection.to.portName ?? connection.to.port ?? 'in';
+    if (toNodeId !== nodeId || toPort !== portName) continue;
+
+    const fromNodeId = typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+    const fromPort =
+      typeof connection.from === 'string'
+        ? connection.fromPort ?? connection.fromPin ?? 'out'
+        : connection.from.portName ?? connection.from.port ?? 'out';
+    const sourceNode = circuit.nodes.find((entry) => entry.id === fromNodeId);
+    const sourceIoRow = ioRowByNodeId.get(fromNodeId);
+    const sourceLabel = describeEndpointLabel(fromNodeId, sourceNode, sourceIoRow);
+    const pinSuffix = sourceIoRow?.pin ? ` (${sourceIoRow.pin})` : '';
+    return {
+      signalKey: `${fromNodeId}.${fromPort}`,
+      label: `${sourceLabel}${pinSuffix} · ${describePortForStudents(fromPort)}`,
+    };
+  }
+  return null;
+}
+
+function summarizeSequentialPorts(
+  nodeSignals: Map<string, 0 | 1 | null>,
+  ports: readonly string[]
+): string {
+  const entries = ports
+    .filter((port) => nodeSignals.has(port))
+    .map((port) => `${describePortForStudents(port)}=${formatInspectorBinaryValue(nodeSignals.get(port))}`);
+  return entries.length > 0 ? entries.join(', ') : 'No live signal values yet';
+}
+
+function formatInspectorBinaryValue(value: 0 | 1 | null | undefined): string {
+  return value === 1 ? '1' : value === 0 ? '0' : '?';
+}
+
+function describeSequentialActivity(snapshot: DesignSignalSnapshot | null): string {
+  if (!snapshot || snapshot.currentValue == null) return 'No runtime samples yet';
+  if ((snapshot.transition === 'rising' || snapshot.transition === 'falling') && snapshot.lastTransitionTick != null) {
+    return `${snapshot.transition} at tick ${snapshot.lastTransitionTick}`;
+  }
+  if (snapshot.transition === 'stable') {
+    return `stable at ${formatInspectorBinaryValue(snapshot.currentValue)}`;
+  }
+  return 'No runtime samples yet';
 }
 
 function describePortForStudents(portName: string): string {

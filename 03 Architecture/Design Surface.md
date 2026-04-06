@@ -54,6 +54,15 @@ For the idle inspector / simulation contract, the Design surface must:
 
 - keep `Live Simulation` directly reachable on first arrival even when no node is selected
 - avoid burying the live input/output rows behind a closed idle-state disclosure
+- treat sequential selections as first-class authoring context instead of generic parts
+- show timing-aware inspector semantics for sequential selections:
+  - clocks identify timing-source role and mapped board context when present
+  - flip-flops identify clock-driven state behavior and the active control path
+  - latches identify enable or set/reset control semantics instead of clock-edge wording
+- expose one direct sequential next step when applicable:
+  - `Trace control path` for state-holding elements
+  - `Go to Map Pins` for unmapped timing sources
+- keep the existing generic identity/property/state path for non-sequential nodes
 
 The top stack must not reintroduce a separate title/header band above the working toolbar. Zoom telemetry may satisfy test and gate contracts, but it belongs in the quieter overlay indicator instead of the louder authoring row. In split layouts that do not render the dedicated simulation strip, tick/mode context must remain visible in the compact status row.
 
@@ -71,6 +80,7 @@ The top stack must not reintroduce a separate title/header band above the workin
 - Live Simulation may be compact, but it should not disappear behind an idle-state collapse when it is the only direct runtime truth in starter-loaded student flows.
 - Split mode may compress simulation chrome, but it must still preserve essential tick/mode context when the dedicated simulation strip is absent.
 - Empty-state guidance belongs in the canvas region, not in a heavyweight top header or a competing blank-state modal.
+- Sequential authoring must sound intentional in the inspector; do not describe latches with flip-flop clock-edge language or reduce clocks to generic node state.
 
 ## Consumption Sites
 
