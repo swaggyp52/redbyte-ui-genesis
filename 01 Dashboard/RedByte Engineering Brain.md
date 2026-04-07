@@ -52,6 +52,7 @@ Always:
 
 For verify work: [[Verify Engine]] + [[Verify Hint System]]
 For export work: [[Connection Model]] + [[Export Contracts]]
+For project workflow / onboarding work: [[Project Surface]]
 For test work: [[Test Infrastructure]]
 For Design workflow hierarchy work: [[Design Surface]]
 
@@ -194,6 +195,10 @@ Latest product-hardening completions (2026-04-06):
 - Hardware / Export failure truth now uses one dominant status / CTA taxonomy across both surfaces
 - Project overview boot truth is restored: `ide:gate:project-overview-contract` now passes after fixing the `primaryProjectCta` boot-order crash in `IdeApp.tsx`
 - repo hygiene pass split the dirty Verify/import UI workstream out of the active branch before starting Project work
+- Project loaded-state readability and next-action hierarchy landed:
+  - the loaded hero now owns one dominant `Next step`
+  - source / determinism / import fidelity moved into the visible loaded-project reference card
+  - Mapping / Verify / Export now render as one three-card workflow snapshot instead of competing CTA rows
 - `pnpm repo:status` is now blocked by `IDE Evidence Capsule Contract`, not by Project overview boot/render failure
 
 Use its recommended implementation order:
@@ -208,7 +213,7 @@ Examples, starters, and classroom ops should ride inside those tracks as proof o
 
 Next product-hardening action:
 
-- onboarding / empty-state cleanup, with Project loaded-state readability and next-action hierarchy first, then Import entry-path coherence
+- onboarding / empty-state cleanup, with Import entry-path coherence now next after the Project loaded-state readability slice
 
 ---
 
@@ -258,7 +263,7 @@ Render harness (all 9 suites green):
 
 ## Architecture map
 
-**Active:** [[Design Surface]] - [[Verify Engine]] - [[Connection Model]] - [[Verify Hint System]] - [[Test Infrastructure]] - [[Note Schema]] - [[Workspace Routing]] - [[Automation Strategy]]
+**Active:** [[Design Surface]] - [[Project Surface]] - [[Verify Engine]] - [[Connection Model]] - [[Verify Hint System]] - [[Test Infrastructure]] - [[Note Schema]] - [[Workspace Routing]] - [[Automation Strategy]]
 
 **Stubs (expand when touching):** [[Export Contracts]] - [[Signal Inventory]] - [[Authority Chain]] - [[Bridge Protocol]] - [[Basys 3 Mapping]]
 

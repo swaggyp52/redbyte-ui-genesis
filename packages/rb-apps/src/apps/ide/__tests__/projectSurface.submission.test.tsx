@@ -152,11 +152,14 @@ describe('ProjectSurface workspace panels', () => {
     const showcase = showcases[showcases.length - 1];
     expect(showcase.textContent).toContain('Signal Tour: Switches -> LEDs');
     expect(getAllByTestId('ide-project-showcase-primary-cta').at(-1)?.textContent).toContain('Continue to Verify');
+    expect(getByTestId('ide-project-next-step').textContent).toContain('Refresh Verify');
     expect(getAllByTestId('ide-project-board-preview').at(-1)?.textContent).toContain(
       'Flip switches and the matching LEDs follow immediately.'
     );
 
     const context = getAllByTestId('ide-project-context').at(-1)!;
+    expect(context.textContent).toContain('Loaded project');
+    expect(context.textContent).toContain('Example Project - Signal Tour: Switches -> LEDs');
     expect(context.textContent).toContain('Expected behavior');
     expect(context.textContent).toContain('Flip switches and the matching LEDs follow immediately.');
   });
@@ -296,7 +299,7 @@ describe('ProjectSurface workspace panels', () => {
   it('surfaces FPGA config, fidelity, and Project-side quick picks for lab-day export prep', () => {
     const onFpgaConfigChange = vi.fn();
     const onUpdateMappingPin = vi.fn();
-    const { getAllByTestId } = render(
+    const { getAllByTestId, getByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -336,6 +339,8 @@ describe('ProjectSurface workspace panels', () => {
 
     const fidelityList = getAllByTestId('ide-project-import-fidelity');
     expect(fidelityList[fidelityList.length - 1].textContent).toContain('Reconstructed');
+    expect(getByTestId('ide-project-reference-fidelity').textContent).toContain('Reconstructed');
+    expect(getByTestId('ide-project-reference-determinism').textContent).toContain('abc123def456');
     
     const topList = getAllByTestId('ide-project-fpga-top');
     fireEvent.change(topList[topList.length - 1], { target: { value: 'lab_top' } });

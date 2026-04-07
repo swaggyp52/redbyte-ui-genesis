@@ -1,5 +1,55 @@
 # AI State
 
+## Change Log 2026-04-06 (Project loaded-state readability + next-action hierarchy)
+
+**Subsystem**: Project surface loaded-state contract
+
+### Problem
+
+Project boot was fixed, but the loaded Project surface still made students scan the hero, readiness rows, mapping strip, and hidden detail disclosures to answer one question: what is loaded, what is done, and what should I do next. The hero CTA also competed with secondary row-level Verify actions, which weakened the front-door workflow story.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - Reworked the loaded-state hero so one `Next step` callout now owns the dominant Project action and explains why that action is current.
+  - Removed duplicate row-level Verify CTA competition from the readiness snapshot so the hero remains the single dominant next action.
+  - Promoted loaded-project reference truth into the visible Project reference card:
+    - source / starter context
+    - top module
+    - expected behavior
+    - last saved
+    - determinism hash
+    - import fidelity when present
+  - Restored explicit readiness launchpad markers inside the Project workflow snapshot:
+    - `ide-launchpad-mapping`
+    - `ide-launchpad-verify`
+    - `ide-launchpad-export`
+  - Restored the live Project readiness gate selector on the rendered workflow snapshot container (`ide-project-panel-readiness`) while preserving the existing summary test id.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`
+    - Updated continuity assertions so Verify advisory states point back to the dominant hero CTA instead of duplicate row buttons.
+  - `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`
+    - Added coverage for the new hero next-step copy and the loaded reference card surfacing starter/source, determinism, and import fidelity truth.
+
+### Validation
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` OK (22/22)
+- `pnpm --filter @redbyte/playground build` OK
+- `pnpm -s ide:gate:project-overview-contract` OK
+- `pnpm -s ide:gate:project-continue-cta-contract` OK
+
+### Remaining concern
+
+- `pnpm -s ide:gate:project-readiness-contract`
+  - still fails in the current repo state because that standalone gate assumes a pre-loaded Project state and does not handle the now-canonical Project Home empty state before checking the loaded readiness card
+  - this gate is **not** part of `pnpm repo:status`
+  - the gate script was not reopened inside this Project surface slice
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-04-06 (Project overview boot restore + repo hygiene triage)
 
 **Subsystem**: IDE shell startup / Project overview gate

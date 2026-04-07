@@ -250,9 +250,8 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(explanation.textContent).toContain('do not block export');
   });
 
-  it('readiness panel shows Go to Verify action when verify is not trusted', () => {
-    const onOpenVerify = vi.fn();
-    const { getAllByTestId } = render(
+  it('keeps Verify as the single dominant next step when compare evidence is missing', () => {
+    const { getAllByTestId, getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -270,21 +269,19 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
               dirtySinceExport: false,
               blockingIssues: [],
             },
-            onOpenVerify,
           })}
         />
       </BoardSignalProvider>
     );
 
-    const gotoVerify = getAllByTestId('ide-project-readiness-goto-verify');
-    expect(gotoVerify.length).toBeGreaterThan(0);
-    fireEvent.click(gotoVerify[gotoVerify.length - 1]);
-    expect(onOpenVerify).toHaveBeenCalled();
+    expect(queryByTestId('ide-project-readiness-goto-verify')).toBeNull();
+    expect(getAllByTestId('ide-project-showcase-primary-cta').at(-1)?.textContent).toContain('Continue to Verify');
+    expect(getByTestId('ide-project-next-step').textContent).toContain('trusted comparison evidence');
+    expect(getByTestId('ide-project-readiness-focus').textContent).toContain('Continue to Verify');
   });
 
-  it('readiness panel shows Go to Verify action for export when AVAILABLE not TRUSTED', () => {
-    const onOpenVerify = vi.fn();
-    const { getAllByTestId } = render(
+  it('keeps export advisory states routed through the hero CTA instead of a duplicate row action', () => {
+    const { getAllByTestId, getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -302,16 +299,14 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
               dirtySinceExport: false,
               blockingIssues: [],
             },
-            onOpenVerify,
           })}
         />
       </BoardSignalProvider>
     );
 
-    const gotoVerifyForExport = getAllByTestId('ide-project-readiness-goto-verify-for-export');
-    expect(gotoVerifyForExport.length).toBeGreaterThan(0);
-    fireEvent.click(gotoVerifyForExport[gotoVerifyForExport.length - 1]);
-    expect(onOpenVerify).toHaveBeenCalled();
+    expect(queryByTestId('ide-project-readiness-goto-verify-for-export')).toBeNull();
+    expect(getAllByTestId('ide-project-showcase-primary-cta').at(-1)?.textContent).toContain('Continue to Verify');
+    expect(getByTestId('ide-project-readiness-focus').textContent).toContain('Continue to Verify');
   });
 
   it('removes blank-project framing from loaded blank-origin projects', () => {
