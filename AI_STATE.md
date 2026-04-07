@@ -1,5 +1,59 @@
 # AI State
 
+## Change Log 2026-04-07 (Design box-select capture hardening + canonical rescue branch truth)
+
+**Subsystem**: Design surface grouped selection capture
+
+### Problem
+
+Phase B had already restored the grouped-editing continuation loop once a set of nodes was selected: duplicate, delete, drag, and Arrow-key movement all existed. The remaining weakness was the capture step itself. Box-select still judged selection by each node's origin point, which meant a marquee could visibly overlap real node bodies in a dense circuit and still miss them.
+
+The repo topology also still needed one final factual statement before continuing Design work. The nearby rescue branches looked like parallel histories, but needed to be rechecked against the live branch graph and GitHub state before any more Design work landed.
+
+### What changed
+
+- Branch audit / rescue-line truth
+  - Reconfirmed `feat/design-phase-b-editing-power` is the canonical Design rescue branch.
+  - Reconfirmed these adjacent rescue branches are already ancestors of the canonical line, not divergent Design heads:
+    - `feat/design-sequential-inspector-hardening`
+    - `feat/hardware-export-failure-truth`
+    - `feat/project-overview-truth`
+  - Reconfirmed no Design-rescue commits needed merge, rebase, or cherry-pick.
+  - Reconfirmed the unrelated open GitHub PRs remain separate and untouched.
+
+- `packages/rb-logic-view/src/useCanvasInput.ts`
+  - Hardened marquee commit so selection is now based on intersection with the standard node bounds instead of only the node origin.
+  - Reused the existing shared `NODE_SIZE = 48` contract from `rb-logic-view` rather than opening a new geometry/store path.
+  - Preserved additive marquee behavior: `Shift` / `Ctrl` / `Cmd` still mark the commit as additive so the existing selection can be extended instead of replaced.
+
+- Tests
+  - `packages/rb-logic-view/src/__tests__/canvas-input-controller.test.ts`
+    - Added coverage proving a marquee that overlaps a node body still selects it even when the node origin is outside the box.
+    - Added coverage proving `Shift` marquee preserves additive-selection intent.
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx`
+    - Added a live Design-surface regression proving a bounds-overlap marquee can immediately feed the grouped Arrow-key nudge loop.
+    - Added a live Design-surface regression proving `Shift` marquee extends the current group with overlapping nodes.
+
+### Validation
+
+- Failing baseline captured first:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx packages/rb-logic-view/src/__tests__/canvas-input-controller.test.ts`
+    - failed on:
+      - marquee commit still returning an empty selection for partial node overlap
+      - live DesignSurface marquee selection failing to produce the intended grouped selection
+      - live additive marquee failing to extend the current group
+- Passing verification after implementation:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx packages/rb-logic-view/src/__tests__/canvas-input-controller.test.ts` OK (`60/60`)
+
+### Remaining concern
+
+- Bounds-aware marquee currently relies on the shared standard node body size (`NODE_SIZE = 48`). If future Design work introduces nonstandard node shapes, marquee hit geometry may need richer per-node metadata instead of the shared constant.
+- Align/tidy operations remain deferred. This slice only hardened group capture so the existing grouped-editing loop feels trustworthy before broader layout-authoring work.
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-04-07 (Design multi-select editing power + canonical branch audit)
 
 **Subsystem**: Design surface grouped editing loop

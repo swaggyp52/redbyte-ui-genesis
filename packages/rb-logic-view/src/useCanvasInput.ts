@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { screenToWorld, clientToLocal, worldToGrid } from '@redbyte/rb-viewport';
+import { NODE_SIZE } from './tools/placement';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,6 +62,27 @@ interface MutableState {
 }
 
 const DRAG_THRESHOLD_PX = 3;
+const HALF_NODE_SIZE = NODE_SIZE / 2;
+
+function marqueeIntersectsNodeBounds(
+  node: { position?: { x: number; y: number } },
+  marqueeBounds: { minX: number; maxX: number; minY: number; maxY: number }
+) {
+  const position = node.position;
+  if (!position) return false;
+
+  const nodeMinX = position.x - HALF_NODE_SIZE;
+  const nodeMaxX = position.x + HALF_NODE_SIZE;
+  const nodeMinY = position.y - HALF_NODE_SIZE;
+  const nodeMaxY = position.y + HALF_NODE_SIZE;
+
+  return (
+    nodeMaxX >= marqueeBounds.minX &&
+    nodeMinX <= marqueeBounds.maxX &&
+    nodeMaxY >= marqueeBounds.minY &&
+    nodeMinY <= marqueeBounds.maxY
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -336,18 +358,10 @@ export function useCanvasInput(options: UseCanvasInputOptions): CanvasInputHandl
             const maxX = Math.max(startWorld.x, endWorld.x);
             const minY = Math.min(startWorld.y, endWorld.y);
             const maxY = Math.max(startWorld.y, endWorld.y);
+            const marqueeBounds = { minX, maxX, minY, maxY };
 
             const selectedIds = circuitNodes
-              .filter((node) => {
-                const position = node.position;
-                if (!position) return false;
-                return (
-                  position.x >= minX &&
-                  position.x <= maxX &&
-                  position.y >= minY &&
-                  position.y <= maxY
-                );
-              })
+              .filter((node) => marqueeIntersectsNodeBounds(node, marqueeBounds))
               .map((node) => node.id);
 
             onMarqueeCommit?.(selectedIds, e.shiftKey || e.ctrlKey || e.metaKey);

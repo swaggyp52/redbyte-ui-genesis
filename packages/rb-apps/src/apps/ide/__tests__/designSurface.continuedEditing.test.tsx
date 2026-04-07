@@ -179,6 +179,36 @@ function fireWindowKeyDown(key: string, mods: { ctrlKey?: boolean; metaKey?: boo
   window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...mods }));
 }
 
+function prepareCanvasSelection(canvas: SVGSVGElement) {
+  Object.defineProperty(canvas, 'setPointerCapture', {
+    value: vi.fn(),
+    configurable: true,
+  });
+  Object.defineProperty(canvas, 'releasePointerCapture', {
+    value: vi.fn(),
+    configurable: true,
+  });
+  vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+    x: 0,
+    y: 0,
+    width: 1320,
+    height: 720,
+    top: 0,
+    left: 0,
+    right: 1320,
+    bottom: 720,
+    toJSON: () => ({}),
+  } as DOMRect);
+}
+
+function worldPointToCanvasClient(x: number, y: number) {
+  const { camera } = useLogicViewStore.getState();
+  return {
+    clientX: x * camera.zoom + camera.x,
+    clientY: y * camera.zoom + camera.y,
+  };
+}
+
 // ── Slice 1: Chrome focus ─────────────────────────────────────────────────────
 
 describe('DesignSurface continued-editing focus (Slice 1)', () => {
@@ -408,6 +438,68 @@ describe('DesignSurface editing power (Slice 2)', () => {
     const summary = view.getByTestId('ide-design-multiselect-summary');
     expect(summary.textContent).toContain('Arrow keys');
     expect(summary.textContent).toContain('Ctrl+D');
+  });
+
+  it('box-selecting overlapping node bounds creates a group that can nudge immediately', async () => {
+    const view = renderSurface();
+    const canvas = view.getByTestId('logic-canvas-svg') as SVGSVGElement;
+    prepareCanvasSelection(canvas);
+    const start = worldPointToCanvasClient(10, 10);
+    const end = worldPointToCanvasClient(170, 40);
+
+    fireEvent.pointerDown(canvas, { button: 0, ...start });
+    fireEvent.pointerMove(canvas, end);
+
+    await waitFor(() => {
+      expect(view.getByTestId('logic-box-marquee')).toBeTruthy();
+    });
+
+    fireEvent.pointerUp(canvas, end);
+
+    await waitFor(() => {
+      expect(useLogicViewStore.getState().selection.nodes.size).toBe(2);
+    });
+
+    act(() => {
+      fireWindowKeyDown('ArrowRight');
+    });
+
+    await waitFor(() => {
+      const circuit = useCircuitStore.getState().circuit;
+      const sw0Node = circuit.nodes.find((node) => node.id === 'sw0_node');
+      const ld0Node = circuit.nodes.find((node) => node.id === 'ld0_node');
+      expect(sw0Node?.position.x).toBe(16);
+      expect(ld0Node?.position.x).toBe(196);
+    });
+  });
+
+  it('Shift plus box-select keeps the existing group and adds overlapping nodes', async () => {
+    const view = renderSurface();
+    const canvas = view.getByTestId('logic-canvas-svg') as SVGSVGElement;
+    prepareCanvasSelection(canvas);
+
+    act(() => {
+      useLogicViewStore.getState().selectNode('sw0_node');
+    });
+
+    const start = worldPointToCanvasClient(160, 10);
+    const end = worldPointToCanvasClient(205, 40);
+
+    fireEvent.pointerDown(canvas, { button: 0, ...start, shiftKey: true });
+    fireEvent.pointerMove(canvas, { ...end, shiftKey: true });
+
+    await waitFor(() => {
+      expect(view.getByTestId('logic-box-marquee')).toBeTruthy();
+    });
+
+    fireEvent.pointerUp(canvas, { ...end, shiftKey: true });
+
+    await waitFor(() => {
+      const selectedNodes = useLogicViewStore.getState().selection.nodes;
+      expect(selectedNodes.size).toBe(2);
+      expect(selectedNodes.has('sw0_node')).toBe(true);
+      expect(selectedNodes.has('ld0_node')).toBe(true);
+    });
   });
 });
 

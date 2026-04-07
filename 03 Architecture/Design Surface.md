@@ -57,6 +57,8 @@ For the idle inspector / simulation contract, the Design surface must:
 - treat sequential selections as first-class authoring context instead of generic parts
 - treat multi-node selections as a continued-editing state, not a dead-end summary card
 - make the grouped-editing loop explicit after box-select:
+  - marquee selection must capture nodes by standard body-bounds overlap, not only by node origin
+  - additive marquee (`Shift` / `Ctrl` / `Cmd`) must extend the existing group instead of resetting it
   - Arrow keys nudge the selected group by one movement step
   - `Shift + Arrow` performs a larger coarse move
   - inspector copy must advertise grouped movement and duplication instead of generic bulk wording
@@ -88,10 +90,13 @@ The top stack must not reintroduce a separate title/header band above the workin
 - Sequential authoring must sound intentional in the inspector; do not describe latches with flip-flop clock-edge language or reduce clocks to generic node state.
 - Multi-node selection should stay action-focused; live-signal detail belongs to single-node or single-wire inspection.
 - Grouped movement must not depend on mouse drag alone once a student has already selected the cluster.
+- Box-select must feel trustworthy in dense circuits; partial overlap with the standard node body must count as selection.
 
 ## Consumption Sites
 
 - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+- `packages/rb-logic-view/src/LogicCanvas.tsx`
+- `packages/rb-logic-view/src/useCanvasInput.ts`
 - `packages/rb-apps/src/apps/ide/surfaces/DesignWorkspaceFrame.tsx`
 - `packages/rb-apps/src/apps/ide/ide-root.css`
 - `packages/rb-apps/src/apps/IdeApp.tsx`
@@ -106,6 +111,7 @@ The top stack must not reintroduce a separate title/header band above the workin
 - `packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx`
 - `packages/rb-apps/src/apps/ide/__tests__/designSurface.connectionAffordance.test.tsx`
 - `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+- `packages/rb-logic-view/src/__tests__/canvas-input-controller.test.ts`
 
 ## Keyboard Command Ownership (Phase B, 2026-04-06)
 
@@ -126,5 +132,6 @@ The global handler currently owns: G (grid toggle), Ctrl+C/V/D/A/X, Shift+F (fit
 
 - The current contract covers first-look and continued-editing hierarchy. It does not yet define the full long-term relationship between bottom console demotion and shared workflow chrome across dense sequential circuits.
 - Future Design interaction work should extend this note instead of reintroducing header-level chrome ad hoc.
+- Align/tidy operations remain the next grouped-editing expansion point now that box-select capture, duplicate, delete, and nudge are all in the trusted path.
 - Wire reconnect discoverability — RESOLVED (Phase B Slice 6, 2026-04-06). `hoveredWireId` moved to `useLogicViewStore`; `hoveredWireOverlay` memo in LogicCanvas drives discoverable endpoint hint circles on wire hover without requiring prior selection.
 - Wire reconnect visual feedback — RESOLVED (Phase B Slice 7, 2026-04-07). `rewiredWireId` added to `useLogicViewStore` (same pattern as `hoveredWireId`). `isBeingRewired` prop on `WireView` dims the wire group (opacity 0.35) and adds a blue dashed overlay while reconnect is in progress. `circuitForValidation` derived memo excludes the being-replaced wire from `isValidConnection` checks, fixing false duplicate-rejection when reconnecting to the original port. `beginWireReconnect` sets `rewiredWireId`; the cleanup effect and successful commit both clear it.
