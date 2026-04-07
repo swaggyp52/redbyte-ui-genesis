@@ -3028,12 +3028,46 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         if (event.key === 'n') { event.preventDefault(); beginNodePlacement('NOT'); return; }
         if (event.key === 'x') { event.preventDefault(); beginNodePlacement('XOR'); return; }
       }
+
+      // Ctrl+Z / Cmd+Z: undo — fires only when CanvasHost has not already handled it
+      // (CanvasHost calls e.preventDefault() for Ctrl+Z when canvas is active, so we
+      // check defaultPrevented to avoid a double-undo when both handlers fire)
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z'
+          && !isTextInput && !event.defaultPrevented) {
+        event.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      // Ctrl+Y / Cmd+Y or Ctrl+Shift+Z: redo — same defaultPrevented guard
+      if ((event.ctrlKey || event.metaKey) && !isTextInput && !event.defaultPrevented &&
+          (event.key.toLowerCase() === 'y' || (event.shiftKey && event.key.toLowerCase() === 'z'))) {
+        event.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      // Delete / Backspace: delete selection — use live store state to avoid double-delete
+      // CanvasHost handles Delete too (without preventDefault), so we read live state to
+      // check whether the canvas handler has already cleared the selection.
+      if ((event.key === 'Delete' || event.key === 'Backspace') && !isTextInput) {
+        const liveSelection = useLogicViewStore.getState().selection;
+        if (liveSelection.nodes.size > 0 || liveSelection.wires.size > 0) {
+          deleteSelection();
+        }
+        return;
+      }
+
+      // Escape: clear selection globally (idempotent — safe even if CanvasHost also fires)
+      if (event.key === 'Escape' && !isTextInput) {
+        clearSelection();
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [beginNodePlacement, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handlePaste, handleSelectAll, toggleSnapToGrid]);
+  }, [beginNodePlacement, clearSelection, deleteSelection, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handlePaste, handleRedo, handleSelectAll, handleUndo, toggleSnapToGrid]);
 
   useEffect(() => {
     const pending = pendingDebugToggleRef.current;

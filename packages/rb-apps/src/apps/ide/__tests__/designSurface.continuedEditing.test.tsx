@@ -446,3 +446,71 @@ describe('DesignSurface canvas navigation & placement hotkeys (Slice 4)', () => 
     });
   });
 });
+
+// ── Slice 5: Canvas-activation-independent keyboard commands ──────────────────
+
+describe('DesignSurface global keyboard commands (Slice 5)', () => {
+  it('Ctrl+Z calls onRuntimeUndo regardless of canvas activation state', async () => {
+    const onRuntimeUndo = vi.fn();
+    renderSurface({ onRuntimeUndo });
+
+    act(() => {
+      fireWindowKeyDown('z', { ctrlKey: true });
+    });
+
+    await waitFor(() => {
+      expect(onRuntimeUndo).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('Ctrl+Y calls onRuntimeRedo regardless of canvas activation state', async () => {
+    const onRuntimeRedo = vi.fn();
+    renderSurface({ onRuntimeRedo });
+
+    act(() => {
+      fireWindowKeyDown('y', { ctrlKey: true });
+    });
+
+    await waitFor(() => {
+      expect(onRuntimeRedo).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('Delete removes the selected node even when canvas is not active', async () => {
+    renderSurface();
+
+    act(() => {
+      useLogicViewStore.getState().selectNode('sw0_node');
+    });
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
+    });
+
+    await waitFor(() => {
+      expect(useCircuitStore.getState().circuit.nodes.length).toBe(1);
+    });
+
+    expect(useCircuitStore.getState().circuit.nodes[0].id).toBe('ld0_node');
+  });
+
+  it('Escape clears selection regardless of canvas activation state', async () => {
+    renderSurface();
+
+    act(() => {
+      useLogicViewStore.getState().selectMultipleNodes(['sw0_node', 'ld0_node']);
+    });
+
+    await waitFor(() => {
+      expect(useLogicViewStore.getState().selection.nodes.size).toBe(2);
+    });
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+
+    await waitFor(() => {
+      expect(useLogicViewStore.getState().selection.nodes.size).toBe(0);
+    });
+  });
+});
