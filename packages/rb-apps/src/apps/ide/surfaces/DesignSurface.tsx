@@ -3577,14 +3577,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           ) : null}
           {selectedNodeDiagnostics.length > 0 ? (
             <div className="ide-design-inspector-diagnostics" data-testid="ide-design-selection-diagnostics">
-              <span className="ide-design-inspector-group-label">Compiler diagnostics</span>
               <ul className="ide-design-inspector-diagnostic-list">
                 {selectedNodeDiagnostics.slice(0, 3).map((diagnostic) => (
                   <li
                     key={`${diagnostic.code}-${diagnostic.message}`}
                     className={`ide-design-inspector-diagnostic-item is-${diagnostic.severity === 'error' ? 'error' : 'warn'}`}
                   >
-                    <strong>{diagnostic.code}</strong>
                     <span>{diagnostic.message}</span>
                   </li>
                 ))}
@@ -4069,11 +4067,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       );
     }
     if (hasMultiNodeSelection || hasMultiWireSelection) {
-      return (
-        <IdeCallout tone="info" title="Single-object state only">
-          Pick one node, wire, or signal when you want live values and transition details. Group selections stay action-focused.
-        </IdeCallout>
-      );
+      return null;
     }
     return (
       <IdeCallout tone="info" title="Signal / State">
@@ -4207,14 +4201,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           <div className="ide-kv-row">
             <span>View</span>
             <span>{effectiveDesignView === 'stacked' ? 'Split stacked' : effectiveDesignView}</span>
-          </div>
-          <div className="ide-kv-row">
-            <span>Dirty since verify</span>
-            <span>{dirtySinceVerify ? 'Yes' : 'No'}</span>
-          </div>
-          <div className="ide-kv-row">
-            <span>Dirty since export</span>
-            <span>{dirtySinceExport ? 'Yes' : 'No'}</span>
           </div>
         </div>
       </div>
@@ -4711,7 +4697,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 title="Live Simulation"
                 testId="ide-design-live-sim-section"
                 defaultOpen
-                disableCollapse
               >
                 {renderLiveSimulationContent()}
               </IdeInspectorSection>
@@ -4744,23 +4729,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <span>Samples</span>
                         <span>{selectedSignalHistory.length}</span>
                       </div>
-                    </div>
-                    <div className="ide-design-signal-history" data-testid="ide-design-signal-history">
-                      {selectedSignalHistory.length > 0 ? (
-                        selectedSignalHistory.map((entry) => (
-                          <button
-                            key={`${selectedSignalKey}-${entry.tick}`}
-                            type="button"
-                            className={`ide-verify-waveform-point ${entry.value === 1 ? 'is-selected' : ''}`}
-                            onClick={() => onRuntimeSimSetSelectedSignal?.(selectedSignalKey)}
-                            data-testid="ide-design-signal-history-point"
-                          >
-                            {entry.value}
-                          </button>
-                        ))
-                      ) : (
-                        <p className="ide-copy">No trace samples yet. Run or step simulation to populate history.</p>
-                      )}
                     </div>
                     <div className="ide-inline-actions">
                       <IdeButton
@@ -4824,7 +4792,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 title="Live Simulation"
                 testId="ide-design-live-sim-section"
                 defaultOpen
-                disableCollapse
               >
                 {renderLiveSimulationContent()}
               </IdeInspectorSection>

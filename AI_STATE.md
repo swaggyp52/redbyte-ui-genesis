@@ -1,5 +1,47 @@
 # AI State
 
+## Change Log 2026-04-07 (Inspector Truth Overhaul — Slice 8)
+
+**Subsystem**: Design surface inspector / student-facing information contract
+
+### Problem
+
+The Design inspector was leaking developer internals into the student authoring UI:
+1. Raw IR diagnostic codes (e.g. `IR006`) rendered in bold next to error messages
+2. A "Compiler diagnostics" section label appeared above the diagnostic list
+3. The Advanced Details section exposed "Dirty since verify" and "Dirty since export" pipeline-layer rows
+4. The Live Simulation section was pinned permanently open via `disableCollapse`, showing "Live" instead of "Hide"
+5. The multi-select state branch showed a "Single-object state only" dead-end callout instead of a clean empty state
+6. The Signal Probe section rendered per-tick waveform buttons (`data-testid="ide-design-signal-history-point"`) — a Verify-surface idiom that did not belong in Design
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - `renderSelectionHealth()`: Removed `<strong>{diagnostic.code}</strong>` and the "Compiler diagnostics" `<span>` group label. Diagnostics now render as a plain `<ul>` showing only `diagnostic.message`.
+  - `renderAdvancedDetails()`: Removed the "Dirty since verify" and "Dirty since export" KV rows from the student-visible advanced details sub-section. (The developer-only `showDetails` strip at line ~5232 is intentionally preserved.)
+  - Both Live Simulation `IdeInspectorSection` instances: Removed `disableCollapse` prop so the section is collapsible and shows "Hide" in its toggle-state span.
+  - Multi-select branch in `renderSelectionState()`: Changed from returning an `IdeCallout` with "Single-object state only" to returning `null`.
+  - Signal Probe section: Removed the `ide-design-signal-history` div and all per-tick value buttons.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorTruth.test.tsx` (new file)
+    - 6 tests covering all five changes; all pass.
+
+### Validation
+
+- Failing baseline captured first (new test file with all 6 tests failing before any implementation)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorTruth.test.tsx` → 6/6 pass
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/` → 158/158 pass (all design surface tests)
+
+### Remaining concern
+
+- The developer `showDetails` debug strip (URL-param only) still contains "Dirty since verify" — intentionally kept since it is not student-visible.
+- Live Simulation collapse state is not persisted across sessions; defaults to open which preserves discoverability.
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-04-07 (Design horizontal group distribution)
 
 **Subsystem**: Design surface grouped layout cleanup

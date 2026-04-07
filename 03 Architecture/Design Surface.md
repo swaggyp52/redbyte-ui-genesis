@@ -94,13 +94,16 @@ The top stack must not reintroduce a separate title/header band above the workin
 - Do not repeat shell metadata in the Design footer when the same truth is already visible in the top shell.
 - Node/wire counters are secondary telemetry and should not dominate the top authoring row.
 - Board Resources and Live Inputs should remain available but default-collapsed unless the student explicitly opens them or search needs the board inventory visible.
-- Live Simulation may be compact, but it should not disappear behind an idle-state collapse when it is the only direct runtime truth in starter-loaded student flows.
+- Live Simulation is collapsible (shows "Hide" in its toggle-state span, not "Live"); it defaults to open so it remains discoverable on first load. Do not pin it permanently open with `disableCollapse`.
 - Split mode may compress simulation chrome, but it must still preserve essential tick/mode context when the dedicated simulation strip is absent.
 - Empty-state guidance belongs in the canvas region, not in a heavyweight top header or a competing blank-state modal.
 - Sequential authoring must sound intentional in the inspector; do not describe latches with flip-flop clock-edge language or reduce clocks to generic node state.
 - Multi-node selection should stay action-focused; live-signal detail belongs to single-node or single-wire inspection.
 - Grouped movement must not depend on mouse drag alone once a student has already selected the cluster.
 - Box-select must feel trustworthy in dense circuits; partial overlap with the standard node body must count as selection.
+- The Design inspector must not expose developer internals to students: no raw IR diagnostic codes (e.g. `IR006`), no "Compiler diagnostics" section label, no pipeline-layer staleness rows ("Dirty since verify", "Dirty since export") in the default or advanced views.
+- Multi-node selection must not show a "Single-object state only" dead-end callout; return nothing and let the multi-select arrange actions speak for themselves.
+- Signal Probe in Design must not render per-tick waveform/history buttons; those are a Verify-surface idiom and do not belong in the authoring inspector.
 
 ## Consumption Sites
 
@@ -145,3 +148,4 @@ The global handler currently owns: G (grid toggle), Ctrl+C/V/D/A/X, Shift+F (fit
 - One more simple grouped tidy action remains the next expansion point now that box-select capture, duplicate, delete, nudge, edge alignment, and horizontal distribution are all in the trusted path.
 - Wire reconnect discoverability — RESOLVED (Phase B Slice 6, 2026-04-06). `hoveredWireId` moved to `useLogicViewStore`; `hoveredWireOverlay` memo in LogicCanvas drives discoverable endpoint hint circles on wire hover without requiring prior selection.
 - Wire reconnect visual feedback — RESOLVED (Phase B Slice 7, 2026-04-07). `rewiredWireId` added to `useLogicViewStore` (same pattern as `hoveredWireId`). `isBeingRewired` prop on `WireView` dims the wire group (opacity 0.35) and adds a blue dashed overlay while reconnect is in progress. `circuitForValidation` derived memo excludes the being-replaced wire from `isValidConnection` checks, fixing false duplicate-rejection when reconnecting to the original port. `beginWireReconnect` sets `rewiredWireId`; the cleanup effect and successful commit both clear it.
+- Inspector developer-internals leakage — RESOLVED (Phase B Slice 8, 2026-04-07). Five categories of verify/pipeline internals removed from the student-facing inspector: raw IR diagnostic codes, "Compiler diagnostics" section label, "Dirty since verify/export" KV rows, `disableCollapse` pin on Live Simulation (now shows "Hide"), "Single-object state only" dead-end callout on multi-select, and per-tick waveform history buttons in Signal Probe.
