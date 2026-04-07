@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: design
-updated: 2026-04-06
+updated: 2026-04-07
 related:
   - "[[RedByte Engineering Brain]]"
   - "[[Workspace Routing]]"
@@ -97,6 +97,7 @@ The top stack must not reintroduce a separate title/header band above the workin
 - `packages/rb-apps/src/apps/ide/__tests__/pipelineStrip.test.tsx`
 - `packages/rb-apps/src/apps/ide/__tests__/designSurface.paletteDock.test.tsx`
 - `packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.connectionAffordance.test.tsx`
 - `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
 
 ## Keyboard Command Ownership (Phase B, 2026-04-06)
@@ -118,4 +119,4 @@ The global handler currently owns: G (grid toggle), Ctrl+C/V/D/A/X, Shift+F (fit
 
 - The current contract covers first-look and continued-editing hierarchy. It does not yet define the full long-term relationship between bottom console demotion and shared workflow chrome across dense sequential circuits.
 - Future Design interaction work should extend this note instead of reintroducing header-level chrome ad hoc.
-- Wire reconnect discoverability (endpoint hover affordance without prior selection) is deferred — requires LogicCanvas.tsx changes and a separate slice.
+- Wire reconnect discoverability — RESOLVED (Phase B Slice 6, 2026-04-06). `hoveredWireId` moved to `useLogicViewStore`; `hoveredWireOverlay` memo in LogicCanvas drives discoverable endpoint hint circles on wire hover without requiring prior selection.
