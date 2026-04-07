@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: design
-updated: 2026-03-29
+updated: 2026-04-06
 related:
   - "[[RedByte Engineering Brain]]"
   - "[[Workspace Routing]]"
@@ -99,7 +99,23 @@ The top stack must not reintroduce a separate title/header band above the workin
 - `packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx`
 - `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
 
+## Keyboard Command Ownership (Phase B, 2026-04-06)
+
+Keyboard commands that affect the editing graph are split across two owners:
+
+1. **CanvasHost / LogicCanvas** — canvas-spatial operations (pan, zoom, wire mode, snap toggle, fit-to-view). These fire only when the canvas is "active" (has received recent pointer input).
+2. **DesignSurface global window handler** — editing commands that must work across the full surface (canvas + inspector + palette). These fire unconditionally.
+
+The global handler currently owns: G (grid toggle), Ctrl+C/V/D/A/X, Shift+F (fit-to-selection), a/o/n/x (gate hotkeys), Ctrl+Z/Y (undo/redo), Delete/Backspace (delete selection), Escape (clear selection).
+
+**Deduplication strategy:**
+
+- For Ctrl+Z/Y: CanvasHost calls `e.preventDefault()` when canvas is active. DesignSurface checks `e.defaultPrevented` to skip (preventing double-undo). Registration order: CanvasHost registers first (deepest child), DesignSurface last (parent), so CanvasHost fires first.
+- For Delete/Backspace: CanvasHost does NOT call `e.preventDefault()`. DesignSurface reads `useLogicViewStore.getState().selection` (live, not closure-stale) to check whether canvas already cleared the selection before acting.
+- For Escape: idempotent `clearSelection()` — safe to double-fire.
+
 ## Open Questions / Stubs
 
-- The current contract covers first-look hierarchy only. It does not yet define the full long-term relationship between bottom console demotion and shared workflow chrome across dense sequential circuits.
+- The current contract covers first-look and continued-editing hierarchy. It does not yet define the full long-term relationship between bottom console demotion and shared workflow chrome across dense sequential circuits.
 - Future Design interaction work should extend this note instead of reintroducing header-level chrome ad hoc.
+- Wire reconnect discoverability (endpoint hover affordance without prior selection) is deferred — requires LogicCanvas.tsx changes and a separate slice.
