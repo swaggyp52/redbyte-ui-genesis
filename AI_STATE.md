@@ -1,5 +1,39 @@
 # AI State
 
+## Change Log 2026-04-07 (Gate Swap + Inspector Rationalization — Phase B-10)
+
+**Subsystem**: Design surface inspector / gate type swap + Signal/State cleanup
+
+### Problem
+
+Three unresolved gaps after Phase B-9:
+1. Gate type change required destructive delete-and-replace, breaking all connections. No editor supports this workflow.
+2. Signal/State inspector section still showed 4 redundant/dev-facing rows: "Driver / Source" (already shown by B-9's driver context panel), "Fan-in / Fan-out" (raw graph metric), "Board mapping" (duplicate of identity card), "Probe state" (not actionable).
+3. Advanced Details Node diagnostics sub-list still rendered raw IR codes (`{diagnostic.code}` span) — B-8 removed them from the primary health section but missed this secondary location.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - **`GATE_SWAP_FAMILIES` constant** (before component): Maps each swappable gate type to its compatible-swap targets. 2-input family: AND/NAND/NOR/OR/XOR/XNOR. 3-input family: AND3/NAND3/NOR3/OR3/XOR3. Only types with identical port names within the family are grouped.
+  - **`handleGateSwap` useCallback** (after `handleInspectorInputToggle`): Calls `updateNode(selectedNode.id, { type: newType })` then `emitCircuitMutation()`. All existing connections are preserved because port names are identical within each swap family.
+  - **Swap type action group** in `renderSelectionActions()`: Added after Net tracing group. Shows as `ide-design-swap-group` with per-target chips (`ide-design-swap-{typename.toLowerCase()}`). Absent for non-swappable nodes (INPUT, OUTPUT, DFlipFlop, etc.).
+  - **Signal/State section cleanup** in `renderSelectionState()` non-sequential branch: Removed 4 rows — "Driver / Source", "Fan-in / Fan-out", "Board mapping", "Probe state". These were redundant with B-9's driver context panel or with the identity card. Kept: Current, Previous, Transition, Last transition, Trace state.
+  - **Advanced Details IR code removal** in `renderAdvancedDetails()`: Removed `<span>{diagnostic.code}</span>` from the Node diagnostics sub-list. Message-only now. Closes the escape hatch from B-8.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.gateSwap.test.tsx` (new file): 9 tests — swap group appears for AND/AND3, correct chips shown, click updates circuit store, connections preserved, absent for non-swappable nodes, Signal/State no "Driver/Source", no "Fan-in", kept Current/Previous/Transition.
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`: Updated line 244 to check `ide-design-inspector-identity-card` instead of `ide-design-context-inspector` for "LD0 -> U16" board mapping (now correct location).
+
+### Validation
+
+- RED baseline: 7/9 tests failing before implementation
+- `pnpm -w exec vitest run designSurface.gateSwap` → 9/9 pass
+- `pnpm -w exec vitest run designSurface` → 177/177 pass (no regressions)
+
+### Attribution
+
+- Claude (acting product lead + staff engineer)
+
 ## Change Log 2026-04-07 (Inspector Signal Intelligence — Phase B-9)
 
 **Subsystem**: Design surface inspector / live signal context and input control
