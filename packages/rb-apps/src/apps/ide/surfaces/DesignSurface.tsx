@@ -1119,6 +1119,56 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     emitCircuitMutation(next);
   }, [circuit, emitCircuitMutation, selection.nodes, selectMultipleNodes, updateCircuit]);
 
+  // CP-4: Select all nodes (Ctrl+A)
+  const handleSelectAll = useCallback(() => {
+    if (circuit.nodes.length === 0) return;
+    selectMultipleNodes(circuit.nodes.map((n) => n.id));
+  }, [circuit.nodes, selectMultipleNodes]);
+
+  // CP-5: Cut = copy then delete selection (Ctrl+X)
+  const handleCut = useCallback(() => {
+    if (selection.nodes.size === 0) return;
+    handleCopy();
+    deleteSelection();
+  }, [deleteSelection, handleCopy, selection.nodes]);
+
+  // Shift+F: fit camera to selected nodes, or all nodes if nothing selected
+  const handleFitToSelection = useCallback(() => {
+    const nodesToFit =
+      selection.nodes.size > 0
+        ? editorCircuit.nodes.filter((n) => selection.nodes.has(n.id))
+        : editorCircuit.nodes;
+    if (nodesToFit.length === 0) {
+      setCamera({ x: 0, y: 0, zoom: 1 });
+      return;
+    }
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    for (const node of nodesToFit) {
+      const px = node.position?.x ?? 0;
+      const py = node.position?.y ?? 0;
+      minX = Math.min(minX, px);
+      maxX = Math.max(maxX, px);
+      minY = Math.min(minY, py);
+      maxY = Math.max(maxY, py);
+    }
+    const spanX = Math.max(96, maxX - minX);
+    const spanY = Math.max(96, maxY - minY);
+    const padding = Math.max(56, Math.min(140, Math.round(Math.max(spanX, spanY) * 0.14)));
+    const boundsWidth = Math.max(1, spanX + padding * 2);
+    const boundsHeight = Math.max(1, spanY + padding * 2);
+    const zoomX = (canvasSize.width * 0.9) / boundsWidth;
+    const zoomY = (canvasSize.height * 0.9) / boundsHeight;
+    const nextZoom = snapFitZoom(Math.max(0.55, Math.min(2.4, Math.min(zoomX, zoomY))));
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    setCamera({
+      x: canvasSize.width / 2 - centerX * nextZoom,
+      y: canvasSize.height / 2 - centerY * nextZoom,
+      zoom: nextZoom,
+    });
+  }, [canvasSize, editorCircuit.nodes, selection.nodes, setCamera]);
+
   useEffect(() => {
     if (!actionToast) return;
     const timeout = window.setTimeout(() => {
@@ -2611,11 +2661,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const showSplitCompareToolbar = isSplitWorkspace && effectiveDesignView === 'split';
   const showSimulationStrip =
     workspacePreset.showSimulationStrip &&
-    (simRunning ||
-      simTick > 0 ||
-      editorCircuit.nodes.length > 0 ||
-      activeVerifySignal != null ||
-      activeDebugContext != null);
+    (simRunning || simTick > 0 || activeVerifySignal != null || activeDebugContext != null);
   const showWorkspaceStatusBar =
     showFullAuthoringStatus || showCompactAuthoringStatus || showSimulationStrip;
   const selectedNodeIoRow = useMemo(() => {
@@ -2950,13 +2996,44 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       if ((event.ctrlKey || event.metaKey) && event.key === 'd' && !isTextInput) {
         event.preventDefault();
         handleDuplicate();
+        return;
+      }
+
+      // Ctrl+A / Cmd+A: select all nodes
+      if ((event.ctrlKey || event.metaKey) && event.key === 'a' && !isTextInput) {
+        event.preventDefault();
+        handleSelectAll();
+        return;
+      }
+
+      // Ctrl+X / Cmd+X: cut (copy + delete)
+      if ((event.ctrlKey || event.metaKey) && event.key === 'x' && !isTextInput) {
+        event.preventDefault();
+        handleCut();
+        return;
+      }
+
+      // Shift+F: fit camera to selection (falls back to all nodes)
+      if (event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey
+          && event.key.toLowerCase() === 'f' && !isTextInput) {
+        event.preventDefault();
+        handleFitToSelection();
+        return;
+      }
+
+      // Gate hotkeys (bare, no modifier): a=AND, o=OR, n=NOT, x=XOR
+      if (!event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && !isTextInput) {
+        if (event.key === 'a') { event.preventDefault(); beginNodePlacement('AND'); return; }
+        if (event.key === 'o') { event.preventDefault(); beginNodePlacement('OR'); return; }
+        if (event.key === 'n') { event.preventDefault(); beginNodePlacement('NOT'); return; }
+        if (event.key === 'x') { event.preventDefault(); beginNodePlacement('XOR'); return; }
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [handleCopy, handleDuplicate, handlePaste, toggleSnapToGrid]);
+  }, [beginNodePlacement, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handlePaste, handleSelectAll, toggleSnapToGrid]);
 
   useEffect(() => {
     const pending = pendingDebugToggleRef.current;
@@ -4509,6 +4586,30 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </React.Fragment>
           ) : (
             <React.Fragment key="design-inspector-idle-context">
+              {(() => {
+                const totalErrors = authoringIssueCounts.errorCount + compilerErrorCount;
+                const totalWarnings = authoringIssueCounts.warningCount + compilerWarningCount;
+                return (
+                  <div
+                    className="ide-design-inspector-canvas-default"
+                    data-testid="ide-design-inspector-canvas-default"
+                  >
+                    {totalErrors > 0 || totalWarnings > 0 ? (
+                      <p className="ide-copy">
+                        {totalErrors > 0
+                          ? `${totalErrors} error${totalErrors !== 1 ? 's' : ''}`
+                          : null}
+                        {totalErrors > 0 && totalWarnings > 0 ? ', ' : null}
+                        {totalWarnings > 0
+                          ? `${totalWarnings} warning${totalWarnings !== 1 ? 's' : ''}`
+                          : null}
+                      </p>
+                    ) : (
+                      <p className="ide-copy">Click a node to inspect it.</p>
+                    )}
+                  </div>
+                );
+              })()}
               <IdeInspectorSection
                 title="Live Simulation"
                 testId="ide-design-live-sim-section"
@@ -5258,6 +5359,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         suppressNextToolModeWireFeedbackClearRef.current = true;
                         setWireFeedback(connectionRejectedMessage(reason));
                       }}
+                      onNodeDoubleClick={(nodeId) => {
+                        const node = editorCircuit.nodes.find((n) => n.id === nodeId);
+                        if (node) beginNodeLabelEdit(node);
+                      }}
                       onPlacementCancel={() => cancelActivePlacement('escape')}
                       nodeEvalOrder={evalOrder}
                       changedNodeIds={changedNodeIds}
@@ -5439,40 +5544,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </button>
                       </div>
                     ) : null}
-                    {selectedNode && (
-                      <div className="ide-node-inspector" data-testid="ide-node-inspector">
-                        <div className="ide-node-inspector-header">
-                          <span className="ide-node-inspector-type">{selectedNode.type}</span>
-                          <button
-                            className="ide-node-inspector-close"
-                            onClick={() => clearSelection()}
-                            aria-label="Close inspector"
-                          >
-                            ×
-                          </button>
-                        </div>
-                        <div className="ide-node-inspector-body">
-                          {selectedNodeSignals && selectedNodeSignals.length > 0 ? (
-                            selectedNodeSignals.map(({ port, value }) => {
-                              const valStr = value === 1 ? '1' : value === 0 ? '0' : '?';
-                              return (
-                                <div key={port} className="ide-node-inspector-port">
-                                  <span className="ide-node-inspector-port-name">{port}</span>
-                                  <span
-                                    className="ide-node-inspector-port-value"
-                                    data-val={valStr}
-                                  >
-                                    {valStr}
-                                  </span>
-                                </div>
-                              );
-                            })
-                          ) : (
-                            <span className="ide-node-inspector-port-name">No ports</span>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </section>
               </div>
