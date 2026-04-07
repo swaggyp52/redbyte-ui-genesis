@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: design
-updated: 2026-04-07
+updated: 2026-04-08
 related:
   - "[[RedByte Engineering Brain]]"
   - "[[Workspace Routing]]"
@@ -120,3 +120,4 @@ The global handler currently owns: G (grid toggle), Ctrl+C/V/D/A/X, Shift+F (fit
 - The current contract covers first-look and continued-editing hierarchy. It does not yet define the full long-term relationship between bottom console demotion and shared workflow chrome across dense sequential circuits.
 - Future Design interaction work should extend this note instead of reintroducing header-level chrome ad hoc.
 - Wire reconnect discoverability — RESOLVED (Phase B Slice 6, 2026-04-06). `hoveredWireId` moved to `useLogicViewStore`; `hoveredWireOverlay` memo in LogicCanvas drives discoverable endpoint hint circles on wire hover without requiring prior selection.
+- Wire reconnect visual feedback — RESOLVED (Phase B Slice 7, 2026-04-07). `rewiredWireId` added to `useLogicViewStore` (same pattern as `hoveredWireId`). `isBeingRewired` prop on `WireView` dims the wire group (opacity 0.35) and adds a blue dashed overlay while reconnect is in progress. `circuitForValidation` derived memo excludes the being-replaced wire from `isValidConnection` checks, fixing false duplicate-rejection when reconnecting to the original port. `beginWireReconnect` sets `rewiredWireId`; the cleanup effect and successful commit both clear it.
