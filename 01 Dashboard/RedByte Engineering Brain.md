@@ -192,7 +192,9 @@ Latest product-hardening completions (2026-04-06):
 - workflow spine + shared step authority alignment landed in the shared `projectWorkflowAuthority` path
 - Design-surface interaction landed its first contract slice through sequential inspector hardening
 - Hardware / Export failure truth now uses one dominant status / CTA taxonomy across both surfaces
-- `pnpm repo:status` is still blocked by the existing `ide:gate:project-overview-contract` preview gate in the live dirty baseline
+- Project overview boot truth is restored: `ide:gate:project-overview-contract` now passes after fixing the `primaryProjectCta` boot-order crash in `IdeApp.tsx`
+- repo hygiene pass split the dirty Verify/import UI workstream out of the active branch before starting Project work
+- `pnpm repo:status` is now blocked by `IDE Evidence Capsule Contract`, not by Project overview boot/render failure
 
 Use its recommended implementation order:
 
@@ -206,7 +208,7 @@ Examples, starters, and classroom ops should ride inside those tracks as proof o
 
 Next product-hardening action:
 
-- onboarding / empty-state cleanup, with Project loaded-state readability and Import entry-path coherence first
+- onboarding / empty-state cleanup, with Project loaded-state readability and next-action hierarchy first, then Import entry-path coherence
 
 ---
 

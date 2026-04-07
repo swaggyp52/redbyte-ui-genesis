@@ -1,5 +1,45 @@
 # AI State
 
+## Change Log 2026-04-06 (Project overview boot restore + repo hygiene triage)
+
+**Subsystem**: IDE shell startup / Project overview gate
+
+### Problem
+
+The next product-hardening target was Project/Import onboarding, but the repo was still carrying a separate dirty Verify/import UI workstream plus local-only Ollama helper files. On top of that, the actual red repo-health blocker was not a ProjectSurface copy/layout issue yet — the IDE was crashing before Project mode mounted, so `ide:gate:project-overview-contract` could not even see `[data-testid="ide-mode-project"]`.
+
+### What changed
+
+- Repo hygiene
+  - Preserved the unrelated Verify/import UI workstream in stash:
+    - `stash@{0}` — `wip: verify-stimulus and import ui cleanup triage`
+  - Removed local-only root helper files that were not part of the repo contract:
+    - `Modelfile`
+    - `start-local.ps1`
+  - Cleaned tracked ignore rules in `.gitignore`:
+    - kept `.aider*`
+    - kept a single `.env`
+    - removed the accidental duplicate `.env`
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Fixed the Project boot blocker by moving `handleProjectPrimaryAction` below shared workflow-authority initialization.
+  - This removed the TDZ crash where `primaryProjectCta` was read before initialization during IDE boot.
+
+### Validation
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx` OK (12/12)
+- `pnpm -s ide:gate:project-overview-contract` OK
+- `pnpm --filter @redbyte/playground build` OK
+- `pnpm repo:status`
+  - `IDE Project Overview Contract` now passes
+  - current repo-health blocker moved forward to `IDE Evidence Capsule Contract`
+
+### Remaining concern
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx`
+  - `ideWorkbenchShell.test.tsx` passed
+  - `ideApp.labday-wiring.test.tsx` reported missing Verify session test ids (`ide-verify-session-mode`, `ide-verify-session-status`) and was not reopened in this Project-first slice because the separate Verify/import UI workstream had already been triaged out of the branch.
+
 ## Change Log 2026-04-06 (Hardware and Export failure-truth unification)
 
 **Subsystem**: Hardware / Export workflow recovery truth
