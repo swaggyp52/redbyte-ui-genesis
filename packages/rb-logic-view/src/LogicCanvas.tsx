@@ -221,6 +221,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const setToolMode = useLogicViewStore((state) => state.setToolMode);
   const setInteractionMode = useLogicViewStore((state) => state.setInteractionMode);
   const setEditingState = useLogicViewStore((state) => state.setEditingState);
+  const hoveredWireId = useLogicViewStore((state) => state.hoveredWireId);
+  const setHoveredWireId = useLogicViewStore((state) => state.setHoveredWireId);
 
   const zoomFn = zoom;
   const shouldSnap = snapToGridEnabled;
@@ -228,7 +230,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   // Use external circuit if provided, otherwise poll from engine
   const [internalCircuit, setInternalCircuit] = React.useState(engine.getCircuit());
   const circuit = externalCircuit ?? internalCircuit;
-  const [hoveredWireId, setHoveredWireId] = React.useState<string | null>(null);
   const wireToNetId = React.useMemo(() => computeWireNetIds(circuit.connections), [circuit.connections]);
   const hoveredNetId = hoveredWireId ? wireToNetId.get(hoveredWireId) ?? null : null;
   const selectedNetIds = React.useMemo(() => {
@@ -1181,6 +1182,38 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
   }, [camera.x, camera.y, camera.zoom, circuit.connections, circuit.nodes, selection.wires]);
 
+  // Hovered wire endpoint overlay — shows discoverable handles without requiring prior selection.
+  // Returns null when: no wire is hovered, the hovered wire is already selected (selected handles take over),
+  // or the wire/nodes can't be resolved.
+  const hoveredWireOverlay = React.useMemo(() => {
+    if (!hoveredWireId) return null;
+    if (selection.wires.has(hoveredWireId)) return null; // selected layer already shows handles
+
+    const connection = circuit.connections.find((entry) => toWireId(entry) === hoveredWireId);
+    if (!connection) return null;
+
+    const { fromNodeId, fromPortName, toNodeId, toPortName } = resolveConnectionEndpoints(connection);
+    const fromNode = circuit.nodes.find((node) => node.id === fromNodeId);
+    const toNode = circuit.nodes.find((node) => node.id === toNodeId);
+    if (!fromNode || !toNode || !fromNode.position || !toNode.position) return null;
+
+    return {
+      wireId: hoveredWireId,
+      from: {
+        nodeId: fromNodeId,
+        portName: fromPortName,
+        x: (fromNode.position.x + 24) * camera.zoom + camera.x,
+        y: fromNode.position.y * camera.zoom + camera.y,
+      },
+      to: {
+        nodeId: toNodeId,
+        portName: toPortName,
+        x: (toNode.position.x - 24) * camera.zoom + camera.x,
+        y: toNode.position.y * camera.zoom + camera.y,
+      },
+    };
+  }, [camera.x, camera.y, camera.zoom, circuit.connections, circuit.nodes, hoveredWireId, selection.wires]);
+
   return (
     <CanvasHost
       id="playground-canvas"
@@ -1492,6 +1525,48 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             );
           })()}
         </g>
+
+        {/* Hovered wire endpoint hints — discoverable before selection */}
+        {hoveredWireOverlay ? (
+          <g key="wire-hover-endpoint-layer" data-testid="logic-wire-hover-endpoint-layer">
+            {(['from', 'to'] as const).map((endpointKey) => {
+              const endpoint = hoveredWireOverlay[endpointKey];
+              return (
+                <g
+                  key={`${hoveredWireOverlay.wireId}-hint-${endpointKey}`}
+                  data-testid={`logic-wire-endpoint-hint-${endpointKey}`}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    selectWire(hoveredWireOverlay.wireId, false);
+                    beginWireReconnect(hoveredWireOverlay.wireId, endpointKey);
+                  }}
+                  style={{ cursor: 'crosshair' }}
+                >
+                  <circle
+                    cx={endpoint.x}
+                    cy={endpoint.y}
+                    r={10}
+                    fill="rgba(142, 199, 255, 0.12)"
+                    stroke="#8ec7ff"
+                    strokeWidth={1.5}
+                    opacity={0.6}
+                  />
+                  <circle
+                    cx={endpoint.x}
+                    cy={endpoint.y}
+                    r={3}
+                    fill="#8ec7ff"
+                    opacity={0.7}
+                  />
+                </g>
+              );
+            })}
+          </g>
+        ) : null}
 
         {/* Selected wire reconnect handles */}
         {selectedWireOverlay ? (

@@ -105,6 +105,10 @@ export interface LogicViewState {
   startWire: (port: PortRef) => void;
   endWire: () => void;
 
+  // Hover state (wire hover — drives endpoint affordance handles)
+  hoveredWireId: string | null;
+  setHoveredWireId: (id: string | null) => void;
+
   // Settings
   snapToGrid: boolean;
   toggleSnapToGrid: () => void;
@@ -314,6 +318,10 @@ function createLogicViewStore() {
           wireStartPort: undefined,
         },
       })),
+
+    // Hover state
+    hoveredWireId: null,
+    setHoveredWireId: (id) => set({ hoveredWireId: id }),
 
     // Settings
     snapToGrid: true,
