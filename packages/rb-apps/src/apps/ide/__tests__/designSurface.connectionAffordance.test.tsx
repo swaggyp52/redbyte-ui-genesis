@@ -106,6 +106,7 @@ beforeEach(() => {
     snapToGrid: true,
     gridSize: 16,
     hoveredWireId: null,
+    rewiredWireId: null,
   });
 });
 
@@ -265,5 +266,120 @@ describe('DesignSurface — wire endpoint hover affordance', () => {
     // Hover hint handles must NOT render (selected state takes over)
     expect(view.queryByTestId('logic-wire-endpoint-hint-from')).toBeNull();
     expect(view.queryByTestId('logic-wire-endpoint-hint-to')).toBeNull();
+  });
+});
+
+// ─── Wire reconnect visual feedback (Slice 7) ────────────────────────────────
+
+describe('DesignSurface — wire reconnect visual feedback', () => {
+  // Each test in this block needs a connected circuit
+  beforeEach(() => {
+    useCircuitStore.setState({
+      circuit: structuredClone(CONNECTED_CIRCUIT),
+      isDirty: false,
+      past: [],
+      future: [],
+    });
+  });
+
+  it('wire being replaced is visually ghosted while reconnect is in progress', async () => {
+    const view = renderSurface();
+
+    // Confirm the wire is present and NOT ghosted initially
+    const wireEl = view.container.querySelector('[data-wire-id="sw0_node.out-ld0_node.in"]');
+    expect(wireEl).not.toBeNull();
+    expect(wireEl!.getAttribute('data-wire-being-rewired')).not.toBe('1');
+
+    // Simulate reconnect-in-progress by setting rewiredWireId in the store
+    act(() => {
+      useLogicViewStore.setState({
+        rewiredWireId: 'sw0_node.out-ld0_node.in',
+        interactionMode: 'wiring',
+        editingState: {
+          isDragging: false,
+          wireStartPort: { nodeId: 'ld0_node', portName: 'in' },
+        },
+      });
+    });
+
+    await waitFor(() => {
+      const el = view.container.querySelector('[data-wire-id="sw0_node.out-ld0_node.in"]');
+      expect(el!.getAttribute('data-wire-being-rewired')).toBe('1');
+    });
+  });
+
+  it('wire returns to normal appearance when reconnect ends', async () => {
+    const view = renderSurface();
+
+    // Start reconnect
+    act(() => {
+      useLogicViewStore.setState({
+        rewiredWireId: 'sw0_node.out-ld0_node.in',
+        interactionMode: 'wiring',
+        editingState: {
+          isDragging: false,
+          wireStartPort: { nodeId: 'ld0_node', portName: 'in' },
+        },
+      });
+    });
+
+    await waitFor(() => {
+      const el = view.container.querySelector('[data-wire-id="sw0_node.out-ld0_node.in"]');
+      expect(el!.getAttribute('data-wire-being-rewired')).toBe('1');
+    });
+
+    // End reconnect (cancel)
+    act(() => {
+      useLogicViewStore.setState({
+        rewiredWireId: null,
+        interactionMode: 'idle',
+        editingState: { isDragging: false },
+      });
+    });
+
+    await waitFor(() => {
+      const el = view.container.querySelector('[data-wire-id="sw0_node.out-ld0_node.in"]');
+      expect(el!.getAttribute('data-wire-being-rewired')).not.toBe('1');
+    });
+  });
+
+  it('a second wire on a different node is NOT ghosted during reconnect', async () => {
+    // Use a circuit with two wires
+    const twoWireCircuit = {
+      nodes: [
+        { id: 'sw0_node', type: 'INPUT', label: 'SW0', position: { x: 0, y: 0 }, rotation: 0, config: {}, state: { isOn: 1 } },
+        { id: 'sw1_node', type: 'INPUT', label: 'SW1', position: { x: 0, y: 80 }, rotation: 0, config: {}, state: { isOn: 0 } },
+        { id: 'and0_node', type: 'AND', position: { x: 200, y: 40 }, rotation: 0, config: {}, state: {} },
+      ],
+      connections: [
+        { from: { nodeId: 'sw0_node', portName: 'out' }, to: { nodeId: 'and0_node', portName: 'in1' } },
+        { from: { nodeId: 'sw1_node', portName: 'out' }, to: { nodeId: 'and0_node', portName: 'in2' } },
+      ],
+    };
+    useCircuitStore.setState({ circuit: twoWireCircuit, isDirty: false, past: [], future: [] });
+
+    const view = renderSurface();
+
+    // Reconnect only the first wire
+    act(() => {
+      useLogicViewStore.setState({
+        rewiredWireId: 'sw0_node.out-and0_node.in1',
+        interactionMode: 'wiring',
+        editingState: {
+          isDragging: false,
+          wireStartPort: { nodeId: 'and0_node', portName: 'in1' },
+        },
+      });
+    });
+
+    await waitFor(() => {
+      const el = view.container.querySelector('[data-wire-id="sw0_node.out-and0_node.in1"]');
+      expect(el!.getAttribute('data-wire-being-rewired')).toBe('1');
+    });
+
+    // The OTHER wire must remain un-ghosted
+    const otherEl = view.container.querySelector('[data-wire-id="sw1_node.out-and0_node.in2"]');
+    expect(otherEl).not.toBeNull();
+    expect(otherEl!.getAttribute('data-wire-being-rewired')).not.toBe('1');
   });
 });

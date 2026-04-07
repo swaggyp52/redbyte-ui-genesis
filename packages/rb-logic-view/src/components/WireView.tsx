@@ -97,6 +97,7 @@ export interface WireViewProps {
   presentationZoomMode?: 'dense' | 'classroom';
   isSelected: boolean;
   isHovered?: boolean;
+  isBeingRewired?: boolean;
   isNetHighlighted?: boolean;
   onSelect: (wireId: string, addToSelection: boolean) => void;
   onHover?: (wireId: string | null) => void;
@@ -113,6 +114,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
   presentationZoomMode = 'dense',
   isSelected,
   isHovered = false,
+  isBeingRewired = false,
   isNetHighlighted = false,
   onSelect,
   onHover,
@@ -168,6 +170,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
       data-wire-id={wireId}
       data-wire-hovered={isHovered ? '1' : '0'}
       data-wire-selected={isSelected ? '1' : '0'}
+      data-wire-being-rewired={isBeingRewired ? '1' : '0'}
       data-wire-zoom-band={zoomBand}
       onClick={handleClick}
       onContextMenu={(event) => {
@@ -177,7 +180,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
       }}
       onMouseEnter={() => onHover?.(wireId)}
       onMouseLeave={() => onHover?.(null)}
-      style={{ cursor: 'pointer' }}
+      style={{ cursor: 'pointer', opacity: isBeingRewired ? 0.35 : undefined }}
     >
       {/* Invisible wider path for easier clicking */}
       <path d={path} fill="none" stroke="transparent" strokeWidth={bandStyle.hitWidth} />
@@ -299,6 +302,18 @@ const WireViewComponent: React.FC<WireViewProps> = ({
           strokeWidth={bandStyle.overlayStroke}
           strokeDasharray="9 6"
           opacity={0.9}
+        />
+      )}
+
+      {/* Ghost dash overlay when this wire is being replaced by a reconnect */}
+      {isBeingRewired && (
+        <path
+          d={path}
+          fill="none"
+          stroke="#8ec7ff"
+          strokeWidth={bandStyle.overlayStroke}
+          strokeDasharray="6 5"
+          opacity={0.55}
         />
       )}
 
