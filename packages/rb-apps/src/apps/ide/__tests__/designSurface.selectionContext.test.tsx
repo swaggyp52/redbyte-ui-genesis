@@ -247,6 +247,27 @@ describe('DesignSurface — single-node inspector action groups', () => {
 // ─── Multi-select inspector action hierarchy ──────────────────────────────────
 
 describe('DesignSurface — multi-select inspector action groups', () => {
+  it('shows an Arrange group with align-left and align-top actions before Danger', async () => {
+    const view = renderSurface();
+
+    act(() => {
+      useLogicViewStore.getState().selectMultipleNodes(['sw0_node', 'ld0_node']);
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-inspector-arrange-group')).toBeTruthy();
+    });
+
+    const arrangeGroup = view.getByTestId('ide-design-inspector-arrange-group');
+    const dangerGroup = view.getByTestId('ide-design-inspector-danger-group');
+    const position = arrangeGroup.compareDocumentPosition(dangerGroup);
+
+    expect(arrangeGroup.textContent).toContain('Arrange');
+    expect(view.getByTestId('ide-design-align-left-btn').textContent).toContain('Align left');
+    expect(view.getByTestId('ide-design-align-top-btn').textContent).toContain('Align top');
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('delete button shows node count, not static "selected nodes"', async () => {
     const view = renderSurface();
 

@@ -1,5 +1,49 @@
 # AI State
 
+## Change Log 2026-04-07 (Design grouped alignment actions)
+
+**Subsystem**: Design surface grouped layout cleanup
+
+### Problem
+
+Phase B had already restored group capture, grouped nudging, duplicate, delete, and inspector continuity, but the next sustained-use failure remained obvious on larger circuits: once a student captured a real logic cluster, there was still no fast way to clean up shared edges. The editor could move a group, but it still could not quickly straighten it.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Added a shared grouped-alignment handler that reuses the existing Design-surface circuit mutation path instead of opening new store or toolbar architecture.
+  - Added `Align left` and `Align top` as the first explicit grouped-arrange actions in the multi-select inspector.
+  - Kept the scope intentionally narrow:
+    - only selected nodes move
+    - selection is preserved after alignment
+    - existing marquee, duplicate, delete, and Arrow-key movement behavior stays unchanged
+  - Updated the grouped-selection inspector copy so the next editing move is not just "nudge or duplicate"; grouped edge cleanup is now visible in the Design workflow.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx`
+    - Added live regressions proving `Align left` snaps a selected group to the shared left edge while preserving the current selection.
+    - Added live regressions proving `Align top` snaps a selected group to the shared top edge without disturbing horizontal spacing.
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx`
+    - Added coverage proving the multi-select inspector now exposes an `Arrange` group with `Align left` and `Align top` before `Danger`.
+
+### Validation
+
+- Failing baseline captured first:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx`
+    - failed on missing arrange-group inspector affordances and missing grouped alignment actions
+- Passing verification after implementation:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx` OK (`38/38`)
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx` OK (`66/66`)
+
+### Remaining concern
+
+- Slice 9 intentionally stops at the first real arrangement win. It does not yet provide spacing/tidy/distribute actions, and it does not open a broader alignment suite.
+- Alignment currently uses node origin edges, which is correct for the current standard node geometry. If future Design work introduces more varied node footprints, grouped layout tools may eventually need richer per-node bounds metadata.
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-04-07 (Design box-select capture hardening + canonical rescue branch truth)
 
 **Subsystem**: Design surface grouped selection capture

@@ -1133,6 +1133,54 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     deleteSelection();
   }, [deleteSelection, handleCopy, selection.nodes]);
 
+  const handleAlignSelection = useCallback((edge: 'left' | 'top') => {
+    if (selection.nodes.size < 2) return;
+    const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
+    if (selectedNodes.length < 2) return;
+
+    const targetCoordinate =
+      edge === 'left'
+        ? Math.min(...selectedNodes.map((node) => node.position?.x ?? 0))
+        : Math.min(...selectedNodes.map((node) => node.position?.y ?? 0));
+
+    let didChange = false;
+    const next = {
+      ...circuit,
+      nodes: circuit.nodes.map((node) => {
+        if (!selection.nodes.has(node.id)) return node;
+        const currentPosition = {
+          x: node.position?.x ?? 0,
+          y: node.position?.y ?? 0,
+        };
+        const nextPosition =
+          edge === 'left'
+            ? { x: targetCoordinate, y: currentPosition.y }
+            : { x: currentPosition.x, y: targetCoordinate };
+
+        if (
+          currentPosition.x === nextPosition.x &&
+          currentPosition.y === nextPosition.y
+        ) {
+          return node;
+        }
+
+        didChange = true;
+        return {
+          ...node,
+          position: nextPosition,
+        };
+      }),
+    };
+
+    if (!didChange) return;
+
+    updateCircuit(next, { skipHistory: true, enforceLimits: true });
+    setActionToast(
+      `Aligned ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} to the ${edge}.`
+    );
+    emitCircuitMutation(next);
+  }, [circuit, emitCircuitMutation, selection.nodes, updateCircuit]);
+
   const handleNudgeSelection = useCallback((dx: number, dy: number) => {
     if (selection.nodes.size === 0) return;
     if (dx === 0 && dy === 0) return;
@@ -3307,7 +3355,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <strong data-testid="ide-design-multiselect-count">{selection.nodes.size} nodes selected</strong>
                 </div>
                 <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
-                  Use Arrow keys to nudge this group, hold Shift for larger moves, or press Ctrl+D / Cmd+D to duplicate it.
+                  Use Arrow keys to nudge this group, align shared edges when it gets messy, or press Ctrl+D / Cmd+D to duplicate it.
                 </p>
               </div>
               <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
@@ -3589,6 +3637,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   Paste
                 </IdeButton>
               ) : null}
+            </div>
+          </div>
+          <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-arrange-group">
+            <span className="ide-design-inspector-group-label">Arrange</span>
+            <div className="ide-design-inspector-action-grid">
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('left')} testId="ide-design-align-left-btn">
+                Align left
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('top')} testId="ide-design-align-top-btn">
+                Align top
+              </IdeButton>
             </div>
           </div>
           {onSaveMacro && selectedNodeIdsAll.length >= 2 ? (

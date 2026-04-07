@@ -206,6 +206,7 @@ Latest design-rescue completions (2026-04-07):
 - confirmed `feat/design-phase-b-editing-power` is the canonical Design rescue line; the adjacent rescue branches are already contained ancestors, so no history rewrite or rescue-branch merge was required
 - hardened grouped selection capture so box-select now works by standard node-body overlap instead of node origin only, and additive marquee preserves the current group
 - focused Design validation now proves the trusted loop end-to-end: bounds-aware marquee -> grouped selection -> Arrow-key nudge / duplicate / delete continuation
+- landed the first grouped layout cleanup actions in Design: the multi-select inspector now exposes `Align left` and `Align top`, both reusing the existing mutation path and preserving the selected group
 
 Use its recommended implementation order:
 
@@ -219,7 +220,7 @@ Examples, starters, and classroom ops should ride inside those tracks as proof o
 
 Next product-hardening action:
 
-- continue Design Phase B with grouped layout power, starting with align/tidy on top of the now-trustworthy marquee / duplicate / nudge loop
+- continue Design Phase B with grouped layout power by adding one simple tidy/distribute action on top of the now-trustworthy marquee / align / duplicate / nudge loop
 
 ---
 

@@ -424,6 +424,104 @@ describe('DesignSurface editing power (Slice 2)', () => {
     });
   });
 
+  it('Align left snaps a selected group to the shared left edge and keeps the group selected', async () => {
+    const view = renderSurface();
+
+    act(() => {
+      useCircuitStore.setState((state) => ({
+        ...state,
+        circuit: {
+          ...state.circuit,
+          nodes: state.circuit.nodes.map((node) =>
+            node.id === 'ld0_node'
+              ? {
+                  ...node,
+                  position: {
+                    x: 180,
+                    y: 64,
+                  },
+                }
+              : node
+          ),
+        },
+      }));
+      useLogicViewStore.getState().selectMultipleNodes(['sw0_node', 'ld0_node']);
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-align-left-btn')).toBeTruthy();
+    });
+
+    act(() => {
+      fireEvent.click(view.getByTestId('ide-design-align-left-btn'));
+    });
+
+    await waitFor(() => {
+      const circuit = useCircuitStore.getState().circuit;
+      const sw0Node = circuit.nodes.find((node) => node.id === 'sw0_node');
+      const ld0Node = circuit.nodes.find((node) => node.id === 'ld0_node');
+      expect(sw0Node?.position.x).toBe(0);
+      expect(ld0Node?.position.x).toBe(0);
+    });
+
+    const selectedNodes = useLogicViewStore.getState().selection.nodes;
+    expect(selectedNodes.has('sw0_node')).toBe(true);
+    expect(selectedNodes.has('ld0_node')).toBe(true);
+  });
+
+  it('Align top snaps a selected group to the shared top edge and keeps horizontal spacing intact', async () => {
+    const view = renderSurface();
+
+    act(() => {
+      useCircuitStore.setState((state) => ({
+        ...state,
+        circuit: {
+          ...state.circuit,
+          nodes: state.circuit.nodes.map((node) => {
+            if (node.id === 'sw0_node') {
+              return {
+                ...node,
+                position: {
+                  x: 16,
+                  y: 32,
+                },
+              };
+            }
+            if (node.id === 'ld0_node') {
+              return {
+                ...node,
+                position: {
+                  x: 196,
+                  y: 112,
+                },
+              };
+            }
+            return node;
+          }),
+        },
+      }));
+      useLogicViewStore.getState().selectMultipleNodes(['sw0_node', 'ld0_node']);
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-align-top-btn')).toBeTruthy();
+    });
+
+    act(() => {
+      fireEvent.click(view.getByTestId('ide-design-align-top-btn'));
+    });
+
+    await waitFor(() => {
+      const circuit = useCircuitStore.getState().circuit;
+      const sw0Node = circuit.nodes.find((node) => node.id === 'sw0_node');
+      const ld0Node = circuit.nodes.find((node) => node.id === 'ld0_node');
+      expect(sw0Node?.position.y).toBe(32);
+      expect(ld0Node?.position.y).toBe(32);
+      expect(sw0Node?.position.x).toBe(16);
+      expect(ld0Node?.position.x).toBe(196);
+    });
+  });
+
   it('advertises the grouped editing loop after multiple nodes are selected', async () => {
     const view = renderSurface();
 
