@@ -672,6 +672,27 @@ function readDesignDebugQueryParam(): boolean {
   return normalized === '1' || normalized === 'true' || normalized === 'on' || normalized === 'yes';
 }
 
+/**
+ * Gate type swap families — all types within a family share identical port names
+ * and can be swapped without dropping any connections.
+ *
+ * 2-input family: a, b, out
+ * 3-input family: a, b, c, out
+ */
+const GATE_SWAP_FAMILIES: Partial<Record<string, readonly string[]>> = {
+  AND:   ['NAND', 'NOR', 'OR', 'XOR', 'XNOR'],
+  NAND:  ['AND', 'NOR', 'OR', 'XOR', 'XNOR'],
+  NOR:   ['AND', 'NAND', 'OR', 'XOR', 'XNOR'],
+  OR:    ['AND', 'NAND', 'NOR', 'XOR', 'XNOR'],
+  XOR:   ['AND', 'NAND', 'NOR', 'OR', 'XNOR'],
+  XNOR:  ['AND', 'NAND', 'NOR', 'OR', 'XOR'],
+  AND3:  ['NAND3', 'NOR3', 'OR3', 'XOR3'],
+  NAND3: ['AND3', 'NOR3', 'OR3', 'XOR3'],
+  NOR3:  ['AND3', 'NAND3', 'OR3', 'XOR3'],
+  OR3:   ['AND3', 'NAND3', 'NOR3', 'XOR3'],
+  XOR3:  ['AND3', 'NAND3', 'NOR3', 'OR3'],
+};
+
 export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   onCircuitMutated,
   onRuntimeAddNode,
@@ -2075,6 +2096,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     onRuntimeSimSetInput(selectedNode.id, next);
     setActionToast(`${selectedNode.label || selectedNode.type} → ${next === 1 ? 'HIGH' : 'LOW'}`);
   }, [selectedNode, onRuntimeSimSetInput, liveSignals, queueDesignDebugToggleSample]);
+
+  const handleGateSwap = useCallback((newType: string) => {
+    if (!selectedNode) return;
+    updateNode(selectedNode.id, { type: newType });
+    emitCircuitMutation();
+    setActionToast(`Gate changed to ${newType}`);
+  }, [emitCircuitMutation, selectedNode, updateNode]);
 
   // ── N-1: resolve a raw connection endpoint to { nodeId, portName } ──────────
   const resolveConnectionEndpoint = useCallback(
@@ -3683,6 +3711,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </IdeButton>
             </div>
           </div>
+          {(() => {
+            const swapTargets = GATE_SWAP_FAMILIES[selectedNode.type];
+            return swapTargets && swapTargets.length > 0 ? (
+              <div className="ide-design-inspector-action-group" data-testid="ide-design-swap-group">
+                <span className="ide-design-inspector-group-label">Swap type</span>
+                <div className="ide-design-swap-chips">
+                  {swapTargets.map((targetType) => (
+                    <button
+                      key={targetType}
+                      type="button"
+                      className="ide-design-swap-chip"
+                      data-testid={`ide-design-swap-${targetType.toLowerCase()}`}
+                      onClick={() => handleGateSwap(targetType)}
+                    >
+                      {targetType}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null;
+          })()}
           {selectedSequentialInspector?.actionLabel &&
           ((selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort) ||
             (selectedSequentialInspector.actionKind === 'go-to-hardware' && onGoToHardware)) ? (
@@ -4009,22 +4058,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
               </div>
               <div className="ide-kv-row">
-                <span>Driver / Source</span>
-                <span>{selectedNodeConnectionSummary?.incomingLabel ?? 'Primary source'}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Fan-in / Fan-out</span>
-                <span>{selectedNodeConnectionSummary?.fanIn ?? 0} / {selectedNodeConnectionSummary?.fanOut ?? 0}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Board mapping</span>
-                <span>{selectedNodeIoRow ? `${selectedNodeIoRow.label} -> ${selectedNodeIoRow.pin || 'unmapped'}` : 'None'}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Probe state</span>
-                <span>{isActiveInspectorSignalPinned ? 'Pinned' : 'Not pinned'}</span>
-              </div>
-              <div className="ide-kv-row">
                 <span>Trace state</span>
                 <span data-testid="ide-design-context-trace-state">
                   {traceState?.nodeIds.has(selectedNode.id) ? traceState.label : 'No trace locked'}
@@ -4180,7 +4213,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       diagnostic.severity === 'error' ? 'is-error' : 'is-warning'
                     }`}
                   >
-                    <span>{diagnostic.code}</span>
                     <span>{diagnostic.message}</span>
                   </li>
                 ))}

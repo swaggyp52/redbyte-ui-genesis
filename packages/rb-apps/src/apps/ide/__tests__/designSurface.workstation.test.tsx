@@ -241,7 +241,8 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-context-previous').textContent).toBe('0');
     expect(view.getByTestId('ide-design-context-transition').textContent).toContain('rising');
     expect(view.getByTestId('ide-design-context-last-transition').textContent).toBe('6');
-    expect(view.getByTestId('ide-design-context-inspector').textContent).toContain('LD0 -> U16');
+    // Board mapping is shown in the identity card (not Signal/State section) — cleaned up in B-10
+    expect(view.getByTestId('ide-design-inspector-identity-card').textContent).toContain('LD0 -> U16');
     const controlBar = view.getByTestId('ide-design-control-bar');
     expect(controlBar.contains(view.getByTestId('ide-design-authoring-issues'))).toBe(true);
     expect(controlBar.contains(view.getByTestId('ide-design-sim-story-strip'))).toBe(true);
