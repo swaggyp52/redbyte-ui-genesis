@@ -1181,6 +1181,65 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     emitCircuitMutation(next);
   }, [circuit, emitCircuitMutation, selection.nodes, updateCircuit]);
 
+  const handleDistributeSelectionHorizontally = useCallback(() => {
+    if (selection.nodes.size < 3) return;
+    const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
+    if (selectedNodes.length < 3) return;
+
+    const sortedNodes = [...selectedNodes].sort((left, right) => {
+      const leftX = left.position?.x ?? 0;
+      const rightX = right.position?.x ?? 0;
+      if (leftX !== rightX) return leftX - rightX;
+      const leftY = left.position?.y ?? 0;
+      const rightY = right.position?.y ?? 0;
+      if (leftY !== rightY) return leftY - rightY;
+      return left.id.localeCompare(right.id);
+    });
+
+    const leftmostX = sortedNodes[0]?.position?.x ?? 0;
+    const rightmostX = sortedNodes[sortedNodes.length - 1]?.position?.x ?? 0;
+    const step = (rightmostX - leftmostX) / (sortedNodes.length - 1);
+    const distributedXById = new Map(
+      sortedNodes.map((node, index) => [node.id, leftmostX + step * index])
+    );
+
+    let didChange = false;
+    const next = {
+      ...circuit,
+      nodes: circuit.nodes.map((node) => {
+        if (!selection.nodes.has(node.id)) return node;
+        const targetX = distributedXById.get(node.id);
+        if (typeof targetX !== 'number') return node;
+
+        const currentPosition = {
+          x: node.position?.x ?? 0,
+          y: node.position?.y ?? 0,
+        };
+
+        if (currentPosition.x === targetX) {
+          return node;
+        }
+
+        didChange = true;
+        return {
+          ...node,
+          position: {
+            x: targetX,
+            y: currentPosition.y,
+          },
+        };
+      }),
+    };
+
+    if (!didChange) return;
+
+    updateCircuit(next, { skipHistory: true, enforceLimits: true });
+    setActionToast(
+      `Distributed ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} horizontally.`
+    );
+    emitCircuitMutation(next);
+  }, [circuit, emitCircuitMutation, selection.nodes, updateCircuit]);
+
   const handleNudgeSelection = useCallback((dx: number, dy: number) => {
     if (selection.nodes.size === 0) return;
     if (dx === 0 && dy === 0) return;
@@ -3647,6 +3706,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </IdeButton>
               <IdeButton tone="ghost" onClick={() => handleAlignSelection('top')} testId="ide-design-align-top-btn">
                 Align top
+              </IdeButton>
+              <IdeButton
+                tone="ghost"
+                onClick={handleDistributeSelectionHorizontally}
+                disabled={selection.nodes.size < 3}
+                testId="ide-design-distribute-horizontal-btn"
+              >
+                Distribute horizontally
               </IdeButton>
             </div>
           </div>

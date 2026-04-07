@@ -64,7 +64,13 @@ For the idle inspector / simulation contract, the Design surface must:
   - the multi-select inspector exposes the first grouped-arrange actions directly in the Design workflow:
     - `Align left`
     - `Align top`
+    - `Distribute horizontally`
   - grouped arrange actions must preserve the current selection and move only the selected nodes
+  - grouped horizontal distribution must:
+    - use the current left-to-right order
+    - keep the leftmost and rightmost selected nodes anchored
+    - redistribute only the intermediate selected nodes
+    - preserve existing `y` positions
   - inspector copy must advertise grouped movement and duplication instead of generic bulk wording
 - show timing-aware inspector semantics for sequential selections:
   - clocks identify timing-source role and mapped board context when present
@@ -136,6 +142,6 @@ The global handler currently owns: G (grid toggle), Ctrl+C/V/D/A/X, Shift+F (fit
 
 - The current contract covers first-look and continued-editing hierarchy. It does not yet define the full long-term relationship between bottom console demotion and shared workflow chrome across dense sequential circuits.
 - Future Design interaction work should extend this note instead of reintroducing header-level chrome ad hoc.
-- Simple tidy/distribute operations remain the next grouped-editing expansion point now that box-select capture, duplicate, delete, nudge, and first-pass edge alignment are all in the trusted path.
+- One more simple grouped tidy action remains the next expansion point now that box-select capture, duplicate, delete, nudge, edge alignment, and horizontal distribution are all in the trusted path.
 - Wire reconnect discoverability — RESOLVED (Phase B Slice 6, 2026-04-06). `hoveredWireId` moved to `useLogicViewStore`; `hoveredWireOverlay` memo in LogicCanvas drives discoverable endpoint hint circles on wire hover without requiring prior selection.
 - Wire reconnect visual feedback — RESOLVED (Phase B Slice 7, 2026-04-07). `rewiredWireId` added to `useLogicViewStore` (same pattern as `hoveredWireId`). `isBeingRewired` prop on `WireView` dims the wire group (opacity 0.35) and adds a blue dashed overlay while reconnect is in progress. `circuitForValidation` derived memo excludes the being-replaced wire from `isValidConnection` checks, fixing false duplicate-rejection when reconnecting to the original port. `beginWireReconnect` sets `rewiredWireId`; the cleanup effect and successful commit both clear it.

@@ -207,6 +207,7 @@ Latest design-rescue completions (2026-04-07):
 - hardened grouped selection capture so box-select now works by standard node-body overlap instead of node origin only, and additive marquee preserves the current group
 - focused Design validation now proves the trusted loop end-to-end: bounds-aware marquee -> grouped selection -> Arrow-key nudge / duplicate / delete continuation
 - landed the first grouped layout cleanup actions in Design: the multi-select inspector now exposes `Align left` and `Align top`, both reusing the existing mutation path and preserving the selected group
+- landed the first simple tidy pass in Design: the multi-select inspector now exposes `Distribute horizontally`, which uses current left-to-right order while keeping endpoints anchored
 
 Use its recommended implementation order:
 
@@ -220,7 +221,7 @@ Examples, starters, and classroom ops should ride inside those tracks as proof o
 
 Next product-hardening action:
 
-- continue Design Phase B with grouped layout power by adding one simple tidy/distribute action on top of the now-trustworthy marquee / align / duplicate / nudge loop
+- continue Design Phase B with one more narrow grouped layout action, most likely a vertical distribute or equivalent tidy pass, on top of the now-trustworthy marquee / align / distribute / duplicate / nudge loop
 
 ---
 

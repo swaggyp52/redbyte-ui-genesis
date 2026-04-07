@@ -1,5 +1,45 @@
 # AI State
 
+## Change Log 2026-04-07 (Design horizontal group distribution)
+
+**Subsystem**: Design surface grouped layout cleanup
+
+### Problem
+
+Phase B had already restored capture, grouped movement, duplicate, delete, and first-pass edge alignment, but larger-circuit cleanup still stalled once three or more selected nodes needed to be spaced into a readable left-to-right lane. The editor could align edges, but it still could not do the first real tidy pass after selection.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Added one grouped tidy action inside the existing multi-select `Arrange` group: `Distribute horizontally`.
+  - The action sorts selected nodes by current `x` position, preserves the leftmost and rightmost anchors, and redistributes intermediate nodes to even horizontal spacing.
+  - Preserved the existing group selection after distribution and left `y` positions untouched so the action stays predictable and narrow.
+  - Kept the action visible but disabled when fewer than three nodes are selected.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx`
+    - Added coverage proving the `Arrange` group now includes `Distribute horizontally` and that the action is disabled for two-node selections.
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx`
+    - Added a live regression proving a three-node selection distributes by current left-to-right order, keeps endpoints anchored, preserves `y` positions, and keeps the group selected.
+
+### Validation
+
+- Failing baseline captured first:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx`
+    - failed on missing `Distribute horizontally` affordance and missing grouped distribution behavior
+- Passing verification after implementation:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx` OK (`39/39`)
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx` OK (`67/67`)
+
+### Remaining concern
+
+- This slice intentionally lands only one simple distribution action. Vertical distribution or a broader tidy pass remains deferred.
+- Distribution currently uses current node origin positions. If future Design work introduces more varied node footprints, grouped tidy tools may eventually need richer per-node bounds metadata.
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-04-07 (Design grouped alignment actions)
 
 **Subsystem**: Design surface grouped layout cleanup

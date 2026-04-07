@@ -265,6 +265,8 @@ describe('DesignSurface — multi-select inspector action groups', () => {
     expect(arrangeGroup.textContent).toContain('Arrange');
     expect(view.getByTestId('ide-design-align-left-btn').textContent).toContain('Align left');
     expect(view.getByTestId('ide-design-align-top-btn').textContent).toContain('Align top');
+    expect(view.getByTestId('ide-design-distribute-horizontal-btn').textContent).toContain('Distribute horizontally');
+    expect((view.getByTestId('ide-design-distribute-horizontal-btn') as HTMLButtonElement).disabled).toBe(true);
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 

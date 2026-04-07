@@ -522,6 +522,72 @@ describe('DesignSurface editing power (Slice 2)', () => {
     });
   });
 
+  it('Distribute horizontally spaces a three-node group by current left-to-right order and keeps the group selected', async () => {
+    const view = renderSurface();
+
+    act(() => {
+      useCircuitStore.setState((state) => ({
+        ...state,
+        circuit: {
+          ...state.circuit,
+          nodes: [
+            {
+              id: 'sw0_node',
+              type: 'INPUT',
+              position: { x: 180, y: 16 },
+              rotation: 0,
+              config: {},
+              state: { isOn: 1 },
+            },
+            {
+              id: 'and0_node',
+              type: 'AND',
+              position: { x: 60, y: 96 },
+              rotation: 0,
+              config: {},
+              state: {},
+            },
+            {
+              id: 'ld0_node',
+              type: 'OUTPUT',
+              position: { x: 0, y: 48 },
+              rotation: 0,
+              config: {},
+              state: {},
+            },
+          ],
+        },
+      }));
+      useLogicViewStore.getState().selectMultipleNodes(['sw0_node', 'and0_node', 'ld0_node']);
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-distribute-horizontal-btn')).toBeTruthy();
+    });
+
+    act(() => {
+      fireEvent.click(view.getByTestId('ide-design-distribute-horizontal-btn'));
+    });
+
+    await waitFor(() => {
+      const circuit = useCircuitStore.getState().circuit;
+      const sw0Node = circuit.nodes.find((node) => node.id === 'sw0_node');
+      const and0Node = circuit.nodes.find((node) => node.id === 'and0_node');
+      const ld0Node = circuit.nodes.find((node) => node.id === 'ld0_node');
+      expect(ld0Node?.position.x).toBe(0);
+      expect(and0Node?.position.x).toBe(90);
+      expect(sw0Node?.position.x).toBe(180);
+      expect(ld0Node?.position.y).toBe(48);
+      expect(and0Node?.position.y).toBe(96);
+      expect(sw0Node?.position.y).toBe(16);
+    });
+
+    const selectedNodes = useLogicViewStore.getState().selection.nodes;
+    expect(selectedNodes.has('sw0_node')).toBe(true);
+    expect(selectedNodes.has('and0_node')).toBe(true);
+    expect(selectedNodes.has('ld0_node')).toBe(true);
+  });
+
   it('advertises the grouped editing loop after multiple nodes are selected', async () => {
     const view = renderSurface();
 
