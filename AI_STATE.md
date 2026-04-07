@@ -1,6 +1,41 @@
 # AI State
 
-## Change Log 2026-04-07 (Inspector Truth Overhaul — Slice 8)
+## Change Log 2026-04-07 (Inspector Signal Intelligence — Phase B-9)
+
+**Subsystem**: Design surface inspector / live signal context and input control
+
+### Problem
+
+The inspector was clean (Phase B-8 removed developer internals) but still passive. Students could read signal values from it but could not act through it:
+1. Selecting a gate showed its own pin values but not the names/values of nodes driving its inputs
+2. Selecting an INPUT/Switch node showed no way to toggle its value from the inspector — required finding the node on canvas
+3. The trace buttons existed but had to be manually clicked; no auto-activation when sim was running
+4. Selecting a wire showed signal/current/previous but no clear A→B connection summary
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - **Slice 1 — Driver context panel**: New `selectedNodeInputDrivers` useMemo (after line ~2873). For each input port of the selected node, resolves the driver node via `circuit.connections` + `resolveConnectionEndpoint`. Renders `div.ide-design-selection-drivers` with per-port rows (`testId="ide-design-driver-row-{port}"`) showing driver label and HIGH/LOW value. Hidden when `liveSignals.size === 0` (sim hasn't run yet).
+  - **Slice 2 — Input node toggle**: New `handleInspectorInputToggle` useCallback (after selectedNode declaration). New input control group in `renderSelectionActions()` that appears when `selectedNode.type === 'INPUT' || selectedNode.type === 'Switch'` and `onRuntimeSimSetInput` is wired. Shows toggle button with current HIGH/LOW state. Click calls `queueDesignDebugToggleSample(..., 'inspector')` + `onRuntimeSimSetInput(id, next)`. Extended `source` union to include `'inspector'`.
+  - **Slice 3 — Auto-trace on selection**: New `autoTracedNodeRef` + `traceStateRef` refs (near existing trace refs). New `useEffect` (after `selectedNodeInputDrivers` useMemo) that calls `handleFanoutTrace(selectedNode.id)` when `runtimeSim.running && selectedNode && !traceStateRef.current`. Clears trace when selection lost. Does not override manually-set traces.
+  - **Slice 4 — Wire connection summary**: Added "Connection" kv row (`testId="ide-design-wire-connection"`) as the first row in the `selectedWireContext` wire inspector, showing `{sourceLabel} → {targetLabel}`.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorIntelligence.test.tsx` (new file)
+    - 10 tests covering all four slices; all pass.
+
+### Validation
+
+- RED baseline: 7/10 failing before implementation (3 already-absent features correctly passed)
+- `pnpm -w exec vitest run designSurface.inspectorIntelligence` → 10/10 pass
+- `pnpm -w exec vitest run designSurface` → 168/168 pass (no regressions)
+
+### Remaining concern
+
+- `handleFanoutTrace` is toggled — calling it twice for the same node clears the trace. The auto-trace effect guards with `!traceStateRef.current` to prevent accidental double-clear.
+- Driver context shows node labels; nodes without explicit labels fall back to their ID (e.g. 'and0_node'). Consider adding a human-readable fallback based on node type in a future pass.
+
+
 
 **Subsystem**: Design surface inspector / student-facing information contract
 

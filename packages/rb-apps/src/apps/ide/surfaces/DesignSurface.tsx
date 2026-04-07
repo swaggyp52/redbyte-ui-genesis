@@ -851,6 +851,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const previousToolModeRef = useRef(toolMode);
   const previousHasSelectionRef = useRef(false);
   const suppressNextToolModeWireFeedbackClearRef = useRef(false);
+  // Auto-trace refs: track which node was auto-traced and read traceState without dep
+  const autoTracedNodeRef = useRef<string | null>(null);
+  const traceStateRef = useRef<DesignTraceState | null>(null);
+  traceStateRef.current = traceState;
 
   const clearTrace = useCallback(() => {
     lastTracedPortRef.current = null;
@@ -965,7 +969,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return valueById;
   }, [allLiveInputRows]);
   const queueDesignDebugToggleSample = useCallback(
-    (nodeId: string, requestedValue: 0 | 1, source: 'canvas' | 'dock') => {
+    (nodeId: string, requestedValue: 0 | 1, source: 'canvas' | 'dock' | 'inspector') => {
       if (!designDebugEnabled) return;
       pendingDebugToggleRef.current = {
         nodeId,
@@ -2063,6 +2067,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     [editorCircuit.nodes, selectedNodeIds]
   );
 
+  const handleInspectorInputToggle = useCallback(() => {
+    if (!selectedNode || !onRuntimeSimSetInput) return;
+    const current = liveSignals.get(`${selectedNode.id}.out`) ?? 0;
+    const next: 0 | 1 = current === 1 ? 0 : 1;
+    queueDesignDebugToggleSample(selectedNode.id, next, 'inspector');
+    onRuntimeSimSetInput(selectedNode.id, next);
+    setActionToast(`${selectedNode.label || selectedNode.type} → ${next === 1 ? 'HIGH' : 'LOW'}`);
+  }, [selectedNode, onRuntimeSimSetInput, liveSignals, queueDesignDebugToggleSample]);
+
   // ── N-1: resolve a raw connection endpoint to { nodeId, portName } ──────────
   const resolveConnectionEndpoint = useCallback(
     (raw: import('@redbyte/rb-logic-core').Connection['from'] | import('@redbyte/rb-logic-core').Connection['to']): { nodeId: string; portName: string } => {
@@ -2857,6 +2870,37 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       selectedNodeSignalMap,
     ]
   );
+  const selectedNodeInputDrivers = useMemo(() => {
+    if (!selectedNode || liveSignals.size === 0) return [];
+    return editorCircuit.connections
+      .filter((conn) => resolveConnectionEndpoint(conn.to).nodeId === selectedNode.id)
+      .map((conn) => {
+        const src = resolveConnectionEndpoint(conn.from);
+        const srcNode = editorCircuit.nodes.find((n) => n.id === src.nodeId);
+        return {
+          port: resolveConnectionEndpoint(conn.to).portName,
+          driverLabel: describeEndpointLabel(src.nodeId, srcNode, ioRowByNodeId.get(src.nodeId)),
+          value: liveSignals.get(`${src.nodeId}.${src.portName}`) ?? null,
+        };
+      });
+  }, [editorCircuit, ioRowByNodeId, liveSignals, resolveConnectionEndpoint, selectedNode]);
+
+  // Auto-trace: when sim is running and a node is selected with no existing trace,
+  // trigger a fanout highlight automatically. Clears when selection is lost.
+  useEffect(() => {
+    if (runtimeSim.running && selectedNode) {
+      if (!traceStateRef.current) {
+        handleFanoutTrace(selectedNode.id);
+        autoTracedNodeRef.current = selectedNode.id;
+      }
+    } else if (!selectedNode && autoTracedNodeRef.current !== null) {
+      clearTrace();
+      autoTracedNodeRef.current = null;
+    }
+    // traceStateRef intentionally omitted — read via ref to avoid retriggering
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNode?.id, runtimeSim.running, handleFanoutTrace, clearTrace]);
+
   const primarySelectedWireId = selectedWireIds[0] ?? null;
   const selectedWireContext = useMemo(() => {
     if (!primarySelectedWireId) return null;
@@ -3666,6 +3710,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             </div>
           ) : null}
+          {(selectedNode.type === 'INPUT' || selectedNode.type === 'Switch') && onRuntimeSimSetInput ? (
+            <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-input-control">
+              <span className="ide-design-inspector-group-label">Input control</span>
+              <div className="ide-design-inspector-action-grid">
+                {(() => {
+                  const currentVal = liveSignals.get(`${selectedNode.id}.out`) ?? 0;
+                  return (
+                    <button
+                      type="button"
+                      className={`ide-design-input-toggle ${currentVal === 1 ? 'is-on' : 'is-off'}`}
+                      data-testid="ide-design-inspector-input-toggle"
+                      aria-pressed={currentVal === 1}
+                      onClick={handleInspectorInputToggle}
+                    >
+                      {currentVal === 1 ? 'HIGH — click to set LOW' : 'LOW — click to set HIGH'}
+                    </button>
+                  );
+                })()}
+              </div>
+            </div>
+          ) : null}
           <div className="ide-design-inspector-action-group ide-design-inspector-group--danger" data-testid="ide-design-inspector-danger-group">
             <span className="ide-design-inspector-group-label">Danger</span>
             <div className="ide-design-inspector-action-grid">
@@ -3985,6 +4050,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               })}
             </div>
           ) : null}
+          {selectedNodeInputDrivers.length > 0 && (
+            <div className="ide-design-selection-drivers" data-testid="ide-design-input-drivers">
+              {selectedNodeInputDrivers.map((d) => (
+                <div key={d.port} className="ide-kv-row" data-testid={`ide-design-driver-row-${d.port}`}>
+                  <span>{describePortForStudents(d.port)}</span>
+                  <span>{d.driverLabel} · {d.value === 1 ? 'HIGH' : d.value === 0 ? 'LOW' : '?'}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       );
     }
@@ -3992,6 +4067,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       return (
         <div className="ide-design-live-summary">
           <div className="ide-kv-list">
+            <div className="ide-kv-row" data-testid="ide-design-wire-connection">
+              <span>Connection</span>
+              <span>{selectedWireContext.sourceLabel} → {selectedWireContext.targetLabel}</span>
+            </div>
             <div className="ide-kv-row">
               <span>Signal</span>
               <code>{describeStudentSignalKey(selectedWireContext.signalKey, editorCircuit, ioRowByNodeId)}</code>

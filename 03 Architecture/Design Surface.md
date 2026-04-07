@@ -104,6 +104,10 @@ The top stack must not reintroduce a separate title/header band above the workin
 - The Design inspector must not expose developer internals to students: no raw IR diagnostic codes (e.g. `IR006`), no "Compiler diagnostics" section label, no pipeline-layer staleness rows ("Dirty since verify", "Dirty since export") in the default or advanced views.
 - Multi-node selection must not show a "Single-object state only" dead-end callout; return nothing and let the multi-select arrange actions speak for themselves.
 - Signal Probe in Design must not render per-tick waveform/history buttons; those are a Verify-surface idiom and do not belong in the authoring inspector.
+- When a node is selected and the simulation is running, the inspector must show a **Driver Context panel** with the name and current HIGH/LOW value of each node driving the selected node's input ports. The panel is hidden when no simulation values exist (`liveSignals.size === 0`). Test IDs: `ide-design-input-drivers`, `ide-design-driver-row-{port}`.
+- When an INPUT or Switch node is selected and `onRuntimeSimSetInput` is wired, the inspector must show an **Input Control group** with a toggle button reflecting the current HIGH/LOW state. Clicking it calls `onRuntimeSimSetInput` with the flipped value. Test IDs: `ide-design-inspector-input-control`, `ide-design-inspector-input-toggle`. The control does not render when the prop is absent.
+- When the simulation is running and a node is selected with no existing trace, the surface must automatically trigger a fanout trace highlight. The auto-trace must not override a manually-set trace (guard: `!traceStateRef.current`). The trace clears automatically when selection is lost. Auto-trace must NOT fire when the simulation is not running.
+- Wire selection must show a **Connection summary row** (`testId="ide-design-wire-connection"`) as the first row in the wire inspector, formatted as `{sourceLabel} → {targetLabel}`. It appears before the Signal / Current / Previous / Transition rows.
 
 ## Consumption Sites
 
