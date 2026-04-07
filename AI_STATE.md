@@ -1,5 +1,58 @@
 # AI State
 
+## Change Log 2026-04-07 (Design multi-select editing power + canonical branch audit)
+
+**Subsystem**: Design surface grouped editing loop
+
+### Problem
+
+Phase B had already restored selection authority, keyboard reach, and wire reconnect clarity, but grouped editing still felt thin once a student box-selected part of a larger circuit. Multi-node drag, duplicate, and delete existed, yet the editor still lacked a precise movement loop and the inspector did not clearly advertise how to keep working on a selected group.
+
+The branch topology also needed verification before continuing Design work. The active Design rescue branch had to be confirmed as the canonical line without folding unrelated workstreams into it.
+
+### What changed
+
+- Branch audit / consolidation truth
+  - Confirmed `feat/design-phase-b-editing-power` is the canonical Design rescue branch.
+  - Confirmed the adjacent rescue branches are already ancestors of that line, not divergent heads:
+    - `feat/design-sequential-inspector-hardening`
+    - `feat/hardware-export-failure-truth`
+    - `feat/project-overview-truth`
+  - Confirmed no open GitHub PRs exist on those Design-adjacent branches.
+  - No merge, rebase, or cherry-pick was performed because the Design rescue history was already linear on the canonical branch and rewriting it would have added risk without gaining correctness.
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Added deterministic Arrow-key nudging for selected node groups.
+  - Added coarse grouped movement with `Shift + Arrow` so larger edits do not require mouse drag.
+  - Kept the nudge path inside the existing Design-surface keyboard authority instead of reopening store or canvas architecture.
+  - Updated the multi-select inspector copy so grouped selections now advertise the real continuation loop:
+    - Arrow-key nudging
+    - Shift for larger movement
+    - `Ctrl+D / Cmd+D` duplication
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx`
+    - Added coverage for single-step Arrow-key group nudging.
+    - Added coverage for coarse `Shift + Arrow` group nudging.
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx`
+    - Added coverage proving the multi-select inspector now advertises the grouped editing loop.
+
+### Validation
+
+- Failing baseline captured first:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx`
+    - failed on missing Arrow-key group nudge behavior and missing multi-select inspector copy
+- Passing verification after implementation:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx` OK (33/33)
+
+### Remaining concern
+
+- Align/tidy operations remain deferred. This slice intentionally focused on the tighter grouped-editing loop rather than opening a broader layout-authoring feature set.
+
+### Attribution
+
+- Connor Angiel
+
 ## Change Log 2026-04-06 (Project loaded-state readability + next-action hierarchy)
 
 **Subsystem**: Project surface loaded-state contract

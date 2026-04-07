@@ -353,6 +353,62 @@ describe('DesignSurface editing power (Slice 2)', () => {
       expect(view.getByTestId('ide-design-label-input')).toBeTruthy();
     });
   });
+
+  it('Arrow keys nudge a multi-node selection by one grid step', async () => {
+    renderSurface();
+
+    act(() => {
+      useLogicViewStore.getState().selectMultipleNodes(['sw0_node', 'ld0_node']);
+    });
+
+    act(() => {
+      fireWindowKeyDown('ArrowRight');
+    });
+
+    await waitFor(() => {
+      const circuit = useCircuitStore.getState().circuit;
+      const sw0Node = circuit.nodes.find((node) => node.id === 'sw0_node');
+      const ld0Node = circuit.nodes.find((node) => node.id === 'ld0_node');
+      expect(sw0Node?.position.x).toBe(16);
+      expect(ld0Node?.position.x).toBe(196);
+    });
+  });
+
+  it('Shift plus Arrow keys nudges a multi-node selection by a coarse step', async () => {
+    renderSurface();
+
+    act(() => {
+      useLogicViewStore.getState().selectMultipleNodes(['sw0_node', 'ld0_node']);
+    });
+
+    act(() => {
+      fireWindowKeyDown('ArrowDown', { shiftKey: true });
+    });
+
+    await waitFor(() => {
+      const circuit = useCircuitStore.getState().circuit;
+      const sw0Node = circuit.nodes.find((node) => node.id === 'sw0_node');
+      const ld0Node = circuit.nodes.find((node) => node.id === 'ld0_node');
+      expect(sw0Node?.position.y).toBe(64);
+      expect(ld0Node?.position.y).toBe(64);
+    });
+  });
+
+  it('advertises the grouped editing loop after multiple nodes are selected', async () => {
+    const view = renderSurface();
+
+    act(() => {
+      useLogicViewStore.getState().selectMultipleNodes(['sw0_node', 'ld0_node']);
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-multiselect-summary')).toBeTruthy();
+    });
+
+    const summary = view.getByTestId('ide-design-multiselect-summary');
+    expect(summary.textContent).toContain('Arrow keys');
+    expect(summary.textContent).toContain('Ctrl+D');
+  });
 });
 
 // ── Slice 4: Canvas navigation & placement hotkeys ────────────────────────────

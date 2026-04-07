@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: design
-updated: 2026-04-08
+updated: 2026-04-07
 related:
   - "[[RedByte Engineering Brain]]"
   - "[[Workspace Routing]]"
@@ -55,6 +55,11 @@ For the idle inspector / simulation contract, the Design surface must:
 - keep `Live Simulation` directly reachable on first arrival even when no node is selected
 - avoid burying the live input/output rows behind a closed idle-state disclosure
 - treat sequential selections as first-class authoring context instead of generic parts
+- treat multi-node selections as a continued-editing state, not a dead-end summary card
+- make the grouped-editing loop explicit after box-select:
+  - Arrow keys nudge the selected group by one movement step
+  - `Shift + Arrow` performs a larger coarse move
+  - inspector copy must advertise grouped movement and duplication instead of generic bulk wording
 - show timing-aware inspector semantics for sequential selections:
   - clocks identify timing-source role and mapped board context when present
   - flip-flops identify clock-driven state behavior and the active control path
@@ -81,6 +86,8 @@ The top stack must not reintroduce a separate title/header band above the workin
 - Split mode may compress simulation chrome, but it must still preserve essential tick/mode context when the dedicated simulation strip is absent.
 - Empty-state guidance belongs in the canvas region, not in a heavyweight top header or a competing blank-state modal.
 - Sequential authoring must sound intentional in the inspector; do not describe latches with flip-flop clock-edge language or reduce clocks to generic node state.
+- Multi-node selection should stay action-focused; live-signal detail belongs to single-node or single-wire inspection.
+- Grouped movement must not depend on mouse drag alone once a student has already selected the cluster.
 
 ## Consumption Sites
 
@@ -107,7 +114,7 @@ Keyboard commands that affect the editing graph are split across two owners:
 1. **CanvasHost / LogicCanvas** — canvas-spatial operations (pan, zoom, wire mode, snap toggle, fit-to-view). These fire only when the canvas is "active" (has received recent pointer input).
 2. **DesignSurface global window handler** — editing commands that must work across the full surface (canvas + inspector + palette). These fire unconditionally.
 
-The global handler currently owns: G (grid toggle), Ctrl+C/V/D/A/X, Shift+F (fit-to-selection), a/o/n/x (gate hotkeys), Ctrl+Z/Y (undo/redo), Delete/Backspace (delete selection), Escape (clear selection).
+The global handler currently owns: G (grid toggle), Ctrl+C/V/D/A/X, Shift+F (fit-to-selection), Arrow keys for selected-node nudging, a/o/n/x (gate hotkeys), Ctrl+Z/Y (undo/redo), Delete/Backspace (delete selection), Escape (clear selection).
 
 **Deduplication strategy:**
 

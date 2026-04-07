@@ -737,6 +737,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const setInteractionMode = useLogicViewStore((state) => state.setInteractionMode);
   const selectMultipleNodes = useLogicViewStore((state) => state.selectMultipleNodes);
   const snapToGrid = useLogicViewStore((state) => state.snapToGrid);
+  const gridSize = useLogicViewStore((state) => state.gridSize);
   const toggleSnapToGrid = useLogicViewStore((state) => state.toggleSnapToGrid);
   const clearSelection = useLogicViewStore((state) => state.clearSelection);
   const setCamera = useLogicViewStore((state) => state.setCamera);
@@ -1131,6 +1132,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     handleCopy();
     deleteSelection();
   }, [deleteSelection, handleCopy, selection.nodes]);
+
+  const handleNudgeSelection = useCallback((dx: number, dy: number) => {
+    if (selection.nodes.size === 0) return;
+    if (dx === 0 && dy === 0) return;
+
+    const next = {
+      ...circuit,
+      nodes: circuit.nodes.map((node) =>
+        selection.nodes.has(node.id)
+          ? {
+              ...node,
+              position: {
+                x: (node.position?.x ?? 0) + dx,
+                y: (node.position?.y ?? 0) + dy,
+              },
+            }
+          : node
+      ),
+    };
+
+    updateCircuit(next, { skipHistory: true, enforceLimits: true });
+    emitCircuitMutation(next);
+  }, [circuit, emitCircuitMutation, selection.nodes, updateCircuit]);
 
   // Shift+F: fit camera to selected nodes, or all nodes if nothing selected
   const handleFitToSelection = useCallback(() => {
@@ -3021,6 +3045,32 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         return;
       }
 
+      // Arrow keys: nudge selected nodes for precise grouped movement.
+      if (!event.ctrlKey && !event.metaKey && !event.altKey && !isTextInput) {
+        const baseStep = snapToGrid ? gridSize : Math.max(1, Math.round(gridSize / 2));
+        const step = event.shiftKey ? baseStep * 4 : baseStep;
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          handleNudgeSelection(-step, 0);
+          return;
+        }
+        if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          handleNudgeSelection(step, 0);
+          return;
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          handleNudgeSelection(0, -step);
+          return;
+        }
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          handleNudgeSelection(0, step);
+          return;
+        }
+      }
+
       // Gate hotkeys (bare, no modifier): a=AND, o=OR, n=NOT, x=XOR
       if (!event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && !isTextInput) {
         if (event.key === 'a') { event.preventDefault(); beginNodePlacement('AND'); return; }
@@ -3067,7 +3117,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [beginNodePlacement, clearSelection, deleteSelection, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handlePaste, handleRedo, handleSelectAll, handleUndo, toggleSnapToGrid]);
+  }, [beginNodePlacement, clearSelection, deleteSelection, gridSize, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handleNudgeSelection, handlePaste, handleRedo, handleSelectAll, handleUndo, snapToGrid, toggleSnapToGrid]);
 
   useEffect(() => {
     const pending = pendingDebugToggleRef.current;
@@ -3257,7 +3307,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <strong data-testid="ide-design-multiselect-count">{selection.nodes.size} nodes selected</strong>
                 </div>
                 <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
-                  Compose, duplicate, or delete this group as one unit.
+                  Use Arrow keys to nudge this group, hold Shift for larger moves, or press Ctrl+D / Cmd+D to duplicate it.
                 </p>
               </div>
               <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
@@ -3265,7 +3315,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </span>
             </div>
             <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
-              Save this cluster as a reusable block or keep editing it as a grouped selection.
+              Keep refining the selection as one working unit, then save it as a reusable block when the group stabilizes.
             </p>
             <div className="ide-design-selection-pins" data-testid="ide-design-multiselect-types">
               {selectedTypeSummary.map((entry) => (
