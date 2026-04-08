@@ -4257,7 +4257,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 Single pulse
               </IdeButton>
             </div>
-            <span data-testid="ide-verify-sequential-context">Add clock ticks in your stimulus to drive state changes</span>
           </IdeCallout>
         )}
 
