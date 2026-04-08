@@ -3129,6 +3129,35 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       : 'run';
   const runActionTone = primaryActionKind === 'run' ? 'primary' : 'secondary';
   const captureActionTone = primaryActionKind === 'capture' ? 'primary' : 'secondary';
+  // ── B-12 Slice 3: canonical result zone ──────────────────────────────────────
+  const emptyStateRunLabel = isDraftSession
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Run Compare' : 'Run Testbench')
+    : verifySession.runLabel;
+  const referenceModeLabel: string = hasStaleAuthoredReference
+    ? `Using stale authored reference (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'})`
+    : totalExpectedCaseCount === 0
+      ? 'Observation only — no expected outputs set'
+      : !nextRunUsesAssertions
+        ? `Saved expected outputs (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), current mode is trace only`
+        : authoredVectors.length > 0 && customVectorCount > 0
+          ? `Comparing against project + custom vectors (${totalVectorCount} total)`
+          : customVectorCount > 0
+            ? `Comparing against custom vectors (${customVectorCount})`
+            : `Comparing against project vectors (${authoredVectors.length})`;
+  const sessionModeBadge: string = !lastRun
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'COMPARE' : 'SIMULATION')
+    : isTraceOnly ? 'CAPTURE'
+    : sessionStatus === 'assertions-match' || sessionStatus === 'assertions-differ' || sessionStatus === 'stale'
+      ? 'COMPARE'
+      : 'SIMULATION';
+  const sessionTitle: string = !lastRun
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Ready to compare' : 'Ready to run this testbench')
+    : isTraceOnly ? 'Waveform recorded — observation only'
+    : sessionStatus === 'assertions-match' ? 'Assertions match'
+    : sessionStatus === 'assertions-differ' ? 'Assertions failed'
+    : sessionStatus === 'stale' ? 'Results from previous build'
+    : sessionStatusBadgeLabel;
+  // ─────────────────────────────────────────────────────────────────────────────
   const shortenHash = (value: string | null | undefined): string => {
     if (!value || value.trim().length === 0) return '—';
     return value.length > 12 ? value.slice(0, 12) : value;
@@ -3286,17 +3315,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [failingRows.length, sessionShowsAssertionMatch, verifyTab]);
 
   const primaryStatus = useMemo<VerifyPrimaryStatusAreaProps | null>(() => {
-    if (unsupportedFeedbackDiagnostic) {
-      return {
-        tone: 'error',
-        title: unsupportedFeedbackDiagnostic.title,
-        message: unsupportedFeedbackDiagnostic.message,
-        actions: onGoToDesign
-          ? [{ label: 'Open Design', onClick: onGoToDesign, tone: 'secondary', testId: 'ide-verify-primary-status-design' }]
-          : [],
-      };
-    }
-
     if (hasStaleAuthoredReference) {
       return {
         tone: 'warn',
@@ -3361,10 +3379,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     lastRunScenarioId,
     lastRunScenarioName,
     mappingComplete,
-    onGoToDesign,
     onSwitchScenario,
     runVerification,
-    unsupportedFeedbackDiagnostic,
   ]);
 
   return (
@@ -3744,9 +3760,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {/* ── Compact header strip ─────────────────────────────────────────── */}
         {/* Status strip — compact primary bar, ~48px */}
         <div className="ide-verify-status-strip" data-testid="ide-verify-banner" data-zone="status">
+          <span data-testid="ide-verify-session-status">{verifySession.statusBadge}</span>
           <IdeStatusPill tone={sessionStatusTone} testId="ide-verify-summary-status">
             {sessionStatusBadgeLabel}
           </IdeStatusPill>
+          <span data-testid="ide-verify-session-mode" className="ide-verify-session-mode">{sessionModeBadge}</span>
+          <span data-testid="ide-verify-session-title" className="ide-verify-session-title">{sessionTitle}</span>
+          <span data-testid="ide-verify-reference-mode" className="ide-verify-reference-mode">{referenceModeLabel}</span>
           {primaryStatus && (
             <span
               className={`ide-verify-status-chip ide-verify-status-chip--${primaryStatus.tone}`}
@@ -3765,6 +3785,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               >
                 Older authored reference available — use the panel above to choose the next step.
               </span>
+              <span data-testid="ide-verify-stale-reference-mode">Default next run will use stimulus-only tracing</span>
+              <IdeButton onClick={handleKeepOlderReference} testId="ide-verify-stale-keep-reference">Keep reference — Run Compare</IdeButton>
+              <IdeButton onClick={handleResetToStimulusOnly} testId="ide-verify-stale-reset-stimulus">Clear assertions — trace only</IdeButton>
+              <IdeButton onClick={handleStaleRecapture} testId="ide-verify-stale-recapture-reauthor">Re-capture from current circuit</IdeButton>
             </>
           ) : lastRun && (
             <>
@@ -3887,7 +3911,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     testId="ide-verify-set-oracle"
                     title="Save the current waveform outputs as expected values for this testbench."
                   >
-                    Save this run as expected
+                    Capture outputs as expected
                   </IdeButton>
                 ) : null}
                 {primaryActionKind === 'capture' ? (
@@ -3898,7 +3922,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       testId="ide-verify-set-oracle"
                       title="Save the current waveform outputs as expected values for this testbench."
                     >
-                      Save this run as expected
+                      Capture outputs as expected
                     </IdeButton>
                   </span>
                 ) : null}
@@ -3924,6 +3948,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   Compare
                 </button>
               </div>
+              {/* Assertion mode toggle — single authoring control for run intent */}
+              <button
+                type="button"
+                data-testid="ide-verify-assertion-mode-toggle"
+                onClick={() => setNextRunUsesAssertions((v) => !v)}
+              >
+                Mode: {nextRunUsesAssertions ? 'Check Outputs' : 'Trace Only'}
+              </button>
               {/* Group 2 — SECONDARY: tucked away, never the dominant focus */}
               {(hasResults || Boolean(lastRun)) && (
                 <details className="ide-verify-strip-group ide-verify-strip-group--advanced" data-testid="ide-verify-advanced-debug">
@@ -4213,7 +4245,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </ul>
             <div className="ide-inline-actions">
               <IdeButton tone="secondary" onClick={handleInsertClockPattern} testId="ide-verify-insert-clock-pattern">
-                Alternating clock
+                {effectiveTimingGuidance.kind === 'latch-control' ? 'Insert basic enable pattern' : 'Alternating clock'}
               </IdeButton>
               <IdeButton tone="ghost" onClick={handleInsertClockHoldLow} testId="ide-verify-insert-clock-hold-low">
                 Hold low
@@ -4225,6 +4257,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 Single pulse
               </IdeButton>
             </div>
+            <span data-testid="ide-verify-sequential-context">Add clock ticks in your stimulus to drive state changes</span>
           </IdeCallout>
         )}
 
@@ -4254,8 +4287,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           <h4 className="ide-verify-zone-label" data-zone="vectors">Test Vectors</h4>
         )}
 
-        {/* Live circuit I/O summary — anchors vectors to the current design (hidden during first-run hero) */}
-        {inputFields.length > 0 && !(!lastRun && isFirstRunState) && (
+        {/* Live circuit I/O summary — anchors vectors to the current design */}
+        {inputFields.length > 0 && (
           <div className="ide-verify-io-summary" data-testid="ide-verify-io-summary">
             <span className="ide-verify-io-summary-section">
               <span className="ide-verify-io-summary-label">Inputs:</span>
@@ -4273,6 +4306,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   {effectiveTimingGuidance.signalLabelPlural}:
                 </span>
                 {Array.from(clockSignals).join(', ')}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Pre-run signal inventory lanes */}
+        {signalInventory && signalInventory.lanes.length > 0 && !usesCompactStaleStrip && (
+          <div data-testid="ide-verify-prerun-lanes">
+            {signalInventory.lanes.map((lane) => (
+              <span key={lane.name} data-testid={`ide-verify-lane-chip-${lane.name}`}>{lane.name}</span>
+            ))}
+            {signalInventory.clockPolicy === 'clocked' && signalInventory.clockSignalName && (
+              <span data-testid="ide-verify-prerun-clock-chip">
+                {`${effectiveTimingGuidance.signalName ?? signalInventory.clockSignalName}: ${signalInventory.clockSignalName}`}
               </span>
             )}
           </div>
@@ -4317,7 +4364,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           />
         )}
 
-        {!primaryStatus && unsupportedFeedbackDiagnostic && (
+        {unsupportedFeedbackDiagnostic && (
           <div
             className="ide-verify-unsupported-feedback-banner"
             data-testid="ide-verify-unsupported-feedback-banner"
@@ -4351,6 +4398,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
+        {/* Pre-run incomplete-mapping warning */}
+        {mappingComplete === false && !lastRun && (
+          <div data-testid="ide-verify-incomplete-mapping-banner" className="ide-verify-incomplete-mapping-banner">
+            Some outputs are not mapped to board pins
+          </div>
+        )}
+
         <ScenarioBuilderPanel
           isFirstRun={isFirstRunState}
           isSequential={isSequentialRun}
@@ -4371,7 +4425,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           onAddVector={handleAddVector}
           onGenerateBasics={handleGenerateBasicVectors}
           onRun={runVerification}
-          runButtonLabel={verifySession.runLabel}
+          runButtonLabel={emptyStateRunLabel}
           onOpenProjectVectors={onOpenProjectVectors}
           onAutoGenerate={handleAutoGenerateVectors}
           sweepPreset={sweepPreset}
