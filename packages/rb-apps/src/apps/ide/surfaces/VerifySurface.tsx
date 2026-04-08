@@ -3750,7 +3750,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           {primaryStatus && (
             <span
               className={`ide-verify-status-chip ide-verify-status-chip--${primaryStatus.tone}`}
-              data-testid="ide-verify-status-chip"
+              data-testid="ide-verify-primary-status"
               title={primaryStatus.message}
             >
               {primaryStatus.title}
@@ -3945,7 +3945,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </div>
           )}
         </div>
-        {/* ── Always-visible command bar ── */}
+        {/* ── Always-visible command bar (hidden in blocked mode) ── */}
+        {verifyMode !== 'blocked' && (
         <VerifyCommandBar
           isCompareMode={nextRunUsesAssertions}
           onSetObserve={() => setNextRunUsesAssertions(false)}
@@ -3964,6 +3965,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           statusTone={sessionStatusTone}
           isSequential={isSequentialRun}
         />
+        )}
         </VerifyHeaderRegion>
 
         {/* ── Contextual panels (below compact header, above stimulus) ────── */}
@@ -4161,8 +4163,28 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
         <VerifyStimulusRegion>
 
+        {/* ── BLOCKED mode entry surface ─────────────────────────────────── */}
+        {verifyMode === 'blocked' && (
+          <div className="ide-verify-entry-blocked" data-testid="ide-verify-entry-blocked">
+            <h4 className="ide-verify-entry-blocked-title">Cannot verify this circuit</h4>
+            <p className="ide-verify-entry-blocked-reason">
+              This circuit contains components that cannot be simulated yet.
+              Remove the unsupported component to run verification.
+            </p>
+            {onGoToDesign && (
+              <IdeButton
+                tone="primary"
+                onClick={onGoToDesign}
+                testId="ide-verify-blocked-fix-path"
+              >
+                Fix in Design
+              </IdeButton>
+            )}
+          </div>
+        )}
+
         {/* ── First-run hero panel ── */}
-        {isFirstRunState && !lastRun && (
+        {isFirstRunState && !lastRun && verifyMode !== 'blocked' && (
           <VerifyFirstRunPanel
             isSequential={isSequentialRun}
             inputNames={inputFields.map((f) => f.label ?? f.id)}
@@ -4181,8 +4203,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
         {/* TRACE callout moved to bottom workbench area — canonical position after results zone */}
 
-        {/* Sequential first-run helper strip — hidden when VerifyFirstRunPanel is present */}
-        {verifyMode === 'sequential' && isFirstRunState && lastRun && (
+        {/* Sequential first-run helper strip — shown whenever mode is sequential + first-run */}
+        {verifyMode === 'sequential' && isFirstRunState && (
           <IdeCallout tone="info" testId="ide-verify-sequential-helper">
             <strong>{sequentialGuidanceCopy.introTitle}</strong>
             <ul className="ide-copy" style={{ margin: '4px 0 4px 16px', padding: 0 }}>
