@@ -159,10 +159,11 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-session-status').textContent).toContain('DRAFT');
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('COMPARE');
     expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to compare');
-    expect(getByTestId('ide-verify-empty-run').textContent).toContain('Run Compare');
+    // footer run button removed (B-13 Phase 3) — header Run is canonical
+    expect(queryByTestId('ide-verify-empty-run')).toBeNull();
+    expect(queryByTestId('ide-verify-run')).toBeNull();
+    expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(getByTestId('ide-verify-empty-open-vectors').textContent).toContain('Open vectors');
-    expect(getByTestId('ide-verify-run').textContent).toContain('Run Compare');
-    expect(getByTestId('ide-verify-run').className).toContain('ide-button-primary');
     expect(queryByTestId('ide-left-dock')).toBeNull();
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(queryByText('Advanced vector tools')).toBeNull();
@@ -192,7 +193,9 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-empty-message').textContent).toContain(
       'Add expected outputs when you want Compare to check them.'
     );
-    expect(getByTestId('ide-verify-empty-run').textContent).toContain('Run Testbench');
+    // footer run button removed (B-13 Phase 3) — header Run is canonical
+    expect(queryByTestId('ide-verify-empty-run')).toBeNull();
+    expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(queryByTestId('ide-left-dock')).toBeNull();
     expect(queryByTestId('ide-inspector')).toBeNull();
   });

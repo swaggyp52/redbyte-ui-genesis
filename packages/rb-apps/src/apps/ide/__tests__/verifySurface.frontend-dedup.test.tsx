@@ -119,6 +119,47 @@ describe('Verify frontend — single canonical Run button (B-13 Phase 2)', () =>
   });
 });
 
+describe('Verify frontend — single canonical Run button, Phase 3 (B-13 Phase 3)', () => {
+  it('hides ide-verify-run footer button in first-run state with vectors ready', () => {
+    const { getByTestId, queryByTestId } = render(
+      <VerifySurface
+        {...baseProps}
+        deterministicHash="det-p3a"
+        verifyMode="combinational"
+      />
+    );
+
+    // Canonical run button present
+    expect(getByTestId('ide-vcb-run')).toBeTruthy();
+    // Competing first-run footer Run button must be absent
+    expect(queryByTestId('ide-verify-run')).toBeNull();
+    // Its wrapper must also be absent
+    expect(queryByTestId('ide-verify-empty-run')).toBeNull();
+  });
+
+  it('hides ide-verify-empty-run wrapper in observation-mode first-run state', () => {
+    const { getByTestId, queryByTestId } = render(
+      <VerifySurface
+        deterministicHash="det-p3b"
+        verifyMode="combinational"
+        hasVectors={true}
+        vectors={[{ id: 'v0', tick: 0, inputs: { sw0: 1 }, expected: {} }]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', label: 'SW0', direction: 'in' as const },
+          { id: 'ld0', label: 'LD0', direction: 'out' as const },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+        onVectorsChange={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-vcb-run')).toBeTruthy();
+    expect(queryByTestId('ide-verify-run')).toBeNull();
+    expect(queryByTestId('ide-verify-empty-run')).toBeNull();
+  });
+});
+
 describe('Verify frontend — single canonical sequential helper (B-13 Phase 2)', () => {
   it('shows ide-verify-sequential-helper callout and no ide-vfr-seq-presets in first-run sequential', () => {
     const seqProps = {

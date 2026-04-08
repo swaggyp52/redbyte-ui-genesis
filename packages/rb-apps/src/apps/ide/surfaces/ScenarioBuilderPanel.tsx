@@ -552,13 +552,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             )}
           </div>
           <div className="ide-verify-run-footer-actions">
-            {hasVectorsReady ? (
-              <span data-testid="ide-verify-empty-run">
-                <IdeButton tone="primary" onClick={onRun} testId="ide-verify-run">
-                  {runButtonLabel}
-                </IdeButton>
-              </span>
-            ) : (
+            {!hasVectorsReady && (
               <IdeButton
                 tone="primary"
                 onClick={onGenerateBasics}
