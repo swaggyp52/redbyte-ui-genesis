@@ -17,10 +17,12 @@ export interface VerifyFirstRunPanelProps {
 
   /** Actions */
   readonly onGenerateStarter: () => void;
-  readonly onRunCircuit: () => void;
-  readonly runLabel: string;
+  /** @deprecated Run action moved to VerifyCommandBar (ide-vcb-run) — B-13 Phase 2 */
+  readonly onRunCircuit?: () => void;
+  /** @deprecated Run label moved to VerifyCommandBar — B-13 Phase 2 */
+  readonly runLabel?: string;
 
-  /** Sequential-specific starters */
+  /** @deprecated Sequential presets moved to ide-verify-sequential-helper callout — B-13 Phase 2 */
   readonly onAlternatingClock?: () => void;
   readonly onHoldLow?: () => void;
   readonly onHoldHigh?: () => void;
@@ -38,12 +40,6 @@ export const VerifyFirstRunPanel: React.FC<VerifyFirstRunPanelProps> = ({
   outputNames,
   clockName,
   onGenerateStarter,
-  onRunCircuit,
-  runLabel,
-  onAlternatingClock,
-  onHoldLow,
-  onHoldHigh,
-  onSinglePulse,
   hasVectors,
 }) => {
   return (
@@ -111,49 +107,11 @@ export const VerifyFirstRunPanel: React.FC<VerifyFirstRunPanelProps> = ({
             </span>
           </>
         ) : (
-          <>
-            <IdeButton
-              tone="primary"
-              onClick={onRunCircuit}
-              testId="ide-vfr-run"
-            >
-              {runLabel}
-            </IdeButton>
-            <span className="ide-vfr-action-hint">
-              Vectors ready — run to see outputs in the waveform
-            </span>
-          </>
+          <span className="ide-vfr-action-hint">
+            Vectors ready — use Run above to test your circuit
+          </span>
         )}
       </div>
-
-      {/* Sequential-specific clock presets */}
-      {isSequential && !hasVectors && (
-        <div className="ide-vfr-seq-presets" data-testid="ide-vfr-seq-presets">
-          <span className="ide-vfr-presets-label">Or choose a clock pattern:</span>
-          <div className="ide-vfr-presets-row">
-            {onAlternatingClock && (
-              <IdeButton tone="ghost" onClick={onAlternatingClock} testId="ide-vfr-alt-clock">
-                Alternating clock
-              </IdeButton>
-            )}
-            {onHoldLow && (
-              <IdeButton tone="ghost" onClick={onHoldLow} testId="ide-vfr-hold-low">
-                Hold low
-              </IdeButton>
-            )}
-            {onHoldHigh && (
-              <IdeButton tone="ghost" onClick={onHoldHigh} testId="ide-vfr-hold-high">
-                Hold high
-              </IdeButton>
-            )}
-            {onSinglePulse && (
-              <IdeButton tone="ghost" onClick={onSinglePulse} testId="ide-vfr-single-pulse">
-                Single pulse
-              </IdeButton>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Workflow steps — what happens next */}
       <div className="ide-vfr-steps" data-testid="ide-vfr-steps">

@@ -606,9 +606,6 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
         <IdeButton tone="ghost" onClick={onGenerateBasics} testId="ide-verify-workbench-generate">
           Generate
         </IdeButton>
-        <IdeButton tone="primary" onClick={onRun} testId="ide-verify-workbench-run">
-          {runButtonLabel}
-        </IdeButton>
       </div>
       {/* ── Editable stimulus region — mounted when expanded ── */}
       {workbenchExpanded && (
