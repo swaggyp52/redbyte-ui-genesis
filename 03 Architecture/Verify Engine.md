@@ -117,6 +117,48 @@ VerifySurface owns the unified entry shell. Three canonical entry paths:
 
 ---
 
+## Result Zone Architecture (B-12 Slice 3)
+
+One canonical result zone in `VerifySurface.tsx`. All status display derives from new computed values rather than raw session state.
+
+### New Computed Values
+
+| Name | Type | Purpose |
+|---|---|---|
+| `emptyStateRunLabel` | `string` | `'Run Compare'` (draft + assertions) / `'Run Testbench'` (draft, no assertions) / `verifySession.runLabel` otherwise |
+| `referenceModeLabel` | `string` | Human-readable description of current reference state (stale / observation-only / trace-only / compare with counts) |
+| `sessionModeBadge` | `string` | `'CAPTURE'` / `'COMPARE'` / `'SIMULATION'` — describes what kind of evidence the session holds |
+| `sessionTitle` | `string` | Short phrase for the current session state (`'Ready to compare'` / `'Assertions match'` / etc.) |
+
+### Status Strip Rule
+
+`ide-verify-session-status` must show `verifySession.statusBadge` (the raw, unoverridden badge value e.g. `'DRAFT'`, `'OBSERVATION ONLY'`, `'STALE'`). The `IdeStatusPill` (testid `ide-verify-summary-status`) shows `sessionStatusBadgeLabel` which may override `'DRAFT'` to `'READY'`. These two values must NOT be collapsed — they serve different contracts.
+
+### Compact Stale Strip
+
+When `usesCompactStaleStrip === true` (`= hasStaleAuthoredReference`), the status strip shows three explicit recovery buttons:
+- `ide-verify-stale-keep-reference` — calls `handleKeepOlderReference` (sets `nextRunUsesAssertions=true` + runs with preflight)
+- `ide-verify-stale-reset-stimulus` — calls `handleResetToStimulusOnly` (clears expected outputs)
+- `ide-verify-stale-recapture-reauthor` — calls `handleStaleRecapture` (scope capture from current circuit)
+
+### `primaryStatus` Memo Rule
+
+`primaryStatus` useMemo must NOT handle `unsupportedFeedbackDiagnostic`. That case has a dedicated `ide-verify-unsupported-feedback-banner` rendered unconditionally when the prop is set. Keeping the two separate prevents `!primaryStatus` from silently blocking the banner.
+
+### Latch-Control Button Label
+
+When `effectiveTimingGuidance.kind === 'latch-control'`, the `ide-verify-insert-clock-pattern` button reads `'Insert basic enable pattern'`. For all other sequential modes it reads `'Alternating clock'`.
+
+### Pre-Run Inventory
+
+Signal lane chips: `ide-verify-prerun-lanes` container with `ide-verify-lane-chip-{name}` per lane (uses display label, e.g. `'SW0'` not `'sw0'`). Clock chip: `ide-verify-prerun-clock-chip` rendered when `clockPolicy === 'clocked'` and `clockSignalName` is set.
+
+### Incomplete Mapping Banner
+
+`ide-verify-incomplete-mapping-banner` shown when `mappingComplete === false && !lastRun`. Appears before `ScenarioBuilderPanel`.
+
+---
+
 ## Canonical Shape / Contract
 
 ### Run pipeline
@@ -295,9 +337,13 @@ The current repo state does **not** support deleting `projectVectors` outright y
   - next-run intent now drives only pre-run/reference copy, compare-vs-trace run wiring, and the advanced toggle state
   - fail-state CTA routing now distinguishes Verify authoring recovery (`Edit expected outputs`) from Design recovery (`Open in Design`)
   - stale authored references now demote back to trace-first recovery with explicit rerun / re-author / keep-reference actions
+  - B-12 Slice 3: new computed values `emptyStateRunLabel`, `referenceModeLabel`, `sessionModeBadge`, `sessionTitle` drive the unified result strip
+  - B-12 Slice 3: `ide-verify-session-status` shows raw `verifySession.statusBadge` (separate from student-display override in pill)
+  - B-12 Slice 3: `primaryStatus` memo no longer handles `unsupportedFeedbackDiagnostic`; dedicated banner renders unconditionally
   - the remaining local split is mostly draft-only `READY` / `BLOCKED` presentation plus compatibility `projectVectors` paths
 - `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
   - first-run footer/copy now consumes authoritative vector/assertion counts from `VerifySurface` instead of inferring readiness from project-authored vectors alone
+  - B-12 Slice 4: postrun `<div>` → `<details ref={detailsRef}>` + `<summary className="ide-verify-scenario-builder-summary">`. `initialExpanded` prop: `true` for confirmed-pass non-trace runs, `false` for fail/trace. fail-state CTAs in `VerifySurface` set `details.open = true` to reveal workbench without React state round-trip.
 - `packages/rb-apps/src/apps/ide/viewmodels/buildVerifySessionViewModel.ts`
   - intended student-facing source of truth for session state
   - now keeps persisted compare evidence authoritative even when live vector props are temporarily absent

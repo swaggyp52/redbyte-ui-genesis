@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-04-07
+updated: 2026-04-08
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
@@ -221,7 +221,8 @@ Examples, starters, and classroom ops should ride inside those tracks as proof o
 
 Next product-hardening action:
 
-- continue Design Phase B with one more narrow grouped layout action, most likely a vertical distribute or equivalent tidy pass, on top of the now-trustworthy marquee / align / distribute / duplicate / nudge loop
+- B-12 Slice 4 landed (2026-04-08, commit a3183711): one canonical failure path. `ScenarioBuilderPanel` postrun section converted to `<details ref={detailsRef}>` + `<summary className="ide-verify-scenario-builder-summary">`. `initialExpanded` prop: true for confirmed-pass non-trace runs, false for fail/trace (fail evidence takes focus). `handleEditExpectedOutputs` sets `details.open = true` for fail-state recovery CTAs. All 77/77 verifySurface tests GREEN.
+- B-12 complete across all 4 slices. Continue Design Phase B: B-11 (Distribute Vertically) or next verify polish
 
 ---
 
@@ -264,8 +265,9 @@ audit-determinism                 1   verifyContract.reset         8
 Render harness (all 9 suites green):
 
 - `verifySurface-fail-state` 3 - `verifySurface.failure-context` 2 - `verifySurface.authoring` 11
-- `verifySurface.three-panel` 3 - `verifySurface.workstation` 23 - `verifySurface.hints-bridge` 3
+- `verifySurface.three-panel` 3 - `verifySurface.workstation` 30 - `verifySurface.hints-bridge` 3
 - `verifySurface.failure-patterns` 5 - `verifySurface.waveform-priority` 1 - `verifySurface.combo-kmap-provenance` 1
+- `verifySurface.entryState` 7 (added B-12 Slice 2) — 77 total, all GREEN after B-12 Slices 1–4
 
 ---
 
