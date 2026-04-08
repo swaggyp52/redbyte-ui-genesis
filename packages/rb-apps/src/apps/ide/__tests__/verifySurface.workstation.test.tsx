@@ -263,7 +263,7 @@ describe('VerifySurface workstation controls', () => {
           { id: 'q', direction: 'out', label: 'Q' },
         ]}
         onOpenProjectVectors={vi.fn()}
-        hasDff={true}
+        verifyMode="sequential"
         liveSignalRoles={{ d: 'input', en: 'clock', q: 'output' }}
         timingGuidance={latchGuidance}
       />
@@ -1390,7 +1390,7 @@ describe('VerifySurface workstation controls', () => {
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
-        hasDff={true}
+        verifyMode="sequential"
         lastRun={sequentialRun}
         vectors={[
           {

@@ -165,7 +165,7 @@ describe('VerifySurface layout workflow architecture', () => {
       <VerifySurface
         {...baseProps}
         deterministicHash="det-seq"
-        hasDff={true}
+        verifyMode="sequential"
       />
     );
 
@@ -181,7 +181,7 @@ describe('VerifySurface layout workflow architecture', () => {
         deterministicHash="det-seq"
         hasVectors={true}
         vectors={[]}
-        hasDff={true}
+        verifyMode="sequential"
         liveSignalRoles={{ clk: 'clock', d: 'input', q: 'output' }}
         mappedInputs={[{ id: 'clk', label: 'CLK' }, { id: 'd', label: 'D' }]}
         mappedSignals={[

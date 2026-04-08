@@ -49,6 +49,7 @@ import {
 import { AssertionCanvas, type AssertionCanvasProps } from '../components/AssertionCanvas';
 import { ScenarioLibraryHeader } from './ScenarioLibraryHeader';
 import { computeScenarioContentHash, type VerifyScenario } from '../verifyScenario';
+import type { VerifyMode } from '../verifyMode';
 import type { ProjectKind, ScenarioAuthority } from '../projectIdentity';
 import {
   createClockTimingGuidance,
@@ -148,7 +149,7 @@ export interface VerifySurfaceProps {
   example?: IdeExampleDefinition | null;
   onGoToDesign?: () => void;
   onGoToHardware?: () => void;
-  hasDff?: boolean;
+  verifyMode?: VerifyMode;
   unmappedOutputLabels?: string[];
   onPreviewVector?: (inputs: Record<string, number>) => void;
   onDebugTickSelected?: (
@@ -260,7 +261,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   example,
   onGoToDesign,
   onGoToHardware,
-  hasDff = false,
+  verifyMode = 'combinational' as VerifyMode,
   unmappedOutputLabels = [],
   onPreviewVector,
   liveSignalRoles,
@@ -1472,11 +1473,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     const runGuidance = deriveTimingGuidanceFromRun(lastRun);
     if (runGuidance.isSequential) return runGuidance;
     const fallbackSignal = Object.entries(liveSignalRoles ?? {}).find(([, role]) => role === 'clock')?.[0];
-    if (fallbackSignal || hasDff) {
+    if (fallbackSignal || verifyMode === 'sequential') {
       return createClockTimingGuidance(fallbackSignal);
     }
     return runGuidance;
-  }, [hasDff, lastRun, liveSignalRoles, timingGuidance]);
+  }, [verifyMode, lastRun, liveSignalRoles, timingGuidance]);
 
   const truthRows = useMemo<TruthTableRow[]>(() => {
     return runRows.map((row) => ({
@@ -1489,7 +1490,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [runRows]);
   const isSequentialRun = Boolean(
     effectiveTimingGuidance.isSequential ||
-      hasDff ||
+      verifyMode === 'sequential' ||
       lastRun?.meta?.circuitKind === 'sequential' ||
       lastRun?.schedule === 'clocked_macro'
   );
@@ -1510,7 +1511,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const nextRunNeedsClockActivity = useMemo(() => {
     if (authoredVectors.length === 0) return false;
-    if (hasDff && clockSignals.size > 0) {
+    if (verifyMode === 'sequential' && clockSignals.size > 0) {
       const clockKeys = Array.from(clockSignals);
       const hasClockActivity = authoredVectors.some((v) =>
         clockKeys.some((clk) => v.inputs[clk] !== undefined)
@@ -1518,7 +1519,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       return !hasClockActivity;
     }
     return false;
-  }, [authoredVectors, hasDff, clockSignals]);
+  }, [authoredVectors, verifyMode, clockSignals]);
   const sequentialGuidanceCopy = useMemo(() => {
     if (effectiveTimingGuidance.kind === 'latch-control') {
       const signalName = effectiveTimingGuidance.signalName ?? 'EN';
@@ -4181,7 +4182,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {/* TRACE callout moved to bottom workbench area — canonical position after results zone */}
 
         {/* Sequential first-run helper strip — hidden when VerifyFirstRunPanel is present */}
-        {hasDff && isFirstRunState && lastRun && (
+        {verifyMode === 'sequential' && isFirstRunState && lastRun && (
           <IdeCallout tone="info" testId="ide-verify-sequential-helper">
             <strong>{sequentialGuidanceCopy.introTitle}</strong>
             <ul className="ide-copy" style={{ margin: '4px 0 4px 16px', padding: 0 }}>
@@ -4206,7 +4207,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )}
 
         {/* Sequential clock-missing guidance when vectors exist but no clock activity */}
-        {hasDff && !isFirstRunState && nextRunNeedsClockActivity && (
+        {verifyMode === 'sequential' && !isFirstRunState && nextRunNeedsClockActivity && (
           <IdeCallout tone="warn" testId="ide-verify-needs-clock">
             {sequentialGuidanceCopy.missingActivity}
             <div className="ide-inline-actions" style={{ marginTop: 6 }}>
