@@ -4218,8 +4218,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {/* ── First-run hero panel ── */}
-        {isFirstRunState && !lastRun && verifyMode !== 'blocked' && (
+        {/* ── First-run hero panel — only when no vectors yet; once canvas is populated, step aside ── */}
+        {isFirstRunState && !lastRun && verifyMode !== 'blocked' && totalVectorCount === 0 && (
           <VerifyFirstRunPanel
             isSequential={isSequentialRun}
             inputNames={inputFields.map((f) => f.label ?? f.id)}
