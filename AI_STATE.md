@@ -1,5 +1,82 @@
 # AI State
 
+## Change Log 2026-04-08 (Release Path — Classroom Truth Gates browser install fix)
+
+**Subsystem**: CI / PR merge path
+
+### Problem
+
+`main` branch protection requires the `Classroom Truth Gates` status check. PR #76 was blocked even when the merged code built successfully because `.github/workflows/pr-truth-gates.yml` ran `pnpm -s classroom:gate`, which invokes Playwright-backed IDE gates, without first installing Playwright browsers on the runner. The failure occurred at `ide:gate:examples-contract` with `browserType.launch: Executable doesn't exist`.
+
+### What changed
+
+- `.github/workflows/pr-truth-gates.yml`: added `Install Playwright browsers` step:
+  - `pnpm exec playwright install --with-deps chromium`
+- Step is placed after dependency install and before the first classroom/IDE gate so the required PR workflow can actually execute the browser-backed gate set it already depends on.
+
+### Validation
+
+- GitHub Actions failure audit on PR #76 (`Classroom Truth Gates`, run `24143033975`) confirmed:
+  - build passed inside `classroom:gate`
+  - failure was infrastructure-only: missing Playwright browser executable on the Ubuntu runner
+- Local branch-tip validation on `05514e78`:
+  - `pnpm -s build:unified` ✅
+  - targeted IDE/design/verify validation: 46 files / 457 tests GREEN
+
+### Release impact
+
+- Restores a truthful required PR gate path for merges to `main`
+- Removes a known false-red blocker that prevented stable rescue work from landing despite passing local build/test evidence
+
+---
+
+## Change Log 2026-04-08 (B-14 Slice 1 — Case-Editor Clarity: Hero Demotion)
+
+**Subsystem**: Verify — case-editor hierarchy
+
+### Problem
+
+In first-run state (`isFirstRunState && !lastRun`), `VerifyFirstRunPanel` rendered unconditionally even when `totalVectorCount > 0`. The hero panel (icon + title + description + signal pills + 4-step workflow) displaced the StimulusCanvas below the visible area. Students with auto-generated or authored vectors had to scroll to find the editable canvas.
+
+### What changed
+
+- `VerifySurface.tsx` line 4222: added `totalVectorCount === 0` to `VerifyFirstRunPanel` render guard.
+  - Before: `{isFirstRunState && !lastRun && verifyMode !== 'blocked' && (`
+  - After: `{isFirstRunState && !lastRun && verifyMode !== 'blocked' && totalVectorCount === 0 && (`
+- Comment updated to explain the intent: "only when no vectors yet; once canvas is populated, step aside"
+- `verifySurface.caseEditorClarity.test.tsx` (new): 5 contract tests covering hero absent/present, canvas always present, blocked unchanged.
+
+### Validation
+
+- RED: 1/5 failing (test 1 — hero absent when vectors exist)
+- After one-line fix: 5/5 GREEN
+- Full verifySurface suite: 89/89 GREEN (was 84, +5 B-14 tests), zero regressions
+- Commit: `05514e78`
+
+---
+
+## Change Log 2026-04-08 (B-13 Phase 3 — Run Ownership Complete)
+
+**Subsystem**: Verify — frontend dedup, Run ownership
+
+### Problem
+
+One remaining competing Run trigger after B-13 Phase 2: `ide-verify-run` in `ScenarioBuilderPanel.tsx` first-run footer. When `hasVectorsReady`, the footer rendered a Run button in parallel with `ide-vcb-run` (VerifyCommandBar header). Two Run actions created ambiguity about which was canonical.
+
+### What changed
+
+- `ScenarioBuilderPanel.tsx`: Removed `ide-verify-run` / `ide-verify-empty-run` from the first-run footer. `hasVectorsReady=true` branch now shows no Run button — header is the only Run action. `hasVectorsReady=false` branch retains `ide-verify-generate-basic-vectors-footer`. `ide-verify-empty-open-vectors` retained.
+- `verifySurface.frontend-dedup.test.tsx`: +2 Phase 3 contract tests (`ide-verify-run` absent, `ide-verify-empty-run` absent, `ide-vcb-run` present) — total 7 tests in file.
+- `verifySurface.workstation.test.tsx`: Migrated 2 tests that had `getByTestId('ide-verify-empty-run')` / `getByTestId('ide-verify-run')` assertions to assert `queryByTestId` returns null + `getByTestId('ide-vcb-run')` present.
+
+### Validation
+
+- TDD flow: 2 RED → implement → 7/7 GREEN → 2 workstation regressions → migrate → 84/84 GREEN
+- Commit: `b89959c0`
+- `ide-vcb-run` is now the only Run action anywhere in Verify. `ide-verify-run` is fully retired.
+
+---
+
 ## Change Log 2026-04-08 (Verify Entry-State Unification — B-12 Slice 2)
 
 **Subsystem**: Verify — entry-state unification

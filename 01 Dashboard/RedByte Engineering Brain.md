@@ -209,6 +209,12 @@ Latest design-rescue completions (2026-04-07):
 - landed the first grouped layout cleanup actions in Design: the multi-select inspector now exposes `Align left` and `Align top`, both reusing the existing mutation path and preserving the selected group
 - landed the first simple tidy pass in Design: the multi-select inspector now exposes `Distribute horizontally`, which uses current left-to-right order while keeping endpoints anchored
 
+Merge-path hardening (2026-04-08):
+
+- PR merges to `main` are branch-protected by the `Classroom Truth Gates` workflow; the required runner path was failing for infrastructure reasons because `classroom:gate` invokes Playwright-backed IDE gates without installing Playwright browsers first
+- local fix staged: `.github/workflows/pr-truth-gates.yml` now installs Chromium via `pnpm exec playwright install --with-deps chromium` before the classroom loop
+- release implication: required PR truth gates should now measure product truth instead of failing early on a missing-browser runner setup
+
 Use its recommended implementation order:
 
 1. **Workflow spine + shared step authority** - Project, left rail, pipeline strip, headers, and CTAs must agree on done / blocked / next / why
@@ -262,12 +268,19 @@ basys3-port-lint                  2   basys3-port-naming-phase1   10
 audit-determinism                 1   verifyContract.reset         8
 ```
 
-Render harness (all 9 suites green):
+Render harness (13 suites, 89 tests green):
 
 - `verifySurface-fail-state` 3 - `verifySurface.failure-context` 2 - `verifySurface.authoring` 11
 - `verifySurface.three-panel` 3 - `verifySurface.workstation` 30 - `verifySurface.hints-bridge` 3
 - `verifySurface.failure-patterns` 5 - `verifySurface.waveform-priority` 1 - `verifySurface.combo-kmap-provenance` 1
-- `verifySurface.entryState` 7 (added B-12 Slice 2) — 77 total, all GREEN after B-12 Slices 1–4
+- `verifySurface.entryState` 7 (added B-12 Slice 2) — 77 total GREEN after B-12 Slices 1–4
+- `verifySurface.frontend-dedup` 7 (5 Phase 2 + 2 Phase 3) — 84 total, all GREEN after B-13 Phase 3
+- `verifySurface.caseEditorClarity` 5 (added B-14 Slice 1) — 89 total, all GREEN after B-14 Slice 1
+
+B-13 Phase 1 (commit 2e3f1f49): `VerifyResultRegion` wraps orphaned float zone. 4-region layout: Header → Result → Stimulus → Waveform.
+B-13 Phase 2 (commit 2cdcf25d): Verify frontend dedup. Canonical Run = `ide-vcb-run` (VerifyCommandBar). Canonical sequential helper = `ide-verify-sequential-helper`. Removed `ide-vfr-run`, `ide-vfr-seq-presets`, `ide-verify-workbench-run`.
+B-13 Phase 3 (commit b89959c0): Run ownership complete. Removed `ide-verify-run` from ScenarioBuilderPanel first-run footer. `ide-vcb-run` is now the only Run action in Verify. Workstation tests migrated to `ide-vcb-run`.
+B-14 Slice 1 (commit 05514e78): Case-editor clarity. `VerifyFirstRunPanel` suppressed when `totalVectorCount > 0` — hero yields to canvas once vectors exist. Students no longer scroll past orientation panel to reach editable StimulusCanvas.
 
 ---
 

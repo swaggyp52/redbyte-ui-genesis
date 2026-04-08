@@ -159,7 +159,7 @@ Signal lane chips: `ide-verify-prerun-lanes` container with `ide-verify-lane-chi
 
 ---
 
-## Frontend Layout Architecture (B-13)
+## Frontend Layout Architecture (B-13 / B-14)
 
 VerifySurface renders four canonical regions, each a `<section>` with `data-zone` and `data-testid` from `VerifyRegionLayout.tsx`:
 
@@ -170,7 +170,32 @@ VerifySurface renders four canonical regions, each a `<section>` with `data-zone
 | `VerifyStimulusRegion` | `stimulus` | `ide-verify-region-stimulus` | Entry states, sequential helpers, vectors zone, scenario picker, ScenarioBuilderPanel |
 | `VerifyWaveformRegion` | `waveform` | `ide-verify-region-waveform` | Waveform viewer, fail nav, results table |
 
-**VerifyResultRegion** was added in B-13. Previously the result/failure context panels floated between `VerifyHeaderRegion` and `VerifyStimulusRegion` with no structural wrapper. Wrapping them provides semantic identity and enables layout scoping without logic changes.
+**VerifyResultRegion** was added in B-13 Phase 1. Previously the result/failure context panels floated between `VerifyHeaderRegion` and `VerifyStimulusRegion` with no structural wrapper. Wrapping them provides semantic identity and enables layout scoping without logic changes.
+
+### Canonical Surface Ownership (B-13 Phase 2 + Phase 3 — complete)
+
+One surface owns each user action. No duplicates remain.
+
+| Action | Canonical location | testid | Removed duplicates |
+|--------|--------------------|--------|--------------------|
+| Run verification | `VerifyCommandBar` (header, always visible when not blocked) | `ide-vcb-run` | `ide-vfr-run` (VerifyFirstRunPanel), `ide-verify-workbench-run` (ScenarioBuilderPanel postrun), `ide-verify-run` (ScenarioBuilderPanel first-run footer — Phase 3) |
+| Sequential clock presets | `ide-verify-sequential-helper` callout in `VerifyStimulusRegion` | `ide-verify-insert-clock-pattern` etc. | `ide-vfr-seq-presets` in VerifyFirstRunPanel |
+
+**Run ownership is now fully singular.** `ide-vcb-run` is the only Run trigger in Verify.
+
+### Case-Editor Clarity (B-14 Slice 1)
+
+`VerifyFirstRunPanel` now yields to the StimulusCanvas once vectors exist.
+
+**Before B-14 Slice 1**: `VerifyFirstRunPanel` rendered unconditionally in `isFirstRunState && !lastRun` — even when vectors were already present. Students had to scroll past a hero panel (icon + description + signal pills + 4-step workflow) to reach the editable StimulusCanvas.
+
+**After B-14 Slice 1**: `VerifyFirstRunPanel` renders only when `totalVectorCount === 0`. Once vectors appear (auto-generated or authored), the hero panel disappears and the canvas is immediately first.
+
+| State | VerifyFirstRunPanel | StimulusCanvas |
+|-------|---------------------|----------------|
+| first-run, no vectors | ✅ shown (orientation) | ✅ shown |
+| first-run, vectors exist | ❌ hidden | ✅ shown (primary) |
+| post-run (any) | ❌ hidden (was already hidden) | ✅ shown |
 
 ---
 
@@ -355,11 +380,16 @@ The current repo state does **not** support deleting `projectVectors` outright y
   - B-12 Slice 3: new computed values `emptyStateRunLabel`, `referenceModeLabel`, `sessionModeBadge`, `sessionTitle` drive the unified result strip
   - B-12 Slice 3: `ide-verify-session-status` shows raw `verifySession.statusBadge` (separate from student-display override in pill)
   - B-12 Slice 3: `primaryStatus` memo no longer handles `unsupportedFeedbackDiagnostic`; dedicated banner renders unconditionally
-  - B-13: `VerifyResultRegion` wraps the previously-orphaned float zone (fail-diagnosis, hint-callout, readiness-strip, export-available-note, pass-hero, oracle-note, preview-banner). Four canonical regions: Header → Result → Stimulus → Waveform.
+  - B-13 Phase 1: `VerifyResultRegion` wraps the previously-orphaned float zone (fail-diagnosis, hint-callout, readiness-strip, export-available-note, pass-hero, oracle-note, preview-banner). Four canonical regions: Header → Result → Stimulus → Waveform.
+  - B-13 Phase 2: frontend dedup. Removed `ide-vfr-run` (VerifyFirstRunPanel), `ide-vfr-seq-presets` (VerifyFirstRunPanel), `ide-verify-workbench-run` (ScenarioBuilderPanel postrun). Canonical Run = `ide-vcb-run`. Canonical sequential helper = `ide-verify-sequential-helper`.
+  - B-13 Phase 3: removed `ide-verify-run` from ScenarioBuilderPanel first-run footer. Run ownership fully singular — `ide-vcb-run` is the only Run action in Verify.
+  - B-14 Slice 1: `VerifyFirstRunPanel` suppressed when `totalVectorCount > 0`. Hero steps aside; StimulusCanvas is immediately primary when vectors exist. Contract test: `verifySurface.caseEditorClarity.test.tsx` (5 tests).
   - the remaining local split is mostly draft-only `READY` / `BLOCKED` presentation plus compatibility `projectVectors` paths
 - `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
   - first-run footer/copy now consumes authoritative vector/assertion counts from `VerifySurface` instead of inferring readiness from project-authored vectors alone
   - B-12 Slice 4: postrun `<div>` → `<details ref={detailsRef}>` + `<summary className="ide-verify-scenario-builder-summary">`. `initialExpanded` prop: `true` for confirmed-pass non-trace runs, `false` for fail/trace. fail-state CTAs in `VerifySurface` set `details.open = true` to reveal workbench without React state round-trip.
+  - B-13 Phase 2: `ide-verify-workbench-run` removed from postrun workbench-actions. Only `ide-verify-workbench-generate` remains.
+  - B-13 Phase 3: `ide-verify-run` removed from first-run footer. When `hasVectorsReady`, footer shows only Open vectors — Run lives in header.
 - `packages/rb-apps/src/apps/ide/viewmodels/buildVerifySessionViewModel.ts`
   - intended student-facing source of truth for session state
   - now keeps persisted compare evidence authoritative even when live vector props are temporarily absent
