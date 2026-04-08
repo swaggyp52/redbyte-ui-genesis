@@ -71,6 +71,7 @@ import {
   VerifyHeaderRegion,
   VerifyResultRegion,
   VerifyStimulusRegion,
+  VerifyWorkspaceRegion,
 } from './verify/VerifyRegionLayout';
 import { type VerifyPrimaryStatusAreaProps } from './verify/VerifyPrimaryStatusArea';
 import { WaveformViewer, type WaveformSignalRow, type SignalLaneGroup } from './verify/WaveformInstrument';
@@ -3857,126 +3858,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               )}
             </div>
           )}
-          {!isFirstRunState && !usesCompactStaleStrip && (
-            <div className="ide-verify-strip-actions">
-              {/* Group 1 — PRIMARY: one dominant next action */}
-              <div className="ide-verify-strip-group ide-verify-strip-group--run">
-                {orphanPreflight ? (
-                  <div className="ide-verify-orphan-preflight" data-testid="ide-verify-orphan-preflight">
-                    <span className="ide-verify-orphan-preflight-msg">
-                      ⚠ Some vectors reference signals that no longer exist. Pass/fail results will be incorrect.
-                    </span>
-                    <IdeButton
-                      tone="primary"
-                      onClick={() => { setOrphanPreflight(false); handleGenerateBasicVectors(); }}
-                    >
-                      Regenerate vectors
-                    </IdeButton>
-                    <IdeButton
-                      tone="ghost"
-                      onClick={() => { setOrphanPreflight(false); runVerification(); }}
-                    >
-                      Run anyway
-                    </IdeButton>
-                    <IdeButton
-                      tone="ghost"
-                      onClick={() => setOrphanPreflight(false)}
-                    >
-                      Cancel
-                    </IdeButton>
-                  </div>
-                ) : (
-                  <span data-testid={primaryActionKind === 'run' ? 'ide-primary-cta' : undefined}>
-                    <IdeButton
-                      tone={runActionTone}
-                      onClick={() => handleRunWithPreflight()}
-                      disabled={runState === 'running'}
-                      testId={lastRun ? 'ide-verify-run-secondary' : 'ide-verify-run'}
-                      className={readyDraftCanRun ? 'is-pulsing' : undefined}
-                    >
-                      {verifySession.runLabel}
-                    </IdeButton>
-                  </span>
-                )}
-                {primaryActionKind === 'inspect' ? (
-                  <span data-testid="ide-primary-cta">
-                    <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-jump-first-failure">
-                      Inspect first mismatch
-                    </IdeButton>
-                  </span>
-                ) : null}
-                {primaryActionKind !== 'capture' && canSetOracle && !canInspectFirstMismatch ? (
-                  <IdeButton
-                    tone={captureActionTone}
-                    onClick={handleSetOracleExpected}
-                    testId="ide-verify-set-oracle"
-                    title="Save the current waveform outputs as expected values for this testbench."
-                  >
-                    Capture outputs as expected
-                  </IdeButton>
-                ) : null}
-                {primaryActionKind === 'capture' ? (
-                  <span data-testid="ide-primary-cta">
-                    <IdeButton
-                      tone="primary"
-                      onClick={handleSetOracleExpected}
-                      testId="ide-verify-set-oracle"
-                      title="Save the current waveform outputs as expected values for this testbench."
-                    >
-                      Capture outputs as expected
-                    </IdeButton>
-                  </span>
-                ) : null}
-              </div>
-              {/* Mode toggle — Observe / Compare segmented control */}
-              <div className="ide-verify-mode-segmented" data-testid="ide-verify-mode-segmented">
-                <button
-                  type="button"
-                  className={`ide-verify-mode-seg-btn${!nextRunUsesAssertions ? ' is-active' : ''}`}
-                  onClick={() => setNextRunUsesAssertions(false)}
-                  data-testid="ide-verify-mode-observe"
-                >
-                  Observe
-                </button>
-                <button
-                  type="button"
-                  className={`ide-verify-mode-seg-btn${nextRunUsesAssertions ? ' is-active' : ''}`}
-                  onClick={() => setNextRunUsesAssertions(true)}
-                  data-testid="ide-verify-mode-compare"
-                  disabled={totalExpectedCaseCount === 0}
-                  title={totalExpectedCaseCount === 0 ? 'Save a run as expected first to use Compare' : undefined}
-                >
-                  Compare
-                </button>
-              </div>
-              {/* Assertion mode toggle — single authoring control for run intent */}
-              <button
-                type="button"
-                data-testid="ide-verify-assertion-mode-toggle"
-                onClick={() => setNextRunUsesAssertions((v) => !v)}
-              >
-                Mode: {nextRunUsesAssertions ? 'Check Outputs' : 'Trace Only'}
-              </button>
-              {/* Group 2 — SECONDARY: tucked away, never the dominant focus */}
-              {(hasResults || Boolean(lastRun)) && (
-                <details className="ide-verify-strip-group ide-verify-strip-group--advanced" data-testid="ide-verify-advanced-debug">
-                  <summary>More actions</summary>
-                  <div className="ide-inline-actions" style={{ marginTop: '0.75rem' }}>
-                  {totalSteps > 0 && (
-                    <IdeButton
-                      tone={isStepMode ? 'secondary' : 'ghost'}
-                      onClick={() => setIsStepMode((v) => !v)}
-                      testId="ide-verify-step-toggle"
-                    >
-                      {isStepMode ? 'Exit Step-Through' : 'Step Through'}
-                    </IdeButton>
-                  )}
-                  <IdeButton tone="ghost" onClick={clearResults} testId="ide-verify-clear">Clear</IdeButton>
-                  </div>
-                </details>
-              )}
-            </div>
-          )}
+          {/* Strip actions retired — all actions consolidated into VerifyCommandBar */}
         </div>
         {/* ── Always-visible command bar (hidden in blocked mode) ── */}
         {verifyMode !== 'blocked' && (
@@ -3997,6 +3879,25 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           statusLabel={sessionStatusBadgeLabel}
           statusTone={sessionStatusTone}
           isSequential={isSequentialRun}
+          evidenceLabel={
+            lastRun && sessionShowsCompareEvidence
+              ? `${runRows.length - failingRows.length}/${runRows.length} match`
+              : lastRun && sessionShowsTraceEvidence
+                ? `${runRows.length} vectors`
+                : undefined
+          }
+          evidenceTone={
+            lastRun && sessionShowsCompareEvidence
+              ? (failingRows.length === 0 ? 'pass' : 'fail')
+              : lastRun && sessionShowsTraceEvidence
+                ? 'idle'
+                : undefined
+          }
+          coverageLabel={
+            lastRun && runRows.length > 0
+              ? `${new Set(runRows.map((r) => r.signal)).size} signals`
+              : undefined
+          }
         />
         )}
         </VerifyHeaderRegion>
@@ -4070,6 +3971,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )}
 
         {!isFirstRunState && lastRun && sessionShowsAssertionMatch && (
+          <details className="ide-verify-pass-hero-details">
+          <summary className="ide-verify-pass-hero-summary">Run evidence</summary>
           <section
             className={`ide-verify-run-proof ide-verify-run-proof--pass ide-verify-pass-hero${
               lastRun.qualification === 'incomplete-mapping' ? ' ide-verify-pass-hero--incomplete' : ''
@@ -4167,6 +4070,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               )}
             </dl>
           </section>
+          </details>
         )}
 
         {sessionSignalsAssertionFailure && oracleApplied && (
@@ -4196,6 +4100,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )}
         </VerifyResultRegion>
 
+        <VerifyWorkspaceRegion>
         <VerifyStimulusRegion>
 
         {/* ── BLOCKED mode entry surface ─────────────────────────────────── */}
@@ -4284,48 +4189,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </IdeCallout>
         )}
 
-        {/* ── VECTORS ZONE ─────────────────────────────────────────────────── */}
-        {inputFields.length > 0 && (
-          <h4 className="ide-verify-zone-label" data-zone="vectors">Test Vectors</h4>
-        )}
-
-        {/* Live circuit I/O summary — anchors vectors to the current design */}
-        {inputFields.length > 0 && (
-          <div className="ide-verify-io-summary" data-testid="ide-verify-io-summary">
-            <span className="ide-verify-io-summary-section">
-              <span className="ide-verify-io-summary-label">Inputs:</span>
-              {inputFields.map((f) => f.label ?? f.id).join(', ')}
-            </span>
-            {outputFields.length > 0 && (
-              <span className="ide-verify-io-summary-section">
-                <span className="ide-verify-io-summary-label">Outputs:</span>
-                {outputFields.map((f) => f.label ?? f.id).join(', ')}
-              </span>
-            )}
-            {clockSignals.size > 0 && (
-              <span className="ide-verify-io-summary-section">
-                <span className="ide-verify-io-summary-label">
-                  {effectiveTimingGuidance.signalLabelPlural}:
-                </span>
-                {Array.from(clockSignals).join(', ')}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Pre-run signal inventory lanes */}
-        {signalInventory && signalInventory.lanes.length > 0 && !usesCompactStaleStrip && (
-          <div data-testid="ide-verify-prerun-lanes">
-            {signalInventory.lanes.map((lane) => (
-              <span key={lane.name} data-testid={`ide-verify-lane-chip-${lane.name}`}>{lane.name}</span>
-            ))}
-            {signalInventory.clockPolicy === 'clocked' && signalInventory.clockSignalName && (
-              <span data-testid="ide-verify-prerun-clock-chip">
-                {`${effectiveTimingGuidance.signalName ?? signalInventory.clockSignalName}: ${signalInventory.clockSignalName}`}
-              </span>
-            )}
-          </div>
-        )}
+        {/* Zone label, IO summary, prerun lanes retired — canvas is self-explanatory */}
 
         {/* Schema-change banner — neutral info when circuit interface changes */}
         {showSchemaChangeBanner && (
@@ -5492,6 +5356,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </section>
           )}
         </div>
+        </VerifyWorkspaceRegion>
       </IdePanel>
     </IdeSurfaceLayout>
   );

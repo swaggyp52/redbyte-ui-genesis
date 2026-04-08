@@ -35,6 +35,11 @@ export interface VerifyCommandBarProps {
 
   /** Circuit kind for contextual hints */
   readonly isSequential: boolean;
+
+  /** Compact post-run evidence metrics */
+  readonly evidenceLabel?: string;
+  readonly evidenceTone?: 'pass' | 'fail' | 'idle';
+  readonly coverageLabel?: string;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -56,6 +61,9 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   statusLabel,
   statusTone,
   isSequential,
+  evidenceLabel,
+  evidenceTone,
+  coverageLabel,
 }) => {
   const toneClass =
     statusTone === 'ok' ? 'ide-vcb-status--ok'
@@ -124,11 +132,24 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
         )}
       </div>
 
-      {/* Right: status */}
+      {/* Right: status + evidence */}
       <div className="ide-vcb-group ide-vcb-group--status">
         <span className={`ide-vcb-status ${toneClass}`} data-testid="ide-vcb-status">
           {statusLabel}
         </span>
+        {evidenceLabel && (
+          <span
+            className={`ide-vcb-evidence ide-vcb-evidence--${evidenceTone ?? 'idle'}`}
+            data-testid="ide-vcb-evidence"
+          >
+            {evidenceLabel}
+          </span>
+        )}
+        {coverageLabel && (
+          <span className="ide-vcb-coverage" data-testid="ide-vcb-coverage">
+            {coverageLabel}
+          </span>
+        )}
         {isSequential && (
           <span className="ide-vcb-seq-chip" data-testid="ide-vcb-seq-chip">
             Sequential

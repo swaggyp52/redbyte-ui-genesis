@@ -19328,6 +19328,32 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   min-height: 0;
 }
 
+/* ── Workspace: side-by-side stimulus (left) + waveform (right) ────────────── */
+.ide-verify-workspace {
+  order: 3;
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Left panel: stimulus editor at fixed width */
+.ide-verify-workspace > .ide-verify-region--stimulus {
+  flex: 0 0 460px;
+  max-width: 460px;
+  min-width: 220px;
+  overflow: hidden;
+}
+
+/* Right panel: waveform fills remaining width */
+.ide-verify-workspace > .ide-verify-region--waveform {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .ide-verify-region--inspector {
   order: 4;
   flex: 0 0 auto;
@@ -24160,6 +24186,55 @@ button:disabled,
   color: #c4b5fd;
 }
 
+/* Evidence metrics chip */
+.ide-vcb-evidence {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ide-vcb-evidence--pass {
+  background: rgba(34, 197, 94, 0.15);
+  color: #6ee7a0;
+}
+.ide-vcb-evidence--fail {
+  background: rgba(220, 60, 60, 0.18);
+  color: #f28b8b;
+}
+.ide-vcb-evidence--idle {
+  background: rgba(100, 116, 139, 0.18);
+  color: #94a3b8;
+}
+
+/* Coverage chip */
+.ide-vcb-coverage {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  background: rgba(100, 116, 139, 0.12);
+  color: #94a3b8;
+}
+
+/* Pass hero details collapse */
+.ide-verify-pass-hero-details {
+  width: 100%;
+}
+.ide-verify-pass-hero-summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  padding: 4px 0;
+  user-select: none;
+}
+
 /* Pulsing run button */
 .ide-verify-command-bar .is-pulsing {
   animation: vcb-pulse 1.2s ease-in-out infinite;
@@ -24961,6 +25036,7 @@ button:disabled,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--result {
   position: relative;
   z-index: 1;
+  order: 2;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus {

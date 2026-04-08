@@ -200,8 +200,8 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-inspector')).toBeNull();
   });
 
-  it('deduplicates canonical signal ids and display labels in the pre-run inventory', () => {
-    const { getAllByText, getByTestId, queryByTestId } = render(
+  it('does not render retired pre-run inventory panels', () => {
+    const { queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -221,13 +221,8 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-io-summary').textContent).toContain('Inputs:');
-    expect(getByTestId('ide-verify-io-summary').textContent).toContain('SW0, SW1');
-    expect(getByTestId('ide-verify-prerun-lanes').textContent).toContain('SW0');
-    expect(getByTestId('ide-verify-prerun-lanes').textContent).toContain('SW1');
-    expect(getByTestId('ide-verify-prerun-lanes').textContent).toContain('LD0');
-    expect(getByTestId('ide-verify-lane-chip-SW0')).toBeTruthy();
-    expect(queryByTestId('ide-verify-lane-chip-sw0')).toBeNull();
+    expect(queryByTestId('ide-verify-io-summary')).toBeNull();
+    expect(queryByTestId('ide-verify-prerun-lanes')).toBeNull();
   });
 
   it('describes supported latch control as EN rather than a generic clock', () => {
@@ -272,10 +267,10 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-prerun-clock-chip').textContent).toContain('EN: EN');
+    expect(queryByTestId('ide-verify-prerun-clock-chip')).toBeNull();
     expect(getByTestId('ide-verify-sequential-helper').textContent).toContain('Latch behavior detected');
     expect(getByTestId('ide-verify-insert-clock-pattern').textContent).toContain('Insert basic enable pattern');
-    expect(getByTestId('ide-verify-io-summary').textContent).toContain('Latch control:');
+    expect(queryByTestId('ide-verify-io-summary')).toBeNull();
     expect(getByTestId('ide-verify-first-run-callout').textContent).toContain(
       'Waveform inspection and capture tools stay available after you have real evidence'
     );
@@ -430,9 +425,8 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-session-title').textContent).toContain('Waveform recorded — observation only');
     expect(getByTestId('ide-verify-summary-status').textContent).toContain('OBSERVATION ONLY');
     expect(getByTestId('ide-verify-run-proof').className).toContain('ide-verify-run-proof--trace');
-    expect(getByTestId('ide-verify-set-oracle').textContent).toContain('Capture outputs as expected');
-    expect(getByTestId('ide-verify-set-oracle').className).toContain('ide-button-primary');
-    expect(getByTestId('ide-verify-run-secondary').className).toContain('ide-button-secondary');
+    expect(getByTestId('ide-vcb-save-expected')).toBeTruthy();
+    expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(queryByTestId('ide-left-dock')).toBeNull();
     expect(queryByTestId('ide-inspector')).toBeNull();
 
@@ -484,7 +478,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-set-oracle'));
+    fireEvent.click(getByTestId('ide-vcb-save-expected'));
     expect(onVectorsChange).toHaveBeenCalledTimes(1);
 
     const updatedVectors = onVectorsChange.mock.calls[0]?.[0] as Array<{
@@ -510,7 +504,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-assertion-mode-toggle').textContent).toContain('Mode: Check Outputs');
+    expect(getByTestId('ide-vcb-mode-compare').className).toContain('is-active');
   });
 
   it('reruns in trace mode after the student switches the next run intent back to simulation', async () => {
@@ -534,10 +528,10 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-assertion-mode-toggle'));
-    expect(getByTestId('ide-verify-assertion-mode-toggle').textContent).toContain('Mode: Trace Only');
+    fireEvent.click(getByTestId('ide-vcb-mode-observe'));
+    expect(getByTestId('ide-vcb-mode-observe').className).toContain('is-active');
 
-    fireEvent.click(getByTestId('ide-verify-run-secondary'));
+    fireEvent.click(getByTestId('ide-vcb-run'));
 
     await waitFor(() => expect(onRunVerification).toHaveBeenCalledTimes(1));
     expect(onRunVerification.mock.calls[0]?.[0]).toMatchObject({
@@ -565,7 +559,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-assertion-mode-toggle'));
+    fireEvent.click(getByTestId('ide-vcb-mode-observe'));
 
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain(
       'saved expected outputs'
@@ -639,7 +633,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-set-oracle'));
+    fireEvent.click(getByTestId('ide-vcb-save-expected'));
 
     expect(onVectorsChange).toHaveBeenCalledWith([
       { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
@@ -923,7 +917,6 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-jump-first-failure')).toBeTruthy();
     expect(getByTestId('ide-verify-fail-nav-first')).toBeTruthy();
     expect(getByTestId('ide-verify-set-cursor-a')).toBeTruthy();
     expect(getByTestId('ide-verify-set-cursor-b')).toBeTruthy();
@@ -931,7 +924,7 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-signal-digest')).toBeNull();
     expect(queryByTestId('ide-verify-waveform-legend')).toBeNull();
     expect(queryByTestId('ide-verify-tick-explainer')).toBeNull();
-    expect(getByTestId('ide-verify-advanced-debug').hasAttribute('open')).toBe(false);
+    expect(queryByTestId('ide-verify-advanced-debug')).toBeNull();
 
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     fireEvent.click(getAllByText('Details')[0]);
@@ -1108,7 +1101,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-set-oracle'));
+    fireEvent.click(getByTestId('ide-vcb-save-expected'));
 
     expect(onVectorsChange).toHaveBeenCalledTimes(1);
     const updatedVectors = onVectorsChange.mock.calls[0]?.[0] as Array<{
@@ -1182,7 +1175,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-set-oracle'));
+    fireEvent.click(getByTestId('ide-vcb-save-expected'));
 
     expect(onVectorsChange).toHaveBeenCalledTimes(1);
     const updatedVectors = onVectorsChange.mock.calls[0]?.[0] as Array<{
@@ -1245,7 +1238,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-set-oracle'));
+    fireEvent.click(getByTestId('ide-vcb-save-expected'));
 
     expect(onVectorsChange).toHaveBeenCalledTimes(1);
     const updatedVectors = onVectorsChange.mock.calls[0]?.[0] as Array<{

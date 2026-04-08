@@ -57,7 +57,7 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
       />
     );
 
-    expect(getAllByTestId('ide-verify-jump-first-failure').length).toBeGreaterThan(0);
+    expect(getAllByTestId('ide-verify-fail-nav-first').length).toBeGreaterThan(0);
     expect(getAllByTestId('ide-verify-drawer-toggle')[0]?.getAttribute('aria-expanded')).toBe('false');
     expect(container.querySelector('[data-testid="ide-verify-jump-to-failure-card"]')).toBeNull();
     expect(queryByTestId('ide-verify-jump-to-failure')).toBeNull();

@@ -33,3 +33,9 @@ export const VerifyInspectorRegion: React.FC<VerifyRegionProps> = ({ children })
     {children}
   </section>
 );
+
+export const VerifyWorkspaceRegion: React.FC<VerifyRegionProps> = ({ children }) => (
+  <div className="ide-verify-workspace" data-zone="workspace" data-testid="ide-verify-workspace">
+    {children}
+  </div>
+);
