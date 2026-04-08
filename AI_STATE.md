@@ -1,5 +1,33 @@
 # AI State
 
+## Change Log 2026-04-08 (Verify Entry-State Unification — B-12 Slice 2)
+
+**Subsystem**: Verify — entry-state unification
+
+### Problem
+
+Four entry-state gaps after Slice 1:
+1. `verifyMode === 'blocked'` had no visual gate in VerifySurface — only via `unsupportedFeedbackDiagnostic` prop from IdeApp
+2. `VerifyCommandBar` rendered unconditionally — competing Run button even in blocked mode
+3. Sequential clock-preset strip required `lastRun` — students got no clock guidance on first entry
+4. `primaryStatus` chip testid was `ide-verify-status-chip` instead of `ide-verify-primary-status`
+
+### What changed
+
+- `VerifySurface.tsx`:
+  - Added `ide-verify-entry-blocked` surface for `verifyMode === 'blocked'`: title, reason, Fix in Design CTA
+  - `VerifyFirstRunPanel` + `VerifyCommandBar` suppressed when blocked
+  - Sequential helper condition: removed `&& lastRun` gate — shows on first entry without prior run
+  - primaryStatus chip testid: `ide-verify-status-chip` → `ide-verify-primary-status`
+- `verifySurface.entryState.test.tsx` (new): 6 tests for blocked/combinational/sequential entry
+
+### Validation
+
+- 6 new entry-state tests GREEN; 3 pre-existing layout-workflow failures fixed
+- 16 pre-existing failures unchanged; zero regressions in 75-test passing baseline
+
+---
+
 ## Change Log 2026-04-07 (Verify Mode Detection — B-12 Slice 1)
 
 **Subsystem**: Verify — mode detection / hasDff → VerifyMode migration

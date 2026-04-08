@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: verify
-updated: 2026-04-07
+updated: 2026-04-08
 related:
   - "[[Verify Hint System]]"
   - "[[Connection Model]]"
@@ -89,6 +89,31 @@ VerifyMode = 'combinational' | 'sequential' | 'blocked'
 The HDL hint (`lastRun?.schedule`) handles cases where the circuit graph doesn't carry DFF nodes directly (VHDL/Verilog import path).
 
 `hasDff` useMemo in IdeApp.tsx is kept and exported — it has direct test coverage in `projectRuntime.history-authority.test.tsx` and must not be removed.
+
+---
+
+## Entry-State Architecture (B-12 Slice 2)
+
+VerifySurface owns the unified entry shell. Three canonical entry paths:
+
+**Blocked (`verifyMode === 'blocked'`):**
+- `ide-verify-entry-blocked` surface with plain-language reason and Fix in Design CTA
+- `VerifyCommandBar` suppressed (no Run button visible)
+- `VerifyFirstRunPanel` suppressed
+- `unsupportedFeedbackDiagnostic` prop from IdeApp still works alongside this (redundant signal; Slice 3 may collapse them)
+
+**Combinational (`verifyMode === 'combinational'`):**
+- `VerifyCommandBar` renders (always-visible command bar with Run + mode toggle)
+- `VerifyFirstRunPanel` renders on `isFirstRunState && !lastRun`
+- No blocked surface, no clock helper
+
+**Sequential (`verifyMode === 'sequential'`):**
+- Same skeleton as combinational
+- `ide-verify-sequential-helper` strip renders on `verifyMode === 'sequential' && isFirstRunState` — no `lastRun` requirement
+- `VerifyFirstRunPanel` renders on first-entry with sequential starters when `!hasVectors`
+- `VerifyCommandBar` renders after first-run state exits
+
+**`primaryStatus` chip:** `data-testid="ide-verify-primary-status"` (renamed from `ide-verify-status-chip` in Slice 2). No test used the old name.
 
 ---
 
