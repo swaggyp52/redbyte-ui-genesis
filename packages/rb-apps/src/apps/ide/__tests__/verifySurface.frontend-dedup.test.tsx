@@ -86,6 +86,9 @@ describe('Verify frontend — single canonical Run button (B-13 Phase 2)', () =>
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
     // Duplicate first-run panel run button must be absent
     expect(queryByTestId('ide-vfr-run')).toBeNull();
+    // Waveform placeholder must not introduce a second run CTA.
+    expect(queryByTestId('ide-vwp-run')).toBeNull();
+    expect(getByTestId('ide-vwp-header-run-note').textContent).toContain('only run action');
   });
 
   it('hides ide-verify-workbench-run after a pass run — Run stays in header', () => {
@@ -157,6 +160,7 @@ describe('Verify frontend — single canonical Run button, Phase 3 (B-13 Phase 3
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(queryByTestId('ide-verify-run')).toBeNull();
     expect(queryByTestId('ide-verify-empty-run')).toBeNull();
+    expect(queryByTestId('ide-vwp-run')).toBeNull();
   });
 });
 

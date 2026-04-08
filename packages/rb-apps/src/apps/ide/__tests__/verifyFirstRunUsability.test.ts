@@ -149,7 +149,6 @@ describe('VerifyWaveformPlaceholder contracts', () => {
       outputNames: ['led0'],
       isSequential: false,
       onGenerate: () => {},
-      onRun: () => {},
       hasVectors: false,
       runLabel: 'Run',
       ...overrides,
@@ -170,11 +169,11 @@ describe('VerifyWaveformPlaceholder contracts', () => {
     // Primary action is generate, not run
   });
 
-  it('placeholder shows run CTA when vectors exist', () => {
+  it('placeholder becomes guidance-only when vectors exist', () => {
     const props = makeProps({ hasVectors: true });
     expect(props.hasVectors).toBe(true);
-    // Primary action switches to run
-    expect(props.onRun).toBeDefined();
+    // Run stays in the header; placeholder copy should still know the label.
+    expect(props.runLabel).toBe('Run');
   });
 
   it('scaffold lanes reflect all signal types', () => {
@@ -241,12 +240,11 @@ describe('First-run wiring invariants', () => {
       outputNames: ['led0'],
       isSequential: false,
       onGenerate: () => {},
-      onRun: () => {},
       hasVectors: false,
       runLabel: 'Run',
     };
     expect(props.inputNames.length).toBeGreaterThan(0);
     expect(props.onGenerate).toBeDefined();
-    expect(props.onRun).toBeDefined();
+    expect(props.runLabel).toBe('Run');
   });
 });

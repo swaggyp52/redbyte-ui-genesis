@@ -17,7 +17,6 @@ export interface VerifyWaveformPlaceholderProps {
 
   /** Call-to-action */
   readonly onGenerate: () => void;
-  readonly onRun: () => void;
   readonly hasVectors: boolean;
   readonly runLabel: string;
 }
@@ -30,7 +29,6 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
   clockName,
   isSequential,
   onGenerate,
-  onRun,
   hasVectors,
   runLabel,
 }) => {
@@ -71,15 +69,15 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
           </span>
           <p className="ide-vwp-overlay-text">
             {hasVectors
-              ? 'Waveform will appear here after running'
+              ? `Use ${runLabel} in the header to generate your first waveform`
               : isSequential
                 ? 'Generate a starter timeline to see waveforms'
                 : 'Initialize inputs to see waveforms'}
           </p>
           {hasVectors ? (
-            <IdeButton tone="primary" onClick={onRun} testId="ide-vwp-run">
-              {runLabel}
-            </IdeButton>
+            <p className="ide-vwp-overlay-note" data-testid="ide-vwp-header-run-note">
+              The header {runLabel} control is the only run action in Verify.
+            </p>
           ) : (
             <IdeButton tone="primary" onClick={onGenerate} testId="ide-vwp-generate">
               {isSequential ? 'Generate starter' : 'Initialize inputs'}

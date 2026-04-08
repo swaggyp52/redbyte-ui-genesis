@@ -4473,7 +4473,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               clockName={clockSignals.size > 0 ? Array.from(clockSignals)[0] : undefined}
               isSequential={isSequentialRun}
               onGenerate={handleGenerateBasicVectors}
-              onRun={() => handleRunWithPreflight()}
               hasVectors={totalVectorCount > 0}
               runLabel={verifySession.runLabel}
             />

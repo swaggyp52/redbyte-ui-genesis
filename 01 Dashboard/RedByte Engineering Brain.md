@@ -225,8 +225,12 @@ Merge-path hardening (2026-04-08):
   - `pnpm -s classroom:gate` -> PASS all steps
 - focused Verify regression check after the review-blocker fix:
   - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifyMode.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` -> 44 tests passed
+- main-first Verify follow-up after the live deploy smoke:
+  - the waveform placeholder no longer renders its own `Compare` button once vectors already exist; it now points students back to the header run control so the case editor and command bar stay canonical
+  - focused Verify suites (`verifyFirstRunUsability`, `verifySurface.frontend-dedup`, `verifySurface.workstation`) now cover that dedup path end to end
+  - local `pnpm -s classroom:gate` still passes after the dedup change
 - immediate repo-steward next action:
-  - push the canonical branch, rerun PR #76 required checks against the updated head, and merge to `main` once GitHub confirms green
+  - land the main-first Verify dedup follow-up on `main`, let Cloudflare redeploy, then continue the case-editor clarity / canonical authoring workspace sweep
 
 Use its recommended implementation order:
 

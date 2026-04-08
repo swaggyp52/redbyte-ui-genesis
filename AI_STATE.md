@@ -1,5 +1,42 @@
 # AI State
 
+## Change Log 2026-04-08 (Main-first follow-up — Verify waveform placeholder dedup)
+
+**Subsystem**: Verify / case-editor clarity
+
+### Problem
+
+After PR `#76` landed and deployed, the live Verify smoke on `https://redbyteapps.dev/os/` exposed one remaining competing pre-run action: when a project already had vectors, `VerifyWaveformPlaceholder` still rendered its own primary `Compare` button (`ide-vwp-run`) even though `VerifyCommandBar` already owned the canonical header run action (`ide-vcb-run`).
+
+That weakened the intended student flow by letting the waveform placeholder compete with the case editor and header controls.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyWaveformPlaceholder.tsx`
+  - removed the placeholder-local run CTA when vectors already exist
+  - replaced it with guidance copy that points students back to the header run control
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - stopped passing the placeholder-local `onRun` action
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.frontend-dedup.test.tsx`
+  - now asserts the waveform placeholder does not introduce `ide-vwp-run` in first-run vector-ready states
+  - asserts the replacement guidance note is present instead
+- `packages/rb-apps/src/apps/ide/__tests__/verifyFirstRunUsability.test.ts`
+  - updated placeholder contracts so vector-ready draft states are guidance-only rather than a second run owner
+
+### Validation
+
+- Focused Verify validation:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifyFirstRunUsability.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.frontend-dedup.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - result: `54` tests passed
+- Full classroom merge gate:
+  - `pnpm -s classroom:gate`
+  - result: PASS all steps
+
+### Release impact
+
+- Tightens the Verify authoring loop on `main` so the waveform placeholder no longer competes with the case editor / header command bar
+- Moves the product closer to the intended `cases -> run -> result -> inspect -> rerun` flow on the live site
+
 ## Change Log 2026-04-08 (Release Path — PR #76 review-blocker fix)
 
 **Subsystem**: Verify / PR merge readiness
