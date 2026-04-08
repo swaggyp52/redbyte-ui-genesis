@@ -1,5 +1,45 @@
 # AI State
 
+## Change Log 2026-04-07 (Verify Mode Detection — B-12 Slice 1)
+
+**Subsystem**: Verify — mode detection / hasDff → VerifyMode migration
+
+### Problem
+
+`hasDff: boolean` in VerifySurface was a blunt instrument: it couldn't express
+'blocked' as a first-class state, it was derived inline in IdeApp from a single
+`DFlipFlop` node-type check, and it didn't account for composite sequential
+types (macros) or HDL import paths.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/verifyMode.ts` (new):
+  - `VerifyMode` type: `'combinational' | 'sequential' | 'blocked'`
+  - `SUPPORTED_SEQUENTIAL`: explicit Set of node types with working sim support
+  - `UNSUPPORTED_SEQUENTIAL`: Set of types that must block verify
+  - `detectVerifyMode(circuit, hdlScheduleHint?)`: priority — blocked > sequential
+    (SUPPORTED node, `hasClockedMacros`, or HDL hint) > combinational.
+    Clock-only INPUT does NOT force sequential.
+- `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - `verifyMode` useMemo computed from `detectVerifyMode(circuit, lastRun?.schedule)`
+  - VerifySurface now receives `verifyMode` prop (not `hasDff`)
+  - `hasDff` memo and `deriveHasDff` kept — they have direct test coverage
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`:
+  - `hasDff?: boolean` prop replaced with `verifyMode?: VerifyMode`
+  - 7 internal sites migrated from `hasDff` to `verifyMode === 'sequential'`
+  - `VerifyHintContext.hasDff` property key unchanged (interface property ≠ prop)
+- Test fixtures: `hasDff={true}` → `verifyMode="sequential"` in
+  workstation + layout-workflow suites
+
+### Validation
+
+- 14/14 unit tests in `verifyMode.test.ts` GREEN
+- 19 pre-existing failures in verifySurface suite confirmed pre-existing
+  (git stash before/after comparison — identical counts)
+- Zero regressions introduced
+
+---
+
 ## Change Log 2026-04-07 (Gate Swap + Inspector Rationalization — Phase B-10)
 
 **Subsystem**: Design surface inspector / gate type swap + Signal/State cleanup

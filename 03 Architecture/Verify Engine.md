@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: verify
-updated: 2026-04-02
+updated: 2026-04-07
 related:
   - "[[Verify Hint System]]"
   - "[[Connection Model]]"
@@ -64,6 +64,33 @@ The latest runtime-hardening slice closed RIB-003 waveform causality visibility:
 - PASS runs now keep mapped stimulus input lanes visible in the waveform viewport by default (when no mismatches exist)
 - this prevents "outputs-only" PASS evidence and restores immediate input-to-output causality reading without requiring signal-group expansion
 - mismatch-first runs still retain failure-focused lane behavior
+
+## Mode Detection (B-12 Slice 1)
+
+`verifyMode.ts` provides the canonical circuit mode gate, replacing the previous `hasDff: boolean` prop.
+
+```
+VerifyMode = 'combinational' | 'sequential' | 'blocked'
+```
+
+**Detection priority (highest → lowest):**
+
+1. Any `UNSUPPORTED_SEQUENTIAL` node type present → `'blocked'` (wins over everything)
+2. Any `SUPPORTED_SEQUENTIAL` node type, OR `analyzeSequentialLogic().hasClockedMacros`, OR `hdlScheduleHint === 'clocked_macro'` → `'sequential'`
+3. Default → `'combinational'`
+
+**Rule**: A clock-role INPUT node alone does **not** force sequential mode; only structural stateful elements do.
+
+**Sets:**
+- `SUPPORTED_SEQUENTIAL`: `DFlipFlop`, `DLatch`, `TFlipFlop`, `JKFlipFlop`, `RSLatch`
+- `UNSUPPORTED_SEQUENTIAL`: `Counter4Bit`
+
+**IdeApp wiring:** `verifyMode = detectVerifyMode(circuit, verifyLastRun?.schedule)`
+The HDL hint (`lastRun?.schedule`) handles cases where the circuit graph doesn't carry DFF nodes directly (VHDL/Verilog import path).
+
+`hasDff` useMemo in IdeApp.tsx is kept and exported — it has direct test coverage in `projectRuntime.history-authority.test.tsx` and must not be removed.
+
+---
 
 ## Canonical Shape / Contract
 
