@@ -159,6 +159,21 @@ Signal lane chips: `ide-verify-prerun-lanes` container with `ide-verify-lane-chi
 
 ---
 
+## Frontend Layout Architecture (B-13)
+
+VerifySurface renders four canonical regions, each a `<section>` with `data-zone` and `data-testid` from `VerifyRegionLayout.tsx`:
+
+| Region | data-zone | data-testid | Contents |
+|--------|-----------|-------------|----------|
+| `VerifyHeaderRegion` | `header` | `ide-verify-region-header` | Status strip, command bar, assertion-mode toggle |
+| `VerifyResultRegion` | `result` | `ide-verify-region-result` | PASS hero, failure context panels (fail-diagnosis, hint, readiness-strip, export-note, oracle-note, preview-banner) |
+| `VerifyStimulusRegion` | `stimulus` | `ide-verify-region-stimulus` | Entry states, sequential helpers, vectors zone, scenario picker, ScenarioBuilderPanel |
+| `VerifyWaveformRegion` | `waveform` | `ide-verify-region-waveform` | Waveform viewer, fail nav, results table |
+
+**VerifyResultRegion** was added in B-13. Previously the result/failure context panels floated between `VerifyHeaderRegion` and `VerifyStimulusRegion` with no structural wrapper. Wrapping them provides semantic identity and enables layout scoping without logic changes.
+
+---
+
 ## Canonical Shape / Contract
 
 ### Run pipeline
@@ -340,6 +355,7 @@ The current repo state does **not** support deleting `projectVectors` outright y
   - B-12 Slice 3: new computed values `emptyStateRunLabel`, `referenceModeLabel`, `sessionModeBadge`, `sessionTitle` drive the unified result strip
   - B-12 Slice 3: `ide-verify-session-status` shows raw `verifySession.statusBadge` (separate from student-display override in pill)
   - B-12 Slice 3: `primaryStatus` memo no longer handles `unsupportedFeedbackDiagnostic`; dedicated banner renders unconditionally
+  - B-13: `VerifyResultRegion` wraps the previously-orphaned float zone (fail-diagnosis, hint-callout, readiness-strip, export-available-note, pass-hero, oracle-note, preview-banner). Four canonical regions: Header → Result → Stimulus → Waveform.
   - the remaining local split is mostly draft-only `READY` / `BLOCKED` presentation plus compatibility `projectVectors` paths
 - `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
   - first-run footer/copy now consumes authoritative vector/assertion counts from `VerifySurface` instead of inferring readiness from project-authored vectors alone
