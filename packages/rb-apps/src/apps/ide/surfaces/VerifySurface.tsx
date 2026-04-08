@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { TestVector } from '@redbyte/rb-utils';
 import { getRuntimeVerifyRunKind, type RunVerificationInput, type RuntimeVerifyRun } from '../projectRuntime';
 import { buildVerifyTickSignalIndex, normalizeSignalKey, type VerifyTickSignalIndexEntry } from '../verifyReport';
@@ -415,6 +415,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const draggedSignalRef = useRef<string | null>(null);
   const lastAutoExpandedPassRunRef = useRef<string | null>(null);
   const scenarioBuilderDetailsRef = useRef<HTMLDetailsElement>(null);
+  const [scenarioBuilderExpandSignal, requestScenarioBuilderExpand] = useReducer((count: number) => count + 1, 0);
 
   // N2 — restore oscilloscope UI state from sessionStorage on mount
   useEffect(() => {
@@ -972,11 +973,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // Used by "Edit expected outputs" CTAs to route the student back into Verify authoring.
   const handleEditExpectedOutputs = useCallback(() => {
     const details = scenarioBuilderDetailsRef.current;
+    requestScenarioBuilderExpand();
     if (details) {
-      details.open = true;
       details.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, []);
+  }, [requestScenarioBuilderExpand]);
   const handleThreePanelFailureSelect = useCallback(
     (failureKey: string) => {
       const target = failingRows.find(
@@ -4459,6 +4460,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           postRunToolbarMode={postRunToolbarMode}
           detailsRef={scenarioBuilderDetailsRef}
           initialExpanded={lastRun?.status === 'pass' && !isTraceOnly && failingRows.length === 0}
+          expandSignal={scenarioBuilderExpandSignal}
           hideExpectedLanes={!nextRunUsesAssertions}
         />
         </VerifyStimulusRegion>

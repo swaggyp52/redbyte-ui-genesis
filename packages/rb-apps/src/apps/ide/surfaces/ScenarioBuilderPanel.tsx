@@ -73,10 +73,12 @@ export interface ScenarioBuilderPanelProps {
   // Navigation: go to Hardware surface to map I/O
   onGoToHardware?: () => void;
   // Programmatic expansion: when set, the post-run <details> uses this ref
-  // so the parent can call ref.current.open = true to reveal the editor.
+  // so the parent can scroll or inspect the editor container.
   detailsRef?: React.RefObject<HTMLDetailsElement>;
   /** Initial expanded state of the post-run workbench. Pass true for pass runs, false for fail/trace. */
   initialExpanded?: boolean;
+  /** Increment to force the post-run workbench open from the parent. */
+  expandSignal?: number;
   /** Observe mode: hide expected-output lanes so students can only paint inputs. */
   hideExpectedLanes?: boolean;
 }
@@ -130,6 +132,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   onGoToHardware,
   detailsRef,
   initialExpanded,
+  expandSignal,
   hideExpectedLanes = false,
 }) => {
   const effectiveVectorCount = totalVectorCount ?? authoredVectors.length;
@@ -571,20 +574,34 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   }
 
   // Post-run: collapsible workbench — starts closed so fail evidence takes focus.
-  // Parent can imperatively open via detailsRef.current.open = true (e.g. edit-vectors CTA).
+  // Parent can force it open via expandSignal (e.g. edit-vectors CTA).
   const [workbenchExpanded, setWorkbenchExpanded] = React.useState(initialExpanded ?? false);
+
+  React.useEffect(() => {
+    setWorkbenchExpanded(initialExpanded ?? false);
+  }, [initialExpanded]);
+
+  React.useEffect(() => {
+    if ((expandSignal ?? 0) > 0) {
+      setWorkbenchExpanded(true);
+    }
+  }, [expandSignal]);
 
   return (
     <details
       className="ide-verify-scenario-builder-details ide-verify-scenario-builder-details--postrun ide-verify-workbench-live"
       data-testid="ide-verify-stimulus-workbench"
       ref={detailsRef}
+      open={workbenchExpanded}
     >
       {/* ── Workbench header / toggle ── */}
       <summary
         className="ide-verify-scenario-builder-summary ide-verify-workbench-header"
         data-testid="ide-verify-workbench-toggle"
-        onClick={() => setWorkbenchExpanded((prev) => !prev)}
+        onClick={(event) => {
+          event.preventDefault();
+          setWorkbenchExpanded((prev) => !prev);
+        }}
       >
         <span className="ide-verify-workbench-toggle-arrow" aria-hidden="true">
           {workbenchExpanded ? '▾' : '▸'}

@@ -362,14 +362,17 @@ describe('VerifySurface workstation controls', () => {
     fireEvent.click(getByTestId('ide-verify-run-proof-edit-vectors'));
 
     expect(details?.open).toBe(true);
+    expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
     expect(scrollIntoViewMock).toHaveBeenCalled();
     expect(onGoToDesign).not.toHaveBeenCalled();
 
-    details!.open = false;
+    fireEvent.click(getByTestId('ide-verify-workbench-toggle'));
+    expect(details?.open).toBe(false);
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     fireEvent.click(getByTestId('ide-verify-mismatch-edit-vectors'));
 
     expect(details?.open).toBe(true);
+    expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
     expect(scrollIntoViewMock).toHaveBeenCalled();
     expect(onGoToDesign).not.toHaveBeenCalled();
     expect(getByTestId('ide-verify-mismatch-goto-design').textContent).toContain('Open in Design');

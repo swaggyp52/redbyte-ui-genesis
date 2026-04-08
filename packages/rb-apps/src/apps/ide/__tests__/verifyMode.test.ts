@@ -75,7 +75,7 @@ describe('detectVerifyMode — sequential', () => {
     expect(detectVerifyMode(makeCircuit(['AND', 'OR']), 'clocked_macro')).toBe('sequential');
   });
 
-  it('returns sequential (not combinational) when hdlScheduleHint is combinational', () => {
+  it('returns combinational when hdlScheduleHint is combinational', () => {
     // Other schedule hints do not force sequential mode.
     expect(detectVerifyMode(makeCircuit([]), 'combinational')).toBe('combinational');
   });

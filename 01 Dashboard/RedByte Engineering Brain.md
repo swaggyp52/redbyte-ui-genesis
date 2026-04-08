@@ -218,8 +218,13 @@ Merge-path hardening (2026-04-08):
   - Design gates now enter through Project truth (`Build Fresh` / current starter loader), expand live-input controls when needed, and use the current dense-canvas / LOD behavior
   - Verify gates now follow the current single-Run header contract and left-dock signal workflow
   - Export gates now follow the current artifact tab naming, Vivado project ZIP layout, and preview-vs-ZIP wrapper rules
+- final PR review-blocker fix is now staged locally on the canonical branch:
+  - Verify `Edit expected outputs` no longer relies on mutating `details.open`; the post-run Stimulus Workbench is now opened through explicit React state so the editor body always mounts when the CTA is used
+  - the misleading `verifyMode` combinational-hint test label was corrected
 - local release signoff for the required merge gate is now confirmed again:
   - `pnpm -s classroom:gate` -> PASS all steps
+- focused Verify regression check after the review-blocker fix:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifyMode.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` -> 44 tests passed
 - immediate repo-steward next action:
   - push the canonical branch, rerun PR #76 required checks against the updated head, and merge to `main` once GitHub confirms green
 

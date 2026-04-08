@@ -1,5 +1,47 @@
 # AI State
 
+## Change Log 2026-04-08 (Release Path — PR #76 review-blocker fix)
+
+**Subsystem**: Verify / PR merge readiness
+
+### Problem
+
+After the canonical rescue branch was pushed and the required GitHub checks turned green, PR `#76` still could not merge because two unresolved review threads remained:
+
+- the post-run Verify workbench used a native `<details>` element, but the rendered editor body depended on separate React state, so "Edit expected outputs" CTAs could reveal the shell without actually mounting the authoring workspace
+- `verifyMode.test.ts` still had one misleading test description that said "sequential" while asserting `combinational`
+
+That left the branch policy blocked on review even though the rescue line itself was otherwise merge-ready.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - added `expandSignal` so the parent can force the post-run workbench open through React state instead of mutating `details.open`
+  - made the `<details>` `open` state controlled by `workbenchExpanded`
+  - reset the post-run workbench from `initialExpanded` and toggled it through the summary click handler
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - added a reducer-backed `scenarioBuilderExpandSignal`
+  - changed `handleEditExpectedOutputs` to request expansion through that signal, while keeping the scroll-into-view behavior
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - strengthened the fail-state CTA contract to assert the workbench body actually mounts
+  - updated the close/reopen path to use the real workbench toggle instead of mutating the DOM node directly
+- `packages/rb-apps/src/apps/ide/__tests__/verifyMode.test.ts`
+  - corrected the misleading `hdlScheduleHint = combinational` test name
+
+### Validation
+
+- Focused Verify regression check:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifyMode.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - result: `44` tests passed
+- Required merge gate rerun:
+  - `pnpm -s classroom:gate`
+  - result: PASS all steps
+
+### Release impact
+
+- Clears the last known product-side blocker behind PR `#76`'s unresolved review threads
+- Keeps the Verify authoring recovery path truthful: `Edit expected outputs` now opens the actual case-editor workspace, not just the outer `<details>` shell
+
 ## Change Log 2026-04-08 (Release Path — Classroom gate contract sweep)
 
 **Subsystem**: CI / classroom truth gates / merge readiness
