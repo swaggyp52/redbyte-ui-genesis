@@ -10,6 +10,12 @@ export const VerifyHeaderRegion: React.FC<VerifyRegionProps> = ({ children }) =>
   </section>
 );
 
+export const VerifyResultRegion: React.FC<VerifyRegionProps> = ({ children }) => (
+  <section className="ide-verify-region ide-verify-region--result" data-zone="result" data-testid="ide-verify-region-result">
+    {children}
+  </section>
+);
+
 export const VerifyStimulusRegion: React.FC<VerifyRegionProps> = ({ children }) => (
   <section className="ide-verify-region ide-verify-region--stimulus" data-zone="stimulus" data-testid="ide-verify-region-stimulus">
     {children}

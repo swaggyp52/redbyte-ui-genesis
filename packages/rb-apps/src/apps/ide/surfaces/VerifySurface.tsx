@@ -69,6 +69,7 @@ import type {
 } from './TruthTablePane';
 import {
   VerifyHeaderRegion,
+  VerifyResultRegion,
   VerifyStimulusRegion,
 } from './verify/VerifyRegionLayout';
 import { type VerifyPrimaryStatusAreaProps } from './verify/VerifyPrimaryStatusArea';
@@ -4000,7 +4001,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )}
         </VerifyHeaderRegion>
 
-        {/* ── Contextual panels (below compact header, above stimulus) ────── */}
+        <VerifyResultRegion>
+        {/* ── Result / failure context panels ────────────────────────────── */}
         {drawerOpen && hasSessionFailureEvidence && failureDiagnosis.length > 0 && (
           <div className="ide-verify-fail-diagnosis" data-testid="ide-verify-fail-diagnosis">
             <span className="ide-verify-fail-diagnosis-header" data-testid="ide-verify-fail-diagnosis-header">Issues found</span>
@@ -4192,6 +4194,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </button>
           </div>
         )}
+        </VerifyResultRegion>
 
         <VerifyStimulusRegion>
 
