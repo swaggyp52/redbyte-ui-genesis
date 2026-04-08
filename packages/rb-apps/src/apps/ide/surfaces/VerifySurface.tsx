@@ -3112,7 +3112,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             : 'draft';
   const hasSessionFailureEvidence =
     sessionSignalsAssertionFailure && failingRows.length > 0;
-  const showFailureWorkbenchPanels = hasSessionFailureEvidence;
+  // Keep failure analysis secondary so the editor + waveform remain the primary
+  // desktop workbench. Detailed failure review lives in the lower analysis drawer.
+  const showInlineFailureWorkbenchPanels = false;
   const canInspectFirstMismatch = hasSessionFailureEvidence && !isRunStale;
   const usesCompactStaleStrip = hasStaleAuthoredReference;
   const postRunToolbarMode =
@@ -4456,7 +4458,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           timingGuidance={effectiveTimingGuidance}
           postRunToolbarMode={postRunToolbarMode}
           detailsRef={scenarioBuilderDetailsRef}
-          initialExpanded={lastRun?.status === 'pass' && !isTraceOnly && failingRows.length === 0}
+          initialExpanded={Boolean(lastRun)}
           expandSignal={scenarioBuilderExpandSignal}
           hideExpectedLanes={!nextRunUsesAssertions}
         />
@@ -4480,11 +4482,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             data-trace-ticks={waveformTicks.length}
             data-trace-signals={signalTimeline.length}
             data-layout-mode={layoutMode}
-            data-failure-layout={showFailureWorkbenchPanels ? '1' : '0'}
+            data-failure-layout={showInlineFailureWorkbenchPanels ? '1' : '0'}
           >
             <VerifyThreePanel
               testId="ide-verify-three-panel"
-              leftPanel={showFailureWorkbenchPanels ? (
+              leftPanel={showInlineFailureWorkbenchPanels ? (
                 <VerifyVectorListPanel
                   rows={studentFailureRows}
                   selectedKey={selectedFailureKey}
@@ -4863,7 +4865,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </div>{/* /ide-verify-instrument-deck */}
             </div>
               )}
-              rightPanel={showFailureWorkbenchPanels ? (
+              rightPanel={showInlineFailureWorkbenchPanels ? (
                 <VerifyFailureExplanationPanel
                   failure={selectedFailureExplanationCase}
                   classification={selectedFailureClassification}
@@ -5315,6 +5317,32 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
               {verifyTab === 'details' && (
                 <>
+                  <VerifyFailureExplanationPanel
+                    failure={selectedFailureExplanationCase}
+                    classification={selectedFailureClassification}
+                    reasonCode={selectedFailureEvidence?.actualReason ?? null}
+                    peers={studentSelectedFailurePeers.map((row) => ({
+                      tick: row.tick,
+                      signal: row.rawSignal,
+                      signalLabel: row.signalLabel,
+                      expected: row.expected,
+                      actual: row.actual,
+                      vectorId: row.vectorId,
+                      caseIndex: row.caseIndex,
+                    }))}
+                    inputSnapshot={selectedFailureInputs}
+                    patternSummary={selectedFailurePattern?.summary ?? null}
+                    patternNextInspect={selectedFailurePattern?.nextInspect ?? null}
+                    onSelectPeer={(peer) => applyFailureSelection(peer)}
+                    onJumpToFix={(failure) => reviewFailureInVerify(failure)}
+                    onOpenInDesign={(failure) => openFailureInDesign(failure)}
+                    onAcceptObserved={handleFailureAcceptObserved}
+                    onCaptureRow={handleFailureCaptureRow}
+                    onCaptureSignal={handleFailureCaptureSignal}
+                    onSetExpectedBit={handleFailureSetExpectedBit}
+                    onClearExpected={handleFailureClearExpected}
+                    onRerunCompare={() => handleRunWithPreflight(true)}
+                  />
                   {/* Run context — scenario, protocol, sampling, tick range */}
                   {runContextRows.length > 0 && (
                     <section className="ide-verify-run-context" data-testid="ide-verify-run-context">

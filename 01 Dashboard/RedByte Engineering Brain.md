@@ -60,6 +60,13 @@ For Design workflow hierarchy work: [[Design Surface]]
 
 ## What is the next action
 
+Latest Verify desktop workbench professionalization slice landed (2026-04-08):
+
+- failed compare runs now keep the Stimulus Workbench open instead of collapsing the editor to a header row
+- the always-open inline failure rails were removed from the primary waveform workspace; failure details now live in the secondary analysis drawer
+- browser audit at `1366x768`, `1536x864`, `1600x900`, and `1920x1080` confirmed the post-run waveform is meaningfully visible at normal zoom and the case editor remains directly editable
+- next Verify slice should stay on row authoring clarity and remaining desktop hierarchy tightening, not drift into Project / Design polish
+
 **Runtime hardening moved from planning into closure work.**
 
 Completed in this batch:

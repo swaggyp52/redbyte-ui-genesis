@@ -160,6 +160,21 @@ describe('VerifySurface layout workflow architecture', () => {
     expect(compare.getByTestId('ide-verify-workspace-waveform')).toBeTruthy();
   });
 
+  it('keeps the case editor open and demotes failure details out of the primary waveform workspace on failed compare runs', () => {
+    const { getByTestId, queryByTestId } = render(
+      <VerifySurface
+        {...baseProps}
+        deterministicHash="det-compare"
+        lastRun={makeCompareFailRun()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
+    expect(queryByTestId('ide-verify-three-panel-left')).toBeNull();
+    expect(queryByTestId('ide-verify-three-panel-right')).toBeNull();
+    expect(getByTestId('ide-verify-drawer-toggle').getAttribute('aria-expanded')).toBe('false');
+  });
+
   it('shows clock helper strip for sequential circuits', () => {
     const { getByTestId } = render(
       <VerifySurface

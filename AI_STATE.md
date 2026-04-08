@@ -1,5 +1,58 @@
 # AI State
 
+## Change Log 2026-04-08 (Verify desktop workbench professionalization)
+
+**Subsystem**: Verify / desktop workbench / failure-state hierarchy
+
+### Problem
+
+After the first case-editor clarity pass, Verify still behaved like a cramped instrument panel on normal desktop widths:
+
+- failed compare runs collapsed the Stimulus Workbench body, so post-run editing still felt like a secondary recovery path
+- the inline `Failing checks` and `Compare details` rails stayed open inside the primary waveform workspace, starving the waveform and evidence area of width
+- the detailed compare actions still lived in the always-open side rail instead of a clearly secondary surface
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - keeps the post-run workbench expanded by default by passing `initialExpanded={Boolean(lastRun)}`
+  - removes the permanent inline failure rails from `VerifyThreePanel`, so the primary workspace is now editor + waveform rather than editor + waveform + two analysis rails
+  - moves `VerifyFailureExplanationPanel` into the secondary drawer `details` tab so the compare-detail actions remain available without stealing persistent center width
+- `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - hardens the post-run open-state contract so the workbench defaults to open whenever Verify is in a post-run state, even if the parent does not explicitly drive expansion
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx`
+  - now asserts failed compare runs keep `ide-verify-workbench-body` mounted and do not render inline left/right failure rails in the main workspace
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - updated trace/fail contracts to match the new hierarchy: post-run workbench stays open, and compare details are reached through the analysis drawer instead of a permanent inline rail
+- `scripts/gates/ide-verify-workbench-contract.mjs`
+  - now proves the post-run failure path end-to-end: edit an expected-output cell, rerun into `ASSERTIONS DIFFER`, keep the workbench body visible, and keep inline failure rails out of the primary waveform workspace
+- `01 Dashboard/RedByte Engineering Brain.md`
+  - records the new current-state Verify desktop priority and the next slice
+- `03 Architecture/Verify Engine.md`
+  - records the new failure-state hierarchy as part of the current Verify engine contract
+
+### Validation
+
+- Focused Verify/component validation:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.caseEditorClarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - result: `49` tests passed
+- Browser contract:
+  - `node scripts/gates/ide-verify-workbench-contract.mjs`
+  - result: PASS
+- Local build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- Browser viewport audit on local preview:
+  - `1366x768`, `1536x864`, `1600x900`, `1920x1080`
+  - result: failed compare runs kept the workbench open, removed inline failure rails, and expanded the measured waveform stage from the pre-slice audit's cramped widths (`15.5`, `78.8`, `105.8`, `239.3`) to materially usable widths (`439.5`, `502.8`, `529.8`, `663.3`)
+
+### Release impact
+
+- Verify now reads more like a real desktop workbench after a failed compare run: edit cases, inspect evidence, and rerun all remain in one continuous workspace
+- The next slice should stay on Verify desktop/product tightening: explicit row authoring affordances, remaining top-chrome compression, and only then any further side-rail/default tuning
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-04-08 (Verify case-editor clarity â€” desktop hierarchy and post-run edit continuity)
 
 **Subsystem**: Verify / case-editor clarity / desktop layout

@@ -170,7 +170,7 @@ describe('VerifySurface workstation controls', () => {
   });
 
   it('labels trace-only verification as observation mode when no expected outputs are loaded', () => {
-    const { container, getByTestId, queryByTestId } = render(
+    const { getAllByText, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={false}
@@ -201,7 +201,7 @@ describe('VerifySurface workstation controls', () => {
   });
 
   it('deduplicates canonical signal ids and display labels in the pre-run inventory', () => {
-    const { container, getByTestId, queryByTestId } = render(
+    const { getAllByText, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -357,7 +357,8 @@ describe('VerifySurface workstation controls', () => {
     ) as HTMLDetailsElement | null;
 
     expect(details).toBeTruthy();
-    expect(details?.open).toBe(false);
+    expect(details?.open).toBe(true);
+    expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
 
     fireEvent.click(getByTestId('ide-verify-run-proof-edit-vectors'));
 
@@ -434,10 +435,6 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-run-secondary').className).toContain('ide-button-secondary');
     expect(queryByTestId('ide-left-dock')).toBeNull();
     expect(queryByTestId('ide-inspector')).toBeNull();
-
-    const testbenchSummary = container.querySelector('.ide-verify-scenario-builder-summary') as HTMLElement | null;
-    expect(testbenchSummary).toBeTruthy();
-    fireEvent.click(testbenchSummary as HTMLElement);
 
     expect(queryByTestId('ide-stimulus-toolbar')).toBeTruthy();
     expect(queryByTestId('ide-stimulus-toolbar-advanced')).toBeNull();
@@ -518,7 +515,7 @@ describe('VerifySurface workstation controls', () => {
 
   it('reruns in trace mode after the student switches the next run intent back to simulation', async () => {
     const onRunVerification = vi.fn();
-    const { getByTestId, queryByTestId } = render(
+    const { getAllByText, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -550,7 +547,7 @@ describe('VerifySurface workstation controls', () => {
   });
 
   it('describes saved assertions as inactive when the student switches back to trace mode', () => {
-    const { container, getByTestId, queryByTestId } = render(
+    const { getAllByText, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -651,7 +648,7 @@ describe('VerifySurface workstation controls', () => {
 
   it('offers in-place compare fixes from the right panel', () => {
     const onVectorsChange = vi.fn();
-    const { container, getByTestId, queryByTestId } = render(
+    const { getAllByText, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -670,11 +667,10 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    const testbenchSummary = container.querySelector('.ide-verify-scenario-builder-summary') as HTMLElement | null;
-    expect(testbenchSummary).toBeTruthy();
-    fireEvent.click(testbenchSummary as HTMLElement);
     expect(queryByTestId('ide-stimulus-toolbar-advanced')).toBeNull();
     expect(getByTestId('ide-stimulus-toolbar')).toBeTruthy();
+    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getAllByText('Details')[0]);
 
     fireEvent.click(getByTestId('ide-verify-right-accept-observed'));
 
@@ -935,6 +931,10 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-signal-digest')).toBeNull();
     expect(queryByTestId('ide-verify-waveform-legend')).toBeNull();
     expect(queryByTestId('ide-verify-tick-explainer')).toBeNull();
+    expect(getByTestId('ide-verify-advanced-debug').hasAttribute('open')).toBe(false);
+
+    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getAllByText('Details')[0]);
     expect(getByTestId('ide-verify-failure-explainer')).toBeTruthy();
     expect(getByTestId('ide-verify-right-tick').textContent).toContain('t1');
     expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld0');
@@ -943,9 +943,6 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-right-likely-reason').textContent).toContain('ld0');
     expect(getByTestId('ide-verify-right-likely-reason').textContent).toContain('t1');
     expect(getByTestId('ide-verify-right-next-step').textContent).toContain('ld0');
-    expect(getByTestId('ide-verify-advanced-debug').hasAttribute('open')).toBe(false);
-
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     fireEvent.click(getAllByText('Mismatches')[0]);
     expect(getByTestId('ide-verify-mismatch-case-id').textContent).toContain('vec-02');
     expect(getByTestId('ide-verify-mismatch-sampled-key').textContent).toContain('ld0_node.in');

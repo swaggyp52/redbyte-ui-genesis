@@ -41,6 +41,37 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
     `post-run expected-output cells must remain directly editable (before=${expectedTitleBefore}, after=${expectedTitleAfter})`
   );
 
+  const rerunCompare = page.locator('[data-testid="ide-vcb-run"]').first();
+  await rerunCompare.click();
+  await waitForVerifyResult(page, { timeout: 10000 });
+
+  const failureSummary = page.locator('[data-testid="ide-verify-summary-status"]').first();
+  const failureSummaryText = (
+    (await failureSummary.textContent().catch(() => '')) ??
+    ''
+  ).toUpperCase();
+  assert(
+    failureSummaryText.includes('ASSERTIONS DIFFER'),
+    `rerunning after changing an expected cell must surface a failed compare state, got "${failureSummaryText}"`
+  );
+
+  const workbenchBody = page.locator('[data-testid="ide-verify-workbench-body"]').first();
+  assert(
+    await workbenchBody.isVisible().catch(() => false),
+    'failed compare runs must keep the Stimulus Workbench body visible'
+  );
+
+  const inlineFailureLeft = page.locator('[data-testid="ide-verify-three-panel-left"]').first();
+  const inlineFailureRight = page.locator('[data-testid="ide-verify-three-panel-right"]').first();
+  assert(
+    !(await inlineFailureLeft.isVisible().catch(() => false)),
+    'failed compare runs must not keep an inline left failure rail in the primary waveform workspace'
+  );
+  assert(
+    !(await inlineFailureRight.isVisible().catch(() => false)),
+    'failed compare runs must not keep an inline right failure rail in the primary waveform workspace'
+  );
+
   // After a PASS run the left dock is collapsed and signal buttons are not in the DOM.
   // Open the dock first, then verify its contents.
   const signalFilterState = page.locator('[data-testid="ide-verify-signal-filter-state"]').first();

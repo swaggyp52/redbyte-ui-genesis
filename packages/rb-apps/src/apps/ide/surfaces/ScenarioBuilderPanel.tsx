@@ -557,11 +557,13 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
 
   // Post-run: collapsible workbench — starts closed so fail evidence takes focus.
   // Parent can force it open via expandSignal (e.g. edit-vectors CTA).
-  const [workbenchExpanded, setWorkbenchExpanded] = React.useState(initialExpanded ?? false);
+  const [workbenchExpanded, setWorkbenchExpanded] = React.useState(
+    () => initialExpanded ?? !isFirstRun
+  );
 
   React.useEffect(() => {
-    setWorkbenchExpanded(initialExpanded ?? false);
-  }, [initialExpanded]);
+    setWorkbenchExpanded(initialExpanded ?? !isFirstRun);
+  }, [initialExpanded, isFirstRun]);
 
   React.useEffect(() => {
     if ((expandSignal ?? 0) > 0) {

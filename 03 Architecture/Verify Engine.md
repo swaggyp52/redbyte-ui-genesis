@@ -65,6 +65,12 @@ The latest runtime-hardening slice closed RIB-003 waveform causality visibility:
 - this prevents "outputs-only" PASS evidence and restores immediate input-to-output causality reading without requiring signal-group expansion
 - mismatch-first runs still retain failure-focused lane behavior
 
+The latest desktop workbench professionalization slice changed the failure-state hierarchy:
+
+- post-run Verify sessions now keep the Stimulus Workbench open by default, including failed compare runs and trace-only runs, so students can edit and rerun without first reopening the editor
+- the permanent inline `Failing checks` / `Compare details` rails were removed from the primary `VerifyThreePanel` workspace; the waveform and editor now keep that width, while detailed failure review lives in the secondary analysis drawer
+- browser audits at `1366x768`, `1536x864`, `1600x900`, and `1920x1080` confirmed the waveform stage is meaningfully visible alongside the live workbench instead of being squeezed into a narrow post-failure strip
+
 ## Mode Detection (B-12 Slice 1)
 
 `verifyMode.ts` provides the canonical circuit mode gate, replacing the previous `hasDff: boolean` prop.
