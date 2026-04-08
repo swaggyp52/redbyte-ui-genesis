@@ -24945,3 +24945,197 @@ button:disabled,
   flex: 0 1 auto !important;
   overflow: visible !important;
 }
+
+/* Verify case-editor clarity: make the workbench use desktop width and keep
+   post-run editing visually primary instead of yielding to the waveform stack. */
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-shell-density='immersive'] .ide-verify-panel {
+  background:
+    linear-gradient(180deg, rgba(8, 17, 30, 0.96), rgba(5, 11, 20, 0.98)),
+    var(--rb-elevation-1, #08111e) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-shell-density='immersive'] .ide-verify-panel > .ide-panel-body {
+  gap: 0 !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--result {
+  position: relative;
+  z-index: 1;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus {
+  position: relative;
+  z-index: 3;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: hidden !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus:has(.ide-verify-scenario-builder-details--postrun) {
+  flex: 1 1 auto !important;
+  overflow: hidden !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-scenario-builder-details--postrun {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  flex: 1 1 auto !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform {
+  position: relative;
+  z-index: 1;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform:has(.ide-vwp) {
+  flex: 1 1 auto !important;
+  min-height: clamp(260px, 34vh, 420px) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-scenario-builder-details--postrun[open] {
+  max-height: none !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workbench-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-vector-form,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-vector-form--canvas-only,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-stimulus-canvas {
+  min-height: 0 !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-stimulus-canvas {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 4;
+  overflow: hidden !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-stimulus-grid-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-stimulus-value-cell-button {
+  position: relative;
+  z-index: 5;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workbench-actions {
+  display: none !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-auto-vector-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  border-radius: 999px;
+  background: rgba(8, 20, 34, 0.74);
+  color: rgba(191, 219, 254, 0.8);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-auto-vector-pill-dismiss {
+  border: none;
+  background: transparent;
+  color: rgba(147, 197, 253, 0.88);
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-stimulus-toolbar {
+  align-items: flex-start;
+  flex-wrap: nowrap !important;
+  gap: 10px 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-stimulus-toolbar-group {
+  flex: 0 0 auto;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-stimulus-toolbar-label {
+  color: rgba(148, 185, 215, 0.76);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-stimulus-toolbar-note {
+  white-space: nowrap;
+}
+
+@media (min-width: 1280px) {
+  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-panel > .ide-panel-body {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.3fr) minmax(380px, 0.95fr) !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    grid-template-areas:
+      "header header"
+      "stimulus waveform"
+      "result waveform" !important;
+    align-items: stretch !important;
+    overflow: hidden !important;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--header {
+    grid-area: header;
+    min-width: 0;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--result {
+    grid-area: result;
+    min-width: 0;
+    min-height: 0;
+    max-height: clamp(112px, 20vh, 156px);
+    overflow: auto;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--stimulus {
+    grid-area: stimulus;
+    min-width: 0;
+    min-height: 0;
+    border-right: 1px solid rgba(48, 77, 107, 0.22);
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--waveform {
+    grid-area: waveform;
+    min-width: 0;
+    min-height: 0;
+    padding-left: 12px;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--stimulus:has(.ide-vfr-panel) {
+    max-height: none !important;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--stimulus:has(.ide-verify-scenario-builder-details--postrun[open]) [data-testid='ide-verify-io-summary'],
+  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--stimulus:has(.ide-verify-scenario-builder-details--postrun[open]) [data-testid='ide-verify-prerun-lanes'],
+  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--stimulus:has(.ide-verify-scenario-builder-details--postrun[open]) .ide-scenario-library-header {
+    display: none !important;
+  }
+}

@@ -2294,11 +2294,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     scenarioAuthority === 'starter' || (projectKind === 'example' && Boolean(sourceExampleId));
   const hasStaleAuthoredReference = isRunStale && totalExpectedCaseCount > 0;
 
-  useEffect(() => {
-    if (!hasStaleAuthoredReference) return;
-    setNextRunUsesAssertions((current) => (current ? false : current));
-  }, [hasStaleAuthoredReference, deterministicHash, lastRun?.reportHash]);
-
   // Scenario-stale detection: same scenario, vectors edited since last run.
   // Condition: activeScenario hash differs from what was hashed at run time.
   const isScenarioStale =
@@ -3393,6 +3388,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       leftDockMode={verifyLayoutPolicy.leftDockMode}
       rightDockMode={verifyLayoutPolicy.rightDockMode}
       consoleMode={verifyLayoutPolicy.consoleMode}
+      shellDensity="immersive"
+      surfaceFrame="edge-to-edge"
       dock={
         <section className="ide-verify-left-dock" data-testid="ide-verify-left-dock">
           <header className="ide-design-subheader">
@@ -6107,8 +6104,8 @@ function resolveVerifyLayoutMode(width?: number): VerifyLayoutMode {
       : typeof window !== 'undefined'
         ? window.innerWidth
         : 1440;
-  if (nextWidth >= 1440) return 'wide';
-  if (nextWidth >= 1280) return 'standard';
+  if (nextWidth >= 1280) return 'wide';
+  if (nextWidth >= 1080) return 'standard';
   return 'compact';
 }
 

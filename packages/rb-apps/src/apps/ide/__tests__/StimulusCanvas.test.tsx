@@ -9,6 +9,25 @@ afterEach(() => {
 });
 
 describe('StimulusCanvas bulk editing tools', () => {
+  it('uses case language for the primary case-editing affordances', () => {
+    const { getByText, getByRole } = render(
+      <StimulusCanvas
+        inputFields={[{ id: 'sw0', label: 'SW0' }]}
+        outputFields={[{ id: 'ld0', label: 'LD0' }]}
+        authoredVectors={[
+          { id: 'vec-0', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-1', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        ]}
+        onVectorsChange={vi.fn()}
+      />
+    );
+
+    expect(getByText('Selected case')).toBeTruthy();
+    expect(getByRole('button', { name: 'Add case' })).toBeTruthy();
+    expect(getByRole('button', { name: 'Duplicate case' })).toBeTruthy();
+    expect(getByRole('button', { name: 'Delete case' })).toBeTruthy();
+  });
+
   it('fills a selected stimulus row across all ticks', () => {
     const onVectorsChange = vi.fn();
     const { getByTestId } = render(

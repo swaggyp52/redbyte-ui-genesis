@@ -1,5 +1,63 @@
 # AI State
 
+## Change Log 2026-04-08 (Verify case-editor clarity â€” desktop hierarchy and post-run edit continuity)
+
+**Subsystem**: Verify / case-editor clarity / desktop layout
+
+### Problem
+
+The first post-rescue Verify pass on `main` made the student loop coherent again, but the desktop workbench still had three concrete frontend failures:
+
+- Verify still behaved like a vertically stacked instrument deck at common desktop widths, because the stronger side-by-side layout only activated at very wide breakpoints.
+- Post-run case editing was not continuous: expected-output cells existed, but they were easy to bury under stacked result chrome, competing summary strips, and a collapsed workbench body.
+- StimulusCanvas still spoke partly in internal tick language and let secondary helper chrome consume too much of the visible authoring area.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - promoted Verify into the immersive edge-to-edge shell mode used by the stronger desktop workbench surfaces
+  - removed the stale-authored-reference auto-demotion effect that could hide expected-output lanes immediately after direct post-run edits
+  - lowered the Verify `wide` layout threshold so the stronger desktop composition now applies at standard desktop widths instead of only ultra-wide screens
+- `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - removed the redundant visible post-run Generate Basics toolbar from the workbench body
+  - moved the auto-generated starter disclosure into the workbench header as a compact dismissible pill instead of a full-height body callout
+  - passed explicit initial scroll intent into `StimulusCanvas` so post-run Compare sessions can focus the expected-output section instead of reopening at the top of the stimulus stack
+- `packages/rb-apps/src/apps/ide/components/StimulusCanvas.tsx`
+  - renamed the primary visible authoring affordances to student-facing case language (`Selected case`, `Add case`, `Duplicate case`, `Delete case`, `Case setup`)
+  - added a dedicated scroll region for the case grid
+  - kept direct pointer editing and drag painting intact while improving the fallback click path
+  - added post-run expected-section focus behavior for Compare-oriented editing
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - reworked the Verify wide desktop composition so the case editor/workbench sits beside the waveform and the result slab is demoted below it
+  - hid competing post-run stimulus-column chrome (`io summary`, pre-run lanes, scenario strip) on wide desktop when the live workbench is open
+  - made the post-run workbench body, form, canvas, and grid own real height instead of collapsing into overflow ghosts
+  - compacted the Stimulus toolbar into a lower-vertical-cost horizontal strip inside Verify
+- `packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.test.tsx`
+  - added coverage that the primary visible workbench affordances use case language rather than tick-only terminology
+- `scripts/gates/ide-verify-workbench-contract.mjs`
+  - updated the post-run editability probe to scroll the expected-output cell into view and click it through Playwright
+  - kept the gate honest about post-run edit continuity while no longer depending on a brittle hard-coded center-point against nested scroll/layout changes
+
+### Validation
+
+- Focused Verify/component validation:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.caseEditorClarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.authoring.test.tsx`
+  - result: `60` tests passed
+- Local playground build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- Focused browser contract:
+  - `node scripts/gates/ide-verify-workbench-contract.mjs`
+  - result: PASS
+
+### Release impact
+
+- Verify now uses desktop space more like a real IDE instead of a narrow stacked instrument page.
+- The case editor/workbench is more obviously primary after a Compare run, and post-run expected-output edits remain reachable through the browser contract path.
+- The next Verify slice should stay focused on case-editor clarity itself: row add/remove/edit affordances, remaining helper demotion, and one clear `cases -> run -> result -> inspect -> rerun` path.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-04-08 (Main-first follow-up — Verify waveform placeholder dedup)
 
 **Subsystem**: Verify / case-editor clarity

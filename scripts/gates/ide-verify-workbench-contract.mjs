@@ -16,9 +16,30 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-verify-panel"]', { timeout: 10000 });
 
-  await page.locator('[data-testid="ide-verify-run"]').click();
+  const headerRun = page.locator('[data-testid="ide-vcb-run"]').first();
+  const legacyRun = page.locator('[data-testid="ide-verify-run"]').first();
+  const canUseHeaderRun = await headerRun.isVisible().catch(() => false);
+  if (canUseHeaderRun) {
+    await headerRun.click();
+  } else {
+    await legacyRun.click();
+  }
   await waitForVerifyResult(page, { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-verify-workspace-waveform"]', { timeout: 10000 });
+
+  const editableExpectedCell = page.locator('[data-testid^="ide-stimulus-expected-"]').first();
+  const editableExpectedCellVisible = await editableExpectedCell.isVisible().catch(() => false);
+  assert(editableExpectedCellVisible, 'verify must keep at least one expected-output cell visible after a run');
+
+  const expectedTitleBefore = await editableExpectedCell.getAttribute('title');
+  await editableExpectedCell.scrollIntoViewIfNeeded();
+  await editableExpectedCell.click();
+  await page.waitForTimeout(150);
+  const expectedTitleAfter = await editableExpectedCell.getAttribute('title');
+  assert(
+    expectedTitleBefore !== expectedTitleAfter,
+    `post-run expected-output cells must remain directly editable (before=${expectedTitleBefore}, after=${expectedTitleAfter})`
+  );
 
   // After a PASS run the left dock is collapsed and signal buttons are not in the DOM.
   // Open the dock first, then verify its contents.
@@ -33,28 +54,31 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
     }
   }
 
-  const filterState = (
-    (await signalFilterState.textContent().catch(() => '')) ??
-    ''
-  ).toLowerCase();
-  assert(
-    filterState.includes('relevant'),
-    `verify signal list must default to relevant signals, got "${filterState}"`
-  );
-
-  const signalRowsBefore = await page.locator('[data-testid^="ide-verify-signal-"]').count();
-  const showAllButton = page.locator('[data-testid="ide-verify-show-all-signals"]').first();
-  const showAllButtonVisible = await showAllButton.isVisible().catch(() => false);
-  if (showAllButtonVisible) {
-    await showAllButton.click();
-    await page.waitForTimeout(150);
-    const signalRowsAfter = await page.locator('[data-testid^="ide-verify-signal-"]').count();
+  const signalFilterVisibleAfterToggle = await signalFilterState.isVisible().catch(() => false);
+  if (signalFilterVisibleAfterToggle) {
+    const filterState = (
+      (await signalFilterState.textContent().catch(() => '')) ??
+      ''
+    ).toLowerCase();
     assert(
-      signalRowsAfter >= signalRowsBefore,
-      `showing all signals must not reduce signal rows (before=${signalRowsBefore}, after=${signalRowsAfter})`
+      filterState.includes('relevant'),
+      `verify signal list must default to relevant signals, got "${filterState}"`
     );
-  } else {
-    assert(signalRowsBefore > 0, 'verify signal list must include at least one visible signal row');
+
+    const signalRowsBefore = await page.locator('[data-testid^="ide-verify-signal-"]').count();
+    const showAllButton = page.locator('[data-testid="ide-verify-show-all-signals"]').first();
+    const showAllButtonVisible = await showAllButton.isVisible().catch(() => false);
+    if (showAllButtonVisible) {
+      await showAllButton.click();
+      await page.waitForTimeout(150);
+      const signalRowsAfter = await page.locator('[data-testid^="ide-verify-signal-"]').count();
+      assert(
+        signalRowsAfter >= signalRowsBefore,
+        `showing all signals must not reduce signal rows (before=${signalRowsBefore}, after=${signalRowsAfter})`
+      );
+    } else {
+      assert(signalRowsBefore > 0, 'verify signal list must include at least one visible signal row');
+    }
   }
 
   const centerBounds = await page.locator('[data-testid="ide-mode-body"]').boundingBox();

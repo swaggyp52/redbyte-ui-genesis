@@ -19,6 +19,7 @@ export interface StimulusCanvasProps {
   onNavigateToMapping?: () => void;
   /** When true, expected-output lanes are hidden so students can only paint inputs (Observe mode). */
   readOnlyOutputs?: boolean;
+  initialScrollTarget?: 'top' | 'expected';
 }
 
 function makeId(): string {
@@ -240,6 +241,26 @@ function parseClipboardText(input: {
   return sortVectors(parsedVectors);
 }
 
+function findStimulusButtonAtPoint(
+  root: HTMLElement,
+  clientX: number,
+  clientY: number
+): HTMLButtonElement | null {
+  const candidates = root.querySelectorAll<HTMLButtonElement>('button');
+  for (const candidate of candidates) {
+    const rect = candidate.getBoundingClientRect();
+    if (
+      clientX >= rect.left &&
+      clientX <= rect.right &&
+      clientY >= rect.top &&
+      clientY <= rect.bottom
+    ) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
 export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   inputFields,
   outputFields,
@@ -247,8 +268,14 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   onVectorsChange,
   onNavigateToMapping,
   readOnlyOutputs = false,
+  initialScrollTarget = 'top',
 }) => {
   const latestVectorsRef = useRef(authoredVectors);
+  const canvasRootRef = useRef<HTMLDivElement | null>(null);
+  const gridScrollRef = useRef<HTMLDivElement | null>(null);
+  const expectedGroupRef = useRef<HTMLDivElement | null>(null);
+  const firstExpectedCellRef = useRef<HTMLButtonElement | null>(null);
+  const lastDirectCellActivationRef = useRef<{ testId: string; at: number } | null>(null);
   const [hoveredTick, setHoveredTick] = useState<number | null>(null);
   const [selectedTick, setSelectedTick] = useState(0);
   const [selectedLaneKey, setSelectedLaneKey] = useState('');
@@ -399,6 +426,73 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
     setPaintSession({ kind: 'expected', value });
   }, [commitVectors, inputFields]);
 
+  const markDirectCellActivation = useCallback((testId: string) => {
+    lastDirectCellActivationRef.current = {
+      testId,
+      at: Date.now(),
+    };
+  }, []);
+
+  const shouldIgnoreDirectCellClick = useCallback((testId: string) => {
+    const lastActivation = lastDirectCellActivationRef.current;
+    if (!lastActivation) return false;
+    return lastActivation.testId === testId && Date.now() - lastActivation.at < 250;
+  }, []);
+
+  useEffect(() => {
+    const root = canvasRootRef.current;
+    if (!root) return;
+
+    const handleCanvasPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof HTMLElement && target.closest('button')) {
+        return;
+      }
+
+      const fallbackButton = findStimulusButtonAtPoint(root, event.clientX, event.clientY);
+      if (!fallbackButton || fallbackButton.disabled) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      window.requestAnimationFrame(() => {
+        fallbackButton.click();
+      });
+    };
+
+    root.addEventListener('pointerdown', handleCanvasPointerDown, { capture: true });
+    return () => {
+      root.removeEventListener('pointerdown', handleCanvasPointerDown, { capture: true });
+    };
+  }, []);
+
+  useEffect(() => {
+    const scroller = gridScrollRef.current;
+    if (!scroller) return;
+    let frame = 0;
+    let nestedFrame = 0;
+    frame = window.requestAnimationFrame(() => {
+      nestedFrame = window.requestAnimationFrame(() => {
+        if (initialScrollTarget !== 'expected' || readOnlyOutputs || outputFields.length === 0) {
+          scroller.scrollTop = 0;
+          return;
+        }
+        const target =
+          scroller.querySelector<HTMLElement>('[data-testid^="ide-stimulus-expected-"]') ??
+          firstExpectedCellRef.current ??
+          expectedGroupRef.current;
+        if (!target) {
+          scroller.scrollTop = 0;
+          return;
+        }
+        target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.cancelAnimationFrame(nestedFrame);
+    };
+  }, [authoredVectors.length, initialScrollTarget, outputFields.length, readOnlyOutputs]);
+
   const handleCopyClipboard = useCallback(async () => {
     const text = buildClipboardText(latestVectorsRef.current, inputFields, outputFields);
     await navigator.clipboard?.writeText?.(text);
@@ -419,6 +513,8 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
     }
   }, [inputFields, onVectorsChange, outputFields]);
 
+  const describeCase = useCallback((tick: number) => `Case ${tick + 1} (t${tick})`, []);
+
   if (inputFields.length === 0) {
     return (
       <p className="ide-stimulus-empty" data-testid="ide-stimulus-empty">
@@ -437,10 +533,10 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   }
 
   return (
-    <div className="ide-stimulus-canvas" data-testid="ide-stimulus-canvas" style={{ overflowX: 'auto', userSelect: 'none' }}>
+    <div className="ide-stimulus-canvas" data-testid="ide-stimulus-canvas" style={{ userSelect: 'none' }} ref={canvasRootRef}>
       <div className="ide-stimulus-toolbar" data-testid="ide-stimulus-toolbar">
         <div className="ide-stimulus-toolbar-group">
-          <span className="ide-stimulus-toolbar-label">Row tools</span>
+          <span className="ide-stimulus-toolbar-label">Selected signal</span>
           <select className="ide-stimulus-target-select" value={selectedLane?.key ?? ''} onChange={(event) => setSelectedLaneKey(event.target.value)} data-testid="ide-stimulus-row-target">
             {laneOptions.map((option) => <option key={option.key} value={option.key}>{option.kind === 'input' ? 'Stimulus' : 'Expected'}: {option.label}</option>)}
           </select>
@@ -457,21 +553,21 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
           )}
         </div>
         <div className="ide-stimulus-toolbar-group">
-          <span className="ide-stimulus-toolbar-label">Tick tools</span>
+          <span className="ide-stimulus-toolbar-label">Selected case</span>
           <select className="ide-stimulus-target-select" value={String(selectedTick)} onChange={(event) => setSelectedTick(Number(event.target.value || '0'))} data-testid="ide-stimulus-tick-target">
-            {(ticks.length > 0 ? ticks : [0]).map((tick) => <option key={tick} value={tick}>t{tick}</option>)}
+            {(ticks.length > 0 ? ticks : [0]).map((tick) => <option key={tick} value={tick}>{describeCase(tick)}</option>)}
           </select>
           <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('fill0')} data-testid="ide-stimulus-column-fill-0">Fill 0</button>
           <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('fill1')} data-testid="ide-stimulus-column-fill-1">Fill 1</button>
           <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('toggle')} data-testid="ide-stimulus-column-toggle">Toggle</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => { commitVectors((vectors) => duplicateTick(vectors, inputFields, selectedTick)); setSelectedTick((value) => value + 1); }} data-testid="ide-stimulus-duplicate-tick">Duplicate</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => commitVectors((vectors) => removeTick(vectors, selectedTick))} disabled={ticks.length === 0} data-testid="ide-stimulus-delete-selected-tick">Delete</button>
+          <button type="button" className="ide-stimulus-mini-btn" onClick={() => { commitVectors((vectors) => duplicateTick(vectors, inputFields, selectedTick)); setSelectedTick((value) => value + 1); }} data-testid="ide-stimulus-duplicate-tick">Duplicate case</button>
+          <button type="button" className="ide-stimulus-mini-btn" onClick={() => commitVectors((vectors) => removeTick(vectors, selectedTick))} disabled={ticks.length === 0} data-testid="ide-stimulus-delete-selected-tick">Delete case</button>
         </div>
         <div className="ide-stimulus-toolbar-group">
-          <span className="ide-stimulus-toolbar-label">Patterns</span>
+          <span className="ide-stimulus-toolbar-label">Case setup</span>
           <button type="button" className="ide-stimulus-mini-btn" onClick={handleBinaryCount} data-testid="ide-stimulus-pattern-binary">Binary count</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => commitVectors((vectors) => appendTick(vectors, inputFields))} data-testid="ide-stimulus-add-tick">Add tick</button>
-          <span className="ide-stimulus-toolbar-note">Drag across cells to paint</span>
+          <button type="button" className="ide-stimulus-mini-btn" onClick={() => commitVectors((vectors) => appendTick(vectors, inputFields))} data-testid="ide-stimulus-add-tick">Add case</button>
+          <span className="ide-stimulus-toolbar-note">Click or drag cells to edit cases</span>
         </div>
         <div className="ide-stimulus-toolbar-group">
           <span className="ide-stimulus-toolbar-label">Clipboard</span>
@@ -479,7 +575,8 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
           <button type="button" className="ide-stimulus-mini-btn" onClick={() => { void handlePasteClipboard(); }} data-testid="ide-stimulus-paste-grid">Paste TSV</button>
         </div>
       </div>
-      <div style={{ minWidth: totalW, position: 'relative' }}>
+      <div className="ide-stimulus-grid-scroll" ref={gridScrollRef}>
+        <div style={{ minWidth: totalW, position: 'relative' }}>
         <div className="ide-stimulus-row ide-stimulus-row--header" style={{ display: 'flex', height: GROUP_H + 8, alignItems: 'center' }}>
           <div style={{ width: LABEL_W, flexShrink: 0 }} />
           {ticks.map((tick) => (
@@ -506,16 +603,17 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
               {field.label}{field.pin ? <code style={{ marginLeft: 4, fontSize: '0.82em', color: 'var(--rb-text-secondary)' }}>{field.pin}</code> : null}
             </button>
             {ticks.length === 0 && index === 0 ? (
-              <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', paddingLeft: 8, fontSize: '0.75em', color: 'var(--rb-text-secondary)', fontStyle: 'italic' }}>Add a tick or use a pattern to start authoring.</div>
+              <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', paddingLeft: 8, fontSize: '0.75em', color: 'var(--rb-text-secondary)', fontStyle: 'italic' }}>Add a case or use a pattern to start authoring.</div>
             ) : ticks.map((tick) => {
               const value = getInputValue(authoredVectors, tick, field.id);
+              const inputCellTestId = `ide-stimulus-cell-${field.id}-t${tick}`;
               return (
-                <button key={tick} type="button" onPointerDown={() => handleInputPointerDown(tick, field.id)} onPointerEnter={(event) => {
+                <button key={tick} type="button" className="ide-stimulus-value-cell-button ide-stimulus-value-cell-button--input" onPointerDown={() => { markDirectCellActivation(inputCellTestId); handleInputPointerDown(tick, field.id); }} onClick={() => { if (shouldIgnoreDirectCellClick(inputCellTestId)) return; handleInputPointerDown(tick, field.id); }} onPointerEnter={(event) => {
                   if (!paintSession || paintSession.kind !== 'input' || (event.buttons & 1) === 0) return;
                   setSelectedTick(tick);
                   setSelectedLaneKey(`input:${field.id}`);
                   commitVectors((vectors) => setInputValue(vectors, inputFields, tick, field.id, paintSession.value as 0 | 1));
-                }} data-testid={`ide-stimulus-cell-${field.id}-t${tick}`} title={`${field.label} at t${tick}: ${value} - drag to paint`} style={{ width: TICK_W, flexShrink: 0, height: ROW_H, border: 'none', borderLeft: '1px solid var(--rb-border)', cursor: 'pointer', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                }} data-testid={inputCellTestId} title={`${field.label} in ${describeCase(tick)}: ${value} - drag to paint`} style={{ width: TICK_W, flexShrink: 0, height: ROW_H, border: 'none', borderLeft: '1px solid var(--rb-border)', cursor: 'pointer', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, position: 'relative', zIndex: 2 }}>
                   <div className={`ide-stimulus-cell${value === 1 ? ' ide-stimulus-cell--hi' : ' ide-stimulus-cell--lo'}`} style={{ width: TICK_W - 8, height: ROW_H - 10, borderRadius: 3, background: value === 1 ? 'var(--rb-accent)' : 'transparent', border: value === 0 ? '1px solid var(--rb-border)' : 'none' }} />
                 </button>
               );
@@ -525,7 +623,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
         ))}
         {outputFields.length > 0 && !readOnlyOutputs ? (
           <>
-            <div className="ide-stimulus-group-header ide-stimulus-group-header--asserted" style={{ display: 'flex', height: GROUP_H, alignItems: 'center', background: 'var(--rb-surface-2, transparent)' }}>
+            <div ref={expectedGroupRef} className="ide-stimulus-group-header ide-stimulus-group-header--asserted" style={{ display: 'flex', height: GROUP_H, alignItems: 'center', background: 'var(--rb-surface-2, transparent)' }}>
               <div style={{ width: LABEL_W, flexShrink: 0, paddingLeft: 8, fontSize: '0.68em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>Expected outputs</div>
               {ticks.map((tick) => <div key={tick} style={{ width: TICK_W, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }} />)}
               <div style={{ width: ADD_COL_W, flexShrink: 0 }} />
@@ -535,13 +633,14 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
                 <button type="button" className={`ide-stimulus-label-cell ide-stimulus-label-cell--expected${selectedLane?.key === `expected:${field.id}` ? ' is-selected' : ''}`} onClick={() => setSelectedLaneKey(`expected:${field.id}`)} data-testid={`ide-stimulus-row-select-${field.id}`} style={{ width: LABEL_W, flexShrink: 0, paddingLeft: 8, paddingRight: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.8em', color: 'var(--rb-text-secondary)', fontStyle: 'italic', fontFamily: 'var(--rb-font-mono, monospace)', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer' }}>{field.label}</button>
                 {ticks.map((tick) => {
                   const value = getExpectedValue(authoredVectors, tick, field.id);
+                  const expectedCellTestId = `ide-stimulus-expected-${field.id}-t${tick}`;
                   return (
-                    <button key={tick} type="button" onPointerDown={() => handleExpectedPointerDown(tick, field.id)} onPointerEnter={(event) => {
+                    <button key={tick} ref={field.id === outputFields[0]?.id && tick === ticks[0] ? firstExpectedCellRef : undefined} type="button" className="ide-stimulus-value-cell-button ide-stimulus-value-cell-button--expected" onPointerDown={() => { markDirectCellActivation(expectedCellTestId); handleExpectedPointerDown(tick, field.id); }} onClick={() => { if (shouldIgnoreDirectCellClick(expectedCellTestId)) return; handleExpectedPointerDown(tick, field.id); }} onPointerEnter={(event) => {
                       if (!paintSession || paintSession.kind !== 'expected' || (event.buttons & 1) === 0) return;
                       setSelectedTick(tick);
                       setSelectedLaneKey(`expected:${field.id}`);
                       commitVectors((vectors) => setExpectedValue(vectors, inputFields, tick, field.id, paintSession.value));
-                    }} data-testid={`ide-stimulus-expected-${field.id}-t${tick}`} title={`${field.label} at t${tick}: ${value != null ? value : 'not set'} - drag to paint`} style={{ width: TICK_W, flexShrink: 0, height: ROW_H, borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderLeft: '1px solid var(--rb-border)', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
+                    }} data-testid={expectedCellTestId} title={`${field.label} in ${describeCase(tick)}: ${value != null ? value : 'not set'} - drag to paint`} style={{ width: TICK_W, flexShrink: 0, height: ROW_H, borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderLeft: '1px solid var(--rb-border)', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, position: 'relative', zIndex: 2 }}>
                       {value != null ? <div style={{ width: TICK_W - 8, height: ROW_H - 10, borderRadius: 3, background: value === 1 ? 'var(--rb-accent)' : 'transparent', border: value === 0 ? '1px solid var(--rb-border)' : 'none' }} /> : <span style={{ fontSize: '0.72em', color: 'var(--rb-text-secondary)' }}>-</span>}
                     </button>
                   );
@@ -551,6 +650,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
             ))}
           </>
         ) : null}
+        </div>
       </div>
     </div>
   );
