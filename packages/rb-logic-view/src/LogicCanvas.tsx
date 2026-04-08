@@ -221,6 +221,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const setToolMode = useLogicViewStore((state) => state.setToolMode);
   const setInteractionMode = useLogicViewStore((state) => state.setInteractionMode);
   const setEditingState = useLogicViewStore((state) => state.setEditingState);
+  const hoveredWireId = useLogicViewStore((state) => state.hoveredWireId);
+  const setHoveredWireId = useLogicViewStore((state) => state.setHoveredWireId);
+  const rewiredWireId = useLogicViewStore((state) => state.rewiredWireId);
+  const setRewiredWireId = useLogicViewStore((state) => state.setRewiredWireId);
 
   const zoomFn = zoom;
   const shouldSnap = snapToGridEnabled;
@@ -228,7 +232,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   // Use external circuit if provided, otherwise poll from engine
   const [internalCircuit, setInternalCircuit] = React.useState(engine.getCircuit());
   const circuit = externalCircuit ?? internalCircuit;
-  const [hoveredWireId, setHoveredWireId] = React.useState<string | null>(null);
   const wireToNetId = React.useMemo(() => computeWireNetIds(circuit.connections), [circuit.connections]);
   const hoveredNetId = hoveredWireId ? wireToNetId.get(hoveredWireId) ?? null : null;
   const selectedNetIds = React.useMemo(() => {
@@ -701,17 +704,27 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     [getChipMetadata]
   );
 
+  // During a reconnect the being-replaced wire is excluded from validation so the anchor can
+  // freely re-connect — including back to the original port without a false duplicate rejection.
+  const circuitForValidation = React.useMemo(() => {
+    if (!wireRewireDraft) return circuit;
+    return {
+      ...circuit,
+      connections: circuit.connections.filter((c) => toWireId(c) !== wireRewireDraft.wireId),
+    };
+  }, [circuit, wireRewireDraft]);
+
   const validWireTargetKeys = React.useMemo(() => {
     const startPort = editingState.wireStartPort;
     if (!startPort) return null;
 
     const targets = new Set<string>();
-    for (const node of circuit.nodes) {
+    for (const node of circuitForValidation.nodes) {
       const ports = getNodePortNames(node);
       for (const portName of ports) {
         if (node.id === startPort.nodeId && portName === startPort.portName) continue;
         const candidate = { nodeId: node.id, portName };
-        const validation = isValidConnection(startPort, candidate, circuit, getChipMetadata);
+        const validation = isValidConnection(startPort, candidate, circuitForValidation, getChipMetadata);
         if (validation.valid) {
           targets.add(`${node.id}:${portName}`);
         }
@@ -719,7 +732,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     }
 
     return targets;
-  }, [editingState.wireStartPort, circuit, getNodePortNames, getChipMetadata]);
+  }, [editingState.wireStartPort, circuitForValidation, getNodePortNames, getChipMetadata]);
 
   const hoveredWireTargetState = React.useMemo(() => {
     if (!editingState.wireStartPort || !hoveredPort) return null;
@@ -739,7 +752,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       const from = editingState.wireStartPort;
       const to = { nodeId, portName };
 
-      const validation = isValidConnection(from, to, circuit, getChipMetadata);
+      const validation = isValidConnection(from, to, circuitForValidation, getChipMetadata);
 
       if (!validation.valid) {
         onConnectionRejected?.(validation.reason ?? 'Connection not allowed');
@@ -748,7 +761,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       }
 
       // Normalize connection (output -> input)
-      const normalizedConnection = normalizeConnection(from, to, circuit, getChipMetadata);
+      const normalizedConnection = normalizeConnection(from, to, circuitForValidation, getChipMetadata);
 
       const nextConnections = wireRewireDraft
         ? circuit.connections
@@ -763,6 +776,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
       commitCircuit(updatedCircuit);
       setWireRewireDraft(null);
+      setRewiredWireId(null);
       endWire(); // This sets interactionMode back to 'idle'
 
       // Show first-wire toast if this is the user's first wire
@@ -781,7 +795,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
     // Notify parent after internal handling (used for fanin path tracing)
     onPortClick?.(nodeId, portName);
-  }, [circuit, editingState.wireStartPort, commitCircuit, endWire, startWire, getChipMetadata, isReplayMode, interactionMode, wireRewireDraft, onPortClick, onConnectionRejected]);
+  }, [circuit, circuitForValidation, editingState.wireStartPort, commitCircuit, endWire, startWire, getChipMetadata, isReplayMode, interactionMode, wireRewireDraft, onPortClick, onConnectionRejected]);
 
   const beginWireReconnect = React.useCallback(
     (wireId: string, endpoint: 'from' | 'to') => {
@@ -801,16 +815,18 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           : { nodeId: fromNodeId, portName: fromPortName };
 
       setWireRewireDraft({ wireId, anchor });
+      setRewiredWireId(wireId);
       startWire(anchor);
     },
-    [circuit.connections, isReplayMode, startWire]
+    [circuit.connections, isReplayMode, startWire, setRewiredWireId]
   );
 
   React.useEffect(() => {
     if (interactionMode === 'wiring') return;
     if (!wireRewireDraft) return;
     setWireRewireDraft(null);
-  }, [interactionMode, wireRewireDraft]);
+    setRewiredWireId(null);
+  }, [interactionMode, wireRewireDraft, setRewiredWireId]);
 
   const handleAddNode = React.useCallback((type: string) => {
     if (isReplayMode) return;
@@ -1181,6 +1197,38 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
   }, [camera.x, camera.y, camera.zoom, circuit.connections, circuit.nodes, selection.wires]);
 
+  // Hovered wire endpoint overlay — shows discoverable handles without requiring prior selection.
+  // Returns null when: no wire is hovered, the hovered wire is already selected (selected handles take over),
+  // or the wire/nodes can't be resolved.
+  const hoveredWireOverlay = React.useMemo(() => {
+    if (!hoveredWireId) return null;
+    if (selection.wires.has(hoveredWireId)) return null; // selected layer already shows handles
+
+    const connection = circuit.connections.find((entry) => toWireId(entry) === hoveredWireId);
+    if (!connection) return null;
+
+    const { fromNodeId, fromPortName, toNodeId, toPortName } = resolveConnectionEndpoints(connection);
+    const fromNode = circuit.nodes.find((node) => node.id === fromNodeId);
+    const toNode = circuit.nodes.find((node) => node.id === toNodeId);
+    if (!fromNode || !toNode || !fromNode.position || !toNode.position) return null;
+
+    return {
+      wireId: hoveredWireId,
+      from: {
+        nodeId: fromNodeId,
+        portName: fromPortName,
+        x: (fromNode.position.x + 24) * camera.zoom + camera.x,
+        y: fromNode.position.y * camera.zoom + camera.y,
+      },
+      to: {
+        nodeId: toNodeId,
+        portName: toPortName,
+        x: (toNode.position.x - 24) * camera.zoom + camera.x,
+        y: toNode.position.y * camera.zoom + camera.y,
+      },
+    };
+  }, [camera.x, camera.y, camera.zoom, circuit.connections, circuit.nodes, hoveredWireId, selection.wires]);
+
   return (
     <CanvasHost
       id="playground-canvas"
@@ -1374,6 +1422,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                 presentationZoomMode={presentationZoomMode}
                 isSelected={selection.wires.has(wireId)}
                 isHovered={hoveredWireId === wireId}
+                isBeingRewired={rewiredWireId === wireId}
                 isNetHighlighted={isNetHighlighted}
                 onSelect={selectWire}
                 onHover={setHoveredWireId}
@@ -1492,6 +1541,48 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             );
           })()}
         </g>
+
+        {/* Hovered wire endpoint hints — discoverable before selection */}
+        {hoveredWireOverlay ? (
+          <g key="wire-hover-endpoint-layer" data-testid="logic-wire-hover-endpoint-layer">
+            {(['from', 'to'] as const).map((endpointKey) => {
+              const endpoint = hoveredWireOverlay[endpointKey];
+              return (
+                <g
+                  key={`${hoveredWireOverlay.wireId}-hint-${endpointKey}`}
+                  data-testid={`logic-wire-endpoint-hint-${endpointKey}`}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    selectWire(hoveredWireOverlay.wireId, false);
+                    beginWireReconnect(hoveredWireOverlay.wireId, endpointKey);
+                  }}
+                  style={{ cursor: 'crosshair' }}
+                >
+                  <circle
+                    cx={endpoint.x}
+                    cy={endpoint.y}
+                    r={10}
+                    fill="rgba(142, 199, 255, 0.12)"
+                    stroke="#8ec7ff"
+                    strokeWidth={1.5}
+                    opacity={0.6}
+                  />
+                  <circle
+                    cx={endpoint.x}
+                    cy={endpoint.y}
+                    r={3}
+                    fill="#8ec7ff"
+                    opacity={0.7}
+                  />
+                </g>
+              );
+            })}
+          </g>
+        ) : null}
 
         {/* Selected wire reconnect handles */}
         {selectedWireOverlay ? (

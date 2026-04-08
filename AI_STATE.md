@@ -1,5 +1,847 @@
 # AI State
 
+## Change Log 2026-04-08 (Release Path — PR #76 review-blocker fix)
+
+**Subsystem**: Verify / PR merge readiness
+
+### Problem
+
+After the canonical rescue branch was pushed and the required GitHub checks turned green, PR `#76` still could not merge because two unresolved review threads remained:
+
+- the post-run Verify workbench used a native `<details>` element, but the rendered editor body depended on separate React state, so "Edit expected outputs" CTAs could reveal the shell without actually mounting the authoring workspace
+- `verifyMode.test.ts` still had one misleading test description that said "sequential" while asserting `combinational`
+
+That left the branch policy blocked on review even though the rescue line itself was otherwise merge-ready.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - added `expandSignal` so the parent can force the post-run workbench open through React state instead of mutating `details.open`
+  - made the `<details>` `open` state controlled by `workbenchExpanded`
+  - reset the post-run workbench from `initialExpanded` and toggled it through the summary click handler
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - added a reducer-backed `scenarioBuilderExpandSignal`
+  - changed `handleEditExpectedOutputs` to request expansion through that signal, while keeping the scroll-into-view behavior
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - strengthened the fail-state CTA contract to assert the workbench body actually mounts
+  - updated the close/reopen path to use the real workbench toggle instead of mutating the DOM node directly
+- `packages/rb-apps/src/apps/ide/__tests__/verifyMode.test.ts`
+  - corrected the misleading `hdlScheduleHint = combinational` test name
+
+### Validation
+
+- Focused Verify regression check:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifyMode.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - result: `44` tests passed
+- Required merge gate rerun:
+  - `pnpm -s classroom:gate`
+  - result: PASS all steps
+
+### Release impact
+
+- Clears the last known product-side blocker behind PR `#76`'s unresolved review threads
+- Keeps the Verify authoring recovery path truthful: `Edit expected outputs` now opens the actual case-editor workspace, not just the outer `<details>` shell
+
+## Change Log 2026-04-08 (Release Path — Classroom gate contract sweep)
+
+**Subsystem**: CI / classroom truth gates / merge readiness
+
+### Problem
+
+After the PR workflow browser-install fix landed locally, the required `Classroom Truth Gates` path still failed because multiple gate scripts no longer matched the current student-facing IDE:
+
+- Verify gates still expected retired Run buttons and always-open signal regions
+- Design gates still used stale starter selectors, stale live-input assumptions, and a pre-Project `?mode=design` authoring path
+- Export gates still assumed older artifact tab parsing, older ZIP layout/path names, and exact preview-to-ZIP equality for files that now add generated wrappers or preview truncation
+
+That meant PR `#76` could stay red even when the actual Design / Verify / Export surfaces were locally correct.
+
+### What changed
+
+- Realigned the classroom gate suite to current product truth:
+  - added `ide-vcb-run` support across Verify / Export / evidence gates
+  - updated Design gates to use the shared starter loader and the current `Build Fresh -> Design` path where required
+  - expanded live-input sections before toggling inputs in Design gates
+  - updated Verify reality gate to open the left workbench dock before asserting signal-list visibility
+  - updated Export E2E gate to read artifact filenames from the current artifact tab name element, accept the current Vivado project ZIP layout (`basys3.xdc`, nested project paths), strip the generated RedByte ZIP wrapper banner before source comparisons, allow the clipped testbench preview to match the ZIP prefix, parse the current simple `PACKAGE_PIN` XDC format, and derive expected XDC port names from current IO labels/ids
+- Targeted stale gate assumptions fixed in:
+  - `scripts/gates/ide-canvas-lod-contract.mjs`
+  - `scripts/gates/ide-design-correctness-contract.mjs`
+  - `scripts/gates/ide-design-palette-build-contract.mjs`
+  - `scripts/gates/ide-design-wire-interaction-contract.mjs`
+  - `scripts/gates/ide-evidence-capsule-contract.mjs`
+  - `scripts/gates/ide-export-download-contract.mjs`
+  - `scripts/gates/ide-export-e2e-contract.mjs`
+  - `scripts/gates/ide-export-ready-contract.mjs`
+  - `scripts/gates/ide-project-health-live-contract.mjs`
+  - `scripts/gates/ide-student-loop-contract.mjs`
+  - `scripts/gates/ide-verify-reality-contract.mjs`
+  - `scripts/gates/ide-verify-trace-only-contract.mjs`
+
+### Validation
+
+- Focused gate reruns green during the sweep:
+  - `pnpm -s ide:gate:student-loop-contract`
+  - `pnpm -s ide:gate:design-wire-interaction-contract`
+  - `pnpm -s ide:gate:canvas-lod-contract`
+  - `pnpm -s ide:gate:design-correctness-contract`
+  - `pnpm -s ide:gate:design-palette-build-contract`
+  - `pnpm -s ide:gate:verify-reality-contract`
+  - `pnpm -s ide:gate:export-e2e-contract`
+  - `pnpm -s ide:gate:zip-import-contract`
+- Required local merge gate restored:
+  - `pnpm -s classroom:gate` PASS all steps
+
+### Release impact
+
+- PR `#76` now has a truthful local path to satisfy the required `Classroom Truth Gates` check
+- The remaining merge path is operational, not ambiguous: push updated canonical branch head, rerun PR checks, then merge to `main` when GitHub confirms green
+
+## Change Log 2026-04-08 (Release Path — Classroom Truth Gates browser install fix)
+
+**Subsystem**: CI / PR merge path
+
+### Problem
+
+`main` branch protection requires the `Classroom Truth Gates` status check. PR #76 was blocked even when the merged code built successfully because `.github/workflows/pr-truth-gates.yml` ran `pnpm -s classroom:gate`, which invokes Playwright-backed IDE gates, without first installing Playwright browsers on the runner. The failure occurred at `ide:gate:examples-contract` with `browserType.launch: Executable doesn't exist`.
+
+### What changed
+
+- `.github/workflows/pr-truth-gates.yml`: added `Install Playwright browsers` step:
+  - `pnpm exec playwright install --with-deps chromium`
+- Step is placed after dependency install and before the first classroom/IDE gate so the required PR workflow can actually execute the browser-backed gate set it already depends on.
+
+### Validation
+
+- GitHub Actions failure audit on PR #76 (`Classroom Truth Gates`, run `24143033975`) confirmed:
+  - build passed inside `classroom:gate`
+  - failure was infrastructure-only: missing Playwright browser executable on the Ubuntu runner
+- Local branch-tip validation on `05514e78`:
+  - `pnpm -s build:unified` ✅
+  - targeted IDE/design/verify validation: 46 files / 457 tests GREEN
+
+### Release impact
+
+- Restores a truthful required PR gate path for merges to `main`
+- Removes a known false-red blocker that prevented stable rescue work from landing despite passing local build/test evidence
+
+---
+
+## Change Log 2026-04-08 (B-14 Slice 1 — Case-Editor Clarity: Hero Demotion)
+
+**Subsystem**: Verify — case-editor hierarchy
+
+### Problem
+
+In first-run state (`isFirstRunState && !lastRun`), `VerifyFirstRunPanel` rendered unconditionally even when `totalVectorCount > 0`. The hero panel (icon + title + description + signal pills + 4-step workflow) displaced the StimulusCanvas below the visible area. Students with auto-generated or authored vectors had to scroll to find the editable canvas.
+
+### What changed
+
+- `VerifySurface.tsx` line 4222: added `totalVectorCount === 0` to `VerifyFirstRunPanel` render guard.
+  - Before: `{isFirstRunState && !lastRun && verifyMode !== 'blocked' && (`
+  - After: `{isFirstRunState && !lastRun && verifyMode !== 'blocked' && totalVectorCount === 0 && (`
+- Comment updated to explain the intent: "only when no vectors yet; once canvas is populated, step aside"
+- `verifySurface.caseEditorClarity.test.tsx` (new): 5 contract tests covering hero absent/present, canvas always present, blocked unchanged.
+
+### Validation
+
+- RED: 1/5 failing (test 1 — hero absent when vectors exist)
+- After one-line fix: 5/5 GREEN
+- Full verifySurface suite: 89/89 GREEN (was 84, +5 B-14 tests), zero regressions
+- Commit: `05514e78`
+
+---
+
+## Change Log 2026-04-08 (B-13 Phase 3 — Run Ownership Complete)
+
+**Subsystem**: Verify — frontend dedup, Run ownership
+
+### Problem
+
+One remaining competing Run trigger after B-13 Phase 2: `ide-verify-run` in `ScenarioBuilderPanel.tsx` first-run footer. When `hasVectorsReady`, the footer rendered a Run button in parallel with `ide-vcb-run` (VerifyCommandBar header). Two Run actions created ambiguity about which was canonical.
+
+### What changed
+
+- `ScenarioBuilderPanel.tsx`: Removed `ide-verify-run` / `ide-verify-empty-run` from the first-run footer. `hasVectorsReady=true` branch now shows no Run button — header is the only Run action. `hasVectorsReady=false` branch retains `ide-verify-generate-basic-vectors-footer`. `ide-verify-empty-open-vectors` retained.
+- `verifySurface.frontend-dedup.test.tsx`: +2 Phase 3 contract tests (`ide-verify-run` absent, `ide-verify-empty-run` absent, `ide-vcb-run` present) — total 7 tests in file.
+- `verifySurface.workstation.test.tsx`: Migrated 2 tests that had `getByTestId('ide-verify-empty-run')` / `getByTestId('ide-verify-run')` assertions to assert `queryByTestId` returns null + `getByTestId('ide-vcb-run')` present.
+
+### Validation
+
+- TDD flow: 2 RED → implement → 7/7 GREEN → 2 workstation regressions → migrate → 84/84 GREEN
+- Commit: `b89959c0`
+- `ide-vcb-run` is now the only Run action anywhere in Verify. `ide-verify-run` is fully retired.
+
+---
+
+## Change Log 2026-04-08 (Verify Entry-State Unification — B-12 Slice 2)
+
+**Subsystem**: Verify — entry-state unification
+
+### Problem
+
+Four entry-state gaps after Slice 1:
+1. `verifyMode === 'blocked'` had no visual gate in VerifySurface — only via `unsupportedFeedbackDiagnostic` prop from IdeApp
+2. `VerifyCommandBar` rendered unconditionally — competing Run button even in blocked mode
+3. Sequential clock-preset strip required `lastRun` — students got no clock guidance on first entry
+4. `primaryStatus` chip testid was `ide-verify-status-chip` instead of `ide-verify-primary-status`
+
+### What changed
+
+- `VerifySurface.tsx`:
+  - Added `ide-verify-entry-blocked` surface for `verifyMode === 'blocked'`: title, reason, Fix in Design CTA
+  - `VerifyFirstRunPanel` + `VerifyCommandBar` suppressed when blocked
+  - Sequential helper condition: removed `&& lastRun` gate — shows on first entry without prior run
+  - primaryStatus chip testid: `ide-verify-status-chip` → `ide-verify-primary-status`
+- `verifySurface.entryState.test.tsx` (new): 6 tests for blocked/combinational/sequential entry
+
+### Validation
+
+- 6 new entry-state tests GREEN; 3 pre-existing layout-workflow failures fixed
+- 16 pre-existing failures unchanged; zero regressions in 75-test passing baseline
+
+---
+
+## Change Log 2026-04-07 (Verify Mode Detection — B-12 Slice 1)
+
+**Subsystem**: Verify — mode detection / hasDff → VerifyMode migration
+
+### Problem
+
+`hasDff: boolean` in VerifySurface was a blunt instrument: it couldn't express
+'blocked' as a first-class state, it was derived inline in IdeApp from a single
+`DFlipFlop` node-type check, and it didn't account for composite sequential
+types (macros) or HDL import paths.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/verifyMode.ts` (new):
+  - `VerifyMode` type: `'combinational' | 'sequential' | 'blocked'`
+  - `SUPPORTED_SEQUENTIAL`: explicit Set of node types with working sim support
+  - `UNSUPPORTED_SEQUENTIAL`: Set of types that must block verify
+  - `detectVerifyMode(circuit, hdlScheduleHint?)`: priority — blocked > sequential
+    (SUPPORTED node, `hasClockedMacros`, or HDL hint) > combinational.
+    Clock-only INPUT does NOT force sequential.
+- `packages/rb-apps/src/apps/IdeApp.tsx`:
+  - `verifyMode` useMemo computed from `detectVerifyMode(circuit, lastRun?.schedule)`
+  - VerifySurface now receives `verifyMode` prop (not `hasDff`)
+  - `hasDff` memo and `deriveHasDff` kept — they have direct test coverage
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`:
+  - `hasDff?: boolean` prop replaced with `verifyMode?: VerifyMode`
+  - 7 internal sites migrated from `hasDff` to `verifyMode === 'sequential'`
+  - `VerifyHintContext.hasDff` property key unchanged (interface property ≠ prop)
+- Test fixtures: `hasDff={true}` → `verifyMode="sequential"` in
+  workstation + layout-workflow suites
+
+### Validation
+
+- 14/14 unit tests in `verifyMode.test.ts` GREEN
+- 19 pre-existing failures in verifySurface suite confirmed pre-existing
+  (git stash before/after comparison — identical counts)
+- Zero regressions introduced
+
+---
+
+## Change Log 2026-04-07 (Gate Swap + Inspector Rationalization — Phase B-10)
+
+**Subsystem**: Design surface inspector / gate type swap + Signal/State cleanup
+
+### Problem
+
+Three unresolved gaps after Phase B-9:
+1. Gate type change required destructive delete-and-replace, breaking all connections. No editor supports this workflow.
+2. Signal/State inspector section still showed 4 redundant/dev-facing rows: "Driver / Source" (already shown by B-9's driver context panel), "Fan-in / Fan-out" (raw graph metric), "Board mapping" (duplicate of identity card), "Probe state" (not actionable).
+3. Advanced Details Node diagnostics sub-list still rendered raw IR codes (`{diagnostic.code}` span) — B-8 removed them from the primary health section but missed this secondary location.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - **`GATE_SWAP_FAMILIES` constant** (before component): Maps each swappable gate type to its compatible-swap targets. 2-input family: AND/NAND/NOR/OR/XOR/XNOR. 3-input family: AND3/NAND3/NOR3/OR3/XOR3. Only types with identical port names within the family are grouped.
+  - **`handleGateSwap` useCallback** (after `handleInspectorInputToggle`): Calls `updateNode(selectedNode.id, { type: newType })` then `emitCircuitMutation()`. All existing connections are preserved because port names are identical within each swap family.
+  - **Swap type action group** in `renderSelectionActions()`: Added after Net tracing group. Shows as `ide-design-swap-group` with per-target chips (`ide-design-swap-{typename.toLowerCase()}`). Absent for non-swappable nodes (INPUT, OUTPUT, DFlipFlop, etc.).
+  - **Signal/State section cleanup** in `renderSelectionState()` non-sequential branch: Removed 4 rows — "Driver / Source", "Fan-in / Fan-out", "Board mapping", "Probe state". These were redundant with B-9's driver context panel or with the identity card. Kept: Current, Previous, Transition, Last transition, Trace state.
+  - **Advanced Details IR code removal** in `renderAdvancedDetails()`: Removed `<span>{diagnostic.code}</span>` from the Node diagnostics sub-list. Message-only now. Closes the escape hatch from B-8.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.gateSwap.test.tsx` (new file): 9 tests — swap group appears for AND/AND3, correct chips shown, click updates circuit store, connections preserved, absent for non-swappable nodes, Signal/State no "Driver/Source", no "Fan-in", kept Current/Previous/Transition.
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`: Updated line 244 to check `ide-design-inspector-identity-card` instead of `ide-design-context-inspector` for "LD0 -> U16" board mapping (now correct location).
+
+### Validation
+
+- RED baseline: 7/9 tests failing before implementation
+- `pnpm -w exec vitest run designSurface.gateSwap` → 9/9 pass
+- `pnpm -w exec vitest run designSurface` → 177/177 pass (no regressions)
+
+### Attribution
+
+- Claude (acting product lead + staff engineer)
+
+## Change Log 2026-04-07 (Inspector Signal Intelligence — Phase B-9)
+
+**Subsystem**: Design surface inspector / live signal context and input control
+
+### Problem
+
+The inspector was clean (Phase B-8 removed developer internals) but still passive. Students could read signal values from it but could not act through it:
+1. Selecting a gate showed its own pin values but not the names/values of nodes driving its inputs
+2. Selecting an INPUT/Switch node showed no way to toggle its value from the inspector — required finding the node on canvas
+3. The trace buttons existed but had to be manually clicked; no auto-activation when sim was running
+4. Selecting a wire showed signal/current/previous but no clear A→B connection summary
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - **Slice 1 — Driver context panel**: New `selectedNodeInputDrivers` useMemo (after line ~2873). For each input port of the selected node, resolves the driver node via `circuit.connections` + `resolveConnectionEndpoint`. Renders `div.ide-design-selection-drivers` with per-port rows (`testId="ide-design-driver-row-{port}"`) showing driver label and HIGH/LOW value. Hidden when `liveSignals.size === 0` (sim hasn't run yet).
+  - **Slice 2 — Input node toggle**: New `handleInspectorInputToggle` useCallback (after selectedNode declaration). New input control group in `renderSelectionActions()` that appears when `selectedNode.type === 'INPUT' || selectedNode.type === 'Switch'` and `onRuntimeSimSetInput` is wired. Shows toggle button with current HIGH/LOW state. Click calls `queueDesignDebugToggleSample(..., 'inspector')` + `onRuntimeSimSetInput(id, next)`. Extended `source` union to include `'inspector'`.
+  - **Slice 3 — Auto-trace on selection**: New `autoTracedNodeRef` + `traceStateRef` refs (near existing trace refs). New `useEffect` (after `selectedNodeInputDrivers` useMemo) that calls `handleFanoutTrace(selectedNode.id)` when `runtimeSim.running && selectedNode && !traceStateRef.current`. Clears trace when selection lost. Does not override manually-set traces.
+  - **Slice 4 — Wire connection summary**: Added "Connection" kv row (`testId="ide-design-wire-connection"`) as the first row in the `selectedWireContext` wire inspector, showing `{sourceLabel} → {targetLabel}`.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorIntelligence.test.tsx` (new file)
+    - 10 tests covering all four slices; all pass.
+
+### Validation
+
+- RED baseline: 7/10 failing before implementation (3 already-absent features correctly passed)
+- `pnpm -w exec vitest run designSurface.inspectorIntelligence` → 10/10 pass
+- `pnpm -w exec vitest run designSurface` → 168/168 pass (no regressions)
+
+### Remaining concern
+
+- `handleFanoutTrace` is toggled — calling it twice for the same node clears the trace. The auto-trace effect guards with `!traceStateRef.current` to prevent accidental double-clear.
+- Driver context shows node labels; nodes without explicit labels fall back to their ID (e.g. 'and0_node'). Consider adding a human-readable fallback based on node type in a future pass.
+
+
+
+**Subsystem**: Design surface inspector / student-facing information contract
+
+### Problem
+
+The Design inspector was leaking developer internals into the student authoring UI:
+1. Raw IR diagnostic codes (e.g. `IR006`) rendered in bold next to error messages
+2. A "Compiler diagnostics" section label appeared above the diagnostic list
+3. The Advanced Details section exposed "Dirty since verify" and "Dirty since export" pipeline-layer rows
+4. The Live Simulation section was pinned permanently open via `disableCollapse`, showing "Live" instead of "Hide"
+5. The multi-select state branch showed a "Single-object state only" dead-end callout instead of a clean empty state
+6. The Signal Probe section rendered per-tick waveform buttons (`data-testid="ide-design-signal-history-point"`) — a Verify-surface idiom that did not belong in Design
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - `renderSelectionHealth()`: Removed `<strong>{diagnostic.code}</strong>` and the "Compiler diagnostics" `<span>` group label. Diagnostics now render as a plain `<ul>` showing only `diagnostic.message`.
+  - `renderAdvancedDetails()`: Removed the "Dirty since verify" and "Dirty since export" KV rows from the student-visible advanced details sub-section. (The developer-only `showDetails` strip at line ~5232 is intentionally preserved.)
+  - Both Live Simulation `IdeInspectorSection` instances: Removed `disableCollapse` prop so the section is collapsible and shows "Hide" in its toggle-state span.
+  - Multi-select branch in `renderSelectionState()`: Changed from returning an `IdeCallout` with "Single-object state only" to returning `null`.
+  - Signal Probe section: Removed the `ide-design-signal-history` div and all per-tick value buttons.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorTruth.test.tsx` (new file)
+    - 6 tests covering all five changes; all pass.
+
+### Validation
+
+- Failing baseline captured first (new test file with all 6 tests failing before any implementation)
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorTruth.test.tsx` → 6/6 pass
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/` → 158/158 pass (all design surface tests)
+
+### Remaining concern
+
+- The developer `showDetails` debug strip (URL-param only) still contains "Dirty since verify" — intentionally kept since it is not student-visible.
+- Live Simulation collapse state is not persisted across sessions; defaults to open which preserves discoverability.
+
+### Attribution
+
+- Connor Angiel
+
+## Change Log 2026-04-07 (Design horizontal group distribution)
+
+**Subsystem**: Design surface grouped layout cleanup
+
+### Problem
+
+Phase B had already restored capture, grouped movement, duplicate, delete, and first-pass edge alignment, but larger-circuit cleanup still stalled once three or more selected nodes needed to be spaced into a readable left-to-right lane. The editor could align edges, but it still could not do the first real tidy pass after selection.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Added one grouped tidy action inside the existing multi-select `Arrange` group: `Distribute horizontally`.
+  - The action sorts selected nodes by current `x` position, preserves the leftmost and rightmost anchors, and redistributes intermediate nodes to even horizontal spacing.
+  - Preserved the existing group selection after distribution and left `y` positions untouched so the action stays predictable and narrow.
+  - Kept the action visible but disabled when fewer than three nodes are selected.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx`
+    - Added coverage proving the `Arrange` group now includes `Distribute horizontally` and that the action is disabled for two-node selections.
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx`
+    - Added a live regression proving a three-node selection distributes by current left-to-right order, keeps endpoints anchored, preserves `y` positions, and keeps the group selected.
+
+### Validation
+
+- Failing baseline captured first:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx`
+    - failed on missing `Distribute horizontally` affordance and missing grouped distribution behavior
+- Passing verification after implementation:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx` OK (`39/39`)
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx` OK (`67/67`)
+
+### Remaining concern
+
+- This slice intentionally lands only one simple distribution action. Vertical distribution or a broader tidy pass remains deferred.
+- Distribution currently uses current node origin positions. If future Design work introduces more varied node footprints, grouped tidy tools may eventually need richer per-node bounds metadata.
+
+### Attribution
+
+- Connor Angiel
+
+## Change Log 2026-04-07 (Design grouped alignment actions)
+
+**Subsystem**: Design surface grouped layout cleanup
+
+### Problem
+
+Phase B had already restored group capture, grouped nudging, duplicate, delete, and inspector continuity, but the next sustained-use failure remained obvious on larger circuits: once a student captured a real logic cluster, there was still no fast way to clean up shared edges. The editor could move a group, but it still could not quickly straighten it.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Added a shared grouped-alignment handler that reuses the existing Design-surface circuit mutation path instead of opening new store or toolbar architecture.
+  - Added `Align left` and `Align top` as the first explicit grouped-arrange actions in the multi-select inspector.
+  - Kept the scope intentionally narrow:
+    - only selected nodes move
+    - selection is preserved after alignment
+    - existing marquee, duplicate, delete, and Arrow-key movement behavior stays unchanged
+  - Updated the grouped-selection inspector copy so the next editing move is not just "nudge or duplicate"; grouped edge cleanup is now visible in the Design workflow.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx`
+    - Added live regressions proving `Align left` snaps a selected group to the shared left edge while preserving the current selection.
+    - Added live regressions proving `Align top` snaps a selected group to the shared top edge without disturbing horizontal spacing.
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx`
+    - Added coverage proving the multi-select inspector now exposes an `Arrange` group with `Align left` and `Align top` before `Danger`.
+
+### Validation
+
+- Failing baseline captured first:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx`
+    - failed on missing arrange-group inspector affordances and missing grouped alignment actions
+- Passing verification after implementation:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx` OK (`38/38`)
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx` OK (`66/66`)
+
+### Remaining concern
+
+- Slice 9 intentionally stops at the first real arrangement win. It does not yet provide spacing/tidy/distribute actions, and it does not open a broader alignment suite.
+- Alignment currently uses node origin edges, which is correct for the current standard node geometry. If future Design work introduces more varied node footprints, grouped layout tools may eventually need richer per-node bounds metadata.
+
+### Attribution
+
+- Connor Angiel
+
+## Change Log 2026-04-07 (Design box-select capture hardening + canonical rescue branch truth)
+
+**Subsystem**: Design surface grouped selection capture
+
+### Problem
+
+Phase B had already restored the grouped-editing continuation loop once a set of nodes was selected: duplicate, delete, drag, and Arrow-key movement all existed. The remaining weakness was the capture step itself. Box-select still judged selection by each node's origin point, which meant a marquee could visibly overlap real node bodies in a dense circuit and still miss them.
+
+The repo topology also still needed one final factual statement before continuing Design work. The nearby rescue branches looked like parallel histories, but needed to be rechecked against the live branch graph and GitHub state before any more Design work landed.
+
+### What changed
+
+- Branch audit / rescue-line truth
+  - Reconfirmed `feat/design-phase-b-editing-power` is the canonical Design rescue branch.
+  - Reconfirmed these adjacent rescue branches are already ancestors of the canonical line, not divergent Design heads:
+    - `feat/design-sequential-inspector-hardening`
+    - `feat/hardware-export-failure-truth`
+    - `feat/project-overview-truth`
+  - Reconfirmed no Design-rescue commits needed merge, rebase, or cherry-pick.
+  - Reconfirmed the unrelated open GitHub PRs remain separate and untouched.
+
+- `packages/rb-logic-view/src/useCanvasInput.ts`
+  - Hardened marquee commit so selection is now based on intersection with the standard node bounds instead of only the node origin.
+  - Reused the existing shared `NODE_SIZE = 48` contract from `rb-logic-view` rather than opening a new geometry/store path.
+  - Preserved additive marquee behavior: `Shift` / `Ctrl` / `Cmd` still mark the commit as additive so the existing selection can be extended instead of replaced.
+
+- Tests
+  - `packages/rb-logic-view/src/__tests__/canvas-input-controller.test.ts`
+    - Added coverage proving a marquee that overlaps a node body still selects it even when the node origin is outside the box.
+    - Added coverage proving `Shift` marquee preserves additive-selection intent.
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx`
+    - Added a live Design-surface regression proving a bounds-overlap marquee can immediately feed the grouped Arrow-key nudge loop.
+    - Added a live Design-surface regression proving `Shift` marquee extends the current group with overlapping nodes.
+
+### Validation
+
+- Failing baseline captured first:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx packages/rb-logic-view/src/__tests__/canvas-input-controller.test.ts`
+    - failed on:
+      - marquee commit still returning an empty selection for partial node overlap
+      - live DesignSurface marquee selection failing to produce the intended grouped selection
+      - live additive marquee failing to extend the current group
+- Passing verification after implementation:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx packages/rb-logic-view/src/__tests__/canvas-input-controller.test.ts` OK (`60/60`)
+
+### Remaining concern
+
+- Bounds-aware marquee currently relies on the shared standard node body size (`NODE_SIZE = 48`). If future Design work introduces nonstandard node shapes, marquee hit geometry may need richer per-node metadata instead of the shared constant.
+- Align/tidy operations remain deferred. This slice only hardened group capture so the existing grouped-editing loop feels trustworthy before broader layout-authoring work.
+
+### Attribution
+
+- Connor Angiel
+
+## Change Log 2026-04-07 (Design multi-select editing power + canonical branch audit)
+
+**Subsystem**: Design surface grouped editing loop
+
+### Problem
+
+Phase B had already restored selection authority, keyboard reach, and wire reconnect clarity, but grouped editing still felt thin once a student box-selected part of a larger circuit. Multi-node drag, duplicate, and delete existed, yet the editor still lacked a precise movement loop and the inspector did not clearly advertise how to keep working on a selected group.
+
+The branch topology also needed verification before continuing Design work. The active Design rescue branch had to be confirmed as the canonical line without folding unrelated workstreams into it.
+
+### What changed
+
+- Branch audit / consolidation truth
+  - Confirmed `feat/design-phase-b-editing-power` is the canonical Design rescue branch.
+  - Confirmed the adjacent rescue branches are already ancestors of that line, not divergent heads:
+    - `feat/design-sequential-inspector-hardening`
+    - `feat/hardware-export-failure-truth`
+    - `feat/project-overview-truth`
+  - Confirmed no open GitHub PRs exist on those Design-adjacent branches.
+  - No merge, rebase, or cherry-pick was performed because the Design rescue history was already linear on the canonical branch and rewriting it would have added risk without gaining correctness.
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Added deterministic Arrow-key nudging for selected node groups.
+  - Added coarse grouped movement with `Shift + Arrow` so larger edits do not require mouse drag.
+  - Kept the nudge path inside the existing Design-surface keyboard authority instead of reopening store or canvas architecture.
+  - Updated the multi-select inspector copy so grouped selections now advertise the real continuation loop:
+    - Arrow-key nudging
+    - Shift for larger movement
+    - `Ctrl+D / Cmd+D` duplication
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx`
+    - Added coverage for single-step Arrow-key group nudging.
+    - Added coverage for coarse `Shift + Arrow` group nudging.
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx`
+    - Added coverage proving the multi-select inspector now advertises the grouped editing loop.
+
+### Validation
+
+- Failing baseline captured first:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx`
+    - failed on missing Arrow-key group nudge behavior and missing multi-select inspector copy
+- Passing verification after implementation:
+  - `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx` OK (33/33)
+
+### Remaining concern
+
+- Align/tidy operations remain deferred. This slice intentionally focused on the tighter grouped-editing loop rather than opening a broader layout-authoring feature set.
+
+### Attribution
+
+- Connor Angiel
+
+## Change Log 2026-04-06 (Project loaded-state readability + next-action hierarchy)
+
+**Subsystem**: Project surface loaded-state contract
+
+### Problem
+
+Project boot was fixed, but the loaded Project surface still made students scan the hero, readiness rows, mapping strip, and hidden detail disclosures to answer one question: what is loaded, what is done, and what should I do next. The hero CTA also competed with secondary row-level Verify actions, which weakened the front-door workflow story.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - Reworked the loaded-state hero so one `Next step` callout now owns the dominant Project action and explains why that action is current.
+  - Removed duplicate row-level Verify CTA competition from the readiness snapshot so the hero remains the single dominant next action.
+  - Promoted loaded-project reference truth into the visible Project reference card:
+    - source / starter context
+    - top module
+    - expected behavior
+    - last saved
+    - determinism hash
+    - import fidelity when present
+  - Restored explicit readiness launchpad markers inside the Project workflow snapshot:
+    - `ide-launchpad-mapping`
+    - `ide-launchpad-verify`
+    - `ide-launchpad-export`
+  - Restored the live Project readiness gate selector on the rendered workflow snapshot container (`ide-project-panel-readiness`) while preserving the existing summary test id.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`
+    - Updated continuity assertions so Verify advisory states point back to the dominant hero CTA instead of duplicate row buttons.
+  - `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`
+    - Added coverage for the new hero next-step copy and the loaded reference card surfacing starter/source, determinism, and import fidelity truth.
+
+### Validation
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` OK (22/22)
+- `pnpm --filter @redbyte/playground build` OK
+- `pnpm -s ide:gate:project-overview-contract` OK
+- `pnpm -s ide:gate:project-continue-cta-contract` OK
+
+### Remaining concern
+
+- `pnpm -s ide:gate:project-readiness-contract`
+  - still fails in the current repo state because that standalone gate assumes a pre-loaded Project state and does not handle the now-canonical Project Home empty state before checking the loaded readiness card
+  - this gate is **not** part of `pnpm repo:status`
+  - the gate script was not reopened inside this Project surface slice
+
+### Attribution
+
+- Connor Angiel
+
+## Change Log 2026-04-06 (Project overview boot restore + repo hygiene triage)
+
+**Subsystem**: IDE shell startup / Project overview gate
+
+### Problem
+
+The next product-hardening target was Project/Import onboarding, but the repo was still carrying a separate dirty Verify/import UI workstream plus local-only Ollama helper files. On top of that, the actual red repo-health blocker was not a ProjectSurface copy/layout issue yet — the IDE was crashing before Project mode mounted, so `ide:gate:project-overview-contract` could not even see `[data-testid="ide-mode-project"]`.
+
+### What changed
+
+- Repo hygiene
+  - Preserved the unrelated Verify/import UI workstream in stash:
+    - `stash@{0}` — `wip: verify-stimulus and import ui cleanup triage`
+  - Removed local-only root helper files that were not part of the repo contract:
+    - `Modelfile`
+    - `start-local.ps1`
+  - Cleaned tracked ignore rules in `.gitignore`:
+    - kept `.aider*`
+    - kept a single `.env`
+    - removed the accidental duplicate `.env`
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Fixed the Project boot blocker by moving `handleProjectPrimaryAction` below shared workflow-authority initialization.
+  - This removed the TDZ crash where `primaryProjectCta` was read before initialization during IDE boot.
+
+### Validation
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx` OK (12/12)
+- `pnpm -s ide:gate:project-overview-contract` OK
+- `pnpm --filter @redbyte/playground build` OK
+- `pnpm repo:status`
+  - `IDE Project Overview Contract` now passes
+  - current repo-health blocker moved forward to `IDE Evidence Capsule Contract`
+
+### Remaining concern
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx`
+  - `ideWorkbenchShell.test.tsx` passed
+  - `ideApp.labday-wiring.test.tsx` reported missing Verify session test ids (`ide-verify-session-mode`, `ide-verify-session-status`) and was not reopened in this Project-first slice because the separate Verify/import UI workstream had already been triaged out of the branch.
+
+## Change Log 2026-04-06 (Hardware and Export failure-truth unification)
+
+**Subsystem**: Hardware / Export workflow recovery truth
+
+### Problem
+
+The workflow-authority baseline existed locally, but Hardware and Export were still telling slightly different stories about the same project condition. Missing mapping, stale verify evidence, stale export bundles, and ready-to-program states could surface different dominant labels, different primary CTAs, and duplicated or conflicting recovery copy across the two surfaces.
+
+### What changed
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Folded the already-local workflow-authority shell wiring into the committed authority chain for this slice.
+
+- `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts` (new)
+  - Integrated the shared workflow-authority selector baseline.
+  - Added `deriveHardwareExportFailureTruth(...)` so Hardware and Export can read one dominant cross-surface contract for:
+    - condition
+    - severity
+    - status label
+    - dominant title / message
+    - dominant CTA label / intent
+  - Added `hasSuccessfulExportBundle` so the helper can distinguish missing export from stale export while staying inside the existing selector path.
+
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - Folded the already-local `workflowAuthority` adoption into the same integrated authority-chain commit without expanding Project behavior beyond that baseline.
+
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - Replaced local dominant readiness / blocked-hero / CTA derivation with the shared failure-truth helper.
+  - Unified dominant Hardware CTA labels with Export:
+    - `Open Map Pins`
+    - `Open Design`
+    - `Build Current Bundle`
+    - `Re-export Current Bundle`
+    - `Open Verify`
+    - `Open Program Handoff`
+  - Kept map / bring-up / proof regions as secondary context instead of letting them override the dominant recovery story.
+
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - Replaced local trust-banner / hero / readiness wording with the shared failure-truth helper.
+  - Collapsed the dominant status taxonomy to:
+    - `BLOCKED`
+    - `NEEDS REVIEW`
+    - `READY`
+  - Changed the healthy dominant CTA to `Open Program Handoff`, while keeping download/build controls available as secondary export actions.
+  - Routed dominant recovery actions to the correct surface without reopening shell architecture.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts` (new)
+    - Added shared failure-truth contract coverage for mapping incomplete, export missing, verify stale, and ready/current conditions.
+  - Updated:
+    - `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx`
+    - `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`
+    - `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+    - `packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx`
+    - `packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx`
+  - These suites now assert that the same workflow condition produces the same dominant label / CTA story in Hardware and Export.
+
+### Tests
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx` OK (34/34)
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx` OK (87/87)
+
+### Remaining concern
+
+- `pnpm repo:status` still fails the existing `ide:gate:project-overview-contract` gate in the live dirty baseline. That preview/runtime gate failure was observed during this continuation, but it was not reopened inside the Hardware/Export truth slice.
+
+## Change Log 2026-04-06 (Design sequential inspector hardening)
+
+**Subsystem**: Design surface inspector / sequential authoring guidance
+
+### Problem
+
+The Design surface already exposed sequential parts in the palette, but the live inspector still treated clocks, flip-flops, and latches like generic nodes. That left sequential authoring without timing-aware language, control-path context, or a direct next step, which undercut the Engineering Brain's "Design interaction before chrome" order.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Added an internal sequential inspector classifier for:
+    - `Clock`
+    - `DFlipFlop`
+    - `TFlipFlop`
+    - `JKFlipFlop`
+    - `DLatch`
+    - `RSLatch` / `SRLatch`
+  - Hardened the inspector identity card so sequential selections now show:
+    - timing role
+    - timing context / mapped source summary
+    - sequential-specific next-step copy
+  - Hardened the `Signal / State` section so sequential selections now use timing-aware terminology:
+    - flip-flops use clock / edge language
+    - latches use enable / set-reset language
+    - clocks show timing-source and board-context summaries
+  - Added one direct sequential next-step action in the inspector when applicable:
+    - `Trace control path` for state-holding elements
+    - `Go to Map Pins` for unmapped clock sources
+  - Added the missing student-facing label for `RSLatch` so it no longer falls back to the raw internal type string.
+
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.sequentialInspector.test.tsx` (new)
+  - Added regression coverage for:
+    - flip-flop timing guidance
+    - latch enable-oriented guidance
+    - mapped clock timing-role / board-context summary
+    - unmapped clock direct `Go to Map Pins` action
+
+- `03 Architecture/Design Surface.md`
+  - Recorded the canonical sequential-inspector contract so future Design work extends the live interaction model instead of reintroducing generic-node treatment for sequential parts.
+
+### Tests
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.sequentialInspector.test.tsx` ✅ (4/4)
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.sequentialInspector.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.blankState.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.paletteDock.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.placementMode.test.tsx` ✅ (47/47)
+
+## Change Log 2026-04-06 (IDE workflow authority consolidation)
+
+**Subsystem**: Project / Hardware / Export workflow authority
+
+### Problem
+
+Project, Hardware, Export, and the shell were re-deriving overlapping workflow truth independently. Verify currentness, export currentness, readiness copy, stage completion, and CTA state could drift because each surface recomputed its own version from partial inputs.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts` (new)
+  - Added the shared workflow selector that centralizes derived authority for:
+    - verify state/currentness
+    - compare trust states
+    - export currentness / package currentness
+    - design-ready / hardware-ready flags
+    - stage completion
+    - primary CTA
+    - status-bar gate status
+  - Moved `deriveVerifyCurrent` and `deriveExportCurrent` out of `IdeApp.tsx`.
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Computes one `workflowAuthority` object from runtime truth plus current verify/export hashes.
+  - Uses that shared authority for left-rail stage completion, primary CTA, and status bar gate status.
+  - Passes `workflowAuthority` into Project, Hardware, and Export surfaces.
+
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - Replaced local verify/export/stage derivations with `workflowAuthority`.
+  - Kept existing low-level health/readiness props for evidence and blocker detail, but stopped recomputing workflow trust locally.
+
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - Replaced `verifyCurrent` / `exportCurrent` props with `workflowAuthority`.
+  - Uses the shared authority for compare/export readiness instead of local override math.
+  - Added a local fallback derivation path for isolated tests that render the surface without the shell.
+
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - Added `workflowAuthority` input.
+  - Switched verify/readiness copy to shared authority while preserving export-specific artifact diagnostics and download gating.
+  - Added a local fallback derivation path for isolated tests that render the surface without the shell.
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts` (new)
+    - Added the shared workflow-authority contract suite covering not-run, trace-only, failed compare, passing/current, stale-after-change, stale-export-with-current-verify, and CTA/stage alignment cases.
+  - Updated hardware/runtime/export/project surface tests to consume the new shared selector location and the new surface prop shape.
+
+### Tests
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.history-authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectHealth.test.ts packages/rb-apps/src/apps/ide/__tests__/pipelineStrip.test.tsx` ✅ (125/125)
+
+## Change Log 2026-04-03 (Verify Phase 5 — Stimulus Workbench 2.0 selection + range editing sync)
+
+**Subsystem**: Verify stimulus authoring loop / waveform synchronization
+
+### Problem
+
+Verify had capable row/tick tools but no first-class shared selection model, so range editing and waveform↔stimulus navigation still felt pieced together. "Edit expected outputs" expanded the workbench but did not focus a concrete expected lane/tick target.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/stimulusSelection.ts` (new)
+  - Added shared selection contract (`selectedTick`, `selectedLaneKey`, `selectedCell`, `tickRange`, `focusToken`) and helpers for range normalization, range tick resolution, and focus-token bumps.
+
+- `packages/rb-apps/src/apps/ide/stimulusOps.ts` (new)
+  - Added range-aware pure ops for lane fill/toggle/clear, duplicate/delete tick range, and insert tick after.
+
+- `packages/rb-apps/src/apps/ide/components/StimulusCanvas.tsx`
+  - Added optional shared selection props (`selection`, `onSelectionChange`) for Verify-level synchronization.
+  - Added shift-click tick-range selection in the header.
+  - Added range-aware toolbar behavior for duplicate/delete and fill/toggle/clear operations.
+  - Added insert-before/insert-after tick controls.
+  - Added focus-target scrolling for expected lane/tick targeting via `focusToken`.
+  - Added explicit tick-header test ids for deterministic interaction tests.
+
+- `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - Added pass-through props for shared stimulus selection state and callback, wired through both StimulusCanvas render paths.
+  - Fixed JSX syntax contract regression in hidden gate-callout region.
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Added shared `stimulusSelection` state and bidirectional mapping between waveform signal/tick picks and stimulus lane/tick selection.
+  - Routed waveform tick/signal callbacks through shared sync handlers.
+  - Upgraded "Edit expected outputs" to target expected lane/tick focus (not only expansion/scroll).
+
+- Tests
+  - `packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.test.tsx`
+    - Added range duplicate/delete tests, insert-tick action test, selection callback sync test.
+  - `packages/rb-apps/src/apps/ide/__tests__/stimulusSelection.test.ts` (new)
+    - Added selection + focus-token reducer contracts.
+  - `packages/rb-apps/src/apps/ide/__tests__/stimulusOps.range.test.ts` (new)
+    - Added range-op contracts for fill/toggle/clear/duplicate/delete/insert.
+  - `packages/rb-apps/src/apps/ide/__tests__/verifyWorkbenchContracts.test.ts`
+    - Added contract check for shared stimulus selection props.
+
+### Tests
+
+- `pnpm -w exec vitest run StimulusCanvas stimulusSelection stimulusOps.range verifyWorkbenchContracts` ✅ (34/34)
+
 ## Change Log 2026-04-03 (Verify workspace architecture pass — region hierarchy + calmer status)
 
 **Subsystem**: Verify surface layout/workflow

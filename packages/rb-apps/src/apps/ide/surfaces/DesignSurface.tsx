@@ -74,6 +74,7 @@ function nodeTypeLabel(nodeType: string): string {
     DFlipFlop: 'D flip-flop',
     TFlipFlop: 'T flip-flop',
     JKFlipFlop: 'JK flip-flop',
+    RSLatch: 'RS latch',
     SRLatch: 'SR latch',
     MUX: 'Multiplexer',
     DEMUX: 'Demultiplexer',
@@ -632,6 +633,24 @@ interface DesignSimulationStory {
   clockLabel: string | null;
 }
 
+interface DesignSequentialInspectorContext {
+  kind: 'clock' | 'flip-flop' | 'latch' | 'rs-latch';
+  roleLabel: string;
+  behaviorSummary: string;
+  nextStep: string;
+  controlLabel: string | null;
+  controlSourceLabel: string | null;
+  controlActivity: string | null;
+  ioSummaryLabel: string;
+  ioSummary: string;
+  stateSummaryLabel: string;
+  stateSummary: string;
+  timingContext: string;
+  actionKind: 'trace-control' | 'go-to-hardware' | null;
+  actionLabel: string | null;
+  actionPort: string | null;
+}
+
 function resolveDesignDebugSample(
   signals: Record<string, 0 | 1>,
   preferredKeys: readonly string[]
@@ -652,6 +671,27 @@ function readDesignDebugQueryParam(): boolean {
   const normalized = raw.trim().toLowerCase();
   return normalized === '1' || normalized === 'true' || normalized === 'on' || normalized === 'yes';
 }
+
+/**
+ * Gate type swap families — all types within a family share identical port names
+ * and can be swapped without dropping any connections.
+ *
+ * 2-input family: a, b, out
+ * 3-input family: a, b, c, out
+ */
+const GATE_SWAP_FAMILIES: Partial<Record<string, readonly string[]>> = {
+  AND:   ['NAND', 'NOR', 'OR', 'XOR', 'XNOR'],
+  NAND:  ['AND', 'NOR', 'OR', 'XOR', 'XNOR'],
+  NOR:   ['AND', 'NAND', 'OR', 'XOR', 'XNOR'],
+  OR:    ['AND', 'NAND', 'NOR', 'XOR', 'XNOR'],
+  XOR:   ['AND', 'NAND', 'NOR', 'OR', 'XNOR'],
+  XNOR:  ['AND', 'NAND', 'NOR', 'OR', 'XOR'],
+  AND3:  ['NAND3', 'NOR3', 'OR3', 'XOR3'],
+  NAND3: ['AND3', 'NOR3', 'OR3', 'XOR3'],
+  NOR3:  ['AND3', 'NAND3', 'OR3', 'XOR3'],
+  OR3:   ['AND3', 'NAND3', 'NOR3', 'XOR3'],
+  XOR3:  ['AND3', 'NAND3', 'NOR3', 'OR3'],
+};
 
 export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   onCircuitMutated,
@@ -718,6 +758,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const setInteractionMode = useLogicViewStore((state) => state.setInteractionMode);
   const selectMultipleNodes = useLogicViewStore((state) => state.selectMultipleNodes);
   const snapToGrid = useLogicViewStore((state) => state.snapToGrid);
+  const gridSize = useLogicViewStore((state) => state.gridSize);
   const toggleSnapToGrid = useLogicViewStore((state) => state.toggleSnapToGrid);
   const clearSelection = useLogicViewStore((state) => state.clearSelection);
   const setCamera = useLogicViewStore((state) => state.setCamera);
@@ -831,6 +872,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const previousToolModeRef = useRef(toolMode);
   const previousHasSelectionRef = useRef(false);
   const suppressNextToolModeWireFeedbackClearRef = useRef(false);
+  // Auto-trace refs: track which node was auto-traced and read traceState without dep
+  const autoTracedNodeRef = useRef<string | null>(null);
+  const traceStateRef = useRef<DesignTraceState | null>(null);
+  traceStateRef.current = traceState;
 
   const clearTrace = useCallback(() => {
     lastTracedPortRef.current = null;
@@ -945,7 +990,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return valueById;
   }, [allLiveInputRows]);
   const queueDesignDebugToggleSample = useCallback(
-    (nodeId: string, requestedValue: 0 | 1, source: 'canvas' | 'dock') => {
+    (nodeId: string, requestedValue: 0 | 1, source: 'canvas' | 'dock' | 'inspector') => {
       if (!designDebugEnabled) return;
       pendingDebugToggleRef.current = {
         nodeId,
@@ -1099,6 +1144,186 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     setActionToast(`Duplicated ${count} node${count !== 1 ? 's' : ''}.`);
     emitCircuitMutation(next);
   }, [circuit, emitCircuitMutation, selection.nodes, selectMultipleNodes, updateCircuit]);
+
+  // CP-4: Select all nodes (Ctrl+A)
+  const handleSelectAll = useCallback(() => {
+    if (circuit.nodes.length === 0) return;
+    selectMultipleNodes(circuit.nodes.map((n) => n.id));
+  }, [circuit.nodes, selectMultipleNodes]);
+
+  // CP-5: Cut = copy then delete selection (Ctrl+X)
+  const handleCut = useCallback(() => {
+    if (selection.nodes.size === 0) return;
+    handleCopy();
+    deleteSelection();
+  }, [deleteSelection, handleCopy, selection.nodes]);
+
+  const handleAlignSelection = useCallback((edge: 'left' | 'top') => {
+    if (selection.nodes.size < 2) return;
+    const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
+    if (selectedNodes.length < 2) return;
+
+    const targetCoordinate =
+      edge === 'left'
+        ? Math.min(...selectedNodes.map((node) => node.position?.x ?? 0))
+        : Math.min(...selectedNodes.map((node) => node.position?.y ?? 0));
+
+    let didChange = false;
+    const next = {
+      ...circuit,
+      nodes: circuit.nodes.map((node) => {
+        if (!selection.nodes.has(node.id)) return node;
+        const currentPosition = {
+          x: node.position?.x ?? 0,
+          y: node.position?.y ?? 0,
+        };
+        const nextPosition =
+          edge === 'left'
+            ? { x: targetCoordinate, y: currentPosition.y }
+            : { x: currentPosition.x, y: targetCoordinate };
+
+        if (
+          currentPosition.x === nextPosition.x &&
+          currentPosition.y === nextPosition.y
+        ) {
+          return node;
+        }
+
+        didChange = true;
+        return {
+          ...node,
+          position: nextPosition,
+        };
+      }),
+    };
+
+    if (!didChange) return;
+
+    updateCircuit(next, { skipHistory: true, enforceLimits: true });
+    setActionToast(
+      `Aligned ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} to the ${edge}.`
+    );
+    emitCircuitMutation(next);
+  }, [circuit, emitCircuitMutation, selection.nodes, updateCircuit]);
+
+  const handleDistributeSelectionHorizontally = useCallback(() => {
+    if (selection.nodes.size < 3) return;
+    const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
+    if (selectedNodes.length < 3) return;
+
+    const sortedNodes = [...selectedNodes].sort((left, right) => {
+      const leftX = left.position?.x ?? 0;
+      const rightX = right.position?.x ?? 0;
+      if (leftX !== rightX) return leftX - rightX;
+      const leftY = left.position?.y ?? 0;
+      const rightY = right.position?.y ?? 0;
+      if (leftY !== rightY) return leftY - rightY;
+      return left.id.localeCompare(right.id);
+    });
+
+    const leftmostX = sortedNodes[0]?.position?.x ?? 0;
+    const rightmostX = sortedNodes[sortedNodes.length - 1]?.position?.x ?? 0;
+    const step = (rightmostX - leftmostX) / (sortedNodes.length - 1);
+    const distributedXById = new Map(
+      sortedNodes.map((node, index) => [node.id, leftmostX + step * index])
+    );
+
+    let didChange = false;
+    const next = {
+      ...circuit,
+      nodes: circuit.nodes.map((node) => {
+        if (!selection.nodes.has(node.id)) return node;
+        const targetX = distributedXById.get(node.id);
+        if (typeof targetX !== 'number') return node;
+
+        const currentPosition = {
+          x: node.position?.x ?? 0,
+          y: node.position?.y ?? 0,
+        };
+
+        if (currentPosition.x === targetX) {
+          return node;
+        }
+
+        didChange = true;
+        return {
+          ...node,
+          position: {
+            x: targetX,
+            y: currentPosition.y,
+          },
+        };
+      }),
+    };
+
+    if (!didChange) return;
+
+    updateCircuit(next, { skipHistory: true, enforceLimits: true });
+    setActionToast(
+      `Distributed ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} horizontally.`
+    );
+    emitCircuitMutation(next);
+  }, [circuit, emitCircuitMutation, selection.nodes, updateCircuit]);
+
+  const handleNudgeSelection = useCallback((dx: number, dy: number) => {
+    if (selection.nodes.size === 0) return;
+    if (dx === 0 && dy === 0) return;
+
+    const next = {
+      ...circuit,
+      nodes: circuit.nodes.map((node) =>
+        selection.nodes.has(node.id)
+          ? {
+              ...node,
+              position: {
+                x: (node.position?.x ?? 0) + dx,
+                y: (node.position?.y ?? 0) + dy,
+              },
+            }
+          : node
+      ),
+    };
+
+    updateCircuit(next, { skipHistory: true, enforceLimits: true });
+    emitCircuitMutation(next);
+  }, [circuit, emitCircuitMutation, selection.nodes, updateCircuit]);
+
+  // Shift+F: fit camera to selected nodes, or all nodes if nothing selected
+  const handleFitToSelection = useCallback(() => {
+    const nodesToFit =
+      selection.nodes.size > 0
+        ? editorCircuit.nodes.filter((n) => selection.nodes.has(n.id))
+        : editorCircuit.nodes;
+    if (nodesToFit.length === 0) {
+      setCamera({ x: 0, y: 0, zoom: 1 });
+      return;
+    }
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    for (const node of nodesToFit) {
+      const px = node.position?.x ?? 0;
+      const py = node.position?.y ?? 0;
+      minX = Math.min(minX, px);
+      maxX = Math.max(maxX, px);
+      minY = Math.min(minY, py);
+      maxY = Math.max(maxY, py);
+    }
+    const spanX = Math.max(96, maxX - minX);
+    const spanY = Math.max(96, maxY - minY);
+    const padding = Math.max(56, Math.min(140, Math.round(Math.max(spanX, spanY) * 0.14)));
+    const boundsWidth = Math.max(1, spanX + padding * 2);
+    const boundsHeight = Math.max(1, spanY + padding * 2);
+    const zoomX = (canvasSize.width * 0.9) / boundsWidth;
+    const zoomY = (canvasSize.height * 0.9) / boundsHeight;
+    const nextZoom = snapFitZoom(Math.max(0.55, Math.min(2.4, Math.min(zoomX, zoomY))));
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    setCamera({
+      x: canvasSize.width / 2 - centerX * nextZoom,
+      y: canvasSize.height / 2 - centerY * nextZoom,
+      zoom: nextZoom,
+    });
+  }, [canvasSize, editorCircuit.nodes, selection.nodes, setCamera]);
 
   useEffect(() => {
     if (!actionToast) return;
@@ -1863,6 +2088,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     [editorCircuit.nodes, selectedNodeIds]
   );
 
+  const handleInspectorInputToggle = useCallback(() => {
+    if (!selectedNode || !onRuntimeSimSetInput) return;
+    const current = liveSignals.get(`${selectedNode.id}.out`) ?? 0;
+    const next: 0 | 1 = current === 1 ? 0 : 1;
+    queueDesignDebugToggleSample(selectedNode.id, next, 'inspector');
+    onRuntimeSimSetInput(selectedNode.id, next);
+    setActionToast(`${selectedNode.label || selectedNode.type} → ${next === 1 ? 'HIGH' : 'LOW'}`);
+  }, [selectedNode, onRuntimeSimSetInput, liveSignals, queueDesignDebugToggleSample]);
+
+  const handleGateSwap = useCallback((newType: string) => {
+    if (!selectedNode) return;
+    updateNode(selectedNode.id, { type: newType });
+    emitCircuitMutation();
+    setActionToast(`Gate changed to ${newType}`);
+  }, [emitCircuitMutation, selectedNode, updateNode]);
+
   // ── N-1: resolve a raw connection endpoint to { nodeId, portName } ──────────
   const resolveConnectionEndpoint = useCallback(
     (raw: import('@redbyte/rb-logic-core').Connection['from'] | import('@redbyte/rb-logic-core').Connection['to']): { nodeId: string; portName: string } => {
@@ -2151,6 +2392,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       value: liveSignals.get(`${selectedNode.id}.${port}`) ?? null,
     }));
   }, [selectedNode, editorCircuit, liveSignals]);
+  const selectedNodeSignalMap = useMemo(
+    () =>
+      new Map<string, 0 | 1 | null>(
+        (selectedNodeSignals ?? []).map((entry) => [entry.port, entry.value])
+      ),
+    [selectedNodeSignals]
+  );
   const selectedNodeProperties = useMemo(
     () => (selectedNode ? describeNodeProperties(selectedNode) : []),
     [selectedNode]
@@ -2585,11 +2833,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const showSplitCompareToolbar = isSplitWorkspace && effectiveDesignView === 'split';
   const showSimulationStrip =
     workspacePreset.showSimulationStrip &&
-    (simRunning ||
-      simTick > 0 ||
-      editorCircuit.nodes.length > 0 ||
-      activeVerifySignal != null ||
-      activeDebugContext != null);
+    (simRunning || simTick > 0 || activeVerifySignal != null || activeDebugContext != null);
   const showWorkspaceStatusBar =
     showFullAuthoringStatus || showCompactAuthoringStatus || showSimulationStrip;
   const selectedNodeIoRow = useMemo(() => {
@@ -2629,6 +2873,62 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (!selectedNode) return null;
     return describeNodeConnectionSummary(selectedNode.id, editorCircuit, resolveConnectionEndpoint);
   }, [editorCircuit, resolveConnectionEndpoint, selectedNode]);
+  const selectedSequentialInspector = useMemo(
+    () =>
+      buildSequentialInspectorContext({
+        node: selectedNode,
+        nodeSignals: selectedNodeSignalMap,
+        ioRow: selectedNodeIoRow,
+        connectionSummary: selectedNodeConnectionSummary,
+        circuit: editorCircuit,
+        ioRowByNodeId,
+        trace: runtimeSim.trace,
+        runtimeSignals: runtimeSim.signals,
+        liveSignals,
+      }),
+    [
+      editorCircuit,
+      ioRowByNodeId,
+      liveSignals,
+      runtimeSim.signals,
+      runtimeSim.trace,
+      selectedNode,
+      selectedNodeConnectionSummary,
+      selectedNodeIoRow,
+      selectedNodeSignalMap,
+    ]
+  );
+  const selectedNodeInputDrivers = useMemo(() => {
+    if (!selectedNode || liveSignals.size === 0) return [];
+    return editorCircuit.connections
+      .filter((conn) => resolveConnectionEndpoint(conn.to).nodeId === selectedNode.id)
+      .map((conn) => {
+        const src = resolveConnectionEndpoint(conn.from);
+        const srcNode = editorCircuit.nodes.find((n) => n.id === src.nodeId);
+        return {
+          port: resolveConnectionEndpoint(conn.to).portName,
+          driverLabel: describeEndpointLabel(src.nodeId, srcNode, ioRowByNodeId.get(src.nodeId)),
+          value: liveSignals.get(`${src.nodeId}.${src.portName}`) ?? null,
+        };
+      });
+  }, [editorCircuit, ioRowByNodeId, liveSignals, resolveConnectionEndpoint, selectedNode]);
+
+  // Auto-trace: when sim is running and a node is selected with no existing trace,
+  // trigger a fanout highlight automatically. Clears when selection is lost.
+  useEffect(() => {
+    if (runtimeSim.running && selectedNode) {
+      if (!traceStateRef.current) {
+        handleFanoutTrace(selectedNode.id);
+        autoTracedNodeRef.current = selectedNode.id;
+      }
+    } else if (!selectedNode && autoTracedNodeRef.current !== null) {
+      clearTrace();
+      autoTracedNodeRef.current = null;
+    }
+    // traceStateRef intentionally omitted — read via ref to avoid retriggering
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNode?.id, runtimeSim.running, handleFanoutTrace, clearTrace]);
+
   const primarySelectedWireId = selectedWireIds[0] ?? null;
   const selectedWireContext = useMemo(() => {
     if (!primarySelectedWireId) return null;
@@ -2899,13 +3199,104 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       if ((event.ctrlKey || event.metaKey) && event.key === 'd' && !isTextInput) {
         event.preventDefault();
         handleDuplicate();
+        return;
+      }
+
+      // Ctrl+A / Cmd+A: select all nodes
+      if ((event.ctrlKey || event.metaKey) && event.key === 'a' && !isTextInput) {
+        event.preventDefault();
+        handleSelectAll();
+        return;
+      }
+
+      // Ctrl+X / Cmd+X: cut (copy + delete)
+      if ((event.ctrlKey || event.metaKey) && event.key === 'x' && !isTextInput) {
+        event.preventDefault();
+        handleCut();
+        return;
+      }
+
+      // Shift+F: fit camera to selection (falls back to all nodes)
+      if (event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey
+          && event.key.toLowerCase() === 'f' && !isTextInput) {
+        event.preventDefault();
+        handleFitToSelection();
+        return;
+      }
+
+      // Arrow keys: nudge selected nodes for precise grouped movement.
+      if (!event.ctrlKey && !event.metaKey && !event.altKey && !isTextInput) {
+        const baseStep = snapToGrid ? gridSize : Math.max(1, Math.round(gridSize / 2));
+        const step = event.shiftKey ? baseStep * 4 : baseStep;
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          handleNudgeSelection(-step, 0);
+          return;
+        }
+        if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          handleNudgeSelection(step, 0);
+          return;
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          handleNudgeSelection(0, -step);
+          return;
+        }
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          handleNudgeSelection(0, step);
+          return;
+        }
+      }
+
+      // Gate hotkeys (bare, no modifier): a=AND, o=OR, n=NOT, x=XOR
+      if (!event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && !isTextInput) {
+        if (event.key === 'a') { event.preventDefault(); beginNodePlacement('AND'); return; }
+        if (event.key === 'o') { event.preventDefault(); beginNodePlacement('OR'); return; }
+        if (event.key === 'n') { event.preventDefault(); beginNodePlacement('NOT'); return; }
+        if (event.key === 'x') { event.preventDefault(); beginNodePlacement('XOR'); return; }
+      }
+
+      // Ctrl+Z / Cmd+Z: undo — fires only when CanvasHost has not already handled it
+      // (CanvasHost calls e.preventDefault() for Ctrl+Z when canvas is active, so we
+      // check defaultPrevented to avoid a double-undo when both handlers fire)
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z'
+          && !isTextInput && !event.defaultPrevented) {
+        event.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      // Ctrl+Y / Cmd+Y or Ctrl+Shift+Z: redo — same defaultPrevented guard
+      if ((event.ctrlKey || event.metaKey) && !isTextInput && !event.defaultPrevented &&
+          (event.key.toLowerCase() === 'y' || (event.shiftKey && event.key.toLowerCase() === 'z'))) {
+        event.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      // Delete / Backspace: delete selection — use live store state to avoid double-delete
+      // CanvasHost handles Delete too (without preventDefault), so we read live state to
+      // check whether the canvas handler has already cleared the selection.
+      if ((event.key === 'Delete' || event.key === 'Backspace') && !isTextInput) {
+        const liveSelection = useLogicViewStore.getState().selection;
+        if (liveSelection.nodes.size > 0 || liveSelection.wires.size > 0) {
+          deleteSelection();
+        }
+        return;
+      }
+
+      // Escape: clear selection globally (idempotent — safe even if CanvasHost also fires)
+      if (event.key === 'Escape' && !isTextInput) {
+        clearSelection();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [handleCopy, handleDuplicate, handlePaste, toggleSnapToGrid]);
+  }, [beginNodePlacement, clearSelection, deleteSelection, gridSize, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handleNudgeSelection, handlePaste, handleRedo, handleSelectAll, handleUndo, snapToGrid, toggleSnapToGrid]);
 
   useEffect(() => {
     const pending = pendingDebugToggleRef.current;
@@ -3015,10 +3406,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       const boardSummary = selectedNodeIoRow
         ? `${selectedNodeIoRow.label} -> ${selectedNodeIoRow.pin || 'unmapped'}`
         : 'No board mapping';
-      const nextStep = primarySelectionIssue?.hint
+      const defaultNextStep = primarySelectionIssue?.hint
         ?? (selectedNodeIoRow
           ? 'Rename it, inspect its mapped signal, or trace the connected net next.'
           : 'Rename it, inspect its pins, or trace the connected net next.');
+      const nextStep = selectedSequentialInspector?.nextStep ?? defaultNextStep;
       return (
         <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
           <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
@@ -3062,6 +3454,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <span className="ide-design-inspector-meta-label">Board mapping</span>
                 <span className="ide-design-inspector-meta-value">{boardSummary}</span>
               </div>
+              {selectedSequentialInspector ? (
+                <>
+                  <div className="ide-design-inspector-meta-card">
+                    <span className="ide-design-inspector-meta-label">Timing role</span>
+                    <span className="ide-design-inspector-meta-value" data-testid="ide-design-sequential-role">
+                      {selectedSequentialInspector.roleLabel}
+                    </span>
+                  </div>
+                  <div className="ide-design-inspector-meta-card">
+                    <span className="ide-design-inspector-meta-label">Timing context</span>
+                    <span className="ide-design-inspector-meta-value" data-testid="ide-design-sequential-timing-context">
+                      {selectedSequentialInspector.timingContext}
+                    </span>
+                  </div>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
@@ -3078,7 +3486,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <strong data-testid="ide-design-multiselect-count">{selection.nodes.size} nodes selected</strong>
                 </div>
                 <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
-                  Compose, duplicate, or delete this group as one unit.
+                  Use Arrow keys to nudge this group, align shared edges when it gets messy, or press Ctrl+D / Cmd+D to duplicate it.
                 </p>
               </div>
               <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
@@ -3086,7 +3494,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </span>
             </div>
             <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
-              Save this cluster as a reusable block or keep editing it as a grouped selection.
+              Keep refining the selection as one working unit, then save it as a reusable block when the group stabilizes.
             </p>
             <div className="ide-design-selection-pins" data-testid="ide-design-multiselect-types">
               {selectedTypeSummary.map((entry) => (
@@ -3241,14 +3649,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           ) : null}
           {selectedNodeDiagnostics.length > 0 ? (
             <div className="ide-design-inspector-diagnostics" data-testid="ide-design-selection-diagnostics">
-              <span className="ide-design-inspector-group-label">Compiler diagnostics</span>
               <ul className="ide-design-inspector-diagnostic-list">
                 {selectedNodeDiagnostics.slice(0, 3).map((diagnostic) => (
                   <li
                     key={`${diagnostic.code}-${diagnostic.message}`}
                     className={`ide-design-inspector-diagnostic-item is-${diagnostic.severity === 'error' ? 'error' : 'warn'}`}
                   >
-                    <strong>{diagnostic.code}</strong>
                     <span>{diagnostic.message}</span>
                   </li>
                 ))}
@@ -3305,6 +3711,75 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </IdeButton>
             </div>
           </div>
+          {(() => {
+            const swapTargets = GATE_SWAP_FAMILIES[selectedNode.type];
+            return swapTargets && swapTargets.length > 0 ? (
+              <div className="ide-design-inspector-action-group" data-testid="ide-design-swap-group">
+                <span className="ide-design-inspector-group-label">Swap type</span>
+                <div className="ide-design-swap-chips">
+                  {swapTargets.map((targetType) => (
+                    <button
+                      key={targetType}
+                      type="button"
+                      className="ide-design-swap-chip"
+                      data-testid={`ide-design-swap-${targetType.toLowerCase()}`}
+                      onClick={() => handleGateSwap(targetType)}
+                    >
+                      {targetType}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null;
+          })()}
+          {selectedSequentialInspector?.actionLabel &&
+          ((selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort) ||
+            (selectedSequentialInspector.actionKind === 'go-to-hardware' && onGoToHardware)) ? (
+            <div className="ide-design-inspector-action-group" data-testid="ide-design-sequential-action-group">
+              <span className="ide-design-inspector-group-label">Sequential next step</span>
+              <div className="ide-design-inspector-action-grid">
+                {selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort ? (
+                  <IdeButton
+                    tone="secondary"
+                    onClick={() => handlePortClick(selectedNode.id, selectedSequentialInspector.actionPort)}
+                    testId="ide-design-context-sequential-action"
+                  >
+                    {selectedSequentialInspector.actionLabel}
+                  </IdeButton>
+                ) : null}
+                {selectedSequentialInspector.actionKind === 'go-to-hardware' && onGoToHardware ? (
+                  <IdeButton
+                    tone="secondary"
+                    onClick={onGoToHardware}
+                    testId="ide-design-context-sequential-action"
+                  >
+                    {selectedSequentialInspector.actionLabel}
+                  </IdeButton>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+          {(selectedNode.type === 'INPUT' || selectedNode.type === 'Switch') && onRuntimeSimSetInput ? (
+            <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-input-control">
+              <span className="ide-design-inspector-group-label">Input control</span>
+              <div className="ide-design-inspector-action-grid">
+                {(() => {
+                  const currentVal = liveSignals.get(`${selectedNode.id}.out`) ?? 0;
+                  return (
+                    <button
+                      type="button"
+                      className={`ide-design-input-toggle ${currentVal === 1 ? 'is-on' : 'is-off'}`}
+                      data-testid="ide-design-inspector-input-toggle"
+                      aria-pressed={currentVal === 1}
+                      onClick={handleInspectorInputToggle}
+                    >
+                      {currentVal === 1 ? 'HIGH — click to set LOW' : 'LOW — click to set HIGH'}
+                    </button>
+                  );
+                })()}
+              </div>
+            </div>
+          ) : null}
           <div className="ide-design-inspector-action-group ide-design-inspector-group--danger" data-testid="ide-design-inspector-danger-group">
             <span className="ide-design-inspector-group-label">Danger</span>
             <div className="ide-design-inspector-action-grid">
@@ -3333,6 +3808,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   Paste
                 </IdeButton>
               ) : null}
+            </div>
+          </div>
+          <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-arrange-group">
+            <span className="ide-design-inspector-group-label">Arrange</span>
+            <div className="ide-design-inspector-action-grid">
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('left')} testId="ide-design-align-left-btn">
+                Align left
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('top')} testId="ide-design-align-top-btn">
+                Align top
+              </IdeButton>
+              <IdeButton
+                tone="ghost"
+                onClick={handleDistributeSelectionHorizontally}
+                disabled={selection.nodes.size < 3}
+                testId="ide-design-distribute-horizontal-btn"
+              >
+                Distribute horizontally
+              </IdeButton>
             </div>
           </div>
           {onSaveMacro && selectedNodeIdsAll.length >= 2 ? (
@@ -3445,6 +3939,104 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   };
   const renderSelectionState = () => {
     if (hasSingleSelectedNode && selectedNode) {
+      if (selectedSequentialInspector) {
+        return (
+          <div className="ide-design-inspector-section-stack">
+            <IdeCallout
+              tone="info"
+              title="Sequential guidance"
+              testId="ide-design-sequential-guidance"
+            >
+              <span data-testid="ide-design-sequential-guidance-copy">
+                {selectedSequentialInspector.behaviorSummary}
+              </span>
+            </IdeCallout>
+            <div className="ide-design-live-summary">
+              <div className="ide-kv-list">
+                <div className="ide-kv-row">
+                  <span>Role</span>
+                  <span>{selectedSequentialInspector.roleLabel}</span>
+                </div>
+                {selectedSequentialInspector.controlLabel ? (
+                  <div className="ide-kv-row">
+                    <span>{selectedSequentialInspector.controlLabel}</span>
+                    <span data-testid="ide-design-sequential-control-source">
+                      {selectedSequentialInspector.controlSourceLabel ?? 'No source wired'}
+                    </span>
+                  </div>
+                ) : null}
+                {selectedSequentialInspector.controlLabel && selectedSequentialInspector.controlActivity ? (
+                  <div className="ide-kv-row">
+                    <span>Control activity</span>
+                    <span data-testid="ide-design-sequential-control-activity">
+                      {selectedSequentialInspector.controlActivity}
+                    </span>
+                  </div>
+                ) : !selectedSequentialInspector.controlLabel && selectedSequentialInspector.controlActivity ? (
+                  <div className="ide-kv-row">
+                    <span>Signal activity</span>
+                    <span data-testid="ide-design-sequential-control-activity">
+                      {selectedSequentialInspector.controlActivity}
+                    </span>
+                  </div>
+                ) : null}
+                <div className="ide-kv-row">
+                  <span>{selectedSequentialInspector.ioSummaryLabel}</span>
+                  <span data-testid="ide-design-sequential-input-summary">{selectedSequentialInspector.ioSummary}</span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>{selectedSequentialInspector.stateSummaryLabel}</span>
+                  <span data-testid="ide-design-sequential-output-summary">{selectedSequentialInspector.stateSummary}</span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Timing context</span>
+                  <span>{selectedSequentialInspector.timingContext}</span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Current</span>
+                  <code data-testid="ide-design-context-current">{selectedNodeSignalSnapshot?.currentValue ?? 0}</code>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Previous</span>
+                  <code data-testid="ide-design-context-previous">{selectedNodeSignalSnapshot?.previousValue ?? 0}</code>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Transition</span>
+                  <span data-testid="ide-design-context-transition">{selectedNodeSignalSnapshot?.transition ?? 'stable'}</span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Last transition</span>
+                  <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? 'â€”'}</span>
+                </div>
+                <div className="ide-kv-row">
+                  <span>Trace state</span>
+                  <span data-testid="ide-design-context-trace-state">
+                    {traceState?.nodeIds.has(selectedNode.id) ? traceState.label : 'No trace locked'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            {selectedNodeSignals && selectedNodeSignals.length > 0 ? (
+              <div className="ide-design-selection-pins" data-testid="ide-design-selection-pins">
+                {selectedNodeSignals.map((entry) => {
+                  const val = entry.value;
+                  const valStr = val === 1 ? '1' : val === 0 ? '0' : '?';
+                  return (
+                    <span
+                      key={`${selectedNode.id}-${entry.port}`}
+                      className={`ide-design-pin-pill ide-design-pin-pill--val${val === 1 ? '-hi' : val === 0 ? '-lo' : '-unk'}`}
+                      data-testid={`ide-design-pin-pill-${selectedNode.id}-${entry.port}`}
+                    >
+                      {entry.port}
+                      <span className="ide-design-pin-pill-value">{valStr}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        );
+      }
       return (
         <div className="ide-design-inspector-section-stack">
           <div className="ide-design-live-summary">
@@ -3464,22 +4056,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div className="ide-kv-row">
                 <span>Last transition</span>
                 <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Driver / Source</span>
-                <span>{selectedNodeConnectionSummary?.incomingLabel ?? 'Primary source'}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Fan-in / Fan-out</span>
-                <span>{selectedNodeConnectionSummary?.fanIn ?? 0} / {selectedNodeConnectionSummary?.fanOut ?? 0}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Board mapping</span>
-                <span>{selectedNodeIoRow ? `${selectedNodeIoRow.label} -> ${selectedNodeIoRow.pin || 'unmapped'}` : 'None'}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Probe state</span>
-                <span>{isActiveInspectorSignalPinned ? 'Pinned' : 'Not pinned'}</span>
               </div>
               <div className="ide-kv-row">
                 <span>Trace state</span>
@@ -3507,6 +4083,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               })}
             </div>
           ) : null}
+          {selectedNodeInputDrivers.length > 0 && (
+            <div className="ide-design-selection-drivers" data-testid="ide-design-input-drivers">
+              {selectedNodeInputDrivers.map((d) => (
+                <div key={d.port} className="ide-kv-row" data-testid={`ide-design-driver-row-${d.port}`}>
+                  <span>{describePortForStudents(d.port)}</span>
+                  <span>{d.driverLabel} · {d.value === 1 ? 'HIGH' : d.value === 0 ? 'LOW' : '?'}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       );
     }
@@ -3514,6 +4100,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       return (
         <div className="ide-design-live-summary">
           <div className="ide-kv-list">
+            <div className="ide-kv-row" data-testid="ide-design-wire-connection">
+              <span>Connection</span>
+              <span>{selectedWireContext.sourceLabel} → {selectedWireContext.targetLabel}</span>
+            </div>
             <div className="ide-kv-row">
               <span>Signal</span>
               <code>{describeStudentSignalKey(selectedWireContext.signalKey, editorCircuit, ioRowByNodeId)}</code>
@@ -3589,11 +4179,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       );
     }
     if (hasMultiNodeSelection || hasMultiWireSelection) {
-      return (
-        <IdeCallout tone="info" title="Single-object state only">
-          Pick one node, wire, or signal when you want live values and transition details. Group selections stay action-focused.
-        </IdeCallout>
-      );
+      return null;
     }
     return (
       <IdeCallout tone="info" title="Signal / State">
@@ -3627,7 +4213,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       diagnostic.severity === 'error' ? 'is-error' : 'is-warning'
                     }`}
                   >
-                    <span>{diagnostic.code}</span>
                     <span>{diagnostic.message}</span>
                   </li>
                 ))}
@@ -3727,14 +4312,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           <div className="ide-kv-row">
             <span>View</span>
             <span>{effectiveDesignView === 'stacked' ? 'Split stacked' : effectiveDesignView}</span>
-          </div>
-          <div className="ide-kv-row">
-            <span>Dirty since verify</span>
-            <span>{dirtySinceVerify ? 'Yes' : 'No'}</span>
-          </div>
-          <div className="ide-kv-row">
-            <span>Dirty since export</span>
-            <span>{dirtySinceExport ? 'Yes' : 'No'}</span>
           </div>
         </div>
       </div>
@@ -4231,7 +4808,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 title="Live Simulation"
                 testId="ide-design-live-sim-section"
                 defaultOpen
-                disableCollapse
               >
                 {renderLiveSimulationContent()}
               </IdeInspectorSection>
@@ -4264,23 +4840,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <span>Samples</span>
                         <span>{selectedSignalHistory.length}</span>
                       </div>
-                    </div>
-                    <div className="ide-design-signal-history" data-testid="ide-design-signal-history">
-                      {selectedSignalHistory.length > 0 ? (
-                        selectedSignalHistory.map((entry) => (
-                          <button
-                            key={`${selectedSignalKey}-${entry.tick}`}
-                            type="button"
-                            className={`ide-verify-waveform-point ${entry.value === 1 ? 'is-selected' : ''}`}
-                            onClick={() => onRuntimeSimSetSelectedSignal?.(selectedSignalKey)}
-                            data-testid="ide-design-signal-history-point"
-                          >
-                            {entry.value}
-                          </button>
-                        ))
-                      ) : (
-                        <p className="ide-copy">No trace samples yet. Run or step simulation to populate history.</p>
-                      )}
                     </div>
                     <div className="ide-inline-actions">
                       <IdeButton
@@ -4316,11 +4875,34 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </React.Fragment>
           ) : (
             <React.Fragment key="design-inspector-idle-context">
+              {(() => {
+                const totalErrors = authoringIssueCounts.errorCount + compilerErrorCount;
+                const totalWarnings = authoringIssueCounts.warningCount + compilerWarningCount;
+                return (
+                  <div
+                    className="ide-design-inspector-canvas-default"
+                    data-testid="ide-design-inspector-canvas-default"
+                  >
+                    {totalErrors > 0 || totalWarnings > 0 ? (
+                      <p className="ide-copy">
+                        {totalErrors > 0
+                          ? `${totalErrors} error${totalErrors !== 1 ? 's' : ''}`
+                          : null}
+                        {totalErrors > 0 && totalWarnings > 0 ? ', ' : null}
+                        {totalWarnings > 0
+                          ? `${totalWarnings} warning${totalWarnings !== 1 ? 's' : ''}`
+                          : null}
+                      </p>
+                    ) : (
+                      <p className="ide-copy">Click a node to inspect it.</p>
+                    )}
+                  </div>
+                );
+              })()}
               <IdeInspectorSection
                 title="Live Simulation"
                 testId="ide-design-live-sim-section"
                 defaultOpen
-                disableCollapse
               >
                 {renderLiveSimulationContent()}
               </IdeInspectorSection>
@@ -5065,6 +5647,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         suppressNextToolModeWireFeedbackClearRef.current = true;
                         setWireFeedback(connectionRejectedMessage(reason));
                       }}
+                      onNodeDoubleClick={(nodeId) => {
+                        const node = editorCircuit.nodes.find((n) => n.id === nodeId);
+                        if (node) beginNodeLabelEdit(node);
+                      }}
                       onPlacementCancel={() => cancelActivePlacement('escape')}
                       nodeEvalOrder={evalOrder}
                       changedNodeIds={changedNodeIds}
@@ -5246,40 +5832,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </button>
                       </div>
                     ) : null}
-                    {selectedNode && (
-                      <div className="ide-node-inspector" data-testid="ide-node-inspector">
-                        <div className="ide-node-inspector-header">
-                          <span className="ide-node-inspector-type">{selectedNode.type}</span>
-                          <button
-                            className="ide-node-inspector-close"
-                            onClick={() => clearSelection()}
-                            aria-label="Close inspector"
-                          >
-                            ×
-                          </button>
-                        </div>
-                        <div className="ide-node-inspector-body">
-                          {selectedNodeSignals && selectedNodeSignals.length > 0 ? (
-                            selectedNodeSignals.map(({ port, value }) => {
-                              const valStr = value === 1 ? '1' : value === 0 ? '0' : '?';
-                              return (
-                                <div key={port} className="ide-node-inspector-port">
-                                  <span className="ide-node-inspector-port-name">{port}</span>
-                                  <span
-                                    className="ide-node-inspector-port-value"
-                                    data-val={valStr}
-                                  >
-                                    {valStr}
-                                  </span>
-                                </div>
-                              );
-                            })
-                          ) : (
-                            <span className="ide-node-inspector-port-name">No ports</span>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </section>
               </div>
@@ -5919,6 +6471,204 @@ function describeNodeForStudents(node: Node | undefined, ioRow?: DesignIoRow | n
   const preferred = ioRow?.label?.trim() || node.label?.trim();
   if (preferred) return preferred;
   return nodeTypeLabel(node.type);
+}
+
+function buildSequentialInspectorContext(input: {
+  node: Node | undefined;
+  nodeSignals: Map<string, 0 | 1 | null>;
+  ioRow: DesignIoRow | null;
+  connectionSummary: DesignNodeConnectionSummary | null;
+  circuit: Circuit;
+  ioRowByNodeId: Map<string, DesignIoRow>;
+  trace: RuntimeSimState['trace'];
+  runtimeSignals: Record<string, 0 | 1>;
+  liveSignals: Map<string, 0 | 1>;
+}): DesignSequentialInspectorContext | null {
+  const { node, nodeSignals, ioRow, connectionSummary, circuit, ioRowByNodeId, trace, runtimeSignals, liveSignals } = input;
+  if (!node) return null;
+
+  if (node.type === 'Clock') {
+    const outputSnapshot = describeSignalSnapshot(`${node.id}.out`, trace, runtimeSignals, liveSignals);
+    const boardSummary = ioRow ? `${ioRow.label} -> ${ioRow.pin || 'unmapped'}` : 'No board timing source mapped yet';
+    const fanout = connectionSummary?.fanOut ?? 0;
+    return {
+      kind: 'clock',
+      roleLabel: 'Timing source',
+      behaviorSummary: ioRow
+        ? 'This clock is the named timing source for the sequential logic it drives.'
+        : 'This clock drives timing edges, but it is not mapped to a board timing source yet.',
+      nextStep: ioRow
+        ? 'Trace the fanout into the state elements this clock drives next.'
+        : 'Map this clock to a board timing source before trusting board-level timing behavior.',
+      controlLabel: null,
+      controlSourceLabel: null,
+      controlActivity: describeSequentialActivity(outputSnapshot),
+      ioSummaryLabel: 'Output state',
+      ioSummary: `Clock output=${formatInspectorBinaryValue(nodeSignals.get('out'))}`,
+      stateSummaryLabel: 'Fan-out',
+      stateSummary: `${fanout} downstream ${fanout === 1 ? 'path' : 'paths'}`,
+      timingContext: boardSummary,
+      actionKind: ioRow ? null : 'go-to-hardware',
+      actionLabel: ioRow ? null : 'Go to Map Pins',
+      actionPort: null,
+    };
+  }
+
+  const controlPort =
+    node.type === 'DLatch'
+      ? 'EN'
+      : node.type === 'RSLatch' || node.type === 'SRLatch'
+        ? resolveSequentialRsControlPort(nodeSignals)
+        : node.type === 'DFlipFlop' || node.type === 'TFlipFlop' || node.type === 'JKFlipFlop'
+          ? 'CLK'
+          : null;
+  if (!controlPort) return null;
+
+  const controlSource = resolveNodeInputSource(node.id, controlPort, circuit, ioRowByNodeId);
+  const controlSignalKey = controlSource?.signalKey ?? `${node.id}.${controlPort}`;
+  const controlSnapshot = describeSignalSnapshot(controlSignalKey, trace, runtimeSignals, liveSignals);
+  const commonControl = {
+    controlSourceLabel: controlSource?.label ?? `No ${describePortForStudents(controlPort).toLowerCase()} source wired`,
+    controlActivity: describeSequentialActivity(controlSnapshot),
+  };
+
+  if (node.type === 'DLatch') {
+    return {
+      kind: 'latch',
+      roleLabel: 'Level-sensitive latch',
+      behaviorSummary: 'The latch is transparent while Enable is high and holds state when Enable returns low.',
+      nextStep: 'Trace the enable path next so you can confirm when this latch should pass data versus hold state.',
+      controlLabel: 'Enable',
+      ioSummaryLabel: 'Inputs',
+      ioSummary: summarizeSequentialPorts(nodeSignals, ['D', 'EN']),
+      stateSummaryLabel: 'State outputs',
+      stateSummary: summarizeSequentialPorts(nodeSignals, ['Q', 'Q_inv']),
+      timingContext: controlSource?.label ?? 'No enable source named yet',
+      actionKind: 'trace-control',
+      actionLabel: 'Trace control path',
+      actionPort: 'EN',
+      ...commonControl,
+    };
+  }
+
+  if (node.type === 'RSLatch' || node.type === 'SRLatch') {
+    return {
+      kind: 'rs-latch',
+      roleLabel: 'Level-sensitive latch',
+      behaviorSummary: 'Set and Reset drive the stored state directly, so those control levels must stay intentional.',
+      nextStep: 'Trace the active Set or Reset path next so you can confirm which control line is driving the stored state.',
+      controlLabel: 'Set / Reset',
+      ioSummaryLabel: 'Inputs',
+      ioSummary: summarizeSequentialPorts(nodeSignals, ['S', 'R']),
+      stateSummaryLabel: 'State outputs',
+      stateSummary: summarizeSequentialPorts(nodeSignals, ['Q', 'Q_inv']),
+      timingContext: controlSource?.label ?? 'No Set or Reset source named yet',
+      actionKind: 'trace-control',
+      actionLabel: 'Trace control path',
+      actionPort: controlPort,
+      ...commonControl,
+    };
+  }
+
+  const flipFlopCopy =
+    node.type === 'DFlipFlop'
+      ? {
+          roleLabel: 'Edge-triggered state',
+          behaviorSummary: 'This flip-flop captures D on the active clock edge and holds Q between clock edges.',
+          ioPorts: ['D', 'CLK'],
+        }
+      : node.type === 'TFlipFlop'
+        ? {
+            roleLabel: 'Edge-triggered toggle state',
+            behaviorSummary: 'This flip-flop toggles its stored state on clock edges according to T and optional Clear.',
+            ioPorts: ['T', 'CLK', 'CLR'],
+          }
+        : {
+            roleLabel: 'Edge-triggered JK state',
+            behaviorSummary: 'This flip-flop uses J and K on the active clock edge to decide the next stored state.',
+            ioPorts: ['J', 'K', 'CLK', 'CLR'],
+          };
+
+  return {
+    kind: 'flip-flop',
+    roleLabel: flipFlopCopy.roleLabel,
+    behaviorSummary: flipFlopCopy.behaviorSummary,
+    nextStep: 'Trace the clock path next so you can confirm which edge should update the stored output.',
+    controlLabel: 'Clock',
+    ioSummaryLabel: 'Inputs',
+    ioSummary: summarizeSequentialPorts(nodeSignals, flipFlopCopy.ioPorts),
+    stateSummaryLabel: 'State outputs',
+    stateSummary: summarizeSequentialPorts(nodeSignals, ['Q', 'Q_inv']),
+    timingContext: controlSource?.label ?? 'No clock source named yet',
+    actionKind: 'trace-control',
+    actionLabel: 'Trace control path',
+    actionPort: controlPort,
+    ...commonControl,
+  };
+}
+
+function resolveSequentialRsControlPort(
+  nodeSignals: Map<string, 0 | 1 | null>
+): string {
+  if (nodeSignals.has('S')) return 'S';
+  if (nodeSignals.has('R')) return 'R';
+  return 'S';
+}
+
+function resolveNodeInputSource(
+  nodeId: string,
+  portName: string,
+  circuit: Circuit,
+  ioRowByNodeId: Map<string, DesignIoRow>
+): { signalKey: string; label: string } | null {
+  for (const connection of circuit.connections) {
+    const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+    const toPort =
+      typeof connection.to === 'string'
+        ? connection.toPort ?? connection.toPin ?? 'in'
+        : connection.to.portName ?? connection.to.port ?? 'in';
+    if (toNodeId !== nodeId || toPort !== portName) continue;
+
+    const fromNodeId = typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+    const fromPort =
+      typeof connection.from === 'string'
+        ? connection.fromPort ?? connection.fromPin ?? 'out'
+        : connection.from.portName ?? connection.from.port ?? 'out';
+    const sourceNode = circuit.nodes.find((entry) => entry.id === fromNodeId);
+    const sourceIoRow = ioRowByNodeId.get(fromNodeId);
+    const sourceLabel = describeEndpointLabel(fromNodeId, sourceNode, sourceIoRow);
+    const pinSuffix = sourceIoRow?.pin ? ` (${sourceIoRow.pin})` : '';
+    return {
+      signalKey: `${fromNodeId}.${fromPort}`,
+      label: `${sourceLabel}${pinSuffix} · ${describePortForStudents(fromPort)}`,
+    };
+  }
+  return null;
+}
+
+function summarizeSequentialPorts(
+  nodeSignals: Map<string, 0 | 1 | null>,
+  ports: readonly string[]
+): string {
+  const entries = ports
+    .filter((port) => nodeSignals.has(port))
+    .map((port) => `${describePortForStudents(port)}=${formatInspectorBinaryValue(nodeSignals.get(port))}`);
+  return entries.length > 0 ? entries.join(', ') : 'No live signal values yet';
+}
+
+function formatInspectorBinaryValue(value: 0 | 1 | null | undefined): string {
+  return value === 1 ? '1' : value === 0 ? '0' : '?';
+}
+
+function describeSequentialActivity(snapshot: DesignSignalSnapshot | null): string {
+  if (!snapshot || snapshot.currentValue == null) return 'No runtime samples yet';
+  if ((snapshot.transition === 'rising' || snapshot.transition === 'falling') && snapshot.lastTransitionTick != null) {
+    return `${snapshot.transition} at tick ${snapshot.lastTransitionTick}`;
+  }
+  if (snapshot.transition === 'stable') {
+    return `stable at ${formatInspectorBinaryValue(snapshot.currentValue)}`;
+  }
+  return 'No runtime samples yet';
 }
 
 function describePortForStudents(portName: string): string {

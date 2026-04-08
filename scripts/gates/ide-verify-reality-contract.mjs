@@ -43,7 +43,7 @@ await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl
 
   await ensureVerifyVectorsReady(page);
 
-  const runBtn = page.locator('[data-testid="ide-verify-run"]').first();
+  const runBtn = page.locator('[data-testid="ide-vcb-run"]').first();
   assert(!(await runBtn.isDisabled().catch(() => false)), 'run button must be enabled once vectors exist');
 
   await runBtn.click();
@@ -75,6 +75,11 @@ await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl
   assert(await visible(waveformGrid), 'waveform grid must be visible after run');
 
   const signalList = page.locator('[data-testid="ide-verify-signal-list"]').first();
+  if (!(await visible(signalList))) {
+    const leftDockToggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
+    assert(await visible(leftDockToggle), 'left dock toggle must be visible when signal list is collapsed');
+    await leftDockToggle.click();
+  }
   assert(await visible(signalList), 'signal list must be visible after run');
 
   const signalRows = await page.locator('[data-testid^="ide-verify-signal-"]').count().catch(() => 0);

@@ -5,10 +5,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render } from '@testing-library/react';
 import type { ProjectHealth } from '../projectHealth';
 import {
-  buildCurrentVerifyProjectHash,
+  deriveProjectWorkflowAuthority,
   deriveExportCurrent,
   deriveVerifyCurrent,
-} from '../../IdeApp';
+} from '../projectWorkflowAuthority';
+import { buildCurrentVerifyProjectHash } from '../../IdeApp';
 import { BoardSignalProvider } from '../BoardSignalContext';
 import { HardwareSurface } from '../surfaces/HardwareSurface';
 import { deriveTimingGuidance } from '../timingGuidance';
@@ -68,22 +69,52 @@ function makeHealth(overrides: Partial<ProjectHealth> = {}): ProjectHealth {
   };
 }
 
+function makeHardwareWorkflowAuthority(
+  health: ProjectHealth,
+  overrides: {
+    currentVerifyProjectHash?: string | null;
+    currentExportHash?: string | null;
+    hasIoMapping?: boolean;
+    hasVectors?: boolean;
+  } = {}
+) {
+  return deriveProjectWorkflowAuthority({
+    projectHealthCore: health,
+    readiness: {
+      hasCircuit: true,
+      hasIoMapping: overrides.hasIoMapping ?? true,
+      hasVectors: overrides.hasVectors ?? true,
+      verifyQualification: health.lastVerify?.qualification,
+    },
+    verifyLastRun: health.lastVerify,
+    currentVerifyProjectHash: overrides.currentVerifyProjectHash,
+    currentExportHash: overrides.currentExportHash,
+  });
+}
+
 describe('HardwareSurface readiness', () => {
   it('starts with the inspector collapsed and the console minimized so mapping stays central', () => {
+    const health = makeHealth({
+      blockingIssues: [],
+      dirtySinceExport: false,
+    });
     const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Hardware Layout Defaults"
           expectedBehavior="Map pins, then program the board."
           mappingRows={[
+            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true },
             { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true },
             { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
           ]}
           expectedIoRows={[]}
           vectorsCount={1}
-          health={makeHealth({ blockingIssues: [] })}
-          verifyCurrent={true}
-          exportCurrent={true}
+          health={health}
+          workflowAuthority={makeHardwareWorkflowAuthority(health, {
+            currentVerifyProjectHash: health.lastVerify?.hash ?? null,
+            currentExportHash: health.lastExport?.hash ?? null,
+          })}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
@@ -155,8 +186,6 @@ describe('HardwareSurface readiness', () => {
           expectedIoRows={[]}
           vectorsCount={4}
           health={makeHealth()}
-          verifyCurrent={true}
-          exportCurrent={false}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
@@ -167,9 +196,9 @@ describe('HardwareSurface readiness', () => {
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-proof').at(-1)!);
 
     expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain(
-      'bundle was built from an older version'
+      'no longer matches the current circuit'
     );
-    expect(getByTestId('ide-hardware-blocked-hero').textContent).toContain('Re-export this project now');
+    expect(getByTestId('ide-hardware-blocked-hero').textContent).toContain('Re-export the current bundle');
     expect(getByTestId('ide-hardware-blocked-primary').textContent).toContain('Re-export Current Bundle');
     expect(getByTestId('ide-hardware-build-export').textContent).toContain(
       'Re-export Current Bundle'
@@ -194,8 +223,6 @@ describe('HardwareSurface readiness', () => {
             dirtySinceVerify: true,
             dirtySinceExport: true,
           })}
-          verifyCurrent={false}
-          exportCurrent={false}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
@@ -223,8 +250,6 @@ describe('HardwareSurface readiness', () => {
             dirtySinceVerify: true,
             dirtySinceExport: true,
           })}
-          verifyCurrent={false}
-          exportCurrent={false}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
@@ -254,8 +279,6 @@ describe('HardwareSurface readiness', () => {
             dirtySinceVerify: true,
             dirtySinceExport: true,
           })}
-          verifyCurrent={false}
-          exportCurrent={false}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
@@ -300,8 +323,6 @@ describe('HardwareSurface readiness', () => {
           expectedIoRows={[]}
           vectorsCount={4}
           health={makeHealth()}
-          verifyCurrent={true}
-          exportCurrent={false}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
@@ -332,8 +353,6 @@ describe('HardwareSurface readiness', () => {
             dirtySinceVerify: true,
             dirtySinceExport: true,
           })}
-          verifyCurrent={false}
-          exportCurrent={false}
           verifyLastRun={makeVerifyRunWithRoles({
             phase_driver: 'clock',
             data_in: 'input',
@@ -368,8 +387,6 @@ describe('HardwareSurface readiness', () => {
             dirtySinceVerify: true,
             dirtySinceExport: true,
           })}
-          verifyCurrent={false}
-          exportCurrent={false}
           signalRoles={{
             phase_driver: 'clock',
             data_in: 'input',
@@ -394,7 +411,11 @@ describe('HardwareSurface readiness', () => {
         <HardwareSurface
           projectName="Needs Verify"
           expectedBehavior="LED0 follows SW0."
-          mappingRows={[]}
+          mappingRows={[
+            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true },
+            { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true },
+            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
+          ]}
           expectedIoRows={[]}
           vectorsCount={0}
           health={makeHealth({
@@ -402,16 +423,8 @@ describe('HardwareSurface readiness', () => {
             lastVerify: undefined,
             dirtySinceVerify: false,
             dirtySinceExport: false,
-            blockingIssues: [
-              {
-                code: 'RBP1004',
-                message: 'Build the hardware bundle before programming the board.',
-                fixPath: { mode: 'export', actionLabel: 'Open Export' },
-              },
-            ],
+            blockingIssues: [],
           })}
-          verifyCurrent={false}
-          exportCurrent={false}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
@@ -420,13 +433,17 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getAllByTestId('ide-hardware-blocked-hero').at(-1)?.textContent).toContain('Build the hardware bundle first');
-    expect(getAllByTestId('ide-hardware-blocked-hero').at(-1)?.textContent).toContain('return here to program the board');
-    expect(getAllByTestId('ide-hardware-blocked-primary').at(-1)?.textContent).toContain('Open Export');
+    expect(getAllByTestId('ide-hardware-blocked-hero').at(-1)?.textContent).toContain('Build the current bundle first');
+    expect(getAllByTestId('ide-hardware-blocked-hero').at(-1)?.textContent).toContain('Build the current bundle in Export');
+    expect(getAllByTestId('ide-hardware-blocked-primary').at(-1)?.textContent).toContain('Build Current Bundle');
     expect(getAllByTestId('ide-hardware-blocked-secondary').at(-1)?.textContent).toContain('Open Design');
   });
 
   it('shows program handoff CTA when export is current', () => {
+    const health = makeHealth({
+      blockingIssues: [],
+      dirtySinceExport: false,
+    });
     const { getAllByTestId, getByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
@@ -439,9 +456,11 @@ describe('HardwareSurface readiness', () => {
           ]}
           expectedIoRows={[]}
           vectorsCount={4}
-          health={makeHealth({ blockingIssues: [] })}
-          verifyCurrent={true}
-          exportCurrent={true}
+          health={health}
+          workflowAuthority={makeHardwareWorkflowAuthority(health, {
+            currentVerifyProjectHash: health.lastVerify?.hash ?? null,
+            currentExportHash: health.lastExport?.hash ?? null,
+          })}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}

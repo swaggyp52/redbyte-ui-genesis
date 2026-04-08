@@ -159,10 +159,11 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-session-status').textContent).toContain('DRAFT');
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('COMPARE');
     expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to compare');
-    expect(getByTestId('ide-verify-empty-run').textContent).toContain('Run Compare');
+    // footer run button removed (B-13 Phase 3) — header Run is canonical
+    expect(queryByTestId('ide-verify-empty-run')).toBeNull();
+    expect(queryByTestId('ide-verify-run')).toBeNull();
+    expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(getByTestId('ide-verify-empty-open-vectors').textContent).toContain('Open vectors');
-    expect(getByTestId('ide-verify-run').textContent).toContain('Run Compare');
-    expect(getByTestId('ide-verify-run').className).toContain('ide-button-primary');
     expect(queryByTestId('ide-left-dock')).toBeNull();
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(queryByText('Advanced vector tools')).toBeNull();
@@ -192,7 +193,9 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-empty-message').textContent).toContain(
       'Add expected outputs when you want Compare to check them.'
     );
-    expect(getByTestId('ide-verify-empty-run').textContent).toContain('Run Testbench');
+    // footer run button removed (B-13 Phase 3) — header Run is canonical
+    expect(queryByTestId('ide-verify-empty-run')).toBeNull();
+    expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(queryByTestId('ide-left-dock')).toBeNull();
     expect(queryByTestId('ide-inspector')).toBeNull();
   });
@@ -263,7 +266,7 @@ describe('VerifySurface workstation controls', () => {
           { id: 'q', direction: 'out', label: 'Q' },
         ]}
         onOpenProjectVectors={vi.fn()}
-        hasDff={true}
+        verifyMode="sequential"
         liveSignalRoles={{ d: 'input', en: 'clock', q: 'output' }}
         timingGuidance={latchGuidance}
       />
@@ -359,14 +362,17 @@ describe('VerifySurface workstation controls', () => {
     fireEvent.click(getByTestId('ide-verify-run-proof-edit-vectors'));
 
     expect(details?.open).toBe(true);
+    expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
     expect(scrollIntoViewMock).toHaveBeenCalled();
     expect(onGoToDesign).not.toHaveBeenCalled();
 
-    details!.open = false;
+    fireEvent.click(getByTestId('ide-verify-workbench-toggle'));
+    expect(details?.open).toBe(false);
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     fireEvent.click(getByTestId('ide-verify-mismatch-edit-vectors'));
 
     expect(details?.open).toBe(true);
+    expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
     expect(scrollIntoViewMock).toHaveBeenCalled();
     expect(onGoToDesign).not.toHaveBeenCalled();
     expect(getByTestId('ide-verify-mismatch-goto-design').textContent).toContain('Open in Design');
@@ -1390,7 +1396,7 @@ describe('VerifySurface workstation controls', () => {
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
-        hasDff={true}
+        verifyMode="sequential"
         lastRun={sequentialRun}
         vectors={[
           {

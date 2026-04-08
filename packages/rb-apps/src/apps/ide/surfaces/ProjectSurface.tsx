@@ -10,14 +10,17 @@ import {
   resolveBasys3PackagePin,
 } from '../../../fpga/boards/basys3/basys3Pins';
 import {
-  deriveProjectVerifyState,
-  deriveStageCompletion,
   type ProjectHealth,
   type ProjectHealthIssue,
   type ProjectHealthMode,
   type ProjectPrimaryCta,
+  type ProjectVerifyState,
 } from '../projectHealth';
 import type { IdeDiagnosticRouteRequest } from '../diagnostics';
+import {
+  deriveProjectWorkflowAuthority,
+  type ProjectWorkflowAuthority,
+} from '../projectWorkflowAuthority';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -67,6 +70,7 @@ export interface ProjectSurfaceProps {
     missingRequiredCount: number;
   };
   health: ProjectHealth;
+  workflowAuthority?: ProjectWorkflowAuthority;
   mappingRows: ProjectMappingRow[];
   examples: Array<{
     id: string;
@@ -148,6 +152,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   simRunning,
   readiness,
   health,
+  workflowAuthority,
   mappingRows,
   examples,
   projectKind = 'blank',
@@ -252,22 +257,31 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     () => sortedMappingRows.filter((row) => row.required).length,
     [sortedMappingRows]
   );
-
-  const projectVerifyState = useMemo(() => deriveProjectVerifyState(health), [health]);
-  const compareCurrent =
-    projectVerifyState === 'assertions-match' ||
-    projectVerifyState === 'assertions-differ' ||
-    projectVerifyState === 'verify-error';
-  const comparePassCurrent = projectVerifyState === 'assertions-match';
-  const comparePassIncomplete =
-    comparePassCurrent && readiness.verifyQualification === 'incomplete-mapping';
-  const compareMatches = comparePassCurrent && !comparePassIncomplete;
-  const compareDiffers =
-    projectVerifyState === 'assertions-differ' || projectVerifyState === 'verify-error';
-  const compareTraceOnly = projectVerifyState === 'trace';
+  const resolvedWorkflowAuthority = useMemo(
+    () =>
+      workflowAuthority ??
+      deriveProjectWorkflowAuthority({
+        projectHealthCore: health,
+        readiness: {
+          hasCircuit: readiness.hasCircuit,
+          hasIoMapping: readiness.hasIoMapping,
+          hasVectors: readiness.hasVectors,
+          verifyQualification: readiness.verifyQualification,
+        },
+        verifyLastRun: health.lastVerify,
+      }),
+    [health, readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors, readiness.verifyQualification, workflowAuthority]
+  );
+  const projectVerifyState = resolvedWorkflowAuthority.verifyState;
+  const compareCurrent = resolvedWorkflowAuthority.compareCurrent;
+  const comparePassIncomplete = resolvedWorkflowAuthority.comparePassIncomplete;
+  const compareMatches = resolvedWorkflowAuthority.compareMatches;
+  const compareDiffers = resolvedWorkflowAuthority.compareDiffers;
+  const compareTraceOnly = resolvedWorkflowAuthority.compareTraceOnly;
+  const activePrimaryCta = workflowAuthority?.primaryCta ?? primaryCta;
+  const activePrimaryCtaLabel = workflowAuthority?.primaryCta.label ?? primaryCtaLabel;
   const blockingIssues = useMemo(() => health.blockingIssues, [health.blockingIssues]);
   const topBlockingIssues = useMemo(() => blockingIssues.slice(0, 3), [blockingIssues]);
-  const blockingIssue = topBlockingIssues[0] ?? null;
   const activeExample = useMemo(
     () => examples.find((example) => example.id === activeExampleId) ?? null,
     [activeExampleId, examples]
@@ -299,16 +313,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       return `${Math.floor(mins / 60)}h ago`;
     } catch { return null; }
   }, [lastSavedAt]);
-  const exportAvailable =
-    readiness.hasCircuit &&
-    readiness.hasIoMapping &&
-    health.lastExport?.status !== 'blocked';
-  const exportPackageCurrent =
-    readiness.hasCircuit &&
-    readiness.hasIoMapping &&
-    health.lastExport?.status === 'ok' &&
-    !health.dirtySinceExport;
-  const hardwareReady = exportPackageCurrent;
+  const exportAvailable = resolvedWorkflowAuthority.exportAvailable;
+  const exportPackageCurrent = resolvedWorkflowAuthority.exportPackageCurrent;
+  const hardwareReady = resolvedWorkflowAuthority.hardwareReady;
   const hardBlockingIssue = blockingIssues.find((issue) =>
     issue.code === 'RBP1000' ||
     issue.code === 'RBP1001' ||
@@ -423,57 +430,84 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       onClick: onOpenDesign,
     };
   }, [onOpenDesign, onOpenImport, readiness.hasCircuit, showStarterGallery]);
-  const heroChecklistItems = useMemo(
-    () => [
-      {
-        label: 'Pins mapped',
-        value: readiness.hasIoMapping
-          ? `${mappedRequiredCount}/${requiredCount || mappedRequiredCount} assigned`
-          : `${unmappedRequiredCount} remaining`,
-        tone: readiness.hasIoMapping ? 'ok' : 'warn',
-      },
-      {
-        label: 'Verify',
-        value: compareMatches
-          ? 'Assertions match'
-          : comparePassIncomplete
-            ? 'Match (mapping review)'
-            : compareDiffers
-              ? 'Assertions differ'
-              : compareCurrent
-                ? 'Simulation current'
-                : blockingIssue?.code === 'RBP1004'
-                  ? 'Run again after changes'
-                  : 'Not run',
-        tone: compareMatches ? 'ok' : 'warn',
-      },
-      {
-        label: 'Export',
-        value: hardwareReady
-          ? 'Board handoff ready'
-          : exportPackageCurrent
-            ? 'Current package'
-            : exportAvailable
-              ? 'Available'
-              : 'Map pins first',
-        tone: hardwareReady || exportPackageCurrent ? 'ok' : exportAvailable ? 'warn' : 'idle',
-      },
-    ],
-    [
-      blockingIssue?.code,
-      compareCurrent,
-      compareDiffers,
-      compareMatches,
-      comparePassIncomplete,
-      exportAvailable,
-      exportPackageCurrent,
-      hardwareReady,
-      mappedRequiredCount,
-      readiness.hasIoMapping,
-      requiredCount,
-      unmappedRequiredCount,
-    ]
-  );
+  const nextStepTone = useMemo<'info' | 'warn' | 'success'>(() => {
+    if (hardBlockingIssue || unmappedRequiredCount > 0) return 'warn';
+    if (hardwareReady) return 'success';
+    return exportAvailable || compareCurrent ? 'info' : 'warn';
+  }, [compareCurrent, exportAvailable, hardBlockingIssue, hardwareReady, unmappedRequiredCount]);
+  const nextStepReason = useMemo(() => {
+    if (!readiness.hasCircuit) {
+      return 'Pick a starter, import HDL, or open Design to begin the circuit workflow.';
+    }
+    if (unmappedRequiredCount > 0 || activePrimaryCta.mode === 'project') {
+      return unmappedRequiredCount > 0
+        ? `Assign the ${unmappedRequiredCount} remaining required pin${unmappedRequiredCount !== 1 ? 's' : ''} so Verify, Export, and Hardware describe the real board state.`
+        : 'Review the Basys3 mapping before relying on downstream workflow stages.';
+    }
+    switch (activePrimaryCta.mode) {
+      case 'design':
+        return 'Return to Design to resolve circuit issues before you rely on Verify, Export, or Hardware.';
+      case 'verify':
+        if (projectVerifyState === 'stale') {
+          return 'The circuit changed after the last authored comparison. Refresh Verify so Project, Export, and Hardware all reflect the current design.';
+        }
+        if (compareTraceOnly) {
+          return 'Observed trace is current, but expected outputs still need to run before you treat Verify as trusted evidence.';
+        }
+        if (compareDiffers) {
+          return 'The latest comparison differs from observed outputs. Inspect the mismatch before you rely on export or hardware behavior.';
+        }
+        return readiness.hasVectors
+          ? 'Run Verify for the current circuit so the workflow has fresh comparison evidence.'
+          : 'Add or rerun verification vectors so the current circuit has trusted comparison evidence.';
+      case 'export':
+        return exportPackageCurrent
+          ? 'Export artifacts already match the current mapped design. Review them or move forward to hardware handoff.'
+          : 'Build or refresh the current export bundle before moving to hardware.';
+      case 'hardware':
+        return 'Mapping, compare evidence, and export artifacts are current. Continue to hardware handoff from here.';
+      case 'import':
+        return 'Bring in HDL or a Vivado ZIP, then continue through Design, Verify, Export, and Hardware from one project record.';
+      default:
+        return heroStatusMessage;
+    }
+  }, [
+    activePrimaryCta.mode,
+    compareDiffers,
+    compareTraceOnly,
+    exportPackageCurrent,
+    heroStatusMessage,
+    projectVerifyState,
+    readiness.hasCircuit,
+    readiness.hasVectors,
+    unmappedRequiredCount,
+  ]);
+  const sourceSummary = useMemo(() => {
+    if (starterExample) {
+      return `${projectContextLabel} - ${starterExample.name}`;
+    }
+    return projectContextLabel;
+  }, [projectContextLabel, starterExample]);
+  const importFidelitySummary = useMemo(() => {
+    if (importFidelity === 'full') return 'Full restore';
+    if (importFidelity === 'reconstructed') return 'Reconstructed';
+    if (importFidelity === 'partial') return 'Partial';
+    if (projectKind === 'import') return 'Not reported yet';
+    return null;
+  }, [importFidelity, projectKind]);
+  const mappingLaunchpadState = readiness.hasIoMapping ? 'done' : 'active';
+  const verifyLaunchpadState =
+    compareMatches || comparePassIncomplete
+      ? 'done'
+      : activePrimaryCta.mode === 'verify'
+        ? 'active'
+        : 'locked';
+  const exportLaunchpadState =
+    hardwareReady || exportPackageCurrent
+      ? 'done'
+      : activePrimaryCta.mode === 'export' || activePrimaryCta.mode === 'hardware'
+        ? 'active'
+        : 'locked';
 
   const handleProjectModeAction = useCallback(
     (mode: ProjectHealthMode) => {
@@ -631,7 +665,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [effectiveBoardSignal, highlightedMappingKey, ioBus, onGoToHardware, onUpdateMappingPin, sortedMappingRows]
   );
 
-  const stageCompletion = deriveStageCompletion(health, readiness);
+  const stageCompletion = resolvedWorkflowAuthority.stageCompletion;
   const designCardDone = stageCompletion.design;
   const completedMilestoneCount = [
     stageCompletion.design,
@@ -646,7 +680,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         step: '01',
         label: 'Design',
         meta: stageCompletion.design ? 'Complete' : 'Start here',
-        state: stageCompletion.design ? 'done' : primaryCta.mode === 'design' ? 'active' : 'idle',
+        state: stageCompletion.design ? 'done' : activePrimaryCta.mode === 'design' ? 'active' : 'idle',
         onClick: onOpenDesign,
         testId: 'ide-project-dock-nav-design',
       },
@@ -662,10 +696,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               ? 'Assertions differ'
               : compareCurrent
                 ? 'Simulation current'
-                : primaryCta.mode === 'verify'
+                : activePrimaryCta.mode === 'verify'
                   ? 'Run now'
                   : 'Waiting',
-        state: stageCompletion.verify ? 'done' : primaryCta.mode === 'verify' ? 'active' : 'idle',
+        state: stageCompletion.verify ? 'done' : activePrimaryCta.mode === 'verify' ? 'active' : 'idle',
         onClick: onOpenVerify,
         testId: 'ide-project-dock-nav-verify',
       },
@@ -675,8 +709,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         label: MAP_PINS_STAGE_LABEL,
         meta: stageCompletion.hardware
           ? hardwareReady ? 'Ready to program' : 'Pins mapped'
-          : primaryCta.mode === 'hardware' ? 'Map now' : 'Needs pins',
-        state: stageCompletion.hardware ? 'done' : primaryCta.mode === 'hardware' ? 'active' : 'idle',
+          : activePrimaryCta.mode === 'hardware' ? 'Map now' : 'Needs pins',
+        state: stageCompletion.hardware ? 'done' : activePrimaryCta.mode === 'hardware' ? 'active' : 'idle',
         onClick: onOpenHardware,
         testId: 'ide-project-dock-nav-hardware',
       },
@@ -684,8 +718,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         id: 'export',
         step: '04',
         label: EXPORT_STAGE_LABEL,
-        meta: stageCompletion.export ? 'Current' : exportAvailable ? 'Open now' : primaryCta.mode === 'export' ? 'Next up' : 'Waiting',
-        state: stageCompletion.export ? 'done' : exportAvailable && primaryCta.mode === 'export' ? 'active' : 'idle',
+        meta: stageCompletion.export ? 'Current' : exportAvailable ? 'Open now' : activePrimaryCta.mode === 'export' ? 'Next up' : 'Waiting',
+        state: stageCompletion.export ? 'done' : exportAvailable && activePrimaryCta.mode === 'export' ? 'active' : 'idle',
         onClick: onOpenExport,
         testId: 'ide-project-dock-nav-export',
       },
@@ -698,7 +732,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       onOpenHardware,
       onOpenExport,
       onOpenVerify,
-      primaryCta.mode,
+      activePrimaryCta.mode,
       compareCurrent,
       compareDiffers,
       compareMatches,
@@ -979,38 +1013,33 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   <span className="ide-project-context-tag">{starterExample.concept}</span>
                 )}
               </div>
-              <div className="ide-project-showcase-actions">
-                <span data-testid="ide-project-continue-cta">
+              <IdeCallout
+                tone={nextStepTone}
+                title={`Next step: Continue to ${activePrimaryCtaLabel}`}
+                testId="ide-project-next-step"
+              >
+                <p data-testid="ide-project-next-step-copy" style={{ margin: 0 }}>
+                  {nextStepReason}
+                </p>
+                <div className="ide-project-showcase-actions" style={{ marginTop: 'var(--space-3, 12px)' }}>
+                  <span data-testid="ide-project-continue-cta">
+                    <IdeButton
+                      tone="primary"
+                      onClick={onPrimaryCta}
+                      testId="ide-project-showcase-primary-cta"
+                    >
+                      Continue to {activePrimaryCtaLabel} →
+                    </IdeButton>
+                  </span>
                   <IdeButton
-                    tone="primary"
-                    onClick={onPrimaryCta}
-                    testId="ide-project-showcase-primary-cta"
+                    tone="secondary"
+                    onClick={heroAssistAction.onClick}
+                    testId="ide-project-showcase-secondary-cta"
                   >
-                    Continue to {primaryCtaLabel} →
+                    {heroAssistAction.label}
                   </IdeButton>
-                </span>
-                <IdeButton
-                  tone="secondary"
-                  onClick={heroAssistAction.onClick}
-                  testId="ide-project-showcase-secondary-cta"
-                >
-                  {heroAssistAction.label}
-                </IdeButton>
-              </div>
-              <div className="ide-project-showcase-checklist">
-                {heroChecklistItems.map((item) => (
-                  <div
-                    key={item.label}
-                    className={`ide-project-showcase-checkpoint is-${item.tone}`}
-                  >
-                    <span className="ide-project-showcase-checkpoint-dot" aria-hidden="true" />
-                    <div>
-                      <strong>{item.label}</strong>
-                      <span>{item.value}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                </div>
+              </IdeCallout>
             </div>
 
             <div className="ide-project-showcase-visual">
@@ -1048,7 +1077,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </div>
 
           {/* Gate sentinel — text content only, not displayed */}
-          <span style={{ display: 'none' }} data-testid="ide-project-continue-target">{primaryCtaLabel}</span>
+          <span style={{ display: 'none' }} data-testid="ide-project-continue-target">{activePrimaryCtaLabel}</span>
 
           {topBlockingIssues.length > 0 && (
             <IdeCallout 
@@ -1085,9 +1114,13 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         <div className="ide-project-flightdeck" data-testid="ide-project-flightdeck">
           <SurfacePanel className="ide-project-spotlight" testId="ide-project-context">
             <div className="ide-project-spotlight-header">
-              <span className="ide-project-spotlight-eyebrow">Project reference</span>
+              <span className="ide-project-spotlight-eyebrow">Loaded project</span>
             </div>
             <dl className="ide-project-glance-list">
+              <div>
+                <dt>Source</dt>
+                <dd data-testid="ide-project-reference-source">{sourceSummary}</dd>
+              </div>
               <div>
                 <dt>Top module</dt>
                 <dd>{topModuleName || 'top'}</dd>
@@ -1102,31 +1135,62 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 <dt>Last saved</dt>
                 <dd>{lastSavedAt ? formatSavedAt(lastSavedAt) : 'No local snapshot yet'}</dd>
               </div>
+              {importFidelitySummary && (
+                <div>
+                  <dt>Import fidelity</dt>
+                  <dd data-testid="ide-project-reference-fidelity">{importFidelitySummary}</dd>
+                </div>
+              )}
+              <div>
+                <dt>Determinism</dt>
+                <dd>
+                  <code data-testid="ide-project-reference-determinism">
+                    {determinismHash.slice(0, 12)}
+                  </code>
+                </dd>
+              </div>
             </dl>
           </SurfacePanel>
 
           <SurfacePanel className="ide-project-spotlight" testId="ide-project-readiness-summary">
-            <div className="ide-project-spotlight-header">
-              <span className="ide-project-spotlight-eyebrow">Readiness</span>
-              <IdeStatusPill tone={hardwareReady ? 'ok' : hardBlockingIssue ? 'warn' : exportAvailable ? 'warn' : 'idle'}>
-                {hardwareReady ? 'BOARD READY' : hardBlockingIssue ? 'ACTION NEEDED' : exportAvailable ? 'READY TO EXPORT' : 'IN PROGRESS'}
-              </IdeStatusPill>
-            </div>
-            <div className="ide-project-readiness-list">
-              <div className="ide-project-readiness-item">
+            <div data-testid="ide-project-panel-readiness">
+              <div className="ide-project-spotlight-header">
+                <div>
+                  <span className="ide-project-spotlight-eyebrow">Workflow snapshot</span>
+                  <p
+                    data-testid="ide-project-readiness-focus"
+                    style={{ margin: '0.35rem 0 0 0', fontSize: 'var(--font-size-sm)', opacity: 0.82 }}
+                  >
+                    Current focus: Continue to {activePrimaryCtaLabel}.
+                  </p>
+                </div>
+                <IdeStatusPill tone={hardwareReady ? 'ok' : hardBlockingIssue ? 'warn' : exportAvailable ? 'warn' : 'idle'}>
+                  {hardwareReady ? 'BOARD READY' : hardBlockingIssue ? 'ACTION NEEDED' : exportAvailable ? 'READY TO EXPORT' : 'IN PROGRESS'}
+                </IdeStatusPill>
+              </div>
+              <div className="ide-project-readiness-list">
+                <div
+                  className={`ide-project-readiness-item ide-launchpad-card ide-launchpad-card--${mappingLaunchpadState}`}
+                  data-testid="ide-launchpad-mapping"
+                >
+                  <span className="ide-launchpad-card__label">Stage 1</span>
                 <div className="ide-project-readiness-item-head">
                   <span>Mapping</span>
                   <IdeStatusPill tone={readiness.hasIoMapping ? 'ok' : 'warn'}>
                     {readiness.hasIoMapping ? 'READY' : 'BLOCKED'}
                   </IdeStatusPill>
                 </div>
-                <p>
+                <p className="ide-launchpad-card__sub">
                   {readiness.hasIoMapping
                     ? `${mappedRequiredCount}/${requiredCount} required pins assigned.`
                     : `${unmappedRequiredCount} required pin${unmappedRequiredCount !== 1 ? 's are' : ' is'} still missing.`}
                 </p>
               </div>
-              <div className="ide-project-readiness-item">
+              <div
+                className={`ide-project-readiness-item ide-launchpad-card ide-launchpad-card--${verifyLaunchpadState}`}
+                data-testid="ide-launchpad-verify"
+              >
+                <span className="ide-launchpad-card__label">Stage 2</span>
                 <div className="ide-project-readiness-item-head">
                   <span>Verify</span>
                   <IdeStatusPill tone={compareMatches ? 'ok' : 'warn'}>
@@ -1141,25 +1205,20 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                             : 'NOT RUN'}
                   </IdeStatusPill>
                 </div>
-                <p>{verifySummary}</p>
-                {!compareCurrent && (
-                  <IdeButton
-                    tone="ghost"
-                    onClick={onOpenVerify}
-                    testId="ide-project-readiness-goto-verify"
-                  >
-                    Go to Verify →
-                  </IdeButton>
-                )}
+                <p className="ide-launchpad-card__sub">{verifySummary}</p>
               </div>
-              <div className="ide-project-readiness-item">
+              <div
+                className={`ide-project-readiness-item ide-launchpad-card ide-launchpad-card--${exportLaunchpadState}`}
+                data-testid="ide-launchpad-export"
+              >
+                <span className="ide-launchpad-card__label">Stage 3</span>
                 <div className="ide-project-readiness-item-head">
                   <span>Export</span>
                   <IdeStatusPill tone={exportPackageCurrent ? 'ok' : exportAvailable ? 'warn' : 'warn'}>
                     {exportPackageCurrent ? 'CURRENT PACKAGE' : exportAvailable ? 'AVAILABLE' : 'BLOCKED'}
                   </IdeStatusPill>
                 </div>
-                <p>{exportSummary}</p>
+                <p className="ide-launchpad-card__sub">{exportSummary}</p>
                 <p
                   className="ide-project-export-explanation"
                   data-testid="ide-project-export-explanation"
@@ -1171,35 +1230,27 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                       ? 'AVAILABLE — Export files can be reviewed or downloaded now. Compare results are advisory and do not block export.'
                       : 'Export is blocked until circuit and mapping are complete.'}
                 </p>
-                {exportAvailable && !compareCurrent && (
-                  <IdeButton
-                    tone="ghost"
-                    onClick={onOpenVerify}
-                    testId="ide-project-readiness-goto-verify-for-export"
-                  >
-                    Go to Verify →
-                  </IdeButton>
-                )}
               </div>
             </div>
-            {unmappedRequiredCount > 0 && (
-              <div className="ide-project-spotlight-actions">
-                <IdeButton
-                  tone="secondary"
-                  onClick={() => handleProjectModeAction('project')}
-                  testId="ide-project-open-mapping-inline"
-                >
-                  Review missing pins
-                </IdeButton>
-                <IdeButton
-                  tone="ghost"
-                  onClick={onAutoSuggestMapping}
-                  testId="ide-project-auto-map-inline"
-                >
-                  Auto-suggest pins
-                </IdeButton>
-              </div>
-            )}
+              {unmappedRequiredCount > 0 && (
+                <div className="ide-project-spotlight-actions">
+                  <IdeButton
+                    tone="secondary"
+                    onClick={() => handleProjectModeAction('project')}
+                    testId="ide-project-open-mapping-inline"
+                  >
+                    Review missing pins
+                  </IdeButton>
+                  <IdeButton
+                    tone="ghost"
+                    onClick={onAutoSuggestMapping}
+                    testId="ide-project-auto-map-inline"
+                  >
+                    Auto-suggest pins
+                  </IdeButton>
+                </div>
+              )}
+            </div>
           </SurfacePanel>
         </div>
 
@@ -1652,7 +1703,7 @@ function getExamplePreview(exampleId: string): {
 
 function getVerifySummary(
   health: ProjectHealth,
-  projectVerifyState: ReturnType<typeof deriveProjectVerifyState>,
+  projectVerifyState: ProjectVerifyState,
   compareMatches: boolean,
   comparePassIncomplete: boolean
 ): string {

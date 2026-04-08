@@ -32,6 +32,7 @@ async function ensureVerifyVectorsReady(page) {
 
 async function clickVerifyRun(page) {
   const candidates = [
+    '[data-testid="ide-vcb-run"]',
     '[data-testid="ide-verify-run"]',
     '[data-testid="ide-verify-run-secondary"]',
     '[data-testid="ide-verify-empty-run"]',
@@ -136,9 +137,19 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
     .first()
     .isVisible()
     .catch(() => false);
+  const hasVivadoUnverifiedCallout = await page
+    .locator('[data-testid="ide-export-vivado-unverified-callout"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  const hasVivadoBlockedCallout = await page
+    .locator('[data-testid="ide-export-vivado-blocked-callout"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
   assert(
-    hasBlockersCallout || hasVivadoReadyCallout,
-    'export must show either blockers callout or Vivado-ready callout',
+    hasBlockersCallout || hasVivadoReadyCallout || hasVivadoUnverifiedCallout || hasVivadoBlockedCallout,
+    'export must show a truthful handoff state: blockers, unverified, blocked, or Vivado-ready',
   );
 
   const readinessLabel = (

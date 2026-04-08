@@ -18,6 +18,7 @@ async function dismissOnboardingIfPresent(page) {
 
 async function clickVerifyRun(page) {
   const candidates = [
+    '[data-testid="ide-vcb-run"]',
     '[data-testid="ide-verify-run"]',
     '[data-testid="ide-verify-run-secondary"]',
     '[data-testid="ide-verify-empty-run"]',
@@ -35,7 +36,7 @@ async function clickVerifyRun(page) {
 
 async function authorMinimalVerifyVector(page) {
   const runAlreadyVisible = await page
-    .locator('[data-testid="ide-verify-run"]')
+    .locator('[data-testid="ide-vcb-run"], [data-testid="ide-verify-run"]')
     .first()
     .isVisible()
     .catch(() => false);

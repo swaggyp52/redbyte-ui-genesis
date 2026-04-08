@@ -6,10 +6,12 @@ import { act, cleanup, render, waitFor } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { RBProject } from '../../../export/projectFormat';
 import {
-  buildCurrentVerifyProjectHash,
   deriveExportCurrent,
-  deriveHasDff,
   deriveVerifyCurrent,
+} from '../projectWorkflowAuthority';
+import {
+  buildCurrentVerifyProjectHash,
+  deriveHasDff,
 } from '../../IdeApp';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { digestValue } from '../../../utils/digest';
@@ -863,8 +865,6 @@ describe('projectRuntime history authority', () => {
           expectedIoRows={expectedIoRows}
           vectorsCount={runtimeState.projectVectors.length}
           health={health}
-          verifyCurrent={verifyCurrent}
-          exportCurrent={exportCurrent}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
@@ -874,7 +874,7 @@ describe('projectRuntime history authority', () => {
 
     expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
   });
 
   it('undo and redo preserve the current pruned vector state after output deletion and vector edits', () => {
@@ -1039,8 +1039,6 @@ describe('projectRuntime history authority', () => {
           expectedIoRows={expandedExpectedIoRows}
           vectorsCount={expandedState.projectVectors.length}
           health={health}
-          verifyCurrent={verifyCurrent}
-          exportCurrent={exportCurrent}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
@@ -1050,7 +1048,7 @@ describe('projectRuntime history authority', () => {
 
     expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -1180,8 +1178,6 @@ describe('projectRuntime history authority', () => {
           expectedIoRows={[]}
           vectorsCount={expandedState.projectVectors.length}
           health={health}
-          verifyCurrent={verifyCurrent}
-          exportCurrent={exportCurrent}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
@@ -1191,7 +1187,7 @@ describe('projectRuntime history authority', () => {
 
     expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -1305,8 +1301,6 @@ describe('projectRuntime history authority', () => {
           expectedIoRows={[]}
           vectorsCount={renamedState.projectVectors.length}
           health={health}
-          verifyCurrent={verifyCurrent}
-          exportCurrent={exportCurrent}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
@@ -1316,7 +1310,7 @@ describe('projectRuntime history authority', () => {
 
     expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -1426,8 +1420,6 @@ describe('projectRuntime history authority', () => {
           expectedIoRows={[]}
           vectorsCount={deletedState.projectVectors.length}
           health={health}
-          verifyCurrent={verifyCurrent}
-          exportCurrent={exportCurrent}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
@@ -1437,7 +1429,7 @@ describe('projectRuntime history authority', () => {
 
     expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -1551,8 +1543,6 @@ describe('projectRuntime history authority', () => {
           expectedIoRows={renamedExpectedIoRows}
           vectorsCount={renamedState.projectVectors.length}
           health={health}
-          verifyCurrent={verifyCurrent}
-          exportCurrent={exportCurrent}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
@@ -1562,7 +1552,7 @@ describe('projectRuntime history authority', () => {
 
     expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -1696,8 +1686,6 @@ describe('projectRuntime history authority', () => {
           expectedIoRows={[]}
           vectorsCount={restored.projectVectors.length}
           health={health}
-          verifyCurrent={verifyCurrent}
-          exportCurrent={exportCurrent}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
@@ -1707,7 +1695,7 @@ describe('projectRuntime history authority', () => {
 
     expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
   });
 
   it('keeps Project, Verify, Export, and Hardware aligned across the full custom-design authority mutation matrix', () => {
@@ -1778,8 +1766,6 @@ describe('projectRuntime history authority', () => {
             expectedIoRows={[]}
             vectorsCount={state.projectVectors.length}
             health={health}
-            verifyCurrent={verifyCurrent}
-            exportCurrent={exportCurrent}
             onGenerateBringUpVectors={vi.fn()}
             onOpenExport={vi.fn()}
             onOpenVerify={vi.fn()}
@@ -1789,7 +1775,7 @@ describe('projectRuntime history authority', () => {
 
       expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
       expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-      expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
+      expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
       unmount();
     };
 
@@ -2120,8 +2106,6 @@ describe('projectRuntime history authority', () => {
           expectedIoRows={[]}
           vectorsCount={restored.projectVectors.length}
           health={health}
-          verifyCurrent={verifyCurrent}
-          exportCurrent={exportCurrent}
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
@@ -2131,7 +2115,7 @@ describe('projectRuntime history authority', () => {
 
     expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Re-export required');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
   });
 });
 
@@ -2213,3 +2197,4 @@ describe('deriveHasDff: circuit-graph-first sequential trust', () => {
     expect(isSequentialRun).toBe(true);
   });
 });
+

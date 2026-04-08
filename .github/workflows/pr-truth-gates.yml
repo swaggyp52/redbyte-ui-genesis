@@ -50,6 +50,9 @@ jobs:
             exit 1
           fi
 
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
       - name: Gate - No solution Lab 4
         run: pnpm -s ci:no-solution:lab4
 

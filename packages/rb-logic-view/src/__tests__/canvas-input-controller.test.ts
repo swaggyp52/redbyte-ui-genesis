@@ -271,6 +271,98 @@ describe('useCanvasInput — state machine', () => {
     expect(setInteractionMode).toHaveBeenLastCalledWith('idle');
   });
 
+  it('marquee commit uses node bounds instead of only node origin', () => {
+    const onMarqueeCommit = vi.fn();
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as unknown as SVGSVGElement;
+    vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      width: 800,
+      height: 600,
+      top: 0,
+      left: 0,
+      right: 800,
+      bottom: 600,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    const { result } = renderHook(() =>
+      useCanvasInput(
+        makeOptions({
+          svgRef: { current: svg } as React.RefObject<SVGSVGElement | null>,
+          onMarqueeCommit,
+        }),
+      ),
+    );
+
+    act(() => {
+      result.current.onPointerDown(
+        makePointerEvent('pointerdown', { button: 0, clientX: 120, clientY: 220 }),
+      );
+    });
+
+    act(() => {
+      result.current.onPointerMove(
+        makePointerEvent('pointermove', { clientX: 150, clientY: 250 }),
+      );
+    });
+
+    act(() => {
+      result.current.onPointerUp(
+        makePointerEvent('pointerup', { clientX: 150, clientY: 250 }),
+      );
+    });
+
+    expect(onMarqueeCommit).toHaveBeenCalledWith(expect.arrayContaining(['node-1']), false);
+  });
+
+  it('shift marquee preserves additive selection intent', () => {
+    const onMarqueeCommit = vi.fn();
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as unknown as SVGSVGElement;
+    vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      width: 800,
+      height: 600,
+      top: 0,
+      left: 0,
+      right: 800,
+      bottom: 600,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    const { result } = renderHook(() =>
+      useCanvasInput(
+        makeOptions({
+          svgRef: { current: svg } as React.RefObject<SVGSVGElement | null>,
+          onMarqueeCommit,
+        }),
+      ),
+    );
+
+    act(() => {
+      result.current.onPointerDown(
+        makePointerEvent('pointerdown', { button: 0, clientX: 80, clientY: 180, shiftKey: true }),
+      );
+    });
+
+    act(() => {
+      result.current.onPointerMove(
+        makePointerEvent('pointermove', { clientX: 120, clientY: 240, shiftKey: true }),
+      );
+    });
+
+    act(() => {
+      result.current.onPointerUp(
+        makePointerEvent('pointerup', { clientX: 120, clientY: 240, shiftKey: true }),
+      );
+    });
+
+    expect(onMarqueeCommit).toHaveBeenCalledWith(expect.arrayContaining(['node-1']), true);
+  });
+
   it('pointer up resets to idle', () => {
     const setInteractionMode = vi.fn();
     const { result } = renderHook(() =>

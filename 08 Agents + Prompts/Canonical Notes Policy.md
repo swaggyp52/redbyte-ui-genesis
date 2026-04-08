@@ -58,6 +58,7 @@ These notes must be updated in place. Do not create parallel or competing notes 
 | `03 Architecture/Basys 3 Mapping.md` | FPGA port mapping, XDC, Vivado output | stub |
 | `03 Architecture/Note Schema.md` | Vault metadata schema, field reference | active |
 | `03 Architecture/Design Surface.md` | Design editor architecture, tools, interaction model | active |
+| `03 Architecture/Project Surface.md` | Project home / loaded-project workflow front door | active |
 | `03 Architecture/Workspace Routing.md` | Obsidian workspace configuration and note routing | active |
 | `03 Architecture/Automation Strategy.md` | Build, CI, and automation approach | active |
 | `03 Architecture/Signal Inventory.md` | Signal tracking and inventory model | stub |

@@ -115,3 +115,5 @@ archive/pdfs/basys3_rm*.pdf
 
 # Obsidian base view files
 *.base
+.aider*
+.env

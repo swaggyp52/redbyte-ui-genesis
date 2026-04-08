@@ -73,8 +73,12 @@ export interface ScenarioBuilderPanelProps {
   // Navigation: go to Hardware surface to map I/O
   onGoToHardware?: () => void;
   // Programmatic expansion: when set, the post-run <details> uses this ref
-  // so the parent can call ref.current.open = true to reveal the editor.
+  // so the parent can scroll or inspect the editor container.
   detailsRef?: React.RefObject<HTMLDetailsElement>;
+  /** Initial expanded state of the post-run workbench. Pass true for pass runs, false for fail/trace. */
+  initialExpanded?: boolean;
+  /** Increment to force the post-run workbench open from the parent. */
+  expandSignal?: number;
   /** Observe mode: hide expected-output lanes so students can only paint inputs. */
   hideExpectedLanes?: boolean;
 }
@@ -127,6 +131,8 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   isUsingFallbackSignals = false,
   onGoToHardware,
   detailsRef,
+  initialExpanded,
+  expandSignal,
   hideExpectedLanes = false,
 }) => {
   const effectiveVectorCount = totalVectorCount ?? authoredVectors.length;
@@ -549,13 +555,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             )}
           </div>
           <div className="ide-verify-run-footer-actions">
-            {hasVectorsReady ? (
-              <span data-testid="ide-verify-empty-run">
-                <IdeButton tone="primary" onClick={onRun} testId="ide-verify-run">
-                  {runButtonLabel}
-                </IdeButton>
-              </span>
-            ) : (
+            {!hasVectorsReady && (
               <IdeButton
                 tone="primary"
                 onClick={onGenerateBasics}
@@ -573,46 +573,57 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
     );
   }
 
-  // Post-run: always-visible editable workbench — students must be able to
-  // edit → rerun without hunting for a collapsed accordion.
-  const [workbenchExpanded, setWorkbenchExpanded] = React.useState(true);
+  // Post-run: collapsible workbench — starts closed so fail evidence takes focus.
+  // Parent can force it open via expandSignal (e.g. edit-vectors CTA).
+  const [workbenchExpanded, setWorkbenchExpanded] = React.useState(initialExpanded ?? false);
+
+  React.useEffect(() => {
+    setWorkbenchExpanded(initialExpanded ?? false);
+  }, [initialExpanded]);
+
+  React.useEffect(() => {
+    if ((expandSignal ?? 0) > 0) {
+      setWorkbenchExpanded(true);
+    }
+  }, [expandSignal]);
 
   return (
-    <div className="ide-verify-scenario-builder-details ide-verify-scenario-builder-details--postrun ide-verify-workbench-live" data-testid="ide-verify-stimulus-workbench">
-      {/* ── Workbench header bar ── */}
-      <div className="ide-verify-workbench-header">
-        <button
-          type="button"
-          className="ide-verify-workbench-toggle"
-          onClick={() => setWorkbenchExpanded((prev) => !prev)}
-          aria-expanded={workbenchExpanded}
-          data-testid="ide-verify-workbench-toggle"
-        >
-          <span className="ide-verify-workbench-toggle-arrow" aria-hidden="true">
-            {workbenchExpanded ? '▾' : '▸'}
+    <details
+      className="ide-verify-scenario-builder-details ide-verify-scenario-builder-details--postrun ide-verify-workbench-live"
+      data-testid="ide-verify-stimulus-workbench"
+      ref={detailsRef}
+      open={workbenchExpanded}
+    >
+      {/* ── Workbench header / toggle ── */}
+      <summary
+        className="ide-verify-scenario-builder-summary ide-verify-workbench-header"
+        data-testid="ide-verify-workbench-toggle"
+        onClick={(event) => {
+          event.preventDefault();
+          setWorkbenchExpanded((prev) => !prev);
+        }}
+      >
+        <span className="ide-verify-workbench-toggle-arrow" aria-hidden="true">
+          {workbenchExpanded ? '▾' : '▸'}
+        </span>
+        <span className="ide-verify-workbench-toggle-label">Stimulus Workbench</span>
+        {authoredVectors.length > 0 && (
+          <span className="ide-verify-workbench-count">
+            {authoredVectors.length} vector{authoredVectors.length !== 1 ? 's' : ''}
           </span>
-          <span className="ide-verify-workbench-toggle-label">Stimulus Workbench</span>
-          {authoredVectors.length > 0 && (
-            <span className="ide-verify-workbench-count">
-              {authoredVectors.length} vector{authoredVectors.length !== 1 ? 's' : ''}
-            </span>
-          )}
-        </button>
-        <div className="ide-verify-workbench-actions">
-          <IdeButton tone="ghost" onClick={onGenerateBasics} testId="ide-verify-workbench-generate">
-            Generate
-          </IdeButton>
-          <IdeButton tone="primary" onClick={onRun} testId="ide-verify-workbench-run">
-            {runButtonLabel}
-          </IdeButton>
-        </div>
+        )}
+      </summary>
+      <div className="ide-verify-workbench-actions">
+        <IdeButton tone="ghost" onClick={onGenerateBasics} testId="ide-verify-workbench-generate">
+          Generate
+        </IdeButton>
       </div>
-      {/* ── Editable stimulus region — always mounted, toggles visibility ── */}
+      {/* ── Editable stimulus region — mounted when expanded ── */}
       {workbenchExpanded && (
         <div className="ide-verify-workbench-body" data-testid="ide-verify-workbench-body">
           {authoringForm}
         </div>
       )}
-    </div>
+    </details>
   );
 };

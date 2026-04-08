@@ -22,7 +22,7 @@ await runIdeGate('IDE verify trace-only contract', async ({ page, baseUrl }) => 
   assert(vectorRows === 0, `expected 0 authored vectors at start, got ${vectorRows}`);
 
   // 4. Run button must be ENABLED even with 0 vectors
-  const runBtn = page.locator('[data-testid="ide-verify-run"]').first();
+  const runBtn = page.locator('[data-testid="ide-vcb-run"]').first();
   assert(await visible(runBtn), 'run button must be visible in verify mode');
   const isDisabled = await runBtn.isDisabled();
   assert(!isDisabled, 'Run button must be enabled even with 0 test vectors');

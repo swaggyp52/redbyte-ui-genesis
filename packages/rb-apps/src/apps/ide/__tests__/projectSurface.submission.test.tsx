@@ -108,7 +108,7 @@ describe('ProjectSurface workspace panels', () => {
     );
 
     expect(getAllByTestId('ide-project-showcase-primary-cta').at(-1)?.textContent).toContain('Continue to Map Pins');
-    expect(getByTestId('ide-project-console').textContent).toContain('Finish mapping before relying on hardware behavior');
+    expect(getByTestId('ide-project-hero-blocker').textContent).toContain('Finish mapping before relying on hardware behavior');
   });
 
   it('keeps the hero CTA dominant while surfacing the active example context', () => {
@@ -129,6 +129,7 @@ describe('ProjectSurface workspace panels', () => {
             },
             primaryCtaLabel: 'Verify',
             primaryCta: { label: 'Verify', mode: 'verify', code: 'RBP1004' },
+            projectKind: 'example',
             examples: [
               {
                 id: 'signal-tour',
@@ -151,12 +152,15 @@ describe('ProjectSurface workspace panels', () => {
     const showcase = showcases[showcases.length - 1];
     expect(showcase.textContent).toContain('Signal Tour: Switches -> LEDs');
     expect(getAllByTestId('ide-project-showcase-primary-cta').at(-1)?.textContent).toContain('Continue to Verify');
+    expect(getByTestId('ide-project-next-step').textContent).toContain('Refresh Verify');
     expect(getAllByTestId('ide-project-board-preview').at(-1)?.textContent).toContain(
       'Flip switches and the matching LEDs follow immediately.'
     );
 
     const context = getAllByTestId('ide-project-context').at(-1)!;
-    expect(context.textContent).toContain('Signal Tour: Switches -> LEDs');
+    expect(context.textContent).toContain('Loaded project');
+    expect(context.textContent).toContain('Example Project - Signal Tour: Switches -> LEDs');
+    expect(context.textContent).toContain('Expected behavior');
     expect(context.textContent).toContain('Flip switches and the matching LEDs follow immediately.');
   });
 
@@ -295,7 +299,7 @@ describe('ProjectSurface workspace panels', () => {
   it('surfaces FPGA config, fidelity, and Project-side quick picks for lab-day export prep', () => {
     const onFpgaConfigChange = vi.fn();
     const onUpdateMappingPin = vi.fn();
-    const { getAllByTestId } = render(
+    const { getAllByTestId, getByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -335,6 +339,8 @@ describe('ProjectSurface workspace panels', () => {
 
     const fidelityList = getAllByTestId('ide-project-import-fidelity');
     expect(fidelityList[fidelityList.length - 1].textContent).toContain('Reconstructed');
+    expect(getByTestId('ide-project-reference-fidelity').textContent).toContain('Reconstructed');
+    expect(getByTestId('ide-project-reference-determinism').textContent).toContain('abc123def456');
     
     const topList = getAllByTestId('ide-project-fpga-top');
     fireEvent.change(topList[topList.length - 1], { target: { value: 'lab_top' } });
@@ -388,7 +394,7 @@ describe('ProjectSurface workspace panels', () => {
 
     const readinessSummaryList = getAllByTestId('ide-project-readiness-summary');
     const readinessSummary = readinessSummaryList[readinessSummaryList.length - 1];
-    expect(readinessSummary?.textContent).toContain('EXPORT AVAILABLE');
+    expect(readinessSummary?.textContent).toContain('AVAILABLE');
     expect(readinessSummary?.textContent).toContain(
       'Export can be opened now for file review'
     );

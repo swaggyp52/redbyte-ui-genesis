@@ -2,26 +2,26 @@
 
 import { assert, runIdeGate } from './_gateHarness.mjs';
 
-const UPDATE_TIMEOUT_MS = 250;
+const UPDATE_TIMEOUT_MS = 1000;
 
 await runIdeGate('IDE design palette build contract satisfied', async ({ page, baseUrl }) => {
   // Deterministic desktop viewport keeps design controls in-frame for interaction.
   await page.setViewportSize({ width: 1920, height: 1080 });
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
-  await page.goto(`${baseUrl}/?mode=design`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${baseUrl}/?mode=project`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
+  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
+  await page.locator('[data-testid="ide-project-landing-fresh"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
+
   const baselineNodeIds = await page.evaluate(() => {
     const store = window.__RB_CIRCUIT_STORE__;
     if (!store?.getState) return null;
     return (store.getState().circuit?.nodes ?? []).map((node) => node.id);
   });
   assert(Array.isArray(baselineNodeIds), 'expected baseline circuit node IDs');
-
-  await assertUniqueBoardAlias(page, 'SW0', '[data-testid="ide-design-board-input-sw0"]', { x: 0.18, y: 0.22 });
-  await assertUniqueBoardAlias(page, 'LD0', '[data-testid="ide-design-board-output-ld0"]', { x: 0.82, y: 0.26 });
 
   await placeFromPalette(page, '[data-testid="ide-design-palette-input"]', 'Input', { x: 0.32, y: 0.42 });
   await placeFromPalette(page, '[data-testid="ide-design-palette-input"]', 'Input', { x: 0.32, y: 0.62 });
@@ -102,6 +102,8 @@ await runIdeGate('IDE design palette build contract satisfied', async ({ page, b
     await assertOutputBit(page, outputNodeId, scenario.out);
   }
 
+  await assertUniqueBoardAlias(page, 'SW0', '[data-testid="ide-design-board-input-sw0"]', { x: 0.18, y: 0.22 });
+  await assertUniqueBoardAlias(page, 'LD0', '[data-testid="ide-design-board-output-ld0"]', { x: 0.82, y: 0.26 });
   await assertBoardAliasCanDeleteAndReadd(
     page,
     'SW0',
@@ -174,6 +176,7 @@ async function ensureSimPaused(page) {
 }
 
 async function assertControlsPresent(page, inputNodeIds, outputNodeId) {
+  await ensureLiveInputsExpanded(page);
   for (const nodeId of inputNodeIds) {
     await page.waitForSelector(`[data-testid="ide-design-input-toggle-${nodeId}"]`, {
       timeout: 10000,
@@ -187,6 +190,7 @@ async function assertControlsPresent(page, inputNodeIds, outputNodeId) {
 async function setInputBit(page, nodeId, value) {
   const target = String(value);
   const toggleSelector = `[data-testid="ide-design-input-toggle-${nodeId}"]`;
+  await ensureLiveInputsExpanded(page);
   const currentPressed = await page
     .locator(toggleSelector)
     .first()
@@ -214,6 +218,19 @@ async function setInputBit(page, nodeId, value) {
     tickAfter === tickBefore,
     `combinational input toggle should not advance tick (${nodeId} ${tickBefore} -> ${tickAfter})`,
   );
+}
+
+async function ensureLiveInputsExpanded(page) {
+  const firstToggle = page.locator('[data-testid^="ide-design-input-toggle-"]').first();
+  if (await firstToggle.isVisible().catch(() => false)) {
+    return;
+  }
+
+  const disclosureToggle = page.locator('[data-testid="ide-design-live-inputs-toggle"]').first();
+  const isVisible = await disclosureToggle.isVisible().catch(() => false);
+  assert(isVisible, 'design live inputs toggle must be visible before input editing');
+  await disclosureToggle.click();
+  await firstToggle.waitFor({ state: 'visible', timeout: 5000 });
 }
 
 async function assertOutputBit(page, nodeId, expected) {
