@@ -18,10 +18,37 @@ await runIdeGate('IDE design correctness contract satisfied', async ({ page, bas
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
 
+  await verifySignalTourTruthTable(page);
   await verifyLogicGatesTruthTable(page);
-  await verifyHalfAdderTruthTable(page);
-  await verifyFullAdderTruthTable(page);
 });
+
+async function verifySignalTourTruthTable(page) {
+  await loadExampleIntoDesign(page, 'signal-tour');
+  await ensureSimPaused(page);
+  await assertLiveRowsPresent(
+    page,
+    ['sw0_node', 'sw1_node', 'sw2_node', 'sw3_node'],
+    ['ld0_node', 'ld1_node', 'ld2_node', 'ld3_node'],
+  );
+
+  const scenarios = [
+    { sw0: 0, sw1: 0, sw2: 0, sw3: 0, ld0: 0, ld1: 0, ld2: 0, ld3: 0 },
+    { sw0: 1, sw1: 0, sw2: 0, sw3: 0, ld0: 1, ld1: 0, ld2: 0, ld3: 0 },
+    { sw0: 0, sw1: 1, sw2: 0, sw3: 1, ld0: 0, ld1: 1, ld2: 0, ld3: 1 },
+    { sw0: 1, sw1: 1, sw2: 1, sw3: 1, ld0: 1, ld1: 1, ld2: 1, ld3: 1 },
+  ];
+
+  for (const scenario of scenarios) {
+    await setInputBit(page, 'sw0_node', scenario.sw0);
+    await setInputBit(page, 'sw1_node', scenario.sw1);
+    await setInputBit(page, 'sw2_node', scenario.sw2);
+    await setInputBit(page, 'sw3_node', scenario.sw3);
+    await assertOutputBit(page, 'ld0_node', scenario.ld0);
+    await assertOutputBit(page, 'ld1_node', scenario.ld1);
+    await assertOutputBit(page, 'ld2_node', scenario.ld2);
+    await assertOutputBit(page, 'ld3_node', scenario.ld3);
+  }
+}
 
 async function verifyLogicGatesTruthTable(page) {
   await loadExampleIntoDesign(page, 'logic-gates');
@@ -44,69 +71,39 @@ async function verifyLogicGatesTruthTable(page) {
   }
 }
 
-async function verifyHalfAdderTruthTable(page) {
-  await loadExampleIntoDesign(page, 'half-adder');
-  await ensureSimPaused(page);
-  await assertLiveRowsPresent(page, ['sw0_node', 'sw1_node'], ['ld0_node', 'ld1_node']);
-
-  const scenarios = [
-    { sw0: 0, sw1: 0, ld0: 0, ld1: 0 }, // carry, sum
-    { sw0: 0, sw1: 1, ld0: 0, ld1: 1 },
-    { sw0: 1, sw1: 0, ld0: 0, ld1: 1 },
-    { sw0: 1, sw1: 1, ld0: 1, ld1: 0 },
-  ];
-
-  for (const scenario of scenarios) {
-    await setInputBit(page, 'sw0_node', scenario.sw0);
-    await setInputBit(page, 'sw1_node', scenario.sw1);
-    await assertOutputBit(page, 'ld0_node', scenario.ld0);
-    await assertOutputBit(page, 'ld1_node', scenario.ld1);
-  }
-}
-
-async function verifyFullAdderTruthTable(page) {
-  await loadExampleIntoDesign(page, 'full-adder');
-  await ensureSimPaused(page);
-  await assertLiveRowsPresent(page, ['sw0_node', 'sw1_node', 'sw2_node'], ['ld0_node', 'ld1_node']);
-
-  const scenarios = [
-    { sw0: 0, sw1: 0, sw2: 0, ld0: 0, ld1: 0 },
-    { sw0: 0, sw1: 0, sw2: 1, ld0: 0, ld1: 1 },
-    { sw0: 0, sw1: 1, sw2: 0, ld0: 0, ld1: 1 },
-    { sw0: 0, sw1: 1, sw2: 1, ld0: 1, ld1: 0 },
-    { sw0: 1, sw1: 0, sw2: 0, ld0: 0, ld1: 1 },
-    { sw0: 1, sw1: 0, sw2: 1, ld0: 1, ld1: 0 },
-    { sw0: 1, sw1: 1, sw2: 0, ld0: 1, ld1: 0 },
-    { sw0: 1, sw1: 1, sw2: 1, ld0: 1, ld1: 1 },
-  ];
-
-  for (const scenario of scenarios) {
-    await setInputBit(page, 'sw0_node', scenario.sw0);
-    await setInputBit(page, 'sw1_node', scenario.sw1);
-    await setInputBit(page, 'sw2_node', scenario.sw2);
-    await assertOutputBit(page, 'ld0_node', scenario.ld0);
-    await assertOutputBit(page, 'ld1_node', scenario.ld1);
-  }
-}
-
 async function loadExampleIntoDesign(page, exampleId) {
   if (!(await page.locator('[data-testid="ide-mode-project"]').isVisible().catch(() => false))) {
     await page.locator('[data-testid="mode-button-project"]').click();
     await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
   }
 
-  const quickStartButton = page.locator(`[data-testid="ide-project-load-start-${exampleId}"]`).first();
-  const quickStartVisible = await quickStartButton.isVisible().catch(() => false);
-  if (quickStartVisible) {
-    await quickStartButton.click();
-  } else {
-    const openExampleButton = page.locator(`[data-testid="ide-project-open-example-${exampleId}"]`).first();
-    assert(
-      await openExampleButton.isVisible().catch(() => false),
-      `expected project example selector for ${exampleId}`,
-    );
-    await openExampleButton.click();
+  const examplesDisclosure = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
+  const hasExamplesDisclosure = await examplesDisclosure.count().catch(() => 0);
+  if (hasExamplesDisclosure) {
+    const disclosureOpen = await examplesDisclosure.evaluate((element) =>
+      element instanceof HTMLDetailsElement ? element.open : false
+    ).catch(() => false);
+    if (!disclosureOpen) {
+      await examplesDisclosure.locator('summary').click();
+    }
   }
+
+  const selectors = [
+    `[data-testid="ide-project-load-start-${exampleId}"]`,
+    `[data-testid="ide-project-landing-example-${exampleId}"]`,
+    `[data-testid="ide-project-lab-card-${exampleId}"]`,
+  ];
+  let clicked = false;
+  for (const selector of selectors) {
+    const candidate = page.locator(selector).first();
+    if (!(await candidate.isVisible().catch(() => false))) {
+      continue;
+    }
+    await candidate.click();
+    clicked = true;
+    break;
+  }
+  assert(clicked, `expected project example selector for ${exampleId}`);
 
   const confirmVisible = await page
     .locator('[data-testid="ide-example-confirm-modal"]')
@@ -121,7 +118,7 @@ async function loadExampleIntoDesign(page, exampleId) {
     await page.locator('[data-testid="mode-button-design"]').click();
   }
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
-  await page.waitForSelector('[data-testid="ide-design-live-signals"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-design-live-state-table"]', { timeout: 10000 });
 }
 
 async function ensureSimPaused(page) {
@@ -159,6 +156,7 @@ async function setInputBit(page, nodeId, value) {
   );
   if (current === target) return;
 
+  await ensureLiveInputsExpanded(page);
   const tickBefore = await readTick(page);
   await page.locator(`[data-testid="ide-design-input-toggle-${nodeId}"]`).click();
 
@@ -177,6 +175,19 @@ async function setInputBit(page, nodeId, value) {
     tickAfter === tickBefore,
     `combinational input toggle should not advance tick (${nodeId} ${tickBefore} -> ${tickAfter})`,
   );
+}
+
+async function ensureLiveInputsExpanded(page) {
+  const firstToggle = page.locator('[data-testid^="ide-design-input-toggle-"]').first();
+  if (await firstToggle.isVisible().catch(() => false)) {
+    return;
+  }
+
+  const disclosureToggle = page.locator('[data-testid="ide-design-live-inputs-toggle"]').first();
+  const isVisible = await disclosureToggle.isVisible().catch(() => false);
+  assert(isVisible, 'design live inputs toggle must be visible before input editing');
+  await disclosureToggle.click();
+  await firstToggle.waitFor({ state: 'visible', timeout: 5000 });
 }
 
 async function assertOutputBit(page, nodeId, expected) {

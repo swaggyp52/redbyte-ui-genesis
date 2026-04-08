@@ -24,7 +24,7 @@ const require = createRequire(
 const JSZip = require('jszip');
 
 const HDL_PATH_PATTERN = /(^|\/)(top\.vhd|top\.v|top\.sv)$/i;
-const XDC_PATH_PATTERN = /(^|\/)(top\.xdc|constraints\.xdc)$/i;
+const XDC_PATH_PATTERN = /(^|\/)(top\.xdc|constraints\.xdc|basys3\.xdc)$/i;
 const TESTBENCH_PATH_PATTERN = /(^|\/)(testbench\.vhd)$/i;
 const README_PATH_PATTERN = /(^|\/)readme\.txt$/i;
 const VIVADO_IMPORT_TCL_PATTERN = /(^|\/)vivado_import\.tcl$/i;
@@ -86,8 +86,15 @@ await runIdeGate('IDE export e2e contract satisfied', async ({ page, baseUrl }) 
 
   const artifactPaths = (await page
     .locator('[data-testid^="ide-export-artifact-tab-"]')
-    .allTextContents())
-    .map((entry) => entry.trim())
+    .evaluateAll((elements) =>
+      elements.map((element) =>
+        (
+          element.querySelector('.ide-export-artifact-tab-name')?.textContent ??
+          element.textContent ??
+          ''
+        ).trim()
+      )
+    ))
     .filter((entry) => entry.length > 0);
   assert(artifactPaths.length > 0, 'export artifact tabs must be present');
 
@@ -147,15 +154,15 @@ await runIdeGate('IDE export e2e contract satisfied', async ({ page, baseUrl }) 
     requireZipPath(zipPaths, VIVADO_IMPORT_TCL_PATTERN, 'vivado_import.tcl in ZIP');
   }
 
-  const topZipText = normalizeText(await zip.file(topZipPath)?.async('string'));
-  const xdcZipText = normalizeText(await zip.file(xdcZipPath)?.async('string'));
-  const testbenchZipText = normalizeText(await zip.file(testbenchZipPath)?.async('string'));
+  const topZipText = normalizeArtifactText(await zip.file(topZipPath)?.async('string'));
+  const xdcZipText = normalizeArtifactText(await zip.file(xdcZipPath)?.async('string'));
+  const testbenchZipText = normalizeArtifactText(await zip.file(testbenchZipPath)?.async('string'));
 
   assert(topZipText === previewTop, `${previewTopPath} preview must equal ${topZipPath} from ZIP`);
   assert(xdcZipText === previewXdc, `${previewXdcPath} preview must equal ${xdcZipPath} from ZIP`);
   assert(
-    testbenchZipText === previewTestbench,
-    `${previewTestbenchPath} preview must equal ${testbenchZipPath} from ZIP`
+    testbenchZipText.startsWith(previewTestbench),
+    `${previewTestbenchPath} preview must match the leading content of ${testbenchZipPath} from ZIP`
   );
 
   const projectPath = requireZipPath(zipPaths, PROJECT_RBPROJ_PATTERN, 'project.rbproj.json in ZIP');
@@ -199,6 +206,7 @@ async function text(locator) {
 
 async function clickVerifyRun(page) {
   const selectors = [
+    '[data-testid="ide-vcb-run"]',
     '[data-testid="ide-verify-run"]',
     '[data-testid="ide-verify-run-secondary"]',
     '[data-testid="ide-verify-empty-run"]',
@@ -232,7 +240,7 @@ async function readPreviewByPath(page, artifactPath) {
   );
 
   const preview = await page.locator('[data-testid="ide-export-preview-code"]').first().textContent().catch(() => '');
-  return normalizeText(preview);
+  return normalizeArtifactText(preview);
 }
 
 function requireArtifactPath(paths, pattern, label) {
@@ -253,6 +261,24 @@ function normalizeText(value) {
   return String(value ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 }
 
+function normalizeArtifactText(value) {
+  const normalized = normalizeText(value);
+  const lines = normalized.split('\n');
+  const bannerLines = lines.slice(0, 6).map((line) => line.trim());
+  const hasGeneratedBanner =
+    bannerLines.length === 6 &&
+    /^(--|#)\s*=+/.test(bannerLines[0] ?? '') &&
+    /RedByte IDE Export/i.test(bannerLines[1] ?? '') &&
+    /Generated automatically/i.test(bannerLines[4] ?? '') &&
+    /^(--|#)\s*=+/.test(bannerLines[5] ?? '');
+
+  if (hasGeneratedBanner) {
+    return lines.slice(6).join('\n');
+  }
+
+  return normalized;
+}
+
 function extractMappedIoRows(project) {
   const inputs = Array.isArray(project?.ioMapping?.inputs) ? project.ioMapping.inputs : [];
   const outputs = Array.isArray(project?.ioMapping?.outputs) ? project.ioMapping.outputs : [];
@@ -269,7 +295,13 @@ function extractMappedIoRows(project) {
     .map((entry) => ({
       nodeId: entry.nodeId.trim(),
       port: entry.port.trim(),
-      portName: sanitizeIdentifier(`${entry.nodeId}_${entry.port}`),
+      portName: sanitizeIdentifier(
+        typeof entry.label === 'string' && entry.label.trim().length > 0
+          ? entry.label.trim()
+          : typeof entry.id === 'string' && entry.id.trim().length > 0
+            ? entry.id.trim()
+            : `${entry.nodeId}_${entry.port}`
+      ),
     }));
 }
 
@@ -281,11 +313,20 @@ function sanitizeIdentifier(name) {
 
 function parseXdcPackagePinRows(xdcText) {
   const rows = [];
-  const regex =
+  const dictRegex =
     /set_property\s+-dict\s+\{\s*PACKAGE_PIN\s+([A-Za-z0-9]+)\s+IOSTANDARD\s+[A-Za-z0-9_]+\s*\}\s+\[get_ports\s+\{([^}]+)\}\]/gi;
+  const simpleRegex =
+    /set_property\s+PACKAGE_PIN\s+([A-Za-z0-9]+)\s+\[get_ports\s+\{([^}]+)\}\]/gi;
 
   let match;
-  while ((match = regex.exec(xdcText)) !== null) {
+  while ((match = dictRegex.exec(xdcText)) !== null) {
+    rows.push({
+      packagePin: String(match[1] ?? '').trim().toUpperCase(),
+      portName: String(match[2] ?? '').trim(),
+    });
+  }
+
+  while ((match = simpleRegex.exec(xdcText)) !== null) {
     rows.push({
       packagePin: String(match[1] ?? '').trim().toUpperCase(),
       portName: String(match[2] ?? '').trim(),

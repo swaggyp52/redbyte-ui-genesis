@@ -9,6 +9,7 @@ async function text(locator) {
 
 async function clickVerifyRun(page) {
   const runSelectors = [
+    '[data-testid="ide-vcb-run"]',
     '[data-testid="ide-verify-run"]',
     '[data-testid="ide-verify-run-secondary"]',
     '[data-testid="ide-verify-empty-run"]',

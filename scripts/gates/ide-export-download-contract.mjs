@@ -33,7 +33,12 @@ await runIdeGate('IDE export download contract satisfied', async ({ page, baseUr
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
   await ensureVerifyVectorsReady(page);
-  const runSelectors = ['[data-testid="ide-verify-run"]', '[data-testid="ide-verify-run-secondary"]', '[data-testid="ide-verify-empty-run"]'];
+  const runSelectors = [
+    '[data-testid="ide-vcb-run"]',
+    '[data-testid="ide-verify-run"]',
+    '[data-testid="ide-verify-run-secondary"]',
+    '[data-testid="ide-verify-empty-run"]',
+  ];
   let runClicked = false;
   for (const selector of runSelectors) {
     const candidate = page.locator(selector).first();

@@ -214,6 +214,14 @@ Merge-path hardening (2026-04-08):
 - PR merges to `main` are branch-protected by the `Classroom Truth Gates` workflow; the required runner path was failing for infrastructure reasons because `classroom:gate` invokes Playwright-backed IDE gates without installing Playwright browsers first
 - local fix staged: `.github/workflows/pr-truth-gates.yml` now installs Chromium via `pnpm exec playwright install --with-deps chromium` before the classroom loop
 - release implication: required PR truth gates should now measure product truth instead of failing early on a missing-browser runner setup
+- gate alignment sweep completed on the canonical rescue branch: the current classroom gate set now follows the real student-facing surfaces instead of stale selectors / stale artifacts
+  - Design gates now enter through Project truth (`Build Fresh` / current starter loader), expand live-input controls when needed, and use the current dense-canvas / LOD behavior
+  - Verify gates now follow the current single-Run header contract and left-dock signal workflow
+  - Export gates now follow the current artifact tab naming, Vivado project ZIP layout, and preview-vs-ZIP wrapper rules
+- local release signoff for the required merge gate is now confirmed again:
+  - `pnpm -s classroom:gate` -> PASS all steps
+- immediate repo-steward next action:
+  - push the canonical branch, rerun PR #76 required checks against the updated head, and merge to `main` once GitHub confirms green
 
 Use its recommended implementation order:
 

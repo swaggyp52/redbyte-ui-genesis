@@ -1,5 +1,60 @@
 # AI State
 
+## Change Log 2026-04-08 (Release Path — Classroom gate contract sweep)
+
+**Subsystem**: CI / classroom truth gates / merge readiness
+
+### Problem
+
+After the PR workflow browser-install fix landed locally, the required `Classroom Truth Gates` path still failed because multiple gate scripts no longer matched the current student-facing IDE:
+
+- Verify gates still expected retired Run buttons and always-open signal regions
+- Design gates still used stale starter selectors, stale live-input assumptions, and a pre-Project `?mode=design` authoring path
+- Export gates still assumed older artifact tab parsing, older ZIP layout/path names, and exact preview-to-ZIP equality for files that now add generated wrappers or preview truncation
+
+That meant PR `#76` could stay red even when the actual Design / Verify / Export surfaces were locally correct.
+
+### What changed
+
+- Realigned the classroom gate suite to current product truth:
+  - added `ide-vcb-run` support across Verify / Export / evidence gates
+  - updated Design gates to use the shared starter loader and the current `Build Fresh -> Design` path where required
+  - expanded live-input sections before toggling inputs in Design gates
+  - updated Verify reality gate to open the left workbench dock before asserting signal-list visibility
+  - updated Export E2E gate to read artifact filenames from the current artifact tab name element, accept the current Vivado project ZIP layout (`basys3.xdc`, nested project paths), strip the generated RedByte ZIP wrapper banner before source comparisons, allow the clipped testbench preview to match the ZIP prefix, parse the current simple `PACKAGE_PIN` XDC format, and derive expected XDC port names from current IO labels/ids
+- Targeted stale gate assumptions fixed in:
+  - `scripts/gates/ide-canvas-lod-contract.mjs`
+  - `scripts/gates/ide-design-correctness-contract.mjs`
+  - `scripts/gates/ide-design-palette-build-contract.mjs`
+  - `scripts/gates/ide-design-wire-interaction-contract.mjs`
+  - `scripts/gates/ide-evidence-capsule-contract.mjs`
+  - `scripts/gates/ide-export-download-contract.mjs`
+  - `scripts/gates/ide-export-e2e-contract.mjs`
+  - `scripts/gates/ide-export-ready-contract.mjs`
+  - `scripts/gates/ide-project-health-live-contract.mjs`
+  - `scripts/gates/ide-student-loop-contract.mjs`
+  - `scripts/gates/ide-verify-reality-contract.mjs`
+  - `scripts/gates/ide-verify-trace-only-contract.mjs`
+
+### Validation
+
+- Focused gate reruns green during the sweep:
+  - `pnpm -s ide:gate:student-loop-contract`
+  - `pnpm -s ide:gate:design-wire-interaction-contract`
+  - `pnpm -s ide:gate:canvas-lod-contract`
+  - `pnpm -s ide:gate:design-correctness-contract`
+  - `pnpm -s ide:gate:design-palette-build-contract`
+  - `pnpm -s ide:gate:verify-reality-contract`
+  - `pnpm -s ide:gate:export-e2e-contract`
+  - `pnpm -s ide:gate:zip-import-contract`
+- Required local merge gate restored:
+  - `pnpm -s classroom:gate` PASS all steps
+
+### Release impact
+
+- PR `#76` now has a truthful local path to satisfy the required `Classroom Truth Gates` check
+- The remaining merge path is operational, not ambiguous: push updated canonical branch head, rerun PR checks, then merge to `main` when GitHub confirms green
+
 ## Change Log 2026-04-08 (Release Path — Classroom Truth Gates browser install fix)
 
 **Subsystem**: CI / PR merge path
