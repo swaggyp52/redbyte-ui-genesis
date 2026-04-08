@@ -4455,6 +4455,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           timingGuidance={effectiveTimingGuidance}
           postRunToolbarMode={postRunToolbarMode}
           detailsRef={scenarioBuilderDetailsRef}
+          initialExpanded={lastRun?.status === 'pass' && !isTraceOnly && failingRows.length === 0}
           hideExpectedLanes={!nextRunUsesAssertions}
         />
         </VerifyStimulusRegion>
