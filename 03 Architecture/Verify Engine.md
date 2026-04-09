@@ -668,3 +668,20 @@ Target (next slice): collapse `vectors`, `truth`, `kmap`, `details` into a singl
 | Tick readout strip | Output | Teal           | `rgba(46,196,182,0.9)`    |
 | Ghost lanes   | Stimulus group header | Steel-blue | `rgba(56,189,248,0.40)`  |
 | Ghost lanes   | Observed group header | Teal       | `rgba(46,196,182,0.55)`   |
+
+### Signal Key Bridge (2026-04-09, commit 4e7a8c3a)
+
+**Critical correctness contract**: IO row `id` ≠ circuit `nodeId`. Any code that bridges Verify data into the Design runtime sim must translate using `resolveVerifyInputNodeIds`.
+
+| Key type | Example value | Source | Used by |
+|----------|--------------|--------|---------|
+| IO row `id` | `"sw0"` | `ioMapping.inputs[n].id`, `vector.inputs` keys | vectors, `verifyReport.inputsAtTick` |
+| Circuit `nodeId` | `"sw0_node"` | `ioMapping.inputs[n].nodeId`, circuit `nodes[].id` | `projectRuntime.setInput(nodeId, v)` |
+
+**`verifyNodeIdBridge.ts`** — `resolveVerifyInputNodeIds(inputs, verifySignals)`:
+- Takes a `Record<string, 0|1>` keyed by IO row id (e.g. from `inputsAtTick`)
+- Looks up each key against `verifySignals` (the `{id, nodeId}` projection of `projectIoRows`)
+- Returns a new record keyed by `nodeId`; falls back to original key when no match
+- Applied in IdeApp before calling `setRuntimeSimInput` in both `onGoToDesignWithInputs` and `onPreviewVector`
+
+**`onGoToExport` wire**: `VerifySurface` declares `onGoToExport?: () => void` and renders a "Go to Export →" button when it is set and `hasSessionFailureEvidence`. IdeApp now passes `onGoToExport={() => setCurrentMode('export')}` — previously absent, making the button permanently invisible.
