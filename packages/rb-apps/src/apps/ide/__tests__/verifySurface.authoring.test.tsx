@@ -69,6 +69,9 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
       />
     );
 
+    // Open the checks view first — expected-output lanes are hidden by default in the stimulus-first model
+    fireEvent.click(getByTestId('ide-stimulus-checks-toggle'));
+
     const expectedSelect = getByTestId('ide-verify-add-vector-expected-ld0');
     expect(expectedSelect).toBeTruthy();
     expect((expectedSelect as HTMLSelectElement).value).toBe('');
@@ -113,6 +116,9 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
       />
     );
 
+    // Open the checks view first — expected-output lanes are hidden by default in the stimulus-first model
+    fireEvent.click(getByTestId('ide-stimulus-checks-toggle'));
+
     fireEvent.pointerDown(getByTestId('ide-stimulus-expected-ld0-t0'));
 
     expect(onVectorsChange).toHaveBeenCalledTimes(1);
@@ -142,8 +148,10 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
     );
 
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain(
-      'comparing against project vectors'
+      'checking project vectors'
     );
+    // Open the checks view so expected-output lanes render in the canvas
+    fireEvent.click(getByTestId('ide-stimulus-checks-toggle'));
     expect(getByTestId('ide-stimulus-expected-ld0-t0').getAttribute('title')).toContain(
       '1'
     );

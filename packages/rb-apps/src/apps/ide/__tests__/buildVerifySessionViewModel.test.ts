@@ -36,9 +36,9 @@ describe('buildVerifySessionViewModel', () => {
     expect(model.mode).toBe('simulation');
     expect(model.status).toBe('draft');
     expect(model.statusBadge).toBe('DRAFT');
-    expect(model.title).toBe('Ready to run this testbench');
-    expect(model.summary).toContain('Add expected outputs when you want Compare to check them.');
-    expect(model.runLabel).toBe('Run Testbench');
+    expect(model.title).toBe('Ready to run stimulus');
+    expect(model.summary).toContain('Add output checks only when you want Compare to verify');
+    expect(model.runLabel).toBe('Run stimulus');
   });
 
   it('treats first-run sessions with expected outputs armed as draft compare work', () => {
@@ -58,8 +58,8 @@ describe('buildVerifySessionViewModel', () => {
     expect(model.mode).toBe('assertion');
     expect(model.status).toBe('draft');
     expect(model.statusBadge).toBe('DRAFT');
-    expect(model.title).toBe('Ready to compare');
-    expect(model.runLabel).toBe('Run Compare');
+    expect(model.title).toBe('Ready to check outputs');
+    expect(model.runLabel).toBe('Compare');
     expect(model.recommendedNextAction).toBe('verify');
   });
 
@@ -148,7 +148,7 @@ describe('buildVerifySessionViewModel', () => {
 
     expect(model.mode).toBe('assertion');
     expect(model.status).toBe('assertions-differ');
-    expect(model.runLabel).toBe('Re-run Compare');
+    expect(model.runLabel).toBe('Compare again');
     expect(model.recommendedNextAction).toBe('verify');
   });
 
@@ -367,6 +367,6 @@ describe('buildVerifySessionViewModel', () => {
 
     expect(model.status).toBe('stale');
     expect(model.statusBadge).toBe('STALE');
-    expect(model.runLabel).toBe('Re-run for current circuit');
+    expect(model.runLabel).toBe('Re-run stimulus');
   });
 });
