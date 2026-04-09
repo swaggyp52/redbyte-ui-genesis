@@ -149,16 +149,16 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(getByTestId('ide-verify-empty-state').textContent).toContain(
-      'Only asserted expected cells will be checked when you run compare'
+      'Outputs are observed on the waveform'
     );
     expect(getByTestId('ide-verify-first-run-callout').textContent).toContain(
-      'Run Compare checks only the asserted expected cells'
+      'Compare only checks the output cells you explicitly saved'
     );
     expect(queryByTestId('ide-verify-generate-all-combos')).toBeNull();
-    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('comparing against project vectors');
+    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('saved output checks');
     expect(getByTestId('ide-verify-session-status').textContent).toContain('DRAFT');
-    expect(getByTestId('ide-verify-session-mode').textContent).toContain('COMPARE');
-    expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to compare');
+    expect(getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION');
+    expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to run stimulus');
     // footer run button removed (B-13 Phase 3) — header Run is canonical
     expect(queryByTestId('ide-verify-empty-run')).toBeNull();
     expect(queryByTestId('ide-verify-run')).toBeNull();
@@ -189,9 +189,9 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('observation only');
     expect(getByTestId('ide-verify-session-status').textContent).toContain('DRAFT');
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION');
-    expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to run this testbench');
+    expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to run stimulus');
     expect(getByTestId('ide-verify-empty-message').textContent).toContain(
-      'Add expected outputs when you want Compare to check them.'
+      'Outputs are observed on the waveform'
     );
     // footer run button removed (B-13 Phase 3) — header Run is canonical
     expect(queryByTestId('ide-verify-empty-run')).toBeNull();
@@ -563,13 +563,13 @@ describe('VerifySurface workstation controls', () => {
     fireEvent.click(getByTestId('ide-vcb-mode-observe'));
 
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain(
-      'saved expected outputs'
+      'saved output checks'
     );
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).not.toContain(
       'comparing against'
     );
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain(
-      'current mode is trace only'
+      'current mode is observe'
     );
   });
 
@@ -717,7 +717,7 @@ describe('VerifySurface workstation controls', () => {
       expect(getByTestId('ide-verify-strip-stale-guidance').textContent).toContain('Older authored reference available');
     });
     expect(getByTestId('ide-verify-session-status').textContent).toContain('STALE');
-    expect(getByTestId('ide-verify-reference-mode').textContent).toContain('stale authored reference');
+    expect(getByTestId('ide-verify-reference-mode').textContent).toContain('stale saved checks');
     expect(getByTestId('ide-verify-stale-reference-mode').textContent).toContain('stimulus-only tracing');
     expect(queryByTestId('ide-verify-stale-banner')).toBeNull();
     expect(queryByTestId('ide-verify-prerun-inventory')).toBeNull();

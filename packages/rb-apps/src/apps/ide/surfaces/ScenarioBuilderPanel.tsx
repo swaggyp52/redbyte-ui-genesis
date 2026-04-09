@@ -79,8 +79,9 @@ export interface ScenarioBuilderPanelProps {
   initialExpanded?: boolean;
   /** Increment to force the post-run workbench open from the parent. */
   expandSignal?: number;
-  /** Observe mode: hide expected-output lanes so students can only paint inputs. */
-  hideExpectedLanes?: boolean;
+  /** Optional output-check editor visibility. Default Verify keeps outputs on the waveform first. */
+  showExpectedOutputs?: boolean;
+  onToggleExpectedOutputs?: () => void;
 }
 
 function normalizeFieldId(value: string): string {
@@ -133,7 +134,8 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   detailsRef,
   initialExpanded,
   expandSignal,
-  hideExpectedLanes = false,
+  showExpectedOutputs = false,
+  onToggleExpectedOutputs,
 }) => {
   const effectiveVectorCount = totalVectorCount ?? authoredVectors.length;
   const hasVectors = effectiveVectorCount > 0;
@@ -158,7 +160,9 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           authoredVectors={authoredVectors}
           onVectorsChange={onVectorsChange}
           initialScrollTarget="top"
-          readOnlyOutputs={hideExpectedLanes}
+          showExpectedOutputs={showExpectedOutputs}
+          hasSavedExpectedOutputs={showsAssertedExpectedCells}
+          onToggleExpectedOutputs={onToggleExpectedOutputs}
         />
       ) : (
         <p className="ide-verify-section-subheader" style={{ padding: '12px' }}>
@@ -202,8 +206,10 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           outputFields={outputFields}
           authoredVectors={authoredVectors}
           onVectorsChange={onVectorsChange}
-          initialScrollTarget={hideExpectedLanes ? 'top' : 'expected'}
-          readOnlyOutputs={hideExpectedLanes}
+          initialScrollTarget={showExpectedOutputs ? 'expected' : 'top'}
+          showExpectedOutputs={showExpectedOutputs}
+          hasSavedExpectedOutputs={showsAssertedExpectedCells}
+          onToggleExpectedOutputs={onToggleExpectedOutputs}
         />
       ) : (
         /* Fallback: show legacy draft form if canvas prop not wired */
@@ -298,9 +304,9 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
                 </label>
               ))}
             </div>
-            {outputFields.length > 0 && !hideExpectedLanes && (
+            {outputFields.length > 0 && showExpectedOutputs && (
               <>
-                <p className="ide-verify-section-subheader">Expected outputs (optional)</p>
+                <p className="ide-verify-section-subheader">Output checks (optional)</p>
                 <div className="ide-verify-vector-grid ide-verify-vector-grid--expected">
                   {outputFields.map((field, index) => (
                     <label
@@ -483,10 +489,10 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             {isUsingFallbackSignals
               ? 'Map your circuit I/O before authoring a real testbench.'
               : hasVectors
-                ? showsAssertedExpectedCells
-                  ? 'Edit cells to refine this testbench. Only asserted expected cells will be checked when you run compare.'
-                  : 'Edit cells to refine this testbench. Add expected outputs when you want Compare to check them.'
-                : 'Click cells to build a testbench. Add expected outputs when you want Compare to check them.'}
+                ? showsAssertedExpectedCells && showExpectedOutputs
+                  ? 'Edit input stimulus here. Output checks are optional and only checked cells participate in Compare.'
+                  : 'Edit input stimulus here. Outputs are observed on the waveform. Open Checks only when you want Compare to verify them.'
+                : 'Click cells to build input stimulus. Outputs are observed on the waveform. Open Checks only when you want Compare to verify them.'}
           </span>
         </div>
 
@@ -516,9 +522,9 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             <p className="ide-copy" style={{ margin: 0 }}>
               {hasVectors
                 ? showsAssertedExpectedCells
-                  ? 'Run Compare checks only the asserted expected cells.'
-                  : 'Run this testbench first. Waveform inspection and capture tools stay available after you have real evidence.'
-                : 'Generate a starter set now, or use the timeline plus row and tick tools to author your own stimulus pattern.'}
+                  ? 'Run the current stimulus and inspect outputs on the waveform. Compare only checks the output cells you explicitly saved.'
+                  : 'Run this stimulus first. Waveform inspection and capture tools stay available after you have real evidence.'
+                : 'Generate a starter set now, or use the timeline plus row and tick tools to author input stimulus first.'}
             </p>
           </IdeCallout>
         </div>
@@ -528,7 +534,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           <div className="ide-verify-run-footer-status">
             {hasVectors && !isUsingFallbackSignals ? (
               <span className="ide-verify-run-footer-ready">
-                {effectiveVectorCount} vector{effectiveVectorCount !== 1 ? 's' : ''} {showsAssertedExpectedCells ? 'ready for compare' : 'ready to run'}
+                {effectiveVectorCount} vector{effectiveVectorCount !== 1 ? 's' : ''} {showsAssertedExpectedCells ? 'ready for observation or compare' : 'ready for observation'}
               </span>
             ) : (
               <span className="ide-verify-run-footer-hint">

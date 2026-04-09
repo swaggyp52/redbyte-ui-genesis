@@ -17,7 +17,11 @@ export interface StimulusCanvasProps {
   authoredVectors: VerifyAuthorVector[];
   onVectorsChange: (vectors: VerifyAuthorVector[]) => void;
   onNavigateToMapping?: () => void;
-  /** When true, expected-output lanes are hidden so students can only paint inputs (Observe mode). */
+  /** Optional checks/editor lane visibility. The default Verify flow keeps outputs on the waveform. */
+  showExpectedOutputs?: boolean;
+  hasSavedExpectedOutputs?: boolean;
+  onToggleExpectedOutputs?: () => void;
+  /** Compatibility escape hatch when a caller needs to force outputs read-only. */
   readOnlyOutputs?: boolean;
   initialScrollTarget?: 'top' | 'expected';
 }
@@ -267,6 +271,9 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   authoredVectors,
   onVectorsChange,
   onNavigateToMapping,
+  showExpectedOutputs = false,
+  hasSavedExpectedOutputs = false,
+  onToggleExpectedOutputs,
   readOnlyOutputs = false,
   initialScrollTarget = 'top',
 }) => {
@@ -294,12 +301,13 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
 
   const ticks = useMemo(() => uniqueSortedTicks(authoredVectors), [authoredVectors]);
   const totalW = LABEL_W + ticks.length * TICK_W + ADD_COL_W;
+  const expectedLanesVisible = !readOnlyOutputs && showExpectedOutputs && outputFields.length > 0;
   const laneOptions = useMemo<LaneOption[]>(
     () => [
       ...inputFields.map((field) => ({ key: `input:${field.id}`, kind: 'input' as const, fieldId: field.id, label: field.label })),
-      ...(readOnlyOutputs ? [] : outputFields.map((field) => ({ key: `expected:${field.id}`, kind: 'expected' as const, fieldId: field.id, label: field.label }))),
+      ...(expectedLanesVisible ? outputFields.map((field) => ({ key: `expected:${field.id}`, kind: 'expected' as const, fieldId: field.id, label: field.label })) : []),
     ],
-    [inputFields, outputFields, readOnlyOutputs]
+    [expectedLanesVisible, inputFields, outputFields]
   );
   const selectedLane = laneOptions.find((option) => option.key === selectedLaneKey) ?? laneOptions[0] ?? null;
 
@@ -473,7 +481,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
     let nestedFrame = 0;
     frame = window.requestAnimationFrame(() => {
       nestedFrame = window.requestAnimationFrame(() => {
-        if (initialScrollTarget !== 'expected' || readOnlyOutputs || outputFields.length === 0) {
+        if (initialScrollTarget !== 'expected' || !expectedLanesVisible) {
           scroller.scrollTop = 0;
           return;
         }
@@ -492,7 +500,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
       window.cancelAnimationFrame(frame);
       window.cancelAnimationFrame(nestedFrame);
     };
-  }, [authoredVectors.length, initialScrollTarget, outputFields.length, readOnlyOutputs]);
+  }, [authoredVectors.length, expectedLanesVisible, initialScrollTarget]);
 
   const handleCopyClipboard = useCallback(async () => {
     const text = buildClipboardText(latestVectorsRef.current, inputFields, outputFields);
@@ -516,6 +524,14 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
 
   const describeCase = useCallback((tick: number) => `Case ${tick + 1} (t${tick})`, []);
   const selectedCaseLabel = ticks.length > 0 ? describeCase(selectedTick) : 'Case 1 (t0)';
+  const checksButtonLabel = expectedLanesVisible
+    ? 'Hide checks'
+    : hasSavedExpectedOutputs
+      ? 'Edit checks'
+      : 'Add checks';
+  const checksNote = expectedLanesVisible
+    ? 'Only checked outputs participate in Compare'
+    : 'Outputs are observed on the waveform';
 
   if (inputFields.length === 0) {
     return (
@@ -549,6 +565,23 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
           <button type="button" className="ide-stimulus-mini-btn" onClick={() => { commitVectors((vectors) => duplicateTick(vectors, inputFields, selectedTick)); setSelectedTick((value) => value + 1); }} data-testid="ide-stimulus-duplicate-tick">Duplicate case</button>
           <button type="button" className="ide-stimulus-mini-btn" onClick={() => commitVectors((vectors) => removeTick(vectors, selectedTick))} disabled={ticks.length === 0} data-testid="ide-stimulus-delete-selected-tick">Delete case</button>
         </div>
+        {outputFields.length > 0 ? (
+          <div className="ide-stimulus-toolbar-group ide-stimulus-toolbar-group--checks" data-testid="ide-stimulus-checks-controls">
+            <span className="ide-stimulus-toolbar-label">Checks</span>
+            <button
+              type="button"
+              className="ide-stimulus-mini-btn"
+              onClick={onToggleExpectedOutputs}
+              data-testid="ide-stimulus-checks-toggle"
+              aria-expanded={expectedLanesVisible ? 'true' : 'false'}
+            >
+              {checksButtonLabel}
+            </button>
+            <span className="ide-stimulus-toolbar-note" data-testid="ide-stimulus-checks-note">
+              {checksNote}
+            </span>
+          </div>
+        ) : null}
         <div className="ide-stimulus-toolbar-group ide-stimulus-toolbar-group--advanced-toggle" data-testid="ide-stimulus-advanced-tools">
           <span className="ide-stimulus-toolbar-label">Advanced</span>
           <button
@@ -572,7 +605,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
           <div className="ide-stimulus-toolbar-group" data-testid="ide-stimulus-signal-edit">
             <span className="ide-stimulus-toolbar-label">Edit signal</span>
             <select className="ide-stimulus-target-select" value={selectedLane?.key ?? ''} onChange={(event) => setSelectedLaneKey(event.target.value)} data-testid="ide-stimulus-row-target">
-              {laneOptions.map((option) => <option key={option.key} value={option.key}>{option.kind === 'input' ? 'Stimulus' : 'Expected'}: {option.label}</option>)}
+              {laneOptions.map((option) => <option key={option.key} value={option.key}>{option.kind === 'input' ? 'Stimulus' : 'Check'}: {option.label}</option>)}
             </select>
             <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(0)} data-testid="ide-stimulus-row-fill-0">Fill 0</button>
             <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(1)} data-testid="ide-stimulus-row-fill-1">Fill 1</button>
@@ -661,10 +694,10 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
             <div style={{ width: ADD_COL_W, flexShrink: 0 }} />
           </div>
         ))}
-        {outputFields.length > 0 && !readOnlyOutputs ? (
+        {expectedLanesVisible ? (
           <>
             <div ref={expectedGroupRef} className="ide-stimulus-group-header ide-stimulus-group-header--asserted" style={{ display: 'flex', height: GROUP_H, alignItems: 'center', background: 'var(--rb-surface-2, transparent)' }}>
-              <div style={{ width: LABEL_W, flexShrink: 0, paddingLeft: 8, fontSize: '0.68em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>Expected outputs</div>
+              <div style={{ width: LABEL_W, flexShrink: 0, paddingLeft: 8, fontSize: '0.68em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>Output checks</div>
               {ticks.map((tick) => <div key={tick} style={{ width: TICK_W, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }} />)}
               <div style={{ width: ADD_COL_W, flexShrink: 0 }} />
             </div>

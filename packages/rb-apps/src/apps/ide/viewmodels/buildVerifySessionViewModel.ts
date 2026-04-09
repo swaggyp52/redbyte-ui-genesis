@@ -200,7 +200,7 @@ export function buildVerifySessionViewModel(
 
   const modeLabel =
     mode === 'assertion'
-      ? 'COMPARE'
+      ? 'CHECKS'
       : mode === 'capture'
         ? 'CAPTURE'
         : 'OBSERVE';
@@ -223,48 +223,48 @@ export function buildVerifySessionViewModel(
                   ? 'Comparing asserted outputs'
                   : 'Recording waveform'
                 : hasVectors
-                  ? mode === 'assertion'
-                    ? 'Ready to compare'
-                    : 'Ready to run this testbench'
+                ? mode === 'assertion'
+                    ? 'Ready to check outputs'
+                    : 'Ready to run stimulus'
                   : 'Build a testbench';
 
   const summary =
     status === 'assertions-match'
       ? input.lastRun?.qualification === 'incomplete-mapping'
         ? 'Every asserted output matched. Some board IO mappings are still incomplete — hardware tests may not agree until mapping is finished.'
-        : 'Every asserted output matched the observed design. Blank outputs were not compared.'
+        : 'Every checked output matched the observed design. Blank outputs were not compared.'
       : status === 'assertions-differ'
         ? input.failingRowCount === 1
-          ? 'One asserted output differs from what the live design produced. Inspect that difference before changing anything else.'
-          : `${input.failingRowCount} asserted outputs differ from what the live design produced. Start with the first difference.`
+          ? 'One checked output differs from what the live design produced. Inspect that difference before changing anything else.'
+          : `${input.failingRowCount} checked outputs differ from what the live design produced. Start with the first difference.`
         : status === 'assertions-incomplete'
-          ? 'Some outputs have expected values; others remain blank. Only the asserted outputs will be compared on the next run.'
+          ? 'Some outputs have saved checks; others remain observational. Only the checked outputs will be compared on the next run.'
           : status === 'stimulus-only'
             ? input.lastRun
-              ? 'You ran the current circuit, but no expected outputs are being checked. Capture observed outputs or author expected values when you want a real compare.'
-                : 'Run this testbench to see what the circuit does. Add expected outputs when you want Compare to check them.'
+              ? 'You ran the current stimulus and recorded waveform evidence. Save observed outputs as checks only when you want Compare to verify specific outputs.'
+                : 'Run this stimulus to see what the circuit does on the waveform. Add output checks only when you want Compare to verify specific outputs.'
             : status === 'stale'
               ? 'The circuit or testbench changed after the last run. Re-run before trusting the result.'
               : status === 'running'
                 ? mode === 'assertion'
-                  ? 'Comparing asserted outputs against the current live design. Blank outputs are not compared.'
+                  ? 'Comparing saved output checks against the current live design. Blank outputs are not compared.'
                   : 'Recording waveform data from the current live design.'
                 : hasVectors
                   ? mode === 'assertion'
-                    ? 'Expected outputs are loaded. Run the current circuit, then compare only the asserted outputs.'
-                      : 'Run this testbench to see how the circuit behaves. Add expected outputs when you want Compare to check them.'
-                    : 'Add ticks, input patterns, and optional expected outputs to build the first testbench.';
+                    ? 'Output checks are loaded. Compare only the outputs you intentionally saved as checks.'
+                      : 'Run this stimulus to see how the circuit behaves. Add output checks only when you want Compare to verify them.'
+                    : 'Add ticks and input patterns to build the first stimulus. Output checks stay optional.';
 
   const runLabel =
     input.isRunStale
-      ? 'Re-run for current circuit'
+      ? 'Re-run stimulus'
       : mode === 'assertion'
         ? input.lastRun
           ? 'Compare again'
           : 'Compare'
         : input.lastRun
-          ? 'Run circuit again'
-          : 'Run circuit';
+          ? 'Run stimulus again'
+          : 'Run stimulus';
 
   return {
     mode,

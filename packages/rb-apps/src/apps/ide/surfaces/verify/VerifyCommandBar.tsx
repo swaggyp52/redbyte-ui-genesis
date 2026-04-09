@@ -129,12 +129,12 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
             disabled={!compareAvailable}
             title={
               !compareAvailable
-                ? 'Run the circuit first, then save as expected to unlock Compare'
-                : 'Compare circuit outputs against expected values'
+                ? 'Run the stimulus first, then save observed outputs as checks to unlock Compare'
+                : 'Compare observed outputs against saved checks'
             }
             data-testid="ide-vcb-mode-compare"
           >
-            Compare
+            Check outputs
           </button>
         </div>
       </div>
@@ -168,7 +168,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
             onClick={onEditCases}
             testId="ide-verify-run-proof-edit-vectors"
           >
-            Edit cases
+            Edit checks
           </IdeButton>
         )}
         {showAnalysisToggle && onToggleAnalysis && (
@@ -198,7 +198,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
             onClick={onSaveAsExpected}
             testId="ide-vcb-save-expected"
           >
-            Save as expected
+            Save observed as checks
           </IdeButton>
         )}
       </div>

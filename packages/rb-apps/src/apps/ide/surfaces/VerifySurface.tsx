@@ -378,8 +378,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // Next-run compare intent. This is authoring state only; it does not describe
   // the meaning of the persisted run currently shown in Verify.
   const [nextRunUsesAssertions, setNextRunUsesAssertions] = useState(
-    () => getRuntimeVerifyRunKind(lastRun) === 'verify' || (!lastRun && totalExpectedCaseCount > 0)
+    () => getRuntimeVerifyRunKind(lastRun) === 'verify'
   );
+  const [showExpectedOutputs, setShowExpectedOutputs] = useState(false);
   const [sidePanelTab, setSidePanelTab] = useState<'mismatches' | 'vectors' | 'details'>('mismatches');
   const [showAllVectorTicks, setShowAllVectorTicks] = useState(false);
   const [oracleApplied, setOracleApplied] = useState(false);
@@ -975,14 +976,26 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [onFixPath]
   );
 
-  // Reveal the testbench editor (ScenarioBuilderPanel) which collapses post-run.
-  // Used by "Edit expected outputs" CTAs to route the student back into Verify authoring.
+  // Reveal the optional output-check editor inside the Stimulus Workbench.
+  // Used by compare/failure CTAs to route students into the secondary checks path.
   const handleEditExpectedOutputs = useCallback(() => {
+    setNextRunUsesAssertions(true);
+    setShowExpectedOutputs(true);
     const details = scenarioBuilderDetailsRef.current;
     requestScenarioBuilderExpand();
     if (details) {
       details.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+  }, [requestScenarioBuilderExpand]);
+  const handleToggleExpectedOutputs = useCallback(() => {
+    setShowExpectedOutputs((previous) => {
+      const next = !previous;
+      if (next) {
+        setNextRunUsesAssertions(true);
+        requestScenarioBuilderExpand();
+      }
+      return next;
+    });
   }, [requestScenarioBuilderExpand]);
   const handleThreePanelFailureSelect = useCallback(
     (failureKey: string) => {
@@ -3137,27 +3150,27 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const captureActionTone = primaryActionKind === 'capture' ? 'primary' : 'secondary';
   // ── B-12 Slice 3: canonical result zone ──────────────────────────────────────
   const emptyStateRunLabel = isDraftSession
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Run Compare' : 'Run Testbench')
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Run Compare' : 'Run stimulus')
     : verifySession.runLabel;
   const referenceModeLabel: string = hasStaleAuthoredReference
-    ? `Using stale authored reference (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'})`
+    ? `Using stale saved checks (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'})`
     : totalExpectedCaseCount === 0
-      ? 'Observation only — no expected outputs set'
+      ? 'Observation only — no output checks saved'
       : !nextRunUsesAssertions
-        ? `Saved expected outputs (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), current mode is trace only`
+        ? `Saved output checks (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), current mode is Observe`
         : authoredVectors.length > 0 && customVectorCount > 0
-          ? `Comparing against project + custom vectors (${totalVectorCount} total)`
+          ? `Checking project + custom vectors (${totalVectorCount} total)`
           : customVectorCount > 0
-            ? `Comparing against custom vectors (${customVectorCount})`
-            : `Comparing against project vectors (${authoredVectors.length})`;
+            ? `Checking custom vectors (${customVectorCount})`
+            : `Checking project vectors (${authoredVectors.length})`;
   const sessionModeBadge: string = !lastRun
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'COMPARE' : 'SIMULATION')
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'CHECKS' : 'SIMULATION')
     : isTraceOnly ? 'CAPTURE'
     : sessionStatus === 'assertions-match' || sessionStatus === 'assertions-differ' || sessionStatus === 'stale'
-      ? 'COMPARE'
+      ? 'CHECKS'
       : 'SIMULATION';
   const sessionTitle: string = !lastRun
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Ready to compare' : 'Ready to run this testbench')
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Ready to check outputs' : 'Ready to run stimulus')
     : isTraceOnly ? 'Waveform recorded — observation only'
     : sessionStatus === 'assertions-match' ? 'Assertions match'
     : sessionStatus === 'assertions-differ' ? 'Assertions failed'
@@ -3249,8 +3262,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         ? `Assertions differ in ${failingRows.length} of ${runRows.length} case${runRows.length === 1 ? '' : 's'}`
       : sessionStatus === 'stale'
           ? 'This page is showing an older Verify run'
-          : sessionShowsTraceEvidence
-            ? 'Observation only - expected outputs are not being checked'
+            : sessionShowsTraceEvidence
+            ? 'Observation only - output checks are not being used'
             : verifySession.title;
   const runProofSummary =
     sessionShowsAssertionMatch
@@ -3264,7 +3277,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             ? 'The visible waveform belongs to an older build. Verify has switched back to stimulus tracing so you can inspect the live circuit before re-authoring or intentionally reusing the older reference.'
             : 'The visible waveform belongs to the previously verified build hash. Re-run Verify so the evidence matches the current circuit again.'
       : sessionShowsTraceEvidence
-            ? 'This run recorded live waveform behavior only. Capture observed outputs or author expected values when you want a real compare.'
+            ? 'This run recorded live waveform behavior only. Save observed outputs as checks or reveal the checks editor when you want a real compare.'
             : verifySession.summary;
   const verifyLayoutPolicy = useMemo(
     () => {
@@ -4346,7 +4359,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           detailsRef={scenarioBuilderDetailsRef}
           initialExpanded={Boolean(lastRun)}
           expandSignal={scenarioBuilderExpandSignal}
-          hideExpectedLanes={!nextRunUsesAssertions}
+          showExpectedOutputs={showExpectedOutputs}
+          onToggleExpectedOutputs={handleToggleExpectedOutputs}
         />
         </VerifyStimulusRegion>
 
