@@ -133,18 +133,20 @@ describe('B-14 Panel Ownership — signals dock layout policy', () => {
     expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
   });
 
-  it('signals dock aside is present during a fail run (visible for debugging)', () => {
-    // Fail → leftDockMode: 'visible' → ide-left-dock aside in DOM with signal list
+  it('signals dock aside is collapsed to a rail during a fail run', () => {
+    // Fail → leftDockMode: 'collapsed' → no ide-left-dock aside in DOM by default
     const { getByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
     );
-    expect(getByTestId('ide-left-dock')).toBeTruthy();
+    expect(() => getByTestId('ide-left-dock')).toThrow();
+    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
   });
 
-  it('signals dock aside contains ide-verify-left-dock during fail run', () => {
+  it('signals dock can still be reopened from the collapsed fail-state rail', () => {
     const { getByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
     );
+    fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
     const dock = getByTestId('ide-left-dock');
     const verifyDock = dock.querySelector('[data-testid="ide-verify-left-dock"]');
     expect(verifyDock).toBeTruthy();

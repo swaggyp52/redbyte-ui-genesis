@@ -76,8 +76,8 @@ const baseProps = {
 };
 
 describe('VerifySurface layout workflow architecture', () => {
-  it('renders explicit header/stimulus/waveform/inspector regions', () => {
-    const { getByTestId } = render(
+  it('renders explicit header/stimulus/waveform regions while keeping analysis secondary by default', () => {
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         {...baseProps}
         deterministicHash="det-trace"
@@ -88,7 +88,8 @@ describe('VerifySurface layout workflow architecture', () => {
     expect(getByTestId('ide-verify-region-header')).toBeTruthy();
     expect(getByTestId('ide-verify-region-stimulus')).toBeTruthy();
     expect(getByTestId('ide-verify-region-waveform')).toBeTruthy();
-    expect(getByTestId('ide-verify-region-inspector')).toBeTruthy();
+    expect(getByTestId('ide-verify-drawer-toggle')).toBeTruthy();
+    expect(queryByTestId('ide-verify-region-inspector')).toBeNull();
   });
 
   it('hides mismatches tab in Observe mode and shows it in Compare mode', () => {

@@ -424,7 +424,8 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('CAPTURE');
     expect(getByTestId('ide-verify-session-title').textContent).toContain('Waveform recorded — observation only');
     expect(getByTestId('ide-verify-summary-status').textContent).toContain('OBSERVATION ONLY');
-    expect(getByTestId('ide-verify-run-proof').className).toContain('ide-verify-run-proof--trace');
+    expect(queryByTestId('ide-verify-run-proof')).toBeNull();
+    expect(getByTestId('ide-verify-drawer-toggle')).toBeTruthy();
     expect(getByTestId('ide-vcb-save-expected')).toBeTruthy();
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(queryByTestId('ide-left-dock')).toBeNull();
@@ -955,6 +956,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-mismatch-sampled-key').textContent).toContain('ld0_node.in');
     expect(getByTestId('ide-verify-mismatch-expected-key').textContent).toContain('ld0');
     fireEvent.click(getByTestId('ide-verify-explainer-show-mismatches'));
+    fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
     expect(getByTestId('ide-verify-signal-filter-state').textContent).toContain('mismatches');
   });
 

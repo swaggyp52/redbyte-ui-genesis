@@ -40,6 +40,16 @@ export interface VerifyCommandBarProps {
   readonly evidenceLabel?: string;
   readonly evidenceTone?: 'pass' | 'fail' | 'idle';
   readonly coverageLabel?: string;
+
+  /** Secondary analysis controls */
+  readonly showAnalysisToggle?: boolean;
+  readonly analysisOpen?: boolean;
+  readonly analysisHint?: string;
+  readonly onToggleAnalysis?: () => void;
+
+  /** Direct Verify recovery action */
+  readonly showEditCases?: boolean;
+  readonly onEditCases?: () => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -64,6 +74,12 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   evidenceLabel,
   evidenceTone,
   coverageLabel,
+  showAnalysisToggle,
+  analysisOpen,
+  analysisHint,
+  onToggleAnalysis,
+  showEditCases,
+  onEditCases,
 }) => {
   const toneClass =
     statusTone === 'ok' ? 'ide-vcb-status--ok'
@@ -145,6 +161,36 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           <span className="ide-vcb-seq-chip" data-testid="ide-vcb-seq-chip">
             Sequential
           </span>
+        )}
+        {showEditCases && onEditCases && (
+          <IdeButton
+            tone="ghost"
+            onClick={onEditCases}
+            testId="ide-verify-run-proof-edit-vectors"
+          >
+            Edit cases
+          </IdeButton>
+        )}
+        {showAnalysisToggle && onToggleAnalysis && (
+          <button
+            type="button"
+            className={`ide-vcb-analysis-toggle${analysisOpen ? ' is-open' : ''}`}
+            onClick={onToggleAnalysis}
+            data-testid="ide-verify-drawer-toggle"
+            aria-expanded={analysisOpen ? 'true' : 'false'}
+          >
+            <span className="ide-vcb-analysis-label">
+              {analysisOpen ? 'Hide analysis' : 'Analysis'}
+            </span>
+            {!analysisOpen && analysisHint && (
+              <span
+                className="ide-vcb-analysis-hint"
+                data-testid="ide-verify-drawer-hint"
+              >
+                {analysisHint}
+              </span>
+            )}
+          </button>
         )}
         {showSaveAsExpected && onSaveAsExpected && (
           <IdeButton

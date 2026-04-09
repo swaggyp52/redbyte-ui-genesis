@@ -319,6 +319,8 @@ describe('VerifySurface waveform lane priority', () => {
     expect(getByTestId('ide-verify-run-context-ticks_shown').textContent).toContain('Showing t0-t6 (fail window)');
     expect(getByTestId('ide-verify-run-context-why_these_ticks').textContent).toContain('t1');
 
+    fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
+
     // Inputs group is collapsed by default; expand it so inputs appear in the signal list and waveform lanes.
     fireEvent.click(getByTestId('ide-verify-group-toggle-inputs'));
 
@@ -360,6 +362,7 @@ describe('VerifySurface waveform lane priority', () => {
     );
 
     expect(queryByTestId('ide-assertion-canvas')).toBeNull();
+    fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     fireEvent.click(getAllByText('Vectors')[0]);
     fireEvent.click(getByTestId('ide-verify-failure-sum_8'));

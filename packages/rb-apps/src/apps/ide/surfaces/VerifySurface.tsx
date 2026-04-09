@@ -3113,17 +3113,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         : isDraftSession && draftPresentationStatus === 'NOT STARTED'
           ? 'warn'
           : verifySession.tone;
-  const runProofTone = sessionSignalsAssertionFailure
-    ? 'fail'
-    : sessionShowsAssertionMatch
-      ? 'pass'
-      : sessionStatus === 'stale'
-        ? 'stale'
-        : sessionStatus === 'running'
-          ? 'running'
-          : sessionShowsTraceEvidence
-            ? 'trace'
-            : 'draft';
   const hasSessionFailureEvidence =
     sessionSignalsAssertionFailure && failingRows.length > 0;
   // Keep failure analysis secondary so the editor + waveform remain the primary
@@ -3277,7 +3266,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     () => {
       if (sessionSignalsAssertionFailure) {
         return {
-          leftDockMode: 'visible' as const,
+          leftDockMode: 'collapsed' as const,
           rightDockMode: 'collapsed' as const,
           consoleMode: 'auto' as const,
         };
@@ -3406,6 +3395,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     mappingComplete,
     onSwitchScenario,
     runVerification,
+  ]);
+
+  const analysisDrawerHint = useMemo(() => {
+    if (!hasSessionFailureEvidence || !selectedFailureCase) return undefined;
+    return `Focus ${selectedFailureDisplayLabel ?? selectedFailureCase.signal} at t${selectedFailureCase.tick}`;
+  }, [
+    hasSessionFailureEvidence,
+    selectedFailureCase,
+    selectedFailureDisplayLabel,
   ]);
 
   return (
@@ -3912,6 +3910,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 : undefined
           }
           coverageLabel={commandBarCoverageLabel}
+          showAnalysisToggle={Boolean(lastRun)}
+          analysisOpen={drawerOpen}
+          analysisHint={analysisDrawerHint}
+          onToggleAnalysis={() => setDrawerOpen((prev) => !prev)}
+          showEditCases={hasSessionFailureEvidence}
+          onEditCases={handleEditExpectedOutputs}
         />
         )}
         </VerifyHeaderRegion>
@@ -4776,62 +4780,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               ) : null}
             />
 
-            {Boolean(lastRun) && <div className={`ide-verify-supporting-strip ${drawerOpen ? 'is-open' : ''}`} data-zone="inspector" data-testid="ide-verify-region-inspector">
-            {/* Drawer toggle header — only shown after first run */}
-            <button
-              type="button"
-              className="ide-verify-drawer-toggle"
-              onClick={() => setDrawerOpen((prev) => !prev)}
-              data-testid="ide-verify-drawer-toggle"
-              aria-expanded={drawerOpen}
-            >
-              <span className="ide-verify-drawer-summary">
+            {Boolean(lastRun) && drawerOpen && <div className="ide-verify-supporting-strip is-open" data-zone="inspector" data-testid="ide-verify-region-inspector">
+            <div className="ide-verify-drawer-body">
+            <nav className="ide-verify-analysis-tab-nav" data-testid="ide-verify-analysis-tab-nav">
+              <div className="ide-verify-drawer-toolbar" data-testid="ide-verify-tab-bar">
                 {hasSessionFailureEvidence && (
                   <span className="ide-verify-drawer-badge">{failingRows.length} fail</span>
                 )}
-                {hasSessionFailureEvidence && !drawerOpen && selectedFailureCase && (
-                  <span className="ide-verify-drawer-hint" data-testid="ide-verify-drawer-hint">
-                    Focus {selectedFailureDisplayLabel ?? selectedFailureCase.signal} at t{selectedFailureCase.tick}
+                {analysisDrawerHint && (
+                  <span className="ide-verify-drawer-open-hint">
+                    {analysisDrawerHint}
                   </span>
                 )}
-                {Boolean(lastRun) && (
-                  <span className="ide-verify-drawer-tabs" data-testid="ide-verify-tab-bar">
-                    {drawerTabs.map((tab) => (
-                      <span
-                        key={tab}
-                        className={`ide-verify-drawer-tab ${verifyTab === tab ? 'is-active' : ''}`}
-                        onClick={(event) => { event.stopPropagation(); setVerifyTab(tab); setDrawerOpen(true); }}
-                      >
-                        {tab === 'why'
-                          ? 'Why'
-                          : tab === 'mismatches'
-                            ? 'Mismatches'
-                            : tab === 'vectors'
-                              ? 'Vectors'
-                              : tab === 'truth'
-                                ? 'Truth Table'
-                                : tab === 'kmap'
-                                  ? 'K-Map'
-                                  : 'Details'}
-                      </span>
-                    ))}
-                  </span>
-                )}
-              </span>
-              <span className="ide-verify-drawer-label" aria-hidden="true">
-                {drawerOpen ? 'Hide analysis' : 'Show analysis'}
-              </span>
-              <span className="ide-verify-drawer-chevron" aria-hidden="true">
-                {drawerOpen ? '▾' : '▸'}
-              </span>
-            </button>
-
-            {/* Drawer body — only rendered when open */}
-            {drawerOpen && (
-            <>
-            <div className="ide-verify-drawer-body">
-            {/* Prominent tab navigation — visible immediately when drawer opens */}
-            <nav className="ide-verify-analysis-tab-nav" data-testid="ide-verify-analysis-tab-nav">
+              </div>
               {drawerTabs.map((tab) => (
                 <button
                   key={tab}
@@ -5339,72 +5300,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               )}
             </div>
             </div>
-            </>
-            )}
             </div>}
           </div>}
-          {lastRun && !sessionShowsAssertionMatch && (
-            <section
-              className={`ide-verify-run-proof ide-verify-run-proof--${runProofTone}`}
-              data-testid="ide-verify-run-proof"
-            >
-              <div className="ide-verify-run-proof-main">
-                <div className="ide-verify-run-proof-copy">
-                  <span className="ide-verify-run-proof-eyebrow">Verify run evidence</span>
-                  <strong className="ide-verify-run-proof-title">{runProofTitle}</strong>
-                  <p className="ide-verify-run-proof-summary">{runProofSummary}</p>
-                  <p className="ide-verify-run-proof-authority" data-testid="ide-verify-authority-note">
-                    <strong>Authoritative:</strong>{' '}
-                    {isRunStale
-                      ? `the waveform below belongs to build ${shortenHash(lastRun.deterministicHash)}, while the current circuit is ${shortenHash(deterministicHash)}.`
-                      : 'the compare result comes from this deterministic Verify run. Design trace is for debug only and does not affect trust status.'}
-                  </p>
-                </div>
-                <div className="ide-verify-run-proof-actions">
-                  {hasSessionFailureEvidence && (
-                    <>
-                      <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-run-proof-inspect">
-                        Inspect first mismatch
-                      </IdeButton>
-                      <IdeButton tone="secondary" onClick={handleEditExpectedOutputs} testId="ide-verify-run-proof-edit-vectors">
-                        Edit expected outputs
-                      </IdeButton>
-                      {onGoToDesign && (
-                        <IdeButton tone="ghost" onClick={onGoToDesign} testId="ide-verify-run-proof-design">
-                          Open in Design
-                        </IdeButton>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-              <dl className="ide-verify-run-proof-grid">
-                {runProofFacts.map((fact) => (
-                  <div key={fact.label} className="ide-verify-run-proof-item">
-                    <dt>{fact.label}</dt>
-                    <dd title={fact.fullValue}>
-                      {fact.label.includes('build') || fact.label.includes('hash') ? <code>{fact.value}</code> : fact.value}
-                    </dd>
-                  </div>
-                ))}
-                {lastRun.qualification === 'incomplete-mapping' && unmappedOutputLabels.length > 0 && (
-                  <div className="ide-verify-run-proof-item ide-verify-run-proof-item--warning">
-                    <dt>Unmapped outputs</dt>
-                    <dd data-testid="ide-verify-incomplete-output-names">
-                      {unmappedOutputLabels.slice(0, 3).join(', ')}
-                      {unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''}
-                    </dd>
-                  </div>
-                )}
-                {oracleApplied && (
-                  <div className="ide-verify-run-proof-item ide-verify-run-proof-item--accent">
-                    <dt>Expected outputs</dt>
-                    <dd data-testid="ide-verify-oracle-badge">Locked from observed run</dd>
-                  </div>
-                )}
-              </dl>
-            </section>
-          )}
         </div>
         </VerifyWorkspaceRegion>
       </IdePanel>

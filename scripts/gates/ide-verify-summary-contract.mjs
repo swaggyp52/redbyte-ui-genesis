@@ -21,7 +21,7 @@ await runIdeGate('IDE verify summary contract satisfied', async ({ page, baseUrl
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
 
-  await page.locator('[data-testid="ide-verify-run"]').click();
+  await page.locator('[data-testid="ide-vcb-run"]').first().click();
   await waitForVerifyResult(page, { timeout: 10000 });
 
   const statusText = await text(page.locator('[data-testid="ide-verify-summary-status"]'));
@@ -31,7 +31,7 @@ await runIdeGate('IDE verify summary contract satisfied', async ({ page, baseUrl
     const failEvidence = `${failStrip} ${bannerText}`.trim();
 
     const jumpFirst = page
-      .locator('[data-testid="ide-verify-jump-first-failure"], [data-testid="ide-verify-run-proof-inspect"]')
+      .locator('[data-testid="ide-verify-jump-first-failure"], [data-testid="ide-verify-fail-nav-first"]')
       .first();
     const jumpVisible = await jumpFirst.isVisible().catch(() => false);
     const selectedTickVisible = await page

@@ -1,5 +1,71 @@
 # AI State
 
+## Change Log 2026-04-09 (Major Verify desktop overhaul: collapsed signal rail, drawer-only secondary analysis, no bottom fail slab)
+
+**Subsystem**: Verify / desktop composition / fail-state hierarchy
+
+### Problem
+
+Even after the earlier desktop-width and waveform-priority slices, Verify still felt like an over-paneled internal tool in fail state:
+
+- the left signals dock still stayed open by default and kept stealing width from the main workbench/evidence split
+- the bottom non-pass run-proof slab still behaved like another large panel competing with the editor and waveform
+- the analysis drawer state still advertised itself through a full-width supporting strip instead of a compact secondary control
+- the page still read like editor + waveform + more panels, rather than one workspace with secondary analysis on demand
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - fail-state desktop layout now defaults `leftDockMode` to `collapsed`, so Verify opens on the narrow rail instead of a permanently open signals dock
+  - moved analysis access into the command strip with `ide-verify-drawer-toggle` and a compact focus hint (`Focus LD0 at t0`)
+  - removed the always-visible non-pass `ide-verify-run-proof` slab from the main composition
+  - changed the analysis drawer so it only renders as secondary content when explicitly opened, with a compact drawer toolbar instead of a full-width supporting strip
+- `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyCommandBar.tsx`
+  - added a compact analysis toggle and fail-context hint to the top command strip
+  - added a direct `Edit cases` recovery action in the command bar for mismatch recovery without reviving the old bottom slab
+- `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+  - Verify now uses `Signals` language for the collapsed left rail and dock toggle instead of the generic library wording
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - compressed the analysis/drawer affordances into a lighter top-strip treatment
+  - reduced the default desktop stimulus-column width so the waveform gets a meaningfully larger share of the visible workspace
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx`
+  - now asserts failed compare runs collapse the left dock by default and keep the rail toggle available
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx`
+  - now asserts the non-pass run-proof slab is gone and the left dock is not visible by default
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx`
+  - now asserts analysis stays secondary until explicitly opened
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - updated the fail-state interaction path to reopen the left rail only when a signals-filter interaction truly needs it
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx`
+  - updated fail-state evidence assertions to account for the default-collapsed dock behavior
+- `scripts/gates/ide-verify-summary-contract.mjs`
+  - aligned the summary gate with the current header-run contract (`ide-vcb-run`) and compact fail-summary path
+
+### Validation
+
+- Focused Verify validation:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx`
+  - result: `62` tests passed
+- Local playground build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- Browser contracts:
+  - `node scripts/gates/ide-verify-workbench-contract.mjs`
+  - result: PASS
+  - `node scripts/gates/ide-verify-summary-contract.mjs`
+  - result: PASS
+- Local preview audit on `Signal Tour: Switches → LEDs` fail state:
+  - `1366x768`, `1536x864`, `1600x900`, `1920x1080` all keep the left dock collapsed by default, keep the analysis drawer closed by default, and keep the bottom fail slab absent
+  - `1366x768` screenshot now reads as a narrow signals rail + workbench + waveform, with no secondary bottom panel competing for the main workspace
+
+### Release impact
+
+- Verify now behaves more like one deliberate desktop workspace in fail state: edit on the left, inspect waveform evidence on the right, open deeper analysis only when needed.
+- The old bottom failure slab is gone, and the left dock no longer claims width by default on tighter desktop viewports.
+- The next Verify slice should stay inside the remaining secondary layer: drawer IA and any further evidence/readability polish, not a return to broad page rescue.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-04-09 (Verify composition overhaul: waveform primary, comparison grid secondary)
 
 **Subsystem**: Verify / desktop composition / evidence hierarchy

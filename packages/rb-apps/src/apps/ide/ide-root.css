@@ -19346,6 +19346,16 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   overflow: hidden;
 }
 
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='wide'] .ide-verify-workspace > .ide-verify-region--stimulus {
+  flex-basis: 430px;
+  max-width: 430px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='standard'] .ide-verify-workspace > .ide-verify-region--stimulus {
+  flex-basis: 400px;
+  max-width: 400px;
+}
+
 /* Right panel: waveform fills remaining width */
 .ide-verify-workspace > .ide-verify-region--waveform {
   flex: 1 1 0;
@@ -24267,6 +24277,45 @@ button:disabled,
   cursor: not-allowed;
 }
 
+.ide-vcb-analysis-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.16);
+  background: rgba(8, 18, 31, 0.82);
+  color: rgba(226, 232, 240, 0.88);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+
+.ide-vcb-analysis-toggle:hover,
+.ide-vcb-analysis-toggle:focus-visible {
+  border-color: rgba(56, 189, 248, 0.32);
+  background: rgba(10, 22, 36, 0.94);
+  color: rgba(248, 250, 252, 0.96);
+}
+
+.ide-vcb-analysis-toggle.is-open {
+  border-color: rgba(56, 189, 248, 0.3);
+  background: rgba(9, 23, 37, 0.98);
+}
+
+.ide-vcb-analysis-label {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ide-vcb-analysis-hint {
+  color: rgba(191, 219, 254, 0.78);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
 /* Status chip */
 .ide-vcb-status {
   display: inline-flex;
@@ -25676,4 +25725,27 @@ button:disabled,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-hint {
   font-size: 10px;
   color: rgba(191, 219, 254, 0.8);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-supporting-strip {
+  margin-top: 10px;
+  border-top: 1px solid rgba(24, 44, 70, 0.45);
+  background: linear-gradient(180deg, rgba(5, 11, 20, 0.96), rgba(3, 7, 15, 0.98));
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-body {
+  padding-top: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-open-hint {
+  color: rgba(191, 219, 254, 0.78);
+  font-size: 10px;
+  white-space: nowrap;
 }

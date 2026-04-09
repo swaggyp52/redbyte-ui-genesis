@@ -91,6 +91,13 @@ The latest Verify composition overhaul made the evidence area stop competing wit
 - browser validation at `1366x768`, `1536x864`, `1600x900`, and `1920x1080` confirmed the main failure-state composition is now editor + waveform only, with the secondary comparison grid absent from the primary workspace by default
 - the Verify browser contract now explicitly guards that hierarchy: the waveform preview must stay meaningfully visible at desktop width, and the read-only assertion grid must only appear once the analysis drawer is opened
 
+The latest major desktop overhaul then removed the remaining fail-state panel clutter:
+
+- fail-state desktop Verify now collapses the left signals dock by default, leaving only the narrow `Signals` rail toggle visible until the student intentionally opens the dock
+- the old non-pass run-proof slab is gone from the main composition; mismatch recovery now stays on the command strip (`Edit cases`) and the secondary analysis drawer rather than introducing another full-width panel
+- the analysis drawer is now truly secondary by default: the closed state is just a compact command-strip toggle with a focused hint (`Focus LD0 at t0`), while the full drawer body only appears when explicitly opened
+- the stimulus column was narrowed again so the default fail-state desktop composition now reads as narrow signals rail + workbench + waveform, instead of dock + workbench + waveform + bottom slab
+
 ## Mode Detection (B-12 Slice 1)
 
 `verifyMode.ts` provides the canonical circuit mode gate, replacing the previous `hasDff: boolean` prop.

@@ -42,7 +42,10 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
     );
 
     expect(getByTestId('ide-verify-summary-status').textContent).toContain('ASSERTIONS DIFFER');
-    expect(getByTestId('ide-verify-failure-explainer')).toBeTruthy();
+    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(queryByTestId('ide-verify-run-proof')).toBeNull();
+    expect(queryByTestId('ide-verify-failure-explainer')).toBeNull();
     expect(queryByTestId('ide-verify-fail-summary-inline')).toBeNull();
   });
 
@@ -64,7 +67,7 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
   });
 
   it('keeps fail evidence visible after switching the next-run toggle back to trace intent', () => {
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -74,11 +77,11 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-assertion-mode-toggle'));
+    fireEvent.click(getByTestId('ide-vcb-mode-observe'));
 
-    expect(getByTestId('ide-verify-assertion-mode-toggle').textContent).toContain('Mode: Trace Only');
+    expect(getByTestId('ide-vcb-mode-observe').className).toContain('is-active');
     expect(getByTestId('ide-verify-summary-status').textContent).toContain('ASSERTIONS DIFFER');
-    expect(getByTestId('ide-verify-run-proof').className).toContain('ide-verify-run-proof--fail');
-    expect(getByTestId('ide-verify-failure-explainer')).toBeTruthy();
+    expect(queryByTestId('ide-verify-run-proof')).toBeNull();
+    expect(queryByTestId('ide-verify-failure-explainer')).toBeNull();
   });
 });

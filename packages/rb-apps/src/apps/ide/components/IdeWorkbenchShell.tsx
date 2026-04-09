@@ -174,6 +174,9 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     (policy.rightDockMode === 'visible' || isRightDockExpanded);
   const showRightCollapsedRail = policy.rightDockMode === 'collapsed' && !isRightDockExpanded;
   const showConsole = policy.consoleMode !== 'hidden';
+  const leftRailLabel = mode === 'verify' ? 'Signals' : 'Library';
+  const leftRailAriaLabel = mode === 'verify' ? 'Show signals' : 'Show library';
+  const leftCollapseAriaLabel = mode === 'verify' ? 'Collapse signals' : 'Collapse library';
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -411,8 +414,8 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
                 className="ide-workbench-dock-collapse-btn ide-workbench-dock-collapse-btn-left"
                 data-testid="ide-workbench-dock-collapse-left"
                 onClick={() => setIsLeftDockExpanded(false)}
-                aria-label="Collapse library"
-                title="Collapse library"
+                aria-label={leftCollapseAriaLabel}
+                title={leftCollapseAriaLabel}
               >
                 Hide
               </button>
@@ -425,10 +428,10 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             className="ide-workbench-dock-toggle-rail ide-workbench-dock-toggle-rail-left"
             data-testid="ide-workbench-dock-toggle-left"
             onClick={() => setIsLeftDockExpanded(true)}
-            aria-label="Show library"
-            title="Show library"
+            aria-label={leftRailAriaLabel}
+            title={leftRailAriaLabel}
           >
-            Library
+            {leftRailLabel}
           </button>
         ) : (
           <div
