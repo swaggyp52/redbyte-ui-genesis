@@ -279,6 +279,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   const [hoveredTick, setHoveredTick] = useState<number | null>(null);
   const [selectedTick, setSelectedTick] = useState(0);
   const [selectedLaneKey, setSelectedLaneKey] = useState('');
+  const [advancedToolsOpen, setAdvancedToolsOpen] = useState(false);
   const [paintSession, setPaintSession] = useState<PaintSession | null>(null);
 
   useEffect(() => {
@@ -514,6 +515,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   }, [inputFields, onVectorsChange, outputFields]);
 
   const describeCase = useCallback((tick: number) => `Case ${tick + 1} (t${tick})`, []);
+  const selectedCaseLabel = ticks.length > 0 ? describeCase(selectedTick) : 'Case 1 (t0)';
 
   if (inputFields.length === 0) {
     return (
@@ -535,57 +537,95 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   return (
     <div className="ide-stimulus-canvas" data-testid="ide-stimulus-canvas" style={{ userSelect: 'none' }} ref={canvasRootRef}>
       <div className="ide-stimulus-toolbar" data-testid="ide-stimulus-toolbar">
-        <div className="ide-stimulus-toolbar-group">
-          <span className="ide-stimulus-toolbar-label">Selected signal</span>
-          <select className="ide-stimulus-target-select" value={selectedLane?.key ?? ''} onChange={(event) => setSelectedLaneKey(event.target.value)} data-testid="ide-stimulus-row-target">
-            {laneOptions.map((option) => <option key={option.key} value={option.key}>{option.kind === 'input' ? 'Stimulus' : 'Expected'}: {option.label}</option>)}
-          </select>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(0)} data-testid="ide-stimulus-row-fill-0">Fill 0</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(1)} data-testid="ide-stimulus-row-fill-1">Fill 1</button>
-          {selectedLane?.kind === 'input' ? (
-            <>
-              <button type="button" className="ide-stimulus-mini-btn" onClick={handleRowToggle} data-testid="ide-stimulus-row-toggle">Toggle</button>
-              <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleInputPattern((index) => index % 2 === 0 ? 0 : 1)} data-testid="ide-stimulus-pattern-alternating">Alternating</button>
-              <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleInputPattern((index) => Math.floor(index / 2) % 2 === 0 ? 0 : 1)} data-testid="ide-stimulus-pattern-clock">Clock pattern</button>
-            </>
-          ) : (
-            <button type="button" className="ide-stimulus-mini-btn" onClick={handleExpectedClear} data-testid="ide-stimulus-row-clear">Clear</button>
-          )}
-        </div>
-        <div className="ide-stimulus-toolbar-group">
-          <span className="ide-stimulus-toolbar-label">Selected case</span>
+        <div className="ide-stimulus-toolbar-group" data-testid="ide-stimulus-case-actions">
+          <span className="ide-stimulus-toolbar-label">Cases</span>
+          <span className="ide-stimulus-selection-chip" data-testid="ide-stimulus-selected-case-chip">
+            Selected: {selectedCaseLabel}
+          </span>
           <select className="ide-stimulus-target-select" value={String(selectedTick)} onChange={(event) => setSelectedTick(Number(event.target.value || '0'))} data-testid="ide-stimulus-tick-target">
             {(ticks.length > 0 ? ticks : [0]).map((tick) => <option key={tick} value={tick}>{describeCase(tick)}</option>)}
           </select>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('fill0')} data-testid="ide-stimulus-column-fill-0">Fill 0</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('fill1')} data-testid="ide-stimulus-column-fill-1">Fill 1</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('toggle')} data-testid="ide-stimulus-column-toggle">Toggle</button>
+          <button type="button" className="ide-stimulus-mini-btn ide-stimulus-mini-btn--primary" onClick={() => commitVectors((vectors) => appendTick(vectors, inputFields))} data-testid="ide-stimulus-add-tick">Add case</button>
           <button type="button" className="ide-stimulus-mini-btn" onClick={() => { commitVectors((vectors) => duplicateTick(vectors, inputFields, selectedTick)); setSelectedTick((value) => value + 1); }} data-testid="ide-stimulus-duplicate-tick">Duplicate case</button>
           <button type="button" className="ide-stimulus-mini-btn" onClick={() => commitVectors((vectors) => removeTick(vectors, selectedTick))} disabled={ticks.length === 0} data-testid="ide-stimulus-delete-selected-tick">Delete case</button>
         </div>
-        <div className="ide-stimulus-toolbar-group">
-          <span className="ide-stimulus-toolbar-label">Case setup</span>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={handleBinaryCount} data-testid="ide-stimulus-pattern-binary">Binary count</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => commitVectors((vectors) => appendTick(vectors, inputFields))} data-testid="ide-stimulus-add-tick">Add case</button>
-          <span className="ide-stimulus-toolbar-note">Click or drag cells to edit cases</span>
-        </div>
-        <div className="ide-stimulus-toolbar-group">
-          <span className="ide-stimulus-toolbar-label">Clipboard</span>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => { void handleCopyClipboard(); }} data-testid="ide-stimulus-copy-grid">Copy TSV</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => { void handlePasteClipboard(); }} data-testid="ide-stimulus-paste-grid">Paste TSV</button>
+        <div className="ide-stimulus-toolbar-group ide-stimulus-toolbar-group--advanced-toggle" data-testid="ide-stimulus-advanced-tools">
+          <span className="ide-stimulus-toolbar-label">Advanced</span>
+          <button
+            type="button"
+            className="ide-stimulus-mini-btn"
+            aria-expanded={advancedToolsOpen}
+            onClick={() => setAdvancedToolsOpen((value) => !value)}
+            data-testid="ide-stimulus-advanced-tools-toggle"
+          >
+            {advancedToolsOpen ? 'Hide advanced tools' : 'Show advanced tools'}
+          </button>
+          <span className="ide-stimulus-toolbar-note">Patterns, fill, clipboard</span>
         </div>
       </div>
+      {advancedToolsOpen ? (
+        <div className="ide-stimulus-advanced-tools-panel" data-testid="ide-stimulus-advanced-tools-panel">
+          <div className="ide-stimulus-toolbar-group">
+            <span className="ide-stimulus-toolbar-label">Case patterns</span>
+            <button type="button" className="ide-stimulus-mini-btn" onClick={handleBinaryCount} data-testid="ide-stimulus-pattern-binary">Binary count</button>
+          </div>
+          <div className="ide-stimulus-toolbar-group" data-testid="ide-stimulus-signal-edit">
+            <span className="ide-stimulus-toolbar-label">Edit signal</span>
+            <select className="ide-stimulus-target-select" value={selectedLane?.key ?? ''} onChange={(event) => setSelectedLaneKey(event.target.value)} data-testid="ide-stimulus-row-target">
+              {laneOptions.map((option) => <option key={option.key} value={option.key}>{option.kind === 'input' ? 'Stimulus' : 'Expected'}: {option.label}</option>)}
+            </select>
+            <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(0)} data-testid="ide-stimulus-row-fill-0">Fill 0</button>
+            <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(1)} data-testid="ide-stimulus-row-fill-1">Fill 1</button>
+            {selectedLane?.kind === 'input' ? (
+              <>
+                <button type="button" className="ide-stimulus-mini-btn" onClick={handleRowToggle} data-testid="ide-stimulus-row-toggle">Toggle</button>
+                <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleInputPattern((index) => index % 2 === 0 ? 0 : 1)} data-testid="ide-stimulus-pattern-alternating">Alternating</button>
+                <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleInputPattern((index) => Math.floor(index / 2) % 2 === 0 ? 0 : 1)} data-testid="ide-stimulus-pattern-clock">Clock pattern</button>
+              </>
+            ) : (
+              <button type="button" className="ide-stimulus-mini-btn" onClick={handleExpectedClear} data-testid="ide-stimulus-row-clear">Clear</button>
+            )}
+          </div>
+          <div className="ide-stimulus-toolbar-group" data-testid="ide-stimulus-case-edit">
+            <span className="ide-stimulus-toolbar-label">Edit case</span>
+            <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('fill0')} data-testid="ide-stimulus-column-fill-0">Fill 0</button>
+            <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('fill1')} data-testid="ide-stimulus-column-fill-1">Fill 1</button>
+            <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleColumnChange('toggle')} data-testid="ide-stimulus-column-toggle">Toggle</button>
+          </div>
+          <div className="ide-stimulus-toolbar-group">
+            <span className="ide-stimulus-toolbar-label">Clipboard</span>
+            <button type="button" className="ide-stimulus-mini-btn" onClick={() => { void handleCopyClipboard(); }} data-testid="ide-stimulus-copy-grid">Copy TSV</button>
+            <button type="button" className="ide-stimulus-mini-btn" onClick={() => { void handlePasteClipboard(); }} data-testid="ide-stimulus-paste-grid">Paste TSV</button>
+          </div>
+        </div>
+      ) : null}
       <div className="ide-stimulus-grid-scroll" ref={gridScrollRef}>
         <div style={{ minWidth: totalW, position: 'relative' }}>
-        <div className="ide-stimulus-row ide-stimulus-row--header" style={{ display: 'flex', height: GROUP_H + 8, alignItems: 'center' }}>
+        <div className="ide-stimulus-row ide-stimulus-row--header" style={{ display: 'flex', height: GROUP_H + 12, alignItems: 'stretch' }}>
           <div style={{ width: LABEL_W, flexShrink: 0 }} />
           {ticks.map((tick) => (
-            <div key={tick} className={`ide-stimulus-tick-header${selectedTick === tick ? ' is-selected' : ''}`} style={{ width: TICK_W, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', fontSize: '0.72em', fontFamily: 'var(--rb-font-mono, monospace)', cursor: 'pointer' }} onMouseEnter={() => setHoveredTick(tick)} onMouseLeave={() => setHoveredTick(null)} onClick={() => setSelectedTick(tick)}>
-              t{tick}
-              {hoveredTick === tick ? (
-                <div className="ide-stimulus-tick-actions">
-                  <button type="button" onClick={(event) => { event.stopPropagation(); commitVectors((vectors) => duplicateTick(vectors, inputFields, tick)); setSelectedTick(tick + 1); }} data-testid={`ide-stimulus-duplicate-tick-${tick}`}>+</button>
-                  <button type="button" onClick={(event) => { event.stopPropagation(); commitVectors((vectors) => removeTick(vectors, tick)); }} data-testid={`ide-stimulus-delete-tick-${tick}`}>x</button>
+            <div key={tick} className={`ide-stimulus-tick-header${selectedTick === tick ? ' is-selected' : ''}`} style={{ width: TICK_W, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', position: 'relative', fontSize: '0.72em', fontFamily: 'var(--rb-font-mono, monospace)', cursor: 'pointer' }} onMouseEnter={() => setHoveredTick(tick)} onMouseLeave={() => setHoveredTick(null)} onClick={() => setSelectedTick(tick)}>
+              <span className="ide-stimulus-tick-title">Case {tick + 1}</span>
+              {selectedTick === tick || hoveredTick === tick ? (
+                <div className={`ide-stimulus-tick-actions${selectedTick === tick ? ' is-pinned' : ''}`}>
+                  <button
+                    type="button"
+                    aria-label={`Duplicate ${describeCase(tick)}`}
+                    title={`Duplicate ${describeCase(tick)}`}
+                    onClick={(event) => { event.stopPropagation(); commitVectors((vectors) => duplicateTick(vectors, inputFields, tick)); setSelectedTick(tick + 1); }}
+                    data-testid={`ide-stimulus-duplicate-tick-${tick}`}
+                  >
+                    Dup
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${describeCase(tick)}`}
+                    title={`Delete ${describeCase(tick)}`}
+                    onClick={(event) => { event.stopPropagation(); commitVectors((vectors) => removeTick(vectors, tick)); }}
+                    data-testid={`ide-stimulus-delete-tick-${tick}`}
+                  >
+                    Del
+                  </button>
                 </div>
               ) : null}
             </div>

@@ -22613,8 +22613,9 @@ button:disabled,
   gap: 8px;
   padding: 5px 10px;
   background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(56, 189, 248, 0.1);
-  border-radius: 6px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.18);
+  border-left: 3px solid rgba(56, 189, 248, 0.45);
+  border-radius: 0;
   flex-shrink: 0;
 }
 
@@ -23574,12 +23575,30 @@ button:disabled,
   gap: 0.35rem;
 }
 
+.ide-stimulus-toolbar-group--advanced-toggle {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
 .ide-stimulus-toolbar-label {
   font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(191, 219, 254, 0.68);
+}
+
+.ide-stimulus-selection-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.95rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.14);
+  color: #dbeafe;
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
 .ide-stimulus-target-select {
@@ -23610,9 +23629,30 @@ button:disabled,
   cursor: not-allowed;
 }
 
+.ide-stimulus-mini-btn--primary {
+  border-color: rgba(96, 165, 250, 0.42);
+  background: rgba(37, 99, 235, 0.22);
+  color: #bfdbfe;
+  font-weight: 500;
+}
+
+.ide-stimulus-mini-btn--primary:hover:not(:disabled) {
+  border-color: rgba(96, 165, 250, 0.65);
+  background: rgba(37, 99, 235, 0.35);
+}
+
 .ide-stimulus-toolbar-note {
   font-size: 0.72rem;
   color: rgba(191, 219, 254, 0.62);
+}
+
+.ide-stimulus-advanced-tools-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.75rem;
+  padding: 0.55rem;
+  border-bottom: 1px solid rgba(96, 165, 250, 0.14);
+  background: rgba(5, 14, 26, 0.72);
 }
 
 .ide-stimulus-label-cell.is-selected,
@@ -23623,25 +23663,43 @@ button:disabled,
 
 .ide-stimulus-tick-header.is-selected {
   color: #f8fbff !important;
-  background: rgba(59, 130, 246, 0.12);
+  background: rgba(59, 130, 246, 0.22);
+  border-top: 2px solid rgba(96, 165, 250, 0.55);
+}
+
+.ide-stimulus-tick-title {
+  display: block;
+  text-align: center;
+  line-height: 1.1;
 }
 
 .ide-stimulus-tick-actions {
-  position: absolute;
-  top: 0.1rem;
-  right: 0.2rem;
   display: flex;
   gap: 0.2rem;
+  justify-content: center;
+  margin-top: 0.2rem;
+  opacity: 0.9;
+}
+
+.ide-stimulus-tick-actions.is-pinned {
+  opacity: 1;
 }
 
 .ide-stimulus-tick-actions button {
-  border: none;
+  border: 1px solid rgba(96, 165, 250, 0.22);
   border-radius: 0.3rem;
-  background: rgba(15, 23, 42, 0.86);
-  color: #cbd5f5;
+  background: rgba(15, 23, 42, 0.92);
+  color: #dbeafe;
   cursor: pointer;
-  padding: 0 0.25rem;
-  line-height: 1rem;
+  min-width: 1.7rem;
+  padding: 0.05rem 0.25rem;
+  font-size: 0.58rem;
+  line-height: 0.95rem;
+}
+
+.ide-stimulus-tick-actions button:hover {
+  border-color: rgba(96, 165, 250, 0.42);
+  background: rgba(30, 41, 59, 0.96);
 }
 
 /* ─── UX Polish Pass — Change 3: Stale-not-failure sub-note ──────────── */
@@ -25318,8 +25376,8 @@ button:disabled,
 }
 
 /* ── 4. Workspace panel tone differentiation ──────────────────────
-   Stimulus = "authoring space" (slightly lighter, edit-focused)
-   Waveform = "evidence space" (deep terminal dark, immutable) */
+   Stimulus = "authoring space" — sky-blue left accent marks the editable workbench
+   Waveform = "evidence space" — deep terminal dark, amber accent on scope header */
 .ide-verify-workspace > .ide-verify-region--stimulus {
   background: rgba(4, 10, 21, 0.93) !important;
   border-right: 1px solid rgba(20, 38, 62, 0.65) !important;
@@ -25328,10 +25386,11 @@ button:disabled,
   background: rgba(1, 3, 10, 0.99) !important;
 }
 
-/* ── 5. Oscilloscope scope header: strong instrument frame ───────── */
+/* ── 5. Oscilloscope scope header: amber instrument frame (evidence readout) ── */
 .ide-verify-workspace .ide-verify-scope-header {
   background: rgba(2, 7, 18, 0.98) !important;
-  border-bottom: 1px solid rgba(56, 189, 248, 0.13) !important;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.22) !important;
+  border-left: 3px solid rgba(245, 158, 11, 0.42) !important;
   padding: 6px 14px !important;
   min-height: 34px !important;
 }
@@ -25339,7 +25398,7 @@ button:disabled,
   font-size: 10px !important;
   letter-spacing: 0.12em !important;
   text-transform: uppercase !important;
-  color: rgba(56, 189, 248, 0.62) !important;
+  color: rgba(245, 158, 11, 0.72) !important;
   font-weight: 700 !important;
 }
 

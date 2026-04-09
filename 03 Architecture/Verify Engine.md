@@ -169,12 +169,14 @@ Signal lane chips: `ide-verify-prerun-lanes` container with `ide-verify-lane-chi
 
 VerifySurface renders four canonical regions, each a `<section>` with `data-zone` and `data-testid` from `VerifyRegionLayout.tsx`:
 
-| Region | data-zone | data-testid | Contents |
-|--------|-----------|-------------|----------|
-| `VerifyHeaderRegion` | `header` | `ide-verify-region-header` | Status strip, command bar, assertion-mode toggle |
-| `VerifyResultRegion` | `result` | `ide-verify-region-result` | PASS hero, failure context panels (fail-diagnosis, hint, readiness-strip, export-note, oracle-note, preview-banner) |
-| `VerifyStimulusRegion` | `stimulus` | `ide-verify-region-stimulus` | Entry states, sequential helpers, vectors zone, scenario picker, ScenarioBuilderPanel |
-| `VerifyWaveformRegion` | `waveform` | `ide-verify-region-waveform` | Waveform viewer, fail nav, results table |
+| Region | data-zone | data-testid | data-region-role | Contents |
+|--------|-----------|-------------|-----------------|----------|
+| `VerifyHeaderRegion` | `header` | `ide-verify-region-header` | — | Status strip, command bar, assertion-mode toggle |
+| `VerifyResultRegion` | `result` | `ide-verify-region-result` | — | PASS hero, failure context panels (fail-diagnosis, hint, readiness-strip, export-note, oracle-note, preview-banner) |
+| `VerifyStimulusRegion` | `stimulus` | `ide-verify-region-stimulus` | `authoring` | Entry states, sequential helpers, vectors zone, scenario picker, ScenarioBuilderPanel |
+| waveform (raw `div`) | `waveform` | `ide-verify-region-waveform` | `evidence` | Waveform viewer, fail nav, results table |
+
+> **Note**: The waveform region is a raw `<div>` in `VerifySurface.tsx`, not the exported `VerifyWaveformRegion` component. `VerifyWaveformRegion` exists in `VerifyRegionLayout.tsx` but is currently unused. Both have the same testid and classnames.
 
 **VerifyResultRegion** was added in B-13 Phase 1. Previously the result/failure context panels floated between `VerifyHeaderRegion` and `VerifyStimulusRegion` with no structural wrapper. Wrapping them provides semantic identity and enables layout scoping without logic changes.
 
@@ -202,6 +204,74 @@ One surface owns each user action. No duplicates remain.
 | first-run, no vectors | ✅ shown (orientation) | ✅ shown |
 | first-run, vectors exist | ❌ hidden | ✅ shown (primary) |
 | post-run (any) | ❌ hidden (was already hidden) | ✅ shown |
+
+### Action Row Hierarchy (B-14)
+
+`VerifyCommandBar` DOM order: `[actions | mode | status+save-expected]`. Run is leftmost/primary, mode toggle is secondary center, save-as-expected is a ghost utility in the right status group.
+
+**CSS contracts**: Inactive mode button — `opacity: 0.42`, smaller padding. Save-expected in status group — `font-size: 11px`, `opacity: 0.68`. All testids preserved: `ide-vcb-run`, `ide-vcb-mode-observe`, `ide-vcb-mode-compare`, `ide-vcb-save-expected`.
+
+### Matrix Differentiation (B-14)
+
+Machine-readable role attributes lock the authoring vs. evidence identity contract. Visual differentiation: sky-blue = authoring canvas, amber = evidence readout.
+
+| Element | data-region-role | Visual accent |
+|---------|-----------------|---------------|
+| `VerifyStimulusRegion` | `authoring` | sky-blue left-border strip header |
+| waveform `div` | `evidence` | amber left-border on scope header |
+| `ide-verify-testbench-zone-header` (pre-run) | `authoring-header` | — |
+| `ide-verify-workbench-header` summary (post-run) | `authoring-header` | sky-blue left-border strip (no card radius) |
+| `ide-verify-scope-header` | `evidence-header` | amber border-left + amber scope-label text |
+
+**CSS decisions**:
+- `ide-verify-workbench-header`: `border-radius: 0` (was `6px`). Now a panel header strip, not a card widget.
+- `.ide-verify-scope-label`: `rgba(245,158,11,0.72)` amber (was sky-blue) — immediately distinguishes waveform as captured evidence, not editable.
+- Scope-header bottom-border: amber `rgba(245,158,11,0.22)` (was sky-blue).
+
+**Decision**: amber chosen for evidence because it reads as "instrument/readout" rather than "interactive". Sky-blue reserved for authoring/interactive surfaces throughout the IDE.
+
+### Row Authoring Clarity (B-14)
+
+`StimulusCanvas` toolbar groups restructured so the three primary case-management actions are first and visually prominent.
+
+**Group order** (left → right):
+1. **Cases** (`data-testid="ide-stimulus-case-actions"`) — Add case (primary), Duplicate case, Delete case, case dropdown, Binary count
+2. **Edit signal** (`data-testid="ide-stimulus-signal-edit"`) — signal dropdown, Fill 0/1, Toggle, Alternating, Clock pattern / Clear
+3. **Edit case** (`data-testid="ide-stimulus-case-edit"`) — column Fill 0/1, Toggle
+4. **Clipboard** — Copy TSV, Paste TSV
+
+**Before**: Add case was the 9th button (buried in "Case setup" group). "Selected case" and "Case setup" co-mingled selection, column-fill, and case-management with equal visual weight.
+
+**Column headers**: changed from `t{tick}` (internal tick index) to `Case {tick + 1}` (student-facing language).
+
+**CSS**: `ide-stimulus-mini-btn--primary` — navy fill + increased font weight for Add case. Selected column highlight: `rgba(59,130,246,0.22)` (was 0.12) + 2px top border accent.
+
+### Inline Case Affordances + Advanced Tools Disclosure (B-14 follow-up)
+
+The visible `StimulusCanvas` workbench now separates **everyday case editing** from **power-user transforms** instead of letting both compete in one toolbar.
+
+**Primary visible controls**:
+- `ide-stimulus-case-actions` now keeps only case ownership + direct case actions above the fold:
+  - `ide-stimulus-selected-case-chip`
+  - `ide-stimulus-tick-target`
+  - `ide-stimulus-add-tick`
+  - `ide-stimulus-duplicate-tick`
+  - `ide-stimulus-delete-selected-tick`
+- selected case headers keep pinned inline actions visible for the active case:
+  - `ide-stimulus-duplicate-tick-{tick}`
+  - `ide-stimulus-delete-tick-{tick}`
+- those inline actions still appear on hover for non-selected cases, but the selected case no longer depends on hover-only micro-controls
+
+**Advanced disclosure contract**:
+- non-core transforms now live behind `ide-stimulus-advanced-tools-toggle`
+- the expanded panel container is `ide-stimulus-advanced-tools-panel`
+- the advanced panel owns:
+  - binary-count generation
+  - signal fill / toggle / alternating / clock-pattern helpers
+  - case-wide fill / toggle transforms
+  - TSV clipboard import/export
+
+**Student-facing rule**: the workbench should read `select case -> edit cells -> add / duplicate / delete -> run`, while patterns/fill/clipboard stay available but clearly secondary.
 
 ---
 
@@ -308,6 +378,7 @@ assertions-differ
 - The waveform viewport is the evidence-layout authority. Any overlay that claims to align with it must consume the same visible tick window and the same runtime tick width.
 - The waveform frame should not spend prime viewport height on information already visible in the scope itself. Repeated legends, explainer copy, digest chips, and readout tables belong outside the live evidence area or in tooltips/drawers.
 - PASS evidence must include both mapped stimulus inputs and observed outputs in the default viewport whenever no mismatches are present.
+- `data-region-role` attributes are the machine-readable contract for Verify region identity. `authoring` marks the editable stimulus workspace; `evidence` marks the captured waveform readout. Header nodes within those regions carry `authoring-header` / `evidence-header` respectively. CSS accent color follows: sky-blue = authoring, amber = evidence. Do not reuse amber for interactive/editable elements.
 
 ## Failure Taxonomy And Routing
 
@@ -390,6 +461,7 @@ The current repo state does **not** support deleting `projectVectors` outright y
   - B-13 Phase 2: frontend dedup. Removed `ide-vfr-run` (VerifyFirstRunPanel), `ide-vfr-seq-presets` (VerifyFirstRunPanel), `ide-verify-workbench-run` (ScenarioBuilderPanel postrun). Canonical Run = `ide-vcb-run`. Canonical sequential helper = `ide-verify-sequential-helper`.
   - B-13 Phase 3: removed `ide-verify-run` from ScenarioBuilderPanel first-run footer. Run ownership fully singular — `ide-vcb-run` is the only Run action in Verify.
   - B-14 Slice 1: `VerifyFirstRunPanel` suppressed when `totalVectorCount > 0`. Hero steps aside; StimulusCanvas is immediately primary when vectors exist. Contract test: `verifySurface.caseEditorClarity.test.tsx` (5 tests).
+  - B-14 Row Authoring Clarity: toolbar group order changed — Cases group (Add/Dup/Del/Binary count) is now first; "Selected signal" → "Edit signal"; "Selected case" → "Edit case". Column headers changed from `t{tick}` to `Case {tick + 1}`. Add case button carries `ide-stimulus-mini-btn--primary` CSS.
   - the remaining local split is mostly draft-only `READY` / `BLOCKED` presentation plus compatibility `projectVectors` paths
 - `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
   - first-run footer/copy now consumes authoritative vector/assertion counts from `VerifySurface` instead of inferring readiness from project-authored vectors alone

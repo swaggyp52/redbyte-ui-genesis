@@ -10,7 +10,7 @@ afterEach(() => {
 
 describe('StimulusCanvas bulk editing tools', () => {
   it('uses case language for the primary case-editing affordances', () => {
-    const { getByText, getByRole } = render(
+    const { getByRole, getByTestId } = render(
       <StimulusCanvas
         inputFields={[{ id: 'sw0', label: 'SW0' }]}
         outputFields={[{ id: 'ld0', label: 'LD0' }]}
@@ -22,10 +22,10 @@ describe('StimulusCanvas bulk editing tools', () => {
       />
     );
 
-    expect(getByText('Selected case')).toBeTruthy();
     expect(getByRole('button', { name: 'Add case' })).toBeTruthy();
     expect(getByRole('button', { name: 'Duplicate case' })).toBeTruthy();
     expect(getByRole('button', { name: 'Delete case' })).toBeTruthy();
+    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 1');
   });
 
   it('fills a selected stimulus row across all ticks', () => {
@@ -42,6 +42,7 @@ describe('StimulusCanvas bulk editing tools', () => {
       />
     );
 
+    fireEvent.click(getByTestId('ide-stimulus-advanced-tools-toggle'));
     fireEvent.change(getByTestId('ide-stimulus-row-target'), {
       target: { value: 'input:sw0' },
     });
@@ -68,6 +69,7 @@ describe('StimulusCanvas bulk editing tools', () => {
       />
     );
 
+    fireEvent.click(getByTestId('ide-stimulus-advanced-tools-toggle'));
     fireEvent.click(getByTestId('ide-stimulus-pattern-binary'));
 
     const nextVectors = onVectorsChange.mock.calls[0]?.[0];
@@ -128,6 +130,7 @@ describe('StimulusCanvas bulk editing tools', () => {
       />
     );
 
+    fireEvent.click(getByTestId('ide-stimulus-advanced-tools-toggle'));
     fireEvent.click(getByTestId('ide-stimulus-copy-grid'));
 
     await waitFor(() => {
@@ -154,6 +157,7 @@ describe('StimulusCanvas bulk editing tools', () => {
       />
     );
 
+    fireEvent.click(getByTestId('ide-stimulus-advanced-tools-toggle'));
     fireEvent.click(getByTestId('ide-stimulus-paste-grid'));
 
     await waitFor(() => {

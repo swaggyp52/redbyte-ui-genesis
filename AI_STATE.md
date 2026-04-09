@@ -1,5 +1,50 @@
 # AI State
 
+## Change Log 2026-04-08 (Verify inline case affordances and advanced-tools disclosure)
+
+**Subsystem**: Verify / Stimulus Workbench / case-editor ergonomics
+
+### Problem
+
+After the desktop hierarchy and row-authoring passes, the Verify workbench was more understandable but still too busy in the wrong places:
+
+- the selected case was clearer conceptually, but the actual per-case header actions still relied on hover-only micro-buttons
+- bulk fill, pattern helpers, and TSV clipboard tools still competed with everyday case editing as if they were equally primary
+- the top of the workbench still mixed beginner actions and power-user transforms into one flat toolbar
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/components/StimulusCanvas.tsx`
+  - keeps the primary toolbar focused on case ownership and direct case actions only
+  - adds `ide-stimulus-selected-case-chip` so the active case is always explicit
+  - pins duplicate/delete controls onto the selected case header so inline case actions no longer depend on hover
+  - moves binary-count, row-fill, case-fill, pattern, and clipboard tooling behind `ide-stimulus-advanced-tools-toggle`
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - styles the selected-case chip and the new advanced-tools disclosure so the everyday vs. advanced split reads clearly
+  - strengthens the selected case header actions so they remain visible and actionable in the active column
+- `packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.rowAuthoringClarity.test.tsx`
+  - now asserts selected-case ownership is visible without hover
+  - now asserts advanced tools stay hidden until the disclosure is opened
+- `packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.test.tsx`
+  - updated tool-usage tests to open the advanced-tools disclosure before using binary-count and TSV clipboard actions
+
+### Validation
+
+- Focused Verify/component validation:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.test.tsx packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.rowAuthoringClarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - result: `44` tests passed
+- Local playground build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+
+### Release impact
+
+- The workbench now makes the active case and its direct actions obvious at a glance instead of hiding them behind hover-only micro-controls.
+- Everyday case editing stays primary, while bulk/pattern/clipboard tooling is still available but clearly secondary.
+- The next Verify slice should stay on authoring ergonomics: explicit inline add-near-current affordances, remaining top-chrome compression, and evidence/detail polish only after the editor loop feels complete.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-04-08 (Verify desktop workbench professionalization)
 
 **Subsystem**: Verify / desktop workbench / failure-state hierarchy
