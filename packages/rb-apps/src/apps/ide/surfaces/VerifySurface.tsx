@@ -80,6 +80,7 @@ import { WhyInspectorPanel } from './verify/WhyInspectorPanel';
 import { VerifyCommandBar } from './verify/VerifyCommandBar';
 import { VerifyFirstRunPanel } from './verify/VerifyFirstRunPanel';
 import { VerifyWaveformPlaceholder } from './verify/VerifyWaveformPlaceholder';
+import { TickReadoutStrip } from './verify/TickReadoutStrip';
 
 interface VerifyRow {
   tick: number;
@@ -4783,6 +4784,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </div>
                   </section>
                 )}
+                {/* Tick Readout Strip — compact value bar, visible when a tick is selected (non-step mode) */}
+                {selectedTick !== null && lastRun && !isStepMode && displaySignalTimeline.length > 0 && (
+                  <TickReadoutStrip
+                    tick={selectedTick}
+                    signals={displaySignalTimeline}
+                    signalGroups={laneGroupBySignal}
+                  />
+                )}
               </div>
             </section>
 
@@ -4839,8 +4848,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   className={`ide-verify-analysis-tab${verifyTab === tab ? ' is-active' : ''}`}
                   onClick={() => setVerifyTab(tab)}
                 >
-                  {tab === 'why' ? 'Why'
-                    : tab === 'mismatches' ? 'Mismatches'
+                  {tab === 'why' ? 'Inspect'
+                    : tab === 'mismatches' ? 'Checks'
                     : tab === 'vectors' ? 'Vectors'
                     : tab === 'truth' ? 'Truth Table'
                     : tab === 'kmap' ? 'K-Map'
