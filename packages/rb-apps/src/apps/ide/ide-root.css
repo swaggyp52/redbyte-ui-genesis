@@ -24128,8 +24128,14 @@ button:disabled,
   font-weight: 500;
   padding: 4px 14px;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition: background 0.12s, color 0.12s, opacity 0.12s;
   white-space: nowrap;
+}
+/* Inactive mode button: ghost weight — the active state IS the label */
+.ide-vcb-mode-btn:not(.is-active) {
+  opacity: 0.42;
+  font-size: 11px;
+  padding: 4px 10px;
 }
 .ide-vcb-mode-btn:hover:not(:disabled) {
   background: rgba(59, 130, 246, 0.12);
@@ -25390,4 +25396,21 @@ button:disabled,
 .ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='standard'] .ide-workbench-dock-left,
 .ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='wide'] .ide-workbench-dock-left {
   padding: 6px 4px !important;
+}
+
+/* ── 10. Action row hierarchy: save-expected demoted to ghost utility ──
+   Now lives in the status group (right side), appears at ghost weight.
+   Run stays the only prominent action on the left. */
+.ide-vcb-group--status .ide-button {
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+  opacity: 0.68;
+  transition: opacity 0.12s;
+}
+.ide-vcb-group--status .ide-button:hover {
+  opacity: 1;
+}
+/* Inactive mode button: hover restores full opacity temporarily */
+.ide-vcb-mode-btn:not(.is-active):hover:not(:disabled) {
+  opacity: 1;
 }

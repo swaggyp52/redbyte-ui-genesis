@@ -73,7 +73,29 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
 
   return (
     <div className="ide-verify-command-bar" data-testid="ide-verify-command-bar">
-      {/* Left: mode toggle */}
+      {/* Left: primary loop actions — Run is the first visible control */}
+      <div className="ide-vcb-group ide-vcb-group--actions">
+        {showGenerate && (
+          <IdeButton
+            tone="secondary"
+            onClick={onGenerate}
+            testId="ide-vcb-generate"
+          >
+            {generateLabel}
+          </IdeButton>
+        )}
+        <IdeButton
+          tone="primary"
+          onClick={onRun}
+          disabled={runDisabled}
+          testId="ide-vcb-run"
+          className={runPulsing ? 'is-pulsing' : undefined}
+        >
+          {runLabel}
+        </IdeButton>
+      </div>
+
+      {/* Center: mode toggle — secondary context, rarely changes mid-session */}
       <div className="ide-vcb-group ide-vcb-group--mode">
         <div className="ide-vcb-mode-toggle" data-testid="ide-vcb-mode-toggle">
           <button
@@ -101,38 +123,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
         </div>
       </div>
 
-      {/* Center: primary actions */}
-      <div className="ide-vcb-group ide-vcb-group--actions">
-        {showGenerate && (
-          <IdeButton
-            tone="secondary"
-            onClick={onGenerate}
-            testId="ide-vcb-generate"
-          >
-            {generateLabel}
-          </IdeButton>
-        )}
-        <IdeButton
-          tone="primary"
-          onClick={onRun}
-          disabled={runDisabled}
-          testId="ide-vcb-run"
-          className={runPulsing ? 'is-pulsing' : undefined}
-        >
-          {runLabel}
-        </IdeButton>
-        {showSaveAsExpected && onSaveAsExpected && (
-          <IdeButton
-            tone="secondary"
-            onClick={onSaveAsExpected}
-            testId="ide-vcb-save-expected"
-          >
-            Save as expected
-          </IdeButton>
-        )}
-      </div>
-
-      {/* Right: status + evidence */}
+      {/* Right: status chips + utility actions (ghost weight) */}
       <div className="ide-vcb-group ide-vcb-group--status">
         <span className={`ide-vcb-status ${toneClass}`} data-testid="ide-vcb-status">
           {statusLabel}
@@ -154,6 +145,15 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           <span className="ide-vcb-seq-chip" data-testid="ide-vcb-seq-chip">
             Sequential
           </span>
+        )}
+        {showSaveAsExpected && onSaveAsExpected && (
+          <IdeButton
+            tone="ghost"
+            onClick={onSaveAsExpected}
+            testId="ide-vcb-save-expected"
+          >
+            Save as expected
+          </IdeButton>
         )}
       </div>
     </div>
