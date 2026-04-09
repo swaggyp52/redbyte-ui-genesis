@@ -165,11 +165,16 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
 
             {ghostRows.map((row, i) => {
               if (row.kind === 'group-header') {
+                const isObserved = row.label === 'Observed';
                 return (
-                  <g key={`gh-${i}`}>
+                  <g key={`gh-${i}`} data-testid={`ide-verify-waveform-ghost-group-${row.label.toLowerCase()}`}>
                     <rect x={0} y={row.y} width={GHOST_LABEL_W + GHOST_TRACK_W} height={20} fill="rgba(6,16,30,0.82)" />
-                    <line x1={0} y1={row.y} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={row.y} stroke="rgba(56,189,248,0.10)" strokeWidth={1} />
-                    <text x={10} y={row.y + 13} fill="rgba(56,189,248,0.40)" fontSize={9} fontWeight={700} letterSpacing={2}>
+                    <line x1={0} y1={row.y} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={row.y}
+                      stroke={isObserved ? 'rgba(46,196,182,0.15)' : 'rgba(56,189,248,0.10)'}
+                      strokeWidth={1} />
+                    <text x={10} y={row.y + 13}
+                      fill={isObserved ? 'rgba(46,196,182,0.55)' : 'rgba(56,189,248,0.40)'}
+                      fontSize={9} fontWeight={700} letterSpacing={2}>
                       {row.label.toUpperCase()}
                     </text>
                   </g>

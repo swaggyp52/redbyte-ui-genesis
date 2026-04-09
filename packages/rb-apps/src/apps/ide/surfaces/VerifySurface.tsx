@@ -3952,6 +3952,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           onEditCases={handleEditExpectedOutputs}
           showGoToDesign={Boolean(lastRun) && (Boolean(onGoToDesign) || Boolean(onGoToDesignWithInputs))}
           onGoToDesign={handleGoToDesignFromVerify}
+          goToDesignTick={selectedTick}
         />
         )}
         </VerifyHeaderRegion>

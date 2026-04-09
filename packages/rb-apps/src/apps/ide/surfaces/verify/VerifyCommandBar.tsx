@@ -54,6 +54,8 @@ export interface VerifyCommandBarProps {
   /** Verify → Design continuity bridge */
   readonly showGoToDesign?: boolean;
   readonly onGoToDesign?: () => void;
+  /** Selected tick whose inputs will be injected when opening Design */
+  readonly goToDesignTick?: number | null;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -86,6 +88,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   onEditCases,
   showGoToDesign,
   onGoToDesign,
+  goToDesignTick,
 }) => {
   const toneClass =
     statusTone === 'ok' ? 'ide-vcb-status--ok'
@@ -208,13 +211,24 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           </IdeButton>
         )}
         {showGoToDesign && onGoToDesign && (
-          <IdeButton
-            tone="ghost"
-            onClick={onGoToDesign}
-            testId="ide-verify-inspect-design"
-          >
-            Open in Design
-          </IdeButton>
+          <span className="ide-vcb-design-bridge">
+            {goToDesignTick != null && (
+              <span
+                className="ide-vcb-design-tick-chip"
+                data-testid="ide-vcb-design-tick-chip"
+                title={`Open Design with inputs from tick t${goToDesignTick}`}
+              >
+                t{goToDesignTick}
+              </span>
+            )}
+            <IdeButton
+              tone="ghost"
+              onClick={onGoToDesign}
+              testId="ide-verify-inspect-design"
+            >
+              Open in Design
+            </IdeButton>
+          </span>
         )}
       </div>
     </div>
