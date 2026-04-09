@@ -84,6 +84,13 @@ The latest waveform/detail micro-IA slice tightened the evidence band itself:
 - the closed analysis drawer hint now stays focused on the selected mismatch target (`Focus LD0 at t0`) instead of repeating expected/observed detail that already exists in the evidence band and mismatch drawer
 - local preview validation confirmed the evidence area stays compact while exposing the new hierarchy: `ASSERTIONS DIFFER`, `LD0 t0 exp 1 obs 0`, `Focus LD0 at t0`, and `Waveform tools` all remain visible together without reopening the old stacked control strip
 
+The latest Verify composition overhaul made the evidence area stop competing with itself:
+
+- the read-only `AssertionCanvas` no longer renders underneath the waveform inside the primary evidence region
+- Verify now treats the waveform as the always-visible evidence companion to the Stimulus Workbench, while the observed/asserted comparison grid lives in the secondary `Vectors` drawer tab
+- browser validation at `1366x768`, `1536x864`, `1600x900`, and `1920x1080` confirmed the main failure-state composition is now editor + waveform only, with the secondary comparison grid absent from the primary workspace by default
+- the Verify browser contract now explicitly guards that hierarchy: the waveform preview must stay meaningfully visible at desktop width, and the read-only assertion grid must only appear once the analysis drawer is opened
+
 ## Mode Detection (B-12 Slice 1)
 
 `verifyMode.ts` provides the canonical circuit mode gate, replacing the previous `hasDff: boolean` prop.

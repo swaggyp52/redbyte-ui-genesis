@@ -1,5 +1,60 @@
 # AI State
 
+## Change Log 2026-04-09 (Verify composition overhaul: waveform primary, comparison grid secondary)
+
+**Subsystem**: Verify / desktop composition / evidence hierarchy
+
+### Problem
+
+Even after the desktop-width and evidence-strip passes, Verify still felt like an internal tool because the main page was still trying to show two large evidence grids at once:
+
+- the Stimulus Workbench was primary, but the waveform still had to compete with a permanently visible read-only observed/asserted matrix underneath it
+- the page still read as multiple blue panels fighting each other instead of one editor plus one evidence companion
+- the old browser contract did not explicitly guard that composition, so the secondary grid could drift back into the primary workspace without a direct failure
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - removed the always-visible `AssertionCanvas` from the primary waveform region
+  - moved the read-only observed/asserted grid into the secondary `Vectors` drawer tab
+  - added a compact secondary-evidence panel so the comparison grid remains available without competing with the waveform by default
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - styled the new secondary-evidence panel so the drawer reads as a deliberate secondary evidence surface instead of an accidental overflow dump
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx`
+  - now asserts failed compare runs do not render `ide-assertion-canvas` in the primary workspace
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx`
+  - now asserts the assertion grid only appears in the `Vectors` drawer tab and still stays aligned to the fail-window waveform tick range
+- `scripts/gates/ide-verify-workbench-contract.mjs`
+  - now waits on the real Verify panel instead of a brittle intermediate mode marker
+  - now proves the read-only assertion grid stays out of the primary workspace by default and remains available from the secondary drawer
+  - now uses waveform-preview geometry, not the full center-body area, as the desktop evidence visibility contract
+
+### Validation
+
+- Focused Verify validation:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - result: `43` tests passed
+- Local playground build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- Browser contract:
+  - `node scripts/gates/ide-verify-workbench-contract.mjs`
+  - result: PASS
+- Manual browser audit on local preview (`Signal Tour: Switches → LEDs`, edited expected output to force fail state):
+  - `1366x768`: waveform stage `604.4x464.8`, waveform preview `604.4x296`, `ide-assertion-canvas` absent from the primary workspace
+  - `1536x864`: waveform stage `754.4x497.8`, waveform preview `754.4x364.6`, `ide-assertion-canvas` absent from the primary workspace
+  - `1600x900`: waveform stage `818.4x520.8`, waveform preview `818.4x387.6`, `ide-assertion-canvas` absent from the primary workspace
+  - `1920x1080`: waveform stage `1134.4x636`, waveform preview `1134.4x544.8`, `ide-assertion-canvas` absent from the primary workspace
+  - opening the `Vectors` drawer tab restores the read-only comparison grid as secondary evidence
+
+### Release impact
+
+- Verify now reads much more like one professional verification workspace: edit on the left, inspect waveform evidence on the right, open secondary tables only when needed.
+- The old second giant matrix is no longer allowed to dominate the page by default.
+- The next Verify slice should stay inside the secondary evidence layer: mismatch/details drawer IA and any remaining left-dock pressure, not a return to broad page rescue.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-04-09 (Verify workbench layout gate aligned to header-run truth)
 
 **Subsystem**: Gates / repo-status / Verify workbench contract

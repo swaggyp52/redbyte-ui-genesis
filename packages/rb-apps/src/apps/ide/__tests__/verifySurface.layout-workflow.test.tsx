@@ -172,6 +172,7 @@ describe('VerifySurface layout workflow architecture', () => {
     expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
     expect(queryByTestId('ide-verify-three-panel-left')).toBeNull();
     expect(queryByTestId('ide-verify-three-panel-right')).toBeNull();
+    expect(queryByTestId('ide-assertion-canvas')).toBeNull();
     expect(getByTestId('ide-verify-drawer-toggle').getAttribute('aria-expanded')).toBe('false');
   });
 

@@ -336,8 +336,8 @@ describe('VerifySurface waveform lane priority', () => {
     expect(getByTestId('ide-verify-run-context-why_these_ticks').textContent).toContain('t8');
   });
 
-  it('keeps assertion tick headers in sync with the fail-window waveform viewport', () => {
-    const { getAllByText, getByTestId } = render(
+  it('keeps the secondary assertion grid in sync with the fail-window waveform viewport', () => {
+    const { getAllByText, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="det_wave_priority"
         hasVectors={true}
@@ -359,8 +359,9 @@ describe('VerifySurface waveform lane priority', () => {
       />
     );
 
+    expect(queryByTestId('ide-assertion-canvas')).toBeNull();
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
-    fireEvent.click(getAllByText('Details')[0]);
+    fireEvent.click(getAllByText('Vectors')[0]);
     fireEvent.click(getByTestId('ide-verify-failure-sum_8'));
 
     const assertionCanvas = getByTestId('ide-assertion-canvas');

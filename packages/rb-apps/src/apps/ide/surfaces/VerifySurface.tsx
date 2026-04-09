@@ -3092,6 +3092,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const sessionSignalsAssertionFailure = sessionStatus === 'assertions-differ';
   const sessionShowsCompareEvidence =
     sessionShowsAssertionMatch || sessionSignalsAssertionFailure;
+  const showSecondaryAssertionGrid =
+    sessionShowsCompareEvidence &&
+    Boolean(lastRun) &&
+    outputFields.length > 0 &&
+    zoomedTicks.length > 0;
   const sessionShowsTraceEvidence =
     sessionStatus === 'stimulus-only' || sessionStatus === 'assertions-incomplete';
   const isDraftSession = sessionStatus === 'draft';
@@ -4711,26 +4716,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   }
                 />
                 </div>
-                {/* AssertionCanvas — read-only assertion overlay aligned with waveform (Slice 6) */}
-                {sessionShowsCompareEvidence && lastRun && outputFields.length > 0 && zoomedTicks.length > 0 && (
-                  <div
-                    style={{
-                      padding: '12px 12px 0 12px',
-                      background: 'var(--rb-surface-1, transparent)',
-                    }}
-                  >
-                    <AssertionCanvas
-                      outputFields={outputFields}
-                      ticks={zoomedTicks}
-                      tickWidth={tickWidth}
-                      getCellValue={getAssertionCellValue}
-                      selectedTick={selectedTick}
-                      selectedSignal={selectedSignal}
-                      assertionMode={sessionShowsCompareEvidence}
-                      readOnly={true}
-                    />
-                  </div>
-                )}
                 {/* Signal Snapshot — shown in step mode, shows all I/O at selected tick */}
                 {isStepMode && stepSnapshotRows.length > 0 && (
                   <section className="ide-verify-snapshot-panel" data-testid="ide-verify-snapshot-panel">
@@ -5116,6 +5101,39 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
               {verifyTab === 'vectors' && (
                 <>
+                  {showSecondaryAssertionGrid && (
+                    <section
+                      className="ide-verify-secondary-evidence-panel"
+                      data-testid="ide-verify-secondary-evidence-panel"
+                    >
+                      <header className="ide-verify-secondary-evidence-panel__header">
+                        <div className="ide-verify-secondary-evidence-panel__copy">
+                          <span className="ide-verify-secondary-evidence-panel__eyebrow">
+                            Secondary evidence
+                          </span>
+                          <strong>Observed vs asserted grid</strong>
+                          <p>Read-only comparison aligned to the active waveform tick window.</p>
+                        </div>
+                        {selectedFailureCase && (
+                          <span className="ide-verify-secondary-evidence-panel__focus">
+                            Focus {selectedFailureDisplayLabel ?? selectedFailureCase.signal} at t
+                            {selectedFailureCase.tick}
+                          </span>
+                        )}
+                      </header>
+                      <AssertionCanvas
+                        outputFields={outputFields}
+                        ticks={zoomedTicks}
+                        tickWidth={tickWidth}
+                        getCellValue={getAssertionCellValue}
+                        selectedTick={selectedTick}
+                        selectedSignal={selectedSignal}
+                        assertionMode={sessionShowsCompareEvidence}
+                        className="ide-verify-secondary-evidence-canvas"
+                        readOnly={true}
+                      />
+                    </section>
+                  )}
                   <IdeDataTable
                     columns={[
                       'Tick',

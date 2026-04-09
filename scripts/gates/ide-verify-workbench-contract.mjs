@@ -14,7 +14,10 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   await loadStarterProject(page);
 
   await page.locator('[data-testid="mode-button-verify"]').click();
-  await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
+  await Promise.race([
+    page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 }),
+    page.waitForSelector('[data-testid="ide-verify-panel"]', { timeout: 10000 }),
+  ]);
   await page.waitForSelector('[data-testid="ide-verify-panel"]', { timeout: 10000 });
 
   const headerRun = page.locator('[data-testid="ide-vcb-run"]').first();
@@ -95,6 +98,53 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   await waveformToolsToggle.click();
   await page.waitForTimeout(100);
 
+  const centerBounds = await page.locator('[data-testid="ide-mode-body"]').boundingBox();
+  const panelBodyBounds = await page.locator('[data-testid="ide-verify-panel"] .ide-panel-body').boundingBox();
+  const workspaceBounds = await page.locator('[data-testid="ide-verify-workspace"]').boundingBox();
+  const waveformBounds = await page
+    .locator('[data-testid="ide-verify-workspace-waveform"]')
+    .boundingBox();
+  const waveformPreviewBounds = await page
+    .locator('[data-testid="ide-verify-waveform-preview"]')
+    .boundingBox();
+  const bannerBounds = await page.locator('[data-testid="ide-verify-banner"]').boundingBox();
+  const commandBarBounds = await page.locator('[data-testid="ide-verify-command-bar"]').boundingBox();
+  assert(Boolean(centerBounds), 'verify workspace center region must be measurable');
+  assert(Boolean(panelBodyBounds), 'verify panel body must be measurable');
+  assert(Boolean(workspaceBounds), 'verify workspace must be measurable');
+  assert(Boolean(waveformBounds), 'verify waveform region must be measurable');
+  assert(Boolean(waveformPreviewBounds), 'verify waveform preview must be measurable');
+  assert(
+    (waveformPreviewBounds?.width ?? 0) >= 550 && (waveformPreviewBounds?.height ?? 0) >= 220,
+    `verify waveform preview must stay meaningfully visible by default (preview=${waveformPreviewBounds?.width ?? 0}x${waveformPreviewBounds?.height ?? 0})`
+  );
+  assert(
+    (workspaceBounds?.width ?? 0) >= (panelBodyBounds?.width ?? 0) * 0.85,
+    `verify workspace must own most of the panel width at desktop sizes (workspace=${workspaceBounds?.width ?? 0}, panel=${panelBodyBounds?.width ?? 0})`
+  );
+  assert(
+    ((bannerBounds?.height ?? 0) + (commandBarBounds?.height ?? 0)) <= 72,
+    `verify top chrome must stay compact at desktop sizes (banner=${bannerBounds?.height ?? 0}, command=${commandBarBounds?.height ?? 0})`
+  );
+
+  const secondaryAssertionGrid = page.locator('[data-testid="ide-assertion-canvas"]').first();
+  assert(
+    !(await secondaryAssertionGrid.isVisible().catch(() => false)),
+    'the read-only assertion grid must stay out of the primary waveform workspace by default'
+  );
+
+  const drawerToggle = page.locator('[data-testid="ide-verify-drawer-toggle"]').first();
+  await drawerToggle.click();
+  await page.waitForSelector('[data-testid="ide-verify-analysis-tab-nav"]', { timeout: 10000 });
+  await page.getByRole('button', { name: 'Vectors' }).first().click();
+  await page.waitForSelector('[data-testid="ide-assertion-canvas"]', { timeout: 10000 });
+  assert(
+    await secondaryAssertionGrid.isVisible().catch(() => false),
+    'the read-only assertion grid must remain available from the secondary analysis drawer'
+  );
+  await drawerToggle.click();
+  await page.waitForTimeout(100);
+
   // After a PASS run the left dock is collapsed and signal buttons are not in the DOM.
   // Open the dock first, then verify its contents.
   const signalFilterState = page.locator('[data-testid="ide-verify-signal-filter-state"]').first();
@@ -134,33 +184,6 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
       assert(signalRowsBefore > 0, 'verify signal list must include at least one visible signal row');
     }
   }
-
-  const centerBounds = await page.locator('[data-testid="ide-mode-body"]').boundingBox();
-  const panelBodyBounds = await page.locator('[data-testid="ide-verify-panel"] .ide-panel-body').boundingBox();
-  const workspaceBounds = await page.locator('[data-testid="ide-verify-workspace"]').boundingBox();
-  const waveformBounds = await page
-    .locator('[data-testid="ide-verify-workspace-waveform"]')
-    .boundingBox();
-  const bannerBounds = await page.locator('[data-testid="ide-verify-banner"]').boundingBox();
-  const commandBarBounds = await page.locator('[data-testid="ide-verify-command-bar"]').boundingBox();
-  assert(Boolean(centerBounds), 'verify workspace center region must be measurable');
-  assert(Boolean(panelBodyBounds), 'verify panel body must be measurable');
-  assert(Boolean(workspaceBounds), 'verify workspace must be measurable');
-  assert(Boolean(waveformBounds), 'verify waveform region must be measurable');
-  const centerArea = (centerBounds?.width ?? 0) * (centerBounds?.height ?? 0);
-  const waveformArea = (waveformBounds?.width ?? 0) * (waveformBounds?.height ?? 0);
-  assert(
-    centerArea > 0 && waveformArea >= centerArea * 0.25,
-    `verify waveform workspace must remain meaningfully visible (wave=${waveformArea}, center=${centerArea})`
-  );
-  assert(
-    (workspaceBounds?.width ?? 0) >= (panelBodyBounds?.width ?? 0) * 0.85,
-    `verify workspace must own most of the panel width at desktop sizes (workspace=${workspaceBounds?.width ?? 0}, panel=${panelBodyBounds?.width ?? 0})`
-  );
-  assert(
-    ((bannerBounds?.height ?? 0) + (commandBarBounds?.height ?? 0)) <= 72,
-    `verify top chrome must stay compact at desktop sizes (banner=${bannerBounds?.height ?? 0}, command=${commandBarBounds?.height ?? 0})`
-  );
 
   const tabBar = page.locator('[data-testid="ide-verify-tab-bar"]').first();
   const tabBarVisible = await tabBar.isVisible().catch(() => false);
