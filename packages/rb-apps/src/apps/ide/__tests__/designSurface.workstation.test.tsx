@@ -226,6 +226,14 @@ afterEach(() => {
 });
 
 describe('DesignSurface workstation redesign', () => {
+  it('uses the shared design command strip so workflow CTA placement matches Project and Verify', () => {
+    const view = renderSurface();
+
+    expect(view.getByTestId('ide-design-command-strip').textContent).toContain('Build the circuit');
+    expect(view.getByTestId('ide-design-command-strip-primary-cta').textContent).toContain('Open Verify');
+    expect(view.getByTestId('ide-design-command-strip-secondary-cta').textContent).toContain('Project');
+  });
+
   it('shows contextual inspector data, trace actions, and a compact live state table', async () => {
     const view = renderSurface();
 

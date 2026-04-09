@@ -79,6 +79,18 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(queryByTestId('ide-workbench-console')).toBeNull();
   });
 
+  it('uses the shared project command strip so the next move is authoritative above the hero card', () => {
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface {...makeProps()} />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-project-command-strip').textContent).toContain('Current focus: Continue to Verify');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Verify');
+    expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Design');
+  });
+
   it('unmapped output blocker (RBP1005) includes an action button pointing to Map Pins', () => {
     const onOpenHardware = vi.fn();
     const health = deriveProjectHealth(

@@ -1,5 +1,83 @@
 # AI State
 
+## Change Log 2026-04-09 (RedByte product surface system kickoff: shared command-strip architecture for Project, Design, and Verify)
+
+**Subsystem**: IDE product surface system / Project + Design + Verify sync
+
+### Problem
+
+RedByte had made real progress on individual surfaces, but the app still felt like several partially-good internal tools sharing one shell instead of one finished product:
+
+- Project, Design, and Verify were each inventing their own top-of-page hierarchy
+- primary versus secondary actions drifted by surface
+- status language and chip usage were inconsistent
+- page anatomy did not read as one shared product grammar
+- Verify was evolving toward the right workflow model, but Design and Project still did not visibly belong to the same product family
+
+### What changed
+
+- Added an explicit cross-surface product contract:
+  - `docs/00-canon/09-redbyte-product-surface-system.md`
+  - defines:
+    - shared page anatomy (`command strip -> primary region -> secondary region -> tertiary layer`)
+    - shell behavior
+    - CTA hierarchy
+    - canonical status language
+    - canonical vocabulary
+    - visual system expectations
+- Added a reusable shared top-of-page primitive:
+  - `packages/rb-apps/src/apps/ide/components/SurfaceLayoutPrimitives.tsx`
+  - new `SurfaceCommandStrip` component for stage label, title, status/meta chips, and primary/secondary actions
+- Synced Project to the new product surface grammar:
+  - `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - Project now leads with a shared command strip that states the current focus, next step, current status, and primary/secondary actions
+  - demoted the old dashboard-soft quick stats and duplicate hero action row behind the new shared strip
+- Synced Design to the new product surface grammar:
+  - `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - Design now leads with a shared command strip that states the stage role, current authoring state, Verify freshness, and primary cross-stage action
+  - the existing design control bar now sits under the shared strip instead of acting like a one-off page header
+- Synced Verify to the same page grammar without undoing recent Verify workflow decisions:
+  - `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Verify now leads with a shared command strip that explicitly states the stimulus-and-observation model before the existing command bar
+  - preserved the tested Verify command bar/run ownership while visually hiding the old redundant status strip inside the new shared stack
+- Added shared visual-system styling:
+  - `packages/rb-apps/src/apps/ide/ide-root.css`
+  - new command-strip, chip, and page-stack styling
+  - shared panel rhythm across Project / Design / Verify
+  - project-only duplication (legacy quick stats / showcase actions) visually demoted
+  - verify-only redundant legacy banner visually hidden under the new strip
+- Added or updated focused tests:
+  - `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.desktopComposition.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+- Aligned shared Verify browser gate helpers with current product language:
+  - `scripts/gates/_verifyStatus.mjs`
+  - terminal and trace-mode detection now recognize `OBSERVATION ONLY` alongside the older trace wording
+  - `scripts/gates/ide-verify-workbench-contract.mjs`
+  - the browser contract now accepts observation-first Verify as the default run path, then promotes checks through `Save as expected` before asserting post-run expected-cell edit continuity
+
+### Validation
+
+- Focused cross-surface validation:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.desktopComposition.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - result: PASS
+- Local playground build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- Browser validation at `1366x768` on local preview:
+  - Project now opens with an authoritative command strip instead of burying the next step inside soft dashboard content
+  - Design now shares the same command-strip grammar above the workspace controls
+  - Verify now visibly belongs to the same product family while keeping the recent stimulus-first / waveform-first flow intact
+
+### Release impact
+
+- RedByte now has an explicit product surface contract instead of continuing with disconnected per-screen patterns.
+- Project, Design, and Verify visibly read more like one product family through a shared top-of-page architecture, stronger CTA consistency, and more coherent status treatment.
+- The next sync slice should keep applying this shared system rather than returning to isolated surface rescues: Design inspector/system integration, Project authority tightening, and later Hardware / Export / Import alignment.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-04-09 (Full Verify desktop screen redesign: collapsed rails, balanced split, larger evidence/editor footprint)
 
 **Subsystem**: Verify / desktop composition / workbench + waveform footprint

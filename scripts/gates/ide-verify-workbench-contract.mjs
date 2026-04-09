@@ -31,9 +31,38 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   await waitForVerifyResult(page, { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-verify-workspace-waveform"]', { timeout: 10000 });
 
-  const editableExpectedCell = page.locator('[data-testid^="ide-stimulus-expected-"]').first();
-  const editableExpectedCellVisible = await editableExpectedCell.isVisible().catch(() => false);
-  assert(editableExpectedCellVisible, 'verify must keep at least one expected-output cell visible after a run');
+  let editableExpectedCell = page.locator('[data-testid^="ide-stimulus-expected-"]').first();
+  let editableExpectedCellVisible = await editableExpectedCell.isVisible().catch(() => false);
+  if (!editableExpectedCellVisible) {
+    const initialSummaryText = (
+      (await page.locator('[data-testid="ide-verify-summary-status"]').first().textContent().catch(() => '')) ??
+      ''
+    ).toUpperCase();
+    assert(
+      initialSummaryText.includes('OBSERVATION ONLY') || initialSummaryText.includes('STIMULUS ONLY'),
+      `verify default runs without expected-output cells must stay observation-first, got "${initialSummaryText}"`
+    );
+
+    const saveExpected = page.locator('[data-testid="ide-vcb-save-expected"]').first();
+    assert(
+      await saveExpected.isVisible().catch(() => false),
+      'observation-first runs must expose Save as expected so checks can be added secondarily'
+    );
+    await saveExpected.click();
+    await page.waitForTimeout(200);
+
+    const checksToggle = page.locator('[data-testid="ide-stimulus-checks-toggle"]').first();
+    assert(
+      await checksToggle.isVisible().catch(() => false),
+      'observation-first runs must expose Edit checks so saved output checks can be reviewed secondarily'
+    );
+    await checksToggle.click();
+    await page.waitForTimeout(150);
+
+    editableExpectedCell = page.locator('[data-testid^="ide-stimulus-expected-"]').first();
+    editableExpectedCellVisible = await editableExpectedCell.isVisible().catch(() => false);
+  }
+  assert(editableExpectedCellVisible, 'verify must expose an editable expected-output cell after checks are saved');
 
   const leftDock = page.locator('[data-testid="ide-left-dock"]').first();
   const leftDockVisible = await leftDock.isVisible().catch(() => false);

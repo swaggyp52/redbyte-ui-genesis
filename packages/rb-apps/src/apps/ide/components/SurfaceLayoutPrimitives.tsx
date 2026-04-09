@@ -73,3 +73,46 @@ export const SurfaceTwoCol: React.FC<{
     ) : null}
   </div>
 );
+
+export const SurfaceCommandStrip: React.FC<{
+  label?: React.ReactNode;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  meta?: React.ReactNode;
+  actions?: React.ReactNode;
+  className?: string;
+  testId?: string;
+}> = ({ label, title, description, meta, actions, className, testId }) => (
+  <section
+    className={`ide-surface-command-strip${actions ? '' : ' is-single-column'}${
+      className ? ` ${className}` : ''
+    }`}
+    data-testid={testId}
+  >
+    <div className="ide-surface-command-strip-main">
+      {label ? (
+        <div className="ide-surface-command-strip-label">
+          {label}
+        </div>
+      ) : null}
+      <div className="ide-surface-command-strip-title">
+        {title}
+      </div>
+      {description ? (
+        <div className="ide-surface-command-strip-description">
+          {description}
+        </div>
+      ) : null}
+      {meta ? (
+        <div className="ide-surface-command-strip-meta">
+          {meta}
+        </div>
+      ) : null}
+    </div>
+    {actions ? (
+      <div className="ide-surface-command-strip-actions">
+        {actions}
+      </div>
+    ) : null}
+  </section>
+);

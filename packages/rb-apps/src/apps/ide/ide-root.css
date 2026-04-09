@@ -25941,3 +25941,188 @@ button:disabled,
   font-size: 10px;
   white-space: nowrap;
 }
+
+/* ============================================================
+   RedByte Product Surface System - shared page architecture
+   ============================================================ */
+
+.ide-surface-command-stack {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ide-surface-primary-region {
+  min-width: 0;
+}
+
+.ide-surface-command-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px 20px;
+  align-items: center;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(58, 96, 132, 0.38);
+  background:
+    linear-gradient(180deg, rgba(12, 24, 40, 0.96), rgba(7, 15, 26, 0.92)),
+    radial-gradient(circle at top left, rgba(46, 196, 182, 0.08), transparent 55%);
+  box-shadow:
+    0 18px 36px rgba(2, 8, 16, 0.28),
+    inset 0 1px 0 rgba(214, 232, 255, 0.04);
+}
+
+.ide-surface-command-strip.is-single-column {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ide-surface-command-strip-main {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.ide-surface-command-strip-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(131, 168, 203, 0.72);
+}
+
+.ide-surface-command-strip-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+  color: rgba(241, 247, 255, 0.98);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.ide-surface-command-strip-description {
+  min-width: 0;
+  color: rgba(186, 207, 228, 0.82);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ide-surface-command-strip-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.ide-surface-command-strip-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ide-surface-command-inline-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(116, 152, 187, 0.68);
+}
+
+.ide-surface-command-chip,
+.ide-surface-command-meta-note {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(64, 97, 128, 0.36);
+  background: rgba(9, 19, 33, 0.78);
+  color: rgba(208, 223, 238, 0.82);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.ide-surface-command-chip.is-ok {
+  border-color: rgba(46, 196, 182, 0.28);
+  color: rgba(126, 247, 227, 0.92);
+}
+
+.ide-surface-command-meta-note {
+  background: transparent;
+  border-style: dashed;
+  color: rgba(168, 190, 214, 0.78);
+}
+
+[data-ide-mode-marker='project'] .ide-project-command-strip,
+[data-ide-mode-marker='design'] .ide-design-command-strip,
+[data-ide-mode-marker='verify'] .ide-verify-command-strip {
+  margin-inline: 0;
+}
+
+[data-ide-mode-marker='project'] .ide-project-command-strip {
+  background:
+    linear-gradient(180deg, rgba(10, 22, 36, 0.98), rgba(7, 15, 27, 0.94)),
+    radial-gradient(circle at top left, rgba(46, 196, 182, 0.12), transparent 58%);
+}
+
+[data-ide-mode-marker='project'] .ide-project-quick-stats,
+[data-ide-mode-marker='project'] .ide-project-showcase-status-row,
+[data-ide-mode-marker='project'] .ide-project-showcase-actions {
+  display: none !important;
+}
+
+[data-ide-mode-marker='project'] .ide-project-showcase-brief {
+  margin-top: 0 !important;
+  border-color: rgba(55, 88, 117, 0.2) !important;
+  background: rgba(8, 18, 30, 0.68) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-command-strip {
+  background:
+    linear-gradient(180deg, rgba(10, 19, 33, 0.98), rgba(6, 13, 24, 0.94)),
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.1), transparent 55%);
+}
+
+[data-ide-mode-marker='design'] .ide-surface-command-stack > .ide-design-control-bar {
+  margin-top: 0;
+  border: 1px solid rgba(46, 77, 106, 0.3);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-command-strip {
+  background:
+    linear-gradient(180deg, rgba(9, 18, 32, 0.98), rgba(6, 12, 24, 0.94)),
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 58%);
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-title {
+  font-size: 18px;
+}
+
+[data-ide-mode-marker='verify'] .ide-surface-command-stack > .ide-verify-status-strip[data-testid='ide-verify-banner'] {
+  display: none !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-surface-command-stack > .ide-verify-command-bar {
+  margin-top: 0;
+  border: 1px solid rgba(44, 80, 112, 0.34);
+  border-radius: 14px;
+  background: rgba(8, 16, 29, 0.9);
+}
+
+@media (max-width: 1400px) {
+  .ide-surface-command-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ide-surface-command-strip-actions {
+    justify-content: flex-start;
+  }
+}

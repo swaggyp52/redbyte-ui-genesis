@@ -22,7 +22,7 @@ import {
   IdeInspectorSection,
   IdeStatusPill,
 } from '../components/IdePrimitives';
-import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
+import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { RuntimeSimState, RuntimeSignalProbe } from '../projectRuntime';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getStudentFacingIoLabel } from '../ioLabels';
@@ -2686,6 +2686,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         : authoringIssueCounts.draftCount > 0
           ? 'Draft wiring in progress'
           : 'Ready to build';
+  const totalAuthoringErrors = authoringIssueCounts.errorCount + compilerErrorCount;
+  const totalAuthoringWarnings = authoringIssueCounts.warningCount + compilerWarningCount;
+  const designCommandTone: 'idle' | 'ok' | 'warn' | 'error' =
+    totalAuthoringErrors > 0
+      ? 'error'
+      : totalAuthoringWarnings > 0 || authoringIssueCounts.draftCount > 0
+        ? 'warn'
+        : 'ok';
+  const designViewLabel =
+    designView === 'canvas' ? 'Canvas' : designView === 'hdl' ? 'Code' : 'Split';
+  const designCommandDescription = activeVerifySignal
+    ? `Build the circuit while keeping Verify focus on ${activeVerifySignal}.`
+    : designView === 'hdl'
+      ? `Edit ${primaryArtifactLabel} while keeping the circuit aligned with live propagation.`
+      : designView === 'split'
+        ? `Compare the circuit against ${primaryArtifactLabel} before moving into Verify.`
+        : 'Build the circuit and inspect live propagation before moving into Verify.';
   const ioPresentationMap = useMemo(() => {
     const map: Record<string, NodeIoPresentation> = {};
     for (const node of editorCircuit.nodes) {
@@ -4983,6 +5000,48 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
     >
         <DesignWorkspaceFrame view={effectiveDesignView}>
+          <div className="ide-surface-command-stack">
+            <SurfaceCommandStrip
+              className="ide-design-command-strip"
+              testId="ide-design-command-strip"
+              label="Design"
+              title="Build the circuit"
+              description={designCommandDescription}
+              meta={(
+                <>
+                  <IdeStatusPill tone={designCommandTone}>{authoringStatusLabel.toUpperCase()}</IdeStatusPill>
+                  <span className="ide-surface-command-chip">{designViewLabel} workspace</span>
+                  <span className="ide-surface-command-chip">
+                    {totalAuthoringErrors} errors / {totalAuthoringWarnings} warnings
+                  </span>
+                  <span className={`ide-surface-command-chip${dirtySinceVerify ? '' : ' is-ok'}`}>
+                    {dirtySinceVerify ? 'Verify needs refresh' : 'Verify current'}
+                  </span>
+                </>
+              )}
+              actions={(
+                <>
+                  {onGoToVerify ? (
+                    <IdeButton
+                      tone="primary"
+                      onClick={onGoToVerify}
+                      testId="ide-design-command-strip-primary-cta"
+                    >
+                      {activeVerifySignal ? 'Back to Verify' : 'Open Verify'}
+                    </IdeButton>
+                  ) : null}
+                  {onGoToProject ? (
+                    <IdeButton
+                      tone="secondary"
+                      onClick={onGoToProject}
+                      testId="ide-design-command-strip-secondary-cta"
+                    >
+                      Project
+                    </IdeButton>
+                  ) : null}
+                </>
+              )}
+            />
 
             {/* ── Compact primary toolbar ── */}
           <div
@@ -5302,6 +5361,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 ) : null}
               </div>
             ) : null}
+          </div>
           </div>
             {effectiveDesignView === 'stacked' && (
               <div className="ide-design-stacked-notice" data-testid="ide-design-stacked-notice">

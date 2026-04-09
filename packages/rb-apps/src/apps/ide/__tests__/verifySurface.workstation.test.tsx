@@ -951,7 +951,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-right-likely-reason').textContent).toContain('ld0');
     expect(getByTestId('ide-verify-right-likely-reason').textContent).toContain('t1');
     expect(getByTestId('ide-verify-right-next-step').textContent).toContain('ld0');
-    fireEvent.click(getAllByText('Mismatches')[0]);
+    fireEvent.click(getAllByText('Checks')[0]);
     expect(getByTestId('ide-verify-mismatch-case-id').textContent).toContain('vec-02');
     expect(getByTestId('ide-verify-mismatch-sampled-key').textContent).toContain('ld0_node.in');
     expect(getByTestId('ide-verify-mismatch-expected-key').textContent).toContain('ld0');

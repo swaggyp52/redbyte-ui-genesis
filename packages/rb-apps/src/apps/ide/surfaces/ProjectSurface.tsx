@@ -29,7 +29,7 @@ import {
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
-import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
+import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useIoBus } from '../ioBus';
 import { useBoardSignal } from '../BoardSignalContext';
@@ -987,7 +987,61 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               </div>
             )}
         {/* ── Hero Onboarding Panel ── */}
-        <SurfacePanel className="ide-project-hero" testId="ide-project-hero">
+        <div className="ide-surface-command-stack">
+          <SurfaceCommandStrip
+            className="ide-project-command-strip"
+            testId="ide-project-command-strip"
+            label="Project"
+            title={`Current focus: Continue to ${activePrimaryCtaLabel}`}
+            description={(
+              <span data-testid="ide-project-command-strip-next-step">
+                <span className="ide-surface-command-inline-label">Next step</span>{' '}
+                <span data-testid="ide-project-command-strip-next-step-copy">{nextStepReason}</span>
+              </span>
+            )}
+            meta={(
+              <>
+                <IdeStatusPill tone={heroStatusTone}>{heroStatusLabel.toUpperCase()}</IdeStatusPill>
+                <span
+                  className="ide-surface-command-meta-note"
+                  data-testid="ide-project-hero-status"
+                >
+                  {heroStatusMessage}
+                </span>
+                <span className="ide-surface-command-chip">Basys3</span>
+                <span className="ide-surface-command-chip">{projectContextLabel}</span>
+                <span className="ide-surface-command-chip">{inputCount} in / {outputCount} out</span>
+                {compareMatches && (
+                  <span className="ide-surface-command-chip is-ok">Checks current</span>
+                )}
+                {savedAgoLabel && (
+                  <span className="ide-surface-command-meta-note">Saved {savedAgoLabel}</span>
+                )}
+              </>
+            )}
+            actions={(
+              <>
+                <span data-testid="ide-project-command-strip-continue-cta">
+                  <IdeButton
+                    tone="primary"
+                    onClick={onPrimaryCta}
+                    testId="ide-project-command-strip-primary-cta"
+                  >
+                    Continue to {activePrimaryCtaLabel} →
+                  </IdeButton>
+                </span>
+                <IdeButton
+                  tone="secondary"
+                  onClick={heroAssistAction.onClick}
+                  testId="ide-project-command-strip-secondary-cta"
+                >
+                  {heroAssistAction.label}
+                </IdeButton>
+              </>
+            )}
+          />
+        </div>
+        <SurfacePanel className="ide-project-hero ide-surface-primary-region" testId="ide-project-hero">
           <div className="ide-project-showcase" data-testid="ide-project-showcase">
             <div className="ide-project-showcase-copy">
               <div className="ide-project-showcase-headline">
@@ -999,12 +1053,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 </h2>
                 <p className="ide-project-showcase-body">{projectSummary}</p>
               </div>
-              <div className="ide-project-showcase-status-row">
-                <IdeStatusPill tone={heroStatusTone}>{heroStatusLabel.toUpperCase()}</IdeStatusPill>
-                <span className="ide-project-showcase-status-copy" data-testid="ide-project-hero-status">
-                  {heroStatusMessage}
-                </span>
-              </div>
               <div className="ide-project-showcase-chip-row">
                 <span className="ide-project-context-tag">Basys3</span>
                 <span className="ide-project-context-tag">{projectContextLabel}</span>
@@ -1015,8 +1063,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               </div>
               <IdeCallout
                 tone={nextStepTone}
-                title={`Next step: Continue to ${activePrimaryCtaLabel}`}
+                title="Workflow summary"
                 testId="ide-project-next-step"
+                className="ide-project-showcase-brief"
               >
                 <p data-testid="ide-project-next-step-copy" style={{ margin: 0 }}>
                   {nextStepReason}

@@ -19,7 +19,7 @@ import {
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
-import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
+import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { CustomTestVector } from '../components/VectorEditor';
 import { resolveBoardSignal, useBoardSignal } from '../BoardSignalContext';
 import type { VerifyDebugContext } from '../verifyDebug';
@@ -3817,6 +3817,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         testId="ide-verify-panel"
       >
         <VerifyHeaderRegion>
+        <div className="ide-surface-command-stack">
+        <SurfaceCommandStrip
+          className="ide-verify-command-strip"
+          testId="ide-verify-command-strip"
+          label="Verify"
+          title="Stimulate inputs and observe outputs"
+          description={
+            hasSessionFailureEvidence
+              ? 'Edit stimulus on the left, then use the waveform to inspect what changed.'
+              : 'Drive input stimulus on the left and read the resulting outputs on the waveform.'
+          }
+          meta={
+            <>
+              <IdeStatusPill tone={sessionStatusTone}>{sessionStatusBadgeLabel.toUpperCase()}</IdeStatusPill>
+              <span className="ide-surface-command-chip">{sessionModeBadge}</span>
+              <span className="ide-surface-command-chip">{referenceModeLabel}</span>
+              {commandBarEvidenceLabel ? (
+                <span className={`ide-surface-command-chip${hasSessionFailureEvidence ? '' : ' is-ok'}`}>
+                  {commandBarEvidenceLabel}
+                </span>
+              ) : null}
+            </>
+          }
+        />
         {/* ── Compact header strip ─────────────────────────────────────────── */}
         {/* Status strip — compact primary bar, ~48px */}
         <div className="ide-verify-status-strip" data-testid="ide-verify-banner" data-zone="status">
@@ -3956,6 +3980,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           goToDesignTick={selectedTick}
         />
         )}
+        </div>
         </VerifyHeaderRegion>
 
         <VerifyResultRegion>
