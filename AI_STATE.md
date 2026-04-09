@@ -1,5 +1,61 @@
 # AI State
 
+## Change Log 2026-04-08 (Verify waveform/detail polish and top-chrome compression)
+
+**Subsystem**: Verify / desktop workbench / evidence hierarchy
+
+### Problem
+
+After the case-first and advanced-tools passes, Verify was still losing too much desktop value to layout and duplicated chrome:
+
+- the wide-screen panel-body grid was still putting the real workbench into a left column while a mostly empty secondary column hoarded desktop width
+- the compact status strip still duplicated post-run compare metrics and coverage that were already present in `VerifyCommandBar`
+- the top Verify header stack still consumed too much vertical space before the editable workspace and waveform evidence
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - removed the phantom wide-screen two-column panel-body layout and returned the full center span to the `ide-verify-workspace`
+  - kept the stimulus/workform split inside the workspace itself, with result collapsed below and analysis kept secondary
+  - compressed the Verify status strip, command bar, scope header, and waveform bar for lower vertical cost
+  - visually suppressed duplicated strip pass/fail/coverage meta so the command bar is the single visible owner of post-run evidence summary
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - moved the visible post-run evidence summary to the command bar via `commandBarEvidenceLabel`
+  - replaced the low-value `N signals` chip with real input-coverage percentage in the command bar
+  - removed the old strip test IDs from pass/fail/coverage metrics so the duplicate header contract is gone
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.desktopComposition.test.tsx`
+  - now asserts the compact status strip no longer exposes duplicate post-run metric test IDs once `VerifyCommandBar` owns evidence
+- `scripts/gates/ide-verify-workbench-contract.mjs`
+  - now fixes the browser audit viewport to `1366x768`
+  - asserts the Verify workspace owns at least 85% of the panel-body width at desktop sizes
+  - asserts combined top chrome stays at or under 72 px
+
+### Validation
+
+- Focused Verify validation:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.desktopComposition.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - result: `46` tests passed
+- Browser contract:
+  - `node scripts/gates/ide-verify-workbench-contract.mjs`
+  - result: PASS
+- Local playground build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- Browser measurement on local preview (`1366x768`, post-run fail state):
+  - panel body width: `1413.5px`
+  - Verify workspace width: `1388.5px`
+  - waveform stage width: `916.5px`
+  - combined top chrome: `68px` (`32px` banner + `36px` command bar)
+  - waveform bar height: `86px`
+
+### Release impact
+
+- Verify now reads much more like one professional workspace on laptop-width desktops instead of a left workbench plus phantom right gutter
+- the top chrome is lighter, and post-run evidence is summarized in one place instead of being repeated across the strip and command bar
+- the next Verify slice should stay on interaction clarity rather than backend or cross-surface drift: waveform/detail micro-IA, then only after that consider Project front-door cleanup
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-04-08 (Verify inline case affordances and advanced-tools disclosure)
 
 **Subsystem**: Verify / Stimulus Workbench / case-editor ergonomics

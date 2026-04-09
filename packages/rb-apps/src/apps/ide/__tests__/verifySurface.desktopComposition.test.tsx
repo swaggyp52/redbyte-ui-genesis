@@ -96,6 +96,16 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
     expect(getByTestId('ide-vcb-evidence')).toBeTruthy();
   });
 
+  it('does not duplicate post-run metrics in the compact status strip once the command bar owns evidence', () => {
+    const { queryByTestId } = render(
+      <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
+    );
+
+    expect(queryByTestId('ide-verify-strip-pass-count')).toBeNull();
+    expect(queryByTestId('ide-verify-strip-fail-count')).toBeNull();
+    expect(queryByTestId('ide-verify-coverage-meter')).toBeNull();
+  });
+
   it('result region collapse: pass hero is demoted post-run', () => {
     const { queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />

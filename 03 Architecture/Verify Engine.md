@@ -71,6 +71,12 @@ The latest desktop workbench professionalization slice changed the failure-state
 - the permanent inline `Failing checks` / `Compare details` rails were removed from the primary `VerifyThreePanel` workspace; the waveform and editor now keep that width, while detailed failure review lives in the secondary analysis drawer
 - browser audits at `1366x768`, `1536x864`, `1600x900`, and `1920x1080` confirmed the waveform stage is meaningfully visible alongside the live workbench instead of being squeezed into a narrow post-failure strip
 
+The latest waveform/detail polish slice fixed the remaining desktop ownership mistake:
+
+- wide Verify no longer places the whole workbench into a left grid column while a mostly empty secondary column steals desktop width; the panel body now gives the full center span back to the editor + waveform workspace
+- the compact status strip no longer duplicates post-run compare metrics and coverage that already live in `VerifyCommandBar`; command-bar evidence now carries the active fail/match summary plus coverage
+- built-preview verification at `1366x768` now measures the Verify workspace at `1388.5px` inside a `1413.5px` panel body, with a `916.5px` waveform stage and `68px` combined top chrome
+
 ## Mode Detection (B-12 Slice 1)
 
 `verifyMode.ts` provides the canonical circuit mode gate, replacing the previous `hasDff: boolean` prop.

@@ -25232,12 +25232,13 @@ button:disabled,
 @media (min-width: 1280px) {
   .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-panel > .ide-panel-body {
     display: grid !important;
-    grid-template-columns: minmax(0, 1.3fr) minmax(380px, 0.95fr) !important;
-    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto minmax(0, 1fr) auto auto !important;
     grid-template-areas:
-      "header header"
-      "stimulus waveform"
-      "result waveform" !important;
+      "header"
+      "workspace"
+      "result"
+      "inspector" !important;
     align-items: stretch !important;
     overflow: hidden !important;
   }
@@ -25247,26 +25248,38 @@ button:disabled,
     min-width: 0;
   }
 
+  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-workspace {
+    grid-area: workspace;
+    min-width: 0;
+    min-height: 0;
+  }
+
   .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--result {
     grid-area: result;
     min-width: 0;
-    min-height: 0;
-    max-height: clamp(112px, 20vh, 156px);
-    overflow: auto;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    padding: 0 !important;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--inspector {
+    grid-area: inspector;
+    min-width: 0;
+    max-height: none;
   }
 
   .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--stimulus {
-    grid-area: stimulus;
     min-width: 0;
     min-height: 0;
     border-right: 1px solid rgba(48, 77, 107, 0.22);
   }
 
   .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--waveform {
-    grid-area: waveform;
     min-width: 0;
     min-height: 0;
-    padding-left: 12px;
+    padding-left: 10px;
   }
 
   .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--stimulus:has(.ide-vfr-panel) {
@@ -25301,9 +25314,18 @@ button:disabled,
 .ide-verify-region--header .ide-verify-status-strip {
   background: rgba(3, 7, 15, 0.85);
   border-bottom: 1px solid rgba(24, 44, 70, 0.55);
-  min-height: 30px;
-  max-height: 30px;
-  padding: 3px 12px;
+  min-height: 26px;
+  max-height: none;
+  padding: 2px 10px;
+  align-items: center;
+  gap: 8px;
+}
+
+.ide-verify-region--header .ide-verify-strip-pass,
+.ide-verify-region--header .ide-verify-strip-fail,
+.ide-verify-region--header .ide-verify-strip-coverage,
+.ide-verify-region--header .ide-verify-strip-sep {
+  display: none !important;
 }
 
 /* ── 2. Command bar: tighter, instrument-style visual separation ── */
@@ -25311,8 +25333,33 @@ button:disabled,
   background: rgba(5, 11, 23, 0.92) !important;
   border-top: 1px solid rgba(24, 44, 70, 0.4) !important;
   border-bottom: 1px solid rgba(24, 44, 70, 0.4) !important;
-  padding: 4px 10px !important;
-  min-height: 36px !important;
+  padding: 3px 10px !important;
+  min-height: 34px !important;
+  gap: 10px !important;
+}
+
+.ide-verify-region--header .ide-vcb-group {
+  gap: 6px;
+}
+
+.ide-verify-region--header .ide-vcb-group--status {
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ide-verify-region--header .ide-vcb-mode-btn {
+  padding: 3px 10px;
+}
+
+.ide-verify-region--header .ide-vcb-mode-btn:not(.is-active) {
+  padding: 3px 8px;
+}
+
+.ide-verify-region--header .ide-vcb-group--actions .ide-button,
+.ide-verify-region--header .ide-vcb-group--status .ide-button {
+  min-height: 28px !important;
+  padding: 3px 10px !important;
 }
 
 /* ── 3. Left signal dock: instrument-panel dark treatment ────────── */
@@ -25391,8 +25438,8 @@ button:disabled,
   background: rgba(2, 7, 18, 0.98) !important;
   border-bottom: 1px solid rgba(245, 158, 11, 0.22) !important;
   border-left: 3px solid rgba(245, 158, 11, 0.42) !important;
-  padding: 6px 14px !important;
-  min-height: 34px !important;
+  padding: 4px 12px !important;
+  min-height: 30px !important;
 }
 .ide-verify-workspace .ide-verify-scope-label {
   font-size: 10px !important;
@@ -25400,6 +25447,16 @@ button:disabled,
   text-transform: uppercase !important;
   color: rgba(245, 158, 11, 0.72) !important;
   font-weight: 700 !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-bar {
+  padding: 6px 10px !important;
+  gap: 6px 10px !important;
+  min-height: 0 !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-wfbar-group {
+  gap: 6px !important;
 }
 
 /* ── 6. Signal chip utility classes for future use ───────────────── */

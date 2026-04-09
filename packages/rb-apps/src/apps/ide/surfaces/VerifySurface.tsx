@@ -3157,6 +3157,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     : sessionStatus === 'assertions-differ' ? 'Assertions failed'
     : sessionStatus === 'stale' ? 'Results from previous build'
     : sessionStatusBadgeLabel;
+  const commandBarEvidenceLabel =
+    lastRun && sessionShowsCompareEvidence
+      ? failingRows.length > 0
+        ? `${failingRows.length} differ${typeof firstFailureTick === 'number' ? ` · t${firstFailureTick}` : ''}`
+        : `${runRows.length}/${runRows.length} match`
+      : lastRun && sessionShowsTraceEvidence
+        ? `${runRows.length} vector${runRows.length === 1 ? '' : 's'}`
+        : undefined;
+  const commandBarCoverageLabel =
+    lastRun && runRows.length > 0 && inputCoverage
+      ? `${inputCoverage.pct}% coverage`
+      : undefined;
   // ─────────────────────────────────────────────────────────────────────────────
   const shortenHash = (value: string | null | undefined): string => {
     if (!value || value.trim().length === 0) return '—';
@@ -3796,11 +3808,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <>
               <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
               {isRunStale ? (
-                <span className="ide-verify-strip-meta ide-verify-strip-stale-note" data-testid="ide-verify-strip-pass-count">
+                <span className="ide-verify-strip-meta ide-verify-strip-stale-note" data-testid="ide-verify-strip-stale-build">
                   Results from previous build {lastRun.deterministicHash?.slice(0, 8) ?? ''}
                 </span>
               ) : (
-                <span className="ide-verify-strip-meta ide-verify-strip-pass" data-testid="ide-verify-strip-pass-count">
+                <span className="ide-verify-strip-meta ide-verify-strip-pass">
                   {sessionShowsCompareEvidence
                     ? `${runRows.length - failingRows.length}/${runRows.length} match`
                     : `${runRows.length} vector${runRows.length !== 1 ? 's' : ''}`}
@@ -3809,7 +3821,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               {!isRunStale && hasSessionFailureEvidence && (
                 <>
                   <span className="ide-verify-strip-sep" aria-hidden="true">·</span>
-                  <span className="ide-verify-strip-meta ide-verify-strip-fail" data-testid="ide-verify-strip-fail-count">
+                  <span className="ide-verify-strip-meta ide-verify-strip-fail">
                     {failingRows.length} differ
                     {typeof firstFailureTick === 'number' && (
                       <> · first mismatch t{firstFailureTick}
@@ -3828,7 +3840,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               <span
                 className="ide-verify-strip-meta ide-verify-strip-coverage"
                 title={`Input combinations: ${inputCoverage.seen} of ${inputCoverage.total} unique input patterns tested`}
-                data-testid="ide-verify-coverage-meter"
               >
                 {inputCoverage.pct}% coverage
               </span>
@@ -3879,13 +3890,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           statusLabel={sessionStatusBadgeLabel}
           statusTone={sessionStatusTone}
           isSequential={isSequentialRun}
-          evidenceLabel={
-            lastRun && sessionShowsCompareEvidence
-              ? `${runRows.length - failingRows.length}/${runRows.length} match`
-              : lastRun && sessionShowsTraceEvidence
-                ? `${runRows.length} vectors`
-                : undefined
-          }
+          evidenceLabel={commandBarEvidenceLabel}
           evidenceTone={
             lastRun && sessionShowsCompareEvidence
               ? (failingRows.length === 0 ? 'pass' : 'fail')
@@ -3893,11 +3898,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ? 'idle'
                 : undefined
           }
-          coverageLabel={
-            lastRun && runRows.length > 0
-              ? `${new Set(runRows.map((r) => r.signal)).size} signals`
-              : undefined
-          }
+          coverageLabel={commandBarCoverageLabel}
         />
         )}
         </VerifyHeaderRegion>

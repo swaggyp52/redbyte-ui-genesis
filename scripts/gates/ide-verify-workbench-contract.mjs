@@ -7,6 +7,7 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
+  await page.setViewportSize({ width: 1366, height: 768 });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
@@ -113,16 +114,30 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   }
 
   const centerBounds = await page.locator('[data-testid="ide-mode-body"]').boundingBox();
+  const panelBodyBounds = await page.locator('[data-testid="ide-verify-panel"] .ide-panel-body').boundingBox();
+  const workspaceBounds = await page.locator('[data-testid="ide-verify-workspace"]').boundingBox();
   const waveformBounds = await page
     .locator('[data-testid="ide-verify-workspace-waveform"]')
     .boundingBox();
+  const bannerBounds = await page.locator('[data-testid="ide-verify-banner"]').boundingBox();
+  const commandBarBounds = await page.locator('[data-testid="ide-verify-command-bar"]').boundingBox();
   assert(Boolean(centerBounds), 'verify workspace center region must be measurable');
+  assert(Boolean(panelBodyBounds), 'verify panel body must be measurable');
+  assert(Boolean(workspaceBounds), 'verify workspace must be measurable');
   assert(Boolean(waveformBounds), 'verify waveform region must be measurable');
   const centerArea = (centerBounds?.width ?? 0) * (centerBounds?.height ?? 0);
   const waveformArea = (waveformBounds?.width ?? 0) * (waveformBounds?.height ?? 0);
   assert(
     centerArea > 0 && waveformArea >= centerArea * 0.25,
     `verify waveform workspace must remain meaningfully visible (wave=${waveformArea}, center=${centerArea})`
+  );
+  assert(
+    (workspaceBounds?.width ?? 0) >= (panelBodyBounds?.width ?? 0) * 0.85,
+    `verify workspace must own most of the panel width at desktop sizes (workspace=${workspaceBounds?.width ?? 0}, panel=${panelBodyBounds?.width ?? 0})`
+  );
+  assert(
+    ((bannerBounds?.height ?? 0) + (commandBarBounds?.height ?? 0)) <= 72,
+    `verify top chrome must stay compact at desktop sizes (banner=${bannerBounds?.height ?? 0}, command=${commandBarBounds?.height ?? 0})`
   );
 
   const tabBar = page.locator('[data-testid="ide-verify-tab-bar"]').first();
