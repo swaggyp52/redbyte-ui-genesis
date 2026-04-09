@@ -25366,3 +25366,28 @@ button:disabled,
   box-shadow: none !important;
   border-radius: 0 !important;
 }
+
+/* ── 9. Responsive signals dock: narrow width budget ─────────────────
+   At standard viewports (1320–1599px): 156px. At ≥1600px: 180px.
+   When leftDockMode='collapsed' only the 26px rail shows regardless.
+   Narrowing here reclaims horizontal budget for waveform + stimulus
+   at common student laptop widths (1366×768, 1536×864). */
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='wide'] {
+  --ide-workbench-left-width: 180px;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='standard'] {
+  --ide-workbench-left-width: 156px;
+}
+
+/* Signal name button: truncate with ellipsis when dock is narrow */
+.ide-verify-left-dock .ide-signal-row {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Dock padding: tighter horizontal padding when narrow */
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='standard'] .ide-workbench-dock-left,
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='wide'] .ide-workbench-dock-left {
+  padding: 6px 4px !important;
+}
