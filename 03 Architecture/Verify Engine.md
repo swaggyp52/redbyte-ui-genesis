@@ -631,3 +631,40 @@ The current repo state does **not** support deleting `projectVectors` outright y
 - Targeted validation note: the persistence and export suites still support this bridge, while `projectRuntime.history-authority.test.tsx` now contains stale expectations against current stale-copy wording and older output-auto-expansion behavior.
 - Future scenario-first persistence/history work, if it happens, should be treated as a separate migration track rather than as unfinished Verify emergency cleanup.
 - Component render coverage for Verify surfaces is still constrained by [[BUG-003 React.act Infrastructure Failure]], so most end-to-end Verify UI regressions need pure-logic or contract tests until React test infrastructure is fixed.
+
+## Tick Readout Strip + Analysis Drawer Hierarchy (2026-04-09, commit a3f6bcc0)
+
+### Architecture decision: Where does the per-tick value readout live?
+
+The tick readout strip lives **inside the waveform pane** (not in the analysis drawer). This is intentional:
+- The waveform pane is the truth surface — students should be able to answer "what happened at this tick?" without opening the drawer
+- The drawer is for secondary analysis (Why did it fail? What do the vectors look like?)
+- The readout strip is the oscilloscope "measurement bar" — always visible when a tick is selected, immediately interpretable
+
+### TickReadoutStrip component (`surfaces/verify/TickReadoutStrip.tsx`)
+
+- Props: `tick: number`, `signals: WaveformSignalRow[]`, `signalGroups?: Map<string, SignalLaneGroup>`
+- Position: between `ide-verify-waveform-scroll` close and `ide-waveform-outer` close, where it is always visible below the scrollable waveform
+- Shown when: `selectedTick !== null && lastRun && !isStepMode` (step mode has its own full snapshot panel)
+- Layout: `t{N}` label → input chips (steel-blue `rgba(56,189,248,...)`) → `→` separator → output chips (teal `rgba(46,196,182,...)`)
+- Testid: `ide-verify-tick-readout`; per-chip: `ide-verify-tick-readout-chip-{signal}`
+
+### Analysis drawer tab hierarchy (target: 3 tabs)
+
+Current state (2026-04-09): 6 display tabs renamed to cleaner labels:
+- `'why'` → label "Inspect" (primary — signal explanation + tick context)
+- `'mismatches'` → label "Checks" (secondary — compare mode mismatch table)
+- `'vectors'`, `'truth'`, `'kmap'`, `'details'` → still exist as separate tabs (pending collapse)
+
+Target (next slice): collapse `vectors`, `truth`, `kmap`, `details` into a single "Details" tab with internal sub-navigation. Final tab structure: **Inspect | Checks | Details**.
+
+### Colour contract (oscilloscope channel conventions)
+
+| Context      | Signal type | Colour          | Token                     |
+|--------------|------------|-----------------|---------------------------|
+| Live waveform | Input/Stimulus | Steel-blue    | `rgba(56,189,248,0.85)`   |
+| Live waveform | Output/Observed | Teal         | `#2ec4b6`                 |
+| Tick readout strip | Input | Steel-blue     | `rgba(56,189,248,0.85)`   |
+| Tick readout strip | Output | Teal           | `rgba(46,196,182,0.9)`    |
+| Ghost lanes   | Stimulus group header | Steel-blue | `rgba(56,189,248,0.40)`  |
+| Ghost lanes   | Observed group header | Teal       | `rgba(46,196,182,0.55)`   |

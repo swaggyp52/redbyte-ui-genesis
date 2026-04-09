@@ -459,9 +459,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     : compareTraceOnly
       ? 'TRACE ONLY'
     : compareDiffers
-      ? 'ASSERTIONS DIFFER'
+      ? 'CHECKS DIFFER'
       : compareMatches
-        ? 'ASSERTIONS MATCH'
+        ? 'CHECKS MATCH'
         : compareCurrent
           ? 'SIMULATION CURRENT'
           : 'STALE';
@@ -709,7 +709,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     { label: `${effectiveTimingGuidance.signalLabelSingular} mapped`, pass: hasClockMapping },
     { label: 'Outputs mapped', pass: hasOutputMapping },
     { label: 'Vectors generated', pass: vectorsCount > 0 },
-    { label: 'Assertions match', pass: hasAssertionData && assertionFailCount === 0 },
+    { label: 'Checks match', pass: hasAssertionData && assertionFailCount === 0 },
     { label: 'Compare current', pass: compareCurrent && !scenarioDrifted },
     { label: 'Export current', pass: exportReady },
   ], [
