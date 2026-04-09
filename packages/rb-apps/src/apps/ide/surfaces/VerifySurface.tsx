@@ -3762,7 +3762,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {/* ── Compact header strip ─────────────────────────────────────────── */}
         {/* Status strip — compact primary bar, ~48px */}
         <div className="ide-verify-status-strip" data-testid="ide-verify-banner" data-zone="status">
-          <span data-testid="ide-verify-session-status">{verifySession.statusBadge}</span>
+          <span className="ide-verify-session-status" data-testid="ide-verify-session-status">{verifySession.statusBadge}</span>
           <IdeStatusPill tone={sessionStatusTone} testId="ide-verify-summary-status">
             {sessionStatusBadgeLabel}
           </IdeStatusPill>

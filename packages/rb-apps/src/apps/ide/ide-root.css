@@ -25215,3 +25215,154 @@ button:disabled,
     display: none !important;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   B-14 Visual System Pass — Verify page professional design pass
+   Status strip, left dock, workspace panels, scope header, and
+   signal role coloring.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Status strip: suppress developer-metadata noise spans ────
+   Session-status, session-mode, session-title, reference-mode are
+   preserved in the DOM for tests but removed from the visual layer.
+   Only the IdeStatusPill (ide-verify-summary-status) and the
+   primaryStatus chip remain visible. */
+.ide-verify-region--header .ide-verify-session-status,
+.ide-verify-region--header .ide-verify-session-mode,
+.ide-verify-region--header .ide-verify-session-title,
+.ide-verify-region--header .ide-verify-reference-mode {
+  display: none;
+}
+
+.ide-verify-region--header .ide-verify-status-strip {
+  background: rgba(3, 7, 15, 0.85);
+  border-bottom: 1px solid rgba(24, 44, 70, 0.55);
+  min-height: 30px;
+  max-height: 30px;
+  padding: 3px 12px;
+}
+
+/* ── 2. Command bar: tighter, instrument-style visual separation ── */
+.ide-verify-region--header .ide-verify-command-bar {
+  background: rgba(5, 11, 23, 0.92) !important;
+  border-top: 1px solid rgba(24, 44, 70, 0.4) !important;
+  border-bottom: 1px solid rgba(24, 44, 70, 0.4) !important;
+  padding: 4px 10px !important;
+  min-height: 36px !important;
+}
+
+/* ── 3. Left signal dock: instrument-panel dark treatment ────────── */
+.ide-verify-left-dock {
+  background: rgba(2, 5, 13, 0.95);
+  border-right: 1px solid rgba(20, 38, 62, 0.75);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-design-subheader {
+  background: rgba(3, 7, 16, 0.92) !important;
+  border-bottom: 1px solid rgba(20, 38, 62, 0.55) !important;
+  padding: 5px 8px 4px !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-design-subheader h3 {
+  font-size: 9px !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: #3a5570 !important;
+  font-weight: 700 !important;
+}
+
+/* Group toggle labels: compact uppercase instrument-style section dividers */
+.ide-verify-left-dock .ide-verify-signal-group-header {
+  background: rgba(3, 7, 15, 0.78) !important;
+  border-bottom: 1px solid rgba(20, 38, 62, 0.45) !important;
+}
+.ide-verify-left-dock .ide-verify-group-toggle {
+  font-size: 9px !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: #3a5570 !important;
+  font-weight: 700 !important;
+  padding: 4px 6px !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* Signal rows: role-based color coding via group context (input/output/internal) */
+.ide-verify-left-dock [data-testid="ide-verify-group-inputs"] .ide-signal-row {
+  color: #5aafe0 !important;
+  background: rgba(59, 130, 246, 0.05) !important;
+  border-color: rgba(59, 130, 246, 0.18) !important;
+}
+.ide-verify-left-dock [data-testid="ide-verify-group-inputs"] .ide-signal-row.is-active {
+  background: rgba(59, 130, 246, 0.18) !important;
+  border-color: rgba(59, 130, 246, 0.42) !important;
+}
+.ide-verify-left-dock [data-testid="ide-verify-group-outputs"] .ide-signal-row {
+  color: #4ec896 !important;
+  background: rgba(52, 211, 153, 0.05) !important;
+  border-color: rgba(52, 211, 153, 0.18) !important;
+}
+.ide-verify-left-dock [data-testid="ide-verify-group-outputs"] .ide-signal-row.is-active {
+  background: rgba(52, 211, 153, 0.18) !important;
+  border-color: rgba(52, 211, 153, 0.42) !important;
+}
+.ide-verify-left-dock [data-testid="ide-verify-group-internal"] .ide-signal-row {
+  color: #9a7edc !important;
+  background: rgba(139, 92, 246, 0.05) !important;
+  border-color: rgba(139, 92, 246, 0.18) !important;
+}
+
+/* ── 4. Workspace panel tone differentiation ──────────────────────
+   Stimulus = "authoring space" (slightly lighter, edit-focused)
+   Waveform = "evidence space" (deep terminal dark, immutable) */
+.ide-verify-workspace > .ide-verify-region--stimulus {
+  background: rgba(4, 10, 21, 0.93) !important;
+  border-right: 1px solid rgba(20, 38, 62, 0.65) !important;
+}
+.ide-verify-workspace > .ide-verify-region--waveform {
+  background: rgba(1, 3, 10, 0.99) !important;
+}
+
+/* ── 5. Oscilloscope scope header: strong instrument frame ───────── */
+.ide-verify-workspace .ide-verify-scope-header {
+  background: rgba(2, 7, 18, 0.98) !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.13) !important;
+  padding: 6px 14px !important;
+  min-height: 34px !important;
+}
+.ide-verify-workspace .ide-verify-scope-label {
+  font-size: 10px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: rgba(56, 189, 248, 0.62) !important;
+  font-weight: 700 !important;
+}
+
+/* ── 6. Signal chip utility classes for future use ───────────────── */
+.ide-signal-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.ide-signal-chip--input  { background: rgba(59,130,246,0.15); color: #7ec8f8; border-color: rgba(59,130,246,0.28); }
+.ide-signal-chip--output { background: rgba(52,211,153,0.12); color: #6ee7b7; border-color: rgba(52,211,153,0.22); }
+.ide-signal-chip--clock  { background: rgba(6,182,212,0.12);  color: #67e8f9; border-color: rgba(6,182,212,0.22); }
+.ide-signal-chip--fail   { background: rgba(239,68,68,0.15);  color: #fca5a5; border-color: rgba(239,68,68,0.28); }
+
+/* ── 7. Result region: lighter frame, no heavy brick-wall feel ────── */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--result {
+  border-bottom: 1px solid rgba(20, 38, 62, 0.5);
+}
+
+/* ── 8. Panel border suppression: remove outer frame in immersive mode */
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-shell-density='immersive'] .ide-verify-panel {
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
