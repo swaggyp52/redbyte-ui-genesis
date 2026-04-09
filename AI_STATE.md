@@ -1,5 +1,72 @@
 # AI State
 
+## Change Log 2026-04-09 (Full Verify desktop screen redesign: collapsed rails, balanced split, larger evidence/editor footprint)
+
+**Subsystem**: Verify / desktop composition / workbench + waveform footprint
+
+### Problem
+
+Even after the earlier Verify panel-ownership and fail-state cleanup slices, the page still felt like a rough internal tool instead of a real desktop app:
+
+- the Verify workbench was still too narrow relative to the waveform, especially at common desktop widths
+- draft Verify still hid the signals rail entirely instead of keeping a narrow, intentional `Signals` rail available
+- the shell was still advertising a right-side inspector rail even though analysis already lived in the command strip + drawer path
+- the waveform viewer still left too much unused track width because the tick-fitting logic and fixed label gutter were too conservative
+- the live matrix and waveform traces still occupied only the top portion of their panes, leaving the main screen shape feeling top-left heavy
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Verify now defaults `leftDockMode` to `collapsed` even in draft and stale Verify sessions, so the `Signals` rail is present without reopening a full dock
+  - Verify no longer exposes a right shell rail in fail state; secondary analysis stays in the command strip + drawer path
+  - widened the waveform/evidence contract by increasing the allowed waveform tick width range and fitting against a smaller label allowance
+  - updated the initial fit trigger to use the new default waveform tick width constant instead of the old `48px` baseline
+- `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+  - widened Verify’s collapsed left rail reservation to `60px` and narrowed Verify’s expanded left dock width caps so the shell stops overspending width on dock chrome
+- `packages/rb-apps/src/apps/ide/surfaces/verify/WaveformInstrument.tsx`
+  - reduced the waveform label gutter (`160 -> 128`) and ghost-label gutter (`140 -> 112`) so the waveform track owns more of the evidence panel
+- `packages/rb-apps/src/apps/ide/components/StimulusCanvas.tsx`
+  - increased the default Verify matrix row footprint (`ROW_H 36 -> 44`, `GROUP_H 22 -> 26`) so the case editor uses more of the vertical pane instead of clustering at the top
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - converted the Verify workspace into a deliberate two-column desktop grid instead of the old fixed-width left column + leftover right column
+  - desktop Verify now targets an approximately `42/58` workbench-to-waveform split, with the workbench kept real but the waveform kept dominant
+  - removed the remaining post-run height caps that kept the live editor cramped inside a short top band
+  - made both the workbench pane and waveform pane fill their full assigned height
+  - added subtle Verify-only work-area backdrops so the large desktop panes read as intentional instrument surfaces rather than dead black voids
+  - kept the closed analysis drawer compact and secondary
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx`
+  - now asserts draft Verify sessions also expose the collapsed left rail instead of hiding the dock entirely
+  - now asserts fail-state Verify does not expose a right shell rail toggle
+- `scripts/gates/ide-verify-workbench-contract.mjs`
+  - now asserts the left rail is visible in collapsed form, the right rail stays hidden, and the workbench / waveform shares remain within the new desktop composition contract
+  - kept the waveform-preview visibility contract but aligned the minimum preview height to the flatter desktop evidence presentation used by the new layout
+
+### Validation
+
+- Focused Verify validation:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.desktopComposition.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.test.tsx packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.rowAuthoringClarity.test.tsx`
+  - result: `86` tests passed
+- Local playground build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- Browser contracts:
+  - `node scripts/gates/ide-verify-workbench-contract.mjs`
+  - result: PASS
+  - `node scripts/gates/ide-verify-summary-contract.mjs`
+  - result: PASS
+- Local browser audit on `Signal Tour: Switches → LEDs`, forced into fail state by editing an expected output then rerunning Compare:
+  - `1366x768`, `1536x864`, `1600x900`, `1920x1080` all keep the left rail collapsed to `60px`, keep the right shell rail hidden, keep the bottom fail slab absent, and keep the analysis drawer closed by default
+  - the main Verify workspace now measures at approximately `41.8%` workbench / `57.7%` waveform across those desktop widths
+  - the primary evidence screen now stays `Stimulus Workbench + waveform`, with no second major evidence grid in the main composition
+
+### Release impact
+
+- Verify now reads much more like a real desktop app screen: narrow signal rail, left workbench, right waveform, drawer-only deeper analysis.
+- The page no longer spends premium width on shell rails that do not earn it.
+- The next Verify slice should stay inside the remaining secondary layer: analysis-drawer IA and any last evidence/readability cleanup, not another broad page rescue.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-04-09 (Major Verify desktop overhaul: collapsed signal rail, drawer-only secondary analysis, no bottom fail slab)
 
 **Subsystem**: Verify / desktop composition / fail-state hierarchy

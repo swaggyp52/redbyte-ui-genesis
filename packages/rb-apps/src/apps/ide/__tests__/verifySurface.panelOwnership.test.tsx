@@ -117,6 +117,14 @@ describe('B-14 Panel Ownership — analysis drawer progressive disclosure', () =
 });
 
 describe('B-14 Panel Ownership — signals dock layout policy', () => {
+  it('signals dock aside is absent (collapsed to rail) in draft Verify sessions', () => {
+    const { queryByTestId, getByTestId } = render(
+      <VerifySurface {...BASE_PROPS} />
+    );
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+  });
+
   it('signals dock aside is absent (collapsed to rail) after a pass run', () => {
     // Pass → leftDockMode: 'collapsed' → no ide-left-dock aside in DOM
     const { queryByTestId } = render(
@@ -150,5 +158,12 @@ describe('B-14 Panel Ownership — signals dock layout policy', () => {
     const dock = getByTestId('ide-left-dock');
     const verifyDock = dock.querySelector('[data-testid="ide-verify-left-dock"]');
     expect(verifyDock).toBeTruthy();
+  });
+
+  it('verify keeps secondary analysis out of the shell rails during fail runs', () => {
+    const { queryByTestId } = render(
+      <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
+    );
+    expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
   });
 });

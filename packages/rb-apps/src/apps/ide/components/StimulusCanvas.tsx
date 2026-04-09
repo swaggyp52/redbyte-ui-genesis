@@ -3,8 +3,8 @@ import type { VerifyAuthorVector, VerifyVectorDraftInput } from '../surfaces/Sce
 
 const LABEL_W = 148;
 const TICK_W = 64;
-const ROW_H = 36;
-const GROUP_H = 22;
+const ROW_H = 44;
+const GROUP_H = 26;
 const ADD_COL_W = 40;
 
 type LaneKind = 'input' | 'expected';

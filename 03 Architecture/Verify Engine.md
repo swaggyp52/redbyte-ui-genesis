@@ -98,6 +98,14 @@ The latest major desktop overhaul then removed the remaining fail-state panel cl
 - the analysis drawer is now truly secondary by default: the closed state is just a compact command-strip toggle with a focused hint (`Focus LD0 at t0`), while the full drawer body only appears when explicitly opened
 - the stimulus column was narrowed again so the default fail-state desktop composition now reads as narrow signals rail + workbench + waveform, instead of dock + workbench + waveform + bottom slab
 
+The latest full desktop screen redesign then fixed the remaining "internal tool" geometry:
+
+- Verify now treats the left dock as a narrow `Signals` rail across draft, stale, and fail-state desktop sessions, rather than fully hiding it in draft or reopening a large dock by default
+- the shell no longer exposes a right-side inspector rail for Verify; the main screen stays workbench + waveform, and deeper analysis remains drawer-only
+- the workspace now uses a deliberate desktop split of roughly `42%` workbench to `58%` waveform, instead of the old fixed `430px` stimulus column that made the screen feel top-left heavy
+- waveform fitting now spends less space on the label gutter and allows wider ticks, so the evidence panel uses more of its real width instead of leaving empty track space
+- the live case matrix and waveform rows both use a larger default row footprint, so the primary screen no longer feels like tiny content floating in oversized black panes
+
 ## Mode Detection (B-12 Slice 1)
 
 `verifyMode.ts` provides the canonical circuit mode gate, replacing the previous `hasDff: boolean` prop.

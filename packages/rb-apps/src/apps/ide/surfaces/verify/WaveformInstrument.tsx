@@ -68,7 +68,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
   signalGroups,
   ghostSignals,
 }) => {
-  const LABEL_W = 160;
+  const LABEL_W = 128;
   const ROW_H = rowHeight;
   const ROW_HI = Math.round(ROW_H * 0.22);
   const ROW_LO = Math.round(ROW_H * 0.78);
@@ -122,7 +122,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
   if (signals.length === 0) {
     // Ghost lanes: if mapped signals exist, render empty instrument channels waiting for data
     if (ghostSignals && ghostSignals.length > 0) {
-      const GHOST_LABEL_W = 140;
+      const GHOST_LABEL_W = 112;
       const GHOST_ROW_H = ROW_H;
       const GHOST_HEADER_H = 16;
       const GHOST_TRACK_W = ghostTrackWidth;

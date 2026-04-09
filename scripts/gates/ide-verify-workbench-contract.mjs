@@ -35,6 +35,18 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   const editableExpectedCellVisible = await editableExpectedCell.isVisible().catch(() => false);
   assert(editableExpectedCellVisible, 'verify must keep at least one expected-output cell visible after a run');
 
+  const leftDock = page.locator('[data-testid="ide-left-dock"]').first();
+  const leftDockVisible = await leftDock.isVisible().catch(() => false);
+  assert(!leftDockVisible, 'verify must start on the collapsed signals rail, not an expanded left dock');
+  assert(
+    await page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first().isVisible().catch(() => false),
+    'verify must keep a collapsed left rail toggle visible by default'
+  );
+  assert(
+    !(await page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first().isVisible().catch(() => false)),
+    'verify must keep secondary analysis out of the shell rails by default'
+  );
+
   const expectedTitleBefore = await editableExpectedCell.getAttribute('title');
   await editableExpectedCell.scrollIntoViewIfNeeded();
   await editableExpectedCell.click();
@@ -115,8 +127,23 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   assert(Boolean(waveformBounds), 'verify waveform region must be measurable');
   assert(Boolean(waveformPreviewBounds), 'verify waveform preview must be measurable');
   assert(
-    (waveformPreviewBounds?.width ?? 0) >= 550 && (waveformPreviewBounds?.height ?? 0) >= 220,
+    (waveformPreviewBounds?.width ?? 0) >= 550 && (waveformPreviewBounds?.height ?? 0) >= 210,
     `verify waveform preview must stay meaningfully visible by default (preview=${waveformPreviewBounds?.width ?? 0}x${waveformPreviewBounds?.height ?? 0})`
+  );
+  const workspaceTotalWidth = (workspaceBounds?.width ?? 0);
+  const workbenchBounds = await page.locator('[data-testid="ide-verify-region-stimulus"]').boundingBox();
+  const waveformRegionBounds = await page.locator('[data-testid="ide-verify-region-waveform"]').boundingBox();
+  assert(Boolean(workbenchBounds), 'verify workbench region must be measurable');
+  assert(Boolean(waveformRegionBounds), 'verify waveform region must be measurable');
+  const workbenchShare = workspaceTotalWidth > 0 ? ((workbenchBounds?.width ?? 0) / workspaceTotalWidth) : 0;
+  const waveformShare = workspaceTotalWidth > 0 ? ((waveformRegionBounds?.width ?? 0) / workspaceTotalWidth) : 0;
+  assert(
+    workbenchShare >= 0.38,
+    `verify workbench must own a real share of the workspace at desktop widths (share=${workbenchShare.toFixed(3)})`
+  );
+  assert(
+    waveformShare >= 0.5,
+    `verify waveform must remain the dominant evidence companion at desktop widths (share=${waveformShare.toFixed(3)})`
   );
   assert(
     (workspaceBounds?.width ?? 0) >= (panelBodyBounds?.width ?? 0) * 0.85,

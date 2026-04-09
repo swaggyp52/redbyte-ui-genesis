@@ -29,6 +29,7 @@ const CONSOLE_HEIGHT_RANGE = { min: 0, max: 320 };
 const COLLAPSED_CONSOLE_HEIGHT = 0;
 const DEFAULT_EXPANDED_CONSOLE_HEIGHT = 120;
 const COLLAPSED_DOCK_RAIL_WIDTH = 26;
+const VERIFY_COLLAPSED_DOCK_RAIL_WIDTH = 60;
 
 interface WorkbenchLayoutState {
   leftWidth: number;
@@ -319,6 +320,12 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             : layoutMode === 'standard'
               ? { left: { min: 172, max: 200 }, right: { min: 208, max: 240 } }
               : { left: { min: 160, max: 184 }, right: { min: 196, max: 224 } }
+          : mode === 'verify'
+            ? layoutMode === 'wide'
+              ? { left: { min: 136, max: 152 }, right: { min: 196, max: 220 } }
+              : layoutMode === 'standard'
+                ? { left: { min: 124, max: 140 }, right: { min: 184, max: 208 } }
+                : { left: { min: 116, max: 132 }, right: { min: 176, max: 196 } }
           : usesCalmerNonDesignShell
             ? layoutMode === 'wide'
               ? { left: { min: 140, max: 156 }, right: { min: 188, max: 208 } }
@@ -332,7 +339,12 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
                 : { left: { min: 136, max: 152 }, right: { min: 176, max: 196 } };
       const effectiveLeftWidth = clampValue(layout.leftWidth, widthCaps.left);
       const effectiveRightWidth = clampValue(layout.rightWidth, widthCaps.right);
-      const leftSlotWidth = showLeftDock ? effectiveLeftWidth : 0;
+      const collapsedLeftRailWidth = mode === 'verify' ? VERIFY_COLLAPSED_DOCK_RAIL_WIDTH : COLLAPSED_DOCK_RAIL_WIDTH;
+      const leftSlotWidth = showLeftDock
+        ? effectiveLeftWidth
+        : showLeftCollapsedRail
+          ? collapsedLeftRailWidth
+          : 0;
       const overlayCollapsedRightRail = mode === 'design' && showRightCollapsedRail;
       const rightSlotWidth = showRightDock
         ? effectiveRightWidth

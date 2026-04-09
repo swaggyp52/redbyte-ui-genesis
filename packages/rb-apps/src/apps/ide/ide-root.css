@@ -2397,6 +2397,145 @@
   font-weight: var(--rb-font-weight-semibold);
 }
 
+/* ==========================================================================
+   Major Verify desktop screen redesign
+   Goal: verify reads as collapsed rail + workbench + waveform, with the
+   waveform getting a real evidence footprint and the live editor no longer
+   trapped in a narrow, height-capped column.
+   ========================================================================== */
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-main.is-left-dock-collapsed .ide-workbench-dock-toggle-rail-left {
+  width: 60px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-dock-toggle-rail {
+  width: 100%;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  background: linear-gradient(180deg, rgba(7, 15, 25, 0.98), rgba(4, 10, 18, 0.98));
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-workspace {
+  padding: 0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body {
+  min-height: 0 !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workspace {
+  display: grid !important;
+  grid-template-columns: minmax(420px, 0.85fr) minmax(520px, 1.15fr) !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+@media (min-width: 1600px) {
+  .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workspace {
+    grid-template-columns: minmax(460px, 0.84fr) minmax(640px, 1.16fr) !important;
+    gap: 16px !important;
+  }
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workspace > .ide-verify-region--stimulus {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: none !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  border-right: 1px solid rgba(48, 77, 107, 0.22);
+  background:
+    linear-gradient(180deg, rgba(8, 16, 28, 0.96), rgba(5, 11, 19, 0.98)),
+    repeating-linear-gradient(0deg, rgba(56, 189, 248, 0.028) 0 1px, transparent 1px 48px),
+    repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.024) 0 1px, transparent 1px 72px);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workspace > .ide-verify-region--waveform {
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  padding-left: 0 !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus:has(.ide-verify-workbench-live) {
+  flex: 1 1 auto !important;
+  max-height: none !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-scenario-builder-details--postrun {
+  max-height: none !important;
+  height: 100% !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-scenario-builder-details--postrun[open] {
+  max-height: none !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workbench-body,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-vector-form,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-vector-form--canvas-only,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-stimulus-canvas,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-stimulus-grid-scroll {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-workbench,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-three-panel,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-three-panel-center,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-console-frame,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-instrument-deck,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-oscilloscope-stage,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-waveform-frame {
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-oscilloscope-stage {
+  padding: 10px 12px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-waveform-frame {
+  min-height: clamp(360px, 58vh, 820px) !important;
+  background:
+    linear-gradient(180deg, rgba(4, 11, 20, 0.96), rgba(3, 8, 15, 0.99)),
+    repeating-linear-gradient(0deg, rgba(56, 189, 248, 0.03) 0 1px, transparent 1px 52px),
+    repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.024) 0 1px, transparent 1px 88px);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-waveform-scroll {
+  flex: 1 1 auto !important;
+  min-height: clamp(340px, 56vh, 780px) !important;
+  padding: 8px 10px 12px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-scope-header {
+  min-height: 36px !important;
+  padding: 0 10px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-waveform-bar {
+  min-height: 52px !important;
+  padding: 6px 8px !important;
+  row-gap: 6px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-supporting-strip:not(.is-open) {
+  max-height: 38px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-body {
+  max-height: min(34vh, 320px) !important;
+}
+
 .ide-verify-banner {
   border: 1px solid rgba(58, 87, 116, 0.72);
   border-radius: var(--ide-radius-s);

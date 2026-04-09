@@ -241,6 +241,10 @@ interface CaptureApplicationResult {
 
 const VERIFY_UI_STORAGE_KEY = 'rb.verify-ui.v2';
 const AUTO_VECTOR_DISMISS_KEY = 'rb.verify-autovector-dismissed.v1';
+const DEFAULT_VERIFY_TICK_WIDTH = 72;
+const MIN_VERIFY_TICK_WIDTH = 36;
+const MAX_VERIFY_TICK_WIDTH = 144;
+const VERIFY_WAVEFORM_LABEL_ALLOWANCE = 104;
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -366,7 +370,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [layoutMode, setLayoutMode] = useState<VerifyLayoutMode>(() => resolveVerifyLayoutMode());
   const [waveformDensity, setWaveformDensity] = useState<'small' | 'normal' | 'large'>('normal');
   const [tickZoom, setTickZoom] = useState<'all' | 'fail' | 'window'>('all');
-  const [tickWidth, setTickWidth] = useState(72);
+  const [tickWidth, setTickWidth] = useState(DEFAULT_VERIFY_TICK_WIDTH);
   const [tickWindowCenter, setTickWindowCenter] = useState<number | null>(null);
   const [waveformToolsOpen, setWaveformToolsOpen] = useState(false);
   const [truthTableMode, setTruthTableMode] = useState<TruthTableMode>('ticks');
@@ -500,7 +504,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setDraftExpected((prev) => ({ ...prev, [fieldId]: value }));
   }, []);
 
-  const ROW_H_MAP: Record<string, number> = { small: 34, normal: 48, large: 62 };
+  const ROW_H_MAP: Record<string, number> = { small: 40, normal: 60, large: 76 };
 
   useEffect(() => {
     setDraftInputs((prev) => withInputFieldDefaults(prev, inputFields));
@@ -2242,7 +2246,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [fitWaveformView, goToNextFail, goToPrevFail]);
   useEffect(() => {
     if (zoomedTicks.length === 0) return;
-    if (tickWidth === 48 || layoutMode === 'compact') {
+    if (tickWidth === DEFAULT_VERIFY_TICK_WIDTH || layoutMode === 'compact') {
       fitWaveformView();
     }
   }, [fitWaveformView, layoutMode, tickWidth, zoomedTicks.length]);
@@ -3267,7 +3271,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       if (sessionSignalsAssertionFailure) {
         return {
           leftDockMode: 'collapsed' as const,
-          rightDockMode: 'collapsed' as const,
+          rightDockMode: 'hidden' as const,
           consoleMode: 'auto' as const,
         };
       }
@@ -3282,7 +3286,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
       if (hasStaleAuthoredReference || isRunStale || isScenarioStale || isWrongScenario) {
         return {
-          leftDockMode: 'hidden' as const,
+          leftDockMode: 'collapsed' as const,
           rightDockMode: 'hidden' as const,
           consoleMode: 'hidden' as const,
         };
@@ -3298,7 +3302,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
       if (isDraftSession) {
         return {
-          leftDockMode: 'hidden' as const,
+          leftDockMode: 'collapsed' as const,
           rightDockMode: 'hidden' as const,
           consoleMode: 'hidden' as const,
         };
@@ -5950,13 +5954,13 @@ function resolveVerifyLayoutMode(width?: number): VerifyLayoutMode {
 }
 
 function clampTickWidth(value: number): number {
-  if (!Number.isFinite(value)) return 48;
-  return Math.max(28, Math.min(88, Math.round(value)));
+  if (!Number.isFinite(value)) return DEFAULT_VERIFY_TICK_WIDTH;
+  return Math.max(MIN_VERIFY_TICK_WIDTH, Math.min(MAX_VERIFY_TICK_WIDTH, Math.round(value)));
 }
 
 function fitWaveformTickWidth(containerWidth: number, tickCount: number): number {
-  if (!Number.isFinite(containerWidth) || tickCount <= 0) return 48;
-  const available = Math.max(280, containerWidth - 132);
+  if (!Number.isFinite(containerWidth) || tickCount <= 0) return DEFAULT_VERIFY_TICK_WIDTH;
+  const available = Math.max(320, containerWidth - VERIFY_WAVEFORM_LABEL_ALLOWANCE);
   return clampTickWidth(available / tickCount);
 }
 
