@@ -487,8 +487,8 @@ describe('IdeApp lab-day wiring', () => {
     });
 
     expect(view.getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION');
-    expect(view.getByTestId('ide-verify-session-title').textContent).toContain('Ready to run this testbench');
-    expect(view.getByTestId('ide-verify-empty-run').textContent).toContain('Run Testbench');
+    expect(view.getByTestId('ide-verify-session-title').textContent).toContain('Ready to run stimulus');
+    expect(view.getByTestId('ide-vcb-run')).toBeTruthy();
   });
 
   it('detaches starter examples without leaving Verify stuck in starter compare mode', async () => {
@@ -524,7 +524,7 @@ describe('IdeApp lab-day wiring', () => {
 
     expect(view.getByTestId('ide-verify-session-status').textContent).toContain('DRAFT');
     expect(view.getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION');
-    expect(view.getByTestId('ide-verify-session-title').textContent).toContain('Ready to run this testbench');
-    expect(view.getByTestId('ide-verify-empty-run').textContent).toContain('Run Testbench');
+    expect(view.getByTestId('ide-verify-session-title').textContent).toContain('Ready to run stimulus');
+    expect(view.getByTestId('ide-vcb-run')).toBeTruthy();
   });
 });

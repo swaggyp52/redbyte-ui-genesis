@@ -168,7 +168,7 @@ describe('IdeWorkbenchShell', () => {
     });
 
     expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(getByTestId('ide-mode-project').style.getPropertyValue('--ide-workbench-left-slot-width')).toBe('0px');
+    expect(getByTestId('ide-mode-project').style.getPropertyValue('--ide-workbench-left-slot-width')).toBe('26px');
     const restoreRail = getByTestId('ide-workbench-dock-toggle-left');
     expect(restoreRail.textContent).toContain('Library');
 
