@@ -25530,3 +25530,92 @@ button:disabled,
 .ide-vcb-mode-btn:not(.is-active):hover:not(:disabled) {
   opacity: 1;
 }
+
+/* Verify evidence micro-IA: keep failure focus visible, move power tools behind disclosure */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-fail-nav {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-fail-nav-summary {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: rgba(66, 12, 18, 0.34);
+  color: rgba(248, 250, 252, 0.9);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-fail-nav-summary code {
+  font-size: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-fail-nav-summary__tick {
+  color: rgba(125, 211, 252, 0.9);
+  font-family: var(--rb-font-mono);
+  font-size: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-fail-nav-summary__values {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(226, 232, 240, 0.74);
+  font-size: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-fail-nav-position {
+  font-size: 10px !important;
+  opacity: 0.62;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-tools-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 7px 10px 8px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.08);
+  background: linear-gradient(180deg, rgba(4, 10, 20, 0.9), rgba(3, 8, 16, 0.82));
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-tools-section {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-tools-section--markers {
+  justify-content: flex-end;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-tools-label {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  opacity: 0.5;
+  text-transform: uppercase;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-tools-readouts {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-tools-panel .ide-verify-cursor-controls {
+  border-left: 1px solid rgba(56, 189, 248, 0.08) !important;
+  margin-left: 2px !important;
+  padding-left: 8px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-hint {
+  font-size: 10px;
+  color: rgba(191, 219, 254, 0.8);
+}

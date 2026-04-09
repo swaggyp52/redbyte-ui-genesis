@@ -73,6 +73,28 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
     'failed compare runs must not keep an inline right failure rail in the primary waveform workspace'
   );
 
+  const waveformToolsToggle = page.locator('[data-testid="ide-verify-waveform-tools-toggle"]').first();
+  assert(
+    await waveformToolsToggle.isVisible().catch(() => false),
+    'failed compare runs must keep the waveform tools disclosure visible'
+  );
+  assert(
+    !(await page.locator('[data-testid="ide-verify-waveform-tools-panel"]').first().isVisible().catch(() => false)),
+    'advanced waveform tools must stay hidden until explicitly opened'
+  );
+  assert(
+    !(await page.locator('[data-testid="ide-verify-set-cursor-a"]').first().isVisible().catch(() => false)),
+    'cursor tools must stay out of the primary evidence strip by default'
+  );
+  await waveformToolsToggle.click();
+  await page.waitForSelector('[data-testid="ide-verify-waveform-tools-panel"]', { timeout: 10000 });
+  assert(
+    await page.locator('[data-testid="ide-verify-set-cursor-a"]').first().isVisible().catch(() => false),
+    'opening waveform tools must reveal cursor controls'
+  );
+  await waveformToolsToggle.click();
+  await page.waitForTimeout(100);
+
   // After a PASS run the left dock is collapsed and signal buttons are not in the DOM.
   // Open the dock first, then verify its contents.
   const signalFilterState = page.locator('[data-testid="ide-verify-signal-filter-state"]').first();

@@ -368,6 +368,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [tickZoom, setTickZoom] = useState<'all' | 'fail' | 'window'>('all');
   const [tickWidth, setTickWidth] = useState(72);
   const [tickWindowCenter, setTickWindowCenter] = useState<number | null>(null);
+  const [waveformToolsOpen, setWaveformToolsOpen] = useState(false);
   const [truthTableMode, setTruthTableMode] = useState<TruthTableMode>('ticks');
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Next-run compare intent. This is authoring state only; it does not describe
@@ -1967,6 +1968,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const currentFailIndex =
     selectedFailureCase ? failTicksSorted.indexOf(selectedFailureCase.tick) : -1;
+  const selectedFailureDisplayLabel = selectedFailureLabel ?? selectedFailureCase?.signal ?? null;
+  const selectedFailurePositionLabel =
+    failTicksSorted.length > 0
+      ? currentFailIndex >= 0
+        ? `Fail ${currentFailIndex + 1} / ${failTicksSorted.length}`
+        : `${failTicksSorted.length} fail tick${failTicksSorted.length !== 1 ? 's' : ''}`
+      : null;
 
   const goToPrevFail = () => {
     if (failTicksSorted.length === 0) return;
@@ -4390,23 +4398,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   {selectedTick !== null && (
                     <code className="ide-verify-scope-tick">t{selectedTick}</code>
                   )}
-                  {cursorA !== null && (
-                    <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-a-value">A t{cursorA}</code>
-                  )}
-                  {cursorB !== null && (
-                    <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-b-value">B t{cursorB}</code>
-                  )}
-                  {cursorDeltaTicks !== null && (
-                    <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-delta">
-                      Delta {cursorDeltaTicks} ticks
-                    </code>
-                  )}
-                  {hasSessionFailureEvidence && failTicksSorted.length > 0 && currentFailIndex >= 0 && (
-                    <span className="ide-verify-scope-fail-index">
-                      fail {currentFailIndex + 1}/{failTicksSorted.length}
-                    </span>
-                  )}
-
                 </span>
               </div>
               <div className="ide-verify-waveform-bar" data-testid="ide-verify-waveform-bar">
@@ -4436,11 +4427,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-fail-nav-first">
                         First mismatch
                       </IdeButton>
-                      <span className="ide-verify-fail-nav-position ide-copy">
-                        {currentFailIndex >= 0
-                          ? `showing fail ${currentFailIndex + 1} / ${failTicksSorted.length}`
-                          : `${failTicksSorted.length} fail tick${failTicksSorted.length !== 1 ? 's' : ''}`}
-                      </span>
+                      {selectedFailureCase && (
+                        <span className="ide-verify-fail-nav-summary" data-testid="ide-verify-fail-nav-summary">
+                          <code>{selectedFailureDisplayLabel ?? selectedFailureCase.signal}</code>
+                          <span className="ide-verify-fail-nav-summary__tick">t{selectedFailureCase.tick}</span>
+                          <span className="ide-verify-fail-nav-summary__values ide-copy">
+                            exp <code>{selectedFailureCase.expected}</code> obs <code>{selectedFailureCase.actual}</code>
+                          </span>
+                        </span>
+                      )}
+                      {selectedFailurePositionLabel && (
+                        <span className="ide-verify-fail-nav-position ide-copy">
+                          {selectedFailurePositionLabel}
+                        </span>
+                      )}
                     </>
                   ) : (
                     <span className="ide-copy ide-verify-wfbar-meta" data-testid="ide-verify-run-state">
@@ -4466,49 +4466,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       {mode === 'all' ? 'All ticks' : mode === 'fail' ? 'Fail window' : 'Selected'}
                     </button>
                   ))}
-                  {/* Zoom +/- for tick width */}
-                  <button
-                    type="button"
-                    className="ide-verify-zoom-btn"
-                    onClick={() => setTickWidth((prev) => clampTickWidth(prev - 8))}
-                    data-testid="ide-verify-zoom-out"
-                    title="Zoom out (narrower ticks)"
-                  >
-                    −
-                  </button>
-                  <button
-                    type="button"
-                    className="ide-verify-zoom-btn"
-                    onClick={() => setTickWidth((prev) => clampTickWidth(prev + 8))}
-                    data-testid="ide-verify-zoom-in"
-                    title="Zoom in (wider ticks)"
-                  >
-                    +
-                  </button>
-                  <button
-                    type="button"
-                    className="ide-verify-zoom-btn"
-                    onClick={fitWaveformView}
-                    data-testid="ide-verify-zoom-fit"
-                    title="Fit all ticks in view"
-                  >
-                    Fit
-                  </button>
-                  <span className="ide-verify-zoom-label ide-copy" style={{ marginLeft: 'var(--ide-space-2)' }}>Rows</span>
-                  {(['small', 'normal', 'large'] as const).map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      className={`ide-verify-zoom-btn ${waveformDensity === d ? 'is-active' : ''}`}
-                      onClick={() => setWaveformDensity(d)}
-                      data-testid={`ide-verify-density-${d}`}
-                    >
-                      {d === 'small' ? 'S' : d === 'normal' ? 'M' : 'L'}
-                    </button>
-                  ))}
                 </div>
 
-                {/* Right: Tick scrubber */}
+                {/* Right: Tick scrubber + advanced tools */}
                 <div className="ide-verify-wfbar-group ide-verify-wfbar-right">
                   {timelineTicks.length > 0 && selectedTick !== null ? (
                     <label className="ide-verify-scrubber-field" data-testid="ide-verify-tick-nav">
@@ -4524,54 +4484,125 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       <code data-testid="ide-verify-selected-tick" style={{ minWidth: 24 }}>t{selectedTick}</code>
                     </label>
                   ) : null}
-                  {selectedTick !== null ? (
-                    <div className="ide-verify-cursor-controls" data-testid="ide-verify-cursor-controls">
-                      <button
-                        type="button"
-                        className="ide-verify-zoom-btn"
-                        onClick={() => setCursorFromSelected('A')}
-                        data-testid="ide-verify-set-cursor-a"
-                      >
-                        Set A
-                      </button>
-                      <button
-                        type="button"
-                        className="ide-verify-zoom-btn"
-                        onClick={() => setCursorFromSelected('B')}
-                        data-testid="ide-verify-set-cursor-b"
-                      >
-                        Set B
-                      </button>
-                      <button
-                        type="button"
-                        className="ide-verify-zoom-btn"
-                        onClick={() => jumpToCursor('A')}
-                        disabled={cursorA === null}
-                        data-testid="ide-verify-jump-cursor-a"
-                      >
-                        Jump A
-                      </button>
-                      <button
-                        type="button"
-                        className="ide-verify-zoom-btn"
-                        onClick={() => jumpToCursor('B')}
-                        disabled={cursorB === null}
-                        data-testid="ide-verify-jump-cursor-b"
-                      >
-                        Jump B
-                      </button>
-                      <button
-                        type="button"
-                        className="ide-verify-zoom-btn"
-                        onClick={clearCursors}
-                        data-testid="ide-verify-clear-cursors"
-                      >
-                        Clear AB
-                      </button>
-                    </div>
-                  ) : null}
+                  {timelineTicks.length > 0 && (
+                    <IdeButton
+                      tone="ghost"
+                      onClick={() => setWaveformToolsOpen((previous) => !previous)}
+                      testId="ide-verify-waveform-tools-toggle"
+                    >
+                      {waveformToolsOpen ? 'Hide tools' : 'Waveform tools'}
+                    </IdeButton>
+                  )}
                 </div>
               </div>
+              {waveformToolsOpen && (
+                <div className="ide-verify-waveform-tools-panel" data-testid="ide-verify-waveform-tools-panel">
+                  <div className="ide-verify-waveform-tools-section">
+                    <span className="ide-verify-waveform-tools-label ide-copy">View</span>
+                    <button
+                      type="button"
+                      className="ide-verify-zoom-btn"
+                      onClick={() => setTickWidth((prev) => clampTickWidth(prev - 8))}
+                      data-testid="ide-verify-zoom-out"
+                      title="Zoom out (narrower ticks)"
+                    >
+                      −
+                    </button>
+                    <button
+                      type="button"
+                      className="ide-verify-zoom-btn"
+                      onClick={() => setTickWidth((prev) => clampTickWidth(prev + 8))}
+                      data-testid="ide-verify-zoom-in"
+                      title="Zoom in (wider ticks)"
+                    >
+                      +
+                    </button>
+                    <button
+                      type="button"
+                      className="ide-verify-zoom-btn"
+                      onClick={fitWaveformView}
+                      data-testid="ide-verify-zoom-fit"
+                      title="Fit all ticks in view"
+                    >
+                      Fit
+                    </button>
+                    <span className="ide-verify-waveform-tools-label ide-copy">Rows</span>
+                    {(['small', 'normal', 'large'] as const).map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        className={`ide-verify-zoom-btn ${waveformDensity === d ? 'is-active' : ''}`}
+                        onClick={() => setWaveformDensity(d)}
+                        data-testid={`ide-verify-density-${d}`}
+                      >
+                        {d === 'small' ? 'S' : d === 'normal' ? 'M' : 'L'}
+                      </button>
+                    ))}
+                  </div>
+                  {selectedTick !== null && (
+                    <div className="ide-verify-waveform-tools-section ide-verify-waveform-tools-section--markers">
+                      <span className="ide-verify-waveform-tools-label ide-copy">Markers</span>
+                      <span className="ide-verify-waveform-tools-readouts">
+                        {cursorA !== null && (
+                          <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-a-value">A t{cursorA}</code>
+                        )}
+                        {cursorB !== null && (
+                          <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-b-value">B t{cursorB}</code>
+                        )}
+                        {cursorDeltaTicks !== null && (
+                          <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-delta">
+                            Delta {cursorDeltaTicks} ticks
+                          </code>
+                        )}
+                      </span>
+                      <div className="ide-verify-cursor-controls" data-testid="ide-verify-cursor-controls">
+                        <button
+                          type="button"
+                          className="ide-verify-zoom-btn"
+                          onClick={() => setCursorFromSelected('A')}
+                          data-testid="ide-verify-set-cursor-a"
+                        >
+                          Set A
+                        </button>
+                        <button
+                          type="button"
+                          className="ide-verify-zoom-btn"
+                          onClick={() => setCursorFromSelected('B')}
+                          data-testid="ide-verify-set-cursor-b"
+                        >
+                          Set B
+                        </button>
+                        <button
+                          type="button"
+                          className="ide-verify-zoom-btn"
+                          onClick={() => jumpToCursor('A')}
+                          disabled={cursorA === null}
+                          data-testid="ide-verify-jump-cursor-a"
+                        >
+                          Jump A
+                        </button>
+                        <button
+                          type="button"
+                          className="ide-verify-zoom-btn"
+                          onClick={() => jumpToCursor('B')}
+                          disabled={cursorB === null}
+                          data-testid="ide-verify-jump-cursor-b"
+                        >
+                          Jump B
+                        </button>
+                        <button
+                          type="button"
+                          className="ide-verify-zoom-btn"
+                          onClick={clearCursors}
+                          data-testid="ide-verify-clear-cursors"
+                        >
+                          Clear AB
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* No-trace diagnostic — shown when run produced no waveform data */}
               {verifyPreflightDiagnostics.length > 0 && (
@@ -4774,8 +4805,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   <span className="ide-verify-drawer-badge">{failingRows.length} fail</span>
                 )}
                 {hasSessionFailureEvidence && !drawerOpen && selectedFailureCase && (
-                  <span className="ide-verify-drawer-hint">
-                    t{selectedFailureCase.tick} · {selectedFailureLabel ?? selectedFailureCase.signal} · expected <code>{selectedFailureCase.expected}</code> observed <code>{selectedFailureCase.actual}</code>
+                  <span className="ide-verify-drawer-hint" data-testid="ide-verify-drawer-hint">
+                    Focus {selectedFailureDisplayLabel ?? selectedFailureCase.signal} at t{selectedFailureCase.tick}
                   </span>
                 )}
                 {Boolean(lastRun) && (

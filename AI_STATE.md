@@ -1,5 +1,56 @@
 # AI State
 
+## Change Log 2026-04-09 (Verify waveform/detail micro-IA)
+
+**Subsystem**: Verify / evidence area / waveform-detail hierarchy
+
+### Problem
+
+After the desktop-width and top-chrome slices, the Verify workspace finally had enough room, but the evidence band itself still read like an instrument cluster:
+
+- the waveform strip treated fail navigation, range presets, zoom, density, cursor markers, and scrubber controls as equal-priority controls
+- failure context repeated across the strip, drawer hint, and mismatch surfaces
+- cursor and zoom tooling still sat in the primary evidence row instead of behaving like secondary power tools
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - added a compact selected-failure summary (`ide-verify-fail-nav-summary`) beside `First mismatch`
+  - shortened the closed drawer hint to a focus target (`Focus … at t…`) instead of repeating expected/observed detail
+  - introduced `ide-verify-waveform-tools-toggle` / `ide-verify-waveform-tools-panel`
+  - moved zoom, density, and cursor controls behind that explicit disclosure while keeping tick-range presets and scrubber visible by default
+  - removed cursor/fail readouts from the always-visible scope header so the header stays lighter
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - styled the compact fail summary and the secondary waveform-tools panel so the evidence strip keeps a stronger primary/secondary split
+  - visually demoted the advanced tools panel and kept the drawer hint lighter
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - now asserts the fail summary and focused drawer hint remain visible by default
+  - now asserts cursor tools stay hidden until `Waveform tools` is opened
+- `scripts/gates/ide-verify-workbench-contract.mjs`
+  - now proves the browser fail path keeps the waveform-tools disclosure visible, hides advanced cursor controls by default, and reveals them only after the disclosure is opened
+
+### Validation
+
+- Focused Verify validation:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.desktopComposition.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx`
+  - result: `46` tests passed
+- Browser contract:
+  - `node scripts/gates/ide-verify-workbench-contract.mjs`
+  - result: PASS
+- Local playground build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- Local preview audit:
+  - fail-run evidence area now shows `First mismatch`, compact failure summary, `Waveform tools`, and `Focus LD0 at t0` without reopening the old always-open cursor/zoom strip
+
+### Release impact
+
+- Verify evidence now reads more like one intentional readout band instead of a pile of equally loud technical controls.
+- The waveform remains primary evidence, while zoom/density/cursor tools are still available but clearly secondary.
+- The next Verify slice should stay inside the evidence area: waveform/detail micro-IA is cleaner now, so the next leverage is likely failure-detail organization inside the drawer rather than more global layout rescue.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-04-08 (Verify waveform/detail polish and top-chrome compression)
 
 **Subsystem**: Verify / desktop workbench / evidence hierarchy

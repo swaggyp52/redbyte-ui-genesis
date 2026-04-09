@@ -898,7 +898,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-truth-table-row-1-ld0')).toBeTruthy();
   });
 
-  it('shows mismatch navigation and cursor controls on fail runs', () => {
+  it('keeps primary mismatch navigation visible while disclosing waveform tools on fail runs', () => {
     const { getAllByText, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
@@ -918,13 +918,27 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(getByTestId('ide-verify-fail-nav-first')).toBeTruthy();
-    expect(getByTestId('ide-verify-set-cursor-a')).toBeTruthy();
-    expect(getByTestId('ide-verify-set-cursor-b')).toBeTruthy();
+    expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('ld0');
+    expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('t1');
+    expect(getByTestId('ide-verify-drawer-hint').textContent).toContain('Focus');
+    expect(getByTestId('ide-verify-drawer-hint').textContent).toContain('ld0');
+    expect(getByTestId('ide-verify-drawer-hint').textContent).toContain('t1');
+    expect(getByTestId('ide-verify-drawer-hint').textContent).not.toContain('expected');
+    expect(getByTestId('ide-verify-drawer-hint').textContent).not.toContain('observed');
+    expect(getByTestId('ide-verify-waveform-tools-toggle')).toBeTruthy();
+    expect(queryByTestId('ide-verify-waveform-tools-panel')).toBeNull();
+    expect(queryByTestId('ide-verify-set-cursor-a')).toBeNull();
+    expect(queryByTestId('ide-verify-set-cursor-b')).toBeNull();
     expect(queryByTestId('ide-verify-cursor-readout')).toBeNull();
     expect(queryByTestId('ide-verify-signal-digest')).toBeNull();
     expect(queryByTestId('ide-verify-waveform-legend')).toBeNull();
     expect(queryByTestId('ide-verify-tick-explainer')).toBeNull();
     expect(queryByTestId('ide-verify-advanced-debug')).toBeNull();
+
+    fireEvent.click(getByTestId('ide-verify-waveform-tools-toggle'));
+    expect(getByTestId('ide-verify-waveform-tools-panel')).toBeTruthy();
+    expect(getByTestId('ide-verify-set-cursor-a')).toBeTruthy();
+    expect(getByTestId('ide-verify-set-cursor-b')).toBeTruthy();
 
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     fireEvent.click(getAllByText('Details')[0]);

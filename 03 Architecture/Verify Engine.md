@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: verify
-updated: 2026-04-08
+updated: 2026-04-09
 related:
   - "[[Verify Hint System]]"
   - "[[Connection Model]]"
@@ -76,6 +76,13 @@ The latest waveform/detail polish slice fixed the remaining desktop ownership mi
 - wide Verify no longer places the whole workbench into a left grid column while a mostly empty secondary column steals desktop width; the panel body now gives the full center span back to the editor + waveform workspace
 - the compact status strip no longer duplicates post-run compare metrics and coverage that already live in `VerifyCommandBar`; command-bar evidence now carries the active fail/match summary plus coverage
 - built-preview verification at `1366x768` now measures the Verify workspace at `1388.5px` inside a `1413.5px` panel body, with a `916.5px` waveform stage and `68px` combined top chrome
+
+The latest waveform/detail micro-IA slice tightened the evidence band itself:
+
+- the default waveform strip now keeps only primary evidence controls visible: first-mismatch jump, a compact selected-failure summary, tick-range presets, the tick scrubber, and a `Waveform tools` disclosure
+- zoom, density, and cursor tooling moved behind that disclosure so they stop competing with the fail summary and waveform itself
+- the closed analysis drawer hint now stays focused on the selected mismatch target (`Focus LD0 at t0`) instead of repeating expected/observed detail that already exists in the evidence band and mismatch drawer
+- local preview validation confirmed the evidence area stays compact while exposing the new hierarchy: `ASSERTIONS DIFFER`, `LD0 t0 exp 1 obs 0`, `Focus LD0 at t0`, and `Waveform tools` all remain visible together without reopening the old stacked control strip
 
 ## Mode Detection (B-12 Slice 1)
 
