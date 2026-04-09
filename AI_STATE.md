@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-04-09 (Verify workbench layout gate aligned to header-run truth)
+
+**Subsystem**: Gates / repo-status / Verify workbench contract
+
+### Problem
+
+After the waveform/detail micro-IA slice, `pnpm repo:status` still failed on `IDE Workbench Layout Contract`, but the failure was not a product regression. The gate was still treating retired Verify-local run buttons as the only valid pre-run primary action and did not recognize `ide-vcb-run`, even though the header run button is the canonical Verify run owner.
+
+### What changed
+
+- `scripts/gates/ide-workbench-layout-contract.mjs`
+  - `clickEnabledVerifyRunButton(...)` now checks `ide-vcb-run` before the retired Verify-local run IDs
+  - the pre-run primary-action assertion now treats `ide-vcb-run` as valid product truth
+
+### Validation
+
+- `pnpm -s ide:gate:workbench-layout-contract`
+  - result: PASS
+- `pnpm repo:status`
+  - result: PASS
+
+### Release impact
+
+- Restores a truthful local repo-status path on this branch instead of leaving a stale Verify gate red after the UI slice.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-04-09 (Verify waveform/detail micro-IA)
 
 **Subsystem**: Verify / evidence area / waveform-detail hierarchy

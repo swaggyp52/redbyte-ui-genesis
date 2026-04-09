@@ -20,7 +20,7 @@ async function clickIfVisible(locator) {
 }
 
 async function clickEnabledVerifyRunButton(root) {
-  for (const testId of ['ide-verify-run-secondary', 'ide-verify-run', 'ide-verify-stale-rerun']) {
+  for (const testId of ['ide-vcb-run', 'ide-verify-run-secondary', 'ide-verify-run', 'ide-verify-stale-rerun']) {
     const button = root.locator(`[data-testid="${testId}"]`).first();
     if (!await button.count()) continue;
     const visibleButton = await button.isVisible().catch(() => false);
@@ -104,6 +104,7 @@ await runIdeGate('IDE workbench layout contract satisfied', async ({ page, baseU
     await visible(verifyRoot.locator('.ide-verify-scenario-builder')) ||
     await visible(verifyRoot.locator('[data-testid="ide-verify-session-hero"]'));
   const preRunPrimaryVisible =
+    await visible(verifyRoot.locator('[data-testid="ide-vcb-run"]')) ||
     await visible(verifyRoot.locator('[data-testid="ide-verify-generate-basic-vectors-footer"]')) ||
     await visible(verifyRoot.locator('[data-testid="ide-verify-run-secondary"]')) ||
     await visible(verifyRoot.locator('[data-testid="ide-verify-run"]'));
