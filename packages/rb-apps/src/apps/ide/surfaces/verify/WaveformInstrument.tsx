@@ -323,25 +323,25 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
         if (layoutRow.kind === 'header') {
           const { group, y } = layoutRow;
           return (
-            <g key={`group-header-${group}`}>
+            <g key={`group-header-${group}`} data-testid={`ide-verify-waveform-group-${group.toLowerCase()}`}>
               <rect x={0} y={y} width={width} height={GROUP_HEADER_H}
-                fill="rgba(56,189,248,0.04)" />
+                fill={group === 'Outputs' ? 'rgba(46,196,182,0.07)' : 'rgba(56,189,248,0.04)'} />
               <line x1={0} y1={y} x2={width} y2={y}
-                stroke="rgba(56,189,248,0.15)" strokeWidth="1" />
+                stroke={group === 'Outputs' ? 'rgba(46,196,182,0.28)' : 'rgba(56,189,248,0.15)'} strokeWidth="1" />
               <text
                 x={LABEL_W - 8}
                 y={y + GROUP_HEADER_H / 2}
                 textAnchor="end"
                 dominantBaseline="middle"
                 fontSize="9"
-                fontWeight="600"
-                fill="rgba(56,189,248,0.45)"
+                fontWeight="700"
+                fill={group === 'Outputs' ? 'rgba(46,196,182,0.75)' : 'rgba(56,189,248,0.45)'}
                 style={{ pointerEvents: 'none', userSelect: 'none' } as React.CSSProperties}
               >
                 {GROUP_LABELS[group]}
               </text>
               <line x1={LABEL_W} y1={y} x2={LABEL_W} y2={y + GROUP_HEADER_H}
-                stroke="rgba(30,80,140,0.7)" strokeWidth="1.5" />
+                stroke={group === 'Outputs' ? 'rgba(46,196,182,0.55)' : 'rgba(30,80,140,0.7)'} strokeWidth={group === 'Outputs' ? '2' : '1.5'} />
             </g>
           );
         }
@@ -351,12 +351,15 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
         const isFailing = failingSignalKeys.has(normalizedKey);
         const isPinned = pinnedSignals.has(signalRow.signal);
         const isClockSignal = clockSignals?.has(normalizedKey) ?? false;
+        const signalDirection = signalGroups?.get(signalRow.signal)?.toLowerCase() ?? 'unknown';
+        const isInputSignal = signalDirection === 'inputs';
 
         return (
           <g
             key={signalRow.signal}
             data-testid={`ide-verify-waveform-row-${toTestId(signalRow.signal)}`}
             data-selected={selectedSignal === signalRow.signal ? 'true' : 'false'}
+            data-direction={signalDirection}
           >
             {/* Alternating row background */}
             <rect
@@ -402,7 +405,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                     y={y + Math.round(ROW_H * 0.7)}
                     textAnchor="end"
                     fontSize="9"
-                    fill={isFailing ? 'rgba(255,130,130,0.65)' : 'rgba(46,196,182,0.45)'}
+                    fill={isFailing ? 'rgba(255,130,130,0.65)' : isInputSignal ? 'rgba(56,189,248,0.45)' : 'rgba(46,196,182,0.45)'}
                   >
                     {`${dirLabel}${pinLabel}`}
                   </text>
@@ -442,7 +445,15 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                     <line
                       x1={tickX + 2}          y1={isHigh ? y + ROW_HI : y + ROW_LO}
                       x2={tickX + TICK_W - 2} y2={isHigh ? y + ROW_HI : y + ROW_LO}
-                      stroke={isFail ? (isHigh ? '#ff6b6b' : 'rgba(255,107,107,0.7)') : isClockSignal ? (isHigh ? '#fbbf24' : 'rgba(251,191,36,0.72)') : (isHigh ? '#2ec4b6' : 'rgba(46,196,182,0.85)')}
+                      stroke={
+                        isFail
+                          ? (isHigh ? '#ff6b6b' : 'rgba(255,107,107,0.7)')
+                          : isClockSignal
+                            ? (isHigh ? '#fbbf24' : 'rgba(251,191,36,0.72)')
+                            : isInputSignal
+                              ? (isHigh ? 'rgba(56,189,248,0.85)' : 'rgba(56,189,248,0.55)')
+                              : (isHigh ? '#2ec4b6' : 'rgba(46,196,182,0.85)')
+                      }
                       strokeWidth="5.5" strokeLinecap="round"
                     />
                   )}
@@ -451,7 +462,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                   {hasTransition && (
                     <line
                       x1={tickX} y1={y + ROW_HI} x2={tickX} y2={y + ROW_LO}
-                      stroke={isFail ? '#ff6b6b' : isClockSignal ? 'rgba(251,191,36,0.82)' : 'rgba(46,196,182,0.75)'}
+                      stroke={isFail ? '#ff6b6b' : isClockSignal ? 'rgba(251,191,36,0.82)' : isInputSignal ? 'rgba(56,189,248,0.7)' : 'rgba(46,196,182,0.75)'}
                       strokeWidth="2.5" strokeLinecap="round"
                     />
                   )}

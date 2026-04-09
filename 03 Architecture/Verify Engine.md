@@ -308,6 +308,108 @@ The visible `StimulusCanvas` workbench now separates **everyday case editing** f
 
 **Student-facing rule**: the workbench should read `select case -> edit cells -> add / duplicate / delete -> run`, while patterns/fill/clipboard stay available but clearly secondary.
 
+### Stimulus-First Observation Model (B-14 Post-Codex)
+
+Verify now launches in observation/trace mode by default. Expected-output checks are an opt-in second layer, not a requirement for the first run.
+
+**Product model change**: Before this slice, Verify framed itself as "fill in expected outputs, then compare." After this slice, the first run is always a stimulus run — the student drives inputs, the waveform records outputs, and checks are added only if the student explicitly wants to assert a specific value.
+
+**State change — `nextRunUsesAssertions` initializer:**
+
+```typescript
+// BEFORE: auto-enabled when expected cells existed
+() => getRuntimeVerifyRunKind(lastRun) === 'verify' || (!lastRun && totalExpectedCaseCount > 0)
+
+// AFTER: only enabled when previous run was an assertion-backed compare run
+() => getRuntimeVerifyRunKind(lastRun) === 'verify'
+```
+
+This means a project that already has expected outputs (e.g. imported example projects) no longer auto-arms compare mode on first entry. The student must actively open the Checks panel and acknowledge they want to assert.
+
+**`showExpectedOutputs` state in `VerifySurface`:**
+
+- Default: `false` — expected-output canvas lanes are hidden on first render
+- Flipped to `true` by `handleToggleExpectedOutputs` when student clicks the Checks toggle
+- `handleToggleExpectedOutputs` also coerces `nextRunUsesAssertions = true` and forces `ScenarioBuilderPanel` open
+
+**StimulusCanvas props added:**
+
+| Prop | Default | Purpose |
+|------|---------|---------|
+| `showExpectedOutputs` | `false` | Controls expected-lane visibility |
+| `hasSavedExpectedOutputs` | `false` | Enables "edit checks" copy in the toggle hint |
+| `onToggleExpectedOutputs` | `undefined` | Callback wired to `handleToggleExpectedOutputs` |
+
+**Checks toolbar group (`ide-stimulus-checks-controls`):**
+
+- `ide-stimulus-checks-toggle` — opens/closes expected-output lanes in StimulusCanvas toolbar
+- `ide-stimulus-checks-note` — copy hint that changes based on `hasSavedExpectedOutputs`
+- When `showExpectedOutputs=false`: expected lane columns are hidden; `expectedLanesVisible = !readOnlyOutputs && showExpectedOutputs && outputFields.length > 0`
+
+**Mode badge renames:**
+
+| Old | New | Where |
+|-----|-----|-------|
+| `COMPARE` | `CHECKS` | `buildVerifySessionViewModel` mode badge |
+| `'Ready to run this testbench'` | `'Ready to run stimulus'` | Pre-run session title |
+| `'Ready to compare'` | `'Ready to check outputs'` | Pre-run title (assertions armed) |
+| `'Run Compare'` / `'Re-run Compare'` | `'Compare'` / `'Compare again'` | Run label |
+| `'Re-run for current circuit'` | `'Re-run stimulus'` | Stale run label |
+| `'Edit cases'` | `'Edit checks'` | VerifyCommandBar edit button |
+| `'Save as expected'` | `'Save observed as checks'` | VerifyCommandBar save-expected button |
+| `'Compare circuit outputs...'` | `'Compare observed outputs against saved checks'` | VCB title attr |
+
+**IdeWorkbenchShell layout:**
+
+Codex's desktop redesign added `VERIFY_COLLAPSED_DOCK_RAIL_WIDTH = 60` for a dedicated narrow Signals rail in Verify mode. The general `COLLAPSED_DOCK_RAIL_WIDTH = 26` applies to all other modes. The CSS custom property `--ide-workbench-left-slot-width` is set to `26px` (not `0px`) when the left dock is collapsed — the rail occupies real space rather than overlaying.
+
+**ADR**: See `ADR-004 Stimulus-First Observation Default.md`.
+
+### Observe-First Completion (2026-04-09)
+
+Two additions that complete the model framing:
+
+**Verify → Design bridge (`ide-verify-inspect-design`):**
+
+`VerifyCommandBar` accepts `showGoToDesign?: boolean` + `onGoToDesign?: () => void`. When both are truthy, a ghost-weight "Open in Design" button appears in the right group. The bridge is wired through `handleGoToDesignFromVerify` in `VerifySurface`:
+
+```typescript
+// VerifySurface: showGoToDesign condition
+showGoToDesign={Boolean(lastRun) && (Boolean(onGoToDesign) || Boolean(onGoToDesignWithInputs))}
+onGoToDesign={handleGoToDesignFromVerify}
+```
+
+`handleGoToDesignFromVerify` — when `onGoToDesignWithInputs` is provided AND the run has `inputsAtTick` data, it calls `onGoToDesignWithInputs(inputs)` with the selected tick's inputs (fallback: first available tick). Otherwise falls back to plain `onGoToDesign()`.
+
+**Verify → Design tick-context injection (IdeApp):**
+
+`onGoToDesignWithInputs` is wired in IdeApp to:
+1. Set mode to `'design'`
+2. Call `setRuntimeSimInput(signalId, value)` for every input in the tick snapshot
+
+This makes "Open in Design" mean: *view the circuit's propagation for the exact input pattern you observed at that tick.* The runtime sim is already wired from IdeApp → DesignSurface; this unifies Verify observation with Design propagation inspection.
+
+**Scope label rename:**
+
+The oscilloscope instrument header label changed from `"Waveform"` to `"Observed output"`. The element has `data-testid="ide-verify-scope-label"`.
+
+### WaveformViewer Signal Visual System (2026-04-09)
+
+`WaveformInstrument.tsx` now differentiates Stimulus (input) vs Observed (output) channels visually:
+
+| Lane type | Trace color | Group header color | Semantic |
+|-----------|-------------|---------------------|----------|
+| Inputs (Stimulus) | `rgba(56,189,248,…)` steel-blue | Blue accent, normal weight | "I set these" |
+| Outputs (Observed) | `#2ec4b6` teal | Teal accent, **bold, brighter** | "Circuit output evidence" |
+| Failing outputs | `#ff6b6b` red | — | "Check mismatch" |
+| Clock signals | `#fbbf24` amber | — | "Sequential clock" |
+
+Group headers now have `data-testid="ide-verify-waveform-group-inputs"` and `data-testid="ide-verify-waveform-group-outputs"`.
+
+Signal rows have `data-direction="inputs" | "outputs" | "unknown"` (CSS-targetable).
+
+The "Observed" section header uses heavier font-weight (700), brighter teal text (`rgba(46,196,182,0.75)`), and a thicker label separator line — making the output section visually dominant.
+
 ---
 
 ## Canonical Shape / Contract

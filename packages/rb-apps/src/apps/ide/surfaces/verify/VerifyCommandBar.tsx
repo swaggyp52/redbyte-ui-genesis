@@ -50,6 +50,10 @@ export interface VerifyCommandBarProps {
   /** Direct Verify recovery action */
   readonly showEditCases?: boolean;
   readonly onEditCases?: () => void;
+
+  /** Verify → Design continuity bridge */
+  readonly showGoToDesign?: boolean;
+  readonly onGoToDesign?: () => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -80,6 +84,8 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   onToggleAnalysis,
   showEditCases,
   onEditCases,
+  showGoToDesign,
+  onGoToDesign,
 }) => {
   const toneClass =
     statusTone === 'ok' ? 'ide-vcb-status--ok'
@@ -199,6 +205,15 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
             testId="ide-vcb-save-expected"
           >
             Save observed as checks
+          </IdeButton>
+        )}
+        {showGoToDesign && onGoToDesign && (
+          <IdeButton
+            tone="ghost"
+            onClick={onGoToDesign}
+            testId="ide-verify-inspect-design"
+          >
+            Open in Design
           </IdeButton>
         )}
       </div>

@@ -150,6 +150,8 @@ export interface VerifySurfaceProps {
   onFixPath?: (target: VerifyFailureTarget) => void;
   example?: IdeExampleDefinition | null;
   onGoToDesign?: () => void;
+  /** Navigate to Design and inject these input values into the runtime sim for propagation inspection. */
+  onGoToDesignWithInputs?: (inputs: Record<string, 0 | 1>) => void;
   onGoToHardware?: () => void;
   verifyMode?: VerifyMode;
   unmappedOutputLabels?: string[];
@@ -266,6 +268,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   onFixPath,
   example,
   onGoToDesign,
+  onGoToDesignWithInputs,
   onGoToHardware,
   verifyMode = 'combinational' as VerifyMode,
   unmappedOutputLabels = [],
@@ -997,6 +1000,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       return next;
     });
   }, [requestScenarioBuilderExpand]);
+
+  // Navigate to Design: inject selected-tick inputs into the runtime sim when available,
+  // giving the student immediate propagation context for the observed stimulus.
+  const handleGoToDesignFromVerify = useCallback(() => {
+    if (onGoToDesignWithInputs && lastRun?.report.inputsAtTick) {
+      const tick = selectedTick ?? lastRun.report.vectors?.[0]?.tick ?? 0;
+      const inputs = lastRun.report.inputsAtTick[tick];
+      if (inputs) {
+        onGoToDesignWithInputs(inputs as Record<string, 0 | 1>);
+        return;
+      }
+    }
+    onGoToDesign?.();
+  }, [onGoToDesign, onGoToDesignWithInputs, lastRun, selectedTick]);
   const handleThreePanelFailureSelect = useCallback(
     (failureKey: string) => {
       const target = failingRows.find(
@@ -3933,6 +3950,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           onToggleAnalysis={() => setDrawerOpen((prev) => !prev)}
           showEditCases={hasSessionFailureEvidence}
           onEditCases={handleEditExpectedOutputs}
+          showGoToDesign={Boolean(lastRun) && (Boolean(onGoToDesign) || Boolean(onGoToDesignWithInputs))}
+          onGoToDesign={handleGoToDesignFromVerify}
         />
         )}
         </VerifyHeaderRegion>
@@ -4403,13 +4422,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               <div className="ide-verify-scope-header" data-testid="ide-verify-scope-header">
                 <span
                   className="ide-verify-scope-label"
+                  data-testid="ide-verify-scope-label"
                   title={
                     isSequentialRun
-                      ? 'Waveform viewport. One tick is one sampled clock step. Teal traces are steady evidence, red marks failing checks, and blue marks the selected tick.'
-                      : 'Waveform viewport. One tick is one simulation step. Teal traces are steady evidence, red marks failing checks, and blue marks the selected tick.'
+                      ? 'Observed output viewport. One tick is one sampled clock step. Teal traces are steady evidence, red marks failing checks, and blue marks the selected tick.'
+                      : 'Observed output viewport. One tick is one simulation step. Teal traces are steady evidence, red marks failing checks, and blue marks the selected tick.'
                   }
                 >
-                  Waveform
+                  Observed output
                 </span>
                 {isSequentialRun && (
                   <span className="ide-verify-scope-seq-badge" data-testid="ide-verify-seq-badge">
