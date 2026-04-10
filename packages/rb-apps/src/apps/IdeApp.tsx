@@ -22,7 +22,6 @@ import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
 import { ProjectSurface } from './ide/surfaces/ProjectSurface';
 import type { DesignCompilerStatus } from './ide/surfaces/DesignSurface';
 import type { VerifyFailureTarget } from './ide/surfaces/VerifySurface';
-import { PipelineStrip } from './ide/components/PipelineStrip';
 import { KeyboardShortcutsModal } from './ide/components/KeyboardShortcutsModal';
 import { OnboardingOverlay } from './ide/components/OnboardingOverlay';
 import { resolveIdeBuildIdentity } from './ide/buildIdentity';
@@ -1422,13 +1421,6 @@ export const IdeApp: React.FC = () => {
           stepsCompleted={workflowAuthority.stageCompletion}
         />
         <div className="ide-surface-column">
-          <PipelineStrip
-            currentMode={currentMode as ProjectHealthMode}
-            health={projectHealth}
-            readiness={readiness}
-            primaryCta={primaryProjectCta}
-            onNavigate={(mode) => setCurrentMode(mode as IdeMode)}
-          />
         {currentMode === 'project' ? (
           <ErrorBoundary fallbackTitle="Project workspace encountered an error">
             <ProjectSurface

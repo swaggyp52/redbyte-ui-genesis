@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import { IdeLeftRail } from '../components/IdeLeftRail';
 import { OnboardingOverlay } from '../components/OnboardingOverlay';
-import { PipelineStrip } from '../components/PipelineStrip';
 import { IdeTopBar } from '../components/IdeTopBar';
 import { STUDENT_WORKFLOW_SUMMARY } from '../workflowStages';
 
@@ -33,28 +32,7 @@ describe('workflow stage authority', () => {
     expect(rail.getByTestId('mode-button-hardware').textContent).toContain('Map Pins');
   });
 
-  it('shows Map Pins in the pipeline strip instead of Hardware', () => {
-    const { getByTestId } = render(
-      <PipelineStrip
-        currentMode="hardware"
-        health={{
-          lastVerify: undefined,
-          lastExport: undefined,
-          dirtySinceVerify: false,
-          dirtySinceExport: false,
-          blockingIssues: [],
-        }}
-        primaryCta={{ label: 'Map Pins', mode: 'hardware', code: 'RBP1005' }}
-        onNavigate={vi.fn()}
-      />
-    );
-
-    const ariaLabel = getByTestId('ide-pipeline-stage-hardware').getAttribute('aria-label') ?? '';
-    expect(ariaLabel).toContain('Map Pins');
-    expect(ariaLabel.toLowerCase()).toContain('active');
-  });
-
-  it('teaches the full Design → Verify → Map Pins → Export → Program workflow in onboarding', () => {
+  it('teaches the Design → Verify → Map Pins → Export workflow in onboarding', () => {
     const { getByTestId } = render(<OnboardingOverlay mode="project" />);
     expect(getByTestId('ide-onboarding-overlay').textContent).toContain(STUDENT_WORKFLOW_SUMMARY);
   });

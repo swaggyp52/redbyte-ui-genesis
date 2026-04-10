@@ -68,13 +68,6 @@ const ExportIcon = () => (
   </svg>
 );
 
-const ImportIcon = () => (
-  <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M8 11V4M5.5 7.5L8 5l2.5 2.5" />
-    <path d="M2.5 11.5v2h11v-2" />
-  </svg>
-);
-
 // ─── Mode definitions ─────────────────────────────────────────────────────────
 
 const WORKFLOW_STEPS: WorkflowStep[] = IDE_WORKFLOW_ROUTE_STEPS.map((step) => ({
@@ -90,7 +83,6 @@ const WORKFLOW_STEPS: WorkflowStep[] = IDE_WORKFLOW_ROUTE_STEPS.map((step) => ({
 }));
 
 const PROJECT_ENTRY: UtilityEntry = { id: 'project', label: 'Project', icon: <ProjectIcon /> };
-const IMPORT_ENTRY: UtilityEntry  = { id: 'import',  label: 'Import',  icon: <ImportIcon />  };
 
 export type { IdeMode } from '../workflowStages';
 
@@ -195,13 +187,6 @@ export const IdeLeftRail: React.FC<IdeLeftRailProps> = ({
       <nav className="ide-left-rail-nav" aria-label="Workflow steps">
         {WORKFLOW_STEPS.map(renderStep)}
       </nav>
-
-      <div className="ide-rail-divider" aria-hidden="true" />
-
-      {/* Import utility */}
-      <div className="ide-left-rail-utility-bottom">
-        {renderUtility(IMPORT_ENTRY)}
-      </div>
 
       <div className="ide-left-rail-footer">
         {hasLabProgress && (
