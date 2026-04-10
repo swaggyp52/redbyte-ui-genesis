@@ -480,19 +480,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     if (projectKind === 'import') return 'Not reported yet';
     return null;
   }, [importFidelity, projectKind]);
-  const mappingLaunchpadState = readiness.hasIoMapping ? 'done' : 'active';
-  const verifyLaunchpadState =
-    compareMatches || comparePassIncomplete
-      ? 'done'
-      : activePrimaryCta.mode === 'verify'
-        ? 'active'
-        : 'locked';
-  const exportLaunchpadState =
-    hardwareReady || exportPackageCurrent
-      ? 'done'
-      : activePrimaryCta.mode === 'export' || activePrimaryCta.mode === 'hardware'
-        ? 'active'
-        : 'locked';
   const handleProjectModeAction = useCallback(
     (mode: ProjectHealthMode) => {
       switch (mode) {
@@ -1133,106 +1120,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             </dl>
           </SurfacePanel>
 
-          <SurfacePanel className="ide-project-spotlight" testId="ide-project-readiness-summary">
-            <div data-testid="ide-project-panel-readiness">
-              <div className="ide-project-spotlight-header">
-                <div>
-                  <span className="ide-project-spotlight-eyebrow">Workflow truth</span>
-                  <p
-                    data-testid="ide-project-readiness-focus"
-                    style={{ margin: '0.35rem 0 0 0', fontSize: 'var(--font-size-sm)', opacity: 0.82 }}
-                  >
-                    Current focus: Continue to {activePrimaryCtaLabel}.
-                  </p>
-                </div>
-                <IdeStatusPill tone={hardwareReady ? 'ok' : hardBlockingIssue ? 'warn' : exportAvailable ? 'warn' : 'idle'}>
-                    {hardwareReady ? 'CURRENT' : hardBlockingIssue ? 'ACTION NEEDED' : exportAvailable ? 'EXPORT AVAILABLE' : 'IN PROGRESS'}
-                </IdeStatusPill>
-              </div>
-              <div className="ide-project-readiness-list">
-                <div
-                  className={`ide-project-readiness-item ide-launchpad-card ide-launchpad-card--${mappingLaunchpadState}`}
-                  data-testid="ide-launchpad-mapping"
-                >
-                  <span className="ide-launchpad-card__label">Stage 1</span>
-                <div className="ide-project-readiness-item-head">
-                  <span>Mapping</span>
-                  <IdeStatusPill tone={readiness.hasIoMapping ? 'ok' : 'warn'}>
-                    {readiness.hasIoMapping ? 'READY' : 'BLOCKED'}
-                  </IdeStatusPill>
-                </div>
-                <p className="ide-launchpad-card__sub">
-                  {readiness.hasIoMapping
-                    ? `${mappedRequiredCount}/${requiredCount} required pins assigned.`
-                    : `${unmappedRequiredCount} required pin${unmappedRequiredCount !== 1 ? 's are' : ' is'} still missing.`}
-                </p>
-              </div>
-              <div
-                className={`ide-project-readiness-item ide-launchpad-card ide-launchpad-card--${verifyLaunchpadState}`}
-                data-testid="ide-launchpad-verify"
-              >
-                <span className="ide-launchpad-card__label">Stage 2</span>
-                <div className="ide-project-readiness-item-head">
-                  <span>Verify</span>
-                  <IdeStatusPill tone={compareMatches ? 'ok' : 'warn'}>
-                    {compareMatches
-                      ? 'CHECKS CURRENT'
-                      : comparePassIncomplete
-                        ? 'REVIEW MAPPING'
-                        : compareDiffers
-                          ? 'CHECKS DIFFER'
-                          : compareCurrent
-                            ? 'TRACE CURRENT'
-                            : 'NOT RUN'}
-                  </IdeStatusPill>
-                </div>
-                <p className="ide-launchpad-card__sub">{verifySummary}</p>
-              </div>
-              <div
-                className={`ide-project-readiness-item ide-launchpad-card ide-launchpad-card--${exportLaunchpadState}`}
-                data-testid="ide-launchpad-export"
-              >
-                <span className="ide-launchpad-card__label">Stage 3</span>
-                <div className="ide-project-readiness-item-head">
-                  <span>Export</span>
-                  <IdeStatusPill tone={exportPackageCurrent ? 'ok' : exportAvailable ? 'warn' : 'warn'}>
-                    {exportPackageCurrent ? 'CURRENT PACKAGE' : exportAvailable ? 'AVAILABLE' : 'BLOCKED'}
-                  </IdeStatusPill>
-                </div>
-                <p className="ide-launchpad-card__sub">{exportSummary}</p>
-                <p
-                  className="ide-project-export-explanation"
-                  data-testid="ide-project-export-explanation"
-                  style={{ fontSize: 'var(--font-size-sm)', marginTop: '0.5rem', opacity: 0.85, fontStyle: 'italic' }}
-                >
-                  {exportPackageCurrent
-                    ? 'CURRENT PACKAGE ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Export artifacts match the current mapped design and are ready for hardware handoff.'
-                    : exportAvailable
-                      ? 'AVAILABLE ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Export files can be reviewed or downloaded now. Compare results are advisory and do not block export.'
-                      : 'Export is blocked until circuit and mapping are complete.'}
-                </p>
-              </div>
-            </div>
-              {unmappedRequiredCount > 0 && (
-                <div className="ide-project-spotlight-actions">
-                  <IdeButton
-                    tone="secondary"
-                    onClick={() => handleProjectModeAction('project')}
-                    testId="ide-project-open-mapping-inline"
-                  >
-                    Review missing pins
-                  </IdeButton>
-                  <IdeButton
-                    tone="ghost"
-                    onClick={onAutoSuggestMapping}
-                    testId="ide-project-auto-map-inline"
-                  >
-                    Auto-suggest pins
-                  </IdeButton>
-                </div>
-              )}
-            </div>
-          </SurfacePanel>
         </div>
 
         {(onSaveNow || onOpenSavedProjects || onRestoreLastSave || onResetProject) && (

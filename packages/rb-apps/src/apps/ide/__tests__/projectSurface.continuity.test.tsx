@@ -222,46 +222,6 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(onOpenVerify).toHaveBeenCalled();
   });
 
-  it('export trust explanation keeps export advisory when verification is not current', () => {
-    const { getAllByTestId } = render(
-      <BoardSignalProvider>
-        <ProjectSurface
-          {...makeProps({
-            readiness: {
-              hasCircuit: true,
-              hasIoMapping: true,
-              hasVectors: false,
-              verifyPass: false,
-              missingRequiredCount: 0,
-            },
-            health: {
-              lastVerify: undefined,
-              lastExport: undefined,
-              dirtySinceVerify: false,
-              dirtySinceExport: false,
-              blockingIssues: [
-                {
-                  code: 'RBP1002',
-                  message: 'No verification vectors defined.',
-                  fixPath: { mode: 'verify', actionLabel: 'Add Test Vectors' },
-                },
-              ],
-            },
-            primaryCtaLabel: 'Verify',
-            primaryCta: { label: 'Verify', mode: 'verify', code: 'RBP1002' },
-          })}
-        />
-      </BoardSignalProvider>
-    );
-
-    const explanations = getAllByTestId('ide-project-export-explanation');
-    const explanation = explanations[explanations.length - 1];
-    // Export stays available, but the explanation should state that compare trust is advisory.
-    expect(explanation.textContent).toContain('AVAILABLE');
-    expect(explanation.textContent).toContain('Compare results are advisory');
-    expect(explanation.textContent).toContain('do not block export');
-  });
-
   it('keeps Verify as the single dominant next step when compare evidence is missing', () => {
     const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
@@ -293,7 +253,6 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Verify');
     expect(getByTestId('ide-project-next-step').textContent).toContain('trusted comparison evidence');
     expect(getByTestId('ide-project-current-focus').textContent).toContain('Continue to Verify');
-    expect(getByTestId('ide-project-readiness-summary').textContent).toContain('Verify');
   });
 
   it('keeps export advisory states routed through the hero CTA instead of a duplicate row action', () => {
