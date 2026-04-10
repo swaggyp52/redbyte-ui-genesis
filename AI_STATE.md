@@ -1,6 +1,52 @@
 # AI State
 
-## Change Log 2026-04-10 (Phase-1 Global System Cleanup — product direction locked)
+## Change Log 2026-04-10 (Phase-2 Slice 2 — Design blank-state escape hatch to Project)
+
+**Subsystem**: Design surface / blank-state overlay
+
+### What changed
+
+Added a "Browse examples" CTA inside the Design blank-state card that calls `onGoToProject`, giving
+students a clear escape hatch from an empty canvas back to the Project surface's example/template library.
+This completes the blank-state orientation path: start from scratch (Add Inputs/Outputs + Add AND Starter
+already existed) OR return to Project to pick a starting point.
+
+- Added `ide-design-empty-go-to-project` button inside `showBlankStateCard` block in `DesignSurface.tsx`
+- Button is conditioned on `onGoToProject` prop being provided (safe no-op when absent)
+- 2/2 blank-state tests GREEN in `designSurface.blankState.test.tsx`
+- No pre-existing failures introduced; `pnpm build:unified` → EXIT 0
+- Commit: `78f995c8`
+
+---
+
+## Change Log 2026-04-10 (Phase-2 Slice 1 — launchpad trio removed from Project surface)
+
+**Subsystem**: Project surface
+
+### What changed
+
+Removed the fixed three-card launchpad dashboard (`ide-project-readiness-summary` SurfacePanel) from
+`ProjectSurface.tsx`. The panel housed three fixed stage-status cards (Mapping / Verify / Export).
+This was "fixed launchpad-card thinking" — the dock nav items already carry stage completion, and
+the hero CTA already owns the next-move. The trio was additive noise.
+
+- Removed 100 lines of JSX (lines 1136-1235 before edit)
+- Removed 3 dead computed vars: `mappingLaunchpadState`, `verifyLaunchpadState`, `exportLaunchpadState`
+- Testids gone: `ide-project-readiness-summary`, `ide-launchpad-mapping`, `ide-launchpad-verify`, `ide-launchpad-export`, `ide-project-export-explanation`
+- 6 new contract tests in `projectSurface.launchpadRemoval.test.tsx` confirm absence of trio + presence of hero CTA and 4 dock nav items
+- Migrated submission.test.tsx: removed 5 launchpad-only tests, kept dock-nav assertion
+- Migrated continuity.test.tsx: removed 1 export-explanation test, stripped stale readiness-summary assertion
+
+### Validation
+
+- 23/23 projectSurface tests GREEN
+- 31/31 projectHealth + ideLeftRail tests GREEN
+- `pnpm build:unified` → EXIT 0
+- Commit: `ddf28229`
+
+---
+
+
 
 **Subsystem**: Global / stage grammar / left rail / pipeline strip
 
