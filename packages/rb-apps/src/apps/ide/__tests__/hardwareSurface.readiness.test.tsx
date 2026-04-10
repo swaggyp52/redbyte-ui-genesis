@@ -122,6 +122,8 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
+    expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Hardware');
+    expect(queryByTestId('ide-hw-callout')).toBeNull();
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
     expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'collapsed');

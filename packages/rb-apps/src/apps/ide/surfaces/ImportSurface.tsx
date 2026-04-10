@@ -33,7 +33,7 @@ import {
   IdeSectionHeader,
   IdeStatusPill,
 } from '../components/IdePrimitives';
-import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
+import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 
 type ImportTab = 'hdl' | 'xdc' | 'upload';
 type HdlLanguage = 'auto' | 'vhdl' | 'verilog';
@@ -2809,29 +2809,6 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       <IdePanel
         title="Import Design"
         description="Start with a Vivado ZIP. Other ways to start stay available, and nothing replaces your current project until you review the import."
-        actions={
-          showImportHeaderAction ? (
-            <>
-              <span data-testid="ide-primary-cta">
-                <IdeButton
-                  tone="primary"
-                  onClick={requestApplyProject}
-                  disabled={!canImport}
-                  testId="ide-import-replace-project"
-                >
-                  Review Import...
-                </IdeButton>
-              </span>
-              {!canImport && hasParsedHdl && (
-                <span className="ide-import-apply-reason" data-testid="ide-import-apply-disabled-reason">
-                  {unmappedPorts.length > 0
-                    ? `${unmappedPorts.length} unmapped port${unmappedPorts.length > 1 ? 's' : ''}`
-                    : `${blockingErrors.length} blocking error${blockingErrors.length > 1 ? 's' : ''}`}
-                </span>
-              )}
-            </>
-          ) : undefined
-        }
         right={
           showImportHeaderAction
             ? canImport ? (
@@ -2843,6 +2820,67 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         }
         testId="ide-import-panel"
       >
+        <div className="ide-surface-command-stack">
+          <SurfaceCommandStrip
+            className="ide-import-command-strip"
+            testId="ide-import-command-strip"
+            label="Import"
+            title={importEntryAction?.title ?? 'Review the import before replacing anything'}
+            description={
+              importEntryAction?.body ??
+              'Use the review flow to confirm structure, pins, and blockers before you replace the current project.'
+            }
+            meta={(
+              <>
+                <IdeStatusPill tone={canImport ? 'ok' : hasParsedHdl ? 'warn' : 'idle'}>
+                  {canImport ? 'READY TO REVIEW' : hasParsedHdl ? 'NEEDS MAPPING' : 'INTAKE'}
+                </IdeStatusPill>
+                <span className={`ide-surface-command-chip${hasParsedHdl ? ' is-ok' : ''}`}>
+                  HDL {hasParsedHdl ? 'parsed' : 'pending'}
+                </span>
+                <span className={`ide-surface-command-chip${hasParsedXdc ? ' is-ok' : ''}`}>
+                  XDC {hasParsedXdc ? 'parsed' : 'optional'}
+                </span>
+                {hasParsedHdl ? (
+                  <span className={`ide-surface-command-chip${unmappedPorts.length === 0 ? ' is-ok' : ''}`}>
+                    {ports.length - unmappedPorts.length}/{ports.length} constrained
+                  </span>
+                ) : null}
+              </>
+            )}
+            actions={
+              showImportHeaderAction ? (
+                <>
+                  <span data-testid="ide-primary-cta">
+                    <IdeButton
+                      tone="primary"
+                      onClick={requestApplyProject}
+                      disabled={!canImport}
+                      testId="ide-import-replace-project"
+                    >
+                      Review Import...
+                    </IdeButton>
+                  </span>
+                  <IdeButton
+                    tone="secondary"
+                    onClick={() => setTab('hdl')}
+                    testId="ide-import-command-strip-secondary-cta"
+                  >
+                    Back to HDL
+                  </IdeButton>
+                </>
+              ) : undefined
+            }
+          />
+          {showImportHeaderAction && !canImport && hasParsedHdl ? (
+            <span className="ide-import-apply-reason" data-testid="ide-import-apply-disabled-reason">
+              {unmappedPorts.length > 0
+                ? `${unmappedPorts.length} unmapped port${unmappedPorts.length > 1 ? 's' : ''}`
+                : `${blockingErrors.length} blocking error${blockingErrors.length > 1 ? 's' : ''}`}
+            </span>
+          ) : null}
+        </div>
+
         {importEntryAction && (
           <div className="ide-import-start-shell" data-testid="ide-import-start-shell">
             <SurfacePanel className="ide-import-start-hero" testId="ide-import-start-hero">

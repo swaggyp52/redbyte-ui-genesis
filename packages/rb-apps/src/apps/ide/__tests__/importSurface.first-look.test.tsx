@@ -11,6 +11,7 @@ describe('ImportSurface first look', () => {
       <ImportSurface onImportProject={vi.fn()} />
     );
 
+    expect(getByTestId('ide-import-command-strip').textContent).toContain('Import');
     expect(getByTestId('ide-import-start-shell')).toBeTruthy();
     expect(getByTestId('ide-import-start-hero').textContent).toContain('Start with a Vivado ZIP');
     expect(getByTestId('ide-import-start-primary').textContent).toContain('Select Vivado ZIP');

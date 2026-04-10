@@ -26221,6 +26221,36 @@ button:disabled,
     radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 58%);
 }
 
+[data-ide-mode-marker='hardware'] .ide-hardware-command-strip {
+  background:
+    linear-gradient(180deg, rgba(10, 20, 34, 0.98), rgba(6, 13, 24, 0.94)),
+    radial-gradient(circle at top left, rgba(52, 211, 153, 0.12), transparent 58%);
+}
+
+[data-ide-mode-marker='export'] .ide-export-command-strip {
+  background:
+    linear-gradient(180deg, rgba(10, 21, 35, 0.98), rgba(7, 14, 24, 0.94)),
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.1), transparent 58%);
+}
+
+[data-ide-mode-marker='import'] .ide-import-command-strip {
+  background:
+    linear-gradient(180deg, rgba(10, 20, 34, 0.98), rgba(7, 14, 25, 0.94)),
+    radial-gradient(circle at top left, rgba(244, 185, 66, 0.12), transparent 58%);
+}
+
+[data-ide-mode-marker='import'] .ide-import-apply-reason {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px dashed rgba(111, 143, 173, 0.34);
+  color: rgba(180, 202, 224, 0.8);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 [data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-title {
   font-size: 18px;
 }

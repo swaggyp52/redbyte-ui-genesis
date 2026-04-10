@@ -165,6 +165,7 @@ describe('ExportSurface workstation redesign', () => {
       <ExportSurface project={buildProject()} determinismHash="ide-hash" />
     );
 
+    expect(getByTestId('ide-export-command-strip').textContent).toContain('Export');
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
     expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'collapsed');
@@ -324,6 +325,7 @@ describe('ExportSurface workstation redesign', () => {
     // "Other outputs" collapsed section so it never visually competes with the primary CTA.
     const hero = getByTestId('ide-export-summary-card');
     expect(hero.querySelector('[data-testid="ide-export-download-kit-btn"]')).toBeNull();
+    expect(hero.querySelector('[data-testid="ide-export-rebuild-btn"]')).toBeNull();
     // The ghost Design-back button is also absent from the hero CTA zone
     expect(hero.querySelector('[data-testid="ide-export-go-design-header"]')).toBeNull();
 

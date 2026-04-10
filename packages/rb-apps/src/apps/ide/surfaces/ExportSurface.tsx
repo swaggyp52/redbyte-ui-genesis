@@ -40,7 +40,7 @@ import {
   IdeSpinner,
   IdeStatusPill,
 } from '../components/IdePrimitives';
-import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
+import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 
 export interface ExportSurfaceProps {
   project: RBProject;
@@ -1449,6 +1449,73 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         }
         testId="ide-export-panel"
       >
+          <div className="ide-surface-command-stack">
+            <SurfaceCommandStrip
+              className="ide-export-command-strip"
+              testId="ide-export-command-strip"
+              label="Export"
+              title={dominantActionTitle}
+              description={dominantActionDetail}
+              meta={(
+                <>
+                  <IdeStatusPill tone={handoffTone}>{handoffTruth.statusLabel.toUpperCase()}</IdeStatusPill>
+                  <span className="ide-surface-command-chip">Basys3</span>
+                  <span className="ide-surface-command-chip">{topModule}</span>
+                  <span className="ide-surface-command-chip">
+                    {mappedCount}/{viewModel.pinTable.length} mapped
+                  </span>
+                  <span className={`ide-surface-command-chip${readyArtifactCount === viewModel.artifacts.length ? ' is-ok' : ''}`}>
+                    {readyArtifactCount}/{viewModel.artifacts.length} artifacts
+                  </span>
+                </>
+              )}
+              actions={(
+                <>
+                  <span data-testid="ide-export-primary-handoff-cta">
+                    <span data-testid="ide-primary-cta">
+                      <IdeButton
+                        tone="primary"
+                        onClick={handlePrimaryHandoff}
+                        disabled={primaryHandoffDisabled}
+                        testId="ide-export-rebuild-btn"
+                      >
+                        {handoffTruth.primaryCtaLabel}
+                      </IdeButton>
+                    </span>
+                  </span>
+                  {showSecondaryProjectDownload ? (
+                    <IdeButton
+                      tone="secondary"
+                      onClick={() => void handleDownloadExport('project')}
+                      disabled={!downloadReady || isRebuilding}
+                      testId="ide-export-secondary-download"
+                    >
+                      {projectDownloadLabel}
+                    </IdeButton>
+                  ) : onGoToHardware &&
+                    handoffTruth.primaryCtaIntent !== 'map-pins' &&
+                    handoffTruth.primaryCtaIntent !== 'program-handoff' ? (
+                    <IdeButton
+                      tone="secondary"
+                      onClick={onGoToHardware}
+                      testId="ide-export-command-strip-secondary-cta"
+                    >
+                      Map Pins
+                    </IdeButton>
+                  ) : onGoToProject ? (
+                    <IdeButton
+                      tone="secondary"
+                      onClick={onGoToProject}
+                      testId="ide-export-command-strip-secondary-cta"
+                    >
+                      Project
+                    </IdeButton>
+                  ) : null}
+                </>
+              )}
+            />
+          </div>
+
           {downloadDone && (
             <IdeCallout
               tone="success"
@@ -1505,28 +1572,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     </div>
                   );
                 })()}
-              </div>
-              <div className="ide-export-summary-actions">
-                <span data-testid="ide-export-primary-handoff-cta">
-                  <IdeButton
-                    tone="primary"
-                    onClick={handlePrimaryHandoff}
-                    disabled={primaryHandoffDisabled}
-                    testId="ide-export-rebuild-btn"
-                  >
-                    {handoffTruth.primaryCtaLabel}
-                  </IdeButton>
-                </span>
-                {showSecondaryProjectDownload && (
-                  <IdeButton
-                    tone="secondary"
-                    onClick={() => void handleDownloadExport('project')}
-                    disabled={!downloadReady || isRebuilding}
-                    testId="ide-export-secondary-download"
-                  >
-                    {projectDownloadLabel}
-                  </IdeButton>
-                )}
               </div>
             </div>
             <div className="ide-export-summary-grid" data-testid="ide-export-design-summary">

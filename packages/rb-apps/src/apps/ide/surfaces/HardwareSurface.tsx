@@ -9,7 +9,7 @@ import {
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
-import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
+import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { RuntimeSimState, RuntimeVerifyRun } from '../projectRuntime';
 import { computeScenarioContentHash, type VerifyScenario } from '../verifyScenario';
 import { useIoBus } from '../ioBus';
@@ -1188,6 +1188,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     ],
     [ioBus.state.btn, ioBus.state.ld, ioBus.state.sw]
   );
+  const hardwareCommandDescription =
+    hwMode === 'map' && !mappingReady
+      ? 'Assign the required Basys3 pins in the board workspace first, then continue to board preparation and programming.'
+      : nextActionHero.body;
+  const hardwareCommandSecondaryAction =
+    showBlockedHero ? heroSecondaryAction : nextActionHero.secondaryAction;
+  const hardwareCommandSecondaryLabel =
+    showBlockedHero ? heroSecondaryLabel : nextActionHero.secondaryLabel;
+  const showHardwareCommandActions = hwMode !== 'map' || mappingReady;
 
   return (
     <IdeSurfaceLayout
@@ -1271,8 +1280,74 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         }
         testId="ide-hardware-panel"
       >
+        <div className="ide-surface-command-stack">
+          <SurfaceCommandStrip
+            className="ide-hardware-command-strip"
+            testId="ide-hardware-command-strip"
+            label="Hardware"
+            title={
+              hwMode === 'map' && !mappingReady
+                ? 'Continue mapping before you prepare or program the board'
+                : nextActionHero.title
+            }
+            description={hardwareCommandDescription}
+            meta={(
+              <>
+                <IdeStatusPill tone={failureTruth.severity === 'ready' ? 'ok' : failureTruth.severity === 'blocked' ? 'error' : 'warn'}>
+                  {failureTruth.statusLabel.toUpperCase()}
+                </IdeStatusPill>
+                <span className="ide-surface-command-chip">Basys3</span>
+                <span className="ide-surface-command-chip">
+                  {hwMode === 'map'
+                    ? 'Map Pins'
+                    : hwMode === 'bringup'
+                      ? 'Prepare Board'
+                      : hwMode === 'proof'
+                        ? 'Program Checklist'
+                        : 'Live Details'}
+                </span>
+                <span className={`ide-surface-command-chip${mappingReady ? ' is-ok' : ''}`}>
+                  {mappingReady ? 'Mapping current' : `${mappingRows.length} mapped rows`}
+                </span>
+                <span className={`ide-surface-command-chip${compareMatches ? ' is-ok' : ''}`}>
+                  {verifyStatus}
+                </span>
+                <span
+                  className={`ide-surface-command-chip${exportReady ? ' is-ok' : ''}`}
+                  data-testid="ide-hardware-export-status"
+                >
+                  Export: {exportStatus}
+                </span>
+              </>
+            )}
+            actions={
+              showHardwareCommandActions ? (
+                <>
+                  <span data-testid="ide-primary-cta">
+                    <IdeButton
+                      tone="primary"
+                      onClick={showBlockedHero ? dominantPrimaryAction : nextActionHero.primaryAction}
+                      testId={showBlockedHero ? 'ide-hardware-blocked-primary' : nextActionHero.primaryTestId}
+                    >
+                      {showBlockedHero ? failureTruth.primaryCtaLabel : nextActionHero.primaryLabel}
+                    </IdeButton>
+                  </span>
+                  {hardwareCommandSecondaryAction && hardwareCommandSecondaryLabel ? (
+                    <IdeButton
+                      tone="secondary"
+                      onClick={hardwareCommandSecondaryAction}
+                      testId={showBlockedHero ? 'ide-hardware-blocked-secondary' : 'ide-hardware-next-secondary'}
+                    >
+                      {hardwareCommandSecondaryLabel}
+                    </IdeButton>
+                  ) : null}
+                </>
+              ) : undefined
+            }
+          />
+        </div>
         {/* ── Connection callout strip ── */}
-        <div className="ide-hw-callout" data-testid="ide-hw-callout">
+        {false && <div className="ide-hw-callout" data-testid="ide-hw-callout">
           <span className="ide-hw-callout-label">Project:</span>
           <span className="ide-hw-callout-name">{projectName}</span>
           <span className="ide-hw-callout-sep" aria-hidden="true">·</span>
@@ -1289,7 +1364,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               </span>
             </>
           )}
-        </div>
+        </div>}
 
         {/* ── Mode toggle bar — primary nav, stays at top ── */}
         <div className="ide-hw-mode-toggle" data-testid="ide-hw-mode-toggle">
@@ -1371,24 +1446,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             <p className="ide-copy" style={{ margin: 0 }}>
               {failureTruth.message}
             </p>
-          </div>
-          <div className="ide-hardware-blocked-hero__actions">
-            <IdeButton
-              tone="primary"
-              onClick={dominantPrimaryAction}
-              testId={showBlockedHero ? 'ide-hardware-blocked-primary' : 'ide-hardware-next-primary'}
-            >
-              {failureTruth.primaryCtaLabel}
-            </IdeButton>
-            {heroSecondaryLabel && heroSecondaryAction && (
-              <IdeButton
-                tone="secondary"
-                onClick={heroSecondaryAction}
-                testId={showBlockedHero ? 'ide-hardware-blocked-secondary' : 'ide-hardware-next-secondary'}
-              >
-                {heroSecondaryLabel}
-              </IdeButton>
-            )}
           </div>
         </SurfacePanel>}
 

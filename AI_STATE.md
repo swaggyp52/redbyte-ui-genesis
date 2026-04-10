@@ -1,5 +1,79 @@
 # AI State
 
+## Change Log 2026-04-10 (Hardware / Export / Import inner-body contract application)
+
+**Subsystem**: IDE product surface system / downstream stage bodies
+
+### Problem
+
+Project, Design, and Verify were already aligned to the newer RedByte product-surface system, but Hardware, Export, and Import still behaved like separate admin-style pages:
+
+- `Hardware` front-loaded redundant status chrome and hero CTAs ahead of the actual board workspace
+- `Export` still let the summary hero own the primary handoff CTA, which kept the page feeling like a report plus buttons instead of a stage with one clear handoff action
+- `Import` still used the panel header as a second CTA owner once you moved past first look, rather than the same command/body grammar as the other stages
+- none of the three surfaces had the same explicit top-of-body command strip / primary-region / secondary-region cadence now used elsewhere
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - added a shared `SurfaceCommandStrip` (`ide-hardware-command-strip`) so Hardware now opens with explicit stage identity, status chips, and the primary/secondary workflow actions
+  - moved blocked / next-step CTA ownership into the command strip while leaving the body hero as explanatory context
+  - removed the old body-level connection callout from the rendered composition
+  - kept the board mapping / prepare / proof / live workspace structure intact so the board workspace remains the real primary region
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - added a shared `SurfaceCommandStrip` (`ide-export-command-strip`) so Export now exposes handoff state and the primary build/download action through the same stage grammar as Project / Design / Verify
+  - moved `ide-export-rebuild-btn` out of the summary hero and into the command strip
+  - kept the summary hero as handoff context and state, not as the CTA owner
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+  - added a shared `SurfaceCommandStrip` (`ide-import-command-strip`) so Import now exposes intake state through the same stage grammar as the rest of the app
+  - moved the post-first-look `Review Import...` CTA out of the panel header and into the command strip
+  - kept the first-look ZIP intake hero as the primary entry flow, but aligned the surrounding body to the same command/body contract
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - added stage-specific command-strip styling for Hardware / Export / Import
+  - added a demoted inline style for Import’s disabled-review reason so it reads as supporting state, not another CTA
+- Updated focused downstream-stage tests:
+  - `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx`
+  - these now enforce command-strip presence and the new CTA ownership rules
+
+### Validation
+
+- Failing-first focused test run:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx`
+  - result before implementation: FAIL (missing `ide-hardware-command-strip`, `ide-export-command-strip`, `ide-import-command-strip`, plus stale hero CTA ownership)
+- Focused downstream-stage tests:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareBringup.plain-language.test.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.honesty.test.tsx`
+  - result: PASS (`62` tests)
+- Focused browser/contract gates:
+  - `node scripts/gates/ide-primary-cta-contract.mjs`
+  - `node scripts/gates/ide-hardware-checklist-contract.mjs`
+  - `node scripts/gates/ide-export-ready-contract.mjs`
+  - `node scripts/gates/ide-import-actionable-targets-contract.mjs`
+  - result: PASS
+- Local playground build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- Browser validation on local preview:
+  - `1366x768`
+    - `Hardware`: the shared command strip owns the next-step CTA while the board workspace remains primary; the old connection callout is gone
+    - `Export`: the shared command strip owns `Build Current Bundle`, while the summary hero now reads as handoff context instead of the CTA owner
+    - `Import`: the shared command strip frames the stage and the first-look ZIP intake remains the obvious action without a competing panel-header CTA
+  - `1536x864`
+    - all three stages keep the same command/body grammar, with visible command strips and obvious primary actions at the larger desktop width
+  - screenshots captured:
+    - `hardware-1366-contract.png`
+    - `export-1366-contract.png`
+    - `import-1366-contract.png`
+
+### Release impact
+
+- Hardware, Export, and Import now read more like downstream stages in the same RedByte product workflow instead of three separate utility/admin pages.
+- CTA ownership is more consistent across the full stage set.
+- The next biggest product-system gap is no longer stage-family mismatch; it is deeper maturity inside already-aligned surfaces, especially Verify and Design.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-04-10 (Project authority tightening: workflow-home body replaces dashboard leftovers)
 
 **Subsystem**: IDE product surface system / Project inner body
