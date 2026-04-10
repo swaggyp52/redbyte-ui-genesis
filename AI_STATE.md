@@ -1,5 +1,50 @@
 # AI State
 
+## Change Log 2026-04-10 (Verify analysis drawer consolidation — 6 tabs → 3 tabs)
+
+**Subsystem**: IDE Verify surface / analysis drawer
+
+### Problem
+
+The Verify analysis drawer had 6 tabs: Inspect | Checks | Vectors | Truth Table | K-Map | Details.
+The Vectors, Truth Table, and K-Map tabs were three separate windows into the same run data set, forcing
+students to context-switch tab-by-tab to understand a single test result. The drawer was also fragmented
+with respect to "where is the run context?" — run context and hash lived in Details while the data lived
+in Vectors and Truth Table.
+
+### What changed
+
+- `VerifyDrawerTab` type narrowed from 6 values to 3: `'why' | 'mismatches' | 'details'`
+- `drawerTabs` useMemo simplified to: `['why', 'details']` (Observe) or `['why', 'mismatches', 'details']` (Compare)
+- `verifyTab === 'vectors'` block removed (~80 lines)
+- `verifyTab === 'truth'` block removed (~20 lines)
+- `verifyTab === 'kmap'` block removed (~25 lines)
+- Details tab now renders in sequence: failure explanation → run context → signal table → diff table →
+  hash block → vectors table + fix-expectation strip + results table → TruthTablePane (truth, showModeToggle) →
+  TruthTablePane (kmap, no toggle, combinational only)
+- The kmap TruthTablePane only renders when `!isSequentialRun` so sequential runs don't show an inapplicable K-Map section
+
+### Test coverage
+
+- 9 new contract tests in `verifySurface.drawerConsolidation.test.tsx`:
+  - No Vectors/Truth Table/K-Map tab in Observe or Compare mode
+  - Observe mode has exactly Inspect + Details
+  - Compare mode has exactly Inspect + Checks + Details
+  - Clicking Details shows `ide-verify-vectors-table`
+- 5 test migrations:
+  - `verifySurface.combo-kmap-provenance.test.tsx`: navigate via Details instead of K-Map tab
+  - `verifySurface.layout-workflow.test.tsx`: check for 'Checks' label (was 'Mismatches' — pre-existing drift)
+  - `verifySurface.waveform-priority.test.tsx`: navigate via Details instead of Vectors tab
+  - `verifySurface.workstation.test.tsx` (×2): navigate via Details instead of Truth Table tab; use `getAllByTestId` for truth table title since kmap TruthTablePane also renders it
+
+### Validation
+
+- 129 passing (4 pre-existing failures: 2 failure-context, 2 three-panel)
+- `pnpm build:unified` → EXIT 0 / "Unified Build Succeeded!"
+- Commit: `5646bb96`
+
+---
+
 ## Change Log 2026-04-10 (Hardware / Export / Import inner-body contract application)
 
 **Subsystem**: IDE product surface system / downstream stage bodies
