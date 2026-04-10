@@ -6,7 +6,7 @@ import { render } from '@testing-library/react';
 import { IdeLeftRail } from '../components/IdeLeftRail';
 import { OnboardingOverlay } from '../components/OnboardingOverlay';
 import { IdeTopBar } from '../components/IdeTopBar';
-import { STUDENT_WORKFLOW_SUMMARY } from '../workflowStages';
+import { IDE_MODE_DEFINITIONS, STUDENT_WORKFLOW_SUMMARY } from '../workflowStages';
 
 describe('workflow stage authority', () => {
   beforeEach(() => {
@@ -35,5 +35,15 @@ describe('workflow stage authority', () => {
   it('teaches the Design → Verify → Map Pins → Export workflow in onboarding', () => {
     const { getByTestId } = render(<OnboardingOverlay mode="project" />);
     expect(getByTestId('ide-onboarding-overlay').textContent).toContain(STUDENT_WORKFLOW_SUMMARY);
+  });
+
+  it('keeps import out of the student-facing mode definitions', () => {
+    expect(IDE_MODE_DEFINITIONS.map((definition) => definition.id)).toEqual([
+      'project',
+      'design',
+      'verify',
+      'hardware',
+      'export',
+    ]);
   });
 });

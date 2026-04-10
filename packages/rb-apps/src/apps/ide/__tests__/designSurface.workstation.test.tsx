@@ -409,6 +409,23 @@ describe('DesignSurface workstation redesign', () => {
     expect(primaryTextarea.readOnly).toBe(true);
   });
 
+  it('frames HDL import as a utility action inside the code view', async () => {
+    const onGoToImport = vi.fn();
+    const view = renderSurface({ onGoToImport });
+
+    fireEvent.click(view.getByTestId('ide-design-view-hdl'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-artifact-selector')).toBeTruthy();
+    });
+
+    const importButton = view.getByTestId('ide-design-hdl-go-import');
+    expect(importButton.textContent).toContain('Import HDL');
+
+    fireEvent.click(importButton);
+    expect(onGoToImport).toHaveBeenCalledTimes(1);
+  });
+
   it('collapses the inspector by default in code and split modes, with a rail toggle to restore it', async () => {
     const view = renderSurface();
     const modeRoot = view.getByTestId('ide-mode-design');

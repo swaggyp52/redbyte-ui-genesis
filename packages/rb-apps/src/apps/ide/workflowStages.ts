@@ -50,7 +50,6 @@ export const IDE_MODE_DEFINITIONS: IdeModeDefinition[] = [
   { id: 'verify', label: IDE_MODE_LABELS.verify, shortLabel: 'V' },
   { id: 'hardware', label: IDE_MODE_LABELS.hardware, shortLabel: 'M' },
   { id: 'export', label: IDE_MODE_LABELS.export, shortLabel: 'E' },
-  { id: 'import', label: IDE_MODE_LABELS.import, shortLabel: 'I' },
 ];
 
 export const IDE_WORKFLOW_ROUTE_STEPS: IdeWorkflowRouteStep[] = [

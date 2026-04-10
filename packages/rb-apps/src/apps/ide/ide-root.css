@@ -6302,8 +6302,7 @@ details[open] summary .details-arrow {
   margin-top: auto;
   padding-top: 6px;
 }
-.ide-project-landing-option--fresh,
-.ide-project-landing-option--import {
+.ide-project-landing-option--fresh {
   border-style: dashed;
 }
 

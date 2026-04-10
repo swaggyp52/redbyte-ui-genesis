@@ -199,6 +199,47 @@ describe('ProjectSurface workspace panels', () => {
     expect(getByTestId('ide-project-recent-rb-counter').textContent).toContain('Counter Lab');
   });
 
+  it('keeps import as a secondary utility path instead of a peer project-home start card', () => {
+    const { getByTestId, queryByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            readiness: {
+              hasCircuit: false,
+              hasIoMapping: false,
+              hasVectors: false,
+              verifyPass: false,
+              missingRequiredCount: 0,
+            },
+            health: {
+              ...makeProps().health,
+              lastVerify: undefined,
+              blockingIssues: [],
+            },
+            recentProjects: [],
+            examples: [
+              {
+                id: 'teacher-template',
+                name: 'Teacher Template',
+                summary: 'A starter teachers can hand to students.',
+                expectedBehavior: 'Use this template as the classroom starting point.',
+                tags: ['starter'],
+                course: 'ECE 101',
+                lab: 'Lab 1',
+                concept: 'Combinational',
+              },
+            ],
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-project-open-existing').textContent).toContain('Open existing project');
+    expect(getByTestId('ide-project-quickstart-import-link').textContent).toContain('import HDL / Vivado ZIP');
+    expect(getByTestId('ide-project-landing-example-teacher-template').textContent).toContain('Teacher Template');
+    expect(queryByTestId('ide-project-landing-import')).toBeNull();
+  });
+
   it('shows the current primary target and missing pins inline when mapping is incomplete', () => {
     const { getAllByTestId } = render(
       <BoardSignalProvider>

@@ -1,5 +1,72 @@
 # AI State
 
+## Change Log 2026-04-10 (Phase-2 Slice 3 — Import demotion + utility entry-point redesign)
+
+**Subsystem**: Project / Design / Import entry model
+
+### Problem
+
+Import had already been removed from the left-rail stage grammar, but students still saw Import behaving like a peer starting stage in key places:
+
+- Project home still rendered a first-class `Import Project` landing card beside starter entries
+- Design's code view still used stage-style CTA copy (`Open Import`)
+- shared student-facing mode definitions still listed Import as a first-class mode option
+
+This left an unresolved contradiction with the locked product direction (`Import = utility/action, not stage`).
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - removed the empty-home peer launch card `ide-project-landing-import`
+  - kept Import available as a secondary utility action on Project home via the inline link `ide-project-quickstart-import-link`
+  - preserved canonical Project-home starts:
+    - New: `Build Fresh`
+    - Open existing: `ide-project-open-existing` + recents
+    - Teacher-template/example starts: starter cards + lab gallery
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - relabeled code-view CTA `ide-design-hdl-go-import` from `Open Import` to `Import HDL` so it reads as a utility action
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+  - relabeled command strip label from `Import` to `Import HDL` (`ide-import-command-strip`) to reduce stage framing
+- `packages/rb-apps/src/apps/ide/workflowStages.ts`
+  - removed `import` from `IDE_MODE_DEFINITIONS` so student-facing mode definitions no longer advertise Import as a first-class workflow stage
+  - kept `IdeMode` support intact so Import remains a valid implementation route and utility workspace
+- tests (failing-first then green):
+  - `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`
+    - added contract test asserting Import is a secondary utility path and no peer Project-home import card exists
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+    - added contract test asserting `Import HDL` action appears in Design code view and routes via `onGoToImport`
+  - `packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx`
+    - updated first-look command-strip expectation to `Import HDL`
+  - `packages/rb-apps/src/apps/ide/__tests__/workflowStages.authority.test.tsx`
+    - added contract test asserting `IDE_MODE_DEFINITIONS` excludes `import`
+
+### Validation
+
+- focused TDD suite (RED then GREEN):
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/workflowStages.authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx`
+  - result after implementation: PASS (`37` tests)
+- build:
+  - `pnpm build:unified`
+  - result: PASS (`Unified Build Succeeded`)
+- browser validation (desktop) on local preview (`http://127.0.0.1:4176/os/`):
+  - Project home:
+    - no peer Import start card is shown
+    - clear starts remain for New (`Build Fresh`) and Open existing (`Open existing project`)
+    - teacher-template/example starts remain visible via starter cards and lab gallery
+    - Import remains available as secondary utility link (`import HDL / Vivado ZIP`)
+  - Import workspace:
+    - command-strip label reads `Import HDL`
+  - Design code view:
+    - utility CTA reads `Import HDL`
+
+### Release impact
+
+- Import now reads as a utility/action rather than a peer workflow stage.
+- Project and Design now provide clearer, more coherent user-facing entry points aligned with the locked RedByte product direction.
+- This closes the immediate Import demotion contradiction without broad route or subsystem refactors.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-04-10 (Phase-2 Slice 2 — Design blank-state escape hatch to Project)
 
 **Subsystem**: Design surface / blank-state overlay

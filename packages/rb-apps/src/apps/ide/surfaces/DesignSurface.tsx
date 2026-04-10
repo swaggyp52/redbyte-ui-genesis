@@ -6061,7 +6061,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         onClick={onGoToImport}
                         data-testid="ide-design-hdl-go-import"
                       >
-                        Open Import
+                        Import HDL
                       </button>
                     )}
                   </div>

@@ -2824,7 +2824,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
           <SurfaceCommandStrip
             className="ide-import-command-strip"
             testId="ide-import-command-strip"
-            label="Import"
+            label="Import HDL"
             title={importEntryAction?.title ?? 'Review the import before replacing anything'}
             description={
               importEntryAction?.body ??

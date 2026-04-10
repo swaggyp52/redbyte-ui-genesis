@@ -904,18 +904,19 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 <span className="ide-project-landing-option-sub">Start with gates and wires from scratch</span>
                 <span className="ide-project-landing-option-cta">Open blank Design ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢</span>
               </button>
+            </div>
+            <p className="ide-copy" style={{ margin: 0, fontSize: 11 }}>
+              Need to reuse prior HDL?{' '}
               <button
                 type="button"
-                className="ide-project-landing-option ide-project-landing-option--import"
+                className="ide-project-quickstart-import-link"
                 onClick={onOpenImport}
-                data-testid="ide-project-landing-import"
+                data-testid="ide-project-quickstart-import-link"
               >
-                <span className="ide-project-landing-option-eyebrow">Vivado / HDL</span>
-                <span className="ide-project-landing-option-title">Import Project</span>
-                <span className="ide-project-landing-option-sub">Bring in an existing VHDL or Vivado ZIP</span>
-                <span className="ide-project-landing-option-cta">Open Import ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢</span>
+                import HDL / Vivado ZIP
               </button>
-            </div>
+              .
+            </p>
 
             {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Lab Starters Gallery ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
             <details
