@@ -96,9 +96,9 @@ describe('VerifySurface combo and K-map provenance', () => {
       />
     );
 
-    // Open drawer then navigate to the K-Map tab (kmap tab uses displaySection="kmap").
+    // Open drawer and navigate to the Details tab (K-Map is now consolidated inside Details).
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
-    fireEvent.click(getAllByText('K-Map')[0]);
+    fireEvent.click(getAllByText('Details')[0]);
 
     // ld1 at input bits '10' (sw0=1, sw1=0) fails: expected 0, observed 1.
     expect(getByTestId('ide-truth-table-kmap-cell-ld1_10').textContent).toContain('exp 0');

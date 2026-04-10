@@ -117,7 +117,7 @@ describe('VerifySurface layout workflow architecture', () => {
 
     fireEvent.click(compareView.getByTestId('ide-verify-drawer-toggle'));
     const compareTabs = compareView.getByTestId('ide-verify-analysis-tab-nav');
-    expect(within(compareTabs).getByText('Mismatches')).toBeTruthy();
+    expect(within(compareTabs).getByText('Checks')).toBeTruthy();
   });
 
   it('does not render legacy stacked top banners when primary status is active', () => {

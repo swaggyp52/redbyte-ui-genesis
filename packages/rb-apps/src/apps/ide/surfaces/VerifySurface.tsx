@@ -203,7 +203,7 @@ export interface VerifySurfaceProps {
 
 // ─── SVG WaveformViewer (extracted to verify/WaveformInstrument.tsx) ─────────
 
-type VerifyDrawerTab = 'why' | 'mismatches' | 'vectors' | 'truth' | 'kmap' | 'details';
+type VerifyDrawerTab = 'why' | 'mismatches' | 'details';
 type VerifyLayoutMode = 'wide' | 'standard' | 'compact';
 type CaptureScopeKind =
   | 'cell'
@@ -2192,17 +2192,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [resolveLaneBoardSignal, setHoverBoardSignal]
   );
   const drawerTabs = useMemo<VerifyDrawerTab[]>(() => {
-    // In Observe mode (no assertions), the mismatches tab is irrelevant — omit it.
-    const includesMismatches = nextRunUsesAssertions;
-    if (isSequentialRun) {
-      return includesMismatches
-        ? ['why', 'mismatches', 'vectors', 'truth', 'details']
-        : ['why', 'vectors', 'truth', 'details'];
-    }
-    return includesMismatches
-      ? ['why', 'mismatches', 'vectors', 'truth', 'kmap', 'details']
-      : ['why', 'vectors', 'truth', 'kmap', 'details'];
-  }, [isSequentialRun, nextRunUsesAssertions]);
+    // 3-tab model: Inspect | (Checks) | Details
+    // Checks only appears in Compare mode (assertions active). Vectors/Truth/K-Map are
+    // consolidated into Details so the drawer stays navigable at a glance.
+    return nextRunUsesAssertions
+      ? ['why', 'mismatches', 'details']
+      : ['why', 'details'];
+  }, [nextRunUsesAssertions]);
   useEffect(() => {
     if (!drawerTabs.includes(verifyTab)) {
       setVerifyTab(drawerTabs[0] ?? 'mismatches');
@@ -5133,136 +5129,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </section>
               )}
 
-              {verifyTab === 'vectors' && (
-                <>
-                  {showSecondaryAssertionGrid && (
-                    <section
-                      className="ide-verify-secondary-evidence-panel"
-                      data-testid="ide-verify-secondary-evidence-panel"
-                    >
-                      <header className="ide-verify-secondary-evidence-panel__header">
-                        <div className="ide-verify-secondary-evidence-panel__copy">
-                          <span className="ide-verify-secondary-evidence-panel__eyebrow">
-                            Secondary evidence
-                          </span>
-                          <strong>Observed vs asserted grid</strong>
-                          <p>Read-only comparison aligned to the active waveform tick window.</p>
-                        </div>
-                        {selectedFailureCase && (
-                          <span className="ide-verify-secondary-evidence-panel__focus">
-                            Focus {selectedFailureDisplayLabel ?? selectedFailureCase.signal} at t
-                            {selectedFailureCase.tick}
-                          </span>
-                        )}
-                      </header>
-                      <AssertionCanvas
-                        outputFields={outputFields}
-                        ticks={zoomedTicks}
-                        tickWidth={tickWidth}
-                        getCellValue={getAssertionCellValue}
-                        selectedTick={selectedTick}
-                        selectedSignal={selectedSignal}
-                        assertionMode={sessionShowsCompareEvidence}
-                        className="ide-verify-secondary-evidence-canvas"
-                        readOnly={true}
-                      />
-                    </section>
-                  )}
-                  <IdeDataTable
-                    columns={[
-                      'Tick',
-                      ...inputFields.map((field) => field.label),
-                      ...outputFields.map((field) => `${field.label} (exp)`),
-                      ...(onPreviewVector ? ['Preview'] : []),
-                      'Dup',
-                      ...(onDeleteVector ? ['Delete'] : []),
-                    ]}
-                    rows={inspectorVectorRows}
-                    testId="ide-verify-vectors-table"
-                  />
-                  {/* Fix-expectation shortcut: when a failure row is selected and has vectorId,
-                      show a one-click "Accept actual as expected" button. */}
-                  {selectedFailure && selectedFailure.vectorId && (
-                    <div
-                      className="ide-verify-fix-expectation-strip"
-                      data-testid="ide-verify-fix-expectation-strip"
-                    >
-                      <span className="ide-verify-fix-expectation-label">
-                        t{selectedFailure.tick} · <code>{selectedFailure.signal}</code>
-                        {' '}expected <code>{selectedFailure.expected}</code>
-                        {', '}observed <code>{selectedFailure.actual}</code>
-                      </span>
-                      <button
-                        type="button"
-                        className="ide-verify-fix-expectation-btn"
-                        onClick={() =>
-                          handleFixExpectation(
-                            selectedFailure.vectorId!,
-                            selectedFailure.signal,
-                            selectedFailure.actual as '0' | '1'
-                          )
-                        }
-                        data-testid="ide-verify-fix-expectation-btn"
-                        title={`Set expected ${getFailureSignalLabel(selectedFailure)} = ${selectedFailure.actual} for this authored row`}
-                      >
-                        Accept observed {selectedFailure.actual}
-                      </button>
-                    </div>
-                  )}
-                  <IdeDataTable
-                    columns={['Tick', 'Signal', 'Expected', 'Observed', 'Status']}
-                    rows={resultRows}
-                    testId="ide-verify-results-table"
-                  />
-                </>
-              )}
-
-              {verifyTab === 'truth' && (
-                <TruthTablePane
-                  mode={truthTableMode}
-                  rows={truthRows}
-                  isSequential={isSequentialRun}
-                  selectedTick={selectedTick}
-                  onSelectTick={setSelectedTick}
-                  onModeChange={setTruthTableMode}
-                  emptyReason={truthTableEmptyReason}
-                  combosRows={comboRows}
-                  combosInputs={inputFields.map((field) => field.label)}
-                  combosOutputs={outputSignalOrder}
-                  combosUnavailableReason={combosUnavailableReason ?? undefined}
-                  kmaps={kmapRows}
-                  kmapUnavailableReason={kmapUnavailableReason ?? undefined}
-                  traceInputsByTick={traceInputsByTick}
-                  onFixPath={(row) => reviewFailureInVerify(row)}
-                  onSelectFailureCase={(failure) => applyFailureSelection(failure)}
-                  showModeToggle={true}
-                  displaySection="truth"
-                />
-              )}
-
-              {verifyTab === 'kmap' && (
-                <TruthTablePane
-                  mode={truthTableMode}
-                  rows={truthRows}
-                  isSequential={isSequentialRun}
-                  selectedTick={selectedTick}
-                  onSelectTick={setSelectedTick}
-                  onModeChange={setTruthTableMode}
-                  emptyReason={truthTableEmptyReason}
-                  combosRows={comboRows}
-                  combosInputs={inputFields.map((field) => field.label)}
-                  combosOutputs={outputSignalOrder}
-                  combosUnavailableReason={combosUnavailableReason ?? undefined}
-                  kmaps={kmapRows}
-                  kmapUnavailableReason={kmapUnavailableReason ?? undefined}
-                  traceInputsByTick={traceInputsByTick}
-                  onFixPath={(row) => reviewFailureInVerify(row)}
-                  onSelectFailureCase={(failure) => applyFailureSelection(failure)}
-                  showModeToggle={true}
-                  displaySection="kmap"
-                />
-              )}
-
               {verifyTab === 'details' && (
                 <>
                   <VerifyFailureExplanationPanel
@@ -5369,6 +5235,130 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     <span>Schedule</span>
                     <code data-testid="ide-verify-schedule">{lastRun?.schedule ?? '—'}</code>
                   </div>
+
+                  {/* Vectors — per-tick input/output data consolidated from former Vectors tab */}
+                  {showSecondaryAssertionGrid && (
+                    <section
+                      className="ide-verify-secondary-evidence-panel"
+                      data-testid="ide-verify-secondary-evidence-panel"
+                    >
+                      <header className="ide-verify-secondary-evidence-panel__header">
+                        <div className="ide-verify-secondary-evidence-panel__copy">
+                          <span className="ide-verify-secondary-evidence-panel__eyebrow">
+                            Secondary evidence
+                          </span>
+                          <strong>Observed vs asserted grid</strong>
+                          <p>Read-only comparison aligned to the active waveform tick window.</p>
+                        </div>
+                        {selectedFailureCase && (
+                          <span className="ide-verify-secondary-evidence-panel__focus">
+                            Focus {selectedFailureDisplayLabel ?? selectedFailureCase.signal} at t
+                            {selectedFailureCase.tick}
+                          </span>
+                        )}
+                      </header>
+                      <AssertionCanvas
+                        outputFields={outputFields}
+                        ticks={zoomedTicks}
+                        tickWidth={tickWidth}
+                        getCellValue={getAssertionCellValue}
+                        selectedTick={selectedTick}
+                        selectedSignal={selectedSignal}
+                        assertionMode={sessionShowsCompareEvidence}
+                        className="ide-verify-secondary-evidence-canvas"
+                        readOnly={true}
+                      />
+                    </section>
+                  )}
+                  <IdeDataTable
+                    columns={[
+                      'Tick',
+                      ...inputFields.map((field) => field.label),
+                      ...outputFields.map((field) => `${field.label} (exp)`),
+                      ...(onPreviewVector ? ['Preview'] : []),
+                      'Dup',
+                      ...(onDeleteVector ? ['Delete'] : []),
+                    ]}
+                    rows={inspectorVectorRows}
+                    testId="ide-verify-vectors-table"
+                  />
+                  {selectedFailure && selectedFailure.vectorId && (
+                    <div
+                      className="ide-verify-fix-expectation-strip"
+                      data-testid="ide-verify-fix-expectation-strip"
+                    >
+                      <span className="ide-verify-fix-expectation-label">
+                        t{selectedFailure.tick} · <code>{selectedFailure.signal}</code>
+                        {' '}expected <code>{selectedFailure.expected}</code>
+                        {', '}observed <code>{selectedFailure.actual}</code>
+                      </span>
+                      <button
+                        type="button"
+                        className="ide-verify-fix-expectation-btn"
+                        onClick={() =>
+                          handleFixExpectation(
+                            selectedFailure.vectorId!,
+                            selectedFailure.signal,
+                            selectedFailure.actual as '0' | '1'
+                          )
+                        }
+                        data-testid="ide-verify-fix-expectation-btn"
+                        title={`Set expected ${getFailureSignalLabel(selectedFailure)} = ${selectedFailure.actual} for this authored row`}
+                      >
+                        Accept observed {selectedFailure.actual}
+                      </button>
+                    </div>
+                  )}
+                  <IdeDataTable
+                    columns={['Tick', 'Signal', 'Expected', 'Observed', 'Status']}
+                    rows={resultRows}
+                    testId="ide-verify-results-table"
+                  />
+
+                  {/* Truth table + K-Map — consolidated with mode toggle (formerly separate tabs) */}
+                  <TruthTablePane
+                    mode={truthTableMode}
+                    rows={truthRows}
+                    isSequential={isSequentialRun}
+                    selectedTick={selectedTick}
+                    onSelectTick={setSelectedTick}
+                    onModeChange={setTruthTableMode}
+                    emptyReason={truthTableEmptyReason}
+                    combosRows={comboRows}
+                    combosInputs={inputFields.map((field) => field.label)}
+                    combosOutputs={outputSignalOrder}
+                    combosUnavailableReason={combosUnavailableReason ?? undefined}
+                    kmaps={kmapRows}
+                    kmapUnavailableReason={kmapUnavailableReason ?? undefined}
+                    traceInputsByTick={traceInputsByTick}
+                    onFixPath={(row) => reviewFailureInVerify(row)}
+                    onSelectFailureCase={(failure) => applyFailureSelection(failure)}
+                    showModeToggle={true}
+                    displaySection="truth"
+                  />
+                  {/* K-Map — combinational only; rendered as a separate section below truth table */}
+                  {!isSequentialRun && (
+                    <TruthTablePane
+                      mode={truthTableMode}
+                      rows={truthRows}
+                      isSequential={false}
+                      selectedTick={selectedTick}
+                      onSelectTick={setSelectedTick}
+                      onModeChange={setTruthTableMode}
+                      emptyReason={truthTableEmptyReason}
+                      combosRows={comboRows}
+                      combosInputs={inputFields.map((field) => field.label)}
+                      combosOutputs={outputSignalOrder}
+                      combosUnavailableReason={combosUnavailableReason ?? undefined}
+                      kmaps={kmapRows}
+                      kmapUnavailableReason={kmapUnavailableReason ?? undefined}
+                      traceInputsByTick={traceInputsByTick}
+                      onFixPath={(row) => reviewFailureInVerify(row)}
+                      onSelectFailureCase={(failure) => applyFailureSelection(failure)}
+                      showModeToggle={false}
+                      displaySection="kmap"
+                    />
+                  )}
                 </>
               )}
             </div>

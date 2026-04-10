@@ -364,7 +364,7 @@ describe('VerifySurface waveform lane priority', () => {
     expect(queryByTestId('ide-assertion-canvas')).toBeNull();
     fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
-    fireEvent.click(getAllByText('Vectors')[0]);
+    fireEvent.click(getAllByText('Details')[0]);
     fireEvent.click(getByTestId('ide-verify-failure-sum_8'));
 
     const assertionCanvas = getByTestId('ide-assertion-canvas');
