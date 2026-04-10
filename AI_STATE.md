@@ -1,5 +1,40 @@
 # AI State
 
+## Change Log 2026-04-10 (Phase-2 Slice 4 — Verify→Design debug bridge: full tick evidence handoff)
+
+**Subsystem**: Verify / Design cross-surface debug handoff
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - Added `buildDebugSignalsAtTick(tick)` — extracts full binary signal snapshot from waveform at a given tick
+  - `handleGoToDesignFromVerify` now prefers `onDebugTickSelected` over `onGoToDesignWithInputs` when tick evidence is available
+  - Fallback tick: `selectedTick ?? lastRun.firstFailingTick ?? lastRun.waveform[0].tick`
+  - Carries `selectedDebugContext` (which signal failed, expected, actual) when the tick is failing
+  - Pass hero "Back to Design" + mismatch "Open in Design" now use `handleGoToDesignFromVerify` (was plain `onGoToDesign`)
+  - Fixed TDZ: moved `buildDebugSignalsAtTick` + `handleGoToDesignFromVerify` AFTER `selectedDebugContext` declaration
+  - Repaired `handleThreePanelFailureSelect` — body stripped by prior splice op, restored
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - `debugLinkedSignalKey` — resolves signal key from `activeDebugContext.signal` via `resolveVerifyLinkedSignalKey`
+  - Auto-fan-in trace fires when `debugLinkedSignalKey` set; source key prefix `debug:` distinguishes from verify traces
+  - `selectedSignalKey` priority: explicit > debug-context > verify-linked > wire
+  - `ide-design-failure-brief-pattern` — renders `activeDebugContext.patternSummary` when present
+
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - `.ide-design-failure-brief-pattern` — style class (same rules as `-inputs` + `-next`)
+
+### Tests
+
+- `verifySurface.observeFirst.test.tsx`: 2 tests updated/added — debug handoff preference + failure context carry-through (9/9 GREEN)
+- `designSurface.workstation.test.tsx`: 3 new assertions for pattern, active trace, selection inspector (21/21 GREEN)
+
+### Commit
+
+`c64d56af feat(verify+design): full debug handoff — tick evidence + failure context bridge`
+
+---
+
 ## Change Log 2026-04-10 (Phase-2 Slice 3 — Import demotion + utility entry-point redesign)
 
 **Subsystem**: Project / Design / Import entry model
