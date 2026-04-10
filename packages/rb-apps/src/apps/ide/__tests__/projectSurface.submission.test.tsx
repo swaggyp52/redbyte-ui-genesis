@@ -107,12 +107,12 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    expect(getAllByTestId('ide-project-showcase-primary-cta').at(-1)?.textContent).toContain('Continue to Map Pins');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Map Pins');
     expect(getByTestId('ide-project-hero-blocker').textContent).toContain('Finish mapping before relying on hardware behavior');
   });
 
   it('keeps the hero CTA dominant while surfacing the active example context', () => {
-    const { getByTestId, getAllByTestId } = render(
+    const { getByTestId, getAllByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -151,16 +151,17 @@ describe('ProjectSurface workspace panels', () => {
     const showcases = getAllByTestId('ide-project-showcase');
     const showcase = showcases[showcases.length - 1];
     expect(showcase.textContent).toContain('Signal Tour: Switches -> LEDs');
-    expect(getAllByTestId('ide-project-showcase-primary-cta').at(-1)?.textContent).toContain('Continue to Verify');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Verify');
     expect(getByTestId('ide-project-next-step').textContent).toContain('Refresh Verify');
-    expect(getAllByTestId('ide-project-board-preview').at(-1)?.textContent).toContain(
+    expect(queryByTestId('ide-project-board-preview')).toBeNull();
+    expect(getByTestId('ide-project-current-focus').textContent).toContain(
       'Flip switches and the matching LEDs follow immediately.'
     );
 
     const context = getAllByTestId('ide-project-context').at(-1)!;
     expect(context.textContent).toContain('Loaded project');
     expect(context.textContent).toContain('Example Project - Signal Tour: Switches -> LEDs');
-    expect(context.textContent).toContain('Expected behavior');
+    expect(context.textContent).toContain('Project note');
     expect(context.textContent).toContain('Flip switches and the matching LEDs follow immediately.');
   });
 
@@ -440,7 +441,7 @@ describe('ProjectSurface workspace panels', () => {
     // Should show "…and 1 more" overflow text
     const listElements = getAllByTestId('ide-project-blockers-list');
     const lastList = listElements[listElements.length - 1];
-    expect(lastList.parentElement?.textContent).toContain('…and 1 more');
+    expect(lastList.parentElement?.textContent).toContain('...and 1 more');
   });
 
   it('clearly explains AVAILABLE status means export files are already available when compare is advisory', () => {
@@ -530,7 +531,7 @@ describe('ProjectSurface workspace panels', () => {
     // Verify row should show mapping-review advisory, not grading language
     const readinessItems = getAllByTestId('ide-project-readiness-summary');
     const lastReadiness = readinessItems[readinessItems.length - 1];
-    expect(lastReadiness?.textContent || '').toContain('MATCH (MAPPING REVIEW)');
+    expect(lastReadiness?.textContent || '').toContain('REVIEW MAPPING');
 
     // Export row should stay available
     expect(lastReadiness?.textContent || '').toContain('AVAILABLE');

@@ -1,5 +1,70 @@
 # AI State
 
+## Change Log 2026-04-10 (Project authority tightening: workflow-home body replaces dashboard leftovers)
+
+**Subsystem**: IDE product surface system / Project inner body
+
+### Problem
+
+The shared RedByte command-strip system made Project look more related to Design and Verify at the top of the page, but the body still behaved like a softened dashboard:
+
+- loaded-project state still duplicated workflow truth across a hero/showcase layer, quick stats, and readiness cards
+- the primary next action did not own the page strongly enough
+- legacy showcase CTA and board-preview content were still lingering instead of being structurally replaced
+- save/open/restore/reset utilities were still too close to the workflow path
+- Project still reported facts more than it commanded the next move
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - promoted the loaded-project body into a real workflow-home composition:
+    - shared command strip at the top
+    - `Current focus` primary region
+    - clearer `Why this is next` explanation
+    - calmer secondary `Loaded project` / `Workflow truth` flightdeck
+    - tertiary utility region for save/open/restore/reset
+  - removed the duplicate showcase CTA and signal-preview board mock from the loaded-project body
+  - removed the quick-stats strip from the active Project composition
+  - moved utility session controls out of the left dock and into a clearly demoted utility panel
+  - tightened Verify-stage wording in Project to use the newer checks/observation-first workflow model
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - added a stronger workflow-home visual rhythm for Project:
+    - current-focus panel
+    - current-focus support copy
+    - calmer two-column secondary flightdeck
+    - visually demoted utility region
+- Updated focused Project tests:
+  - `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`
+  - `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`
+  - both now enforce command-strip CTA ownership, absence of the legacy showcase CTA/board preview, and current-focus authority
+
+### Validation
+
+- Focused Project tests:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`
+  - result: PASS (`23` tests)
+- Focused Project browser/contract gates:
+  - `node scripts/gates/ide-project-overview-contract.mjs`
+  - `node scripts/gates/ide-project-continue-cta-contract.mjs`
+  - result: PASS
+- Local playground build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- Browser validation on local preview after loading `Signal Tour: Switches -> LEDs`, then returning to Project:
+  - `1366x768`: Project clearly shows `Continue to Verify ->` as the primary CTA, `Current focus` and `Why this is next` are visible above the fold, legacy showcase CTA/board preview/quick stats are absent, and utility actions sit far below the primary workflow region
+  - `1536x864`: the same workflow-home hierarchy holds with a larger secondary flightdeck and the utility region still visually demoted
+  - screenshots captured:
+    - `project-authority-1366x768.png`
+    - `project-authority-1536x864.png`
+
+### Release impact
+
+- Project now acts more like RedByte's workflow commander instead of a soft dashboard.
+- The top-of-page surface system now reaches into Project's inner body, not just its header.
+- The next cross-surface sync work should apply the same inner-body authority to Hardware / Export / Import, while Design and Verify continue deeper maturity work inside their already-stronger primary work regions.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-04-10 (Design inner-surface system pass: canvas-first workspace, collapsed rails, contextual inspector)
 
 **Subsystem**: IDE product surface system / Design inner workspace

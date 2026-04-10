@@ -263,7 +263,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
   });
 
   it('keeps Verify as the single dominant next step when compare evidence is missing', () => {
-    const { getAllByTestId, getByTestId, queryByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -287,13 +287,17 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     );
 
     expect(queryByTestId('ide-project-readiness-goto-verify')).toBeNull();
-    expect(getAllByTestId('ide-project-showcase-primary-cta').at(-1)?.textContent).toContain('Continue to Verify');
+    expect(queryByTestId('ide-project-showcase-primary-cta')).toBeNull();
+    expect(queryByTestId('ide-project-board-preview')).toBeNull();
+    expect(queryByTestId('ide-project-quick-stats')).toBeNull();
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Verify');
     expect(getByTestId('ide-project-next-step').textContent).toContain('trusted comparison evidence');
-    expect(getByTestId('ide-project-readiness-focus').textContent).toContain('Continue to Verify');
+    expect(getByTestId('ide-project-current-focus').textContent).toContain('Continue to Verify');
+    expect(getByTestId('ide-project-readiness-summary').textContent).toContain('Verify');
   });
 
   it('keeps export advisory states routed through the hero CTA instead of a duplicate row action', () => {
-    const { getAllByTestId, getByTestId, queryByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -317,8 +321,9 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     );
 
     expect(queryByTestId('ide-project-readiness-goto-verify-for-export')).toBeNull();
-    expect(getAllByTestId('ide-project-showcase-primary-cta').at(-1)?.textContent).toContain('Continue to Verify');
-    expect(getByTestId('ide-project-readiness-focus').textContent).toContain('Continue to Verify');
+    expect(queryByTestId('ide-project-showcase-primary-cta')).toBeNull();
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Verify');
+    expect(getByTestId('ide-project-current-focus').textContent).toContain('Continue to Verify');
   });
 
   it('removes blank-project framing from loaded blank-origin projects', () => {
@@ -335,11 +340,11 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
       </BoardSignalProvider>
     );
 
-    const hero = getByTestId('ide-project-hero');
-    expect(hero.textContent).toContain('Fresh Project');
-    expect(hero.textContent).toContain('started from a blank canvas');
-    expect(hero.textContent).not.toContain('Blank Project');
-    expect(hero.textContent).not.toContain('Top module top is loaded and ready for setup.');
+    const currentFocus = getByTestId('ide-project-current-focus');
+    expect(currentFocus.textContent).toContain('Fresh Project');
+    expect(currentFocus.textContent).toContain('started from a blank canvas');
+    expect(currentFocus.textContent).not.toContain('Blank Project');
+    expect(currentFocus.textContent).not.toContain('Top module top is loaded and ready for setup.');
   });
 
   it('removes starter framing from detached custom projects', () => {
@@ -371,9 +376,9 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-project-hero').textContent).toContain('Custom Project');
-    expect(getByTestId('ide-project-hero').textContent).toContain('Untitled Project');
-    expect(getByTestId('ide-project-showcase-secondary-cta').textContent).toContain('Open Design');
+    expect(getByTestId('ide-project-current-focus').textContent).toContain('Custom Project');
+    expect(getByTestId('ide-project-current-focus').textContent).toContain('Untitled Project');
+    expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Design');
     expect(queryByText('From Signal Tour: Switches → LEDs')).toBeNull();
     expect(queryByTestId('ide-project-examples-disclosure')).toBeNull();
   });

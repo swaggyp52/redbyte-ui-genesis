@@ -325,12 +325,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   ) ?? null;
 
   const heroStatusMessage = useMemo((): string => {
-    if (!readiness.hasCircuit) return 'No circuit loaded yet — build fresh, load an example, or import HDL.';
+    if (!readiness.hasCircuit) return 'No circuit loaded yet ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â build fresh, load an example, or import HDL.';
     if (unmappedRequiredCount > 0)
-      return `Circuit loaded — ${unmappedRequiredCount} required pin${unmappedRequiredCount !== 1 ? 's are' : ' is'} unmapped.`;
-    if (!readiness.hasIoMapping) return 'Circuit loaded — map pins before hardware use.';
+      return `Circuit loaded ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ${unmappedRequiredCount} required pin${unmappedRequiredCount !== 1 ? 's are' : ' is'} unmapped.`;
+    if (!readiness.hasIoMapping) return 'Circuit loaded ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â map pins before hardware use.';
     if (!readiness.hasVectors)
-      return 'Mapping complete — export files are available now. Add vectors when you want to compare observed outputs.';
+      return 'Mapping complete ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â export files are available now. Add vectors when you want to compare observed outputs.';
     if (projectVerifyState === 'stale')
       return 'Authored compare results are stale for the current circuit. Open Verify to trace the live design, refresh assertions, or intentionally keep the older reference.';
     if (comparePassIncomplete)
@@ -342,8 +342,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         ? 'Latest verify run hit a verification error. Export is still available, but inspect Verify before relying on the result.'
         : 'Assertions differ from observed outputs. Export is still available, but review the first difference before relying on the result.';
     if (!compareCurrent) return 'Compare results are not current yet. Export files are still available.';
-    if (!exportPackageCurrent) return 'Compare results are current — open Export to build or refresh the submission package.';
-    return 'All stages complete — bring up on hardware.';
+    if (!exportPackageCurrent) return 'Compare results are current ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â open Export to build or refresh the submission package.';
+    return 'All stages complete ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â bring up on hardware.';
   }, [
     compareCurrent,
     compareDiffers,
@@ -385,21 +385,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     () => getExportSummary(health, exportAvailable, exportPackageCurrent, hardwareReady),
     [exportAvailable, exportPackageCurrent, hardwareReady, health]
   );
-  const showcaseInputSignals = useMemo(
-    () => getShowcaseSignals(sortedMappingRows, 'in'),
-    [sortedMappingRows]
-  );
-  const showcaseOutputSignals = useMemo(
-    () => getShowcaseSignals(sortedMappingRows, 'out'),
-    [sortedMappingRows]
-  );
-  const showcaseRows = useMemo(() => {
-    const rowCount = Math.max(showcaseInputSignals.length, showcaseOutputSignals.length, 3);
-    return Array.from({ length: rowCount }, (_, index) => ({
-      input: showcaseInputSignals[index] ?? `IN${index}`,
-      output: showcaseOutputSignals[index] ?? `OUT${index}`,
-    }));
-  }, [showcaseInputSignals, showcaseOutputSignals]);
   const heroStatusTone = hardBlockingIssue ? 'warn' : hardwareReady ? 'ok' : exportAvailable ? 'warn' : 'idle';
   const heroStatusLabel = hardBlockingIssue
     ? 'Action needed'
@@ -508,7 +493,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       : activePrimaryCta.mode === 'export' || activePrimaryCta.mode === 'hardware'
         ? 'active'
         : 'locked';
-
   const handleProjectModeAction = useCallback(
     (mode: ProjectHealthMode) => {
       switch (mode) {
@@ -644,7 +628,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     data-testid={`ide-project-live-dot-${row.id}`}
                     style={{ fontSize: 10, color: bit ? 'var(--rb-signal)' : 'var(--ide-text-subtle, #4a5568)' }}
                     title={`Live: ${bit ? 'HIGH' : 'LOW'}`}
-                  >●</span>
+                  >ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒâ€šÃ‚Â</span>
                 );
               }
               if (ldM) {
@@ -654,7 +638,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     data-testid={`ide-project-live-dot-${row.id}`}
                     style={{ fontSize: 10, color: bit ? 'var(--rb-signal)' : 'var(--ide-text-subtle, #4a5568)' }}
                     title={`Live: ${bit ? 'HIGH' : 'LOW'}`}
-                  >●</span>
+                  >ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒâ€šÃ‚Â</span>
                 );
               }
               return null;
@@ -667,12 +651,64 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 
   const stageCompletion = resolvedWorkflowAuthority.stageCompletion;
   const designCardDone = stageCompletion.design;
-  const completedMilestoneCount = [
-    stageCompletion.design,
-    stageCompletion.verify,
-    stageCompletion.hardware,
-    stageCompletion.export,
-  ].filter(Boolean).length;
+  const workflowTruthRows = useMemo(
+    () => [
+      {
+        label: 'Design',
+        tone: (designCardDone ? 'ok' : 'warn') as const,
+        status: designCardDone ? 'CURRENT' : 'NEEDS CIRCUIT',
+        copy: designCardDone
+          ? 'Circuit structure is loaded in this project record.'
+          : 'Start in Design before Verify, Map Pins, or Export can be trusted.',
+      },
+      {
+        label: 'Verify',
+        tone: (compareMatches ? 'ok' : 'warn') as const,
+        status: compareMatches
+          ? 'CHECKS CURRENT'
+          : comparePassIncomplete
+            ? 'REVIEW MAPPING'
+            : compareDiffers
+              ? 'CHECKS DIFFER'
+              : compareTraceOnly
+                ? 'OBSERVATION ONLY'
+                : compareCurrent
+                  ? 'TRACE CURRENT'
+                  : 'NOT RUN',
+        copy: verifySummary,
+      },
+      {
+        label: MAP_PINS_STAGE_LABEL,
+        tone: (readiness.hasIoMapping ? 'ok' : 'warn') as const,
+        status: readiness.hasIoMapping ? 'READY' : 'BLOCKED',
+        copy: readiness.hasIoMapping
+          ? `${mappedRequiredCount}/${requiredCount} required pins assigned.`
+          : `${unmappedRequiredCount} required pin${unmappedRequiredCount !== 1 ? 's are' : ' is'} still missing.`,
+      },
+      {
+        label: EXPORT_STAGE_LABEL,
+        tone: (exportPackageCurrent ? 'ok' : 'warn') as const,
+        status: exportPackageCurrent ? 'CURRENT PACKAGE' : exportAvailable ? 'AVAILABLE' : 'BLOCKED',
+        copy: exportSummary,
+      },
+    ],
+    [
+      compareCurrent,
+      compareDiffers,
+      compareMatches,
+      comparePassIncomplete,
+      compareTraceOnly,
+      designCardDone,
+      exportAvailable,
+      exportPackageCurrent,
+      exportSummary,
+      mappedRequiredCount,
+      readiness.hasIoMapping,
+      requiredCount,
+      unmappedRequiredCount,
+      verifySummary,
+    ]
+  );
   const dockStageItems = useMemo(
     () => [
       {
@@ -768,44 +804,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               ))}
             </div>
           </div>
-
-
-          {/* Session controls */}
-          <section className="ide-surface-dock-section" data-testid="ide-session-controls">
-            {lastSavedAt && (
-              <p
-                className="ide-copy"
-                data-testid="ide-session-last-saved"
-                style={{ color: 'var(--ide-text-subtle)' }}
-              >
-                {lastSavedAt}
-              </p>
-            )}
-            <div className="ide-inline-actions">
-              {onSaveNow && (
-                <IdeButton tone="secondary" onClick={onSaveNow} testId="ide-session-save-now">
-                  Save now
-                </IdeButton>
-              )}
-              {onOpenSavedProjects && (
-                <IdeButton tone="ghost" onClick={onOpenSavedProjects} testId="ide-session-open-existing">
-                  Open existing
-                </IdeButton>
-              )}
-              {onRestoreLastSave && (
-                <IdeButton tone="ghost" onClick={onRestoreLastSave} testId="ide-session-restore">
-                  Restore last save
-                </IdeButton>
-              )}
-            </div>
-            <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-1)' }}>
-              {onResetProject && (
-                <IdeButton tone="danger" onClick={onResetProject} testId="ide-session-reset">
-                  Reset project
-                </IdeButton>
-              )}
-            </div>
-          </section>
         </section>
       }
       console={
@@ -826,7 +824,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         </section>
       }
     >
-      {/* Workspace: Hero → Examples → Mapping */}
+      {/* Workspace: Hero ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Examples ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Mapping */}
       <IdePanel
         testId="ide-project-panel"
       >
@@ -836,9 +834,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             <span className="ide-project-identity-student">{studentName}</span>
           )}
         </div>
-        {/* ── Sprint 10: 3-state layout — landing / loaded / submit ── */}
+        {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Sprint 10: 3-state layout ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â landing / loaded / submit ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
         {!readiness.hasCircuit ? (
-          /* STATE A: No circuit — clean 3-option landing */
+          /* STATE A: No circuit ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â clean 3-option landing */
           <div className="ide-project-landing" data-testid="ide-project-landing">
             <div className="ide-project-landing-header">
               <h2 className="ide-project-landing-title">
@@ -863,7 +861,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                       onClick={onOpenSavedProjects}
                       testId="ide-project-open-existing"
                     >
-                      Open existing project…
+                      Open existing projectÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦
                     </IdeButton>
                   )}
                 </div>
@@ -904,7 +902,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     {ex.expectedBehavior && (
                       <span className="ide-project-landing-option-learn">{ex.expectedBehavior}</span>
                     )}
-                    <span className="ide-project-landing-option-cta">Load &amp; Design →</span>
+                    <span className="ide-project-landing-option-cta">Load &amp; Design ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢</span>
                   </button>
                 );
               })}
@@ -917,7 +915,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 <span className="ide-project-landing-option-eyebrow">Empty canvas</span>
                 <span className="ide-project-landing-option-title">Build Fresh</span>
                 <span className="ide-project-landing-option-sub">Start with gates and wires from scratch</span>
-                <span className="ide-project-landing-option-cta">Open blank Design →</span>
+                <span className="ide-project-landing-option-cta">Open blank Design ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢</span>
               </button>
               <button
                 type="button"
@@ -928,11 +926,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 <span className="ide-project-landing-option-eyebrow">Vivado / HDL</span>
                 <span className="ide-project-landing-option-title">Import Project</span>
                 <span className="ide-project-landing-option-sub">Bring in an existing VHDL or Vivado ZIP</span>
-                <span className="ide-project-landing-option-cta">Open Import →</span>
+                <span className="ide-project-landing-option-cta">Open Import ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢</span>
               </button>
             </div>
 
-            {/* ── Lab Starters Gallery ── */}
+            {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Lab Starters Gallery ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
             <details
               className="ide-project-lab-gallery-disclosure"
               open
@@ -949,7 +947,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     data-testid={`ide-project-lab-card-${starter.id}`}
                   >
                     <span className="ide-project-lab-card-number">Lab {starter.labNumber}</span>
-                    <span className="ide-project-lab-card-title">{starter.title.replace(/Lab \d+ — /, '')}</span>
+                    <span className="ide-project-lab-card-title">{starter.title.replace(/Lab \d+ ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â /, '')}</span>
                     <span className="ide-project-lab-card-desc">{starter.description}</span>
                     <div className="ide-project-lab-card-meta">
                       <span className={`ide-project-lab-card-badge ide-project-lab-card-badge--${starter.difficulty}`}>
@@ -957,36 +955,14 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                       </span>
                       <span className="ide-project-lab-card-time">{starter.estimatedMinutes} min</span>
                     </div>
-                    <span className="ide-project-lab-card-cta">Start →</span>
+                    <span className="ide-project-lab-card-cta">Start ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢</span>
                   </button>
                 ))}
               </div>
             </details>
           </div>
         ) : (
-          /* STATE B/C — circuit loaded */
           <>
-            {/* Quick-stats strip */}
-            {(inputCount > 0 || outputCount > 0 || savedAgoLabel) && (
-              <div className="ide-project-quick-stats" data-testid="ide-project-quick-stats">
-                {inputCount > 0 && (
-                  <span>{inputCount} input{inputCount !== 1 ? 's' : ''}</span>
-                )}
-                {outputCount > 0 && (
-                  <><span className="ide-qstat-sep" aria-hidden="true">·</span>
-                  <span>{outputCount} output{outputCount !== 1 ? 's' : ''}</span></>
-                )}
-                {compareMatches && (
-                  <><span className="ide-qstat-sep" aria-hidden="true">·</span>
-                  <span className="ide-qstat-ok">✓ Assertions match</span></>
-                )}
-                {savedAgoLabel && (
-                  <><span className="ide-qstat-sep" aria-hidden="true">·</span>
-                  <span>Saved {savedAgoLabel}</span></>
-                )}
-              </div>
-            )}
-        {/* ── Hero Onboarding Panel ── */}
         <div className="ide-surface-command-stack">
           <SurfaceCommandStrip
             className="ide-project-command-strip"
@@ -1022,13 +998,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             actions={(
               <>
                 <span data-testid="ide-project-command-strip-continue-cta">
-                  <IdeButton
+                  <span data-testid="ide-project-continue-cta">
+                    <IdeButton
                     tone="primary"
                     onClick={onPrimaryCta}
                     testId="ide-project-command-strip-primary-cta"
                   >
-                    Continue to {activePrimaryCtaLabel} →
+                      Continue to {activePrimaryCtaLabel}{' ->'}
                   </IdeButton>
+                  </span>
                 </span>
                 <IdeButton
                   tone="secondary"
@@ -1041,19 +1019,22 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             )}
           />
         </div>
-        <SurfacePanel className="ide-project-hero ide-surface-primary-region" testId="ide-project-hero">
-          <div className="ide-project-showcase" data-testid="ide-project-showcase">
-            <div className="ide-project-showcase-copy">
-              <div className="ide-project-showcase-headline">
-                <span className="ide-project-showcase-eyebrow">
-                  {starterExample?.lab ?? starterExample?.course ?? projectContextLabel}
-                </span>
-                <h2 className="ide-project-showcase-title">
-                  {starterExample?.name ?? projectName}
-                </h2>
-                <p className="ide-project-showcase-body">{projectSummary}</p>
-              </div>
-              <div className="ide-project-showcase-chip-row">
+        <SurfacePanel className="ide-project-current-focus ide-surface-primary-region" testId="ide-project-current-focus">
+          <div className="ide-project-current-focus-shell" data-testid="ide-project-showcase">
+            <div className="ide-project-current-focus-headline">
+              <span className="ide-project-current-focus-eyebrow">
+                {starterExample?.lab ?? starterExample?.course ?? 'Workflow home'}
+              </span>
+              <p className="ide-project-current-focus-kicker">Continue to {activePrimaryCtaLabel}</p>
+              <h2 className="ide-project-current-focus-title">
+                {starterExample?.name ?? projectName}
+              </h2>
+                <p className="ide-project-current-focus-summary">{projectSummary}</p>
+                {starterExample?.expectedBehavior && (
+                  <p className="ide-project-current-focus-goal">{starterExample.expectedBehavior}</p>
+                )}
+            </div>
+              <div className="ide-project-current-focus-chip-row">
                 <span className="ide-project-context-tag">Basys3</span>
                 <span className="ide-project-context-tag">{projectContextLabel}</span>
                 <span className="ide-project-context-tag">{inputCount} in / {outputCount} out</span>
@@ -1063,69 +1044,20 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               </div>
               <IdeCallout
                 tone={nextStepTone}
-                title="Workflow summary"
+                title="Why this is next"
                 testId="ide-project-next-step"
-                className="ide-project-showcase-brief"
+                className="ide-project-current-focus-callout"
               >
                 <p data-testid="ide-project-next-step-copy" style={{ margin: 0 }}>
                   {nextStepReason}
                 </p>
-                <div className="ide-project-showcase-actions" style={{ marginTop: 'var(--space-3, 12px)' }}>
-                  <span data-testid="ide-project-continue-cta">
-                    <IdeButton
-                      tone="primary"
-                      onClick={onPrimaryCta}
-                      testId="ide-project-showcase-primary-cta"
-                    >
-                      Continue to {activePrimaryCtaLabel} →
-                    </IdeButton>
-                  </span>
-                  <IdeButton
-                    tone="secondary"
-                    onClick={heroAssistAction.onClick}
-                    testId="ide-project-showcase-secondary-cta"
-                  >
-                    {heroAssistAction.label}
-                  </IdeButton>
+                <div className="ide-project-current-focus-support" data-testid="ide-project-current-focus-support">
+                  <strong>{heroStatusLabel}.</strong> {heroStatusMessage}
                 </div>
               </IdeCallout>
             </div>
 
-            <div className="ide-project-showcase-visual">
-              <div className="ide-project-board-preview" data-testid="ide-project-board-preview">
-                <div className="ide-project-board-preview-header">
-                  <span>Signal preview</span>
-                  <span>{mappedRequiredCount}/{requiredCount || mappingRows.length || showcaseRows.length} mapped</span>
-                </div>
-                <div className="ide-project-board-traces">
-                  {showcaseRows.map((row, index) => {
-                    const rowMapped =
-                      index < showcaseInputSignals.length &&
-                      index < showcaseOutputSignals.length &&
-                      readiness.hasIoMapping;
-                    const rowVerified = rowMapped && compareMatches;
-                    return (
-                      <div
-                        key={`${row.input}-${row.output}-${index}`}
-                        className={`ide-project-board-trace-row${
-                          rowVerified ? ' is-verified' : rowMapped ? ' is-mapped' : ''
-                        }`}
-                      >
-                        <span className="ide-project-board-trace-node is-input">{row.input}</span>
-                        <span className="ide-project-board-trace-line" aria-hidden="true" />
-                        <span className="ide-project-board-trace-node is-output">{row.output}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <p className="ide-project-board-preview-note">
-                  {starterExample?.expectedBehavior || `Run ${VERIFY_STAGE_LABEL}, finish ${MAP_PINS_STAGE_LABEL}, then use ${EXPORT_STAGE_LABEL} before ${PROGRAM_STAGE_LABEL.toLowerCase()}.`}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Gate sentinel — text content only, not displayed */}
+          {/* Gate sentinel ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â text content only, not displayed */}
           <span style={{ display: 'none' }} data-testid="ide-project-continue-target">{activePrimaryCtaLabel}</span>
 
           {topBlockingIssues.length > 0 && (
@@ -1144,7 +1076,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                         onClick={() => handleProjectModeAction(issue.fixPath!.mode)}
                         testId={`ide-project-blocker-${idx}-action`}
                       >
-                        {issue.fixPath.actionLabel} →
+                        {issue.fixPath.actionLabel} ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢
                       </IdeButton>
                     )}
                   </li>
@@ -1152,7 +1084,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               </ol>
               {blockingIssues.length > 3 && (
                 <p style={{ margin: '0.75rem 0 0 0', fontSize: 'var(--font-size-sm)', opacity: 0.8 }}>
-                  …and {blockingIssues.length - 3} more
+                  {'...and '}{blockingIssues.length - 3} more
                 </p>
               )}
             </IdeCallout>
@@ -1175,9 +1107,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 <dd>{topModuleName || 'top'}</dd>
               </div>
               <div>
-                <dt>Expected behavior</dt>
+                <dt>Project note</dt>
                 <dd>
-                  {starterExample?.expectedBehavior || 'Use Verify to define the expected outputs.'}
+                  {starterExample?.expectedBehavior || projectSummary}
                 </dd>
               </div>
               <div>
@@ -1205,7 +1137,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             <div data-testid="ide-project-panel-readiness">
               <div className="ide-project-spotlight-header">
                 <div>
-                  <span className="ide-project-spotlight-eyebrow">Workflow snapshot</span>
+                  <span className="ide-project-spotlight-eyebrow">Workflow truth</span>
                   <p
                     data-testid="ide-project-readiness-focus"
                     style={{ margin: '0.35rem 0 0 0', fontSize: 'var(--font-size-sm)', opacity: 0.82 }}
@@ -1214,7 +1146,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   </p>
                 </div>
                 <IdeStatusPill tone={hardwareReady ? 'ok' : hardBlockingIssue ? 'warn' : exportAvailable ? 'warn' : 'idle'}>
-                  {hardwareReady ? 'BOARD READY' : hardBlockingIssue ? 'ACTION NEEDED' : exportAvailable ? 'READY TO EXPORT' : 'IN PROGRESS'}
+                    {hardwareReady ? 'CURRENT' : hardBlockingIssue ? 'ACTION NEEDED' : exportAvailable ? 'EXPORT AVAILABLE' : 'IN PROGRESS'}
                 </IdeStatusPill>
               </div>
               <div className="ide-project-readiness-list">
@@ -1244,13 +1176,13 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   <span>Verify</span>
                   <IdeStatusPill tone={compareMatches ? 'ok' : 'warn'}>
                     {compareMatches
-                      ? 'ASSERTIONS MATCH'
+                      ? 'CHECKS CURRENT'
                       : comparePassIncomplete
-                        ? 'MATCH (MAPPING REVIEW)'
+                        ? 'REVIEW MAPPING'
                         : compareDiffers
-                          ? 'ASSERTIONS DIFFER'
+                          ? 'CHECKS DIFFER'
                           : compareCurrent
-                            ? 'SIMULATION CURRENT'
+                            ? 'TRACE CURRENT'
                             : 'NOT RUN'}
                   </IdeStatusPill>
                 </div>
@@ -1274,9 +1206,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   style={{ fontSize: 'var(--font-size-sm)', marginTop: '0.5rem', opacity: 0.85, fontStyle: 'italic' }}
                 >
                   {exportPackageCurrent
-                    ? 'CURRENT PACKAGE — Export artifacts match the current mapped design and are ready for hardware handoff.'
+                    ? 'CURRENT PACKAGE ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Export artifacts match the current mapped design and are ready for hardware handoff.'
                     : exportAvailable
-                      ? 'AVAILABLE — Export files can be reviewed or downloaded now. Compare results are advisory and do not block export.'
+                      ? 'AVAILABLE ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Export files can be reviewed or downloaded now. Compare results are advisory and do not block export.'
                       : 'Export is blocked until circuit and mapping are complete.'}
                 </p>
               </div>
@@ -1302,6 +1234,52 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             </div>
           </SurfacePanel>
         </div>
+
+        {(onSaveNow || onOpenSavedProjects || onRestoreLastSave || onResetProject) && (
+          <SurfacePanel className="ide-project-utility-panel" testId="ide-project-utility-region">
+            <div className="ide-project-spotlight-header">
+              <div>
+                <span className="ide-project-spotlight-eyebrow">Utilities</span>
+                <p className="ide-project-utility-copy">
+                  Save, restore, and project-management actions stay secondary so the workflow home can stay focused on the next real step.
+                </p>
+              </div>
+            </div>
+            <div className="ide-project-utility-actions" data-testid="ide-session-controls">
+              {lastSavedAt && (
+                <p
+                  className="ide-copy"
+                  data-testid="ide-session-last-saved"
+                  style={{ color: 'var(--ide-text-subtle)' }}
+                >
+                  {lastSavedAt}
+                </p>
+              )}
+              <div className="ide-inline-actions">
+                {onSaveNow && (
+                  <IdeButton tone="secondary" onClick={onSaveNow} testId="ide-session-save-now">
+                    Save now
+                  </IdeButton>
+                )}
+                {onOpenSavedProjects && (
+                  <IdeButton tone="ghost" onClick={onOpenSavedProjects} testId="ide-session-open-existing">
+                    Open existing
+                  </IdeButton>
+                )}
+                {onRestoreLastSave && (
+                  <IdeButton tone="ghost" onClick={onRestoreLastSave} testId="ide-session-restore">
+                    Restore last save
+                  </IdeButton>
+                )}
+                {onResetProject && (
+                  <IdeButton tone="danger" onClick={onResetProject} testId="ide-session-reset">
+                    Reset project
+                  </IdeButton>
+                )}
+              </div>
+            </div>
+          </SurfacePanel>
+        )}
 
         {showStarterGallery && (
           <details
@@ -1373,7 +1351,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                           onClick={() => { onOpenExample(ex.id); onOpenDesign(); }}
                           data-testid={`ide-project-load-start-${ex.id}`}
                         >
-                          Load &amp; Design →
+                          Load &amp; Design ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢
                         </button>
                       </div>
                     </div>
@@ -1399,7 +1377,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           className="ide-export-section"
           data-testid="ide-project-panel-mapping"
         >
-          {/* Identity details — KV rows moved here; test IDs preserved */}
+          {/* Identity details ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â KV rows moved here; test IDs preserved */}
           <details className="ide-project-identity-details" data-testid="ide-project-panel-identity">
             <summary>Project details</summary>
             <div className="ide-kv-list" style={{ marginTop: 'var(--rb-space-2)' }}>
@@ -1418,7 +1396,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <div className="ide-kv-row">
                 <span>Verify hash</span>
                 <code data-testid="ide-project-last-verify-hash">
-                  {health.lastVerify?.hash?.slice(0, 12) ?? '—'}
+                  {health.lastVerify?.hash?.slice(0, 12) ?? 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â'}
                 </code>
               </div>
               <div className="ide-kv-row">
@@ -1440,7 +1418,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             </div>
           </details>
 
-          {/* FPGA Configuration — collapsed by default */}
+          {/* FPGA Configuration ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â collapsed by default */}
           <details className="ide-project-identity-details" data-testid="ide-project-fpga-config">
             <summary>FPGA configuration</summary>
             <div className="ide-kv-list" style={{ marginTop: 'var(--rb-space-2)' }}>
@@ -1526,7 +1504,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 ? 'Close Mapping'
                 : unmappedRequiredCount > 0 ? 'Fix Mapping' : 'Open Mapping'}
               <span className="ide-project-mapping-expand-arrow" aria-hidden="true">
-                {mappingExpanded ? '▲' : '▼'}
+                {mappingExpanded ? 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Â²' : 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Â¼'}
               </span>
             </button>
           </div>
@@ -1684,23 +1662,6 @@ function formatSavedAt(value: string): string {
   return value.replace('T', ' ').replace('.000Z', 'Z');
 }
 
-function getShowcaseSignals(
-  rows: Array<Pick<ProjectMappingRow, 'label' | 'port' | 'direction'>>,
-  direction: 'in' | 'out'
-): string[] {
-  const filtered = rows
-    .filter((row) => row.direction === direction)
-    .slice(0, 4)
-    .map((row) => getStudentFacingIoLabel(row))
-    .filter((value): value is string => value.trim().length > 0);
-
-  if (filtered.length > 0) return filtered;
-
-  return direction === 'in'
-    ? ['SW0', 'SW1', 'SW2', 'SW3']
-    : ['LD0', 'LD1', 'LD2', 'LD3'];
-}
-
 function getExamplePreview(exampleId: string): {
   eyebrow: string;
   pill: string;
@@ -1756,7 +1717,7 @@ function getVerifySummary(
   compareMatches: boolean,
   comparePassIncomplete: boolean
 ): string {
-  if (!health.lastVerify) return 'No comparison run yet — open Verify to define test vectors and compare observed outputs.';
+  if (!health.lastVerify) return 'No comparison run yet ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â open Verify to define test vectors and compare observed outputs.';
   if (compareMatches) return 'Latest comparison run matches the current design.';
   if (comparePassIncomplete) {
     return 'Assertions matched the live design, but some required outputs still need board mapping review.';
@@ -1771,9 +1732,9 @@ function getVerifySummary(
     return 'Latest verify run hit a verification error before a clean comparison result was produced.';
   }
   if (health.lastVerify.status === 'fail') {
-    return 'Assertions differ from observed outputs — open Verify to inspect the first difference.';
+    return 'Assertions differ from observed outputs ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â open Verify to inspect the first difference.';
   }
-  if (health.dirtySinceVerify) return 'Design changed since the last comparison run — rerun Verify before relying on the result.';
+  if (health.dirtySinceVerify) return 'Design changed since the last comparison run ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â rerun Verify before relying on the result.';
   return 'Compare results still need attention before you rely on them.';
 }
 
