@@ -135,6 +135,14 @@ function renderSurface(
   );
 }
 
+async function openDesignLibrary(view: ReturnType<typeof renderSurface>) {
+  if (view.queryByTestId('ide-left-dock')) return;
+  fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-left'));
+  await waitFor(() => {
+    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+  });
+}
+
 const FIXTURE_MACRO: MacroDefinition = {
   id: 'macro-and-gate',
   name: 'AND Gate',
@@ -232,6 +240,32 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-command-strip').textContent).toContain('Build the circuit');
     expect(view.getByTestId('ide-design-command-strip-primary-cta').textContent).toContain('Open Verify');
     expect(view.getByTestId('ide-design-command-strip-secondary-cta').textContent).toContain('Project');
+  });
+
+  it('keeps canvas mode canvas-first by collapsing the library and idle inspector until context demands them', async () => {
+    const view = renderSurface();
+
+    await waitFor(() => {
+      expect(view.queryByTestId('ide-left-dock')).toBeNull();
+    });
+    expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+
+    await waitFor(() => {
+      expect(view.queryByTestId('ide-inspector')).toBeNull();
+    });
+    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
+
+    act(() => {
+      useLogicViewStore.getState().selectNode('ld0_node');
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-inspector')).toBeTruthy();
+    });
+
+    expect(view.getByTestId('ide-design-selection-inspector')).toBeTruthy();
+    expect(view.getByTestId('ide-design-live-sim-section').getAttribute('data-open')).toBe('false');
+    expect(view.queryByTestId('ide-left-dock')).toBeNull();
   });
 
   it('shows contextual inspector data, trace actions, and a compact live state table', async () => {
@@ -555,6 +589,7 @@ describe('DesignSurface workstation redesign', () => {
       onInstantiateMacro,
     });
 
+    await openDesignLibrary(view);
     fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
 
     const overlay = view.getByTestId('ide-macro-insertion-overlay');
@@ -578,6 +613,7 @@ describe('DesignSurface workstation redesign', () => {
       onInstantiateMacro,
     });
 
+    await openDesignLibrary(view);
     fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
     fireEvent.click(view.getByTestId('ide-macro-insertion-overlay'), { clientX: 640, clientY: 360 });
 
@@ -597,6 +633,7 @@ describe('DesignSurface workstation redesign', () => {
       onInstantiateMacro,
     });
 
+    await openDesignLibrary(view);
     fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
     const overlay = view.getByTestId('ide-macro-insertion-overlay');
     expect(overlay.getAttribute('role')).toBe('button');
@@ -622,6 +659,7 @@ describe('DesignSurface workstation redesign', () => {
       onInstantiateMacro,
     });
 
+    await openDesignLibrary(view);
     fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
     const overlay = view.getByTestId('ide-macro-insertion-overlay');
     overlay.focus();
@@ -644,6 +682,7 @@ describe('DesignSurface workstation redesign', () => {
       onInstantiateMacro,
     });
 
+    await openDesignLibrary(view);
     fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
     fireEvent.click(view.getByTestId('ide-macro-insertion-message'));
 
@@ -662,6 +701,7 @@ describe('DesignSurface workstation redesign', () => {
       onInstantiateMacro,
     });
 
+    await openDesignLibrary(view);
     fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
     expect(view.getByTestId('ide-macro-insertion-overlay')).toBeTruthy();
 
@@ -684,6 +724,7 @@ describe('DesignSurface workstation redesign', () => {
       onInstantiateMacro,
     });
 
+    await openDesignLibrary(view);
     fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
     expect(view.getByTestId('ide-macro-insertion-overlay')).toBeTruthy();
 

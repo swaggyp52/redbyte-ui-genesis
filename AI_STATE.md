@@ -1,5 +1,69 @@
 # AI State
 
+## Change Log 2026-04-10 (Design inner-surface system pass: canvas-first workspace, collapsed rails, contextual inspector)
+
+**Subsystem**: IDE product surface system / Design inner workspace
+
+### Problem
+
+The shared product-surface kickoff aligned Project, Design, and Verify at the top of the page, but Design still broke down inside the actual work area:
+
+- canvas mode still opened with both the Build Library and inspector/live-simulation surfaces consuming premium width
+- the page still behaved like a custom tool wrapped in a nicer header, rather than one canvas-first workbench with secondary support systems
+- idle live simulation still acted like always-on admin chrome instead of contextual secondary information
+- the default Design body still did not obey the new RedByte product-surface contract (`primary work area first, secondary rails only when needed`)
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/designWorkspaceConfig.ts`
+  - Design now defaults both the left library dock and right inspector dock to `collapsed`, including canvas mode
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - canvas mode now keeps the workbench primary by default instead of opening side systems immediately
+  - the right inspector now auto-expands only when there is meaningful context:
+    - selected node / wire / signal
+    - Verify focus
+    - active debug context
+    - explicit diagnostic routing
+    - active simulation run
+  - idle paused simulation no longer forces the inspector open by itself
+  - Live Simulation now defaults closed unless there is active simulation/debug context
+  - within the inspector, `Live Simulation` now sits earlier in the contextual stack so it stays reachable without pretending to be the default primary section
+- Updated focused Design tests to match the new contract:
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+    - added coverage for canvas-first default behavior
+    - macro-placement tests now intentionally open the library rail before using it
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.blankState.test.tsx`
+    - blank state now asserts the idle inspector stays hidden by default
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx`
+    - idle inspector hierarchy now validates the secondary-open path instead of assuming permanent visibility
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorTruth.test.tsx`
+    - live-simulation disclosure now validates normal collapsible behavior from the intentional-open path
+
+### Validation
+
+- Focused Design validation:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.blankState.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorTruth.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.selectionContext.test.tsx`
+  - result: PASS (`43` tests)
+- Local playground build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- Browser validation on local preview:
+  - `1366x768`: Build Library and inspector are both collapsed by default; the canvas remains primary and the idle inspector opens only on demand with `Live Simulation` closed
+  - `1536x864`: same canvas-first contract holds, with both side systems secondary until explicitly opened or contextually needed
+  - screenshots captured:
+    - `design-inner-surface-1366-after.png`
+    - `design-inner-surface-1366-inspector.png`
+    - `design-inner-surface-1536-after.png`
+    - `design-inner-surface-1536-inspector.png`
+
+### Release impact
+
+- Design now behaves more like a real RedByte workbench instead of a canvas boxed in by always-open support panels.
+- The shared RedByte product-surface contract now reaches one layer deeper than the header: canvas first, rails secondary, inspector contextual.
+- The next highest-leverage sync slice should tighten Project’s body into a more authoritative workflow home, then carry the same contract into Hardware / Export / Import.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-04-09 (RedByte product surface system kickoff: shared command-strip architecture for Project, Design, and Verify)
 
 **Subsystem**: IDE product surface system / Project + Design + Verify sync

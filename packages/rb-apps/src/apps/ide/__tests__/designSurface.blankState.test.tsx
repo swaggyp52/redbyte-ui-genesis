@@ -120,8 +120,9 @@ describe('DesignSurface blank-state guidance', () => {
 
     expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Build a circuit in three steps');
     expect(view.queryByTestId('ide-design-shortcut-strip')).toBeNull();
-    expect(view.getByTestId('ide-design-inspector-empty').textContent).toContain('Nothing selected');
+    expect(view.queryByTestId('ide-design-inspector-empty')).toBeNull();
     expect(view.queryByTestId('ide-design-inspector-next-step')).toBeNull();
+    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
     expect(view.queryByTestId('ide-workbench-console')).toBeNull();
   });
 });

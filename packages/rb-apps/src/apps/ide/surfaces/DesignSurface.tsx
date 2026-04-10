@@ -2853,6 +2853,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     (simRunning || simTick > 0 || activeVerifySignal != null || activeDebugContext != null);
   const showWorkspaceStatusBar =
     showFullAuthoringStatus || showCompactAuthoringStatus || showSimulationStrip;
+  const liveSimulationDefaultOpen =
+    simRunning ||
+    activeVerifySignal != null ||
+    activeDebugContext != null ||
+    externalDebugTick != null;
   const selectedNodeIoRow = useMemo(() => {
     if (!selectedNode) return null;
     return ioRowByNodeId.get(selectedNode.id) ?? ioRowByNodeId.get(`${selectedNode.id}.out`) ?? null;
@@ -3081,6 +3086,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       : primarySelectionDiagnostic?.severity === 'warn'
         ? 'warn'
         : 'ok');
+  const designRightDockMode =
+    isCanvasWorkspace &&
+    (hasInspectorSelectionContext ||
+      activeVerifySignal != null ||
+      activeDebugContext != null ||
+      externalDebugTick != null ||
+      simRunning ||
+      diagnosticRouteRequest != null)
+      ? 'visible'
+      : workspacePreset.rightDockMode;
   const renderNodeLabelEditor = (node: Node) => (
     <div className="ide-design-label-editor" data-testid="ide-design-label-editor">
       {editingLabelNodeId === node.id ? (
@@ -4415,7 +4430,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         consoleHasBlocking={compilerErrorCount > 0}
         consoleHasEntries={diagnosticsDrawerRows.length > 0}
         leftDockMode={workspacePreset.leftDockMode}
-        rightDockMode={workspacePreset.rightDockMode}
+        rightDockMode={designRightDockMode}
         consoleMode={designConsoleMode}
         shellDensity={workspacePreset.shellDensity}
         surfaceFrame={workspacePreset.surfaceFrame}
@@ -4757,6 +4772,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <IdeInspectorSection title="Signal / State" testId="ide-design-context-inspector" collapsible={false}>
                 {renderSelectionState()}
               </IdeInspectorSection>
+              <IdeInspectorSection
+                title="Live Simulation"
+                testId="ide-design-live-sim-section"
+                defaultOpen={liveSimulationDefaultOpen}
+              >
+                {renderLiveSimulationContent()}
+              </IdeInspectorSection>
               <IdeInspectorSection title="Board Signal" testId="ide-design-board-signal" defaultOpen={false}>
                 {(() => {
                   if (!selectedNode) {
@@ -4817,16 +4839,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </IdeInspectorSection>
               <IdeInspectorSection title="Advanced Details" testId="ide-design-inspector-advanced" defaultOpen={false}>
                 {renderAdvancedDetails()}
-              </IdeInspectorSection>
-
-              {/* Student-loop contract: live simulation must stay directly reachable even when
-                  other inspector sections participate in shared accordion behavior. */}
-              <IdeInspectorSection
-                title="Live Simulation"
-                testId="ide-design-live-sim-section"
-                defaultOpen
-              >
-                {renderLiveSimulationContent()}
               </IdeInspectorSection>
 
               <IdeInspectorSection title="Signal Probe" testId="ide-design-signal-probe" defaultOpen={false}>
@@ -4919,7 +4931,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <IdeInspectorSection
                 title="Live Simulation"
                 testId="ide-design-live-sim-section"
-                defaultOpen
+                defaultOpen={liveSimulationDefaultOpen}
               >
                 {renderLiveSimulationContent()}
               </IdeInspectorSection>

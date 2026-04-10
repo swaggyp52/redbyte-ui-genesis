@@ -274,18 +274,20 @@ describe('Inspector Truth — no developer internals exposed to students', () =>
     expect(advancedSection.textContent).not.toContain('Dirty since export');
   });
 
-  it('shows "Hide" on the Live Simulation toggle (not "Live") — meaning the section is collapsible', async () => {
+  it('shows a normal collapsible state on the Live Simulation toggle (not "Live")', async () => {
     const view = renderSurface(BASE_CIRCUIT);
+
+    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-right'));
 
     await waitFor(() => {
       expect(view.getByTestId('ide-design-live-sim-section-toggle')).toBeTruthy();
     });
 
     // IdeInspectorSection renders a .ide-inspector-toggle-state span that shows
-    // "Live" when disableCollapse=true, "Hide" when ordinarily collapsible.
+    // "Live" when disableCollapse=true, otherwise a normal Show/Hide state.
     const toggleBtn = view.getByTestId('ide-design-live-sim-section-toggle');
     const stateSpan = toggleBtn.querySelector('.ide-inspector-toggle-state');
-    expect(stateSpan?.textContent).toBe('Hide');
+    expect(stateSpan?.textContent).toBe('Show');
   });
 
   it('does not show a "Single-object state only" callout when multiple nodes are selected', async () => {
