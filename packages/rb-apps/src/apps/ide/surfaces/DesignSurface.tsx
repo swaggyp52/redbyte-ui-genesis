@@ -5811,6 +5811,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           <IdeButton tone="ghost" onClick={addAndGateStarter} testId="ide-design-empty-add-and">
                             Add AND Starter
                           </IdeButton>
+                          {onGoToProject && (
+                            <IdeButton tone="ghost" onClick={onGoToProject} testId="ide-design-empty-go-to-project">
+                              Browse examples
+                            </IdeButton>
+                          )}
                         </div>
                       </div>
                     )}

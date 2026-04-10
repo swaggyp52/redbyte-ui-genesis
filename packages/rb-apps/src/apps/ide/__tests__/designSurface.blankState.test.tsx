@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { DesignSurface } from '../surfaces/DesignSurface';
 import type { RuntimeSimState } from '../projectRuntime';
@@ -124,5 +124,32 @@ describe('DesignSurface blank-state guidance', () => {
     expect(view.queryByTestId('ide-design-inspector-next-step')).toBeNull();
     expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
     expect(view.queryByTestId('ide-workbench-console')).toBeNull();
+  });
+
+  it('renders a "Browse examples" CTA in the blank state that calls onGoToProject', async () => {
+    const onGoToProject = vi.fn();
+    const view = render(
+      <DesignSurface
+        runtimeSim={makeRuntimeSim()}
+        ioRows={[]}
+        onRuntimeSimRun={vi.fn()}
+        onRuntimeSimPause={vi.fn()}
+        onRuntimeSimStep={vi.fn()}
+        onRuntimeSimReset={vi.fn()}
+        onRuntimeSimSetSpeed={vi.fn()}
+        onRuntimeSimToggleProbe={vi.fn()}
+        onGoToProject={onGoToProject}
+        onGoToVerify={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-empty-state')).toBeTruthy();
+    });
+
+    const browseBtn = view.getByTestId('ide-design-empty-go-to-project');
+    expect(browseBtn).toBeTruthy();
+    fireEvent.click(browseBtn);
+    expect(onGoToProject).toHaveBeenCalledOnce();
   });
 });
