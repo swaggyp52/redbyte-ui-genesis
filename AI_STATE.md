@@ -1,6 +1,38 @@
 # AI State
 
-## Change Log 2026-04-10 (Verify analysis drawer consolidation — 6 tabs → 3 tabs)
+## Change Log 2026-04-10 (Phase-1 Global System Cleanup — product direction locked)
+
+**Subsystem**: Global / stage grammar / left rail / pipeline strip
+
+### What changed
+
+Product direction memo written to `00 Inbox/RedByte Product Direction Interrogation.md`.
+All open product ambiguities are now resolved. Key decisions:
+- RedByte is a classroom-aware single-user educational IDE (intro FPGA/digital logic student)  
+- Core loop: Project → Design ↔ Verify → Hardware/Export (downstream branches)
+- Hardware is OPTIONAL (no board required for completion)
+- Import is a utility/action, NOT a workflow stage
+- Program is an external handoff, NOT a surface
+
+Stage grammar cleanup:
+- `STUDENT_WORKFLOW_SPINE` narrowed from 5 to 4: `[Design, Verify, Map Pins, Export]` — Program removed
+- `IdeLeftRail`: Import utility button removed; rail is now Project (top) + 4 workflow steps only
+- `PipelineStrip`: removed from `IdeApp` rendering — component file retained, no longer rendered
+- `workflowStages.authority.test.tsx`: PipelineStrip test removed, spine description updated
+- `ideApp.labday-wiring.test.tsx`: Import-nav test explicitly skipped with migration note
+
+### Validation
+
+- 8 new contract tests in `ideLeftRail.stageGrammar.test.tsx` — all GREEN
+- 129/133 verifySurface tests GREEN (4 pre-existing failures unchanged)
+- 23/23 projectHealth tests GREEN
+- 12/12 ideWorkbenchShell tests GREEN
+- `pnpm build:unified` → EXIT 0
+- Commit: `d651ce95`
+
+---
+
+
 
 **Subsystem**: IDE Verify surface / analysis drawer
 
