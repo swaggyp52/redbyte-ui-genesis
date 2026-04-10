@@ -13293,18 +13293,21 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-design-failure-brief-summary,
+.ide-design-failure-brief-pattern,
 .ide-design-failure-brief-inputs,
 .ide-design-failure-brief-next {
   color: rgba(224, 238, 255, 0.92);
   line-height: 1.4;
 }
 
+.ide-design-failure-brief-pattern,
 .ide-design-failure-brief-inputs,
 .ide-design-failure-brief-next {
   font-size: 11px;
 }
 
 .ide-design-failure-brief-summary code,
+.ide-design-failure-brief-pattern code,
 .ide-design-failure-brief-inputs code,
 .ide-design-failure-brief-next code {
   color: #fef08a;

@@ -2729,7 +2729,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => resolveVerifyLinkedSignalKey(activeVerifySignal, ioRows, liveSignals, runtimeSim.signals),
     [activeVerifySignal, ioRows, liveSignals, runtimeSim.signals]
   );
-  const selectedSignalKey = runtimeSim.selectedSignalKey ?? verifyLinkedSignalKey ?? selectedWireSignalKey;
+  const debugLinkedSignalKey = useMemo(
+    () => resolveVerifyLinkedSignalKey(activeDebugContext?.signal ?? null, ioRows, liveSignals, runtimeSim.signals),
+    [activeDebugContext?.signal, ioRows, liveSignals, runtimeSim.signals]
+  );
+  const selectedSignalKey = runtimeSim.selectedSignalKey ?? debugLinkedSignalKey ?? verifyLinkedSignalKey ?? selectedWireSignalKey;
   useEffect(() => {
     if (!verifyLinkedSignalKey) return;
     onRuntimeSimSetSelectedSignal?.(verifyLinkedSignalKey);
@@ -2753,6 +2757,35 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     });
     lastTracedPortRef.current = `${nodeId}.${portName}`;
   }, [editorCircuit, onRuntimeSimSetSelectedSignal, verifyLinkedSignalKey]);
+  useEffect(() => {
+    if (!debugLinkedSignalKey) {
+      if (traceStateRef.current?.sourceKey.startsWith('debug:')) {
+        lastTracedPortRef.current = null;
+        setTraceState(null);
+      }
+      return;
+    }
+    onRuntimeSimSetSelectedSignal?.(debugLinkedSignalKey);
+    const [nodeId, portName = 'out'] = debugLinkedSignalKey.split('.');
+    if (!nodeId) return;
+    const { wireIds, nodeIds } = getFaninCone(editorCircuit, nodeId);
+    const highlights = new Map<string, string[]>();
+    wireIds.forEach((wireId) => highlights.set(wireId, ['#fb7185']));
+    const highlightedNodes = new Set(nodeIds);
+    highlightedNodes.add(nodeId);
+    const portKeys = buildTracePortKeySet(wireIds);
+    portKeys.add(`${nodeId}:${portName}`);
+    setTraceState({
+      kind: 'fanin-port',
+      sourceKey: `debug:${debugLinkedSignalKey}:${activeDebugContext?.tick ?? externalDebugTick ?? 'tick'}`,
+      label: `Debug focus ${debugLinkedSignalKey}`,
+      signalKey: debugLinkedSignalKey,
+      wireHighlights: highlights,
+      nodeIds: highlightedNodes,
+      portKeys,
+    });
+    lastTracedPortRef.current = `${nodeId}.${portName}`;
+  }, [activeDebugContext?.tick, debugLinkedSignalKey, editorCircuit, externalDebugTick, onRuntimeSimSetSelectedSignal]);
   const selectedSignalValue = selectedSignalKey ? runtimeSim.signals[selectedSignalKey] ?? 0 : 0;
   const selectedSignalHistory = useMemo(() => {
     if (!selectedSignalKey) return [];
@@ -5667,6 +5700,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                             {debugInputSummary && (
                               <span className="ide-design-failure-brief-inputs" data-testid="ide-design-failure-brief-inputs">
                                 Inputs: {debugInputSummary}
+                              </span>
+                            )}
+                            {activeDebugContext.patternSummary && (
+                              <span className="ide-design-failure-brief-pattern" data-testid="ide-design-failure-brief-pattern">
+                                Why it happened: {activeDebugContext.patternSummary}
                               </span>
                             )}
                             {activeDebugContext.nextInspect && (

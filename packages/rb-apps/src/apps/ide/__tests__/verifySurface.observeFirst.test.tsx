@@ -54,6 +54,79 @@ function makeTraceRun(): RuntimeVerifyRun {
   };
 }
 
+function makeFailRun(): RuntimeVerifyRun {
+  return {
+    scenarioId: 'fail-scenario',
+    scenarioName: 'Fail Scenario',
+    status: 'fail',
+    deterministicHash: 'abc123',
+    reportHash: 'rep-fail',
+    firstFailingTick: 1,
+    generatedAtIso: '2026-04-09T00:00:00.000Z',
+    schedule: 'combinational',
+    meta: {
+      circuitKind: 'combinational',
+      clockingProtocol: null,
+      samplePoint: 'steady-state',
+      tick0Meaning: null,
+      clockSignalName: null,
+    },
+    report: {
+      vectors: [
+        { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 }, caseIndex: 0 },
+        { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 }, caseIndex: 1 },
+      ],
+      inputsAtTick: {
+        0: { sw0: 0 },
+        1: { sw0: 1 },
+      },
+      inputsByVectorId: {
+        'vec-01': { sw0: 0 },
+        'vec-02': { sw0: 1 },
+      },
+      signalRoles: { sw0: 'input', ld0: 'output' },
+      rows: [
+        { tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass', vectorId: 'vec-01', caseIndex: 0 },
+        { tick: 1, signal: 'ld0', expected: '1', actual: '0', status: 'fail', vectorId: 'vec-02', caseIndex: 1 },
+      ],
+    } as RuntimeVerifyRun['report'],
+    waveform: [
+      { tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] },
+      { tick: 1, signals: { sw0: '1', ld0: '0' }, mismatches: [{ signal: 'ld0', expected: '1', actual: '0' }] },
+    ],
+    evidence: {
+      circuitHash: 'circuit-hash',
+      ioRows: [
+        { id: 'sw0', label: 'sw0', direction: 'in', nodeId: 'sw0_node' },
+        { id: 'ld0', label: 'ld0', direction: 'out', nodeId: 'ld0_node' },
+      ],
+      vectors: [
+        { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 }, caseIndex: 0 },
+        { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 }, caseIndex: 1 },
+      ],
+      normalizationMap: [
+        { role: 'expected', rawKey: 'ld0', normalizedKey: 'ld0', matchedSignal: 'ld0' },
+        { role: 'output', rawKey: 'ld0', normalizedKey: 'ld0', matchedSignal: 'ld0_node.in' },
+      ],
+      preflight: [],
+      failures: [
+        {
+          tick: 1,
+          signal: 'ld0',
+          expected: '1',
+          actual: '0',
+          vectorId: 'vec-02',
+          caseIndex: 1,
+          expectedSourceKey: 'ld0',
+          expectedMatchedSignal: 'ld0',
+          actualSourceKey: 'ld0_node.in',
+          actualReason: 'matched',
+        },
+      ],
+    },
+  };
+}
+
 const BASE_PROPS = {
   deterministicHash: 'abc123',
   hasVectors: true,
@@ -153,27 +226,60 @@ describe('VerifySurface observe-first model', () => {
     expect(queryByText('Waveform')).toBeNull();
   });
 
-  it('calls onGoToDesignWithInputs (not plain onGoToDesign) when run has tick inputs', () => {
+  it('prefers debug handoff over input injection when tick evidence is available', () => {
     const onGoToDesign = vi.fn();
     const onGoToDesignWithInputs = vi.fn();
+    const onDebugTickSelected = vi.fn();
     const { getByTestId } = render(
       <VerifySurface
         {...BASE_PROPS}
         lastRun={makeTraceRun()}
         onGoToDesign={onGoToDesign}
         onGoToDesignWithInputs={onGoToDesignWithInputs}
+        onDebugTickSelected={onDebugTickSelected}
       />
     );
 
     fireEvent.click(getByTestId('ide-verify-inspect-design'));
 
-    // When tick inputs are available, the richer callback is preferred
-    expect(onGoToDesignWithInputs).toHaveBeenCalledOnce();
-    // The inputs passed are from the run's inputsAtTick
-    const [calledWith] = onGoToDesignWithInputs.mock.calls[0];
-    expect(typeof calledWith).toBe('object');
-    expect(Object.keys(calledWith).length).toBeGreaterThan(0);
-    // Plain onGoToDesign must NOT be called when the richer callback handles it
+    expect(onDebugTickSelected).toHaveBeenCalledOnce();
+    expect(onDebugTickSelected).toHaveBeenCalledWith(
+      0,
+      { sw0: 0, ld0: 0 },
+      null
+    );
+    expect(onGoToDesignWithInputs).not.toHaveBeenCalled();
+    expect(onGoToDesign).not.toHaveBeenCalled();
+  });
+
+  it('carries failure context into the debug handoff when the selected tick is failing', () => {
+    const onGoToDesign = vi.fn();
+    const onGoToDesignWithInputs = vi.fn();
+    const onDebugTickSelected = vi.fn();
+    const { getByTestId } = render(
+      <VerifySurface
+        {...BASE_PROPS}
+        lastRun={makeFailRun()}
+        onGoToDesign={onGoToDesign}
+        onGoToDesignWithInputs={onGoToDesignWithInputs}
+        onDebugTickSelected={onDebugTickSelected}
+      />
+    );
+
+    fireEvent.click(getByTestId('ide-verify-inspect-design'));
+
+    expect(onDebugTickSelected).toHaveBeenCalledOnce();
+    expect(onDebugTickSelected).toHaveBeenCalledWith(
+      1,
+      { sw0: 1, ld0: 0 },
+      expect.objectContaining({
+        signal: 'ld0',
+        tick: 1,
+        expected: '1',
+        actual: '0',
+      })
+    );
+    expect(onGoToDesignWithInputs).not.toHaveBeenCalled();
     expect(onGoToDesign).not.toHaveBeenCalled();
   });
 

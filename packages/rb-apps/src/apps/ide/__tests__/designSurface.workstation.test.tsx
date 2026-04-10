@@ -352,6 +352,9 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-failure-brief').textContent).toContain('0');
     expect(view.getByTestId('ide-design-failure-brief-inputs').textContent).toContain('SW0=1');
     expect(view.getByTestId('ide-design-failure-brief-next').textContent).toContain('Inspect the wire between SW0 and LD0.');
+    expect(view.getByTestId('ide-design-failure-brief-pattern').textContent).toContain('Output stayed low while the selected input was high.');
+    expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Debug focus ld0_node.in');
+    expect(view.getByTestId('ide-design-selection-inspector').textContent).toContain('Signal focus');
     expect(view.getByTestId('ide-design-sim-story-summary').textContent).toContain('Verify expected LD0=1 but sampled 0 at tick 6.');
   });
 
