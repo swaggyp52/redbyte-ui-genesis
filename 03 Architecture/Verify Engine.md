@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: verify
-updated: 2026-04-09
+updated: 2026-04-10
 related:
   - "[[Verify Hint System]]"
   - "[[Connection Model]]"
@@ -26,6 +26,15 @@ Verify currently spans three layers:
 3. `IdeApp.tsx` + `surfaces/VerifySurface.tsx` decide which hash, vectors, and banners the student actually sees.
 
 The deterministic engine itself does run against a fresh circuit + IO snapshot. The weak spots are the layers above it: freshness is still computed in multiple ways and the scenario/session model is only partially live outside the normal shell path. The latest Phase 6 slice made the remaining local Verify toggle explicit authoring intent: `VerifySurface` now uses `nextRunUsesAssertions` for next-run copy/preflight/wiring, while current-run meaning stays on `VerifySessionStatus` plus persisted `runKind`. `READY` / `BLOCKED` now survive only as a draft-only presentation shim.
+
+The latest Design ↔ Verify continuity slice made the cross-surface debug handoff materially real instead of banner-only:
+
+- `VerifySurface` now prefers the debug bridge callback when tick evidence exists, rather than silently falling back to generic Design navigation
+- the handoff now carries a concrete tick snapshot plus failure context (`signal`, `expected`, `actual`, `patternSummary`, `nextInspect`) when the selected tick is part of a failing run
+- `DesignSurface` now treats that handoff as an active debug landing state: the canvas enters verification-tick replay, the bridge can auto-trace the linked signal fan-in, and the failure brief can show the incoming pattern summary
+- browser validation on the built preview confirmed the visible part of this contract: `Open in Design` from Verify lands in Design with `Debug mode — tick 0`, a frozen verification tick, and step controls instead of a silent surface switch
+
+This closes the earlier contradiction where Verify could technically send context to Design, but Design did not visibly acknowledge that arrival strongly enough to feel like one debugging loop.
 
 The latest Phase 7 slice moved the scenario model one layer deeper into the real app flow:
 

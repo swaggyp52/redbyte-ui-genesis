@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-04-08
+updated: 2026-04-10
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
@@ -59,6 +59,19 @@ For Design workflow hierarchy work: [[Design Surface]]
 ---
 
 ## What is the next action
+
+Latest Verify → Design continuity slice landed (2026-04-10):
+
+- Verify now prefers the debug bridge when tick evidence exists, instead of treating Design navigation as a mostly context-free fallback
+- the bridge now carries full tick evidence and, when available, failure context (`signal`, expected/actual, pattern summary, next inspect hint)
+- Design now visibly acknowledges arrival from Verify by entering a debug landing state with a frozen verification tick and replay controls, rather than only showing a passive banner
+- targeted validation is complete: focused `verifySurface.observeFirst` + `designSurface.workstation` suites are green, unified build is green, and browser validation confirmed the visible debug landing state in Design
+
+Next Verify slice should stay on core-loop maturity, not broad system cleanup:
+
+1. strengthen waveform truth-surface readability around selected tick / current output readout
+2. make the Design-side debug state expose the incoming linked signal more explicitly in the inspector, not only the tick freeze
+3. keep Hardware / Export polish behind the Design ↔ Verify loop until the classroom debug flow feels unquestionably coherent
 
 Latest Verify desktop workbench professionalization slice landed (2026-04-08):
 
