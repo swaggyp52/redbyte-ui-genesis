@@ -60,6 +60,12 @@ For Design workflow hierarchy work: [[Design Surface]]
 
 ## What is the next action
 
+Latest shared selected-signal authority slice landed (2026-04-11):
+
+- Verify now publishes observation-mode auto-selected signal focus and the remaining internal signal-focus fallbacks through the same shared callback used by explicit lane clicks
+- Design's simulation strip now turns Verify focus into an explicit target (`Inspect q1 first`) instead of passive linkage copy
+- targeted validation is complete: focused Verify + Design suites are green (`15` tests), playground build is green, and browser validation confirmed selecting `q1` in Verify then opening Design shows `Verify focus q1` plus `Inspect q1 first`
+
 Latest shared selected-tick authority slice landed (2026-04-11):
 
 - Verify now owns the canonical post-run selected tick across the waveform, compact readout, Stimulus Workbench case selection, and Design handoff
@@ -81,7 +87,7 @@ Latest Verify → Design continuity slice landed (2026-04-10):
 
 Next Verify slice should stay on core-loop maturity, not broad system cleanup:
 
-1. decide whether Verify-selected signal, not just Verify-selected tick, should gain the same explicit shared-model treatment inside the Stimulus Workbench / Design bridge
+1. decide whether the Design right inspector should mirror the new signal-target wording during frozen debug landings, or whether the simulation strip is the correct single explicit landing cue
 2. decide whether sparse / non-contiguous waveform tick sets need index-based scrubber semantics instead of raw tick values
 3. re-evaluate the failing three-panel left-dock contract separately from shared tick-authority work
 

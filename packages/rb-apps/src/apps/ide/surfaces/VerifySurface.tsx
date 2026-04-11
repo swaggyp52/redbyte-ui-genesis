@@ -1011,7 +1011,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       const failuresAtTick = failuresByTick.get(tick) ?? [];
       if (failuresAtTick.length === 0) {
         setSelectedTick(tick);
-        if (preferredSignal) setSelectedSignal(preferredSignal);
+        if (preferredSignal) handleSignalSelect(preferredSignal);
         return;
       }
       const preferredSignalKey = normalizeFieldId(preferredSignal ?? '');
@@ -1020,7 +1020,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         failuresAtTick[0];
       applyFailureSelection(nextFailure);
     },
-    [applyFailureSelection, failuresByTick]
+    [applyFailureSelection, failuresByTick, handleSignalSelect]
   );
   const selectedTickRows = useMemo(() => {
     if (selectedTick === null) return [];
@@ -1105,16 +1105,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   useEffect(() => {
     if (displaySignalTimeline.length === 0) {
-      setSelectedSignal(null);
+      if (selectedSignal !== null) {
+        handleSignalSelect(null);
+      }
       return;
     }
     const firstFailSignal = failingRows[0]?.signal;
-    setSelectedSignal((previous) => {
-      if (previous && displaySignalTimeline.some((entry) => entry.signal === previous)) return previous;
-      if (firstFailSignal) return firstFailSignal;
-      return displaySignalTimeline[0]?.signal ?? null;
-    });
-  }, [displaySignalTimeline, failingRows]);
+    const nextSignal =
+      selectedSignal && displaySignalTimeline.some((entry) => entry.signal === selectedSignal)
+        ? selectedSignal
+        : firstFailSignal ?? displaySignalTimeline[0]?.signal ?? null;
+    if (nextSignal !== selectedSignal) {
+      handleSignalSelect(nextSignal);
+    }
+  }, [displaySignalTimeline, failingRows, handleSignalSelect, selectedSignal]);
 
   useEffect(() => {
     if (failingRows.length === 0) {
@@ -2091,7 +2095,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const focusMismatchLanes = () => {
     setShowAllSignals(false);
     setShowMismatchOnlySignals(true);
-    if (selectedFailureCase?.signal) setSelectedSignal(selectedFailureCase.signal);
+    if (selectedFailureCase?.signal) handleSignalSelect(selectedFailureCase.signal);
   };
   const clearMismatchLaneFilter = () => {
     setShowMismatchOnlySignals(false);

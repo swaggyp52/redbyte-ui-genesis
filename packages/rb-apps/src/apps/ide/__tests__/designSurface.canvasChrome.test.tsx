@@ -188,6 +188,6 @@ describe('DesignSurface canvas chrome simplification', () => {
     const verifyBadge = view.getByTestId('ide-design-verify-link-badge');
     expect(verifyBadge.closest('[data-testid="ide-design-sim-story-strip"]')).toBeTruthy();
     expect(verifyBadge.closest('[data-testid="ide-design-toolbar"]')).toBeNull();
-    expect(view.getByTestId('ide-design-verify-focus').textContent).toContain('LD0');
+    expect(view.getByTestId('ide-design-verify-focus').textContent).toContain('Inspect LD0 first');
   });
 });

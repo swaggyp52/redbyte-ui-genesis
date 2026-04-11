@@ -1033,6 +1033,7 @@ describe('VerifySurface workstation controls', () => {
   });
 
   it('keeps primary mismatch navigation visible while disclosing waveform tools on fail runs', () => {
+    const onSignalSelected = vi.fn();
     const { getAllByText, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
@@ -1048,6 +1049,7 @@ describe('VerifySurface workstation controls', () => {
           { id: 'ld0', direction: 'out' },
         ]}
         onOpenProjectVectors={vi.fn()}
+        onSignalSelected={onSignalSelected}
       />
     );
 
@@ -1088,7 +1090,9 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-mismatch-case-id').textContent).toContain('vec-02');
     expect(getByTestId('ide-verify-mismatch-sampled-key').textContent).toContain('ld0_node.in');
     expect(getByTestId('ide-verify-mismatch-expected-key').textContent).toContain('ld0');
+    onSignalSelected.mockClear();
     fireEvent.click(getByTestId('ide-verify-explainer-show-mismatches'));
+    expect(onSignalSelected).toHaveBeenLastCalledWith('ld0');
     fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
     expect(getByTestId('ide-verify-signal-filter-state').textContent).toContain('mismatches');
   });

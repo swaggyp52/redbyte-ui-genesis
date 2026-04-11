@@ -5395,7 +5395,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       ) : null}
                       {activeVerifySignal ? (
                         <span className="ide-design-sim-story-pill is-verify" data-testid="ide-design-verify-focus">
-                          Verify linked to {activeVerifySignal}
+                          Inspect {activeVerifySignal} first
                         </span>
                       ) : null}
                     </div>

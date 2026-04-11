@@ -54,6 +54,15 @@ The latest shared selected-tick authority slice closed the remaining split betwe
 
 This is the first slice where Design and Verify visibly behave like two views into the same simulation moment rather than a waveform view plus a loosely related testbench editor.
 
+The latest shared selected-signal authority slice then closed the remaining signal-level drift inside that same loop:
+
+- `VerifySurface` now routes observation-only auto-selection and the remaining internal signal-focus fallbacks through the same `handleSignalSelect(...)` bridge used by explicit lane clicks
+- that means `IdeApp` receives live Verify signal focus as soon as Verify chooses it, instead of only learning it during explicit Design handoff or manual lane selection
+- `DesignSurface` now uses its existing simulation-story strip as an action cue, not just a linkage badge: the strip still states `Verify focus q1`, but the paired pill now says `Inspect q1 first`
+- browser validation on the built preview confirmed the visible end-to-end contract: selecting `q1` in Verify for `2-Bit Up Counter` and opening Design produced `Verify focus q1` plus `Inspect q1 first`
+
+This closes the last obvious gap between shared tick authority and shared signal authority: the selected simulation moment and the selected signal target now travel together as live Verify context.
+
 The latest Phase 7 slice moved the scenario model one layer deeper into the real app flow:
 
 - the Verify scenario header is now live because `IdeApp` passes `scenarios` plus runtime-backed create / duplicate / rename / delete / switch callbacks into `VerifySurface`

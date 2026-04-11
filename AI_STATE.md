@@ -1,5 +1,52 @@
 # AI State
 
+## Change Log 2026-04-11 (Phase-2 Slice 7 — shared selected-signal authority + explicit Design inspect target)
+
+**Subsystem**: Verify / Design shared signal context
+
+### Problem
+
+After the shared selected-tick slice, the currently relevant signal was still not fully canonical.
+
+- `VerifySurface` auto-selected observation signals locally, but that fallback path did not publish through `onSignalSelected`
+- a few remaining Verify-side focus flows still changed `selectedSignal` directly instead of using the shared signal bridge
+- Design already acknowledged Verify focus, but the simulation strip still described it passively (`Verify linked to ...`) instead of telling the student which signal to inspect first
+
+That meant Verify-selected signal context could still lag across surfaces during live observation workflows, and the Design landing cue was weaker than the tick-level cue.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - routed the remaining internal signal-selection fallbacks through `handleSignalSelect(...)` instead of raw `setSelectedSignal(...)`
+  - observation-only / fallback signal selection now publishes through the shared callback as soon as Verify chooses the active signal
+  - `selectFailureAtTick(...)` and mismatch-lane focus now use the same shared signal-selection path as explicit lane clicks
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - changed the existing Verify-focus simulation pill from passive linkage copy to an action-oriented inspect target: `Inspect <signal> first`
+- tests
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.observeFirst.test.tsx`
+    - added a contract proving observation-only auto-selected signal focus is published upward immediately
+  - `packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx`
+    - tightened the simulation-strip contract so Verify focus reads as an explicit inspect target
+
+### Validation
+
+- focused tests:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.observeFirst.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx`
+  - result: PASS (`2` files, `15` tests)
+- build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- browser validation on local preview (`http://127.0.0.1:4173/os/?app=lab-workspace&labId=freeplay`):
+  - loaded `2-Bit Up Counter`
+  - opened Verify, ran stimulus, opened the signals dock, selected `q1`, then used `Open in Design`
+  - Design showed `Verify focus q1` and the new explicit target `Inspect q1 first`
+
+### Release impact
+
+- Verify-selected signal now behaves like live shared cross-surface state instead of only being guaranteed during explicit Design handoff
+- observation-only runs can establish a Design-relevant signal focus even before the student clicks a lane manually for handoff
+- Design now tells the student what to inspect first when arriving from Verify, making signal focus visibly as intentional as selected tick
+
 ## Change Log 2026-04-11 (Phase-2 Slice 6 — shared selected-tick authority across Stimulus, waveform, and Design)
 
 **Subsystem**: Verify / Design shared simulation context

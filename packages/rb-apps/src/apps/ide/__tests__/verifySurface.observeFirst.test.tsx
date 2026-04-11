@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render } from '@testing-library/react';
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -327,6 +327,24 @@ describe('VerifySurface observe-first model', () => {
     );
     expect(onGoToDesignWithInputs).not.toHaveBeenCalled();
     expect(onGoToDesign).not.toHaveBeenCalled();
+  });
+
+  it('publishes the auto-selected observed signal so Design can track observation-only runs live', async () => {
+    const onSignalSelected = vi.fn();
+    const { getByTestId } = render(
+      <VerifySurface
+        {...BASE_PROPS}
+        lastRun={makeWaveformOnlyRun()}
+        mappedSignals={[{ id: 'ld0', label: 'LD0', direction: 'out' }]}
+        onSignalSelected={onSignalSelected}
+      />
+    );
+
+    expect(getByTestId('ide-verify-scope-signal').textContent?.toLowerCase()).toContain('ld0');
+
+    await waitFor(() => {
+      expect(onSignalSelected).toHaveBeenLastCalledWith('ld0');
+    });
   });
 
   it('uses the Stimulus-selected case as the Design handoff tick when the waveform has not been touched', () => {
