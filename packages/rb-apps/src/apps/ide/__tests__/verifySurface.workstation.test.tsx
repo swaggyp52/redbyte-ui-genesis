@@ -128,6 +128,49 @@ function makeFailRun(): RuntimeVerifyRun {
   };
 }
 
+function makeWaveformOnlyRun(): RuntimeVerifyRun {
+  return {
+    scenarioId: 'waveform-only-run',
+    scenarioName: 'Waveform Only Run',
+    status: 'pass',
+    deterministicHash: 'abc123',
+    reportHash: 'rep-waveform-only',
+    generatedAtIso: '2026-04-10T00:00:00.000Z',
+    schedule: 'combinational',
+    meta: {
+      circuitKind: 'combinational',
+      clockingProtocol: null,
+      samplePoint: 'steady-state',
+      tick0Meaning: null,
+      clockSignalName: null,
+    },
+    report: {
+      vectors: [
+        { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {}, caseIndex: 0 },
+        { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: {}, caseIndex: 1 },
+        { id: 'vec-03', tick: 2, inputs: { sw0: 1 }, expected: {}, caseIndex: 2 },
+      ],
+      inputsAtTick: {
+        0: { sw0: 0 },
+        1: { sw0: 1 },
+        2: { sw0: 1 },
+      },
+      inputsByVectorId: {
+        'vec-01': { sw0: 0 },
+        'vec-02': { sw0: 1 },
+        'vec-03': { sw0: 1 },
+      },
+      signalRoles: { sw0: 'input', ld0: 'output' },
+      rows: [],
+    } as RuntimeVerifyRun['report'],
+    waveform: [
+      { tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] },
+      { tick: 1, signals: { sw0: '1', ld0: '0' }, mismatches: [] },
+      { tick: 2, signals: { sw0: '1', ld0: '1' }, mismatches: [] },
+    ],
+  };
+}
+
 describe('VerifySurface workstation controls', () => {
   afterEach(() => { cleanup(); });
 
@@ -433,6 +476,97 @@ describe('VerifySurface workstation controls', () => {
 
     expect(queryByTestId('ide-stimulus-toolbar')).toBeTruthy();
     expect(queryByTestId('ide-stimulus-toolbar-advanced')).toBeNull();
+  });
+
+  it('uses waveform ticks as the active readout authority when compare rows are empty', () => {
+    const waveformOnlyRun = makeWaveformOnlyRun();
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={waveformOnlyRun}
+        vectors={waveformOnlyRun.report.vectors}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-run-state').textContent).toContain('2 signals · 3 ticks · COMPLETE');
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t0');
+    expect(getByTestId('ide-verify-tick-readout-chip-sw0').textContent).toContain('sw0:0');
+    expect(getByTestId('ide-verify-tick-readout-chip-ld0').textContent).toContain('ld0:0');
+
+    const waveformViewport = getByTestId('ide-verify-waveform-scroll');
+    waveformViewport.focus();
+    fireEvent.keyDown(waveformViewport, { key: 'ArrowRight' });
+
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
+    expect(getByTestId('ide-verify-tick-readout-chip-sw0').textContent).toContain('sw0:1');
+    expect(getByTestId('ide-verify-tick-readout-chip-ld0').textContent).toContain('ld0:0');
+
+    fireEvent.change(getByTestId('ide-verify-tick-scrubber'), { target: { value: '2' } });
+
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
+    expect(getByTestId('ide-verify-tick-readout-chip-sw0').textContent).toContain('sw0:1');
+    expect(getByTestId('ide-verify-tick-readout-chip-ld0').textContent).toContain('ld0:1');
+  });
+
+  it('treats the Stimulus case selector as the same selected tick used by Verify readouts', () => {
+    const waveformOnlyRun = makeWaveformOnlyRun();
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={waveformOnlyRun}
+        vectors={waveformOnlyRun.report.vectors}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        onVectorsChange={vi.fn()}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
+    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 3');
+
+    fireEvent.change(getByTestId('ide-stimulus-tick-target'), { target: { value: '1' } });
+
+    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 2');
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
+    expect(getByTestId('ide-verify-tick-readout-chip-sw0').textContent).toContain('sw0:1');
+    expect(getByTestId('ide-verify-tick-readout-chip-ld0').textContent).toContain('ld0:0');
+  });
+
+  it('reflects waveform scrubber selection back into the Stimulus case selector', () => {
+    const waveformOnlyRun = makeWaveformOnlyRun();
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={waveformOnlyRun}
+        vectors={waveformOnlyRun.report.vectors}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        onVectorsChange={vi.fn()}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    fireEvent.change(getByTestId('ide-verify-tick-scrubber'), { target: { value: '2' } });
+
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
+    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 3');
+    expect((getByTestId('ide-stimulus-tick-target') as HTMLSelectElement).value).toBe('2');
   });
 
   it('arms assertion checking immediately after capturing outputs as expected', () => {

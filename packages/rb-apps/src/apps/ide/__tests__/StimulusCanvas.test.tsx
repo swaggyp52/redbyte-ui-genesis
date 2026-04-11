@@ -111,6 +111,45 @@ describe('StimulusCanvas bulk editing tools', () => {
     ]);
   });
 
+  it('normalizes an invalid controlled selected tick after the available cases shrink', async () => {
+    const onSelectedTickChange = vi.fn();
+    const sharedProps = {
+      inputFields: [{ id: 'sw0', label: 'SW0' }],
+      outputFields: [{ id: 'ld0', label: 'LD0' }],
+      onVectorsChange: vi.fn(),
+      onSelectedTickChange,
+    };
+    const { getByTestId, rerender } = render(
+      <StimulusCanvas
+        {...sharedProps}
+        authoredVectors={[
+          { id: 'vec-0', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-1', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+          { id: 'vec-2', tick: 2, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+        ]}
+        selectedTick={2}
+      />
+    );
+
+    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 3');
+
+    rerender(
+      <StimulusCanvas
+        {...sharedProps}
+        authoredVectors={[
+          { id: 'vec-0', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-1', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        ]}
+        selectedTick={2}
+      />
+    );
+
+    await waitFor(() => {
+      expect(onSelectedTickChange).toHaveBeenCalledWith(0);
+    });
+    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 1');
+  });
+
   it('copies the testbench as tab-delimited text with blank assertions preserved', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {

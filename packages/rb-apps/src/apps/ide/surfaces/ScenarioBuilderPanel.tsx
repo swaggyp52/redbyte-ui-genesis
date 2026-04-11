@@ -27,6 +27,8 @@ export interface ScenarioBuilderPanelProps {
   authoredVectors: VerifyAuthorVector[];
   totalVectorCount?: number;
   hasAssertedExpectedCells?: boolean;
+  selectedTick?: number | null;
+  onSelectedTickChange?: (tick: number) => void;
   // Canvas authoring (primary path — Slice 5+)
   onVectorsChange?: (vectors: VerifyAuthorVector[]) => void;
   // Draft form state (kept for fallback manual entry in More options)
@@ -98,6 +100,8 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   authoredVectors,
   totalVectorCount,
   hasAssertedExpectedCells,
+  selectedTick,
+  onSelectedTickChange,
   onVectorsChange,
   draftTick,
   draftInputs,
@@ -160,6 +164,8 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           authoredVectors={authoredVectors}
           onVectorsChange={onVectorsChange}
           initialScrollTarget="top"
+          selectedTick={selectedTick ?? undefined}
+          onSelectedTickChange={onSelectedTickChange}
           showExpectedOutputs={showExpectedOutputs}
           hasSavedExpectedOutputs={showsAssertedExpectedCells}
           onToggleExpectedOutputs={onToggleExpectedOutputs}
@@ -207,6 +213,8 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           authoredVectors={authoredVectors}
           onVectorsChange={onVectorsChange}
           initialScrollTarget={showExpectedOutputs ? 'expected' : 'top'}
+          selectedTick={selectedTick ?? undefined}
+          onSelectedTickChange={onSelectedTickChange}
           showExpectedOutputs={showExpectedOutputs}
           hasSavedExpectedOutputs={showsAssertedExpectedCells}
           onToggleExpectedOutputs={onToggleExpectedOutputs}

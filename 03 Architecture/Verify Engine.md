@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: verify
-updated: 2026-04-10
+updated: 2026-04-11
 related:
   - "[[Verify Hint System]]"
   - "[[Connection Model]]"
@@ -35,6 +35,24 @@ The latest Design ↔ Verify continuity slice made the cross-surface debug hando
 - browser validation on the built preview confirmed the visible part of this contract: `Open in Design` from Verify lands in Design with `Debug mode — tick 0`, a frozen verification tick, and step controls instead of a silent surface switch
 
 This closes the earlier contradiction where Verify could technically send context to Design, but Design did not visibly acknowledge that arrival strongly enough to feel like one debugging loop.
+
+The latest waveform truth-surface authority slice closed the next contradiction inside that loop:
+
+- `VerifySurface` now treats waveform-backed ticks as the primary selected-tick authority whenever waveform samples exist; compare-row ticks remain the authority for row-indexed evidence tables, not for the visible waveform controls
+- selected tick initialization, cursor seeding, step navigation, scrubber range, compact tick count, and waveform keyboard navigation now stay aligned with the same tick source the waveform is actually rendering
+- Verify → Design handoff now syncs the currently focused Verify signal at navigation time, so observe-only runs can still preserve a meaningful signal target even when no mismatch-context packet exists
+- browser validation on the built preview confirmed the concrete symptom is gone: an observation run now reports `21 signals · 7 ticks · COMPLETE`, moved cleanly from `t0` to `t3`, and `Open in Design` landed in `Debug mode — tick 3` while preserving `Verify focus q0`
+
+This means the waveform pane now owns a coherent contract again: if the student can see a sampled trace, Verify must also expose a selected tick, an honest tick count, and a Design handoff that refers to that same moment.
+
+The latest shared selected-tick authority slice closed the remaining split between the Stimulus Workbench and that waveform contract:
+
+- `VerifySurface` remains the canonical owner of the currently selected observation tick after a run, and `ScenarioBuilderPanel` now passes that tick into `StimulusCanvas` instead of letting the testbench editor keep a separate local selection
+- the selected case chip, case selector, case-header selection, paint interactions, waveform scrubber, compact tick readout, and Design handoff now all refer to the same selected tick when Verify evidence exists
+- `StimulusCanvas` still supports standalone uncontrolled use, but when it is controlled and the authored case set shrinks, it now normalizes the selected tick back to the parent instead of silently falling back locally
+- browser validation on the rebuilt preview confirmed the shared-model behavior directly: selecting `Case 3 (t2)` in Stimulus updated Verify to `t2`, stepping the waveform advanced both to `Case 4 (t3)`, and `Open in Design` landed in `Debug mode — tick 3`
+
+This is the first slice where Design and Verify visibly behave like two views into the same simulation moment rather than a waveform view plus a loosely related testbench editor.
 
 The latest Phase 7 slice moved the scenario model one layer deeper into the real app flow:
 

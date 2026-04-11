@@ -545,6 +545,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     for (const sample of source) ticks.add(sample.tick);
     return Array.from(ticks).sort((a, b) => a - b);
   }, [lastRun?.waveform]);
+  const allWaveformTicks = useMemo(
+    () => (waveformTicks.length > 0 ? waveformTicks : timelineTicks),
+    [waveformTicks, timelineTicks]
+  );
   const canonicalWaveformSignalByRawKey = useMemo(
     () =>
       buildCanonicalWaveformSignalAliases({
@@ -690,7 +694,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return grouped;
   }, [failingRows]);
-  const firstRunTick = runRows[0]?.tick ?? timelineTicks[0] ?? null;
+  const firstRunTick = runRows[0]?.tick ?? allWaveformTicks[0] ?? null;
   const hasResetSignalRole = useMemo(
     () => Object.values(lastRun?.report.signalRoles ?? {}).some((role) => role === 'reset'),
     [lastRun?.report.signalRoles]
@@ -1064,7 +1068,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
 
   useEffect(() => {
-    if (timelineTicks.length === 0) {
+    if (allWaveformTicks.length === 0) {
       setSelectedTick(null);
       return;
     }
@@ -1072,32 +1076,32 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     const preferredTick =
       typeof lastRun?.firstFailingTick === 'number'
         ? lastRun.firstFailingTick
-        : timelineTicks[0];
+        : allWaveformTicks[0];
     setSelectedTick((previous) =>
-      previous !== null && timelineTicks.includes(previous) ? previous : preferredTick
+      previous !== null && allWaveformTicks.includes(previous) ? previous : preferredTick
     );
-  }, [lastRun?.firstFailingTick, timelineTicks]);
+  }, [allWaveformTicks, lastRun?.firstFailingTick]);
 
   useEffect(() => {
-    if (timelineTicks.length === 0) {
+    if (allWaveformTicks.length === 0) {
       setCursorA(null);
       setCursorB(null);
       return;
     }
 
     setCursorA((previous) =>
-      previous !== null && timelineTicks.includes(previous)
+      previous !== null && allWaveformTicks.includes(previous)
         ? previous
-        : selectedTick ?? timelineTicks[0]
+        : selectedTick ?? allWaveformTicks[0]
     );
     setCursorB((previous) => {
-      if (previous !== null && timelineTicks.includes(previous)) return previous;
-      if (typeof firstFailTickFromRows === 'number' && timelineTicks.includes(firstFailTickFromRows)) {
+      if (previous !== null && allWaveformTicks.includes(previous)) return previous;
+      if (typeof firstFailTickFromRows === 'number' && allWaveformTicks.includes(firstFailTickFromRows)) {
         return firstFailTickFromRows;
       }
-      return timelineTicks[timelineTicks.length - 1] ?? timelineTicks[0];
+      return allWaveformTicks[allWaveformTicks.length - 1] ?? allWaveformTicks[0];
     });
-  }, [firstFailTickFromRows, selectedTick, timelineTicks]);
+  }, [allWaveformTicks, firstFailTickFromRows, selectedTick]);
 
   useEffect(() => {
     if (displaySignalTimeline.length === 0) {
@@ -1974,10 +1978,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return signals;
   }, [lastRun]);
+  const syncSelectedSignalForHandoff = useCallback(() => {
+    onSignalSelected?.(selectedSignal != null ? normalizeSignalKey(selectedSignal) : null);
+  }, [onSignalSelected, selectedSignal]);
+  const handleStimulusSelectedTickChange = useCallback((tick: number) => {
+    setSelectedTick(tick);
+  }, []);
 
   // Navigate to Design: inject selected-tick inputs into the runtime sim when available,
   // giving the student immediate propagation context for the observed stimulus.
   const handleGoToDesignFromVerify = useCallback(() => {
+    syncSelectedSignalForHandoff();
     if (onDebugTickSelected && lastRun) {
       const tick = selectedTick ?? lastRun.firstFailingTick ?? lastRun.waveform?.[0]?.tick ?? null;
       if (tick !== null) {
@@ -1998,7 +2009,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
     }
     onGoToDesign?.();
-  }, [buildDebugSignalsAtTick, lastRun, onDebugTickSelected, onGoToDesign, onGoToDesignWithInputs, selectedDebugContext, selectedTick]);
+  }, [buildDebugSignalsAtTick, lastRun, onDebugTickSelected, onGoToDesign, onGoToDesignWithInputs, selectedDebugContext, selectedTick, syncSelectedSignalForHandoff]);
   const handleThreePanelFailureSelect = useCallback(
     (failureKey: string) => {
       const target = failingRows.find(
@@ -2048,20 +2059,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   };
 
   // Phase A: Step-through all ticks (distinct from fail-only navigator)
-  const stepIndex = selectedTick !== null ? timelineTicks.indexOf(selectedTick) : -1;
-  const totalSteps = timelineTicks.length;
+  const stepIndex = selectedTick !== null ? allWaveformTicks.indexOf(selectedTick) : -1;
+  const totalSteps = allWaveformTicks.length;
 
   const goToPrevStep = useCallback(() => {
-    if (timelineTicks.length === 0) return;
-    const idx = stepIndex > 0 ? stepIndex - 1 : timelineTicks.length - 1;
-    setSelectedTick(timelineTicks[idx]);
-  }, [stepIndex, timelineTicks]);
+    if (allWaveformTicks.length === 0) return;
+    const idx = stepIndex > 0 ? stepIndex - 1 : allWaveformTicks.length - 1;
+    setSelectedTick(allWaveformTicks[idx]);
+  }, [allWaveformTicks, stepIndex]);
 
   const goToNextStep = useCallback(() => {
-    if (timelineTicks.length === 0) return;
-    const idx = stepIndex < timelineTicks.length - 1 ? stepIndex + 1 : 0;
-    setSelectedTick(timelineTicks[idx]);
-  }, [stepIndex, timelineTicks]);
+    if (allWaveformTicks.length === 0) return;
+    const idx = stepIndex < allWaveformTicks.length - 1 ? stepIndex + 1 : 0;
+    setSelectedTick(allWaveformTicks[idx]);
+  }, [allWaveformTicks, stepIndex]);
 
   const stepSnapshotRows = useMemo((): VerifyTickSignalIndexEntry[] => {
     if (!isStepMode || selectedTick === null) return [];
@@ -2070,12 +2081,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const handleDebugInDesign = useCallback(() => {
     if (selectedTick === null || !onDebugTickSelected) return;
+    syncSelectedSignalForHandoff();
     onDebugTickSelected(
       selectedTick,
       buildDebugSignalsAtTick(selectedTick) ?? {},
       selectedDebugContext && selectedDebugContext.tick === selectedTick ? selectedDebugContext : null
     );
-  }, [buildDebugSignalsAtTick, onDebugTickSelected, selectedDebugContext, selectedTick]);
+  }, [buildDebugSignalsAtTick, onDebugTickSelected, selectedDebugContext, selectedTick, syncSelectedSignalForHandoff]);
   const focusMismatchLanes = () => {
     setShowAllSignals(false);
     setShowMismatchOnlySignals(true);
@@ -2108,10 +2120,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     cursorA !== null && cursorB !== null ? Math.abs(cursorB - cursorA) : null;
 
   // Phase 8.1: Zoomed tick window
-  const allWaveformTicks = useMemo(
-    () => (waveformTicks.length > 0 ? waveformTicks : timelineTicks),
-    [waveformTicks, timelineTicks]
-  );
   const focusedFailureTick = selectedFailureCase?.tick ?? firstFailureTick ?? null;
   const zoomedTicks = useMemo(() => {
     if (tickZoom === 'all' || allWaveformTicks.length === 0) return allWaveformTicks;
@@ -4374,6 +4382,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           authoredVectors={authoredVectors}
           totalVectorCount={totalVectorCount}
           hasAssertedExpectedCells={totalExpectedCaseCount > 0}
+          selectedTick={selectedTick}
+          onSelectedTickChange={handleStimulusSelectedTickChange}
           signalInventory={signalInventory}
           scenarioAuthority={scenarioAuthority}
           onVectorsChange={onVectorsChange}
@@ -4532,7 +4542,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </>
                   ) : (
                     <span className="ide-copy ide-verify-wfbar-meta" data-testid="ide-verify-run-state">
-                      {signalTimeline.length} signals · {timelineTicks.length} ticks · {runState.toUpperCase()}
+                      {signalTimeline.length} signals · {allWaveformTicks.length} ticks · {runState.toUpperCase()}
                     </span>
                   )}
                 </div>
@@ -4558,12 +4568,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
                 {/* Right: Tick scrubber + advanced tools */}
                 <div className="ide-verify-wfbar-group ide-verify-wfbar-right">
-                  {timelineTicks.length > 0 && selectedTick !== null ? (
+                  {allWaveformTicks.length > 0 && selectedTick !== null ? (
                     <label className="ide-verify-scrubber-field" data-testid="ide-verify-tick-nav">
                       <input
                         type="range"
-                        min={timelineTicks[0]}
-                        max={timelineTicks[timelineTicks.length - 1]}
+                        min={allWaveformTicks[0]}
+                        max={allWaveformTicks[allWaveformTicks.length - 1]}
                         step={1}
                         value={selectedTick}
                         onChange={(event) => setSelectedTick(Number(event.target.value))}
@@ -4572,7 +4582,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       <code data-testid="ide-verify-selected-tick" style={{ minWidth: 24 }}>t{selectedTick}</code>
                     </label>
                   ) : null}
-                  {timelineTicks.length > 0 && (
+                  {allWaveformTicks.length > 0 && (
                     <IdeButton
                       tone="ghost"
                       onClick={() => setWaveformToolsOpen((previous) => !previous)}
@@ -4753,14 +4763,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
-                    if (timelineTicks.length === 0) return;
+                    if (allWaveformTicks.length === 0) return;
                     e.preventDefault();
                     setSelectedTick((prev) => {
-                      const idx = prev !== null ? timelineTicks.indexOf(prev) : -1;
+                      const idx = prev !== null ? allWaveformTicks.indexOf(prev) : -1;
                       if (e.key === 'ArrowRight') {
-                        return timelineTicks[Math.min(timelineTicks.length - 1, idx + 1)] ?? timelineTicks[0];
+                        return allWaveformTicks[Math.min(allWaveformTicks.length - 1, idx + 1)] ?? allWaveformTicks[0];
                       }
-                      return timelineTicks[Math.max(0, idx - 1)] ?? timelineTicks[0];
+                      return allWaveformTicks[Math.max(0, idx - 1)] ?? allWaveformTicks[0];
                     });
                   }}
                 >

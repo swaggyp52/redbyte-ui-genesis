@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-04-10
+updated: 2026-04-11
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
@@ -60,6 +60,18 @@ For Design workflow hierarchy work: [[Design Surface]]
 
 ## What is the next action
 
+Latest shared selected-tick authority slice landed (2026-04-11):
+
+- Verify now owns the canonical post-run selected tick across the waveform, compact readout, Stimulus Workbench case selection, and Design handoff
+- Stimulus case selection now updates Verify immediately, waveform stepping now pushes the selected Stimulus case back the other direction, and invalid controlled ticks normalize back to the parent when cases are removed
+- targeted validation is complete: focused `StimulusCanvas` + Verify suites are green (`51` tests), playground build is green, and browser validation confirmed `Case 3 (t2)` synced Verify to `t2`, waveform stepping advanced both surfaces to `Case 4 (t3)`, and Design landed in `Debug mode — tick 3`
+
+Latest waveform truth-surface authority slice landed (2026-04-11):
+
+- observation-only Verify runs no longer show visible waveform evidence with zero tick authority; selected tick, compact readout, scrubber, and keyboard navigation now derive from waveform-backed ticks when samples exist
+- Verify → Design handoff now syncs the currently focused Verify signal at navigation time, so Design keeps a meaningful Verify focus even when the handoff only has tick snapshot data
+- targeted validation is complete: focused Verify suites are green (`41` tests), unified build is green, and browser validation confirmed `21 signals · 7 ticks · COMPLETE`, a live move to `t3`, and Design landing in `Debug mode — tick 3` with `Verify focus q0`
+
 Latest Verify → Design continuity slice landed (2026-04-10):
 
 - Verify now prefers the debug bridge when tick evidence exists, instead of treating Design navigation as a mostly context-free fallback
@@ -69,9 +81,9 @@ Latest Verify → Design continuity slice landed (2026-04-10):
 
 Next Verify slice should stay on core-loop maturity, not broad system cleanup:
 
-1. strengthen waveform truth-surface readability around selected tick / current output readout
-2. make the Design-side debug state expose the incoming linked signal more explicitly in the inspector, not only the tick freeze
-3. keep Hardware / Export polish behind the Design ↔ Verify loop until the classroom debug flow feels unquestionably coherent
+1. decide whether Verify-selected signal, not just Verify-selected tick, should gain the same explicit shared-model treatment inside the Stimulus Workbench / Design bridge
+2. decide whether sparse / non-contiguous waveform tick sets need index-based scrubber semantics instead of raw tick values
+3. re-evaluate the failing three-panel left-dock contract separately from shared tick-authority work
 
 Latest Verify desktop workbench professionalization slice landed (2026-04-08):
 

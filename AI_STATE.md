@@ -1,5 +1,99 @@
 # AI State
 
+## Change Log 2026-04-11 (Phase-2 Slice 6 — shared selected-tick authority across Stimulus, waveform, and Design)
+
+**Subsystem**: Verify / Design shared simulation context
+
+### Problem
+
+After the waveform truth-surface fix, Verify still had one remaining split-brain state: `VerifySurface` owned the active observation tick for the waveform, readouts, and Design handoff, while `StimulusCanvas` still owned its own local selected case.
+
+That meant the student could change the selected case inside the Stimulus Workbench without changing the Verify-selected tick, or scrub the waveform without updating the selected testbench case. In practice, Design handoff could still open on a stale tick unless the student touched the waveform first.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/components/StimulusCanvas.tsx`
+  - added optional `selectedTick` / `onSelectedTickChange` props so the canvas can run in controlled mode when a parent owns the canonical tick
+  - introduced `activeSelectedTick` as the single render-time selection value used by the case chip, case selector, header selection, duplicate/delete flows, and cell paint interactions
+  - kept standalone/uncontrolled behavior intact for callers that do not pass a parent tick
+  - added controlled-tick normalization: when the selected parent tick no longer exists after the case set shrinks, the canvas now notifies the parent with the normalized surviving tick instead of silently diverging
+- `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - threaded `selectedTick` / `onSelectedTickChange` into both StimulusCanvas render paths so the workbench can share the Verify-owned tick in both pre-run and post-run layouts
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - passed the existing Verify-owned `selectedTick` into `ScenarioBuilderPanel`, keeping Verify as the canonical tick owner for waveform, readout, Stimulus Workbench selection, and Design handoff
+- tests
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.observeFirst.test.tsx`
+    - added a contract proving Stimulus-selected case choice drives Design handoff tick when the waveform has not been touched first
+  - `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+    - added contracts proving Stimulus case selection updates Verify readouts and waveform selection updates the Stimulus case selector
+  - `packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.test.tsx`
+    - added a regression test covering controlled selected-tick normalization after the authored case list shrinks
+
+### Validation
+
+- focused tests:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.observeFirst.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - result: PASS (`3` files, `51` tests)
+- build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- browser validation on local preview (`http://127.0.0.1:4176/os/`):
+  - selecting `Case 3 (t2)` in the Stimulus Workbench immediately updated the Verify-selected tick to `t2`
+  - stepping the waveform forward moved both surfaces together to `Case 4 (t3)` / `t3`
+  - `Open in Design` then landed in Design with `Debug mode — tick 3`
+
+### Release impact
+
+- Verify and the Stimulus Workbench now behave like two views into the same selected simulation moment instead of two parallel selections
+- Design handoff now respects the student’s last selected testbench case even when the waveform was not the last control they touched
+- case deletion / shrink flows no longer leave parent and child tick state silently out of sync
+
+## Change Log 2026-04-11 (Phase-2 Slice 5 — Verify waveform truth-surface authority + signal-targeted Design handoff)
+
+**Subsystem**: Verify / Design cross-surface evidence continuity
+
+### Problem
+
+Observation-only runs could render real waveform content from `lastRun.waveform` while several tick/readout surfaces still depended on compare-row-derived `timelineTicks`.
+
+That left a visible contradiction in the browser: waveform traces were present, but the run-state summary could still report `0 ticks`, the selected tick and scrubber could disappear, keyboard tick navigation could go inert, and `Open in Design` did not reliably preserve the currently focused Verify signal unless failure context happened to provide one.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - introduced a shared `allWaveformTicks` authority: prefer `waveformTicks` when samples exist, otherwise fall back to `timelineTicks`
+  - selected tick + cursor initialization now validate against `allWaveformTicks`, not row-only tick state
+  - `firstRunTick` now falls back to the first waveform-backed tick when compare rows are absent
+  - step-through navigation, waveform-header tick count, scrubber visibility/range, waveform-tools gating, and waveform keyboard tick navigation now use `allWaveformTicks`
+  - added `syncSelectedSignalForHandoff()` and call it from both Verify → Design paths so `onSignalSelected` reflects the currently focused Verify lane at navigation time
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.observeFirst.test.tsx`
+  - added a waveform-only observation run contract test proving tick scrubber selection + explicit signal focus survive `Open in Design` even when `report.rows` is empty
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - added a waveform-only observation contract test proving the run-state tick count, tick readout strip, arrow-key navigation, and scrubber all stay live when compare rows are empty
+
+### Validation
+
+- focused tests:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.observeFirst.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx --reporter=verbose`
+  - result: PASS (`2` files, `41` tests)
+- adjacent audit:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx --reporter=verbose`
+  - result: PASS (`1` file, `5` tests)
+  - `verifySurface.three-panel.test.tsx` still fails in isolation on left-dock / row-selection expectations and was not changed in this slice
+- build:
+  - `pnpm -w build:unified`
+  - result: PASS (`Unified Build Succeeded`)
+- browser validation on local preview (`http://127.0.0.1:4176/os/`):
+  - Verify observation run for `2-Bit Up Counter` now shows `21 signals · 7 ticks · COMPLETE`
+  - selected tick remained live (`t0` → `t3`) through the scrubber/waveform interaction
+  - `Open in Design` landed in Design with `Debug mode — tick 3` and preserved `Verify focus q0`
+
+### Release impact
+
+- observation-only runs no longer regress into visible waveform content with zero tick authority
+- waveform rendering, selected tick, compact readout, scrubber, keyboard navigation, and Design debug handoff now agree on the same observation tick source when waveform samples exist
+- Design handoff now preserves the currently focused Verify signal at navigation time, improving the signal-targeted landing path even when no mismatch-context packet exists
+
 ## Change Log 2026-04-10 (Phase-2 Slice 4 — Verify→Design debug bridge: full tick evidence handoff)
 
 **Subsystem**: Verify / Design cross-surface debug handoff

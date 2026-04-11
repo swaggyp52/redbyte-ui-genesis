@@ -127,6 +127,49 @@ function makeFailRun(): RuntimeVerifyRun {
   };
 }
 
+function makeWaveformOnlyRun(): RuntimeVerifyRun {
+  return {
+    scenarioId: 'waveform-only-scenario',
+    scenarioName: 'Waveform Only Scenario',
+    status: 'pass',
+    deterministicHash: 'abc123',
+    reportHash: 'rep-waveform-only',
+    generatedAtIso: '2026-04-10T00:00:00.000Z',
+    schedule: 'combinational',
+    meta: {
+      circuitKind: 'combinational',
+      clockingProtocol: null,
+      samplePoint: 'steady-state',
+      tick0Meaning: null,
+      clockSignalName: null,
+    },
+    report: {
+      vectors: [
+        { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {}, caseIndex: 0 },
+        { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: {}, caseIndex: 1 },
+        { id: 'vec-03', tick: 2, inputs: { sw0: 1 }, expected: {}, caseIndex: 2 },
+      ],
+      inputsAtTick: {
+        0: { sw0: 0 },
+        1: { sw0: 1 },
+        2: { sw0: 1 },
+      },
+      inputsByVectorId: {
+        'vec-01': { sw0: 0 },
+        'vec-02': { sw0: 1 },
+        'vec-03': { sw0: 1 },
+      },
+      signalRoles: { sw0: 'input', ld0: 'output' },
+      rows: [],
+    } as RuntimeVerifyRun['report'],
+    waveform: [
+      { tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] },
+      { tick: 1, signals: { sw0: '1', ld0: '0' }, mismatches: [] },
+      { tick: 2, signals: { sw0: '1', ld0: '1' }, mismatches: [] },
+    ],
+  };
+}
+
 const BASE_PROPS = {
   deterministicHash: 'abc123',
   hasVectors: true,
@@ -246,6 +289,71 @@ describe('VerifySurface observe-first model', () => {
     expect(onDebugTickSelected).toHaveBeenCalledWith(
       0,
       { sw0: 0, ld0: 0 },
+      null
+    );
+    expect(onGoToDesignWithInputs).not.toHaveBeenCalled();
+    expect(onGoToDesign).not.toHaveBeenCalled();
+  });
+
+  it('keeps waveform tick selection and signal focus authoritative when opening Design from observation-only runs', () => {
+    const onGoToDesign = vi.fn();
+    const onGoToDesignWithInputs = vi.fn();
+    const onDebugTickSelected = vi.fn();
+    const onSignalSelected = vi.fn();
+    const { getByTestId } = render(
+      <VerifySurface
+        {...BASE_PROPS}
+        lastRun={makeWaveformOnlyRun()}
+        onGoToDesign={onGoToDesign}
+        onGoToDesignWithInputs={onGoToDesignWithInputs}
+        onDebugTickSelected={onDebugTickSelected}
+        onSignalSelected={onSignalSelected}
+      />
+    );
+
+    fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
+    fireEvent.change(getByTestId('ide-verify-tick-scrubber'), { target: { value: '2' } });
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
+
+    fireEvent.click(getByTestId('ide-verify-inspect-design'));
+
+    expect(onSignalSelected).toHaveBeenLastCalledWith('ld0');
+    expect(onDebugTickSelected).toHaveBeenCalledOnce();
+    expect(onDebugTickSelected).toHaveBeenCalledWith(
+      2,
+      { sw0: 1, ld0: 1 },
+      null
+    );
+    expect(onGoToDesignWithInputs).not.toHaveBeenCalled();
+    expect(onGoToDesign).not.toHaveBeenCalled();
+  });
+
+  it('uses the Stimulus-selected case as the Design handoff tick when the waveform has not been touched', () => {
+    const onGoToDesign = vi.fn();
+    const onGoToDesignWithInputs = vi.fn();
+    const onDebugTickSelected = vi.fn();
+    const { getByTestId } = render(
+      <VerifySurface
+        {...BASE_PROPS}
+        lastRun={makeWaveformOnlyRun()}
+        onVectorsChange={vi.fn()}
+        onGoToDesign={onGoToDesign}
+        onGoToDesignWithInputs={onGoToDesignWithInputs}
+        onDebugTickSelected={onDebugTickSelected}
+      />
+    );
+
+    fireEvent.change(getByTestId('ide-stimulus-tick-target'), { target: { value: '1' } });
+    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 2');
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
+
+    fireEvent.click(getByTestId('ide-verify-inspect-design'));
+
+    expect(onDebugTickSelected).toHaveBeenCalledOnce();
+    expect(onDebugTickSelected).toHaveBeenCalledWith(
+      1,
+      { sw0: 1, ld0: 0 },
       null
     );
     expect(onGoToDesignWithInputs).not.toHaveBeenCalled();
