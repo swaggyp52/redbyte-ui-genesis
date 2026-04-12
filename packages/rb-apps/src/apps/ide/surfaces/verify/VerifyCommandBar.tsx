@@ -207,7 +207,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
             onClick={onSaveAsExpected}
             testId="ide-vcb-save-expected"
           >
-            Save observed as checks
+            Save as checks
           </IdeButton>
         )}
         {showGoToDesign && onGoToDesign && (

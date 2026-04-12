@@ -23,9 +23,10 @@ import {
   IdeStatusPill,
 } from '../components/IdePrimitives';
 import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
-import type { RuntimeSimState, RuntimeSignalProbe } from '../projectRuntime';
+import type { RuntimeSimState, RuntimeSignalProbe, RuntimeVerifyRun } from '../projectRuntime';
 import { useBoardSignal } from '../BoardSignalContext';
-import { getStudentFacingIoLabel } from '../ioLabels';
+import { getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
+import type { TimingGuidance } from '../timingGuidance';
 import type { VerifyDebugContext } from '../verifyDebug';
 import { netlistFromCircuit } from '../../../export/netlistExport';
 import { vhdlFromNetlist } from '../../../export/vhdlExport';
@@ -158,14 +159,17 @@ export interface DesignSurfaceProps {
   externalDebugSignals?: Map<string, 0 | 1> | null;
   externalDebugTick?: number | null;
   externalDebugContext?: VerifyDebugContext | null;
+  replaySession?: Pick<RuntimeVerifyRun, 'waveform' | 'meta'> | null;
   onClearExternalDebug?: () => void;
   // C-5b: Tick navigation within the debug waveform
   onPrevDebugTick?: () => void;
   onNextDebugTick?: () => void;
+  onSelectDebugTickIndex?: (index: number) => void;
   debugTickIndex?: number;
   debugTickCount?: number;
   // A2: Verify → Design signal linkage
   activeVerifySignal?: string | null;
+  timingGuidance?: TimingGuidance;
 }
 
 export interface DesignCompilerStatus {
@@ -174,6 +178,15 @@ export interface DesignCompilerStatus {
   errorCount: number;
   warningCount: number;
   diagnostics: IdeDiagnostic[];
+}
+
+interface StaleReplayBreadcrumb {
+  tick: number;
+  caseIndex: number | null;
+  caseCount: number | null;
+  signal: string | null;
+  timingHint: string | null;
+  sourceSession: Pick<RuntimeVerifyRun, 'waveform' | 'meta'> | null;
 }
 
 interface PaletteItem {
@@ -625,6 +638,7 @@ interface DesignLiveIoValueRow {
   value: 0 | 1;
   signalKey: string;
   kind: 'input' | 'output';
+  matchKeys: string[];
 }
 
 interface DesignSimulationStory {
@@ -734,12 +748,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   externalDebugSignals,
   externalDebugTick,
   externalDebugContext,
+  replaySession,
   onClearExternalDebug,
   onPrevDebugTick,
   onNextDebugTick,
+  onSelectDebugTickIndex,
   debugTickIndex,
   debugTickCount,
   activeVerifySignal,
+  timingGuidance,
 }) => {
   const circuit = useCircuitStore((state) => state.circuit);
   const addNode = useCircuitStore((state) => state.addNode);
@@ -952,15 +969,74 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const hasAutoFitRef = useRef(false);
   const lastViewportSeedRef = useRef<string | undefined>(undefined);
   const pendingDebugToggleRef = useRef<DesignDebugToggleSample | null>(null);
-  const simTick = runtimeSim.tick;
+  const [staleReplayBreadcrumb, setStaleReplayBreadcrumb] = useState<StaleReplayBreadcrumb | null>(null);
+  const runtimeSimTick = runtimeSim.tick;
   const simSpeed = runtimeSim.speedHz;
-  const simRunning = runtimeSim.running;
-  const liveSignals = useMemo(() => {
+  const runtimeLiveSignals = useMemo(() => {
     const entries = Object.entries(runtimeSim.signals)
       .map(([key, value]) => [key, value === 1 ? 1 : 0] as const)
       .sort((left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0));
     return new Map<string, 0 | 1>(entries);
   }, [runtimeSim.signals]);
+  const replayTrace = useMemo(
+    () => normalizeReplayWaveformTrace(replaySession?.waveform ?? []),
+    [replaySession?.waveform]
+  );
+  const isReplaySuppressed =
+    staleReplayBreadcrumb != null &&
+    staleReplayBreadcrumb.sourceSession === (replaySession ?? null) &&
+    externalDebugTick != null;
+  const effectiveExternalDebugTick = isReplaySuppressed ? null : externalDebugTick;
+  const effectiveExternalDebugSignals = isReplaySuppressed ? null : externalDebugSignals;
+  const effectiveExternalDebugContext = isReplaySuppressed ? null : externalDebugContext;
+  const replayTickTraceIndex = useMemo(() => {
+    if (effectiveExternalDebugTick == null || replayTrace.length === 0) return null;
+    if (
+      debugTickIndex != null &&
+      replayTrace[debugTickIndex]?.tick === effectiveExternalDebugTick
+    ) {
+      return debugTickIndex;
+    }
+    const matchedIndex = replayTrace.findIndex((entry) => entry.tick === effectiveExternalDebugTick);
+    return matchedIndex >= 0 ? matchedIndex : null;
+  }, [debugTickIndex, effectiveExternalDebugTick, replayTrace]);
+  const replayTraceWindow = useMemo(() => {
+    if (replayTickTraceIndex == null) return null;
+    return replayTrace.slice(0, replayTickTraceIndex + 1);
+  }, [replayTickTraceIndex, replayTrace]);
+  const replaySignals = useMemo(() => {
+    if (effectiveExternalDebugTick == null) return null;
+    const mergedSignals = new Map<string, 0 | 1>(runtimeLiveSignals);
+    if (effectiveExternalDebugSignals) {
+      // Prefer the explicit Verify-selected snapshot for current values.
+      for (const [signalKey, value] of effectiveExternalDebugSignals.entries()) {
+        mergedSignals.set(signalKey, value);
+      }
+      return mergedSignals;
+    }
+    if (replayTickTraceIndex == null) return mergedSignals;
+    const replaySample = replayTrace[replayTickTraceIndex];
+    if (!replaySample) return mergedSignals;
+    for (const [signalKey, value] of Object.entries(replaySample.signals)) {
+      mergedSignals.set(signalKey, value === 1 ? 1 : 0);
+    }
+    return mergedSignals;
+  }, [effectiveExternalDebugSignals, effectiveExternalDebugTick, replayTickTraceIndex, replayTrace, runtimeLiveSignals]);
+  const isReplayMode = effectiveExternalDebugTick != null;
+  const liveSignals = replaySignals ?? runtimeLiveSignals;
+  const displayTrace = replayTraceWindow ?? runtimeSim.trace;
+  const displayRuntimeSignals = useMemo(() => {
+    const mergedSignals = {
+      ...runtimeSim.signals,
+    };
+    for (const [signalKey, value] of liveSignals.entries()) {
+      mergedSignals[signalKey] = value;
+    }
+    return mergedSignals;
+  }, [liveSignals, runtimeSim.signals]);
+  const simTick = isReplayMode ? effectiveExternalDebugTick : runtimeSimTick;
+  const simRunning = !isReplayMode && runtimeSim.running;
+  const simModeLabel = isReplayMode ? 'Replay' : simRunning ? 'Running' : 'Paused';
   const ioRowByNodeId = useMemo(() => {
     const index = new Map<string, (typeof ioRows)[number]>();
     for (const row of ioRows) {
@@ -1005,8 +1081,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     [designDebugEnabled, liveInputValueById, runtimeSim.inputs, runtimeSim.signals]
   );
   const emitCircuitMutation = useCallback((nextCircuit?: Circuit) => {
+    if (externalDebugTick != null) {
+      const debugContext = externalDebugContext?.tick === externalDebugTick ? externalDebugContext : null;
+      setStaleReplayBreadcrumb({
+        tick: externalDebugTick,
+        caseIndex: debugTickIndex ?? null,
+        caseCount: debugTickCount ?? null,
+        signal: debugContext?.signal ?? activeVerifySignal ?? null,
+        timingHint: formatReplayTimingHint(replaySession?.meta ?? null),
+        sourceSession: replaySession ?? null,
+      });
+      onClearExternalDebug?.();
+    }
     onCircuitMutated?.(nextCircuit ?? useCircuitStore.getState().circuit);
-  }, [onCircuitMutated]);
+  }, [
+    activeVerifySignal,
+    debugTickCount,
+    debugTickIndex,
+    externalDebugContext,
+    externalDebugTick,
+    onCircuitMutated,
+    onClearExternalDebug,
+    replaySession,
+  ]);
   const getChipMetadata = useCallback((nodeType: string): ChipMetadata | undefined => {
     return getDesignChipMetadata(nodeType);
   }, []);
@@ -1018,6 +1115,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
   const placementModeLabel = activeInsertionMacro?.name ?? pendingPlacement?.label ?? null;
   const isPlacementMode = placementModeLabel != null;
+  const commitRuntimeMutation = useCallback((mutation: () => void) => {
+    mutation();
+    emitCircuitMutation();
+  }, [emitCircuitMutation]);
 
   useEffect(() => {
     setEngine(tickEngine.getEngine());
@@ -1568,14 +1669,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         y: (canvasSize.height / 2 - camera.y) / camera.zoom,
       };
       const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
-      onRuntimeAddIo('input', { x: basePosition.x - 120, y: basePosition.y - 24 });
-      onRuntimeAddIo('output', { x: basePosition.x + 120, y: basePosition.y - 24 });
+      commitRuntimeMutation(() => {
+        onRuntimeAddIo('input', { x: basePosition.x - 120, y: basePosition.y - 24 });
+        onRuntimeAddIo('output', { x: basePosition.x + 120, y: basePosition.y - 24 });
+      });
     } else {
       spawnAtCanvasCenter('INPUT', { x: -120, y: -24 });
       spawnAtCanvasCenter('OUTPUT', { x: 120, y: -24 });
     }
     setActionToast('Added starter IO pins.');
-  }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, editorCircuit.nodes, onCircuitMutated, onRuntimeAddIo, spawnAtCanvasCenter]);
+  }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, commitRuntimeMutation, editorCircuit.nodes, onRuntimeAddIo, spawnAtCanvasCenter]);
 
   const addAndGateStarter = useCallback(() => {
     if (onRuntimeAddNode && onRuntimeConnect) {
@@ -1586,14 +1689,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
       const [inputAId, inputBId, andId, outputId] = predictNextNodeIds(editorCircuit, 4);
 
-      onRuntimeAddNode('INPUT', { x: basePosition.x - 170, y: basePosition.y - 72 });
-      onRuntimeAddNode('INPUT', { x: basePosition.x - 170, y: basePosition.y + 24 });
-      onRuntimeAddNode('AND', { x: basePosition.x, y: basePosition.y - 24 });
-      onRuntimeAddNode('OUTPUT', { x: basePosition.x + 170, y: basePosition.y - 24 });
+      commitRuntimeMutation(() => {
+        onRuntimeAddNode('INPUT', { x: basePosition.x - 170, y: basePosition.y - 72 });
+        onRuntimeAddNode('INPUT', { x: basePosition.x - 170, y: basePosition.y + 24 });
+        onRuntimeAddNode('AND', { x: basePosition.x, y: basePosition.y - 24 });
+        onRuntimeAddNode('OUTPUT', { x: basePosition.x + 170, y: basePosition.y - 24 });
 
-      onRuntimeConnect({ fromNodeId: inputAId, fromPort: 'out', toNodeId: andId, toPort: 'a' });
-      onRuntimeConnect({ fromNodeId: inputBId, fromPort: 'out', toNodeId: andId, toPort: 'b' });
-      onRuntimeConnect({ fromNodeId: andId, fromPort: 'out', toNodeId: outputId, toPort: 'in' });
+        onRuntimeConnect({ fromNodeId: inputAId, fromPort: 'out', toNodeId: andId, toPort: 'a' });
+        onRuntimeConnect({ fromNodeId: inputBId, fromPort: 'out', toNodeId: andId, toPort: 'b' });
+        onRuntimeConnect({ fromNodeId: andId, fromPort: 'out', toNodeId: outputId, toPort: 'in' });
+      });
     } else {
       spawnAtCanvasCenter('INPUT', { x: -170, y: -72 });
       spawnAtCanvasCenter('INPUT', { x: -170, y: 24 });
@@ -1607,6 +1712,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     camera.zoom,
     canvasSize.height,
     canvasSize.width,
+    commitRuntimeMutation,
     editorCircuit,
     onRuntimeAddNode,
     onRuntimeConnect,
@@ -1660,7 +1766,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       const nextNodeId = predictNextNodeIds(editorCircuit, 1)[0] ?? null;
       if (pendingPlacement.kind === 'node' && pendingPlacement.nodeType) {
         if (onRuntimeAddNode) {
-          onRuntimeAddNode(pendingPlacement.nodeType, position);
+          commitRuntimeMutation(() => {
+            onRuntimeAddNode(pendingPlacement.nodeType, position);
+          });
         } else {
           addNode(pendingPlacement.nodeType, position, { skipHistory: true });
           emitCircuitMutation();
@@ -1669,14 +1777,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       } else if (pendingPlacement.kind === 'board-io' && pendingPlacement.boardIoEntry) {
         const entry = pendingPlacement.boardIoEntry;
         if (onRuntimeAddBoardIo) {
-          onRuntimeAddBoardIo({
-            alias: entry.alias,
-            direction: entry.direction,
-            kind: entry.kind,
-            position,
+          commitRuntimeMutation(() => {
+            onRuntimeAddBoardIo({
+              alias: entry.alias,
+              direction: entry.direction,
+              kind: entry.kind,
+              position,
+            });
           });
         } else if (onRuntimeAddIo) {
-          onRuntimeAddIo(entry.direction === 'in' ? 'input' : 'output', position);
+          commitRuntimeMutation(() => {
+            onRuntimeAddIo(entry.direction === 'in' ? 'input' : 'output', position);
+          });
         } else {
           addNode(entry.direction === 'in' ? 'INPUT' : 'OUTPUT', position, { skipHistory: true });
           emitCircuitMutation();
@@ -1700,6 +1812,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     },
     [
       addNode,
+      commitRuntimeMutation,
       editorCircuit,
       emitCircuitMutation,
       interactionMode,
@@ -1790,12 +1903,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
 
   const handleUndo = useCallback(() => {
-    onRuntimeUndo?.();
-  }, [onRuntimeUndo]);
+    if (!onRuntimeUndo) return;
+    onRuntimeUndo();
+    emitCircuitMutation();
+  }, [emitCircuitMutation, onRuntimeUndo]);
 
   const handleRedo = useCallback(() => {
-    onRuntimeRedo?.();
-  }, [onRuntimeRedo]);
+    if (!onRuntimeRedo) return;
+    onRuntimeRedo();
+    emitCircuitMutation();
+  }, [emitCircuitMutation, onRuntimeRedo]);
 
   const measureCanvasViewport = useCallback(() => {
     if (!canvasHostRef.current) return null;
@@ -2609,6 +2726,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           value: liveSignals.get(`${node.id}.out`) ?? 0,
           signalKey: `${node.id}.out`,
           kind: 'input' as const,
+          matchKeys: [ioRowByNodeId.get(node.id)?.label, ioRowByNodeId.get(node.id)?.id, node.label, node.id]
+            .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0),
         };
       });
     const outputRows = editorCircuit.nodes
@@ -2623,13 +2742,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           value: liveSignals.get(`${node.id}.in`) ?? liveSignals.get(`${node.id}.out`) ?? 0,
           signalKey: liveSignals.has(`${node.id}.in`) ? `${node.id}.in` : `${node.id}.out`,
           kind: 'output' as const,
+          matchKeys: [ioRowByNodeId.get(node.id)?.label, ioRowByNodeId.get(node.id)?.id, node.label, node.id]
+            .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0),
         };
       });
     return { inputRows, outputRows };
   }, [editorCircuit.nodes, ioRowByNodeId, liveSignals]);
   const simulationStory = useMemo(
-    () => describeSimulationStory(liveIoSignals.inputRows, liveIoSignals.outputRows, runtimeSim.trace, simRunning),
-    [liveIoSignals.inputRows, liveIoSignals.outputRows, runtimeSim.trace, simRunning]
+    () => describeSimulationStory(liveIoSignals.inputRows, liveIoSignals.outputRows, displayTrace, simRunning, timingGuidance),
+    [displayTrace, liveIoSignals.inputRows, liveIoSignals.outputRows, simRunning, timingGuidance]
   );
   const hasVerilogArtifact = liveHdlResult.verilog.trim().length > 0;
   const secondaryArtifact: DesignArtifact = primaryArtifact === 'vhdl' ? 'verilog' : 'vhdl';
@@ -2655,20 +2776,68 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       setSecondaryArtifactOpen(false);
     }
   }, [hasVerilogArtifact, primaryArtifact]);
+  useEffect(() => {
+    if (
+      staleReplayBreadcrumb != null &&
+      externalDebugTick != null &&
+      replaySession != null &&
+      replaySession !== staleReplayBreadcrumb.sourceSession
+    ) {
+      setStaleReplayBreadcrumb(null);
+    }
+  }, [externalDebugTick, replaySession, staleReplayBreadcrumb]);
   const activeDebugContext = useMemo(
     () =>
-      externalDebugTick != null && externalDebugContext?.tick === externalDebugTick
-        ? externalDebugContext
+      effectiveExternalDebugTick != null && effectiveExternalDebugContext?.tick === effectiveExternalDebugTick
+        ? effectiveExternalDebugContext
         : null,
-    [externalDebugContext, externalDebugTick]
+    [effectiveExternalDebugContext, effectiveExternalDebugTick]
   );
   const debugInputSummary = useMemo(
     () => formatVerifyDebugInputSnapshot(activeDebugContext?.inputSnapshot ?? []),
     [activeDebugContext]
   );
+  const activeReplaySelectionLabel = useMemo(
+    () => formatReplaySelectionLabel(debugTickIndex ?? null, debugTickCount ?? null, effectiveExternalDebugTick),
+    [debugTickCount, debugTickIndex, effectiveExternalDebugTick]
+  );
+  const activeReplayTimingHint = useMemo(
+    () => formatReplayTimingHint(replaySession?.meta ?? null),
+    [replaySession?.meta]
+  );
+  const canRenderReplayScrubber =
+    effectiveExternalDebugTick != null &&
+    debugTickIndex != null &&
+    debugTickCount != null &&
+    debugTickCount > 1 &&
+    onSelectDebugTickIndex !== undefined;
+  const activeSimulationSelectionLabel = effectiveExternalDebugTick != null
+    ? activeReplaySelectionLabel
+    : `Tick ${simTick}`;
+  const staleReplaySelectionLabel = useMemo(
+    () =>
+      staleReplayBreadcrumb
+        ? formatReplaySelectionLabel(
+            staleReplayBreadcrumb.caseIndex,
+            staleReplayBreadcrumb.caseCount,
+            staleReplayBreadcrumb.tick
+          )
+        : null,
+    [staleReplayBreadcrumb]
+  );
   const activeSimulationSummary = activeDebugContext
     ? describeVerifyDebugSummary(activeDebugContext)
     : simulationStory.summary;
+  const handleReplayScrubberChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      if (!onSelectDebugTickIndex || debugTickCount == null) return;
+      const nextIndex = Number.parseInt(event.target.value, 10);
+      if (!Number.isFinite(nextIndex)) return;
+      if (nextIndex < 0 || nextIndex >= debugTickCount) return;
+      onSelectDebugTickIndex(nextIndex);
+    },
+    [debugTickCount, onSelectDebugTickIndex]
+  );
   const authoringStatusToneClass =
     authoringIssueCounts.errorCount > 0 || compilerErrorCount > 0
       ? 'has-errors'
@@ -2696,13 +2865,38 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         : 'ok';
   const designViewLabel =
     designView === 'canvas' ? 'Canvas' : designView === 'hdl' ? 'Code' : 'Split';
-  const designCommandDescription = activeVerifySignal
-    ? `Build the circuit while keeping Verify focus on ${activeVerifySignal}.`
-    : designView === 'hdl'
-      ? `Edit ${primaryArtifactLabel} while keeping the circuit aligned with live propagation.`
-      : designView === 'split'
-        ? `Compare the circuit against ${primaryArtifactLabel} before moving into Verify.`
-        : 'Build the circuit and inspect live propagation before moving into Verify.';
+  const designCommandDescription = effectiveExternalDebugTick != null
+    ? 'Replay focus is active below. Scrub cases and inspect propagation before resuming live edits.'
+    : activeVerifySignal
+      ? `Build the circuit while keeping Verify focus on ${activeVerifySignal}.`
+      : designView === 'hdl'
+        ? `Edit ${primaryArtifactLabel} while keeping the circuit aligned with live propagation.`
+        : designView === 'split'
+          ? `Compare the circuit against ${primaryArtifactLabel} before moving into Verify.`
+          : 'Build the circuit and inspect live propagation before moving into Verify.';
+  const designCommandMeta = effectiveExternalDebugTick != null
+    ? (
+      <>
+        <IdeStatusPill tone={designCommandTone}>{authoringStatusLabel.toUpperCase()}</IdeStatusPill>
+        <span className="ide-surface-command-chip">Replay active</span>
+        <span className={`ide-surface-command-chip${dirtySinceVerify ? '' : ' is-ok'}`}>
+          {dirtySinceVerify ? 'Verify needs refresh' : 'Verify current'}
+        </span>
+      </>
+    )
+    : (
+      <>
+        <IdeStatusPill tone={designCommandTone}>{authoringStatusLabel.toUpperCase()}</IdeStatusPill>
+        {(totalAuthoringErrors > 0 || totalAuthoringWarnings > 0) && (
+          <span className="ide-surface-command-chip">
+            {totalAuthoringErrors > 0 ? `${totalAuthoringErrors} error${totalAuthoringErrors !== 1 ? 's' : ''}` : `${totalAuthoringWarnings} warning${totalAuthoringWarnings !== 1 ? 's' : ''}`}
+          </span>
+        )}
+        <span className={`ide-surface-command-chip${dirtySinceVerify ? '' : ' is-ok'}`}>
+          {dirtySinceVerify ? 'Verify needs refresh' : 'Verify current'}
+        </span>
+      </>
+    );
   const ioPresentationMap = useMemo(() => {
     const map: Record<string, NodeIoPresentation> = {};
     for (const node of editorCircuit.nodes) {
@@ -2728,6 +2922,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const verifyLinkedSignalKey = useMemo(
     () => resolveVerifyLinkedSignalKey(activeVerifySignal, ioRows, liveSignals, runtimeSim.signals),
     [activeVerifySignal, ioRows, liveSignals, runtimeSim.signals]
+  );
+  const activeVerifySignalPresentation = useMemo(
+    () =>
+      describeSignalFocusPresentation({
+        focusLabel: activeVerifySignal,
+        signalKey: verifyLinkedSignalKey,
+        circuit: editorCircuit,
+        ioRowByNodeId,
+      }),
+    [activeVerifySignal, verifyLinkedSignalKey, editorCircuit, ioRowByNodeId]
   );
   const debugLinkedSignalKey = useMemo(
     () => resolveVerifyLinkedSignalKey(activeDebugContext?.signal ?? null, ioRows, liveSignals, runtimeSim.signals),
@@ -2777,7 +2981,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     portKeys.add(`${nodeId}:${portName}`);
     setTraceState({
       kind: 'fanin-port',
-      sourceKey: `debug:${debugLinkedSignalKey}:${activeDebugContext?.tick ?? externalDebugTick ?? 'tick'}`,
+      sourceKey: `debug:${debugLinkedSignalKey}:${activeDebugContext?.tick ?? effectiveExternalDebugTick ?? 'tick'}`,
       label: `Debug focus ${debugLinkedSignalKey}`,
       signalKey: debugLinkedSignalKey,
       wireHighlights: highlights,
@@ -2785,23 +2989,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       portKeys,
     });
     lastTracedPortRef.current = `${nodeId}.${portName}`;
-  }, [activeDebugContext?.tick, debugLinkedSignalKey, editorCircuit, externalDebugTick, onRuntimeSimSetSelectedSignal]);
-  const selectedSignalValue = selectedSignalKey ? runtimeSim.signals[selectedSignalKey] ?? 0 : 0;
+  }, [activeDebugContext?.tick, debugLinkedSignalKey, editorCircuit, effectiveExternalDebugTick, onRuntimeSimSetSelectedSignal]);
+  const selectedSignalValue = selectedSignalKey ? displayRuntimeSignals[selectedSignalKey] ?? 0 : 0;
   const selectedSignalHistory = useMemo(() => {
     if (!selectedSignalKey) return [];
-    const history = runtimeSim.trace.slice(-32).map((entry) => ({
+    const history = resolveSignalTraceSamples(selectedSignalKey, displayTrace, runtimeSim.trace)
+      .slice(-32)
+      .map((entry) => ({
       tick: entry.tick,
       value: entry.signals[selectedSignalKey] ?? 0,
     }));
     return history;
-  }, [runtimeSim.trace, selectedSignalKey]);
+  }, [displayTrace, runtimeSim.trace, selectedSignalKey]);
   const pinnedProbeRows = useMemo(
     () =>
       runtimeSim.probes.map((probe) => ({
         ...probe,
-        value: runtimeSim.signals[probe.key] ?? 0,
+        value: displayRuntimeSignals[probe.key] ?? 0,
       })),
-    [runtimeSim.probes, runtimeSim.signals]
+    [displayRuntimeSignals, runtimeSim.probes]
   );
   // B1: Eval order — computed from engine topology, refreshed when circuit changes
   const evalOrder = useMemo(() => {
@@ -2811,7 +3017,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   // B1: Changed nodes — node IDs whose output differed between the last 2 sim ticks
   const changedNodeIds = useMemo<Set<string> | null>(() => {
-    const trace = runtimeSim.trace;
+    const trace = displayTrace;
     if (trace.length < 2) return null;
     const prev = trace[trace.length - 2].signals;
     const curr = trace[trace.length - 1].signals;
@@ -2823,7 +3029,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
     }
     return changed.size > 0 ? changed : null;
-  }, [runtimeSim.trace]);
+  }, [displayTrace]);
 
   // B1: Per-selected-node stats (fanout, signal depth) — only when showEvalOrder is active
   const selectedNodeEvalStats = useMemo(() => {
@@ -2890,7 +3096,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     simRunning ||
     activeVerifySignal != null ||
     activeDebugContext != null ||
-    externalDebugTick != null;
+    effectiveExternalDebugTick != null;
   const selectedNodeIoRow = useMemo(() => {
     if (!selectedNode) return null;
     return ioRowByNodeId.get(selectedNode.id) ?? ioRowByNodeId.get(`${selectedNode.id}.out`) ?? null;
@@ -2917,12 +3123,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         return focusedIssueSignalKey;
       }
     }
-    const candidate = pickPrimaryNodeSignalKey(selectedNode, selectedNodePins, runtimeSim.signals, liveSignals);
+    const candidate = pickPrimaryNodeSignalKey(selectedNode, selectedNodePins, displayRuntimeSignals, liveSignals);
     return candidate;
-  }, [focusedIssueSignalKey, liveSignals, runtimeSim.signals, selectedNode, selectedNodePins]);
+  }, [displayRuntimeSignals, focusedIssueSignalKey, liveSignals, selectedNode, selectedNodePins]);
   const selectedNodeSignalSnapshot = useMemo(
-    () => describeSignalSnapshot(selectedNodePrimarySignalKey, runtimeSim.trace, runtimeSim.signals, liveSignals),
-    [selectedNodePrimarySignalKey, runtimeSim.trace, runtimeSim.signals, liveSignals]
+    () => describeSignalSnapshot(selectedNodePrimarySignalKey, displayTrace, displayRuntimeSignals, liveSignals, runtimeSim.trace),
+    [displayRuntimeSignals, displayTrace, liveSignals, runtimeSim.trace, selectedNodePrimarySignalKey]
   );
   const selectedNodeConnectionSummary = useMemo(() => {
     if (!selectedNode) return null;
@@ -2937,15 +3143,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         connectionSummary: selectedNodeConnectionSummary,
         circuit: editorCircuit,
         ioRowByNodeId,
-        trace: runtimeSim.trace,
-        runtimeSignals: runtimeSim.signals,
+        trace: displayTrace,
+        fallbackTrace: runtimeSim.trace,
+        runtimeSignals: displayRuntimeSignals,
         liveSignals,
       }),
     [
+      displayRuntimeSignals,
+      displayTrace,
       editorCircuit,
       ioRowByNodeId,
       liveSignals,
-      runtimeSim.signals,
       runtimeSim.trace,
       selectedNode,
       selectedNodeConnectionSummary,
@@ -2992,7 +3200,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const sourceNode = editorCircuit.nodes.find((node) => node.id === parsed.fromNodeId);
     const targetNode = editorCircuit.nodes.find((node) => node.id === parsed.toNodeId);
     const signalKey = `${parsed.fromNodeId}.${parsed.fromPort}`;
-    const snapshot = describeSignalSnapshot(signalKey, runtimeSim.trace, runtimeSim.signals, liveSignals);
+    const snapshot = describeSignalSnapshot(signalKey, displayTrace, displayRuntimeSignals, liveSignals, runtimeSim.trace);
     const branchCount = editorCircuit.connections.filter((connection) => {
       const from = resolveConnectionEndpoint(connection.from);
       return from.nodeId === parsed.fromNodeId && from.portName === parsed.fromPort;
@@ -3009,16 +3217,93 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       sourcePort: parsed.fromPort,
       targetPort: parsed.toPort,
     };
-  }, [editorCircuit.connections, editorCircuit.nodes, ioRowByNodeId, liveSignals, primarySelectedWireId, resolveConnectionEndpoint, runtimeSim.signals, runtimeSim.trace]);
+  }, [displayRuntimeSignals, displayTrace, editorCircuit.connections, editorCircuit.nodes, ioRowByNodeId, liveSignals, primarySelectedWireId, resolveConnectionEndpoint, runtimeSim.trace]);
   const activeInspectorSignalKey = selectedWireContext?.signalKey ?? selectedNodePrimarySignalKey ?? selectedSignalKey;
   const activeInspectorSignalLabel = useMemo(
     () => describeStudentSignalKey(activeInspectorSignalKey, editorCircuit, ioRowByNodeId),
     [activeInspectorSignalKey, editorCircuit, ioRowByNodeId]
   );
-  const activeInspectorSignalSnapshot = useMemo(
-    () => describeSignalSnapshot(activeInspectorSignalKey, runtimeSim.trace, runtimeSim.signals, liveSignals),
-    [activeInspectorSignalKey, runtimeSim.trace, runtimeSim.signals, liveSignals]
+  const activeInspectorSignalLandingTarget = useMemo(() => {
+    if (!activeInspectorSignalKey) return null;
+    const dotIndex = activeInspectorSignalKey.indexOf('.');
+    if (dotIndex === -1) return null;
+    const nodeId = activeInspectorSignalKey.slice(0, dotIndex);
+    const portName = activeInspectorSignalKey.slice(dotIndex + 1);
+    if (!nodeId || !portName) return null;
+    const node = editorCircuit.nodes.find((entry) => entry.id === nodeId);
+    if (!node) return null;
+    return {
+      signalKey: activeInspectorSignalKey,
+      nodeId,
+      portName,
+      nodeLabel: describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId)),
+      signalLabel: describeStudentSignalKey(activeInspectorSignalKey, editorCircuit, ioRowByNodeId),
+    };
+  }, [activeInspectorSignalKey, editorCircuit, ioRowByNodeId]);
+  const activeInspectorSignalFocusPresentation = useMemo(
+    () =>
+      describeSignalFocusPresentation({
+        focusLabel: activeDebugContext?.signal ?? activeVerifySignal,
+        signalKey: activeInspectorSignalKey,
+        circuit: editorCircuit,
+        ioRowByNodeId,
+      }),
+    [activeDebugContext?.signal, activeVerifySignal, activeInspectorSignalKey, editorCircuit, ioRowByNodeId]
   );
+  const activeInspectorSignalSnapshot = useMemo(
+    () => describeSignalSnapshot(activeInspectorSignalKey, displayTrace, displayRuntimeSignals, liveSignals, runtimeSim.trace),
+    [activeInspectorSignalKey, displayRuntimeSignals, displayTrace, liveSignals, runtimeSim.trace]
+  );
+  const selectedNodeReplayCausation = useMemo(() => {
+    if (!isReplayMode || !selectedNode) return null;
+    return describeReplayCausation({
+      snapshot: selectedNodeSignalSnapshot,
+      driverLabels: selectedNodeInputDrivers.map((entry) => entry.driverLabel),
+      inspectLabel: describeEndpointLabel(selectedNode.id, selectedNode, selectedNodeIoRow),
+    });
+  }, [isReplayMode, selectedNode, selectedNodeInputDrivers, selectedNodeIoRow, selectedNodeSignalSnapshot]);
+  const selectedWireReplayCausation = useMemo(() => {
+    if (!isReplayMode || !selectedWireContext) return null;
+    return describeReplayCausation({
+      snapshot: selectedWireContext.snapshot,
+      driverLabels: [selectedWireContext.sourceLabel],
+      inspectLabel: selectedWireContext.targetLabel,
+    });
+  }, [isReplayMode, selectedWireContext]);
+  const activeInspectorSignalDriverLabels = useMemo(
+    () =>
+      resolveDirectSignalDriverLabels(
+        activeInspectorSignalKey,
+        editorCircuit,
+        ioRowByNodeId,
+        resolveConnectionEndpoint
+      ),
+    [activeInspectorSignalKey, editorCircuit, ioRowByNodeId, resolveConnectionEndpoint]
+  );
+  const activeInspectorReplayCausation = useMemo(() => {
+    if (!isReplayMode || !activeInspectorSignalKey) return null;
+    return describeReplayCausation({
+      snapshot: activeInspectorSignalSnapshot,
+      driverLabels: activeInspectorSignalDriverLabels,
+      inspectLabel:
+        activeInspectorSignalLandingTarget?.nodeLabel ?? activeInspectorSignalFocusPresentation?.inspectLabel ?? null,
+    });
+  }, [
+    activeInspectorSignalDriverLabels,
+    activeInspectorSignalFocusPresentation?.inspectLabel,
+    activeInspectorSignalKey,
+    activeInspectorSignalLandingTarget?.nodeLabel,
+    activeInspectorSignalSnapshot,
+    isReplayMode,
+  ]);
+  const focusActiveInspectorSignalNode = useCallback(() => {
+    if (!activeInspectorSignalLandingTarget) return;
+    setToolMode('select');
+    selectMultipleNodes([activeInspectorSignalLandingTarget.nodeId], false);
+    setFocusedIssueSignalKey(activeInspectorSignalLandingTarget.signalKey);
+    onRuntimeSimSetSelectedSignal?.(activeInspectorSignalLandingTarget.signalKey);
+    focusNodeOnCanvas(activeInspectorSignalLandingTarget.nodeId);
+  }, [activeInspectorSignalLandingTarget, focusNodeOnCanvas, onRuntimeSimSetSelectedSignal, selectMultipleNodes, setToolMode]);
   const isActiveInspectorSignalPinned = useMemo(
     () => !!activeInspectorSignalKey && runtimeSim.probes.some((probe) => probe.key === activeInspectorSignalKey),
     [activeInspectorSignalKey, runtimeSim.probes]
@@ -3124,7 +3409,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     (hasInspectorSelectionContext ||
       activeVerifySignal != null ||
       activeDebugContext != null ||
-      externalDebugTick != null ||
+      effectiveExternalDebugTick != null ||
       simRunning ||
       diagnosticRouteRequest != null)
       ? 'visible'
@@ -3634,7 +3919,26 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       );
     }
     if (activeInspectorSignalKey) {
-      const nextStep = primarySelectionIssue?.hint ?? 'Pin this signal or step simulation to inspect how it changes.';
+      const signalFocusSubtitle =
+        activeDebugContext != null
+          ? activeInspectorSignalFocusPresentation?.focusLabel
+            ? `Debug focus ${activeInspectorSignalFocusPresentation.focusLabel}`
+            : 'Debug focus'
+          : activeVerifySignal != null
+            ? activeInspectorSignalFocusPresentation?.focusLabel
+              ? `Verify focus ${activeInspectorSignalFocusPresentation.focusLabel}`
+              : 'Verify focus'
+            : 'Signal focus';
+      const bridgeNextStep =
+        activeInspectorSignalLandingTarget && activeInspectorSignalFocusPresentation?.needsBridge
+          ? `${activeDebugContext != null ? 'Debug signal' : 'Verify signal'} ${activeInspectorSignalFocusPresentation.focusLabel} maps here as ${activeInspectorSignalFocusPresentation.signalLabel}. ${primarySelectionIssue?.hint ?? 'Inspect the highlighted path first.'}`
+          : null;
+      const nextStep =
+        bridgeNextStep ??
+        primarySelectionIssue?.hint ??
+        (activeInspectorSignalLandingTarget
+          ? `Start at ${activeInspectorSignalLandingTarget.signalLabel} and inspect the highlighted path first.`
+          : 'Pin this signal or step simulation to inspect how it changes.');
       return (
         <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
           <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
@@ -3645,7 +3949,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <strong data-testid="ide-design-inspector-identity-title">{activeInspectorSignalLabel}</strong>
                 </div>
                 <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
-                  Signal focus
+                  {signalFocusSubtitle}
                 </p>
               </div>
               <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
@@ -3976,6 +4280,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-group">
             <span className="ide-design-inspector-group-label">Signal actions</span>
             <div className="ide-design-inspector-action-grid">
+              {activeInspectorSignalLandingTarget ? (
+                <IdeButton tone="secondary" onClick={focusActiveInspectorSignalNode} testId="ide-design-inspector-focus-node">
+                  Inspect {activeInspectorSignalLandingTarget.nodeLabel}
+                </IdeButton>
+              ) : null}
               <IdeButton tone="secondary" onClick={pinActiveInspectorSignal} testId="ide-design-context-pin">
                 {isActiveInspectorSignalPinned ? 'Unpin signal' : 'Pin signal'}
               </IdeButton>
@@ -4073,6 +4382,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <span>Last transition</span>
                   <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? 'â€”'}</span>
                 </div>
+                {selectedNodeReplayCausation ? (
+                  <div className="ide-kv-row">
+                    <span>Why now</span>
+                    <span data-testid="ide-design-replay-causation">{selectedNodeReplayCausation}</span>
+                  </div>
+                ) : null}
                 <div className="ide-kv-row">
                   <span>Trace state</span>
                   <span data-testid="ide-design-context-trace-state">
@@ -4122,6 +4437,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <span>Last transition</span>
                 <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
               </div>
+              {selectedNodeReplayCausation ? (
+                <div className="ide-kv-row">
+                  <span>Why now</span>
+                  <span data-testid="ide-design-replay-causation">{selectedNodeReplayCausation}</span>
+                </div>
+              ) : null}
               <div className="ide-kv-row">
                 <span>Trace state</span>
                 <span data-testid="ide-design-context-trace-state">
@@ -4189,6 +4510,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <span>Last transition</span>
               <span data-testid="ide-design-context-last-transition">{selectedWireContext.snapshot?.lastTransitionTick ?? '—'}</span>
             </div>
+            {selectedWireReplayCausation ? (
+              <div className="ide-kv-row">
+                <span>Why now</span>
+                <span data-testid="ide-design-replay-causation">{selectedWireReplayCausation}</span>
+              </div>
+            ) : null}
             <div className="ide-kv-row">
               <span>Driver / Source</span>
               <span>{selectedWireContext.sourceLabel} · {describePortForStudents(selectedWireContext.sourcePort)}</span>
@@ -4231,6 +4558,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <span>Last transition</span>
               <span data-testid="ide-design-context-last-transition">{activeInspectorSignalSnapshot?.lastTransitionTick ?? '—'}</span>
             </div>
+            {activeInspectorReplayCausation ? (
+              <div className="ide-kv-row">
+                <span>Why now</span>
+                <span data-testid="ide-design-replay-causation">{activeInspectorReplayCausation}</span>
+              </div>
+            ) : null}
             <div className="ide-kv-row">
               <span>Samples</span>
               <span>{activeInspectorSignalSnapshot?.samples ?? selectedSignalHistory.length}</span>
@@ -4386,18 +4719,38 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     <>
       <div className="ide-inline-actions">
         {simRunning ? (
-          <IdeButton tone="secondary" onClick={pauseSimulation} testId="ide-design-sim-pause">
+          <IdeButton
+            tone="secondary"
+            onClick={pauseSimulation}
+            disabled={isReplayMode}
+            testId="ide-design-sim-pause"
+          >
             Pause
           </IdeButton>
         ) : (
-          <IdeButton tone="primary" onClick={startSimulation} testId="ide-design-sim-run">
+          <IdeButton
+            tone="primary"
+            onClick={startSimulation}
+            disabled={isReplayMode}
+            testId="ide-design-sim-run"
+          >
             Run
           </IdeButton>
         )}
-        <IdeButton tone="ghost" onClick={stepSimulation} testId="ide-design-sim-step">
-          Step{runtimeSim.stepMode ? ` t${simTick}` : ''}
+        <IdeButton
+          tone="ghost"
+          onClick={stepSimulation}
+          disabled={isReplayMode}
+          testId="ide-design-sim-step"
+        >
+          Step{runtimeSim.stepMode && !isReplayMode ? ` t${simTick}` : ''}
         </IdeButton>
-        <IdeButton tone="ghost" onClick={resetSimulation} testId="ide-design-sim-reset">
+        <IdeButton
+          tone="ghost"
+          onClick={resetSimulation}
+          disabled={isReplayMode}
+          testId="ide-design-sim-reset"
+        >
           Reset
         </IdeButton>
       </div>
@@ -4409,6 +4762,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           max={40}
           step={1}
           value={simSpeed}
+          disabled={isReplayMode}
           onChange={(event) => onRuntimeSimSetSpeed?.(Number(event.target.value))}
           data-testid="ide-design-sim-speed"
         />
@@ -4420,7 +4774,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         </div>
         <div className="ide-kv-row">
           <span>Mode</span>
-          <span>{simRunning ? 'Running' : 'Paused'}</span>
+          <span>{simModeLabel}</span>
         </div>
         <div className="ide-kv-row">
           <span>Last change</span>
@@ -4831,8 +5185,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   }
                   const liveValue: 0 | 1 =
                     (runtimeSim.inputs[ioRow.nodeId] ??
-                    runtimeSim.signals[ioRow.nodeId] ??
-                    runtimeSim.signals[`${ioRow.nodeId}.out`] ??
+                    displayRuntimeSignals[`${ioRow.nodeId}.${ioRow.port}`] ??
+                    displayRuntimeSignals[ioRow.nodeId] ??
+                    displayRuntimeSignals[`${ioRow.nodeId}.out`] ??
                     0) === 1 ? 1 : 0;
                   return (
                     <>
@@ -5051,19 +5406,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               testId="ide-design-command-strip"
               label="Design"
               title="Build the circuit"
-              description={designCommandDescription}
-              meta={(
-                <>
-                  <IdeStatusPill tone={designCommandTone}>{authoringStatusLabel.toUpperCase()}</IdeStatusPill>
-                  <span className="ide-surface-command-chip">{designViewLabel} workspace</span>
-                  <span className="ide-surface-command-chip">
-                    {totalAuthoringErrors} errors / {totalAuthoringWarnings} warnings
-                  </span>
-                  <span className={`ide-surface-command-chip${dirtySinceVerify ? '' : ' is-ok'}`}>
-                    {dirtySinceVerify ? 'Verify needs refresh' : 'Verify current'}
-                  </span>
-                </>
-              )}
+              meta={designCommandMeta}
               actions={(
                 <>
                   {onGoToVerify ? (
@@ -5347,7 +5690,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                                 Tick {simTick}
                               </span>
                               <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-split-stat-mode">
-                                {simRunning ? 'Running' : 'Paused'}
+                                {simModeLabel}
                               </span>
                               {activeVerifySignal ? (
                                 <span
@@ -5371,15 +5714,26 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 ) : null}
 
                 {showSimulationStrip ? (
-                  <div className="ide-design-sim-story-strip" data-testid="ide-design-sim-story-strip">
+                  <div
+                    className={`ide-design-sim-story-strip${canRenderReplayScrubber ? ' has-replay-scrubber' : ''}`}
+                    data-testid="ide-design-sim-story-strip"
+                  >
                     <div className="ide-design-sim-story-main">
                       <span className="ide-design-sim-story-label">Simulation</span>
                       <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-tick">
-                        Tick {simTick}
+                        {activeSimulationSelectionLabel}
                       </span>
                       <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-mode">
-                        {simRunning ? 'Running' : 'Paused'}
+                        {simModeLabel}
                       </span>
+                      {effectiveExternalDebugTick != null && activeReplayTimingHint ? (
+                        <span
+                          className="ide-design-sim-story-pill is-sample"
+                          data-testid="ide-design-sim-story-sample"
+                        >
+                          {activeReplayTimingHint}
+                        </span>
+                      ) : null}
                       {simulationStory.clockEvent ? (
                         <span
                           className={`ide-design-sim-story-pill is-clock is-${simulationStory.clockEvent}`}
@@ -5390,18 +5744,71 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       ) : null}
                       {activeVerifySignal ? (
                         <span className="ide-design-verify-link-badge" data-testid="ide-design-verify-link-badge">
-                          Verify focus {activeVerifySignal}
+                          Verify focus {activeVerifySignalPresentation?.focusLabel ?? activeVerifySignal}
                         </span>
                       ) : null}
                       {activeVerifySignal ? (
                         <span className="ide-design-sim-story-pill is-verify" data-testid="ide-design-verify-focus">
-                          Inspect {activeVerifySignal} first
+                          Inspect {activeVerifySignalPresentation?.inspectLabel ?? activeVerifySignal} first
                         </span>
                       ) : null}
                     </div>
                     <p className="ide-design-sim-story-summary" data-testid="ide-design-sim-story-summary">
                       {activeSimulationSummary}
                     </p>
+                    {canRenderReplayScrubber && (
+                      <div className="ide-design-replay-scrubber-shell">
+                        <div className="ide-design-replay-scrubber-meta">
+                          <span className="ide-design-replay-scrubber-label">Replay</span>
+                          <span
+                            className="ide-design-replay-scrubber-readout"
+                            data-testid="ide-design-replay-scrubber-readout"
+                          >
+                            {activeReplaySelectionLabel}
+                          </span>
+                        </div>
+                        <div className="ide-design-debug-nav" data-testid="ide-design-debug-nav">
+                          {onPrevDebugTick ? (
+                            <IdeButton
+                              tone="ghost"
+                              onClick={onPrevDebugTick}
+                              disabled={debugTickIndex === 0 || debugTickIndex == null}
+                              testId="ide-design-debug-prev"
+                            >
+                              ← Prev
+                            </IdeButton>
+                          ) : null}
+                          {canRenderReplayScrubber ? (
+                            <input
+                              type="range"
+                              min={0}
+                              max={Math.max(debugTickCount - 1, 0)}
+                              step={1}
+                              value={debugTickIndex}
+                              onChange={handleReplayScrubberChange}
+                              className="ide-design-replay-scrubber"
+                              data-testid="ide-design-replay-scrubber"
+                              aria-label="Replay scrubber"
+                            />
+                          ) : null}
+                          {debugTickIndex != null && debugTickCount != null && (
+                            <span className="ide-design-debug-tick-position" data-testid="ide-design-debug-tick-position">
+                              {activeReplaySelectionLabel}
+                            </span>
+                          )}
+                          {onNextDebugTick ? (
+                            <IdeButton
+                              tone="ghost"
+                              onClick={onNextDebugTick}
+                              disabled={debugTickIndex == null || debugTickCount == null || debugTickIndex >= debugTickCount - 1}
+                              testId="ide-design-debug-next"
+                            >
+                              Next →
+                            </IdeButton>
+                          ) : null}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : null}
               </div>
@@ -5651,8 +6058,38 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </div>
                       ) : null}
                     </div>
+                    {staleReplayBreadcrumb && (
+                      <div
+                        className="ide-design-debug-overlay-banner ide-design-debug-overlay-banner--stale"
+                        data-testid="ide-design-replay-stale-banner"
+                        data-blocks-canvas-placement="1"
+                        data-blocks-macro-placement="1"
+                        role="status"
+                      >
+                        <span aria-hidden="true">!</span>
+                        <strong>Replay stale — {staleReplaySelectionLabel}</strong>
+                        <span className="ide-design-debug-banner-hint">
+                          The circuit changed after this Verify sample. The canvas is back on the live design.
+                        </span>
+                        {staleReplayBreadcrumb.signal && (
+                          <span className="ide-design-debug-banner-hint">
+                            Last focus: <code>{staleReplayBreadcrumb.signal}</code>
+                          </span>
+                        )}
+                        {staleReplayBreadcrumb.timingHint && (
+                          <span className="ide-design-debug-banner-hint">{staleReplayBreadcrumb.timingHint}</span>
+                        )}
+                        <IdeButton
+                          tone="ghost"
+                          onClick={() => setStaleReplayBreadcrumb(null)}
+                          testId="ide-design-replay-stale-dismiss"
+                        >
+                          Dismiss
+                        </IdeButton>
+                      </div>
+                    )}
                     {/* C-7: Debug overlay banner — shown when externally frozen at a verify tick */}
-                    {externalDebugTick != null && (
+                    {effectiveExternalDebugTick != null && !canRenderReplayScrubber && (
                       <div
                         className="ide-design-debug-overlay-banner"
                         data-testid="ide-design-debug-banner"
@@ -5661,34 +6098,40 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         role="status"
                       >
                         <span aria-hidden="true">⏸</span>
-                        <strong>Debug mode — tick {externalDebugTick}</strong>
+                        <strong>Debug mode — {activeReplaySelectionLabel}</strong>
                         <span className="ide-design-debug-banner-hint">
-                          Canvas frozen at verification tick {externalDebugTick}.
+                          Canvas frozen at verification {activeReplaySelectionLabel}.
                         </span>
-                        {/* C-5b: Tick navigation controls */}
-                        {(onPrevDebugTick || onNextDebugTick) && (
+                        {activeReplayTimingHint && (
+                          <span className="ide-design-debug-banner-hint">{activeReplayTimingHint}</span>
+                        )}
+                        {!canRenderReplayScrubber && (onPrevDebugTick || onNextDebugTick) && (
                           <div className="ide-design-debug-nav" data-testid="ide-design-debug-nav">
-                            <IdeButton
-                              tone="ghost"
-                              onClick={onPrevDebugTick}
-                              disabled={debugTickIndex === 0 || debugTickIndex == null}
-                              testId="ide-design-debug-prev"
-                            >
-                              ← Prev
-                            </IdeButton>
+                            {onPrevDebugTick ? (
+                              <IdeButton
+                                tone="ghost"
+                                onClick={onPrevDebugTick}
+                                disabled={debugTickIndex === 0 || debugTickIndex == null}
+                                testId="ide-design-debug-prev"
+                              >
+                                ← Prev
+                              </IdeButton>
+                            ) : null}
                             {debugTickIndex != null && debugTickCount != null && (
-                              <span data-testid="ide-design-debug-tick-position">
-                                {debugTickIndex + 1} / {debugTickCount}
+                              <span className="ide-design-debug-tick-position" data-testid="ide-design-debug-tick-position">
+                                {debugTickIndex + 1} / {debugTickCount} · t{effectiveExternalDebugTick}
                               </span>
                             )}
-                            <IdeButton
-                              tone="ghost"
-                              onClick={onNextDebugTick}
-                              disabled={debugTickIndex == null || debugTickCount == null || debugTickIndex >= debugTickCount - 1}
-                              testId="ide-design-debug-next"
-                            >
-                              Next →
-                            </IdeButton>
+                            {onNextDebugTick ? (
+                              <IdeButton
+                                tone="ghost"
+                                onClick={onNextDebugTick}
+                                disabled={debugTickIndex == null || debugTickCount == null || debugTickIndex >= debugTickCount - 1}
+                                testId="ide-design-debug-next"
+                              >
+                                Next →
+                              </IdeButton>
+                            ) : null}
                           </div>
                         )}
                         {activeDebugContext && (
@@ -5743,9 +6186,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       isRunning={simRunning}
                       tickRate={simSpeed}
                       tickCount={simTick}
-                      debugSignals={externalDebugSignals ?? liveSignals}
-                      debugTick={externalDebugTick ?? simTick}
-                      isReplayMode={externalDebugTick != null ? true : undefined}
+                      debugSignals={effectiveExternalDebugSignals ?? liveSignals}
+                      debugTick={effectiveExternalDebugTick ?? simTick}
+                      isReplayMode={isReplayMode ? true : undefined}
                       nodeDiagnosticBadges={nodeDiagnosticBadges}
                       onNodeDiagnosticBadgeClick={handleNodeDiagnosticBadgeClick}
                       ioPresentationMap={ioPresentationMap}
@@ -6247,8 +6690,14 @@ function describeSimulationStory(
   inputRows: DesignLiveIoValueRow[],
   outputRows: DesignLiveIoValueRow[],
   trace: RuntimeSimState['trace'],
-  running: boolean
+  running: boolean,
+  timingGuidance?: TimingGuidance
 ): DesignSimulationStory {
+  const toTimingMatchKey = (value: string) =>
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
   const latest = trace[trace.length - 1];
   const previous = trace.length >= 2 ? trace[trace.length - 2] : null;
   const storySource = [...inputRows, ...outputRows];
@@ -6257,7 +6706,31 @@ function describeSimulationStory(
     : [];
   const changedInputs = changedRows.filter((row) => row.kind === 'input');
   const changedOutputs = changedRows.filter((row) => row.kind === 'output');
-  const clockRow = inputRows.find((row) => /clk|clock/i.test(row.label));
+  const exactClockSignalName = timingGuidance?.kind === 'clock'
+    ? normalizeIoSignalKey(timingGuidance.signalName ?? '')
+    : '';
+  const fuzzyClockSignalName = timingGuidance?.kind === 'clock'
+    ? toTimingMatchKey(timingGuidance.signalName ?? '')
+    : '';
+  const clockRow = fuzzyClockSignalName.length > 0
+    ? inputRows.find((row) => {
+        const entries = [row.label, row.id, ...row.matchKeys].filter((value) => value.trim().length > 0);
+        const exactKeys = entries
+          .map((value) => normalizeIoSignalKey(value))
+          .filter((value) => value.length > 0);
+        if (exactClockSignalName.length > 0 && exactKeys.includes(exactClockSignalName)) {
+          return true;
+        }
+        const fuzzyKeys = entries
+          .map((value) => toTimingMatchKey(value))
+          .filter((value) => value.length > 0);
+        return fuzzyKeys.includes(fuzzyClockSignalName);
+      })
+    : undefined;
+  const resolvedClockLabel = clockRow
+    ? clockRow.matchKeys.find((value) => toTimingMatchKey(value) === fuzzyClockSignalName)
+        ?? clockRow.label
+    : null;
   const previousClockValue = clockRow && previous ? previous.signals[clockRow.signalKey] ?? null : null;
   const clockEvent =
     clockRow && previousClockValue != null && previousClockValue !== clockRow.value
@@ -6270,7 +6743,7 @@ function describeSimulationStory(
     return {
       summary: 'No runtime samples yet. Run or step simulation to observe cause and effect.',
       clockEvent: null,
-      clockLabel: clockRow?.label ?? null,
+      clockLabel: resolvedClockLabel,
     };
   }
 
@@ -6281,7 +6754,7 @@ function describeSimulationStory(
         ? `${primaryOutput.label} held at ${primaryOutput.value} on tick ${latest.tick}.`
         : `Tick ${latest.tick} recorded with no mapped outputs yet.`,
       clockEvent,
-      clockLabel: clockRow?.label ?? null,
+      clockLabel: resolvedClockLabel,
     };
   }
 
@@ -6299,7 +6772,7 @@ function describeSimulationStory(
   return {
     summary: `${inputSummary}; ${outputSummary} at tick ${latest.tick}.`,
     clockEvent,
-    clockLabel: clockRow?.label ?? null,
+    clockLabel: resolvedClockLabel,
   };
 }
 
@@ -6311,6 +6784,30 @@ function formatVerifyDebugInputSnapshot(
     .join(', ');
 }
 
+function formatReplaySelectionLabel(
+  caseIndex: number | null,
+  caseCount: number | null,
+  tick: number | null | undefined
+): string {
+  if (tick == null) return 'replay sample';
+  if (caseIndex == null || caseIndex < 0) return `t${tick}`;
+  const caseNumber = caseIndex + 1;
+  if (caseCount != null && caseCount > 0) {
+    return `Case ${caseNumber} / ${caseCount} · t${tick}`;
+  }
+  return `Case ${caseNumber} · t${tick}`;
+}
+
+function formatReplayTimingHint(meta: RuntimeVerifyRun['meta'] | null | undefined): string | null {
+  if (!meta || meta.clockingProtocol !== 'clocked_macro') return null;
+  const samplePointLabel =
+    meta.samplePoint === 'post-rising-edge' ? 'Sampled post-rising-edge' : 'Sampled at the selected Verify tick';
+  if (meta.clockSignalName && meta.clockSignalName.trim().length > 0) {
+    return `${samplePointLabel} on ${meta.clockSignalName}.`;
+  }
+  return `${samplePointLabel}.`;
+}
+
 function describeVerifyDebugSummary(context: VerifyDebugContext): string {
   const base = `Verify expected ${context.signal}=${context.expected} but sampled ${context.actual} at tick ${context.tick}.`;
   if (context.patternSummary) {
@@ -6319,13 +6816,108 @@ function describeVerifyDebugSummary(context: VerifyDebugContext): string {
   return base;
 }
 
+function formatReplayCausationValue(value: 0 | 1 | null): string {
+  return value == null ? '?' : `${value}`;
+}
+
+function describeReplayChange(snapshot: DesignSignalSnapshot | null): string {
+  if (!snapshot) return 'Current sample unavailable';
+
+  const currentValue = formatReplayCausationValue(snapshot.currentValue);
+  const previousValue = formatReplayCausationValue(snapshot.previousValue);
+
+  if (snapshot.transition === 'rising') {
+    return `Rose ${previousValue} to ${currentValue} at t${snapshot.lastTransitionTick ?? '?'}`;
+  }
+  if (snapshot.transition === 'falling') {
+    return `Fell ${previousValue} to ${currentValue} at t${snapshot.lastTransitionTick ?? '?'}`;
+  }
+  if (
+    snapshot.previousValue != null &&
+    snapshot.currentValue != null &&
+    snapshot.previousValue === snapshot.currentValue
+  ) {
+    return `No change from previous case (still ${currentValue})`;
+  }
+  if (snapshot.lastTransitionTick != null) {
+    return `Holding ${currentValue} since t${snapshot.lastTransitionTick}`;
+  }
+  return `Holding ${currentValue}`;
+}
+
+function formatReplayDriverLabels(labels: readonly string[]): string | null {
+  const uniqueLabels = Array.from(
+    new Set(labels.map((label) => label.trim()).filter((label) => label.length > 0))
+  );
+  if (uniqueLabels.length === 0) return null;
+  if (uniqueLabels.length === 1) return uniqueLabels[0] ?? null;
+  if (uniqueLabels.length === 2) return `${uniqueLabels[0]} and ${uniqueLabels[1]}`;
+  return `${uniqueLabels[0]}, ${uniqueLabels[1]}, and ${uniqueLabels.length - 2} more`;
+}
+
+function describeReplayCausation(input: {
+  snapshot: DesignSignalSnapshot | null;
+  driverLabels: readonly string[];
+  inspectLabel?: string | null;
+}): string {
+  const parts = [describeReplayChange(input.snapshot)];
+  const driverLabel = formatReplayDriverLabels(input.driverLabels);
+  if (driverLabel) {
+    parts.push(`upstream path from ${driverLabel}`);
+  }
+  const inspectLabel = input.inspectLabel?.trim();
+  if (inspectLabel) {
+    parts.push(`inspect ${inspectLabel} first`);
+  }
+  return `${parts.join('; ')}.`;
+}
+
 function normalizeSignalLookup(value: string): string {
   return value.trim().toLowerCase().replace(/\[[^\]]+\]/g, '');
 }
 
+function resolveDirectSignalDriverLabels(
+  signalKey: string | null | undefined,
+  circuit: Circuit,
+  ioRowByNodeId: Map<string, DesignIoRow>,
+  resolveConnectionEndpoint: (
+    raw: Circuit['connections'][number]['from'] | Circuit['connections'][number]['to']
+  ) => { nodeId: string; portName: string }
+): string[] {
+  if (!signalKey) return [];
+  const dotIndex = signalKey.indexOf('.');
+  if (dotIndex === -1) return [];
+
+  const nodeId = signalKey.slice(0, dotIndex);
+  const portName = signalKey.slice(dotIndex + 1);
+  if (!nodeId || !portName) return [];
+
+  const driverLabels = circuit.connections
+    .filter((connection) => {
+      const to = resolveConnectionEndpoint(connection.to);
+      return to.nodeId === nodeId && to.portName === portName;
+    })
+    .map((connection) => {
+      const from = resolveConnectionEndpoint(connection.from);
+      const sourceNode = circuit.nodes.find((entry) => entry.id === from.nodeId);
+      return describeEndpointLabel(from.nodeId, sourceNode, ioRowByNodeId.get(from.nodeId));
+    });
+
+  if (driverLabels.length > 0) {
+    return Array.from(new Set(driverLabels));
+  }
+
+  if (portName === 'out') {
+    const node = circuit.nodes.find((entry) => entry.id === nodeId);
+    return [describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId))];
+  }
+
+  return [];
+}
+
 function resolveVerifyLinkedSignalKey(
   activeVerifySignal: string | null | undefined,
-  ioRows: Array<{ nodeId: string; label: string; port: string; direction: 'in' | 'out' }>,
+  ioRows: DesignIoRow[],
   liveSignals: Map<string, 0 | 1>,
   runtimeSignals: Record<string, 0 | 1>
 ): string | null {
@@ -6341,7 +6933,9 @@ function resolveVerifyLinkedSignalKey(
     if (normalizeSignalLookup(key) === normalized) return key;
   }
 
-  const matchedRow = ioRows.find((row) => normalizeSignalLookup(row.label) === normalized);
+  const matchedRow =
+    ioRows.find((row) => normalizeSignalLookup(row.id) === normalized) ??
+    ioRows.find((row) => normalizeSignalLookup(row.label) === normalized);
   if (matchedRow) {
     const preferredKey = `${matchedRow.nodeId}.${matchedRow.port}`;
     if (availableSignalKeys.has(preferredKey)) return preferredKey;
@@ -6425,13 +7019,12 @@ function describeSignalSnapshot(
   signalKey: string | null,
   trace: RuntimeSimState['trace'],
   runtimeSignals: Record<string, 0 | 1>,
-  liveSignals: Map<string, 0 | 1>
+  liveSignals: Map<string, 0 | 1>,
+  fallbackTrace?: RuntimeSimState['trace']
 ): DesignSignalSnapshot | null {
   if (!signalKey) return null;
 
-  const matchingSamples = trace.filter((entry) =>
-    Object.prototype.hasOwnProperty.call(entry.signals, signalKey)
-  );
+  const matchingSamples = resolveSignalTraceSamples(signalKey, trace, fallbackTrace);
   const latestTraceValue =
     matchingSamples.length > 0
       ? matchingSamples[matchingSamples.length - 1]?.signals[signalKey] ?? null
@@ -6466,6 +7059,41 @@ function describeSignalSnapshot(
     samples: matchingSamples.length,
     lastTransitionTick,
   };
+}
+
+function normalizeReplayWaveformTrace(
+  waveform: Pick<RuntimeVerifyRun, 'waveform'>['waveform']
+): RuntimeSimState['trace'] {
+  return [...waveform]
+    .map((sample) => ({
+      tick: sample.tick,
+      signals: Object.fromEntries(
+        Object.entries(sample.signals ?? {}).map(([signalKey, value]) => [
+          signalKey,
+          value === '1' ? 1 : 0,
+        ])
+      ) as Record<string, 0 | 1>,
+    }))
+    .sort((left, right) => left.tick - right.tick);
+}
+
+function resolveSignalTraceSamples(
+  signalKey: string | null,
+  trace: RuntimeSimState['trace'],
+  fallbackTrace?: RuntimeSimState['trace']
+): RuntimeSimState['trace'] {
+  if (!signalKey) return [];
+
+  const preferredSamples = trace.filter((entry) =>
+    Object.prototype.hasOwnProperty.call(entry.signals, signalKey)
+  );
+  if (preferredSamples.length > 0 || !fallbackTrace) {
+    return preferredSamples;
+  }
+
+  return fallbackTrace.filter((entry) =>
+    Object.prototype.hasOwnProperty.call(entry.signals, signalKey)
+  );
 }
 
 function describeNodeConnectionSummary(
@@ -6596,14 +7224,15 @@ function buildSequentialInspectorContext(input: {
   circuit: Circuit;
   ioRowByNodeId: Map<string, DesignIoRow>;
   trace: RuntimeSimState['trace'];
+  fallbackTrace?: RuntimeSimState['trace'];
   runtimeSignals: Record<string, 0 | 1>;
   liveSignals: Map<string, 0 | 1>;
 }): DesignSequentialInspectorContext | null {
-  const { node, nodeSignals, ioRow, connectionSummary, circuit, ioRowByNodeId, trace, runtimeSignals, liveSignals } = input;
+  const { node, nodeSignals, ioRow, connectionSummary, circuit, ioRowByNodeId, trace, fallbackTrace, runtimeSignals, liveSignals } = input;
   if (!node) return null;
 
   if (node.type === 'Clock') {
-    const outputSnapshot = describeSignalSnapshot(`${node.id}.out`, trace, runtimeSignals, liveSignals);
+    const outputSnapshot = describeSignalSnapshot(`${node.id}.out`, trace, runtimeSignals, liveSignals, fallbackTrace);
     const boardSummary = ioRow ? `${ioRow.label} -> ${ioRow.pin || 'unmapped'}` : 'No board timing source mapped yet';
     const fanout = connectionSummary?.fanOut ?? 0;
     return {
@@ -6641,7 +7270,7 @@ function buildSequentialInspectorContext(input: {
 
   const controlSource = resolveNodeInputSource(node.id, controlPort, circuit, ioRowByNodeId);
   const controlSignalKey = controlSource?.signalKey ?? `${node.id}.${controlPort}`;
-  const controlSnapshot = describeSignalSnapshot(controlSignalKey, trace, runtimeSignals, liveSignals);
+  const controlSnapshot = describeSignalSnapshot(controlSignalKey, trace, runtimeSignals, liveSignals, fallbackTrace);
   const commonControl = {
     controlSourceLabel: controlSource?.label ?? `No ${describePortForStudents(controlPort).toLowerCase()} source wired`,
     controlActivity: describeSequentialActivity(controlSnapshot),
@@ -6827,6 +7456,48 @@ function describeStudentSignalKey(
   const nodeLabel = describeNodeForStudents(node, ioRowByNodeId?.get(nodeId));
   if (!portName || portName === 'out') return nodeLabel;
   return `${nodeLabel} · ${describePortForStudents(portName)}`;
+}
+
+function describeSignalFocusPresentation(input: {
+  focusLabel: string | null | undefined;
+  signalKey: string | null | undefined;
+  circuit: Circuit;
+  ioRowByNodeId: Map<string, DesignIoRow>;
+}): {
+  focusLabel: string;
+  inspectLabel: string;
+  signalLabel: string;
+  needsBridge: boolean;
+} | null {
+  const { focusLabel, signalKey, circuit, ioRowByNodeId } = input;
+  const rawFocusLabel = focusLabel?.trim();
+  if (!rawFocusLabel) return null;
+
+  const normalizedFocusLabel = normalizeSignalLookup(rawFocusLabel);
+  let inspectLabel = rawFocusLabel;
+  if (signalKey) {
+    const dotIndex = signalKey.indexOf('.');
+    if (dotIndex !== -1) {
+      const nodeId = signalKey.slice(0, dotIndex);
+      const node = circuit.nodes.find((entry) => entry.id === nodeId);
+      const endpointLabel = describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId));
+      if (endpointLabel && normalizeSignalLookup(endpointLabel) !== normalizedFocusLabel) {
+        inspectLabel = endpointLabel;
+      }
+    }
+  }
+
+  const signalLabel = describeStudentSignalKey(signalKey ?? rawFocusLabel, circuit, ioRowByNodeId);
+  const needsBridge =
+    normalizeSignalLookup(signalLabel) !== normalizedFocusLabel &&
+    normalizeSignalLookup(inspectLabel) !== normalizedFocusLabel;
+
+  return {
+    focusLabel: rawFocusLabel,
+    inspectLabel,
+    signalLabel,
+    needsBridge,
+  };
 }
 
 function predictNextNodeIds(circuit: Circuit, count: number): string[] {

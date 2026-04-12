@@ -700,65 +700,12 @@
   padding-bottom: 0;
 }
 
-/* Console bar: focus toggle + console toggle side-by-side */
+/* Console bar helpers */
 .ide-workbench-console-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--ide-space-1);
-}
-
-.ide-workbench-focus-toggle {
-  position: absolute;
-  bottom: calc(var(--ide-space-1) + 6px);
-  left: calc(var(--ide-gutter) + 2px);
-  z-index: 10;
-  border: 1px solid rgba(88, 131, 166, 0.45);
-  border-radius: var(--ide-radius-s);
-  background: rgba(9, 18, 29, 0.92);
-  color: var(--ide-text-soft);
-  font-size: var(--rb-font-size-1);
-  padding: 2px 8px;
-  cursor: pointer;
-  transition: color var(--rb-motion-fast), border-color var(--rb-motion-fast);
-  white-space: nowrap;
-}
-
-.ide-workbench-focus-toggle:hover {
-  color: var(--ide-text-muted);
-  border-color: rgba(142, 199, 255, 0.55);
-  background: rgba(14, 26, 40, 0.96);
-}
-
-.is-focus-mode .ide-workbench-focus-toggle {
-  color: var(--rb-accent);
-  border-color: rgba(46, 196, 182, 0.55);
-}
-
-/* Focus Mode: collapse docks, dividers, console — maximize workspace */
-.ide-workbench-shell.is-focus-mode .ide-workbench-dock,
-.ide-workbench-shell.is-focus-mode .ide-workbench-divider-vertical {
-  display: none;
-}
-
-.ide-workbench-shell.is-focus-mode .ide-workbench-main {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.ide-workbench-shell.is-focus-mode .ide-workbench-console {
-  min-height: 0 !important;
-  max-height: 0;
-  overflow: hidden;
-  border: none;
-  padding: 0;
-}
-
-.ide-workbench-shell.is-focus-mode .ide-workbench-divider-horizontal {
-  display: none;
-}
-
-.ide-workbench-shell.is-focus-mode {
-  grid-template-rows: minmax(0, 1fr);
 }
 
 .ide-workbench-shell.is-console-hidden {
@@ -5036,11 +4983,63 @@ details[open] summary .details-arrow {
   background: rgba(46, 196, 182, 0.1);
 }
 
+.ide-design-sim-story-pill.is-sample {
+  border-color: rgba(125, 211, 252, 0.28);
+  color: rgba(226, 245, 255, 0.92);
+  background: rgba(14, 28, 44, 0.9);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
 .ide-design-sim-story-summary {
   margin: 0;
   color: rgba(224, 238, 255, 0.9);
   font-size: 14px;
   line-height: 1.5;
+}
+
+.ide-design-replay-scrubber-shell {
+  display: grid;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(88, 131, 166, 0.18);
+}
+
+.ide-design-replay-scrubber-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ide-design-replay-scrubber-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(125, 211, 252, 0.76);
+}
+
+.ide-design-replay-scrubber-readout,
+.ide-design-debug-tick-position {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(226, 245, 255, 0.94);
+}
+
+.ide-design-debug-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ide-design-replay-scrubber {
+  flex: 1 1 240px;
+  width: min(100%, 360px);
+  accent-color: #38bdf8;
 }
 
 .ide-design-verify-link-badge {
@@ -14819,11 +14818,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   grid-template-columns: minmax(212px, 228px) minmax(0, 1fr);
 }
 
-.ide-workbench-shell[data-layout-mode='compact'].is-focus-mode .ide-workbench-main {
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
-}
-
 .ide-workbench-shell[data-layout-mode='compact'] .ide-panel-header {
   padding: 10px 12px 8px;
 }
@@ -14838,10 +14832,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 .ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-dock {
   padding: 8px 8px 12px;
-}
-
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-focus-toggle {
-  left: 10px;
 }
 
 [data-layout-mode='compact'] .ide-surface-actions,
@@ -23277,6 +23267,27 @@ button:disabled,
   border-radius: 0 !important;
 }
 
+[data-ide-mode-marker='design'] .ide-design-sim-story-strip.has-replay-scrubber {
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 8px 12px !important;
+  font-size: inherit !important;
+  color: inherit !important;
+  background:
+    linear-gradient(135deg, rgba(7, 20, 34, 0.94), rgba(5, 12, 22, 0.9)) !important;
+  border: 1px solid rgba(56, 189, 248, 0.16) !important;
+  border-radius: 12px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-sim-story-strip.has-replay-scrubber .ide-design-sim-story-main {
+  gap: 6px 8px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-sim-story-strip.has-replay-scrubber .ide-design-sim-story-summary {
+  font-size: 12px !important;
+  color: rgba(224, 238, 255, 0.9) !important;
+}
+
 /* When there ARE errors/warnings, let authoring issues expand naturally */
 [data-ide-mode-marker='design'] .ide-design-authoring-issues:not(.is-clean) {
   max-height: none !important;
@@ -26210,6 +26221,44 @@ button:disabled,
     radial-gradient(circle at top left, rgba(59, 130, 246, 0.1), transparent 55%);
 }
 
+[data-ide-mode-marker='design'] .ide-design-command-strip,
+[data-ide-mode-marker='verify'] .ide-verify-command-strip {
+  gap: 12px 16px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  box-shadow:
+    0 12px 24px rgba(2, 8, 16, 0.22),
+    inset 0 1px 0 rgba(214, 232, 255, 0.04);
+}
+
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-main,
+[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-main {
+  gap: 6px;
+}
+
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-title,
+[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-title {
+  font-size: 18px;
+}
+
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-description,
+[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-description {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-meta,
+[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-meta {
+  gap: 6px 8px;
+}
+
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-chip,
+[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-chip {
+  min-height: 24px;
+  padding: 3px 8px;
+  font-size: 10px;
+}
+
 [data-ide-mode-marker='design'] .ide-surface-command-stack > .ide-design-control-bar {
   margin-top: 0;
   border: 1px solid rgba(46, 77, 106, 0.3);
@@ -26284,4 +26333,362 @@ button:disabled,
   [data-ide-mode-marker='project'] .ide-project-flightdeck {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BROAD REDESIGN 2026-04-12
+   Parts 2–5: Design + Verify surface compaction, replay prominence,
+   inspector clarity, shared language cleanup.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. DESIGN — SurfaceCommandStrip → compact authority bar ── */
+
+[data-ide-mode-marker='design'] .ide-design-command-strip {
+  padding: 7px 14px !important;
+  border-radius: 10px !important;
+  gap: 0 14px !important;
+  align-items: center !important;
+  box-shadow: none !important;
+  border-color: rgba(38, 65, 90, 0.35) !important;
+  background: rgba(8, 16, 28, 0.9) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-main {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex-wrap: nowrap !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-label {
+  font-size: 10px !important;
+  color: rgba(100, 140, 180, 0.55) !important;
+  flex-shrink: 0 !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-title {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  color: rgba(224, 238, 255, 0.88) !important;
+  flex-shrink: 0 !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-description {
+  display: none !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-meta {
+  gap: 4px 6px !important;
+  flex-wrap: nowrap !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-chip {
+  min-height: 20px !important;
+  padding: 2px 7px !important;
+  font-size: 10px !important;
+  letter-spacing: 0 !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-actions {
+  gap: 6px !important;
+  flex-wrap: nowrap !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-status-pill {
+  font-size: 10px !important;
+  padding: 2px 7px !important;
+  min-height: 18px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-surface-command-stack {
+  gap: 6px !important;
+  margin-bottom: 6px !important;
+}
+
+/* ── 2. DESIGN — Replay scrubber as first-class transport control ── */
+
+[data-ide-mode-marker='design'] .ide-design-sim-story-strip.has-replay-scrubber {
+  border: 1px solid rgba(46, 196, 182, 0.42) !important;
+  border-radius: 10px !important;
+  background: linear-gradient(135deg, rgba(7, 20, 36, 0.98), rgba(4, 12, 22, 0.96)) !important;
+  padding: 10px 14px 12px !important;
+  gap: 10px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-sim-story-strip.has-replay-scrubber .ide-design-sim-story-label {
+  color: var(--rb-accent) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  font-size: 10px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-sim-story-strip.has-replay-scrubber .ide-design-sim-story-pill {
+  border-radius: 6px !important;
+  background: rgba(46, 196, 182, 0.1) !important;
+  border: 1px solid rgba(46, 196, 182, 0.22) !important;
+  color: rgba(180, 245, 230, 0.9) !important;
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-replay-scrubber-shell {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-replay-scrubber-meta {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-replay-scrubber-label {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  color: var(--rb-accent) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-replay-scrubber-readout {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  font-family: var(--rb-font-mono) !important;
+  color: rgba(180, 240, 225, 0.92) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-debug-nav {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-replay-scrubber {
+  flex: 1 !important;
+  height: 6px !important;
+  cursor: pointer !important;
+  accent-color: var(--rb-accent) !important;
+  border-radius: 3px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-debug-tick-position {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  font-family: var(--rb-font-mono) !important;
+  color: rgba(150, 230, 210, 0.88) !important;
+  min-width: 72px !important;
+  text-align: right !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-debug-nav .ide-button {
+  font-size: 12px !important;
+  padding: 4px 10px !important;
+  min-height: 28px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-sim-story-strip:not(.has-replay-scrubber) {
+  max-height: 18px !important;
+  overflow: hidden !important;
+  padding: 2px 14px !important;
+  font-size: 9px !important;
+  color: rgba(100, 140, 180, 0.32) !important;
+  background: transparent !important;
+  border-top: 1px solid rgba(35, 55, 75, 0.2) !important;
+  border-radius: 0 !important;
+}
+
+/* ── 3. VERIFY — SurfaceCommandStrip → compact bar ── */
+
+[data-ide-mode-marker='verify'] .ide-verify-command-strip {
+  padding: 7px 14px !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  border-color: rgba(38, 65, 90, 0.35) !important;
+  background: rgba(8, 14, 26, 0.9) !important;
+  gap: 0 14px !important;
+  align-items: center !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-description {
+  display: none !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-title {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  color: rgba(224, 238, 255, 0.88) !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-main {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-surface-command-stack {
+  gap: 4px !important;
+  margin-bottom: 0 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-region--header .ide-surface-command-stack {
+  gap: 0 !important;
+  margin: 0 !important;
+}
+
+/* ── 4. VERIFY — VerifyCommandBar: cleaner right group ── */
+
+.ide-vcb-group--status {
+  gap: 7px !important;
+}
+
+.ide-vcb-design-bridge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-left: 8px;
+  border-left: 1px solid rgba(48, 77, 107, 0.4);
+  margin-left: 3px;
+}
+
+.ide-vcb-design-tick-chip {
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  font-family: var(--rb-font-mono) !important;
+  background: rgba(46, 196, 182, 0.14) !important;
+  border: 1px solid rgba(46, 196, 182, 0.3) !important;
+  color: rgba(170, 245, 228, 0.9) !important;
+}
+
+.ide-vcb-status {
+  font-size: 10px !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+}
+
+.ide-vcb-mode-toggle {
+  border-radius: 7px !important;
+}
+
+.ide-vcb-mode-btn {
+  padding: 5px 14px !important;
+  font-size: 12px !important;
+}
+
+.ide-vcb-mode-btn:not(.is-active) {
+  font-size: 12px !important;
+  padding: 5px 11px !important;
+  opacity: 0.45 !important;
+}
+
+/* ── 5. VERIFY — Testbench zone header: instrument-panel label ── */
+
+.ide-verify-testbench-zone-header {
+  padding: 5px 12px !important;
+  gap: 8px !important;
+  min-height: 28px !important;
+  border-bottom: 1px solid rgba(24, 44, 70, 0.5) !important;
+  background: rgba(3, 7, 15, 0.88) !important;
+}
+
+.ide-verify-testbench-zone-header .ide-verify-empty-label {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  color: rgba(56, 189, 248, 0.65) !important;
+  flex-shrink: 0 !important;
+}
+
+.ide-verify-testbench-zone-header .ide-verify-empty-hint {
+  font-size: 11px !important;
+  color: rgba(148, 163, 184, 0.7) !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  min-width: 0 !important;
+}
+
+.ide-verify-testbench-vector-count {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  flex-shrink: 0 !important;
+}
+
+/* ── 6. RIGHT INSPECTOR — Better typography and spacing ── */
+
+.ide-design-inspector-id-header {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  color: rgba(224, 238, 255, 0.94) !important;
+  padding: 10px 14px 6px !important;
+}
+
+.ide-design-inspector-actions,
+.ide-inline-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  padding: 6px 0 4px !important;
+}
+
+.ide-design-swap-chip {
+  font-size: 11px !important;
+  padding: 4px 10px !important;
+  min-height: 26px !important;
+}
+
+/* ── 7. SHARED — Compact status pills across surfaces ── */
+
+.ide-status-pill {
+  font-size: 10px !important;
+  padding: 2px 8px !important;
+  min-height: 18px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+}
+
+/* Verify status strip: single-line compact bar */
+.ide-verify-region--header .ide-verify-status-strip {
+  min-height: 22px !important;
+  max-height: 26px !important;
+  padding: 1px 12px !important;
+  gap: 8px !important;
+  font-size: 10px !important;
+  overflow: hidden !important;
+}
+
+.ide-verify-region--header .ide-verify-session-status,
+.ide-verify-region--header .ide-verify-session-mode,
+.ide-verify-region--header .ide-verify-session-title,
+.ide-verify-region--header .ide-verify-reference-mode {
+  display: none !important;
+}
+
+/* ── 8. DESIGN — Toolbar: tighter ── */
+
+[data-ide-mode-marker='design'] .ide-design-toolbar {
+  min-height: 36px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-tool-segment {
+  font-size: 12px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-toolbar-group {
+  gap: 5px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-button,
+[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-button {
+  min-height: 30px !important;
+  padding: 4px 12px !important;
+  font-size: 12px !important;
 }
