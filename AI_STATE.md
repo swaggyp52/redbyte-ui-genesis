@@ -1,5 +1,591 @@
 # AI State
 
+## Change Log 2026-04-12 (Broad UI Redesign — compact command bars, prominent replay, inspector clarity)
+
+**Subsystem**: Design surface / Verify surface / shared CSS
+
+**Commit**: e0788ac1
+
+### What changed
+
+**Design surface (`DesignSurface.tsx` + CSS)**
+- `SurfaceCommandStrip` → compact authority bar: description hidden via CSS, label + title + meta chips rendered in one horizontal row (padding 7px 14px)
+- `designCommandMeta` simplified: removed always-present "Canvas workspace" chip; error/warning chip shown only when count > 0
+- Replay scrubber: `has-replay-scrubber` shell styled as teal-bordered transport card (6px track height, `accent-color: var(--rb-accent)`)
+- Non-replay story strip collapsed to 18px ghost line (transparent background, 9px font)
+- Design toolbar: 36px min-height; tool segments 12px; buttons 30px
+
+**Verify surface (CSS)**
+- `SurfaceCommandStrip` → compact bar (matches Design weight); description hidden
+- Status strip (session-status/session-mode/reference-mode) hidden — `VerifyCommandBar` is the sole authority
+- `VerifyCommandBar`: status chip 10px uppercase; mode buttons 12px; design bridge gets border-left separator
+- Testbench zone header: 28px min-height; hint text ellipsis-truncated
+
+**`VerifyCommandBar.tsx`**
+- "Save observed as checks" → "Save as checks" (shorter, same testid)
+
+**Shared CSS**
+- `.ide-status-pill`: 10px/700/18px across all surfaces
+- `.ide-design-inspector-id-header`: 13px/600, tighter padding
+- Swap chips: 11px, 26px min-height
+
+### Validation
+- `verifySurface.desktopComposition` + `designSurface.workstation` + `verifyCommandBar.tickChip`: 42/42 GREEN
+- Full `verifySurface/*` suite: 140/145 (5 pre-existing: 2 failure-context, 3 three-panel)
+- Browser: Design compact bar confirmed, Verify compact bar + dominant waveform confirmed
+
+---
+
+## Change Log 2026-04-12 (Phase-2 Slice 17 — Project overview gate realigned to import utility contract)
+
+**Subsystem**: Project home contract / repo verification
+
+### Problem
+
+The Phase-2 Slice 16 verification pass exposed contract drift inside repo verification itself.
+
+- `scripts/gates/ide-project-overview-contract.mjs` still required a peer Project-home `Import Project` landing card
+- the current authoritative product direction in this repo already demoted Import to a secondary utility action on Project Home
+- `03 Architecture/Project Surface.md` also still described Import as a peer starting point, which contradicted the locked `AI_STATE.md` history from 2026-04-10
+
+That meant `pnpm repo:status` could fail even when ProjectSurface correctly matched the current UX contract.
+
+### What changed
+
+- `scripts/gates/ide-project-overview-contract.mjs`
+  - changed the landing-state assertion to require the secondary import utility link (`ide-project-quickstart-import-link`)
+  - added a negative assertion proving Project Home does not render `ide-project-landing-import` as a peer start card
+- `03 Architecture/Project Surface.md`
+  - aligned the Project Home contract language with the current product rule: Import stays available as a secondary utility action, not a peer landing card
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - kept the temporary verification-only import-card restoration out of the final product state
+
+### Validation
+
+- focused Project suites:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`
+- targeted gate:
+  - `pnpm -s ide:gate:project-overview-contract 2>&1`
+
+### Release impact
+
+- repo verification now checks the real Project Home contract instead of a stale pre-demotion expectation
+- the import utility-path rule is once again aligned across runtime, gate coverage, and canonical architecture notes
+
+## Change Log 2026-04-12 (Phase-2 Slice 16 — Project surface ASCII CTA cleanup + hierarchy proof)
+
+**Subsystem**: Project workflow front door / loaded-project continuity
+
+### Problem
+
+The first Design / Verify hierarchy polish pass fixed the main replay and header issues, but the rebuilt browser still showed ProjectSurface copy corruption in live student-facing actions.
+
+- the loaded Project blocker CTA still rendered mojibake after `Build Submission Package`
+- the mapping disclosure still rendered a corrupted suffix/arrow next to `Open Mapping`
+- Project Home / starter-swap CTAs in the same file still carried corrupted punctuation in landing cards, lab-gallery buttons, and secondary `Load & Design` actions
+
+That meant the Project front door still looked less trustworthy than the newly cleaned Design and Verify surfaces, even though the workflow logic underneath it was already correct.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+  - normalized the remaining browser-facing mojibake strings to plain ASCII across:
+    - empty-state `Open existing project...`
+    - landing `Load & Design ->` and `Open blank Design ->` CTAs
+    - lab-gallery `Start ->` CTA and title-prefix cleanup
+    - loaded-project blocker action suffixes
+    - mapping disclosure arrow/toggle affordance
+    - fallback verify-summary copy and small Project comments/details labels that still carried corrupted punctuation
+- `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`
+  - added regressions proving:
+    - Project Home landing / recovery CTAs render plain ASCII copy
+    - blocker and mapping actions do not contain mojibake suffixes
+    - the loaded Project command-strip status copy stays ASCII-clean
+
+### Validation
+
+- focused Project continuity regression:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`
+  - result: PASS (`1` file, `12` tests)
+- adjacent Project regression bundle:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`
+  - result: PASS (`2` files, `21` tests)
+- built preview:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- built-preview browser validation (`http://127.0.0.1:4173/os/?app=lab-workspace&labId=freeplay`):
+  - loaded `2-Bit Up Counter` in Project mode
+  - hero blocker CTA rendered `Build Submission Package ->`
+  - mapping toggle rendered clean `Open Mapping` with ASCII `v`
+  - starter disclosure rendered clean `Load & Design ->` CTAs in the loaded-project showcase
+  - DOM text scan on the built page found no `Ã` mojibake markers
+
+### Release impact
+
+- Project now matches the post-polish Design / Verify surfaces in browser-visible copy quality; secondary CTAs no longer undermine trust with encoding corruption
+- Project Home and loaded Project both keep the same plain-ASCII CTA language in the built preview, so browser proof and test proof now align
+- the Project hierarchy pass stays narrow and reversible: copy cleanup only, with no new workflow chrome or routing changes
+
+## Change Log 2026-04-12 (Phase-2 Slice 15 — Verify clock truth + Design replay scrubber)
+
+**Subsystem**: Verify / Design shared sequential replay flow
+
+### Problem
+
+One real sequential contradiction still survived in the built app even after the clock-authority and replay-authority slices.
+
+- Verify could still warn `No clock activity detected in your vectors` even when the effective next run already included valid clock activity through mixed project + custom vectors
+- that warning path also drifted on normalized clock ids, so presentation differences like `Phase Driver` vs `phase_driver` could still misfire the pre-run warning
+- Design still relied on banner-level prev/next replay controls instead of exposing one obvious case-index scrubber in the simulation strip itself
+
+That meant the sequential browser path was technically closer to truth, but still contradicted itself in two student-visible places: a false Verify warning and a replay control that felt secondary instead of central.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - added `effectiveNextRunVectors` so the missing-clock warning reads the same next-run vector authority Verify actually uses (`authoredVectors + customVectors`)
+  - changed `nextRunNeedsClockActivity` to match normalized input ids against normalized authoritative clock names instead of raw string equality
+  - aligned the pre-run `signalInventory` vector source with that same effective next-run authority
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - added focused regressions for mixed project + custom clock activity and normalized clock-id matching
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - added direct parent-owned replay index selection through `applyDebugTickIndex(...)` and `handleSelectDebugTickIndex(...)`
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - added a replay scrubber in the simulation strip with case-index range, current case/tick readout, and shared parent-owned selection callback
+  - kept legacy banner prev/next fallback only for replay paths that do not provide direct scrubber selection
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - promoted the replay strip styling so the scrubber reads as one clear central replay control area instead of a weak banner accessory
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx`
+  - added regressions proving the scrubber renders in replay mode and routes changes through the parent-owned callback
+
+### Validation
+
+- adjacent focused replay / Verify suites:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.observeFirst.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.placementMode.test.tsx packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.test.tsx`
+  - result: PASS (`7` files, `121` tests)
+- unified build:
+  - `pnpm build`
+  - result: PASS
+- built-preview browser validation (`http://127.0.0.1:4174/os/`):
+  - loaded `2-Bit Up Counter`
+  - Verify showed the sequential helper panel without the old false `No clock activity detected in your vectors` warning
+  - clicking `Alternating clock` increased the testbench from `7` to `11` vectors and preserved authoritative parity (`t7=1`, `t8=0`, `t9=1`, `t10=0`)
+  - after `Run stimulus`, selecting `Case 10 (t9)` and using `Open in Design` opened Design with `Case 10 / 11 · t9`, `Replay`, `Sampled post-rising-edge on CLK.`, and a visible simulation-strip replay scrubber
+  - clicking replay `Prev` moved the real replay state to `Case 9 / 11 · t8`
+  - opening the library and placing `AND Gate` demoted the surface to `Replay stale — Case 9 / 11 · t8`, returned the strip to live `Tick 0` / `Paused`, and re-enabled `Run` / `Step` / `Reset`
+
+### Release impact
+
+- Verify pre-run guidance now tells the truth about clock readiness for the actual next run instead of undercounting mixed vector sources
+- sequential clock activity matching is resilient to normalized/id-based naming differences in the real browser path
+- Design replay now presents one central, parent-owned case scrubber in the simulation strip while preserving the old banner-only fallback where direct scrubber selection is unavailable
+- the real Verify -> Design loop now reads as one coherent sequential story: truthful clock authoring, obvious replay control, and honest stale demotion after mutation
+
+## Change Log 2026-04-12 (Phase-2 Slice 14 — Design replay strip clarity + shell consistency cleanup)
+
+**Subsystem**: Design replay UX / shared workbench shell
+
+### Problem
+
+Real browser proof on the built preview showed that the Verify -> Design replay loop was already technically correct, but one student-facing contradiction remained.
+
+- the Design simulation strip still showed generic `Tick N` plus `Replay`
+- the case-aware replay meaning (`Case 10 / 11 · t9`) and the sampling contract (`Sampled post-rising-edge on CLK.`) only appeared in the debug banner
+- the shared shell still carried a global `Focus` / `Done` toggle that behaved like generic chrome rather than a clear workflow tool
+
+That meant later-case Design replay was trustworthy but not yet maximally legible, and one weak shell control still diluted the cross-app surface hierarchy.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - the simulation strip now reuses the existing replay selection label during replay, so it shows authored case plus real sampled tick (`Case N / M · tX`) instead of falling back to raw `Tick X`
+  - the simulation strip now also carries the persistent replay sampling hint (`Sampled post-rising-edge on CLK.`) so students do not need the debug banner alone to understand the frozen sample
+- `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+  - removed the global `focusMode` state
+  - removed focus-mode localStorage persistence and shell marker attributes
+  - removed the shared `Focus` / `Done` toggle from the workbench shell
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - removed the dead focus-mode shell/toggle styling
+  - added replay timing-pill styling for the simulation strip
+- tests
+  - extended `designSurface.debugNav.test.tsx` to prove the strip itself shows case-aware replay labeling plus the replay timing hint
+  - extended `ideWorkbenchShell.test.tsx` to prove the shared shell no longer renders a global Focus toggle or focus-mode marker
+
+### Validation
+
+- RED -> GREEN focused replay-strip / shell regressions:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx`
+  - result: PASS (`2` files, `31` tests)
+- adjacent Design replay / shell regression suites:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.placementMode.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx`
+  - result: PASS (`5` files, `75` tests)
+- unified build:
+  - `pnpm build`
+  - result: PASS
+- browser validation on built preview (`http://127.0.0.1:4173/os/`):
+  - loaded the real `2-Bit Up Counter` project
+  - ran stimulus, selected `Case 10 (t9)`, and used `Open in Design`
+  - Design simulation strip showed `Case 10 / 11 · t9`, `Replay`, and `Sampled post-rising-edge on CLK.` directly in the strip
+  - opening the library and placing `AND Gate` during replay demoted the surface to `Replay stale — Case 10 / 11 · t9`, returned the simulation strip to live `Tick 0` / `Paused`, and re-enabled `Run` / `Step` / `Reset`
+  - no `Focus` / `Done` shell button remained anywhere in the live Design UI
+
+### Release impact
+
+- later-case replay meaning is now visible in the primary Design simulation strip instead of being split between strip and banner
+- the replay contract remains honest after mutation: stale breadcrumb context persists, but live Design state immediately retakes authority
+- one weak cross-app shell control is gone, so the workstation depends less on generic chrome and more on surface-specific cues
+
+## Change Log 2026-04-12 (Phase-2 Slice 13 — clock authority + cross-app Design consistency)
+
+**Subsystem**: Verify / Design shared sequential clock model
+
+### Problem
+
+The replay-authority slices unified sampled-state ownership, but sequential clock semantics were still drifting across helper and narration layers.
+
+- the low-level `VerifyScheduleContract` already knew the authoritative clock identity and sampling semantics, but `VerifySurface` still mixed sources for pre-run inventory, helper naming, and helper insertion
+- `bringupArtifacts.ts` still had its own alternating-clock parity path, so starter sequential vectors could drift from the Verify helper buttons
+- `DesignSurface` still inferred live clock identity with `/clk|clock/i` label matching, so non-regex names could narrate the wrong clock or no clock at all
+
+That meant the same selected case/tick could still be interpreted under one authoritative clock in Verify while helper generation or Design narration used a different local rule.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/clockAuthority.ts`
+  - added shared clock-authority helpers:
+    - `resolveActiveScheduleContract(...)`
+    - `getClockHelperValueForTick(...)`
+    - `buildClockHelperVectors(...)`
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - now accepts `liveScheduleContract`
+  - resolves one active schedule contract from live vs. last-run evidence
+  - uses that active contract for pre-run inventory, helper button naming, helper vector insertion, placeholder clock naming, and timing guidance
+- `packages/rb-apps/src/apps/ide/bringupArtifacts.ts`
+  - sequential starter generation now reuses the shared helper parity policy instead of local `tick % 2` math
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - now accepts `timingGuidance`
+  - carries canonical IO match keys through live simulation rows
+  - resolves the live clock pill from contract-backed timing guidance instead of regex-only label inference
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - now passes `liveScheduleContract` into Verify and `liveTimingGuidance` into Design
+- tests
+  - added `clockAuthority.test.ts` for active-contract resolution, empty-hash fallback, and absolute helper parity
+  - extended `verifySurface.workstation.test.tsx` to prove helper insertion uses the authoritative clock name plus shared parity
+  - extended `designSurface.workstation.test.tsx` to prove Design narrates the authoritative clock even when the label is non-regex (`Phase Driver`)
+
+### Validation
+
+- RED -> GREEN focused clock regressions:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/clockAuthority.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+  - result: PASS (`3` files, `65` tests)
+- adjacent regression suites:
+  - `pnpm -w exec vitest run packages/rb-apps/src/__tests__/ide-bringup-contract.test.ts packages/rb-apps/src/apps/ide/__tests__/bringupArtifacts.canonical-naming.test.ts packages/rb-apps/src/apps/ide/__tests__/signal-inventory-contract.test.ts packages/rb-apps/src/__tests__/scenario-sequential-trust-gate.test.ts`
+  - result: PASS (`4` files, `76` tests)
+- unified build:
+  - `pnpm build`
+  - result: PASS
+- browser validation on built preview (`http://127.0.0.1:4173/os/`):
+  - loaded `2-Bit Up Counter`
+  - opened Verify and clicked `Alternating clock`
+  - vector count increased from `7` to `11`
+  - appended sequential cases showed authoritative absolute parity:
+    - `Case 8 (t7)` -> `CLK = 1`
+    - `Case 9 (t8)` -> `CLK = 0`
+    - `Case 10 (t9)` -> `CLK = 1`
+    - `Case 11 (t10)` -> `CLK = 0`
+
+### Release impact
+
+- one canonical sequential clock model now spans Verify authoring, helper/default vector generation, bring-up defaults, and Design live narration
+- Verify-authored/live schedule contract is authoritative everywhere else; Design no longer invents clock identity from presentation labels
+- helper/default clock behavior is explicit and deterministic: absolute tick parity starting low at `t0`, with canonical rising edge `0 -> 1`
+- selected case/tick now means the same sampled sequential state in Verify and Design
+
+## Change Log 2026-04-11 (Phase-2 Slice 12 — runtime-backed replay trust hardening + replay causation cue)
+
+**Subsystem**: Verify / Design shared replay model
+
+### Problem
+
+The stale-replay slice established the right contract, but fresh browser validation still exposed three concrete gaps.
+
+- runtime-backed Design mutations such as palette placement still left replay authoritative because some mutation paths bypassed `emitCircuitMutation()`
+- the visible Stimulus case strip still had one remaining `tick + 1` header path, so sparse authored cases mislabeled themselves in the live UI
+- Design still showed current/previous/transition rows without one compact explanation of what changed, which upstream source drove it, and where to inspect next
+
+That meant replay was still not fully falsifiable in real use, sparse case language still drifted in one visible place, and the student still had to infer causality from raw timing rows.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - added `commitRuntimeMutation(...)` and routed runtime-backed placement/starter mutations through it so replay invalidation runs after a successful mutation
+  - `handleUndo(...)` and `handleRedo(...)` now also call `emitCircuitMutation()`, so history actions cannot leave replay falsely authoritative
+  - added replay-only causation helpers plus a `Why now` row in `Signal / State` for selected nodes, selected wires, and Verify-linked signal focus
+- `packages/rb-apps/src/apps/ide/components/StimulusCanvas.tsx`
+  - added `describeCaseTitle(...)` and changed visible case-strip headers to authored-order numbering instead of raw `tick + 1`
+- tests
+  - `designSurface.placementMode.test.tsx` now proves runtime-backed palette placement during replay demotes replay to stale
+  - `designSurface.workstation.test.tsx` now proves the replay causation cue appears for Verify-linked signal focus
+  - `StimulusCanvas.test.tsx` now proves sparse case-strip headers align with authored order
+  - `designSurface.duplicate.test.tsx` now proves undo during replay demotes replay to stale
+
+### Validation
+
+- RED -> GREEN focused replay/case regressions:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.placementMode.test.tsx packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+  - result: PASS (`4` files, `51` tests)
+- changed-file diagnostics:
+  - `DesignSurface.tsx`, `StimulusCanvas.tsx`, and the touched tests: no new IDE errors
+- browser validation on fresh dev server (`http://127.0.0.1:4181/os/?app=lab-workspace&labId=freeplay`):
+  - Verify sparse strip showed `Case 1`, `Case 2`, `Case 3`, `Case 4`, `Case 5`
+  - opening Design from `Case 4 (t5)` showed replay copy plus `Why now: Rose 0 to 1 at t5; upstream path from Q0; inspect LD0 first.`
+  - placing `AND Gate` on the canvas demoted replay to `Replay stale — Case 4 / 5 · t5`, returned the canvas to live state, and re-enabled live controls
+- package build check:
+  - not rerun in this continuation; last package-build state remains the unrelated pre-existing blockers recorded in Slice 11
+
+### Release impact
+
+- runtime-backed Design edits and history actions can no longer leave stale Verify evidence masquerading as live authority
+- sparse sequential cases now read consistently across the Verify strip, selected-case readouts, and Design replay copy
+- Design now answers a first causal question directly during replay without adding a new panel: what changed, which upstream source drove it, and where to inspect next
+
+## Change Log 2026-04-11 (Phase-2 Slice 11 — stale replay invalidation + case-index replay semantics)
+
+**Subsystem**: Verify / Design shared replay model
+
+### Problem
+
+The replay-authority slice made Design a real Verify-backed replay surface, but two trust gaps still remained.
+
+- Design could stay frozen on an old Verify sample even after the student changed the circuit topology underneath it
+- Verify still navigated sparse waveform runs through raw tick numbers instead of authored case positions
+- Stimulus case labels still assumed `Case = tick + 1`, which became visibly wrong for sparse sequential runs like `t1`, `t3`, `t5`
+- Design's replay banner still narrated the selected moment mostly as a raw tick instead of a Verify-authored case plus timing contract
+
+That meant the replay loop was stronger, but still not honest enough when the circuit changed and still not legible enough when authored case order diverged from raw tick values.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - circuit mutations during active replay now immediately clear external replay authority and replace it with a local stale breadcrumb banner
+  - stale replay keeps the last sampled case/tick context, signal breadcrumb, and sequential timing hint, but the canvas returns to live Design state instead of staying frozen on stale evidence
+  - replay banner copy now uses case-aware labels (`Case N / M · tX`) and carries Verify timing semantics for clocked runs (`Sampled post-rising-edge on <clock>`) when available
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - the waveform scrubber now uses authored case indices as its range model (`0..N-1`) while still mapping each position back to the real waveform tick
+  - selected-tick readouts now show both authored case and actual tick (`Case N · tX`) instead of raw `tX` only
+- `packages/rb-apps/src/apps/ide/components/StimulusCanvas.tsx`
+  - case labels now derive from ordered authored tick position instead of assuming `tick + 1`, so sparse sequential cases stay aligned with Verify navigation and selection chips
+- tests
+  - `designSurface.debugNav.test.tsx` now covers case-aware replay copy and sequential timing hints
+  - `designSurface.duplicate.test.tsx` now proves a real Design mutation makes replay stale and re-enables live controls
+  - `verifySurface.workstation.test.tsx` now proves sparse sequential scrubber semantics and authored-order case labels
+
+### Validation
+
+- RED -> GREEN focused replay/case regressions:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - result: PASS (`3` files, `62` tests)
+- changed-file diagnostics:
+  - `DesignSurface.tsx`, `StimulusCanvas.tsx`, and the touched tests: no new IDE errors
+  - `VerifySurface.tsx`: unrelated pre-existing workspace diagnostics still present
+- package build check:
+  - `pnpm --filter @redbyte/rb-apps build`
+  - result: FAIL in unrelated pre-existing `rb-apps` areas outside this slice (`hardwareStatusSelectors`, `runRecordUtils`, `stimulus`, `hardwareClient`, `fileSystemStore`, and related modules)
+
+### Release impact
+
+- replay evidence is now explicitly revocable: once the student edits the circuit, stale Verify evidence remains as breadcrumb context only and stops controlling the Design surface
+- sparse sequential runs now read in authored case order across scrubber, selected tick readout, and Stimulus case chips, while still preserving the real tick value for timing truth
+- the Verify -> Design replay loop is now more trustworthy and more teachable: students see both which authored case they are on and which real sampled tick that case corresponds to
+
+## Change Log 2026-04-11 (Phase-2 Slice 10 — Design replay authority + scrubber state propagation from Verify)
+
+**Subsystem**: Verify / Design shared replay model
+
+### Problem
+
+The earlier shared tick and signal slices made Verify -> Design handoff *addressable*, but Design still treated replay as a partial overlay instead of the current simulation truth.
+
+- the canvas and debug banner already knew the selected Verify tick
+- but the Design simulation strip, summary copy, live state table, board-signal values, and inspector snapshots still read from `runtimeSim`
+- this produced a visible contradiction where Design could say `Debug mode — tick 3` while still narrating or rendering stale live-runtime state from some other tick
+
+That meant the new Design scrubber was not yet a real replay surface. It changed the debug tick label, but it did not reliably propagate the Verify-authored sampled state through the whole Design workstation.
+
+### What changed
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - now passes the active `verifyLastRun` into `DesignSurface` as `replaySession`, so Design has waveform history and run metadata from the same Verify session that authored the debug handoff
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - added a replay-aware display layer that derives current Design presentation from the selected Verify replay tick before falling back to live runtime state
+  - moved the Design simulation strip, summary copy, live state table, signal snapshot cards, sequential inspector context, and board-signal readouts onto that replay-aware display layer
+  - kept the explicit Verify-selected signal snapshot as the highest-priority current-value source, with waveform history used as replay history/context
+  - made replay mode read-only by disabling Run / Step / Reset / Speed while a Verify replay tick is active, so the background runtime cannot drift away from the frozen sampled state
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx`
+  - added RED -> GREEN regression coverage for:
+    - replay tick + replay mode in the Design simulation strip
+    - replay summary copy derived from Verify waveform history
+    - replay output values in the live Design state table
+    - replay-mode lockout of live simulation controls
+
+### Validation
+
+- RED -> GREEN replay regression:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx --reporter=verbose`
+  - result before fix: FAIL (`Tick 2` / runtime summary / stale live output value)
+  - result after replay-authority + control-lockout fix: PASS (`16` tests)
+- adjacent Design suites:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.sequentialInspector.test.tsx --reporter=verbose`
+  - result: PASS (`31` tests)
+- app build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- changed-file diagnostics:
+  - `DesignSurface.tsx`, `IdeApp.tsx`, and `designSurface.debugNav.test.tsx`
+  - result: no IDE errors
+- browser validation on fresh dev server (`http://127.0.0.1:4173/`):
+  - loaded `2-Bit Up Counter`
+  - opened Verify, ran stimulus, selected `t3`, and used `Open in Design`
+  - Design showed `Tick 3`, `Replay`, `Debug mode — tick 3`, and outputs `LD0=0`, `LD1=1`
+  - using the Design replay scrubber moved back to `Tick 2`, updated summary/state to `LD0=1`, `LD1=0`, and kept Run / Step / Reset / Speed disabled during replay
+
+### Release impact
+
+- Design now behaves like a real structural replay view of the Verify-authored testbench instead of a live simulator with a debug banner layered on top
+- the Design scrubber now changes visible sampled circuit state, not just tick copy
+- students can inspect one shared simulation moment across Verify and Design without hidden runtime drift underneath the replay UI
+
+## Change Log 2026-04-11 (Phase-2 Slice 9 — alias ↔ board-label presentation unification across Verify -> Design)
+
+**Subsystem**: Verify / Design shared signal context
+
+### Problem
+
+After the canonical alias-resolution slice, the real Verify -> Design handoff was technically correct but still pedagogically split.
+
+- Verify carried the canonical waveform alias `q1`
+- Design already resolved that alias to the real signal key `q1_out.in`
+- the Design inspector already landed on the correct structural target `LD1 · Input`
+- but the student still had to infer that:
+  - `q1`
+  - `q1_out.in`
+  - `LD1 · Input`
+  were three representations of the same signal handoff
+
+The visible contradiction was strongest in the Design simulation strip and inspector:
+
+- strip provenance showed `Verify focus q1`
+- strip guidance still said `Inspect q1 first`
+- inspector title showed `LD1 · Input`
+- inspector subtitle only said `Verify focus`
+- generic next-step copy did not explain how the names related
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - added a small presentation helper so Design can carry three related views of the same signal handoff without changing ownership:
+    - canonical Verify provenance label (`q1`)
+    - compact structural landing label (`LD1`)
+    - student-facing signal identity (`LD1 · Input`)
+  - kept Verify provenance explicit in the strip badge: `Verify focus q1`
+  - changed the strip guidance to the resolved Design landing target: `Inspect LD1 first`
+  - upgraded the signal-only inspector subtitle from generic provenance to explicit provenance: `Verify focus q1`
+  - upgraded the signal-only inspector next-step copy so alias/board-label mismatches are taught directly: `Verify signal q1 maps here as LD1 · Input...`
+  - preserved the existing structural landing, trace-state wiring, and debug-tick handoff behavior
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+  - strengthened the existing canonical alias regression to assert the full presentation contract across strip + inspector
+  - added an extra regression proving IO row ids win over conflicting IO row labels during alias resolution
+
+### Validation
+
+- RED -> GREEN regression:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx -t "resolves canonical verify aliases through io row ids for signal-first Design focus" --reporter=verbose`
+  - result before presentation fix: FAIL (`Inspect q1 first`, generic next-step copy)
+  - result after fix: PASS
+- focused Design / Verify suites:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.observeFirst.test.tsx --reporter=verbose`
+  - result: PASS (`39` tests)
+- build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- browser validation on fresh preview (`http://127.0.0.1:4178/os/`):
+  - loaded `2-Bit Up Counter`
+  - opened Verify, ran stimulus, selected waveform signal `q1`, selected `Case 4 (t3)`, then used `Open in Design`
+  - Design now shows:
+    - `Build the circuit while keeping Verify focus on q1.`
+    - `Verify focus q1`
+    - `Inspect LD1 first`
+    - `Debug mode — tick 3`
+    - inspector title `LD1 · Input`
+    - inspector subtitle `Verify focus q1`
+    - inspector next step `Verify signal q1 maps here as LD1 · Input. Inspect the highlighted path first.`
+
+### Release impact
+
+- canonical Verify aliases now remain the student-visible provenance label while Design simultaneously teaches the board-facing landing target
+- students no longer have to infer that `q1`, `q1_out.in`, and `LD1 · Input` refer to the same handoff target
+- the Verify -> Design loop now reads like one coherent debugging story instead of three disconnected naming systems
+
+## Change Log 2026-04-11 (Phase-2 Slice 8 — Design resolves canonical Verify aliases into signal-first inspector landing)
+
+**Subsystem**: Verify / Design shared signal context
+
+### Problem
+
+After the shared selected-signal slice, the visible Verify -> Design handoff was still incomplete for canonical waveform aliases.
+
+- Verify correctly carried the selected signal label `q1`
+- Design already showed `Verify focus q1`, `Inspect q1 first`, and the frozen debug tick banner
+- but the right inspector still fell back to `Nothing selected` for the real `2-Bit Up Counter` browser flow
+
+Root cause: `VerifySurface` publishes canonical waveform aliases through IO row ids (for example `q1`), while `DesignSurface.resolveVerifyLinkedSignalKey(...)` only matched student-facing IO labels like `LD1` or already-qualified runtime signal keys like `q1_out.in`.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - changed `resolveVerifyLinkedSignalKey(...)` to treat IO row `id` values as first-class lookup aliases before falling back to IO labels
+  - canonical Verify aliases like `q1` now resolve to the correct Design signal key (`q1_out.in`) during live handoff
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+  - added a regression test covering the real browser-shaped path:
+    - `activeVerifySignal = 'q1'`
+    - IO row `{ id: 'q1', nodeId: 'q1_out', label: 'LD1', port: 'in' }`
+    - Design resolves to `q1_out.in`
+    - the signal-focused inspector lands on `LD1 · Input`
+    - the `Inspect LD1` action still targets the structural node
+
+### Validation
+
+- RED -> GREEN regression:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx -t "resolves canonical verify aliases through io row ids for signal-first Design focus" --reporter=verbose`
+  - result before fix: FAIL (`onRuntimeSimSetSelectedSignal` never called)
+  - result after fix: PASS
+- focused Design suites:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx --reporter=verbose`
+  - result: PASS (`26` tests)
+- build:
+  - `pnpm --filter @redbyte/playground build`
+  - result: PASS
+- browser validation on fresh preview (`http://127.0.0.1:4177/os/?app=lab-workspace&labId=freeplay`):
+  - loaded `2-Bit Up Counter`
+  - opened Verify, ran stimulus, selected `Case 4 (t3)`, selected waveform signal `q1`, then used `Open in Design`
+  - Design now shows:
+    - `Build the circuit while keeping Verify focus on q1.`
+    - `Verify focus q1`
+    - `Inspect q1 first`
+    - `Debug mode — tick 3`
+    - right inspector landing on `LD1 · Input` with subtitle `Verify focus`
+  - the previous idle `Nothing selected` inspector state no longer appears for this handoff path
+
+### Release impact
+
+- canonical Verify waveform aliases now survive the full Verify -> Design handoff as real Design inspection targets, not just strip-level copy
+- Design's signal-first landing is now consistent for both board labels (`LD1`) and canonical Verify aliases (`q1`)
+- the student handoff loop now answers all four intended questions in one place:
+  - came from Verify
+  - looking at tick 3
+  - `q1` is the signal to inspect
+  - `LD1 · Input` is the structural place to start
+
 ## Change Log 2026-04-11 (Phase-2 Slice 7 — shared selected-signal authority + explicit Design inspect target)
 
 **Subsystem**: Verify / Design shared signal context

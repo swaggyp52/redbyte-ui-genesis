@@ -2,9 +2,12 @@
 type: architecture
 status: active
 area: design
-updated: 2026-04-07
+updated: 2026-04-12
 related:
   - "[[RedByte Engineering Brain]]"
+  - "[[Verify Engine]]"
+  - "[[ADR-005 Verify Schedule Contract Owns Sequential Clock Authority]]"
+  - "[[BUG-014 Design Replay Missed Runtime-Backed Mutations]]"
   - "[[Workspace Routing]]"
   - "[[Note Schema]]"
 ---
@@ -81,7 +84,20 @@ For the idle inspector / simulation contract, the Design surface must:
   - `Go to Map Pins` for unmapped timing sources
 - keep the existing generic identity/property/state path for non-sequential nodes
 
+For the Verify replay / inspection contract, the Design surface must:
+
+- treat the selected Verify replay sample as the current display authority while replay is active
+- revoke replay authority immediately on any real circuit mutation, including runtime-backed palette placement, starter insertion, undo, and redo
+- preserve stale replay only as breadcrumb context (case/tick, linked Verify signal, timing hint) once the circuit changes; live Design state retakes display authority immediately
+- repeat the replay sample meaning in the simulation strip itself during replay: authored case/tick plus the sampling hint must stay visible there, not only in the debug banner
+- render direct replay case selection in that same simulation strip when the parent provides case-index control; banner-only prev/next is fallback behavior for replay paths that do not provide direct scrubber selection
+- resolve sequential clock narration from contract-backed timing guidance plus canonical IO match keys when that guidance exists; live Design copy must not guess the authoritative clock from `/clk|clock/i` label heuristics
+- keep replay explanation inside the existing `Signal / State` section with one compact `Why now` row when replay evidence exists for the selected node, selected wire, or Verify-linked signal
+- summarize replay causation using previous/current sampled values, direct upstream driver labels when available, and the next inspect target when one exists
+
 The top stack must not reintroduce a separate title/header band above the working toolbar. Zoom telemetry may satisfy test and gate contracts, but it belongs in the quieter overlay indicator instead of the louder authoring row. In split layouts that do not render the dedicated simulation strip, tick/mode context must remain visible in the compact status row.
+
+The `SurfaceCommandStrip` in Design is now a compact authority bar, not a card. Description text is hidden; label + title + meta chips render in one horizontal row at 7px 14px padding. The replay scrubber renders as a first-class teal-bordered transport card (6px track height, accent-color) when replay is active; when no replay is active the sim story strip collapses to an 18px ghost line.
 
 ## Rules
 
@@ -104,6 +120,12 @@ The top stack must not reintroduce a separate title/header band above the workin
 - The Design inspector must not expose developer internals to students: no raw IR diagnostic codes (e.g. `IR006`), no "Compiler diagnostics" section label, no pipeline-layer staleness rows ("Dirty since verify", "Dirty since export") in the default or advanced views.
 - Multi-node selection must not show a "Single-object state only" dead-end callout; return nothing and let the multi-select arrange actions speak for themselves.
 - Signal Probe in Design must not render per-tick waveform/history buttons; those are a Verify-surface idiom and do not belong in the authoring inspector.
+- Replay evidence is authoritative only until the circuit mutates; stale replay must never continue driving Design state after a real edit.
+- Replay strip copy must remain case-aware during replay; do not regress to a generic `Tick N` strip that forces students to infer case/timing meaning from the debug banner alone.
+- Direct replay scrubbing belongs in the simulation strip when parent-owned case selection exists; do not split that primary control into a separate replay panel or hide it in the banner.
+- Design must not invent a second sequential clock identity from regex or presentation labels when Verify timing guidance is available.
+- Replay explanation must stay compact and student-facing: one `Why now` row in `Signal / State`, not a separate replay-only panel or raw internal-key dump.
+- Generic shell maximize/focus chrome should not return without a concrete Design workflow contract; replay clarity belongs in the existing strip, banner, and inspector surfaces.
 - When a node is selected and the simulation is running, the inspector must show a **Driver Context panel** with the name and current HIGH/LOW value of each node driving the selected node's input ports. The panel is hidden when no simulation values exist (`liveSignals.size === 0`). Test IDs: `ide-design-input-drivers`, `ide-design-driver-row-{port}`.
 - When an INPUT or Switch node is selected and `onRuntimeSimSetInput` is wired, the inspector must show an **Input Control group** with a toggle button reflecting the current HIGH/LOW state. Clicking it calls `onRuntimeSimSetInput` with the flipped value. Test IDs: `ide-design-inspector-input-control`, `ide-design-inspector-input-toggle`. The control does not render when the prop is absent.
 - When the simulation is running and a node is selected with no existing trace, the surface must automatically trigger a fanout trace highlight. The auto-trace must not override a manually-set trace (guard: `!traceStateRef.current`). The trace clears automatically when selection is lost. Auto-trace must NOT fire when the simulation is not running.
@@ -152,6 +174,7 @@ The global handler currently owns: G (grid toggle), Ctrl+C/V/D/A/X, Shift+F (fit
 - The current contract covers first-look and continued-editing hierarchy. It does not yet define the full long-term relationship between bottom console demotion and shared workflow chrome across dense sequential circuits.
 - Future Design interaction work should extend this note instead of reintroducing header-level chrome ad hoc.
 - One more simple grouped tidy action remains the next expansion point now that box-select capture, duplicate, delete, nudge, edge alignment, and horizontal distribution are all in the trusted path.
+- The replay `Why now` cue currently stops at direct-driver labels plus the next inspect target. If deeper multi-stage causal tracing becomes necessary, it should extend this same row/section contract instead of adding a new replay panel.
 - Wire reconnect discoverability — RESOLVED (Phase B Slice 6, 2026-04-06). `hoveredWireId` moved to `useLogicViewStore`; `hoveredWireOverlay` memo in LogicCanvas drives discoverable endpoint hint circles on wire hover without requiring prior selection.
 - Wire reconnect visual feedback — RESOLVED (Phase B Slice 7, 2026-04-07). `rewiredWireId` added to `useLogicViewStore` (same pattern as `hoveredWireId`). `isBeingRewired` prop on `WireView` dims the wire group (opacity 0.35) and adds a blue dashed overlay while reconnect is in progress. `circuitForValidation` derived memo excludes the being-replaced wire from `isValidConnection` checks, fixing false duplicate-rejection when reconnecting to the original port. `beginWireReconnect` sets `rewiredWireId`; the cleanup effect and successful commit both clear it.
 - Inspector developer-internals leakage — RESOLVED (Phase B Slice 8, 2026-04-07). Five categories of verify/pipeline internals removed from the student-facing inspector: raw IR diagnostic codes, "Compiler diagnostics" section label, "Dirty since verify/export" KV rows, `disableCollapse` pin on Live Simulation (now shows "Hide"), "Single-object state only" dead-end callout on multi-select, and per-tick waveform history buttons in Signal Probe.
