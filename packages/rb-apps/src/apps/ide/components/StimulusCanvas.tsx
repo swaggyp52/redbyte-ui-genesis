@@ -605,8 +605,6 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
             {(ticks.length > 0 ? ticks : [0]).map((tick) => <option key={tick} value={tick}>{describeCase(tick)}</option>)}
           </select>
           <button type="button" className="ide-stimulus-mini-btn ide-stimulus-mini-btn--primary" onClick={() => commitVectors((vectors) => appendTick(vectors, inputFields))} data-testid="ide-stimulus-add-tick">Add case</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => { commitVectors((vectors) => duplicateTick(vectors, inputFields, activeSelectedTick)); selectTick(activeSelectedTick + 1); }} data-testid="ide-stimulus-duplicate-tick">Duplicate case</button>
-          <button type="button" className="ide-stimulus-mini-btn" onClick={() => commitVectors((vectors) => removeTick(vectors, activeSelectedTick))} disabled={ticks.length === 0} data-testid="ide-stimulus-delete-selected-tick">Delete case</button>
         </div>
         {outputFields.length > 0 ? (
           <div className="ide-stimulus-toolbar-group ide-stimulus-toolbar-group--checks" data-testid="ide-stimulus-checks-controls">

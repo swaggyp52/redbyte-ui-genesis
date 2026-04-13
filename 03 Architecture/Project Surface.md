@@ -6,6 +6,10 @@ updated: 2026-04-13
 related:
   - "[[RedByte Engineering Brain]]"
   - "[[Authority Chain]]"
+  - "[[Design Surface]]"
+  - "[[Verify Design Loop]]"
+  - "[[Hardware Surface]]"
+  - "[[Export Contracts]]"
   - "[[Note Schema]]"
 ---
 
@@ -16,6 +20,15 @@ related:
 This note documents the Project surface contract for both Project Home and the loaded-project front door. Its purpose is to keep Project mode truthful and easy to scan before the student moves into Design, Verify, Export, and Hardware.
 
 ## Canonical Shape / Contract
+
+### Workflow authority
+
+Project is the workflow front door and return-point summary surface.
+
+- its first job is to answer where the student is in the overall RedByte flow
+- its second job is to name the next best workflow step and route there with one primary CTA
+- loaded Project may summarize downstream surfaces, but it must not duplicate their internal controls or become a control room for Design, Verify, Hardware, or Export
+- the top of loaded Project should answer in one scan: what project is loaded, what state is dominant, and where should I go next
 
 The Project surface has two distinct states:
 
@@ -68,6 +81,7 @@ For the loaded Project state, the contract is:
 - Project Home must remain honest about the empty state; do not fake a loaded project just to satisfy a gate or screenshot.
 - Loaded Project mode must answer "what is loaded, what is done, and what should I do next" without requiring a scan across multiple unrelated panels.
 - The hero CTA is the dominant next action. Secondary cards must support it, not compete with it.
+- Project must not duplicate the internal command sets of downstream surfaces. If the student needs to edit stimulus, inspect waveforms, map pins, or build artifacts, Project should route there instead of mirroring those tools.
 - Do not regress the top of Project into equal-weight dashboard cards, chip piles, or duplicated CTA rows.
 - Project CTA punctuation is part of product truth. Do not reintroduce typographic glyphs that can corrupt in the built preview when plain ASCII (`...`, `->`, `-`, `v`, `^`) is sufficient.
 - Import fidelity belongs in the visible loaded reference card when it exists; do not hide all import truth inside collapsed details.

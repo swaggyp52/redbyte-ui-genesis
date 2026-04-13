@@ -62,8 +62,8 @@ export function resolveDesignWorkspacePreset(input: {
   return {
     mode: input.mode,
     effectiveMode: input.effectiveMode,
-    leftDockMode: 'collapsed',
-    rightDockMode: 'collapsed',
+    leftDockMode: 'visible',
+    rightDockMode: 'visible',
     consoleMode: 'collapsed',
     shellDensity: 'immersive',
     surfaceFrame: 'edge-to-edge',

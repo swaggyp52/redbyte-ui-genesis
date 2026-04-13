@@ -2,7 +2,7 @@
 type: handoff
 status: active
 area: infrastructure
-updated: 2026-04-12
+updated: 2026-04-13
 related:
   - "[[Note Schema]]"
   - "[[RedByte Engineering Brain]]"
@@ -59,6 +59,8 @@ These notes must be updated in place. Do not create parallel or competing notes 
 | `03 Architecture/Note Schema.md` | Vault metadata schema, field reference | active |
 | `03 Architecture/Design Surface.md` | Design editor architecture, tools, interaction model | active |
 | `03 Architecture/Project Surface.md` | Project home / loaded-project workflow front door | active |
+| `03 Architecture/Hardware Surface.md` | Map Pins / Hardware workflow, readiness, and board handoff | active |
+| `03 Architecture/Verify Design Loop.md` | Cross-surface Design ↔ Verify authoring/debug loop | active |
 | `03 Architecture/Workspace Routing.md` | Obsidian workspace configuration and note routing | active |
 | `03 Architecture/Automation Strategy.md` | Build, CI, and automation approach | active |
 | `03 Architecture/Signal Inventory.md` | Signal tracking and inventory model | stub |
@@ -86,6 +88,7 @@ These notes must be updated any time related canonical notes change. Claude must
 | `01 Dashboard/RedByte Engineering Brain.md` | Master entry point, active work, open bugs, architecture map |
 | `03 Architecture/Verify Engine.md` | Central hub for all verify-related architecture |
 | `03 Architecture/Test Infrastructure.md` | Test baseline, infrastructure issues, runner constraints |
+| `03 Architecture/Hardware Surface.md` | Hardware workflow contract and shared readiness vocabulary |
 | `08 Agents + Prompts/Claude Session Mode.md` | Operating rules for Claude in this vault |
 | `08 Agents + Prompts/Post Run Extraction.md` | Post-run documentation hook |
 

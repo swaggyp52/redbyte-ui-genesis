@@ -5,6 +5,7 @@ area: verify
 updated: 2026-04-13
 related:
   - "[[Design Surface]]"
+  - "[[Verify Design Loop]]"
   - "[[Verify Hint System]]"
   - "[[Connection Model]]"
   - "[[Test Infrastructure]]"
@@ -564,6 +565,17 @@ The "Observed" section header uses heavier font-weight (700), brighter teal text
 
 ## Canonical Shape / Contract
 
+### Surface workflow contract
+
+Verify is the stimulus-and-evidence surface in the RedByte workflow loop.
+
+- its default job is to let the student author or adjust stimulus, run the circuit, and observe waveform truth
+- expected-output authoring is an explicit advanced branch on top of that observed run, not the default arrival mode
+- waveform evidence is the primary post-run truth surface; summary chips, compare tables, and helper banners stay subordinate to the waveform and selected case/tick context
+- `Open in Design` is the structural-explanation handoff; it must carry the currently selected tick plus the most meaningful signal focus or mismatch context available from the run
+- mapping, export, and hardware readiness may be summarized around Verify, but they are not the primary reason the student is on this surface
+- when space is tight, preserve the run CTA, selected case/tick context, authored stimulus, and waveform stage before secondary tooling
+
 ### Run pipeline
 
 ```text
@@ -640,6 +652,9 @@ assertions-differ
 ## Rules
 
 - The live schematic plus current IO mapping are the simulation truth source. `projectRuntime.runVerification(...)` rebuilds `buildDeterministicVerifyContext(...)` from the current circuit at run time; it does not trust old interactive trace state.
+- Verify must not present stimulus authoring, waveform evidence, check authoring, and downstream handoff as four equal-weight first actions. The default path is stimulus -> run -> observe.
+- Observation is the default Verify stance. Compare/check authoring is explicit and secondary until the student chooses it.
+- The waveform is the primary truth surface after a run. Header chrome, helper banners, and analysis sections must not outrank or visually duplicate that evidence.
 - Verify freshness must only depend on the inputs that change verify truth: circuit structure, IO mapping, and the vector set actually used for the run.
 - Project identity edits are export metadata changes, not verify-truth changes. They may dirty export, but they must not dirty verify freshness.
 - IO rows are derived from the live circuit boundary via `synchronizeProjectIoRows(...)`. Bare `input` / `output` labels and internal `node-v2-*` style ids are not acceptable student-facing boundary names; unlabeled or legacy rows must promote to deterministic labels such as `Input 1`, `Input 2`, `Output 1`, or `Clock`.

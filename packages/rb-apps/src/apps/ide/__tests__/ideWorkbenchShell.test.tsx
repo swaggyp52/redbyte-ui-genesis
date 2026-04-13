@@ -214,6 +214,25 @@ describe('IdeWorkbenchShell', () => {
     expect(getByTestId('ide-mode-project')).toHaveAttribute('data-right-dock-state', 'hidden');
   });
 
+  it('keeps visible design docks fixed open when collapse affordances are disabled', () => {
+    const { getByTestId, queryByTestId } = render(
+      <IdeWorkbenchShell
+        mode="design"
+        workspace={<div>Workspace</div>}
+        leftDock={<div>Library</div>}
+        rightDock={<div>Inspector</div>}
+        leftDockMode="visible"
+        rightDockMode="visible"
+      />
+    );
+
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-inspector')).toBeTruthy();
+    expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
+    expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
+    expect(queryByTestId('ide-workbench-dock-collapse-right')).toBeNull();
+  });
+
   it('preserves the existing collapsed right dock restore flow', async () => {
     const { queryByTestId, getByTestId } = renderShell({
       rightDockMode: 'collapsed',

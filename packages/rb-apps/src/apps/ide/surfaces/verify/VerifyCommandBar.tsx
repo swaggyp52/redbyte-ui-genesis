@@ -102,6 +102,17 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   onGoToDesign,
   goToDesignTick,
 }) => {
+  const hasUtilityActions = Boolean(
+    (showEditCases && onEditCases) || (showSaveAsExpected && onSaveAsExpected)
+  );
+  const [utilitiesOpen, setUtilitiesOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!hasUtilityActions) {
+      setUtilitiesOpen(false);
+    }
+  }, [hasUtilityActions]);
+
   const toneClass =
     statusTone === 'ok' ? 'ide-vcb-status--ok'
     : statusTone === 'error' ? 'ide-vcb-status--error'
@@ -250,14 +261,46 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
 
       {/* Right: utility actions (ghost weight) */}
       <div className="ide-vcb-group ide-vcb-group--status">
-        {showEditCases && onEditCases && (
-          <IdeButton
-            tone="ghost"
-            onClick={onEditCases}
-            testId="ide-verify-run-proof-edit-vectors"
-          >
-            Edit checks
-          </IdeButton>
+        {hasUtilityActions && (
+          <div className="ide-vcb-utilities">
+            <button
+              type="button"
+              className={`ide-vcb-utilities-toggle${utilitiesOpen ? ' is-open' : ''}`}
+              onClick={() => setUtilitiesOpen((open) => !open)}
+              data-testid="ide-vcb-utilities-toggle"
+              aria-expanded={utilitiesOpen ? 'true' : 'false'}
+            >
+              More actions
+            </button>
+            {utilitiesOpen && (
+              <div className="ide-vcb-utilities-panel" data-testid="ide-vcb-utilities-panel">
+                {showEditCases && onEditCases && (
+                  <IdeButton
+                    tone="ghost"
+                    onClick={() => {
+                      onEditCases();
+                      setUtilitiesOpen(false);
+                    }}
+                    testId="ide-verify-run-proof-edit-vectors"
+                  >
+                    Edit checks
+                  </IdeButton>
+                )}
+                {showSaveAsExpected && onSaveAsExpected && (
+                  <IdeButton
+                    tone="ghost"
+                    onClick={() => {
+                      onSaveAsExpected();
+                      setUtilitiesOpen(false);
+                    }}
+                    testId="ide-vcb-save-expected"
+                  >
+                    Save as checks
+                  </IdeButton>
+                )}
+              </div>
+            )}
+          </div>
         )}
         {showAnalysisToggle && onToggleAnalysis && (
           <button
@@ -279,15 +322,6 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
               </span>
             )}
           </button>
-        )}
-        {showSaveAsExpected && onSaveAsExpected && (
-          <IdeButton
-            tone="ghost"
-            onClick={onSaveAsExpected}
-            testId="ide-vcb-save-expected"
-          >
-            Save as checks
-          </IdeButton>
         )}
         {showGoToDesign && onGoToDesign && (
           <span className="ide-vcb-design-bridge">

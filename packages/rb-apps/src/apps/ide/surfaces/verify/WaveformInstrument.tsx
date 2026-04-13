@@ -73,11 +73,13 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
   const ROW_HI = Math.round(ROW_H * 0.22);
   const ROW_LO = Math.round(ROW_H * 0.78);
   const HEADER_H = 28;
-  const TICK_W = tickWidth;
+  const BASE_TICK_W = tickWidth;
   const GROUP_HEADER_H = 20;
 
   // Hover cursor state (vertical line tracking mouse X)
   const [hoverTickX, setHoverTickX] = useState<number | null>(null);
+  const waveformRef = useRef<SVGSVGElement | null>(null);
+  const [viewportTrackWidth, setViewportTrackWidth] = useState(0);
 
   type LayoutRow =
     | { kind: 'header'; group: SignalLaneGroup; y: number }
@@ -101,7 +103,24 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
     return { layoutRows: rows, totalHeight: y };
   })();
 
-  const width = LABEL_W + ticks.length * TICK_W;
+  useEffect(() => {
+    if (signals.length === 0 || ticks.length === 0) return;
+    const measure = () => {
+      const containerWidth = waveformRef.current?.parentElement?.clientWidth ?? 0;
+      const nextTrackWidth = containerWidth > LABEL_W ? Math.round(containerWidth - LABEL_W) : 0;
+      setViewportTrackWidth(nextTrackWidth);
+    };
+    measure();
+    if (typeof window === 'undefined') return;
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [signals.length, ticks.length, LABEL_W]);
+
+  const trackWidth = ticks.length > 0
+    ? Math.max(ticks.length * BASE_TICK_W, viewportTrackWidth)
+    : 0;
+  const TICK_W = ticks.length > 0 ? trackWidth / ticks.length : BASE_TICK_W;
+  const width = LABEL_W + trackWidth;
   const height = totalHeight;
   const ghostViewportRef = useRef<HTMLDivElement | null>(null);
   const [ghostTrackWidth, setGhostTrackWidth] = useState(640);
@@ -223,6 +242,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
 
   return (
     <svg
+      ref={waveformRef}
       width={width}
       height={height}
       style={{ display: 'block', fontFamily: 'IBM Plex Mono, monospace', overflow: 'visible', shapeRendering: 'crispEdges' }}

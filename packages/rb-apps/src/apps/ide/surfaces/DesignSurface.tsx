@@ -834,7 +834,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   const [paletteQuery, setPaletteQuery] = useState('');
   const [collapsedDockSections, setCollapsedDockSections] = useState<ReadonlySet<DesignDockSectionId>>(
-    () => new Set<DesignDockSectionId>(['live-inputs'])
+    () => new Set<DesignDockSectionId>()
   );
   const canvasViewportRef = useRef<HTMLDivElement | null>(null);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
@@ -4822,7 +4822,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         consoleHasEntries={diagnosticsDrawerRows.length > 0}
         leftDockMode={workspacePreset.leftDockMode}
         rightDockMode={designRightDockMode}
-        rightDockCanCollapse={isCanvasWorkspace}
+        rightDockCanCollapse={false}
         rightDockRevealKey={designRightDockRevealKey}
         consoleMode={designConsoleMode}
         shellDensity={workspacePreset.shellDensity}

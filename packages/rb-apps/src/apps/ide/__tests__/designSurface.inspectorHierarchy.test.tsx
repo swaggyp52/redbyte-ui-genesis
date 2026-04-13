@@ -201,17 +201,12 @@ afterEach(() => {
 });
 
 describe('DesignSurface inspector hierarchy', () => {
-  it('keeps the idle inspector secondary until opened, then focuses on identity while leaving live simulation reachable', async () => {
+  it('keeps the idle inspector visible, identity-first, and free of restore-tab dependency', async () => {
     const view = renderSurface(BASE_CIRCUIT);
 
-    expect(view.queryByTestId('ide-inspector')).toBeNull();
-    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
-
-    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-right'));
-
-    await waitFor(() => {
-      expect(view.getByTestId('ide-design-inspector-empty')).toBeTruthy();
-    });
+    expect(view.getByTestId('ide-inspector')).toBeTruthy();
+    expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
+    expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
 
     expect(view.queryByTestId('ide-design-inspector-health')).toBeNull();
     expect(view.queryByTestId('ide-design-inspector-actions')).toBeNull();

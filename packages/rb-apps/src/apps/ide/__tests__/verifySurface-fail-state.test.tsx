@@ -42,8 +42,8 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
     );
 
     expect(getByTestId('ide-verify-summary-status').textContent).toContain('ASSERTIONS DIFFER');
-    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
-    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
+    expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
     expect(queryByTestId('ide-verify-failure-explainer')).toBeNull();
     expect(queryByTestId('ide-verify-fail-summary-inline')).toBeNull();

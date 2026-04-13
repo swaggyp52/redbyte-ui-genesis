@@ -6,6 +6,7 @@ updated: 2026-04-13
 related:
   - "[[RedByte Engineering Brain]]"
   - "[[Verify Engine]]"
+  - "[[Verify Design Loop]]"
   - "[[ADR-005 Verify Schedule Contract Owns Sequential Clock Authority]]"
   - "[[BUG-014 Design Replay Missed Runtime-Backed Mutations]]"
   - "[[BUG-017 Shared Compact Workbench Row Theft]]"
@@ -20,6 +21,16 @@ related:
 This note documents the first-look hierarchy contract for the IDE Design surface. Its purpose is to keep the canvas primary, while preserving the minimum amount of chrome needed to orient the student, expose core parts access, show authoring state, and reveal simulation context only when it becomes relevant.
 
 ## Canonical Shape / Contract
+
+### Surface role in workflow
+
+Design is the structural authoring and explanation surface in the core RedByte loop.
+
+- Project sends the student here to create or revise the circuit itself
+- Verify sends the student back here when a sampled tick, signal transition, or failed check needs structural explanation
+- the center of Design is always the circuit workspace plus the minimum inspection chrome needed to understand what is selected and why it behaves the way it does
+- Design may acknowledge workflow status, replay provenance, and downstream mapping context, but it must not read like a second Project dashboard or a second Verify workbench
+- when Design is calm, the student should be able to answer two questions immediately: what am I editing, and what part of the circuit should I inspect next
 
 The Design surface is a three-zone layout:
 
@@ -113,6 +124,7 @@ The `SurfaceCommandStrip` in Design is now a compact authority bar, not a card. 
 ## Rules
 
 - The first look must yield attention to the canvas before instrumentation.
+- Design must not become a second workflow dashboard or a second waveform lab; structural editing and replay-backed explanation stay primary.
 - The first look of the left dock must yield attention to search and core parts before hardware inventory or live state.
 - Blank Design must teach with one primary CTA, not multiple simultaneous first-step lessons.
 - Do not duplicate the same state across a title band, status row, and canvas overlay.

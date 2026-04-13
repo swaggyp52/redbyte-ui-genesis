@@ -8,7 +8,12 @@ related:
   - "[[Canonical Notes Policy]]"
   - "[[Note Schema]]"
   - "[[ADR-005 Verify Schedule Contract Owns Sequential Clock Authority]]"
+  - "[[Project Surface]]"
+  - "[[Design Surface]]"
   - "[[Verify Engine]]"
+  - "[[Verify Design Loop]]"
+  - "[[Hardware Surface]]"
+  - "[[Export Contracts]]"
   - "[[2026-03-25 Verify Refactor Plan]]"
 ---
 
@@ -56,6 +61,19 @@ For export work: [[Connection Model]] + [[Export Contracts]]
 For project workflow / onboarding work: [[Project Surface]]
 For test work: [[Test Infrastructure]]
 For Design workflow hierarchy work: [[Design Surface]]
+For Hardware / Map Pins work: [[Hardware Surface]] + [[Export Contracts]] + [[Basys 3 Mapping]]
+For cross-surface authoring loop work: [[Verify Design Loop]] + [[Design Surface]] + [[Verify Engine]]
+
+---
+
+## Workflow map
+
+- [[Project Surface]] = front door, current state, next-action authority
+- [[Design Surface]] = circuit authoring, structural inspection, replay-backed explanation
+- [[Verify Engine]] = stimulus authoring, run control, waveform truth, optional compare
+- [[Verify Design Loop]] = the handoff contract between waveform evidence and structural explanation
+- [[Hardware Surface]] = physical I/O mapping, board readiness, program handoff context
+- [[Export Contracts]] = deterministic artifact and submission/program package handoff
 
 ---
 

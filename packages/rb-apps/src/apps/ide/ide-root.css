@@ -24518,6 +24518,51 @@ button:disabled,
   background: rgba(9, 23, 37, 0.98);
 }
 
+.ide-vcb-utilities {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ide-vcb-utilities-toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.16);
+  background: rgba(8, 18, 31, 0.82);
+  color: rgba(226, 232, 240, 0.88);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+
+.ide-vcb-utilities-toggle:hover,
+.ide-vcb-utilities-toggle:focus-visible,
+.ide-vcb-utilities-toggle.is-open {
+  border-color: rgba(56, 189, 248, 0.32);
+  background: rgba(10, 22, 36, 0.94);
+  color: rgba(248, 250, 252, 0.96);
+}
+
+.ide-vcb-utilities-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 180px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(48, 77, 107, 0.48);
+  background: rgba(7, 17, 28, 0.98);
+  box-shadow: 0 12px 24px rgba(3, 8, 15, 0.34);
+}
+
 .ide-vcb-analysis-label {
   font-size: 11px;
   font-weight: 600;
@@ -28266,4 +28311,145 @@ button:disabled,
   box-shadow:
     0 18px 34px rgba(1, 6, 12, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.02) !important;
+}
+
+/* 2026-04-13 broad product pass: open essential rails, use full shell width, and
+   tighten the Design/Verify workbench geometry around a stable default state. */
+
+.ide-left-rail-footer {
+  padding: 8px 4px 10px;
+  align-items: stretch;
+}
+
+[data-ide-mode-marker='project'] {
+  --ide-shell-main-max-width: none !important;
+}
+
+[data-ide-mode-marker='project'] .ide-workbench-main.hide-right-dock,
+[data-ide-mode-marker='project'] .ide-workbench-workspace > .ide-panel {
+  width: 100% !important;
+  inline-size: 100% !important;
+  max-width: none !important;
+  margin-inline: 0 !important;
+}
+
+[data-ide-mode-marker='project'] .ide-workbench-workspace > .ide-panel > .ide-panel-body {
+  padding: 0 clamp(18px, 2.4vw, 34px) 30px !important;
+  gap: 18px !important;
+}
+
+[data-ide-mode-marker='project'] .ide-project-flightdeck {
+  grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr) !important;
+  gap: 20px !important;
+}
+
+[data-ide-mode-marker='project'] .ide-project-current-focus-actions {
+  justify-content: flex-start !important;
+}
+
+[data-ide-mode-marker='design'] .ide-workbench-dock-left,
+[data-ide-mode-marker='verify'] .ide-workbench-dock-left {
+  padding: 16px 12px 18px !important;
+  gap: 14px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-workbench-workspace,
+[data-ide-mode-marker='verify'] .ide-workbench-workspace {
+  padding: 18px 20px 22px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-build-library,
+[data-ide-mode-marker='design'] .ide-design-input-panel {
+  border-radius: 18px !important;
+  border: 1px solid rgba(79, 114, 145, 0.18) !important;
+  background:
+    linear-gradient(180deg, rgba(10, 18, 30, 0.94), rgba(7, 13, 22, 0.97)) !important;
+  box-shadow:
+    0 18px 32px rgba(1, 6, 12, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-control-bar {
+  gap: 14px !important;
+  align-items: start !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-toolbar {
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-control-bar-status {
+  justify-self: stretch !important;
+}
+
+[data-ide-mode-marker='design'] .ide-workbench-dock-right {
+  gap: 14px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body {
+  padding-inline: 16px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-lab-grid {
+  grid-template-columns: minmax(320px, 0.92fr) minmax(0, 1.58fr) !important;
+  gap: 16px !important;
+  align-items: stretch !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-region--stimulus,
+[data-ide-mode-marker='verify'] .ide-verify-region--waveform {
+  min-width: 0 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-region--stimulus {
+  border-radius: 20px !important;
+  border: 1px solid rgba(79, 114, 145, 0.18) !important;
+  background:
+    linear-gradient(180deg, rgba(11, 19, 31, 0.96), rgba(7, 13, 22, 0.98)) !important;
+  box-shadow:
+    0 18px 34px rgba(1, 6, 12, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02) !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-workbench-live,
+[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage,
+[data-ide-mode-marker='verify'] .ide-verify-supporting-strip.is-open {
+  border-radius: 20px !important;
+  border: 1px solid rgba(79, 114, 145, 0.18) !important;
+  background:
+    linear-gradient(180deg, rgba(10, 18, 30, 0.95), rgba(6, 12, 21, 0.98)) !important;
+  box-shadow:
+    0 20px 36px rgba(1, 6, 12, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-workbench-header,
+[data-ide-mode-marker='verify'] .ide-verify-waveform-bar {
+  padding-inline: 2px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-workbench-body {
+  padding: 14px 16px 16px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-signal-rail-header {
+  margin-bottom: 4px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-supporting-strip.is-open {
+  margin-top: 12px !important;
+}
+
+@media (max-width: 1480px) {
+  [data-ide-mode-marker='verify'] .ide-verify-lab-grid {
+    grid-template-columns: minmax(288px, 0.94fr) minmax(0, 1.46fr) !important;
+  }
+}
+
+@media (max-width: 1260px) {
+  [data-ide-mode-marker='project'] .ide-project-flightdeck,
+  [data-ide-mode-marker='verify'] .ide-verify-lab-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }

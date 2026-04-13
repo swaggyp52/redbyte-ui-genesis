@@ -14,6 +14,10 @@ if (!HTMLElement.prototype.scrollIntoView) {
   });
 }
 
+function openVerifyUtilities(getByTestId: (testId: string) => HTMLElement) {
+  fireEvent.click(getByTestId('ide-vcb-utilities-toggle'));
+}
+
 function makePassRun(): RuntimeVerifyRun {
   return {
     scenarioId: 'pass-scenario',
@@ -251,7 +255,7 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-run')).toBeNull();
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(getByTestId('ide-verify-empty-open-vectors').textContent).toContain('Open vectors');
-    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(queryByText('Advanced vector tools')).toBeNull();
   });
@@ -283,7 +287,7 @@ describe('VerifySurface workstation controls', () => {
     // footer run button removed (B-13 Phase 3) — header Run is canonical
     expect(queryByTestId('ide-verify-empty-run')).toBeNull();
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
-    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
   });
 
@@ -598,6 +602,7 @@ describe('VerifySurface workstation controls', () => {
     expect(workbench).toHaveAttribute('data-state', 'expanded');
     expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
 
+    openVerifyUtilities(getByTestId);
     fireEvent.click(getByTestId('ide-verify-run-proof-edit-vectors'));
 
     expect(workbench).toHaveAttribute('data-state', 'expanded');
@@ -671,10 +676,10 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-workbench-subtitle')).toBeNull();
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
     expect(getByTestId('ide-verify-drawer-toggle')).toBeTruthy();
-    expect(getByTestId('ide-vcb-save-expected')).toBeTruthy();
+    expect(getByTestId('ide-vcb-utilities-toggle')).toBeTruthy();
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(getByTestId('ide-vcb-evidence').textContent).toBe('1 vector');
-    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
 
     expect(queryByTestId('ide-stimulus-toolbar')).toBeTruthy();
@@ -866,6 +871,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    openVerifyUtilities(getByTestId);
     fireEvent.click(getByTestId('ide-vcb-save-expected'));
     expect(onVectorsChange).toHaveBeenCalledTimes(1);
 
@@ -1035,6 +1041,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    openVerifyUtilities(getByTestId);
     fireEvent.click(getByTestId('ide-vcb-save-expected'));
 
     expect(onVectorsChange).toHaveBeenCalledWith([
@@ -1122,7 +1129,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-stale-reference-mode').textContent).toContain('stimulus-only tracing');
     expect(queryByTestId('ide-verify-stale-banner')).toBeNull();
     expect(queryByTestId('ide-verify-prerun-inventory')).toBeNull();
-    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(queryByTestId('ide-verify-assertion-mode-toggle')).toBeNull();
     expect(queryByTestId('ide-verify-advanced-debug')).toBeNull();
@@ -1360,7 +1367,6 @@ describe('VerifySurface workstation controls', () => {
     onSignalSelected.mockClear();
     fireEvent.click(getByTestId('ide-verify-explainer-show-mismatches'));
     expect(onSignalSelected).toHaveBeenLastCalledWith('ld0');
-    fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
     expect(getByTestId('ide-verify-signal-filter-state').textContent).toContain('mismatches');
   });
 
@@ -1399,10 +1405,10 @@ describe('VerifySurface workstation controls', () => {
     );
 
     const workbenchHeader = getByTestId('ide-verify-workbench-toggle');
-    expect(workbenchHeader.textContent).toContain('Project vectors');
-    expect(workbenchHeader.textContent).not.toContain('Author');
+    expect(workbenchHeader.textContent).toContain('Stimulus Workbench');
+    expect(workbenchHeader.textContent).not.toContain('Project vectors');
+    expect(workbenchHeader.textContent).not.toContain('Show checks');
 
-    fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
     const signalRailHeader = getByTestId('ide-verify-signal-rail-header');
     expect(signalRailHeader).toContainElement(getByTestId('ide-verify-signal-filter-state'));
     expect(signalRailHeader).toContainElement(getByTestId('ide-verify-show-all-signals'));
@@ -1595,6 +1601,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    openVerifyUtilities(getByTestId);
     fireEvent.click(getByTestId('ide-vcb-save-expected'));
 
     expect(onVectorsChange).toHaveBeenCalledTimes(1);
@@ -1669,6 +1676,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    openVerifyUtilities(getByTestId);
     fireEvent.click(getByTestId('ide-vcb-save-expected'));
 
     expect(onVectorsChange).toHaveBeenCalledTimes(1);
@@ -1732,6 +1740,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    openVerifyUtilities(getByTestId);
     fireEvent.click(getByTestId('ide-vcb-save-expected'));
 
     expect(onVectorsChange).toHaveBeenCalledTimes(1);
@@ -1793,7 +1802,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(getByTestId('ide-verify-waveform-row-ld0')).toBeTruthy();
     expect(queryByText(/No signal data in the last run/i)).toBeNull();
   });
@@ -1842,7 +1851,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(getByTestId('ide-verify-waveform-row-ld0_node_in')).toBeTruthy();
     expect(queryByText(/No signal data in the last run/i)).toBeNull();
   });

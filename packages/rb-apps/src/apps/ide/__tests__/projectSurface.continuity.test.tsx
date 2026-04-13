@@ -69,6 +69,19 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
 }
 
 describe('ProjectSurface — blocker-to-surface routing', () => {
+  it('keeps the stage dock visible without shell restore tabs on Project home', () => {
+    const { getByTestId, queryByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface {...makeProps()} />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-project-start-dock')).toBeTruthy();
+    expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
+    expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
+  });
+
   it('keeps the project console hidden by default so the landing workspace stays primary', () => {
     const { queryByTestId } = render(
       <BoardSignalProvider>

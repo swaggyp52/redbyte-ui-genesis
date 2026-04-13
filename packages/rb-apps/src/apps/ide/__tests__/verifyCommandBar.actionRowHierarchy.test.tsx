@@ -11,7 +11,7 @@
 // cannot accidentally regress through future JSX edits.
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { VerifyCommandBar, type VerifyCommandBarProps } from '../surfaces/verify/VerifyCommandBar';
 
 const BASE: VerifyCommandBarProps = {
@@ -51,7 +51,7 @@ describe('B-14 Action Row Hierarchy — DOM order contracts', () => {
     expect(modeBeforeStatus).toBeTruthy();
   });
 
-  it('save-as-expected is NOT inside the actions group', () => {
+  it('more-actions disclosure is NOT inside the actions group', () => {
     const { getByTestId, container } = render(
       <VerifyCommandBar
         {...BASE}
@@ -60,14 +60,13 @@ describe('B-14 Action Row Hierarchy — DOM order contracts', () => {
         compareAvailable={true}
       />
     );
-    const saveBtn = getByTestId('ide-vcb-save-expected');
+    const utilitiesToggle = getByTestId('ide-vcb-utilities-toggle');
     const actionsGroup = container.querySelector('.ide-vcb-group--actions');
     expect(actionsGroup).toBeTruthy();
-    // save-expected must not be a descendant of the actions group
-    expect(actionsGroup!.contains(saveBtn)).toBe(false);
+    expect(actionsGroup!.contains(utilitiesToggle)).toBe(false);
   });
 
-  it('save-as-expected is inside the status group (right side)', () => {
+  it('more-actions disclosure lives inside the status group (right side)', () => {
     const { getByTestId, container } = render(
       <VerifyCommandBar
         {...BASE}
@@ -76,10 +75,10 @@ describe('B-14 Action Row Hierarchy — DOM order contracts', () => {
         compareAvailable={true}
       />
     );
-    const saveBtn = getByTestId('ide-vcb-save-expected');
+    const utilitiesToggle = getByTestId('ide-vcb-utilities-toggle');
     const statusGroup = container.querySelector('.ide-vcb-group--status');
     expect(statusGroup).toBeTruthy();
-    expect(statusGroup!.contains(saveBtn)).toBe(true);
+    expect(statusGroup!.contains(utilitiesToggle)).toBe(true);
   });
 
   it('Run button is inside the actions group', () => {
@@ -102,6 +101,26 @@ describe('B-14 Action Row Hierarchy — mode toggle still works', () => {
     const { getByTestId } = render(<VerifyCommandBar {...BASE} />);
     expect(getByTestId('ide-vcb-mode-observe')).toBeTruthy();
     expect(getByTestId('ide-vcb-mode-compare')).toBeTruthy();
+  });
+
+  it('keeps secondary command-bar actions hidden until More actions opens', () => {
+    const { getByTestId, queryByTestId } = render(
+      <VerifyCommandBar
+        {...BASE}
+        showSaveAsExpected={true}
+        onSaveAsExpected={vi.fn()}
+        showEditCases={true}
+        onEditCases={vi.fn()}
+      />
+    );
+
+    expect(queryByTestId('ide-vcb-utilities-panel')).toBeNull();
+
+    fireEvent.click(getByTestId('ide-vcb-utilities-toggle'));
+
+    expect(getByTestId('ide-vcb-utilities-panel')).toBeTruthy();
+    expect(getByTestId('ide-vcb-save-expected')).toBeTruthy();
+    expect(getByTestId('ide-verify-run-proof-edit-vectors')).toBeTruthy();
   });
 
   it('active mode button has is-active class (Observe active by default)', () => {

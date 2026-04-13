@@ -23,8 +23,8 @@ describe('StimulusCanvas bulk editing tools', () => {
     );
 
     expect(getByRole('button', { name: 'Add case' })).toBeTruthy();
-    expect(getByRole('button', { name: 'Duplicate case' })).toBeTruthy();
-    expect(getByRole('button', { name: 'Delete case' })).toBeTruthy();
+    expect(getByTestId('ide-stimulus-duplicate-tick-0')).toBeTruthy();
+    expect(getByTestId('ide-stimulus-delete-tick-0')).toBeTruthy();
     expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 1');
   });
 
@@ -122,7 +122,7 @@ describe('StimulusCanvas bulk editing tools', () => {
     fireEvent.change(getByTestId('ide-stimulus-tick-target'), {
       target: { value: '1' },
     });
-    fireEvent.click(getByTestId('ide-stimulus-duplicate-tick'));
+    fireEvent.click(getByTestId('ide-stimulus-duplicate-tick-1'));
 
     const nextVectors = onVectorsChange.mock.calls[0]?.[0];
     expect(nextVectors).toEqual([

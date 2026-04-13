@@ -30311,3 +30311,96 @@ Key details:
 - The broad UI pass validated the live built app and focused suites, but a full monorepo `pnpm build` still needs a clean dist/output environment because the active preview session caused the `dist/os/assets` cleanup step to fail with `ENOTEMPTY`.
 
 - **Attribution**: Connor Angiel
+
+---
+
+## Change Log 2026-04-13 (Shell rails opened by default, hidden-tab cleanup, Project width pass, Verify waveform fill)
+
+**Subsystem**: IDE shared shell + Project surface + Design surface + Verify surface + waveform instrument
+
+**Problem**
+
+- Essential support rails still behaved like optional hidden tabs, so Design and Verify opened in an incomplete-looking state.
+- The left shell still carried a bottom-left expander that did not improve the workflow and created one more confusing collapse mode.
+- Project still read as a narrow centered stack with too much unused shell width to the right.
+- Verify improved structurally, but short traces still rendered as a narrow SVG inside a wide waveform stage, leaving dead evidence space after a run.
+
+**Root-cause classification**
+
+- Surface layout policies still defaulted core docks to `collapsed`, and the shell still exposed restore-tab and expander affordances that were appropriate for optional tools, not core rails.
+- Project CSS still preserved an inherited main-width cap instead of treating the stage dock and current-focus surface as a full-width workflow composition.
+- `WaveformViewer` sized the trace area strictly from `ticks.length * tickWidth`, so short runs never expanded to the available viewport.
+
+**Files changed**
+
+- packages/rb-apps/src/apps/ide/components/IdeLeftRail.tsx
+- packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx
+- packages/rb-apps/src/apps/ide/ide-root.css
+- packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx
+- packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx
+- packages/rb-apps/src/apps/ide/surfaces/designWorkspaceConfig.ts
+- packages/rb-apps/src/apps/ide/surfaces/verify/WaveformInstrument.tsx
+- packages/rb-apps/src/apps/ide/__tests__/ideLeftRail.stageGrammar.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/designSurface.blankState.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/waveformInstrument.layoutFill.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/waveformInstrument.groupVisuals.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/waveformInstrument.ghostLanes.test.tsx
+
+**What changed**
+
+- Removed the shared-shell bottom-left rail expander and its width-persistence behavior so the left mode rail stays stable and single-purpose.
+- Switched Design and Verify to open with their core docks already visible:
+  - Design library visible by default
+  - Design inspector visible by default
+  - Verify signal rail visible by default
+  - no restore-tab dependency for those essential tools
+- Tightened dock width presets so open rails fit by layout instead of relying on hidden states.
+- Reworked the shell CSS for this pass:
+  - Project now uses the available workbench width instead of the older centered cap
+  - Design left/right rails read as persistent tool surfaces rather than edge-tab reveals
+  - Verify stimulus and waveform regions keep a clearer side-by-side instrument geometry
+- Kept Design live inputs open by default and pinned the inspector open so the first-load state is already useful.
+- Added a waveform fill fix:
+  - `WaveformViewer` now measures the available viewport width
+  - short traces expand to fill the oscilloscope stage
+  - longer traces still preserve overflow/scroll behavior when they exceed the viewport
+- Added a focused regression proving the waveform SVG expands to the available width for short traces.
+
+**Why minimal**
+
+- No verify-engine semantic change.
+- No new persistence or routing behavior.
+- No attempt to redesign Map Pins / Export in this slice.
+- The pass stays focused on default-open essential rails, shell cleanup, Project width usage, and Verify/Design first-load clarity.
+
+**Validation**
+
+- Failing-first focused regressions:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/ideLeftRail.stageGrammar.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.blankState.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx` -> FAIL on old collapsed-rail / expander behavior
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/waveformInstrument.layoutFill.test.tsx` -> FAIL before the waveform sizing fix (`expected 290 to be 1000`)
+- Post-change focused suites:
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx`
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/waveformInstrument.layoutFill.test.tsx packages/rb-apps/src/apps/ide/__tests__/waveformInstrument.groupVisuals.test.tsx packages/rb-apps/src/apps/ide/__tests__/waveformInstrument.ghostLanes.test.tsx`
+  - `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/ideLeftRail.stageGrammar.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.blankState.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.waveform-priority.test.tsx packages/rb-apps/src/apps/ide/__tests__/waveformInstrument.layoutFill.test.tsx packages/rb-apps/src/apps/ide/__tests__/waveformInstrument.groupVisuals.test.tsx packages/rb-apps/src/apps/ide/__tests__/waveformInstrument.ghostLanes.test.tsx` -> PASS (`141 passed`, `2 skipped`)
+- Build:
+  - `pnpm build` -> PASS
+- Browser validation on `http://127.0.0.1:4180/` confirmed:
+  - Project uses the shell width materially better and the stage dock stays visible without shell restore tabs
+  - Design opens with library + inspector visible and no left/right restore slivers
+  - Verify opens with the signal rail visible and no vertical `Signals Show` reveal
+  - post-run Verify waveform now expands to nearly the full waveform viewport at standard and wide desktop widths
+
+**Remaining concern**
+
+- The live dev app still emits a React runtime console error (`Expected static flag was missing`) that appears unrelated to this shell/rail pass and should be isolated separately.
+- `verifySurface.panelOwnership.test.tsx` still carries 2 skipped tests for the removed collapsed-rail behavior and should be rewritten or deleted in a cleanup pass.
+
+- **Attribution**: Connor Angiel

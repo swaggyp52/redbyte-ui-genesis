@@ -2,9 +2,10 @@
 type: architecture
 status: active
 area: export
-updated: 2026-04-06
+updated: 2026-04-13
 related:
   - "[[Connection Model]]"
+  - "[[Hardware Surface]]"
   - "[[Basys 3 Mapping]]"
   - "[[BUG-011 Export Testbench Stable-ID Stimulus Drift]]"
   - "[[BUG-012 Basys3 Switch and Button Clock Buffer Inference]]"
@@ -25,6 +26,17 @@ The export contract exists so the live UI export surface, the compatibility fall
 
 ## Canonical Shape / Contract
 
+### Export surface role
+
+Export is the deterministic handoff surface.
+
+- its primary job is to tell the student whether the current project can produce a trustworthy package and to build that package when it can
+- it may summarize why the handoff is blocked or stale, but it should route back to Design, Verify, or Hardware instead of recreating those surfaces inline
+- Export and Hardware share the same dominant workflow condition, but they do not own the same job:
+  - Hardware owns physical mapping and board-readiness interpretation
+  - Export owns artifact generation, package truth, and submission/program handoff bundles
+- Export should read as the end of the workflow, not as another authoring surface
+
 - `top.vhd` entity ports are the naming authority for `testbench.vhd` component ports and signal declarations.
 - Basys3 top-level port names derived from labels must already be legal VHDL basic identifiers before they reach `top.vhd`, `top.xdc`, or downstream Vivado packaging.
 - `testbench.vhd` may come from either:
@@ -42,6 +54,7 @@ The export contract exists so the live UI export surface, the compatibility fall
 
 - There are only two valid testbench generation paths: runtime-backed and documented compatibility fallback.
 - Export may remain advisory when Verify is stale or missing, but structural artifact mismatches must block export.
+- Export must not become a second Verify workbench or a second pin-mapping editor. When upstream work is needed, explain it and route back to the owning surface.
 - Basys3 switch and button input ports must always emit `CLOCK_BUFFER_TYPE NONE`; only the real board clock input should remain clock-buffer eligible.
 - Duplicate student-facing labels are never authoritative lookup keys for HDL emission. Stable ids and node ids must survive label collisions.
 - Stimulus targets must resolve to declared testbench input signals.

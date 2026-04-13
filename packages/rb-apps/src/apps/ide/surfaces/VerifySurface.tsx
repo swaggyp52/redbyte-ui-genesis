@@ -3446,7 +3446,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     () => {
       if (sessionSignalsAssertionFailure) {
         return {
-          leftDockMode: 'collapsed' as const,
+          leftDockMode: 'visible' as const,
           rightDockMode: 'hidden' as const,
           consoleMode: 'auto' as const,
         };
@@ -3454,7 +3454,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
       if (sessionShowsAssertionMatch) {
         return {
-          leftDockMode: 'collapsed' as const,
+          leftDockMode: 'visible' as const,
           rightDockMode: 'hidden' as const,
           consoleMode: 'hidden' as const,
         };
@@ -3462,7 +3462,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
       if (hasStaleAuthoredReference || isRunStale || isScenarioStale || isWrongScenario) {
         return {
-          leftDockMode: 'collapsed' as const,
+          leftDockMode: 'visible' as const,
           rightDockMode: 'hidden' as const,
           consoleMode: 'hidden' as const,
         };
@@ -3470,7 +3470,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
       if (sessionShowsTraceEvidence) {
         return {
-          leftDockMode: 'collapsed' as const,
+          leftDockMode: 'visible' as const,
           rightDockMode: 'hidden' as const,
           consoleMode: 'hidden' as const,
         };
@@ -3478,14 +3478,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
       if (isDraftSession) {
         return {
-          leftDockMode: 'collapsed' as const,
+          leftDockMode: 'visible' as const,
           rightDockMode: 'hidden' as const,
           consoleMode: 'hidden' as const,
         };
       }
 
       return {
-        leftDockMode: 'collapsed' as const,
+        leftDockMode: 'visible' as const,
         rightDockMode: 'hidden' as const,
         consoleMode: 'hidden' as const,
       };

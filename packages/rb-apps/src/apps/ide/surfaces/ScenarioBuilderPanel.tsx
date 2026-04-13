@@ -365,7 +365,6 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             </div>
           </details>
         )}
-        {/* ── Hold × N ──────────────────────────────────────────────────── */}
         <div className="ide-verify-hold-n-row" data-testid="ide-verify-hold-n-controls">
           <label className="ide-verify-field ide-verify-hold-n-label">
             Hold ×
@@ -388,7 +387,6 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             Hold
           </IdeButton>
         </div>
-        {/* ── Pulse ─────────────────────────────────────────────────────── */}
         {inputFields.length > 0 && (
           <div className="ide-verify-pulse-row" data-testid="ide-verify-pulse-controls">
             <label className="ide-verify-field ide-verify-pulse-label">
@@ -414,65 +412,64 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             </IdeButton>
           </div>
         )}
-      </details>
 
-      {/* ── Sweep generator ── */}
-      <details className="ide-verify-sweep-details">
-        <summary className="ide-verify-sweep-summary">Sweep generator</summary>
-        <div className="ide-verify-sweep-controls" data-testid="ide-verify-sweep-controls">
-          <label className="ide-verify-field">
-            Sweep preset
-            <select
-              className="ide-export-pin-input"
-              value={sweepPreset}
-              onChange={(event) =>
-                onSweepPresetChange(
-                  event.target.value === 'toggle-sw0'
-                    ? 'toggle-sw0'
-                    : event.target.value === 'walk-one-hot'
-                      ? 'walk-one-hot'
-                      : 'binary-count'
-                )
-              }
-              data-testid="ide-verify-sweep-preset"
+        <details className="ide-verify-sweep-details">
+          <summary className="ide-verify-sweep-summary">Sweep generator</summary>
+          <div className="ide-verify-sweep-controls" data-testid="ide-verify-sweep-controls">
+            <label className="ide-verify-field">
+              Sweep preset
+              <select
+                className="ide-export-pin-input"
+                value={sweepPreset}
+                onChange={(event) =>
+                  onSweepPresetChange(
+                    event.target.value === 'toggle-sw0'
+                      ? 'toggle-sw0'
+                      : event.target.value === 'walk-one-hot'
+                        ? 'walk-one-hot'
+                        : 'binary-count'
+                  )
+                }
+                data-testid="ide-verify-sweep-preset"
+              >
+                <option value="binary-count">Binary count SW[3:0]</option>
+                <option value="toggle-sw0">Toggle SW0</option>
+                <option value="walk-one-hot">One-hot walk</option>
+              </select>
+            </label>
+            <label className="ide-verify-field">
+              Seed
+              <input
+                type="number"
+                className="ide-export-pin-input"
+                value={sweepSeed}
+                onChange={(event) => onSweepSeedChange(event.target.value)}
+                data-testid="ide-verify-sweep-seed"
+              />
+            </label>
+            <label className="ide-verify-field">
+              Hold ticks
+              <input
+                type="number"
+                className="ide-export-pin-input"
+                min={1}
+                step={1}
+                value={sweepHoldTicks}
+                onChange={(event) =>
+                  onSweepHoldTicksChange(Math.max(1, Number(event.target.value || '1')))
+                }
+                data-testid="ide-verify-sweep-hold"
+              />
+            </label>
+            <IdeButton
+              tone="secondary"
+              onClick={onGenerateSweep}
+              testId="ide-verify-generate-sweep-vectors"
             >
-              <option value="binary-count">Binary count SW[3:0]</option>
-              <option value="toggle-sw0">Toggle SW0</option>
-              <option value="walk-one-hot">One-hot walk</option>
-            </select>
-          </label>
-          <label className="ide-verify-field">
-            Seed
-            <input
-              type="number"
-              className="ide-export-pin-input"
-              value={sweepSeed}
-              onChange={(event) => onSweepSeedChange(event.target.value)}
-              data-testid="ide-verify-sweep-seed"
-            />
-          </label>
-          <label className="ide-verify-field">
-            Hold ticks
-            <input
-              type="number"
-              className="ide-export-pin-input"
-              min={1}
-              step={1}
-              value={sweepHoldTicks}
-              onChange={(event) =>
-                onSweepHoldTicksChange(Math.max(1, Number(event.target.value || '1')))
-              }
-              data-testid="ide-verify-sweep-hold"
-            />
-          </label>
-          <IdeButton
-            tone="secondary"
-            onClick={onGenerateSweep}
-            testId="ide-verify-generate-sweep-vectors"
-          >
-            Generate Sweep
-          </IdeButton>
-        </div>
+              Generate Sweep
+            </IdeButton>
+          </div>
+        </details>
       </details>
     </div>
   );
@@ -656,42 +653,6 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           <span className="ide-verify-workbench-count is-selected" data-testid="ide-verify-workbench-selected-tick">
             {selectedTickLabel}
           </span>
-          {effectiveWorkbenchExpanded ? (
-            <div className="ide-verify-workbench-header-actions">
-              <IdeButton
-                tone="ghost"
-                onClick={(event) => {
-                  stopWorkbenchHeaderClick(event);
-                  onGenerateBasics();
-                }}
-                testId="ide-verify-workbench-generate"
-              >
-                Generate
-              </IdeButton>
-              <IdeButton
-                tone="ghost"
-                onClick={(event) => {
-                  stopWorkbenchHeaderClick(event);
-                  onOpenProjectVectors();
-                }}
-                testId="ide-verify-workbench-open-vectors"
-              >
-                Project vectors
-              </IdeButton>
-              {outputFields.length > 0 && onToggleExpectedOutputs && (
-                <IdeButton
-                  tone={showExpectedOutputs ? 'secondary' : 'ghost'}
-                  onClick={(event) => {
-                    stopWorkbenchHeaderClick(event);
-                    onToggleExpectedOutputs();
-                  }}
-                  testId="ide-verify-workbench-toggle-checks"
-                >
-                  {showExpectedOutputs ? 'Hide checks' : 'Show checks'}
-                </IdeButton>
-              )}
-            </div>
-          ) : null}
         </div>
       </div>
       {!effectiveWorkbenchExpanded ? (

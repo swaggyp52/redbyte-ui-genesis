@@ -42,7 +42,7 @@ describe('StimulusCanvas row authoring clarity', () => {
     expect(caseGroup.contains(addBtn)).toBe(true);
   });
 
-  it('Duplicate case button is inside the Cases group', () => {
+  it('keeps the toolbar focused on adding cases, not duplicating or deleting them', () => {
     const { getByTestId } = render(
       <StimulusCanvas
         inputFields={INPUTS}
@@ -52,22 +52,9 @@ describe('StimulusCanvas row authoring clarity', () => {
       />
     );
     const caseGroup = getByTestId('ide-stimulus-case-actions');
-    const dupBtn = getByTestId('ide-stimulus-duplicate-tick');
-    expect(caseGroup.contains(dupBtn)).toBe(true);
-  });
-
-  it('Delete case button is inside the Cases group', () => {
-    const { getByTestId } = render(
-      <StimulusCanvas
-        inputFields={INPUTS}
-        outputFields={OUTPUTS}
-        authoredVectors={VECTORS}
-        onVectorsChange={vi.fn()}
-      />
-    );
-    const caseGroup = getByTestId('ide-stimulus-case-actions');
-    const delBtn = getByTestId('ide-stimulus-delete-selected-tick');
-    expect(caseGroup.contains(delBtn)).toBe(true);
+    expect(caseGroup.textContent).toContain('Add case');
+    expect(caseGroup.textContent).not.toContain('Duplicate case');
+    expect(caseGroup.textContent).not.toContain('Delete case');
   });
 
   it('Cases group precedes the Advanced tools disclosure in DOM order', () => {

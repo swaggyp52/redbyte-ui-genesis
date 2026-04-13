@@ -43,16 +43,18 @@ describe('IdeLeftRail stage grammar', () => {
   });
 
   it('renders exactly 5 interactive navigation buttons (project + 4 workflow stages)', () => {
-    const { getAllByRole } = render(
-      <IdeLeftRail currentMode="design" onModeChange={vi.fn()} />
-    );
-    // Buttons in the rail: project, design, verify, hardware, export + collapse toggle
-    // We count by data-testid pattern for mode buttons specifically
     const { container } = render(
       <IdeLeftRail currentMode="design" onModeChange={vi.fn()} />
     );
     const modeButtons = container.querySelectorAll('[data-testid^="mode-button-"]');
     expect(modeButtons).toHaveLength(5);
+  });
+
+  it('does NOT render the legacy bottom-left rail expander', () => {
+    const { queryByTestId } = render(
+      <IdeLeftRail currentMode="design" onModeChange={vi.fn()} />
+    );
+    expect(queryByTestId('ide-rail-collapse-toggle')).toBeNull();
   });
 });
 
