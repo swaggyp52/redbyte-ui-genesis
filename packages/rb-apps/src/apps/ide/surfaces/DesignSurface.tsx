@@ -4000,6 +4000,37 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         </div>
       );
     }
+    if (isReplayMode) {
+      return (
+        <div className="ide-design-inspector-empty-card ide-design-inspector-replay-idle" data-testid="ide-design-inspector-empty">
+          <span className="ide-design-inspector-eyebrow ide-design-inspector-eyebrow--inspect">Inspect mode</span>
+          <div className="ide-design-inspector-title-block">
+            <div className="ide-design-selection-identity">
+              <strong data-testid="ide-design-inspector-identity-title">{activeReplaySelectionLabel}</strong>
+            </div>
+            <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+              {activeReplayTimingHint ?? 'Verify-authored replay'}
+            </p>
+          </div>
+          <div className="ide-design-replay-idle-guide" data-testid="ide-design-replay-idle-guide">
+            {activeDebugContext ? (
+              <div className="ide-design-replay-failure-context" data-testid="ide-design-replay-failure-context">
+                <span className="ide-design-replay-failure-signal">{activeDebugContext.signal}</span>
+                <span className="ide-design-replay-failure-verdict">expected&nbsp;<code>{activeDebugContext.expected}</code>&nbsp;got&nbsp;<code>{activeDebugContext.actual}</code></span>
+              </div>
+            ) : activeVerifySignal ? (
+              <p className="ide-design-replay-guide-hint">
+                Focus: <code>{activeVerifySignalPresentation?.focusLabel ?? activeVerifySignal}</code>
+              </p>
+            ) : null}
+            <p className="ide-design-replay-guide-hint" data-testid="ide-design-replay-guide-hint">
+              Click any gate or wire on the canvas to see its value at this tick.
+            </p>
+          </div>
+          {renderReplayContextActions()}
+        </div>
+      );
+    }
     return (
       <div className="ide-design-inspector-empty-card" data-testid="ide-design-inspector-empty">
         <span className="ide-design-inspector-eyebrow">Selection</span>
@@ -4512,6 +4543,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       return (
         <div className="ide-design-inspector-section-stack">
+          {selectedNodeReplayCausation ? (
+            <div className="ide-design-replay-causation-card" data-testid="ide-design-replay-causation-card">
+              <span className="ide-design-replay-causation-label">Why now</span>
+              <p className="ide-design-replay-causation-text" data-testid="ide-design-replay-causation">{selectedNodeReplayCausation}</p>
+            </div>
+          ) : null}
           <div className="ide-design-live-summary">
             <div className="ide-kv-list">
               <div className="ide-kv-row">
@@ -4530,12 +4567,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <span>Last transition</span>
                 <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
               </div>
-              {selectedNodeReplayCausation ? (
-                <div className="ide-kv-row">
-                  <span>Why now</span>
-                  <span data-testid="ide-design-replay-causation">{selectedNodeReplayCausation}</span>
-                </div>
-              ) : null}
               <div className="ide-kv-row">
                 <span>Trace state</span>
                 <span data-testid="ide-design-context-trace-state">
@@ -5596,45 +5627,47 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
                 {showSimulationStrip ? (
                   <div
-                    className={`ide-design-sim-story-strip${canRenderReplayScrubber ? ' has-replay-scrubber' : ''}`}
+                    className={`ide-design-sim-story-strip${canRenderReplayScrubber ? ' has-replay-scrubber' : ''}${isReplayMode ? ' is-replay-mode' : ''}`}
                     data-testid="ide-design-sim-story-strip"
                   >
                     <div className="ide-design-sim-story-topline">
                       <div className="ide-design-sim-story-main">
-                        <span className="ide-design-sim-story-label">Simulation</span>
+                        {isReplayMode ? (
+                          <span className="ide-design-replay-mode-badge" data-testid="ide-design-replay-mode-badge">Inspect</span>
+                        ) : (
+                          <span className="ide-design-sim-story-label">Simulation</span>
+                        )}
                         <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-tick">
                           {activeSimulationSelectionLabel}
                         </span>
-                        <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-mode">
-                          {simModeLabel}
-                        </span>
+                        {activeReplayTimingHint ? (
+                          <span className="ide-design-sim-story-pill ide-design-sim-story-pill--timing" data-testid="ide-design-sim-story-sample">
+                            {activeReplayTimingHint}
+                          </span>
+                        ) : (
+                          <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-mode">
+                            {simModeLabel}
+                          </span>
+                        )}
+                        {activeVerifySignal ? (
+                          <span className="ide-design-verify-link-badge" data-testid="ide-design-verify-link-badge">
+                            {activeVerifySignalPresentation?.focusLabel ?? activeVerifySignal}
+                          </span>
+                        ) : null}
                       </div>
-                      {(effectiveExternalDebugTick != null && activeReplayTimingHint) || simulationStory.clockEvent || activeVerifySignal ? (
+                      {simulationStory.clockEvent ? (
                         <div className="ide-design-sim-story-context" data-testid="ide-design-sim-story-context">
-                          {effectiveExternalDebugTick != null && activeReplayTimingHint ? (
-                            <span data-testid="ide-design-sim-story-sample">{activeReplayTimingHint}</span>
-                          ) : null}
-                          {simulationStory.clockEvent ? (
-                            <span data-testid="ide-design-sim-story-clock">
-                              {simulationStory.clockLabel} {simulationStory.clockEvent} edge
-                            </span>
-                          ) : null}
-                          {activeVerifySignal ? (
-                            <span className="ide-design-verify-link-badge" data-testid="ide-design-verify-link-badge">
-                              Verify focus {activeVerifySignalPresentation?.focusLabel ?? activeVerifySignal}
-                            </span>
-                          ) : null}
-                          {activeVerifySignal ? (
-                            <span className="ide-design-sim-story-verify-focus" data-testid="ide-design-verify-focus">
-                              Inspect {activeVerifySignalPresentation?.inspectLabel ?? activeVerifySignal} first
-                            </span>
-                          ) : null}
+                          <span data-testid="ide-design-sim-story-clock">
+                            {simulationStory.clockLabel} {simulationStory.clockEvent} edge
+                          </span>
                         </div>
                       ) : null}
                     </div>
-                    <p className="ide-design-sim-story-summary" data-testid="ide-design-sim-story-summary">
-                      {activeSimulationSummary}
-                    </p>
+                    {activeSimulationSummary ? (
+                      <p className="ide-design-sim-story-summary" data-testid="ide-design-sim-story-summary">
+                        {activeSimulationSummary}
+                      </p>
+                    ) : null}
                     {canRenderReplayScrubber && (
                       <div className="ide-design-replay-transport" data-testid="ide-design-replay-transport">
                         <div className="ide-design-debug-nav" data-testid="ide-design-debug-nav">

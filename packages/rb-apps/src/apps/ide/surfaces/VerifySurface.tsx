@@ -3604,47 +3604,59 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       dock={
         <section className="ide-verify-left-dock" data-testid="ide-verify-left-dock">
           <header
-            className="ide-design-subheader ide-verify-signal-rail-header"
+            className="ide-verify-signal-rail-header"
             data-testid="ide-verify-signal-rail-header"
           >
-            <div className="ide-verify-signal-rail-headline">
-              <span className="ide-verify-signal-rail-eyebrow">Signal guide</span>
+            <div className="ide-verify-signal-rail-toprow">
               <div className="ide-verify-signal-rail-title">
-                <h3>Waveform lanes</h3>
-                <span className="ide-copy" data-testid="ide-verify-signal-filter-state">
+                <h3>Lanes</h3>
+                <span className="ide-verify-signal-rail-count" data-testid="ide-verify-signal-filter-state">
                   {showMismatchOnlySignals
                     ? `${visibleSignalCount} mismatches`
                     : showAllSignals
                       ? `${signalTimeline.length} all`
-                      : `${visibleSignalCount} relevant`}
+                      : `${visibleSignalCount}`}
                 </span>
               </div>
-              <p className="ide-verify-signal-rail-summary" data-testid="ide-verify-signal-rail-summary">
-                {signalRailSummary}
-              </p>
-            </div>
-            <div className="ide-inline-actions ide-verify-signal-toolbar">
-              {(signalTimeline.length > relevantSignalTimeline.length || hiddenSignals.length > 0) ? (
-                <IdeButton
-                  tone="ghost"
-                  onClick={() => {
-                    setShowMismatchOnlySignals(false);
-                    setShowAllSignals((previous) => !previous);
-                  }}
-                  testId="ide-verify-show-all-signals"
+              <div className="ide-verify-signal-rail-actions">
+                {(signalTimeline.length > relevantSignalTimeline.length || hiddenSignals.length > 0) ? (
+                  <button
+                    type="button"
+                    className="ide-verify-signal-rail-action-btn"
+                    onClick={() => {
+                      setShowMismatchOnlySignals(false);
+                      setShowAllSignals((previous) => !previous);
+                    }}
+                    data-testid="ide-verify-show-all-signals"
+                  >
+                    {showAllSignals ? 'Relevant' : 'All'}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="ide-verify-signal-rail-action-btn"
+                  onClick={fitWaveformView}
+                  data-testid="ide-verify-fit-waveform"
                 >
-                  {showAllSignals ? 'Show relevant signals' : 'Show all signals'}
-                </IdeButton>
-              ) : null}
-              <IdeButton tone="ghost" onClick={fitWaveformView} testId="ide-verify-fit-waveform">
-                Fit view
-              </IdeButton>
-              {(manualLaneOrder.length > 0 || hiddenSignals.length > 0) && (
-                <IdeButton tone="ghost" onClick={resetLaneLayout} testId="ide-verify-reset-lanes">
-                  Reset lane layout
-                </IdeButton>
-              )}
+                  Fit
+                </button>
+                {(manualLaneOrder.length > 0 || hiddenSignals.length > 0) && (
+                  <button
+                    type="button"
+                    className="ide-verify-signal-rail-action-btn"
+                    onClick={resetLaneLayout}
+                    data-testid="ide-verify-reset-lanes"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
             </div>
+            {selectedSignal ? (
+              <p className="ide-verify-signal-rail-focus" data-testid="ide-verify-signal-rail-summary">
+                <code>{selectedSignal}</code> focused
+              </p>
+            ) : null}
           </header>
           <div className="ide-signal-list" data-testid="ide-verify-signal-list">
             {displaySignalTimeline.length === 0 ? (
@@ -4296,6 +4308,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           className="ide-verify-lab-grid"
           data-testid="ide-verify-lab-grid"
           data-stimulus-layout={Boolean(lastRun) && !scenarioWorkbenchExpanded ? 'collapsed' : 'expanded'}
+          data-workspace-mode={Boolean(lastRun) ? (scenarioWorkbenchExpanded ? 'split' : 'waveform-focus') : 'stimulus-focus'}
         >
         <VerifyStimulusRegion data-panel-state={Boolean(lastRun) && !scenarioWorkbenchExpanded ? 'collapsed' : 'expanded'}>
 
