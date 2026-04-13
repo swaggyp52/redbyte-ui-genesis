@@ -65,8 +65,8 @@ export const VerifyFirstRunPanel: React.FC<VerifyFirstRunPanelProps> = ({
           <div className="ide-vfr-signal-group">
             <span className="ide-vfr-signal-label">Inputs</span>
             <span className="ide-vfr-signal-list">
-              {inputNames.map((name) => (
-                <code key={name} className="ide-vfr-signal-chip ide-vfr-signal-chip--in">{name}</code>
+              {inputNames.map((name, index) => (
+                <code key={`input-${index}-${name}`} className="ide-vfr-signal-chip ide-vfr-signal-chip--in">{name}</code>
               ))}
             </span>
           </div>
@@ -75,8 +75,8 @@ export const VerifyFirstRunPanel: React.FC<VerifyFirstRunPanelProps> = ({
           <div className="ide-vfr-signal-group">
             <span className="ide-vfr-signal-label">Outputs</span>
             <span className="ide-vfr-signal-list">
-              {outputNames.map((name) => (
-                <code key={name} className="ide-vfr-signal-chip ide-vfr-signal-chip--out">{name}</code>
+              {outputNames.map((name, index) => (
+                <code key={`output-${index}-${name}`} className="ide-vfr-signal-chip ide-vfr-signal-chip--out">{name}</code>
               ))}
             </span>
           </div>

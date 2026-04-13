@@ -140,8 +140,10 @@ function buildSequentialAuthorityFixture(): RBProject {
       outputs: [{ id: 'q', nodeId: 'q_node', port: 'in', label: 'q', pin: 'LD0' }],
     },
     vectors: [
-      { tick: 0, inputs: { d: 1 }, expected: { q: 1 } },
-      { tick: 1, inputs: { d: 0 }, expected: { q: 0 } },
+      { tick: 0, inputs: { d: 1, clk: 0 }, expected: { q: 0 } },
+      { tick: 1, inputs: { d: 1, clk: 1 }, expected: { q: 1 } },
+      { tick: 2, inputs: { d: 0, clk: 0 }, expected: { q: 1 } },
+      { tick: 3, inputs: { d: 0, clk: 1 }, expected: { q: 0 } },
     ],
     meta: {
       projectId: 'rb-sequential-verify-authority-fixture',

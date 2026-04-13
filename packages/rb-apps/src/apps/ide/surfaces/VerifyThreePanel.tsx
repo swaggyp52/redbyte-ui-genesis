@@ -15,6 +15,18 @@ export const VerifyThreePanel: React.FC<VerifyThreePanelProps> = ({
 }) => {
   const hasLeftPanel = leftPanel !== null && leftPanel !== undefined;
   const hasRightPanel = rightPanel !== null && rightPanel !== undefined;
+
+  if (!hasLeftPanel && !hasRightPanel) {
+    return (
+      <main
+        className="ide-verify-three-panel-center ide-verify-three-panel-center--solo"
+        data-testid="ide-verify-three-panel-center"
+      >
+        {centerPanel}
+      </main>
+    );
+  }
+
   return (
     <section
       className="ide-verify-three-panel"

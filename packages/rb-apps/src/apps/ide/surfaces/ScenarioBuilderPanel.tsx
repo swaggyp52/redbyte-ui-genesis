@@ -76,11 +76,12 @@ export interface ScenarioBuilderPanelProps {
   onGoToHardware?: () => void;
   // Programmatic expansion: when set, the post-run <details> uses this ref
   // so the parent can scroll or inspect the editor container.
-  detailsRef?: React.RefObject<HTMLDetailsElement>;
+  detailsRef?: React.RefObject<HTMLElement>;
   /** Initial expanded state of the post-run workbench. Pass true for pass runs, false for fail/trace. */
   initialExpanded?: boolean;
-  /** Increment to force the post-run workbench open from the parent. */
-  expandSignal?: number;
+  /** Controlled post-run workbench state owned by VerifySurface. */
+  workbenchExpanded?: boolean;
+  onWorkbenchExpandedChange?: (expanded: boolean) => void;
   /** Optional output-check editor visibility. Default Verify keeps outputs on the waveform first. */
   showExpectedOutputs?: boolean;
   onToggleExpectedOutputs?: () => void;
@@ -137,7 +138,8 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   onGoToHardware,
   detailsRef,
   initialExpanded,
-  expandSignal,
+  workbenchExpanded,
+  onWorkbenchExpandedChange,
   showExpectedOutputs = false,
   onToggleExpectedOutputs,
 }) => {
@@ -147,6 +149,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
     (vector) => Object.keys(vector.expected ?? {}).length > 0
   );
   const canAutoGenerate = inputFields.length > 0 && inputFields.length <= 6;
+  const selectedTickLabel = selectedTick != null ? `t${selectedTick}` : 'No case selected';
 
   // Pre-run canvas: stripped down — just the StimulusCanvas, no toolbar eating height.
   // Generate Basics + Run are in the run footer below.
@@ -487,7 +490,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
       >
         {/* ── Testbench zone header ── */}
         <div className="ide-verify-testbench-zone-header">
-          <span className="ide-verify-empty-label">Testbench</span>
+          <span className="ide-verify-empty-label">Authored stimulus</span>
           {hasVectors && !isUsingFallbackSignals && (
             <span className="ide-verify-testbench-vector-count">
               {effectiveVectorCount} vector{effectiveVectorCount !== 1 ? 's' : ''}
@@ -570,47 +573,171 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   }
 
   // Post-run: collapsible workbench — starts closed so fail evidence takes focus.
-  // Parent can force it open via expandSignal (e.g. edit-vectors CTA).
-  const [workbenchExpanded, setWorkbenchExpanded] = React.useState(
+  const [uncontrolledWorkbenchExpanded, setUncontrolledWorkbenchExpanded] = React.useState(
     () => initialExpanded ?? !isFirstRun
+  );
+  const usesControlledWorkbenchState = typeof workbenchExpanded === 'boolean';
+  const effectiveWorkbenchExpanded = usesControlledWorkbenchState
+    ? workbenchExpanded
+    : uncontrolledWorkbenchExpanded;
+
+  const updateWorkbenchExpanded = React.useCallback(
+    (expanded: boolean) => {
+      if (!usesControlledWorkbenchState) {
+        setUncontrolledWorkbenchExpanded(expanded);
+      }
+      onWorkbenchExpandedChange?.(expanded);
+    },
+    [onWorkbenchExpandedChange, usesControlledWorkbenchState]
   );
 
   React.useEffect(() => {
-    setWorkbenchExpanded(initialExpanded ?? !isFirstRun);
-  }, [initialExpanded, isFirstRun]);
-
-  React.useEffect(() => {
-    if ((expandSignal ?? 0) > 0) {
-      setWorkbenchExpanded(true);
+    if (!usesControlledWorkbenchState) {
+      setUncontrolledWorkbenchExpanded(initialExpanded ?? !isFirstRun);
     }
-  }, [expandSignal]);
+  }, [initialExpanded, isFirstRun, usesControlledWorkbenchState]);
+
+  const stopWorkbenchHeaderClick = (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const handleWorkbenchHeaderToggle = () => {
+    updateWorkbenchExpanded(!effectiveWorkbenchExpanded);
+  };
+
+  const handleWorkbenchHeaderKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    handleWorkbenchHeaderToggle();
+  };
+
+  const collapsedWorkbenchSummary = showsAssertedExpectedCells || showExpectedOutputs
+    ? 'Stimulus is tucked away. Reopen to edit cases or jump back into saved checks.'
+    : 'Stimulus is tucked away. Reopen to edit cases or bring in project vectors without leaving the waveform.';
 
   return (
-    <details
+    <section
       className="ide-verify-scenario-builder-details ide-verify-scenario-builder-details--postrun ide-verify-workbench-live"
       data-testid="ide-verify-stimulus-workbench"
+      data-state={effectiveWorkbenchExpanded ? 'expanded' : 'collapsed'}
       ref={detailsRef}
-      open={workbenchExpanded}
     >
       {/* ── Workbench header / toggle ── */}
-      <summary
+      <div
         className="ide-verify-scenario-builder-summary ide-verify-workbench-header"
         data-testid="ide-verify-workbench-toggle"
+        role="button"
+        tabIndex={0}
+        aria-expanded={effectiveWorkbenchExpanded}
         onClick={(event) => {
           event.preventDefault();
-          setWorkbenchExpanded((prev) => !prev);
+          handleWorkbenchHeaderToggle();
         }}
+        onKeyDown={handleWorkbenchHeaderKeyDown}
       >
-        <span className="ide-verify-workbench-toggle-arrow" aria-hidden="true">
-          {workbenchExpanded ? '▾' : '▸'}
-        </span>
-        <span className="ide-verify-workbench-toggle-label">Stimulus Workbench</span>
-        {authoredVectors.length > 0 && (
-          <span className="ide-verify-workbench-count">
-            {authoredVectors.length} vector{authoredVectors.length !== 1 ? 's' : ''}
+        <div className="ide-verify-workbench-header-main">
+          <span className="ide-verify-workbench-toggle-arrow" aria-hidden="true">
+            {effectiveWorkbenchExpanded ? '▼' : '▸'}
           </span>
-        )}
-        {vectorsAreAutoGenerated && !autoVectorBannerDismissed && (
+          <div className="ide-verify-workbench-title-group">
+            <span className="ide-verify-workbench-toggle-label">Stimulus Workbench</span>
+            <span className="ide-verify-workbench-toggle-copy" data-testid="ide-verify-workbench-summary-copy">
+              Edit authored cases and ticks.
+            </span>
+          </div>
+        </div>
+        <div className="ide-verify-workbench-header-meta">
+          {authoredVectors.length > 0 && (
+            <span className="ide-verify-workbench-count">
+              {authoredVectors.length} vector{authoredVectors.length !== 1 ? 's' : ''}
+            </span>
+          )}
+          <span className="ide-verify-workbench-count is-selected" data-testid="ide-verify-workbench-selected-tick">
+            {selectedTickLabel}
+          </span>
+          {effectiveWorkbenchExpanded ? (
+            <div className="ide-verify-workbench-header-actions">
+              <IdeButton
+                tone="ghost"
+                onClick={(event) => {
+                  stopWorkbenchHeaderClick(event);
+                  onGenerateBasics();
+                }}
+                testId="ide-verify-workbench-generate"
+              >
+                Generate
+              </IdeButton>
+              <IdeButton
+                tone="ghost"
+                onClick={(event) => {
+                  stopWorkbenchHeaderClick(event);
+                  onOpenProjectVectors();
+                }}
+                testId="ide-verify-workbench-open-vectors"
+              >
+                Project vectors
+              </IdeButton>
+              {outputFields.length > 0 && onToggleExpectedOutputs && (
+                <IdeButton
+                  tone={showExpectedOutputs ? 'secondary' : 'ghost'}
+                  onClick={(event) => {
+                    stopWorkbenchHeaderClick(event);
+                    onToggleExpectedOutputs();
+                  }}
+                  testId="ide-verify-workbench-toggle-checks"
+                >
+                  {showExpectedOutputs ? 'Hide checks' : 'Show checks'}
+                </IdeButton>
+              )}
+            </div>
+          ) : null}
+        </div>
+      </div>
+      {!effectiveWorkbenchExpanded ? (
+        <div className="ide-verify-workbench-collapsed-strip" data-testid="ide-verify-workbench-collapsed-strip">
+          <div className="ide-verify-workbench-collapsed-copy">
+            <span className="ide-verify-workbench-collapsed-label">Waveform focus</span>
+            <p className="ide-verify-workbench-collapsed-summary">{collapsedWorkbenchSummary}</p>
+          </div>
+          <div className="ide-verify-workbench-collapsed-actions">
+            <IdeButton
+              tone="secondary"
+              onClick={(event) => {
+                stopWorkbenchHeaderClick(event);
+                updateWorkbenchExpanded(true);
+              }}
+              testId="ide-verify-workbench-reopen"
+            >
+              Edit cases
+            </IdeButton>
+            <IdeButton
+              tone="ghost"
+              onClick={(event) => {
+                stopWorkbenchHeaderClick(event);
+                onOpenProjectVectors();
+              }}
+              testId="ide-verify-workbench-open-vectors"
+            >
+              Project vectors
+            </IdeButton>
+            {outputFields.length > 0 && onToggleExpectedOutputs && (
+              <IdeButton
+                tone={showExpectedOutputs ? 'secondary' : 'ghost'}
+                onClick={(event) => {
+                  stopWorkbenchHeaderClick(event);
+                  onToggleExpectedOutputs();
+                }}
+                testId="ide-verify-workbench-toggle-checks"
+              >
+                {showExpectedOutputs ? 'Hide checks' : 'Show checks'}
+              </IdeButton>
+            )}
+          </div>
+        </div>
+      ) : null}
+      {effectiveWorkbenchExpanded && vectorsAreAutoGenerated && !autoVectorBannerDismissed && (
+        <div className="ide-verify-workbench-banner-row">
           <span className="ide-verify-auto-vector-pill" data-testid="ide-verify-auto-vector-notice">
             auto-generated starter cases
             <button
@@ -626,19 +753,14 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
               Dismiss
             </button>
           </span>
-        )}
-      </summary>
-      <div className="ide-verify-workbench-actions">
-        <IdeButton tone="ghost" onClick={onGenerateBasics} testId="ide-verify-workbench-generate">
-          Generate
-        </IdeButton>
-      </div>
+        </div>
+      )}
       {/* ── Editable stimulus region — mounted when expanded ── */}
-      {workbenchExpanded && (
+      {effectiveWorkbenchExpanded && (
         <div className="ide-verify-workbench-body" data-testid="ide-verify-workbench-body">
           {authoringForm}
         </div>
       )}
-    </details>
+    </section>
   );
 };

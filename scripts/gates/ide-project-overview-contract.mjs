@@ -43,12 +43,20 @@ await runIdeGate('IDE project overview contract satisfied', async ({ page, baseU
       .catch(() => false);
     assert(buildFreshVisible, 'project landing must offer Build Fresh');
 
-    const importVisible = await page
+    const importUtilityVisible = await page
+      .locator('[data-testid="ide-project-quickstart-import-link"]')
+      .first()
+      .isVisible()
+      .catch(() => false);
+
+    assert(importUtilityVisible, 'project landing must offer import as a secondary utility path');
+
+    const importCardVisible = await page
       .locator('[data-testid="ide-project-landing-import"]')
       .first()
       .isVisible()
       .catch(() => false);
-    assert(importVisible, 'project landing must offer Import Project');
+    assert(!importCardVisible, 'project landing must not promote import as a peer start card');
 
     return;
   }

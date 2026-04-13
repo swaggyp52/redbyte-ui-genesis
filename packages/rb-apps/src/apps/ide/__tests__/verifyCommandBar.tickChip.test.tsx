@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 /**
- * Contract tests for the tick-context chip in VerifyCommandBar.
- * When a tick is selected and the Design bridge is shown, a "t{N}" chip
- * should appear inline with "Open in Design" so users know which tick's
- * inputs will be injected into the runtime sim.
+ * Contract tests for the retired tick-context chip in VerifyCommandBar.
+ * Tick context now belongs to the waveform/readout surface, so the command
+ * bar must not repeat a separate t{N} chip beside Open in Design.
  */
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -29,21 +28,19 @@ const BASE: VerifyCommandBarProps = {
   onGoToDesign: vi.fn(),
 };
 
-describe('VerifyCommandBar tick-context chip', () => {
-  it('shows tick chip with correct label when goToDesignTick is set', () => {
-    const { getByTestId } = render(
+describe('VerifyCommandBar retired tick-context chip', () => {
+  it('does not show a tick chip when goToDesignTick is set', () => {
+    const { queryByTestId } = render(
       <VerifyCommandBar {...BASE} goToDesignTick={3} />
     );
-    const chip = getByTestId('ide-vcb-design-tick-chip');
-    expect(chip.textContent).toBe('t3');
+    expect(queryByTestId('ide-vcb-design-tick-chip')).toBeNull();
   });
 
-  it('shows tick chip for tick 0', () => {
-    const { getByTestId } = render(
+  it('does not show a tick chip for tick 0', () => {
+    const { queryByTestId } = render(
       <VerifyCommandBar {...BASE} goToDesignTick={0} />
     );
-    const chip = getByTestId('ide-vcb-design-tick-chip');
-    expect(chip.textContent).toBe('t0');
+    expect(queryByTestId('ide-vcb-design-tick-chip')).toBeNull();
   });
 
   it('hides tick chip when goToDesignTick is null', () => {
@@ -60,14 +57,13 @@ describe('VerifyCommandBar tick-context chip', () => {
     expect(queryByTestId('ide-vcb-design-tick-chip')).toBeNull();
   });
 
-  it('tick chip is adjacent to the Open in Design button', () => {
-    const { getByTestId } = render(
+  it('keeps Open in Design as a standalone action without a tick chip sibling', () => {
+    const { getByTestId, queryByTestId } = render(
       <VerifyCommandBar {...BASE} goToDesignTick={1} />
     );
-    const chip = getByTestId('ide-vcb-design-tick-chip');
     const btn = getByTestId('ide-verify-inspect-design');
-    // chip and button should share a parent (inline in same wrapper)
-    expect(chip.parentElement).toBe(btn.parentElement);
+    expect(btn).toBeTruthy();
+    expect(queryByTestId('ide-vcb-design-tick-chip')).toBeNull();
   });
 
   it('hides tick chip when showGoToDesign is false even if tick is set', () => {

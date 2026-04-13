@@ -2,11 +2,12 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-04-11
+updated: 2026-04-13
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
   - "[[Note Schema]]"
+  - "[[ADR-005 Verify Schedule Contract Owns Sequential Clock Authority]]"
   - "[[Verify Engine]]"
   - "[[2026-03-25 Verify Refactor Plan]]"
 ---
@@ -60,6 +61,99 @@ For Design workflow hierarchy work: [[Design Surface]]
 
 ## What is the next action
 
+Latest shared shell compact/wide-layout fix landed (2026-04-13):
+
+- [[BUG-017 Shared Compact Workbench Row Theft]] is fixed: live browser measurements showed Project, Design, and Verify were all losing workbench height in compact layouts because the shared shell still reserved a second row when the right dock was hidden or only collapsed, and wide-screen hidden-right-dock sessions could still inherit an older capped grid path
+- the shared shell now marks `hide-right-dock` for truly hidden inspectors, compact stacked-inspector rules only apply when the right dock is visibly open, the hidden-right-dock grid uses collapsed slot width instead of full dock width, and Design's auto-open inspector now uses the shared user-collapse / reveal-key contract instead of forcing a sticky visible dock
+- targeted validation is complete for this slice: focused shell + Design workstation regressions are green (`2` files, `43` tests), compact-height browser measurements on `http://127.0.0.1:4180/` confirmed full-height Project, Design, and Verify workspaces (`703px` shell / grid / body), and wide-viewport proof showed Verify back at full shell width (`2212px` grid, `2156px` body, `56px` collapsed `Signals` rail)
+
+Next action after this slice: continue the state-aware Design rail pass, but keep future geometry work tied to measured browser regressions in the shared shell instead of surface-local CSS guesses.
+
+Latest Verify workspace collapse recovery landed (2026-04-13):
+
+- [[BUG-016 Verify Workspace Nested Grid Collapse]] is fixed: source-driven validation on `http://127.0.0.1:4180/` showed the outer Verify workspace still reserving unused columns, which squeezed the waveform into a narrow strip and left dead bottom space in the main lab
+- Verify now uses one full-width lab frame with the inner lab grid owning the actual stimulus/waveform split; the dead bottom row is gone, and the Verify `Signals` rail is wide enough to read as a deliberate dock instead of cramped chrome
+- targeted validation is complete for this slice: focused Verify/shell regressions are green (`5` files, `56` tests), and live measurements confirmed the recovered desktop geometry (`~629px` stimulus / `~681px` waveform, `208px` left dock)
+
+Next action after this slice: keep future Verify layout work tied to measured browser-visible regressions; do not reopen shell geometry without live source-driven evidence.
+
+Latest hard visual architecture pass landed (2026-04-13):
+
+- Project now reads as a workflow front door instead of a dashboard: Project Home keeps two deliberate start lanes, and loaded Project keeps one current-focus hero above the supporting workflow cards
+- Design now reads as a calmer authoring surface: the right rail is flattened into `Selection`, inline facts, `Actions`, `Live / Signal State`, and `Details`, while replay case/tick/focus stays integrated instead of reopening a separate replay slab
+- Verify now reads as one lab surface: the command bar is the sole session authority, the left dock is a `Signal guide`, the workbench header is compact, and the waveform stays the primary evidence stage
+- targeted validation is complete for this slice: focused UI suites are green (`8` files, `134` tests), unified build is green, rebuilt browser validation is complete on `http://127.0.0.1:4179/os/`, and code review found no blocking issues
+
+Next action after this slice: keep future work on concrete browser-visible contradictions, not generic polish passes or reopened state-model work.
+
+Latest Design inspector + Verify chrome cleanup landed (2026-04-12):
+
+- Design now keeps simulation controls in the primary toolbar and removes the old right-inspector `Live Simulation`, `Board I/O`, and `Signal History` sections; the inspector now reads as identity + actions + properties + `Signal / State` + optional `Details`
+- replay still owns the Design top strip: the rebuilt browser path on `2-Bit Up Counter` showed `Replay · t0`, case/tick context in the simulation strip, and no replay/live-sim duplication in the inspector
+- Verify post-run chrome is tighter: the redundant `tN` chip beside `Open in Design` is gone, and the `Stimulus Workbench` header now collapses to title + vector count without the old subtitle/status duplication
+- targeted validation is complete for this slice: focused Design suites are green (`63` tests), focused Verify suites are green (`52` tests), unified build is green, and rebuilt browser validation is complete on `http://127.0.0.1:4173/os/`
+
+Latest Verify trust cleanup + Windows merge staging fallback landed (2026-04-12):
+
+- live browser validation on rebuilt preview `4175` confirmed the real `2-Bit Up Counter` trace path now stays trustworthy: observation-only runs show `7 vectors`, and clicking `Save as checks` no longer flips the Verify header to `STALE`
+- final rebuilt-preview validation on `4178` closed the remaining wording drift: the command strip stays `OBSERVATION ONLY`, while the Stimulus Workbench now says `Saved checks available` instead of the misleading `Observation + compare`
+- Verify draft/placeholder render paths no longer emit the tested duplicate-key warnings for repeated `EN`-style display labels; focused regressions now cover both the first-run chips and the latch-control placeholder path
+- `merge-dist.mjs` now retries Windows lock-style cleanup and, when canonical `dist/` remains locked by a local process, writes the fresh unified artifact to `dist.staged/` instead of aborting mid-merge
+- targeted validation is complete for this slice: focused Verify + merge regressions are green (`78` tests), browser proof is complete, and the real merge entrypoint succeeded with a staged fallback artifact under a live `serve dist` lock
+
+Latest Project surface ASCII CTA cleanup + hierarchy proof landed (2026-04-12):
+
+- the remaining ProjectSurface mojibake is gone from the built UI: live browser proof now shows `Build Submission Package ->`, `Open Mapping`, and starter `Load & Design ->` copy cleanly on the rebuilt preview
+- focused Project regressions now explicitly guard landing / recovery CTA copy plus blocker and mapping actions, so browser-facing encoding drift is covered in tests instead of only in manual inspection
+- targeted validation is complete for this slice: Project continuity + submission suites are green (`21` tests), playground build is green, and a DOM-level scan of the built Project page found no `Ã` mojibake markers
+
+Latest Verify clock truth + Design replay scrubber slice landed (2026-04-12):
+
+- Verify no longer shows the false `No clock activity detected in your vectors` warning when the effective next run already contains clock activity through mixed project + custom vectors
+- normalized clock ids now count as the same authoritative clock in the pre-run warning path, so presentation differences like `Phase Driver` vs `phase_driver` no longer drift that guidance
+- Design replay now exposes one central parent-owned scrubber in the simulation strip itself; the real `2-Bit Up Counter` browser path opened at `Case 10 / 11 · t9`, scrubbed back to `Case 9 / 11 · t8`, and still demoted to `Replay stale` immediately after placing `AND Gate`
+- targeted validation is complete for this slice: adjacent replay / Verify suites are green (`121` tests), unified build is green, and built-preview browser proof is complete on the sequential example
+
+Latest Design replay strip clarity + shell consistency cleanup landed (2026-04-12):
+
+- the Design simulation strip now carries the replay selection label and sampling meaning directly during replay (`Case 10 / 11 · t9`, `Replay`, `Sampled post-rising-edge on CLK.`) instead of forcing students to combine a generic strip with the debug banner
+- replay invalidation still holds in the real UI after this copy change: placing `AND Gate` during replay demotes the surface to `Replay stale — Case 10 / 11 · t9`, returns the strip to live `Tick 0` / `Paused`, and re-enables live controls
+- the shared shell no longer renders the global `Focus` / `Done` toggle; later-case replay proof and shell cleanup are validated by focused suites (`31` tests), adjacent Design/shell suites (`75` tests), unified build, and built-preview browser validation
+
+Latest clock authority + cross-app Design consistency slice landed (2026-04-12):
+
+- one active Verify schedule contract now owns pre-run inventory, sequential helper naming, helper insertion, and timing guidance across Verify
+- helper/default sequential clocks now use shared absolute sampled-tick parity starting low at `t0`; bring-up sequential generation uses the same shared helper module
+- Design live clock narration now resolves from timing guidance plus canonical IO match keys instead of label-regex guessing, so non-regex labels like `Phase Driver` still narrate the authoritative clock
+- targeted validation is complete for this slice: focused clock suites are green (`65` tests), adjacent regressions are green (`76` tests), unified build is green, and built-preview browser validation on `2-Bit Up Counter` confirmed appended `CLK` parity `t7=1`, `t8=0`, `t9=1`, `t10=0`
+
+Latest replay trust + causation slice landed (2026-04-11):
+
+- runtime-backed Design mutations that used to bypass replay invalidation - palette placement, IO starter insertion, starter AND insertion, undo, and redo - now all demote replay to stale and return the canvas to live Design state
+- sparse authored case chips are now browser-consistent in the live app (`Case 1` .. `Case 5`) even when the real sampled ticks are sparse (`t1`, `t3`, `t5`)
+- Design `Signal / State` now shows a replay-only `Why now` cue that summarizes the sampled change, the direct upstream driver label when available, and the next inspect target (`Rose 0 to 1 at t5; upstream path from Q0; inspect LD0 first.`)
+- focused validation is complete for this slice: replay/case suites are green (`51` tests), changed-file diagnostics are clean, and browser validation on `lab-workspace/freeplay` confirmed `Replay stale` immediately after real palette placement; package-wide build was not rerun in this continuation
+
+Latest stale-replay + case-index replay semantics slice landed (2026-04-11):
+
+- Design replay now invalidates honestly on real circuit mutation: the old Verify sample is demoted to a stale breadcrumb banner and the canvas returns to live Design state instead of keeping stale authority
+- sparse sequential runs now navigate by authored case index across the Verify scrubber and selected-case readouts, while still showing the real sampled tick (`Case N · tX`)
+- Stimulus case chips now derive case numbering from authored order, so sparse ticks like `t1`, `t3`, `t5` no longer mislabel themselves as `Case 2`, `Case 4`, `Case 6`
+- targeted validation is complete for this slice: focused replay/case suites are green (`62` tests); package-wide `@redbyte/rb-apps` build remains blocked by unrelated pre-existing errors outside the replay files
+
+Latest Design replay-authority slice landed (2026-04-11):
+
+- Design now receives the full Verify run and uses replay-backed values as the current display authority for the simulation strip, inspector snapshots, live state table, and board-signal readouts while debug mode is active
+- the Design scrubber now changes visible sampled state instead of only a tick label: fresh browser validation on `2-Bit Up Counter` moved from `Tick 3` / `LD0=0` `LD1=1` to `Tick 2` / `LD0=1` `LD1=0`
+- replay mode is now honestly read-only: Run / Step / Reset / Speed are disabled while the surface is frozen on a Verify-authored tick
+- targeted validation is complete: focused replay + adjacent Design suites are green (`47` tests), playground build is green, and browser validation confirmed both state propagation and control lockout
+
+Latest alias ↔ board-label presentation slice landed (2026-04-11):
+
+- canonical Verify waveform aliases now remain visible as provenance in Design (`Verify focus q1`) while the inspect target resolves to the structural landing label (`Inspect LD1 first`)
+- the `2-Bit Up Counter` browser path now explains the relationship directly in the right inspector: title `LD1 · Input`, subtitle `Verify focus q1`, next step `Verify signal q1 maps here as LD1 · Input...`
+- targeted validation is complete: focused Design + Verify suites are green (`39` tests), playground build is green, and fresh browser validation on `q1 @ t3` confirmed the new unified copy end to end
+
 Latest shared selected-signal authority slice landed (2026-04-11):
 
 - Verify now publishes observation-mode auto-selected signal focus and the remaining internal signal-focus fallbacks through the same shared callback used by explicit lane clicks
@@ -85,11 +179,11 @@ Latest Verify → Design continuity slice landed (2026-04-10):
 - Design now visibly acknowledges arrival from Verify by entering a debug landing state with a frozen verification tick and replay controls, rather than only showing a passive banner
 - targeted validation is complete: focused `verifySurface.observeFirst` + `designSurface.workstation` suites are green, unified build is green, and browser validation confirmed the visible debug landing state in Design
 
-Next Verify slice should stay on core-loop maturity, not broad system cleanup:
+Next Verify slice should stay on targeted sequential consistency, not broad system cleanup:
 
-1. decide whether the Design right inspector should mirror the new signal-target wording during frozen debug landings, or whether the simulation strip is the correct single explicit landing cue
-2. decide whether sparse / non-contiguous waveform tick sets need index-based scrubber semantics instead of raw tick values
-3. re-evaluate the failing three-panel left-dock contract separately from shared tick-authority work
+1. keep future sequential warning/preflight copy on effective next-run vector authority instead of reintroducing authored-only checks
+2. keep replay case selection parent-owned and centered in the Design simulation strip; banner-only replay controls should remain fallback behavior, not the primary control path
+3. keep Project / Import / Hardware / Export out of the next sequential pass unless a concrete cross-surface contradiction is found
 
 Latest Verify desktop workbench professionalization slice landed (2026-04-08):
 

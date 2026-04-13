@@ -2,7 +2,7 @@
 type: handoff
 status: active
 area: infrastructure
-updated: 2026-04-01
+updated: 2026-04-12
 related:
   - "[[Note Schema]]"
   - "[[RedByte Engineering Brain]]"
@@ -72,6 +72,8 @@ These notes must be updated in place. Do not create parallel or competing notes 
 |---|---|---|
 | `04 Decisions/ADR-001 Enforce Structured Connection Format.md` | Nested connection shape enforced everywhere | active |
 | `04 Decisions/ADR-002 Truth Table Selection Does Not Auto-Switch Tabs.md` | Truth table selection preserves current tab | active |
+| `04 Decisions/ADR-004 Stimulus-First Observation Default.md` | Verify starts in observation mode; checks are explicit authoring | active |
+| `04 Decisions/ADR-005 Verify Schedule Contract Owns Sequential Clock Authority.md` | One canonical sequential clock model across Verify and Design | active |
 
 ---
 

@@ -251,7 +251,7 @@ describe('VerifySurface observe-first model', () => {
     expect(onGoToDesign).toHaveBeenCalledOnce();
   });
 
-  it('scope label reads "Observed output" not "Waveform"', () => {
+  it('scope header stays concise after a run and avoids the old narrative summary block', () => {
     const { queryByTestId, queryByText } = render(
       <VerifySurface
         {...BASE_PROPS}
@@ -259,14 +259,12 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    // The renamed scope label must not say "Waveform" anywhere in that element
     const label = queryByTestId('ide-verify-scope-label');
     if (label) {
-      expect(label.textContent).not.toContain('Waveform');
-      expect(label.textContent).toContain('Observed output');
+      expect(label.textContent).toContain('Waveform truth');
     }
-    // Also no standalone "Waveform" heading visible
-    expect(queryByText('Waveform')).toBeNull();
+    expect(queryByTestId('ide-verify-scope-summary')).toBeNull();
+    expect(queryByText('Observed output')).toBeNull();
   });
 
   it('prefers debug handoff over input injection when tick evidence is available', () => {
@@ -376,6 +374,32 @@ describe('VerifySurface observe-first model', () => {
     );
     expect(onGoToDesignWithInputs).not.toHaveBeenCalled();
     expect(onGoToDesign).not.toHaveBeenCalled();
+  });
+
+  it('follows an external selected tick override so Design and Verify can stay synchronized', async () => {
+    const view = render(
+      <VerifySurface
+        {...BASE_PROPS}
+        lastRun={makeWaveformOnlyRun()}
+        selectedTickOverride={1}
+      />
+    );
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
+    });
+
+    view.rerender(
+      <VerifySurface
+        {...BASE_PROPS}
+        lastRun={makeWaveformOnlyRun()}
+        selectedTickOverride={0}
+      />
+    );
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t0');
+    });
   });
 
   it('carries failure context into the debug handoff when the selected tick is failing', () => {

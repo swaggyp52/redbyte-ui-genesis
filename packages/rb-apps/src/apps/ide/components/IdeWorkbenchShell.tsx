@@ -28,8 +28,8 @@ const RIGHT_WIDTH_RANGE = { min: 180, max: 280 };
 const CONSOLE_HEIGHT_RANGE = { min: 0, max: 320 };
 const COLLAPSED_CONSOLE_HEIGHT = 0;
 const DEFAULT_EXPANDED_CONSOLE_HEIGHT = 120;
-const COLLAPSED_DOCK_RAIL_WIDTH = 26;
-const VERIFY_COLLAPSED_DOCK_RAIL_WIDTH = 60;
+const COLLAPSED_DOCK_RAIL_WIDTH = 38;
+const VERIFY_COLLAPSED_DOCK_RAIL_WIDTH = 56;
 
 interface WorkbenchLayoutState {
   leftWidth: number;
@@ -65,6 +65,8 @@ export interface IdeWorkbenchShellProps {
   consoleMode?: ConsoleMode;
   shellDensity?: WorkbenchShellDensity;
   surfaceFrame?: WorkbenchSurfaceFrame;
+  rightDockCanCollapse?: boolean;
+  rightDockRevealKey?: string | null;
   /** @deprecated Use rightDockMode='hidden' instead. */
   hideRightDock?: boolean;
 }
@@ -82,6 +84,8 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   consoleMode = 'auto',
   shellDensity = 'default',
   surfaceFrame = 'panel',
+  rightDockCanCollapse = false,
+  rightDockRevealKey = null,
   hideRightDock = false,
 }) => {
   const shellRef = useRef<HTMLElement | null>(null);
@@ -114,13 +118,10 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     mode,
     dockMode: policy.rightDockMode,
   });
+  const previousRightDockRevealKeyRef = useRef<string | null>(rightDockRevealKey);
   const previousConsoleContextRef = useRef<{ mode: IdeSurfaceMode; consoleMode: ConsoleMode }>({
     mode,
     consoleMode: policy.consoleMode,
-  });
-  const [focusMode, setFocusMode] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return window.localStorage.getItem(`rb.ide.workbench.focus.${mode}`) === '1';
   });
 
   useEffect(() => {
@@ -140,8 +141,11 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
 
   useEffect(() => {
     const previous = previousRightDockContextRef.current;
+    const revealChanged = previousRightDockRevealKeyRef.current !== rightDockRevealKey;
     if (policy.rightDockMode === 'visible') {
-      setIsRightDockExpanded(true);
+      if (!rightDockCanCollapse || revealChanged || previous.dockMode !== policy.rightDockMode || previous.mode !== mode) {
+        setIsRightDockExpanded(true);
+      }
     } else if (policy.rightDockMode === 'hidden') {
       setIsRightDockExpanded(false);
     } else if (previous.dockMode !== policy.rightDockMode || previous.mode !== mode) {
@@ -151,7 +155,8 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       mode,
       dockMode: policy.rightDockMode,
     };
-  }, [mode, policy.rightDockMode]);
+    previousRightDockRevealKeyRef.current = rightDockRevealKey;
+  }, [mode, policy.rightDockMode, rightDockCanCollapse, rightDockRevealKey]);
 
   useEffect(() => {
     const previous = previousConsoleContextRef.current;
@@ -172,17 +177,24 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   const showLeftCollapsedRail = policy.leftDockMode === 'collapsed' && !isLeftDockExpanded;
   const showRightDock =
     policy.rightDockMode !== 'hidden' &&
-    (policy.rightDockMode === 'visible' || isRightDockExpanded);
-  const showRightCollapsedRail = policy.rightDockMode === 'collapsed' && !isRightDockExpanded;
+    (rightDockCanCollapse ? isRightDockExpanded : policy.rightDockMode === 'visible' || isRightDockExpanded);
+  const showRightCollapsedRail =
+    (policy.rightDockMode === 'collapsed' || (policy.rightDockMode === 'visible' && rightDockCanCollapse)) &&
+    !isRightDockExpanded;
+  const leftDockState: LeftDockMode = showLeftDock
+    ? 'visible'
+    : showLeftCollapsedRail
+      ? 'collapsed'
+      : 'hidden';
+  const rightDockState: RightDockMode = showRightDock
+    ? 'visible'
+    : showRightCollapsedRail
+      ? 'collapsed'
+      : 'hidden';
   const showConsole = policy.consoleMode !== 'hidden';
   const leftRailLabel = mode === 'verify' ? 'Signals' : 'Library';
   const leftRailAriaLabel = mode === 'verify' ? 'Show signals' : 'Show library';
   const leftCollapseAriaLabel = mode === 'verify' ? 'Collapse signals' : 'Collapse library';
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(`rb.ide.workbench.focus.${mode}`, focusMode ? '1' : '0');
-  }, [focusMode, mode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -316,27 +328,27 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       const widthCaps =
         mode === 'design'
           ? layoutMode === 'wide'
-            ? { left: { min: 184, max: 212 }, right: { min: 220, max: 252 } }
+            ? { left: { min: 248, max: 284 }, right: { min: 304, max: 352 } }
             : layoutMode === 'standard'
-              ? { left: { min: 172, max: 200 }, right: { min: 208, max: 240 } }
-              : { left: { min: 160, max: 184 }, right: { min: 196, max: 224 } }
+              ? { left: { min: 228, max: 264 }, right: { min: 288, max: 336 } }
+              : { left: { min: 212, max: 244 }, right: { min: 272, max: 320 } }
           : mode === 'verify'
             ? layoutMode === 'wide'
-              ? { left: { min: 136, max: 152 }, right: { min: 196, max: 220 } }
+              ? { left: { min: 208, max: 228 }, right: { min: 232, max: 272 } }
               : layoutMode === 'standard'
-                ? { left: { min: 124, max: 140 }, right: { min: 184, max: 208 } }
-                : { left: { min: 116, max: 132 }, right: { min: 176, max: 196 } }
-          : usesCalmerNonDesignShell
-            ? layoutMode === 'wide'
-              ? { left: { min: 140, max: 156 }, right: { min: 188, max: 208 } }
-              : layoutMode === 'standard'
-                ? { left: { min: 132, max: 148 }, right: { min: 180, max: 196 } }
-                : { left: { min: 124, max: 140 }, right: { min: 168, max: 184 } }
-            : layoutMode === 'wide'
-              ? { left: { min: 152, max: 172 }, right: { min: 196, max: 220 } }
-              : layoutMode === 'standard'
-                ? { left: { min: 144, max: 160 }, right: { min: 184, max: 208 } }
-                : { left: { min: 136, max: 152 }, right: { min: 176, max: 196 } };
+                ? { left: { min: 192, max: 212 }, right: { min: 220, max: 256 } }
+                : { left: { min: 176, max: 196 }, right: { min: 208, max: 240 } }
+            : usesCalmerNonDesignShell
+              ? layoutMode === 'wide'
+                ? { left: { min: 168, max: 188 }, right: { min: 220, max: 248 } }
+                : layoutMode === 'standard'
+                  ? { left: { min: 156, max: 176 }, right: { min: 208, max: 236 } }
+                  : { left: { min: 144, max: 164 }, right: { min: 196, max: 224 } }
+              : layoutMode === 'wide'
+                ? { left: { min: 168, max: 188 }, right: { min: 220, max: 252 } }
+                : layoutMode === 'standard'
+                  ? { left: { min: 156, max: 176 }, right: { min: 208, max: 240 } }
+                  : { left: { min: 144, max: 164 }, right: { min: 196, max: 228 } };
       const effectiveLeftWidth = clampValue(layout.leftWidth, widthCaps.left);
       const effectiveRightWidth = clampValue(layout.rightWidth, widthCaps.right);
       const collapsedLeftRailWidth = mode === 'verify' ? VERIFY_COLLAPSED_DOCK_RAIL_WIDTH : COLLAPSED_DOCK_RAIL_WIDTH;
@@ -396,13 +408,14 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   return (
     <section
       ref={shellRef}
-      className={`ide-surface-shell ide-workbench-shell${focusMode ? ' is-focus-mode' : ''}${
+      className={`ide-surface-shell ide-workbench-shell${
         !showConsole ? ' is-console-hidden' : ''
       }`}
       data-testid={`ide-mode-${mode}`}
       data-ide-mode-marker={mode}
-      data-focus-mode={focusMode ? '1' : '0'}
       data-layout-mode={layoutMode}
+      data-left-dock-state={leftDockState}
+      data-right-dock-state={rightDockState}
       data-shell-density={policy.shellDensity}
       data-surface-frame={policy.surfaceFrame}
       style={shellStyle}
@@ -410,6 +423,8 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       <div
         className={`ide-workbench-main${showLeftCollapsedRail ? ' is-left-dock-collapsed' : ''}${
           showRightCollapsedRail ? ' is-right-dock-collapsed' : ''
+        }${rightDockState === 'hidden' ? ' hide-right-dock' : ''}${
+          leftDockState === 'hidden' ? ' hide-left-dock' : ''
         }`}
         data-testid="ide-surface-grid"
         data-grid-columns="12"
@@ -439,11 +454,12 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             type="button"
             className="ide-workbench-dock-toggle-rail ide-workbench-dock-toggle-rail-left"
             data-testid="ide-workbench-dock-toggle-left"
-            onClick={() => setIsLeftDockExpanded(true)}
-            aria-label={leftRailAriaLabel}
-            title={leftRailAriaLabel}
-          >
-            {leftRailLabel}
+          onClick={() => setIsLeftDockExpanded(true)}
+          aria-label={leftRailAriaLabel}
+          title={leftRailAriaLabel}
+        >
+            <span className="ide-workbench-dock-toggle-rail-label">{leftRailLabel}</span>
+            <span className="ide-workbench-dock-toggle-rail-hint">Show</span>
           </button>
         ) : (
           <div
@@ -486,7 +502,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
               className="ide-inspector ide-workbench-dock ide-workbench-dock-right"
               data-testid="ide-inspector"
             >
-              {policy.rightDockMode === 'collapsed' ? (
+              {policy.rightDockMode === 'collapsed' || rightDockCanCollapse ? (
                 <button
                   type="button"
                   className="ide-workbench-dock-collapse-btn"
@@ -510,7 +526,8 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             aria-label="Show inspector"
             title="Show inspector"
           >
-            Inspector
+            <span className="ide-workbench-dock-toggle-rail-label">Inspector</span>
+            <span className="ide-workbench-dock-toggle-rail-hint">Show</span>
           </button>
         ) : (
           <div
@@ -566,16 +583,6 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
           </section>
         </>
       ) : null}
-      {/* Focus toggle lives outside the console so it's always clickable */}
-      <button
-        type="button"
-        className="ide-workbench-focus-toggle"
-        data-testid="ide-workbench-focus-toggle"
-        onClick={() => setFocusMode((previous) => !previous)}
-        aria-label={focusMode ? 'Exit focus mode' : 'Enter focus mode'}
-      >
-        {focusMode ? 'Done' : 'Focus'}
-      </button>
     </section>
   );
 };

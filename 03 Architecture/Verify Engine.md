@@ -2,14 +2,19 @@
 type: architecture
 status: active
 area: verify
-updated: 2026-04-11
+updated: 2026-04-13
 related:
+  - "[[Design Surface]]"
   - "[[Verify Hint System]]"
   - "[[Connection Model]]"
   - "[[Test Infrastructure]]"
+  - "[[ADR-005 Verify Schedule Contract Owns Sequential Clock Authority]]"
   - "[[BUG-003 React.act Infrastructure Failure]]"
   - "[[BUG-004 Verify Hash Includes Non-Circuit Fields]]"
   - "[[BUG-006 TRACE vs VERIFY Mode Collapse]]"
+  - "[[BUG-016 Verify Workspace Nested Grid Collapse]]"
+  - "[[BUG-015 Verify Missing-Clock Warning Ignored Effective Next-Run Clock Activity]]"
+  - "[[BUG-014 Design Replay Missed Runtime-Backed Mutations]]"
   - "[[2026-03-25 Verify Refactor Plan]]"
 ---
 
@@ -27,6 +32,15 @@ Verify currently spans three layers:
 
 The deterministic engine itself does run against a fresh circuit + IO snapshot. The weak spots are the layers above it: freshness is still computed in multiple ways and the scenario/session model is only partially live outside the normal shell path. The latest Phase 6 slice made the remaining local Verify toggle explicit authoring intent: `VerifySurface` now uses `nextRunUsesAssertions` for next-run copy/preflight/wiring, while current-run meaning stays on `VerifySessionStatus` plus persisted `runKind`. `READY` / `BLOCKED` now survive only as a draft-only presentation shim.
 
+The latest hard visual / interaction architecture pass then made the browser-visible Verify surface read as one integrated lab instead of a stack of internal tools:
+
+- the command bar is now the sole session authority in normal pre-run and post-run states; the old full-width post-run status strip is gone from active sessions
+- the left dock now presents a `Signal guide` / `Waveform lanes` structure with concise summary copy and compact lane actions, instead of reading like a secondary tooling palette
+- the `Stimulus Workbench` header now centers authored stimulus, selected case/tick context, and the essential actions; generated-starter notices sit below the header instead of inside it
+- rebuilt browser validation on `http://127.0.0.1:4179/os/` confirmed the visible result: observation sessions show one command bar, one compact workbench header, one waveform stage, and no redundant top status slab
+
+This means Verify post-run hierarchy is now explicit and student-legible: command bar for session status/actions, workbench for authored stimulus, waveform for evidence, signal rail for guided lane access.
+
 The latest Design ↔ Verify continuity slice made the cross-surface debug handoff materially real instead of banner-only:
 
 - `VerifySurface` now prefers the debug bridge callback when tick evidence exists, rather than silently falling back to generic Design navigation
@@ -35,6 +49,25 @@ The latest Design ↔ Verify continuity slice made the cross-surface debug hando
 - browser validation on the built preview confirmed the visible part of this contract: `Open in Design` from Verify lands in Design with `Debug mode — tick 0`, a frozen verification tick, and step controls instead of a silent surface switch
 
 This closes the earlier contradiction where Verify could technically send context to Design, but Design did not visibly acknowledge that arrival strongly enough to feel like one debugging loop.
+
+The latest Verify trust-cleanup slice then closed the remaining save/capture contradiction inside Verify itself:
+
+- observation-only trace runs now report evidence counts from the real run vector set, so live waveform evidence no longer appears alongside a misleading `0 vectors` badge
+- replay freshness now separates stimulus truth from expected-output authoring: `IdeApp` computes a replay-specific hash from circuit + stimulus + mapping, and `projectRuntime` persists `scenarioStimulusHash` with each run
+- the save/capture path now compares normalized authored vectors against actual run vectors when deciding whether the visible waveform is stale, so `Save as checks` does not immediately invalidate the same trace evidence
+- the post-run Stimulus Workbench now labels hidden saved checks as availability (`Saved checks available`) instead of implying active compare mode, so it no longer contradicts the command strip during observation-only capture sessions
+- starter/example alias normalization now feeds that replay hash, so label differences like board-facing names versus canonical ids do not create fake stimulus drift after capture
+- first-run and placeholder Verify surfaces now tolerate repeated display labels like `EN` without emitting duplicate-key warnings; placeholder lanes also deduplicate clock/input overlap so latch-control guidance does not render the same lane twice
+
+This means Verify now treats one trace session as one coherent truth object: run evidence counts, waveform freshness, and capture-side UI all stay aligned unless the student actually changes the stimulus or the circuit.
+
+The latest Verify chrome-compaction slice then removed the remaining post-run duplication between the command bar and the workbench header:
+
+- `VerifyCommandBar` no longer shows a separate `tN` chip beside `Open in Design`; the bridge action stays available, but tick authority remains with the waveform/readout and Design replay strip
+- the post-run `Stimulus Workbench` header now collapses to the title plus vector count only; the old subtitle and `Observation only` / `Saved checks available` pill were removed because that meaning already lives in the command bar and waveform context
+- built-preview validation on `2-Bit Up Counter` confirmed the post-run header now reads as one compact disclosure (`Stimulus Workbench`, `8 vectors`) while the command bar remains the sole visible status authority (`OBSERVATION ONLY`, `8 vectors`, `Open in Design`)
+
+This means Verify post-run chrome now has one authority per concept: command bar for session status/actions, waveform for evidence, workbench for authoring.
 
 The latest waveform truth-surface authority slice closed the next contradiction inside that loop:
 
@@ -62,6 +95,68 @@ The latest shared selected-signal authority slice then closed the remaining sign
 - browser validation on the built preview confirmed the visible end-to-end contract: selecting `q1` in Verify for `2-Bit Up Counter` and opening Design produced `Verify focus q1` plus `Inspect q1 first`
 
 This closes the last obvious gap between shared tick authority and shared signal authority: the selected simulation moment and the selected signal target now travel together as live Verify context.
+
+The latest Design-side signal inspection maturity slice closed the remaining real-app handoff gap inside that contract:
+
+- `VerifySurface` already published canonical waveform aliases like `q1`, but `DesignSurface` was only resolving IO labels like `LD1` or already-qualified runtime keys like `q1_out.in`
+- `DesignSurface.resolveVerifyLinkedSignalKey(...)` now treats IO row ids as first-class aliases, so canonical Verify signal names can bind to real Design signal keys during live handoff
+- browser validation on `2-Bit Up Counter` confirmed the full loop now lands in Design with strip-level Verify context (`Verify focus q1`, `Inspect q1 first`) and a real right-inspector landing (`LD1 · Input`, subtitle `Verify focus`) instead of the previous idle `Nothing selected` card
+
+This means shared selected-signal authority is no longer only a top-strip cue: canonical Verify aliases now arrive in Design as actionable inspection state.
+
+The latest alias ↔ board-label presentation slice then made that shared signal authority legible instead of merely correct:
+
+- Design now keeps the canonical Verify alias as the provenance label (`Verify focus q1`) while resolving the compact inspect target to the structural landing label (`Inspect LD1 first`) when the names differ
+- the signal-only inspector subtitle now repeats the carried Verify identity (`Verify focus q1`) instead of falling back to an unqualified provenance label
+- the signal-only inspector next-step copy now teaches the alias/board relationship directly (`Verify signal q1 maps here as LD1 · Input`) rather than making the student infer it from strip copy plus title copy
+- browser validation on the built preview confirmed the real `2-Bit Up Counter` handoff (`q1 @ t3`) now reads as one continuous explanation across Verify and Design: provenance `q1`, inspect target `LD1`, inspector title `LD1 · Input`
+
+This means the shared selected-signal loop is now both technically unified and student-legible: Verify remains the canonical signal owner, while Design makes the structural landing explicit without discarding the logical alias that brought the student there.
+
+The latest Design replay-authority slice then made that shared tick/signal contract the actual display truth inside Design instead of a banner-only overlay:
+
+- `IdeApp` now passes the active `verifyLastRun` into `DesignSurface` as `replaySession`, so Design has waveform history and run metadata from the same authored Verify session that produced the debug snapshot
+- `DesignSurface` now treats replay-backed values as the current authority for the simulation strip, summary copy, live state table, signal snapshot cards, sequential inspector context, and board-signal readouts whenever Verify replay is active
+- the Design scrubber now changes the visible sampled circuit state instead of only changing `Debug mode — tick N`; fresh browser validation on `2-Bit Up Counter` moved from `Tick 3` with `LD0=0 / LD1=1` to `Tick 2` with `LD0=1 / LD1=0`
+- replay mode is now honestly read-only: Run / Step / Reset / Speed are disabled while Design is frozen on a Verify-authored sample, so the hidden runtime engine cannot drift away from the state the student is inspecting
+
+This closes the remaining contradiction in the Verify -> Design loop: Design is now a structural replay/inspection view of the authored testbench at tick `t`, not a live runtime surface with replay copy layered on top.
+
+The latest stale-replay invalidation + case-index replay semantics slice then closed the next trust gap around that replay model:
+
+- `DesignSurface` now treats replay evidence as revocable instead of perpetual: any real circuit mutation during active replay clears external replay authority immediately and replaces it with a local stale breadcrumb banner
+- that stale banner keeps the last meaningful Verify context (`Case N / M · tX`, last focused signal, and sequential timing hint) but the canvas itself returns to live Design state, so stale evidence no longer keeps driving the simulation strip or board-state readouts
+- `VerifySurface` now models the waveform scrubber as authored case-position navigation rather than raw tick navigation; the control range is `0..N-1`, while each position still maps back to the real sampled tick for the actual replay state
+- `StimulusCanvas` now derives case numbering from the ordered authored tick set instead of `tick + 1`, so sparse sequential authored cases stay aligned across case chips, selected readouts, and replay navigation
+
+This means the replay contract is now both authoritative and falsifiable: Verify may own the sampled state while replay is active, but Design stops trusting that state as soon as the student changes the circuit, and sparse tick timelines are narrated in authored case order without hiding the true sample tick.
+
+The latest replay-trust hardening slice closed the missed runtime-backed mutation seam and added a compact Design-side causation cue:
+
+- runtime-backed Design actions that actually change the circuit - palette placement, IO starter insertion, starter AND insertion, undo, and redo - now all flow through the same replay invalidation seam instead of leaving replay falsely authoritative
+- `StimulusCanvas` case-strip headers now stay aligned with authored-order case semantics in the live app, so sparse runs show `Case 1 .. Case 5` while Design/debug banners still preserve the true sampled tick (`Case 4 / 5 · t5`)
+- the Design `Signal / State` card now adds a replay-only `Why now` row that summarizes the sampled change (`Rose`, `Fell`, or held state), direct upstream driver labels when available, and the next inspect target from Verify-linked context
+- live browser validation on `lab-workspace/freeplay` confirmed the concrete student path: `Case 4 (t5)` opened in Design as replay, showed `Why now`, and a real palette placement immediately demoted the view to `Replay stale` while re-enabling live controls
+
+This tightens the replay claim above: replay invalidation is now true even for runtime-backed mutation paths that previously bypassed `emitCircuitMutation()`, and Design now explains sampled state inside the existing inspector instead of asking the student to infer it from raw timing rows alone.
+
+The latest clock-authority + Design consistency slice then unified sequential clock semantics across Verify authoring, helper generation, and Design narration:
+
+- `VerifySurface` now resolves one active `VerifyScheduleContract` from live-contract evidence plus the most relevant last-run contract, instead of letting pre-run inventory, helper buttons, and placeholder copy drift across separate heuristics
+- the new shared `clockAuthority.ts` module now owns helper vector generation: alternating/default sequential clocks follow absolute sampled-tick parity starting low at `t0`, and the canonical rising edge is `0 -> 1`
+- `bringupArtifacts.ts` now reuses that same helper policy, so starter sequential timelines and Verify helper buttons can no longer diverge on parity
+- `DesignSurface` now resolves its live clock pill from contract-backed `timingGuidance` and canonical IO match keys rather than `/clk|clock/i` label guessing; non-regex labels such as `Phase Driver` still narrate the correct authoritative clock
+
+This closes the remaining clock-semantics split inside the shared Verify -> Design loop: one schedule contract authors the clock, one helper policy generates default clock values, and one sampled case/tick meaning travels across Verify and Design.
+
+The latest Verify clock-truth + Design replay scrubber slice then closed the remaining real sequential contradiction in that browser path:
+
+- `VerifySurface` now computes the missing-clock warning from the effective next-run vector authority (`authoredVectors + customVectors`) instead of from project-authored vectors alone
+- clock-activity detection now matches normalized input ids against authoritative clock names, so `Phase Driver` / `phase_driver` style naming differences no longer trigger a false pre-run warning
+- `IdeApp` now exposes direct parent-owned replay index selection, and `DesignSurface` renders that selection as a central case-index scrubber inside the simulation strip instead of relying only on banner prev/next buttons
+- built-preview validation on `2-Bit Up Counter` confirmed the old false warning is gone, later cases still open Design at `Case 10 / 11 · t9`, replay scrub moves the real selected sample to `Case 9 / 11 · t8`, and a real `AND Gate` placement still demotes replay to stale immediately
+
+This means the sequential Verify -> Design loop is now coherent at the remaining student-facing seams: the same next-run vectors author the warning, the same authored case index drives replay, and Design keeps replay control visible without pretending stale samples are still current.
 
 The latest Phase 7 slice moved the scenario model one layer deeper into the real app flow:
 
@@ -141,6 +236,14 @@ The latest full desktop screen redesign then fixed the remaining "internal tool"
 - the workspace now uses a deliberate desktop split of roughly `42%` workbench to `58%` waveform, instead of the old fixed `430px` stimulus column that made the screen feel top-left heavy
 - waveform fitting now spends less space on the label gutter and allows wider ticks, so the evidence panel uses more of its real width instead of leaving empty track space
 - the live case matrix and waveform rows both use a larger default row footprint, so the primary screen no longer feels like tiny content floating in oversized black panes
+
+The latest source-driven workspace rescue closed the remaining Verify desktop geometry contradiction:
+
+- live inspection on the source-driven preview (`http://127.0.0.1:4180/`) showed `.ide-verify-workspace` still reserving direct stimulus/waveform columns even though the real DOM only contained one `.ide-verify-lab-frame`
+- `.ide-verify-lab-frame` also still reserved an unused second row, which left a dead bottom gap in the main lab
+- the cleaned Verify `Signals` rail styling still could not widen the actual left dock because `IdeWorkbenchShell.tsx` was clamping Verify dock widths inline
+- the fix made the outer workspace a single full-width track, let `.ide-verify-lab-grid` own the real two-pane split, removed the dead lab-frame row, removed the post-run workbench height cap, and widened the Verify left-dock clamp ranges
+- final live measurements confirmed the repaired geometry: the first structural fix expanded the waveform center from about `169px` to about `1032px`, and the final balanced layout settled around `629px` stimulus / `681px` waveform with a `208px` left dock
 
 ## Mode Detection (B-12 Slice 1)
 
@@ -229,6 +332,17 @@ When `effectiveTimingGuidance.kind === 'latch-control'`, the `ide-verify-insert-
 ### Pre-Run Inventory
 
 Signal lane chips: `ide-verify-prerun-lanes` container with `ide-verify-lane-chip-{name}` per lane (uses display label, e.g. `'SW0'` not `'sw0'`). Clock chip: `ide-verify-prerun-clock-chip` rendered when `clockPolicy === 'clocked'` and `clockSignalName` is set.
+
+### Sequential Clock Authority
+
+When sequential timing is present, one contract owns the clock model across authoring, replay, and helper generation.
+
+- `resolveActiveScheduleContract(...)` selects the authoritative `VerifyScheduleContract`: prefer the live contract when the last run is stale, hashless, or for a different circuit; otherwise use the matching run contract
+- pre-run lane inventory, clock chip naming, helper-button labels, helper insertion, and placeholder clock copy must derive from that active contract plus `deriveTimingGuidance(...)`, not from raw `lastRun?.scheduleContract` lookups or surface-local heuristics
+- `buildClockHelperVectors(...)` is the only helper/default clock generator for alternating / hold-low / hold-high / pulse insertion
+- helper/default parity is absolute by sampled tick: `t0 = 0`, `t1 = 1`, `t2 = 0`, and so on; the canonical rising edge is `0 -> 1`
+- bring-up sequential starters must reuse that same helper policy so first-run defaults in Design/Verify remain consistent
+- selected case/tick always refers to the sampled state for that authored case; neither Verify nor Design may reinterpret the clock locally
 
 ### Incomplete Mapping Banner
 
@@ -552,6 +666,8 @@ assertions-differ
 - The waveform frame should not spend prime viewport height on information already visible in the scope itself. Repeated legends, explainer copy, digest chips, and readout tables belong outside the live evidence area or in tooltips/drawers.
 - PASS evidence must include both mapped stimulus inputs and observed outputs in the default viewport whenever no mismatches are present.
 - `data-region-role` attributes are the machine-readable contract for Verify region identity. `authoring` marks the editable stimulus workspace; `evidence` marks the captured waveform readout. Header nodes within those regions carry `authoring-header` / `evidence-header` respectively. CSS accent color follows: sky-blue = authoring, amber = evidence. Do not reuse amber for interactive/editable elements.
+- The outer Verify workspace owns one full-width lab frame only. Stimulus vs waveform column geometry belongs to `.ide-verify-lab-grid`; the outer workspace must not reserve parallel desktop columns when its only child is `.ide-verify-lab-frame`.
+- Desktop Verify must not reserve dead layout tracks. The lab frame cannot keep an unused row below the active workspace, and shell width caps must stay wide enough for the Verify `Signals` rail to present grouped controls without horizontal crowding.
 
 ## Failure Taxonomy And Routing
 

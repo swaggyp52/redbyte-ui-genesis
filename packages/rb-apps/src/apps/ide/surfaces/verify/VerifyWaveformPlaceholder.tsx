@@ -32,11 +32,20 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
   hasVectors,
   runLabel,
 }) => {
-  const allSignals = [
-    ...(clockName ? [{ name: clockName, kind: 'clk' as const }] : []),
-    ...inputNames.map((n) => ({ name: n, kind: 'in' as const })),
-    ...outputNames.map((n) => ({ name: n, kind: 'out' as const })),
-  ];
+  const allSignals: Array<{ name: string; kind: 'clk' | 'in' | 'out' }> = [];
+  const seenSignals = new Set<string>();
+  const registerSignal = (name: string | undefined, kind: 'clk' | 'in' | 'out') => {
+    const trimmed = name?.trim();
+    if (!trimmed) return;
+    const normalized = trimmed.toLowerCase();
+    if (seenSignals.has(normalized)) return;
+    seenSignals.add(normalized);
+    allSignals.push({ name: trimmed, kind });
+  };
+
+  registerSignal(clockName, 'clk');
+  inputNames.forEach((name) => registerSignal(name, 'in'));
+  outputNames.forEach((name) => registerSignal(name, 'out'));
 
   return (
     <div className="ide-vwp" data-testid="ide-verify-waveform-placeholder">

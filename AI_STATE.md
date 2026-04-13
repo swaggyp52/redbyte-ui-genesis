@@ -1,5 +1,259 @@
 # AI State
 
+## Change Log 2026-04-13 (Shared shell compact-row theft + hidden-dock width fix + Design inspector collapse wiring)
+
+**Subsystem**: Shared workbench shell / compact layout geometry / Design surface inspector
+
+### Problem
+
+Fresh live browser evidence showed the "screen shrinks into the top-left" failure was not a Design-only issue.
+
+- Project, Design, and Verify could all lose most of the available workbench height in compact layouts
+- the shared `.ide-workbench-main` grid was reserving a second row even when the right dock was hidden or only represented by a collapsed restore rail
+- wide-screen hidden-right-dock sessions could still strand the workbench inside a legacy capped grid because the shared `hide-right-dock` rule was using the full left dock width plus an old `min(100%, 1440px)` width path
+- Design also still lacked the intended user-collapse path for the auto-opened right inspector because `IdeSurfaceLayout` was not passing the new shell props through to `IdeWorkbenchShell`
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+  - now marks the grid with `hide-right-dock` when the right dock is truly hidden
+  - keeps collapsed-right-dock state distinct from hidden-right-dock state so compact layout can treat them differently
+- `packages/rb-apps/src/apps/ide/components/IdeSurfaceLayout.tsx`
+  - now passes `rightDockCanCollapse` and `rightDockRevealKey` through to the shared shell
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - now computes a stable right-dock reveal key from selection / verify-linked signal / replay tick / diagnostics / sim-running context
+  - now opts the canvas workspace into the shared user-collapsible right inspector behavior
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - compact stacked-inspector rules now apply only when the right inspector is actually visible, not when the dock is hidden or only collapsed
+  - Verify's compact secondary-row override now follows that same visible-inspector-only rule
+  - the shared hidden-right-dock grid rule now uses `--ide-workbench-left-slot-width` and removes the old shared width cap, so wide-screen hidden-right-dock sessions keep the full available workbench width instead of reserving a phantom full dock column
+- `packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx`
+  - added regression coverage proving the shell marks `hide-right-dock` when the inspector is fully hidden
+
+### Validation
+
+- focused shell + Design workstation regressions:
+  - `pnpm -w exec vitest run --reporter=basic packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+  - result: PASS (`2` files, `43` tests)
+- live browser validation on `http://127.0.0.1:4180/`:
+  - Project: shell / grid / workspace body all measured `703px`; grid class includes `hide-right-dock`
+  - Design collapsed-rail state: shell / grid / workspace body all measured `703px`; collapsed inspector restore rail remains available without stealing a second grid row
+  - Verify: shell / grid / workspace body all measured `703px`; grid class includes `is-left-dock-collapsed hide-right-dock`
+- wide-viewport browser validation on `http://127.0.0.1:4180/`:
+  - Verify hidden-right-dock state now measures `2212px` shell width / `2212px` grid width / `2156px` workspace body width with a `56px` collapsed `Signals` rail instead of the earlier oversized dock-width strip and centered `1440px` cap
+  - Design still uses the full `2212px` shell/grid width with the expected `38px` collapsed left rail and `304px` visible inspector
+- code review:
+  - `code-reviewer` found no blocking issues in the shell/layout fix; one residual medium note remains for an unused `hide-left-dock` class path that is not active in current surfaces
+
+## Change Log 2026-04-13 (Verify workspace collapse recovery + shell width alignment)
+
+**Subsystem**: Verify surface / workbench shell / desktop geometry
+
+### Problem
+
+Fresh source-driven browser validation on `http://127.0.0.1:4180/` showed post-run Verify still wasting most of the desktop workspace even after the earlier hierarchy cleanup.
+
+- the outer Verify workspace still reserved unused desktop columns, which trapped the real waveform inside a nested grid and collapsed the scope into a narrow strip
+- `ide-verify-lab-frame` still reserved an unused second row, leaving dead bottom space under the main lab
+- the left `Signals` rail still felt cramped because CSS cleanup was being clamped by `IdeWorkbenchShell.tsx` inline width caps
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - collapsed `.ide-verify-workspace` to a single full-width track so the inner `.ide-verify-lab-grid` is the only owner of the stimulus/waveform split
+  - removed the dead second row from `.ide-verify-lab-frame`
+  - rebalanced `.ide-verify-lab-grid` to a near-even split and let the workbench / waveform regions fill full height
+  - removed the post-run `ide-verify-workbench-live` max-height cap
+  - tightened and decluttered the Verify signal rail header, summary, and action grid
+- `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+  - widened the Verify left-dock clamp ranges so the cleaned-up signal rail can actually use the intended width
+
+### Validation
+
+- live measurements on the source-driven preview `http://127.0.0.1:4180/`
+  - waveform usable width expanded from about `169px` to about `1032px` after the outer-workspace fix
+  - final lab split measured about `629px` stimulus / `681px` waveform
+  - left dock widened from `164px` to `208px`; inner Verify rail widened from `135px` to `179px`
+  - dead bottom row removed from the main lab frame
+- focused regression pass
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.workspaceLayout.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.observeFirst.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx`
+  - result: PASS (`5` files, `56` tests)
+
+### Release impact
+
+- Verify desktop post-run sessions now use the available screen width instead of collapsing the waveform into a narrow strip
+- stimulus authoring and waveform evidence now stay visually balanced in the same lab
+- the Verify `Signals` rail is wide enough to present grouped controls without the previous cramped layout
+
+## Change Log 2026-04-13 (Hard visual architecture pass across Project / Design / Verify)
+
+**Subsystem**: Project surface / Design surface / Verify surface / shared shell
+
+### Problem
+
+Fresh rebuilt-browser audit showed the core Design ↔ Verify trust loop was now working, but the visible product still felt too much like stacked internal tooling.
+
+- Project still read like a dashboard instead of a workflow front door
+- Design still split meaning across stacked inspector cards and replay-specific chrome instead of one calm authoring surface
+- Verify still looked like separate status, editor, and waveform tools instead of one integrated lab
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - flattened the right-inspector identity story into a single `Selection` block with inline fact rows
+  - folded replay case/tick/mode/sample/focus context into `Live / Signal State`
+  - replaced the standalone replay card with inline replay rows plus `Return to Verify waveform`
+  - tightened empty-state guidance so the right rail stays canvas-first
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - removed the standalone post-run status strip from the normal desktop session path
+  - promoted `VerifyCommandBar` to the sole session authority for status, mode, and reference context
+  - rewrote the left rail into a `Signal guide` / `Waveform lanes` structure with compact summary copy and actions
+  - kept the post-run workspace centered on authored stimulus + waveform evidence instead of extra chrome
+- `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyCommandBar.tsx`
+  - absorbed the remaining session title / status / reference-mode copy needed to own the post-run story
+- `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - rebuilt the workbench header around `Authored stimulus`, selected case/tick context, and compact actions
+  - moved the auto-generated starter notice below the header so the disclosure row stays calm and predictable
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+  - strengthened Project Home and loaded-Project hero geometry so both states read as workflow entry surfaces instead of dashboard cards
+  - aligned Project / Design / Verify spacing, card weight, and disclosure rhythm around one shared shell treatment
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - extracted the incomplete-mapping summary out of JSX after review so the render path no longer uses an inline IIFE
+
+### Validation
+
+- focused UI suites:
+  - `pnpm -w exec vitest run --reporter=basic packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.tickChip.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx`
+  - result: PASS (`8` files, `134` tests)
+- unified build:
+  - `pnpm build`
+  - result: PASS after stopping local preview/static-server processes that were holding `dist/` open on Windows
+- rebuilt browser validation (`http://127.0.0.1:4179/os/`):
+  - Project Home and loaded Project now read as workflow entry surfaces instead of equal-weight dashboard cards
+  - Design idle state shows one calm authoring row, one compact circuit/replay row, and a lighter inspector-first story
+  - Design selected/replay state shows `Selection`, `Actions`, `Live / Signal State`, and inline replay context instead of a separate replay slab
+  - Verify pre-run and post-run now show one command bar, one compact workbench header, one waveform stage, and the new `Signal guide` rail
+  - Verify -> Design -> Verify round-trip preserved the live selection at `Case 2 / 7 · t1`
+- code review:
+  - `code-reviewer` reported no blocking issues on the surface pass; the one render-path cleanup it flagged was applied before closeout
+
+### Release impact
+
+- Project now behaves like a workflow foyer instead of a dashboard overview
+- Design now reads as a calmer authoring surface with replay context integrated into the existing inspector/state story
+- Verify now behaves like one professional lab surface: command bar for session authority, workbench for authored stimulus, waveform for evidence
+
+## Change Log 2026-04-12 (Design inspector reset + Verify post-run chrome compaction)
+
+**Subsystem**: Design surface / Verify surface / post-run continuity
+
+### Problem
+
+Fresh built-browser audit showed the Design and Verify surfaces were still carrying too much legacy chrome even after the earlier replay/trust fixes.
+
+- Design idle state still advertised `Live Simulation` in the right inspector and kept obsolete inspector sections (`Live Simulation`, `Board I/O`, `Signal History`, `Debug Data`) even when the same authority already existed elsewhere
+- Design replay still duplicated meaning across the top strip and the inspector instead of letting the replay strip own the active case/tick story
+- Verify post-run still showed redundant status chrome: a separate `tN` chip beside `Open in Design`, plus a tall `Stimulus Workbench` header with subtitle + mode copy that repeated command-bar meaning
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+  - moved Run / Step / Reset simulation controls into the primary Design toolbar
+  - added compact toolbar simulation summary copy (`Sim` / `Replay`, mode, tick, speed)
+  - removed the right-inspector `Live Simulation`, `Board I/O`, and `Signal History` sections
+  - collapsed replay/live signal inspection into one `Signal / State` section and kept advanced internals behind `Details`
+  - simplified the idle inspector so it no longer invites `Live Simulation` or exposes debug-era disclosures on first arrival
+- `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyCommandBar.tsx`
+  - retired the `ide-vcb-design-tick-chip`; `Open in Design` remains the only bridge affordance in that cluster
+- `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - removed the post-run workbench subtitle and mode pill from the header
+  - moved the auto-generated notice out of the `<summary>` so the compact header no longer nests interactive controls
+- focused Design / Verify tests were updated to lock the new contract instead of the removed inspector chrome
+
+### Validation
+
+- focused Design suites:
+  - `pnpm -w exec vitest run --reporter=basic packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorTruth.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.sequentialInspector.test.tsx`
+  - result: PASS (`5` files, `63` tests)
+- focused Verify suites:
+  - `pnpm -w exec vitest run --reporter=basic packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.tickChip.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+  - result: PASS (`3` files, `52` tests)
+- unified build:
+  - `pnpm build`
+  - result: PASS after stopping local preview/static-server processes that were holding `dist/` open on Windows
+- rebuilt browser validation (`http://127.0.0.1:4173/os/`):
+  - Design idle state showed toolbar sim controls (`Run`, `Step`, `Reset`, `Sim Paused · t0 · 12Hz`) and a lightweight inspector with no `Live Simulation` disclosure
+  - selecting `LD0` showed the reduced inspector shape (`Selection`, `Actions`, `Properties`, `Signal / State`, `Details`) and no separate board/live-sim/signal-history sections
+  - Verify post-run showed `OBSERVATION ONLY`, `8 vectors`, `Analysis`, `Save as checks`, `Open in Design`, and a compact `Stimulus Workbench 8 vectors` header with no extra subtitle/mode chrome
+  - `Open in Design` reopened Design replay with replay authority in the top strip (`Replay · t0`, case/tick strip context) while the inspector stayed on `Signal / State` without reintroducing live-sim chrome
+
+### Release impact
+
+- Design now reads like a real authoring inspector instead of a stacked debug console: simulation controls stay reachable, but they no longer dominate the right rail
+- replay meaning is now visibly owned by the Design top strip, which makes Verify -> Design inspection easier to parse and harder to contradict
+- Verify post-run now keeps one status authority per concept: command bar for session status/actions, workbench for editing, waveform for evidence
+
+## Change Log 2026-04-12 (Verify trust cleanup + Windows merge-dist staging fallback)
+
+**Subsystem**: Verify surface / Verify runtime freshness / unified build merge script
+
+### Problem
+
+Two student-facing Verify trust breaks and one Windows build-path failure were still open in the live repo state.
+
+- observation-only trace runs could show `OBSERVATION ONLY` with `0 vectors` even when real waveform evidence existed
+- `Save as checks` could immediately flip Verify to `STALE` after a trace run because replay freshness still drifted on expected-output edits and starter-label vs canonical-id alias normalization
+- Verify draft/latch-first render paths could still emit React duplicate-key warnings for repeated display names like `EN`
+- `scripts/merge-dist.mjs` still hard-failed on Windows `EPERM` when another local process held `dist/` open
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+  - observation-only evidence labels now use the real run vector count instead of `runRows.length`
+  - stale detection now separates replay stimulus freshness from expected-output authoring via `scenarioStimulusHash`
+  - last-run stimulus comparison now prefers actual run vectors and normalized authored vectors, so `Save as checks` does not immediately stale the same observed waveform
+  - defensive run vector fallback now uses the full effective next-run vector count
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - Verify now receives a replay-specific hash built from circuit + stimulus + mapping instead of the broader project hash
+  - replay input hashing now normalizes starter/example aliases to canonical project IO ids before comparing freshness
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - persisted verify runs now carry `scenarioStimulusHash` so replay freshness can survive expected-output-only edits
+- `packages/rb-apps/src/apps/ide/verifyScenario.ts`
+  - added stimulus-only hashing helpers for vectors and scenarios
+- `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyFirstRunPanel.tsx`
+  - repeated display labels now render with stable per-chip keys instead of duplicate React keys
+- `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyWaveformPlaceholder.tsx`
+  - placeholder lanes now deduplicate repeated names across `clockName`, inputs, and outputs, so latch-control `EN` does not render twice
+- `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+  - post-run workbench mode wording now reflects the active trust state instead of just the existence of saved expected cells
+  - observation-only capture runs now say `Observation only`, while hidden saved checks read `Saved checks available`
+- `scripts/merge-dist-lib.mjs` + `scripts/merge-dist.mjs`
+  - added Windows lock-aware `dist/` cleanup retries
+  - when canonical `dist/` stays locked after retries, merge output now stages to `dist.staged/` instead of aborting the whole merge path
+
+### Validation
+
+- focused Verify + merge/build regressions:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyScenario.test.ts packages/rb-apps/src/apps/ide/__tests__/circuitProjection.test.ts packages/rb-apps/src/apps/ide/__tests__/verifyFirstRunUsability.test.tsx packages/rb-apps/src/__tests__/merge-dist.retry.test.ts`
+  - result: PASS (`5` files, `78` tests)
+- live browser validation on rebuilt previews `http://127.0.0.1:4175/os/` and `http://127.0.0.1:4178/os/`:
+  - `2-Bit Up Counter` trace run showed `OBSERVATION ONLY` with `7 vectors`
+  - clicking `Save as checks` no longer flipped the Verify header to `STALE`
+  - the post-run Stimulus Workbench no longer contradicted the command strip: observation capture now keeps the header at `OBSERVATION ONLY` while the workbench says `Saved checks available`
+  - console capture on the fresh preview showed no duplicate-key warning for the `EN` path during the real Verify flow
+- real merge entrypoint:
+  - `node scripts/merge-dist.mjs`
+  - result: PASS with staged fallback when `dist/` was actively locked by a local `serve dist` process; fresh artifact written to `dist.staged/`
+
+### Release impact
+
+- Verify now preserves trust across the real trace → `Save as checks` workflow; expected-output capture no longer invalidates the same waveform evidence
+- observation-only runs report the real vector count instead of a zero-row mismatch between UI chrome and waveform truth
+- the post-run workbench now distinguishes saved-check availability from active compare mode, so it no longer tells students `Observation + compare` while the command bar stays in observation-only capture state
+- the remaining tested `EN` duplicate-key warnings are removed from first-run and placeholder Verify surfaces
+- local Windows merges are now resilient to a locked canonical `dist/`: the build produces a usable staged artifact instead of failing outright
+
 ## Change Log 2026-04-12 (Broad UI Redesign — compact command bars, prominent replay, inspector clarity)
 
 **Subsystem**: Design surface / Verify surface / shared CSS
@@ -826,6 +1080,104 @@ This left an unresolved contradiction with the locked product direction (`Import
 - Import now reads as a utility/action rather than a peer workflow stage.
 - Project and Design now provide clearer, more coherent user-facing entry points aligned with the locked RedByte product direction.
 - This closes the immediate Import demotion contradiction without broad route or subsystem refactors.
+
+- **Attribution**: Connor Angiel
+
+## 2026-04-12 - Broad Design/Verify visual-system pass + cross-surface replay sync
+
+- Reworked the Design/Verify shell geometry so both surfaces share a clearer primary workspace, support rail, and inspector rhythm:
+  - widened collapsed dock rails for better legibility
+  - added shell dock-state data markers for CSS-driven layout treatment
+  - hardened collapsed dock rails back to static positioning so the redesign does not create a full-surface click shield
+- Redesigned Verify into a more deliberate lab composition:
+  - signal rail now presents as `Waveform Lanes` with a stronger header, summary, and secondary tooling
+  - added a `Design ↔ Verify loop` workspace story banner above the authored stimulus + waveform split
+  - reframed the waveform stage as `Waveform truth` with stronger case/tick/focus context and cleaner tool grouping
+  - updated the stimulus workbench header to `Authored stimulus` with explicit selected-tick context
+- Deepened Design replay and right-inspector structure:
+  - added a dedicated `Replay Context` inspector section with selected case, replay mode, sample timing, clock edge, and Verify focus
+  - promoted the Design-to-Verify return affordance to `Return to Verify waveform`
+- Tightened shared Verify ↔ Design interaction:
+  - introduced parent-owned Verify selected-tick wiring in `IdeApp` so Design replay scrubbing can return to Verify on the same selected case/tick
+  - browser-validated the loop by selecting a later Verify case, opening Design, scrubbing to an earlier replay case, and returning to Verify without losing case alignment
+- Updated focused tests for the redesigned surface contracts:
+  - shell/dock geometry
+  - Verify workspace story + command-bar hierarchy
+  - Design replay-context inspector
+  - Verify selected-tick override sync
+  - observe-first run-mode expectations in app wiring
+- Validation:
+  - `pnpm vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.observeFirst.test.tsx packages/rb-apps/src/apps/ide/__tests__/IdeApp.labday-wiring.test.tsx`
+  - `pnpm vitest run packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workspaceLayout.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx`
+  - `pnpm --filter @redbyte/playground build`
+  - `pnpm build` completed the unified merge into `dist.staged/` but still failed final canonical `dist/` verification because Windows held a lock on `dist/`
+  - browser validation on `http://127.0.0.1:4175/os/?app=lab-workspace&labId=two-bit-counter` confirmed:
+    - Verify split reads as one lab surface
+    - Design replay exposes clearer context in the inspector
+    - Design replay widget truth updates with authored cases
+    - returning from Design replay preserves the selected Verify case/tick
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-04-12 (Clock-truth hardening: authored clock authority restored end-to-end)
+
+**Subsystem**: IDE Verify deterministic engine + Design replay authority
+
+**Problem**
+
+- The live sequential story was still untrustworthy even after the broader Design/Verify surface redesign:
+  - the stimulus matrix showed authored clock toggles
+  - the waveform `clk` lane stayed flat
+  - sequential outputs could fail or appear phase-shifted
+  - Design replay inherited the broken waveform truth
+- One higher-level runtime test was also still encoding the old hidden-clock behavior by expecting a sequential pass without authoring a real clock case.
+
+**Root-cause classification**
+
+- `simulateVectorCasesFromModel()` in `packages/rb-apps/src/apps/ide/sim/simEngineCore.ts` was still treating any resolved clock node as an internal macro-clock target and skipping the authored input binding.
+- `executeClockedMacroVectorCase()` then synthesized an internal low/high/low sequence and sampled after that forced sequence, which flattened the waveform and made the deterministic engine disagree with the authored Verify matrix.
+- `projectRuntime.verify-authority.test.ts` still relied on that legacy hidden-clock behavior instead of the product rule that a real authored clock is authoritative.
+
+**Files changed**
+
+- packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts
+- packages/rb-apps/src/apps/ide/__tests__/simEngine.verify-diagnostics.test.ts
+- packages/rb-apps/src/apps/ide/sim/simEngineCore.ts
+
+**What changed**
+
+- Replaced the old sequential verify behavior that always synthesized a per-case low/high/low clock sequence.
+- Made the deterministic engine use authored clock values as the single source of truth whenever the circuit already exposes a real clock input.
+- Kept helper clock parity only for the true fallback case: sequential circuits that need internal sim-clock injection because no concrete clock net exists.
+- Added a failing-first regression that proves authored clock cases produce waveform truth and rising-edge sequential sampling together.
+- Updated the runtime verify-authority fixture so its sequential expectations are driven by explicit clock cases instead of hidden synthesis.
+- Added a Design replay regression proving the on-canvas clock widget reflects the selected replay case rather than persisted live node state.
+
+**Why minimal**
+
+- No new replay model or persistence format was introduced.
+- No duplicate testbench authoring path was added to Design.
+- The fix stayed inside the deterministic sequential authority path plus the directly affected tests.
+
+**Validation**
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/simEngine.verify-diagnostics.test.ts`
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx`
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts`
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/waveformInstrument.contract.test.ts packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.tickChip.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.desktopComposition.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.sequentialInspector.test.tsx`
+- `pnpm --filter @redbyte/playground build`
+- `pnpm build` -> workspace/package builds completed, but the unified merge step failed with `EPERM: operation not permitted, lstat 'C:\\Users\\conno\\redbyte-ui\\dist\\index.html'` while `scripts/merge-dist.mjs` was rebuilding `dist/`
+- Browser validation on `http://127.0.0.1:4173/os/?app=lab-workspace&labId=two-bit-counter` confirmed:
+  - Verify’s `Generate 8-tick starter` matrix produced a non-flat `clk` waveform lane
+  - the two-bit counter outputs advanced across authored cases instead of staying phase-wrong
+  - `Open in Design` replay preserved the same case/tick truth
+  - Design replay visibly switched between `W5 1` and `W5 0`, plus `EN OFF` / `RST ON` on earlier cases
+  - a real canvas edit immediately demoted replay to stale breadcrumb-only status
+
+**Remaining concern**
+
+- The sequential fix now tells the correct story end to end, but the worktree still contains unrelated in-flight repo edits from outside this slice; they were left untouched.
 
 - **Attribution**: Connor Angiel
 
@@ -29873,5 +30225,89 @@ Key details:
 **Remaining concern**
 
 - This slice validated the Verify runtime/workbench/testbench surface directly, but it did not rerun broader non-Verify workspace gates or a full playground build in this continuation.
+
+- **Attribution**: Connor Angiel
+
+---
+
+## Change Log 2026-04-12 (Broad Design/Verify redesign: replay visual truth, waveform-first Verify, centered Design replay, inspector cleanup)
+
+**Subsystem**: IDE Design surface + Verify surface + logic canvas replay rendering
+
+**Problem**
+
+- The live product still felt mechanical and overly chip-heavy even after the underlying Design <-> Verify replay plumbing had landed.
+- Verify still read like an internal utility: cramped command chrome, weak hierarchy, and a waveform stage that did not fully own the page.
+- Design replay state was functional but under-communicated: the scrubber felt peripheral, stale replay did not read as a deliberate state transition, and the right inspector still looked dense.
+- Replay visual truth was incomplete on the canvas itself: switch widgets still rendered persisted node state instead of the selected replay sample, so the selected replay case did not update the whole circuit snapshot.
+
+**Root-cause classification**
+
+- `LogicCanvas` rendered input overlays from persisted node state (`node.state?.isOn`) instead of replay/live signal authority.
+- Design and Verify surface markup still carried earlier compact-strip assumptions, so newer replay/session information had been added on top rather than reorganized into clearer primary/secondary regions.
+- Inspector and workbench sections had the right data but not enough spatial grouping, type hierarchy, or transport prominence to read like a deliberate engineering tool.
+
+**Files changed**
+
+- packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx
+- packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx
+- packages/rb-apps/src/apps/ide/ide-root.css
+- packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx
+- packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx
+- packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx
+- packages/rb-apps/src/apps/ide/surfaces/verify/VerifyCommandBar.tsx
+- packages/rb-logic-view/src/LogicCanvas.tsx
+- packages/rb-logic-view/src/components/NodeView.tsx
+
+**What changed**
+
+- Fixed replay visual truth at the source:
+  - on-canvas switch/input widgets now resolve their displayed state from replay/live render signals first
+  - persisted node state is only a fallback when no sampled signal exists
+- Added a replay regression proving the switch widget follows the selected replay case instead of stale persisted state.
+- Reframed Verify around one primary session summary cluster instead of separate status/evidence/coverage chips.
+- Styled Verify as a waveform-first instrument surface:
+  - command bar collapsed into clearer action/mode/session/bridge regions
+  - waveform transport grouped into a dedicated transport card
+  - stimulus workbench header rewritten as a stronger authored-case summary with clearer action grouping
+  - supporting copy now explicitly states that waveform is the primary truth surface
+- Reframed Design replay around a centered transport:
+  - replay scrubber now sits in a dedicated transport card instead of reading like a leftover right-edge control
+  - simulation-story copy clarifies case/tick/sample meaning
+  - replay/stale/live states use stronger, more legible card styling
+- Cleaned up Design inspector language and grouping:
+  - section titles moved to `Selection`, `Actions`, `Replay Context`, `Board I/O`, `Debug Data`, and `Signal History`
+  - spacing, card rhythm, and action grouping were widened so the right dock reads more like a professional tool pane
+- Strengthened propagation/state emphasis on the canvas by giving highlighted nodes a filled glow plate plus a clearer outer ring.
+- Applied a shared design-language pass in `ide-root.css` across Design and Verify:
+  - unified spacing rhythm
+  - calmer pill density
+  - heavier surface cards
+  - cleaner border/shadow hierarchy
+  - more consistent transport/control sizing
+
+**Why minimal**
+
+- No verify-engine logic or persistence schema change.
+- No Design-side authored testbench editor was added; Verify remains the sole authoring authority.
+- No Project / Map Pins / Export redesign was attempted in this slice.
+- The pass stays focused on the core Design <-> Verify replay loop, waveform/readout hierarchy, and the right-side inspection surfaces.
+
+**Validation**
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx`
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.tickChip.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.desktopComposition.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+- `pnpm --filter @redbyte/playground build`
+- `pnpm build` -> playground/client build succeeded, then the unified merge step failed with `ENOTEMPTY` while removing `dist/os/assets` in the active preview environment
+- Browser validation on `http://127.0.0.1:4173/os/?app=lab-workspace&labId=freeplay` confirmed:
+  - replayed Design switches visibly flip with case changes (`RST OFF` -> `RST ON`)
+  - Verify waveform hierarchy is materially stronger before and after run
+  - later authored cases update Verify transport and Design handoff correctly
+  - Design replay transport reads centrally and stale demotion appears immediately after a real canvas mutation
+  - library, signal dock, and right inspector all render with the redesigned grouping
+
+**Remaining concern**
+
+- The broad UI pass validated the live built app and focused suites, but a full monorepo `pnpm build` still needs a clean dist/output environment because the active preview session caused the `dist/os/assets` cleanup step to fail with `ENOTEMPTY`.
 
 - **Attribution**: Connor Angiel

@@ -72,7 +72,7 @@ import {
   type LabSessionMeta,
 } from './ide/persistence/labSession';
 import { BoardSignalProvider } from './ide/BoardSignalContext';
-import { getActiveScenario } from './ide/verifyScenario';
+import { computeVectorStimulusHash, getActiveScenario } from './ide/verifyScenario';
 import { netlistFromCircuit } from '../export/netlistExport';
 import { vhdlFromNetlist } from '../export/vhdlExport';
 import { buildVhdlTopLevelBindings } from '../fpga/boards/basys3/basys3Bundle';
@@ -139,6 +139,7 @@ export const IdeApp: React.FC = () => {
   const [debugTickIndex, setDebugTickIndex] = useState<number | null>(null);
   // A2: Verify → Design signal linkage
   const [verifySelectedSignal, setVerifySelectedSignal] = useState<string | null>(null);
+  const [verifySelectedTick, setVerifySelectedTick] = useState<number | null>(null);
   const sessionMetaRef = useRef<LabSessionMeta | null>(null);
   const exportProjectRef = useRef<typeof exportProject | null>(null);
   const pendingImportMetaRef = useRef<IdeImportCommitMeta | null>(null);
@@ -458,6 +459,7 @@ export const IdeApp: React.FC = () => {
     const waveform = verifyLastRun?.waveform ?? [];
     const idx = waveform.findIndex((s) => s.tick === tick);
     setDebugTickIndex(idx >= 0 ? idx : null);
+    setVerifySelectedTick(tick);
     setCurrentMode('design');
   }, [verifyLastRun]);
 
@@ -466,31 +468,32 @@ export const IdeApp: React.FC = () => {
     setDebugTickIndex(null);
   }, []);
 
-  const handlePrevDebugTick = useCallback(() => {
-    if (debugTickIndex == null || !verifyLastRun) return;
-    const newIndex = debugTickIndex - 1;
-    if (newIndex < 0) return;
-    const sample = verifyLastRun.waveform[newIndex];
+  const applyDebugTickIndex = useCallback((nextIndex: number) => {
+    if (!verifyLastRun) return;
+    if (nextIndex < 0 || nextIndex >= verifyLastRun.waveform.length) return;
+    const sample = verifyLastRun.waveform[nextIndex];
     if (!sample) return;
     const signals = new Map<string, 0 | 1>(
-      Object.entries(sample.signals).map(([k, v]) => [k, v === '1' ? 1 : 0])
+      Object.entries(sample.signals).map(([key, value]) => [key, value === '1' ? 1 : 0])
     );
     setDebugState({ tick: sample.tick, signals, context: null });
-    setDebugTickIndex(newIndex);
-  }, [debugTickIndex, verifyLastRun]);
+    setDebugTickIndex(nextIndex);
+    setVerifySelectedTick(sample.tick);
+  }, [verifyLastRun]);
+
+  const handlePrevDebugTick = useCallback(() => {
+    if (debugTickIndex == null) return;
+    applyDebugTickIndex(debugTickIndex - 1);
+  }, [applyDebugTickIndex, debugTickIndex]);
 
   const handleNextDebugTick = useCallback(() => {
-    if (debugTickIndex == null || !verifyLastRun) return;
-    const newIndex = debugTickIndex + 1;
-    if (newIndex >= verifyLastRun.waveform.length) return;
-    const sample = verifyLastRun.waveform[newIndex];
-    if (!sample) return;
-    const signals = new Map<string, 0 | 1>(
-      Object.entries(sample.signals).map(([k, v]) => [k, v === '1' ? 1 : 0])
-    );
-    setDebugState({ tick: sample.tick, signals, context: null });
-    setDebugTickIndex(newIndex);
-  }, [debugTickIndex, verifyLastRun]);
+    if (debugTickIndex == null) return;
+    applyDebugTickIndex(debugTickIndex + 1);
+  }, [applyDebugTickIndex, debugTickIndex]);
+
+  const handleSelectDebugTickIndex = useCallback((nextIndex: number) => {
+    applyDebugTickIndex(nextIndex);
+  }, [applyDebugTickIndex]);
 
   const handleDesignMutation = useCallback((nextCircuit: Circuit) => {
     applyCircuitMutation(nextCircuit);
@@ -1239,6 +1242,16 @@ export const IdeApp: React.FC = () => {
       }),
     [authoritativeProjectVectors, circuit, customVectors, projectIoRows]
   );
+  const currentVerifyReplayHash = useMemo(
+    () =>
+      buildCurrentVerifyReplayHash({
+        circuit,
+        projectVectors: authoritativeProjectVectors,
+        customVectors,
+        projectIoRows,
+      }),
+    [authoritativeProjectVectors, circuit, customVectors, projectIoRows]
+  );
   const workflowAuthority = useMemo(
     () =>
       deriveProjectWorkflowAuthority({
@@ -1576,19 +1589,22 @@ export const IdeApp: React.FC = () => {
               externalDebugSignals={debugState?.signals ?? null}
               externalDebugTick={debugState?.tick ?? null}
               externalDebugContext={debugState?.context ?? null}
+              replaySession={verifyLastRun ?? null}
               onClearExternalDebug={handleClearDebugState}
               onPrevDebugTick={handlePrevDebugTick}
               onNextDebugTick={handleNextDebugTick}
+              onSelectDebugTickIndex={handleSelectDebugTickIndex}
               debugTickIndex={debugTickIndex ?? undefined}
               debugTickCount={verifyLastRun?.waveform.length}
               activeVerifySignal={verifySelectedSignal}
+              timingGuidance={liveTimingGuidance}
             />
           </ErrorBoundary>
         ) : currentMode === 'verify' ? (
           <ErrorBoundary fallbackTitle="Verify workspace encountered an error">
             <VerifySurface
               circuitGraph={circuit}
-              deterministicHash={currentVerifyProjectHash}
+              deterministicHash={currentVerifyReplayHash}
               hasVectors={hasVectors}
               vectors={authoritativeProjectVectors}
               lastRun={verifyLastRun}
@@ -1625,7 +1641,10 @@ export const IdeApp: React.FC = () => {
               }}
               onDebugTickSelected={handleDebugTickSelected}
               onSignalSelected={setVerifySelectedSignal}
+              selectedTickOverride={verifySelectedTick}
+              onSelectedTickChange={setVerifySelectedTick}
               liveSignalRoles={liveSignalRoles}
+              liveScheduleContract={liveScheduleContract}
               timingGuidance={liveTimingGuidance}
               unsupportedFeedbackDiagnostic={
                 verifyUnsupportedFeedbackDiagnostic
@@ -1996,6 +2015,57 @@ export function buildCurrentVerifyProjectHash(input: {
       mapping: toProjectIoMapping(input.projectIoRows),
     })
   );
+}
+
+export function buildCurrentVerifyReplayHash(input: {
+  circuit: Circuit;
+  projectVectors: TestVector[];
+  customVectors?: TestVector[];
+  projectIoRows: ProjectIoRow[];
+}): string {
+  return digestValue(
+    stableSerialize({
+      circuit: input.circuit,
+      stimulusHash: computeVectorStimulusHash([
+        ...input.projectVectors,
+        ...(input.customVectors ?? []),
+      ].map((vector) => ({
+        tick: vector.tick,
+        inputs: canonicalizeVerifyReplayInputs(vector.inputs ?? {}, input.projectIoRows),
+      }))),
+      mapping: toProjectIoMapping(input.projectIoRows),
+    })
+  );
+}
+
+function canonicalizeVerifyReplayInputs(
+  inputs: Record<string, boolean | number>,
+  projectIoRows: ProjectIoRow[]
+): Record<string, boolean | number> {
+  const inputAliasMap = buildVerifyReplayInputAliasMap(projectIoRows);
+  return Object.fromEntries(
+    Object.entries(inputs)
+      .map(([key, value]) => [inputAliasMap.get(normalizeVerifyReplayKey(key)) ?? key, value])
+      .sort(([left], [right]) => left.localeCompare(right))
+  );
+}
+
+function buildVerifyReplayInputAliasMap(projectIoRows: ProjectIoRow[]): Map<string, string> {
+  const aliasMap = new Map<string, string>();
+  for (const row of projectIoRows) {
+    if (row.direction !== 'in') continue;
+    const aliases = [row.id, row.label, row.nodeId ?? '', `${row.nodeId ?? ''}.${row.port ?? ''}`];
+    for (const alias of aliases) {
+      const normalized = normalizeVerifyReplayKey(alias);
+      if (!normalized) continue;
+      aliasMap.set(normalized, row.id);
+    }
+  }
+  return aliasMap;
+}
+
+function normalizeVerifyReplayKey(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
 function formatSavedAtLabel(savedAtIso: string): string {

@@ -158,11 +158,11 @@ describe('ProjectSurface workspace panels', () => {
       'Flip switches and the matching LEDs follow immediately.'
     );
 
-    const context = getAllByTestId('ide-project-context').at(-1)!;
-    expect(context.textContent).toContain('Loaded project');
-    expect(context.textContent).toContain('Example Project - Signal Tour: Switches -> LEDs');
-    expect(context.textContent).toContain('Project note');
-    expect(context.textContent).toContain('Flip switches and the matching LEDs follow immediately.');
+    expect(queryByTestId('ide-project-context')).toBeNull();
+    const facts = getByTestId('ide-project-current-focus-facts');
+    expect(facts.textContent).toContain('Example Project - Signal Tour: Switches -> LEDs');
+    expect(facts.textContent).toContain('Project note');
+    expect(facts.textContent).toContain('Flip switches and the matching LEDs follow immediately.');
   });
 
   it('shows open-existing and recent-work entry points on the empty project home', () => {

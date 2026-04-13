@@ -7,6 +7,7 @@ import { DesignSurface } from '../surfaces/DesignSurface';
 import type { IdeDiagnostic } from '../diagnostics';
 import type { RuntimeSimState } from '../projectRuntime';
 import type { MacroDefinition } from '../macros/MacroLibrary';
+import { deriveTimingGuidance } from '../timingGuidance';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
@@ -264,8 +265,30 @@ describe('DesignSurface workstation redesign', () => {
     });
 
     expect(view.getByTestId('ide-design-selection-inspector')).toBeTruthy();
-    expect(view.getByTestId('ide-design-live-sim-section').getAttribute('data-open')).toBe('false');
+    expect(view.queryByTestId('ide-design-live-sim-section')).toBeNull();
+    expect(view.getByTestId('ide-design-sim-story-strip')).toBeTruthy();
+    expect(view.queryByTestId('ide-design-toolbar-sim-controls')).toBeNull();
     expect(view.queryByTestId('ide-left-dock')).toBeNull();
+  });
+
+  it('lets users collapse the auto-opened selection inspector back into a restore rail', async () => {
+    const view = renderSurface();
+
+    act(() => {
+      useLogicViewStore.getState().selectNode('ld0_node');
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-inspector')).toBeTruthy();
+    });
+
+    fireEvent.click(view.getByTestId('ide-workbench-dock-collapse-right'));
+
+    await waitFor(() => {
+      expect(view.queryByTestId('ide-inspector')).toBeNull();
+    });
+
+    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
   });
 
   it('shows contextual inspector data, trace actions, and a compact live state table', async () => {
@@ -292,24 +315,47 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-sim-story-strip').textContent).toContain('Tick 6');
     expect(view.getByTestId('ide-design-sim-story-summary').textContent).toContain('SW0');
     expect(view.getByTestId('ide-design-sim-story-summary').textContent).toContain('LD0');
+    expect(view.queryByTestId('ide-design-toolbar-sim-controls')).toBeNull();
 
     fireEvent.click(view.getByTestId('ide-design-context-trace'));
 
     await waitFor(() => {
       expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Fanin to ld0_node.in');
     });
+  });
 
-    const liveSimSection = view.getByTestId('ide-design-live-sim-section');
-    if (liveSimSection.getAttribute('data-open') === 'false') {
-      fireEvent.click(view.getByTestId('ide-design-live-sim-section-toggle'));
-    }
-
-    await waitFor(() => {
-      expect(view.getByTestId('ide-design-live-sim-section').textContent).toContain('Tick');
+  it('uses contract timing guidance for the live clock pill instead of regex clock labels', async () => {
+    const clockGuidance = deriveTimingGuidance({
+      schedule: 'clocked_macro',
+      reason: 'circuit-sequential',
+      analysis: {
+        hasClockedMacros: true,
+        hasClockNet: true,
+        sequentialNodes: [{ id: 'dff0', type: 'DFlipFlop', clockPort: 'CLK' }],
+        clockSource: 'circuit',
+        clockNetName: 'phase_driver',
+      },
+      needsSimClockInjection: false,
+      clockSignalName: 'phase_driver',
+      samplePoint: 'post-rising-edge',
+      tick0Meaning: 'initial-state',
+      hasUnsupportedTemporal: false,
+      temporalIssues: [],
     });
 
-    expect(view.getByTestId('ide-design-live-state-table').textContent).toContain('Inputs');
-    expect(view.getByTestId('ide-design-live-state-table').textContent).toContain('Outputs');
+    const view = renderSurface({
+      ioRows: [
+        { id: 'phase_driver', nodeId: 'sw0_node', label: 'Phase Driver', pin: 'V17', port: 'out', direction: 'in' },
+        { id: 'ld0', nodeId: 'ld0_node', label: 'LD0', pin: 'U16', port: 'in', direction: 'out' },
+      ],
+      timingGuidance: clockGuidance,
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-sim-story-clock').textContent).toContain(
+        'Phase Driver rising edge'
+      );
+    });
   });
 
   it('bridges verify-selected signals back into Design focus and trace state', async () => {
@@ -326,6 +372,177 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-verify-link-badge').textContent).toContain('LD0');
     expect(view.getByTestId('ide-design-verify-focus').textContent).toContain('LD0');
     expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Verify focus ld0_node.in');
+  });
+
+  it('adds a replay causation cue for verify-linked signal focus', async () => {
+    const setSelectedSignal = vi.fn();
+    const view = renderSurface({
+      activeVerifySignal: 'LD0',
+      onRuntimeSimSetSelectedSignal: setSelectedSignal,
+      externalDebugTick: 6,
+      externalDebugSignals: new Map<string, 0 | 1>([
+        ['sw0_node.out', 1],
+        ['ld0_node.in', 1],
+      ]),
+    });
+
+    await waitFor(() => {
+      expect(setSelectedSignal).toHaveBeenCalledWith('ld0_node.in');
+      expect(view.getByTestId('ide-design-replay-causation')).toBeTruthy();
+    });
+
+    const cue = view.getByTestId('ide-design-replay-causation').textContent ?? '';
+    expect(cue).toContain('Rose 0 to 1 at t6');
+    expect(cue).toContain('upstream path from SW0');
+    expect(cue).toContain('inspect LD0 first');
+  });
+
+  it('gives verify-linked signal focus a structural landing target inside the inspector', async () => {
+    const setSelectedSignal = vi.fn();
+    const view = renderSurface({
+      activeVerifySignal: 'LD0',
+      onRuntimeSimSetSelectedSignal: setSelectedSignal,
+    });
+
+    await waitFor(() => {
+      expect(setSelectedSignal).toHaveBeenCalledWith('ld0_node.in');
+    });
+
+    expect(view.getByTestId('ide-design-inspector-identity-subtitle').textContent).toContain('Verify focus');
+    expect(view.getByTestId('ide-design-inspector-identity-title').textContent).toContain('LD0');
+    expect(view.getByTestId('ide-design-inspector-identity-title').textContent).toContain('Input');
+    expect(view.getByTestId('ide-design-inspector-next-step').textContent).toContain('LD0');
+
+    fireEvent.click(view.getByTestId('ide-design-inspector-focus-node'));
+
+    await waitFor(() => {
+      expect(Array.from(useLogicViewStore.getState().selection.nodes)).toEqual(['ld0_node']);
+    });
+
+    expect(view.getByTestId('ide-design-context-trace')).toBeTruthy();
+    expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Verify focus ld0_node.in');
+  });
+
+  it('resolves canonical verify aliases through io row ids for signal-first Design focus', async () => {
+    useCircuitStore.setState({
+      circuit: structuredClone({
+        ...BASE_CIRCUIT,
+        nodes: [
+          ...BASE_CIRCUIT.nodes,
+          {
+            id: 'q1_out',
+            type: 'OUTPUT',
+            position: { x: 320, y: 0 },
+            rotation: 0,
+            config: {},
+            state: {},
+            label: 'LD1',
+          },
+        ],
+        connections: [...BASE_CIRCUIT.connections],
+      }),
+      isDirty: false,
+      past: [],
+      future: [],
+    });
+
+    const setSelectedSignal = vi.fn();
+    const runtimeSim = makeRuntimeSim();
+    runtimeSim.signals = {
+      ...runtimeSim.signals,
+      'q1_out.in': 1,
+    };
+    runtimeSim.trace = runtimeSim.trace.map((sample) => ({
+      ...sample,
+      signals: {
+        ...sample.signals,
+        'q1_out.in': sample.tick === 6 ? 1 : 0,
+      },
+    }));
+
+    const view = renderSurface({
+      activeVerifySignal: 'q1',
+      onRuntimeSimSetSelectedSignal: setSelectedSignal,
+      runtimeSim,
+      ioRows: [
+        { id: 'sw0', nodeId: 'sw0_node', label: 'SW0', pin: 'V17', port: 'out', direction: 'in' },
+        { id: 'ld0', nodeId: 'ld0_node', label: 'LD0', pin: 'U16', port: 'in', direction: 'out' },
+        { id: 'q1', nodeId: 'q1_out', label: 'LD1', pin: 'E19', port: 'in', direction: 'out' },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(setSelectedSignal).toHaveBeenCalledWith('q1_out.in');
+    });
+
+    expect(view.getByTestId('ide-design-verify-link-badge').textContent).toContain('Verify focus q1');
+    expect(view.getByTestId('ide-design-verify-focus').textContent).toContain('Inspect LD1 first');
+    expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Verify focus q1_out.in');
+    expect(view.getByTestId('ide-design-inspector-identity-subtitle').textContent).toContain('Verify focus q1');
+    expect(view.getByTestId('ide-design-inspector-identity-title').textContent).toContain('LD1');
+    expect(view.getByTestId('ide-design-inspector-next-step').textContent).toContain('q1');
+    expect(view.getByTestId('ide-design-inspector-next-step').textContent).toContain('LD1');
+
+    fireEvent.click(view.getByTestId('ide-design-inspector-focus-node'));
+
+    await waitFor(() => {
+      expect(Array.from(useLogicViewStore.getState().selection.nodes)).toEqual(['q1_out']);
+    });
+  });
+
+  it('prefers io row ids over conflicting io row labels when resolving verify aliases', async () => {
+    useCircuitStore.setState({
+      circuit: structuredClone({
+        ...BASE_CIRCUIT,
+        nodes: [
+          ...BASE_CIRCUIT.nodes,
+          {
+            id: 'q1_out',
+            type: 'OUTPUT',
+            position: { x: 320, y: 0 },
+            rotation: 0,
+            config: {},
+            state: {},
+            label: 'LD1',
+          },
+        ],
+        connections: [...BASE_CIRCUIT.connections],
+      }),
+      isDirty: false,
+      past: [],
+      future: [],
+    });
+
+    const setSelectedSignal = vi.fn();
+    const runtimeSim = makeRuntimeSim();
+    runtimeSim.signals = {
+      ...runtimeSim.signals,
+      'q1_out.in': 1,
+      'ld0_node.in': 0,
+    };
+    runtimeSim.trace = runtimeSim.trace.map((sample) => ({
+      ...sample,
+      signals: {
+        ...sample.signals,
+        'q1_out.in': sample.tick === 6 ? 1 : 0,
+        'ld0_node.in': 0,
+      },
+    }));
+
+    renderSurface({
+      activeVerifySignal: 'q1',
+      onRuntimeSimSetSelectedSignal: setSelectedSignal,
+      runtimeSim,
+      ioRows: [
+        { id: 'alias_collision', nodeId: 'ld0_node', label: 'q1', pin: 'U16', port: 'in', direction: 'out' },
+        { id: 'q1', nodeId: 'q1_out', label: 'LD1', pin: 'E19', port: 'in', direction: 'out' },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(setSelectedSignal).toHaveBeenCalledWith('q1_out.in');
+    });
+    expect(setSelectedSignal).not.toHaveBeenCalledWith('ld0_node.in');
   });
 
   it('restates verify mismatch context when opening frozen debug mode', () => {
@@ -346,7 +563,7 @@ describe('DesignSurface workstation redesign', () => {
       },
     });
 
-    expect(view.getByTestId('ide-design-debug-banner').textContent).toContain('tick 6');
+    expect(view.getByTestId('ide-design-debug-banner').textContent).toContain('t6');
     expect(view.getByTestId('ide-design-failure-brief').textContent).toContain('LD0');
     expect(view.getByTestId('ide-design-failure-brief').textContent).toContain('1');
     expect(view.getByTestId('ide-design-failure-brief').textContent).toContain('0');
@@ -354,7 +571,7 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-failure-brief-next').textContent).toContain('Inspect the wire between SW0 and LD0.');
     expect(view.getByTestId('ide-design-failure-brief-pattern').textContent).toContain('Output stayed low while the selected input was high.');
     expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Debug focus ld0_node.in');
-    expect(view.getByTestId('ide-design-selection-inspector').textContent).toContain('Signal focus');
+    expect(view.getByTestId('ide-design-inspector-identity-subtitle').textContent).toContain('Debug focus');
     expect(view.getByTestId('ide-design-sim-story-summary').textContent).toContain('Verify expected LD0=1 but sampled 0 at tick 6.');
   });
 

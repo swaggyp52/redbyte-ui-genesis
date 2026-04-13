@@ -66,7 +66,7 @@ function makeFailRun(): RuntimeVerifyRun {
 }
 
 describe('VerifySurface three-panel workstation', () => {
-  it('auto-selects first failure, responds to J navigation, and syncs right panel with row clicks', () => {
+  it('uses the lower analysis drawer for failure review and keeps waveform selection in sync with mismatch rows', () => {
     const run = makeFailRun();
     const view = render(
       <VerifySurface
@@ -84,23 +84,25 @@ describe('VerifySurface three-panel workstation', () => {
       />
     );
 
-    expect(view.getByTestId('ide-verify-three-panel')).toBeTruthy();
+    expect(view.queryByTestId('ide-verify-three-panel')).toBeNull();
+    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-left'));
+    fireEvent.click(view.getByTestId('ide-verify-drawer-toggle'));
     expect(view.getByTestId('ide-left-dock')).toBeTruthy();
-    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
-    expect(view.getByTestId('ide-verify-right-signal-key').textContent?.toLowerCase()).toContain('ld0');
+    expect(view.getByTestId('ide-verify-region-inspector')).toBeTruthy();
+    expect(view.getByTestId('ide-verify-fail-summary-inline')).toBeTruthy();
+    expect(view.getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld0');
     expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
-    expect(view.getByTestId('ide-verify-vector-row-1-ld0-ld0-vec-01-0').className).toContain('is-selected');
     expect(view.getByTestId('ide-verify-scope-signal').textContent).toContain('ld0');
 
     fireEvent.keyDown(window, { key: 'J' });
     expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t5');
 
-    const ld1Row = view.getAllByTestId('ide-verify-vector-row-5-ld1-ld1-vec-03-1')[0];
+    const ld1Row = view.getByTestId('ide-verify-mismatch-row-ld1-5');
     fireEvent.click(ld1Row);
     expect(ld1Row.className).toContain('is-selected');
     expect(view.getByTestId('ide-verify-scope-signal').textContent).toContain('ld1');
-    expect(view.getByTestId('ide-verify-right-signal-key').textContent?.toLowerCase()).toContain('ld1');
-    expect(view.getByTestId('ide-verify-right-tick').textContent).toContain('t5');
+    expect(view.getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld1');
+    expect(view.getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t5');
   });
 
   it('marks the selected waveform lane so signal selection is visually coupled', () => {
@@ -121,7 +123,8 @@ describe('VerifySurface three-panel workstation', () => {
       />
     );
 
-    fireEvent.click(view.getAllByTestId('ide-verify-vector-row-5-ld1-ld1-vec-03-1')[0]);
+    fireEvent.click(view.getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(view.getByTestId('ide-verify-mismatch-row-ld1-5'));
 
     expect(view.getAllByTestId('ide-verify-waveform-row-ld1')[0].getAttribute('data-selected')).toBe('true');
     expect(view.getAllByTestId('ide-verify-waveform-row-ld0')[0].getAttribute('data-selected')).toBe('false');

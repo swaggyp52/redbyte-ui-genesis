@@ -248,7 +248,7 @@ describe('Inspector Truth — no developer internals exposed to students', () =>
     expect(diagnosticsEl.textContent).not.toContain('Compiler diagnostics');
   });
 
-  it('does not show "Dirty since verify" or "Dirty since export" in Advanced Details when expanded', async () => {
+  it('does not show "Dirty since verify" or "Dirty since export" in Details when expanded', async () => {
     const view = renderSurface(BASE_CIRCUIT, {
       compilerStatus: makeStatusWithIrDiagnostics(),
     });
@@ -259,35 +259,33 @@ describe('Inspector Truth — no developer internals exposed to students', () =>
 
     // Wait for the section to appear then expand it so children render
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-inspector-advanced-toggle')).toBeTruthy();
+      expect(view.getByTestId('ide-design-inspector-details-toggle')).toBeTruthy();
     });
 
-    fireEvent.click(view.getByTestId('ide-design-inspector-advanced-toggle'));
+    fireEvent.click(view.getByTestId('ide-design-inspector-details-toggle'));
 
     await waitFor(() => {
-      const section = view.getByTestId('ide-design-inspector-advanced');
+      const section = view.getByTestId('ide-design-inspector-details');
       expect(section.getAttribute('data-open')).toBe('true');
     });
 
-    const advancedSection = view.getByTestId('ide-design-inspector-advanced');
-    expect(advancedSection.textContent).not.toContain('Dirty since verify');
-    expect(advancedSection.textContent).not.toContain('Dirty since export');
+    const detailsSection = view.getByTestId('ide-design-inspector-details');
+    expect(detailsSection.textContent).not.toContain('Dirty since verify');
+    expect(detailsSection.textContent).not.toContain('Dirty since export');
   });
 
-  it('shows a normal collapsible state on the Live Simulation toggle (not "Live")', async () => {
+  it('keeps simulation state in the story strip instead of toolbar transport buttons or an inspector disclosure', async () => {
     const view = renderSurface(BASE_CIRCUIT);
 
-    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-right'));
-
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-live-sim-section-toggle')).toBeTruthy();
+      expect(view.getByTestId('ide-design-sim-story-strip')).toBeTruthy();
     });
 
-    // IdeInspectorSection renders a .ide-inspector-toggle-state span that shows
-    // "Live" when disableCollapse=true, otherwise a normal Show/Hide state.
-    const toggleBtn = view.getByTestId('ide-design-live-sim-section-toggle');
-    const stateSpan = toggleBtn.querySelector('.ide-inspector-toggle-state');
-    expect(stateSpan?.textContent).toBe('Show');
+    expect(view.queryByTestId('ide-design-live-sim-section')).toBeNull();
+    expect(view.queryByTestId('ide-design-toolbar-sim-controls')).toBeNull();
+    expect(view.queryByTestId('ide-design-sim-run')).toBeNull();
+    expect(view.queryByTestId('ide-design-sim-step')).toBeNull();
+    expect(view.queryByTestId('ide-design-sim-reset')).toBeNull();
   });
 
   it('does not show a "Single-object state only" callout when multiple nodes are selected', async () => {
@@ -311,24 +309,15 @@ describe('Inspector Truth — no developer internals exposed to students', () =>
     expect(view.container.textContent).not.toContain('Single-object state only');
   });
 
-  it('does not render tick-history buttons in the Signal Probe section when opened', async () => {
+  it('does not reintroduce a separate signal history section in the inspector', async () => {
     const view = renderSurface(BASE_CIRCUIT, {
       sim: makeSimWithTrace(),
     });
 
-    // Expand the Signal Probe section so its children render
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-signal-probe-toggle')).toBeTruthy();
+      expect(view.queryByTestId('ide-design-signal-probe')).toBeNull();
     });
 
-    fireEvent.click(view.getByTestId('ide-design-signal-probe-toggle'));
-
-    await waitFor(() => {
-      const section = view.getByTestId('ide-design-signal-probe');
-      expect(section.getAttribute('data-open')).toBe('true');
-    });
-
-    // No waveform-style per-tick history buttons — those are a Verify-surface idiom
     const historyPoints = view.container.querySelectorAll('[data-testid="ide-design-signal-history-point"]');
     expect(historyPoints).toHaveLength(0);
   });

@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 import { deriveTimingGuidance } from '../timingGuidance';
+import { computeScenarioContentHash, computeScenarioStimulusHash } from '../verifyScenario';
 
 if (!HTMLElement.prototype.scrollIntoView) {
   Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
@@ -171,6 +172,49 @@ function makeWaveformOnlyRun(): RuntimeVerifyRun {
   };
 }
 
+function makeSparseSequentialRun(): RuntimeVerifyRun {
+  return {
+    scenarioId: 'sparse-sequential-run',
+    scenarioName: 'Sparse Sequential Run',
+    status: 'pass',
+    deterministicHash: 'seq123',
+    reportHash: 'rep-sparse-sequential',
+    generatedAtIso: '2026-04-11T00:00:00.000Z',
+    schedule: 'clocked_macro',
+    meta: {
+      circuitKind: 'sequential',
+      clockingProtocol: 'clocked_macro',
+      samplePoint: 'post-rising-edge',
+      tick0Meaning: 'initial-state',
+      clockSignalName: 'phase_driver',
+    },
+    report: {
+      vectors: [
+        { id: 'vec-01', tick: 1, inputs: { sw0: 0, phase_driver: 0 }, expected: {}, caseIndex: 0 },
+        { id: 'vec-02', tick: 3, inputs: { sw0: 1, phase_driver: 1 }, expected: {}, caseIndex: 1 },
+        { id: 'vec-03', tick: 5, inputs: { sw0: 0, phase_driver: 0 }, expected: {}, caseIndex: 2 },
+      ],
+      inputsAtTick: {
+        1: { sw0: 0, phase_driver: 0 },
+        3: { sw0: 1, phase_driver: 1 },
+        5: { sw0: 0, phase_driver: 0 },
+      },
+      inputsByVectorId: {
+        'vec-01': { sw0: 0, phase_driver: 0 },
+        'vec-02': { sw0: 1, phase_driver: 1 },
+        'vec-03': { sw0: 0, phase_driver: 0 },
+      },
+      signalRoles: { sw0: 'input', phase_driver: 'clock', ld0: 'output' },
+      rows: [],
+    } as RuntimeVerifyRun['report'],
+    waveform: [
+      { tick: 1, signals: { sw0: '0', phase_driver: '0', ld0: '0' }, mismatches: [] },
+      { tick: 3, signals: { sw0: '1', phase_driver: '1', ld0: '1' }, mismatches: [] },
+      { tick: 5, signals: { sw0: '0', phase_driver: '0', ld0: '1' }, mismatches: [] },
+    ],
+  };
+}
+
 describe('VerifySurface workstation controls', () => {
   afterEach(() => { cleanup(); });
 
@@ -269,6 +313,7 @@ describe('VerifySurface workstation controls', () => {
   });
 
   it('describes supported latch control as EN rather than a generic clock', () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const latchGuidance = deriveTimingGuidance({
       schedule: 'clocked_macro',
       reason: 'circuit-sequential',
@@ -322,6 +367,161 @@ describe('VerifySurface workstation controls', () => {
       'clock ticks in your stimulus'
     );
   });
+
+  it('uses the active schedule contract clock name and absolute tick parity for helper clock insertion', () => {
+    const liveContract = {
+      schedule: 'clocked_macro',
+      reason: 'circuit-sequential',
+      analysis: {
+        hasClockedMacros: true,
+        hasClockNet: true,
+        sequentialNodes: [{ id: 'dff0', type: 'DFlipFlop', clockPort: 'CLK' }],
+        clockSource: 'circuit',
+        clockNetName: 'phase_driver',
+      },
+      needsSimClockInjection: false,
+      clockSignalName: 'phase_driver',
+      samplePoint: 'post-rising-edge',
+      tick0Meaning: 'initial-state',
+      hasUnsupportedTemporal: false,
+      temporalIssues: [],
+    } as const;
+    const onVectorsChange = vi.fn();
+
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="hash-live"
+        hasVectors={true}
+        vectors={[{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {} }]}
+        mappedInputs={[
+          { id: 'sw0', label: 'SW0' },
+          { id: 'phase_driver', label: 'Phase Driver' },
+        ]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'phase_driver', direction: 'in', label: 'Phase Driver' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        verifyMode="sequential"
+        liveScheduleContract={liveContract}
+        timingGuidance={deriveTimingGuidance(liveContract)}
+        onVectorsChange={onVectorsChange}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    fireEvent.click(getByTestId('ide-verify-insert-clock-pattern'));
+
+    expect(onVectorsChange).toHaveBeenCalledTimes(1);
+    expect(
+      onVectorsChange.mock.calls[0]?.[0].slice(-4).map(
+        (vector: { tick: number; inputs: Record<string, 0 | 1> }) => ({
+          tick: vector.tick,
+          phase_driver: vector.inputs.phase_driver,
+        })
+      )
+    ).toEqual([
+      { tick: 1, phase_driver: 1 },
+      { tick: 2, phase_driver: 0 },
+      { tick: 3, phase_driver: 1 },
+      { tick: 4, phase_driver: 0 },
+    ]);
+  });
+
+    it('does not warn about missing clock activity when mixed project and custom vectors already drive the live clock', () => {
+      const liveContract = {
+        schedule: 'clocked_macro',
+        reason: 'circuit-sequential',
+        analysis: {
+          hasClockedMacros: true,
+          hasClockNet: true,
+          sequentialNodes: [{ id: 'dff0', type: 'DFlipFlop', clockPort: 'CLK' }],
+          clockSource: 'circuit',
+          clockNetName: 'phase_driver',
+        },
+        needsSimClockInjection: false,
+        clockSignalName: 'phase_driver',
+        samplePoint: 'post-rising-edge',
+        tick0Meaning: 'initial-state',
+        hasUnsupportedTemporal: false,
+        temporalIssues: [],
+      } as const;
+
+      const { queryByTestId } = render(
+        <VerifySurface
+          deterministicHash="hash-live"
+          hasVectors={true}
+          lastRun={makePassRun()}
+          vectors={[{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {} }]}
+          customVectors={[
+            { id: 'cv-01', tick: 1, inputs: { sw0: 0, phase_driver: 0 }, expected: {} },
+            { id: 'cv-02', tick: 2, inputs: { sw0: 1, phase_driver: 1 }, expected: {} },
+          ]}
+          mappedInputs={[
+            { id: 'sw0', label: 'SW0' },
+            { id: 'phase_driver', label: 'Phase Driver' },
+          ]}
+          mappedSignals={[
+            { id: 'sw0', direction: 'in', label: 'SW0' },
+            { id: 'phase_driver', direction: 'in', label: 'Phase Driver' },
+            { id: 'ld0', direction: 'out', label: 'LD0' },
+          ]}
+          verifyMode="sequential"
+          liveScheduleContract={liveContract}
+          timingGuidance={deriveTimingGuidance(liveContract)}
+          onOpenProjectVectors={vi.fn()}
+        />
+      );
+
+      expect(queryByTestId('ide-verify-needs-clock')).toBeNull();
+    });
+
+    it('matches normalized clock ids before warning about missing activity', () => {
+      const liveContract = {
+        schedule: 'clocked_macro',
+        reason: 'circuit-sequential',
+        analysis: {
+          hasClockedMacros: true,
+          hasClockNet: true,
+          sequentialNodes: [{ id: 'dff0', type: 'DFlipFlop', clockPort: 'CLK' }],
+          clockSource: 'circuit',
+          clockNetName: 'Phase Driver',
+        },
+        needsSimClockInjection: false,
+        clockSignalName: 'Phase Driver',
+        samplePoint: 'post-rising-edge',
+        tick0Meaning: 'initial-state',
+        hasUnsupportedTemporal: false,
+        temporalIssues: [],
+      } as const;
+
+      const { queryByTestId } = render(
+        <VerifySurface
+          deterministicHash="hash-normalized"
+          hasVectors={true}
+          lastRun={makePassRun()}
+          vectors={[
+            { id: 'vec-01', tick: 1, inputs: { sw0: 0, phase_driver: 0 }, expected: {} },
+            { id: 'vec-02', tick: 2, inputs: { sw0: 1, phase_driver: 1 }, expected: {} },
+          ]}
+          mappedInputs={[
+            { id: 'sw0', label: 'SW0' },
+            { id: 'phase_driver', label: 'Phase Driver' },
+          ]}
+          mappedSignals={[
+            { id: 'sw0', direction: 'in', label: 'SW0' },
+            { id: 'phase_driver', direction: 'in', label: 'Phase Driver' },
+            { id: 'ld0', direction: 'out', label: 'LD0' },
+          ]}
+          verifyMode="sequential"
+          liveScheduleContract={liveContract}
+          timingGuidance={deriveTimingGuidance(liveContract)}
+          onOpenProjectVectors={vi.fn()}
+        />
+      );
+
+      expect(queryByTestId('ide-verify-needs-clock')).toBeNull();
+    });
 
   it('warns in Verify when the current design has an unsupported feedback structure', () => {
     const { container, getByTestId, queryByTestId } = render(
@@ -390,27 +590,27 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    const details = container.querySelector(
+    const workbench = container.querySelector(
       '.ide-verify-scenario-builder-details--postrun'
-    ) as HTMLDetailsElement | null;
+    ) as HTMLElement | null;
 
-    expect(details).toBeTruthy();
-    expect(details?.open).toBe(true);
+    expect(workbench).toBeTruthy();
+    expect(workbench).toHaveAttribute('data-state', 'expanded');
     expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
 
     fireEvent.click(getByTestId('ide-verify-run-proof-edit-vectors'));
 
-    expect(details?.open).toBe(true);
+    expect(workbench).toHaveAttribute('data-state', 'expanded');
     expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
     expect(scrollIntoViewMock).toHaveBeenCalled();
     expect(onGoToDesign).not.toHaveBeenCalled();
 
     fireEvent.click(getByTestId('ide-verify-workbench-toggle'));
-    expect(details?.open).toBe(false);
+    expect(workbench).toHaveAttribute('data-state', 'collapsed');
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     fireEvent.click(getByTestId('ide-verify-mismatch-edit-vectors'));
 
-    expect(details?.open).toBe(true);
+    expect(workbench).toHaveAttribute('data-state', 'expanded');
     expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
     expect(scrollIntoViewMock).toHaveBeenCalled();
     expect(onGoToDesign).not.toHaveBeenCalled();
@@ -467,10 +667,13 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('CAPTURE');
     expect(getByTestId('ide-verify-session-title').textContent).toContain('Waveform recorded — observation only');
     expect(getByTestId('ide-verify-summary-status').textContent).toContain('OBSERVATION ONLY');
+    expect(queryByTestId('ide-verify-workbench-mode')).toBeNull();
+    expect(queryByTestId('ide-verify-workbench-subtitle')).toBeNull();
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
     expect(getByTestId('ide-verify-drawer-toggle')).toBeTruthy();
     expect(getByTestId('ide-vcb-save-expected')).toBeTruthy();
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
+    expect(getByTestId('ide-vcb-evidence').textContent).toBe('1 vector');
     expect(queryByTestId('ide-left-dock')).toBeNull();
     expect(queryByTestId('ide-inspector')).toBeNull();
 
@@ -569,10 +772,58 @@ describe('VerifySurface workstation controls', () => {
     expect((getByTestId('ide-stimulus-tick-target') as HTMLSelectElement).value).toBe('2');
   });
 
+  it('uses case-index scrubber positions while keeping sparse sequential tick labels explicit', () => {
+    const sparseSequentialRun = makeSparseSequentialRun();
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="seq123"
+        hasVectors={true}
+        lastRun={sparseSequentialRun}
+        vectors={sparseSequentialRun.report.vectors}
+        mappedInputs={[
+          { id: 'sw0', label: 'SW0' },
+          { id: 'phase_driver', label: 'CLK' },
+        ]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'phase_driver', direction: 'in', label: 'phase_driver' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        onVectorsChange={vi.fn()}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    const scrubber = getByTestId('ide-verify-tick-scrubber') as HTMLInputElement;
+    expect(scrubber.min).toBe('0');
+    expect(scrubber.max).toBe('2');
+    expect(scrubber.value).toBe('0');
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('Case 1');
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
+    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 1');
+
+    fireEvent.change(scrubber, { target: { value: '1' } });
+
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('Case 2');
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t3');
+    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 2');
+  });
+
   it('arms assertion checking immediately after capturing outputs as expected', () => {
+    const initialVectors = [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {} }];
+    const initialScenario = {
+      id: 'trace-run',
+      name: 'Trace Run',
+      version: 1,
+      createdAt: '2026-03-23T00:00:00.000Z',
+      updatedAt: '2026-03-23T00:00:00.000Z',
+      vectors: initialVectors,
+    };
     const traceRun: RuntimeVerifyRun = {
       scenarioId: 'trace-run',
       scenarioName: 'Trace Run',
+      scenarioContentHash: computeScenarioContentHash(initialScenario),
+      scenarioStimulusHash: computeScenarioStimulusHash(initialScenario),
       status: 'pass',
       deterministicHash: 'abc123',
       reportHash: 'rep-trace',
@@ -596,13 +847,15 @@ describe('VerifySurface workstation controls', () => {
     };
 
     const onVectorsChange = vi.fn();
-    const initialVectors = [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {} }];
-    const { getByTestId, rerender } = render(
+    const { getByTestId, queryByTestId, rerender } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
         lastRun={traceRun}
         vectors={initialVectors}
+        scenarios={[initialScenario]}
+        activeScenarioId={initialScenario.id}
+        activeScenario={initialScenario}
         mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
         mappedSignals={[
           { id: 'sw0', direction: 'in' },
@@ -622,6 +875,12 @@ describe('VerifySurface workstation controls', () => {
       inputs: Record<string, 0 | 1>;
       expected: Record<string, 0 | 1>;
     }>;
+    const updatedScenario = {
+      ...initialScenario,
+      version: 2,
+      updatedAt: '2026-03-23T00:01:00.000Z',
+      vectors: updatedVectors,
+    };
 
     rerender(
       <VerifySurface
@@ -629,6 +888,9 @@ describe('VerifySurface workstation controls', () => {
         hasVectors={true}
         lastRun={traceRun}
         vectors={updatedVectors}
+        scenarios={[updatedScenario]}
+        activeScenarioId={updatedScenario.id}
+        activeScenario={updatedScenario}
         mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
         mappedSignals={[
           { id: 'sw0', direction: 'in' },
@@ -640,6 +902,11 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(getByTestId('ide-vcb-mode-compare').className).toContain('is-active');
+    expect(getByTestId('ide-verify-session-status').textContent).toContain('OBSERVATION ONLY');
+    expect(getByTestId('ide-verify-session-status').textContent).not.toContain('STALE');
+    expect(getByTestId('ide-verify-session-mode').textContent).toContain('CAPTURE');
+    expect(queryByTestId('ide-verify-workbench-mode')).toBeNull();
+    expect(queryByTestId('ide-verify-workbench-subtitle')).toBeNull();
   });
 
   it('reruns in trace mode after the student switches the next run intent back to simulation', async () => {
@@ -1095,6 +1362,80 @@ describe('VerifySurface workstation controls', () => {
     expect(onSignalSelected).toHaveBeenLastCalledWith('ld0');
     fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
     expect(getByTestId('ide-verify-signal-filter-state').textContent).toContain('mismatches');
+  });
+
+  it('folds workbench actions and signal-rail controls into their header rows', () => {
+    const richerPassRun: RuntimeVerifyRun = {
+      ...makePassRun(),
+      report: {
+        ...makePassRun().report,
+        signalRoles: {
+          ...makePassRun().report.signalRoles,
+          tap: 'internal',
+        },
+      } as RuntimeVerifyRun['report'],
+      waveform: makePassRun().waveform.map((sample) => ({
+        ...sample,
+        signals: {
+          ...sample.signals,
+          tap: sample.tick === 0 ? '0' : '1',
+        },
+      })),
+    };
+
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={richerPassRun}
+        vectors={richerPassRun.report.vectors}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    const workbenchHeader = getByTestId('ide-verify-workbench-toggle');
+    expect(workbenchHeader.textContent).toContain('Project vectors');
+    expect(workbenchHeader.textContent).not.toContain('Author');
+
+    fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
+    const signalRailHeader = getByTestId('ide-verify-signal-rail-header');
+    expect(signalRailHeader).toContainElement(getByTestId('ide-verify-signal-filter-state'));
+    expect(signalRailHeader).toContainElement(getByTestId('ide-verify-show-all-signals'));
+    expect(signalRailHeader).toContainElement(getByTestId('ide-verify-fit-waveform'));
+  });
+
+  it('replaces the collapsed post-run workbench with a compact authored-stimulus strip', () => {
+    const { getByTestId, queryByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={makePassRun()}
+        vectors={makePassRun().report.vectors}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', label: 'SW0', direction: 'in' },
+          { id: 'ld0', label: 'LD0', direction: 'out' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    fireEvent.click(getByTestId('ide-verify-workbench-toggle'));
+
+    expect(queryByTestId('ide-verify-workbench-body')).toBeNull();
+    expect(getByTestId('ide-verify-workbench-collapsed-strip')).toBeTruthy();
+    expect(getByTestId('ide-verify-workbench-reopen')).toBeTruthy();
+    expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-stimulus-layout', 'collapsed');
+
+    fireEvent.click(getByTestId('ide-verify-workbench-reopen'));
+
+    expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
+    expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-stimulus-layout', 'expanded');
   });
 
   it('shows explicit preflight diagnostics when outputs cannot be verified', () => {

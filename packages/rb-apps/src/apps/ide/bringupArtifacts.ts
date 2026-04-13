@@ -12,6 +12,7 @@ import {
   getStudentFacingIoLabel,
   normalizeIoSignalKey,
 } from './ioLabels';
+import { getClockHelperValueForTick } from './clockAuthority';
 import { stripExpectedOutputs } from './projectIdentity';
 
 export interface BringUpIoRow {
@@ -413,7 +414,7 @@ function buildSequentialTimeline(
       inputs[signal] = 0;
     }
 
-    const clockValue: 0 | 1 = tick % 2 === 0 ? 0 : 1;
+    const clockValue = getClockHelperValueForTick(tick, 'alternating');
     inputs[controlSignals.clock] = clockValue;
     if (controlSignals.reset) {
       inputs[controlSignals.reset] = tick < 2 ? 1 : 0;

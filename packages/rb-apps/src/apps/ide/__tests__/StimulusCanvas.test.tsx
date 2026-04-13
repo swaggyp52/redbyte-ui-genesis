@@ -28,6 +28,27 @@ describe('StimulusCanvas bulk editing tools', () => {
     expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 1');
   });
 
+  it('keeps sparse case strip headers aligned with authored case order', () => {
+    const { container } = render(
+      <StimulusCanvas
+        inputFields={[{ id: 'sw0', label: 'SW0' }]}
+        outputFields={[{ id: 'ld0', label: 'LD0' }]}
+        authoredVectors={[
+          { id: 'vec-0', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-2', tick: 2, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+          { id: 'vec-4', tick: 4, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-5', tick: 5, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+          { id: 'vec-6', tick: 6, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+        ]}
+        onVectorsChange={vi.fn()}
+      />
+    );
+
+    const caseHeaders = Array.from(container.querySelectorAll('.ide-stimulus-tick-title')).map((entry) => entry.textContent?.trim());
+
+    expect(caseHeaders).toEqual(['Case 1', 'Case 2', 'Case 3', 'Case 4', 'Case 5']);
+  });
+
   it('fills a selected stimulus row across all ticks', () => {
     const onVectorsChange = vi.fn();
     const { getByTestId } = render(

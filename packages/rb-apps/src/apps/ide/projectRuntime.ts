@@ -121,6 +121,7 @@ export interface RuntimeVerifyRun {
   runKind?: VerifyRunKind;
   scenarioVersion?: number;
   scenarioContentHash?: string;
+  scenarioStimulusHash?: string;
   status: 'pass' | 'fail';
   /** Set when status is 'pass' but the result has a known limitation.
    *  'incomplete-mapping': some output IO rows have no FPGA pin assigned.
@@ -169,6 +170,7 @@ export interface RunVerificationInput {
   runKind?: VerifyRunKind;
   scenarioVersion?: number;
   scenarioContentHash?: string;
+  scenarioStimulusHash?: string;
   deterministicHash: string;
   scheduleContract?: VerifyScheduleContract;
   vectors?: TestVector[];
@@ -1140,6 +1142,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             input.scenarioContentHash.trim().length > 0
               ? input.scenarioContentHash.trim()
               : undefined;
+          const scenarioStimulusHash =
+            typeof input.scenarioStimulusHash === 'string' &&
+            input.scenarioStimulusHash.trim().length > 0
+              ? input.scenarioStimulusHash.trim()
+              : undefined;
           const circuitHash = digestValue(stableSerialize(state.circuit));
           const ioMapping = toIoMapping(state.projectIoRows);
           const verifyContext = buildDeterministicVerifyContext(
@@ -1218,6 +1225,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             runKind,
             scenarioVersion,
             scenarioContentHash,
+            scenarioStimulusHash,
             status: report.status,
             qualification: detectIncompleteMappingQualification(state.projectIoRows, report.status),
             deterministicHash: report.deterministicHash,
@@ -1316,6 +1324,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             typeof input.scenarioContentHash === 'string' &&
             input.scenarioContentHash.trim().length > 0
               ? input.scenarioContentHash.trim()
+              : undefined,
+          scenarioStimulusHash:
+            typeof input.scenarioStimulusHash === 'string' &&
+            input.scenarioStimulusHash.trim().length > 0
+              ? input.scenarioStimulusHash.trim()
               : undefined,
           status: 'fail',
           deterministicHash: input.deterministicHash,
@@ -2813,6 +2826,10 @@ function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
       typeof run.scenarioContentHash === 'string' && run.scenarioContentHash.trim().length > 0
         ? run.scenarioContentHash.trim()
         : undefined,
+    scenarioStimulusHash:
+      typeof run.scenarioStimulusHash === 'string' && run.scenarioStimulusHash.trim().length > 0
+        ? run.scenarioStimulusHash.trim()
+        : undefined,
     scheduleContract: run.scheduleContract
       ? cloneVerifyScheduleContract(run.scheduleContract)
       : undefined,
@@ -2888,8 +2905,9 @@ function cloneVerifyScheduleContract(contract: VerifyScheduleContract): VerifySc
 // A result loses authority — and must be demoted to STALE — immediately when any of:
 //   a. Circuit I/O shape changes (adds, removes, or renames input/output nodes).
 //      Detected by: lastRun.deterministicHash !== currentDeterministicHash.
-//   b. Active scenario lane set changes (vectors added, removed, or reordered).
-//      Detected by: lastRun.scenarioContentHash !== computeScenarioContentHash(activeScenario).
+//   b. Active stimulus changes (ticks or input values added, removed, or reordered).
+//      Detected by: lastRun.scenarioStimulusHash !== computeScenarioStimulusHash(activeScenario).
+//      Expected-output edits alone do not stale waveform evidence.
 //   c. Sequential/clock policy changes (clocking mode, clock net, reset policy).
 //      Detected by: deterministicHash mismatch (clock topology is baked into the hash).
 //   d. Mapped board IO changes (pin assignments for IO nodes are updated).

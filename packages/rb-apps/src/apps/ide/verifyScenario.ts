@@ -80,6 +80,29 @@ export function computeScenarioContentHash(scenario: VerifyScenario): string {
 }
 
 /**
+ * Stimulus-only hash for run freshness checks.
+ * Expected outputs are intentionally excluded so saving checks does not
+ * invalidate the waveform that produced them.
+ */
+export function computeVectorStimulusHash(
+  vectors: ReadonlyArray<Pick<TestVector, 'tick' | 'inputs'>>
+): string {
+  return `stv_${digestValue(
+    vectors.map((vector, index) => ({
+      tick:
+        Number.isFinite(Number(vector.tick))
+          ? Math.max(0, Math.floor(Number(vector.tick)))
+          : index,
+      inputs: normalizeStimulusRecord(vector.inputs ?? {}),
+    }))
+  ).slice(0, 12)}`;
+}
+
+export function computeScenarioStimulusHash(scenario: VerifyScenario): string {
+  return computeVectorStimulusHash(scenario.vectors);
+}
+
+/**
  * Runtime invariant: after initialization there must always be at least one
  * scenario and a valid activeScenarioId.
  *
@@ -153,4 +176,18 @@ function cloneVector(v: TestVector): TestVector {
     inputs: { ...v.inputs },
     expected: { ...(v.expected ?? {}) },
   };
+}
+
+function normalizeStimulusRecord(
+  record: Record<string, boolean | number>
+): Record<string, 0 | 1> {
+  return Object.fromEntries(
+    Object.entries(record)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, value]) => [key, normalizeStimulusBit(value)])
+  );
+}
+
+function normalizeStimulusBit(value: boolean | number): 0 | 1 {
+  return value === true || Number(value) === 1 ? 1 : 0;
 }

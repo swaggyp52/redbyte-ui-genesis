@@ -80,7 +80,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
   });
 
   it('uses the shared project command strip so the next move is authoritative above the hero card', () => {
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface {...makeProps()} />
       </BoardSignalProvider>
@@ -89,6 +89,119 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(getByTestId('ide-project-command-strip').textContent).toContain('Current focus: Continue to Verify');
     expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Verify');
     expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Design');
+    expect(queryByTestId('ide-project-context')).toBeNull();
+    expect(queryByTestId('ide-project-utility-region')).toBeNull();
+  });
+
+  it('renders project status copy with plain ASCII separators instead of mojibake', () => {
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface {...makeProps()} />
+      </BoardSignalProvider>
+    );
+
+    const commandStrip = getByTestId('ide-project-command-strip');
+    expect(commandStrip.textContent).toContain(
+      'Compare results are current - open Export to build or refresh the submission package.'
+    );
+    expect(commandStrip.textContent).not.toContain('Ã');
+  });
+
+  it('renders landing and recovery affordances with plain ASCII CTA copy', () => {
+    const { container, getByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            readiness: {
+              hasCircuit: false,
+              hasIoMapping: false,
+              hasVectors: false,
+              verifyPass: false,
+              missingRequiredCount: 0,
+            },
+            health: {
+              lastVerify: undefined,
+              lastExport: undefined,
+              dirtySinceVerify: false,
+              dirtySinceExport: false,
+              blockingIssues: [],
+            },
+            examples: [
+              {
+                id: 'signal-tour',
+                name: 'Signal Tour',
+                summary: 'Starter project',
+                expectedBehavior: 'Flip switches and observe LEDs.',
+                tags: ['starter'],
+                course: 'ECE141',
+                lab: 'Lab 1',
+                concept: 'I/O mapping',
+              },
+            ],
+            recentProjects: [
+              {
+                projectId: 'counter-lab',
+                projectName: 'Counter Lab',
+                savedAtIso: '2026-03-09T00:00:00.000Z',
+                projectHash: 'saved-hash',
+              },
+            ],
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-project-open-existing').textContent).toContain('Open existing project');
+    expect(getByTestId('ide-project-landing-example-signal-tour').textContent).toContain('Load & Design ->');
+    expect(getByTestId('ide-project-landing-fresh').textContent).toContain('Open blank Design ->');
+    expect(container.querySelector('[data-testid^="ide-project-lab-card-"]')?.textContent).toContain('Start ->');
+    expect(getByTestId('ide-project-landing').textContent).not.toContain('Ã');
+  });
+
+  it('renders blocker and mapping actions without mojibake suffixes', () => {
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            health: {
+              lastVerify: {
+                status: 'pass',
+                hash: 'verify-hash',
+                reportHash: 'report-hash',
+                ranAtIso: '2026-02-27T00:00:00.000Z',
+              },
+              lastExport: undefined,
+              dirtySinceVerify: false,
+              dirtySinceExport: false,
+              blockingIssues: [
+                {
+                  code: 'RBP1999',
+                  message: 'Submission package is out of date.',
+                  fixPath: { mode: 'export', actionLabel: 'Build Submission Package' },
+                },
+              ],
+            },
+            mappingRows: [
+              {
+                id: 'out-led0',
+                label: 'LED0',
+                alias: '',
+                pin: '',
+                direction: 'output',
+                required: true,
+                mapped: false,
+                source: 'design',
+              },
+            ],
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-project-blocker-0-action').textContent).toContain('Build Submission Package');
+    expect(getByTestId('ide-project-blocker-0-action').textContent).not.toContain('Ã');
+    expect(getByTestId('ide-project-mapping-expand-btn').textContent).toContain('Mapping');
+    expect(getByTestId('ide-project-mapping-expand-btn').textContent).not.toContain('Ã');
   });
 
   it('unmapped output blocker (RBP1005) includes an action button pointing to Map Pins', () => {

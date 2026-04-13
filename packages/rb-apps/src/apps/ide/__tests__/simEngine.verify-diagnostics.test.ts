@@ -90,7 +90,7 @@ describe('simEngine verify diagnostics', () => {
     expect(result.evidence.preflight[0]?.message).toContain('not mapped to a concrete design node');
   });
 
-  it('executes clocked_macro vectors with three-phase clock sequence', () => {
+  it('uses authored clock cases as the waveform and sequential sampling authority', () => {
     const circuit: Circuit = {
       nodes: [
         {
@@ -174,17 +174,30 @@ describe('simEngine verify diagnostics', () => {
       circuit,
       ioRows,
       [
-        { tick: 0, inputs: { D: 1 }, expected: { Q: 1 } },
-        { tick: 1, inputs: { D: 0 }, expected: { Q: 0 } },
+        { tick: 0, inputs: { D: 1, CLK: 0 }, expected: { Q: 0 } },
+        { tick: 1, inputs: { D: 1, CLK: 1 }, expected: { Q: 1 } },
+        { tick: 2, inputs: { D: 0, CLK: 0 }, expected: { Q: 1 } },
+        { tick: 3, inputs: { D: 0, CLK: 1 }, expected: { Q: 0 } },
       ],
       scheduleContract
     );
 
+    const clockValues = result.trace.map((sample) => {
+      const clockEntry = Object.entries(sample.signals).find(([key]) =>
+        key.toLowerCase().includes('clk')
+      );
+      expect(clockEntry).toBeTruthy();
+      return clockEntry?.[1] ?? -1;
+    });
+    const qRows = result.rows
+      .filter((row) => row.signal.toLowerCase() === 'q')
+      .sort((left, right) => left.tick - right.tick);
+
     expect(result.evidence.preflight).toEqual([]);
-    expect(result.rows).toHaveLength(2);
+    expect(result.rows).toHaveLength(4);
     expect(result.rows.every((row) => row.expected === row.actual)).toBe(true);
-    expect(result.trace.filter((sample) => sample.tick === 0)).toHaveLength(1);
-    expect(result.trace.filter((sample) => sample.tick === 1)).toHaveLength(1);
+    expect(clockValues).toEqual([0, 1, 0, 1]);
+    expect(qRows.map((row) => row.actual)).toEqual(['0', '1', '1', '0']);
   });
 
   it('propagates unsupported temporal schedule issues into preflight errors', () => {

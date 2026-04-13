@@ -32,6 +32,12 @@ export interface VerifyCommandBarProps {
   /** Status chip */
   readonly statusLabel: string;
   readonly statusTone: 'ok' | 'warn' | 'error' | 'idle';
+  readonly sessionStatusBadge?: string;
+  readonly sessionModeLabel?: string;
+  readonly sessionTitle?: string;
+  readonly referenceModeLabel?: string;
+  readonly primaryStatusTitle?: string;
+  readonly primaryStatusMessage?: string;
 
   /** Circuit kind for contextual hints */
   readonly isSequential: boolean;
@@ -76,6 +82,12 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   showSaveAsExpected,
   statusLabel,
   statusTone,
+  sessionStatusBadge,
+  sessionModeLabel,
+  sessionTitle,
+  referenceModeLabel,
+  primaryStatusTitle,
+  primaryStatusMessage,
   isSequential,
   evidenceLabel,
   evidenceTone,
@@ -95,6 +107,69 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
     : statusTone === 'error' ? 'ide-vcb-status--error'
     : statusTone === 'warn' ? 'ide-vcb-status--warn'
     : 'ide-vcb-status--idle';
+  const sessionCoverageLabel = [
+    coverageLabel,
+    isSequential ? 'Sequential' : null,
+  ].filter(Boolean).join(' · ');
+  const sessionMetaParts = [
+    sessionStatusBadge ? (
+      <span key="status" data-testid="ide-verify-session-status">
+        {sessionStatusBadge}
+      </span>
+    ) : null,
+    sessionModeLabel ? (
+      <span key="mode" data-testid="ide-verify-session-mode">
+        {sessionModeLabel}
+      </span>
+    ) : null,
+    primaryStatusTitle ? (
+      <span key="primary-status" data-testid="ide-verify-primary-status" title={primaryStatusMessage}>
+        {primaryStatusTitle}
+      </span>
+    ) : null,
+  ].filter(Boolean);
+  const sessionSummaryParts = [
+    sessionTitle ? (
+      <span key="title" className="ide-vcb-session-title" data-testid="ide-verify-session-title">
+        {sessionTitle}
+      </span>
+    ) : null,
+    referenceModeLabel ? (
+      <span key="reference" className="ide-vcb-reference-mode" data-testid="ide-verify-reference-mode">
+        {referenceModeLabel}
+      </span>
+    ) : null,
+    evidenceLabel ? (
+      <span
+        key="evidence"
+        className={`ide-vcb-evidence ide-vcb-evidence--${evidenceTone ?? 'idle'}`}
+        data-testid="ide-vcb-evidence"
+      >
+        {evidenceLabel}
+      </span>
+    ) : null,
+    sessionCoverageLabel ? (
+      <span key="coverage" className="ide-vcb-coverage" data-testid="ide-vcb-coverage">
+        {sessionCoverageLabel}
+      </span>
+    ) : null,
+  ].filter(Boolean);
+
+  const interleaveWithSeparators = (nodes: React.ReactNode[], separatorClassName: string) =>
+    nodes.flatMap((node, index) =>
+      index === 0
+        ? [node]
+        : [
+            <span
+              key={`${separatorClassName}-${index}`}
+              className={separatorClassName}
+              aria-hidden="true"
+            >
+              ·
+            </span>,
+            node,
+          ]
+    );
 
   return (
     <div className="ide-verify-command-bar" data-testid="ide-verify-command-bar">
@@ -148,29 +223,33 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
         </div>
       </div>
 
-      {/* Right: status chips + utility actions (ghost weight) */}
-      <div className="ide-vcb-group ide-vcb-group--status">
-        <span className={`ide-vcb-status ${toneClass}`} data-testid="ide-vcb-status">
-          {statusLabel}
+      <div className="ide-vcb-group ide-vcb-group--session" data-testid="ide-vcb-session-summary">
+        <span data-testid="ide-verify-summary-status">
+          <span className={`ide-vcb-status ${toneClass}`} data-testid="ide-vcb-status">
+            {statusLabel}
+          </span>
         </span>
-        {evidenceLabel && (
-          <span
-            className={`ide-vcb-evidence ide-vcb-evidence--${evidenceTone ?? 'idle'}`}
-            data-testid="ide-vcb-evidence"
-          >
-            {evidenceLabel}
-          </span>
+        {(sessionMetaParts.length > 0 || sessionSummaryParts.length > 0) && (
+          <div className="ide-vcb-session-copy">
+            {sessionMetaParts.length > 0 && (
+              <span
+                className="ide-vcb-session-line ide-vcb-session-line--meta"
+                data-testid="ide-verify-session-meta"
+              >
+                {interleaveWithSeparators(sessionMetaParts, 'ide-vcb-session-sep')}
+              </span>
+            )}
+            {sessionSummaryParts.length > 0 && (
+              <span className="ide-vcb-session-line ide-vcb-session-line--summary">
+                {interleaveWithSeparators(sessionSummaryParts, 'ide-vcb-session-sep ide-vcb-session-sep--muted')}
+              </span>
+            )}
+          </div>
         )}
-        {coverageLabel && (
-          <span className="ide-vcb-coverage" data-testid="ide-vcb-coverage">
-            {coverageLabel}
-          </span>
-        )}
-        {isSequential && (
-          <span className="ide-vcb-seq-chip" data-testid="ide-vcb-seq-chip">
-            Sequential
-          </span>
-        )}
+      </div>
+
+      {/* Right: utility actions (ghost weight) */}
+      <div className="ide-vcb-group ide-vcb-group--status">
         {showEditCases && onEditCases && (
           <IdeButton
             tone="ghost"
@@ -212,15 +291,6 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
         )}
         {showGoToDesign && onGoToDesign && (
           <span className="ide-vcb-design-bridge">
-            {goToDesignTick != null && (
-              <span
-                className="ide-vcb-design-tick-chip"
-                data-testid="ide-vcb-design-tick-chip"
-                title={`Open Design with inputs from tick t${goToDesignTick}`}
-              >
-                t{goToDesignTick}
-              </span>
-            )}
             <IdeButton
               tone="ghost"
               onClick={onGoToDesign}

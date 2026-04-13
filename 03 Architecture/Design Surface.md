@@ -2,12 +2,13 @@
 type: architecture
 status: active
 area: design
-updated: 2026-04-12
+updated: 2026-04-13
 related:
   - "[[RedByte Engineering Brain]]"
   - "[[Verify Engine]]"
   - "[[ADR-005 Verify Schedule Contract Owns Sequential Clock Authority]]"
   - "[[BUG-014 Design Replay Missed Runtime-Backed Mutations]]"
+  - "[[BUG-017 Shared Compact Workbench Row Theft]]"
   - "[[Workspace Routing]]"
   - "[[Note Schema]]"
 ---
@@ -35,9 +36,11 @@ For the left dock, the contract is:
 
 For the center workspace, the top-of-canvas chrome contract is:
 
-- one working toolbar row
-- one compact authoring/status row
+- one calm authoring toolbar row
+- one compact circuit / replay state row
+- replay case, tick, and timing meaning stay inside that compact state row instead of a separate title or status slab
 - quieter telemetry inside the canvas overlay instead of loud duplication above the canvas
+- default idle Design must not foreground debug transport chrome over core authoring actions
 
 For blank Design first look, the guidance contract is:
 
@@ -55,8 +58,12 @@ For the bottom edge, the quiet-state contract is:
 
 For the idle inspector / simulation contract, the Design surface must:
 
-- keep `Live Simulation` directly reachable on first arrival even when no node is selected
-- avoid burying the live input/output rows behind a closed idle-state disclosure
+- keep the idle inspector collapsed/lightweight until the student has a concrete selection or replay target to inspect
+- when the canvas workspace auto-opens the right inspector for selection, replay, diagnostics, or active simulation context, the student must still be able to collapse it manually; the inspector should reopen only when that driving context meaningfully changes
+- present selected-object identity as a flat `Selection` block with inline fact rows, not stacked summary cards
+- keep rename/properties actions inside that main selection flow instead of splitting them into separate utility panels
+- keep the idle inspector lightweight: no standalone `Live Simulation`, `Board I/O`, or `Signal History` disclosures on first arrival
+- treat board mapping as identity-card context, not as a separate inspector section
 - treat sequential selections as first-class authoring context instead of generic parts
 - treat multi-node selections as a continued-editing state, not a dead-end summary card
 - make the grouped-editing loop explicit after box-select:
@@ -92,8 +99,12 @@ For the Verify replay / inspection contract, the Design surface must:
 - repeat the replay sample meaning in the simulation strip itself during replay: authored case/tick plus the sampling hint must stay visible there, not only in the debug banner
 - render direct replay case selection in that same simulation strip when the parent provides case-index control; banner-only prev/next is fallback behavior for replay paths that do not provide direct scrubber selection
 - resolve sequential clock narration from contract-backed timing guidance plus canonical IO match keys when that guidance exists; live Design copy must not guess the authoritative clock from `/clk|clock/i` label heuristics
-- keep replay explanation inside the existing `Signal / State` section with one compact `Why now` row when replay evidence exists for the selected node, selected wire, or Verify-linked signal
+- keep replay explanation inside the existing `Live / Signal State` section with one compact `Why now` row when replay evidence exists for the selected node, selected wire, or Verify-linked signal
+- keep replay case/tick/mode/focus rows and the `Return to Verify waveform` action inside that same section; do not re-expand a separate replay card
 - summarize replay causation using previous/current sampled values, direct upstream driver labels when available, and the next inspect target when one exists
+- keep replay authority in the top simulation strip during replay: the strip carries case/tick, timing hint, and replay transport; the inspector does not reintroduce a separate replay/live-sim panel
+- keep the right inspector reduced to identity, actions, properties, `Signal / State`, and optional `Details`
+- compact shell geometry must treat hidden or collapsed right-dock states as restore affordances, not as a second workspace row; only a truly visible inspector may claim stacked compact-layout space
 
 The top stack must not reintroduce a separate title/header band above the working toolbar. Zoom telemetry may satisfy test and gate contracts, but it belongs in the quieter overlay indicator instead of the louder authoring row. In split layouts that do not render the dedicated simulation strip, tick/mode context must remain visible in the compact status row.
 
@@ -110,7 +121,8 @@ The `SurfaceCommandStrip` in Design is now a compact authority bar, not a card. 
 - Do not repeat shell metadata in the Design footer when the same truth is already visible in the top shell.
 - Node/wire counters are secondary telemetry and should not dominate the top authoring row.
 - Board Resources and Live Inputs should remain available but default-collapsed unless the student explicitly opens them or search needs the board inventory visible.
-- Live Simulation is collapsible (shows "Hide" in its toggle-state span, not "Live"); it defaults to open so it remains discoverable on first load. Do not pin it permanently open with `disableCollapse`.
+- Simulation controls belong in the top toolbar, not in a dedicated idle-inspector disclosure.
+- The right inspector must not reintroduce separate `Live Simulation`, `Board I/O`, or `Signal History` sections.
 - Split mode may compress simulation chrome, but it must still preserve essential tick/mode context when the dedicated simulation strip is absent.
 - Empty-state guidance belongs in the canvas region, not in a heavyweight top header or a competing blank-state modal.
 - Sequential authoring must sound intentional in the inspector; do not describe latches with flip-flop clock-edge language or reduce clocks to generic node state.
@@ -119,13 +131,14 @@ The `SurfaceCommandStrip` in Design is now a compact authority bar, not a card. 
 - Box-select must feel trustworthy in dense circuits; partial overlap with the standard node body must count as selection.
 - The Design inspector must not expose developer internals to students: no raw IR diagnostic codes (e.g. `IR006`), no "Compiler diagnostics" section label, no pipeline-layer staleness rows ("Dirty since verify", "Dirty since export") in the default or advanced views.
 - Multi-node selection must not show a "Single-object state only" dead-end callout; return nothing and let the multi-select arrange actions speak for themselves.
-- Signal Probe in Design must not render per-tick waveform/history buttons; those are a Verify-surface idiom and do not belong in the authoring inspector.
+- Design must not bring back a separate signal-history inspector section; waveform-style history remains a Verify-surface idiom.
 - Replay evidence is authoritative only until the circuit mutates; stale replay must never continue driving Design state after a real edit.
 - Replay strip copy must remain case-aware during replay; do not regress to a generic `Tick N` strip that forces students to infer case/timing meaning from the debug banner alone.
 - Direct replay scrubbing belongs in the simulation strip when parent-owned case selection exists; do not split that primary control into a separate replay panel or hide it in the banner.
 - Design must not invent a second sequential clock identity from regex or presentation labels when Verify timing guidance is available.
 - Replay explanation must stay compact and student-facing: one `Why now` row in `Signal / State`, not a separate replay-only panel or raw internal-key dump.
 - Generic shell maximize/focus chrome should not return without a concrete Design workflow contract; replay clarity belongs in the existing strip, banner, and inspector surfaces.
+- Collapsed restore rails must not steal a full compact-layout row from the canvas; if the inspector is not visibly open, the workspace keeps the full shell height.
 - When a node is selected and the simulation is running, the inspector must show a **Driver Context panel** with the name and current HIGH/LOW value of each node driving the selected node's input ports. The panel is hidden when no simulation values exist (`liveSignals.size === 0`). Test IDs: `ide-design-input-drivers`, `ide-design-driver-row-{port}`.
 - When an INPUT or Switch node is selected and `onRuntimeSimSetInput` is wired, the inspector must show an **Input Control group** with a toggle button reflecting the current HIGH/LOW state. Clicking it calls `onRuntimeSimSetInput` with the flipped value. Test IDs: `ide-design-inspector-input-control`, `ide-design-inspector-input-toggle`. The control does not render when the prop is absent.
 - When the simulation is running and a node is selected with no existing trace, the surface must automatically trigger a fanout trace highlight. The auto-trace must not override a manually-set trace (guard: `!traceStateRef.current`). The trace clears automatically when selection is lost. Auto-trace must NOT fire when the simulation is not running.

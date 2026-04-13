@@ -359,18 +359,31 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
       >
         {/* Highlight ring */}
         {isHighlighted && (
-          <rect
-            x={-size / 2 - 4}
-            y={-chipHeight / 2 - 4}
-            width={size + 8}
-            height={chipHeight + 8}
-            fill="none"
-            stroke="#3B82F6"
-            strokeWidth={2}
-            rx={8}
-            className="animate-pulse"
-            style={{ pointerEvents: 'none' }}
-          />
+          <>
+            <rect
+              x={-size / 2 - 7}
+              y={-chipHeight / 2 - 7}
+              width={size + 14}
+              height={chipHeight + 14}
+              fill="rgba(56, 189, 248, 0.08)"
+              stroke="rgba(125, 211, 252, 0.28)"
+              strokeWidth={1.5}
+              rx={10}
+              style={{ pointerEvents: 'none' }}
+            />
+            <rect
+              x={-size / 2 - 4}
+              y={-chipHeight / 2 - 4}
+              width={size + 8}
+              height={chipHeight + 8}
+              fill="none"
+              stroke="#38bdf8"
+              strokeWidth={2.5}
+              rx={8}
+              className="animate-pulse"
+              style={{ pointerEvents: 'none' }}
+            />
+          </>
         )}
 
         {/* B1: Eval sequence badge — shown on hover when eval order is active */}
@@ -928,18 +941,31 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     >
       {/* Highlight ring */}
       {isHighlighted && (
-        <rect
-          x={-size / 2 - 4}
-          y={-size / 2 - 4}
-          width={size + 8}
-          height={size + 8}
-          fill="none"
-          stroke="#3B82F6"
-          strokeWidth={2}
-          rx={6}
-          className="animate-pulse"
-          style={{ pointerEvents: 'none' }}
-        />
+        <>
+          <rect
+            x={-size / 2 - 7}
+            y={-size / 2 - 7}
+            width={size + 14}
+            height={size + 14}
+            fill="rgba(56, 189, 248, 0.08)"
+            stroke="rgba(125, 211, 252, 0.28)"
+            strokeWidth={1.5}
+            rx={9}
+            style={{ pointerEvents: 'none' }}
+          />
+          <rect
+            x={-size / 2 - 4}
+            y={-size / 2 - 4}
+            width={size + 8}
+            height={size + 8}
+            fill="none"
+            stroke="#38bdf8"
+            strokeWidth={2.5}
+            rx={6}
+            className="animate-pulse"
+            style={{ pointerEvents: 'none' }}
+          />
+        </>
       )}
       {/* Issue glow ring (Phase 3 real-time canvas errors) */}
       {issueGlow && (

@@ -21,6 +21,8 @@ export interface IdeSurfaceLayoutProps {
   /** @deprecated Use rightDockMode='hidden' instead. */
   hideRightDock?: boolean;
   rightDockMode?: RightDockMode;
+  rightDockCanCollapse?: boolean;
+  rightDockRevealKey?: string | null;
   consoleMode?: ConsoleMode;
   shellDensity?: WorkbenchShellDensity;
   surfaceFrame?: WorkbenchSurfaceFrame;
@@ -37,6 +39,8 @@ export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({
   leftDockMode,
   hideRightDock = false,
   rightDockMode,
+  rightDockCanCollapse = false,
+  rightDockRevealKey = null,
   consoleMode,
   shellDensity,
   surfaceFrame,
@@ -53,6 +57,8 @@ export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({
       leftDockMode={leftDockMode}
       hideRightDock={hideRightDock}
       rightDockMode={rightDockMode}
+      rightDockCanCollapse={rightDockCanCollapse}
+      rightDockRevealKey={rightDockRevealKey}
       consoleMode={consoleMode}
       shellDensity={shellDensity}
       surfaceFrame={surfaceFrame}

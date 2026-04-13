@@ -154,7 +154,10 @@ function installResizeObserver(width = 1320, height = 720) {
   vi.stubGlobal('ResizeObserver', ImmediateResizeObserver);
 }
 
-function renderSurface(circuit: Circuit) {
+function renderSurface(
+  circuit: Circuit,
+  overrides: Partial<React.ComponentProps<typeof DesignSurface>> = {}
+) {
   useCircuitStore.getState().reset();
   useCircuitStore.setState({ circuit: structuredClone(circuit), isDirty: false, past: [], future: [] });
 
@@ -173,6 +176,7 @@ function renderSurface(circuit: Circuit) {
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}
+      {...overrides}
     />
   );
 }
@@ -215,8 +219,9 @@ describe('DesignSurface inspector hierarchy', () => {
     expect(view.queryByTestId('ide-design-context-inspector')).toBeNull();
     expect(view.queryByTestId('ide-design-board-signal')).toBeNull();
     expect(view.queryByTestId('ide-design-signal-probe')).toBeNull();
-    expect(view.getByTestId('ide-design-inspector-next-step').textContent).toContain('Start on the canvas first');
-    expect(view.getByTestId('ide-design-live-sim-section').getAttribute('data-open')).toBe('false');
+    expect(view.getByTestId('ide-design-inspector-next-step').textContent).not.toContain('Live Simulation');
+    expect(view.queryByTestId('ide-design-live-sim-section')).toBeNull();
+    expect(view.queryByTestId('ide-design-inspector-advanced')).toBeNull();
   });
 
   it('anchors selection identity with friendly title, subtitle, and student-safe reference metadata', async () => {
@@ -235,7 +240,28 @@ describe('DesignSurface inspector hierarchy', () => {
     expect(view.getByTestId('ide-design-selection-id').textContent).toBe('SW0');
   });
 
-  it('prioritizes health guidance above signal/state metrics for broken selections', async () => {
+  it('keeps identity facts inline and folds replay context into signal/state instead of a standalone inspector section', async () => {
+    const view = renderSurface(BASE_CIRCUIT, {
+      activeVerifySignal: 'ld0',
+    });
+
+    act(() => {
+      useLogicViewStore.getState().selectNode('ld0_node');
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-context-inspector')).toBeTruthy();
+    });
+
+    expect(view.queryByTestId('ide-design-replay-context-section')).toBeNull();
+    expect(view.queryByTestId('ide-design-replay-context-inspector')).toBeNull();
+    expect(view.container.querySelector('.ide-design-inspector-meta-grid')).toBeNull();
+    expect(view.container.querySelectorAll('.ide-design-inspector-meta-card')).toHaveLength(0);
+    expect(view.getByTestId('ide-design-context-inspector').textContent).toContain('Verify focus');
+    expect(view.getByTestId('ide-design-context-inspector').textContent).toContain('ld0');
+  });
+
+  it('merges broken-selection guidance into the primary identity panel before signal/state metrics', async () => {
     const view = renderSurface(ISSUE_CIRCUIT);
 
     act(() => {
@@ -243,16 +269,20 @@ describe('DesignSurface inspector hierarchy', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-inspector-health').textContent).toContain('Output not wired yet');
+      expect(view.getByTestId('ide-design-inspector-guidance').textContent).toContain('Output not wired yet');
     });
 
-    const health = view.getByTestId('ide-design-inspector-health');
+    expect(view.queryByTestId('ide-design-inspector-health')).toBeNull();
+
+    const health = view.getByTestId('ide-design-inspector-guidance');
+    const identity = view.getByTestId('ide-design-inspector-identity-card');
     const state = view.getByTestId('ide-design-context-inspector');
+    expect(identity.contains(health)).toBe(true);
     const position = health.compareDocumentPosition(state);
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('groups primary actions ahead of editable properties', async () => {
+  it('groups primary actions ahead of signal/state context', async () => {
     const view = renderSurface(BASE_CIRCUIT);
 
     act(() => {
@@ -267,12 +297,12 @@ describe('DesignSurface inspector hierarchy', () => {
     expect(view.getByTestId('ide-design-inspector-actions').textContent).toContain('Trace net');
 
     const actions = view.getByTestId('ide-design-inspector-actions');
-    const properties = view.getByTestId('ide-design-inspector-properties');
-    const position = actions.compareDocumentPosition(properties);
+    const state = view.getByTestId('ide-design-context-inspector');
+    const position = actions.compareDocumentPosition(state);
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('keeps the rename field visible in the properties section before state metrics', async () => {
+  it('keeps rename inside the primary inspector flow instead of a standalone properties section', async () => {
     const view = renderSurface(BASE_CIRCUIT);
 
     act(() => {
@@ -283,10 +313,12 @@ describe('DesignSurface inspector hierarchy', () => {
       expect(view.getByTestId('ide-design-label-edit-btn')).toBeTruthy();
     });
 
-    const properties = view.getByTestId('ide-design-inspector-properties');
+    expect(view.queryByTestId('ide-design-inspector-properties')).toBeNull();
+
+    const actions = view.getByTestId('ide-design-inspector-actions');
     const state = view.getByTestId('ide-design-context-inspector');
-    expect(properties.textContent).toContain('Rename SW0');
-    const position = properties.compareDocumentPosition(state);
+    expect(actions.textContent).toContain('Rename');
+    const position = actions.compareDocumentPosition(state);
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

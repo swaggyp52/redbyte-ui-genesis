@@ -1875,7 +1875,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               const screenX = node.position!.x * camera.zoom + camera.x;
               const screenY = node.position!.y * camera.zoom + camera.y;
               const size = 48 * camera.zoom;
-              const switchState = node.state?.isOn ?? 0;
+              const switchState = resolveInputOverlayState(node, renderSignals);
 
               const toggleWidth = size * 0.75;
               const toggleHeight = 16;
@@ -2110,4 +2110,18 @@ function inferNodeIoPresentation(node: Node): NodeIoPresentation {
 function extractAlias(source: string, pattern: RegExp): string {
   const match = pattern.exec(source);
   return match?.[1] ?? source;
+}
+
+function resolveInputOverlayState(node: Node, renderSignals: Map<string, 0 | 1>): 0 | 1 {
+  const persistedState = node.state?.isOn ? 1 : 0;
+  const directOutputSignal = renderSignals.get(`${node.id}.out`);
+  if (directOutputSignal === 0 || directOutputSignal === 1) return directOutputSignal;
+
+  for (const [signalKey, signalValue] of renderSignals) {
+    if (signalKey.startsWith(`${node.id}.`) && (signalValue === 0 || signalValue === 1)) {
+      return signalValue;
+    }
+  }
+
+  return persistedState;
 }

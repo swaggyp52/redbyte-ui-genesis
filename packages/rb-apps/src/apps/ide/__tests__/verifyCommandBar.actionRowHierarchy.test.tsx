@@ -111,4 +111,37 @@ describe('B-14 Action Row Hierarchy — mode toggle still works', () => {
     const compareBtn = getByTestId('ide-vcb-mode-compare');
     expect(compareBtn.className).not.toContain('is-active');
   });
+
+  it('collapses status, evidence, and coverage into one session summary cluster instead of separate chips', () => {
+    const { getByTestId } = render(
+      <VerifyCommandBar
+        {...BASE}
+        statusLabel="Ready to run stimulus"
+        evidenceLabel="Observation only"
+        coverageLabel="8 ticks · 5 signals"
+        isSequential={true}
+      />
+    );
+
+    const sessionSummary = getByTestId('ide-vcb-session-summary');
+    expect(sessionSummary).toContainElement(getByTestId('ide-vcb-status'));
+    expect(sessionSummary).toContainElement(getByTestId('ide-vcb-evidence'));
+    expect(sessionSummary).toContainElement(getByTestId('ide-vcb-coverage'));
+  });
+
+  it('separates session status and mode tokens so observation runs do not collapse into one smashed label', () => {
+    const { getByTestId } = render(
+      <VerifyCommandBar
+        {...BASE}
+        sessionStatusBadge="OBSERVATION ONLY"
+        sessionModeLabel="CAPTURE"
+        primaryStatusTitle="Waveform recorded"
+      />
+    );
+
+    const sessionMeta = getByTestId('ide-verify-session-meta');
+    expect(sessionMeta.textContent).toContain('OBSERVATION ONLY');
+    expect(sessionMeta.textContent).toContain('CAPTURE');
+    expect(sessionMeta.textContent).toContain('·');
+  });
 });

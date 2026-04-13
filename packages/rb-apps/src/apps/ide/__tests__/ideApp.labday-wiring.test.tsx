@@ -230,6 +230,7 @@ function enterImportWorkbench(view: ReturnType<typeof render>) {
 
 async function findVerifyRunAction(view: ReturnType<typeof render>) {
   const selectors = [
+    'ide-vcb-run',
     'ide-verify-run',
     'ide-verify-run-secondary',
     'ide-verify-empty-run',
@@ -360,6 +361,7 @@ describe('IdeApp lab-day wiring', () => {
 
     fireEvent.click(await view.findByTestId('mode-button-verify'));
     await view.findByTestId('ide-verify-panel', {}, { timeout: 5000 });
+    fireEvent.click(await view.findByTestId('ide-vcb-mode-compare'));
 
     await act(async () => {
       fireEvent.click(await findVerifyRunAction(view));
@@ -424,7 +426,7 @@ describe('IdeApp lab-day wiring', () => {
     fireEvent.click(await view.findByTestId('mode-button-verify'));
 
     await act(async () => {
-      fireEvent.click(await view.findByTestId('ide-verify-run', {}, { timeout: 3000 }));
+      fireEvent.click(await findVerifyRunAction(view));
     });
 
     await waitFor(() => {

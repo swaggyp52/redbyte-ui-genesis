@@ -168,7 +168,7 @@ describe('IdeWorkbenchShell', () => {
     });
 
     expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(getByTestId('ide-mode-project').style.getPropertyValue('--ide-workbench-left-slot-width')).toBe('26px');
+    expect(getByTestId('ide-mode-project').style.getPropertyValue('--ide-workbench-left-slot-width')).toBe('38px');
     const restoreRail = getByTestId('ide-workbench-dock-toggle-left');
     expect(restoreRail.textContent).toContain('Library');
 
@@ -178,6 +178,17 @@ describe('IdeWorkbenchShell', () => {
       expect(getByTestId('ide-left-dock')).toBeTruthy();
     });
     expect(getByTestId('ide-workbench-dock-collapse-left')).toBeTruthy();
+  });
+
+  it('emits explicit dock state markers for shared layout styling', () => {
+    const { getByTestId } = renderShell({
+      leftDockMode: 'collapsed',
+      rightDockMode: 'visible',
+    });
+
+    const shell = getByTestId('ide-mode-project');
+    expect(shell).toHaveAttribute('data-left-dock-state', 'collapsed');
+    expect(shell).toHaveAttribute('data-right-dock-state', 'visible');
   });
 
   it('removes both left dock and restore rail when the left dock is hidden', () => {
@@ -190,6 +201,17 @@ describe('IdeWorkbenchShell', () => {
     const spacer = container.querySelector('.ide-workbench-slot-spacer') as HTMLDivElement | null;
     expect(spacer).toBeTruthy();
     expect(spacer?.style.pointerEvents).toBe('none');
+  });
+
+  it('marks the workbench grid when the right dock is fully hidden', () => {
+    const { getByTestId, queryByTestId } = renderShell({
+      rightDockMode: 'hidden',
+    });
+
+    expect(queryByTestId('ide-inspector')).toBeNull();
+    expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
+    expect(getByTestId('ide-surface-grid').className).toContain('hide-right-dock');
+    expect(getByTestId('ide-mode-project')).toHaveAttribute('data-right-dock-state', 'hidden');
   });
 
   it('preserves the existing collapsed right dock restore flow', async () => {
@@ -205,6 +227,69 @@ describe('IdeWorkbenchShell', () => {
       expect(getByTestId('ide-inspector')).toBeTruthy();
     });
     expect(getByTestId('ide-workbench-dock-collapse-right')).toBeTruthy();
+  });
+
+  it('lets a visible right dock collapse into a restore rail when manual collapse is enabled', async () => {
+    const view = render(
+      <IdeWorkbenchShell
+        {...({
+          mode: 'project',
+          workspace: <div>Workspace</div>,
+          leftDock: <div>Dock</div>,
+          rightDock: <div>Inspector</div>,
+          console: <div>Console</div>,
+          rightDockMode: 'visible',
+          rightDockCanCollapse: true,
+          rightDockRevealKey: 'selection:ld0',
+        } as any)}
+      />
+    );
+
+    expect(view.getByTestId('ide-inspector')).toBeTruthy();
+    expect(view.getByTestId('ide-workbench-dock-collapse-right')).toBeTruthy();
+
+    fireEvent.click(view.getByTestId('ide-workbench-dock-collapse-right'));
+
+    await waitFor(() => {
+      expect(view.queryByTestId('ide-inspector')).toBeNull();
+    });
+    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
+
+    view.rerender(
+      <IdeWorkbenchShell
+        {...({
+          mode: 'project',
+          workspace: <div>Workspace</div>,
+          leftDock: <div>Dock</div>,
+          rightDock: <div>Inspector</div>,
+          console: <div>Console</div>,
+          rightDockMode: 'visible',
+          rightDockCanCollapse: true,
+          rightDockRevealKey: 'selection:ld0',
+        } as any)}
+      />
+    );
+
+    expect(view.queryByTestId('ide-inspector')).toBeNull();
+
+    view.rerender(
+      <IdeWorkbenchShell
+        {...({
+          mode: 'project',
+          workspace: <div>Workspace</div>,
+          leftDock: <div>Dock</div>,
+          rightDock: <div>Inspector</div>,
+          console: <div>Console</div>,
+          rightDockMode: 'visible',
+          rightDockCanCollapse: true,
+          rightDockRevealKey: 'selection:q1',
+        } as any)}
+      />
+    );
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-inspector')).toBeTruthy();
+    });
   });
 
   it('starts collapsed when consoleMode is collapsed even when entries exist', () => {
@@ -261,5 +346,14 @@ describe('IdeWorkbenchShell', () => {
     expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(getByTestId('ide-inspector')).toBeTruthy();
     expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'expanded');
+  });
+
+  it('does not render a global Focus toggle or focus-mode shell marker', () => {
+    const { getByTestId, queryByTestId } = renderShell({
+      consoleHasEntries: true,
+    });
+
+    expect(queryByTestId('ide-workbench-focus-toggle')).toBeNull();
+    expect(getByTestId('ide-mode-project')).not.toHaveAttribute('data-focus-mode');
   });
 });

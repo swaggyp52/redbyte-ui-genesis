@@ -13,10 +13,10 @@ import { canonicalizeSemanticCircuit } from '../../../circuit/semanticCircuit';
 import { digestValue } from '../../../utils/digest';
 import {
   buildDeterministicVerifyContext,
-  CLOCKED_MACRO_SEQUENCE,
   INTERNAL_SIM_CLOCK_NAME,
   type VerifyScheduleContract,
 } from '../../../fpga/boards/basys3/verifySchedule';
+import { getClockHelperValueForTick } from '../clockAuthority';
 import { adaptIrDiagnostic } from '../diagnostics';
 import {
   getCanonicalIoSignalKey,
@@ -616,6 +616,8 @@ function simulateVectorCasesFromModel(
     scheduleContract.schedule === 'clocked_macro'
       ? resolveClockNodeIdFromModel(model, ioRows, scheduleContract)
       : undefined;
+  const usesInjectedClock =
+    scheduleContract.schedule === 'clocked_macro' && scheduleContract.needsSimClockInjection;
   let combinationalTick = 0;
   const sortedVectors = [...vectors]
     .map((vector, index) => ({
@@ -640,7 +642,7 @@ function simulateVectorCasesFromModel(
   for (const entry of sortedVectors) {
     const vectorInputs = normalizeVectorInputMap(entry.vector.inputs ?? {});
     for (const binding of inputBindings) {
-      if (clockNodeId && binding.nodeId === clockNodeId) {
+      if (usesInjectedClock && clockNodeId && binding.nodeId === clockNodeId) {
         continue;
       }
       const value = resolveBoundInputValue(binding.lookupKeys, vectorInputs);
@@ -650,7 +652,10 @@ function simulateVectorCasesFromModel(
     }
     const sample =
       scheduleContract.schedule === 'clocked_macro'
-        ? executeClockedMacroVectorCase(engine, model, inputs, entry.tick, clockNodeId)
+        ? executeClockedMacroVectorCase(engine, model, inputs, entry.tick, {
+            clockNodeId,
+            usesInjectedClock,
+          })
         : executeCombinationalVectorCase(engine, model, inputs, entry.tick, combinationalTick);
     if (scheduleContract.schedule !== 'clocked_macro') {
       combinationalTick = sample.engineTick;
@@ -705,15 +710,16 @@ function executeClockedMacroVectorCase(
   model: SimulationModel,
   inputs: Record<string, 0 | 1>,
   sampleTick: number,
-  clockNodeId: string | undefined
-): { engineTick: number; output: RuntimeSimTraceSample } {
-  for (const clockValue of CLOCKED_MACRO_SEQUENCE) {
-    if (clockNodeId) {
-      inputs[clockNodeId] = clockValue;
-    }
-    applyInputsToEngine(engine, inputs);
-    engine.tick();
+  input: {
+    clockNodeId: string | undefined;
+    usesInjectedClock: boolean;
   }
+): { engineTick: number; output: RuntimeSimTraceSample } {
+  if (input.usesInjectedClock && input.clockNodeId) {
+    inputs[input.clockNodeId] = getClockHelperValueForTick(sampleTick, 'alternating');
+  }
+  applyInputsToEngine(engine, inputs);
+  engine.tick();
 
   return {
     engineTick: sampleTick,

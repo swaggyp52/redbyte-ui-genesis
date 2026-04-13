@@ -65,7 +65,9 @@ function installResizeObserver(width = 1320, height = 720) {
   vi.stubGlobal('ResizeObserver', ImmediateResizeObserver);
 }
 
-function renderSurface() {
+function renderSurface(
+  overrides: Partial<React.ComponentProps<typeof DesignSurface>> = {}
+) {
   return render(
     <DesignSurface
       runtimeSim={makeRuntimeSim()}
@@ -78,8 +80,17 @@ function renderSurface() {
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}
+      {...overrides}
     />
   );
+}
+
+async function openDesignLibrary(view: ReturnType<typeof renderSurface>) {
+  if (view.queryByTestId('ide-left-dock')) return;
+  fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-left'));
+  await waitFor(() => {
+    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+  });
 }
 
 beforeEach(() => {
@@ -112,6 +123,8 @@ describe('DesignSurface placement mode', () => {
   it('enters explicit placement mode from the palette without spawning immediately', async () => {
     const view = renderSurface();
 
+    await openDesignLibrary(view);
+
     fireEvent.click(view.getByTestId('ide-design-palette-and'));
 
     expect(useCircuitStore.getState().circuit.nodes).toHaveLength(0);
@@ -128,6 +141,8 @@ describe('DesignSurface placement mode', () => {
 
   it('places exactly one node on blank canvas click and returns to select mode', async () => {
     const view = renderSurface();
+
+    await openDesignLibrary(view);
 
     fireEvent.click(view.getByTestId('ide-design-palette-and'));
     fireEvent.click(view.getByTestId('ide-design-live-canvas'), { clientX: 480, clientY: 280 });
@@ -147,6 +162,8 @@ describe('DesignSurface placement mode', () => {
   it('keeps placement active while Shift is held so students can place multiple gates in one flow', async () => {
     const view = renderSurface();
 
+    await openDesignLibrary(view);
+
     fireEvent.click(view.getByTestId('ide-design-palette-and'));
     fireEvent.click(view.getByTestId('ide-design-live-canvas'), {
       clientX: 440,
@@ -165,6 +182,8 @@ describe('DesignSurface placement mode', () => {
   it('cancels placement with Escape without mutating the circuit', async () => {
     const view = renderSurface();
 
+    await openDesignLibrary(view);
+
     fireEvent.click(view.getByTestId('ide-design-palette-input'));
     fireEvent.keyDown(window, { key: 'Escape' });
 
@@ -180,6 +199,8 @@ describe('DesignSurface placement mode', () => {
   it('cancels placement when the student switches tools', async () => {
     const view = renderSurface();
 
+    await openDesignLibrary(view);
+
     fireEvent.click(view.getByTestId('ide-design-palette-output'));
     fireEvent.click(view.getByTestId('ide-design-tool-wire'));
 
@@ -190,5 +211,38 @@ describe('DesignSurface placement mode', () => {
     expect(useCircuitStore.getState().circuit.nodes).toHaveLength(0);
     expect(useLogicViewStore.getState().toolMode).toBe('wire');
     expect(useLogicViewStore.getState().interactionMode).toBe('idle');
+  });
+
+  it('marks replay stale when runtime-backed palette placement mutates the circuit', async () => {
+    const onRuntimeAddNode = vi.fn();
+    const onCircuitMutated = vi.fn();
+    const onClearExternalDebug = vi.fn();
+    const view = renderSurface({
+      onRuntimeAddNode,
+      onCircuitMutated,
+      onClearExternalDebug,
+      externalDebugTick: 3,
+      externalDebugSignals: new Map<string, 0 | 1>([['sw0_node.out', 1]]),
+      debugTickIndex: 1,
+      debugTickCount: 4,
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-debug-banner')).toBeTruthy();
+    });
+
+    await openDesignLibrary(view);
+
+    fireEvent.click(view.getByTestId('ide-design-palette-and'));
+    fireEvent.click(view.getByTestId('ide-design-live-canvas'), { clientX: 480, clientY: 280 });
+
+    await waitFor(() => {
+      expect(onRuntimeAddNode).toHaveBeenCalledTimes(1);
+      expect(onCircuitMutated).toHaveBeenCalledTimes(1);
+      expect(onClearExternalDebug).toHaveBeenCalledTimes(1);
+      expect(view.getByTestId('ide-design-replay-stale-banner')).toBeTruthy();
+    });
+
+    expect(view.queryByTestId('ide-design-debug-banner')).toBeNull();
   });
 });

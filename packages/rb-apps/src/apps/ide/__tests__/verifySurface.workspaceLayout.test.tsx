@@ -7,7 +7,7 @@
 // the waveform to a sliver during failure debugging.
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -43,8 +43,21 @@ function makeFailRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'fail-scenario',
+      scenarioName: 'Fail Scenario',
+      status: 'fail',
+      deterministicHash: 'wl-test',
+      firstFailingTick: 0,
       rows: [{ tick: 0, signal: 'ld0', expected: '1', actual: '0', status: 'fail' }],
-    } as RuntimeVerifyRun['report'],
+      vectors: [
+        { id: 'v0', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 1 }, caseIndex: 0 },
+      ],
+      inputsAtTick: { 0: { sw0: 0 } },
+      signalRoles: { sw0: 'input', ld0: 'output' },
+      generatedAtIso: '2026-04-08T00:00:00.000Z',
+      reportHash: 'rep-fail',
+    },
     waveform: [],
   };
 }
@@ -53,6 +66,15 @@ describe('B-14 Slice 3 — Side-by-side workspace layout', () => {
   it('renders a dedicated workspace container for stimulus + waveform', () => {
     const { getByTestId } = render(<VerifySurface {...BASE_PROPS} />);
     expect(getByTestId('ide-verify-workspace')).toBeTruthy();
+  });
+
+  it('keeps the workspace container focused on the paired lab regions without a separate story banner', () => {
+    const { getByTestId, queryByTestId } = render(<VerifySurface {...BASE_PROPS} />);
+    const workspace = getByTestId('ide-verify-workspace');
+    const labGrid = getByTestId('ide-verify-lab-grid');
+
+    expect(queryByTestId('ide-verify-workspace-story')).toBeNull();
+    expect(workspace.contains(labGrid)).toBe(true);
   });
 
   it('places the stimulus region inside the workspace container', () => {
@@ -99,5 +121,25 @@ describe('B-14 Slice 3 — Side-by-side workspace layout', () => {
     const { getByTestId } = render(<VerifySurface {...BASE_PROPS} />);
     const workspace = getByTestId('ide-verify-workspace');
     expect(workspace.className).toContain('ide-verify-workspace');
+  });
+
+  it('uses an explicit lab grid wrapper to align stimulus and waveform as paired zones', () => {
+    const { getByTestId } = render(<VerifySurface {...BASE_PROPS} />);
+    const labGrid = getByTestId('ide-verify-lab-grid');
+    expect(labGrid.contains(getByTestId('ide-verify-region-stimulus'))).toBe(true);
+    expect(labGrid.contains(getByTestId('ide-verify-region-waveform'))).toBe(true);
+  });
+
+  it('switches the lab grid into waveform-focus mode when the post-run workbench is collapsed', () => {
+    const { getByTestId, queryByTestId } = render(
+      <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
+    );
+
+    fireEvent.click(getByTestId('ide-verify-workbench-toggle'));
+
+    expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-stimulus-layout', 'collapsed');
+    expect(getByTestId('ide-verify-region-stimulus')).toHaveAttribute('data-panel-state', 'collapsed');
+    expect(queryByTestId('ide-verify-workbench-body')).toBeNull();
+    expect(getByTestId('ide-verify-workbench-collapsed-strip')).toBeTruthy();
   });
 });

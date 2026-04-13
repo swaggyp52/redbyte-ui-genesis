@@ -3,6 +3,7 @@ import {
   createDefaultScenario,
   stampScenario,
   computeScenarioContentHash,
+  computeScenarioStimulusHash,
   repairScenarioLibrary,
   migrateProjectVectorsToScenario,
   getActiveScenario,
@@ -97,6 +98,30 @@ describe('computeScenarioContentHash', () => {
     const s1 = createDefaultScenario([vec(0)]);
     const s2 = stampScenario(s1);
     expect(computeScenarioContentHash(s1)).not.toBe(computeScenarioContentHash(s2));
+  });
+});
+
+describe('computeScenarioStimulusHash', () => {
+  it('stays stable when only expected outputs change', () => {
+    const baseline = createDefaultScenario([vec(0)]);
+    const updated = {
+      ...baseline,
+      version: baseline.version + 1,
+      vectors: [{ tick: 0, inputs: { a: 0 }, expected: { y: 1 } }],
+    };
+
+    expect(computeScenarioStimulusHash(updated)).toBe(computeScenarioStimulusHash(baseline));
+  });
+
+  it('changes when stimulus inputs change', () => {
+    const baseline = createDefaultScenario([vec(0)]);
+    const updated = {
+      ...baseline,
+      version: baseline.version + 1,
+      vectors: [{ tick: 0, inputs: { a: 1 }, expected: { y: 0 } }],
+    };
+
+    expect(computeScenarioStimulusHash(updated)).not.toBe(computeScenarioStimulusHash(baseline));
   });
 });
 

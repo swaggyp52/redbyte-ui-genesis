@@ -550,7 +550,22 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
     }
   }, [inputFields, onVectorsChange, outputFields, selectTick]);
 
-  const describeCase = useCallback((tick: number) => `Case ${tick + 1} (t${tick})`, []);
+  const describeCase = useCallback(
+    (tick: number) => {
+      const caseIndex = ticks.indexOf(tick);
+      const caseNumber = caseIndex >= 0 ? caseIndex + 1 : tick + 1;
+      return `Case ${caseNumber} (t${tick})`;
+    },
+    [ticks]
+  );
+  const describeCaseTitle = useCallback(
+    (tick: number) => {
+      const caseIndex = ticks.indexOf(tick);
+      const caseNumber = caseIndex >= 0 ? caseIndex + 1 : tick + 1;
+      return `Case ${caseNumber}`;
+    },
+    [ticks]
+  );
   const selectedCaseLabel = ticks.length > 0 ? describeCase(activeSelectedTick) : 'Case 1 (t0)';
   const checksButtonLabel = expectedLanesVisible
     ? 'Hide checks'
@@ -666,7 +681,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
           <div style={{ width: LABEL_W, flexShrink: 0 }} />
           {ticks.map((tick) => (
             <div key={tick} className={`ide-stimulus-tick-header${activeSelectedTick === tick ? ' is-selected' : ''}`} style={{ width: TICK_W, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', position: 'relative', fontSize: '0.72em', fontFamily: 'var(--rb-font-mono, monospace)', cursor: 'pointer' }} onMouseEnter={() => setHoveredTick(tick)} onMouseLeave={() => setHoveredTick(null)} onClick={() => selectTick(tick)}>
-              <span className="ide-stimulus-tick-title">Case {tick + 1}</span>
+                <span className="ide-stimulus-tick-title">{describeCaseTitle(tick)}</span>
               {activeSelectedTick === tick || hoveredTick === tick ? (
                 <div className={`ide-stimulus-tick-actions${activeSelectedTick === tick ? ' is-pinned' : ''}`}>
                   <button

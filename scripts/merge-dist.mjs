@@ -1,9 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { prepareEmptyOutputDir } from './merge-dist-lib.mjs';
 
 const ROOT = process.cwd();
 const FINAL_DIST = path.join(ROOT, 'dist');
+const STAGED_DIST = path.join(ROOT, 'dist.staged');
 const PLAYGROUND_DIST = path.join(ROOT, 'apps/playground/dist');
 
 function resolveGitSha() {
@@ -20,10 +22,12 @@ async function merge() {
     console.log('🚀 Merging deployments into unified dist/');
 
     // 1. Clean and create final dist
-    if (fs.existsSync(FINAL_DIST)) {
-        fs.rmSync(FINAL_DIST, { recursive: true, force: true });
+    const { outputDir: finalDist, usedFallback } = await prepareEmptyOutputDir(FINAL_DIST, {
+        fallbackDir: STAGED_DIST,
+    });
+    if (usedFallback) {
+        console.warn(`⚠️  Canonical dist/ is locked; writing merged output to ${finalDist} instead.`);
     }
-    fs.mkdirSync(FINAL_DIST, { recursive: true });
 
     // 2. Root index: generate minimal redirect stub (no marketing site in this repo).
     // The stub satisfies the REDBYTE_MARKETING_ROOT contract and redirects users to the IDE.
@@ -43,11 +47,11 @@ async function merge() {
         '</html>',
         '',
     ].join('\n');
-    fs.writeFileSync(path.join(FINAL_DIST, 'index.html'), stubHtml, 'utf8');
-    console.log('✅ Root redirect stub written to dist/index.html');
+    fs.writeFileSync(path.join(finalDist, 'index.html'), stubHtml, 'utf8');
+    console.log(`✅ Root redirect stub written to ${path.relative(ROOT, path.join(finalDist, 'index.html'))}`);
 
     // 3. Copy OS to /os subpath
-    const osTarget = path.join(FINAL_DIST, 'os');
+    const osTarget = path.join(finalDist, 'os');
     if (fs.existsSync(PLAYGROUND_DIST)) {
         console.log(`📦 Copying OS from ${PLAYGROUND_DIST} to /os...`);
         fs.mkdirSync(osTarget, { recursive: true });
@@ -67,8 +71,8 @@ async function merge() {
         // Copy playground's build.json to dist/ root for unified dist verification.
         const playgroundBuildJson = path.join(PLAYGROUND_DIST, 'build.json');
         if (fs.existsSync(playgroundBuildJson)) {
-            fs.copyFileSync(playgroundBuildJson, path.join(FINAL_DIST, 'build.json'));
-            console.log('✅ Copied build.json to dist/build.json');
+            fs.copyFileSync(playgroundBuildJson, path.join(finalDist, 'build.json'));
+            console.log(`✅ Copied build.json to ${path.relative(ROOT, path.join(finalDist, 'build.json'))}`);
         }
     } else {
         console.error('❌ OS build not found at', PLAYGROUND_DIST);
@@ -78,8 +82,8 @@ async function merge() {
     // 4. Force copy unified _redirects and _headers from root public
     const rootPublicRedirects = path.join(ROOT, 'public/_redirects');
     const rootPublicHeaders = path.join(ROOT, 'public/_headers');
-    const finalRedirects = path.join(FINAL_DIST, '_redirects');
-    const finalHeaders = path.join(FINAL_DIST, '_headers');
+    const finalRedirects = path.join(finalDist, '_redirects');
+    const finalHeaders = path.join(finalDist, '_headers');
     if (fs.existsSync(rootPublicRedirects)) {
         console.log('📦 Explicitly copying unified _redirects to root dist...');
         fs.copyFileSync(rootPublicRedirects, finalRedirects);
@@ -95,7 +99,7 @@ async function merge() {
     }
 
     // 5. Verify index.html at root is marketing (check for explicit marker)
-    const rootIndex = path.join(FINAL_DIST, 'index.html');
+    const rootIndex = path.join(finalDist, 'index.html');
     if (fs.existsSync(rootIndex)) {
         const content = fs.readFileSync(rootIndex, 'utf8');
         if (content.includes('REDBYTE_MARKETING_ROOT')) {
@@ -108,7 +112,7 @@ async function merge() {
     }
 
     // 6. Verify /os/index.html is the IDE (check for explicit marker)
-    const osIndex = path.join(FINAL_DIST, 'os/index.html');
+    const osIndex = path.join(finalDist, 'os/index.html');
     if (fs.existsSync(osIndex)) {
         const content = fs.readFileSync(osIndex, 'utf8');
         if (content.includes('REDBYTE_OS_IDE')) {
@@ -120,7 +124,11 @@ async function merge() {
         console.warn('⚠️ Warning: ' + osIndex + ' does not exist.');
     }
 
-    console.log('✨ Merge complete! Deploy the root /dist directory.');
+    if (usedFallback) {
+        console.log(`✨ Merge complete! Canonical dist/ stayed locked, so the fresh artifact is in ${path.relative(ROOT, finalDist)}.`);
+    } else {
+        console.log('✨ Merge complete! Deploy the root /dist directory.');
+    }
 }
 
 merge().catch(err => {

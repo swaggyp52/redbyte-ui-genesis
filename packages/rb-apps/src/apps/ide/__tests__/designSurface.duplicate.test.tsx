@@ -110,6 +110,24 @@ function renderSurface(
   );
 }
 
+function makeReplaySession() {
+  return {
+    waveform: [
+      { tick: 1, signals: { 'sw0_node.out': '0', 'ld0_node.in': '0', phase_driver: '0' }, mismatches: [] },
+      { tick: 3, signals: { 'sw0_node.out': '1', 'ld0_node.in': '1', phase_driver: '1' }, mismatches: [] },
+      { tick: 5, signals: { 'sw0_node.out': '0', 'ld0_node.in': '1', phase_driver: '0' }, mismatches: [] },
+      { tick: 7, signals: { 'sw0_node.out': '1', 'ld0_node.in': '0', phase_driver: '1' }, mismatches: [] },
+    ],
+    meta: {
+      circuitKind: 'sequential' as const,
+      clockingProtocol: 'clocked_macro' as const,
+      samplePoint: 'post-rising-edge' as const,
+      tick0Meaning: 'initial-state' as const,
+      clockSignalName: 'phase_driver',
+    },
+  };
+}
+
 beforeEach(() => {
   vi.restoreAllMocks();
   installResizeObserver(1320);
@@ -318,6 +336,58 @@ describe('DesignSurface duplicate — inspector button', () => {
   });
 });
 
+describe('DesignSurface replay invalidation', () => {
+  it('marks replay stale and clears frozen replay authority after a circuit mutation', async () => {
+    const onCircuitMutated = vi.fn();
+    const onClearExternalDebug = vi.fn();
+    const view = renderSurface({
+      onCircuitMutated,
+      onClearExternalDebug,
+      externalDebugTick: 3,
+      externalDebugSignals: new Map<string, 0 | 1>([
+        ['sw0_node.out', 1],
+        ['ld0_node.in', 1],
+      ]),
+      externalDebugContext: {
+        signal: 'LD0',
+        tick: 3,
+        expected: '1',
+        actual: '0',
+        inputSnapshot: [{ label: 'SW0', value: '1' }],
+      },
+      replaySession: makeReplaySession(),
+      debugTickIndex: 1,
+      debugTickCount: 4,
+    });
+
+    act(() => {
+      useLogicViewStore.getState().selectNode('sw0_node');
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-debug-banner')).toBeTruthy();
+    });
+
+    act(() => {
+      fireEvent.keyDown(window, { ctrlKey: true, key: 'd' });
+    });
+
+    await waitFor(() => {
+      expect(onCircuitMutated).toHaveBeenCalled();
+      expect(onClearExternalDebug).toHaveBeenCalledTimes(1);
+      expect(view.getByTestId('ide-design-replay-stale-banner')).toBeTruthy();
+    });
+
+    expect(view.queryByTestId('ide-design-debug-banner')).toBeNull();
+    expect(view.getByTestId('ide-design-replay-stale-banner').textContent).toContain('Replay stale');
+    expect(view.getByTestId('ide-design-replay-stale-banner').textContent).toContain('2 / 4');
+    expect(view.getByTestId('ide-design-replay-stale-banner').textContent).toContain('t3');
+    expect(view.getByTestId('ide-design-replay-stale-banner').textContent).toContain('phase_driver');
+    expect(view.queryByTestId('ide-design-sim-run')).toBeNull();
+    expect(view.getByTestId('ide-design-sim-story-strip').textContent).toContain('Paused');
+  });
+});
+
 describe('DesignSurface history routing', () => {
   it('routes undo and redo requests through runtime callbacks', () => {
     const onRuntimeUndo = vi.fn();
@@ -334,5 +404,40 @@ describe('DesignSurface history routing', () => {
 
     expect(onRuntimeUndo).toHaveBeenCalledTimes(1);
     expect(onRuntimeRedo).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks replay stale when undo mutates the design during replay', async () => {
+    const onRuntimeUndo = vi.fn();
+    const onCircuitMutated = vi.fn();
+    const onClearExternalDebug = vi.fn();
+    const view = renderSurface({
+      onRuntimeUndo,
+      onCircuitMutated,
+      onClearExternalDebug,
+      runtimeUndoDepth: 1,
+      externalDebugTick: 3,
+      externalDebugSignals: new Map<string, 0 | 1>([
+        ['sw0_node.out', 1],
+        ['ld0_node.in', 1],
+      ]),
+      replaySession: makeReplaySession(),
+      debugTickIndex: 1,
+      debugTickCount: 4,
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-debug-banner')).toBeTruthy();
+    });
+
+    fireEvent.click(view.getByTestId('ide-design-tool-undo'));
+
+    await waitFor(() => {
+      expect(onRuntimeUndo).toHaveBeenCalledTimes(1);
+      expect(onCircuitMutated).toHaveBeenCalledTimes(1);
+      expect(onClearExternalDebug).toHaveBeenCalledTimes(1);
+      expect(view.getByTestId('ide-design-replay-stale-banner')).toBeTruthy();
+    });
+
+    expect(view.queryByTestId('ide-design-debug-banner')).toBeNull();
   });
 });

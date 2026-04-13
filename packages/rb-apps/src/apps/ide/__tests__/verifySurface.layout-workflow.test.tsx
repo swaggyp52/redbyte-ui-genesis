@@ -171,10 +171,37 @@ describe('VerifySurface layout workflow architecture', () => {
     );
 
     expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
+    expect(queryByTestId('ide-verify-three-panel')).toBeNull();
     expect(queryByTestId('ide-verify-three-panel-left')).toBeNull();
     expect(queryByTestId('ide-verify-three-panel-right')).toBeNull();
     expect(queryByTestId('ide-assertion-canvas')).toBeNull();
     expect(getByTestId('ide-verify-drawer-toggle').getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('keeps the stimulus workbench header compact instead of repeating waveform guidance in the header copy', () => {
+    const { getByTestId } = render(
+      <VerifySurface
+        {...baseProps}
+        deterministicHash="det-compare"
+        lastRun={makeCompareFailRun()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-workbench-summary-copy').textContent?.toLowerCase()).not.toContain(
+      'waveform stays locked to the selected case'
+    );
+  });
+
+  it('does not reintroduce the legacy command strip once a run exists', () => {
+    const { queryByTestId } = render(
+      <VerifySurface
+        {...baseProps}
+        deterministicHash="det-trace"
+        lastRun={makeTraceRun()}
+      />
+    );
+
+    expect(queryByTestId('ide-verify-command-strip')).toBeNull();
   });
 
   it('shows clock helper strip for sequential circuits', () => {

@@ -56,17 +56,36 @@ function makePassRun(): RuntimeVerifyRun {
 }
 
 describe('B-14 Slice 2 — Desktop composition: unified header', () => {
-  it('adds the shared verify command strip above the run controls so Verify follows the same page contract', () => {
-    const { getByTestId } = render(<VerifySurface {...BASE_PROPS} />);
+  it('steps the shared verify command strip aside once authored stimulus exists', () => {
+    const { getByTestId, queryByTestId } = render(<VerifySurface {...BASE_PROPS} />);
+
+    expect(queryByTestId('ide-verify-command-strip')).toBeNull();
+    expect(getByTestId('ide-verify-command-bar')).toBeTruthy();
+  });
+
+  it('keeps the shared verify command strip visible while the surface is still empty', () => {
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="comp-empty"
+        hasVectors={false}
+        vectors={[]}
+        mappedInputs={[]}
+        mappedSignals={[]}
+        onOpenProjectVectors={vi.fn()}
+        onVectorsChange={vi.fn()}
+        verifyMode="combinational"
+      />
+    );
 
     expect(getByTestId('ide-verify-command-strip').textContent).toContain('Stimulate inputs and observe outputs');
     expect(getByTestId('ide-verify-command-bar')).toBeTruthy();
   });
 
   it('renders exactly one VerifyCommandBar (ide-verify-command-bar)', () => {
-    const { container } = render(<VerifySurface {...BASE_PROPS} />);
+    const { container, queryByTestId } = render(<VerifySurface {...BASE_PROPS} />);
     const commandBars = container.querySelectorAll('[data-testid="ide-verify-command-bar"]');
     expect(commandBars.length).toBe(1);
+    expect(queryByTestId('ide-verify-banner')).toBeNull();
   });
 
   it('does not render the old verbose status strip actions in header region', () => {

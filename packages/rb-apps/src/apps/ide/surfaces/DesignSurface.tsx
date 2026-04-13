@@ -2194,7 +2194,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   const selectedNodeIds = useMemo(() => Array.from(selection.nodes).slice(0, 5), [selection.nodes]);
   const selectedNodeIdsAll = useMemo(() => Array.from(selection.nodes), [selection.nodes]);
-  const selectedWireIds = useMemo(() => Array.from(selection.wires).slice(0, 5), [selection.wires]);
+  const selectedWireIdsAll = useMemo(() => Array.from(selection.wires), [selection.wires]);
+  const selectedWireIds = useMemo(() => selectedWireIdsAll.slice(0, 5), [selectedWireIdsAll]);
   const suggestedMacroName = useMemo(
     () => (selectedNodeIdsAll.length > 0 ? `Macro_${selectedNodeIdsAll.length}` : 'My Macro'),
     [selectedNodeIdsAll.length]
@@ -3087,16 +3088,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const isCodeWorkspace = workspacePreset.mode === 'hdl';
   const isSplitWorkspace = workspacePreset.mode === 'split';
   const showSplitCompareToolbar = isSplitWorkspace && effectiveDesignView === 'split';
-  const showSimulationStrip =
-    workspacePreset.showSimulationStrip &&
-    (simRunning || simTick > 0 || activeVerifySignal != null || activeDebugContext != null);
+  const showSimulationStrip = workspacePreset.showSimulationStrip;
   const showWorkspaceStatusBar =
     showFullAuthoringStatus || showCompactAuthoringStatus || showSimulationStrip;
-  const liveSimulationDefaultOpen =
-    simRunning ||
-    activeVerifySignal != null ||
-    activeDebugContext != null ||
-    effectiveExternalDebugTick != null;
   const selectedNodeIoRow = useMemo(() => {
     if (!selectedNode) return null;
     return ioRowByNodeId.get(selectedNode.id) ?? ioRowByNodeId.get(`${selectedNode.id}.out`) ?? null;
@@ -3414,6 +3408,40 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       diagnosticRouteRequest != null)
       ? 'visible'
       : workspacePreset.rightDockMode;
+  const designRightDockRevealKey = useMemo(() => {
+    if (!isCanvasWorkspace) return null;
+    if (hasInspectorSelectionContext) {
+      const selectedNodesKey = [...selectedNodeIdsAll].sort().join(',');
+      const selectedWiresKey = [...selectedWireIdsAll].sort().join(',');
+      return `selection:${selectedNodesKey}|${selectedWiresKey}`;
+    }
+    if (activeVerifySignal != null) {
+      return `signal:${activeVerifySignal}`;
+    }
+    if (activeDebugContext != null) {
+      return `debug:${activeDebugContext.signal ?? activeVerifySignal ?? 'tick'}:${activeDebugContext.tick ?? effectiveExternalDebugTick ?? 'tick'}`;
+    }
+    if (effectiveExternalDebugTick != null) {
+      return `tick:${effectiveExternalDebugTick}`;
+    }
+    if (diagnosticRouteRequest != null) {
+      return `diagnostic:${diagnosticRouteRequest.requestId}:${diagnosticRouteRequest.diagnosticId}:${diagnosticRouteRequest.nodeId ?? diagnosticRouteRequest.wireId ?? diagnosticRouteRequest.portName ?? diagnosticRouteRequest.signal ?? 'route'}`;
+    }
+    if (simRunning) {
+      return 'sim-running';
+    }
+    return null;
+  }, [
+    activeDebugContext,
+    activeVerifySignal,
+    diagnosticRouteRequest,
+    effectiveExternalDebugTick,
+    hasInspectorSelectionContext,
+    isCanvasWorkspace,
+    selectedNodeIdsAll,
+    selectedWireIdsAll,
+    simRunning,
+  ]);
   const renderNodeLabelEditor = (node: Node) => (
     <div className="ide-design-label-editor" data-testid="ide-design-label-editor">
       {editingLabelNodeId === node.id ? (
@@ -3764,7 +3792,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       return (
         <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
           <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
-            <span className="ide-design-inspector-eyebrow">Selected object</span>
+            <span className="ide-design-inspector-eyebrow">Selection</span>
             <div className="ide-design-inspector-identity-row">
               <div className="ide-design-inspector-title-block">
                 <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
@@ -3787,34 +3815,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
               {nextStep}
             </p>
-            <div className="ide-design-inspector-meta-grid">
-              <div className="ide-design-inspector-meta-card">
-                <span className="ide-design-inspector-meta-label">Type</span>
-                <span className="ide-design-inspector-meta-value" data-testid="ide-design-selection-type">
-                  {typeName}
-                </span>
+            {renderSelectionGuidance()}
+            <div className="ide-design-inspector-facts ide-kv-list">
+              <div className="ide-kv-row">
+                <span>Type</span>
+                <span data-testid="ide-design-selection-type">{typeName}</span>
               </div>
-              <div className="ide-design-inspector-meta-card">
-                <span className="ide-design-inspector-meta-label">Reference</span>
-                <code className="ide-design-inspector-meta-value" data-testid="ide-design-selection-id">
-                  {studentNodeLabel}
-                </code>
+              <div className="ide-kv-row">
+                <span>Reference</span>
+                <code data-testid="ide-design-selection-id">{studentNodeLabel}</code>
               </div>
-              <div className="ide-design-inspector-meta-card">
-                <span className="ide-design-inspector-meta-label">Board mapping</span>
-                <span className="ide-design-inspector-meta-value">{boardSummary}</span>
+              <div className="ide-kv-row">
+                <span>Board mapping</span>
+                <span>{boardSummary}</span>
               </div>
               {selectedSequentialInspector ? (
                 <>
-                  <div className="ide-design-inspector-meta-card">
-                    <span className="ide-design-inspector-meta-label">Timing role</span>
-                    <span className="ide-design-inspector-meta-value" data-testid="ide-design-sequential-role">
-                      {selectedSequentialInspector.roleLabel}
-                    </span>
+                  <div className="ide-kv-row">
+                    <span>Timing role</span>
+                    <span data-testid="ide-design-sequential-role">{selectedSequentialInspector.roleLabel}</span>
                   </div>
-                  <div className="ide-design-inspector-meta-card">
-                    <span className="ide-design-inspector-meta-label">Timing context</span>
-                    <span className="ide-design-inspector-meta-value" data-testid="ide-design-sequential-timing-context">
+                  <div className="ide-kv-row">
+                    <span>Timing context</span>
+                    <span data-testid="ide-design-sequential-timing-context">
                       {selectedSequentialInspector.timingContext}
                     </span>
                   </div>
@@ -3829,7 +3852,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       return (
         <div className="ide-design-selection-inspector" data-testid="ide-design-multiselect-summary">
           <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
-            <span className="ide-design-inspector-eyebrow">Selected object</span>
+            <span className="ide-design-inspector-eyebrow">Selection</span>
             <div className="ide-design-inspector-identity-row">
               <div className="ide-design-inspector-title-block">
                 <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
@@ -3861,7 +3884,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       return (
         <div className="ide-design-selection-inspector" data-testid="ide-design-multiselect-summary">
           <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
-            <span className="ide-design-inspector-eyebrow">Selected object</span>
+            <span className="ide-design-inspector-eyebrow">Selection</span>
             <div className="ide-design-inspector-title-block">
               <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
                 <strong>{selectedWireIds.length} wires selected</strong>
@@ -3879,7 +3902,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       return (
         <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
           <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
-            <span className="ide-design-inspector-eyebrow">Selected object</span>
+            <span className="ide-design-inspector-eyebrow">Selection</span>
             <div className="ide-design-inspector-identity-row">
               <div className="ide-design-inspector-title-block">
                 <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
@@ -3898,20 +3921,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
               {nextStep}
             </p>
-            <div className="ide-design-inspector-meta-grid">
-              <div className="ide-design-inspector-meta-card">
-                <span className="ide-design-inspector-meta-label">Type</span>
-                <span className="ide-design-inspector-meta-value" data-testid="ide-design-selection-type">Wire</span>
+            <div className="ide-design-inspector-facts ide-kv-list">
+              <div className="ide-kv-row">
+                <span>Type</span>
+                <span data-testid="ide-design-selection-type">Wire</span>
               </div>
-              <div className="ide-design-inspector-meta-card">
-                <span className="ide-design-inspector-meta-label">Connection</span>
-                <code className="ide-design-inspector-meta-value" data-testid="ide-design-selection-id">
+              <div className="ide-kv-row">
+                <span>Connection</span>
+                <code data-testid="ide-design-selection-id">
                   {`${selectedWireContext.sourceLabel} -> ${selectedWireContext.targetLabel}`}
                 </code>
               </div>
-              <div className="ide-design-inspector-meta-card">
-                <span className="ide-design-inspector-meta-label">Branches</span>
-                <span className="ide-design-inspector-meta-value">{selectedWireContext.branchCount}</span>
+              <div className="ide-kv-row">
+                <span>Branches</span>
+                <span>{selectedWireContext.branchCount}</span>
               </div>
             </div>
           </div>
@@ -3942,7 +3965,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       return (
         <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
           <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
-            <span className="ide-design-inspector-eyebrow">Selected object</span>
+            <span className="ide-design-inspector-eyebrow">Selection</span>
             <div className="ide-design-inspector-identity-row">
               <div className="ide-design-inspector-title-block">
                 <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
@@ -3959,22 +3982,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
               {nextStep}
             </p>
-            <div className="ide-design-inspector-meta-grid">
-              <div className="ide-design-inspector-meta-card">
-                <span className="ide-design-inspector-meta-label">Type</span>
-                <span className="ide-design-inspector-meta-value" data-testid="ide-design-selection-type">Signal</span>
+            <div className="ide-design-inspector-facts ide-kv-list">
+              <div className="ide-kv-row">
+                <span>Type</span>
+                <span data-testid="ide-design-selection-type">Signal</span>
               </div>
-              <div className="ide-design-inspector-meta-card">
-                <span className="ide-design-inspector-meta-label">Signal</span>
-                <code className="ide-design-inspector-meta-value" data-testid="ide-design-selection-id">
-                  {activeInspectorSignalLabel}
-                </code>
+              <div className="ide-kv-row">
+                <span>Signal</span>
+                <code data-testid="ide-design-selection-id">{activeInspectorSignalLabel}</code>
               </div>
-              <div className="ide-design-inspector-meta-card">
-                <span className="ide-design-inspector-meta-label">Samples</span>
-                <span className="ide-design-inspector-meta-value">
-                  {activeInspectorSignalSnapshot?.samples ?? selectedSignalHistory.length}
-                </span>
+              <div className="ide-kv-row">
+                <span>Samples</span>
+                <span>{activeInspectorSignalSnapshot?.samples ?? selectedSignalHistory.length}</span>
               </div>
             </div>
           </div>
@@ -3983,7 +4002,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     return (
       <div className="ide-design-inspector-empty-card" data-testid="ide-design-inspector-empty">
-        <span className="ide-design-inspector-eyebrow">Selected object</span>
+        <span className="ide-design-inspector-eyebrow">Selection</span>
         <div className="ide-design-inspector-title-block">
           <div className="ide-design-selection-identity">
             <strong data-testid="ide-design-inspector-identity-title">Nothing selected</strong>
@@ -3994,16 +4013,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         </div>
         {!showBlankStateCard ? (
           <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
-            Start on the canvas first. Open Live Simulation only when you want to run the whole circuit.
+            Start on the canvas first, then inspect the selected part or signal here.
           </p>
         ) : null}
       </div>
     );
   };
-  const renderSelectionHealth = () => {
+  const renderSelectionGuidance = () => {
     if (selectionIssueSummary || primarySelectionDiagnostic) {
       return (
-        <div className="ide-design-inspector-section-stack">
+        <div className="ide-design-inspector-guidance" data-testid="ide-design-inspector-guidance">
           {selectionIssueSummary}
           {primarySelectionIssue ? (
             <div className="ide-inline-actions">
@@ -4048,15 +4067,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
                 Duplicate
               </IdeButton>
-              <IdeButton
-                tone="secondary"
-                onClick={() => beginNodeLabelEdit(selectedNode)}
-                disabled={editingLabelNodeId === selectedNode.id}
-                testId="ide-design-context-rename"
-              >
-                Rename
-              </IdeButton>
             </div>
+            {renderSelectionProperties()}
           </div>
           <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-group">
             <span className="ide-design-inspector-group-label">Net tracing</span>
@@ -4301,15 +4313,94 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const renderSelectionProperties = () => {
     if (hasSingleSelectedNode && selectedNode) {
       return (
-        <div className="ide-design-inspector-section-stack">
-          <div className="ide-design-inspector-property-card">
-            <span className="ide-design-inspector-group-label">Name</span>
-            {renderNodeLabelEditor(selectedNode)}
-          </div>
+        <div className="ide-design-inspector-inline-editor" data-testid="ide-design-inspector-inline-editor">
+          {renderNodeLabelEditor(selectedNode)}
         </div>
       );
     }
     return null;
+  };
+  const renderReplayContextRows = () => {
+    const hasReplayContext =
+      effectiveExternalDebugTick != null ||
+      staleReplayBreadcrumb != null ||
+      activeVerifySignal != null ||
+      activeDebugContext != null;
+    if (!hasReplayContext) {
+      return null;
+    }
+
+    return (
+      <>
+        <div className="ide-kv-row">
+          <span>Selected case</span>
+          <span>{activeSimulationSelectionLabel}</span>
+        </div>
+        <div className="ide-kv-row">
+          <span>State</span>
+          <span>
+            {staleReplayBreadcrumb
+              ? 'Stale breadcrumb only'
+              : effectiveExternalDebugTick != null
+                ? 'Verify-authored replay'
+                : 'Live circuit'}
+          </span>
+        </div>
+        <div className="ide-kv-row">
+          <span>Mode</span>
+          <span>{simModeLabel}</span>
+        </div>
+        {activeReplayTimingHint ? (
+          <div className="ide-kv-row">
+            <span>Sample</span>
+            <span>{activeReplayTimingHint}</span>
+          </div>
+        ) : null}
+        {simulationStory.clockEvent ? (
+          <div className="ide-kv-row">
+            <span>Clock</span>
+            <span>{simulationStory.clockLabel} {simulationStory.clockEvent} edge</span>
+          </div>
+        ) : null}
+        {activeVerifySignal ? (
+          <div className="ide-kv-row">
+            <span>Verify focus</span>
+            <code>{activeVerifySignalPresentation?.focusLabel ?? activeVerifySignal}</code>
+          </div>
+        ) : null}
+        {activeDebugContext ? (
+          <div className="ide-kv-row">
+            <span>Expected / observed</span>
+            <span>
+              <code>{activeDebugContext.expected}</code> / <code>{activeDebugContext.actual}</code>
+            </span>
+          </div>
+        ) : null}
+      </>
+    );
+  };
+  const renderReplayContextActions = () => {
+    const hasReplayContext =
+      effectiveExternalDebugTick != null ||
+      staleReplayBreadcrumb != null ||
+      activeVerifySignal != null ||
+      activeDebugContext != null;
+
+    if (!hasReplayContext || !onGoToVerify) {
+      return null;
+    }
+
+    return (
+      <div className="ide-inline-actions ide-copy-top-gap">
+        <IdeButton
+          tone="secondary"
+          onClick={onGoToVerify}
+          testId="ide-design-replay-context-return"
+        >
+          Return to Verify waveform
+        </IdeButton>
+      </div>
+    );
   };
   const renderSelectionState = () => {
     if (hasSingleSelectedNode && selectedNode) {
@@ -4394,6 +4485,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     {traceState?.nodeIds.has(selectedNode.id) ? traceState.label : 'No trace locked'}
                   </span>
                 </div>
+                {renderReplayContextRows()}
               </div>
             </div>
             {selectedNodeSignals && selectedNodeSignals.length > 0 ? (
@@ -4414,6 +4506,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 })}
               </div>
             ) : null}
+            {renderReplayContextActions()}
           </div>
         );
       }
@@ -4449,6 +4542,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   {traceState?.nodeIds.has(selectedNode.id) ? traceState.label : 'No trace locked'}
                 </span>
               </div>
+              {renderReplayContextRows()}
             </div>
           </div>
           {selectedNodeSignals && selectedNodeSignals.length > 0 ? (
@@ -4479,6 +4573,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               ))}
             </div>
           )}
+          {renderReplayContextActions()}
         </div>
       );
     }
@@ -4530,7 +4625,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 {traceState?.kind === 'wire-net' && traceState.sourceKey === selectedWireContext.wireId ? traceState.label : 'No trace locked'}
               </span>
             </div>
+            {renderReplayContextRows()}
           </div>
+          {renderReplayContextActions()}
         </div>
       );
     }
@@ -4572,7 +4669,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <span>Trace state</span>
               <span data-testid="ide-design-context-trace-state">{traceState?.label ?? 'No trace locked'}</span>
             </div>
+            {renderReplayContextRows()}
           </div>
+          {renderReplayContextActions()}
         </div>
       );
     }
@@ -4581,7 +4680,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     return (
       <IdeCallout tone="info" title="Signal / State">
-        Select one node, wire, or signal to see live values, transitions, and trace status here.
+        Select one node, wire, or signal to inspect live values, transitions, and replay context here.
       </IdeCallout>
     );
   };
@@ -4715,101 +4814,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       </div>
     </div>
   );
-  const renderLiveSimulationContent = () => (
-    <>
-      <div className="ide-inline-actions">
-        {simRunning ? (
-          <IdeButton
-            tone="secondary"
-            onClick={pauseSimulation}
-            disabled={isReplayMode}
-            testId="ide-design-sim-pause"
-          >
-            Pause
-          </IdeButton>
-        ) : (
-          <IdeButton
-            tone="primary"
-            onClick={startSimulation}
-            disabled={isReplayMode}
-            testId="ide-design-sim-run"
-          >
-            Run
-          </IdeButton>
-        )}
-        <IdeButton
-          tone="ghost"
-          onClick={stepSimulation}
-          disabled={isReplayMode}
-          testId="ide-design-sim-step"
-        >
-          Step{runtimeSim.stepMode && !isReplayMode ? ` t${simTick}` : ''}
-        </IdeButton>
-        <IdeButton
-          tone="ghost"
-          onClick={resetSimulation}
-          disabled={isReplayMode}
-          testId="ide-design-sim-reset"
-        >
-          Reset
-        </IdeButton>
-      </div>
-      <label className="ide-verify-field">
-        Speed (ticks/s)
-        <input
-          type="range"
-          min={1}
-          max={40}
-          step={1}
-          value={simSpeed}
-          disabled={isReplayMode}
-          onChange={(event) => onRuntimeSimSetSpeed?.(Number(event.target.value))}
-          data-testid="ide-design-sim-speed"
-        />
-      </label>
-      <div className="ide-kv-list ide-design-live-summary">
-        <div className="ide-kv-row">
-          <span>Tick</span>
-          <span data-testid="ide-design-sim-tick">{simTick}</span>
-        </div>
-        <div className="ide-kv-row">
-          <span>Mode</span>
-          <span>{simModeLabel}</span>
-        </div>
-        <div className="ide-kv-row">
-          <span>Last change</span>
-          <span data-testid="ide-design-last-change">{simulationStory.summary}</span>
-        </div>
-      </div>
-      <div className="ide-design-live-state-table" data-testid="ide-design-live-state-table">
-        <div className="ide-design-live-state-group">
-          <div className="ide-design-live-state-group-title">Inputs</div>
-          {liveIoSignals.inputRows.map((entry) => (
-            <div className="ide-kv-row" key={`in-${entry.id}`} data-testid={`ide-design-live-input-${entry.id}`}>
-              <span>
-                {entry.label}
-                {entry.pinAlias ? <span className="ide-design-live-pin"> {entry.pinAlias}</span> : null}
-              </span>
-              <code>{entry.value}</code>
-            </div>
-          ))}
-        </div>
-        <div className="ide-design-live-state-group">
-          <div className="ide-design-live-state-group-title">Outputs</div>
-          {liveIoSignals.outputRows.map((entry) => (
-            <div className="ide-kv-row" key={`out-${entry.id}`} data-testid={`ide-design-live-output-${entry.id}`}>
-              <span>
-                {entry.label}
-                {entry.pinAlias ? <span className="ide-design-live-pin"> {entry.pinAlias}</span> : null}
-              </span>
-              <code>{entry.value}</code>
-            </div>
-          ))}
-        </div>
-      </div>
-    </>
-  );
-
   return (
     <>
       <IdeSurfaceLayout
@@ -4818,6 +4822,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         consoleHasEntries={diagnosticsDrawerRows.length > 0}
         leftDockMode={workspacePreset.leftDockMode}
         rightDockMode={designRightDockMode}
+        rightDockCanCollapse={isCanvasWorkspace}
+        rightDockRevealKey={designRightDockRevealKey}
         consoleMode={designConsoleMode}
         shellDensity={workspacePreset.shellDensity}
         surfaceFrame={workspacePreset.surfaceFrame}
@@ -5131,153 +5137,33 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         <>
           {renderSelectionIdentityCard()}
           {(() => {
-            const content = renderSelectionHealth();
-            return content ? (
-              <IdeInspectorSection title="Selection Health" testId="ide-design-inspector-health" collapsible={false}>
-                {content}
-              </IdeInspectorSection>
-            ) : null;
-          })()}
-          {(() => {
             const content = renderSelectionActions();
             return content ? (
-              <IdeInspectorSection title="Primary Actions" testId="ide-design-inspector-actions" collapsible={false}>
-                {content}
-              </IdeInspectorSection>
-            ) : null;
-          })()}
-          {(() => {
-            const content = renderSelectionProperties();
-            return content ? (
-              <IdeInspectorSection title="Properties" testId="ide-design-inspector-properties" collapsible={false}>
+              <IdeInspectorSection title="Actions" testId="ide-design-inspector-actions" collapsible={false}>
                 {content}
               </IdeInspectorSection>
             ) : null;
           })()}
           {hasInspectorSelectionContext ? (
             <React.Fragment key="design-inspector-selection-context">
-              <IdeInspectorSection title="Signal / State" testId="ide-design-context-inspector" collapsible={false}>
+              <IdeInspectorSection title="Live / Signal State" testId="ide-design-context-inspector" collapsible={false}>
                 {renderSelectionState()}
-              </IdeInspectorSection>
-              <IdeInspectorSection
-                title="Live Simulation"
-                testId="ide-design-live-sim-section"
-                defaultOpen={liveSimulationDefaultOpen}
-              >
-                {renderLiveSimulationContent()}
-              </IdeInspectorSection>
-              <IdeInspectorSection title="Board Signal" testId="ide-design-board-signal" defaultOpen={false}>
-                {(() => {
-                  if (!selectedNode) {
-                    return (
-                      <p className="ide-copy ide-design-board-signal-empty">
-                        Select a node to see its board pin mapping.
-                      </p>
-                    );
-                  }
-                  const ioRow = (ioRows ?? []).find((r) => r.nodeId === selectedNode.id);
-                  if (!ioRow) {
-                    return (
-                      <p className="ide-copy ide-design-board-signal-empty">
-                        No board mapping for this node.
-                      </p>
-                    );
-                  }
-                  const liveValue: 0 | 1 =
-                    (runtimeSim.inputs[ioRow.nodeId] ??
-                    displayRuntimeSignals[`${ioRow.nodeId}.${ioRow.port}`] ??
-                    displayRuntimeSignals[ioRow.nodeId] ??
-                    displayRuntimeSignals[`${ioRow.nodeId}.out`] ??
-                    0) === 1 ? 1 : 0;
-                  return (
-                    <>
-                    <div className="ide-kv-list">
-                      <div className="ide-kv-row">
-                        <span>Label</span>
-                        <code className="ide-design-board-signal-code">{ioRow.label}</code>
-                      </div>
-                      <div className="ide-kv-row">
-                        <span>Pin</span>
-                        <code className="ide-design-board-signal-code">{ioRow.pin || '—'}</code>
-                      </div>
-                      <div className="ide-kv-row">
-                        <span>Dir</span>
-                        <span>{ioRow.direction === 'in' ? 'IN' : 'OUT'}</span>
-                      </div>
-                      <div className="ide-kv-row">
-                        <span>Value</span>
-                        <span
-                          data-testid="ide-design-board-signal-value"
-                          className={`ide-design-board-signal-value ${liveValue ? 'is-high' : 'is-low'}`}
-                        >
-                          {liveValue ? 'HIGH' : 'LOW'}
-                        </span>
-                      </div>
-                    </div>
-                    {onGoToHardware && (
-                      <div className="ide-design-board-signal-actions">
-                        <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-design-go-hardware">
-                          Go to Map Pins
-                        </IdeButton>
-                      </div>
-                    )}
-                    </>
-                  );
-                })()}
-              </IdeInspectorSection>
-              <IdeInspectorSection title="Advanced Details" testId="ide-design-inspector-advanced" defaultOpen={false}>
-                {renderAdvancedDetails()}
-              </IdeInspectorSection>
-
-              <IdeInspectorSection title="Signal Probe" testId="ide-design-signal-probe" defaultOpen={false}>
                 {selectedSignalKey ? (
-                  <>
-                    <div className="ide-kv-list">
-                      <div className="ide-kv-row">
-                        <span>Signal</span>
-                        <code data-testid="ide-design-signal-selected">{selectedSignalKey}</code>
-                      </div>
-                      <div className="ide-kv-row">
-                        <span>Current</span>
-                        <code data-testid="ide-design-signal-current-value">{selectedSignalValue}</code>
-                      </div>
-                      <div className="ide-kv-row">
-                        <span>Previous</span>
-                        <code>{activeInspectorSignalSnapshot?.previousValue ?? selectedSignalValue}</code>
-                      </div>
-                      <div className="ide-kv-row">
-                        <span>Transition</span>
-                        <span>{activeInspectorSignalSnapshot?.transition ?? 'stable'}</span>
-                      </div>
-                      <div className="ide-kv-row">
-                        <span>Last transition</span>
-                        <span>{activeInspectorSignalSnapshot?.lastTransitionTick ?? '—'}</span>
-                      </div>
-                      <div className="ide-kv-row">
-                        <span>Samples</span>
-                        <span>{selectedSignalHistory.length}</span>
-                      </div>
-                    </div>
-                    <div className="ide-inline-actions">
-                      <IdeButton
-                        tone="secondary"
-                        onClick={() =>
-                          onRuntimeSimToggleProbe?.({
-                            key: selectedSignalKey,
-                            label: selectedSignalKey,
-                          })
-                        }
-                        testId="ide-design-signal-pin"
-                      >
-                        Pin signal
-                      </IdeButton>
-                    </div>
-                  </>
-                ) : (
-                  <p className="ide-copy">
-                    Select a wire or probe a node port to inspect live value and recent tick history.
-                  </p>
-                )}
+                  <div className="ide-inline-actions ide-copy-top-gap">
+                    <IdeButton
+                      tone="secondary"
+                      onClick={() =>
+                        onRuntimeSimToggleProbe?.({
+                          key: selectedSignalKey,
+                          label: selectedSignalKey,
+                        })
+                      }
+                      testId="ide-design-signal-pin"
+                    >
+                      Pin signal
+                    </IdeButton>
+                  </div>
+                ) : null}
                 {pinnedProbeRows.length > 0 ? (
                   <div className="ide-kv-list ide-copy-top-gap" data-testid="ide-design-probe-list">
                     {pinnedProbeRows.map((probe) => (
@@ -5288,6 +5174,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     ))}
                   </div>
                 ) : null}
+              </IdeInspectorSection>
+              <IdeInspectorSection title="Details" testId="ide-design-inspector-details" defaultOpen={false}>
+                {renderAdvancedDetails()}
               </IdeInspectorSection>
             </React.Fragment>
           ) : (
@@ -5316,16 +5205,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </div>
                 );
               })()}
-              <IdeInspectorSection
-                title="Live Simulation"
-                testId="ide-design-live-sim-section"
-                defaultOpen={liveSimulationDefaultOpen}
-              >
-                {renderLiveSimulationContent()}
-              </IdeInspectorSection>
-              <IdeInspectorSection title="Advanced Details" testId="ide-design-inspector-advanced" defaultOpen={false}>
-                {renderAdvancedDetails()}
-              </IdeInspectorSection>
             </React.Fragment>
           )}
 
@@ -5415,7 +5294,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       onClick={onGoToVerify}
                       testId="ide-design-command-strip-primary-cta"
                     >
-                      {activeVerifySignal ? 'Back to Verify' : 'Open Verify'}
+                      {activeVerifySignal || effectiveExternalDebugTick != null
+                        ? 'Return to Verify waveform'
+                        : 'Open Verify'}
                     </IdeButton>
                   ) : null}
                   {onGoToProject ? (
@@ -5718,55 +5599,44 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     className={`ide-design-sim-story-strip${canRenderReplayScrubber ? ' has-replay-scrubber' : ''}`}
                     data-testid="ide-design-sim-story-strip"
                   >
-                    <div className="ide-design-sim-story-main">
-                      <span className="ide-design-sim-story-label">Simulation</span>
-                      <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-tick">
-                        {activeSimulationSelectionLabel}
-                      </span>
-                      <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-mode">
-                        {simModeLabel}
-                      </span>
-                      {effectiveExternalDebugTick != null && activeReplayTimingHint ? (
-                        <span
-                          className="ide-design-sim-story-pill is-sample"
-                          data-testid="ide-design-sim-story-sample"
-                        >
-                          {activeReplayTimingHint}
+                    <div className="ide-design-sim-story-topline">
+                      <div className="ide-design-sim-story-main">
+                        <span className="ide-design-sim-story-label">Simulation</span>
+                        <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-tick">
+                          {activeSimulationSelectionLabel}
                         </span>
-                      ) : null}
-                      {simulationStory.clockEvent ? (
-                        <span
-                          className={`ide-design-sim-story-pill is-clock is-${simulationStory.clockEvent}`}
-                          data-testid="ide-design-sim-story-clock"
-                        >
-                          {simulationStory.clockLabel} {simulationStory.clockEvent} edge
+                        <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-mode">
+                          {simModeLabel}
                         </span>
-                      ) : null}
-                      {activeVerifySignal ? (
-                        <span className="ide-design-verify-link-badge" data-testid="ide-design-verify-link-badge">
-                          Verify focus {activeVerifySignalPresentation?.focusLabel ?? activeVerifySignal}
-                        </span>
-                      ) : null}
-                      {activeVerifySignal ? (
-                        <span className="ide-design-sim-story-pill is-verify" data-testid="ide-design-verify-focus">
-                          Inspect {activeVerifySignalPresentation?.inspectLabel ?? activeVerifySignal} first
-                        </span>
+                      </div>
+                      {(effectiveExternalDebugTick != null && activeReplayTimingHint) || simulationStory.clockEvent || activeVerifySignal ? (
+                        <div className="ide-design-sim-story-context" data-testid="ide-design-sim-story-context">
+                          {effectiveExternalDebugTick != null && activeReplayTimingHint ? (
+                            <span data-testid="ide-design-sim-story-sample">{activeReplayTimingHint}</span>
+                          ) : null}
+                          {simulationStory.clockEvent ? (
+                            <span data-testid="ide-design-sim-story-clock">
+                              {simulationStory.clockLabel} {simulationStory.clockEvent} edge
+                            </span>
+                          ) : null}
+                          {activeVerifySignal ? (
+                            <span className="ide-design-verify-link-badge" data-testid="ide-design-verify-link-badge">
+                              Verify focus {activeVerifySignalPresentation?.focusLabel ?? activeVerifySignal}
+                            </span>
+                          ) : null}
+                          {activeVerifySignal ? (
+                            <span className="ide-design-sim-story-verify-focus" data-testid="ide-design-verify-focus">
+                              Inspect {activeVerifySignalPresentation?.inspectLabel ?? activeVerifySignal} first
+                            </span>
+                          ) : null}
+                        </div>
                       ) : null}
                     </div>
                     <p className="ide-design-sim-story-summary" data-testid="ide-design-sim-story-summary">
                       {activeSimulationSummary}
                     </p>
                     {canRenderReplayScrubber && (
-                      <div className="ide-design-replay-scrubber-shell">
-                        <div className="ide-design-replay-scrubber-meta">
-                          <span className="ide-design-replay-scrubber-label">Replay</span>
-                          <span
-                            className="ide-design-replay-scrubber-readout"
-                            data-testid="ide-design-replay-scrubber-readout"
-                          >
-                            {activeReplaySelectionLabel}
-                          </span>
-                        </div>
+                      <div className="ide-design-replay-transport" data-testid="ide-design-replay-transport">
                         <div className="ide-design-debug-nav" data-testid="ide-design-debug-nav">
                           {onPrevDebugTick ? (
                             <IdeButton
@@ -5779,23 +5649,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                             </IdeButton>
                           ) : null}
                           {canRenderReplayScrubber ? (
-                            <input
-                              type="range"
-                              min={0}
-                              max={Math.max(debugTickCount - 1, 0)}
-                              step={1}
-                              value={debugTickIndex}
-                              onChange={handleReplayScrubberChange}
-                              className="ide-design-replay-scrubber"
-                              data-testid="ide-design-replay-scrubber"
-                              aria-label="Replay scrubber"
-                            />
+                            <div className="ide-design-replay-scrubber-track">
+                              <input
+                                type="range"
+                                min={0}
+                                max={Math.max(debugTickCount - 1, 0)}
+                                step={1}
+                                value={debugTickIndex}
+                                onChange={handleReplayScrubberChange}
+                                className="ide-design-replay-scrubber"
+                                data-testid="ide-design-replay-scrubber"
+                                aria-label="Replay scrubber"
+                              />
+                            </div>
                           ) : null}
-                          {debugTickIndex != null && debugTickCount != null && (
-                            <span className="ide-design-debug-tick-position" data-testid="ide-design-debug-tick-position">
-                              {activeReplaySelectionLabel}
-                            </span>
-                          )}
                           {onNextDebugTick ? (
                             <IdeButton
                               tone="ghost"
@@ -5805,6 +5672,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                             >
                               Next →
                             </IdeButton>
+                          ) : null}
+                          {debugTickIndex != null && debugTickCount != null ? (
+                            <span
+                              className="ide-design-replay-scrubber-readout"
+                              data-testid="ide-design-replay-scrubber-readout"
+                            >
+                              {`${debugTickIndex + 1} / ${debugTickCount}`}
+                            </span>
                           ) : null}
                         </div>
                       </div>
@@ -6118,8 +5993,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                               </IdeButton>
                             ) : null}
                             {debugTickIndex != null && debugTickCount != null && (
-                              <span className="ide-design-debug-tick-position" data-testid="ide-design-debug-tick-position">
-                                {debugTickIndex + 1} / {debugTickCount} · t{effectiveExternalDebugTick}
+                                        <span
+                                          className="ide-design-replay-scrubber-readout"
+                                          data-testid="ide-design-replay-scrubber-readout"
+                                        >
+                                          {`${debugTickIndex + 1} / ${debugTickCount}`}
                               </span>
                             )}
                             {onNextDebugTick ? (
