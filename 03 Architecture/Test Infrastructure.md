@@ -2,9 +2,10 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-03-29
+updated: 2026-04-14
 related:
   - "[[BUG-003 React.act Infrastructure Failure]]"
+  - "[[BUG-018 Lab Hardware Strict Readiness Blocked by Missing djtgcfg]]"
   - "[[BUG-001 Connection Fixture Format Mismatch]]"
   - "[[BUG-002 VerifyHints Priority Inconsistency]]"
   - "[[Connection Model]]"
@@ -54,6 +55,15 @@ pnpm -w exec vitest run --config vitest.config.ts \
 ```
 
 > **Note:** The vitest binary at `node_modules/.bin/vitest` has Windows-specific paths hardcoded. It only works from the Windows side via `pnpm`. It cannot be invoked from the Linux VM sandbox directly.
+
+## Workspace CLI Prerequisites
+
+Windows-side repo and classroom scripts rely on normal shell resolution, not just whatever can be reached through ad-hoc package-manager fallbacks.
+
+- `pnpm` must resolve as a normal command from PowerShell. `corepack pnpm ...` is not enough for scripts that shell out to `pnpm` directly.
+- root package scripts that call `pnpm exec tsx ...` require `tsx` in the root workspace `devDependencies`; child-workspace copies do not satisfy root execution.
+- Windows lab-machine validation that touches Vivado or classroom hardware flow also assumes `python` / `py` and `vivado` resolve from the shell.
+- `classroom:hw:check -- --strict` is only green when the bridge returns a `basys3` target. A Digilent-class FTDI device with missing `djtgcfg` remains `NOT_READY` even if serial drivers are installed.
 
 ## Preview-backed Gate Validation
 

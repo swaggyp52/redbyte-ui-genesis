@@ -9,6 +9,7 @@ related:
   - "[[Export Contracts]]"
   - "[[Basys 3 Mapping]]"
   - "[[BUG-018 Hardware Export Mapping Authority Drift]]"
+  - "[[BUG-018 Lab Hardware Strict Readiness Blocked by Missing djtgcfg]]"
   - "[[Note Schema]]"
 ---
 
@@ -51,6 +52,7 @@ The student-facing Hardware surface should therefore present:
 - If there are no boundary I/O rows yet, Hardware defaults to `Map Pins` mode and teaches the student to add boundary inputs/outputs in Design.
 - Combinational designs with no required timing-control row are timing-ready for map status; absence of a clock row is not itself a blocker.
 - Hardware should speak in physical board terms: switches, buttons, LEDs, segments, clock, headers, and assigned pins.
+- Strict bridge-backed hardware readiness requires both FTDI / USB visibility and a working Digilent JTAG CLI path (`djtgcfg` or an override path via env). Driver-only Digilent Runtime detection is not enough to call an attached board ready for Basys3 programming.
 - Mapping changes are project truth and may make Verify or Export stale; the surface must explain that without pretending to own those workflows.
 - Board-readiness summary should stay concise and actionable. Do not bury unresolved mappings behind artifact-heavy chrome.
 

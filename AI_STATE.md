@@ -175,6 +175,57 @@ Live workflow replay exposed a contradiction that trapped users in the handoff l
 - makes `Map Pins` readiness reflect Export-required port completeness instead of local row completeness alone
 - improves next-action trust when Export blocks on required unmapped top-level ports
 
+## Change Log 2026-04-14 (Lab machine shell integration + root tsx dependency + bridge readiness audit)
+
+**Subsystem**: Windows lab-machine tooling / classroom scripts / FPGA bridge readiness
+
+### Problem
+
+Fresh Windows lab-machine validation exposed a mix of shell-integration and runtime-readiness gaps even though the repo already had `node_modules/` and Vivado itself was installed.
+
+- `pnpm` was available through `corepack pnpm` but not as a normal shell command, so repo scripts that expect `pnpm` directly were not reliable in the terminal
+- the current user's Python resolution was poisoned by stale `C:\Users\Admin\...` entries and a broken HKCU Python 3.11 registry path, so `py` and `python` failed from PowerShell
+- Vivado 2024.2 was installed at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`, but the shell and repo bridge only became deterministic once `VIVADO_PATH` and PATH included that install
+- several root workspace scripts (`classroom:*`, `capture:screenshots`, `ship:gate`, `perf:soak`) invoke `tsx`, but the root workspace did not declare `tsx`, so `pnpm exec tsx ...` failed even though child workspaces had their own copies
+- the live FPGA bridge could see a Digilent-class FTDI device on `COM4`, but strict Basys3 readiness still failed because the Digilent JTAG CLI layer (`djtgcfg`) was not installed
+
+### What changed
+
+- machine shell integration:
+  - created a user-local `pnpm` shim in `C:\Users\Administrator\.local\bin` so `pnpm` resolves as a normal PowerShell command
+  - repaired user Python resolution to the machine install at `C:\Program Files\Python311\python.exe`
+  - added `C:\Xilinx\Vivado\2024.2\bin` to the current user's PATH and set user `VIVADO_PATH` to that directory
+- repo dependency correction:
+  - added root `devDependency` `tsx@4.19.2` so existing root scripts that call `pnpm exec tsx ...` run from the workspace root instead of failing with command-not-found
+- runtime validation:
+  - installed Playwright Chromium runtime for this Windows user
+  - started the real FPGA bridge and confirmed it serves `http://127.0.0.1:4242/`
+  - started the RedByte Vite dev server and confirmed it serves `http://localhost:5173/`
+
+### Validation
+
+- shell/runtime:
+  - `pnpm --version` -> PASS (`10.24.0`)
+  - `py --version` -> PASS (`Python 3.11.9`)
+  - `python --version` -> PASS (`Python 3.11.9`)
+  - `C:\Xilinx\Vivado\2024.2\bin\vivado.bat -version` -> PASS (`Vivado v2024.2`)
+- repo/install:
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify-install.ps1` -> PASS
+  - `pnpm exec playwright install chromium` -> PASS
+  - `pnpm -s classroom:hw:check` -> PASS (non-strict; simulation mode valid)
+  - `pnpm -s classroom:hw:check -- --strict` -> FAIL (`status: NOT_READY`)
+- live runtime:
+  - `pnpm dev` -> PASS; browser title confirmed as `RedByte Playground` at `http://localhost:5173/`
+  - `pnpm --filter @redbyte/fpga-bridge dev` -> PASS; bridge healthy on `http://127.0.0.1:4242/`
+  - bridge `GET /devices` -> FTDI / Digilent-class device detected on `COM4`, but `programming.status=missing_driver`, `tool=djtgcfg`, and diagnostics show `missing_tool`
+  - `pnpm -s bridge:smoke` -> FAIL because no strict-ready Basys3 device is classified yet
+
+### Release impact
+
+- the Windows lab machine can now run RedByte, Vivado, Playwright-backed browser checks, and root `tsx` scripts from a normal PowerShell workflow
+- the real hardware bridge is online and can see the attached FTDI-class board path
+- strict Basys3 program-readiness remains blocked until Digilent Adept / `djtgcfg` is installed or otherwise provided through `RB_DJTGCFG_PATH` / `DJTGCFG_PATH`
+
 ## Change Log 2026-04-13 (Shared shell compact-row theft + hidden-dock width fix + Design inspector collapse wiring)
 
 **Subsystem**: Shared workbench shell / compact layout geometry / Design surface inspector

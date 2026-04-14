@@ -7,6 +7,7 @@ related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
   - "[[Note Schema]]"
+  - "[[BUG-018 Lab Hardware Strict Readiness Blocked by Missing djtgcfg]]"
   - "[[ADR-005 Verify Schedule Contract Owns Sequential Clock Authority]]"
   - "[[Project Surface]]"
   - "[[Design Surface]]"
@@ -94,6 +95,13 @@ Latest Lab 8 classroom-readiness slice landed (2026-04-14):
 - targeted validation is complete for this slice: `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab8-export-validation.test.ts packages/rb-apps/src/__tests__/scenario-sequential-trust-gate.test.ts` passed (`2` files, `66` tests)
 
 Next action after this slice: if classroom risk stays on Lab 8, add one UI-level smoke or gate path that loads the starter and proves the preloaded vectors survive the normal student workflow; otherwise resume the current shared-shell / Design rail follow-up work.
+
+Latest lab-machine dependency and bridge-readiness pass landed (2026-04-14):
+
+- the Windows lab machine now resolves `pnpm`, `python`, and `vivado` as normal shell commands; `pnpm dev` serves `RedByte Playground` at `http://localhost:5173/`, and the real FPGA bridge serves `http://127.0.0.1:4242/`
+- root script execution is unblocked on this repo state: `tsx` is now declared at the workspace root, so existing `pnpm exec tsx ...` scripts such as `classroom:hw:check` run again from the root package
+- [[BUG-018 Lab Hardware Strict Readiness Blocked by Missing djtgcfg]] is now the active classroom hardware blocker: the bridge sees a Digilent-class FTDI device on `COM4`, but strict Basys3 readiness still fails because Digilent Runtime is present without `djtgcfg`
+- next action: install Digilent Adept utilities or otherwise provide `RB_DJTGCFG_PATH` / `DJTGCFG_PATH`, then rerun `pnpm -s classroom:hw:check -- --strict` and the classroom hardware signoff path
 
 Latest shared shell compact/wide-layout fix landed (2026-04-13):
 
