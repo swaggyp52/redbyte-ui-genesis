@@ -364,14 +364,15 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         return x >= viewBounds.left && x <= viewBounds.right && y >= viewBounds.top && y <= viewBounds.bottom;
       }),
     [circuit.nodes, viewBounds]
-    // Debug: show a warning if no nodes are visible but circuit.nodes is not empty
-    React.useEffect(() => {
-      if (circuit.nodes.length > 0 && visibleNodes.length === 0) {
-        // eslint-disable-next-line no-console
-        console.error('No nodes are visible on the canvas. Check node positions and placement logic.');
-      }
-    }, [circuit.nodes, visibleNodes]);
   );
+
+  // Debug: show a warning if no nodes are visible but circuit.nodes is not empty
+  React.useEffect(() => {
+    if (circuit.nodes.length > 0 && visibleNodes.length === 0) {
+      // eslint-disable-next-line no-console
+      console.error('No nodes are visible on the canvas. Check node positions and placement logic.');
+    }
+  }, [circuit.nodes, visibleNodes]);
 
   const visibleNodeIds = React.useMemo(() => new Set(visibleNodes.map((node) => node.id)), [visibleNodes]);
 
