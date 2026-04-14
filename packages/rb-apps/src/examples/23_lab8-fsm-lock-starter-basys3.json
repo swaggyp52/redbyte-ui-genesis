@@ -51,11 +51,59 @@
     }
   ],
   "connections": [],
+  "ioMapping": {
+    "inputs": [
+      {
+        "id": "iom-in0",
+        "nodeId": "sw_in0",
+        "port": "out",
+        "label": "IN0 (SW6)",
+        "pin": "W14"
+      },
+      {
+        "id": "iom-in1",
+        "nodeId": "sw_in1",
+        "port": "out",
+        "label": "IN1 (SW7)",
+        "pin": "W13"
+      },
+      {
+        "id": "iom-in2",
+        "nodeId": "sw_in2",
+        "port": "out",
+        "label": "IN2 (SW8)",
+        "pin": "V2"
+      },
+      {
+        "id": "iom-enter",
+        "nodeId": "sw_enter",
+        "port": "out",
+        "label": "ENTER (SW5)",
+        "pin": "V15"
+      },
+      {
+        "id": "iom-reset",
+        "nodeId": "sw_reset",
+        "port": "out",
+        "label": "RESET (SW4)",
+        "pin": "W15"
+      }
+    ],
+    "outputs": [
+      {
+        "id": "iom-lock",
+        "nodeId": "led_lock",
+        "port": "in",
+        "label": "LOCK (LED1)",
+        "pin": "E19"
+      }
+    ]
+  },
   "labSpec": {
     "schemaVersion": "1.0",
     "labId": "lab-8",
     "title": "Lab 8 - Security Lock FSM",
-    "description": "Starter contract checkpoints for valid and invalid serial FSM paths.",
+    "description": "Starter contract checkpoints for valid and invalid serial FSM paths.\n\nBuild notes:\n- ENTER (SW5) is the manual clock. Connect it to the CLK pin of EVERY DFlipFlop.\n- RESET (SW4) clears all state. Connect it to RST on every DFlipFlop.\n- IN0 (SW6) is the serial data bit for these checkpoints.\n- Valid 3-bit groups: 010 and 100. Four consecutive valid groups unlocks.\n- LOCK (LED1) should go high only after the 12th clock pulse of the valid sequence.",
     "objectives": [
       "Prove both invalid and valid serial trajectories with ENTER as the clock pulse."
     ],
@@ -71,16 +119,16 @@
           "inputs": ["sw_in0", "sw_in1", "sw_in2", "sw_reset"],
           "outputs": ["led_lock"],
           "table": [
-            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
             { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
             { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
             { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
             { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
             { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
             { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
             { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } }
           ]
@@ -103,17 +151,17 @@
           "outputs": ["led_lock"],
           "table": [
             { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
             { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
             { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
             { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
             { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
             { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
+            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
             { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": true } }
+            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": true  } }
           ]
         },
         "spec": {

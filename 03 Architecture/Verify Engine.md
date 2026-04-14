@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: verify
-updated: 2026-04-13
+updated: 2026-04-14
 related:
   - "[[Design Surface]]"
   - "[[Verify Design Loop]]"
@@ -32,6 +32,12 @@ Verify currently spans three layers:
 3. `IdeApp.tsx` + `surfaces/VerifySurface.tsx` decide which hash, vectors, and banners the student actually sees.
 
 The deterministic engine itself does run against a fresh circuit + IO snapshot. The weak spots are the layers above it: freshness is still computed in multiple ways and the scenario/session model is only partially live outside the normal shell path. The latest Phase 6 slice made the remaining local Verify toggle explicit authoring intent: `VerifySurface` now uses `nextRunUsesAssertions` for next-run copy/preflight/wiring, while current-run meaning stays on `VerifySessionStatus` plus persisted `runKind`. `READY` / `BLOCKED` now survive only as a draft-only presentation shim.
+
+The latest Lab 8 classroom-readiness slice hardened one remaining sequential authoring seam for manual-clock labs:
+
+- checkpoint truth tables can still declare `clocked_macro`, but ordinary IDE Verify does not synthesize those ENTER pulses automatically for real clock inputs like `sw_enter`
+- Lab 8 starter vectors therefore ship as explicit authored rows: reset bring-up first, then `0,1,0` ENTER pulses for each serial bit, with `LOCK` expected high only after the final pulse completes
+- this keeps the starter visible and runnable in Verify without inventing a second sequential runtime contract that disagrees with the proven checkpoint path
 
 The latest hard visual / interaction architecture pass then made the browser-visible Verify surface read as one integrated lab instead of a stack of internal tools:
 

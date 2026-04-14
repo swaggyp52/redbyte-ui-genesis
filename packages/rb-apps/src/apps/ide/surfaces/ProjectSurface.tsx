@@ -937,7 +937,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     key={starter.id}
                     type="button"
                     className="ide-project-lab-card"
-                    onClick={() => { onOpenExample(starter.id); onOpenDesign(); }}
+                    onClick={() => { onOpenExample(starter.example.id); onOpenDesign(); }}
                     data-testid={`ide-project-lab-card-${starter.id}`}
                   >
                     <span className="ide-project-lab-card-number">Lab {starter.labNumber}</span>

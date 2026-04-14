@@ -43,6 +43,7 @@ export interface HardwareSurfaceProps {
   projectName: string;
   expectedBehavior: string;
   mappingRows: HardwareMappingRow[];
+  missingRequiredPortsFromExport?: number;
   expectedIoRows: Array<{
     signal: string;
     tick: number;
@@ -123,10 +124,12 @@ type HwMode = 'live' | 'bringup' | 'proof' | 'map';
 function resolveInitialHardwareMode(input: {
   mappingRows: HardwareMappingRow[];
   vectorsCount: number;
+  missingRequiredPortsFromExport?: number;
 }): HwMode {
+  if (input.mappingRows.length === 0) return 'map';
   const hasMissingRequiredPins = input.mappingRows.some(
     (row) => row.required && row.pin.trim().length === 0
-  );
+  ) || (input.missingRequiredPortsFromExport ?? 0) > 0;
   if (hasMissingRequiredPins) return 'map';
   if (input.vectorsCount > 0) return 'bringup';
   return 'proof';
@@ -136,6 +139,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   projectName,
   expectedBehavior,
   mappingRows,
+  missingRequiredPortsFromExport = 0,
   expectedIoRows,
   vectorsCount,
   health,
@@ -160,6 +164,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     resolveInitialHardwareMode({
       mappingRows,
       vectorsCount,
+      missingRequiredPortsFromExport,
     })
   );
   const [bringupStepIndex, setBringupStepIndex] = useState(0);
@@ -207,9 +212,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           return /(^clk$|clock|clk100mhz)/i.test(getStudentFacingIoLabel(row));
         }
       );
-      return requiredClockRows.length > 0 && requiredClockRows.every((row) => row.pin.trim().length > 0);
+      if (requiredClockRows.length === 0) {
+        return !effectiveTimingGuidance.isSequential;
+      }
+      return requiredClockRows.every((row) => row.pin.trim().length > 0);
     },
-    [clockRoleKeys, mappingRows]
+    [clockRoleKeys, effectiveTimingGuidance.isSequential, mappingRows]
   );
   const hasOutputMapping = useMemo(
     () => {
@@ -390,7 +398,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     () => mappingRows.filter((row) => row.required && row.pin.trim().length === 0),
     [mappingRows]
   );
-  const mappingReady = hasClockMapping && hasOutputMapping && unmappedRequiredPins.length === 0;
+  const hasBoundaryRows = mappingRows.length > 0;
+  const hasRequiredMappingRows = mappingRows.some((row) => row.required);
+  const hasNoBoundaryRows = !hasBoundaryRows || !hasRequiredMappingRows;
+  const unresolvedRequiredCount = unmappedRequiredPins.length + missingRequiredPortsFromExport;
+  const mappingReady = hasRequiredMappingRows && hasClockMapping && hasOutputMapping && unresolvedRequiredCount === 0;
   const hasOtherBlockingIssue = useMemo(
     () =>
       effectiveBlockingIssues.some(
@@ -473,6 +485,18 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       ? 'BLOCKED'
       : 'MISSING';
   const nextActionHero = useMemo(() => {
+    if (hasNoBoundaryRows) {
+      return {
+        title: 'Add boundary I/O in Design first',
+        body: 'Map Pins only works after Design has explicit inputs and outputs. Add boundary I/O in Design, then return here to assign Basys3 pins.',
+        primaryLabel: 'Open Design',
+        primaryAction: onGoToDesign ?? (() => {}),
+        primaryTestId: 'ide-hardware-next-primary',
+        secondaryLabel: null,
+        secondaryAction: null,
+      };
+    }
+
     if (blockedHero) {
       return {
         title: blockedHero.title,
@@ -486,12 +510,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     }
 
     if (!mappingReady) {
-      const missingLabel = unmappedRequiredPins.length > 0
-        ? `${unmappedRequiredPins.length} required pin${unmappedRequiredPins.length === 1 ? '' : 's'} still need board assignments.`
+      const unresolvedLabel = unresolvedRequiredCount > 0
+        ? `${unresolvedRequiredCount} required pin${unresolvedRequiredCount === 1 ? '' : 's'} still need board assignments.`
         : 'Finish the required clock and output mappings before you rely on the board view.';
       return {
         title: 'Map the board pins first',
-        body: `Choose a signal row, then click the matching board region. ${missingLabel}`,
+        body: `Choose a signal row, then click the matching board region. ${unresolvedLabel}`,
         primaryLabel: 'Open Map Pins',
         primaryAction: () => {
           setHwMode('map');
@@ -558,6 +582,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     };
   }, [
     blockedHero,
+    hasNoBoundaryRows,
     hwMode,
     isDifferentScenario,
     mappingReady,
@@ -567,7 +592,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     onSwitchScenario,
     scenarioDrifted,
     switchBackScenario,
-    unmappedRequiredPins.length,
+    unresolvedRequiredCount,
     vectorsCount,
     verifyLastRun,
   ]);
@@ -812,44 +837,57 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       <header className="ide-workbench-placeholder-header">
         <h3>Map Pins</h3>
         <IdeStatusPill tone={mappingReady ? 'ok' : 'warn'}>
-          {mappingReady ? 'Ready' : `${unmappedRequiredPins.length} missing`}
+          {hasNoBoundaryRows ? 'Design first' : mappingReady ? 'Complete' : `${unresolvedRequiredCount} left`}
         </IdeStatusPill>
       </header>
-      <p className="ide-copy" style={{ margin: 0 }}>
-        Select a signal row, then click the matching board region to assign the Basys3 pin.
-      </p>
-      <div className="ide-kv-list">
-        <div className="ide-kv-row">
-          <span>Required pins</span>
-          <span>{mappingRows.filter((row) => row.required).length}</span>
-        </div>
-        <div className="ide-kv-row">
-          <span>Still missing</span>
-          <span>{unmappedRequiredPins.length}</span>
-        </div>
-        <div className="ide-kv-row">
+      <div className="ide-hw-map-progress" data-testid="ide-hw-map-progress">
+        <div className="ide-hw-map-progress-row">
+          <span className={`ide-hw-map-check ${hasClockMapping ? 'is-ok' : 'is-missing'}`}>
+            {hasClockMapping ? '✓' : '○'}
+          </span>
           <span>{effectiveTimingGuidance.signalLabelSingular}</span>
           <IdeStatusPill tone={hasClockMapping ? 'ok' : 'warn'}>
             {hasClockMapping ? 'Mapped' : 'Missing'}
           </IdeStatusPill>
         </div>
-        <div className="ide-kv-row">
+        <div className="ide-hw-map-progress-row">
+          <span className={`ide-hw-map-check ${hasOutputMapping ? 'is-ok' : 'is-missing'}`}>
+            {hasOutputMapping ? '✓' : '○'}
+          </span>
           <span>Outputs</span>
           <IdeStatusPill tone={hasOutputMapping ? 'ok' : 'warn'}>
             {hasOutputMapping ? 'Mapped' : 'Missing'}
           </IdeStatusPill>
         </div>
+        {unresolvedRequiredCount > 0 && (
+          <div className="ide-hw-map-progress-row">
+            <span className="ide-hw-map-check is-missing">○</span>
+            <span>All required</span>
+            <IdeStatusPill tone="warn">{unresolvedRequiredCount} unassigned</IdeStatusPill>
+          </div>
+        )}
       </div>
+      {missingRequiredPortsFromExport > 0 && (
+        <IdeCallout tone="warn" title="Add project mappings first" testId="ide-hardware-map-export-gap">
+          <p className="ide-copy ide-copy--flush">
+            {missingRequiredPortsFromExport} required port{missingRequiredPortsFromExport === 1 ? '' : 's'} from your design still need board assignments.
+          </p>
+        </IdeCallout>
+      )}
       <div className="ide-inline-actions">
-        {mappingReady ? (
-          <IdeButton tone="secondary" onClick={() => setHwMode('proof')} testId="ide-hardware-map-dock-primary">
-            Program Checklist →
+        {hasNoBoundaryRows ? (
+          <p className="ide-copy" style={{ margin: 0, fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+            Add inputs and outputs in Design, then return here to assign board pins.
+          </p>
+        ) : mappingReady ? (
+          <IdeButton tone="primary" onClick={() => setHwMode('proof')} testId="ide-hardware-map-dock-primary">
+            Continue to Program Checklist →
           </IdeButton>
-        ) : onGoToDesign ? (
-          <IdeButton tone="ghost" onClick={onGoToDesign} testId="ide-hardware-map-dock-primary">
-            Open Design
-          </IdeButton>
-        ) : null}
+        ) : (
+          <p className="ide-copy" style={{ margin: 0, fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+            Select a row in the table, then click the matching board region.
+          </p>
+        )}
       </div>
     </SurfacePanel>
   );
@@ -948,12 +986,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     </SurfacePanel>
   );
 
+  const confidencePassCount = confidenceChecks.filter((c) => c.pass).length;
   const proofDock = (
     <SurfacePanel className="ide-workbench-placeholder" testId="ide-hw-proof-dock">
       <header className="ide-workbench-placeholder-header">
         <h3>Program Checklist</h3>
         <IdeStatusPill tone={confidenceScore === 100 ? 'ok' : confidenceScore >= 60 ? 'warn' : 'error'}>
-          {confidenceScore}%
+          {confidencePassCount}/{confidenceChecks.length}
         </IdeStatusPill>
       </header>
       <div className="ide-hw-confidence-list" data-testid="ide-hw-confidence-list">
@@ -1147,7 +1186,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const mapInspector = (
     <>
       <IdeInspectorSection title="Mapping Status" defaultOpen>
-        {unmappedRequiredPins.length === 0 ? (
+        {hasNoBoundaryRows ? (
+          <p className="ide-copy" data-testid="ide-hw-map-empty">
+            Add inputs and outputs in Design, then return here to assign board pins.
+          </p>
+        ) : unmappedRequiredPins.length === 0 ? (
           <p className="ide-copy">All required pins have Basys3 assignments.</p>
         ) : (
           <IdeDataTable
@@ -1189,7 +1232,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     [ioBus.state.btn, ioBus.state.ld, ioBus.state.sw]
   );
   const hardwareCommandDescription =
-    hwMode === 'map' && !mappingReady
+    hwMode === 'map' && !mappingReady && !hasNoBoundaryRows
       ? 'Assign the required Basys3 pins in the board workspace first, then continue to board preparation and programming.'
       : nextActionHero.body;
   const hardwareCommandSecondaryAction =
@@ -1208,13 +1251,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       dock={activeDock}
       inspector={
         <>
-          <IdeInspectorSection title="Live Hardware State" defaultOpen>
-            <IdeDataTable
-              columns={['Signal', 'Value']}
-              rows={liveHardwareRows}
-              testId="ide-hardware-live-state-table"
-            />
-          </IdeInspectorSection>
+          {hwMode !== 'map' && (
+            <IdeInspectorSection title="Live Hardware State" defaultOpen>
+              <IdeDataTable
+                columns={['Signal', 'Value']}
+                rows={liveHardwareRows}
+                testId="ide-hardware-live-state-table"
+              />
+            </IdeInspectorSection>
+          )}
           {activeInspector}
         </>
       }
@@ -1286,7 +1331,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             testId="ide-hardware-command-strip"
             label="Hardware"
             title={
-              hwMode === 'map' && !mappingReady
+              hwMode === 'map' && !mappingReady && !hasNoBoundaryRows
                 ? 'Continue mapping before you prepare or program the board'
                 : nextActionHero.title
             }
@@ -1368,39 +1413,40 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
         {/* ── Mode toggle bar — primary nav, stays at top ── */}
         <div className="ide-hw-mode-toggle" data-testid="ide-hw-mode-toggle">
-          {(['map', 'bringup', 'proof', 'live'] as const).map((m) => (
-            <IdeButton
-              key={m}
-              tone={hwMode === m ? 'primary' : 'ghost'}
-              onClick={() => { setHwMode(m); setSelectedMappingRowId(null); }}
-              testId={`ide-hw-mode-btn-${m}`}
-            >
-              {m === 'map'
-                ? 'Map Pins'
-                : m === 'bringup'
-                  ? 'Prepare Board'
-                  : m === 'proof'
-                    ? 'Program Checklist'
-                    : 'Live Details'}
-            </IdeButton>
-          ))}
+          <IdeButton
+            tone={hwMode === 'map' ? 'primary' : 'ghost'}
+            onClick={() => { setHwMode('map'); setSelectedMappingRowId(null); }}
+            testId="ide-hw-mode-btn-map"
+          >
+            {mappingReady ? '✓ ' : unresolvedRequiredCount > 0 ? '○ ' : ''}Map Pins
+          </IdeButton>
+          <IdeButton
+            tone={hwMode === 'bringup' ? 'primary' : 'ghost'}
+            onClick={() => { setHwMode('bringup'); setSelectedMappingRowId(null); }}
+            testId="ide-hw-mode-btn-bringup"
+          >
+            {vectorsCount > 0 ? '✓ ' : '○ '}Prepare Board
+          </IdeButton>
+          <IdeButton
+            tone={hwMode === 'proof' ? 'primary' : 'ghost'}
+            onClick={() => { setHwMode('proof'); setSelectedMappingRowId(null); }}
+            testId="ide-hw-mode-btn-proof"
+          >
+            {confidenceScore === 100 ? '✓ ' : ''}Program Checklist
+          </IdeButton>
+          <IdeButton
+            tone={hwMode === 'live' ? 'primary' : 'ghost'}
+            onClick={() => { setHwMode('live'); setSelectedMappingRowId(null); }}
+            testId="ide-hw-mode-btn-live"
+          >
+            Live Details
+          </IdeButton>
           {sim.tick > 0 && (
             <span className="ide-hw-tick-badge" data-testid="ide-hw-tick-badge">
               t{sim.tick}
             </span>
           )}
         </div>
-
-        {/* ── Mode hint — brief description of the active mode ── */}
-        <p className="ide-hw-mode-hint" data-testid="ide-hw-mode-hint">
-          {hwMode === 'map'
-            ? 'Assign each circuit signal to a physical Basys3 pin — switches, LEDs, buttons, or clock.'
-            : hwMode === 'bringup'
-              ? 'Walk through each test vector step-by-step: set the switches, press buttons, and confirm the LEDs match.'
-              : hwMode === 'proof'
-                ? 'Review the export checklist and Vivado commands needed to program the Basys3 board.'
-                : 'Interact with the board view in real time — toggle switches and watch LED outputs update.'}
-        </p>
 
         {/* ── Scenario provenance strip — hidden on map tab ── */}
         {hwMode !== 'map' && verifyLastRun && (
@@ -1435,19 +1481,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             </div>
           </details>
         )}
-
-        {/* ── Next-action hero — hidden on Map Pins tab ── */}
-        {hwMode !== 'map' && <SurfacePanel
-          className="ide-hardware-blocked-hero"
-          testId={showBlockedHero ? 'ide-hardware-blocked-hero' : 'ide-hardware-next-hero'}
-        >
-          <div className="ide-hardware-blocked-hero__copy">
-            <strong className="ide-hardware-blocked-hero__title">{failureTruth.title}</strong>
-            <p className="ide-copy" style={{ margin: 0 }}>
-              {failureTruth.message}
-            </p>
-          </div>
-        </SurfacePanel>}
 
         {/* ── Scenario drift callout ── */}
         {scenarioDrifted && verifyLastRun && (
@@ -1524,28 +1557,49 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           <div className="ide-hw-map-mode" data-testid="ide-hw-map-mode">
             <div className="ide-hw-map-table" data-testid="ide-hw-map-table">
               <p className="ide-copy ide-hw-map-instructions">
-                {selectedMappingRowId
+                {hasNoBoundaryRows
+                  ? 'Add inputs and outputs in Design, then return here to map Basys3 pins.'
+                  : selectedMappingRowId
                   ? 'Click a board region to assign the pin.'
                   : 'Click a signal row, then click a board region to assign its pin.'}
               </p>
-              {mapModeGroups.map((group) => (
+              {mapModeGroups.length === 0 ? (
+                <IdeCallout tone="info" title="Nothing to map yet" testId="ide-hw-map-empty">
+                  <p className="ide-copy ide-copy--flush">
+                    Add inputs and outputs in Design, then return here to assign board pins.
+                  </p>
+                </IdeCallout>
+              ) : mapModeGroups.map((group) => (
                 <details key={group.label} open>
                   <summary className="ide-hw-map-group-label">{group.label}</summary>
                   <div className="ide-hw-map-group">
-                    {group.rows.map((row) => (
-                      <button
-                        key={row.id}
-                        type="button"
-                        className={`ide-hw-map-row ${selectedMappingRowId === row.id ? 'is-selected' : ''}`}
-                        data-testid={`ide-hw-map-row-${row.id}`}
-                        onClick={() =>
-                          setSelectedMappingRowId(row.id === selectedMappingRowId ? null : row.id)
-                        }
-                      >
-                        <span className="ide-hw-map-row-label">{getStudentFacingIoLabel(row)}</span>
-                        <code className="ide-hw-map-row-pin">{row.pin || '—'}</code>
-                      </button>
-                    ))}
+                    {group.rows.map((row) => {
+                      const isMissing = row.required && row.pin.trim().length === 0;
+                      return (
+                        <button
+                          key={row.id}
+                          type="button"
+                          className={`ide-hw-map-row ${selectedMappingRowId === row.id ? 'is-selected' : ''} ${isMissing ? 'is-required-missing' : ''} ${!row.required ? 'is-optional' : ''}`}
+                          data-testid={`ide-hw-map-row-${row.id}`}
+                          data-required={row.required ? 'true' : 'false'}
+                          onClick={() =>
+                            setSelectedMappingRowId(row.id === selectedMappingRowId ? null : row.id)
+                          }
+                        >
+                          <span className="ide-hw-map-row-label">{getStudentFacingIoLabel(row)}</span>
+                          <span className="ide-hw-map-row-meta">
+                            {row.required ? (
+                              isMissing
+                                ? <span className="ide-hw-map-row-badge ide-hw-map-row-badge--missing">required</span>
+                                : <span className="ide-hw-map-row-badge ide-hw-map-row-badge--ok">✓</span>
+                            ) : (
+                              <span className="ide-hw-map-row-badge ide-hw-map-row-badge--optional">optional</span>
+                            )}
+                            <code className="ide-hw-map-row-pin">{row.pin || '—'}</code>
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </details>
               ))}

@@ -200,7 +200,7 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain(
       'no longer matches the current circuit'
     );
-    expect(getByTestId('ide-hardware-blocked-hero').textContent).toContain('Re-export the current bundle');
+    expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Re-export the current bundle');
     expect(getByTestId('ide-hardware-blocked-primary').textContent).toContain('Re-export Current Bundle');
     expect(getByTestId('ide-hardware-build-export').textContent).toContain(
       'Re-export Current Bundle'
@@ -233,6 +233,67 @@ describe('HardwareSurface readiness', () => {
     );
 
     expect(getAllByText('Outputs').at(-1)?.parentElement?.textContent).toContain('Missing');
+  });
+
+  it('opens in map mode and points back to Design when no boundary rows exist yet', () => {
+    const { getByTestId, queryByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Empty hardware flow"
+          expectedBehavior="Add boundary IO before mapping pins."
+          mappingRows={[]}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={makeHealth({
+            lastVerify: undefined,
+            lastExport: undefined,
+            dirtySinceVerify: false,
+            dirtySinceExport: false,
+            blockingIssues: [],
+          })}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+          onGoToDesign={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-hw-map-dock')).toBeTruthy();
+    expect(queryByTestId('ide-hw-proof-dock')).toBeNull();
+    expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Add boundary I/O in Design first');
+    expect(getByTestId('ide-hw-map-dock').textContent).not.toContain('0 left');
+    expect(getByTestId('ide-hw-map-empty').textContent).toContain('Add inputs and outputs in Design');
+  });
+
+  it('treats combinational projects as timing-ready when no control signal is required', () => {
+    const { getAllByTestId, getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Combinational Mapping"
+          expectedBehavior="LED0 follows SW0."
+          mappingRows={[
+            { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true },
+            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={2}
+          health={makeHealth({
+            dirtySinceVerify: true,
+            dirtySinceExport: true,
+          })}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
+
+    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Combinational');
+    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Mapped');
+    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Complete');
   });
 
   it('does not claim clock is mapped when a required clock row is still missing a pin', () => {
@@ -407,6 +468,37 @@ describe('HardwareSurface readiness', () => {
     expect(clockGroup?.textContent).toContain('phase_driver');
   });
 
+  it('keeps map mode blocked when export reports required unmapped ports', () => {
+    const { getAllByTestId, getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Export mapping gap"
+          expectedBehavior="Map all required ports before handoff."
+          mappingRows={[
+            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true },
+            { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true },
+            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
+          ]}
+          missingRequiredPortsFromExport={1}
+          expectedIoRows={[]}
+          vectorsCount={2}
+          health={makeHealth({
+            dirtySinceVerify: true,
+            dirtySinceExport: true,
+          })}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
+
+    expect(getByTestId('ide-hw-map-dock').textContent).toContain('1 left');
+    expect(getByTestId('ide-hardware-map-export-gap').textContent).toContain('required port');
+  });
+
   it('points students to Export first when hardware is blocked before a current bundle exists', () => {
     const { getAllByTestId } = render(
       <BoardSignalProvider>
@@ -435,8 +527,8 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getAllByTestId('ide-hardware-blocked-hero').at(-1)?.textContent).toContain('Build the current bundle first');
-    expect(getAllByTestId('ide-hardware-blocked-hero').at(-1)?.textContent).toContain('Build the current bundle in Export');
+    expect(getAllByTestId('ide-hardware-command-strip').at(-1)?.textContent).toContain('Build the current bundle first');
+    expect(getAllByTestId('ide-hardware-command-strip').at(-1)?.textContent).toContain('Build the current bundle in Export');
     expect(getAllByTestId('ide-hardware-blocked-primary').at(-1)?.textContent).toContain('Build Current Bundle');
     expect(getAllByTestId('ide-hardware-blocked-secondary').at(-1)?.textContent).toContain('Open Design');
   });

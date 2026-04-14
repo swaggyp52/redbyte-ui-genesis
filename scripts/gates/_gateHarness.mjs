@@ -49,6 +49,38 @@ export async function loadStarterProject(page, options = {}) {
   );
 }
 
+export async function ensureVerifyVectorsReady(page) {
+  const hasExistingVectors = await page
+    .locator('[data-testid="ide-verify-vectors-table"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  if (hasExistingVectors) return 'existing';
+
+  const runBar = page.locator('[data-testid="ide-verify-workstation-run-bar"]').first();
+  const runBarVisible = await runBar.isVisible().catch(() => false);
+  const runBarText = runBarVisible ? ((await runBar.textContent()) ?? '').trim() : '';
+  if (/vector/i.test(runBarText)) return 'existing';
+
+  const selectors = [
+    '[data-testid="ide-verify-generate-basic-vectors"]',
+    '[data-testid="ide-verify-generate-basic-vectors-footer"]',
+    '[data-testid="ide-verify-generate-all-combos"]',
+    '[data-testid="ide-verify-guided-clock-pattern"]',
+    '[data-testid="ide-verify-trace-generate-basics"]',
+  ];
+  for (const selector of selectors) {
+    const button = page.locator(selector).first();
+    const isVisible = await button.isVisible().catch(() => false);
+    if (isVisible) {
+      await button.click();
+      return 'generated';
+    }
+  }
+
+  throw new Error('verify had neither a visible generate-basics action nor an existing ready-vector state');
+}
+
 export async function runIdeGate(name, runScenario) {
   let browser;
   let context;

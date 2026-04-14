@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { RBProject } from '../../../export/projectFormat';
 import { getIdeExampleById } from '../examplesCatalog';
 import { validateArtifactConsistency } from '../../../fpga/boards/basys3/basys3ExportService';
+import { buildVhdlTopLevelBindings } from '../../../fpga/boards/basys3/basys3Bundle';
 import { buildExportViewModel } from '../viewmodels/buildExportViewModel';
 import type { VerifyScenario } from '../verifyScenario';
+import { netlistFromCircuit } from '../../../export/netlistExport';
+import { vhdlFromNetlist } from '../../../export/vhdlExport';
 
 function createExportFixture(vectorStyle: 'normalized-label' | 'node-id' = 'normalized-label'): RBProject {
   const vectors =
@@ -102,6 +105,31 @@ function createProjectFromExample(exampleId: string): RBProject {
     throw new Error(`Missing example fixture: ${exampleId}`);
   }
 
+  const ioMapping = {
+    inputs: example.ioRows
+      .filter((row) => row.direction === 'in')
+      .map((row) => ({
+        id: row.id,
+        nodeId: row.nodeId,
+        port: row.port,
+        label: row.label,
+        pin: row.pin,
+      })),
+    outputs: example.ioRows
+      .filter((row) => row.direction === 'out')
+      .map((row) => ({
+        id: row.id,
+        nodeId: row.nodeId,
+        port: row.port,
+        label: row.label,
+        pin: row.pin,
+      })),
+  };
+  const hdlText = vhdlFromNetlist(netlistFromCircuit(example.circuit), {
+    entityName: 'top',
+    ...buildVhdlTopLevelBindings(ioMapping),
+  }).vhd;
+
   return {
     kind: 'rb-project',
     version: 1,
@@ -117,25 +145,16 @@ function createProjectFromExample(exampleId: string): RBProject {
         to: typeof connection.to === 'string' ? connection.to : { ...connection.to },
       })),
     },
-    ioMapping: {
-      inputs: example.ioRows
-        .filter((row) => row.direction === 'in')
-        .map((row) => ({
-          id: row.id,
-          nodeId: row.nodeId,
-          port: row.port,
-          label: row.label,
-          pin: row.pin,
-        })),
-      outputs: example.ioRows
-        .filter((row) => row.direction === 'out')
-        .map((row) => ({
-          id: row.id,
-          nodeId: row.nodeId,
-          port: row.port,
-          label: row.label,
-          pin: row.pin,
-        })),
+    ioMapping,
+    hdl: {
+      top: 'top',
+      sources: [
+        {
+          path: 'top.vhd',
+          language: 'vhdl',
+          text: hdlText,
+        },
+      ],
     },
     vectors: example.vectors.map((vector) => ({
       tick: vector.tick,
@@ -586,6 +605,14 @@ describe('buildExportViewModel canonical naming', () => {
     const testbenchVhd = getArtifactContent(project, 'testbench.vhd');
 
     expect(validateArtifactConsistency(topVhd, testbenchVhd)).toEqual([]);
+  });
+
+  it('treats sanitized mapped labels as satisfying required export ports', () => {
+    const viewModel = buildExportViewModel(createProjectFromExample('two-bit-counter'));
+
+    expect(viewModel.status).toBe('ok');
+    expect(viewModel.errors.some((error) => /rst_btnc/i.test(error.message))).toBe(false);
+    expect(viewModel.pinTable.find((row) => row.port === 'RST')?.status).toBe('mapped');
   });
 
   it('suppresses projection-only HDL/XDC mismatch warnings for live Signal Tour export', () => {

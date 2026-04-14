@@ -419,7 +419,7 @@ describe('ExportSurface trust clarity', () => {
       />
     );
 
-    expect(getByTestId('ide-export-readiness-design').textContent).toContain('Design: incomplete');
+    expect(getByTestId('ide-export-readiness-design').textContent).toContain('Design incomplete');
     expect(getByTestId('ide-export-trust-banner').textContent).toContain('BLOCKED');
   });
 

@@ -147,6 +147,7 @@ describe('statusGates: stale/trace/real-fail truth discrimination (slice 29)', (
  */
 
 import { describe, expect, it } from 'vitest';
+import { LAB_STARTERS } from '../apps/ide/labStarters';
 
 // ─── Type mirrors ──────────────────────────────────────────────────────────────
 
@@ -427,6 +428,29 @@ describe('sequential starter vectors — clock transitions', () => {
     const hasLow = clkValues.some((v) => v === 0);
     expect(hasHigh).toBe(true);
     expect(hasLow).toBe(true);
+  });
+});
+
+describe('Lab 8 starter vectors — sequential readiness', () => {
+  const starter = LAB_STARTERS.find((entry) => entry.id === 'lab8-security-lock-fsm')?.example;
+  const vectors = (starter?.vectors ?? []) as StarterVector[];
+
+  it('preloads starter vectors for the Lab 8 FSM instead of leaving Verify empty', () => {
+    expect(starter).toBeDefined();
+    expect(vectors.length).toBeGreaterThan(0);
+  });
+
+  it('includes ENTER clock transitions and RESET deassertion in the starter trace', () => {
+    expect(hasClockTransitions(vectors, 'sw_enter')).toBe(true);
+    expect(hasResetDeassert(vectors, 'sw_reset')).toBe(true);
+  });
+
+  it('keeps the unlock expectation only at the end of the valid sequence', () => {
+    const unlockTicks = (starter?.vectors ?? [])
+      .filter((vector) => (vector.expected?.led_lock ?? 0) === 1)
+      .map((vector) => vector.tick);
+
+    expect(unlockTicks.length).toBeGreaterThan(0);
   });
 });
 

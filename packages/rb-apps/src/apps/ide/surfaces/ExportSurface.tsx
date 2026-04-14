@@ -23,6 +23,8 @@ import { deriveVerifySchedule } from '../../../fpga/boards/basys3/verifySchedule
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import {
   buildExportViewModel,
+  buildLiveIoNodeLabelIndex,
+  resolveMappingPortName,
   type ExportDiagnosticSeverity,
   type ExportDiagnosticView,
   type ExportArtifactView,
@@ -219,11 +221,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     if (hasExternalMappingAuthority) {
       // External authority mode reads directly from project mapping state.
       setPinDrafts({});
+      setInvalidPins(new Set());
     } else {
       // Standalone mode keeps local drafts so preview updates without parent wiring.
       setPinDrafts(nextOverrides);
+      setInvalidPins(buildInvalidPinSet(nextOverrides, editablePortKeys));
     }
-    setInvalidPins(buildInvalidPinSet(nextOverrides, editablePortKeys));
   }, [baseViewModel.pinTable, editablePortKeys, hasExternalMappingAuthority]);
 
   useEffect(() => {
@@ -711,11 +714,19 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     'vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log';
   const projectDownloadLabel = isRebuilding
     ? 'Building…'
+    : handoffTruth.primaryCtaIntent === 'build-current-bundle'
+      ? 'Build Current Bundle'
+      : handoffTruth.primaryCtaIntent === 're-export-current-bundle'
+        ? 'Re-export Current Bundle'
     : downloadDone && lastDownloadKind === 'project'
       ? 'Re-download'
       : 'Download Vivado Project (Open Project)';
   const projectDownloadCompactLabel = isRebuilding
     ? 'Building…'
+    : handoffTruth.primaryCtaIntent === 'build-current-bundle'
+      ? 'Build Current Bundle'
+      : handoffTruth.primaryCtaIntent === 're-export-current-bundle'
+        ? 'Re-export Current Bundle'
     : downloadDone && lastDownloadKind === 'project'
       ? 'Re-download'
       : isStaleButPassBefore
@@ -1579,10 +1590,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <SummaryStat label="Top Module" value={topModule} mono />
               <SummaryStat label="Mapped Pins" value={`${mappedCount}/${viewModel.pinTable.length}`} />
               <SummaryStat label="Artifacts" value={`${readyArtifactCount}/${viewModel.artifacts.length}`} />
-              <SummaryStat label="Inputs" value={`${designSummary.inputs}`} />
-              <SummaryStat label="Outputs" value={`${designSummary.outputs}`} />
-              <SummaryStat label="Gates" value={`${designSummary.gates}`} />
-              <SummaryStat label="Stateful" value={`${designSummary.stateful}`} />
             </div>
           </section>
           <section className="ide-export-trust-banner" data-testid="ide-export-trust-banner">
@@ -1596,19 +1603,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             ) : handoffTruth.severity === 'advisory' ? (
               <div className="ide-export-trust-row ide-export-trust-row--available">
                 <div className="ide-export-trust-header">
-                  <IdeStatusPill tone="warn">
-                    {isIncompleteMappingQualified
-                      ? 'NEEDS REVIEW'
-                      : isVerifyStale
-                        ? 'NEEDS REVIEW'
-                      : isTraceOnly
-                        ? 'NEEDS REVIEW'
-                      : isStarterScenarioFail
-                        ? 'NEEDS REVIEW'
-                      : isNoRunYet
-                          ? 'NEEDS REVIEW'
-                          : 'NEEDS REVIEW'}
-                  </IdeStatusPill>
+                  <IdeStatusPill tone="warn">NEEDS REVIEW</IdeStatusPill>
                 </div>
                 <div className="ide-export-trust-body">
                   <p className="ide-export-trust-reason" data-testid="ide-export-trust-reason">
@@ -1621,7 +1616,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 {trustAction && (
                   <div className="ide-inline-actions">
                     <IdeButton tone="secondary" onClick={trustAction.onClick} testId={trustAction.testId}>
-                      {handoffTruth.primaryCtaLabel} {'->'}
+                      {handoffTruth.primaryCtaLabel} →
                     </IdeButton>
                   </div>
                 )}
@@ -1630,50 +1625,29 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <div className="ide-export-trust-row ide-export-trust-row--blocked">
                 <div className="ide-export-trust-header">
                   <IdeStatusPill tone="error">BLOCKED</IdeStatusPill>
-                </div>
-                <div className="ide-export-readiness-strip" data-testid="ide-export-readiness-strip">
-                  <span
-                    className={`ide-export-readiness-axis ${resolvedWorkflowAuthority.designReady ? 'ide-export-readiness-axis--ok' : 'ide-export-readiness-axis--fail'}`}
-                    data-testid="ide-export-readiness-design"
-                  >
-                    {resolvedWorkflowAuthority.designReady ? '✓ Design: valid' : '✗ Design: incomplete'}
-                  </span>
+                  <div className="ide-export-readiness-strip" data-testid="ide-export-readiness-strip">
+                    <span
+                      className={`ide-export-readiness-axis ${resolvedWorkflowAuthority.designReady ? 'ide-export-readiness-axis--ok' : 'ide-export-readiness-axis--fail'}`}
+                      data-testid="ide-export-readiness-design"
+                    >
+                      {resolvedWorkflowAuthority.designReady ? '✓ Design valid' : '✗ Design incomplete'}
+                    </span>
+                    {unmappedRequiredPorts.length > 0 && (
+                      <span className="ide-export-readiness-axis ide-export-readiness-axis--fail" data-testid="ide-export-readiness-mapping">
+                        ✗ {unmappedRequiredPorts.length} pin{unmappedRequiredPorts.length !== 1 ? 's' : ''} unmapped
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="ide-export-trust-body">
                   <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
                     {handoffTruth.message}
                   </p>
-                  {(unmappedRequiredPorts.length > 0 || viewModel.errors.length > 0) && (
-                    <ul className="ide-export-trust-blocker-list" data-testid="ide-export-trust-blocker-list">
-                      {unmappedRequiredPorts.length > 0 && (
-                        <li>
-                          {unmappedRequiredPorts.map((r) => r.port).join(', ')}{' '}
-                          {unmappedRequiredPorts.length === 1 ? 'is' : 'are'} not mapped
-                        </li>
-                      )}
-                      {viewModel.errors
-                        .filter((e) => e.code !== 'RBEX1001' && e.code !== 'RBEX1002')
-                        .slice(0, 2)
-                        .map((e) => (
-                          <li key={e.id}>{e.title}</li>
-                        ))}
-                    </ul>
-                  )}
                 </div>
                 <div className="ide-inline-actions">
                   {trustAction && (
                     <IdeButton tone="secondary" onClick={trustAction.onClick} testId={trustAction.testId}>
-                      {handoffTruth.primaryCtaLabel} {'->'}
-                    </IdeButton>
-                  )}
-                  {false && onGoToHardware && unmappedRequiredPorts.length > 0 && (
-                    <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-export-trust-go-hardware">
-                      Open Map Pins →
-                    </IdeButton>
-                  )}
-                  {false && onOpenVerify && (
-                    <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-trust-go-verify">
-                      Open Verify →
+                      {handoffTruth.primaryCtaLabel} →
                     </IdeButton>
                   )}
                 </div>
@@ -1686,10 +1660,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
               <section className="ide-export-section" data-testid="ide-export-build-output">
                 <header className="ide-export-section-header">
-                  <h3>{hasBlockingErrors ? 'Blockers' : hasVerifyEvidenceWarning ? 'Advisories' : 'Checks'}</h3>
-                  <span className="ide-export-section-meta">
-                    {visibleDiagnosticsList.length} diagnostics
-                  </span>
+                  <h3>Readiness</h3>
+                  {visibleDiagnosticsList.length > 0 && (
+                    <span className="ide-export-section-meta">
+                      {visibleDiagnosticsList.filter(d => d.severity === 'error').length > 0
+                        ? `${visibleDiagnosticsList.filter(d => d.severity === 'error').length} blocking`
+                        : `${visibleDiagnosticsList.length} advisory`}
+                    </span>
+                  )}
                 </header>
 
                 {hasBlockingErrors && requiredMappedCount < requiredCount && onGoToHardware && (
@@ -2419,11 +2397,12 @@ function createPinOverrideMap(
 
 function collectMappedProjectPortKeys(project: RBProject): Set<string> {
   const keys = new Set<string>();
+  const liveIoNodeLabels = buildLiveIoNodeLabelIndex(project);
   for (const entry of project.ioMapping?.inputs ?? []) {
-    keys.add(toMappingEntryKey(entry));
+    keys.add(toMappingEntryKey(entry, liveIoNodeLabels));
   }
   for (const entry of project.ioMapping?.outputs ?? []) {
-    keys.add(toMappingEntryKey(entry));
+    keys.add(toMappingEntryKey(entry, liveIoNodeLabels));
   }
   return keys;
 }
@@ -2433,10 +2412,11 @@ function applyPinOverridesToProject(
   overrides: Record<string, string>
 ): RBProject {
   if (!project.ioMapping) return project;
+  const liveIoNodeLabels = buildLiveIoNodeLabelIndex(project);
 
   const applyEntries = (entries: NonNullable<RBProject['ioMapping']>['inputs']) =>
     entries.map((entry) => {
-      const override = (overrides[toMappingEntryKey(entry)] ?? entry.pin ?? '').trim();
+      const override = (overrides[toMappingEntryKey(entry, liveIoNodeLabels)] ?? entry.pin ?? '').trim();
       return {
         ...entry,
         pin: override.length > 0 ? override : undefined,
@@ -2577,12 +2557,8 @@ function toMappingEntryKey(entry: {
   nodeId: string;
   port: string;
   label?: string;
-}): string {
-  const label = (entry.label ?? '').trim();
-  if (label.length > 0) return toPortKey(label);
-  const id = (entry.id ?? '').trim();
-  if (id.length > 0) return toPortKey(id);
-  return toPortKey(`${entry.nodeId}.${entry.port}`);
+}, liveIoNodeLabels?: ReadonlyMap<string, string>): string {
+  return toPortKey(resolveMappingPortName(entry, liveIoNodeLabels));
 }
 
 function statusTone(status: ExportPinStatus): 'ok' | 'error' | 'warn' {

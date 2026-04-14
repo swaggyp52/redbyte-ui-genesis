@@ -178,7 +178,7 @@ describe('ExportSurface workstation redesign', () => {
 
     expect(getByTestId('ide-export-summary-card').textContent).toContain('Engineering handoff');
     expect(getByTestId('ide-export-design-summary').textContent).toContain('Mapped Pins');
-    expect(getByTestId('ide-export-design-summary').textContent).toContain('Gates');
+    expect(getByTestId('ide-export-design-summary').textContent).toContain('Artifacts');
 
     expect(getByTestId('ide-export-artifact-group-hdl')).toBeTruthy();
     expect(getByTestId('ide-export-artifact-group-constraints')).toBeTruthy();
@@ -212,7 +212,7 @@ describe('ExportSurface workstation redesign', () => {
     expect(getByTestId('ide-export-unverified-callout').textContent).toContain(
       'Open Verify when you want to compare expected outputs against the live design'
     );
-    expect(getByText('Advisories')).toBeTruthy();
+    expect(getByText('Readiness')).toBeTruthy();
     expect(queryByTestId('ide-export-vivado-blocked-callout')).toBeNull();
   });
 
@@ -339,8 +339,6 @@ describe('ExportSurface workstation redesign', () => {
       <ExportSurface project={buildRawFourNandLatchProject()} determinismHash="ide-hash" />
     );
 
-    expect(getByTestId('ide-export-design-summary').textContent).toContain('Stateful');
-    expect(getByTestId('ide-export-design-summary').textContent).toContain('1');
     expect(getByTestId('ide-export-gate-stack').textContent).toContain('Latch control');
   });
 });

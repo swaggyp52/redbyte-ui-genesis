@@ -23,7 +23,7 @@ import {
   normalizeBasys3PinAlias,
   resolveBasys3PackagePin,
 } from './basys3Pins';
-import { buildBasys3ExportModel } from './basys3ExportModel';
+import { buildBasys3ExportModel, buildTopLevelBindingRefs } from './basys3ExportModel';
 
 export interface Basys3ExportError {
   type: 'validation' | 'constraint' | 'logic' | 'unknown';
@@ -97,8 +97,8 @@ function validateProjectForBasys3(project: RBProject): Basys3ExportError[] {
   }
 
   const authority: ExportAuthorityContext = buildBasys3ExportModel(project.circuit, project.ioMapping);
-  const inputMappings = normalizeMappings(project, 'input');
-  const outputMappings = normalizeMappings(project, 'output');
+  const inputMappings = normalizeMappings(project, 'input', authority.ir);
+  const outputMappings = normalizeMappings(project, 'output', authority.ir);
   const requiredPorts = deriveRequiredPorts(project, authority.ir);
   const matchedMappingKeys = new Set<string>();
 
@@ -619,10 +619,19 @@ function validateTestbenchSignalTargets(
   return issues;
 }
 
-function normalizeMappings(project: RBProject, direction: MappingDirection): MappingRecord[] {
+function normalizeMappings(
+  project: RBProject,
+  direction: MappingDirection,
+  ir?: CircuitIR
+): MappingRecord[] {
   const entries = direction === 'input' ? project.ioMapping?.inputs ?? [] : project.ioMapping?.outputs ?? [];
+  const bindingRefs = project.ioMapping ? buildTopLevelBindingRefs(project.ioMapping, ir) : null;
+  const bindingRefByEntryId = new Map(
+    [...(bindingRefs?.inputRefs ?? []), ...(bindingRefs?.outputRefs ?? [])].map((ref) => [ref.entryId, ref] as const)
+  );
   return entries
     .map((entry) => {
+      const bindingRef = bindingRefByEntryId.get(entry.id);
       const canonicalName =
         (entry.label ?? '').trim() ||
         (entry.id ?? '').trim() ||
@@ -634,6 +643,9 @@ function normalizeMappings(project: RBProject, direction: MappingDirection): Map
         entry.nodeId ?? '',
         entry.port ?? '',
         `${entry.nodeId}_${entry.port}`,
+        bindingRef?.portName ?? '',
+        bindingRef?.signalRef ?? '',
+        bindingRef?.xdcRef ?? '',
       ];
       const aliases = Array.from(
         new Set(

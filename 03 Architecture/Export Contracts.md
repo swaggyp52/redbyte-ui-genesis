@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: export
-updated: 2026-04-13
+updated: 2026-04-14
 related:
   - "[[Connection Model]]"
   - "[[Hardware Surface]]"
@@ -10,6 +10,7 @@ related:
   - "[[BUG-011 Export Testbench Stable-ID Stimulus Drift]]"
   - "[[BUG-012 Basys3 Switch and Button Clock Buffer Inference]]"
   - "[[BUG-013 Basys3 Export Port Sanitizer Produced Vivado-Illegal Identifiers]]"
+  - "[[BUG-018 Hardware Export Mapping Authority Drift]]"
   - "[[RedByte Engineering Brain]]"
 ---
 
@@ -49,14 +50,17 @@ Export is the deterministic handoff surface.
   - canonical `nodeId_port` names
   - unique student-facing labels
   - Basys3 aliases or package-pin-derived aliases when the entity uses board-grouped ports such as `SW` or `LED`
+  - binding-ref-derived aliases (`portName`, `signalRef`, `xdcRef`) from the Basys3 export model
 
 ## Rules
 
 - There are only two valid testbench generation paths: runtime-backed and documented compatibility fallback.
 - Export may remain advisory when Verify is stale or missing, but structural artifact mismatches must block export.
 - Export must not become a second Verify workbench or a second pin-mapping editor. When upstream work is needed, explain it and route back to the owning surface.
+- The visible Export pin table is naming authority for row editability. Pin overrides and mapped-row detection must key from the same live row names the student sees, not stale saved labels.
 - Basys3 switch and button input ports must always emit `CLOCK_BUFFER_TYPE NONE`; only the real board clock input should remain clock-buffer eligible.
 - Duplicate student-facing labels are never authoritative lookup keys for HDL emission. Stable ids and node ids must survive label collisions.
+- Binding-ref-derived aliases must resolve to the same entity refs in validation and testbench generation, so sanitized names such as `RST_BTNC` remain equivalent to the live mapped row they came from.
 - Stimulus targets must resolve to declared testbench input signals.
 - Assertion targets must resolve to declared testbench output signals.
 - Artifact consistency validation must check both:
@@ -66,6 +70,7 @@ Export is the deterministic handoff surface.
 ## Hardware / Export Failure Truth
 
 - Hardware and Export must read the same dominant workflow condition from `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts`.
+- Shared readiness must treat required missing rows in Export pin-table authority as mapping-incomplete across Project, Map Pins, and Export, even when local required IO rows are pinned.
 - The shared dominant taxonomy is:
   - `BLOCKED`
   - `NEEDS REVIEW`

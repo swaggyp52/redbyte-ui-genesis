@@ -306,18 +306,6 @@ export const IdeApp: React.FC = () => {
     ]
   );
 
-  const projectHealth = useMemo(
-    () =>
-      deriveProjectHealth(projectHealthCore, {
-        hasCircuit: readiness.hasCircuit,
-        hasIoMapping: readiness.hasIoMapping,
-        hasVectors: readiness.hasVectors,
-        projectKind: readiness.projectKind,
-        verifyQualification: readiness.verifyQualification,
-      }),
-    [projectHealthCore, readiness.hasCircuit, readiness.hasIoMapping, readiness.hasVectors, readiness.projectKind, readiness.verifyQualification]
-  );
-
   const pendingExample = useMemo(
     () => (pendingExampleId ? getIdeExampleById(pendingExampleId) : undefined),
     [pendingExampleId]
@@ -1139,6 +1127,40 @@ export const IdeApp: React.FC = () => {
     () => buildExportViewModel(exportProject, verifyLastRun, activeScenario ?? undefined),
     [activeScenario, exportProject, verifyLastRun]
   );
+  const exportRequiredMappingGapCount = useMemo(
+    () =>
+      exportViewModel.pinTable.filter(
+        (row) => row.required && row.status === 'missing'
+      ).length,
+    [exportViewModel.pinTable]
+  );
+  const exportHasRequiredMappingGap = exportRequiredMappingGapCount > 0;
+  const effectiveReadiness = useMemo(
+    () => ({
+      ...readiness,
+      hasIoMapping: readiness.hasIoMapping && !exportHasRequiredMappingGap,
+      missingRequiredCount: readiness.missingRequiredCount + exportRequiredMappingGapCount,
+    }),
+    [exportHasRequiredMappingGap, exportRequiredMappingGapCount, readiness]
+  );
+  const projectHealth = useMemo(
+    () =>
+      deriveProjectHealth(projectHealthCore, {
+        hasCircuit: effectiveReadiness.hasCircuit,
+        hasIoMapping: effectiveReadiness.hasIoMapping,
+        hasVectors: effectiveReadiness.hasVectors,
+        projectKind: effectiveReadiness.projectKind,
+        verifyQualification: effectiveReadiness.verifyQualification,
+      }),
+    [
+      effectiveReadiness.hasCircuit,
+      effectiveReadiness.hasIoMapping,
+      effectiveReadiness.hasVectors,
+      effectiveReadiness.projectKind,
+      effectiveReadiness.verifyQualification,
+      projectHealthCore,
+    ]
+  );
   const hardwareExpectedIoRows = useMemo(
     () => extractExpectedIoRows(exportViewModel.artifacts),
     [exportViewModel.artifacts]
@@ -1257,11 +1279,11 @@ export const IdeApp: React.FC = () => {
       deriveProjectWorkflowAuthority({
         projectHealthCore,
         readiness: {
-          hasCircuit: readiness.hasCircuit,
-          hasIoMapping: readiness.hasIoMapping,
-          hasVectors: readiness.hasVectors,
-          projectKind: readiness.projectKind,
-          verifyQualification: readiness.verifyQualification,
+          hasCircuit: effectiveReadiness.hasCircuit,
+          hasIoMapping: effectiveReadiness.hasIoMapping,
+          hasVectors: effectiveReadiness.hasVectors,
+          projectKind: effectiveReadiness.projectKind,
+          verifyQualification: effectiveReadiness.verifyQualification,
         },
         verifyLastRun,
         verifyRunHistory,
@@ -1272,11 +1294,11 @@ export const IdeApp: React.FC = () => {
       currentVerifyProjectHash,
       exportViewModel.exportHash,
       projectHealthCore,
-      readiness.hasCircuit,
-      readiness.hasIoMapping,
-      readiness.hasVectors,
-      readiness.projectKind,
-      readiness.verifyQualification,
+      effectiveReadiness.hasCircuit,
+      effectiveReadiness.hasIoMapping,
+      effectiveReadiness.hasVectors,
+      effectiveReadiness.projectKind,
+      effectiveReadiness.verifyQualification,
       verifyLastRun,
       verifyRunHistory,
     ]
@@ -1442,7 +1464,7 @@ export const IdeApp: React.FC = () => {
               determinismHash={determinismHash}
               lastSavedAt={lastSavedAt}
               topModuleName={effectiveTopEntityName}
-              readiness={readiness}
+              readiness={effectiveReadiness}
               health={projectHealth}
               mappingRows={projectIoRows}
               simRunning={runtimeSim.running}
@@ -1678,6 +1700,7 @@ export const IdeApp: React.FC = () => {
               projectName={projectName}
               expectedBehavior={hardwareExpectedBehavior}
               mappingRows={projectIoRows}
+              missingRequiredPortsFromExport={exportRequiredMappingGapCount}
               expectedIoRows={hardwareExpectedIoRows}
               vectorsCount={authoritativeProjectVectors.length}
               health={projectHealth}
@@ -1702,7 +1725,7 @@ export const IdeApp: React.FC = () => {
               project={exportProject}
               verifyResult={projectHealthCore.lastVerify}
               verifyLastRun={verifyLastRun}
-              designReady={readiness.hasCircuit && readiness.hasIoMapping}
+              designReady={effectiveReadiness.hasCircuit && effectiveReadiness.hasIoMapping}
               workflowAuthority={workflowAuthority}
               activeScenario={activeScenario ?? undefined}
               dirtySinceVerify={projectHealthCore.dirtySinceVerify}

@@ -14,6 +14,7 @@ import {
   type VerifyScheduleContract,
   type VerifySchedule,
 } from './verifySchedule';
+import { buildTopLevelBindingRefs } from './basys3ExportModel';
 
 interface SignalCatalog {
   inputs: string[];
@@ -173,6 +174,10 @@ function buildLabelToEntityRef(
     ...(project.ioMapping?.inputs ?? []).map((entry) => ({ ...entry, direction: 'in' as const })),
     ...(project.ioMapping?.outputs ?? []).map((entry) => ({ ...entry, direction: 'out' as const })),
   ];
+  const bindingRefs = project.ioMapping ? buildTopLevelBindingRefs(project.ioMapping) : null;
+  const bindingRefByEntryId = new Map(
+    [...(bindingRefs?.inputRefs ?? []), ...(bindingRefs?.outputRefs ?? [])].map((ref) => [ref.entryId, ref] as const)
+  );
 
   for (const entry of allEntries) {
     countLabelAlias(entry.label);
@@ -186,10 +191,14 @@ function buildLabelToEntityRef(
     for (const entry of entries) {
       const nodeLabel = nodeLabelsById.get(entry.nodeId ?? '');
       const basys3Alias = resolveBasys3AliasFromPin(entry.pin, direction);
+      const bindingRef = entry.id ? bindingRefByEntryId.get(entry.id) : undefined;
       const canonicalPortHint = entry.label?.trim()
         ? toVhdlIdentifier(entry.label.trim())
         : toVhdlIdentifier(`${entry.nodeId ?? ''}_${entry.port ?? ''}`);
       const ref =
+        resolveEntityRef(bindingRef?.signalRef) ??
+        resolveEntityRef(bindingRef?.xdcRef) ??
+        resolveEntityRef(bindingRef?.portName) ??
         resolveEntityRef(canonicalPortHint) ??
         resolveEntityRef(basys3Alias) ??
         resolveEntityRef(entry.pin) ??
@@ -198,6 +207,9 @@ function buildLabelToEntityRef(
       if (!ref) continue;
 
       registerAlias(ref, ref);
+      registerAlias(bindingRef?.signalRef, ref);
+      registerAlias(bindingRef?.xdcRef, ref);
+      registerAlias(bindingRef?.portName, ref);
       registerAlias(canonicalPortHint, ref);
       registerAlias(basys3Alias, ref);
       registerAlias(entry.pin, ref);

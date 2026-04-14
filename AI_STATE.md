@@ -1,5 +1,180 @@
 # AI State
 
+## Change Log 2026-04-14 (Hardware / Export mapping authority + blank/combinational Hardware truth)
+
+**Subsystem**: Hardware Map Pins surface / Export pin-table authority / Basys3 testbench alias resolution
+
+### Problem
+
+Live browser replay exposed one classroom-facing contradiction across blank, combinational, and sequential handoff flows:
+
+- blank/custom projects could open Hardware on a checklist-style state instead of a mapping-first surface, while still reporting an empty `0 left` style mapping summary
+- mapped starter flows could show all visible rows assigned while Export or Hardware still blocked on hidden required-port gaps
+- Export row editability could drift from the visible pin table, leaving rows like `EN` and `RST` rendered but disabled behind stale naming keys
+- sanitized labels such as `RST (BTNC)` could satisfy neither export-required port validation nor entity-based testbench target resolution, surfacing ghost blockers like `rst_btnc`
+
+### What changed
+
+- `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`
+  - extended mapping normalization to accept binding-ref-derived aliases from the Basys3 export model (`portName`, `signalRef`, `xdcRef`)
+  - export-required port validation now matches required rows against the same canonical alias family used by generated artifacts
+- `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`
+  - exported `buildLiveIoNodeLabelIndex(...)` and `resolveMappingPortName(...)` so Export uses the same visible-row naming authority as the live pin table
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - switched mapping-editability and pin-override keys to the live row naming authority instead of stale saved labels
+  - cleared invalid-pin draft state when external mapping authority owns the pins, closing the defensive review finding from the code-review pass
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - blank/custom Hardware now defaults to `Map Pins` mode with Design-first empty-state guidance when no boundary I/O rows exist
+  - combinational designs no longer fail timing-readiness just because no timing-control row is required
+  - map readiness now counts export-required missing ports in addition to local unmapped rows
+- `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts`
+  - aligned entity-based signal resolution with Basys3 binding refs so sanitized labels such as `RST (BTNC)` resolve back to the same exported entity refs used by `top.vhd` and `top.xdc`
+- tests
+  - added regressions for blank Hardware entry, combinational timing-readiness, sanitized-label export satisfaction, and Export row editability
+
+### Validation
+
+- targeted regression suite:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+  - result: PASS (`3` files, `30` tests)
+- editor diagnostics:
+  - `get_errors` on touched Hardware / Export / Basys3 files
+  - result: no errors found
+- code review:
+  - `code-reviewer` run on the mapping-authority fix files
+  - result: no blocking issues; one defensive invalid-pin cleanup was applied and re-verified
+- live browser replay (`http://127.0.0.1:5173/os/`):
+  - blank/custom project: Hardware opens on `Map Pins` with `Add boundary I/O in Design first` and `Nothing to map yet`
+  - `Signal Tour: Switches → LEDs`: Hardware shows `Mapping current` and blocks only on the missing current export bundle, not on phantom combinational mapping gaps
+  - `2-Bit Up Counter`: Export shows `Mapped I/O 5/5`, no `rst_btnc` / `RBEX1001` ghost blocker, and `EN` / `RST` rows stay editable
+
+### Release impact
+
+- removes the hidden-row / ghost-port contradiction that previously trapped students between Project, Hardware, and Export
+- makes blank/custom Hardware entry truthful and actionable instead of dumping students into premature program/checklist framing
+- keeps sanitized export names and live visible row names on one shared authority chain across Hardware, Export, and generated testbench artifacts
+
+## Change Log 2026-04-14 (Lab 8 starter readiness + manual-clock Basys3 export timing)
+
+**Subsystem**: Lab 8 starter workflow / Verify sequential vectors / Basys3 export constraints
+
+### Problem
+
+Lab 8 still had two classroom-facing gaps even after the FSM proof path was green:
+
+- the IDE starter shipped with an empty Verify table, so students could not run the official invalid/valid traces from the normal Verify surface
+- manual switch-clocked sequential exports correctly avoided `create_clock` on `SW5`, but they still left Vivado timing analysis to treat those switch/button paths as ordinary timed sources
+- the source JSON starter still used symbolic pin aliases instead of normalized Basys3 package pins
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/labStarters.ts`
+  - added pulse-expanded Lab 8 starter vectors with reset bring-up rows plus explicit `ENTER` `0,1,0` pulses for each serial bit
+  - aligned `LOCK` expectations with the proven FSM timing so unlock appears only after the final pulse completes
+- `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts`
+  - updated Basys3 signal grouping to classify both aliases and raw package pins
+  - added `set_false_path -from [get_ports ...]` emission for switch/button inputs when exporting sequential-latch designs
+- `packages/rb-apps/src/examples/23_lab8-fsm-lock-starter-basys3.json`
+  - normalized Lab 8 `ioMapping` pins from aliases (`SW5`, `LED1`) to package pins (`V15`, `E19`)
+- tests
+  - extended `lab8-export-validation.test.ts` to cover false-path emission, normalized-package-pin classification, and starter-vector compatibility with the IDE deterministic verify engine
+  - extended `scenario-sequential-trust-gate.test.ts` to require non-empty Lab 8 starter vectors with ENTER transitions and reset deassertion
+
+### Validation
+
+- targeted Lab 8 readiness suite:
+  - `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab8-export-validation.test.ts packages/rb-apps/src/__tests__/scenario-sequential-trust-gate.test.ts`
+  - result: PASS (`2` files, `66` tests)
+- editor diagnostics:
+  - `get_errors` on touched Lab 8 code/test files
+  - result: no errors found
+- code review:
+  - `code-reviewer` run on the Lab 8 patch
+  - one raw-package-pin risk note was converted into explicit regression coverage; no unresolved blocking issue remains in the verified path
+
+## Change Log 2026-04-13 (Gate contract selector + compare-mode alignment)
+
+**Subsystem**: IDE gate scripts (`student-loop`, `export-e2e`)
+
+### Problem
+
+Readiness contract runs were failing for non-product regressions:
+
+- `ide-student-loop-contract` still required removed/stale Verify/Design selectors (`ide-guided-strip`, `ide-verify-banner`, `ide-design-live-input-*`)
+- both gates could force `OBSERVATION ONLY` by eagerly clicking generate actions, which can overwrite starter vectors that already include expected outputs
+- `ide-export-e2e-contract` still looked for legacy oracle selectors and did not actively switch Verify into Compare mode before asserting `ASSERTIONS MATCH`
+
+### What changed
+
+- `scripts/gates/ide-student-loop-contract.mjs`
+  - removed stale guided-strip/banner selector requirements and replaced with current stable surface probes
+  - now treats terminal observation states as valid completed simulation evidence for student-loop contract
+  - preserves existing vectors before generating new ones
+  - uses deterministic starter selection (`ide-project-landing-example-signal-tour`)
+- `scripts/gates/ide-export-e2e-contract.mjs`
+  - preserves existing vectors before generating new ones
+  - added Compare-mode enable step via `ide-vcb-mode-compare`
+  - added oracle/check capture flow supporting current controls (`ide-vcb-save-expected`, `ide-verify-run-proof-oracle`, stale recapture)
+  - uses deterministic starter selection (`ide-project-landing-example-signal-tour`)
+
+### Validation
+
+- `pnpm -w exec node scripts/gates/ide-student-loop-contract.mjs`
+  - result: PASS
+- `pnpm -w exec node scripts/gates/ide-export-e2e-contract.mjs`
+  - result: PASS
+- full targeted readiness batch:
+  - `pnpm -w exec node scripts/gates/ide-student-loop-contract.mjs`
+  - `pnpm -w exec node scripts/gates/ide-hardware-checklist-contract.mjs`
+  - `pnpm -w exec node scripts/gates/ide-export-e2e-contract.mjs`
+  - result: PASS (all 3)
+
+## Change Log 2026-04-13 (Cross-surface mapping authority alignment for Hardware/Export)
+
+**Subsystem**: Project readiness authority / Hardware Map Pins surface / Export handoff trust
+
+### Problem
+
+Live workflow replay exposed a contradiction that trapped users in the handoff loop:
+
+- `Map Pins` could show mapping as ready while `Export` simultaneously blocked on required unmapped top-level ports (`RBEX1001`)
+- Project/left-rail readiness was still derived from required `projectIoRows` only, so cross-surface status could diverge from Export's required-port truth
+- Hardware map-mode status could therefore under-report missing requirements and suggest progression even when Export was correctly blocked
+
+### What changed
+
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+  - introduced export-derived required mapping gap counting from `buildExportViewModel(...).pinTable`
+  - added `effectiveReadiness` that treats mapping as incomplete when Export reports required missing ports
+  - re-based workflow authority and Project readiness rendering onto `effectiveReadiness`
+  - now passes export-required missing-port count into Hardware surface (`missingRequiredPortsFromExport`)
+  - export `designReady` now uses the same `effectiveReadiness` mapping contract
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+  - added `missingRequiredPortsFromExport` prop
+  - map readiness now includes unresolved required export ports, not only local mapping-row gaps
+  - map dock missing counters now reflect combined unresolved requirements
+  - added explicit map-mode warning callout when required top-level ports are not yet bound in Project/Design mapping
+- `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+  - added regression coverage proving map mode remains blocked when Export reports required missing ports
+
+### Validation
+
+- focused suites:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx`
+  - result: PASS (`2` files, `16` tests)
+- cross-surface continuity suites:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx`
+  - result: PASS (`2` files, `29` tests)
+- live browser walkthrough (`http://localhost:5173/os/`):
+  - verified Project -> Design -> Verify -> Hardware -> Export navigation path and blocker messaging
+  - confirmed prior contradiction pattern and aligned readiness ownership in code so map/export status shares one required-port contract
+
+### Release impact
+
+- removes a key workflow contradiction in the student handoff path by unifying mapping truth between Project/Hardware and Export
+- makes `Map Pins` readiness reflect Export-required port completeness instead of local row completeness alone
+- improves next-action trust when Export blocks on required unmapped top-level ports
+
 ## Change Log 2026-04-13 (Shared shell compact-row theft + hidden-dock width fix + Design inspector collapse wiring)
 
 **Subsystem**: Shared workbench shell / compact layout geometry / Design surface inspector

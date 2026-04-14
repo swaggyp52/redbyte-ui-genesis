@@ -28950,3 +28950,154 @@ button:disabled,
 }
 
 /* END 2026-04-13 quality pass */
+
+/* ════════════════════════════════════════════════════════════════
+   2026-04-13 Hardware + Export UX finalization pass
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Map mode: row badge system ─────────────────────────────────── */
+.ide-hw-map-row-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--rb-space-1);
+  flex-shrink: 0;
+}
+
+.ide-hw-map-row-badge {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.ide-hw-map-row-badge--missing {
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--rb-error, #f87171);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.ide-hw-map-row-badge--ok {
+  background: rgba(74, 222, 128, 0.12);
+  color: var(--rb-success, #4ade80);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+}
+
+.ide-hw-map-row-badge--optional {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--rb-text-subtle);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Required-missing rows get a subtle left accent */
+.ide-hw-map-row.is-required-missing {
+  border-left: 2px solid rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.04);
+}
+
+.ide-hw-map-row.is-required-missing:hover {
+  background: rgba(248, 113, 113, 0.08);
+}
+
+/* Optional rows are slightly dimmed */
+.ide-hw-map-row.is-optional {
+  opacity: 0.75;
+}
+
+.ide-hw-map-row.is-optional:hover {
+  opacity: 1;
+}
+
+/* ── Map dock: progress rows ─────────────────────────────────────── */
+.ide-hw-map-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rb-space-1);
+  padding: var(--rb-space-2) 0;
+}
+
+.ide-hw-map-progress-row {
+  display: flex;
+  align-items: center;
+  gap: var(--rb-space-2);
+  font-size: 11px;
+}
+
+.ide-hw-map-progress-row > span:nth-child(2) {
+  flex: 1;
+  color: var(--rb-text);
+}
+
+.ide-hw-map-check {
+  width: 14px;
+  text-align: center;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.ide-hw-map-check.is-ok {
+  color: var(--rb-success, #4ade80);
+}
+
+.ide-hw-map-check.is-missing {
+  color: var(--rb-text-subtle);
+}
+
+/* ── Mode tabs: tighter, with completion state colors ────────────── */
+[data-ide-mode-marker='hardware'] .ide-hw-mode-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: var(--rb-space-2) 0 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: var(--rb-space-2);
+}
+
+[data-ide-mode-marker='hardware'] .ide-hw-mode-toggle .ide-button-ghost {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+[data-ide-mode-marker='hardware'] .ide-hw-mode-toggle .ide-button-ghost:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-ide-mode-marker='hardware'] .ide-hw-mode-toggle .ide-button-primary {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+/* ── Export trust banner: blocked case layout ────────────────────── */
+.ide-export-trust-row--blocked .ide-export-trust-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rb-space-2);
+  margin-bottom: var(--rb-space-2);
+}
+
+.ide-export-readiness-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rb-space-2);
+  margin-top: var(--rb-space-1);
+}
+
+/* ── Export readiness section header: meta chip ─────────────────── */
+[data-ide-mode-marker='export'] .ide-export-section-meta {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--rb-text-subtle);
+}
+
+/* END 2026-04-13 hardware+export finalization */

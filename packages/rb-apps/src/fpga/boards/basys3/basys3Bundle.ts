@@ -5,7 +5,17 @@ import type { IoMapping, IoMappingEntry } from '@redbyte/rb-utils';
 import { compareCodepoint } from '../../../export/codepointSort';
 import type { Netlist } from '../../../export/netlistExport';
 import { vhdlFromNetlist } from '../../../export/vhdlExport';
-import { BASYS3_ALLOWED_PACKAGE_PINS, resolveBasys3PackagePin } from './basys3Pins';
+import {
+  BASYS3_ALLOWED_PACKAGE_PINS,
+  BASYS3_ANODE_PINS,
+  BASYS3_BUTTON_PINS,
+  BASYS3_CLOCK_PIN,
+  BASYS3_DP_PIN,
+  BASYS3_LED_PINS,
+  BASYS3_SEGMENT_PINS,
+  BASYS3_SWITCH_PINS,
+  resolveBasys3PackagePin,
+} from './basys3Pins';
 import { buildBasys3ExportModel } from './basys3ExportModel';
 import { lintBasys3ProjectPorts } from './portLint';
 
@@ -63,21 +73,21 @@ const XDC_GROUP_ORDER = [
   'Other',
 ] as const;
 
+const BASYS3_SWITCH_PIN_SET = new Set<string>(BASYS3_SWITCH_PINS);
+const BASYS3_BUTTON_PIN_SET = new Set<string>(BASYS3_BUTTON_PINS);
+const BASYS3_LED_PIN_SET = new Set<string>(BASYS3_LED_PINS);
+const BASYS3_SEGMENT_PIN_SET = new Set<string>(BASYS3_SEGMENT_PINS);
+const BASYS3_ANODE_PIN_SET = new Set<string>(BASYS3_ANODE_PINS);
+
 function detectSignalGroup(entry: IoMappingEntry): string {
-  const alias = (entry.pin ?? '').toUpperCase().trim();
-  if (!alias) return 'Other';
-  if (alias === 'CLK' || alias === 'CLK100MHZ' || alias === 'W5') return 'Clock';
-  if (alias.startsWith('SW')) return 'Switches';
-  if (alias.startsWith('BTN')) return 'Buttons';
-  if (alias.startsWith('LD') || alias.startsWith('LED')) return 'LEDs';
-  if (alias.startsWith('AN')) return '7-Segment Anodes';
-  if (
-    alias.startsWith('SEG') ||
-    alias === 'DP' ||
-    (alias.length === 2 && alias[0] === 'C' && 'ABCDEFG'.includes(alias[1] ?? ''))
-  ) {
-    return '7-Segment Cathodes';
-  }
+  const packagePin = resolveBasys3PackagePin(entry.pin ?? '');
+  if (!packagePin) return 'Other';
+  if (packagePin === BASYS3_CLOCK_PIN) return 'Clock';
+  if (BASYS3_SWITCH_PIN_SET.has(packagePin)) return 'Switches';
+  if (BASYS3_BUTTON_PIN_SET.has(packagePin)) return 'Buttons';
+  if (BASYS3_LED_PIN_SET.has(packagePin)) return 'LEDs';
+  if (BASYS3_ANODE_PIN_SET.has(packagePin)) return '7-Segment Anodes';
+  if (packagePin === BASYS3_DP_PIN || BASYS3_SEGMENT_PIN_SET.has(packagePin)) return '7-Segment Cathodes';
   return 'Other';
 }
 
@@ -156,10 +166,10 @@ function buildTopXdc(
       const portRef = portRefMap?.get(entry.id) ?? toSignalName(entry);
       lines.push(`set_property PACKAGE_PIN ${packagePin} [get_ports {${portRef}}]`);
       lines.push(`set_property IOSTANDARD LVCMOS33 [get_ports {${portRef}}]`);
-      // SW/BTN ports are never clock sources — always suppress BUFG inference.
-      // Without this, Vivado synthesis may insert clock buffers on high-fanout
-      // switch/button paths, causing placement failures (BUFG vs IBUF conflict).
-      // This is safe for all design classifications: combinational, latch, and clocked.
+      // SW/BTN ports can be student-driven event sources, including manual clocks like
+      // Lab 8 ENTER, but they are never real FPGA oscillators. Always suppress BUFG
+      // inference so Vivado does not invent clock-buffered domains on board controls.
+      // This is safe for combinational, latch, and true clocked designs alike.
       if (isNonClockInputGroup && dir === 'in') {
         lines.push(`set_property CLOCK_BUFFER_TYPE NONE [get_ports {${portRef}}]`);
       }
@@ -170,6 +180,30 @@ function buildTopXdc(
       }
     }
     lines.push('');
+  }
+
+  if (classification === 'sequential-latch') {
+    const asyncInputPortRefs = Array.from(
+      new Set(
+        allEntries
+          .filter(({ entry, dir }) => {
+            if (dir !== 'in') return false;
+            const group = detectSignalGroup(entry);
+            return group === 'Switches' || group === 'Buttons';
+          })
+          .map(({ entry }) => portRefMap?.get(entry.id) ?? toSignalName(entry))
+      )
+    );
+
+    if (asyncInputPortRefs.length > 0) {
+      lines.push('## Manual switch timing');
+      lines.push('# Treat switch/button driven state changes as asynchronous event sources in Vivado timing analysis.');
+      lines.push('# Human-speed ENTER/RESET activity should not be timed like an FPGA clock domain.');
+      for (const portRef of asyncInputPortRefs) {
+        lines.push(`set_false_path -from [get_ports {${portRef}}]`);
+      }
+      lines.push('');
+    }
   }
 
   return `${lines.join('\n').trimEnd()}\n`;

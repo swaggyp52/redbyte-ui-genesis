@@ -1,3 +1,4 @@
+import type { TestVector } from '@redbyte/rb-utils';
 import type { IdeExampleDefinition } from './examplesCatalog';
 
 export interface LabStarter {
@@ -9,6 +10,70 @@ export interface LabStarter {
   estimatedMinutes: number;
   example: IdeExampleDefinition;
 }
+
+type Lab8Bit = 0 | 1;
+
+const LAB8_INVALID_SEQUENCE = [1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0] as const;
+const LAB8_VALID_SEQUENCE = [0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0] as const;
+
+function buildLab8StarterRow(
+  tick: number,
+  swIn0: Lab8Bit,
+  swEnter: Lab8Bit,
+  swReset: Lab8Bit,
+  ledLock: Lab8Bit,
+): TestVector {
+  return {
+    tick,
+    inputs: {
+      sw_in0: swIn0,
+      sw_in1: 0,
+      sw_in2: 0,
+      sw_enter: swEnter,
+      sw_reset: swReset,
+    },
+    expected: {
+      led_lock: ledLock,
+    },
+  };
+}
+
+function buildLab8StarterSequence(
+  startTick: number,
+  bits: readonly Lab8Bit[],
+  unlockAtBitIndex: number | null,
+): TestVector[] {
+  const resetRows = [
+    buildLab8StarterRow(startTick, 0, 0, 1, 0),
+    buildLab8StarterRow(startTick + 1, 0, 0, 0, 0),
+  ];
+
+  const pulseRows = bits.flatMap((bit, index) => {
+    const pulseStart = startTick + 2 + index * 3;
+    const unlockedBeforePulse = unlockAtBitIndex !== null && index > unlockAtBitIndex ? 1 : 0;
+    const unlockedAfterPulse = unlockAtBitIndex !== null && index >= unlockAtBitIndex ? 1 : 0;
+
+    return [
+      buildLab8StarterRow(pulseStart, bit, 0, 0, unlockedBeforePulse),
+      buildLab8StarterRow(pulseStart + 1, bit, 1, 0, unlockedBeforePulse),
+      buildLab8StarterRow(pulseStart + 2, bit, 0, 0, unlockedAfterPulse),
+    ];
+  });
+
+  return [...resetRows, ...pulseRows];
+}
+
+function buildLab8StarterVectors(): TestVector[] {
+  const invalidVectors = buildLab8StarterSequence(0, LAB8_INVALID_SEQUENCE, null);
+  const validVectors = buildLab8StarterSequence(
+    invalidVectors.length,
+    LAB8_VALID_SEQUENCE,
+    LAB8_VALID_SEQUENCE.length - 1,
+  );
+  return [...invalidVectors, ...validVectors];
+}
+
+const LAB8_STARTER_VECTORS = buildLab8StarterVectors();
 
 export const LAB_STARTERS: LabStarter[] = [
   {
@@ -312,39 +377,45 @@ export const LAB_STARTERS: LabStarter[] = [
     },
   },
   {
-    id: 'lab8-sr-latch',
+    id: 'lab8-security-lock-fsm',
     labNumber: 8,
-    title: 'Lab 8 — SR Latch',
-    description: 'Build a basic SR latch using NOR gates. First sequential circuit.',
+    title: 'Lab 8 — Security Lock FSM',
+    description: 'Build a Moore FSM that unlocks after 4 consecutive valid 3-bit groups. ENTER (SW5) is the manual clock.',
     difficulty: 'advanced',
-    estimatedMinutes: 75,
+    estimatedMinutes: 90,
     example: {
-      id: 'lab8-sr-latch',
-      name: 'Lab 8 Starter — SR Latch',
-      summary: 'Two inputs (S, R) and two outputs (Q, Qbar). NOR-based SR latch.',
+      id: '23_lab8-fsm-lock-starter-basys3',
+      name: 'Lab 8 Starter — Security Lock FSM',
+      summary: 'Serial input (IN0/SW6) + ENTER clock (SW5) + RESET (SW4). LOCK (LED1) goes high after 4 valid 3-bit groups.',
       course: 'ECE141',
       lab: 'Lab 8',
-      concept: 'Sequential Logic',
-      tags: ['latch', 'sequential', 'starter', 'lab8'],
-      expectedBehavior: 'Q=1 after S=1,R=0. Q=0 after S=0,R=1. Q holds when both inputs=0.',
+      concept: 'Finite State Machines',
+      tags: ['fsm', 'sequential', 'starter', 'lab8', 'basys3'],
+      expectedBehavior: 'LOCK goes high only after bits 010100010100 are clocked in via ENTER. Any invalid sequence keeps LOCK low.',
       goals: [
-        'Build the SR latch using two cross-coupled NOR gates',
-        'Understand the hold state (S=0, R=0)',
-        'Verify set and reset behavior with test vectors',
+        'Connect ENTER (SW5) to the CLK pin of EVERY DFlipFlop',
+        'Connect RESET (SW4) to the RST pin of EVERY DFlipFlop',
+        'Build state registers and next-state logic for the 3-bit group detector',
+        'Run both the invalid-path and valid-path checkpoints in Verify',
+        'Map all pins and export to Vivado',
       ],
       ioRows: [
-        { id: 's',    nodeId: 's_node',    port: 'out', label: 'S',    direction: 'in',  pin: 'V17', required: true },
-        { id: 'r',    nodeId: 'r_node',    port: 'out', label: 'R',    direction: 'in',  pin: 'V16', required: true },
-        { id: 'q',    nodeId: 'q_node',    port: 'in',  label: 'Q',    direction: 'out', pin: 'U16', required: true },
-        { id: 'qbar', nodeId: 'qbar_node', port: 'in',  label: 'Qbar', direction: 'out', pin: 'E19', required: true },
+        { id: 'iom-in0',   nodeId: 'sw_in0',   port: 'out', label: 'IN0 (SW6)',   direction: 'in',  pin: 'W14', required: true },
+        { id: 'iom-in1',   nodeId: 'sw_in1',   port: 'out', label: 'IN1 (SW7)',   direction: 'in',  pin: 'W13', required: true },
+        { id: 'iom-in2',   nodeId: 'sw_in2',   port: 'out', label: 'IN2 (SW8)',   direction: 'in',  pin: 'V2',  required: true },
+        { id: 'iom-enter', nodeId: 'sw_enter', port: 'out', label: 'ENTER (SW5)', direction: 'in',  pin: 'V15', required: true },
+        { id: 'iom-reset', nodeId: 'sw_reset', port: 'out', label: 'RESET (SW4)', direction: 'in',  pin: 'W15', required: true },
+        { id: 'iom-lock',  nodeId: 'led_lock', port: 'in',  label: 'LOCK (LED1)', direction: 'out', pin: 'E19', required: true },
       ],
-      vectors: [],
+      vectors: LAB8_STARTER_VECTORS,
       circuit: {
         nodes: [
-          { id: 's_node',    type: 'INPUT',  x: 100, y: 140, label: 'S',    config: {}, state: {} },
-          { id: 'r_node',    type: 'INPUT',  x: 100, y: 260, label: 'R',    config: {}, state: {} },
-          { id: 'q_node',    type: 'OUTPUT', x: 550, y: 140, label: 'Q',    config: {}, state: {} },
-          { id: 'qbar_node', type: 'OUTPUT', x: 550, y: 260, label: 'Qbar', config: {}, state: {} },
+          { id: 'sw_in2',   type: 'INPUT',  x: 80,  y: 70,  label: 'IN2 (SW8)',   config: {}, state: {} },
+          { id: 'sw_in1',   type: 'INPUT',  x: 80,  y: 140, label: 'IN1 (SW7)',   config: {}, state: {} },
+          { id: 'sw_in0',   type: 'INPUT',  x: 80,  y: 210, label: 'IN0 (SW6)',   config: {}, state: {} },
+          { id: 'sw_enter', type: 'INPUT',  x: 80,  y: 280, label: 'ENTER (SW5)', config: {}, state: {} },
+          { id: 'sw_reset', type: 'INPUT',  x: 80,  y: 350, label: 'RESET (SW4)', config: {}, state: {} },
+          { id: 'led_lock', type: 'OUTPUT', x: 920, y: 220, label: 'LOCK (LED1)', config: {}, state: {} },
         ],
         connections: [],
       },

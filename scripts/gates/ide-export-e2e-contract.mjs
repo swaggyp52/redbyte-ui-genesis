@@ -13,7 +13,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
+import { assert, ensureVerifyVectorsReady, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
 import { isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,22 +30,45 @@ const README_PATH_PATTERN = /(^|\/)readme\.txt$/i;
 const VIVADO_IMPORT_TCL_PATTERN = /(^|\/)vivado_import\.tcl$/i;
 const PROJECT_RBPROJ_PATTERN = /(^|\/)project\.rbproj\.json$/i;
 
-async function ensureVerifyVectorsReady(page) {
+async function applyObservedRunAsOracle(page) {
+  const utilitiesToggle = page.locator('[data-testid="ide-vcb-utilities-toggle"]').first();
+  const toggleVisible = await utilitiesToggle.isVisible().catch(() => false);
+  if (toggleVisible) {
+    await utilitiesToggle.click();
+    const saveAsChecks = page.locator('[data-testid="ide-vcb-save-expected"]').first();
+    const saveVisible = await saveAsChecks.isVisible().catch(() => false);
+    const saveDisabled = saveVisible ? await saveAsChecks.isDisabled().catch(() => true) : true;
+    if (saveVisible && !saveDisabled) {
+      await saveAsChecks.click();
+      return true;
+    }
+    await utilitiesToggle.click();
+  }
+
   const selectors = [
-    '[data-testid="ide-verify-generate-basic-vectors"]',
-    '[data-testid="ide-verify-generate-basic-vectors-footer"]',
-    '[data-testid="ide-verify-generate-all-combos"]',
-    '[data-testid="ide-verify-guided-clock-pattern"]',
-    '[data-testid="ide-verify-trace-generate-basics"]',
+    '[data-testid="ide-verify-run-proof-oracle"]',
+    '[data-testid="ide-verify-stale-recapture-reauthor"]',
+    '[data-testid="ide-verify-set-oracle"]',
   ];
   for (const selector of selectors) {
     const button = page.locator(selector).first();
     const isVisible = await button.isVisible().catch(() => false);
     if (isVisible) {
       await button.click();
-      return;
+      return true;
     }
   }
+  return false;
+}
+
+async function enableCompareMode(page) {
+  const compareButton = page.locator('[data-testid="ide-vcb-mode-compare"]').first();
+  const isVisible = await compareButton.isVisible().catch(() => false);
+  if (!isVisible) return false;
+  const isDisabled = await compareButton.isDisabled().catch(() => true);
+  if (isDisabled) return false;
+  await compareButton.click();
+  return true;
 }
 
 await runIdeGate('IDE export e2e contract satisfied', async ({ page, baseUrl }) => {
@@ -55,20 +78,20 @@ await runIdeGate('IDE export e2e contract satisfied', async ({ page, baseUrl }) 
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
 
-  await loadStarterProject(page);
+  await loadStarterProject(page, { preferredLabStarterTestId: 'ide-project-landing-example-signal-tour' });
 
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
   await ensureVerifyVectorsReady(page);
+  await enableCompareMode(page);
   await clickVerifyRun(page);
   await waitForVerifyResult(page, { timeout: 10000 });
 
   let verifyStatus = await text(page.locator('[data-testid="ide-verify-summary-status"]'));
   if (!isVerifyPass(verifyStatus)) {
-    const setOracle = page.locator('[data-testid="ide-verify-set-oracle"]').first();
-    const oracleVisible = await setOracle.isVisible().catch(() => false);
-    if (oracleVisible) {
-      await setOracle.click();
+    const oracleApplied = await applyObservedRunAsOracle(page);
+    await enableCompareMode(page);
+    if (oracleApplied) {
       await clickVerifyRun(page);
       await waitForVerifyResult(page, { timeout: 10000 });
     }

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { fireEvent, render, within } from '@testing-library/react';
 import type { RBProject } from '../../../export/projectFormat';
 import { ExportSurface } from '../surfaces/ExportSurface';
+import { getIdeExampleById } from '../examplesCatalog';
 
 function buildProject(): RBProject {
   return {
@@ -56,6 +57,56 @@ function buildProject(): RBProject {
         },
       ],
     },
+    fpga: { board: 'basys3', top: 'top' },
+  };
+}
+
+function buildExampleProject(exampleId: string): RBProject {
+  const example = getIdeExampleById(exampleId);
+  if (!example) {
+    throw new Error(`Missing example fixture: ${exampleId}`);
+  }
+
+  return {
+    kind: 'rb-project',
+    version: 1,
+    createdAt: '2026-03-08T00:00:00.000Z',
+    updatedAt: '2026-03-08T00:00:00.000Z',
+    name: example.name,
+    description: example.summary,
+    circuit: {
+      nodes: example.circuit.nodes.map((node) => ({ ...node })),
+      connections: example.circuit.connections.map((connection) => ({
+        ...connection,
+        from: typeof connection.from === 'string' ? connection.from : { ...connection.from },
+        to: typeof connection.to === 'string' ? connection.to : { ...connection.to },
+      })),
+    },
+    ioMapping: {
+      inputs: example.ioRows
+        .filter((row) => row.direction === 'in')
+        .map((row) => ({
+          id: row.id,
+          nodeId: row.nodeId,
+          port: row.port,
+          label: row.label,
+          pin: row.pin,
+        })),
+      outputs: example.ioRows
+        .filter((row) => row.direction === 'out')
+        .map((row) => ({
+          id: row.id,
+          nodeId: row.nodeId,
+          port: row.port,
+          label: row.label,
+          pin: row.pin,
+        })),
+    },
+    vectors: example.vectors.map((vector) => ({
+      tick: vector.tick,
+      inputs: { ...vector.inputs },
+      expected: vector.expected ? { ...vector.expected } : undefined,
+    })),
     fpga: { board: 'basys3', top: 'top' },
   };
 }
@@ -177,5 +228,17 @@ describe('ExportSurface mapping trust', () => {
       'Export is using a local preview mapping.'
     );
     expect(view.queryByTestId('ide-export-mapping-authority-updates')).toBeNull();
+  });
+
+  it('keeps live boundary rows editable when export labels sanitize differently', () => {
+    const view = render(
+      <ExportSurface project={buildExampleProject('two-bit-counter')} determinismHash="ide-hash" />
+    );
+
+    const enableInput = within(view.getByTestId('ide-export-map-row-en')).getByDisplayValue('V17') as HTMLInputElement;
+    const resetInput = within(view.getByTestId('ide-export-map-row-rst')).getByDisplayValue('U18') as HTMLInputElement;
+
+    expect(enableInput.disabled).toBe(false);
+    expect(resetInput.disabled).toBe(false);
   });
 });

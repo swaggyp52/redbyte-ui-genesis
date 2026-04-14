@@ -1107,7 +1107,7 @@ function normalizePort(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function buildLiveIoNodeLabelIndex(project: RBProject): Map<string, string> {
+export function buildLiveIoNodeLabelIndex(project: RBProject): Map<string, string> {
   const index = new Map<string, string>();
   for (const node of project.circuit.nodes) {
     if (node.type !== 'INPUT' && node.type !== 'OUTPUT') continue;
@@ -1117,7 +1117,7 @@ function buildLiveIoNodeLabelIndex(project: RBProject): Map<string, string> {
   return index;
 }
 
-function resolveMappingPortName(entry: {
+export function resolveMappingPortName(entry: {
   id: string;
   nodeId: string;
   port: string;

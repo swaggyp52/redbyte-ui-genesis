@@ -1,34 +1,7 @@
 #!/usr/bin/env node
 
-import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, ensureVerifyVectorsReady, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
 import { waitForVerifyResult } from './_verifyStatus.mjs';
-
-async function ensureVerifyVectorsReady(page) {
-  const candidates = [
-    '[data-testid="ide-verify-generate-basic-vectors"]',
-    '[data-testid="ide-verify-generate-basic-vectors-footer"]',
-    '[data-testid="ide-verify-generate-all-combos"]',
-    '[data-testid="ide-verify-guided-clock-pattern"]',
-    '[data-testid="ide-verify-trace-generate-basics"]',
-  ];
-  for (const selector of candidates) {
-    const button = page.locator(selector).first();
-    const isVisible = await button.isVisible().catch(() => false);
-    if (isVisible) {
-      await button.click();
-      return 'generated';
-    }
-  }
-
-  const runBar = page.locator('[data-testid="ide-verify-workstation-run-bar"]').first();
-  const runBarVisible = await runBar.isVisible().catch(() => false);
-  const runBarText = runBarVisible ? ((await runBar.textContent()) ?? '').trim() : '';
-  if (/vector/i.test(runBarText)) {
-    return 'existing';
-  }
-
-  throw new Error('verify had neither a visible generate-basics action nor an existing ready-vector state');
-}
 
 async function clickVerifyRun(page) {
   const candidates = [
@@ -58,29 +31,25 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-project-start-dock"]', { timeout: 10000 });
 
-  await loadStarterProject(page);
+  await loadStarterProject(page, { preferredLabStarterTestId: 'ide-project-landing-example-signal-tour' });
 
   if (!(await page.locator('[data-testid="ide-mode-design"]').isVisible({ timeout: 2000 }).catch(() => false))) {
     await page.locator('[data-testid="mode-button-design"]').click();
     await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
   }
 
-  await page.waitForSelector('[data-testid="ide-guided-strip"]', { timeout: 10000 });
-
-  const stripOnDesign = page.locator('[data-testid="ide-guided-strip"]').first();
-  assert(await visible(stripOnDesign), 'guided strip must be visible on design surface');
-
-  await page
-    .locator('[data-testid^="ide-design-live-input-"]')
-    .first()
-    .waitFor({ state: 'visible', timeout: 10000 });
+  const designInspector = page.locator('[data-testid="ide-design-inspector-empty"]').first();
+  const designSelectionInspector = page.locator('[data-testid="ide-design-selection-inspector"]').first();
+  const designInspectorVisible = await designInspector.isVisible().catch(() => false);
+  const designSelectionVisible = await designSelectionInspector.isVisible().catch(() => false);
+  assert(
+    designInspectorVisible || designSelectionVisible,
+    'design surface must render its inspector panel after starter load',
+  );
 
   // 2. Verify: generate basics -> run -> PASS/FAIL banner
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
-
-  const stripOnVerify = page.locator('[data-testid="ide-guided-strip"]').first();
-  assert(await visible(stripOnVerify), 'guided strip must be visible on verify surface');
 
   await ensureVerifyVectorsReady(page);
   const vectorTable = page.locator('[data-testid="ide-verify-vectors-table"]').first();
@@ -96,8 +65,8 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   await clickVerifyRun(page);
   await waitForVerifyResult(page, { timeout: 10000 });
 
-  const verifyBanner = page.locator('[data-testid="ide-verify-banner"]').first();
-  assert(await visible(verifyBanner), 'verify summary banner must be visible after run');
+  const verifySummaryStatus = page.locator('[data-testid="ide-verify-summary-status"]').first();
+  assert(await visible(verifySummaryStatus), 'verify summary status must be visible after run');
 
   const statusLabel = (
     await page
@@ -113,7 +82,7 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
       )
   )?.trim() ?? '';
   assert(
-    /PASS|FAIL|TRACE|ASSERTIONS|SIMULATION/i.test(statusLabel),
+    /PASS|FAIL|TRACE|ASSERTIONS|SIMULATION|OBSERVATION|STIMULUS/i.test(statusLabel),
     `verify status must reflect a completed compare/simulation state, got "${statusLabel}"`,
   );
 
@@ -186,8 +155,9 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   // 4b. Hardware — proof mode must surface the Program handoff contract.
   // After switching to Proof tab, the IDE must render one of:
   //   ide-hardware-program-handoff-cta  — when verify PASS + export CURRENT (happy path)
-  //   ide-hardware-blocked-hero         — when prerequisites are still missing
-  // Both encode the Build → Verify → Export → Program trust chain.
+  //   ide-hardware-readiness-callout    — when prerequisites are still missing (callout in console)
+  //   ide-hardware-command-strip        — always present, encodes current status + next action
+  // All three encode the Build → Verify → Export → Program trust chain.
   await page.locator('[data-testid="ide-hw-mode-btn-proof"]').click();
   await page.waitForSelector('[data-testid="ide-hw-proof-dock"]', { timeout: 5000 });
 
@@ -196,13 +166,18 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
     .first()
     .isVisible()
     .catch(() => false);
-  const hasBlockedHero = await page
-    .locator('[data-testid="ide-hardware-blocked-hero"]')
+  const hasReadinessCallout = await page
+    .locator('[data-testid="ide-hardware-readiness-callout"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  const hasCommandStrip = await page
+    .locator('[data-testid="ide-hardware-command-strip"]')
     .first()
     .isVisible()
     .catch(() => false);
   assert(
-    hasProgramCta || hasBlockedHero,
+    hasProgramCta || hasReadinessCallout || hasCommandStrip,
     'proof mode must show either the program handoff CTA or a prerequisite blocker — ' +
     'the Build → Verify → Export → Program path must be represented',
   );

@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-04-13
+updated: 2026-04-14
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
@@ -78,6 +78,22 @@ For cross-surface authoring loop work: [[Verify Design Loop]] + [[Design Surface
 ---
 
 ## What is the next action
+
+Latest hardware/export mapping-authority slice landed (2026-04-14):
+
+- [[BUG-018 Hardware Export Mapping Authority Drift]] is fixed: blank/custom Hardware now opens on `Map Pins` with Design-first guidance, mapped starter flows no longer hide required-port gaps behind contradictory status, and Export no longer ghosts `rst_btnc` or disables visible `EN` / `RST` rows when the live mapping is valid
+- Basys3 binding refs now anchor the shared alias story across Export validation and entity-based testbench generation, so sanitized labels such as `RST (BTNC)` resolve back to the same exported row and entity ref
+- targeted validation is complete for this slice: `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx` passed (`3` files, `30` tests), and live browser replay on `http://127.0.0.1:5173/os/` confirmed the blank/custom, `Signal Tour`, and `2-Bit Up Counter` student paths
+
+Next action after this slice: if Hardware/Export classroom risk remains active, add one browser contract or gate that walks blank/home -> `Signal Tour` -> `2-Bit Up Counter` and asserts the current mapping/export truths; otherwise resume the next highest product-risk slice from the active board.
+
+Latest Lab 8 classroom-readiness slice landed (2026-04-14):
+
+- Lab 8 starter Verify now ships explicit reset rows plus authored `ENTER` `0,1,0` pulses, so students can run the invalid and valid traces in ordinary IDE Verify instead of loading an empty vector table
+- Basys3 manual-switch sequential exports now keep `CLOCK_BUFFER_TYPE NONE`, omit `create_clock` on `SW5`, and add `set_false_path` timing suppression for switch/button-driven latch paths
+- targeted validation is complete for this slice: `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab8-export-validation.test.ts packages/rb-apps/src/__tests__/scenario-sequential-trust-gate.test.ts` passed (`2` files, `66` tests)
+
+Next action after this slice: if classroom risk stays on Lab 8, add one UI-level smoke or gate path that loads the starter and proves the preloaded vectors survive the normal student workflow; otherwise resume the current shared-shell / Design rail follow-up work.
 
 Latest shared shell compact/wide-layout fix landed (2026-04-13):
 
