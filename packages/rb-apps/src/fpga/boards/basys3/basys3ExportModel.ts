@@ -178,29 +178,63 @@ function buildDirectionRefs(
   const topPorts: VhdlTopPort[] = [];
   const refs: Basys3ExportBindingRef[] = [];
 
+
   for (const groupKey of vectorOrder) {
     const groupEntries = (vectorGroups.get(groupKey) ?? [])
       .slice()
       .sort(compareBindingRef);
-    const maxBitIndex = Math.max(...groupEntries.map((entry) => entry.bitIndex ?? 0), 0);
-    const useVectorPort = maxBitIndex > 0 || groupEntries.length > 1;
-    topPorts.push({
-      name: groupKey,
-      dir: direction,
-      vhdlType: useVectorPort ? `STD_LOGIC_VECTOR(${maxBitIndex} downto 0)` : 'STD_LOGIC',
-    });
-    refs.push(
-      ...groupEntries.map((entry) =>
-        useVectorPort
-          ? entry
-          : {
-              ...entry,
-              bitIndex: undefined,
-              signalRef: entry.portName,
-              xdcRef: entry.portName,
-            }
-      )
-    );
+    // Only consider mapped bits
+    const mappedBits = groupEntries.map((entry) => entry.bitIndex ?? 0);
+    if (mappedBits.length === 1) {
+      // Only one bit mapped: emit scalar port
+      topPorts.push({
+        name: mappedBits[0] === 0 ? groupKey : `${groupKey}${mappedBits[0]}`,
+        dir: direction,
+        vhdlType: 'STD_LOGIC',
+      });
+      refs.push({
+        ...groupEntries[0],
+        portName: mappedBits[0] === 0 ? groupKey : `${groupKey}${mappedBits[0]}`,
+        bitIndex: undefined,
+        signalRef: mappedBits[0] === 0 ? groupKey : `${groupKey}${mappedBits[0]}`,
+        xdcRef: mappedBits[0] === 0 ? groupKey : `${groupKey}${mappedBits[0]}`,
+      });
+    } else if (
+      mappedBits.length > 1 &&
+      mappedBits.every((v, i, arr) => i === 0 || v === arr[i - 1] + 1)
+    ) {
+      // Contiguous mapped bits: emit vector port for the range
+      const minBit = Math.min(...mappedBits);
+      const maxBit = Math.max(...mappedBits);
+      topPorts.push({
+        name: groupKey,
+        dir: direction,
+        vhdlType: `STD_LOGIC_VECTOR(${maxBit} downto ${minBit})`,
+      });
+      refs.push(
+        ...groupEntries.map((entry) => ({
+          ...entry,
+          signalRef: `${groupKey}(${entry.bitIndex})`,
+          xdcRef: `${groupKey}[${entry.bitIndex}]`,
+        }))
+      );
+    } else {
+      // Non-contiguous mapped bits: emit individual scalar ports
+      for (const entry of groupEntries) {
+        topPorts.push({
+          name: `${groupKey}${entry.bitIndex}`,
+          dir: direction,
+          vhdlType: 'STD_LOGIC',
+        });
+        refs.push({
+          ...entry,
+          portName: `${groupKey}${entry.bitIndex}`,
+          bitIndex: undefined,
+          signalRef: `${groupKey}${entry.bitIndex}`,
+          xdcRef: `${groupKey}${entry.bitIndex}`,
+        });
+      }
+    }
   }
 
   const sortedScalarRefs = scalarRefs.slice().sort(compareBindingRef);
