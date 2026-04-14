@@ -1762,23 +1762,36 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
 
   const commitPendingPlacement = useCallback(
+    // Track node count before placement
+    const prevNodeCount = editorCircuit.nodes.length;
     (clientX: number, clientY: number, options?: { keepPlacing?: boolean }) => {
-      if (!pendingPlacement) return;
+      if (!pendingPlacement) {
+        console.warn('[DesignSurface] commitPendingPlacement: No pendingPlacement');
+        return;
+      }
       const position = resolveCanvasPlacementPosition(clientX, clientY);
-      if (!position) return;
+      if (!position) {
+        console.warn('[DesignSurface] commitPendingPlacement: Could not resolve position');
+        return;
+      }
       const keepPlacing = options?.keepPlacing === true;
 
       const nextNodeId = predictNextNodeIds(editorCircuit, 1)[0] ?? null;
       if (pendingPlacement.kind === 'node' && pendingPlacement.nodeType) {
+        console.log('[DesignSurface] Placing node:', pendingPlacement.nodeType, position);
         if (onRuntimeAddNode) {
           commitRuntimeMutation(() => {
+            console.log('[DesignSurface] Calling onRuntimeAddNode', pendingPlacement.nodeType, position);
             onRuntimeAddNode(pendingPlacement.nodeType, position);
           });
         } else {
+          console.log('[DesignSurface] Calling addNode', pendingPlacement.nodeType, position);
           addNode(pendingPlacement.nodeType, position, { skipHistory: true });
           emitCircuitMutation();
         }
         setActionToast(`${pendingPlacement.label} placed.`);
+        // Force UI update in case of stale state
+        setForceRerender((v) => v + 1);
       } else if (pendingPlacement.kind === 'board-io' && pendingPlacement.boardIoEntry) {
         const entry = pendingPlacement.boardIoEntry;
         if (onRuntimeAddBoardIo) {
@@ -1799,6 +1812,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           emitCircuitMutation();
         }
         setActionToast(`Added ${entry.alias} to canvas.`);
+        setForceRerender((v) => v + 1);
       }
 
       setWireFeedback(null);
@@ -1814,7 +1828,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           selectMultipleNodes([nextNodeId], false);
         });
       }
+      // After placement, check if node count increased
+      setTimeout(() => {
+        const newNodeCount = useCircuitStore.getState().circuit.nodes.length;
+        if (newNodeCount === prevNodeCount) {
+          setPlacementError('Node placement failed: circuit store did not update. This is a critical bug.');
+        } else {
+          setPlacementError(null);
+        }
+      }, 100);
     },
+      // Force rerender state
+      const [forceRerender, setForceRerender] = useState(0);
+      // Placement error banner
+      const [placementError, setPlacementError] = useState<string | null>(null);
+      {placementError && (
+        <div style={{ background: 'red', color: 'white', padding: 8, fontWeight: 'bold', zIndex: 9999 }}>
+          {placementError}
+        </div>
+      )}
     [
       addNode,
       commitRuntimeMutation,
