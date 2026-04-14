@@ -1587,10 +1587,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         x: basePosition.x + extraOffset.x,
         y: basePosition.y + extraOffset.y,
       };
+      // Defensive: always ensure position is valid
+      const safePosition = {
+        x: typeof position.x === 'number' && isFinite(position.x) ? position.x : 0,
+        y: typeof position.y === 'number' && isFinite(position.y) ? position.y : 0,
+      };
       if (onRuntimeAddNode) {
-        onRuntimeAddNode(nodeType, position);
+        onRuntimeAddNode(nodeType, safePosition);
       } else {
-        addNode(nodeType, position, { skipHistory: true });
+        addNode(nodeType, safePosition, { skipHistory: true });
         emitCircuitMutation();
       }
       setActionToast(`${nodeTypeLabel(nodeType)} placed.`);
