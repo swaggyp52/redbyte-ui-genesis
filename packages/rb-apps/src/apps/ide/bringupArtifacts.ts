@@ -526,7 +526,7 @@ function buildRegisterBringUpVectors(
 function buildStimulusOnlySequentialVectors(
   controlSignals: SequentialControlSignals
 ): TestVector[] {
-  return buildSequentialTimeline(controlSignals, 8).map((entry) => ({
+  return buildSequentialTimeline(controlSignals, 12).map((entry) => ({
     id: `bringup-${String(entry.tick + 1).padStart(2, '0')}`,
     tick: entry.tick,
     inputs: entry.inputs,

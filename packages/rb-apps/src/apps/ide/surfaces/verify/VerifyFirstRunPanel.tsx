@@ -54,7 +54,7 @@ export const VerifyFirstRunPanel: React.FC<VerifyFirstRunPanelProps> = ({
         </h3>
         <p className="ide-vfr-hero-desc">
           {isSequential
-            ? 'Generate a starter timeline with clock transitions, then run to see how your flip-flops respond over time.'
+            ? 'Generate an initial timeline with clock pulses, then edit each row to author the specific bit sequence you want to test.'
             : 'Generate starter inputs, run the circuit, and check that outputs match what you expect.'}
         </p>
       </div>
@@ -98,11 +98,11 @@ export const VerifyFirstRunPanel: React.FC<VerifyFirstRunPanelProps> = ({
               onClick={onGenerateStarter}
               testId="ide-vfr-generate-starter"
             >
-              {isSequential ? 'Generate 8-tick starter' : 'Initialize inputs'}
+              {isSequential ? 'Generate starter' : 'Initialize inputs'}
             </IdeButton>
             <span className="ide-vfr-action-hint">
               {isSequential
-                ? 'Creates a starter timeline with alternating clock and sensible defaults'
+                ? 'Creates an initial timeline with clock pulses — edit the input values to match your test sequence'
                 : 'Sets up input lanes so you can edit values and run immediately'}
             </span>
           </>

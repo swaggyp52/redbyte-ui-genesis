@@ -7253,7 +7253,9 @@ function buildSequentialInspectorContext(input: {
     kind: 'flip-flop',
     roleLabel: flipFlopCopy.roleLabel,
     behaviorSummary: flipFlopCopy.behaviorSummary,
-    nextStep: 'Trace the clock path next so you can confirm which edge should update the stored output.',
+    nextStep: controlSource
+      ? 'Trace the clock path next so you can confirm which edge should update the stored output.'
+      : 'Wire your clock input to the CLK port. For a manual clock (e.g. an ENTER switch), that switch must connect here.',
     controlLabel: 'Clock',
     ioSummaryLabel: 'Inputs',
     ioSummary: summarizeSequentialPorts(nodeSignals, flipFlopCopy.ioPorts),

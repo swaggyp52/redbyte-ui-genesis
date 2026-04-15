@@ -39,6 +39,13 @@ The latest Lab 8 classroom-readiness slice hardened one remaining sequential aut
 - Lab 8 starter vectors therefore ship as explicit authored rows: reset bring-up first, then `0,1,0` ENTER pulses for each serial bit, with `LOCK` expected high only after the final pulse completes
 - this keeps the starter visible and runnable in Verify without inventing a second sequential runtime contract that disagrees with the proven checkpoint path
 
+The latest Verify starter polish slice improved the student-facing generate experience for sequential labs:
+
+- `buildStimulusOnlySequentialVectors` now generates 12 ticks (was 8) — covers a full 12-bit Lab 8 stream with the first 2 ticks as reset bring-up
+- the `Generate starter` label no longer claims a specific tick count (was `Generate 8-tick starter`) — avoids confusion when students need a different number of rows
+- the VerifyFirstRunPanel sequential hero copy now explicitly tells students to edit input values for their specific bit sequence, rather than implying the generated pattern is ready to run
+- Lab 8 example (`23_lab8-fsm-lock-starter-basys3.json`) now ships 3 checkpoints: invalid path (110010010100), valid1 (010100010100), valid2 (100010100010)
+
 The latest hard visual / interaction architecture pass then made the browser-visible Verify surface read as one integrated lab instead of a stack of internal tools:
 
 - the command bar is now the sole session authority in normal pre-run and post-run states; the old full-width post-run status strip is gone from active sessions

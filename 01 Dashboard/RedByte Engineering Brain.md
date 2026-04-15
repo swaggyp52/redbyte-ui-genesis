@@ -8,7 +8,6 @@ related:
   - "[[Canonical Notes Policy]]"
   - "[[Note Schema]]"
   - "[[BUG-018 Lab Hardware Strict Readiness Blocked by Missing djtgcfg]]"
-  - "[[BUG-019 VHDL Export Unused Vector Bits Block Bitstream]]"
   - "[[ADR-005 Verify Schedule Contract Owns Sequential Clock Authority]]"
   - "[[Project Surface]]"
   - "[[Design Surface]]"
@@ -96,15 +95,6 @@ Latest Lab 8 classroom-readiness slice landed (2026-04-14):
 - targeted validation is complete for this slice: `pnpm -w exec vitest run packages/rb-apps/src/__tests__/lab8-export-validation.test.ts packages/rb-apps/src/__tests__/scenario-sequential-trust-gate.test.ts` passed (`2` files, `66` tests)
 
 Next action after this slice: if classroom risk stays on Lab 8, add one UI-level smoke or gate path that loads the starter and proves the preloaded vectors survive the normal student workflow; otherwise resume the current shared-shell / Design rail follow-up work.
-
-Latest Lab 8 hardware end-to-end run completed (2026-04-14):
-
-- `scripts/lab8-vivado-export.ts` generates the full Vivado kit from the RedByte circuit graph; all 15 export validation tests pass (`bundle.valid = true`)
-- bitstream generated via Vivado 2024.2 (synthesis + impl + `write_bitstream`); DRC workaround for unused vector bits applied (see [[BUG-019 VHDL Export Unused Vector Bits Block Bitstream]])
-- Basys3 board programmed via direct Vivado `hw_server` flow (bypassing BUG-018 `djtgcfg` blocker); device `xc7a35t_0` at `Digilent/210183BE9F50A` confirmed `Board programmed successfully`
-- artifacts: `out/lab8/` — `top.vhd`, `top.xdc`, `testbench.vhd`, `build_bitstream.tcl`, `write_bitstream.tcl`, `program_board.tcl`, `lab8_security_lock.bit`, `lab8_security_lock.rb-lab.zip`
-- [[BUG-019 VHDL Export Unused Vector Bits Block Bitstream]] filed: export emits full-width vectors but only constrains used bits; proper fix needed in `basys3Bundle.ts` / `basys3ExportModel.ts`
-- next action: implement proper scalar-port fix in the VHDL export pipeline so bitstream generation succeeds without DRC severity overrides
 
 Latest lab-machine dependency and bridge-readiness pass landed (2026-04-14):
 

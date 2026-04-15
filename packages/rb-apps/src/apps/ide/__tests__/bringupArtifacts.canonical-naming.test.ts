@@ -491,7 +491,7 @@ describe('bringupArtifacts canonical naming', () => {
       ],
     });
 
-    expect(vectors).toHaveLength(8);
+    expect(vectors).toHaveLength(12);
     expect(vectors[0]?.inputs.clk).toBe(0);
     expect(vectors[1]?.inputs.clk).toBe(1);
     expect(vectors.every((vector) => Object.keys(vector.expected ?? {}).length === 1)).toBe(true);
@@ -618,7 +618,7 @@ describe('bringupArtifacts canonical naming', () => {
       ],
     });
 
-    expect(vectors).toHaveLength(8);
+    expect(vectors).toHaveLength(12);
     expect(vectors[0]?.expected).toEqual({ ld0: 0, ld1: 1 });
     expect(vectors.every((vector) => Object.keys(vector.expected ?? {}).sort().join(',') === 'ld0,ld1')).toBe(true);
     expect(vectors.every((vector) => vector.expected?.ld0 !== undefined && vector.expected?.ld1 !== undefined)).toBe(true);

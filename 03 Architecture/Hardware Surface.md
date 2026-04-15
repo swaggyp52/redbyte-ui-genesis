@@ -10,7 +10,6 @@ related:
   - "[[Basys 3 Mapping]]"
   - "[[BUG-018 Hardware Export Mapping Authority Drift]]"
   - "[[BUG-018 Lab Hardware Strict Readiness Blocked by Missing djtgcfg]]"
-  - "[[BUG-019 VHDL Export Unused Vector Bits Block Bitstream]]"
   - "[[Note Schema]]"
 ---
 
@@ -65,22 +64,7 @@ The student-facing Hardware surface should therefore present:
 - `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`
 - `packages/rb-apps/src/fpga/boards/basys3/basys3ExportModel.ts`
 
-## Lab 8 End-to-End Hardware Path — Proven 2026-04-14
-
-The full RedByte → Vivado → Basys3 hardware path was proven end-to-end on 2026-04-14:
-
-- `scripts/lab8-vivado-export.ts` generates the complete Vivado kit (VHDL, XDC, Vivado TCL, testbench, ZIP) from the RedByte circuit graph using `exportBasys3Bundle` + `generateVivadoImportTcl`
-- All 15 export validation tests pass (`lab8-export-validation.test.ts`), `bundle.valid = true`
-- Vivado 2024.2 synthesis + implementation succeeded; bitstream written after DRC workaround (see BUG-019)
-- Board programmed via `out/lab8/program_board.tcl` using Vivado `open_hw_manager` / `connect_hw_server` / `program_hw_devices` — device `xc7a35t_0` at `Digilent/210183BE9F50A`, confirmed `Board programmed successfully`
-- Board mapping verified: `SW4 (W15) = RESET`, `SW5 (V15) = ENTER/CLK`, `SW6 (W14) = IN0`, `LED1 (E19) = LOCK`
-- BUG-018 (`djtgcfg` missing) was bypassed entirely by using Vivado's native hw_server flow directly (no RedByte bridge required)
-- BUG-019 (unused vector bits block bitstream) found and documented; workaround in `write_bitstream.tcl`; proper fix needed in export pipeline
-
-Artifacts: `out/lab8/` — `top.vhd`, `top.xdc`, `vivado_import.tcl`, `testbench.vhd`, `build_bitstream.tcl`, `write_bitstream.tcl`, `program_board.tcl`, `lab8_security_lock.bit`, `lab8_security_lock.rb-lab.zip` (sha256: `03690315278cbfba7276a20ab64a3b1de981f08afd4c23b6cff0fe66c800d7d4`)
-
 ## Open Questions / Stubs
 
 - The current Hardware page still risks reading as too dense when readiness, mapping tables, and artifact summaries are all visible together. A later UI pass should reduce that density without weakening mapping truth.
 - Program-handoff detail still needs a tighter long-term contract: which parts belong on Hardware versus Export once the shared dominant status is already visible on both surfaces.
-- BUG-019 proper fix (scalar ports vs. full-width vector packing in VHDL export) is not yet implemented — tracked in [[BUG-019 VHDL Export Unused Vector Bits Block Bitstream]].

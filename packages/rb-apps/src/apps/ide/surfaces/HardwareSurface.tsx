@@ -554,7 +554,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         primaryLabel: 'Generate Bring-Up Steps',
         primaryAction: onGenerateBringUpVectors,
         primaryTestId: 'ide-hardware-next-primary',
-        secondaryLabel: 'Open Program Checklist',
+        secondaryLabel: 'Open Pre-flight',
         secondaryAction: () => setHwMode('proof'),
       };
     }
@@ -563,21 +563,21 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       return {
         title: 'Prepare the board with guided bring-up',
         body: 'Use the board-first bring-up checklist to set inputs, watch the highlighted outputs, and confirm behavior before you program the Basys3.',
-        primaryLabel: 'Open Bring-Up',
+        primaryLabel: 'Open Board Test',
         primaryAction: () => setHwMode('bringup'),
         primaryTestId: 'ide-hardware-next-primary',
-        secondaryLabel: 'Open Program Checklist',
+        secondaryLabel: 'Open Pre-flight',
         secondaryAction: () => setHwMode('proof'),
       };
     }
 
     return {
-      title: 'Follow the bring-up steps, then program the board',
-      body: 'Once the guided checks match, open the program checklist for the final Vivado Hardware Manager handoff.',
-      primaryLabel: 'Open Program Checklist',
+      title: 'Follow the board test steps, then check pre-flight',
+      body: 'Once the guided checks match, open Pre-flight for the final Vivado Hardware Manager handoff.',
+      primaryLabel: 'Open Pre-flight',
       primaryAction: () => setHwMode('proof'),
       primaryTestId: 'ide-hardware-next-primary',
-      secondaryLabel: 'Live details',
+      secondaryLabel: 'Simulation',
       secondaryAction: () => setHwMode('live'),
     };
   }, [
@@ -880,8 +880,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             Add inputs and outputs in Design, then return here to assign board pins.
           </p>
         ) : mappingReady ? (
-          <IdeButton tone="primary" onClick={() => setHwMode('proof')} testId="ide-hardware-map-dock-primary">
-            Continue to Program Checklist →
+          <IdeButton tone="primary" onClick={onOpenExport} testId="ide-hardware-map-dock-primary">
+            Continue to Export →
           </IdeButton>
         ) : (
           <p className="ide-copy" style={{ margin: 0, fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
@@ -895,7 +895,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const bringupDock = (
     <SurfacePanel className="ide-workbench-placeholder" testId="ide-hw-bringup-dock">
       <header className="ide-workbench-placeholder-header">
-        <h3>Prepare Board</h3>
+        <h3>Test on Board</h3>
         <IdeStatusPill
           tone={
             bringupTickGroups.length === 0
@@ -990,7 +990,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const proofDock = (
     <SurfacePanel className="ide-workbench-placeholder" testId="ide-hw-proof-dock">
       <header className="ide-workbench-placeholder-header">
-        <h3>Program Checklist</h3>
+        <h3>Pre-flight</h3>
         <IdeStatusPill tone={confidenceScore === 100 ? 'ok' : confidenceScore >= 60 ? 'warn' : 'error'}>
           {confidencePassCount}/{confidenceChecks.length}
         </IdeStatusPill>
@@ -1346,10 +1346,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   {hwMode === 'map'
                     ? 'Map Pins'
                     : hwMode === 'bringup'
-                      ? 'Prepare Board'
+                      ? 'Test on Board'
                       : hwMode === 'proof'
-                        ? 'Program Checklist'
-                        : 'Live Details'}
+                        ? 'Pre-flight'
+                        : 'Simulation'}
                 </span>
                 <span className={`ide-surface-command-chip${mappingReady ? ' is-ok' : ''}`}>
                   {mappingReady ? 'Mapping current' : `${mappingRows.length} mapped rows`}
@@ -1425,21 +1425,21 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             onClick={() => { setHwMode('bringup'); setSelectedMappingRowId(null); }}
             testId="ide-hw-mode-btn-bringup"
           >
-            {vectorsCount > 0 ? '✓ ' : '○ '}Prepare Board
+            {vectorsCount > 0 ? '✓ ' : '○ '}Test on Board
           </IdeButton>
           <IdeButton
             tone={hwMode === 'proof' ? 'primary' : 'ghost'}
             onClick={() => { setHwMode('proof'); setSelectedMappingRowId(null); }}
             testId="ide-hw-mode-btn-proof"
           >
-            {confidenceScore === 100 ? '✓ ' : ''}Program Checklist
+            {confidenceScore === 100 ? '✓ ' : ''}Pre-flight
           </IdeButton>
           <IdeButton
             tone={hwMode === 'live' ? 'primary' : 'ghost'}
             onClick={() => { setHwMode('live'); setSelectedMappingRowId(null); }}
             testId="ide-hw-mode-btn-live"
           >
-            Live Details
+            Simulation
           </IdeButton>
           {sim.tick > 0 && (
             <span className="ide-hw-tick-badge" data-testid="ide-hw-tick-badge">

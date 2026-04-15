@@ -1646,11 +1646,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       };
     }
     return {
-      introTitle: 'Clocked circuit detected',
-      introStep: 'Include a clock waveform covering enough ticks to observe state changes',
+      introTitle: 'Sequential circuit — author your test sequence',
+      introStep: 'Each row represents one clock cycle. Edit the input values to match the bit sequence you want to test.',
       missingActivity:
-        'No clock activity detected in your vectors. Clocked circuits need CLK toggles to advance state.',
-      noTraceHint: 'No clock activity — simulation may not have advanced past tick 0',
+        'No clock transitions found in your vectors. Add at least one rising edge on the clock signal so the circuit advances to the next state.',
+      noTraceHint: 'No clock activity detected — the simulation may not have advanced past tick 0',
     };
   }, [effectiveTimingGuidance]);
 
@@ -4028,7 +4028,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           runDisabled={runState === 'running'}
           runPulsing={readyDraftCanRun}
           onGenerate={handleGenerateBasicVectors}
-          generateLabel={isSequentialRun ? 'Generate 8-tick starter' : 'Initialize inputs'}
+          generateLabel={isSequentialRun ? 'Generate starter' : 'Initialize inputs'}
           showGenerate={isFirstRunState || totalVectorCount === 0}
           onSaveAsExpected={canSetOracle ? handleSetOracleExpected : undefined}
           showSaveAsExpected={Boolean(canSetOracle && !isFirstRunState)}
