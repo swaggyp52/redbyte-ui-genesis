@@ -1115,10 +1115,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
   const placementModeLabel = activeInsertionMacro?.name ?? pendingPlacement?.label ?? null;
   const isPlacementMode = placementModeLabel != null;
-  const commitRuntimeMutation = useCallback((mutation: () => void) => {
-    mutation();
-    emitCircuitMutation();
-  }, [emitCircuitMutation]);
+  // NOTE: commitRuntimeMutation was removed. onRuntime* callbacks (addDesignNode,
+  // addDesignIo, addDesignBoardIo, connectDesignNodes) mutate projectRuntime directly.
+  // Calling emitCircuitMutation after them races against useLayoutEffect in IdeApp
+  // (projectRuntimeCircuitToEditorStore) and passes a stale circuitStore snapshot to
+  // applyCircuitMutation, which then overwrites the freshly-added node. Call onRuntime*
+  // functions directly; IdeApp's useLayoutEffect syncs projectRuntime → circuitStore.
 
   useEffect(() => {
     setEngine(tickEngine.getEngine());
@@ -1674,16 +1676,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         y: (canvasSize.height / 2 - camera.y) / camera.zoom,
       };
       const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
-      commitRuntimeMutation(() => {
-        onRuntimeAddIo('input', { x: basePosition.x - 120, y: basePosition.y - 24 });
-        onRuntimeAddIo('output', { x: basePosition.x + 120, y: basePosition.y - 24 });
-      });
+      onRuntimeAddIo('input', { x: basePosition.x - 120, y: basePosition.y - 24 });
+      onRuntimeAddIo('output', { x: basePosition.x + 120, y: basePosition.y - 24 });
     } else {
       spawnAtCanvasCenter('INPUT', { x: -120, y: -24 });
       spawnAtCanvasCenter('OUTPUT', { x: 120, y: -24 });
     }
     setActionToast('Added starter IO pins.');
-  }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, commitRuntimeMutation, editorCircuit.nodes, onRuntimeAddIo, spawnAtCanvasCenter]);
+  }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, editorCircuit.nodes, onRuntimeAddIo, spawnAtCanvasCenter]);
 
   const addAndGateStarter = useCallback(() => {
     if (onRuntimeAddNode && onRuntimeConnect) {
@@ -1694,16 +1694,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
       const [inputAId, inputBId, andId, outputId] = predictNextNodeIds(editorCircuit, 4);
 
-      commitRuntimeMutation(() => {
-        onRuntimeAddNode('INPUT', { x: basePosition.x - 170, y: basePosition.y - 72 });
-        onRuntimeAddNode('INPUT', { x: basePosition.x - 170, y: basePosition.y + 24 });
-        onRuntimeAddNode('AND', { x: basePosition.x, y: basePosition.y - 24 });
-        onRuntimeAddNode('OUTPUT', { x: basePosition.x + 170, y: basePosition.y - 24 });
+      onRuntimeAddNode('INPUT', { x: basePosition.x - 170, y: basePosition.y - 72 });
+      onRuntimeAddNode('INPUT', { x: basePosition.x - 170, y: basePosition.y + 24 });
+      onRuntimeAddNode('AND', { x: basePosition.x, y: basePosition.y - 24 });
+      onRuntimeAddNode('OUTPUT', { x: basePosition.x + 170, y: basePosition.y - 24 });
 
-        onRuntimeConnect({ fromNodeId: inputAId, fromPort: 'out', toNodeId: andId, toPort: 'a' });
-        onRuntimeConnect({ fromNodeId: inputBId, fromPort: 'out', toNodeId: andId, toPort: 'b' });
-        onRuntimeConnect({ fromNodeId: andId, fromPort: 'out', toNodeId: outputId, toPort: 'in' });
-      });
+      onRuntimeConnect({ fromNodeId: inputAId, fromPort: 'out', toNodeId: andId, toPort: 'a' });
+      onRuntimeConnect({ fromNodeId: inputBId, fromPort: 'out', toNodeId: andId, toPort: 'b' });
+      onRuntimeConnect({ fromNodeId: andId, fromPort: 'out', toNodeId: outputId, toPort: 'in' });
     } else {
       spawnAtCanvasCenter('INPUT', { x: -170, y: -72 });
       spawnAtCanvasCenter('INPUT', { x: -170, y: 24 });
@@ -1717,7 +1715,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     camera.zoom,
     canvasSize.height,
     canvasSize.width,
-    commitRuntimeMutation,
     editorCircuit,
     onRuntimeAddNode,
     onRuntimeConnect,
@@ -1771,9 +1768,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       const nextNodeId = predictNextNodeIds(editorCircuit, 1)[0] ?? null;
       if (pendingPlacement.kind === 'node' && pendingPlacement.nodeType) {
         if (onRuntimeAddNode) {
-          commitRuntimeMutation(() => {
-            onRuntimeAddNode(pendingPlacement.nodeType, position);
-          });
+          onRuntimeAddNode(pendingPlacement.nodeType, position);
         } else {
           addNode(pendingPlacement.nodeType, position, { skipHistory: true });
           emitCircuitMutation();
@@ -1782,18 +1777,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       } else if (pendingPlacement.kind === 'board-io' && pendingPlacement.boardIoEntry) {
         const entry = pendingPlacement.boardIoEntry;
         if (onRuntimeAddBoardIo) {
-          commitRuntimeMutation(() => {
-            onRuntimeAddBoardIo({
-              alias: entry.alias,
-              direction: entry.direction,
-              kind: entry.kind,
-              position,
-            });
+          onRuntimeAddBoardIo({
+            alias: entry.alias,
+            direction: entry.direction,
+            kind: entry.kind,
+            position,
           });
         } else if (onRuntimeAddIo) {
-          commitRuntimeMutation(() => {
-            onRuntimeAddIo(entry.direction === 'in' ? 'input' : 'output', position);
-          });
+          onRuntimeAddIo(entry.direction === 'in' ? 'input' : 'output', position);
         } else {
           addNode(entry.direction === 'in' ? 'INPUT' : 'OUTPUT', position, { skipHistory: true });
           emitCircuitMutation();
@@ -1817,7 +1808,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     },
     [
       addNode,
-      commitRuntimeMutation,
       editorCircuit,
       emitCircuitMutation,
       interactionMode,
@@ -1910,14 +1900,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const handleUndo = useCallback(() => {
     if (!onRuntimeUndo) return;
     onRuntimeUndo();
-    emitCircuitMutation();
-  }, [emitCircuitMutation, onRuntimeUndo]);
+    // Do NOT call emitCircuitMutation here — onRuntimeUndo mutates projectRuntime
+    // directly; IdeApp's useLayoutEffect syncs projectRuntime → circuitStore.
+    // Calling emitCircuitMutation would pass the stale circuitStore snapshot to
+    // applyCircuitMutation and overwrite the undo.
+  }, [onRuntimeUndo]);
 
   const handleRedo = useCallback(() => {
     if (!onRuntimeRedo) return;
     onRuntimeRedo();
-    emitCircuitMutation();
-  }, [emitCircuitMutation, onRuntimeRedo]);
+    // Same reasoning as handleUndo above.
+  }, [onRuntimeRedo]);
 
   const measureCanvasViewport = useCallback(() => {
     if (!canvasHostRef.current) return null;
