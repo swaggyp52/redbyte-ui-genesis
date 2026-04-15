@@ -2,7 +2,6 @@
 // Use without permission prohibited.
 
 import React from 'react';
-import { IdeButton } from '../../components/IdePrimitives';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -83,14 +82,10 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
                 ? 'Generate a starter timeline to see waveforms'
                 : 'Initialize inputs to see waveforms'}
           </p>
-          {hasVectors ? (
+          {hasVectors && (
             <p className="ide-vwp-overlay-note" data-testid="ide-vwp-header-run-note">
               The header {runLabel} control is the only run action in Verify.
             </p>
-          ) : (
-            <IdeButton tone="primary" onClick={onGenerate} testId="ide-vwp-generate">
-              {isSequential ? 'Generate starter' : 'Initialize inputs'}
-            </IdeButton>
           )}
         </div>
       </div>

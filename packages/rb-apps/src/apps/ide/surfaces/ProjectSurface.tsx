@@ -1079,21 +1079,23 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   </div>
                 ) : null}
                 <div className="ide-project-current-focus-fact">
-                  <span className="ide-project-current-focus-fact-label">Determinism</span>
-                  <code className="ide-project-current-focus-fact-value" data-testid="ide-project-reference-determinism">
-                    {determinismHash.slice(0, 12)}
-                  </code>
+                  <details className="ide-project-hash-details">
+                    <summary className="ide-project-current-focus-fact-label" style={{ cursor: 'pointer', userSelect: 'none' }}>Circuit hash</summary>
+                    <code className="ide-project-current-focus-fact-value ide-project-hash-code" data-testid="ide-project-reference-determinism">
+                      {determinismHash.slice(0, 12)}
+                    </code>
+                  </details>
                 </div>
               </div>
               {(onSaveNow || onOpenSavedProjects || onRestoreLastSave || onResetProject) && (
                 <div className="ide-project-current-focus-actions" data-testid="ide-project-current-focus-actions">
-                  {lastSavedAt ? (
+                  {savedAgoLabel ? (
                     <p
                       className="ide-copy"
                       data-testid="ide-session-last-saved"
-                      style={{ color: 'var(--ide-text-subtle)', margin: 0 }}
+                      style={{ color: 'var(--ide-text-soft)', margin: 0, fontSize: 12 }}
                     >
-                      {lastSavedAt}
+                      Last saved {savedAgoLabel}
                     </p>
                   ) : null}
                   <div className="ide-inline-actions" data-testid="ide-session-controls">
@@ -1128,27 +1130,27 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           {topBlockingIssues.length > 0 && (
             <IdeCallout 
               tone="warn" 
-              title={`${topBlockingIssues.length} blocker${topBlockingIssues.length > 1 ? 's' : ''}`} 
+              title={`${topBlockingIssues.length} blocker${topBlockingIssues.length > 1 ? 's' : ''} to resolve`} 
               testId="ide-project-hero-blocker"
             >
-              <ol data-testid="ide-project-blockers-list" style={{ margin: '0 0 0 1.25rem', paddingLeft: 0 }}>
+              <div data-testid="ide-project-blockers-list" className="ide-project-blocker-list">
                 {topBlockingIssues.map((issue, idx) => (
-                  <li key={issue.code} data-testid={`ide-project-blocker-${idx}`} style={{ marginBottom: '0.35rem' }}>
-                    <span>{issue.message}</span>
+                  <div key={issue.code} data-testid={`ide-project-blocker-${idx}`} className="ide-project-blocker-item">
+                    <span className="ide-project-blocker-msg">{issue.message}</span>
                     {issue.fixPath && (
                       <IdeButton
-                        tone="ghost"
+                        tone="primary"
                         onClick={() => handleProjectModeAction(issue.fixPath!.mode)}
                         testId={`ide-project-blocker-${idx}-action`}
                       >
-                        {issue.fixPath.actionLabel} -&gt;
+                        {issue.fixPath.actionLabel} →
                       </IdeButton>
                     )}
-                  </li>
+                  </div>
                 ))}
-              </ol>
+              </div>
               {blockingIssues.length > 3 && (
-                <p style={{ margin: '0.75rem 0 0 0', fontSize: 'var(--font-size-sm)', opacity: 0.8 }}>
+                <p style={{ margin: '0.75rem 0 0 0', fontSize: 12, opacity: 0.8 }}>
                   {'...and '}{blockingIssues.length - 3} more
                 </p>
               )}

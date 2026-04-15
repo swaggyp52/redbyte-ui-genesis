@@ -351,10 +351,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const visibleNodes = React.useMemo(
     () =>
       circuit.nodes.map((node) => {
-        // Fallback: if node.position is missing, default to (0,0) and warn
+        // Nodes without position default to (0,0) so they are always renderable.
         if (!node.position) {
-          // eslint-disable-next-line no-console
-          console.warn(`Node ${node.id} missing position, defaulting to (0,0)`);
           return { ...node, position: { x: 0, y: 0 } };
         }
         return node;
@@ -365,14 +363,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       }),
     [circuit.nodes, viewBounds]
   );
-
-  // Debug: show a warning if no nodes are visible but circuit.nodes is not empty
-  React.useEffect(() => {
-    if (circuit.nodes.length > 0 && visibleNodes.length === 0) {
-      // eslint-disable-next-line no-console
-      console.error('No nodes are visible on the canvas. Check node positions and placement logic.');
-    }
-  }, [circuit.nodes, visibleNodes]);
 
   const visibleNodeIds = React.useMemo(() => new Set(visibleNodes.map((node) => node.id)), [visibleNodes]);
 

@@ -377,7 +377,6 @@ function createCircuitStore() {
     canRedo: () => get().future.length > 0,
 
     addNode: (nodeType, position, opts = {}) => {
-      console.log(`[CircuitStore.addNode] Called with type=${nodeType}, pos=${JSON.stringify(position)}`);
       const { circuit } = get();
 
       // Guardrail: block at node limit (CE: 20, normal: 500)
@@ -412,12 +411,10 @@ function createCircuitStore() {
         state: {},
         config: defaultConfig,
       };
-      console.log(`[CircuitStore.addNode] Creating new node:`, newNode);
       get().updateCircuit({
         ...circuit,
         nodes: [...circuit.nodes, newNode],
       }, { skipHistory: opts.skipHistory ?? false, enforceLimits: true });
-      console.log(`[CircuitStore.addNode] Commit called, circuit now has ${circuit.nodes.length + 1} nodes`);
     },
 
     updateNode: (nodeId, updates, opts = {}) => {
