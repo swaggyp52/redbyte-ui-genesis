@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-04-16 (Repo sync: rebase onto origin, lab8 fixture hygiene, batched commits)
+
+**Subsystem**: Git / fixtures / maintainer workflow
+
+### Problem
+
+`main` had diverged from `origin/main` (non-fast-forward push). The working tree mixed dozens of product changes with a **265-file untracked Vivado tree** under `fixtures/import/04-lab8-security-lock/`, which would swamp review and should never ship as fixture data.
+
+### What changed
+
+- `git pull --rebase origin main` after a full `git stash -u` / `stash pop` so local import-V2 commit replayed cleanly on remote.
+- **Minimal fixture**: committed only `packages/rb-apps/src/fixtures/import/04-lab8-security-lock/sources/` (`top.vhd` + `top.xdc` in Vivado-style paths). **`fixture04-lab8-security-lock.test.ts`** now points at `sources/`.
+- **`.gitignore`**: `lab8_security_lock_vivado/` under that fixture prefix is ignored so local full exports stay optional and invisible to `git status`.
+- **Logical commits** (this session, after rebase): `fixtures: minimal lab8 sources; ignore Vivado dump`, `rb-utils: add hardwareMappingV2 schema and helpers`, `rb-logic-core: sequential IR and registry updates`, `rb-apps: hardwareMappingV2 across IDE, export, Basys3`.
+
+### Validation
+
+- `pnpm -w exec vitest run packages/rb-apps/src/import/__tests__/fixture04-lab8-security-lock.test.ts packages/rb-utils/src/hardwareMappingV2.test.ts packages/rb-apps/src/export/__tests__/hardwareMappingV2.export.test.ts packages/rb-apps/src/apps/ide/__tests__/hardwareMappingBridge.test.ts packages/rb-logic-core/src/sequential.test.ts` → PASS (24 tests)
+
+### Remaining
+
+- Treat **GitHub behind local** as a defect until `main` is pushed and ahead/behind is zero (except intentional WIP branches).
+
 ## Change Log 2026-04-16 (Import emits hardwareMappingV2 as primary mapping truth)
 
 **Subsystem**: HDL/XDC import (`importCompiler`, `importToRbProject`)
