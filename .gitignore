@@ -120,3 +120,25 @@ packages/rb-apps/src/fixtures/import/04-lab8-security-lock/lab8_security_lock_vi
 *.base
 .aider*
 .env
+
+# Incremental TS build cache
+tsconfig.tsbuildinfo
+**/tsconfig.tsbuildinfo
+
+# Git bundle checkpoints (local-only)
+codex_laneA_*.bundle
+*.bundle
+
+# Accidental artifacts
+ersconnoredbyte-ui
+ops-liveness*.json
+health.json
+files-test-results.json
+toolchain-test-results*.json
+verify_result.json
+/report.json
+/dev-server.log
+/screenshot-result.log
+/verify-output.log
+.codex-*.log
+.tmp_gate_fails*.txt
