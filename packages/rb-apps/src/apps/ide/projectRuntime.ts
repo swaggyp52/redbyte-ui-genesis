@@ -101,6 +101,13 @@ import {
   type ProjectKind,
   type ScenarioAuthority,
 } from './projectIdentity';
+import {
+  cloneImportMeta,
+  normalizePersistedImportMeta,
+  type IdeImportMeta,
+} from './projectImportMeta';
+
+export type { IdeImportMeta } from './projectImportMeta';
 
 export type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
 
@@ -262,6 +269,11 @@ export interface ProjectRuntimeState {
   projectKind: ProjectKind;
   sourceExampleId: string | null;
   scenarioAuthority: ScenarioAuthority;
+  /**
+   * Provenance of the last import commit. Cleared for native/example/blank paths.
+   * Persisted so the Project Bridge and other truth surfaces survive reload.
+   */
+  importMeta: IdeImportMeta | null;
   activeExampleId: string | null;
   /** Canonical hardware mapping — Map Pins applies pins via V2 entries, not only flat rows. */
   hardwareMappingV2: HardwareMappingDocumentV2;
@@ -333,6 +345,7 @@ export interface ProjectRuntimeState {
     activeExampleId?: string | null;
     markDirty?: boolean;
   }) => void;
+  setImportMeta: (meta: IdeImportMeta | null) => void;
   startBlankProject: () => void;
   setLastSavedAt: (label: string) => void;
   resetToActiveExample: () => void;
@@ -361,6 +374,7 @@ interface PersistedRuntimeState {
   projectKind?: ProjectKind;
   sourceExampleId?: string | null;
   scenarioAuthority?: ScenarioAuthority;
+  importMeta?: IdeImportMeta | null;
   activeExampleId: string | null;
   hardwareMappingV2?: HardwareMappingDocumentV2;
   projectIoRows: ProjectIoRow[];
@@ -689,6 +703,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           projectKind,
           sourceExampleId,
           scenarioAuthority,
+          importMeta: null,
           activeExampleId,
           hardwareMappingV2,
           projectIoRows,
@@ -1681,6 +1696,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             projectKind: 'blank',
             sourceExampleId: null,
             scenarioAuthority: state.projectVectors.length > 0 ? 'draft' : 'none',
+            importMeta: null,
             activeExampleId: null,
             projectName:
               state.projectName.trim().length > 0 &&
@@ -1699,6 +1715,9 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         const trimmed = label.trim();
         if (!trimmed) return;
         set({ lastSavedAt: trimmed });
+      },
+      setImportMeta: (meta) => {
+        set({ importMeta: cloneImportMeta(meta) });
       },
       resetToActiveExample: () => {
         set((state) => {
@@ -1802,7 +1821,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
     }),
     {
       name: STORAGE_KEY,
-      version: 4,
+      version: 5,
       merge: (persistedState, currentState) =>
         mergePersistedRuntimeState(persistedState, currentState as ProjectRuntimeState),
       partialize: (state): PersistedRuntimeState => ({
@@ -1813,6 +1832,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         projectKind: state.projectKind,
         sourceExampleId: state.sourceExampleId,
         scenarioAuthority: state.scenarioAuthority,
+        importMeta: cloneImportMeta(state.importMeta),
         activeExampleId: state.activeExampleId,
         hardwareMappingV2: structuredClone(state.hardwareMappingV2),
         projectIoRows: cloneIoRows(state.projectIoRows),
@@ -2098,6 +2118,10 @@ export function mergePersistedRuntimeState(
     projectKind: restoredProjectKind,
     sourceExampleId: persistedSourceExampleId,
     scenarioAuthority: detachedScenarioAuthority,
+    importMeta:
+      restoredProjectKind === 'import'
+        ? normalizePersistedImportMeta(candidate.importMeta)
+        : null,
     activeExampleId: restoredProjectKind === 'example' ? persistedSourceExampleId : null,
     hardwareMappingV2,
     projectIoRows,
@@ -2202,6 +2226,7 @@ function createEmptyProjectState(
     projectKind: input.projectKind ?? 'home',
     sourceExampleId: null,
     scenarioAuthority: 'none',
+    importMeta: null,
     activeExampleId: null,
     hardwareMappingV2,
     projectIoRows,
@@ -2250,6 +2275,7 @@ function stateFromExample(
     projectKind: 'example',
     sourceExampleId: example.id,
     scenarioAuthority: example.vectors.length > 0 ? 'starter' : 'none',
+    importMeta: null,
     activeExampleId: example.id,
     hardwareMappingV2,
     projectIoRows,

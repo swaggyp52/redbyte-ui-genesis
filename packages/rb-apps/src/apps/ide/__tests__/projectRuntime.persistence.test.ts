@@ -1136,4 +1136,129 @@ describe('mergePersistedRuntimeState', () => {
     expect(rowIds).toContain('switches_1');
     expect(merged.projectIoRows.find((row) => row.id === 'switches_0')?.mappingKind).toBe('bus');
   });
+
+  it('restores import provenance for imported projects so the Bridge survives reload', () => {
+    const current = useProjectRuntime.getState();
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-imported-reconstructed',
+        projectName: 'Imported Reconstructed',
+        projectDescription: 'Imported from HDL reconstruction',
+        lastSavedAt: 'Imported',
+        activeExampleId: null,
+        projectKind: 'import',
+        scenarioAuthority: 'draft',
+        importMeta: {
+          fidelity: 'reconstructed',
+          importMode: 'reconstructed',
+          reconstructionLevel: 'full',
+          sourceName: 'legacy_bundle.zip',
+        },
+        projectIoRows: [],
+        projectVectors: [],
+        circuit: { nodes: [], connections: [] },
+      },
+      current
+    );
+
+    expect(merged.projectKind).toBe('import');
+    expect(merged.importMeta).toEqual({
+      fidelity: 'reconstructed',
+      importMode: 'reconstructed',
+      reconstructionLevel: 'full',
+      sourceName: 'legacy_bundle.zip',
+    });
+  });
+
+  it('rejects malformed persisted importMeta without corrupting the project', () => {
+    const current = useProjectRuntime.getState();
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-imported-bad-meta',
+        projectName: 'Imported Bad Meta',
+        lastSavedAt: 'Imported',
+        activeExampleId: null,
+        projectKind: 'import',
+        importMeta: { fidelity: 'bogus', importMode: 'manifest', reconstructionLevel: 'full' },
+        projectIoRows: [],
+        projectVectors: [],
+        circuit: { nodes: [], connections: [] },
+      },
+      current
+    );
+
+    expect(merged.projectKind).toBe('import');
+    expect(merged.importMeta).toBeNull();
+  });
+
+  it('strips importMeta for non-import restores to keep native projects honest', () => {
+    const current = useProjectRuntime.getState();
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-custom-leak',
+        projectName: 'Custom Leak',
+        lastSavedAt: 'Saved',
+        activeExampleId: null,
+        projectKind: 'custom',
+        importMeta: {
+          fidelity: 'full',
+          importMode: 'manifest',
+          reconstructionLevel: 'full',
+          sourceName: 'should-not-survive',
+        },
+        projectIoRows: [],
+        projectVectors: [],
+        circuit: { nodes: [], connections: [] },
+      },
+      current
+    );
+
+    expect(merged.projectKind).toBe('custom');
+    expect(merged.importMeta).toBeNull();
+  });
+});
+
+describe('useProjectRuntime.setImportMeta', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useProjectRuntime.getState().resetToActiveExample();
+  });
+
+  it('clones the meta and exposes it to selectors', () => {
+    const store = useProjectRuntime.getState();
+    const meta = {
+      fidelity: 'partial' as const,
+      importMode: 'manifest' as const,
+      reconstructionLevel: 'ports-only' as const,
+      sourceName: 'old.rb-project.zip',
+    };
+    store.setImportMeta(meta);
+    const stored = useProjectRuntime.getState().importMeta;
+    expect(stored).toEqual(meta);
+    expect(stored).not.toBe(meta);
+  });
+
+  it('clears importMeta when set to null', () => {
+    const store = useProjectRuntime.getState();
+    store.setImportMeta({
+      fidelity: 'full',
+      importMode: 'manifest',
+      reconstructionLevel: 'full',
+      sourceName: 'x.zip',
+    });
+    store.setImportMeta(null);
+    expect(useProjectRuntime.getState().importMeta).toBeNull();
+  });
+
+  it('clears importMeta when a fresh example is loaded', () => {
+    const store = useProjectRuntime.getState();
+    store.setImportMeta({
+      fidelity: 'reconstructed',
+      importMode: 'reconstructed',
+      reconstructionLevel: 'full',
+      sourceName: 'legacy.zip',
+    });
+    useProjectRuntime.getState().resetToActiveExample();
+    expect(useProjectRuntime.getState().importMeta).toBeNull();
+  });
 });

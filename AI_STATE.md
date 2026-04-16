@@ -1,5 +1,36 @@
 # AI State
 
+## Change Log 2026-04-16 (Project Bridge: persist import provenance across reload)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/projectImportMeta.ts` (new), `packages/rb-apps/src/apps/ide/projectRuntime.ts`, `packages/rb-apps/src/apps/IdeApp.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts`
+
+### What changed
+
+- Closed the final transient-truth hole in the Project Bridge: import provenance (`fidelity`, `importMode`, `reconstructionLevel`, `sourceName`) is now a first-class field on `ProjectRuntimeState` and survives reload through the zustand `persist` middleware.
+- Added canonical `IdeImportMeta` type in `projectImportMeta.ts` with `cloneImportMeta` and `normalizePersistedImportMeta` guards so malformed persisted meta is rejected cleanly without corrupting the restored project.
+- New store action `useProjectRuntime.setImportMeta(meta | null)`. `loadExample`, `loadFromProject`, `startBlankProject`, and `resetToActiveExample` all reset `importMeta` to `null` to prevent provenance from leaking across project switches.
+- `mergePersistedRuntimeState` only restores `importMeta` when `projectKind === 'import'`; non-import restores are forced to `null` so native/example/custom projects cannot silently inherit a stale import fidelity.
+- Bumped the runtime `persist` version to `5`.
+- `IdeApp.tsx` no longer keeps `importFidelity` as transient React state. The selector reads `importMeta` directly from the runtime store; `handleSafeLoadIntoIde` forwards the full `IdeImportMeta` into the store via `setImportMeta`; the local `IdeImportFidelity` / `IdeImportCommitMeta` types are now thin aliases over the canonical runtime type.
+
+### Verification evidence
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts` ✅ 26/26 (added 6 new tests: restores import provenance, rejects malformed meta, strips import meta for non-import restores, roundtrips `setImportMeta`, clears via `setImportMeta(null)`, clears on `resetToActiveExample`).
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectBridgePanel.test.tsx` ✅ 13/13 (no regression — Bridge presentation unchanged).
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx` ✅ 6/6 passing (+1 skipped, unchanged).
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.launchpadRemoval.test.tsx` ✅ 28/28 (no regression).
+- `pnpm -s build:unified` ✅.
+
+### Truth change
+
+- Before: `importFidelity` lived only as transient React state on `IdeApp`. Refreshing the browser on an imported project silently downgraded the Bridge to `native`, which was false advertising.
+- After: the Bridge fidelity row reflects actual import truth across reloads. The merge layer additionally defends against two kinds of rot: malformed persisted meta and cross-kind leakage.
+- Shadow-authority hygiene: IdeApp's local `useState<IdeImportFidelity>` has been deleted. `projectRuntime` is now the single source of truth for import provenance.
+
+### Follow-up
+
+- Next: Project Overview / Project Navigator layer — module hierarchy, design vs simulation top clarity, design-asset list, status badges for native/imported/reconstructed elements. Goal is to make large student final projects feel manageable.
+
 ## Change Log 2026-04-16 (Project Bridge v1: single-glance project truth on Project surface)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/components/ProjectBridgePanel.tsx` (new), `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/projectBridgePanel.test.tsx` (new)
