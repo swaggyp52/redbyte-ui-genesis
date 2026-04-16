@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: hardware
-updated: 2026-04-15
+updated: 2026-04-16
 related:
   - "[[RedByte Engineering Brain]]"
   - "[[Project Surface]]"
@@ -60,6 +60,7 @@ The student-facing Hardware surface should therefore present:
 
 - `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
 - `packages/rb-apps/src/apps/ide/hardwareMappingV2EditorModel.ts` — structured V2 edit operations + completeness summaries for Map Pins
+- `packages/rb-apps/src/apps/ide/hardwareMappingGuidance.ts` — guided boundary + HDL port catalog helpers for Map Pins authoring
 - `packages/rb-apps/src/apps/ide/projectRuntime.ts` — `applyHardwareMappingEdit` keeps V2 canonical and re-materializes IO rows
 - `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts`
 - `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
@@ -71,9 +72,10 @@ The student-facing Hardware surface should therefore present:
 - Map Pins must edit **`hardwareMappingV2` directly**; materialized `projectIoRows` remain the compatibility/projection view for sim/export paths that still consume flat IoMapping rows.
 - The structured editor surfaces **entry kinds** (`scalar`, `bit`, `slice`, `bus`, `group`) with explicit **partial vs complete** pin coverage and optional **timingRole / boardResourceType** metadata.
 - Pin assignment still flows through the same re-materialization path as `setMappingPin`, so Verify/Export drift flags stay honest when mapping changes.
+- **Guided creation** should default to **boundary row + optional HDL port** pickers; raw `nodeId` / logic port are **Advanced** only. **Export repair** callouts reuse `buildExportViewModel` diagnostics so Map Pins explains the same blockers as Export with actionable navigation.
 
 ## Open Questions / Stubs
 
 - The current Hardware page still risks reading as too dense when readiness, mapping tables, and artifact summaries are all visible together. A later UI pass should reduce that density without weakening mapping truth.
 - Program-handoff detail still needs a tighter long-term contract: which parts belong on Hardware versus Export once the shared dominant status is already visible on both surfaces.
-- Structured authoring still needs **Design-linked pickers** so bus/slice creation cannot accidentally desync from live boundary nodes or HDL port names.
+- Further polish: smarter auto-match between HDL port names and boundary labels, and richer group-member pickers over existing structured entry ids.

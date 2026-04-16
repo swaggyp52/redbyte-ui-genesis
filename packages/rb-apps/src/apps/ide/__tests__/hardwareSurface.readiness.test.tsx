@@ -9,7 +9,7 @@ import {
   deriveExportCurrent,
   deriveVerifyCurrent,
 } from '../projectWorkflowAuthority';
-import { buildCurrentVerifyProjectHash } from '../../IdeApp';
+import { buildCurrentVerifyProjectHash } from '../verifyProjectHash';
 import { BoardSignalProvider } from '../BoardSignalContext';
 import { HardwareSurface } from '../surfaces/HardwareSurface';
 import { deriveTimingGuidance } from '../timingGuidance';
@@ -624,5 +624,57 @@ describe('HardwareSurface readiness', () => {
       entryId: 'reset',
       pins: ['V17'],
     });
+  });
+
+  it('shows export repair callout when Basys3 validation errors are passed in', () => {
+    const onOpenExport = vi.fn();
+    const onGoToDesign = vi.fn();
+    const { getByTestId, getAllByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Export blocked"
+          expectedBehavior="Repair mapping"
+          mappingRows={[
+            { id: 'sw0', label: 'sw0', direction: 'in', pin: '', required: true, nodeId: 'n1', port: 'out' },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={makeHealth({ blockingIssues: [], dirtySinceExport: true })}
+          workflowAuthority={makeHardwareWorkflowAuthority(makeHealth({ blockingIssues: [] }), {
+            currentVerifyProjectHash: null,
+            currentExportHash: null,
+          })}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={onOpenExport}
+          onOpenVerify={vi.fn()}
+          onGoToDesign={onGoToDesign}
+          exportViewStatus="blocked"
+          exportBlockingDiagnostics={[
+            {
+              id: 'exp-diag-1',
+              code: 'RBP_TEST',
+              title: 'Port mismatch',
+              message: 'Required input port "sw0" has no mapping.',
+              hint: ['Open Map Pins and assign a structured entry.'],
+              fix: 'Add or fix hardwareMappingV2 for sw0.',
+              port: 'sw0',
+              severity: 'error' as const,
+              owner: { kind: 'mapping' as const },
+              actions: [],
+              canonical: { id: 'exp-diag-1' } as any,
+            },
+          ]}
+        />
+      </BoardSignalProvider>,
+    );
+
+    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
+    const callout = getByTestId('ide-hw-export-repair-callout');
+    expect(callout.textContent).toContain('Port mismatch');
+    expect(callout.textContent).toContain('sw0');
+    fireEvent.click(getByTestId('ide-hw-export-repair-open-export'));
+    expect(onOpenExport).toHaveBeenCalled();
+    fireEvent.click(getByTestId('ide-hw-export-repair-open-design'));
+    expect(onGoToDesign).toHaveBeenCalled();
   });
 });

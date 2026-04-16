@@ -37,6 +37,7 @@ import {
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ThrowOnce } from '../components/ThrowOnce';
 import { buildExportViewModel } from './ide/viewmodels/buildExportViewModel';
+import { buildCurrentVerifyProjectHash, toProjectIoMapping } from './ide/verifyProjectHash';
 import {
   choosePrimaryDiagnosticAction,
   type IdeDiagnostic,
@@ -1723,6 +1724,11 @@ export const IdeApp: React.FC = () => {
               verifyLastRun={verifyLastRun}
               activeScenario={activeScenario ?? undefined}
               scenarios={scenarios}
+              exportBlockingDiagnostics={exportViewModel.errors}
+              exportViewStatus={exportViewModel.status}
+              designTopEntityName={exportViewModel.topAuthority.designTop}
+              topLevelVhdlText={exportProject.hdl?.sources?.find((s) => s.language === 'vhdl')?.text}
+              onRepairExportDiagnostic={(diagnostic) => handleDiagnosticAction(diagnostic.canonical)}
             />
           </ErrorBoundary>
         ) : currentMode === 'export' ? (
@@ -1983,32 +1989,6 @@ function extractExpectedIoRows(
   }
 }
 
-function toProjectIoMapping(projectIoRows: ProjectIoRow[]): {
-  inputs: Array<{ id: string; nodeId: string; port: string; label: string; pin: string }>;
-  outputs: Array<{ id: string; nodeId: string; port: string; label: string; pin: string }>;
-} {
-  return {
-    inputs: projectIoRows
-      .filter((row) => row.direction === 'in')
-      .map((row) => ({
-        id: row.id,
-        nodeId: row.nodeId ?? '',
-        port: row.port ?? '',
-        label: row.label,
-        pin: row.pin,
-      })),
-    outputs: projectIoRows
-      .filter((row) => row.direction === 'out')
-      .map((row) => ({
-        id: row.id,
-        nodeId: row.nodeId ?? '',
-        port: row.port ?? '',
-        label: row.label,
-        pin: row.pin,
-      })),
-  };
-}
-
 /**
  * Derive whether the current circuit contains clocked/sequential macros.
  *
@@ -2027,24 +2007,7 @@ export function deriveHasDff(
   );
 }
 
-export function buildCurrentVerifyProjectHash(input: {
-  circuit: Circuit;
-  projectVectors: TestVector[];
-  customVectors?: TestVector[];
-  projectIoRows: ProjectIoRow[];
-}): string {
-  return digestValue(
-    stableSerialize({
-      circuit: input.circuit,
-      vectors: [...input.projectVectors, ...(input.customVectors ?? [])].map((vector) => ({
-        tick: vector.tick,
-        inputs: { ...(vector.inputs ?? {}) },
-        expected: { ...(vector.expected ?? {}) },
-      })),
-      mapping: toProjectIoMapping(input.projectIoRows),
-    })
-  );
-}
+export { buildCurrentVerifyProjectHash };
 
 export function buildCurrentVerifyReplayHash(input: {
   circuit: Circuit;

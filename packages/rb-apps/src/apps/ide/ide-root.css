@@ -29379,3 +29379,33 @@ button:disabled,
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--rb-space-2);
 }
+
+.ide-hw-field-hint {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--rb-text-subtle);
+}
+
+.ide-hw-export-repair-list {
+  margin: var(--rb-space-1) 0 0;
+  padding-left: 1.25rem;
+}
+
+.ide-hw-guided-bus-members {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--rb-space-1);
+}
+
+.ide-hw-guided-bus-add-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rb-space-1);
+}
+
+.ide-hw-checkbox-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

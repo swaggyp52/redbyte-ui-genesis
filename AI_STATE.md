@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-04-16 (Map Pins: guided V2 creation + export repair UX)
+
+**Subsystem**: IDE Hardware / Map Pins (`HardwareSurface`, `hardwareMappingGuidance`, `IdeApp`, `verifyProjectHash`)
+
+### What changed
+
+- **`hardwareMappingGuidance.ts`**: boundary-row options, VHDL top-port catalog (via `parseVhdl`), and `buildBusEntryFromMemberRows` for ordered multi-bit buses without typing raw node ids in the default path.
+- **`HardwareSurface`**: Map Pins shows **export-blocking diagnostics** from `buildExportViewModel` (title, message, port, suggested fix, diagnostic actions, Open Export / Design). **Add structured mapping** is a guided form: boundary signal picker, optional HDL port picker, human-readable kind labels, bus member ordering (LSB-first), hints, **Advanced** checkbox for raw node id / logic port. Structured panel renders when V2 + apply handler exist, including **empty state**. Minor a11y: labels/`htmlFor`, `aria-describedby`, region landmark for entry list.
+- **`IdeApp`**: passes `exportViewModel.errors`, status, `designTop`, first VHDL source text, and `onRepairExportDiagnostic` → `handleDiagnosticAction`.
+- **`verifyProjectHash.ts`**: extracted `buildCurrentVerifyProjectHash` / `toProjectIoMapping` so tests do not import the full `IdeApp` module (fixes vitest collection loading `projectRuntime` too early).
+
+### Tests
+
+- `hardwareMappingGuidance.test.ts` (catalog, boundary options, bus builder).
+- `hardwareSurface.readiness.test.tsx`: export repair callout; existing structured pin test unchanged.
+
+### Remaining
+
+- Group authoring could get the same multi-select treatment as bus members.
+- Some `hardwareSurface.readiness` cases still assume single-instance queries; run full file in CI with project vitest config.
+
 ## Change Log 2026-04-15 (Map Pins: structured hardwareMappingV2 editor)
 
 **Subsystem**: IDE Hardware / Map Pins (`HardwareSurface`, `projectRuntime`, `hardwareMappingV2EditorModel`)
