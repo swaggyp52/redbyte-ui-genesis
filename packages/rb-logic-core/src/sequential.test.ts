@@ -173,3 +173,126 @@ describe('JKFlipFlop', () => {
     expect(engine.getNodeValue('jkff', 'Q_inv')).toBe(1);
   });
 });
+
+describe('Register family semantics', () => {
+  it('Register1 supports CE hold and async clear', () => {
+    const circuit: Circuit = {
+      nodes: [
+        {
+          id: 'reg1',
+          type: 'Register1',
+          position: { x: 0, y: 0 },
+          rotation: 0,
+          config: { hasEnable: true, resetKind: 'async_clear', resetPolarity: 'active_high' },
+        },
+        { id: 'd', type: 'Switch', position: { x: -3, y: 0 }, rotation: 0, config: {}, state: { isOn: 1 } },
+        { id: 'clk', type: 'Switch', position: { x: -3, y: 1 }, rotation: 0, config: {}, state: { isOn: 0 } },
+        { id: 'en', type: 'Switch', position: { x: -3, y: 2 }, rotation: 0, config: {}, state: { isOn: 1 } },
+        { id: 'rst', type: 'Switch', position: { x: -3, y: 3 }, rotation: 0, config: {}, state: { isOn: 0 } },
+      ],
+      connections: [
+        { from: { nodeId: 'd', portName: 'out' }, to: { nodeId: 'reg1', portName: 'D' } },
+        { from: { nodeId: 'clk', portName: 'out' }, to: { nodeId: 'reg1', portName: 'CLK' } },
+        { from: { nodeId: 'en', portName: 'out' }, to: { nodeId: 'reg1', portName: 'EN' } },
+        { from: { nodeId: 'rst', portName: 'out' }, to: { nodeId: 'reg1', portName: 'RST' } },
+      ],
+    };
+
+    const engine = new CircuitEngine(circuit);
+    engine.stabilize();
+    expect(engine.getNodeValue('reg1', 'Q')).toBe(0);
+
+    engine.setNodeState('clk', { isOn: 1 });
+    engine.stabilize();
+    expect(engine.getNodeValue('reg1', 'Q')).toBe(1);
+
+    // Hold when EN is low.
+    engine.setNodeState('en', { isOn: 0 });
+    engine.setNodeState('d', { isOn: 0 });
+    engine.setNodeState('clk', { isOn: 0 });
+    engine.stabilize();
+    engine.setNodeState('clk', { isOn: 1 });
+    engine.stabilize();
+    expect(engine.getNodeValue('reg1', 'Q')).toBe(1);
+
+    // Async clear acts immediately.
+    engine.setNodeState('rst', { isOn: 1 });
+    engine.stabilize();
+    expect(engine.getNodeValue('reg1', 'Q')).toBe(0);
+  });
+
+  it('RegisterBus captures packed data with sync reset behavior', () => {
+    const circuit: Circuit = {
+      nodes: [
+        {
+          id: 'regb',
+          type: 'RegisterBus',
+          position: { x: 0, y: 0 },
+          rotation: 0,
+          config: { width: 4, resetKind: 'sync_set', hasEnable: true },
+        },
+        { id: 'd', type: 'INPUT', position: { x: -3, y: 0 }, rotation: 0, config: {}, state: { isOn: 0 } },
+        { id: 'clk', type: 'Switch', position: { x: -3, y: 1 }, rotation: 0, config: {}, state: { isOn: 0 } },
+        { id: 'en', type: 'Switch', position: { x: -3, y: 2 }, rotation: 0, config: {}, state: { isOn: 1 } },
+        { id: 'rst', type: 'Switch', position: { x: -3, y: 3 }, rotation: 0, config: {}, state: { isOn: 0 } },
+      ],
+      connections: [
+        { from: { nodeId: 'd', portName: 'out' }, to: { nodeId: 'regb', portName: 'D' } },
+        { from: { nodeId: 'clk', portName: 'out' }, to: { nodeId: 'regb', portName: 'CLK' } },
+        { from: { nodeId: 'en', portName: 'out' }, to: { nodeId: 'regb', portName: 'EN' } },
+        { from: { nodeId: 'rst', portName: 'out' }, to: { nodeId: 'regb', portName: 'RST' } },
+      ],
+    };
+
+    const engine = new CircuitEngine(circuit);
+    // Drive packed value directly through state to emulate vector source.
+    engine.setNodeState('d', { isOn: 0, value: 0b1010 });
+    engine.stabilize();
+    engine.setNodeValue('d', 0b1010);
+    engine.setNodeState('clk', { isOn: 1 });
+    engine.stabilize();
+    expect(engine.getNodeValue('regb', 'Q0')).toBe(0);
+    expect(engine.getNodeValue('regb', 'Q1')).toBe(1);
+
+    // Sync set should force all bits high on next edge when reset asserted.
+    engine.setNodeState('clk', { isOn: 0 });
+    engine.stabilize();
+    engine.setNodeState('rst', { isOn: 1 });
+    engine.setNodeState('clk', { isOn: 1 });
+    engine.stabilize();
+    expect(engine.getNodeValue('regb', 'Q0')).toBe(1);
+    expect(engine.getNodeValue('regb', 'Q3')).toBe(1);
+  });
+
+  it('StateBank exposes grouped bit state', () => {
+    const circuit: Circuit = {
+      nodes: [
+        {
+          id: 'bank',
+          type: 'StateBank',
+          position: { x: 0, y: 0 },
+          rotation: 0,
+          config: { width: 3, hasEnable: false },
+        },
+        { id: 'd0', type: 'Switch', position: { x: -3, y: 0 }, rotation: 0, config: {}, state: { isOn: 1 } },
+        { id: 'd1', type: 'Switch', position: { x: -3, y: 1 }, rotation: 0, config: {}, state: { isOn: 0 } },
+        { id: 'd2', type: 'Switch', position: { x: -3, y: 2 }, rotation: 0, config: {}, state: { isOn: 1 } },
+        { id: 'clk', type: 'Switch', position: { x: -3, y: 3 }, rotation: 0, config: {}, state: { isOn: 0 } },
+      ],
+      connections: [
+        { from: { nodeId: 'd0', portName: 'out' }, to: { nodeId: 'bank', portName: 'D0' } },
+        { from: { nodeId: 'd1', portName: 'out' }, to: { nodeId: 'bank', portName: 'D1' } },
+        { from: { nodeId: 'd2', portName: 'out' }, to: { nodeId: 'bank', portName: 'D2' } },
+        { from: { nodeId: 'clk', portName: 'out' }, to: { nodeId: 'bank', portName: 'CLK' } },
+      ],
+    };
+    const engine = new CircuitEngine(circuit);
+    engine.stabilize();
+    engine.setNodeState('clk', { isOn: 1 });
+    engine.stabilize();
+    expect(engine.getNodeValue('bank', 'Q0')).toBe(1);
+    expect(engine.getNodeValue('bank', 'Q1')).toBe(0);
+    expect(engine.getNodeValue('bank', 'Q2')).toBe(1);
+    expect(engine.getNodeState('bank')?.bankBits).toEqual([1, 0, 1]);
+  });
+});

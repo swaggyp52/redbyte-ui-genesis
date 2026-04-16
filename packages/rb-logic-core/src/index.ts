@@ -73,6 +73,9 @@ export {
   ClockBehavior,
   DelayBehavior,
   DFlipFlopBehavior,
+  Register1Behavior,
+  RegisterBusBehavior,
+  StateBankBehavior,
   TFlipFlopBehavior,
   JKFlipFlopBehavior,
 } from './builtins';
@@ -110,6 +113,9 @@ import {
   ClockBehavior,
   DelayBehavior,
   DFlipFlopBehavior,
+  Register1Behavior,
+  RegisterBusBehavior,
+  StateBankBehavior,
   TFlipFlopBehavior,
   JKFlipFlopBehavior,
   INPUTBehavior,
@@ -140,6 +146,9 @@ NodeRegistry.register('XOR3', XOR3Behavior);
 NodeRegistry.register('Clock', ClockBehavior);
 NodeRegistry.register('Delay', DelayBehavior);
 NodeRegistry.register('DFlipFlop', DFlipFlopBehavior);
+NodeRegistry.register('Register1', Register1Behavior);
+NodeRegistry.register('RegisterBus', RegisterBusBehavior);
+NodeRegistry.register('StateBank', StateBankBehavior);
 NodeRegistry.register('TFlipFlop', TFlipFlopBehavior);
 NodeRegistry.register('JKFlipFlop', JKFlipFlopBehavior);
 NodeRegistry.register('INPUT', INPUTBehavior);

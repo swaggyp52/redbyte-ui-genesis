@@ -268,6 +268,190 @@ function sequentialOutputs(q: number): NodeOutputs {
   };
 }
 
+type RegisterResetKind =
+  | 'none'
+  | 'async_clear'
+  | 'async_preset'
+  | 'sync_reset'
+  | 'sync_set';
+
+type ActivePolarity = 'active_high' | 'active_low';
+type ClockEdge = 'rising_edge' | 'falling_edge';
+
+function toBit(value: number): 0 | 1 {
+  return value === 0 ? 0 : 1;
+}
+
+function normalizeWidth(raw: unknown, fallback: number): number {
+  const width = Number.isFinite(raw) ? Math.floor(raw as number) : fallback;
+  if (!Number.isFinite(width) || width < 1) return fallback;
+  return Math.min(width, 32);
+}
+
+function maskForWidth(width: number): number {
+  if (width >= 31) return 0x7fffffff;
+  return (1 << width) - 1;
+}
+
+function resolveResetKind(config: Record<string, unknown>): RegisterResetKind {
+  const raw = String(config.resetKind ?? 'none').toLowerCase();
+  if (
+    raw === 'async_clear' ||
+    raw === 'async_preset' ||
+    raw === 'sync_reset' ||
+    raw === 'sync_set'
+  ) {
+    return raw;
+  }
+  return 'none';
+}
+
+function resolvePolarity(
+  raw: unknown,
+  fallback: ActivePolarity = 'active_high'
+): ActivePolarity {
+  const token = String(raw ?? fallback).toLowerCase();
+  return token === 'active_low' ? 'active_low' : 'active_high';
+}
+
+function resolveClockEdge(config: Record<string, unknown>): ClockEdge {
+  const token = String(config.clockPolarity ?? 'rising_edge').toLowerCase();
+  return token === 'falling_edge' ? 'falling_edge' : 'rising_edge';
+}
+
+function isActive(level: number, polarity: ActivePolarity): boolean {
+  const bit = toBit(level);
+  return polarity === 'active_high' ? bit === 1 : bit === 0;
+}
+
+function readPackedInput(
+  inputs: NodeInputs,
+  width: number,
+  base: string
+): number {
+  const direct = inputs[base];
+  if (typeof direct === 'number') {
+    return (Math.floor(direct) & maskForWidth(width)) >>> 0;
+  }
+
+  let packed = 0;
+  for (let index = 0; index < width; index += 1) {
+    const bit = readFirstNumber(
+      inputs,
+      [
+        `${base}[${index}]`,
+        `${base}${index}`,
+        `${base}_${index}`,
+      ],
+      0
+    );
+    if (toBit(bit) === 1) packed |= (1 << index);
+  }
+  return packed & maskForWidth(width);
+}
+
+function buildRegisterOutputs(q: number, width: number, scalarCompatibility: boolean): NodeOutputs {
+  const mask = maskForWidth(width);
+  const normalizedQ = q & mask;
+  const inv = (~normalizedQ) & mask;
+  const outputs: NodeOutputs = {
+    Q: normalizedQ as Signal,
+    q: normalizedQ as Signal,
+    out: normalizedQ as Signal,
+    Q_inv: inv as Signal,
+    qn: inv as Signal,
+    value: normalizedQ as Signal,
+    width: width as Signal,
+  };
+
+  for (let index = 0; index < width; index += 1) {
+    const bit = ((normalizedQ >> index) & 1) as 0 | 1;
+    const bitInv = bit === 0 ? 1 : 0;
+    outputs[`Q${index}`] = bit as Signal;
+    outputs[`q${index}`] = bit as Signal;
+    outputs[`Q[${index}]`] = bit as Signal;
+    outputs[`q[${index}]`] = bit as Signal;
+    outputs[`Q_inv${index}`] = bitInv as Signal;
+  }
+
+  if (scalarCompatibility) {
+    outputs.Q = (normalizedQ & 1) as Signal;
+    outputs.q = (normalizedQ & 1) as Signal;
+    outputs.out = (normalizedQ & 1) as Signal;
+    outputs.Q_inv = ((inv & 1) as Signal);
+    outputs.qn = ((inv & 1) as Signal);
+  }
+  return outputs;
+}
+
+function evaluateRegisterFamily(
+  inputs: NodeInputs,
+  state: Record<string, any>,
+  config: Record<string, any>,
+  nodeType: 'Register1' | 'RegisterBus' | 'StateBank'
+): { outputs: NodeOutputs; state: Record<string, any> } {
+  const widthDefault = nodeType === 'Register1' ? 1 : nodeType === 'RegisterBus' ? 8 : 8;
+  const width = normalizeWidth(config.width, widthDefault);
+  const mask = maskForWidth(width);
+
+  const clk = readFirstNumber(inputs, ['CLK', 'clk', 'clock', 'C']);
+  const rst = readFirstNumber(inputs, ['RST', 'rst', 'RESET', 'reset', 'CLR', 'clr', 'SET', 'set'], 0);
+  const enFallback = config.hasEnable === true ? 0 : 1;
+  const en = readFirstNumber(inputs, ['EN', 'en', 'ENABLE', 'enable', 'CE', 'ce'], enFallback);
+  const dPacked =
+    nodeType === 'Register1'
+      ? toBit(readFirstNumber(inputs, ['D', 'd', 'in']))
+      : readPackedInput(inputs, width, 'D');
+  const lastClk = toBit(Number(state.lastClk ?? 0));
+  let q = (Number(state.q ?? 0) & mask) >>> 0;
+
+  const resetKind = resolveResetKind(config);
+  const resetPolarity = resolvePolarity(config.resetPolarity, 'active_high');
+  const enablePolarity = resolvePolarity(config.enablePolarity, 'active_high');
+  const clockEdge = resolveClockEdge(config);
+
+  const resetActive = isActive(rst, resetPolarity);
+  const enableActive = isActive(en, enablePolarity);
+  const clkBit = toBit(clk);
+  const edgeDetected =
+    clockEdge === 'rising_edge'
+      ? lastClk === 0 && clkBit === 1
+      : lastClk === 1 && clkBit === 0;
+
+  if (resetKind === 'async_clear' && resetActive) {
+    q = 0;
+  } else if (resetKind === 'async_preset' && resetActive) {
+    q = mask;
+  } else if (edgeDetected) {
+    if (resetKind === 'sync_reset' && resetActive) {
+      q = 0;
+    } else if (resetKind === 'sync_set' && resetActive) {
+      q = mask;
+    } else if (enableActive) {
+      q = dPacked & mask;
+    }
+  }
+
+  const outputs = buildRegisterOutputs(q, width, nodeType === 'Register1');
+  const bankBits = Array.from({ length: width }, (_value, index) => ((q >> index) & 1) as 0 | 1);
+
+  return {
+    outputs,
+    state: {
+      ...state,
+      q,
+      width,
+      lastClk: clkBit,
+      bankBits,
+      bankValue: q,
+      resetKind,
+      resetPolarity,
+      clockPolarity: clockEdge,
+      enablePolarity,
+    },
+  };
+}
+
 /**
  * D Flip-Flop - edge-triggered storage element
  * Inputs: D, CLK, optional EN, optional RST/CLR/RESET
@@ -292,6 +476,28 @@ export const DFlipFlopBehavior: NodeBehavior = {
       outputs: sequentialOutputs(q),
       state: { q, lastClk: clk },
     };
+  },
+};
+
+/**
+ * Register-family aliases:
+ * - Register1: scalar register primitive
+ * - RegisterBus / StateBank: width/grouping metadata variants that currently
+ *   share DFF runtime semantics per bit.
+ */
+export const Register1Behavior: NodeBehavior = {
+  evaluate(inputs, state, config) {
+    return evaluateRegisterFamily(inputs, state, config, 'Register1');
+  },
+};
+export const RegisterBusBehavior: NodeBehavior = {
+  evaluate(inputs, state, config) {
+    return evaluateRegisterFamily(inputs, state, config, 'RegisterBus');
+  },
+};
+export const StateBankBehavior: NodeBehavior = {
+  evaluate(inputs, state, config) {
+    return evaluateRegisterFamily(inputs, state, config, 'StateBank');
   },
 };
 
@@ -375,3 +581,4 @@ export const OUTPUTBehavior: NodeBehavior = {
     };
   },
 };
+ 

@@ -22,6 +22,24 @@ const META_BY_TYPE: Record<string, NodeMeta> = {
     resetPort: "RST",
     note: "clocked_macro v2 - rising-edge D flip-flop",
   },
+  Register1: {
+    isSequential: true,
+    clockPort: "CLK",
+    resetPort: "RST",
+    note: "native scalar register (D, CLK, optional EN/RST)",
+  },
+  RegisterBus: {
+    isSequential: true,
+    clockPort: "CLK",
+    resetPort: "RST",
+    note: "native bus register (width-configurable)",
+  },
+  StateBank: {
+    isSequential: true,
+    clockPort: "CLK",
+    resetPort: "RST",
+    note: "native grouped register/state-bank abstraction",
+  },
   DLatch: {
     isSequential: true,
     clockPort: "EN",

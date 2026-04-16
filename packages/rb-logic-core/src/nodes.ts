@@ -204,4 +204,56 @@ export function registerBuiltinNodeDefinitions(registry: NodeRegistry): void {
     },
   });
 
+  registry.register({
+    type: "Register1",
+    update(node, inputs) {
+      const d = inputs["D"] ?? inputs["d"] ?? 0;
+      const clk = inputs["CLK"] ?? inputs["clk"] ?? inputs["clock"] ?? 0;
+      const rst = inputs["RST"] ?? inputs["rst"] ?? inputs["CLR"] ?? inputs["clr"] ?? 0;
+      const en = inputs["EN"] ?? inputs["en"] ?? 1;
+      const prevClk = node.state?.prevClk ?? 0;
+      let q = node.state?.q ?? 0;
+      if (rst === 1) q = 0;
+      else if (clk === 1 && prevClk === 0 && en === 1) q = d ? 1 : 0;
+      node.state = { q, prevClk: clk };
+      return { Q: q, q, out: q, Q_inv: q ? 0 : 1 };
+    },
+  });
+
+  registry.register({
+    type: "RegisterBus",
+    update(node, inputs) {
+      const width = Math.max(1, Math.min(32, (node.config?.width ?? 8) | 0));
+      const mask = width >= 31 ? 0x7fffffff : (1 << width) - 1;
+      const d = ((inputs["D"] ?? inputs["d"] ?? 0) as number) & mask;
+      const clk = inputs["CLK"] ?? inputs["clk"] ?? inputs["clock"] ?? 0;
+      const rst = inputs["RST"] ?? inputs["rst"] ?? inputs["CLR"] ?? inputs["clr"] ?? 0;
+      const en = inputs["EN"] ?? inputs["en"] ?? 1;
+      const prevClk = node.state?.prevClk ?? 0;
+      let q = (node.state?.q ?? 0) as number;
+      if (rst === 1) q = 0;
+      else if (clk === 1 && prevClk === 0 && en === 1) q = d;
+      node.state = { q, prevClk: clk };
+      return { Q: q, q, out: q, value: q };
+    },
+  });
+
+  registry.register({
+    type: "StateBank",
+    update(node, inputs) {
+      const width = Math.max(1, Math.min(32, (node.config?.width ?? 8) | 0));
+      const mask = width >= 31 ? 0x7fffffff : (1 << width) - 1;
+      const d = ((inputs["D"] ?? inputs["d"] ?? 0) as number) & mask;
+      const clk = inputs["CLK"] ?? inputs["clk"] ?? inputs["clock"] ?? 0;
+      const rst = inputs["RST"] ?? inputs["rst"] ?? inputs["CLR"] ?? inputs["clr"] ?? 0;
+      const en = inputs["EN"] ?? inputs["en"] ?? 1;
+      const prevClk = node.state?.prevClk ?? 0;
+      let q = (node.state?.q ?? 0) as number;
+      if (rst === 1) q = 0;
+      else if (clk === 1 && prevClk === 0 && en === 1) q = d;
+      node.state = { q, prevClk: clk, bankBits: Array.from({ length: width }, (_, i) => (q >> i) & 1) };
+      return { Q: q, q, out: q, value: q };
+    },
+  });
+
 }

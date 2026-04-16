@@ -44,7 +44,7 @@ export type IRPrimitiveType =
   // Combinational — compound
   | 'FullAdder' | 'MUX4'
   // Sequential
-  | 'DFlipFlop' | 'DLatch' | 'TFlipFlop' | 'JKFlipFlop' | 'Counter4Bit' | 'Delay'
+  | 'DFlipFlop' | 'Register1' | 'RegisterBus' | 'StateBank' | 'DLatch' | 'TFlipFlop' | 'JKFlipFlop' | 'Counter4Bit' | 'Delay'
   // Boundary / I-O
   | 'INPUT' | 'OUTPUT' | 'Switch' | 'Clock' | 'PowerSource' | 'Ground' | 'Lamp'
   // Fallback for IR001 — keeps IR total and type-safe; never emit to HDL

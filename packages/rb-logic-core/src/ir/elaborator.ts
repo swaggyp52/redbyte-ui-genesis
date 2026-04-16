@@ -51,7 +51,7 @@ const VALID_PRIMITIVE_TYPES = new Set<string>([
   'AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR', 'XNOR',
   'AND3', 'OR3', 'NAND3', 'NOR3', 'XOR3',
   'FullAdder', 'MUX4',
-  'DFlipFlop', 'DLatch', 'TFlipFlop', 'JKFlipFlop', 'Counter4Bit', 'Delay',
+  'DFlipFlop', 'Register1', 'RegisterBus', 'StateBank', 'DLatch', 'TFlipFlop', 'JKFlipFlop', 'Counter4Bit', 'Delay',
   'INPUT', 'OUTPUT', 'Switch', 'Clock', 'PowerSource', 'Ground', 'Lamp',
   'Wire',
 ]);
@@ -92,6 +92,9 @@ const PRIMITIVE_REQUIRED_INPUTS: Partial<Record<string, string[]>> = {
   FullAdder:   ['a', 'b', 'cin'],
   MUX4:        ['i0', 'i1', 'i2', 'i3', 's0', 's1'],
   DFlipFlop:   ['D', 'CLK'],
+  Register1:   ['D', 'CLK'],
+  RegisterBus: ['D', 'CLK'],
+  StateBank:   ['D', 'CLK'],
   DLatch:      ['D', 'EN'],
   TFlipFlop:   ['T', 'CLK'],
   JKFlipFlop:  ['J', 'K', 'CLK'],

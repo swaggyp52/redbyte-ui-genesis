@@ -242,5 +242,21 @@ export function createDefaultNodeRegistry(): NodeRegistry {
     },
   });
 
+  registry.register({
+    type: "Register1",
+    update(node, inputs) {
+      const d = inputs["D"] ?? inputs["d"] ?? 0;
+      const clk = inputs["CLK"] ?? inputs["clk"] ?? inputs["clock"] ?? 0;
+      const rst = inputs["RST"] ?? inputs["rst"] ?? inputs["CLR"] ?? inputs["clr"] ?? 0;
+      const en = inputs["EN"] ?? inputs["en"] ?? 1;
+      const prevClk = node.state?.prevClk ?? 0;
+      let q = node.state?.q ?? 0;
+      if (rst === 1) q = 0;
+      else if (clk === 1 && prevClk === 0 && en === 1) q = d ? 1 : 0;
+      node.state = { q, prevClk: clk };
+      return { Q: q, q, out: q, Q_inv: q ? 0 : 1 };
+    },
+  });
+
   return registry;
 }
