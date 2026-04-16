@@ -15,17 +15,13 @@ Run deterministic vector verification and present clear pass/fail proof.
 
 ## Layout
 
-1. Top banner
-- PASS/FAIL status.
-- Deterministic hash.
-- Run summary (vectors passed/failed).
+1. **Command deck** (`VerifyCommandBar`): two rows — **Run** / **Observe vs Check outputs**, framed **Experiment** block (scenario name from active scenario or last run or vector bucket label; **Case tN** readout; timing / lab mode line), utilities (**More actions**, **Analysis**, **Open in Design**); second row is **session** summary (status, meta, evidence). See `docs/IDE_SYSTEM_MAP.md` § Verify chrome.
 
-2. Main center
-- Results table: tick, signal, expected, actual, status.
+2. **Workspace**: **Stimulus** (scenario library, canvas, workbench) and **waveform** instrument in a lab grid; waveform column is visually framed as the primary trace stage after a run.
 
-3. Right inspector
-- Signal picker.
-- Lightweight waveform preview.
+3. **Side rails**: Signal lanes (left), inspector / console (per `IdeSurfaceLayout`).
+
+4. **Analysis / failure**: Lower result region and drawer for diagnosis when runs fail (details vary by session state).
 
 ## Empty State
 
