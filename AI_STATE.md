@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-04-16 (Repo hygiene: root-level dead receipts & scripts sweep)
+
+**Subsystem**: repo root, `.gitignore`
+
+### What changed
+
+- Removed ~138 orphaned root-level artifacts that were not referenced by `package.json`, CI, or docs:
+  - Stale markdown receipts (`BOOTSTRAP_DEPLOYMENT_REPORT`, `CHIP_SYSTEM_SUMMARY`, `CIRCUIT_HIERARCHY*`, `PHASE_{2,3}_*`, `FPGA_PROOF_VIEWER_*`, `SESSION_*`, `SPRINT_7_*`, `TYPESCRIPT_FIXES_SUMMARY`, `V1_RELEASE_STATUS`, `rb-os-*`, `rb-ui-*`, etc.).
+  - Orphaned debug/diagnose scripts (`debug-*.mjs`, `diagnose-*.mjs`, `temp-*.mjs`, `autonomous-boot-test`, `quick-boot-test`, `launcher.bat`).
+  - Orphaned root ops scripts (`auto.ps1`, `autodeploy.ps1`, root-level `bootstrap.ps1`, `setup-dev.ps1`, `supermega*.ps1`, `daily-ops.ps1`, `night_shift.ps1`, root-level `deploy.ps1`/`dev.ps1`/`diag.ps1`, `go.ps1`, `install-auto.ps1`, `setup_redbyte.ps1`, `upgrade-v3.ps1`, `watch-deploy.ps1`, `start-bridge-mock.ps1`).
+  - Stray logs, reports, fixtures (`build*.log`, `verify-output.log`, `*-test-results.json`, `verify_result.json`, `report.json`, `ops-liveness*.json`, `health.json`, `codex_laneA_*.bundle`, `.codex-*.log`, `.tmp_gate_fails*.txt`, `gate_output.txt`, `demo-result.txt`, `screenshot-*`, `tsconfig.tsbuildinfo`, `package.json.broken`, `pnpm-workspace.bak`).
+  - Malformed paths (`Set-Content` placeholder, unicode-corrupted logic-core registry note, `ersconnoredbyte-ui`).
+- Extended `.gitignore` to prevent regrowth: `tsconfig.tsbuildinfo`, `*.bundle`, `ersconnoredbyte-ui`, `ops-liveness*.json`, `health.json`, `*-test-results.json`, `.codex-*.log`, `.tmp_gate_fails*.txt`.
+- Kept authoritative assets untouched: `Start-RedByte.ps1`, `PUSH_THIS.{ps1,sh}`, `scripts/bootstrap.ps1`, and all canonical docs (README, AGENTS, CLAUDE, AI_STATE, PRODUCT, PROJECT_MODEL, DEPLOYMENT, RELEASE, CHANGELOG, CI_CONTRACT, INSTRUCTOR_GUIDE, REDBYTE_USER_MANUAL, LAB_SPECS, EXAMPLES_CATALOG, STUDENT_EXPORT_SCHEMA, KEYBOARD_SHORTCUTS, CLASSROOM_QUICKSTART_*, PRODUCTION_READINESS).
+
+### Verification evidence
+
+- `pnpm -s test:audit` ✅ (toast-dismiss + instrument-dock).
+- Broader `pnpm -w exec vitest run -t testbench` — 10 suites pass / 13 fail; failures confirmed pre-existing on clean HEAD (import-resolution drift in `circuitHealthPanel`, `clock-indicator`, `submissionViewer`, `toolchain-route`, etc.) and unaffected by this sweep.
+
+### Truth change
+
+- Root directory no longer implies authority for deleted paths. The canonical entry points are: `Start-RedByte.ps1` (launch), `scripts/bootstrap.ps1` (bootstrap), `PUSH_THIS.{ps1,sh}` (local ship helper), and `pnpm` scripts in `package.json`.
+
 ## Change Log 2026-04-16 (IDE: Verify workflow terminology + hierarchy cleanup)
 
 **Subsystem**: `VerifySurface.tsx`, `VerifyCommandBar.tsx`, `ScenarioBuilderPanel.tsx`, `VerifyLabSequencerPanel.tsx`, `StimulusCanvas.tsx`, `buildVerifySessionViewModel.ts`, `ide-root.css`, Verify test suites, Verify docs
