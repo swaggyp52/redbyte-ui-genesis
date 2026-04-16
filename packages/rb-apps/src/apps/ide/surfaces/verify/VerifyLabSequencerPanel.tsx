@@ -54,7 +54,10 @@ export const VerifyLabSequencerPanel: React.FC<VerifyLabSequencerPanelProps> = (
           <span className="ide-verify-lab-chip" data-testid="ide-verify-lab-step-count">
             {stepCount} step{stepCount === 1 ? '' : 's'}
           </span>
-          <span className="ide-verify-lab-chip" data-testid="ide-verify-lab-selected-tick">
+          <span
+            className={`ide-verify-lab-chip ide-verify-lab-chip--selected-tick${selectedTick == null ? '' : ' is-selected'}`}
+            data-testid="ide-verify-lab-selected-tick"
+          >
             {selectedTick == null ? 'No tick selected' : `t${selectedTick}`}
           </span>
         </div>
@@ -200,7 +203,11 @@ export const VerifyLabSequencerPanel: React.FC<VerifyLabSequencerPanelProps> = (
             <li className="ide-copy">No explicit lab steps yet. Add vectors in the workbench below.</li>
           ) : (
             steps.map((step) => (
-              <li key={step.id} className="ide-verify-lab-step-item">
+              <li
+                key={step.id}
+                className={`ide-verify-lab-step-item${selectedTick === step.tick ? ' is-selected' : ''}`}
+                data-testid={`ide-verify-lab-step-item-${step.id}`}
+              >
                 <div>
                   <span className={`ide-verify-lab-step-kind ide-verify-lab-step-kind--${step.kind}`}>
                     {step.kind.replaceAll('_', ' ')}
@@ -213,7 +220,7 @@ export const VerifyLabSequencerPanel: React.FC<VerifyLabSequencerPanelProps> = (
                   onClick={() => onSelectStepTick(step.tick)}
                   testId={`ide-verify-lab-step-${step.id}`}
                 >
-                  Open t{step.tick}
+                  {selectedTick === step.tick ? `Selected t${step.tick}` : `Open t${step.tick}`}
                 </IdeButton>
               </li>
             ))

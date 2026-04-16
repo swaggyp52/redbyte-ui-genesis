@@ -951,7 +951,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     if (vectorsCount === 0) {
       return {
         title: 'Generate bring-up steps',
-        body: 'Create a guided bring-up sequence so you can set inputs, check outputs, and then move to programming with less guesswork.',
+        body: 'Create a guided bring-up sequence so you can set inputs, verify assertions, and then move to programming with less guesswork.',
         primaryLabel: 'Generate Bring-Up Steps',
         primaryAction: onGenerateBringUpVectors,
         primaryTestId: 'ide-hardware-next-primary',

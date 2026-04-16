@@ -243,10 +243,10 @@ describe('VerifySurface workstation controls', () => {
       'Outputs are observed on the waveform'
     );
     expect(getByTestId('ide-verify-first-run-callout').textContent).toContain(
-      'Compare only checks the output cells you explicitly saved'
+      'Assertion verification only checks output cells you explicitly saved'
     );
     expect(queryByTestId('ide-verify-generate-all-combos')).toBeNull();
-    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('saved output checks');
+    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('saved output assertions');
     expect(getByTestId('ide-verify-session-status').textContent).toContain('DRAFT');
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION');
     expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to run stimulus');
@@ -277,7 +277,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('observation only');
+    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('stimulus evidence only');
     expect(getByTestId('ide-verify-session-status').textContent).toContain('DRAFT');
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION');
     expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to run stimulus');
@@ -668,10 +668,10 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-session-status').textContent).toContain('OBSERVATION ONLY');
+    expect(getByTestId('ide-verify-session-status').textContent).toContain('STIMULUS ONLY');
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('CAPTURE');
-    expect(getByTestId('ide-verify-session-title').textContent).toContain('Waveform recorded — observation only');
-    expect(getByTestId('ide-verify-summary-status').textContent).toContain('OBSERVATION ONLY');
+    expect(getByTestId('ide-verify-session-title').textContent).toContain('Waveform recorded — stimulus evidence');
+    expect(getByTestId('ide-verify-summary-status').textContent).toContain('STIMULUS ONLY');
     expect(queryByTestId('ide-verify-workbench-mode')).toBeNull();
     expect(queryByTestId('ide-verify-workbench-subtitle')).toBeNull();
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
@@ -908,7 +908,7 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(getByTestId('ide-vcb-mode-compare').className).toContain('is-active');
-    expect(getByTestId('ide-verify-session-status').textContent).toContain('OBSERVATION ONLY');
+    expect(getByTestId('ide-verify-session-status').textContent).toContain('STIMULUS ONLY');
     expect(getByTestId('ide-verify-session-status').textContent).not.toContain('STALE');
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('CAPTURE');
     expect(queryByTestId('ide-verify-workbench-mode')).toBeNull();
@@ -970,13 +970,13 @@ describe('VerifySurface workstation controls', () => {
     fireEvent.click(getByTestId('ide-vcb-mode-observe'));
 
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain(
-      'saved output checks'
+      'saved output assertions'
     );
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).not.toContain(
       'comparing against'
     );
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain(
-      'current mode is observe'
+      'current mode is stimulus'
     );
   });
 
@@ -1125,7 +1125,7 @@ describe('VerifySurface workstation controls', () => {
       expect(getByTestId('ide-verify-strip-stale-guidance').textContent).toContain('Older authored reference available');
     });
     expect(getByTestId('ide-verify-session-status').textContent).toContain('STALE');
-    expect(getByTestId('ide-verify-reference-mode').textContent).toContain('stale saved checks');
+    expect(getByTestId('ide-verify-reference-mode').textContent).toContain('stale saved assertions');
     expect(getByTestId('ide-verify-stale-reference-mode').textContent).toContain('stimulus-only tracing');
     expect(queryByTestId('ide-verify-stale-banner')).toBeNull();
     expect(queryByTestId('ide-verify-prerun-inventory')).toBeNull();

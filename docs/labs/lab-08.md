@@ -7,7 +7,7 @@
 - Demonstrate valid and invalid sequence paths.
 
 ## Hardware
-- Exercise lock sequence using Basys3 inputs and observe outputs.
+- Exercise lock sequence using Basys3 inputs and verify waveform evidence.
 
 ## Submit
 - Export bundle including both valid and invalid path evidence.

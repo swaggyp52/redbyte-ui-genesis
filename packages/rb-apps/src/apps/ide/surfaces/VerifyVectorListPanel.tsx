@@ -72,7 +72,7 @@ export const VerifyVectorListPanel: React.FC<VerifyVectorListPanelProps> = ({
   return (
     <section className="ide-verify-vector-list-panel" data-testid="ide-verify-vector-list-panel">
       <header className="ide-design-subheader ide-verify-three-panel-header">
-        <h3>Failing checks</h3>
+        <h3>Failing assertions</h3>
         <span className="ide-copy" data-testid="ide-verify-vector-list-count">
           {rows.length}
         </span>
@@ -87,7 +87,7 @@ export const VerifyVectorListPanel: React.FC<VerifyVectorListPanelProps> = ({
         onKeyDown={handleKeyDown}
       >
         {rows.length === 0 ? (
-          <p className="ide-copy">No failing checks in this run.</p>
+          <p className="ide-copy">No failing assertions in this run.</p>
         ) : (
           rows.map((row) => {
             const isSelected = row.key === selectedKey;

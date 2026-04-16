@@ -121,7 +121,7 @@ describe('VerifySurface manual lab step workflow', () => {
     expect(screen.getByTestId('ide-verify-lab-scenario-name').textContent).toContain('Lab Step');
     expect(screen.getByTestId('ide-verify-lab-step-count').textContent).toBe('4 steps');
     expect(screen.getByTestId('ide-verify-lab-step-list').textContent).toMatch(/set input/i);
-    expect(screen.getByTestId('ide-verify-lab-step-list').textContent).toMatch(/observe \/ assert/i);
+    expect(screen.getByTestId('ide-verify-lab-step-list').textContent).toMatch(/capture \/ assert/i);
     expect(screen.getByTestId('ide-verify-lab-authoring-strip')).toBeTruthy();
     fireEvent.click(screen.getByTestId('ide-verify-lab-action-pulse'));
     expect(onAppendScenarioStep).toHaveBeenCalledWith(

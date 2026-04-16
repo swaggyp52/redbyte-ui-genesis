@@ -71,7 +71,7 @@ For cross-surface authoring loop work: [[Verify Design Loop]] + [[Design Surface
 
 - [[Project Surface]] = front door, current state, next-action authority
 - [[Design Surface]] = circuit authoring, structural inspection, replay-backed explanation
-- [[Verify Engine]] = stimulus authoring, run control, waveform truth, optional compare
+- [[Verify Engine]] = scenario/procedure authoring, stimulus control, optional assertions, waveform evidence
 - [[Verify Design Loop]] = the handoff contract between waveform evidence and structural explanation
 - [[Hardware Surface]] = physical I/O mapping, board readiness, program handoff context
 - [[Export Contracts]] = deterministic artifact and submission/program package handoff

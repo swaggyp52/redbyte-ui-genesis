@@ -55,7 +55,7 @@ export const VerifyFirstRunPanel: React.FC<VerifyFirstRunPanelProps> = ({
         <p className="ide-vfr-hero-desc">
           {isSequential
             ? 'Generate an initial timeline with clock pulses, then edit each row to author the specific bit sequence you want to test.'
-            : 'Generate starter inputs, run the circuit, and check that outputs match what you expect.'}
+            : 'Generate starter inputs, run the circuit, and add assertions only where you need explicit verification.'}
         </p>
       </div>
 
@@ -125,11 +125,11 @@ export const VerifyFirstRunPanel: React.FC<VerifyFirstRunPanelProps> = ({
         </div>
         <div className="ide-vfr-step">
           <span className="ide-vfr-step-num">3</span>
-          <span className="ide-vfr-step-text">Check outputs</span>
+          <span className="ide-vfr-step-text">Review waveform evidence</span>
         </div>
         <div className="ide-vfr-step">
           <span className="ide-vfr-step-num">4</span>
-          <span className="ide-vfr-step-text">Save as expected → Compare</span>
+          <span className="ide-vfr-step-text">Save assertions → Verify</span>
         </div>
       </div>
     </section>

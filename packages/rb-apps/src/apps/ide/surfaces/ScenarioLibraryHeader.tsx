@@ -168,7 +168,7 @@ export const ScenarioLibraryHeader: React.FC<ScenarioLibraryHeaderProps> = ({
           data-testid="ide-scenario-create-btn"
           aria-label="Create new scenario"
         >
-          + New
+          New scenario
         </button>
         <button
           className="ide-scenario-action-btn"
@@ -177,7 +177,7 @@ export const ScenarioLibraryHeader: React.FC<ScenarioLibraryHeaderProps> = ({
           data-testid="ide-scenario-duplicate-btn"
           aria-label="Duplicate scenario"
         >
-          ⎘ Dup
+          Duplicate
         </button>
         <button
           className="ide-scenario-action-btn"
@@ -186,7 +186,7 @@ export const ScenarioLibraryHeader: React.FC<ScenarioLibraryHeaderProps> = ({
           data-testid="ide-scenario-rename-btn"
           aria-label="Rename scenario"
         >
-          T Rename
+          Rename
         </button>
         <button
           className={`ide-scenario-action-btn ide-scenario-action-btn--danger${!canDelete ? ' is-disabled' : ''}`}
@@ -197,7 +197,7 @@ export const ScenarioLibraryHeader: React.FC<ScenarioLibraryHeaderProps> = ({
           aria-label="Delete scenario"
           aria-disabled={!canDelete}
         >
-          ✕ Delete
+          Delete
         </button>
       </div>
     </div>

@@ -1,5 +1,24 @@
 # AI State
 
+## Change Log 2026-04-16 (IDE: Verify workflow terminology + hierarchy cleanup)
+
+**Subsystem**: `VerifySurface.tsx`, `VerifyCommandBar.tsx`, `ScenarioBuilderPanel.tsx`, `VerifyLabSequencerPanel.tsx`, `StimulusCanvas.tsx`, `buildVerifySessionViewModel.ts`, `ide-root.css`, Verify test suites, Verify docs
+
+### What changed
+
+- Removed the **Observe outputs / Check outputs** split from live Verify UI terminology and replaced it with a single workflow lens: **Stimulus** + **Assertions** + waveform evidence.
+- Updated command deck copy and controls: mode labels now read **Stimulus** / **Assertions**, utility actions use **Edit assertions** / **Save assertions**, and top-strip framing emphasizes procedure context over mode switching.
+- Rebalanced Verify workspace hierarchy so waveform stays visually primary: lighter stimulus frame, wider waveform ratio, cleaner scenario header actions, and stronger selected-step/selected-tick emphasis in the lab sequencer.
+- Synced terminology across model/view text (`buildVerifySessionViewModel`), workbench/canvas copy (`ScenarioBuilderPanel`, `StimulusCanvas`), and adjacent surfaces/docs that still referenced old wording.
+
+### Verification evidence
+
+- Targeted Verify suites: `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.desktopComposition.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.manualLabStepMode.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.drawerConsolidation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.tickChip.test.tsx` ✅
+- Additional contracts: `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts packages/rb-apps/src/apps/ide/__tests__/verifyLabSequencer.test.ts packages/rb-apps/src/apps/ide/__tests__/verifyScenario.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` ✅
+- Package boundary gate: `pnpm rb-utils:public-api-gate` ✅
+- Production build path: `pnpm build:unified` ✅
+- Browser-level run attempt: `pnpm -w exec playwright test tests/e2e/verify-mode-aggressive-test.spec.ts --project=chromium` ❌ (suite currently fails preflight on stale selectors expecting `shell-desktop`/`desktop-shell`; tracked as existing e2e contract drift, not a compile/runtime crash)
+
 ## Change Log 2026-04-16 (Deploy guardrails: rb-utils export contract + unified-build gate discipline)
 
 **Subsystem**: `packages/rb-utils/src/index.js`, `packages/rb-utils/src/__tests__/public-api-contract-gate.test.ts`, root `package.json`, `docs/ai-usage-rules.md`
@@ -33,7 +52,7 @@
 
 ### What changed
 
-- **Command bar**: Split into **two rows** — primary row keeps **Run**, **Observe / Check outputs**, and adds a framed **Experiment** block (scenario, **Case tN** / **No case selected**, timing/lab hint from existing `sequencerModeLabel`). Utilities stay **right-aligned** on the primary row. **Session** status + meta + evidence move to a **full-width second row** so they no longer compete with controls.
+- **Command bar**: Split into **two rows** — primary row keeps **Run**, **Stimulus / Assertions** procedure lens, and adds a framed **Experiment** block (scenario, **Case tN** / **No case selected**, timing/lab hint from existing `sequencerModeLabel`). Utilities stay **right-aligned** on the primary row. **Session** status + meta + evidence move to a **full-width second row** so they no longer compete with controls.
 - **Truth**: Experiment scenario string is **`activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName`** (same family of labels already used for runs). Case line mirrors **selected tick** only.
 - **Workbench chrome**: **Lab grid** column gap increased; **waveform** region gets a clearer **stage frame**; **scenario library** strip has **taller** switcher/actions; **stimulus** selected-tick column and **lab sequencer** chips read more clearly on Verify.
 

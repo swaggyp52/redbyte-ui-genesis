@@ -317,7 +317,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             </div>
             {outputFields.length > 0 && showExpectedOutputs && (
               <>
-                <p className="ide-verify-section-subheader">Output checks (optional)</p>
+                <p className="ide-verify-section-subheader">Output assertions (optional)</p>
                 <div className="ide-verify-vector-grid ide-verify-vector-grid--expected">
                   {outputFields.map((field, index) => (
                     <label
@@ -498,9 +498,9 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
               ? 'Map your circuit I/O before authoring a real testbench.'
               : hasVectors
                 ? showsAssertedExpectedCells && showExpectedOutputs
-                  ? 'Edit input stimulus here. Output checks are optional and only checked cells participate in Compare.'
-                  : 'Edit input stimulus here. Outputs are observed on the waveform. Open Checks only when you want Compare to verify them.'
-                : 'Click cells to build input stimulus. Outputs are observed on the waveform. Open Checks only when you want Compare to verify them.'}
+                  ? 'Edit input stimulus here. Output assertions are optional and only asserted cells are verified.'
+                  : 'Edit input stimulus here. Outputs are observed on the waveform. Open Assertions only when you want explicit verification.'
+                : 'Click cells to build input stimulus. Outputs are observed on the waveform. Open Assertions only when you want explicit verification.'}
           </span>
         </div>
 
@@ -530,7 +530,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             <p className="ide-copy" style={{ margin: 0 }}>
               {hasVectors
                 ? showsAssertedExpectedCells
-                  ? 'Run the current stimulus and inspect outputs on the waveform. Compare only checks the output cells you explicitly saved.'
+                  ? 'Run the current stimulus and inspect outputs on the waveform. Assertion verification only checks output cells you explicitly saved.'
                   : 'Run this stimulus first. Waveform inspection and capture tools stay available after you have real evidence.'
                 : 'Generate a starter set now, or use the timeline plus row and tick tools to author input stimulus first.'}
             </p>
@@ -542,7 +542,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           <div className="ide-verify-run-footer-status">
             {hasVectors && !isUsingFallbackSignals ? (
               <span className="ide-verify-run-footer-ready">
-                {effectiveVectorCount} vector{effectiveVectorCount !== 1 ? 's' : ''} {showsAssertedExpectedCells ? 'ready for observation or compare' : 'ready for observation'}
+                {effectiveVectorCount} vector{effectiveVectorCount !== 1 ? 's' : ''} {showsAssertedExpectedCells ? 'ready for stimulus or assertions' : 'ready for stimulus'}
               </span>
             ) : (
               <span className="ide-verify-run-footer-hint">
@@ -610,7 +610,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   };
 
   const collapsedWorkbenchSummary = showsAssertedExpectedCells || showExpectedOutputs
-    ? 'Stimulus is tucked away. Reopen to edit cases or jump back into saved checks.'
+    ? 'Stimulus is tucked away. Reopen to edit cases or jump back into saved assertions.'
     : 'Stimulus is tucked away. Reopen to edit cases or bring in project vectors without leaving the waveform.';
 
   return (
@@ -691,7 +691,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
                 }}
                 testId="ide-verify-workbench-toggle-checks"
               >
-                {showExpectedOutputs ? 'Hide checks' : 'Show checks'}
+                {showExpectedOutputs ? 'Hide assertions' : 'Show assertions'}
               </IdeButton>
             )}
           </div>

@@ -15,7 +15,7 @@ Run deterministic vector verification and present clear pass/fail proof.
 
 ## Layout
 
-1. **Command deck** (`VerifyCommandBar`): two rows — **Run** / **Observe vs Check outputs**, framed **Experiment** block (scenario name from active scenario or last run or vector bucket label; **Case tN** readout; timing / lab mode line), utilities (**More actions**, **Analysis**, **Open in Design**); second row is **session** summary (status, meta, evidence). See `docs/IDE_SYSTEM_MAP.md` § Verify chrome.
+1. **Command deck** (`VerifyCommandBar`): two rows — **Run** plus a **Stimulus / Assertions** procedure lens, framed **Experiment** block (scenario name from active scenario or last run or vector bucket label; **Case tN** readout; timing / lab mode line), utilities (**More actions**, **Analysis**, **Open in Design**); second row is **session** summary (status, meta, evidence). See `docs/IDE_SYSTEM_MAP.md` § Verify chrome.
 
 2. **Workspace**: **Stimulus** (scenario library, canvas, workbench) and **waveform** instrument in a lab grid; waveform column is visually framed as the primary trace stage after a run.
 

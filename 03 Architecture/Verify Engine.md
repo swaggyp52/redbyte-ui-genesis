@@ -523,7 +523,7 @@ This means a project that already has expected outputs (e.g. imported example pr
 |-----|-----|-------|
 | `COMPARE` | `CHECKS` | `buildVerifySessionViewModel` mode badge |
 | `'Ready to run this testbench'` | `'Ready to run stimulus'` | Pre-run session title |
-| `'Ready to compare'` | `'Ready to check outputs'` | Pre-run title (assertions armed) |
+| `'Ready to compare'` | `'Ready to run assertions'` | Pre-run title (assertions armed) |
 | `'Run Compare'` / `'Re-run Compare'` | `'Compare'` / `'Compare again'` | Run label |
 | `'Re-run for current circuit'` | `'Re-run stimulus'` | Stale run label |
 | `'Edit cases'` | `'Edit checks'` | VerifyCommandBar edit button |

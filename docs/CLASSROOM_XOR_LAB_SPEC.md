@@ -18,7 +18,7 @@ They should be able to:
 3. **Place logic gates** → AND, OR, NOT, XOR (drag-drop or palette)
 4. **Wire them** → Connect outputs to inputs, visual feedback
 5. **Set inputs** → Toggle switches A and B
-6. **Observe outputs** → Logic inspector shows A, B, and output values
+6. **Review waveform evidence** → Logic inspector shows A, B, and output values
 7. **Step simulation** → Advance one tick at a time, see state change
 8. **Understand the result** → "When A=1 and B=1, output is 0 ✓"
 9. **Save the circuit** → "My XOR" filename, one click

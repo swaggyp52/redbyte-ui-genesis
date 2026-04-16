@@ -11,11 +11,11 @@ function experimentCaseEmphasisClass(label: string): string {
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface VerifyCommandBarProps {
-  /** Current mode: false = Observe, true = Compare */
+  /** Current mode: false = stimulus tracing, true = assertion verification */
   readonly isCompareMode: boolean;
   readonly onSetObserve: () => void;
   readonly onSetCompare: () => void;
-  /** Whether Compare mode is available (expected values exist) */
+  /** Whether assertion verification is available (expected values exist) */
   readonly compareAvailable: boolean;
 
   /** Run action */
@@ -230,8 +230,9 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           </IdeButton>
         </div>
 
-        {/* Mode toggle — segmented, secondary to Run */}
+        {/* Procedure lens toggle — secondary to Run */}
         <div className="ide-vcb-group ide-vcb-group--mode">
+          <span className="ide-vcb-mode-label">Procedure lens</span>
           <div className="ide-vcb-mode-toggle" data-testid="ide-vcb-mode-toggle">
             <button
               type="button"
@@ -239,7 +240,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
               onClick={onSetObserve}
               data-testid="ide-vcb-mode-observe"
             >
-              Observe
+              Stimulus
             </button>
             <button
               type="button"
@@ -248,12 +249,12 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
               disabled={!compareAvailable}
               title={
                 !compareAvailable
-                  ? 'Run the stimulus first, then save observed outputs as checks to unlock Compare'
-                  : 'Compare observed outputs against saved checks'
+                  ? 'Run stimulus first, then save assertions to enable assertion verification'
+                  : 'Verify assertions against observed waveform evidence'
               }
               data-testid="ide-vcb-mode-compare"
             >
-              Check outputs
+              Assertions
             </button>
           </div>
         </div>
@@ -308,7 +309,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
                     }}
                     testId="ide-verify-run-proof-edit-vectors"
                   >
-                    Edit checks
+                    Edit assertions
                   </IdeButton>
                 )}
                 {showSaveAsExpected && onSaveAsExpected && (
@@ -320,7 +321,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
                     }}
                     testId="ide-vcb-save-expected"
                   >
-                    Save as checks
+                    Save assertions
                   </IdeButton>
                 )}
               </div>

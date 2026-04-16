@@ -445,7 +445,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       return 'Compare PASS with mapping caveat — finish pins before hardware.';
     }
     if (isVerifyStale) return 'Verify stale — re-run Compare after design edits.';
-    if (isTraceOnly) return 'Trace-only run — enable output checks for assertion-backed evidence.';
+    if (isTraceOnly) return 'Trace-only run — enable output assertions for assertion-backed evidence.';
     if (isStarterScenarioFail) return 'Starter scenario only — author vectors for a graded handoff.';
     if (isNoRunYet) {
       return 'Compare not run yet — optional before download, recommended before submission.';
@@ -678,7 +678,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     {
       id: 'verify',
       label: 'Verify hash embedded',
-      tooltip: 'A passing Verify run has been completed for this exact circuit. Open Verify, run with Check Outputs enabled, and reach PASS to satisfy this.',
+      tooltip: 'A passing Verify run has been completed for this exact circuit. Open Verify, run with assertions enabled, and reach PASS to satisfy this.',
       pass: hasVerifyPass,
     },
   ], [activeScheduleContract, clockDiag, clockGateIsSoftAdvisory, diagnosticsList, effectiveTimingGuidance.exportTooltip, effectiveTimingGuidance.kind, feedbackDiag, requiredMappedCount, requiredCount, hasVerifyPass, timingStructureOkForHandoff]);

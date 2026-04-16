@@ -151,10 +151,10 @@ For each surface document:
 **Step 2: Add an explicit Verify-first workflow contract**
 
 Define:
-- Observe
-- Check outputs
-- Compare
-- Save as checks
+- Stimulus
+- Assertions
+- Verify assertions
+- Save assertions
 - Generate
 - project vectors vs authored cases
 - default post-run state

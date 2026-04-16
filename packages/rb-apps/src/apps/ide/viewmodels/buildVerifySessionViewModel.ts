@@ -191,7 +191,7 @@ export function buildVerifySessionViewModel(
         : status === 'assertions-incomplete'
           ? 'ASSERTIONS INCOMPLETE'
           : status === 'stimulus-only'
-            ? 'OBSERVATION ONLY'
+            ? 'STIMULUS ONLY'
             : status === 'stale'
               ? 'STALE'
               : status === 'running'
@@ -200,10 +200,10 @@ export function buildVerifySessionViewModel(
 
   const modeLabel =
     mode === 'assertion'
-      ? 'CHECKS'
+      ? 'ASSERTIONS'
       : mode === 'capture'
         ? 'CAPTURE'
-        : 'OBSERVE';
+        : 'STIMULUS';
 
   const title =
     status === 'assertions-match'
@@ -214,17 +214,17 @@ export function buildVerifySessionViewModel(
           ? 'Assertion coverage is incomplete'
           : status === 'stimulus-only'
             ? input.lastRun
-              ? 'Waveform recorded — observation only'
+              ? 'Waveform recorded — stimulus evidence'
               : 'Ready to run this testbench'
             : status === 'stale'
               ? 'Results are stale'
               : status === 'running'
                 ? mode === 'assertion'
-                  ? 'Comparing asserted outputs'
+                  ? 'Verifying assertions'
                   : 'Recording waveform'
                 : hasVectors
                 ? mode === 'assertion'
-                    ? 'Ready to check outputs'
+                    ? 'Ready to run assertions'
                     : 'Ready to run stimulus'
                   : 'Build a testbench';
 
@@ -232,36 +232,36 @@ export function buildVerifySessionViewModel(
     status === 'assertions-match'
       ? input.lastRun?.qualification === 'incomplete-mapping'
         ? 'Every asserted output matched. Some board IO mappings are still incomplete — hardware tests may not agree until mapping is finished.'
-        : 'Every checked output matched the observed design. Blank outputs were not compared.'
+        : 'Every asserted output matched the observed design. Blank outputs were not verified.'
       : status === 'assertions-differ'
         ? input.failingRowCount === 1
-          ? 'One checked output differs from what the live design produced. Inspect that difference before changing anything else.'
-          : `${input.failingRowCount} checked outputs differ from what the live design produced. Start with the first difference.`
+          ? 'One asserted output differs from what the live design produced. Inspect that difference before changing anything else.'
+          : `${input.failingRowCount} asserted outputs differ from what the live design produced. Start with the first difference.`
         : status === 'assertions-incomplete'
-          ? 'Some outputs have saved checks; others remain observational. Only the checked outputs will be compared on the next run.'
+          ? 'Some outputs have saved assertions; others remain observational. Only asserted outputs will be verified on the next run.'
           : status === 'stimulus-only'
             ? input.lastRun
-              ? 'You ran the current stimulus and recorded waveform evidence. Save observed outputs as checks only when you want Compare to verify specific outputs.'
-                : 'Run this stimulus to see what the circuit does on the waveform. Add output checks only when you want Compare to verify specific outputs.'
+              ? 'You ran the current stimulus and recorded waveform evidence. Save observed outputs as assertions only when you want explicit verification of specific outputs.'
+                : 'Run this stimulus to see what the circuit does on the waveform. Add output assertions only when you want explicit verification of specific outputs.'
             : status === 'stale'
               ? 'The circuit or testbench changed after the last run. Re-run before trusting the result.'
               : status === 'running'
                 ? mode === 'assertion'
-                  ? 'Comparing saved output checks against the current live design. Blank outputs are not compared.'
+                  ? 'Verifying saved output assertions against the current live design. Blank outputs are not verified.'
                   : 'Recording waveform data from the current live design.'
                 : hasVectors
                   ? mode === 'assertion'
-                    ? 'Output checks are loaded. Compare only the outputs you intentionally saved as checks.'
-                      : 'Run this stimulus to see how the circuit behaves. Add output checks only when you want Compare to verify them.'
-                    : 'Add ticks and input patterns to build the first stimulus. Output checks stay optional.';
+                    ? 'Output assertions are loaded. Verification only checks outputs you intentionally asserted.'
+                      : 'Run this stimulus to see how the circuit behaves. Add output assertions only when you want explicit verification.'
+                    : 'Add ticks and input patterns to build the first stimulus. Output assertions stay optional.';
 
   const runLabel =
     input.isRunStale
       ? 'Re-run stimulus'
       : mode === 'assertion'
         ? input.lastRun
-          ? 'Compare again'
-          : 'Compare'
+          ? 'Run assertions again'
+          : 'Run assertions'
         : input.lastRun
           ? 'Run stimulus again'
           : 'Run stimulus';

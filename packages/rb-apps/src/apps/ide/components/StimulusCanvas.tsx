@@ -17,7 +17,7 @@ export interface StimulusCanvasProps {
   authoredVectors: VerifyAuthorVector[];
   onVectorsChange: (vectors: VerifyAuthorVector[]) => void;
   onNavigateToMapping?: () => void;
-  /** Optional checks/editor lane visibility. The default Verify flow keeps outputs on the waveform. */
+  /** Optional assertions/editor lane visibility. The default Verify flow keeps outputs on the waveform. */
   showExpectedOutputs?: boolean;
   hasSavedExpectedOutputs?: boolean;
   onToggleExpectedOutputs?: () => void;
@@ -568,12 +568,12 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   );
   const selectedCaseLabel = ticks.length > 0 ? describeCase(activeSelectedTick) : 'Case 1 (t0)';
   const checksButtonLabel = expectedLanesVisible
-    ? 'Hide checks'
+    ? 'Hide assertions'
     : hasSavedExpectedOutputs
-      ? 'Edit checks'
-      : 'Add checks';
+      ? 'Edit assertions'
+      : 'Add assertions';
   const checksNote = expectedLanesVisible
-    ? 'Only checked outputs participate in Compare'
+    ? 'Only asserted outputs participate in verification'
     : 'Outputs are observed on the waveform';
 
   if (inputFields.length === 0) {
@@ -608,7 +608,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
         </div>
         {outputFields.length > 0 ? (
           <div className="ide-stimulus-toolbar-group ide-stimulus-toolbar-group--checks" data-testid="ide-stimulus-checks-controls">
-            <span className="ide-stimulus-toolbar-label">Checks</span>
+            <span className="ide-stimulus-toolbar-label">Assertions</span>
             <button
               type="button"
               className="ide-stimulus-mini-btn"
@@ -646,7 +646,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
           <div className="ide-stimulus-toolbar-group" data-testid="ide-stimulus-signal-edit">
             <span className="ide-stimulus-toolbar-label">Edit signal</span>
             <select className="ide-stimulus-target-select" aria-label="Selected stimulus row" title="Selected stimulus row" value={selectedLane?.key ?? ''} onChange={(event) => setSelectedLaneKey(event.target.value)} data-testid="ide-stimulus-row-target">
-              {laneOptions.map((option) => <option key={option.key} value={option.key}>{option.kind === 'input' ? 'Stimulus' : 'Check'}: {option.label}</option>)}
+              {laneOptions.map((option) => <option key={option.key} value={option.key}>{option.kind === 'input' ? 'Stimulus' : 'Assertion'}: {option.label}</option>)}
             </select>
             <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(0)} data-testid="ide-stimulus-row-fill-0">Fill 0</button>
             <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(1)} data-testid="ide-stimulus-row-fill-1">Fill 1</button>
@@ -738,7 +738,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
         {expectedLanesVisible ? (
           <>
             <div ref={expectedGroupRef} className="ide-stimulus-group-header ide-stimulus-group-header--asserted" style={{ display: 'flex', height: GROUP_H, alignItems: 'center', background: 'var(--rb-surface-2, transparent)' }}>
-              <div style={{ width: LABEL_W, flexShrink: 0, paddingLeft: 8, fontSize: '0.68em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>Output checks</div>
+              <div style={{ width: LABEL_W, flexShrink: 0, paddingLeft: 8, fontSize: '0.68em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>Output assertions</div>
               {ticks.map((tick) => <div key={tick} style={{ width: TICK_W, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }} />)}
               <div style={{ width: ADD_COL_W, flexShrink: 0 }} />
             </div>

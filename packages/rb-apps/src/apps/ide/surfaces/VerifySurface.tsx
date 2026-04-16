@@ -2362,7 +2362,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
   const drawerTabs = useMemo<VerifyDrawerTab[]>(() => {
     // 3-tab model: Inspect | (Checks) | Details
-    // Checks only appears in Compare mode (assertions active). Vectors/Truth/K-Map are
+    // Assertions only appears in verification mode (assertions active). Vectors/Truth/K-Map are
     // consolidated into Details so the drawer stays navigable at a glance.
     return nextRunUsesAssertions
       ? ['why', 'mismatches', 'details']
@@ -2569,17 +2569,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       : hasStaleAuthoredReference
         ? `Stale ${isStarterScenario ? 'starter' : 'authored'} test vectors (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}) — circuit has changed since these were written`
       : totalExpectedCaseCount === 0
-        ? 'Observation only — no expected outputs set'
+        ? 'Stimulus evidence only — no output assertions set'
         : !nextRunUsesAssertions
-          ? `Saved expected outputs (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), current mode is trace only`
+          ? `Saved output assertions (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), current mode is stimulus`
         : authoredVectors.length > 0 && customVectorCount > 0
-          ? `Comparing against project + custom vectors (${totalVectorCount} total)`
+          ? `Verifying project + custom vectors (${totalVectorCount} total)`
           : customVectorCount > 0
-            ? `Comparing against custom vectors (${customVectorCount})`
-            : `Comparing against project vectors (${authoredVectors.length})`;
+            ? `Verifying custom vectors (${customVectorCount})`
+            : `Verifying project vectors (${authoredVectors.length})`;
   const verifyScenarioName =
     totalExpectedCaseCount === 0
-      ? 'Observation Trace'
+      ? 'Stimulus Trace'
       : authoredVectors.length > 0 && customVectorCount > 0
         ? 'Project + Custom Vectors'
         : customVectorCount > 0
@@ -2596,9 +2596,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         ? 'Blank expected cells are ignored until you author asserted outputs.'
         : !nextRunUsesAssertions
           ? 'Saved expected outputs are available, but the current mode is trace only.'
-        : nextRunUsesAssertions
-          ? 'Run Compare checks only the asserted expected cells.'
-          : 'Expected outputs are available, but the next run is currently set to trace only. Switch to Check Expected Outputs when you want the next run to compare them.';
+          : 'Assertion runs only evaluate expected cells that are explicitly asserted.';
   const buildAllVectors = useCallback(
     (): TestVector[] =>
       [...authoredVectors, ...customVectors].map((vector) => ({
@@ -3337,28 +3335,28 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const captureActionTone = primaryActionKind === 'capture' ? 'primary' : 'secondary';
   // ── B-12 Slice 3: canonical result zone ──────────────────────────────────────
   const emptyStateRunLabel = isDraftSession
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Run Compare' : 'Run stimulus')
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Run assertions' : 'Run stimulus')
     : verifySession.runLabel;
   const referenceModeLabel: string = hasStaleAuthoredReference
-    ? `Using stale saved checks (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'})`
+    ? `Using stale saved assertions (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'})`
     : totalExpectedCaseCount === 0
-      ? 'Observation only — no output checks saved'
+      ? 'Stimulus evidence only — no output assertions saved'
       : !nextRunUsesAssertions
-        ? `Saved output checks (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), current mode is Observe`
+        ? `Saved output assertions (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), current mode is Stimulus`
         : authoredVectors.length > 0 && customVectorCount > 0
-          ? `Checking project + custom vectors (${totalVectorCount} total)`
+          ? `Verifying project + custom vectors (${totalVectorCount} total)`
           : customVectorCount > 0
-            ? `Checking custom vectors (${customVectorCount})`
-            : `Checking project vectors (${authoredVectors.length})`;
+            ? `Verifying custom vectors (${customVectorCount})`
+            : `Verifying project vectors (${authoredVectors.length})`;
   const sessionModeBadge: string = !lastRun
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'CHECKS' : 'SIMULATION')
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'ASSERTIONS' : 'SIMULATION')
     : isTraceOnly ? 'CAPTURE'
     : sessionStatus === 'assertions-match' || sessionStatus === 'assertions-differ' || sessionStatus === 'stale'
-      ? 'CHECKS'
+      ? 'ASSERTIONS'
       : 'SIMULATION';
   const sessionTitle: string = !lastRun
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Ready to check outputs' : 'Ready to run stimulus')
-    : isTraceOnly ? 'Waveform recorded — observation only'
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Ready to run assertions' : 'Ready to run stimulus')
+    : isTraceOnly ? 'Waveform recorded — stimulus evidence'
     : sessionStatus === 'assertions-match' ? 'Assertions match'
     : sessionStatus === 'assertions-differ' ? 'Assertions failed'
     : sessionStatus === 'stale' ? 'Results from previous build'
@@ -3410,7 +3408,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ? 'Manual-event lab mode'
       : isSequentialRun
         ? 'General sequential mode'
-        : 'Combinational observation mode';
+        : 'Combinational stimulus mode';
   const stateObservationLabel =
     selectedTick == null
       ? 'Select a tick to inspect register/state-bank behavior in this sequence.'
@@ -3505,7 +3503,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       : sessionStatus === 'stale'
           ? 'This page is showing an older Verify run'
             : sessionShowsTraceEvidence
-            ? 'Observation only - output checks are not being used'
+            ? 'Stimulus-only run - assertions are not enabled'
             : verifySession.title;
   const runProofSummary =
     sessionShowsAssertionMatch
@@ -3519,7 +3517,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             ? 'The visible waveform belongs to an older build. Verify has switched back to stimulus tracing so you can inspect the live circuit before re-authoring or intentionally reusing the older reference.'
             : 'The visible waveform belongs to the previously verified build hash. Re-run Verify so the evidence matches the current circuit again.'
       : sessionShowsTraceEvidence
-            ? 'This run recorded live waveform behavior only. Save observed outputs as checks or reveal the checks editor when you want a real compare.'
+            ? 'This run recorded live waveform behavior only. Save observed outputs as assertions or reveal the assertions editor when you want explicit verification.'
             : verifySession.summary;
   const incompleteMappingSummary = useMemo(() => {
     if (unmappedOutputLabels.length === 0) {
@@ -3603,7 +3601,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       return {
         tone: 'warn',
         title: 'Circuit changed after saved expected outputs',
-        message: 'Your saved expected outputs came from an older build. Re-capture from current outputs or run in Observe mode first.',
+        message: 'Your saved expected outputs came from an older build. Re-capture from current outputs or run in Stimulus mode first.',
         actions: [
           { label: 'Re-capture outputs', onClick: handleStaleRecapture, tone: 'primary', testId: 'ide-verify-primary-status-recapture' },
           { label: 'Run current circuit', onClick: handleRunCurrentTrace, tone: 'secondary', testId: 'ide-verify-primary-status-rerun' },
@@ -4086,7 +4084,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           className="ide-verify-command-strip"
           testId="ide-verify-command-strip"
           label="Verify"
-          title="Stimulate inputs and observe outputs"
+          title="Author procedure, run stimulus, and verify assertions"
           description={
             hasSessionFailureEvidence
               ? 'Edit stimulus on the left, then use the waveform to inspect what changed.'
@@ -4164,7 +4162,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </span>
             <div className="ide-inline-actions">
               <IdeButton onClick={handleKeepOlderReference} testId="ide-verify-stale-keep-reference">
-                Keep reference — Run Compare
+                Keep reference — Run assertions
               </IdeButton>
               <IdeButton onClick={handleResetToStimulusOnly} testId="ide-verify-stale-reset-stimulus">
                 Clear assertions — trace only
@@ -4744,8 +4742,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     data-testid="ide-verify-scope-label"
                     title={
                       isSequentialRun
-                        ? 'Observed output viewport. One tick is one sampled clock step. Teal traces are steady evidence, red marks failing checks, and blue marks the selected tick.'
-                        : 'Observed output viewport. One tick is one simulation step. Teal traces are steady evidence, red marks failing checks, and blue marks the selected tick.'
+                        ? 'Observed output viewport. One tick is one sampled clock step. Teal traces are steady evidence, red marks failing assertions, and blue marks the selected tick.'
+                        : 'Observed output viewport. One tick is one simulation step. Teal traces are steady evidence, red marks failing assertions, and blue marks the selected tick.'
                     }
                   >
                     Waveform truth
@@ -5392,7 +5390,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       </IdeCallout>
                     ) : (
                       <IdeCallout tone="info" title="Run complete">
-                        Switch to Compare mode to check observed outputs against expected values.
+                        Enable assertions when you want observed outputs verified against expected values.
                       </IdeCallout>
                     )
                   ) : (

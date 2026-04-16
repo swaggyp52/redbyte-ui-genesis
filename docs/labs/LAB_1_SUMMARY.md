@@ -38,7 +38,7 @@ Truth table: students derive this themselves as part of the lab.
 3. Place INV + INV + AND2 from Logic library; wire with Add Wires; label nets
 4. Add I/O markers (input/output pads)
 5. Save schematic
-6. Create Test Bench Waveform source; set Check outputs delay to 1 ns
+6. Create Test Bench Waveform source; set assertion delay to 1 ns
 7. Set input waveforms for A and B covering all 4 combinations (00, 01, 10, 11)
 8. Compile ModelSim simulation library (one-time setup, C:\FPGAdv63LSPS paths)
 9. Run "Generate Expected Simulation Results" in ModelSim

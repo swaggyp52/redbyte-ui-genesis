@@ -25031,6 +25031,18 @@ button:disabled,
   gap: 6px;
 }
 
+.ide-vcb-group--mode {
+  gap: 6px;
+}
+
+.ide-vcb-mode-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(143, 173, 202, 0.72);
+}
+
 /* Mode toggle — segmented control */
 .ide-vcb-mode-toggle {
   display: inline-flex;
@@ -25043,9 +25055,9 @@ button:disabled,
   background: transparent;
   border: none;
   color: var(--rb-text-muted, #7a95b0);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
-  padding: 4px 14px;
+  padding: 4px 12px;
   cursor: pointer;
   transition: background 0.12s, color 0.12s, opacity 0.12s;
   white-space: nowrap;
@@ -25053,8 +25065,8 @@ button:disabled,
 /* Inactive mode button: ghost weight — the active state IS the label */
 .ide-vcb-mode-btn:not(.is-active) {
   opacity: 0.42;
-  font-size: 11px;
-  padding: 4px 10px;
+  font-size: 10px;
+  padding: 4px 9px;
 }
 .ide-vcb-mode-btn:hover:not(:disabled) {
   background: rgba(59, 130, 246, 0.12);
@@ -28465,8 +28477,8 @@ button:disabled,
 
 [data-ide-mode-marker='verify'] .ide-verify-lab-grid {
   display: grid;
-  grid-template-columns: minmax(480px, 0.94fr) minmax(540px, 1.06fr);
-  gap: 20px;
+  grid-template-columns: minmax(420px, 0.82fr) minmax(620px, 1.18fr);
+  gap: 22px;
   min-height: 0;
   height: 100%;
   align-items: stretch;
@@ -28491,12 +28503,12 @@ button:disabled,
   min-width: 0 !important;
   min-height: 0 !important;
   padding: 0 !important;
-  border: 1px solid rgba(75, 110, 141, 0.18);
+  border: 1px solid rgba(69, 103, 132, 0.14);
   border-radius: 18px;
   background:
-    linear-gradient(180deg, rgba(8, 17, 30, 0.96), rgba(5, 10, 18, 0.98));
+    linear-gradient(180deg, rgba(8, 16, 28, 0.9), rgba(6, 12, 21, 0.93));
   box-shadow:
-    0 20px 38px rgba(1, 6, 12, 0.2),
+    0 14px 28px rgba(1, 6, 12, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.02);
   overflow: hidden !important;
 }
@@ -28517,7 +28529,7 @@ button:disabled,
 
 [data-ide-mode-marker='verify'] .ide-scenario-library-header {
   padding: 10px 14px !important;
-  gap: 12px !important;
+  gap: 10px !important;
   min-height: 44px !important;
   background: rgba(6, 14, 26, 0.82) !important;
   border-bottom: 1px solid rgba(72, 112, 148, 0.24) !important;
@@ -28534,8 +28546,8 @@ button:disabled,
 }
 
 [data-ide-mode-marker='verify'] .ide-scenario-action-btn {
-  padding: 6px 11px !important;
-  font-size: 12px !important;
+  padding: 6px 10px !important;
+  font-size: 11px !important;
   border-radius: 8px !important;
   border: 1px solid rgba(56, 90, 120, 0.22) !important;
 }
@@ -29543,12 +29555,12 @@ button:disabled,
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--stimulus {
-  flex: 1 1 42% !important;
+  flex: 1 1 38% !important;
   min-height: 0 !important;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--waveform {
-  flex: 1 1 58% !important;
+  flex: 1 1 62% !important;
   min-height: 0 !important;
 }
 
@@ -29816,6 +29828,12 @@ button:disabled,
   color: rgba(220, 234, 248, 0.9) !important;
 }
 
+[data-ide-mode-marker='verify'] .ide-verify-lab-chip--selected-tick.is-selected {
+  border-color: rgba(125, 211, 252, 0.62) !important;
+  background: rgba(56, 189, 248, 0.2) !important;
+  color: rgba(232, 247, 255, 0.98) !important;
+}
+
 .ide-verify-lab-sequencer-body {
   display: grid;
   gap: var(--rb-space-3);
@@ -29835,6 +29853,12 @@ button:disabled,
   list-style: none;
   display: grid;
   gap: var(--rb-space-2);
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-lab-step-item.is-selected {
+  border-color: rgba(125, 211, 252, 0.45) !important;
+  background: linear-gradient(135deg, rgba(13, 33, 53, 0.88), rgba(9, 21, 35, 0.9)) !important;
+  box-shadow: 0 10px 20px rgba(3, 9, 16, 0.22);
 }
 
 .ide-verify-lab-step-editor {

@@ -98,7 +98,7 @@ export function buildLabSequencerSteps(
         id: `${current.id}:assert`,
         tick: current.tick,
         kind: 'observe_assert_output',
-        title: `Observe / assert · t${current.tick}`,
+        title: `Capture / assert · t${current.tick}`,
         detail,
       });
     }

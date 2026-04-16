@@ -37,11 +37,11 @@ describe('buildVerifySessionViewModel', () => {
     expect(model.status).toBe('draft');
     expect(model.statusBadge).toBe('DRAFT');
     expect(model.title).toBe('Ready to run stimulus');
-    expect(model.summary).toContain('Add output checks only when you want Compare to verify');
+    expect(model.summary).toContain('Add output assertions only when you want explicit verification');
     expect(model.runLabel).toBe('Run stimulus');
   });
 
-  it('treats first-run sessions with expected outputs armed as draft compare work', () => {
+  it('treats first-run sessions with expected outputs armed as draft assertion work', () => {
     const model = buildVerifySessionViewModel({
       totalVectorCount: 1,
       totalExpectedCaseCount: 1,
@@ -58,12 +58,12 @@ describe('buildVerifySessionViewModel', () => {
     expect(model.mode).toBe('assertion');
     expect(model.status).toBe('draft');
     expect(model.statusBadge).toBe('DRAFT');
-    expect(model.title).toBe('Ready to check outputs');
-    expect(model.runLabel).toBe('Compare');
+    expect(model.title).toBe('Ready to run assertions');
+    expect(model.runLabel).toBe('Run assertions');
     expect(model.recommendedNextAction).toBe('verify');
   });
 
-  it('treats trace-only runs without expected outputs as observation-only capture work', () => {
+  it('treats trace-only runs without expected outputs as stimulus-only capture work', () => {
     const model = buildVerifySessionViewModel({
       totalVectorCount: 2,
       totalExpectedCaseCount: 0,
@@ -103,8 +103,8 @@ describe('buildVerifySessionViewModel', () => {
 
     expect(model.mode).toBe('capture');
     expect(model.status).toBe('stimulus-only');
-    expect(model.statusBadge).toBe('OBSERVATION ONLY');
-    expect(model.title).toBe('Waveform recorded — observation only');
+    expect(model.statusBadge).toBe('STIMULUS ONLY');
+    expect(model.title).toBe('Waveform recorded — stimulus evidence');
     expect(model.recommendedNextAction).toBe('capture');
   });
 
@@ -148,7 +148,7 @@ describe('buildVerifySessionViewModel', () => {
 
     expect(model.mode).toBe('assertion');
     expect(model.status).toBe('assertions-differ');
-    expect(model.runLabel).toBe('Compare again');
+    expect(model.runLabel).toBe('Run assertions again');
     expect(model.recommendedNextAction).toBe('verify');
   });
 
@@ -279,7 +279,7 @@ describe('buildVerifySessionViewModel', () => {
     });
 
     expect(model.status).toBe('stimulus-only');
-    expect(model.statusBadge).toBe('OBSERVATION ONLY');
+    expect(model.statusBadge).toBe('STIMULUS ONLY');
     expect(model.tone).toBe('idle');
     expect(model.recommendedNextAction).toBe('capture');
   });
@@ -324,7 +324,7 @@ describe('buildVerifySessionViewModel', () => {
 
     expect(model.mode).toBe('capture');
     expect(model.status).toBe('stimulus-only');
-    expect(model.statusBadge).toBe('OBSERVATION ONLY');
+    expect(model.statusBadge).toBe('STIMULUS ONLY');
   });
 
   it('marks outdated compare evidence as stale', () => {

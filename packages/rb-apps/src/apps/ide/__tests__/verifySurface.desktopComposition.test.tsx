@@ -77,7 +77,7 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-command-strip').textContent).toContain('Stimulate inputs and observe outputs');
+    expect(getByTestId('ide-verify-command-strip').textContent).toContain('Author procedure, run stimulus, and verify assertions');
     expect(getByTestId('ide-verify-command-bar')).toBeTruthy();
   });
 

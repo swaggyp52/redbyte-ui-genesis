@@ -143,10 +143,10 @@ describe('B-14 Action Row Hierarchy — DOM order contracts', () => {
 });
 
 describe('B-14 Action Row Hierarchy — mode toggle still works', () => {
-  it('mode toggle buttons are still present (Observe + Compare)', () => {
+  it('mode toggle buttons are still present (Stimulus + Assertions)', () => {
     const { getByTestId } = render(<VerifyCommandBar {...BASE} />);
-    expect(getByTestId('ide-vcb-mode-observe')).toBeTruthy();
-    expect(getByTestId('ide-vcb-mode-compare')).toBeTruthy();
+    expect(getByTestId('ide-vcb-mode-observe').textContent).toContain('Stimulus');
+    expect(getByTestId('ide-vcb-mode-compare').textContent).toContain('Assertions');
   });
 
   it('keeps secondary command-bar actions hidden until More actions opens', () => {
@@ -169,12 +169,12 @@ describe('B-14 Action Row Hierarchy — mode toggle still works', () => {
     expect(getByTestId('ide-verify-run-proof-edit-vectors')).toBeTruthy();
   });
 
-  it('active mode button has is-active class (Observe active by default)', () => {
+  it('active mode button has is-active class (Stimulus active by default)', () => {
     const { getByTestId } = render(<VerifyCommandBar {...BASE} isCompareMode={false} />);
-    const observeBtn = getByTestId('ide-vcb-mode-observe');
-    expect(observeBtn.className).toContain('is-active');
-    const compareBtn = getByTestId('ide-vcb-mode-compare');
-    expect(compareBtn.className).not.toContain('is-active');
+    const stimulusBtn = getByTestId('ide-vcb-mode-observe');
+    expect(stimulusBtn.className).toContain('is-active');
+    const assertionBtn = getByTestId('ide-vcb-mode-compare');
+    expect(assertionBtn.className).not.toContain('is-active');
   });
 
   it('collapses status, evidence, and coverage into one session summary cluster instead of separate chips', () => {
@@ -182,7 +182,7 @@ describe('B-14 Action Row Hierarchy — mode toggle still works', () => {
       <VerifyCommandBar
         {...BASE}
         statusLabel="Ready to run stimulus"
-        evidenceLabel="Observation only"
+        evidenceLabel="Stimulus evidence"
         coverageLabel="8 ticks · 5 signals"
         isSequential={true}
       />
@@ -194,18 +194,18 @@ describe('B-14 Action Row Hierarchy — mode toggle still works', () => {
     expect(sessionSummary).toContainElement(getByTestId('ide-vcb-coverage'));
   });
 
-  it('separates session status and mode tokens so observation runs do not collapse into one smashed label', () => {
+  it('separates session status and mode tokens so stimulus runs do not collapse into one smashed label', () => {
     const { getByTestId } = render(
       <VerifyCommandBar
         {...BASE}
-        sessionStatusBadge="OBSERVATION ONLY"
+        sessionStatusBadge="STIMULUS ONLY"
         sessionModeLabel="CAPTURE"
         primaryStatusTitle="Waveform recorded"
       />
     );
 
     const sessionMeta = getByTestId('ide-verify-session-meta');
-    expect(sessionMeta.textContent).toContain('OBSERVATION ONLY');
+    expect(sessionMeta.textContent).toContain('STIMULUS ONLY');
     expect(sessionMeta.textContent).toContain('CAPTURE');
     expect(sessionMeta.textContent).toContain('·');
   });
