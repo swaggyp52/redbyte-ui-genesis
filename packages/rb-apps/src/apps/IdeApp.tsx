@@ -24,6 +24,7 @@ import { IdeTopBar } from './ide/components/IdeTopBar';
 import { IdeStatusBar } from './ide/components/IdeStatusBar';
 import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
 import { ProjectSurface } from './ide/surfaces/ProjectSurface';
+import { deriveProjectOutlineSummary } from './ide/projectOutline';
 import type { DesignCompilerStatus } from './ide/surfaces/DesignSurface';
 import type { VerifyFailureTarget } from './ide/surfaces/VerifySurface';
 import { KeyboardShortcutsModal } from './ide/components/KeyboardShortcutsModal';
@@ -244,6 +245,16 @@ export const IdeApp: React.FC = () => {
   const deleteMacro = useProjectRuntime((state) => state.deleteMacro);
   const instantiateMacro = useProjectRuntime((state) => state.instantiateMacro);
   const hasCircuit = circuit.nodes.length > 0;
+  const projectOutline = useMemo(
+    () =>
+      deriveProjectOutlineSummary({
+        circuit,
+        macros,
+        customComponents,
+        ioRows: projectIoRows,
+      }),
+    [circuit, macros, customComponents, projectIoRows],
+  );
   const hasDff = useMemo(
     () => deriveHasDff(circuit, verifyLastRun?.schedule),
     [circuit, verifyLastRun?.schedule]
@@ -1509,6 +1520,7 @@ export const IdeApp: React.FC = () => {
               hasVerifyRun={verifyLastRun !== undefined}
               fpgaConfig={fpgaConfig}
               importFidelity={importFidelity}
+              outline={projectOutline}
               onFpgaConfigChange={handleFpgaConfigChange}
               onSaveNow={() => {
                 if (!exportProjectRef.current) return;

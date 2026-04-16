@@ -34,6 +34,8 @@ import {
   ProjectBridgePanel,
   type ProjectBridgeImportFidelity,
 } from '../components/ProjectBridgePanel';
+import { ProjectOverviewPanel } from '../components/ProjectOverviewPanel';
+import type { ProjectOutlineSummary } from '../projectOutline';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useIoBus } from '../ioBus';
 import { useBoardSignal } from '../BoardSignalContext';
@@ -122,6 +124,12 @@ export interface ProjectSurfaceProps {
   fpgaConfig?: { part: string; top: string; board: string };
   importFidelity?: 'full' | 'reconstructed' | 'partial' | null;
   onFpgaConfigChange?: (config: { part?: string; top?: string }) => void;
+  /**
+   * Pre-derived structural summary of the project (nodes, modules, IO).
+   * Consumed by ProjectOverviewPanel. When omitted, the overview panel is
+   * hidden — callers should always supply it in the real app; tests may omit.
+   */
+  outline?: ProjectOutlineSummary | null;
 }
 
 const PROJECT_EMPTY_SIM: RuntimeSimState = {
@@ -190,6 +198,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   fpgaConfig,
   importFidelity,
   onFpgaConfigChange,
+  outline = null,
 }) => {
   const [highlightedMappingKey, setHighlightedMappingKey] = useState<string | null>(null);
   const [mappingExpanded, setMappingExpanded] = useState(false);
@@ -992,6 +1001,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           hardwareReady={hardwareReady}
           blockingIssueCount={blockingIssues.length}
         />
+        {outline && (
+          <ProjectOverviewPanel
+            outline={outline}
+            onOpenDesign={onOpenDesign}
+          />
+        )}
         <div className="ide-surface-command-stack">
           <SurfaceCommandStrip
             className="ide-project-command-strip"

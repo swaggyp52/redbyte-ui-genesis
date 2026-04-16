@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-04-16 (Project Overview: module/design outline on Project surface)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/projectOutline.ts` (new), `packages/rb-apps/src/apps/ide/components/ProjectOverviewPanel.tsx` (new), `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/IdeApp.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`
+
+**Context**: With Bridge truth now persisted, the next Student Project Hub layer needed to answer "what does this project actually contain?" at a glance. Previously ProjectSurface showed status and IO mapping but no structural summary — students opening a larger design had no orienting surface short of jumping into the Design canvas. This change introduces a presentational Project Overview panel that lives directly under the Bridge and exposes node counts, connection counts, boundary IO counts (with mapping status), node-type breakdown, saved macros, and custom composite components.
+
+**Changes**:
+- Added `projectOutline.ts` exporting `ProjectOutlineSummary` and a pure `deriveProjectOutlineSummary` that folds `{ circuit, macros, customComponents, ioRows }` into the panel-ready shape. Boundary INPUT/OUTPUT counts are derived from node types; node-type breakdown is sorted by count desc then name asc; mapped pins are computed honestly (empty/whitespace → `null`).
+- Added `ProjectOverviewPanel` — pure React, pre-derived data only. Stats row with mapping hints ("1/2 mapped"), compact type chip row with `+N more` fallback, macro and custom-component lists with honest empty states, and an optional "Open Design" shortcut.
+- Wired `ProjectSurface` to render the panel under `ProjectBridgePanel` when `outline` is provided; `IdeApp` memoizes `projectOutline` from runtime selectors (`circuit`, `macros`, `customComponents`, `projectIoRows`) and passes it through.
+- Added matching CSS under `[data-ide-mode-marker='project']` for the overview shell, stat tiles, chip row, and module list — styled to match the existing Bridge panel without introducing a new visual language.
+
+**Tests added**:
+- `packages/rb-apps/src/apps/ide/__tests__/projectOutline.test.ts` — 6 tests covering node/connection/boundary counts, type breakdown ordering, macro/component IO summaries (incl. description trimming), IO row pin normalization, and the empty-project case.
+- `packages/rb-apps/src/apps/ide/__tests__/projectOverviewPanel.test.tsx` — 9 tests covering stat rendering, mapping hints, friendly node-type labels (e.g. `DFF` → `D Flip-Flop`), macro/component row contents, empty states, empty-project title, `+N more` collapse, and the Open Design button wiring.
+
+**Verification**: 
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectOutline.test.ts packages/rb-apps/src/apps/ide/__tests__/projectOverviewPanel.test.tsx` → 15/15 pass.
+- Regression sweep: `projectBridgePanel` (13), `projectRuntime.persistence` (26), `ideApp.labday-wiring` (6 + 1 skipped), `projectSurface.continuity` (13), `projectSurface.submission` (9), `projectSurface.launchpadRemoval` (6) → 73/73 pass.
+- `pnpm -s build:unified` → success, all dist artifacts verified.
+
+**Truth changes**: Project surface now communicates structural scale (node/connection/IO counts), reusable module inventory (macros + custom components), and mapping coverage directly. The panel is pure projection of runtime state — no independent authority, no hidden caching.
+
+**Dead code removed / quarantined**: None. This is additive capability on top of an already-clean Bridge foundation; no superseded modules were introduced.
+
 ## Change Log 2026-04-16 (Project Bridge: persist import provenance across reload)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/projectImportMeta.ts` (new), `packages/rb-apps/src/apps/ide/projectRuntime.ts`, `packages/rb-apps/src/apps/IdeApp.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts`
