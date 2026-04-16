@@ -49,10 +49,10 @@ For the left dock, the contract is:
 
 For the center workspace, the top-of-canvas chrome contract is:
 
-- one calm authoring toolbar row
-- one compact circuit / replay state row
-- replay case, tick, and timing meaning stay inside that compact state row instead of a separate title or status slab
-- quieter telemetry inside the canvas overlay instead of loud duplication above the canvas
+- **Command strip** carries surface label, a **short mode headline** (Canvas / Code / Split / Inspect replay / Verify-linked), **coaching description** (not hidden), **trimmed meta** (authoring status pill + optional Replay instrument chip + Verify sync chip — not a second copy of error/warning counts)
+- **Control bar**: one **tools** band, then a **status** band separated by a light divider (authoring / HDL / simulation)
+- **Simulation strip** stays readable in the default case (not collapsed to a barely legible sliver); verify-linked sessions show **Verify focus …** plus **Inspect … first** in that strip
+- replay transport (scrubber) remains first-class when replay is active; quieter telemetry stays in canvas overlay where possible
 - default idle Design must not foreground debug transport chrome over core authoring actions
 
 For blank Design first look, the guidance contract is:

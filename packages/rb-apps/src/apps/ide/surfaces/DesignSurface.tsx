@@ -2953,8 +2953,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       : totalAuthoringWarnings > 0 || authoringIssueCounts.draftCount > 0
         ? 'warn'
         : 'ok';
-  const designViewLabel =
-    designView === 'canvas' ? 'Canvas' : designView === 'hdl' ? 'Code' : 'Split';
+  const designCommandTitle = useMemo(() => {
+    if (effectiveExternalDebugTick != null) return 'Inspect replay';
+    const view =
+      designView === 'hdl' ? 'Code' : designView === 'split' ? 'Split' : 'Canvas';
+    if (activeVerifySignal) return `${view} · Verify-linked`;
+    return view;
+  }, [activeVerifySignal, designView, effectiveExternalDebugTick]);
   const designCommandDescription = effectiveExternalDebugTick != null
     ? 'Replay focus is active below. Scrub cases and inspect propagation before resuming live edits.'
     : activeVerifySignal
@@ -2964,29 +2969,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         : designView === 'split'
           ? `Compare the circuit against ${primaryArtifactLabel} before moving into Verify.`
           : 'Build the circuit and inspect live propagation before moving into Verify.';
-  const designCommandMeta = effectiveExternalDebugTick != null
-    ? (
-      <>
-        <IdeStatusPill tone={designCommandTone}>{authoringStatusLabel.toUpperCase()}</IdeStatusPill>
-        <span className="ide-surface-command-chip">Replay active</span>
-        <span className={`ide-surface-command-chip${dirtySinceVerify ? '' : ' is-ok'}`}>
-          {dirtySinceVerify ? 'Verify needs refresh' : 'Verify current'}
-        </span>
-      </>
-    )
-    : (
-      <>
-        <IdeStatusPill tone={designCommandTone}>{authoringStatusLabel.toUpperCase()}</IdeStatusPill>
-        {(totalAuthoringErrors > 0 || totalAuthoringWarnings > 0) && (
-          <span className="ide-surface-command-chip">
-            {totalAuthoringErrors > 0 ? `${totalAuthoringErrors} error${totalAuthoringErrors !== 1 ? 's' : ''}` : `${totalAuthoringWarnings} warning${totalAuthoringWarnings !== 1 ? 's' : ''}`}
-          </span>
-        )}
-        <span className={`ide-surface-command-chip${dirtySinceVerify ? '' : ' is-ok'}`}>
-          {dirtySinceVerify ? 'Verify needs refresh' : 'Verify current'}
-        </span>
-      </>
-    );
+  /** Status + instrument chips only — counts live in the authoring strip / diagnostics. */
+  const designCommandMeta = (
+    <>
+      <IdeStatusPill tone={designCommandTone}>{authoringStatusLabel}</IdeStatusPill>
+      {effectiveExternalDebugTick != null ? (
+        <span className="ide-surface-command-chip ide-surface-command-chip--instrument">Replay</span>
+      ) : null}
+      <span
+        className={`ide-surface-command-chip${dirtySinceVerify ? ' is-attention' : ' is-ok'}`}
+        data-testid="ide-design-verify-sync-chip"
+      >
+        {dirtySinceVerify ? 'Verify: stale' : 'Verify: aligned'}
+      </span>
+    </>
+  );
   const ioPresentationMap = useMemo(() => {
     const map: Record<string, NodeIoPresentation> = {};
     for (const node of editorCircuit.nodes) {
@@ -5513,7 +5510,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               className="ide-design-command-strip"
               testId="ide-design-command-strip"
               label="Design"
-              title="Build the circuit"
+              title={designCommandTitle}
+              description={designCommandDescription}
               meta={designCommandMeta}
               actions={(
                 <>
@@ -5848,9 +5846,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           </span>
                         )}
                         {activeVerifySignal ? (
-                          <span className="ide-design-verify-link-badge" data-testid="ide-design-verify-link-badge">
-                            {activeVerifySignalPresentation?.focusLabel ?? activeVerifySignal}
-                          </span>
+                          <>
+                            <span className="ide-design-verify-link-badge" data-testid="ide-design-verify-link-badge">
+                              Verify focus {activeVerifySignalPresentation?.focusLabel ?? activeVerifySignal}
+                            </span>
+                            <span className="ide-design-verify-focus-hint" data-testid="ide-design-verify-focus">
+                              Inspect{' '}
+                              {activeVerifySignalPresentation?.inspectLabel ??
+                                activeVerifySignalPresentation?.focusLabel ??
+                                activeVerifySignal}{' '}
+                              first
+                            </span>
+                          </>
                         ) : null}
                       </div>
                       {simulationStory.clockEvent ? (

@@ -15,6 +15,12 @@
 | Hardware | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Bring-up checklist, mapping summary |
 | Import | `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` | Vivado ZIP / HDL+XDC import pipeline |
 
+### Design chrome (layout system)
+
+- **Command strip**: `Design` label, **mode headline** (Canvas / Code / Split / Inspect replay / Verify-linked), **description** (coaching copy), **meta** trimmed to authoring **status pill** + optional **Replay** chip + **Verify sync** chip (counts stay in the authoring/status band below).
+- **Control bar**: Tools on top; **status row** separated with a light divider — authoring strip + **simulation strip**. Verify-linked sessions show `Verify focus …` on the badge and an `Inspect … first` hint (`data-testid="ide-design-verify-focus"`) in the sim strip.
+- **Workbench**: Slightly wider left dock (300px), stronger palette/canvas framing; right inspector uses extra vertical padding and clearer section dividers.
+
 ---
 
 ## 2. Runtime Authorities

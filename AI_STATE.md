@@ -1,5 +1,24 @@
 # AI State
 
+## Change Log 2026-04-16 (IDE: Design surface — command hierarchy, dock/canvas framing)
+
+**Subsystem**: `DesignSurface.tsx`, `ide-root.css`, `docs/IDE_SYSTEM_MAP.md`
+
+### What changed
+
+- **Command strip**: Restored **visible description** under a short **mode headline** (grid layout in CSS). Dropped duplicate error/warning **chips** from meta (counts remain in the authoring strip). **Verify sync** copy is `Verify: aligned` / `Verify: stale`; **Replay** uses a dedicated instrument chip class. Authoring **status pill** uses sentence case.
+- **Verify-linked UI**: Simulation strip again exposes **`Verify focus {alias}`** on the badge plus **`Inspect {inspectLabel} first`** with `ide-design-verify-focus` for tests and glanceable guidance.
+- **Chrome density**: Status stack under tools gets padding + top border; default **simulation strip** is no longer crushed to ~22px when not in replay transport. **Left dock** 300px + 14px gap; **palette/canvas** borders and fills read more clearly; **inspector** sections spaced for readability.
+- **Tokens**: `.ide-surface-command-chip.is-attention` (stale verify), `.ide-surface-command-chip--instrument` (replay).
+
+### Tests
+
+- `designSurface.workstation.test.tsx`, `designSurface.canvasChrome.test.tsx`
+
+### Next frontend pass
+
+- **Hardware** surface: stage tabs, board framing, evidence/live-state grouping (per product brief).
+
 ## Change Log 2026-04-16 (IDE: frontend system pass — contrast, clock UX, Hardware nav)
 
 **Subsystem**: Shared IDE chrome (`ide-root.css`), `HardwareSurface`, `ExportSurface`
