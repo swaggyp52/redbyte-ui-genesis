@@ -26,6 +26,13 @@
 
 ## Verification hygiene
 - Do not claim completion without evidence.
+- Definition of done for app/shared-package work is **tests + package boundary checks + production build path**.
+- Required tiered gates before marking work done:
+  - Tier 1 (focused correctness): targeted tests for touched subsystem.
+  - Tier 2 (package/boundary safety): affected workspace package build(s) and public API/barrel checks (for example `pnpm rb-utils:public-api-gate` when touching `rb-utils` exports).
+  - Tier 3 (deploy safety): run `pnpm build:unified` for changes touching `rb-apps`, `rb-utils`, export/import flow, shared frontend code, or anything consumed by `apps/playground`.
+- Do not skip Tier 3 for app/shared-package changes.
+- If push output shows branch-protection checks were bypassed (for example missing required status checks), treat this as release-process debt and log it in `AI_STATE.md` until checks are enforced.
 - PR/session evidence block must include:
   - `pnpm repo:status` output
   - Screenshot of `/` (IDE default)

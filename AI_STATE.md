@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-04-16 (Deploy guardrails: rb-utils export contract + unified-build gate discipline)
+
+**Subsystem**: `packages/rb-utils/src/index.js`, `packages/rb-utils/src/__tests__/public-api-contract-gate.test.ts`, root `package.json`, `docs/ai-usage-rules.md`
+
+### Root cause
+
+- Cloudflare production build failed in `@redbyte/playground` during Rollup resolution because `basys3ExportService.ts` imported `resolveIoMappingFromProjectFields` from `@redbyte/rb-utils`, but the JavaScript barrel `packages/rb-utils/src/index.js` did **not** export `hardwareMappingV2` (which defines that symbol).
+- `packages/rb-utils/src/index.ts` had the export; JS mirror drift created package-boundary inconsistency that targeted subsystem tests did not catch.
+
+### What changed
+
+- Added missing JS barrel export: `export * from './hardwareMappingV2';` in `packages/rb-utils/src/index.js`.
+- Added **public API contract gate** test: `packages/rb-utils/src/__tests__/public-api-contract-gate.test.ts` to assert both TS and JS barrels export `hardwareMappingV2`.
+- Added root script: `pnpm rb-utils:public-api-gate`.
+- Updated `docs/ai-usage-rules.md` with tiered done criteria:
+  - Tier 1 targeted tests
+  - Tier 2 package/boundary safety (including public API gate)
+  - Tier 3 `pnpm build:unified` for app/shared-package changes
+  - explicit note to log branch-protection bypasses as process debt.
+
+### Verification evidence
+
+- `pnpm -w exec vitest run packages/rb-utils/src/__tests__/public-api-contract-gate.test.ts packages/rb-apps/src/import/__tests__/importExportRoundtrip.test.ts` ✅
+- `pnpm rb-utils:public-api-gate` ✅
+- `pnpm install --frozen-lockfile` ✅
+- `pnpm build:unified` ✅ (playground production Vite build succeeded; unified dist verification succeeded)
+
 ## Change Log 2026-04-16 (IDE: Verify surface — command deck + experiment context recomposition)
 
 **Subsystem**: `VerifyCommandBar.tsx`, `VerifySurface.tsx`, `ide-root.css`, `verifyCommandBar.actionRowHierarchy.test.tsx`, `docs/IDE_SYSTEM_MAP.md`

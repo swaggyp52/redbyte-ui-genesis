@@ -105,6 +105,7 @@
         "os:window-raise-gate": "echo 'rb-windowing deleted — gate removed'",
         "os:error-boundary-gate": "pnpm exec vitest run packages/rb-apps/src/__tests__/error-boundary-gate.test.tsx",
         "os:performance-mode-gate": "pnpm exec vitest run packages/rb-utils/src/__tests__/performance-mode-gate.test.ts",
+        "rb-utils:public-api-gate": "pnpm exec vitest run packages/rb-utils/src/__tests__/public-api-contract-gate.test.ts",
         "os:instrument-hz-gate": "pnpm exec vitest run packages/rb-apps/src/__tests__/instrument-hz-gate.test.ts",
         "lab:workflow-export-verify-gate": "pnpm exec vitest run packages/rb-apps/src/__tests__/lab-workflow-export-verify-gate.test.ts",
         "lab:probe-sampling-gate": "pnpm exec vitest run packages/rb-apps/src/__tests__/lab-probe-sampling-gate.test.ts",
