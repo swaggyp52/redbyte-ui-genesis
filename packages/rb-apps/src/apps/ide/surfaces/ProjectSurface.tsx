@@ -30,6 +30,10 @@ import {
   IdeStatusPill,
 } from '../components/IdePrimitives';
 import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
+import {
+  ProjectBridgePanel,
+  type ProjectBridgeImportFidelity,
+} from '../components/ProjectBridgePanel';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useIoBus } from '../ioBus';
 import { useBoardSignal } from '../BoardSignalContext';
@@ -156,6 +160,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   mappingRows,
   examples,
   projectKind = 'blank',
+  sourceExampleId = null,
   scenarioAuthority = 'none',
   activeExampleId,
   onOpenExample,
@@ -485,6 +490,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     if (importFidelity === 'partial') return 'Partial';
     if (projectKind === 'import') return 'Not reported yet';
     return null;
+  }, [importFidelity, projectKind]);
+  const bridgeFidelity = useMemo<ProjectBridgeImportFidelity>(() => {
+    if (importFidelity === 'full' || importFidelity === 'reconstructed' || importFidelity === 'partial') {
+      return importFidelity;
+    }
+    if (projectKind === 'import') {
+      return 'partial';
+    }
+    return 'native';
   }, [importFidelity, projectKind]);
   const handleProjectModeAction = useCallback(
     (mode: ProjectHealthMode) => {
@@ -957,6 +971,27 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </div>
         ) : (
           <>
+        <ProjectBridgePanel
+          projectName={projectName}
+          projectKind={projectKind}
+          sourceExampleId={sourceExampleId}
+          determinismHash={determinismHash}
+          topModuleName={topModuleName || 'top'}
+          simulationTopName={null}
+          fpgaBoard={fpgaConfig?.board ?? 'Basys3'}
+          fpgaPart={fpgaConfig?.part ?? 'xc7a35tcpg236-1'}
+          importFidelity={bridgeFidelity}
+          scenarioAuthority={scenarioAuthority}
+          health={health}
+          readiness={{
+            hasCircuit: readiness.hasCircuit,
+            hasIoMapping: readiness.hasIoMapping,
+            hasVectors: readiness.hasVectors,
+            missingRequiredCount: unmappedRequiredCount,
+          }}
+          hardwareReady={hardwareReady}
+          blockingIssueCount={blockingIssues.length}
+        />
         <div className="ide-surface-command-stack">
           <SurfaceCommandStrip
             className="ide-project-command-strip"

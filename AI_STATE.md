@@ -1,5 +1,36 @@
 # AI State
 
+## Change Log 2026-04-16 (Project Bridge v1: single-glance project truth on Project surface)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/components/ProjectBridgePanel.tsx` (new), `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/projectBridgePanel.test.tsx` (new)
+
+### What changed
+
+- Added **Project Bridge panel** as a first-class, always-visible truth surface at the top of `ProjectSurface` (after the command strip, before the current-focus hero).
+- Consolidates previously-scattered project truth into one dense grid:
+  - **Identity**: project name, project kind, source example id, determinism hash (short form).
+  - **Target**: design top, simulation top (or "same as design"), board, part.
+  - **Import provenance**: fidelity tier (`native` / `full` / `reconstructed` / `partial`) with honest inline hint. Projects of `projectKind === 'import'` with no reported fidelity conservatively resolve to `partial` (inspection-only), not `native`.
+  - **Scenario authority**: current verify-scenario state (`none` / `starter` / `draft` / `authored` / `verified` / `stale`).
+  - **Verify**: `Not run` / `Stale` / `Pass` / `Fail` with truncated hash.
+  - **Export**: `Not built` / `Current` / `Stale bundle` / `Blocked` with truncated hash.
+- Added **truthful hardware readiness callout**: never claims bring-up is proven from app state alone. Even at `Ready for bring-up`, copy explicitly states "Hardware bring-up has not been proven by this workspace." This preserves prior lab-proven truth without fabricating it here.
+- Surfaces blocking issue count inline when `> 0`.
+- Panel is purely presentational; it does not compute readiness — all truth fields are pre-derived by existing `projectHealth` + `workflowAuthority` pipelines.
+- Added CSS tokens under `[data-ide-mode-marker='project']`: `.ide-project-bridge`, `.ide-project-bridge-header`, `.ide-project-bridge-grid`, `.ide-project-bridge-field`, etc.
+
+### Verification evidence
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectBridgePanel.test.tsx` ✅ 13/13.
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.launchpadRemoval.test.tsx` ✅ 28/28 (no regression).
+- `pnpm -s test:audit` ✅.
+
+### Truth change
+
+- Project identity, board target, design top, import fidelity, verify state, export state, and honest hardware-readiness messaging are now authoritative at the top of the Project surface instead of being hidden under `<details>` disclosures.
+- No data-model changes yet; this is a pure presentational consolidation that lets the user see the project's truth at a glance before diving into the workflow.
+- **Follow-up (next iteration)**: persist `IdeImportCommitMeta` (`fidelity`, `importMode`, `reconstructionLevel`) into `projectRuntime` so the Bridge's fidelity row survives reload instead of being local React state in `IdeApp.tsx`.
+
 ## Change Log 2026-04-16 (Repo hygiene: root-level dead receipts & scripts sweep)
 
 **Subsystem**: repo root, `.gitignore`
