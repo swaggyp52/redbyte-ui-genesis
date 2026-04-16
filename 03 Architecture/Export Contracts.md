@@ -32,6 +32,7 @@ The export contract exists so the live UI export surface, the compatibility fall
 - The **Package handoff** card is descriptive only: it composes existing workflow truth (`deriveHardwareExportFailureTruth`), export blockers (`buildExportViewModel`), verify evidence advisories, and a cross-artifact agreement table from `exportPackageHandoffModel.ts`. It does not introduce a parallel authority chain.
 - **PACKAGE READY / PARTIAL / BLOCKED** reflects whether the student should treat the ZIP as submission-quality, downloadable-but-incomplete, or structurally blocked. A pending `testbench.vhd` with **no authored vectors** is intentionally **OK** for bitstream-oriented handoff; simulation completeness still comes from Verify + scenario work.
 - **Artifact agreement** rows are plain-language checks (top entity, RTL file, I/O mapping, bench vs top, XDC, README / import script, timing structure) so the bundle reads as an engineering package, not a raw diagnostic dump.
+- **Manual-event lab + RBEX4200**: Export readiness gates treat **missing clock input** as **advisory** (warn / ADVISORY pill) when `scheduleContract.timingMode` is `manual_event_driven_lab`, not as a hard gate failure — matching relaxed export constraints for lab switches/buttons.
 
 ### Export surface role
 

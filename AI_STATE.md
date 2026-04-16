@@ -1,5 +1,24 @@
 # AI State
 
+## Change Log 2026-04-16 (IDE: frontend system pass — contrast, clock UX, Hardware nav)
+
+**Subsystem**: Shared IDE chrome (`ide-root.css`), `HardwareSurface`, `ExportSurface`
+
+### What changed
+
+- **Global tokens / controls**: Stronger `--rb-text-3`, larger **status pills** and **command-strip chips**, clearer **info callout** contrast, improved **idle** pill readability.
+- **Hardware**: **Segmented tab bar** (native `role="tab"` buttons) replaces four ghost/primary `IdeButton`s; **dependency chain** strip gets padding, borders, and larger step targets. **Clock / timing dock copy** distinguishes board-clocked vs manual-event lab vs combinational; **confidence checklist** uses matching labels. **Readiness callout** uses `info` for verify-not-run, mapping-review, and trace-only (less alarm than `warn`).
+- **Timing inference**: `explicitTimingMode` now treats **semantic clock role + pinned row**, **clk-pattern labels**, or **Basys3 W5 input** as board-clocked when Verify has not stamped `scheduleContract` yet — fixes false “lab timing” when the clock is `phase_driver`→W5.
+- **Export**: **RBEX4200** + **manual-event lab** is **ADVISORY** / **warn** gate (not error), calmer detail copy, deterministic **clock** check passes when softened; **artifact agreement** timing row respects the same rule. Non-soft **warn** gates show **REVIEW** instead of **STALE**.
+
+### Tests
+
+- `hardwareSurface.readiness.test.tsx` (partial clock expectation → “Needs clock pin”), `ideApp.labday-wiring.test.tsx`, `exportSurface.trust-clarity.test.tsx`.
+
+### Next frontend pass
+
+- Design / Verify workbench vertical rhythm and waveform strip; further reduce command-strip chip count on Hardware via grouped meta.
+
 ## Change Log 2026-04-16 (Export: package handoff trust surface)
 
 **Subsystem**: IDE Export (`ExportSurface`, `exportPackageHandoffModel.ts`, `ide-root.css`, trust tests)

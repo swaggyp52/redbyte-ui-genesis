@@ -488,6 +488,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     d.code === 'RBEX4204'
   );
   const feedbackDiag = diagnosticsList.find((d) => d.code === 'RBEX4102');
+  /** Manual-event labs do not need a board oscillator net; RBEX4200 is advisory, not a screaming blocker. */
+  const clockGateIsSoftAdvisory = Boolean(
+    clockDiag &&
+      activeScheduleContract?.timingMode === 'manual_event_driven_lab' &&
+      clockDiag.code === 'RBEX4200'
+  );
+  const timingStructureOkForHandoff =
+    (!clockDiag && !feedbackDiag) || clockGateIsSoftAdvisory;
   const artifactMap = useMemo(
     () => new Map(viewModel.artifacts.map((a) => [a.path.toLowerCase(), a])),
     [viewModel.artifacts]
@@ -575,7 +583,19 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       requiredCount === 0 && viewModel.pinTable.length > 0
         ? `${mappedCount}/${viewModel.pinTable.length} mapped`
         : `${requiredMappedCount}/${requiredCount} required`;
-    const clockTone = clockDiag || feedbackDiag ? 'error' as const : 'ok' as const;
+    const clockTone =
+      feedbackDiag || (clockDiag && !clockGateIsSoftAdvisory)
+        ? ('error' as const)
+        : clockGateIsSoftAdvisory
+          ? ('warn' as const)
+          : 'ok' as const;
+    const clockDetail = feedbackDiag
+      ? 'Unsupported feedback loop'
+      : clockGateIsSoftAdvisory
+        ? 'Lab timing: no board oscillator required — open details only if you add a real board clock.'
+        : clockDiag
+          ? clockDiag.message.slice(0, 55)
+          : formatExportClockGateDetail(activeScheduleContract, effectiveTimingGuidance.exportDetail);
     return [
       {
         id: 'verify',
@@ -597,11 +617,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         id: 'clock',
         label: feedbackDiag ? 'State structure' : effectiveTimingGuidance.exportLabel,
         tone: clockTone,
-        detail: feedbackDiag
-          ? 'Unsupported feedback loop'
-          : clockDiag
-            ? clockDiag.message.slice(0, 55)
-            : formatExportClockGateDetail(activeScheduleContract, effectiveTimingGuidance.exportDetail),
+        detail: clockDetail,
         actionLabel: 'Details',
         onAction: feedbackDiag
           ? () => setOpenFixPathId((prev) => (prev === feedbackDiag.id ? null : feedbackDiag.id))
@@ -612,6 +628,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     ];
   }, [
     activeScheduleContract,
+    clockGateIsSoftAdvisory,
     effectiveTimingGuidance.exportDetail,
     effectiveTimingGuidance.exportLabel,
     feedbackDiag,
@@ -641,8 +658,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           : 'Single clock domain',
       tooltip: feedbackDiag
         ? 'Unsupported feedback loops must be rewritten as supported latches or flip-flops before export.'
-        : formatExportClockDeterministicTooltip(activeScheduleContract, effectiveTimingGuidance.exportTooltip),
-      pass: !clockDiag && !feedbackDiag,
+        : clockGateIsSoftAdvisory
+          ? 'Manual-event lab: export does not require mapping the board oscillator. Resolve only if you intend to use the Basys3 clock pin.'
+          : formatExportClockDeterministicTooltip(activeScheduleContract, effectiveTimingGuidance.exportTooltip),
+      pass: timingStructureOkForHandoff,
     },
     {
       id: 'floating',
@@ -662,7 +681,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       tooltip: 'A passing Verify run has been completed for this exact circuit. Open Verify, run with Check Outputs enabled, and reach PASS to satisfy this.',
       pass: hasVerifyPass,
     },
-  ], [activeScheduleContract, clockDiag, diagnosticsList, effectiveTimingGuidance.exportTooltip, effectiveTimingGuidance.kind, feedbackDiag, requiredMappedCount, requiredCount, hasVerifyPass]);
+  ], [activeScheduleContract, clockDiag, clockGateIsSoftAdvisory, diagnosticsList, effectiveTimingGuidance.exportTooltip, effectiveTimingGuidance.kind, feedbackDiag, requiredMappedCount, requiredCount, hasVerifyPass, timingStructureOkForHandoff]);
   const artifactAgreementRows = useMemo(
     () =>
       buildArtifactAgreementRows({
@@ -670,7 +689,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         viewModel,
         requiredMappedCount,
         requiredCount,
-        timingStructureOk: !clockDiag && !feedbackDiag,
+        timingStructureOk: timingStructureOkForHandoff,
         topVhdStatus: pickArtifactStatus(artifactMap, 'top.vhd'),
         topXdcStatus: pickArtifactStatus(artifactMap, 'top.xdc'),
         testbenchStatus: pickArtifactStatus(artifactMap, 'testbench.vhd'),
@@ -681,6 +700,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       artifactMap,
       clockDiag,
       feedbackDiag,
+      timingStructureOkForHandoff,
       project,
       requiredCount,
       requiredMappedCount,
@@ -910,7 +930,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               {gate.tone === 'ok'
                 ? 'READY'
                 : gate.tone === 'warn'
-                  ? 'STALE'
+                  ? gate.id === 'clock' && clockGateIsSoftAdvisory
+                    ? 'ADVISORY'
+                    : 'REVIEW'
                   : 'NEEDS FIX'}
             </IdeStatusPill>
             <span className="ide-export-gate-label">{gate.label}</span>

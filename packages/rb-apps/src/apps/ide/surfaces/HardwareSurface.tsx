@@ -311,17 +311,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     }
     return runGuidance;
   }, [mappingRows, signalRoles, timingGuidance, verifyLastRun]);
-  const explicitTimingMode = useMemo<'synchronous_board_clock' | 'manual_event_driven_lab' | 'combinational'>(() => {
-    const mode = verifyLastRun?.scheduleContract?.timingMode;
-    if (mode === 'synchronous_board_clock' || mode === 'manual_event_driven_lab' || mode === 'combinational') {
-      return mode;
-    }
-    if (!effectiveTimingGuidance.isSequential) return 'combinational';
-    const hasExplicitBoardClock = mappingRows.some(
-      (row) => row.direction === 'in' && /(^clk$|clk100mhz|clock)/i.test(getStudentFacingIoLabel(row)) && row.pin.trim().length > 0
-    );
-    return hasExplicitBoardClock ? 'synchronous_board_clock' : 'manual_event_driven_lab';
-  }, [effectiveTimingGuidance.isSequential, mappingRows, verifyLastRun?.scheduleContract?.timingMode]);
 
   const clockRoleKeys = useMemo(() => {
     const next = new Set<string>();
@@ -336,6 +325,37 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     }
     return next;
   }, [signalRoles, verifyLastRun?.reportHash]);
+
+  const explicitTimingMode = useMemo<'synchronous_board_clock' | 'manual_event_driven_lab' | 'combinational'>(() => {
+    const mode = verifyLastRun?.scheduleContract?.timingMode;
+    if (mode === 'synchronous_board_clock' || mode === 'manual_event_driven_lab' || mode === 'combinational') {
+      return mode;
+    }
+    if (!effectiveTimingGuidance.isSequential) return 'combinational';
+    const hasSemanticClockPinned = mappingRows.some(
+      (row) =>
+        row.direction === 'in' &&
+        row.pin.trim().length > 0 &&
+        getIoSignalLookupKeys(row, mappingRows).some((key) => clockRoleKeys.has(key))
+    );
+    const hasExplicitBoardClock = mappingRows.some(
+      (row) =>
+        row.direction === 'in' &&
+        /(^clk$|clk100mhz|clock)/i.test(getStudentFacingIoLabel(row)) &&
+        row.pin.trim().length > 0
+    );
+    const hasBasys3PrimaryOscillatorPin = mappingRows.some(
+      (row) => row.direction === 'in' && row.pin.trim().toUpperCase() === 'W5'
+    );
+    return hasSemanticClockPinned || hasExplicitBoardClock || hasBasys3PrimaryOscillatorPin
+      ? 'synchronous_board_clock'
+      : 'manual_event_driven_lab';
+  }, [
+    clockRoleKeys,
+    effectiveTimingGuidance.isSequential,
+    mappingRows,
+    verifyLastRun?.scheduleContract?.timingMode,
+  ]);
 
   // Prefer semantic verify roles for clock detection; fall back only when no role map exists yet.
   const hasClockMapping = useMemo(
@@ -362,6 +382,34 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     },
     [clockRoleKeys, explicitTimingMode, mappingRows]
   );
+  /** Dock / progress row: avoid “missing clock” alarm when lab timing does not use the board oscillator. */
+  const clockDockPresentation = useMemo(() => {
+    if (explicitTimingMode === 'manual_event_driven_lab') {
+      return {
+        label: 'Board oscillator',
+        pillTone: 'idle' as const,
+        checkClass: 'is-ok' as const,
+        checkGlyph: '✓' as const,
+        statusText: 'Not required for lab timing',
+      };
+    }
+    if (explicitTimingMode === 'combinational') {
+      return {
+        label: 'Clock / timing',
+        pillTone: 'idle' as const,
+        checkClass: 'is-ok' as const,
+        checkGlyph: '✓' as const,
+        statusText: 'Combinational design',
+      };
+    }
+    return {
+      label: effectiveTimingGuidance.signalLabelSingular,
+      pillTone: (hasClockMapping ? 'ok' : 'warn') as const,
+      checkClass: (hasClockMapping ? 'is-ok' : 'is-missing') as const,
+      checkGlyph: (hasClockMapping ? '✓' : '○') as const,
+      statusText: hasClockMapping ? 'Mapped for synthesis' : 'Needs clock pin',
+    };
+  }, [effectiveTimingGuidance.signalLabelSingular, explicitTimingMode, hasClockMapping]);
   const hasOutputMapping = useMemo(
     () => {
       const requiredOutputs = mappingRows.filter(
@@ -777,7 +825,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     ? 'success'
     : failureTruth.severity === 'blocked'
       ? 'error'
-      : 'warn';
+      : failureTruth.condition === 'verify-not-run' ||
+          failureTruth.condition === 'mapping-review' ||
+          failureTruth.condition === 'trace-only'
+        ? 'info'
+        : 'warn';
   const dominantPrimaryAction = useMemo(() => {
     switch (failureTruth.primaryCtaIntent) {
       case 'map-pins':
@@ -1079,16 +1131,28 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const hasAssertionData = assertionsWithData.length > 0;
 
   // ── Confidence score ─────────────────────────────────────────────────
+  const clockConfidence = useMemo(() => {
+    if (explicitTimingMode === 'manual_event_driven_lab') {
+      return { label: 'Lab timing (no board clk pin required)', pass: true };
+    }
+    if (explicitTimingMode === 'combinational') {
+      return { label: 'Combinational — no clock domain', pass: true };
+    }
+    return {
+      label: `${effectiveTimingGuidance.signalLabelSingular} ready for board`,
+      pass: hasClockMapping,
+    };
+  }, [effectiveTimingGuidance.signalLabelSingular, explicitTimingMode, hasClockMapping]);
+
   const confidenceChecks = useMemo(() => [
-    { label: `${effectiveTimingGuidance.signalLabelSingular} mapped`, pass: hasClockMapping },
+    clockConfidence,
     { label: 'Outputs mapped', pass: hasOutputMapping },
     { label: 'Vectors generated', pass: vectorsCount > 0 },
     { label: 'Checks match', pass: hasAssertionData && assertionFailCount === 0 },
     { label: 'Compare current', pass: compareCurrent && !scenarioDrifted },
     { label: 'Export current', pass: exportReady },
   ], [
-    effectiveTimingGuidance.signalLabelSingular,
-    hasClockMapping,
+    clockConfidence,
     hasOutputMapping,
     vectorsCount,
     hasAssertionData,
@@ -1152,9 +1216,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           <span>{ioBusIoRows.length}</span>
         </div>
         <div className="ide-kv-row">
-          <span>{effectiveTimingGuidance.signalLabelSingular}</span>
-          <IdeStatusPill tone={hasClockMapping ? 'ok' : 'warn'}>
-            {hasClockMapping ? 'Mapped' : 'Missing'}
+          <span>{clockDockPresentation.label}</span>
+          <IdeStatusPill tone={clockDockPresentation.pillTone}>
+            {clockDockPresentation.statusText}
           </IdeStatusPill>
         </div>
         <div className="ide-kv-row">
@@ -1191,12 +1255,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       </header>
       <div className="ide-hw-map-progress" data-testid="ide-hw-map-progress">
         <div className="ide-hw-map-progress-row">
-          <span className={`ide-hw-map-check ${hasClockMapping ? 'is-ok' : 'is-missing'}`}>
-            {hasClockMapping ? '✓' : '○'}
+          <span className={`ide-hw-map-check ${clockDockPresentation.checkClass}`}>
+            {clockDockPresentation.checkGlyph}
           </span>
-          <span>{effectiveTimingGuidance.signalLabelSingular}</span>
-          <IdeStatusPill tone={hasClockMapping ? 'ok' : 'warn'}>
-            {hasClockMapping ? 'Mapped' : 'Missing'}
+          <span>{clockDockPresentation.label}</span>
+          <IdeStatusPill tone={clockDockPresentation.pillTone}>
+            {clockDockPresentation.statusText}
           </IdeStatusPill>
         </div>
         <div className="ide-hw-map-progress-row">
@@ -1767,36 +1831,71 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           )}
         </div>}
 
-        {/* ── Mode toggle bar — primary nav, stays at top ── */}
-        <div className="ide-hw-mode-toggle" data-testid="ide-hw-mode-toggle">
-          <IdeButton
-            tone={hwMode === 'map' ? 'primary' : 'ghost'}
-            onClick={() => { setHwMode('map'); setSelectedMappingRowId(null); }}
-            testId="ide-hw-mode-btn-map"
+        {/* ── Mode toggle — segmented board-lab navigation ── */}
+        <div
+          className="ide-hw-mode-toggle"
+          data-testid="ide-hw-mode-toggle"
+          role="tablist"
+          aria-label="Hardware workspace modes"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={hwMode === 'map'}
+            className={`ide-hw-mode-segment${hwMode === 'map' ? ' is-active' : ''}`}
+            data-testid="ide-hw-mode-btn-map"
+            onClick={() => {
+              setHwMode('map');
+              setSelectedMappingRowId(null);
+            }}
           >
-            {mappingReady ? '✓ ' : unresolvedRequiredCount > 0 ? '○ ' : ''}Map Pins
-          </IdeButton>
-          <IdeButton
-            tone={hwMode === 'bringup' ? 'primary' : 'ghost'}
-            onClick={() => { setHwMode('bringup'); setSelectedMappingRowId(null); }}
-            testId="ide-hw-mode-btn-bringup"
+            <span className="ide-hw-mode-segment-label">
+              {mappingReady ? '✓ ' : unresolvedRequiredCount > 0 ? '○ ' : ''}Map Pins
+            </span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={hwMode === 'bringup'}
+            className={`ide-hw-mode-segment${hwMode === 'bringup' ? ' is-active' : ''}`}
+            data-testid="ide-hw-mode-btn-bringup"
+            onClick={() => {
+              setHwMode('bringup');
+              setSelectedMappingRowId(null);
+            }}
           >
-            {vectorsCount > 0 ? '✓ ' : '○ '}Test on Board
-          </IdeButton>
-          <IdeButton
-            tone={hwMode === 'proof' ? 'primary' : 'ghost'}
-            onClick={() => { setHwMode('proof'); setSelectedMappingRowId(null); }}
-            testId="ide-hw-mode-btn-proof"
+            <span className="ide-hw-mode-segment-label">
+              {vectorsCount > 0 ? '✓ ' : '○ '}Test on Board
+            </span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={hwMode === 'proof'}
+            className={`ide-hw-mode-segment${hwMode === 'proof' ? ' is-active' : ''}`}
+            data-testid="ide-hw-mode-btn-proof"
+            onClick={() => {
+              setHwMode('proof');
+              setSelectedMappingRowId(null);
+            }}
           >
-            {confidenceScore === 100 ? '✓ ' : ''}Pre-flight
-          </IdeButton>
-          <IdeButton
-            tone={hwMode === 'live' ? 'primary' : 'ghost'}
-            onClick={() => { setHwMode('live'); setSelectedMappingRowId(null); }}
-            testId="ide-hw-mode-btn-live"
+            <span className="ide-hw-mode-segment-label">
+              {confidenceScore === 100 ? '✓ ' : ''}Pre-flight
+            </span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={hwMode === 'live'}
+            className={`ide-hw-mode-segment${hwMode === 'live' ? ' is-active' : ''}`}
+            data-testid="ide-hw-mode-btn-live"
+            onClick={() => {
+              setHwMode('live');
+              setSelectedMappingRowId(null);
+            }}
           >
-            Simulation
-          </IdeButton>
+            <span className="ide-hw-mode-segment-label">Simulation</span>
+          </button>
           {sim.tick > 0 && (
             <span className="ide-hw-tick-badge" data-testid="ide-hw-tick-badge">
               t{sim.tick}

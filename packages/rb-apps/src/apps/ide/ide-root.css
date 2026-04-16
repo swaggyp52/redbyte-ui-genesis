@@ -61,7 +61,7 @@
   --rb-border: #29445e;
   --rb-text-1: #f2f8ff;
   --rb-text-2: #c3d1df;
-  --rb-text-3: #88a1b9;
+  --rb-text-3: #a8bdd4;
   /* Semantics */
   --rb-accent: #2ec4b6;
   --rb-accent-contrast: #062524;
@@ -3422,19 +3422,20 @@
 .ide-status-pill {
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
+  min-height: 22px;
+  padding: 4px 10px;
   border-radius: 999px;
-  font-size: 10px;
-  line-height: 1;
+  font-size: 11px;
+  line-height: 1.2;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   border: 1px solid transparent;
 }
 
 .ide-status-idle {
-  color: var(--ide-text-muted);
-  border-color: rgba(58, 87, 116, 0.55);
-  background: rgba(58, 87, 116, 0.18);
+  color: rgba(200, 218, 238, 0.92);
+  border-color: rgba(100, 140, 180, 0.45);
+  background: rgba(40, 70, 100, 0.22);
 }
 
 .ide-status-ok {
@@ -3473,8 +3474,11 @@
 }
 
 .ide-callout-info {
-  border-color: rgba(142, 199, 255, 0.35);
-  background: rgba(142, 199, 255, 0.11);
+  border-color: rgba(142, 199, 255, 0.48);
+  background: rgba(142, 199, 255, 0.14);
+}
+.ide-callout-info .ide-callout-body {
+  color: rgba(220, 234, 252, 0.92);
 }
 
 .ide-callout-warn {
@@ -8318,15 +8322,56 @@ details[open] summary .details-arrow {
    Phase 27 — Hardware bring-up instrument
    ════════════════════════════════════════════════════════════════ */
 
-/* 27A: Mode toggle strip */
+/* 27A: Hardware mode — segmented navigation (board lab) */
 .ide-hw-mode-toggle {
   display: flex;
-  gap: 0;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
-  background: rgba(0,0,0,0.15);
-  padding: 0 var(--ide-space-2);
-  margin-bottom: 0;
+  margin: 0 0 var(--ide-space-3);
+  padding: 10px 12px;
+  border-radius: var(--rb-radius-2);
+  border: 1px solid rgba(100, 150, 195, 0.28);
+  background:
+    linear-gradient(180deg, rgba(10, 22, 38, 0.98), rgba(6, 14, 24, 0.94)),
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 55%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.ide-hw-mode-segment {
+  appearance: none;
+  margin: 0;
+  min-height: var(--rb-control-h-sm);
+  padding: 8px 16px;
+  border-radius: var(--rb-radius-1);
+  border: 1px solid rgba(88, 130, 170, 0.4);
+  background: rgba(8, 18, 32, 0.85);
+  color: rgba(210, 225, 242, 0.9);
+  font-family: var(--ide-font-ui);
+  font-size: var(--rb-font-size-2);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+.ide-hw-mode-segment:hover:not(.is-active) {
+  border-color: rgba(120, 175, 220, 0.5);
+  color: #f4f9ff;
+}
+.ide-hw-mode-segment.is-active {
+  color: #f7fbff;
+  border-color: rgba(56, 189, 248, 0.55);
+  background: linear-gradient(180deg, rgba(28, 62, 98, 0.95), rgba(14, 36, 58, 0.98));
+  box-shadow:
+    0 0 0 1px rgba(56, 189, 248, 0.12),
+    0 4px 14px rgba(0, 0, 0, 0.35);
+}
+.ide-hw-mode-segment:focus-visible {
+  outline: 2px solid var(--rb-focus-ring);
+  outline-offset: 2px;
+}
+.ide-hw-mode-segment-label {
+  pointer-events: none;
 }
 .ide-hw-mode-hint {
   margin: 0;
@@ -24215,26 +24260,29 @@ button:disabled,
 .ide-hardware-dep-chain {
   display: flex;
   align-items: center;
-  gap: var(--ide-space-1);
-  padding: var(--ide-space-2) 0;
+  gap: 10px;
+  padding: var(--ide-space-2) var(--ide-space-2) var(--ide-space-3);
   margin-bottom: var(--ide-space-2);
   flex-wrap: wrap;
+  border-radius: var(--rb-radius-2);
+  border: 1px solid rgba(90, 130, 170, 0.22);
+  background: rgba(5, 12, 22, 0.55);
 }
 .ide-hardware-dep-step {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: var(--ide-space-1) var(--ide-space-2);
-  border-radius: var(--ide-radius);
-  border: 1px solid var(--ide-border);
-  background: none;
-  color: var(--ide-text-soft);
-  font-size: 11px;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: var(--rb-radius-1);
+  border: 1px solid rgba(100, 140, 180, 0.32);
+  background: rgba(12, 24, 40, 0.65);
+  color: var(--ide-text-muted);
+  font-size: 12px;
   cursor: pointer;
-  min-width: 72px;
+  min-width: 88px;
   text-align: center;
-  transition: background 0.1s;
+  transition: background 0.12s, border-color 0.12s;
 }
 .ide-hardware-dep-step:hover { background: rgba(255,255,255,0.04); }
 .ide-hardware-dep-step--terminal { cursor: default; }
@@ -24259,17 +24307,20 @@ button:disabled,
   opacity: 0.6;
 }
 .ide-hardware-dep-step__num {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  opacity: 0.6;
+  opacity: 0.75;
+  color: var(--ide-text-soft);
 }
 .ide-hardware-dep-step__label {
   font-weight: 600;
-  font-size: 11px;
+  font-size: 12px;
+  color: var(--ide-text-muted);
 }
 .ide-hardware-dep-step__status {
-  font-size: 10px;
+  font-size: 11px;
   font-family: var(--ide-font-mono);
+  color: var(--ide-text-soft);
 }
 .ide-hardware-dep-arrow {
   color: var(--ide-text-muted);
@@ -26318,15 +26369,15 @@ button:disabled,
 .ide-surface-command-meta-note {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
-  padding: 4px 10px;
+  min-height: 32px;
+  padding: 6px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(64, 97, 128, 0.36);
-  background: rgba(9, 19, 33, 0.78);
-  color: rgba(208, 223, 238, 0.82);
-  font-size: 11px;
+  border: 1px solid rgba(96, 140, 182, 0.42);
+  background: rgba(12, 26, 44, 0.88);
+  color: rgba(226, 236, 248, 0.92);
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.2;
 }
 
 .ide-surface-command-chip.is-ok {

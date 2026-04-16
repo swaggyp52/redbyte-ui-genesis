@@ -322,7 +322,7 @@ describe('HardwareSurface readiness', () => {
 
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
     expect(getByTestId('ide-hw-map-dock').textContent).toContain('Clock');
-    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Missing');
+    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Needs clock pin');
   });
 
   it('claims clock is mapped when all required clock rows have pins', () => {
