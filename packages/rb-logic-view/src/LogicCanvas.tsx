@@ -25,7 +25,7 @@ export interface LogicCanvasProps {
   width?: number;
   height?: number;
   showToolbar?: boolean;
-  getChipMetadata?: (nodeType: string) => ChipMetadata | undefined;
+  getChipMetadata?: (nodeType: string, node?: Node) => ChipMetadata | undefined;
   onNodeDoubleClick?: (nodeId: string) => void;
   onCircuitChange?: (circuit: Circuit, opts?: { isIntermediate?: boolean }) => void; // Callback to propagate circuit updates
   onDeleteFeedback?: (message: string) => void; // Toast feedback on keyboard delete
@@ -688,7 +688,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
   const getNodePortNames = React.useCallback(
     (node: Node): string[] => {
-      const metadata = getChipMetadata?.(node.type);
+      const metadata = getChipMetadata?.(node.type, node);
       if (metadata) {
         return [
           ...metadata.inputs.map((input) => input.id),
@@ -1650,7 +1650,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               onNodeDoubleClick={onNodeDoubleClick}
               onProbeToggle={onProbeToggle}
               signals={renderSignals}
-              chipMetadata={getChipMetadata?.(node.type)}
+              chipMetadata={getChipMetadata?.(node.type, node)}
               wireStartPort={editingState.wireStartPort}
               onPortHover={(portName) => setHoveredPort({ nodeId: node.id, portName })}
               onPortLeave={() => setHoveredPort(null)}

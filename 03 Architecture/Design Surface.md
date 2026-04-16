@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: design
-updated: 2026-04-13
+updated: 2026-04-16
 related:
   - "[[RedByte Engineering Brain]]"
   - "[[Verify Engine]]"
@@ -42,8 +42,10 @@ For the left dock, the contract is:
 
 - search remains visible at all times
 - Logic Gates, Sequential & Timing, and Inputs & Outputs remain directly visible
-- Board Resources and Live Inputs are secondary sections and start collapsed by default
+- Board Resources and Live Inputs are secondary dock sections (toggle to collapse); in the current shell they **start expanded** by default so live toggles stay reachable on first open
 - board search matches must auto-reveal Board Resources so hardware inventory remains discoverable
+- **Sequential & Timing** teaches intent in tiers: **Registers & state banks** (native Register1 / RegisterBus / StateBank) first, **Timing** (Clock), then **Legacy** (classic DFF). Toggle flip-flops (TFF) live under **Reusable Blocks** as a legacy built-in, not as a peer of the native register path
+- native register nodes expose **width, clock edge, CE, reset kind, and polarities** in the inspector (config matches `evaluateRegisterFamily` in rb-logic-core); bus/state nodes grow **D[i]/Q[i]** chip ports from `config.width` so taps stay aligned with simulation and Map Pins semantics
 
 For the center workspace, the top-of-canvas chrome contract is:
 

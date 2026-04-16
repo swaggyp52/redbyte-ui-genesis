@@ -33,6 +33,11 @@ import { vhdlFromNetlist } from '../../../export/vhdlExport';
 import { synthesizableVerilogFromNetlist } from '../../../export/verilogExport';
 import { buildVhdlTopLevelBindings } from '../../../fpga/boards/basys3/basys3Bundle';
 import { getDesignChipMetadata } from '../designChipMetadata';
+import {
+  getDesignChipMetadataForNode,
+  normalizeRegisterWidth,
+  REGISTER_FAMILY_TYPES,
+} from '../registerFamilyChipMetadata';
 import { serializeCluster, pasteCluster, type ClipboardCluster } from '../designClipboard';
 import {
   compareDesignIssues,
@@ -199,6 +204,10 @@ interface PaletteItem {
   subtitle: string;
   glyph: string;
   searchTerms: string[];
+  /** Sequential palette grouping (Design dock only). */
+  sequentialTier?: 'registers' | 'timing' | 'legacy';
+  /** Optional badge on the palette card (e.g. Native / Legacy). */
+  paletteBadge?: string;
 }
 
 interface BoardIoPaletteItem {
@@ -348,52 +357,53 @@ const PALETTE_ITEMS: PaletteItem[] = [
     searchTerms: ['gate', 'logic', 'three input', '3 input', 'parity'],
   },
   {
-    type: 'DFlipFlop',
-    title: 'DFF',
-    category: 'Sequential',
-    subtitle: 'Edge-triggered state element for registers and counters.',
-    glyph: 'DFF',
-    searchTerms: ['flip flop', 'flipflop', 'register', 'state', 'memory'],
-  },
-  {
     type: 'Register1',
     title: 'Register (1-bit)',
     category: 'Sequential',
-    subtitle: 'Native 1-bit register with CLK and optional EN/RST semantics.',
+    sequentialTier: 'registers',
+    paletteBadge: 'Native',
+    subtitle: 'Preferred 1-bit register: width, CE, reset kind, and polarities are first-class.',
     glyph: 'REG1',
-    searchTerms: ['register', 'dff', 'state', 'memory', 'fdce'],
+    searchTerms: ['register', 'dff', 'state', 'memory', 'fdce', 'sequential', 'flip flop'],
   },
   {
     type: 'RegisterBus',
     title: 'Register (Bus)',
     category: 'Sequential',
-    subtitle: 'Bus-oriented register primitive for grouped state bits.',
+    sequentialTier: 'registers',
+    paletteBadge: 'Native',
+    subtitle: 'Packed multi-bit register with per-bit D[i] / Q[i] taps for combinational logic.',
     glyph: 'REGB',
-    searchTerms: ['register', 'bus', 'state', 'bank', 'vector'],
+    searchTerms: ['register', 'bus', 'state', 'bank', 'vector', 'slice', 'tap', 'bit'],
   },
   {
     type: 'StateBank',
     title: 'State Bank',
     category: 'Sequential',
-    subtitle: 'Grouped register-bank abstraction for FSM/state clusters.',
+    sequentialTier: 'registers',
+    paletteBadge: 'Native',
+    subtitle: 'Grouped state for FSM-style clusters — same semantics as Register (Bus), different intent.',
     glyph: 'BANK',
     searchTerms: ['state', 'bank', 'register bank', 'fsm', 'sequential'],
-  },
-  {
-    type: 'TFlipFlop',
-    title: 'TFF',
-    category: 'Sequential',
-    subtitle: 'Rising-edge toggle flip-flop with active-high clear.',
-    glyph: 'TFF',
-    searchTerms: ['flip flop', 'flipflop', 'toggle', 'state', 'memory'],
   },
   {
     type: 'Clock',
     title: 'Clock',
     category: 'Sequential',
-    subtitle: 'Free-running timing source for sequential logic.',
+    sequentialTier: 'timing',
+    subtitle: 'Free-running or board-mapped timing source for sequential logic.',
     glyph: 'CLK',
     searchTerms: ['clock', 'pulse', 'timing', 'oscillator'],
+  },
+  {
+    type: 'DFlipFlop',
+    title: 'DFF',
+    category: 'Sequential',
+    sequentialTier: 'legacy',
+    paletteBadge: 'Legacy',
+    subtitle: 'Classic single-bit D flip-flop — prefer Register (1-bit) for new native projects.',
+    glyph: 'DFF',
+    searchTerms: ['flip flop', 'flipflop', 'register', 'state', 'memory'],
   },
   {
     type: 'INPUT',
@@ -447,6 +457,15 @@ const COMPOSITE_PALETTE_ITEMS: PaletteItem[] = [
     searchTerms: ['flip flop', 'flipflop', 'toggle', 'state'],
   },
   {
+    type: 'TFlipFlop',
+    title: 'T Flip-flop',
+    category: 'Components',
+    paletteBadge: 'Legacy',
+    subtitle: 'Legacy toggle primitive — prefer Register (1-bit) with feedback for new builds.',
+    glyph: 'TFF',
+    searchTerms: ['flip flop', 'flipflop', 'toggle', 'state', 'tff'],
+  },
+  {
     type: 'FullAdder',
     title: 'Full Adder',
     category: 'Components',
@@ -472,7 +491,8 @@ const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
   {
     id: 'sequential',
     title: 'Sequential & Timing',
-    description: 'Stateful and timing-driven parts for registers, memory, and clocks.',
+    description:
+      'Native registers and state banks first, then timing sources — legacy DFF/TFF sit in clearly marked tiers.',
   },
   {
     id: 'io',
@@ -483,6 +503,32 @@ const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
     id: 'reusable',
     title: 'Reusable Blocks',
     description: 'Built-in helpers, saved macros, and custom parts you can place quickly.',
+  },
+];
+
+const SEQUENTIAL_PALETTE_SUBSECTIONS: readonly {
+  key: 'sequentialRegisters' | 'sequentialTiming' | 'sequentialLegacy';
+  title: string;
+  description: string;
+  testId: string;
+}[] = [
+  {
+    key: 'sequentialRegisters',
+    title: 'Registers & state banks',
+    description: 'Native path: width, clock enable, reset behavior, and edge polarity are explicit.',
+    testId: 'ide-design-palette-sequential-registers',
+  },
+  {
+    key: 'sequentialTiming',
+    title: 'Timing',
+    description: 'Clock sources that drive sequential updates (map to board timing in Map Pins).',
+    testId: 'ide-design-palette-sequential-timing',
+  },
+  {
+    key: 'sequentialLegacy',
+    title: 'Legacy primitives',
+    description: 'Classic DFF for imports and tutorials — new work should start with Native registers.',
+    testId: 'ide-design-palette-sequential-legacy',
   },
 ];
 
@@ -675,7 +721,7 @@ interface DesignSimulationStory {
 }
 
 interface DesignSequentialInspectorContext {
-  kind: 'clock' | 'flip-flop' | 'latch' | 'rs-latch';
+  kind: 'clock' | 'flip-flop' | 'latch' | 'rs-latch' | 'register-family';
   roleLabel: string;
   behaviorSummary: string;
   nextStep: string;
@@ -1131,7 +1177,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     onClearExternalDebug,
     replaySession,
   ]);
-  const getChipMetadata = useCallback((nodeType: string): ChipMetadata | undefined => {
+  const getChipMetadata = useCallback((nodeType: string, node?: Node): ChipMetadata | undefined => {
+    if (node) {
+      return getDesignChipMetadataForNode(node) ?? getDesignChipMetadata(nodeType);
+    }
     return getDesignChipMetadata(nodeType);
   }, []);
 
@@ -1503,9 +1552,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         ...item.searchTerms,
       ])
     );
+    const sequential = filtered.filter((item) => item.category === 'Sequential');
     return {
       logic: filtered.filter((item) => item.category === 'Logic'),
-      sequential: filtered.filter((item) => item.category === 'Sequential'),
+      sequential,
+      sequentialRegisters: sequential.filter((item) => item.sequentialTier === 'registers'),
+      sequentialTiming: sequential.filter((item) => item.sequentialTier === 'timing'),
+      sequentialLegacy: sequential.filter((item) => item.sequentialTier === 'legacy'),
       io: filtered.filter((item) => item.category === 'IO'),
       components: filtered.filter((item) => item.category === 'Components'),
     };
@@ -2246,6 +2299,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     emitCircuitMutation();
     setActionToast(`Gate changed to ${newType}`);
   }, [emitCircuitMutation, selectedNode, updateNode]);
+
+  const patchSelectedRegisterFamilyConfig = useCallback(
+    (patch: Record<string, unknown>) => {
+      if (!selectedNode || !REGISTER_FAMILY_TYPES.has(selectedNode.type)) return;
+      updateNode(selectedNode.id, {
+        config: { ...(selectedNode.config ?? {}), ...patch },
+      });
+      emitCircuitMutation();
+    },
+    [emitCircuitMutation, selectedNode, updateNode]
+  );
 
   // ── N-1: resolve a raw connection endpoint to { nodeId, portName } ──────────
   const resolveConnectionEndpoint = useCallback(
@@ -3790,9 +3854,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           {item.glyph}
         </span>
         <span className="ide-palette-card-body">
-          <span className="ide-palette-card-title-row">
+            <span className="ide-palette-card-title-row">
             <span className="ide-palette-card-title">{item.title}</span>
-            {options?.badge ? <span className="ide-palette-card-badge">{options.badge}</span> : null}
+            {options?.badge || item.paletteBadge ? (
+              <span className="ide-palette-card-badge">{options?.badge ?? item.paletteBadge}</span>
+            ) : null}
           </span>
           <span className="ide-palette-card-subtitle">{item.subtitle}</span>
         </span>
@@ -4368,9 +4434,99 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   };
   const renderSelectionProperties = () => {
     if (hasSingleSelectedNode && selectedNode) {
+      const registerCfg = REGISTER_FAMILY_TYPES.has(selectedNode.type)
+        ? ((selectedNode.config ?? {}) as Record<string, unknown>)
+        : null;
+      const registerWidth = registerCfg ? normalizeRegisterWidth(selectedNode.type, registerCfg) : 1;
       return (
         <div className="ide-design-inspector-inline-editor" data-testid="ide-design-inspector-inline-editor">
           {renderNodeLabelEditor(selectedNode)}
+          {registerCfg ? (
+            <div className="ide-design-register-config" data-testid="ide-design-register-config">
+              <span className="ide-design-inspector-group-label">Register semantics</span>
+              <p className="ide-design-inspector-hint">
+                Matches simulation and export. For bus registers, width controls how many D[i]/Q[i] taps appear on the
+                chip.
+              </p>
+              {selectedNode.type !== 'Register1' ? (
+                <label className="ide-design-inspector-field">
+                  <span>Width (bits)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={32}
+                    className="ide-export-pin-input"
+                    value={registerWidth}
+                    onChange={(event) => {
+                      const next = Math.min(32, Math.max(1, parseInt(event.target.value, 10) || 1));
+                      patchSelectedRegisterFamilyConfig({ width: next });
+                    }}
+                    data-testid="ide-design-register-width"
+                  />
+                </label>
+              ) : null}
+              <label className="ide-design-inspector-field ide-design-inspector-field--checkbox">
+                <input
+                  type="checkbox"
+                  checked={registerCfg.hasEnable === true}
+                  onChange={(event) => patchSelectedRegisterFamilyConfig({ hasEnable: event.target.checked })}
+                  data-testid="ide-design-register-has-enable"
+                />
+                <span>Model clock enable (EN / CE)</span>
+              </label>
+              <label className="ide-design-inspector-field">
+                <span>Clock edge</span>
+                <select
+                  className="ide-export-pin-input"
+                  value={String(registerCfg.clockPolarity ?? 'rising_edge')}
+                  onChange={(event) => patchSelectedRegisterFamilyConfig({ clockPolarity: event.target.value })}
+                  data-testid="ide-design-register-clock-edge"
+                >
+                  <option value="rising_edge">Rising edge</option>
+                  <option value="falling_edge">Falling edge</option>
+                </select>
+              </label>
+              <label className="ide-design-inspector-field">
+                <span>Reset kind</span>
+                <select
+                  className="ide-export-pin-input"
+                  value={String(registerCfg.resetKind ?? 'none')}
+                  onChange={(event) => patchSelectedRegisterFamilyConfig({ resetKind: event.target.value })}
+                  data-testid="ide-design-register-reset-kind"
+                >
+                  <option value="none">None</option>
+                  <option value="async_clear">Async clear</option>
+                  <option value="async_preset">Async preset</option>
+                  <option value="sync_reset">Synchronous reset</option>
+                  <option value="sync_set">Synchronous set</option>
+                </select>
+              </label>
+              <label className="ide-design-inspector-field">
+                <span>Reset polarity</span>
+                <select
+                  className="ide-export-pin-input"
+                  value={String(registerCfg.resetPolarity ?? 'active_high')}
+                  onChange={(event) => patchSelectedRegisterFamilyConfig({ resetPolarity: event.target.value })}
+                  data-testid="ide-design-register-reset-polarity"
+                >
+                  <option value="active_high">Active high</option>
+                  <option value="active_low">Active low</option>
+                </select>
+              </label>
+              <label className="ide-design-inspector-field">
+                <span>Enable polarity</span>
+                <select
+                  className="ide-export-pin-input"
+                  value={String(registerCfg.enablePolarity ?? 'active_high')}
+                  onChange={(event) => patchSelectedRegisterFamilyConfig({ enablePolarity: event.target.value })}
+                  data-testid="ide-design-register-enable-polarity"
+                >
+                  <option value="active_high">Active high</option>
+                  <option value="active_low">Active low</option>
+                </select>
+              </label>
+            </div>
+          ) : null}
         </div>
       );
     }
@@ -5020,11 +5176,28 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </div>
                     <p className="ide-palette-section-copy">{sequentialPaletteSection.description}</p>
                   </header>
-                  <div className="ide-palette-card-list">
-                    {filteredPaletteByCategory.sequential.map((item) =>
-                      renderNodePaletteCard(item)
-                    )}
-                  </div>
+                  {SEQUENTIAL_PALETTE_SUBSECTIONS.map((subsection) => {
+                    const items = filteredPaletteByCategory[subsection.key];
+                    if (!items || items.length === 0) return null;
+                    return (
+                      <div key={subsection.key} className="ide-palette-subsection" data-testid={subsection.testId}>
+                        <div className="ide-palette-subsection-header">
+                          <div>
+                            <h5>{subsection.title}</h5>
+                            <p>{subsection.description}</p>
+                          </div>
+                          <span className="ide-palette-subsection-count">{items.length}</span>
+                        </div>
+                        <div className="ide-palette-card-list">
+                          {items.map((item) => renderNodePaletteCard(item))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <p className="ide-palette-section-hint" data-testid="ide-design-palette-sequential-workflow-hint">
+                    Tip: after choosing a register, hold Shift while clicking the canvas to place another of the same
+                    type — useful for counters and multi-bit state.
+                  </p>
                 </section>
               ) : null}
 
@@ -5080,7 +5253,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </div>
                       <div className="ide-palette-card-list">
                         {filteredPaletteByCategory.components.map((item) =>
-                          renderNodePaletteCard(item, { badge: 'Built-in' })
+                          renderNodePaletteCard(item, { badge: item.paletteBadge ?? 'Built-in' })
                         )}
                       </div>
                     </div>
@@ -7194,6 +7367,78 @@ function buildSequentialInspectorContext(input: {
     };
   }
 
+  if (node.type === 'Register1' || node.type === 'RegisterBus' || node.type === 'StateBank') {
+    const cfg = (node.config ?? {}) as Record<string, unknown>;
+    const width = normalizeRegisterWidth(node.type, cfg);
+    const hasEnable = cfg.hasEnable === true;
+    const resetKind = String(cfg.resetKind ?? 'none');
+    const resetPolarityLabel = String(cfg.resetPolarity ?? 'active_high').toLowerCase().includes('low')
+      ? 'active low'
+      : 'active high';
+    const enablePolarityLabel = String(cfg.enablePolarity ?? 'active_high').toLowerCase().includes('low')
+      ? 'active low'
+      : 'active high';
+    const clockEdge =
+      String(cfg.clockPolarity ?? 'rising_edge').toLowerCase() === 'falling_edge' ? 'falling_edge' : 'rising_edge';
+    const edgeLabel = clockEdge === 'falling_edge' ? 'falling' : 'rising';
+
+    const controlPort = 'CLK';
+    const controlSource = resolveNodeInputSource(node.id, controlPort, circuit, ioRowByNodeId);
+    const controlSignalKey = controlSource?.signalKey ?? `${node.id}.${controlPort}`;
+    const controlSnapshot = describeSignalSnapshot(controlSignalKey, trace, runtimeSignals, liveSignals, fallbackTrace);
+    const commonControl = {
+      controlSourceLabel: controlSource?.label ?? 'No clock source wired',
+      controlActivity: describeSequentialActivity(controlSnapshot),
+    };
+
+    const roleLabel =
+      node.type === 'StateBank' ? 'State bank' : node.type === 'RegisterBus' ? 'Bus register' : 'Native register';
+
+    const resetLine =
+      resetKind === 'none'
+        ? 'Reset is off in config — RST can remain unwired.'
+        : `Reset mode ${resetKind.replace(/_/g, ' ')} (${resetPolarityLabel}).`;
+
+    const enableLine = hasEnable
+      ? `Clock enable (EN/CE) is on; enable polarity is ${enablePolarityLabel}.`
+      : 'Clock enable is off in config — the register behaves as if EN were always active.';
+
+    const tapLine =
+      node.type === 'Register1'
+        ? 'Use Q and Q_inv for downstream combinational logic.'
+        : `Bus width ${width}: use packed Q or per-bit outputs Q[0]…Q[${Math.max(0, width - 1)}] as taps.`;
+
+    const behaviorSummary = `Samples on the ${edgeLabel} clock edge. ${enableLine} ${resetLine} ${tapLine}`;
+
+    const inputPorts: string[] = ['D', 'CLK'];
+    if (hasEnable) inputPorts.push('EN');
+    if (resetKind !== 'none') inputPorts.push('RST');
+
+    const stateSummary =
+      node.type === 'Register1'
+        ? summarizeSequentialPorts(nodeSignals, ['Q', 'Q_inv'])
+        : summarizeRegisterBusOutputs(nodeSignals, width);
+
+    return {
+      kind: 'register-family',
+      roleLabel,
+      behaviorSummary,
+      nextStep: controlSource
+        ? `CLK is wired — confirm the ${edgeLabel} edge matches your intent in Verify / Map Pins.`
+        : 'Wire CLK to a clock or manual step source before expecting updates.',
+      controlLabel: 'Clock',
+      ioSummaryLabel: 'Inputs',
+      ioSummary: summarizeSequentialPorts(nodeSignals, inputPorts),
+      stateSummaryLabel: 'State / taps',
+      stateSummary,
+      timingContext: `${edgeLabel === 'falling' ? 'Falling' : 'Rising'}-edge sampling · width ${width}`,
+      actionKind: 'trace-control',
+      actionLabel: 'Trace clock path',
+      actionPort: 'CLK',
+      ...commonControl,
+    };
+  }
+
   const controlPort =
     node.type === 'DLatch'
       ? 'EN'
@@ -7338,6 +7583,22 @@ function summarizeSequentialPorts(
   return entries.length > 0 ? entries.join(', ') : 'No live signal values yet';
 }
 
+function summarizeRegisterBusOutputs(nodeSignals: Map<string, 0 | 1 | null>, width: number): string {
+  const bitSummaries: string[] = [];
+  const limit = Math.min(width, 8);
+  for (let i = 0; i < limit; i += 1) {
+    const key = `Q[${i}]`;
+    if (!nodeSignals.has(key)) continue;
+    bitSummaries.push(`${key}=${formatInspectorBinaryValue(nodeSignals.get(key))}`);
+  }
+  const packedLabel = nodeSignals.has('Q') ? formatInspectorBinaryValue(nodeSignals.get('Q')) : '?';
+  const more = width > limit ? ` (+${width - limit} more bits)` : '';
+  if (bitSummaries.length === 0) {
+    return `Packed Q=${packedLabel}${more} — per-bit Q[i] taps appear after run or when ports are resolved.`;
+  }
+  return `Packed Q=${packedLabel}${more} · ${bitSummaries.join(', ')}`;
+}
+
 function formatInspectorBinaryValue(value: 0 | 1 | null | undefined): string {
   return value === 1 ? '1' : value === 0 ? '0' : '?';
 }
@@ -7354,6 +7615,11 @@ function describeSequentialActivity(snapshot: DesignSignalSnapshot | null): stri
 }
 
 function describePortForStudents(portName: string): string {
+  const bracketBit = /^(q|d)\[(\d+)\]$/i.exec(portName.trim());
+  if (bracketBit) {
+    const kind = bracketBit[1].toUpperCase() === 'Q' ? 'State bit' : 'Data bit';
+    return `${kind} ${bracketBit[2]}`;
+  }
   const normalized = portName.trim().toLowerCase();
   const labels: Record<string, string> = {
     a: 'Input A',
@@ -7475,12 +7741,12 @@ const NODE_PIN_CATALOG: Record<string, string[]> = {
 
 function deriveNodePins(node: Node | undefined, circuit: Circuit): string[] {
   if (!node) return [];
-  const canonicalMetadata = getDesignChipMetadata(node.type);
-  if (canonicalMetadata) {
+  const dynamicMetadata = getDesignChipMetadataForNode(node);
+  if (dynamicMetadata) {
     return Array.from(
       new Set([
-        ...canonicalMetadata.inputs.map((port) => port.id),
-        ...canonicalMetadata.outputs.map((port) => port.id),
+        ...dynamicMetadata.inputs.map((port) => port.id),
+        ...dynamicMetadata.outputs.map((port) => port.id),
       ])
     );
   }

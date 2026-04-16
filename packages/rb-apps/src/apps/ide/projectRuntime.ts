@@ -32,6 +32,7 @@ import {
   type IdeExampleDefinition,
   type IdeExampleIoRow,
 } from './examplesCatalog';
+import { defaultNodeConfig } from './defaultNodeConfig';
 import {
   buildHardwareMappingV2FromProjectIoRows,
   cloneHardwareMappingDocumentV2,
@@ -1096,7 +1097,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             x: normalizedPosition.x,
             y: normalizedPosition.y,
             rotation: 0,
-            config: nodeType === 'Clock' ? { period: 10 } : {},
+            config: defaultNodeConfig(nodeType),
             state: {},
           });
           return commitDesignSnapshot(
@@ -1225,7 +1226,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             x: roundToMill(position.x),
             y: roundToMill(position.y),
             rotation: 0,
-            config: nodeType === 'Clock' ? { period: 10 } : {},
+            config: defaultNodeConfig(nodeType),
             state: {},
           });
 

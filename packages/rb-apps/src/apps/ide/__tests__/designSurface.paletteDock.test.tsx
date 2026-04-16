@@ -197,7 +197,7 @@ describe('DesignSurface palette dock redesign', () => {
     expect(within(palette).getByTestId('ide-palette-group-custom')).toBeTruthy();
   });
 
-  it('keeps search and core parts visible; board resources expanded by default, live-inputs collapsed', () => {
+  it('keeps search and core parts visible; board and live inputs expanded by default', () => {
     const view = renderSurface();
 
     expect(view.getByTestId('ide-design-search')).toBeTruthy();
@@ -208,8 +208,25 @@ describe('DesignSurface palette dock redesign', () => {
     expect(view.getByTestId('ide-design-palette-toggle-board')).toHaveAttribute('aria-expanded', 'true');
     expect(view.getByTestId('ide-design-board-io-palette')).toBeTruthy();
 
-    expect(view.getByTestId('ide-design-live-inputs-toggle')).toHaveAttribute('aria-expanded', 'false');
-    expect(view.queryByTestId('ide-design-input-toggle-sw0')).toBeNull();
+    expect(view.getByTestId('ide-design-live-inputs-toggle')).toHaveAttribute('aria-expanded', 'true');
+    expect(view.getByTestId('ide-design-input-toggle-sw0_node')).toBeTruthy();
+  });
+
+  it('groups sequential palette into registers, timing, and legacy subsections', () => {
+    const view = renderSurface();
+    const palette = view.getByTestId('ide-design-dock-palette');
+    expect(within(palette).getByTestId('ide-design-palette-sequential-registers')).toBeTruthy();
+    expect(within(palette).getByTestId('ide-design-palette-sequential-timing')).toBeTruthy();
+    expect(within(palette).getByTestId('ide-design-palette-sequential-legacy')).toBeTruthy();
+    expect(within(palette).getByTestId('ide-design-palette-sequential-workflow-hint')).toBeTruthy();
+  });
+
+  it('places T flip-flop under reusable built-in blocks, not top-level sequential', () => {
+    const view = renderSurface();
+    const sequential = view.getByTestId('ide-design-palette-section-sequential');
+    expect(within(sequential).queryByTestId('ide-design-palette-tflipflop')).toBeNull();
+    const reusable = view.getByTestId('ide-design-palette-section-reusable');
+    expect(within(reusable).getByTestId('ide-design-palette-tflipflop')).toBeTruthy();
   });
 
   it('matches search terms across primitives, macros, and board resources', () => {

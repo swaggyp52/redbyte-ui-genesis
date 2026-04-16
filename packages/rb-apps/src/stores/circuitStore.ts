@@ -8,6 +8,7 @@ import type { TickEngine } from '@redbyte/rb-logic-core';
 import { recordAuditTransition } from '../utils/audit';
 import { isCEMode } from '../utils/ceMode';
 import { digestValue } from '../utils/digest';
+import { defaultNodeConfig } from '../apps/ide/defaultNodeConfig';
 
 // Debug flag for instrumentation (DEV-only)
 const DEBUG_PLAYGROUND = import.meta.env.DEV && false; // Set to true to enable debug logs
@@ -390,9 +391,12 @@ function createCircuitStore() {
         const validTypes = [
           'PowerSource', 'Switch', 'INPUT', 'Lamp', 'OUTPUT', 'Wire',
           'AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR', 'XNOR',
+          'AND3', 'OR3', 'NAND3', 'NOR3', 'XOR3',
           'Clock', 'Delay',
           'VoltageSource', 'LDR', 'FixedResistor', 'VoltageDivider', 'LM358',
-          'RSLatch', 'DFlipFlop', 'JKFlipFlop', 'FullAdder', 'Counter4Bit',
+          'RSLatch', 'SRLatch', 'DLatch', 'DFlipFlop', 'TFlipFlop', 'JKFlipFlop',
+          'Register1', 'RegisterBus', 'StateBank',
+          'FullAdder', 'Counter4Bit', 'Ground',
         ];
         if (!validTypes.includes(nodeType)) {
           console.error(
@@ -402,7 +406,7 @@ function createCircuitStore() {
         }
       }
 
-      const defaultConfig = nodeType === 'Clock' ? { period: 10 } : {};
+      const defaultConfig = defaultNodeConfig(nodeType);
       const newNode: Node = {
         id: getNextNodeId(circuit),
         type: nodeType,

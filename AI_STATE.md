@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-04-16 (Design: sequential coherence — native registers first)
+
+**Subsystem**: IDE Design (`DesignSurface`, `registerFamilyChipMetadata`, `defaultNodeConfig`, `rb-logic-view` chip metadata resolver, `circuitStore`, `projectRuntime`)
+
+### What changed
+
+- **Sequential dock tiers**: *Registers & state banks* (Register1 / RegisterBus / StateBank, Native badge) → *Timing* (Clock) → *Legacy* (DFF). **TFF** moved to **Reusable Blocks** as a Built-in **Legacy** item so it does not compete with the native register path.
+- **Inspector**: register-family nodes get **sequential guidance** (width, edge, CE, reset language, bus tap hint) and a **Register semantics** form: width (bus/bank), clock enable toggle, clock edge, reset kind, reset polarity, enable polarity. Edits merge into `node.config` and call `emitCircuitMutation`.
+- **Defaults**: new Register* nodes receive aligned defaults (`width`, `hasEnable`, `resetKind`, polarities, `clockPolarity`) via `defaultNodeConfig` from `circuitStore.addNode` and `projectRuntime.addDesignNode`.
+- **Bus taps on canvas**: `getDesignChipMetadataForNode` expands **D[i] / Q[i]** from `config.width`; `LogicCanvas` `getChipMetadata(nodeType, node?)` and wire validation pass the **node** so port direction stays correct per width.
+- **Copy / workflow**: sequential section **Shift+click** placement hint; `describePortForStudents` labels **Q[i]/D[i]** as state/data bits.
+
+### Tests
+
+- `packages/rb-apps/src/apps/ide/__tests__/registerFamilyChipMetadata.test.ts`
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.registerFamily.test.tsx`
+- Updated `designSurface.paletteDock.test.tsx` (subsection test ids, TFF location, live-input toggle id + default expansion)
+- `packages/rb-logic-view/src/__tests__/wireValidation.test.ts`, `designSurface.sequentialInspector.test.tsx` (regression)
+
+### Remaining
+
+- Explicit “place another with same register config” action (beyond Shift+place); warnings when lowering width drops existing Q[i] wires; canvas density for very wide banks (32 taps).
+
 ## Change Log 2026-04-16 (Map Pins: guided V2 creation + export repair UX)
 
 **Subsystem**: IDE Hardware / Map Pins (`HardwareSurface`, `hardwareMappingGuidance`, `IdeApp`, `verifyProjectHash`)

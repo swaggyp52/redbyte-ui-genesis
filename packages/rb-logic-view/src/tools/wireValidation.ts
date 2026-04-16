@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import type { Circuit, Connection, PortRef } from '@redbyte/rb-logic-core';
+import type { Circuit, Connection, Node, PortRef } from '@redbyte/rb-logic-core';
 import type { ChipMetadata } from '../components/NodeView';
 
 const normalizeExistingConnection = (conn: Connection): { from: PortRef; to: PortRef } => {
@@ -33,14 +33,14 @@ export function isInputPort(
   nodeId: string,
   portName: string,
   circuit: Circuit,
-  getChipMetadata?: (nodeType: string) => ChipMetadata | undefined
+  getChipMetadata?: (nodeType: string, node?: Node) => ChipMetadata | undefined
 ): boolean {
   const node = circuit.nodes.find(n => n.id === nodeId);
   if (!node) return false;
 
   // Check chip metadata first
   if (getChipMetadata) {
-    const chipMeta = getChipMetadata(node.type);
+    const chipMeta = getChipMetadata(node.type, node);
     if (chipMeta) {
       return chipMeta.inputs.some(input => input.id === portName);
     }
@@ -58,7 +58,7 @@ export function isValidConnection(
   from: PortRef,
   to: PortRef,
   circuit: Circuit,
-  getChipMetadata?: (nodeType: string) => ChipMetadata | undefined
+  getChipMetadata?: (nodeType: string, node?: Node) => ChipMetadata | undefined
 ): { valid: boolean; reason?: string } {
   // Prevent self-loops
   if (from.nodeId === to.nodeId) {
@@ -108,7 +108,7 @@ export function normalizeConnection(
   from: PortRef,
   to: PortRef,
   circuit: Circuit,
-  getChipMetadata?: (nodeType: string) => ChipMetadata | undefined
+  getChipMetadata?: (nodeType: string, node?: Node) => ChipMetadata | undefined
 ): { from: PortRef; to: PortRef } {
   const fromIsInput = isInputPort(from.nodeId, from.portName, circuit, getChipMetadata);
 
