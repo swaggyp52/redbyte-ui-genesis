@@ -16,5 +16,6 @@ export * from './syncAdapter';
 export * from './projectSchema';
 export * from './labProjectSchema';
 export * from './verifySchedule';
+export * from './hardwareMappingV2';
 export * from './studentError';
 export * from './progress';
