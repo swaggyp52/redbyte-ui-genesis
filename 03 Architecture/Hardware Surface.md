@@ -43,6 +43,13 @@ The student-facing Hardware surface should therefore present:
 - unresolved required top-level ports reported by Export must count as unresolved mapping in Hardware status, even when local mapping rows look complete
 - blank/custom projects with no boundary I/O must still open on Map Pins with a Design-first empty state, not on proof/program framing
 
+## Board bring-up chrome (layout system)
+
+- **Stage rail** (`ide-hw-stage-rail`): **Basys3 bring-up** kicker, **stage caption** (`ide-hw-stage-caption`) that updates per mode (map / bring-up / pre-flight / simulation) so progression reads as one lab workflow; optional **Sim t{n}** badge when the runtime has ticks.
+- **Stage tabs**: native `role="tab"` grid — **Map Pins**, **Test on Board**, **Pre-flight**, **Simulation** — each with a title, one-line hint, and compact status glyph; active stage uses stronger border and green-forward fill. Tabs own mode navigation; the command strip meta no longer duplicates the current stage as an extra chip.
+- **Board workspace** (`ide-hw-board-workspace`): framed **stage** with **chrome header** (`ide-hw-board-chrome-stage`: `Stage 1–4 · …`) plus **Basys3** and **timing mode** pills; inner **canvas** holds either split **Map Pins** (table + `Basys3BoardView`) or **HardwareBoard2D** (with pre-flight verdict overlay when relevant). Intended to read as the **center** of the workflow, not background chrome.
+- **Dock spine**: left dock `SurfacePanel`s use `ide-hw-dock-panel` with a **mode-colored left border** (map / bring-up / proof / live) so checklist content ties visually to the active stage. Inspector tables stay **full opacity** with readable type — evidence and live state are not faded “secondary” panes.
+
 ## Rules
 
 - Hardware must not become a second Design surface, Verify workbench, or export bundle builder.

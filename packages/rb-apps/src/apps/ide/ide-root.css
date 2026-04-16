@@ -21330,39 +21330,268 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
    ───────────────────────────────────── */
 
 [data-ide-mode-marker='hardware'] .ide-hardware-provenance-strip {
-  padding: 4px 12px !important;
+  padding: 8px 12px !important;
   min-height: 0 !important;
   gap: 10px !important;
-  opacity: 0.68 !important;
-  font-size: 10px !important;
+  opacity: 1 !important;
+  font-size: 11px !important;
+  color: rgba(195, 218, 238, 0.88) !important;
 }
 [data-ide-mode-marker='hardware'] .ide-hardware-provenance-axis {
   flex-wrap: nowrap !important;
   gap: 8px !important;
 }
-[data-ide-mode-marker='hardware'] .ide-hw-mode-toggle {
-  gap: 2px !important;
-  padding: 3px !important;
-  background: rgba(4,10,20,0.7) !important;
-  border-radius: 7px !important;
+
+/* Stage rail — caption + full-width stage tabs (not crushed pills) */
+[data-ide-mode-marker='hardware'] .ide-hw-stage-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 12px 14px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(72, 118, 152, 0.48);
+  background:
+    linear-gradient(180deg, rgba(10, 22, 38, 0.97), rgba(6, 14, 26, 0.93)),
+    radial-gradient(circle at 12% 0%, rgba(52, 211, 153, 0.09), transparent 52%);
+  box-shadow:
+    0 14px 32px rgba(2, 8, 16, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
-[data-ide-mode-marker='hardware'] .ide-hw-mode-toggle button {
-  min-height: 28px !important;
-  padding: 4px 12px !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  border-radius: 5px !important;
-  letter-spacing: 0.03em !important;
+[data-ide-mode-marker='hardware'] .ide-hw-stage-rail-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-stage-rail-intro {
+  min-width: 0;
+  flex: 1;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-stage-kicker {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(130, 175, 210, 0.72);
+}
+[data-ide-mode-marker='hardware'] .ide-hw-stage-caption {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(198, 220, 240, 0.9);
+  max-width: min(88ch, 100%);
+}
+[data-ide-mode-marker='hardware'] .ide-hw-stage-rail-top .ide-hw-tick-badge {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(8, 22, 36, 0.85);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(125, 220, 250, 0.92);
+  align-self: center;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-mode-toggle {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  padding: 6px !important;
+  margin: 0 !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(56, 100, 138, 0.45) !important;
+  background: rgba(4, 12, 22, 0.92) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  flex-wrap: unset !important;
+  align-items: stretch !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-mode-segment {
+  position: relative;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  min-height: 56px !important;
+  padding: 10px 12px 10px 14px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(72, 108, 140, 0.35) !important;
+  background: rgba(8, 18, 30, 0.55) !important;
+  text-align: left !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-mode-segment:hover:not(.is-active) {
+  border-color: rgba(100, 160, 200, 0.45) !important;
+  background: rgba(12, 28, 44, 0.72) !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-mode-segment.is-active {
+  border-color: rgba(52, 211, 153, 0.55) !important;
+  background: linear-gradient(165deg, rgba(22, 72, 58, 0.55), rgba(10, 38, 42, 0.92)) !important;
+  box-shadow:
+    0 0 0 1px rgba(52, 211, 153, 0.12),
+    0 8px 22px rgba(0, 0, 0, 0.35) !important;
+  color: #f0fdf8 !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-mode-segment-title {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em !important;
+  line-height: 1.2 !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-mode-segment-hint {
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  line-height: 1.25 !important;
+  color: rgba(165, 198, 220, 0.68) !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-mode-segment.is-active .ide-hw-mode-segment-hint {
+  color: rgba(204, 245, 232, 0.78) !important;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-mode-segment-status {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+/* Framed board workspace — central, higher contrast */
+[data-ide-mode-marker='hardware'] .ide-hw-board-workspace {
+  display: flex;
+  flex-direction: column;
+  min-height: clamp(360px, 54vh, 640px);
+  margin-bottom: 4px;
+  border-radius: 16px;
+  border: 1px solid rgba(72, 118, 152, 0.52);
+  background:
+    radial-gradient(ellipse 72% 55% at 50% 38%, rgba(52, 211, 153, 0.08), transparent 58%),
+    linear-gradient(180deg, rgba(12, 26, 42, 0.96), rgba(6, 14, 24, 0.99));
+  box-shadow:
+    0 22px 48px rgba(1, 8, 16, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-board-chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(52, 88, 118, 0.4);
+  background: rgba(4, 12, 22, 0.78);
+}
+[data-ide-mode-marker='hardware'] .ide-hw-board-chrome-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-board-chrome-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(130, 168, 200, 0.65);
+}
+[data-ide-mode-marker='hardware'] .ide-hw-board-chrome-title {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: rgba(236, 246, 255, 0.96);
+}
+[data-ide-mode-marker='hardware'] .ide-hw-board-chrome-trail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-board-chrome-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: rgba(186, 235, 255, 0.92);
+  background: rgba(8, 24, 38, 0.75);
+}
+[data-ide-mode-marker='hardware'] .ide-hw-board-chrome-pill--muted {
+  border-color: rgba(100, 140, 175, 0.32);
+  color: rgba(175, 205, 228, 0.82);
+  background: rgba(6, 16, 28, 0.65);
+}
+[data-ide-mode-marker='hardware'] .ide-hw-board-canvas {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 16px 18px 18px;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-board-canvas--split {
+  padding: 12px 14px 16px;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-board-canvas .ide-hw-map-mode {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  gap: 16px;
+  align-items: stretch;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-board-workspace--map .ide-hw-map-table {
+  flex: 0 0 min(360px, 36vw);
+  max-height: min(560px, 62vh);
+}
+[data-ide-mode-marker='hardware'] .ide-hw-board-wrap {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: clamp(320px, 48vh, 560px) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(80, 120, 155, 0.45);
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+[data-ide-mode-marker='hardware'] .ide-hw-board-inner {
+  min-height: min(480px, 52vh);
+}
+
+/* Left dock — stage panel reads as part of the workflow spine */
+[data-ide-mode-marker='hardware'] .ide-hw-dock-panel.ide-surface-panel {
+  border-radius: 12px;
+  border: 1px solid rgba(62, 100, 132, 0.42);
+  background: rgba(8, 18, 30, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+[data-ide-mode-marker='hardware'] .ide-hw-dock-panel.ide-hw-dock--map {
+  border-left: 3px solid rgba(56, 189, 248, 0.65);
+}
+[data-ide-mode-marker='hardware'] .ide-hw-dock-panel.ide-hw-dock--bringup {
+  border-left: 3px solid rgba(52, 211, 153, 0.65);
+}
+[data-ide-mode-marker='hardware'] .ide-hw-dock-panel.ide-hw-dock--proof {
+  border-left: 3px solid rgba(167, 139, 250, 0.65);
+}
+[data-ide-mode-marker='hardware'] .ide-hw-dock-panel.ide-hw-dock--live {
+  border-left: 3px solid rgba(250, 204, 21, 0.55);
 }
 [data-ide-mode-marker='hardware'] .ide-workbench-dock-right .ide-table-wrap th {
-  font-size: 9px !important;
-  letter-spacing: 0.07em !important;
-  opacity: 0.65 !important;
+  font-size: 10px !important;
+  letter-spacing: 0.06em !important;
+  opacity: 0.88 !important;
   text-transform: uppercase !important;
 }
 [data-ide-mode-marker='hardware'] .ide-workbench-dock-right .ide-table-wrap td {
-  padding: 2px 8px !important;
-  font-size: 11px !important;
+  padding: 4px 8px !important;
+  font-size: 12px !important;
   font-family: var(--rb-font-mono) !important;
 }
 /* Left dock tables (bringup step, map missing) — same compact treatment as right dock */
@@ -21378,11 +21607,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   font-size: 10px !important;
 }
 [data-ide-mode-marker='hardware'] .ide-workbench-dock-right {
-  opacity: 0.82 !important;
-  transition: opacity 200ms !important;
-}
-[data-ide-mode-marker='hardware'] .ide-workbench-dock-right:hover,
-[data-ide-mode-marker='hardware'] .ide-workbench-dock-right:focus-within {
   opacity: 1 !important;
 }
 [data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero {

@@ -21,6 +21,11 @@
 - **Control bar**: Tools on top; **status row** separated with a light divider — authoring strip + **simulation strip**. Verify-linked sessions show `Verify focus …` on the badge and an `Inspect … first` hint (`data-testid="ide-design-verify-focus"`) in the sim strip.
 - **Workbench**: Slightly wider left dock (300px), stronger palette/canvas framing; right inspector uses extra vertical padding and clearer section dividers.
 
+### Hardware chrome (layout system)
+
+- **Stage rail**: Caption + four-column **stage tabs** (Map Pins → Test on Board → Pre-flight → Simulation) with title + hint + status; **board workspace** frame below with chrome header (`Stage N · …`) and Basys3 / timing pills.
+- **Dock / inspector**: Left dock panels use **stage-colored left borders**; hardware inspector tables are **not** opacity-dimmed so live state and assertions stay legible.
+
 ---
 
 ## 2. Runtime Authorities

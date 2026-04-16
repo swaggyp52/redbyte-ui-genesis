@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-04-16 (IDE: Hardware surface — stage rail, framed board workspace)
+
+**Subsystem**: `HardwareSurface.tsx`, `ide-root.css`, `hardwareSurface.readiness.test.tsx`, `docs/IDE_SYSTEM_MAP.md`, `03 Architecture/Hardware Surface.md`
+
+### What changed
+
+- **Stage rail**: **Basys3 bring-up** kicker + **dynamic stage caption** (`ide-hw-stage-caption`) per mode; **Sim t{n}** badge moved to the rail header (no longer inside the tab row).
+- **Stage tabs**: **4-column grid** tabs with **title**, **hint**, and **status** glyph; taller targets, clearer **active** state (green-forward), removed the old “crushed pill” hardware overrides.
+- **Board workspace**: New **`ide-hw-board-workspace`** frame around map split-view and **HardwareBoard2D** — **chrome bar** with `Stage N · …`, **Basys3**, and **timing** pills; higher-contrast **canvas** padding; map table gets more horizontal space and **taller** scroll on hardware.
+- **Command strip**: Dropped redundant **mode chip** (tabs already show stage).
+- **Docks / inspector**: Left dock **`ide-hw-dock-panel`** + **stage-colored left border**; **right dock** no longer forced to **0.82 opacity**; table header/body type **slightly larger** for evidence/live state.
+- **Provenance**: **Last Verify evidence** strip no longer faded to **0.68** opacity.
+
+### Tests
+
+- `hardwareSurface.readiness.test.tsx` — stage rail, caption, framed workspace, map tab selected when mapping incomplete.
+
+### Next frontend pass
+
+- **Verify** surface: workbench vs waveform focal hierarchy, case tabs, top controls (per product brief).
+
 ## Change Log 2026-04-16 (IDE: Design surface — command hierarchy, dock/canvas framing)
 
 **Subsystem**: `DesignSurface.tsx`, `ide-root.css`, `docs/IDE_SYSTEM_MAP.md`

@@ -129,6 +129,41 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'collapsed');
   });
 
+  it('shows a stage rail, framed board workspace, and map caption when mapping is incomplete', () => {
+    const health = makeHealth({
+      blockingIssues: [],
+      dirtySinceExport: false,
+    });
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="HW Stage Shell"
+          expectedBehavior="Test expected copy."
+          mappingRows={[
+            { id: 'clk', label: 'clk', direction: 'in', pin: '', required: true },
+            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={health}
+          workflowAuthority={makeHardwareWorkflowAuthority(health, {
+            currentVerifyProjectHash: health.lastVerify?.hash ?? null,
+            currentExportHash: health.lastExport?.hash ?? null,
+          })}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-hw-stage-rail')).toBeTruthy();
+    expect(getByTestId('ide-hw-stage-caption').textContent).toMatch(/Assign every required signal/i);
+    expect(getByTestId('ide-hw-board-workspace')).toBeTruthy();
+    expect(getByTestId('ide-hw-board-chrome-stage').textContent).toContain('Stage 1');
+    expect(getByTestId('ide-hw-mode-btn-map').getAttribute('aria-selected')).toBe('true');
+  });
+
   it('treats export evidence as stale when the project changes after export but verification is rerun', () => {
     const circuit = { nodes: [], connections: [] } as any;
     const vectors = [{ tick: 0, inputs: { in_a: '0' }, expected: { out_y: '0' } }] as any;

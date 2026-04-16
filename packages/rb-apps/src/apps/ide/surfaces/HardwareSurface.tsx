@@ -1197,9 +1197,51 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
   const currentTick = bringupTickGroups[bringupStepIndex]?.[0];
 
+  const hardwareBoardChromeStage =
+    hwMode === 'map'
+      ? 'Stage 1 · Map Pins'
+      : hwMode === 'bringup'
+        ? 'Stage 2 · Test on Board'
+        : hwMode === 'proof'
+          ? 'Stage 3 · Pre-flight'
+          : 'Stage 4 · Simulation';
+
+  const hardwareStageCaption = useMemo(() => {
+    switch (hwMode) {
+      case 'map':
+        if (hasNoBoundaryRows) {
+          return 'Add inputs and outputs in Design first, then bind each boundary signal to a physical pin on the Basys3.';
+        }
+        if (mappingReady) {
+          return 'Mapping is complete. Continue to Test on Board with bring-up vectors, or open Export when you are ready to build a bitstream.';
+        }
+        return `Assign every required signal to a board pin (${unresolvedRequiredCount} remaining). Select a row in the list, then click the matching region on the board.`;
+      case 'bringup':
+        if (bringupTickGroups.length === 0) {
+          return 'Generate bring-up vectors from Verify, then use these steps to set switches and confirm LEDs against the expected trace.';
+        }
+        return `Step ${bringupStepIndex + 1} of ${bringupTickGroups.length}${
+          currentTick != null ? ` · vector tick ${currentTick}` : ''
+        }. Follow the checklist on the left; the board highlights what to set; the inspector shows live values.`;
+      case 'proof':
+        return 'Confirm compare, export, and assertion evidence before programming. This is the last gate before Vivado Hardware Manager.';
+      case 'live':
+      default:
+        return 'Explore the mapped board interactively. Switches and buttons drive the same I/O path as bring-up, without the guided step list.';
+    }
+  }, [
+    bringupStepIndex,
+    bringupTickGroups.length,
+    currentTick,
+    hasNoBoundaryRows,
+    hwMode,
+    mappingReady,
+    unresolvedRequiredCount,
+  ]);
+
   // ── Dock nodes ──────────────────────────────────────────────────────
   const liveDock = (
-    <SurfacePanel className="ide-workbench-placeholder" testId="ide-hw-live-dock">
+    <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--live" testId="ide-hw-live-dock">
       <header className="ide-workbench-placeholder-header">
         <h3>Live details</h3>
         <IdeStatusPill tone={sim.running ? 'ok' : sim.tick > 0 ? 'warn' : 'idle'}>
@@ -1246,7 +1288,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     </SurfacePanel>
   );
   const mapDock = (
-    <SurfacePanel className="ide-workbench-placeholder" testId="ide-hw-map-dock">
+    <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--map" testId="ide-hw-map-dock">
       <header className="ide-workbench-placeholder-header">
         <h3>Map Pins</h3>
         <IdeStatusPill tone={mappingReady ? 'ok' : 'warn'}>
@@ -1306,7 +1348,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
 
   const bringupDock = (
-    <SurfacePanel className="ide-workbench-placeholder" testId="ide-hw-bringup-dock">
+    <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--bringup" testId="ide-hw-bringup-dock">
       <header className="ide-workbench-placeholder-header">
         <h3>Test on Board</h3>
         <IdeStatusPill
@@ -1401,7 +1443,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
   const confidencePassCount = confidenceChecks.filter((c) => c.pass).length;
   const proofDock = (
-    <SurfacePanel className="ide-workbench-placeholder" testId="ide-hw-proof-dock">
+    <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--proof" testId="ide-hw-proof-dock">
       <header className="ide-workbench-placeholder-header">
         <h3>Pre-flight</h3>
         <IdeStatusPill tone={confidenceScore === 100 ? 'ok' : confidenceScore >= 60 ? 'warn' : 'error'}>
@@ -1762,15 +1804,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                       ? 'Mode: manual event'
                       : 'Mode: combinational'}
                 </span>
-                <span className="ide-surface-command-chip">
-                  {hwMode === 'map'
-                    ? 'Map Pins'
-                    : hwMode === 'bringup'
-                      ? 'Test on Board'
-                      : hwMode === 'proof'
-                        ? 'Pre-flight'
-                        : 'Simulation'}
-                </span>
                 <span className={`ide-surface-command-chip${mappingReady ? ' is-ok' : ''}`}>
                   {mappingReady ? 'Mapping current' : `${mappingRows.length} mapped rows`}
                 </span>
@@ -1831,76 +1864,96 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           )}
         </div>}
 
-        {/* ── Mode toggle — segmented board-lab navigation ── */}
-        <div
-          className="ide-hw-mode-toggle"
-          data-testid="ide-hw-mode-toggle"
-          role="tablist"
-          aria-label="Hardware workspace modes"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={hwMode === 'map'}
-            className={`ide-hw-mode-segment${hwMode === 'map' ? ' is-active' : ''}`}
-            data-testid="ide-hw-mode-btn-map"
-            onClick={() => {
-              setHwMode('map');
-              setSelectedMappingRowId(null);
-            }}
+        {/* ── Stage rail: workflow caption + primary stage tabs ── */}
+        <div className="ide-hw-stage-rail" data-testid="ide-hw-stage-rail">
+          <div className="ide-hw-stage-rail-top">
+            <div className="ide-hw-stage-rail-intro">
+              <span className="ide-hw-stage-kicker">Basys3 bring-up</span>
+              <p className="ide-hw-stage-caption" data-testid="ide-hw-stage-caption">
+                {hardwareStageCaption}
+              </p>
+            </div>
+            {sim.tick > 0 ? (
+              <span className="ide-hw-tick-badge" data-testid="ide-hw-tick-badge">
+                Sim t{sim.tick}
+              </span>
+            ) : null}
+          </div>
+          <div
+            className="ide-hw-mode-toggle"
+            data-testid="ide-hw-mode-toggle"
+            role="tablist"
+            aria-label="Hardware bring-up stages"
           >
-            <span className="ide-hw-mode-segment-label">
-              {mappingReady ? '✓ ' : unresolvedRequiredCount > 0 ? '○ ' : ''}Map Pins
-            </span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={hwMode === 'bringup'}
-            className={`ide-hw-mode-segment${hwMode === 'bringup' ? ' is-active' : ''}`}
-            data-testid="ide-hw-mode-btn-bringup"
-            onClick={() => {
-              setHwMode('bringup');
-              setSelectedMappingRowId(null);
-            }}
-          >
-            <span className="ide-hw-mode-segment-label">
-              {vectorsCount > 0 ? '✓ ' : '○ '}Test on Board
-            </span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={hwMode === 'proof'}
-            className={`ide-hw-mode-segment${hwMode === 'proof' ? ' is-active' : ''}`}
-            data-testid="ide-hw-mode-btn-proof"
-            onClick={() => {
-              setHwMode('proof');
-              setSelectedMappingRowId(null);
-            }}
-          >
-            <span className="ide-hw-mode-segment-label">
-              {confidenceScore === 100 ? '✓ ' : ''}Pre-flight
-            </span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={hwMode === 'live'}
-            className={`ide-hw-mode-segment${hwMode === 'live' ? ' is-active' : ''}`}
-            data-testid="ide-hw-mode-btn-live"
-            onClick={() => {
-              setHwMode('live');
-              setSelectedMappingRowId(null);
-            }}
-          >
-            <span className="ide-hw-mode-segment-label">Simulation</span>
-          </button>
-          {sim.tick > 0 && (
-            <span className="ide-hw-tick-badge" data-testid="ide-hw-tick-badge">
-              t{sim.tick}
-            </span>
-          )}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={hwMode === 'map'}
+              className={`ide-hw-mode-segment${hwMode === 'map' ? ' is-active' : ''}`}
+              data-testid="ide-hw-mode-btn-map"
+              onClick={() => {
+                setHwMode('map');
+                setSelectedMappingRowId(null);
+              }}
+            >
+              <span className="ide-hw-mode-segment-title">Map Pins</span>
+              <span className="ide-hw-mode-segment-hint">Assign I/O to pins</span>
+              <span className="ide-hw-mode-segment-status" aria-hidden="true">
+                {mappingReady ? '✓' : unresolvedRequiredCount > 0 ? '○' : '·'}
+              </span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={hwMode === 'bringup'}
+              className={`ide-hw-mode-segment${hwMode === 'bringup' ? ' is-active' : ''}`}
+              data-testid="ide-hw-mode-btn-bringup"
+              onClick={() => {
+                setHwMode('bringup');
+                setSelectedMappingRowId(null);
+              }}
+            >
+              <span className="ide-hw-mode-segment-title">Test on Board</span>
+              <span className="ide-hw-mode-segment-hint">Guided vectors</span>
+              <span className="ide-hw-mode-segment-status" aria-hidden="true">
+                {vectorsCount > 0 ? '✓' : '○'}
+              </span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={hwMode === 'proof'}
+              className={`ide-hw-mode-segment${hwMode === 'proof' ? ' is-active' : ''}`}
+              data-testid="ide-hw-mode-btn-proof"
+              onClick={() => {
+                setHwMode('proof');
+                setSelectedMappingRowId(null);
+              }}
+            >
+              <span className="ide-hw-mode-segment-title">Pre-flight</span>
+              <span className="ide-hw-mode-segment-hint">Evidence gate</span>
+              <span className="ide-hw-mode-segment-status" aria-hidden="true">
+                {confidenceScore === 100 ? '✓' : '·'}
+              </span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={hwMode === 'live'}
+              className={`ide-hw-mode-segment${hwMode === 'live' ? ' is-active' : ''}`}
+              data-testid="ide-hw-mode-btn-live"
+              onClick={() => {
+                setHwMode('live');
+                setSelectedMappingRowId(null);
+              }}
+            >
+              <span className="ide-hw-mode-segment-title">Simulation</span>
+              <span className="ide-hw-mode-segment-hint">Free play</span>
+              <span className="ide-hw-mode-segment-status" aria-hidden="true">
+                ·
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* ── Scenario provenance strip — hidden on map tab ── */}
@@ -2007,8 +2060,31 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </IdeCallout>
         )}
 
-        {/* ── Board / Map ── */}
+        {/* ── Board / Map — framed workspace ── */}
         {hwMode === 'map' ? (
+          <div
+            className="ide-hw-board-workspace ide-hw-board-workspace--map"
+            data-testid="ide-hw-board-workspace"
+          >
+            <header className="ide-hw-board-chrome">
+              <div className="ide-hw-board-chrome-text">
+                <span className="ide-hw-board-chrome-eyebrow">Board workspace</span>
+                <strong className="ide-hw-board-chrome-title" data-testid="ide-hw-board-chrome-stage">
+                  {hardwareBoardChromeStage}
+                </strong>
+              </div>
+              <div className="ide-hw-board-chrome-trail">
+                <span className="ide-hw-board-chrome-pill">Basys3</span>
+                <span className="ide-hw-board-chrome-pill ide-hw-board-chrome-pill--muted">
+                  {explicitTimingMode === 'synchronous_board_clock'
+                    ? 'Board clock'
+                    : explicitTimingMode === 'manual_event_driven_lab'
+                      ? 'Manual event'
+                      : 'Combinational'}
+                </span>
+              </div>
+            </header>
+            <div className="ide-hw-board-canvas ide-hw-board-canvas--split">
           <div className="ide-hw-map-mode" data-testid="ide-hw-map-mode">
             <div className="ide-hw-map-table" data-testid="ide-hw-map-table">
               {exportViewStatus === 'blocked' && exportBlockingDiagnostics.length > 0 ? (
@@ -2633,7 +2709,29 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               />
             </div>
           </div>
+            </div>
+          </div>
         ) : (
+        <div className="ide-hw-board-workspace" data-testid="ide-hw-board-workspace">
+          <header className="ide-hw-board-chrome">
+            <div className="ide-hw-board-chrome-text">
+              <span className="ide-hw-board-chrome-eyebrow">Board workspace</span>
+              <strong className="ide-hw-board-chrome-title" data-testid="ide-hw-board-chrome-stage">
+                {hardwareBoardChromeStage}
+              </strong>
+            </div>
+            <div className="ide-hw-board-chrome-trail">
+              <span className="ide-hw-board-chrome-pill">Basys3</span>
+              <span className="ide-hw-board-chrome-pill ide-hw-board-chrome-pill--muted">
+                {explicitTimingMode === 'synchronous_board_clock'
+                  ? 'Board clock'
+                  : explicitTimingMode === 'manual_event_driven_lab'
+                    ? 'Manual event'
+                    : 'Combinational'}
+              </span>
+            </div>
+          </header>
+          <div className="ide-hw-board-canvas">
         <div className={`ide-hw-board-wrap ${hwMode === 'proof' ? 'is-proof' : ''}`}>
           <div className="ide-hw-board-inner">
             <HardwareBoard2D
@@ -2682,6 +2780,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               </span>
             </div>
           )}
+        </div>
+          </div>
         </div>
         )}
       </IdePanel>
