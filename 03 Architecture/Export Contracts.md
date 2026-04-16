@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: export
-updated: 2026-04-14
+updated: 2026-04-16
 related:
   - "[[Connection Model]]"
   - "[[Hardware Surface]]"
@@ -26,6 +26,12 @@ RedByte export has two HDL authorities that must stay structurally aligned:
 The export contract exists so the live UI export surface, the compatibility fallback bundle, and downstream Vivado packaging all describe the same top entity and the same signal names.
 
 ## Canonical Shape / Contract
+
+### Package handoff summary (UI)
+
+- The **Package handoff** card is descriptive only: it composes existing workflow truth (`deriveHardwareExportFailureTruth`), export blockers (`buildExportViewModel`), verify evidence advisories, and a cross-artifact agreement table from `exportPackageHandoffModel.ts`. It does not introduce a parallel authority chain.
+- **PACKAGE READY / PARTIAL / BLOCKED** reflects whether the student should treat the ZIP as submission-quality, downloadable-but-incomplete, or structurally blocked. A pending `testbench.vhd` with **no authored vectors** is intentionally **OK** for bitstream-oriented handoff; simulation completeness still comes from Verify + scenario work.
+- **Artifact agreement** rows are plain-language checks (top entity, RTL file, I/O mapping, bench vs top, XDC, README / import script, timing structure) so the bundle reads as an engineering package, not a raw diagnostic dump.
 
 ### Export surface role
 

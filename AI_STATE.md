@@ -1,5 +1,19 @@
 # AI State
 
+## Change Log 2026-04-16 (Export: package handoff trust surface)
+
+**Subsystem**: IDE Export (`ExportSurface`, `exportPackageHandoffModel.ts`, `ide-root.css`, trust tests)
+
+### What changed
+
+- **`exportPackageHandoffModel.ts`**: derives **PACKAGE READY / PARTIAL / BLOCKED** from existing `handoffTruth.severity`, `viewModel.status`, verify evidence warnings, and a readable **artifact agreement** matrix (top authority, RTL, I/O vs mapping, testbench vs top, XDC, manifest/glue, timing structure). Plain-language **timing mode** strings; **Fix on** owner labels for diagnostics. Pending testbench with **no vectors** is treated as OK for bitstream handoff (simulation optional until Verify scenario exists).
+- **`ExportSurface`**: new **Package handoff** section (facts grid + agreement table); richer **Fix path** drawer (what / why / owning surface + surface jump buttons); first blocker shows owning surface; **Generated Artifacts** copy and **artifact group** descriptions reframed as intentional Vivado bundle roles.
+- **Tests**: `exportPackageHandoffModel.test.ts`; extended `exportSurface.trust-clarity.test.tsx` for package status chips.
+
+### Remaining
+
+- Deeper agreement checks (e.g. EXPECTED_IO.json vs pin table) still summarized at artifact level only; optional canvas for very wide buses remains a Design follow-up.
+
 ## Change Log 2026-04-16 (Design: sequential coherence — native registers first)
 
 **Subsystem**: IDE Design (`DesignSurface`, `registerFamilyChipMetadata`, `defaultNodeConfig`, `rb-logic-view` chip metadata resolver, `circuitStore`, `projectRuntime`)

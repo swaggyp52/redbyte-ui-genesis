@@ -35,6 +35,13 @@ import {
 import type { VerifyScenario } from '../verifyScenario';
 import { resolveIoMappingFromProjectFields } from '@redbyte/rb-utils';
 import { deriveTimingGuidance, type TimingGuidance } from '../timingGuidance';
+import {
+  buildArtifactAgreementRows,
+  derivePackageHandoffSummary,
+  formatExportDiagnosticOwner,
+  formatTimingPlain,
+  worstAgreementTone,
+} from '../exportPackageHandoffModel';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -218,6 +225,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const effectiveTimingGuidance = useMemo(
     () => timingGuidance ?? deriveTimingGuidance(activeScheduleContract),
     [timingGuidance, activeScheduleContract]
+  );
+  const timingPlain = useMemo(
+    () => formatTimingPlain(activeScheduleContract?.timingMode, effectiveTimingGuidance),
+    [activeScheduleContract?.timingMode, effectiveTimingGuidance]
   );
   const evidenceDiagnostics = useMemo(
     () =>
@@ -428,6 +439,30 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     verifyState !== 'stale' &&
     !isIncompleteMappingQualified;
   const hasVerifyEvidenceWarning = evidenceDiagnostics.length > 0;
+  const verifyPlain = useMemo(() => {
+    if (hasVerifyPass) return 'Compare PASS — expected outputs match simulation for this design hash.';
+    if (isIncompleteMappingQualified) {
+      return 'Compare PASS with mapping caveat — finish pins before hardware.';
+    }
+    if (isVerifyStale) return 'Verify stale — re-run Compare after design edits.';
+    if (isTraceOnly) return 'Trace-only run — enable output checks for assertion-backed evidence.';
+    if (isStarterScenarioFail) return 'Starter scenario only — author vectors for a graded handoff.';
+    if (isNoRunYet) {
+      return 'Compare not run yet — optional before download, recommended before submission.';
+    }
+    if (verifyResult?.status === 'fail') {
+      return 'Compare FAIL — expected outputs differ from simulation.';
+    }
+    return 'Verify status indeterminate — open Verify for details.';
+  }, [
+    hasVerifyPass,
+    isIncompleteMappingQualified,
+    isNoRunYet,
+    isStarterScenarioFail,
+    isTraceOnly,
+    isVerifyStale,
+    verifyResult?.status,
+  ]);
   const mappedCount = viewModel.pinTable.filter((row) => {
     const key = toPortKey(row.port);
     const pinValue = (effectivePinsByPortKey[key] ?? '').trim();
@@ -438,6 +473,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     if (!r.required) return false;
     return (effectivePinsByPortKey[toPortKey(r.port)] ?? '').trim().length > 0;
   }).length;
+  const mappingPlain = useMemo(() => {
+    if (requiredCount === 0) return 'No required board I/O for this export.';
+    return `${requiredMappedCount} of ${requiredCount} required ports have Basys3 pin assignments.`;
+  }, [requiredCount, requiredMappedCount]);
   // Use diagnostic codes rather than regex-on-message-text so that RBEX3001
   // ("Ignoring source XDC directive "create_clock"…") is never mistaken for a
   // clock-domain blocker.  Clock blockers are RBEX4200–RBEX4204 only.
@@ -487,6 +526,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const redbyteVersion = (appEnv?.VITE_APP_VERSION ?? 'dev').trim() || 'dev';
   const redbyteCommit = (appEnv?.VITE_GIT_SHA ?? 'local').trim() || 'local';
   const topModule = useMemo(() => resolveTopEntity(project), [project]);
+  const boardTargetLabel = useMemo(() => {
+    const b = project.fpga?.board?.trim();
+    if (!b || b.toLowerCase() === 'basys3') return 'Digilent Basys3 (Artix-7)';
+    return `FPGA target: ${b}`;
+  }, [project.fpga?.board]);
   const projectSlug = useMemo(
     () => deriveVivadoProjectSlug((project.meta?.projectId ?? project.name ?? '').trim()),
     [project.meta?.projectId, project.name]
@@ -619,6 +663,34 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       pass: hasVerifyPass,
     },
   ], [activeScheduleContract, clockDiag, diagnosticsList, effectiveTimingGuidance.exportTooltip, effectiveTimingGuidance.kind, feedbackDiag, requiredMappedCount, requiredCount, hasVerifyPass]);
+  const artifactAgreementRows = useMemo(
+    () =>
+      buildArtifactAgreementRows({
+        project,
+        viewModel,
+        requiredMappedCount,
+        requiredCount,
+        timingStructureOk: !clockDiag && !feedbackDiag,
+        topVhdStatus: pickArtifactStatus(artifactMap, 'top.vhd'),
+        topXdcStatus: pickArtifactStatus(artifactMap, 'top.xdc'),
+        testbenchStatus: pickArtifactStatus(artifactMap, 'testbench.vhd'),
+        readmeStatus: pickArtifactStatus(artifactMap, 'readme.txt'),
+        vivadoScriptStatus: pickArtifactStatus(artifactMap, 'vivado_import.tcl'),
+      }),
+    [
+      artifactMap,
+      clockDiag,
+      feedbackDiag,
+      project,
+      requiredCount,
+      requiredMappedCount,
+      viewModel,
+    ]
+  );
+  const agreementWorst = useMemo(
+    () => worstAgreementTone(artifactAgreementRows),
+    [artifactAgreementRows]
+  );
   const selectedArtifact =
     viewModel.artifacts.find((artifact) => artifact.path === selectedArtifactPath) ??
     viewModel.artifacts[0];
@@ -664,6 +736,29 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const exportBlocked = handoffTruth.severity === 'blocked';
   const downloadReady = !hasBlockingErrors && resolvedWorkflowAuthority.designReady;
   const exportTrusted = handoffTruth.condition === 'ready';
+  const packageHandoffSummary = useMemo(
+    () =>
+      derivePackageHandoffSummary({
+        handoffSeverity: handoffTruth.severity,
+        exportViewBlocked: viewModel.status === 'blocked',
+        hasVerifyEvidenceWarning,
+        agreementWorst,
+        boardTarget: boardTargetLabel,
+        timingPlain,
+        mappingPlain,
+        verifyPlain,
+      }),
+    [
+      agreementWorst,
+      boardTargetLabel,
+      handoffTruth.severity,
+      hasVerifyEvidenceWarning,
+      mappingPlain,
+      timingPlain,
+      verifyPlain,
+      viewModel.status,
+    ]
+  );
   const handoffTone: 'ok' | 'warn' | 'error' =
     handoffTruth.severity === 'ready'
       ? 'ok'
@@ -1574,6 +1669,85 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             />
           </div>
 
+          <section
+            className="ide-export-package-handoff"
+            data-testid="ide-export-package-handoff"
+            aria-label="Package handoff summary"
+          >
+            <header className="ide-export-section-header ide-export-package-handoff-header">
+              <div>
+                <h3>Package handoff</h3>
+                <p className="ide-export-section-subcopy">
+                  One place to read board target, timing mode, mapping, verify evidence, and whether the bundle files agree before Vivado.
+                </p>
+              </div>
+            </header>
+            <div className="ide-export-handoff-status" data-testid="ide-export-package-handoff-status">
+              <IdeStatusPill
+                tone={
+                  packageHandoffSummary.status === 'ready'
+                    ? 'ok'
+                    : packageHandoffSummary.status === 'blocked'
+                      ? 'error'
+                      : 'warn'
+                }
+              >
+                {packageHandoffSummary.statusLabel}
+              </IdeStatusPill>
+              <div>
+                <p className="ide-copy ide-copy--flush ide-export-handoff-headline">
+                  {packageHandoffSummary.headline}
+                </p>
+                <p className="ide-copy ide-copy--flush ide-export-handoff-subline">
+                  {packageHandoffSummary.subline}
+                </p>
+              </div>
+            </div>
+            <dl className="ide-export-handoff-facts" data-testid="ide-export-handoff-facts">
+              <div>
+                <dt>Board target</dt>
+                <dd data-testid="ide-export-handoff-board">{packageHandoffSummary.boardTarget}</dd>
+              </div>
+              <div>
+                <dt>Timing mode</dt>
+                <dd data-testid="ide-export-handoff-timing">{packageHandoffSummary.timingPlain}</dd>
+              </div>
+              <div>
+                <dt>Mapping completeness</dt>
+                <dd data-testid="ide-export-handoff-mapping">{packageHandoffSummary.mappingPlain}</dd>
+              </div>
+              <div>
+                <dt>Verify / scenario</dt>
+                <dd data-testid="ide-export-handoff-verify">{packageHandoffSummary.verifyPlain}</dd>
+              </div>
+              <div>
+                <dt>Cross-artifact agreement</dt>
+                <dd data-testid="ide-export-handoff-artifacts">{packageHandoffSummary.artifactsPlain}</dd>
+              </div>
+            </dl>
+            <h4 className="ide-export-agreement-heading">Artifact agreement</h4>
+            <p className="ide-export-section-subcopy ide-export-agreement-intro">
+              Top RTL, testbench, XDC, README, and Vivado import script should tell the same story on entity names, ports, widths, and bindings.
+            </p>
+            <table className="ide-export-agreement-table" data-testid="ide-export-artifact-agreement">
+              <tbody>
+                {artifactAgreementRows.map((row) => (
+                  <tr key={row.id} data-testid={`ide-export-agreement-row-${row.id}`}>
+                    <th scope="row">{row.label}</th>
+                    <td>
+                      <span
+                        className={`ide-export-agreement-tone ide-export-agreement-tone--${row.tone}`}
+                        data-testid={`ide-export-agreement-tone-${row.id}`}
+                      >
+                        {row.detail}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+
           {downloadDone && (
             <IdeCallout
               tone="success"
@@ -1617,6 +1791,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       <span className="ide-export-blocker-code">{err.code}</span>
                       <strong className="ide-export-blocker-title">{err.title}</strong>
                       {err.fix && <span className="ide-export-blocker-fix">{err.fix}</span>}
+                      <p className="ide-export-blocker-owner" data-testid="ide-export-first-blocker-owner">
+                        <strong>Fix on:</strong> {formatExportDiagnosticOwner(err.owner)}
+                      </p>
                       {isHardwareIssue && onGoToHardware && (
                         <IdeButton tone="ghost" onClick={onGoToHardware} testId="ide-export-blocker-goto-hardware">
                           Fix in Map Pins
@@ -1829,6 +2006,53 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                             className="ide-export-fixpath-drawer"
                             data-testid={`ide-export-fixpath-${entry.id}`}
                           >
+                            <p className="ide-export-fixpath-line" data-testid={`ide-export-fixpath-what-${entry.id}`}>
+                              <strong>What failed:</strong> {entry.title}
+                            </p>
+                            <p className="ide-export-fixpath-line" data-testid={`ide-export-fixpath-why-${entry.id}`}>
+                              <strong>Why it blocks handoff:</strong> {entry.fix ?? entry.message}
+                            </p>
+                            <p className="ide-export-fixpath-line" data-testid={`ide-export-fixpath-owner-${entry.id}`}>
+                              <strong>Owns the fix:</strong> {formatExportDiagnosticOwner(entry.owner)}
+                            </p>
+                            <div className="ide-inline-actions ide-export-fixpath-owning-surface">
+                              {entry.owner.kind === 'mapping' && onGoToHardware && (
+                                <IdeButton
+                                  tone="secondary"
+                                  onClick={onGoToHardware}
+                                  testId={`ide-export-fixpath-open-map-pins-${entry.id}`}
+                                >
+                                  Open Map Pins
+                                </IdeButton>
+                              )}
+                              {(entry.owner.kind === 'node' || entry.owner.kind === 'port') && onGoToDesign && (
+                                <IdeButton
+                                  tone="secondary"
+                                  onClick={onGoToDesign}
+                                  testId={`ide-export-fixpath-open-design-${entry.id}`}
+                                >
+                                  Open Design
+                                </IdeButton>
+                              )}
+                              {entry.owner.kind === 'file' && onGoToProject && (
+                                <IdeButton
+                                  tone="secondary"
+                                  onClick={onGoToProject}
+                                  testId={`ide-export-fixpath-open-project-${entry.id}`}
+                                >
+                                  Open Project
+                                </IdeButton>
+                              )}
+                              {onOpenVerify && (
+                                <IdeButton
+                                  tone="ghost"
+                                  onClick={onOpenVerify}
+                                  testId={`ide-export-fixpath-open-verify-${entry.id}`}
+                                >
+                                  Open Verify
+                                </IdeButton>
+                              )}
+                            </div>
                             <p className="ide-export-fixpath-cause">{entry.message}</p>
                             <ul className="ide-export-fixpath-steps">
                               {(entry.hint ?? []).map((h, i) => (
@@ -2038,7 +2262,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <div>
                     <h3>Generated Artifacts</h3>
                     <p className="ide-export-section-subcopy">
-                      Grouped by handoff role so you can inspect, copy, and download the exact file Vivado needs next.
+                      Bundle composition by role: synthesizable RTL, board constraints, simulation bench, then Vivado scaffolding and notes — each group is intentional for Basys3 handoff.
                     </p>
                   </div>
                   <span className="ide-export-section-meta">
@@ -2359,12 +2583,45 @@ const SummaryStat: React.FC<{ label: string; value: string; mono?: boolean }> = 
   </div>
 );
 
+function pickArtifactStatus(
+  map: Map<string, ExportArtifactView>,
+  filename: string
+): 'ready' | 'blocked' | 'pending' | 'missing' {
+  const hit = map.get(filename.toLowerCase());
+  if (!hit) return 'missing';
+  return hit.status;
+}
+
 function buildArtifactGroups(artifacts: ExportArtifactView[]): ExportArtifactGroup[] {
   const groups: ExportArtifactGroup[] = [
-    { id: 'hdl', label: 'HDL', description: 'Top-level design source files.', artifacts: [] },
-    { id: 'constraints', label: 'Constraints', description: 'Pin constraints and board bindings.', artifacts: [] },
-    { id: 'testbench', label: 'Testbench', description: 'Simulation fixtures and expected behavior.', artifacts: [] },
-    { id: 'project', label: 'Project', description: 'Scripts, manifests, and handoff metadata.', artifacts: [] },
+    {
+      id: 'hdl',
+      label: 'HDL',
+      description:
+        'Synthesizable top-level VHDL (`top.vhd`) — authoritative RTL for Vivado synthesis and the port list every other file must match.',
+      artifacts: [],
+    },
+    {
+      id: 'constraints',
+      label: 'Constraints',
+      description:
+        'Pin and timing constraints (`top.xdc`) — physical bindings and clock policy aligned to Map Pins and the active timing mode.',
+      artifacts: [],
+    },
+    {
+      id: 'testbench',
+      label: 'Testbench',
+      description:
+        'Simulation-only VHDL (`testbench.vhd`) — instantiates the DUT with the same entity and ports as `top.vhd`; never merged into the design source set.',
+      artifacts: [],
+    },
+    {
+      id: 'project',
+      label: 'Project scaffolding',
+      description:
+        'Vivado import script, README, and project metadata — reproducible import path and student-facing handoff notes.',
+      artifacts: [],
+    },
   ];
   const index = new Map(groups.map((group) => [group.id, group]));
   for (const artifact of artifacts) {

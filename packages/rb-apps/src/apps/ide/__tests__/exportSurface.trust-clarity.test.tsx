@@ -262,6 +262,10 @@ describe('ExportSurface trust clarity', () => {
     const banner = getByTestId('ide-export-trust-banner');
     expect(banner.textContent).toContain('READY');
     expect(banner.textContent).not.toContain('BLOCKED');
+
+    expect(getByTestId('ide-export-package-handoff-status').textContent).toContain('PACKAGE READY');
+    expect(getByTestId('ide-export-handoff-board').textContent).toContain('Basys3');
+    expect(getByTestId('ide-export-artifact-agreement')).toBeTruthy();
   });
 
   it('advisory export state names comparison status without blocking download', () => {
@@ -276,6 +280,7 @@ describe('ExportSurface trust clarity', () => {
     const banner = getByTestId('ide-export-trust-banner');
     expect(banner.textContent).toContain('NEEDS REVIEW');
     expect(banner.textContent).toContain('Expected-output comparison has not run');
+    expect(getByTestId('ide-export-package-handoff-status').textContent).toContain('PACKAGE PARTIAL');
   });
 
   it('shows trace-only provenance instead of collapsing it into assertions match', () => {
@@ -327,6 +332,7 @@ describe('ExportSurface trust clarity', () => {
     const banner = getByTestId('ide-export-trust-banner');
     // Trust banner must be in BLOCKED state
     expect(banner.textContent).toContain('BLOCKED');
+    expect(getByTestId('ide-export-package-handoff-status').textContent).toContain('PACKAGE BLOCKED');
     // Hardware routing button must be visible
     expect(getByTestId('ide-export-trust-go-hardware')).toBeTruthy();
   });

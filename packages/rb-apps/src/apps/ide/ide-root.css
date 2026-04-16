@@ -12686,6 +12686,118 @@ details[open].ide-export-evidence-details > summary::before {
   color: var(--ide-text-soft);
 }
 
+/* Export: package handoff summary + artifact agreement (engineering handoff, not debug) */
+.ide-export-package-handoff {
+  padding: var(--ide-space-3);
+  margin-bottom: var(--ide-space-3);
+  border: 1px solid rgba(56, 189, 248, 0.14);
+  border-radius: var(--rb-radius-2, 16px);
+  background: rgba(5, 12, 22, 0.55);
+}
+
+.ide-export-package-handoff-header {
+  margin-bottom: var(--ide-space-2);
+}
+
+.ide-export-handoff-status {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ide-space-2);
+  margin-bottom: var(--ide-space-3);
+}
+
+.ide-export-handoff-headline {
+  font-weight: 600;
+  margin: 0;
+  color: #e6f3ff;
+}
+
+.ide-export-handoff-subline {
+  margin: var(--ide-space-1) 0 0;
+  color: var(--ide-text-soft);
+  max-width: 72ch;
+}
+
+.ide-export-handoff-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));
+  gap: var(--ide-space-2) var(--ide-space-4);
+  margin: 0 0 var(--ide-space-3);
+}
+
+.ide-export-handoff-facts dt {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.85);
+  margin: 0 0 2px;
+}
+
+.ide-export-handoff-facts dd {
+  margin: 0;
+  font-size: var(--rb-font-size-1);
+  color: #e2e8f0;
+  line-height: 1.45;
+}
+
+.ide-export-agreement-heading {
+  margin: var(--ide-space-2) 0 var(--ide-space-1);
+  font-size: 14px;
+  color: #e6f3ff;
+}
+
+.ide-export-agreement-intro {
+  margin-top: 0;
+  margin-bottom: var(--ide-space-2);
+}
+
+.ide-export-agreement-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--rb-font-size-1);
+}
+
+.ide-export-agreement-table th {
+  width: 38%;
+  font-weight: 500;
+  text-align: left;
+  vertical-align: top;
+  padding: var(--ide-space-1) var(--ide-space-2) var(--ide-space-1) 0;
+  color: rgba(226, 232, 240, 0.95);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.ide-export-agreement-table td {
+  vertical-align: top;
+  padding: var(--ide-space-1) 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  line-height: 1.45;
+}
+
+.ide-export-agreement-tone--ok {
+  color: rgba(52, 211, 153, 0.95);
+}
+
+.ide-export-agreement-tone--warn {
+  color: rgba(251, 191, 36, 0.95);
+}
+
+.ide-export-agreement-tone--error {
+  color: rgba(248, 113, 113, 0.98);
+}
+
+.ide-export-blocker-owner {
+  margin: var(--ide-space-1) 0 0;
+  font-size: var(--rb-font-size-1);
+  color: var(--ide-text-soft);
+}
+
+.ide-export-fixpath-line {
+  margin: 0 0 var(--ide-space-1);
+  font-size: var(--rb-font-size-1);
+  color: var(--ide-text-soft);
+}
+
 .ide-export-summary-hero {
   display: grid;
   gap: var(--ide-space-3);
