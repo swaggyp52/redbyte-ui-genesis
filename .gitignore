@@ -110,6 +110,9 @@ archive/pdfs/basys3_rm*.pdf
 # Claude Code IDE local settings
 .claude/settings.local.json
 
+# Lab8 import fixture: full Vivado trees are local-only; tests use fixtures/.../sources/
+packages/rb-apps/src/fixtures/import/04-lab8-security-lock/lab8_security_lock_vivado/
+
 # Obsidian vault local state
 .obsidian/
 

@@ -9,10 +9,8 @@ import { buildBasys3ExportModel } from '../../fpga/boards/basys3/basys3ExportMod
 import { buildExportContract } from '../../fpga/boards/basys3/basys3ExportContract';
 import { parsedHdlToCircuit } from '../hdlToCircuit';
 
-const FIXTURE_DIR = join(
-  __dirname,
-  '../../fixtures/import/04-lab8-security-lock/lab8_security_lock_vivado/project_1/project_1.srcs'
-);
+/** Minimal Vivado-style src tree (top.vhd + top.xdc only). Full Vivado dumps stay local and are gitignored. */
+const FIXTURE_DIR = join(__dirname, '../../fixtures/import/04-lab8-security-lock/sources');
 
 describe('fixture04 lab8 security lock import', () => {
   it('parses process-based sequential VHDL with CE/CLR and indexed vector ports', () => {
