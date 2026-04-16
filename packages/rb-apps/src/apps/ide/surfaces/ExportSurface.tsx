@@ -19,8 +19,9 @@ import {
   resolveVivadoPart,
 } from '../../../fpga/vivado/vivadoProjectFolder';
 import { canonicalizeSemanticCircuit } from '../../../circuit/semanticCircuit';
-import { deriveVerifySchedule } from '../../../fpga/boards/basys3/verifySchedule';
+import { deriveVerifySchedule, type VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
 import type { RuntimeVerifyRun } from '../projectRuntime';
+import { resolveActiveScheduleContract } from '../clockAuthority';
 import {
   buildExportViewModel,
   buildLiveIoNodeLabelIndex,
@@ -32,6 +33,7 @@ import {
   type ExportPinStatus,
 } from '../viewmodels/buildExportViewModel';
 import type { VerifyScenario } from '../verifyScenario';
+import { resolveIoMappingFromProjectFields } from '@redbyte/rb-utils';
 import { deriveTimingGuidance, type TimingGuidance } from '../timingGuidance';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -124,6 +126,32 @@ function makeSteps(): RebuildStep[] {
   return STEP_ORDER.map((s) => ({ id: s.id, label: s.label, state: 'idle' as const }));
 }
 
+/** Clock gate row detail: same timing classification as Verify / Map Pins when hashes align. */
+function formatExportClockGateDetail(
+  contract: VerifyScheduleContract | undefined,
+  baseDetail: string
+): string {
+  const mode = contract?.timingMode;
+  if (mode === 'manual_event_driven_lab') return `${baseDetail} · Manual-event lab`;
+  if (mode === 'synchronous_board_clock') return `${baseDetail} · Board clock`;
+  if (mode === 'combinational') return `${baseDetail} · Combinational`;
+  return baseDetail;
+}
+
+function formatExportClockDeterministicTooltip(
+  contract: VerifyScheduleContract | undefined,
+  baseTooltip: string
+): string {
+  const mode = contract?.timingMode;
+  if (mode === 'manual_event_driven_lab') {
+    return `${baseTooltip} RedByte treats this as manual-event lab timing: interactive inputs drive state; export relaxes those paths and does not require a board oscillator net.`;
+  }
+  if (mode === 'synchronous_board_clock') {
+    return `${baseTooltip} Map the primary clock to a clock-capable pin so synthesis timing matches the board.`;
+  }
+  return baseTooltip;
+}
+
 /** Yields to the event loop so React can flush intermediate step state. */
 function tick(ms = 40): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -170,13 +198,26 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         : buildExportViewModel(localPreviewProject, verifyLastRun, activeScenario),
     [activeScenario, baseViewModel, hasExternalMappingAuthority, localPreviewProject, verifyLastRun]
   );
-  const effectiveTimingGuidance = useMemo(
+  const liveScheduleContract = useMemo(() => {
+    const ioForSchedule =
+      resolveIoMappingFromProjectFields({
+        ioMapping: project.ioMapping,
+        hardwareMappingV2: project.hardwareMappingV2,
+      }) ?? project.ioMapping;
+    return deriveVerifySchedule(project.circuit, ioForSchedule, project.hdl);
+  }, [project.circuit, project.hardwareMappingV2, project.hdl, project.ioMapping]);
+  const activeScheduleContract = useMemo(
     () =>
-      timingGuidance ??
-      deriveTimingGuidance(
-        deriveVerifySchedule(project.circuit, project.ioMapping, project.hdl)
-      ),
-    [project, timingGuidance]
+      resolveActiveScheduleContract({
+        deterministicHash: determinismHash,
+        liveScheduleContract,
+        lastRun: verifyLastRun,
+      }),
+    [determinismHash, liveScheduleContract, verifyLastRun]
+  );
+  const effectiveTimingGuidance = useMemo(
+    () => timingGuidance ?? deriveTimingGuidance(activeScheduleContract),
+    [timingGuidance, activeScheduleContract]
   );
   const evidenceDiagnostics = useMemo(
     () =>
@@ -397,12 +438,17 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     if (!r.required) return false;
     return (effectivePinsByPortKey[toPortKey(r.port)] ?? '').trim().length > 0;
   }).length;
-  const clockDiag = diagnosticsList.find((d) => /clock/i.test(d.message));
-  const feedbackDiag = diagnosticsList.find(
-    (d) =>
-      d.code === 'RBEX4102' ||
-      /unsupported feedback|combinational loop/i.test(d.message)
+  // Use diagnostic codes rather than regex-on-message-text so that RBEX3001
+  // ("Ignoring source XDC directive "create_clock"…") is never mistaken for a
+  // clock-domain blocker.  Clock blockers are RBEX4200–RBEX4204 only.
+  const clockDiag = diagnosticsList.find((d) =>
+    d.code === 'RBEX4200' ||
+    d.code === 'RBEX4201' ||
+    d.code === 'RBEX4202' ||
+    d.code === 'RBEX4203' ||
+    d.code === 'RBEX4204'
   );
+  const feedbackDiag = diagnosticsList.find((d) => d.code === 'RBEX4102');
   const artifactMap = useMemo(
     () => new Map(viewModel.artifacts.map((a) => [a.path.toLowerCase(), a])),
     [viewModel.artifacts]
@@ -511,7 +557,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           ? 'Unsupported feedback loop'
           : clockDiag
             ? clockDiag.message.slice(0, 55)
-            : effectiveTimingGuidance.exportDetail,
+            : formatExportClockGateDetail(activeScheduleContract, effectiveTimingGuidance.exportDetail),
         actionLabel: 'Details',
         onAction: feedbackDiag
           ? () => setOpenFixPathId((prev) => (prev === feedbackDiag.id ? null : feedbackDiag.id))
@@ -521,6 +567,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       },
     ];
   }, [
+    activeScheduleContract,
     effectiveTimingGuidance.exportDetail,
     effectiveTimingGuidance.exportLabel,
     feedbackDiag,
@@ -550,14 +597,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           : 'Single clock domain',
       tooltip: feedbackDiag
         ? 'Unsupported feedback loops must be rewritten as supported latches or flip-flops before export.'
-        : effectiveTimingGuidance.exportTooltip,
+        : formatExportClockDeterministicTooltip(activeScheduleContract, effectiveTimingGuidance.exportTooltip),
       pass: !clockDiag && !feedbackDiag,
     },
     {
       id: 'floating',
       label: 'No floating drivers',
       tooltip: 'No output ports are left unconnected. Floating outputs cannot be synthesized correctly.',
-      pass: !diagnosticsList.some((d) => /float/i.test(d.message)),
+      pass: !diagnosticsList.some((d) => d.code === 'RBEX4103'),
     },
     {
       id: 'pins',
@@ -571,7 +618,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       tooltip: 'A passing Verify run has been completed for this exact circuit. Open Verify, run with Check Outputs enabled, and reach PASS to satisfy this.',
       pass: hasVerifyPass,
     },
-  ], [clockDiag, diagnosticsList, effectiveTimingGuidance.exportTooltip, effectiveTimingGuidance.kind, feedbackDiag, requiredMappedCount, requiredCount, hasVerifyPass]);
+  ], [activeScheduleContract, clockDiag, diagnosticsList, effectiveTimingGuidance.exportTooltip, effectiveTimingGuidance.kind, feedbackDiag, requiredMappedCount, requiredCount, hasVerifyPass]);
   const selectedArtifact =
     viewModel.artifacts.find((artifact) => artifact.path === selectedArtifactPath) ??
     viewModel.artifacts[0];

@@ -4,8 +4,12 @@
 import React, { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { analyzeSequentialLogic, type Circuit } from '@redbyte/rb-logic-core';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
-import { installFatalCapture, pushMount } from '@redbyte/rb-utils';
-import type { TestVector } from '@redbyte/rb-utils';
+import {
+  installFatalCapture,
+  materializeIoMappingFromHardwareMappingV2,
+  pushMount,
+  type TestVector,
+} from '@redbyte/rb-utils';
 import { decodeRBProject, type RBProject } from '../export/projectFormat';
 import { digestValue } from '../utils/digest';
 import { stableSerialize } from '../utils/stableSerialize';
@@ -182,6 +186,7 @@ export const IdeApp: React.FC = () => {
   const sourceExampleId = useProjectRuntime((state) => state.sourceExampleId);
   const activeExampleId = useProjectRuntime((state) => state.activeExampleId);
   const projectIoRows = useProjectRuntime((state) => state.projectIoRows);
+  const hardwareMappingV2 = useProjectRuntime((state) => state.hardwareMappingV2);
   const scenarios = useProjectRuntime((state) => state.scenarios);
   const activeScenarioId = useProjectRuntime((state) => state.activeScenarioId);
   const circuit = useProjectRuntime((state) => state.circuit);
@@ -742,26 +747,8 @@ export const IdeApp: React.FC = () => {
           text: xdcText,
         },
       },
-      ioMapping: {
-        inputs: projectIoRows
-          .filter((entry) => entry.direction === 'in')
-          .map((entry) => ({
-            id: entry.id,
-            nodeId: entry.nodeId,
-            port: entry.port,
-            label: entry.label,
-            pin: entry.pin,
-          })),
-        outputs: projectIoRows
-          .filter((entry) => entry.direction === 'out')
-          .map((entry) => ({
-            id: entry.id,
-            nodeId: entry.nodeId,
-            port: entry.port,
-            label: entry.label,
-            pin: entry.pin,
-          })),
-      },
+      ioMapping: materializeIoMappingFromHardwareMappingV2(hardwareMappingV2),
+      hardwareMappingV2,
       vectors: authoritativeProjectVectors,
       customComponents: customComponents.length > 0 ? customComponents : undefined,
       macros: macros.length > 0 ? macros : undefined,
@@ -782,6 +769,7 @@ export const IdeApp: React.FC = () => {
       projectDescription,
       projectId,
       projectIoRows,
+      hardwareMappingV2,
       projectKind,
       projectName,
       authoritativeProjectVectors,

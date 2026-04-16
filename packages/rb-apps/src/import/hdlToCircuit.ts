@@ -91,9 +91,11 @@ const COMPONENT_MAP: Record<string, string> = {
   full_adder: 'FullAdder', fulladder: 'FullAdder',
   fa: 'FullAdder', full_add: 'FullAdder',
 
-  // D flip-flop
+  // Register / D flip-flop family
   dff: 'DFlipFlop', d_ff: 'DFlipFlop', dflipflop: 'DFlipFlop',
-  d_flip_flop: 'DFlipFlop', fdre: 'DFlipFlop', fdce: 'DFlipFlop',
+  d_flip_flop: 'DFlipFlop', fdre: 'Register1', fdce: 'Register1',
+  register1: 'Register1', register: 'Register1', reg: 'Register1',
+  registerbus: 'RegisterBus', register_bank: 'StateBank', statebank: 'StateBank',
 };
 
 function resolveComponentType(raw: string): string | null {
@@ -131,12 +133,14 @@ function normalisePortName(
     if (p === 'b' || portIndex === 1) return 'b';
   }
 
-  // DFlipFlop
-  if (rbNodeType === 'DFlipFlop') {
-    if (['clk', 'clock', 'c', 'ck'].includes(p)) return 'clk';
+  // DFlipFlop / Register-family
+  if (rbNodeType === 'DFlipFlop' || rbNodeType === 'Register1' || rbNodeType === 'RegisterBus' || rbNodeType === 'StateBank') {
+    if (['clk', 'clock', 'c', 'ck'].includes(p)) return 'CLK';
+    if (['ce', 'en', 'enable'].includes(p)) return 'EN';
+    if (['clr', 'rst', 'reset', 'r'].includes(p)) return 'RST';
     if (['q', 'out', 'qout'].includes(p)) return 'q';
     if (['qb', 'q_n', 'qbar', 'q_inv'].includes(p)) return 'q_inv';
-    if (p === 'd' || portIndex === 0) return 'd';
+    if (p === 'd' || portIndex === 0) return 'D';
   }
 
   // Standard 2-input gates: a/b/out
@@ -183,17 +187,28 @@ function assignPositions(nodes: Node[], connections: Connection[]): Node[] {
 
   // Compute topological depth per gate node
   const depthMap: Map<string, number> = new Map();
+  const depthVisiting = new Set<string>();
   function getDepth(id: string): number {
     if (depthMap.has(id)) return depthMap.get(id)!;
+    if (depthVisiting.has(id)) {
+      // Break cyclic recursion for sequential feedback imports.
+      return 1;
+    }
+    depthVisiting.add(id);
     const node = nodes.find((n) => n.id === id);
-    if (!node || node.type === 'INPUT') return 0;
+    if (!node || node.type === 'INPUT') {
+      depthVisiting.delete(id);
+      return 0;
+    }
     const d = deps.get(id);
     if (!d || d.size === 0) {
       depthMap.set(id, 1);
+      depthVisiting.delete(id);
       return 1;
     }
     const max = Math.max(...[...d].map(getDepth));
     depthMap.set(id, max + 1);
+    depthVisiting.delete(id);
     return max + 1;
   }
   for (const n of gateNodes) getDepth(n.id);
@@ -292,32 +307,71 @@ export function parsedHdlToCircuit(parsed: ParsedHDL): ImportResult {
 
   // Signal → producing node+port lookup (for wiring)
   const signalSource: Map<string, { nodeId: string; port: string }> = new Map();
+  const aliasToSource: Map<string, string> = new Map();
+  const resolveAlias = (raw: string): string => {
+    const visited = new Set<string>();
+    let current = raw.toLowerCase();
+    while (aliasToSource.has(current) && !visited.has(current)) {
+      visited.add(current);
+      current = aliasToSource.get(current)!;
+    }
+    return current;
+  };
+
+  for (const inst of parsed.instances) {
+    if (inst.componentType.toUpperCase() !== 'ALIAS') continue;
+    const from = inst.portMap.in?.toLowerCase();
+    const to = inst.portMap.out?.toLowerCase();
+    if (!from || !to) continue;
+    aliasToSource.set(to, from);
+  }
+
   for (const port of inputPorts) {
     signalSource.set(port.name.toLowerCase(), { nodeId: `port_${port.name}`, port: 'out' });
   }
 
   // 2. Create gate nodes for each component instance
   for (const inst of parsed.instances) {
+    if (inst.componentType.toUpperCase() === 'ALIAS') continue;
     const rbType = resolveComponentType(inst.componentType);
     if (!rbType) {
       warnings.push(`Unknown component '${inst.componentType}' (instance '${inst.id}') — skipped`);
       unmappedComponents.push(inst.componentType);
       continue;
     }
-    nodes.push({ id: inst.id, type: rbType, label: inst.id, x: 0, y: 0 });
+    const sequentialConfig =
+      rbType === 'Register1' || rbType === 'RegisterBus' || rbType === 'StateBank'
+        ? {
+            width: rbType === 'Register1' ? 1 : undefined,
+            resetKind: 'async_clear',
+            resetPolarity: 'active_high',
+            clockPolarity: 'rising_edge',
+            hasEnable: Object.keys(inst.portMap).some((key) => ['ce', 'en', 'enable'].includes(key.toLowerCase())),
+          }
+        : undefined;
+
+    nodes.push({
+      id: inst.id,
+      type: rbType,
+      label: inst.id,
+      x: 0,
+      y: 0,
+      ...(sequentialConfig ? { config: sequentialConfig as Record<string, unknown> } : {}),
+    });
 
     // Register this instance's output signals in the source map
     const portEntries = Object.entries(inst.portMap);
     portEntries.forEach(([hdlPort, signal], idx) => {
       const rbPort = normalisePortName(hdlPort, rbType, idx);
       if (rbPort === 'out' || rbPort === 'sum' || rbPort === 'cout' || rbPort === 'q') {
-        signalSource.set(signal.toLowerCase(), { nodeId: inst.id, port: rbPort });
+        signalSource.set(resolveAlias(signal), { nodeId: inst.id, port: rbPort });
       }
     });
   }
 
   // 3. Wire connections: for each instance input port, find its signal source
   for (const inst of parsed.instances) {
+    if (inst.componentType.toUpperCase() === 'ALIAS') continue;
     const rbType = resolveComponentType(inst.componentType);
     if (!rbType) continue;
 
@@ -327,7 +381,7 @@ export function parsedHdlToCircuit(parsed: ParsedHDL): ImportResult {
       const isOutput = ['out', 'sum', 'cout', 'q', 'q_inv'].includes(rbPort);
       if (isOutput) return; // Output ports don't receive connections
 
-      const src = signalSource.get(signal.toLowerCase());
+      const src = signalSource.get(resolveAlias(signal));
       if (!src) {
         warnings.push(`Signal '${signal}' not driven in instance '${inst.id}.${hdlPort}'`);
         return;
@@ -343,8 +397,11 @@ export function parsedHdlToCircuit(parsed: ParsedHDL): ImportResult {
   for (const port of outputPorts) {
     const portMapEntry = parsed.instances
       .flatMap((inst) =>
+        inst.componentType.toUpperCase() === 'ALIAS'
+          ? []
+          :
         Object.entries(inst.portMap)
-          .filter(([, sig]) => sig.toLowerCase() === port.name.toLowerCase())
+          .filter(([, sig]) => resolveAlias(sig) === resolveAlias(port.name))
           .map(([hdlPort]) => ({ inst, hdlPort })),
       )
       .at(0);
@@ -362,7 +419,7 @@ export function parsedHdlToCircuit(parsed: ParsedHDL): ImportResult {
       }
     } else {
       // Check if an input is directly connected to this output (pass-through)
-      const src = signalSource.get(port.name.toLowerCase());
+      const src = signalSource.get(resolveAlias(port.name));
       if (src) {
         connections.push({
           from: { nodeId: src.nodeId, portName: src.port } as any,

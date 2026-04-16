@@ -76,7 +76,7 @@ const SUPPORTED_LOGIC_TYPES = new Set([
   'AND3', 'OR3', 'NAND3', 'NOR3', 'XOR3',
   'FullAdder',
   'MUX4',
-  'DFlipFlop',
+  'DFlipFlop', 'Register1', 'RegisterBus', 'StateBank',
   'DLatch', 'TFlipFlop', 'JKFlipFlop',
 ]);
 
@@ -126,6 +126,9 @@ function deriveSignalName(node: NetlistNode, counter: number): string {
     FullAdder: 'fa',
     MUX4: 'mux',
     DFlipFlop:  'dff',
+    Register1: 'reg1',
+    RegisterBus: 'regb',
+    StateBank: 'bank',
     DLatch:     'dlatch',
     TFlipFlop:  'tff',
     JKFlipFlop: 'jkff',
@@ -483,7 +486,7 @@ export function vhdlFromNetlist(
       lines.push(`  signal ${sigName}_carry : STD_LOGIC;`);
     } else {
       lines.push(`  signal ${sigName} : STD_LOGIC;`);
-      if (['DFlipFlop', 'DLatch', 'TFlipFlop', 'JKFlipFlop'].includes(node.type)) {
+      if (['DFlipFlop', 'Register1', 'RegisterBus', 'StateBank', 'DLatch', 'TFlipFlop', 'JKFlipFlop'].includes(node.type)) {
         lines.push(`  signal ${sigName}_inv : STD_LOGIC;`);
       }
     }
@@ -520,7 +523,7 @@ export function vhdlFromNetlist(
       return;
     }
 
-    if (node.type === 'DFlipFlop') {
+    if (node.type === 'DFlipFlop' || node.type === 'Register1' || node.type === 'RegisterBus' || node.type === 'StateBank') {
       const d =
         resolveInputSignal(node.id, 'd', nets, nodeIdToSignal, topInputBindingByTarget) ??
         resolveInputSignal(node.id, 'in', nets, nodeIdToSignal, topInputBindingByTarget) ??
@@ -544,8 +547,8 @@ export function vhdlFromNetlist(
       nodeIdToSignal.set(`${node.id}:out`, sigName);
 
       if (!clk) {
-        warnings.push(`DFlipFlop "${node.id}" has no clock input - signal ${sigName} will be tied low`);
-        lines.push(`  ${sigName} <= '0'; -- missing DFlipFlop clock`);
+        warnings.push(`${node.type} "${node.id}" has no clock input - signal ${sigName} will be tied low`);
+        lines.push(`  ${sigName} <= '0'; -- missing ${node.type} clock`);
         lines.push(`  ${sigName}_inv <= '1';`);
         return;
       }

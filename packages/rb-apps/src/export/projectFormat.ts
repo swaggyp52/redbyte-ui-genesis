@@ -13,7 +13,7 @@ import type { MacroDefinition } from '../apps/ide/macros/MacroLibrary';
 import type { RunRecord } from '../recording/runRecord';
 import type { Probe } from '../stores/probeStore';
 import type { ToolchainProjectInput } from '../fpga/toolchainBackend';
-import type { IoMapping, LabSpecV1, TestVector } from '@redbyte/rb-utils';
+import type { HardwareMappingDocumentV2, IoMapping, LabSpecV1, TestVector } from '@redbyte/rb-utils';
 import { stableStringify } from './stableStringify';
 import { compareCodepoint } from './codepointSort';
 
@@ -70,6 +70,11 @@ export interface RBProject {
     lastRunRecord?: RunRecord;
   };
   ioMapping?: IoMapping;
+  /**
+   * Canonical structured hardware mapping (Basys3). When present with entries,
+   * materialized {@link IoMapping} is derived for engines that consume flat scalars.
+   */
+  hardwareMappingV2?: HardwareMappingDocumentV2;
   vectors?: TestVector[];
   traceMetadata?: TraceMetadata;
   submodules?: SubmoduleEntry[];
@@ -202,6 +207,19 @@ const normalizeIoMapping = (ioMapping?: IoMapping): IoMapping | undefined => {
   return { inputs, outputs };
 };
 
+const normalizeHardwareMappingV2 = (
+  raw?: HardwareMappingDocumentV2 | Record<string, unknown>
+): HardwareMappingDocumentV2 | undefined => {
+  if (!raw || !isRecord(raw)) return undefined;
+  if (readOptionalString(raw.schemaVersion) !== '2.0') return undefined;
+  if (!Array.isArray(raw.entries)) return undefined;
+  return {
+    schemaVersion: '2.0',
+    boardId: (readOptionalString(raw.boardId) as HardwareMappingDocumentV2['boardId']) ?? 'basys3',
+    entries: raw.entries as HardwareMappingDocumentV2['entries'],
+  };
+};
+
 const normalizeVectors = (vectors?: TestVector[]): TestVector[] | undefined => {
   if (!vectors) return vectors;
   return [...vectors]
@@ -300,6 +318,7 @@ export const encodeRBProject = (project: RBProject) => {
     probes: normalizeProbes(project.probes),
     hdl: normalizeHdl(project.hdl),
     ioMapping: normalizeIoMapping(project.ioMapping),
+    hardwareMappingV2: normalizeHardwareMappingV2(project.hardwareMappingV2),
     vectors: normalizeVectors(project.vectors),
     submodules: normalizeSubmodules(project.submodules),
     macros: normalizeMacros(project.macros),
@@ -360,6 +379,9 @@ export const normalizeRBProject = (value: unknown): RBProject => {
       ? { ...(value.recorder as NonNullable<RBProject['recorder']>) }
       : undefined,
     ioMapping: normalizeIoMapping(isRecord(value.ioMapping) ? (value.ioMapping as IoMapping) : undefined),
+    hardwareMappingV2: normalizeHardwareMappingV2(
+      isRecord(value.hardwareMappingV2) ? (value.hardwareMappingV2 as HardwareMappingDocumentV2) : undefined
+    ),
     vectors: normalizeVectors(Array.isArray(value.vectors) ? value.vectors as TestVector[] : undefined),
     traceMetadata: isRecord(value.traceMetadata)
       ? { ...(value.traceMetadata as TraceMetadata) }

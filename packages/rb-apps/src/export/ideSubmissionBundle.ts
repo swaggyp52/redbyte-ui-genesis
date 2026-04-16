@@ -144,7 +144,7 @@ async function buildGradeSummary(input: {
   // Circuit summary
   const nodes = project.circuit.nodes;
   const connections = project.circuit.connections;
-  const containsDff = nodes.some((n) => n.type === 'DFlipFlop');
+  const containsDff = nodes.some((n) => n.type === 'DFlipFlop' || n.type === 'Register1' || n.type === 'RegisterBus' || n.type === 'StateBank');
 
   // Mapping summary
   const allRows = [

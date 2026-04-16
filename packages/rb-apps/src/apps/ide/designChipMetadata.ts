@@ -181,6 +181,27 @@ export const DESIGN_CHIP_METADATA: Record<string, ChipMetadata> = {
     color: '#ec4899',
     layer: 3,
   },
+  Register1: {
+    name: 'Register1',
+    inputs: [{ id: 'D', name: 'D' }, { id: 'CLK', name: 'CLK' }, { id: 'EN', name: 'EN' }, { id: 'RST', name: 'RST' }],
+    outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q_inv' }],
+    color: '#ec4899',
+    layer: 3,
+  },
+  RegisterBus: {
+    name: 'RegisterBus',
+    inputs: [{ id: 'D', name: 'D' }, { id: 'CLK', name: 'CLK' }, { id: 'EN', name: 'EN' }, { id: 'RST', name: 'RST' }],
+    outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q_inv' }],
+    color: '#d946ef',
+    layer: 3,
+  },
+  StateBank: {
+    name: 'StateBank',
+    inputs: [{ id: 'D', name: 'D' }, { id: 'CLK', name: 'CLK' }, { id: 'EN', name: 'EN' }, { id: 'RST', name: 'RST' }],
+    outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q_inv' }],
+    color: '#c026d3',
+    layer: 3,
+  },
   TFlipFlop: {
     name: 'TFlipFlop',
     inputs: [{ id: 'T', name: 'T' }, { id: 'CLK', name: 'CLK' }, { id: 'CLR', name: 'CLR' }],

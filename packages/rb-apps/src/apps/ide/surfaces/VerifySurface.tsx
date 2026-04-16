@@ -1248,11 +1248,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setDrawerOpen(false);
   }, [lastRun?.generatedAtIso, lastRun?.reportHash, lastRun?.status]);
 
-  // Reset step mode whenever a new run completes
-  useEffect(() => {
-    if (lastRun) setIsStepMode(false);
-  }, [lastRun?.reportHash]);
-
   const resultRows = useMemo(
     () =>
       runRows.map((row) => [
@@ -1554,6 +1549,24 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }),
     [deterministicHash, liveScheduleContract, lastRun]
   );
+
+  // Manual-event / lab-style timing: after each verify run, default to stepping one case at a time
+  // (Prev/Next + snapshot grid). Other timing modes default step UI off; users can opt in via toggle.
+  useEffect(() => {
+    if (!lastRun || (lastRun.waveform?.length ?? 0) === 0) return;
+    const timingMode =
+      lastRun.scheduleContract?.timingMode ?? activeScheduleContract?.timingMode;
+    if (timingMode === 'manual_event_driven_lab') {
+      setIsStepMode(true);
+    } else {
+      setIsStepMode(false);
+    }
+  }, [
+    lastRun?.reportHash,
+    lastRun?.waveform?.length,
+    lastRun?.scheduleContract?.timingMode,
+    activeScheduleContract?.timingMode,
+  ]);
 
   const effectiveTimingGuidance = useMemo(() => {
     if (timingGuidance) return timingGuidance;
@@ -2155,6 +2168,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // Phase A: Step-through all ticks (distinct from fail-only navigator)
   const stepIndex = selectedTick !== null ? allWaveformTicks.indexOf(selectedTick) : -1;
   const totalSteps = allWaveformTicks.length;
+  const canStepThroughCases = Boolean(lastRun) && totalSteps > 1;
   const selectedCaseTickLabel =
     selectedTick !== null
       ? stepIndex >= 0
@@ -4613,25 +4627,40 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </div>
               </div>
               <div className="ide-verify-waveform-bar" data-testid="ide-verify-waveform-bar">
-                {/* Step-through navigator — shown when step mode is active */}
-                {isStepMode && totalSteps > 0 && (
-                  <div className="ide-verify-step-bar" data-testid="ide-verify-step-bar">
-                    <IdeButton tone="secondary" onClick={goToPrevStep} disabled={totalSteps <= 1} testId="ide-verify-step-prev">
-                      ← Prev
+                {canStepThroughCases ? (
+                  <div className="ide-verify-step-controls" data-testid="ide-verify-step-controls">
+                    <IdeButton
+                      tone={isStepMode ? 'secondary' : 'ghost'}
+                      onClick={() => setIsStepMode((previous) => !previous)}
+                      testId="ide-verify-step-mode-toggle"
+                      title={
+                        activeScheduleContract?.timingMode === 'manual_event_driven_lab'
+                          ? 'Lab-style timing: walk one test case at a time and inspect the signal snapshot below the waveform.'
+                          : 'Walk one test case at a time (same tick navigation as the scrubber).'
+                      }
+                    >
+                      {isStepMode ? 'Step cases on' : 'Step cases'}
                     </IdeButton>
-                    <span className="ide-verify-step-position" data-testid="ide-verify-step-position">
-                      {selectedCasePositionLabel}
-                    </span>
-                    <IdeButton tone="secondary" onClick={goToNextStep} disabled={totalSteps <= 1} testId="ide-verify-step-next">
-                      Next →
-                    </IdeButton>
-                    {onDebugTickSelected && selectedTick !== null && (
-                      <IdeButton tone="ghost" onClick={handleDebugInDesign} testId="ide-verify-step-debug-design">
-                        Show in Design
-                      </IdeButton>
-                    )}
+                    {isStepMode ? (
+                      <div className="ide-verify-step-bar" data-testid="ide-verify-step-bar">
+                        <IdeButton tone="secondary" onClick={goToPrevStep} disabled={totalSteps <= 1} testId="ide-verify-step-prev">
+                          ← Prev
+                        </IdeButton>
+                        <span className="ide-verify-step-position" data-testid="ide-verify-step-position">
+                          {selectedCasePositionLabel}
+                        </span>
+                        <IdeButton tone="secondary" onClick={goToNextStep} disabled={totalSteps <= 1} testId="ide-verify-step-next">
+                          Next →
+                        </IdeButton>
+                        {onDebugTickSelected && selectedTick !== null ? (
+                          <IdeButton tone="ghost" onClick={handleDebugInDesign} testId="ide-verify-step-debug-design">
+                            Show in Design
+                          </IdeButton>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
-                )}
+                ) : null}
                 {/* Left: Fail navigator */}
                 <div className="ide-verify-wfbar-group ide-verify-wfbar-left" data-testid="ide-verify-fail-nav">
                   {hasSessionFailureEvidence && failTicksSorted.length > 0 ? (

@@ -324,7 +324,7 @@ function stableSortMapping(entries: IoMappingEntry[]): IoMappingEntry[] {
   return [...entries].sort((left, right) => compareCodepoint(mappingKey(left), mappingKey(right)));
 }
 
-function toSignalName(entry: IoMappingEntry): string {
+export function toSignalName(entry: IoMappingEntry): string {
   const trimmedLabel = entry.label?.trim() ?? '';
   if (trimmedLabel.length > 0) {
     const sanitizedLabel = sanitizeIdentifier(trimmedLabel);

@@ -29,6 +29,9 @@ import {
   PROGRAM_STAGE_LABEL,
   VERIFY_STAGE_LABEL,
 } from '../workflowStages';
+import type { HardwareBoardResourceType, HardwareTimingRole } from '@redbyte/rb-utils';
+import type { ProjectIoMappingKind } from '../examplesCatalog';
+import { deriveMappingCompleteness } from '../hardwareMappingBridge';
 
 export interface HardwareMappingRow {
   id: string;
@@ -37,6 +40,71 @@ export interface HardwareMappingRow {
   direction: 'in' | 'out';
   pin: string;
   required: boolean;
+  mappingKind?: ProjectIoMappingKind;
+  timingRole?: HardwareTimingRole;
+  boardResourceType?: HardwareBoardResourceType;
+}
+
+function formatMappingKindChip(kind: ProjectIoMappingKind | undefined): string {
+  switch (kind ?? 'scalar') {
+    case 'scalar':
+      return 'Scalar';
+    case 'bit':
+      return 'Bit';
+    case 'slice':
+      return 'Slice';
+    case 'bus':
+      return 'Bus';
+    case 'group':
+      return 'Group';
+    default:
+      return 'Scalar';
+  }
+}
+
+function formatCompletenessChip(complete: 'unmapped' | 'partial' | 'complete'): string {
+  switch (complete) {
+    case 'unmapped':
+      return 'Unmapped';
+    case 'partial':
+      return 'Partial';
+    case 'complete':
+      return 'Complete';
+  }
+}
+
+function formatBoardResourceChip(t: HardwareBoardResourceType | undefined): string | null {
+  if (!t || t === 'generic') return null;
+  switch (t) {
+    case 'switch':
+      return 'Switch';
+    case 'button':
+      return 'Button';
+    case 'led':
+      return 'LED';
+    case 'clock_pin':
+      return 'Clock pin';
+    case 'seven_seg':
+      return '7-seg';
+    default:
+      return null;
+  }
+}
+
+function formatTimingRoleChip(t: HardwareTimingRole | undefined): string | null {
+  if (!t || t === 'generic') return null;
+  switch (t) {
+    case 'clock':
+      return 'Role: clock';
+    case 'reset':
+      return 'Role: reset';
+    case 'manual_step':
+      return 'Role: manual step';
+    case 'enable':
+      return 'Role: enable';
+    default:
+      return null;
+  }
 }
 
 export interface HardwareSurfaceProps {
@@ -183,6 +251,17 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     }
     return runGuidance;
   }, [mappingRows, signalRoles, timingGuidance, verifyLastRun]);
+  const explicitTimingMode = useMemo<'synchronous_board_clock' | 'manual_event_driven_lab' | 'combinational'>(() => {
+    const mode = verifyLastRun?.scheduleContract?.timingMode;
+    if (mode === 'synchronous_board_clock' || mode === 'manual_event_driven_lab' || mode === 'combinational') {
+      return mode;
+    }
+    if (!effectiveTimingGuidance.isSequential) return 'combinational';
+    const hasExplicitBoardClock = mappingRows.some(
+      (row) => row.direction === 'in' && /(^clk$|clk100mhz|clock)/i.test(getStudentFacingIoLabel(row)) && row.pin.trim().length > 0
+    );
+    return hasExplicitBoardClock ? 'synchronous_board_clock' : 'manual_event_driven_lab';
+  }, [effectiveTimingGuidance.isSequential, mappingRows, verifyLastRun?.scheduleContract?.timingMode]);
 
   const clockRoleKeys = useMemo(() => {
     const next = new Set<string>();
@@ -212,12 +291,16 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           return /(^clk$|clock|clk100mhz)/i.test(getStudentFacingIoLabel(row));
         }
       );
+      if (explicitTimingMode !== 'synchronous_board_clock') {
+        // Manual-event and combinational projects do not require a board oscillator mapping.
+        return true;
+      }
       if (requiredClockRows.length === 0) {
-        return !effectiveTimingGuidance.isSequential;
+        return false;
       }
       return requiredClockRows.every((row) => row.pin.trim().length > 0);
     },
-    [clockRoleKeys, effectiveTimingGuidance.isSequential, mappingRows]
+    [clockRoleKeys, explicitTimingMode, mappingRows]
   );
   const hasOutputMapping = useMemo(
     () => {
@@ -1343,6 +1426,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 </IdeStatusPill>
                 <span className="ide-surface-command-chip">Basys3</span>
                 <span className="ide-surface-command-chip">
+                  {explicitTimingMode === 'synchronous_board_clock'
+                    ? 'Mode: board clock'
+                    : explicitTimingMode === 'manual_event_driven_lab'
+                      ? 'Mode: manual event'
+                      : 'Mode: combinational'}
+                </span>
+                <span className="ide-surface-command-chip">
                   {hwMode === 'map'
                     ? 'Map Pins'
                     : hwMode === 'bringup'
@@ -1575,6 +1665,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   <div className="ide-hw-map-group">
                     {group.rows.map((row) => {
                       const isMissing = row.required && row.pin.trim().length === 0;
+                      const completeness = deriveMappingCompleteness(row);
+                      const resourceChip = formatBoardResourceChip(row.boardResourceType);
+                      const timingChip = formatTimingRoleChip(row.timingRole);
                       return (
                         <button
                           key={row.id}
@@ -1586,7 +1679,36 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                             setSelectedMappingRowId(row.id === selectedMappingRowId ? null : row.id)
                           }
                         >
-                          <span className="ide-hw-map-row-label">{getStudentFacingIoLabel(row)}</span>
+                          <span className="ide-hw-map-row-left">
+                            <span className="ide-hw-map-row-label">{getStudentFacingIoLabel(row)}</span>
+                            <div
+                              className="ide-hw-map-row-v2-chips"
+                              data-testid={`ide-hw-map-row-v2-${row.id}`}
+                            >
+                              <span
+                                className="ide-hw-map-chip ide-hw-map-chip--kind"
+                                title="hardwareMappingV2 entry kind"
+                              >
+                                {formatMappingKindChip(row.mappingKind)}
+                              </span>
+                              <span
+                                className={`ide-hw-map-chip ide-hw-map-chip--complete ide-hw-map-chip--complete-${completeness}`}
+                                title="Pin mapping completeness"
+                              >
+                                {formatCompletenessChip(completeness)}
+                              </span>
+                              {resourceChip ? (
+                                <span className="ide-hw-map-chip ide-hw-map-chip--resource" title="Board resource">
+                                  {resourceChip}
+                                </span>
+                              ) : null}
+                              {timingChip ? (
+                                <span className="ide-hw-map-chip ide-hw-map-chip--timing" title="Timing role">
+                                  {timingChip}
+                                </span>
+                              ) : null}
+                            </div>
+                          </span>
                           <span className="ide-hw-map-row-meta">
                             {row.required ? (
                               isMissing

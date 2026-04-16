@@ -29,6 +29,7 @@ export interface VerifyResetHint {
 
 export interface VerifyScheduleContract {
   schedule: VerifySchedule;
+  timingMode?: 'synchronous_board_clock' | 'manual_event_driven_lab' | 'combinational';
   reason: 'combinational' | 'circuit-sequential' | 'hdl-sequential';
   analysis: SequentialAnalysis;
   needsSimClockInjection: boolean;
@@ -113,9 +114,16 @@ export function deriveVerifyScheduleFromStructure(
     ? INTERNAL_SIM_CLOCK_NAME
     : resolvedClockSignalName;
   const temporalIssues = collectTemporalIssuesFromStructure(simModel, ioMapping, hdl);
+  const timingMode =
+    schedule === 'combinational'
+      ? 'combinational'
+      : analysis.hasClockNet
+        ? 'synchronous_board_clock'
+        : 'manual_event_driven_lab';
 
   return {
     schedule,
+    timingMode,
     reason,
     analysis,
     needsSimClockInjection,

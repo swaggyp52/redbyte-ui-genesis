@@ -12,6 +12,7 @@
 
 import type { CircuitIR, SimulationModel } from '@redbyte/rb-logic-core';
 import { exportBasys3Bundle } from './basys3Bundle';
+import { resolveIoMappingFromProjectFields, type IoMapping } from '@redbyte/rb-utils';
 import type { RBProject } from '../../export/projectFormat';
 import { generateTestbenchVhdl } from './testbenchGenerator';
 import { parseVhdl } from '../../../import/vhdlImport';
@@ -24,6 +25,7 @@ import {
   resolveBasys3PackagePin,
 } from './basys3Pins';
 import { buildBasys3ExportModel, buildTopLevelBindingRefs } from './basys3ExportModel';
+import { buildExportContract } from './basys3ExportContract';
 
 export interface Basys3ExportError {
   type: 'validation' | 'constraint' | 'logic' | 'unknown';
@@ -70,6 +72,14 @@ interface MappingRecord {
 const BASYS3_INPUT_ALIAS_LIST = listKnownBasys3AliasesForDirection('input');
 const BASYS3_OUTPUT_ALIAS_LIST = listKnownBasys3AliasesForDirection('output');
 
+/** Prefer structured {@link RBProject.hardwareMappingV2} when present; else legacy {@link RBProject.ioMapping}. */
+export function getExportIoMapping(project: RBProject): IoMapping | undefined {
+  return resolveIoMappingFromProjectFields({
+    ioMapping: project.ioMapping,
+    hardwareMappingV2: project.hardwareMappingV2,
+  });
+}
+
 interface ExportAuthorityContext {
   ir: CircuitIR;
   simModel: SimulationModel;
@@ -86,8 +96,8 @@ interface ExportAuthorityContext {
 function validateProjectForBasys3(project: RBProject): Basys3ExportError[] {
   const errors: Basys3ExportError[] = [];
 
-  // Check ioMapping exists
-  if (!project.ioMapping) {
+  const ioMapping = getExportIoMapping(project);
+  if (!ioMapping) {
     errors.push({
       type: 'validation',
       severity: 'error',
@@ -96,14 +106,14 @@ function validateProjectForBasys3(project: RBProject): Basys3ExportError[] {
     return errors;
   }
 
-  const authority: ExportAuthorityContext = buildBasys3ExportModel(project.circuit, project.ioMapping);
-  const inputMappings = normalizeMappings(project, 'input', authority.ir);
-  const outputMappings = normalizeMappings(project, 'output', authority.ir);
+  const authority: ExportAuthorityContext = buildBasys3ExportModel(project.circuit, ioMapping);
+  const inputMappings = normalizeMappings(ioMapping, 'input', authority.ir);
+  const outputMappings = normalizeMappings(ioMapping, 'output', authority.ir);
   const requiredPorts = deriveRequiredPorts(project, authority.ir);
   const matchedMappingKeys = new Set<string>();
 
   // Check for required switch mappings (SW0-15)
-  if (project.ioMapping.inputs.length === 0) {
+  if (ioMapping.inputs.length === 0) {
     errors.push({
       type: 'validation',
       severity: 'warning',
@@ -112,7 +122,7 @@ function validateProjectForBasys3(project: RBProject): Basys3ExportError[] {
   }
 
   // Check for required LED mappings (LD0-15)
-  if (project.ioMapping.outputs.length === 0) {
+  if (ioMapping.outputs.length === 0) {
     errors.push({
       type: 'validation',
       severity: 'warning',
@@ -319,8 +329,12 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
     return result;
   }
 
-  // Step 2: Generate Basys3 bundle
-  if (!project.ioMapping) {
+  // Step 2: Validate canonical export contract BEFORE generating any files.
+  // The contract checks naming invariants, direction mismatches, duplicate ports,
+  // reserved words, and clock policy. Any 'error'-severity contract violation
+  // blocks export so that no malformed HDL/XDC is ever emitted.
+  const ioMapping = getExportIoMapping(project);
+  if (!ioMapping) {
     result.errors.push({
       type: 'unknown',
       severity: 'error',
@@ -329,8 +343,25 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
     return result;
   }
 
-  const bundleResult = exportBasys3Bundle(project.circuit, project.ioMapping, {
-    entityName: project.hdl?.top,
+  const entityName = project.hdl?.top ?? 'top';
+  const exportModel = buildBasys3ExportModel(project.circuit, ioMapping);
+  const contract = buildExportContract(exportModel, ioMapping, entityName);
+
+  for (const contractError of contract.errors) {
+    result.errors.push({
+      type: 'constraint',
+      severity: contractError.severity,
+      message: `[${contractError.code}] ${contractError.message}`,
+    });
+  }
+  if (contract.errors.some((e) => e.severity === 'error')) {
+    return result;
+  }
+
+  // Step 3: Generate Basys3 bundle (contract is clean — safe to emit files)
+  const bundleResult = exportBasys3Bundle(project.circuit, ioMapping, {
+    entityName,
+    exportModel,  // reuse the already-built model — no redundant elaboration
   });
   const hdlPortProjection = isTopLevelHdlPortProjection(project);
   const filteredBundleWarnings = hdlPortProjection
@@ -351,7 +382,7 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
     });
   }
 
-  // Step 3: Assemble bundle
+  // Step 4: Assemble bundle
   result.bundle = {
     topVhd: bundleResult.topVhd,
     topXdc: bundleResult.topXdc,
@@ -393,7 +424,7 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
     }
   }
 
-  // Step 4: Compute determinism hash
+  // Step 5: Compute determinism hash
   // Use the encoded project + bundle to detect any non-determinism
   const projectJson = JSON.stringify(project, Object.keys(project).sort());
   const bundleJson = JSON.stringify(result.bundle, Object.keys(result.bundle).sort());
@@ -620,12 +651,12 @@ function validateTestbenchSignalTargets(
 }
 
 function normalizeMappings(
-  project: RBProject,
+  ioMapping: IoMapping,
   direction: MappingDirection,
   ir?: CircuitIR
 ): MappingRecord[] {
-  const entries = direction === 'input' ? project.ioMapping?.inputs ?? [] : project.ioMapping?.outputs ?? [];
-  const bindingRefs = project.ioMapping ? buildTopLevelBindingRefs(project.ioMapping, ir) : null;
+  const entries = direction === 'input' ? ioMapping.inputs ?? [] : ioMapping.outputs ?? [];
+  const bindingRefs = buildTopLevelBindingRefs(ioMapping, ir);
   const bindingRefByEntryId = new Map(
     [...(bindingRefs?.inputRefs ?? []), ...(bindingRefs?.outputRefs ?? [])].map((ref) => [ref.entryId, ref] as const)
   );
@@ -1054,8 +1085,9 @@ function isSatisfiedByDirectInputMapping(
   nodeId: string | undefined,
   port: string | undefined,
 ): boolean {
-  if (!project.ioMapping || !nodeId || !port) return false;
-  return project.ioMapping.inputs.some(
+  const ioMapping = getExportIoMapping(project);
+  if (!ioMapping || !nodeId || !port) return false;
+  return ioMapping.inputs.some(
     (entry) => entry.nodeId === nodeId && portsEquivalent(entry.port, port),
   );
 }

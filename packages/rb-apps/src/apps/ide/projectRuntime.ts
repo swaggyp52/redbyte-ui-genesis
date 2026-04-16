@@ -2,7 +2,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Circuit, CompositeNodeDef, SimulationModel } from '@redbyte/rb-logic-core';
 import { buildSimulationModel, elaborateCircuit, registerCompositeNode } from '@redbyte/rb-logic-core';
-import type { IoMapping, TestVector } from '@redbyte/rb-utils';
+import type { HardwareMappingDocumentV2, IoMapping, TestVector } from '@redbyte/rb-utils';
+import {
+  applyMaterializedPinToHardwareMappingV2,
+  migrateIoMappingToHardwareMappingV2,
+  resolveIoMappingFromProjectFields,
+} from '@redbyte/rb-utils';
 import type { CustomTestVector } from './components/VectorEditor';
 import { normalizeRBProject, type RBProject } from '../../export/projectFormat';
 import { stableSerialize } from '../../utils/stableSerialize';
@@ -27,6 +32,14 @@ import {
   type IdeExampleDefinition,
   type IdeExampleIoRow,
 } from './examplesCatalog';
+import {
+  buildHardwareMappingV2FromProjectIoRows,
+  cloneHardwareMappingDocumentV2,
+  enrichProjectIoRowsWithV2Metadata,
+  materializedIoRowsFromHardwareMappingV2,
+  toIoMappingFromProjectIoRows,
+  upsertScalarMappingEntry,
+} from './hardwareMappingBridge';
 import type {
   ProjectHealthCore,
   ProjectHealthExportResult,
@@ -83,6 +96,29 @@ const DEFAULT_MAX_DESIGN_HISTORY = 100;
 const MAX_ALLOWED_DESIGN_HISTORY = 500;
 
 const DEFAULT_EXAMPLE = getIdeExampleById(IDE_DEFAULT_EXAMPLE_ID) ?? IDE_EXAMPLES[0];
+
+const EMPTY_HARDWARE_MAPPING_V2: HardwareMappingDocumentV2 = {
+  schemaVersion: '2.0',
+  boardId: 'basys3',
+  entries: [],
+};
+
+function pickHardwareMappingV2FromProject(project: RBProject): HardwareMappingDocumentV2 {
+  const v = project.hardwareMappingV2;
+  if (v && Array.isArray(v.entries) && v.entries.length > 0) {
+    return structuredClone(v);
+  }
+  return migrateIoMappingToHardwareMappingV2(project.ioMapping ?? { inputs: [], outputs: [] });
+}
+
+/** Flat view of V2 for the IDE, kept aligned with live boundary nodes via {@link synchronizeProjectIoRows}. */
+function deriveProjectIoRowsFromCircuitAndV2(
+  circuit: Circuit,
+  doc: HardwareMappingDocumentV2
+): ProjectIoRow[] {
+  const baseRows = materializedIoRowsFromHardwareMappingV2(doc);
+  return synchronizeProjectIoRows(circuit, baseRows);
+}
 
 export type ProjectIoRow = IdeExampleIoRow;
 
@@ -214,6 +250,8 @@ export interface ProjectRuntimeState {
   sourceExampleId: string | null;
   scenarioAuthority: ScenarioAuthority;
   activeExampleId: string | null;
+  /** Canonical hardware mapping — Map Pins applies pins via V2 entries, not only flat rows. */
+  hardwareMappingV2: HardwareMappingDocumentV2;
   projectIoRows: ProjectIoRow[];
   projectVectors: TestVector[];
   scenarios: VerifyScenario[];
@@ -303,6 +341,7 @@ interface PersistedRuntimeState {
   sourceExampleId?: string | null;
   scenarioAuthority?: ScenarioAuthority;
   activeExampleId: string | null;
+  hardwareMappingV2?: HardwareMappingDocumentV2;
   projectIoRows: ProjectIoRow[];
   projectVectors: TestVector[];
   scenarios?: VerifyScenario[];
@@ -325,6 +364,8 @@ interface PersistedRuntimeState {
 interface DesignHistorySnapshot {
   circuit: Circuit;
   projectIoRows: ProjectIoRow[];
+  /** When absent (legacy snapshots), V2 is reconstructed from {@link projectIoRows}. */
+  hardwareMappingV2?: HardwareMappingDocumentV2;
   projectVectors?: TestVector[];
   macroInsertionCounts: Record<string, number>;
 }
@@ -542,7 +583,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       loadFromProject: (project) => {
         const circuit = cloneCircuit(project.circuit);
         const legacyProjectIoRows = ioRowsFromProject(project);
-        const projectIoRows = synchronizeProjectIoRows(circuit, legacyProjectIoRows);
+        const hardwareMappingV2 = pickHardwareMappingV2FromProject(project);
+        const projectIoRows = deriveProjectIoRowsFromCircuitAndV2(circuit, hardwareMappingV2);
         const incomingProjectId = (project.meta?.projectId ?? '').trim();
         const persistedProjectKind = normalizeProjectKind(project.meta?.projectKind, 'saved');
         const rawSourceExampleId =
@@ -627,6 +669,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           sourceExampleId,
           scenarioAuthority,
           activeExampleId,
+          hardwareMappingV2,
           projectIoRows,
           projectVectors,
           ...migrateProjectVectorsToScenario(projectVectors),
@@ -648,34 +691,53 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         });
       },
       setMappingPin: (rowId, pin) => {
-        set((state) => ({
-          projectIoRows: state.projectIoRows.map((entry) =>
-            entry.id === rowId ? { ...entry, pin } : entry
-          ),
-          scenarioAuthority:
-            state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
-          projectHealthCore: {
-            ...state.projectHealthCore,
-            dirtySinceVerify: true,
-            dirtySinceExport: true,
-          },
-        }));
+        set((state) => {
+          const hardwareMappingV2 = applyMaterializedPinToHardwareMappingV2(
+            structuredClone(state.hardwareMappingV2),
+            rowId,
+            pin
+          );
+          const projectIoRows = deriveProjectIoRowsFromCircuitAndV2(state.circuit, hardwareMappingV2);
+          return {
+            hardwareMappingV2,
+            projectIoRows,
+            scenarioAuthority:
+              state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              dirtySinceVerify: true,
+              dirtySinceExport: true,
+            },
+          };
+        });
       },
       autoSuggestMapping: () => {
-        set((state) => ({
-          projectIoRows: state.projectIoRows.map((entry, index) =>
-            entry.pin.trim().length > 0
-              ? entry
-              : { ...entry, pin: suggestBasys3Pin(entry, index) }
-          ),
-          scenarioAuthority:
-            state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
-          projectHealthCore: {
-            ...state.projectHealthCore,
-            dirtySinceVerify: true,
-            dirtySinceExport: true,
-          },
-        }));
+        set((state) => {
+          let hardwareMappingV2 = structuredClone(state.hardwareMappingV2);
+          const baseRows = deriveProjectIoRowsFromCircuitAndV2(state.circuit, hardwareMappingV2);
+          for (let index = 0; index < baseRows.length; index += 1) {
+            const entry = baseRows[index];
+            if (!entry || entry.pin.trim().length > 0) continue;
+            const suggested = suggestBasys3Pin(entry, index);
+            hardwareMappingV2 = applyMaterializedPinToHardwareMappingV2(
+              hardwareMappingV2,
+              entry.id,
+              suggested
+            );
+          }
+          const projectIoRows = deriveProjectIoRowsFromCircuitAndV2(state.circuit, hardwareMappingV2);
+          return {
+            hardwareMappingV2,
+            projectIoRows,
+            scenarioAuthority:
+              state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              dirtySinceVerify: true,
+              dirtySinceExport: true,
+            },
+          };
+        });
       },
       setVectors: (vectors) => {
         set((state) => {
@@ -860,6 +922,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               {
                 circuit: cloneCircuit(circuit),
                 projectIoRows: cloneIoRows(state.projectIoRows),
+                hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
                 macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
               },
               {
@@ -923,6 +986,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             {
               circuit: nextCircuit,
               projectIoRows: cloneIoRows(state.projectIoRows),
+              hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
               macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
             },
             {
@@ -971,11 +1035,15 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             required: true,
           });
 
+          const newRow = nextIoRows[nextIoRows.length - 1]!;
+          const nextHardwareMappingV2 = upsertScalarMappingEntry(state.hardwareMappingV2, newRow);
+
           return commitDesignSnapshot(
             state,
             {
               circuit: nextCircuit,
               projectIoRows: nextIoRows,
+              hardwareMappingV2: nextHardwareMappingV2,
               macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
             },
             {
@@ -1063,11 +1131,15 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             });
           }
 
+          const rowToUpsert = existingRow ?? nextIoRows[nextIoRows.length - 1]!;
+          const nextHardwareMappingV2 = upsertScalarMappingEntry(state.hardwareMappingV2, rowToUpsert);
+
           return commitDesignSnapshot(
             state,
             {
               circuit: nextCircuit,
               projectIoRows: nextIoRows,
+              hardwareMappingV2: nextHardwareMappingV2,
               macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
             },
             {
@@ -1117,6 +1189,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             {
               circuit: nextCircuit,
               projectIoRows: cloneIoRows(state.projectIoRows),
+              hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
               macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
             },
             {
@@ -1574,6 +1647,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 {
                   circuit: cloneCircuit(result.circuit),
                   projectIoRows: cloneIoRows(state.projectIoRows),
+                  hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
                   macroInsertionCounts: {
                     ...state.macroInsertionCounts,
                     [macroId]: nextInstanceIndex,
@@ -1621,6 +1695,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         sourceExampleId: state.sourceExampleId,
         scenarioAuthority: state.scenarioAuthority,
         activeExampleId: state.activeExampleId,
+        hardwareMappingV2: structuredClone(state.hardwareMappingV2),
         projectIoRows: cloneIoRows(state.projectIoRows),
         projectVectors: cloneVectors(state.projectVectors),
         scenarios: state.scenarios.map((s) => ({ ...s, vectors: s.vectors.map((v) => ({ ...v, inputs: { ...v.inputs }, expected: { ...(v.expected ?? {}) } })) })),
@@ -1693,6 +1768,7 @@ export function mergePersistedRuntimeState(
           : currentState.projectDescription,
       circuit: candidate.circuit,
       ioMapping: toIoMapping(normalizedRows),
+      hardwareMappingV2: (candidate as Partial<PersistedRuntimeState>).hardwareMappingV2,
       vectors: normalizedVectors,
       macros: Array.isArray(candidate.macros) ? candidate.macros : currentState.macros,
       customComponents: Array.isArray(candidate.customComponents)
@@ -1711,7 +1787,8 @@ export function mergePersistedRuntimeState(
 
   const circuit = cloneCircuit(normalizedProject.circuit);
   const legacyProjectIoRows = ioRowsFromProject(normalizedProject);
-  const projectIoRows = synchronizeProjectIoRows(circuit, legacyProjectIoRows);
+  const hardwareMappingV2 = pickHardwareMappingV2FromProject(normalizedProject);
+  const projectIoRows = deriveProjectIoRowsFromCircuitAndV2(circuit, hardwareMappingV2);
   const projectVectors = normalizeVectorsForLiveIo(
     rekeyVectorsForLiveIo(cloneVectors(normalizedProject.vectors ?? []), legacyProjectIoRows, projectIoRows),
     projectIoRows
@@ -1889,6 +1966,7 @@ export function mergePersistedRuntimeState(
     sourceExampleId: persistedSourceExampleId,
     scenarioAuthority: detachedScenarioAuthority,
     activeExampleId: restoredProjectKind === 'example' ? persistedSourceExampleId : null,
+    hardwareMappingV2,
     projectIoRows,
     projectVectors: detachedProjectVectors,
     scenarios: detachedScenarios,
@@ -1979,7 +2057,8 @@ function createEmptyProjectState(
   } = {}
 ): RuntimeSeedState {
   const circuit: Circuit = { nodes: [], connections: [] };
-  const projectIoRows: ProjectIoRow[] = [];
+  const hardwareMappingV2 = structuredClone(EMPTY_HARDWARE_MAPPING_V2);
+  const projectIoRows: ProjectIoRow[] = deriveProjectIoRowsFromCircuitAndV2(circuit, hardwareMappingV2);
   const projectVectors: TestVector[] = [];
   const defaultScenario = createDefaultScenario(projectVectors);
   return {
@@ -1991,6 +2070,7 @@ function createEmptyProjectState(
     sourceExampleId: null,
     scenarioAuthority: 'none',
     activeExampleId: null,
+    hardwareMappingV2,
     projectIoRows,
     projectVectors,
     scenarios: [defaultScenario],
@@ -2018,8 +2098,10 @@ function stateFromExample(
   example: IdeExampleDefinition,
   projectId = createProjectId(example.id)
 ): RuntimeSeedState {
-  const projectIoRows = cloneIoRows(example.ioRows);
   const circuit = cloneCircuit(example.circuit);
+  const enriched = enrichProjectIoRowsWithV2Metadata(cloneIoRows(example.ioRows), undefined);
+  const hardwareMappingV2 = buildHardwareMappingV2FromProjectIoRows(enriched);
+  const projectIoRows = deriveProjectIoRowsFromCircuitAndV2(circuit, hardwareMappingV2);
   const baseSimState = initializeSimulationStateForCircuit(circuit, projectIoRows);
   // Build kit probes from example.probes if defined
   const kitProbes = (example.probes ?? []).map((p) => ({
@@ -2036,6 +2118,7 @@ function stateFromExample(
     sourceExampleId: example.id,
     scenarioAuthority: example.vectors.length > 0 ? 'starter' : 'none',
     activeExampleId: example.id,
+    hardwareMappingV2,
     projectIoRows,
     projectVectors: cloneVectors(example.vectors),
     scenarios: [createDefaultScenario(example.vectors)],
@@ -2221,8 +2304,9 @@ function normalizeMacroInsertionCounts(value: unknown): Record<string, number> {
 }
 
 function ioRowsFromProject(project: RBProject): ProjectIoRow[] {
+  const effective = resolveIoMappingFromProjectFields(project) ?? project.ioMapping;
   const rows: ProjectIoRow[] = [];
-  for (const entry of project.ioMapping?.inputs ?? []) {
+  for (const entry of effective?.inputs ?? []) {
     rows.push({
       id: entry.id,
       nodeId: entry.nodeId,
@@ -2233,7 +2317,7 @@ function ioRowsFromProject(project: RBProject): ProjectIoRow[] {
       required: true,
     });
   }
-  for (const entry of project.ioMapping?.outputs ?? []) {
+  for (const entry of effective?.outputs ?? []) {
     rows.push({
       id: entry.id,
       nodeId: entry.nodeId,
@@ -2244,7 +2328,7 @@ function ioRowsFromProject(project: RBProject): ProjectIoRow[] {
       required: true,
     });
   }
-  return rows;
+  return enrichProjectIoRowsWithV2Metadata(rows, project.hardwareMappingV2);
 }
 
 function cloneIoRows(rows: ProjectIoRow[]): ProjectIoRow[] {
@@ -2274,6 +2358,9 @@ function cloneDesignHistorySnapshot(snapshot: DesignHistorySnapshot): DesignHist
   return {
     circuit: cloneCircuit(snapshot.circuit),
     projectIoRows: cloneIoRows(snapshot.projectIoRows),
+    hardwareMappingV2: snapshot.hardwareMappingV2
+      ? structuredClone(snapshot.hardwareMappingV2)
+      : undefined,
     projectVectors: snapshot.projectVectors ? cloneVectors(snapshot.projectVectors) : undefined,
     macroInsertionCounts: cloneMacroInsertionCounts(snapshot.macroInsertionCounts),
   };
@@ -2300,11 +2387,15 @@ function cloneDesignHistoryFuture(
 }
 
 function createDesignHistorySnapshot(
-  state: Pick<ProjectRuntimeState, 'circuit' | 'projectIoRows' | 'projectVectors' | 'macroInsertionCounts'>
+  state: Pick<
+    ProjectRuntimeState,
+    'circuit' | 'hardwareMappingV2' | 'projectIoRows' | 'projectVectors' | 'macroInsertionCounts'
+  >
 ): DesignHistorySnapshot {
   return {
     circuit: cloneCircuit(state.circuit),
     projectIoRows: cloneIoRows(state.projectIoRows),
+    hardwareMappingV2: structuredClone(state.hardwareMappingV2),
     projectVectors: cloneVectors(state.projectVectors),
     macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
   };
@@ -2700,6 +2791,7 @@ function commitDesignSnapshot(
 ): Pick<
   ProjectRuntimeState,
   | 'circuit'
+  | 'hardwareMappingV2'
   | 'projectIoRows'
   | 'projectVectors'
   | 'customVectors'
@@ -2718,7 +2810,11 @@ function commitDesignSnapshot(
   | 'projectHealthCore'
 > {
   const nextCircuit = cloneCircuit(snapshot.circuit);
-  const nextIoRows = synchronizeProjectIoRows(nextCircuit, cloneIoRows(snapshot.projectIoRows));
+  const nextHardwareMappingV2 =
+    snapshot.hardwareMappingV2 !== undefined
+      ? structuredClone(snapshot.hardwareMappingV2)
+      : migrateIoMappingToHardwareMappingV2(toIoMappingFromProjectIoRows(snapshot.projectIoRows));
+  const nextIoRows = deriveProjectIoRowsFromCircuitAndV2(nextCircuit, nextHardwareMappingV2);
   const sourceProjectVectors = snapshot.projectVectors
     ? cloneVectors(snapshot.projectVectors)
     : cloneVectors(state.projectVectors);
@@ -2791,6 +2887,7 @@ function commitDesignSnapshot(
     : state.projectDescription;
   return {
     circuit: nextCircuit,
+    hardwareMappingV2: nextHardwareMappingV2,
     projectIoRows: nextIoRows,
     projectVectors: detachedProjectVectors,
     customVectors: detachedCustomVectors,
@@ -3134,6 +3231,7 @@ function normalizePersistedDesignHistorySnapshot(value: unknown): DesignHistoryS
       description: '',
       circuit: candidate.circuit,
       ioMapping: toIoMapping(normalizedRows),
+      hardwareMappingV2: candidate.hardwareMappingV2,
       vectors: [],
       meta: {
         projectId: 'rb-history-snapshot',
@@ -3144,14 +3242,16 @@ function normalizePersistedDesignHistorySnapshot(value: unknown): DesignHistoryS
   }
 
   const normalizedCircuit = cloneCircuit(normalizedProject.circuit);
-  const normalizedProjectIoRows = synchronizeProjectIoRows(
+  const hardwareMappingV2 = pickHardwareMappingV2FromProject(normalizedProject);
+  const normalizedProjectIoRows = deriveProjectIoRowsFromCircuitAndV2(
     normalizedCircuit,
-    ioRowsFromProject(normalizedProject)
+    hardwareMappingV2
   );
 
   return {
     circuit: normalizedCircuit,
     projectIoRows: normalizedProjectIoRows,
+    hardwareMappingV2,
     projectVectors: normalizeVectorsForLiveIo(
       normalizePersistedVectors(candidate.projectVectors, []),
       normalizedProjectIoRows

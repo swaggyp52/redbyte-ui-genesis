@@ -14,7 +14,7 @@ import {
   type VerifyScheduleContract,
   type VerifySchedule,
 } from './verifySchedule';
-import { buildTopLevelBindingRefs } from './basys3ExportModel';
+import { buildTopLevelBindingRefs, toSignalName } from './basys3ExportModel';
 
 interface SignalCatalog {
   inputs: string[];
@@ -165,6 +165,10 @@ function buildLabelToEntityRef(
     const rawBase = indexedMatch[1] ?? '';
     const normalizedBase = rawBase.toLowerCase() === 'ld' ? 'led' : rawBase.toLowerCase();
     const bitIndex = Number.parseInt(indexedMatch[2] ?? '0', 10);
+    const numberedPort = portsByBase.get(`${normalizedBase}${bitIndex}`);
+    if (numberedPort) {
+      return numberedPort.name;
+    }
     const port = portsByBase.get(normalizedBase);
     if (!port) return undefined;
     return port.isVector ? `${port.name}(${bitIndex})` : port.name;
@@ -180,8 +184,14 @@ function buildLabelToEntityRef(
   );
 
   for (const entry of allEntries) {
-    countLabelAlias(entry.label);
-    countLabelAlias(nodeLabelsById.get(entry.nodeId ?? ''));
+    const label = entry.label?.trim() ?? '';
+    const nodeLabel = (nodeLabelsById.get(entry.nodeId ?? '') ?? '').trim();
+    if (label.length > 0) {
+      countLabelAlias(label);
+    }
+    if (nodeLabel.length > 0 && nodeLabel.toLowerCase() !== label.toLowerCase()) {
+      countLabelAlias(nodeLabel);
+    }
   }
 
   const processEntries = (
@@ -567,9 +577,9 @@ function collectSignals(
       // Derive canonical port names from ioMapping — label takes precedence,
       // matching basys3Bundle.toSignalName() and verilog-generator.ts exactly.
       for (const entry of project.ioMapping?.inputs ?? []) {
-        const canonical = entry.label?.trim()
-          ? toVhdlIdentifier(entry.label.trim())
-          : toVhdlIdentifier(`${entry.nodeId}_${entry.port}`);
+        // Use toSignalName (same sanitizer as basys3ExportModel/top.vhd) so the
+        // fallback testbench path emits identical identifiers to the entity.
+        const canonical = toSignalName(entry);
         inputNames.add(canonical);
         addLogicalAlias(canonical, canonical);
         addLogicalAlias(entry.id, canonical);
@@ -581,9 +591,9 @@ function collectSignals(
         addLogicalAlias(node?.label, canonical);
       }
       for (const entry of project.ioMapping?.outputs ?? []) {
-        const canonical = entry.label?.trim()
-          ? toVhdlIdentifier(entry.label.trim())
-          : toVhdlIdentifier(`${entry.nodeId}_${entry.port}`);
+        // Use toSignalName (same sanitizer as basys3ExportModel/top.vhd) so the
+        // fallback testbench path emits identical identifiers to the entity.
+        const canonical = toSignalName(entry);
         outputNames.add(canonical);
         addLogicalAlias(canonical, canonical);
         addLogicalAlias(entry.id, canonical);

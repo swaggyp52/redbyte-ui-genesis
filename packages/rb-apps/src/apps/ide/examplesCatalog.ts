@@ -1,6 +1,9 @@
 import type { Circuit } from '@redbyte/rb-logic-core';
-import type { TestVector } from '@redbyte/rb-utils';
+import type { HardwareBoardResourceType, HardwareTimingRole, TestVector } from '@redbyte/rb-utils';
 import { LAB_STARTERS } from './labStarters';
+
+/** Map Pins / hardwareMappingV2 entry classification (mirrors V2 entry kinds). */
+export type ProjectIoMappingKind = 'scalar' | 'bit' | 'slice' | 'bus' | 'group';
 
 export interface IdeExampleIoRow {
   id: string;
@@ -10,6 +13,10 @@ export interface IdeExampleIoRow {
   direction: 'in' | 'out';
   pin: string;
   required: boolean;
+  /** Structured mapping kind — defaults to scalar when absent. */
+  mappingKind?: ProjectIoMappingKind;
+  timingRole?: HardwareTimingRole;
+  boardResourceType?: HardwareBoardResourceType;
 }
 
 export interface IdeExampleDefinition {

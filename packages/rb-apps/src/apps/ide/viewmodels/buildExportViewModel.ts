@@ -10,7 +10,7 @@ import { generateVivadoImportTcl } from '../../../fpga/boards/basys3/vivadoImpor
 import type { VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
 import { getRuntimeVerifyRunKind, type RuntimeVerifyRun } from '../projectRuntime';
 import { computeScenarioContentHash, type VerifyScenario } from '../verifyScenario';
-import type { TestVector } from '@redbyte/rb-utils';
+import { resolveIoMappingFromProjectFields, type IoMapping, type TestVector } from '@redbyte/rb-utils';
 import {
   createIdeDiagnostic,
   type IdeDiagnostic,
@@ -22,6 +22,13 @@ import {
 import { buildBringUpArtifacts } from '../bringupArtifacts';
 import { getStudentFacingIoLabel } from '../ioLabels';
 import { flattenProjectMacros } from '../macros/macroFlattener';
+
+function getEffectiveIoMapping(project: RBProject): IoMapping | undefined {
+  return resolveIoMappingFromProjectFields({
+    ioMapping: project.ioMapping,
+    hardwareMappingV2: project.hardwareMappingV2,
+  });
+}
 
 export type ExportDiagnosticSeverity = 'error' | 'warning';
 export type ExportPinDirection = 'in' | 'out' | 'inout';
@@ -345,10 +352,11 @@ function buildPinTable(
     existing.suggestedPin = existing.suggestedPin || suggestedPin;
   };
 
-  for (const entry of project.ioMapping?.inputs ?? []) {
+  const ioMapping = getEffectiveIoMapping(project);
+  for (const entry of ioMapping?.inputs ?? []) {
     appendMapping('in', entry);
   }
-  for (const entry of project.ioMapping?.outputs ?? []) {
+  for (const entry of ioMapping?.outputs ?? []) {
     appendMapping('out', entry);
   }
 
@@ -872,7 +880,8 @@ function collectBringUpIoRows(project: RBProject): Array<{
     required: boolean;
   }> = [];
 
-  for (const input of project.ioMapping?.inputs ?? []) {
+  const ioMapping = getEffectiveIoMapping(project);
+  for (const input of ioMapping?.inputs ?? []) {
     rows.push({
       id: input.id,
       nodeId: input.nodeId,
@@ -884,7 +893,7 @@ function collectBringUpIoRows(project: RBProject): Array<{
     });
   }
 
-  for (const output of project.ioMapping?.outputs ?? []) {
+  for (const output of ioMapping?.outputs ?? []) {
     rows.push({
       id: output.id,
       nodeId: output.nodeId,
@@ -935,10 +944,11 @@ function buildMappingIndex(project: RBProject): Map<string, MappingIndexEntry> {
     });
   };
 
-  for (const input of project.ioMapping?.inputs ?? []) {
+  const ioMapping = getEffectiveIoMapping(project);
+  for (const input of ioMapping?.inputs ?? []) {
     upsert(input);
   }
-  for (const output of project.ioMapping?.outputs ?? []) {
+  for (const output of ioMapping?.outputs ?? []) {
     upsert(output);
   }
   return index;
