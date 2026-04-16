@@ -1084,4 +1084,56 @@ describe('mergePersistedRuntimeState', () => {
       },
     ]);
   });
+
+  it('restores structured hardwareMappingV2 bus entries through persistence', () => {
+    const current = useProjectRuntime.getState();
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-v2-structured-restore',
+        projectName: 'Structured V2 Restore',
+        activeExampleId: null,
+        circuit: {
+          nodes: [
+            { id: 'sw_bus_node_0', type: 'INPUT', x: 0, y: 0 },
+            { id: 'sw_bus_node_1', type: 'INPUT', x: 0, y: 40 },
+            { id: 'ld_bus_node', type: 'OUTPUT', x: 20, y: 0 },
+          ],
+          connections: [],
+        },
+        projectIoRows: [],
+        projectVectors: [],
+        hardwareMappingV2: {
+          schemaVersion: '2.0',
+          boardId: 'basys3',
+          entries: [
+            {
+              kind: 'bus',
+              id: 'switches',
+              direction: 'in',
+              portName: 'switches',
+              width: 2,
+              timingRole: 'manual_step',
+              boardResourceType: 'switch',
+              bits: [
+                { id: 'switches[0]', bitIndex: 0, nodeId: 'sw_bus_node_0', port: 'out', pin: 'V17' },
+                { id: 'switches[1]', bitIndex: 1, nodeId: 'sw_bus_node_1', port: 'out', pin: 'V16' },
+              ],
+            },
+          ],
+        },
+      },
+      current
+    );
+
+    const bus = merged.hardwareMappingV2.entries.find((entry) => entry.id === 'switches');
+    expect(bus?.kind).toBe('bus');
+    if (bus?.kind === 'bus') {
+      expect(bus.bits).toHaveLength(2);
+      expect(bus.bits[0]?.pin).toBe('V17');
+    }
+    const rowIds = merged.projectIoRows.map((row) => row.id);
+    expect(rowIds).toContain('switches_0');
+    expect(rowIds).toContain('switches_1');
+    expect(merged.projectIoRows.find((row) => row.id === 'switches_0')?.mappingKind).toBe('bus');
+  });
 });

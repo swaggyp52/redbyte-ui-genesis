@@ -81,6 +81,7 @@ import { netlistFromCircuit } from '../export/netlistExport';
 import { vhdlFromNetlist } from '../export/vhdlExport';
 import { buildVhdlTopLevelBindings } from '../fpga/boards/basys3/basys3Bundle';
 import { deriveVerifySchedule } from '../fpga/boards/basys3/verifySchedule';
+import type { HardwareMappingV2EditOperation } from './ide/hardwareMappingV2EditorModel';
 
 const DesignSurface = React.lazy(() =>
   import('./ide/surfaces/DesignSurface').then((module) => ({ default: module.DesignSurface }))
@@ -198,6 +199,7 @@ export const IdeApp: React.FC = () => {
   const loadExample = useProjectRuntime((state) => state.loadExample);
   const loadFromProject = useProjectRuntime((state) => state.loadFromProject);
   const setMappingPin = useProjectRuntime((state) => state.setMappingPin);
+  const applyHardwareMappingEdit = useProjectRuntime((state) => state.applyHardwareMappingEdit);
   const autoSuggestMapping = useProjectRuntime((state) => state.autoSuggestMapping);
   const setVectors = useProjectRuntime((state) => state.setVectors);
   const customVectors = useProjectRuntime((state) => state.customVectors);
@@ -375,6 +377,12 @@ export const IdeApp: React.FC = () => {
   const handleAutoSuggestMapping = useCallback(() => {
     autoSuggestMapping();
   }, [autoSuggestMapping]);
+  const handleApplyHardwareMappingEdit = useCallback(
+    (operation: HardwareMappingV2EditOperation) => {
+      applyHardwareMappingEdit(operation);
+    },
+    [applyHardwareMappingEdit]
+  );
   const derivedTopEntityName = useMemo(() => buildTopEntityName(projectName), [projectName]);
   const effectiveTopEntityName = useMemo(
     () => normalizeTopEntityName(fpgaConfig.top, derivedTopEntityName),
@@ -1708,6 +1716,8 @@ export const IdeApp: React.FC = () => {
               onOpenVerify={() => setCurrentMode('verify')}
               onGoToDesign={() => setCurrentMode('design')}
               onSetMappingPin={handleMappingPinChange}
+              hardwareMappingV2={hardwareMappingV2}
+              onApplyHardwareMappingEdit={handleApplyHardwareMappingEdit}
               signalRoles={liveSignalRoles}
               timingGuidance={liveTimingGuidance}
               verifyLastRun={verifyLastRun}

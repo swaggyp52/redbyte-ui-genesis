@@ -85,6 +85,10 @@ import {
   type ScenarioStepDraft,
   type VerifyScenarioStep,
 } from './verifyScenarioSteps';
+import {
+  applyHardwareMappingV2Edit,
+  type HardwareMappingV2EditOperation,
+} from './hardwareMappingV2EditorModel';
 import { exportProjectAsBasys3 } from '../../fpga/boards/basys3/basys3ExportService';
 import { canonicalizeSemanticCircuit } from '../../circuit/semanticCircuit';
 import { flattenProjectMacros } from './macros/macroFlattener';
@@ -278,6 +282,7 @@ export interface ProjectRuntimeState {
   loadExample: (exampleId: string) => void;
   loadFromProject: (project: RBProject) => void;
   setMappingPin: (rowId: string, pin: string) => void;
+  applyHardwareMappingEdit: (operation: HardwareMappingV2EditOperation) => void;
   autoSuggestMapping: () => void;
   setVectors: (vectors: TestVector[]) => void;
   setCustomVectors: (vectors: CustomTestVector[]) => void;
@@ -712,6 +717,23 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             rowId,
             pin
           );
+          const projectIoRows = deriveProjectIoRowsFromCircuitAndV2(state.circuit, hardwareMappingV2);
+          return {
+            hardwareMappingV2,
+            projectIoRows,
+            scenarioAuthority:
+              state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              dirtySinceVerify: true,
+              dirtySinceExport: true,
+            },
+          };
+        });
+      },
+      applyHardwareMappingEdit: (operation) => {
+        set((state) => {
+          const hardwareMappingV2 = applyHardwareMappingV2Edit(state.hardwareMappingV2, operation);
           const projectIoRows = deriveProjectIoRowsFromCircuitAndV2(state.circuit, hardwareMappingV2);
           return {
             hardwareMappingV2,

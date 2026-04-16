@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-04-15 (Map Pins: structured hardwareMappingV2 editor)
+
+**Subsystem**: IDE Hardware / Map Pins (`HardwareSurface`, `projectRuntime`, `hardwareMappingV2EditorModel`)
+
+### Problem
+
+`hardwareMappingV2` was canonical in runtime/export, but Map Pins still behaved like a flat pin-row workspace. Bus/slice/group semantics were visible as chips on materialized rows, not as first-class authoring objects students could edit without mentally reverse-engineering vector-style rows.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/hardwareMappingV2EditorModel.ts`
+  - real editor helpers: `buildStructuredHardwareEntryViews`, `applyHardwareMappingV2Edit` (upsert/remove/meta/map/clear), `parsePinsInput`, `buildSequentialPins`
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+  - `applyHardwareMappingEdit` mutates **canonical** `hardwareMappingV2` then re-materializes `projectIoRows` (same dirty flags as `setMappingPin`)
+- `packages/rb-apps/src/apps/IdeApp.tsx` + `HardwareSurface.tsx`
+  - Map Pins mode renders a **Structured hardwareMappingV2 editor** panel: per-entry pin CSV apply, SW/LED bank shortcuts for bus/slice, clear/remove, timing/resource metadata, and a create/upsert form for scalar/bit/slice/bus/group entries
+- `packages/rb-apps/src/apps/ide/ide-root.css` — layout for the structured editor stack
+
+### Validation
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/hardwareMappingV2EditorModel.test.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts packages/rb-apps/src/export/__tests__/hardwareMappingV2.export.test.ts` → PASS (41 tests)
+
+### Remaining
+
+- Guided “bind to Design node” pickers (today the create form still expects nodeId/port discipline).
+- Stronger export contract UX when structured ids drift from HDL ports (validation already fails honestly; surface should explain the fix path).
+
 ## Change Log 2026-04-16 (Verify UX: manual-event lab sequencer panel)
 
 **Subsystem**: IDE Verify surface UX (`VerifySurface`, `verifyLabSequencer`, sequencer panel)

@@ -30,8 +30,15 @@ import {
   VERIFY_STAGE_LABEL,
 } from '../workflowStages';
 import type { HardwareBoardResourceType, HardwareTimingRole } from '@redbyte/rb-utils';
+import type { HardwareMappingDocumentV2, HardwareMappingEntryV2 } from '@redbyte/rb-utils';
 import type { ProjectIoMappingKind } from '../examplesCatalog';
 import { deriveMappingCompleteness } from '../hardwareMappingBridge';
+import {
+  buildSequentialPins,
+  buildStructuredHardwareEntryViews,
+  parsePinsInput,
+  type HardwareMappingV2EditOperation,
+} from '../hardwareMappingV2EditorModel';
 
 export interface HardwareMappingRow {
   id: string;
@@ -127,6 +134,8 @@ export interface HardwareSurfaceProps {
   onOpenVerify: () => void;
   onGoToDesign?: () => void;
   onSetMappingPin?: (rowId: string, alias: string) => void;
+  hardwareMappingV2?: HardwareMappingDocumentV2;
+  onApplyHardwareMappingEdit?: (operation: HardwareMappingV2EditOperation) => void;
   signalRoles?: Record<string, IoSignalRole>;
   timingGuidance?: TimingGuidance;
   /** Last completed verify run — provides scenario/run provenance for the board view. */
@@ -219,6 +228,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   onOpenVerify,
   onGoToDesign,
   onSetMappingPin,
+  hardwareMappingV2,
+  onApplyHardwareMappingEdit,
   signalRoles,
   timingGuidance,
   verifyLastRun,
@@ -237,6 +248,22 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
   const [bringupStepIndex, setBringupStepIndex] = useState(0);
   const [selectedMappingRowId, setSelectedMappingRowId] = useState<string | null>(null);
+  const [structuredPinDrafts, setStructuredPinDrafts] = useState<Record<string, string>>({});
+  const [entryMetadataSelection, setEntryMetadataSelection] = useState<string>('');
+  const [newEntryKind, setNewEntryKind] = useState<HardwareMappingEntryV2['kind']>('scalar');
+  const [newEntryId, setNewEntryId] = useState('');
+  const [newEntryDirection, setNewEntryDirection] = useState<'in' | 'out'>('in');
+  const [newEntryPortName, setNewEntryPortName] = useState('');
+  const [newEntryNodeId, setNewEntryNodeId] = useState('');
+  const [newEntryPort, setNewEntryPort] = useState('');
+  const [newEntryLabel, setNewEntryLabel] = useState('');
+  const [newEntryAlias, setNewEntryAlias] = useState('');
+  const [newEntryWidth, setNewEntryWidth] = useState('4');
+  const [newEntryMsb, setNewEntryMsb] = useState('3');
+  const [newEntryLsb, setNewEntryLsb] = useState('0');
+  const [newEntryPinsCsv, setNewEntryPinsCsv] = useState('');
+  const [newGroupMembersCsv, setNewGroupMembersCsv] = useState('');
+  const [newGroupRole, setNewGroupRole] = useState<'switch_bank' | 'led_bank' | 'button_row' | 'custom'>('custom');
   const sim = runtimeSim ?? HARDWARE_EMPTY_SIM;
   const effectiveTimingGuidance = useMemo(() => {
     if (timingGuidance) return timingGuidance;
@@ -374,6 +401,144 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     }
     return groups.filter((g) => g.rows.length > 0);
   }, [clockRoleKeys, effectiveTimingGuidance.signalLabelSingular, mappingRows]);
+  const structuredEntries = useMemo(
+    () => (hardwareMappingV2 ? buildStructuredHardwareEntryViews(hardwareMappingV2) : []),
+    [hardwareMappingV2]
+  );
+  const selectedStructuredEntry = useMemo(
+    () => structuredEntries.find((entry) => entry.id === entryMetadataSelection) ?? null,
+    [entryMetadataSelection, structuredEntries]
+  );
+
+  const applyStructuredEdit = (operation: HardwareMappingV2EditOperation) => {
+    onApplyHardwareMappingEdit?.(operation);
+  };
+
+  const applyEntryPins = (entryId: string) => {
+    const value = structuredPinDrafts[entryId] ?? '';
+    const normalizedPins = parsePinsInput(value);
+    applyStructuredEdit({
+      type: 'map_entry_pins',
+      entryId,
+      pins: normalizedPins,
+    });
+  };
+
+  const applySequentialPinsForEntry = (entryId: string, prefix: string, startIndex: number, count: number) => {
+    const pins = buildSequentialPins(prefix, startIndex, count);
+    if (pins.length === 0) return;
+    applyStructuredEdit({
+      type: 'map_entry_pins',
+      entryId,
+      pins,
+    });
+    setStructuredPinDrafts((previous) => ({
+      ...previous,
+      [entryId]: pins.join(', '),
+    }));
+  };
+
+  const createStructuredEntry = () => {
+    const trimmedId = newEntryId.trim();
+    const trimmedPortName = newEntryPortName.trim() || trimmedId;
+    const trimmedLabel = newEntryLabel.trim();
+    const trimmedAlias = newEntryAlias.trim();
+    if (!trimmedId || !trimmedPortName) return;
+    const pins = parsePinsInput(newEntryPinsCsv);
+    let entry: HardwareMappingEntryV2 | null = null;
+    if (newEntryKind === 'scalar') {
+      if (!newEntryNodeId.trim() || !newEntryPort.trim()) return;
+      entry = {
+        kind: 'scalar',
+        id: trimmedId,
+        direction: newEntryDirection,
+        width: 1,
+        portName: trimmedPortName,
+        nodeId: newEntryNodeId.trim(),
+        port: newEntryPort.trim(),
+        label: trimmedLabel || undefined,
+        alias: trimmedAlias || undefined,
+        pin: pins[0] ?? '',
+      };
+    } else if (newEntryKind === 'bit') {
+      if (!newEntryNodeId.trim() || !newEntryPort.trim()) return;
+      const bitIndex = Number.parseInt(newEntryLsb, 10);
+      if (!Number.isFinite(bitIndex)) return;
+      entry = {
+        kind: 'bit',
+        id: trimmedId,
+        direction: newEntryDirection,
+        portName: trimmedPortName,
+        nodeId: newEntryNodeId.trim(),
+        port: newEntryPort.trim(),
+        bitIndex,
+        label: trimmedLabel || undefined,
+        alias: trimmedAlias || undefined,
+        pin: pins[0] ?? '',
+      };
+    } else if (newEntryKind === 'slice') {
+      if (!newEntryNodeId.trim() || !newEntryPort.trim()) return;
+      const msb = Number.parseInt(newEntryMsb, 10);
+      const lsb = Number.parseInt(newEntryLsb, 10);
+      if (!Number.isFinite(msb) || !Number.isFinite(lsb) || msb < lsb) return;
+      const span = msb - lsb + 1;
+      entry = {
+        kind: 'slice',
+        id: trimmedId,
+        direction: newEntryDirection,
+        portName: trimmedPortName,
+        nodeId: newEntryNodeId.trim(),
+        port: newEntryPort.trim(),
+        msb,
+        lsb,
+        label: trimmedLabel || undefined,
+        alias: trimmedAlias || undefined,
+        pins: Array.from({ length: span }, (_, index) => pins[index] ?? ''),
+      };
+    } else if (newEntryKind === 'bus') {
+      const width = Number.parseInt(newEntryWidth, 10);
+      if (!Number.isFinite(width) || width <= 0) return;
+      entry = {
+        kind: 'bus',
+        id: trimmedId,
+        direction: newEntryDirection,
+        portName: trimmedPortName,
+        width,
+        label: trimmedLabel || undefined,
+        alias: trimmedAlias || undefined,
+        bits: Array.from({ length: width }, (_, index) => ({
+          id: `${trimmedId}[${index}]`,
+          bitIndex: index,
+          nodeId: newEntryNodeId.trim() || `${trimmedId}_node`,
+          port: newEntryPort.trim() || (newEntryDirection === 'in' ? 'out' : 'in'),
+          pin: pins[index] ?? '',
+          label: trimmedLabel ? `${trimmedLabel}[${index}]` : `${trimmedId}[${index}]`,
+        })),
+      };
+    } else {
+      const memberIds = newGroupMembersCsv
+        .split(',')
+        .map((token) => token.trim())
+        .filter((token) => token.length > 0);
+      entry = {
+        kind: 'group',
+        id: trimmedId,
+        direction: newEntryDirection,
+        portName: trimmedPortName,
+        label: trimmedLabel || undefined,
+        alias: trimmedAlias || undefined,
+        groupRole: newGroupRole,
+        memberIds,
+      };
+    }
+    if (!entry) return;
+    applyStructuredEdit({
+      type: 'upsert_entry',
+      entry,
+    });
+    setNewEntryId('');
+    setNewEntryPinsCsv('');
+  };
 
   const [debounceDismissed, setDebounceDismissed] = useState(() => {
     try { return localStorage.getItem('rb-debounce-tip-dismissed') === '1'; } catch { return false; }
@@ -1646,6 +1811,230 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         {hwMode === 'map' ? (
           <div className="ide-hw-map-mode" data-testid="ide-hw-map-mode">
             <div className="ide-hw-map-table" data-testid="ide-hw-map-table">
+              {structuredEntries.length > 0 && (
+                <div className="ide-hw-structured-editor" data-testid="ide-hw-structured-editor">
+                  <h4 className="ide-hw-structured-editor-title">Structured hardwareMappingV2 editor</h4>
+                  <p className="ide-copy ide-hw-map-instructions">
+                    Edit scalar/bit/slice/bus/group entries directly. V2 remains the canonical source for save/reload/export.
+                  </p>
+                  <div className="ide-hw-structured-entry-list">
+                    {structuredEntries.map((entry) => (
+                      <div className="ide-hw-structured-entry-row" key={entry.id} data-testid={`ide-hw-structured-entry-${entry.id}`}>
+                        <div className="ide-hw-structured-entry-main">
+                          <strong>{entry.id}</strong>
+                          <span className="ide-hw-map-chip ide-hw-map-chip--kind">{formatMappingKindChip(entry.kind)}</span>
+                          <span className={`ide-hw-map-chip ide-hw-map-chip--complete ide-hw-map-chip--complete-${entry.completeness}`}>
+                            {formatCompletenessChip(entry.completeness)}
+                          </span>
+                          <span className="ide-hw-map-chip">{entry.mappedBits}/{entry.totalBits || 1} pins</span>
+                        </div>
+                        <div className="ide-hw-structured-entry-actions">
+                          <input
+                            value={structuredPinDrafts[entry.id] ?? ''}
+                            onChange={(event) =>
+                              setStructuredPinDrafts((previous) => ({
+                                ...previous,
+                                [entry.id]: event.target.value,
+                              }))
+                            }
+                            placeholder="Pins (comma separated)"
+                            data-testid={`ide-hw-structured-pins-${entry.id}`}
+                          />
+                          <IdeButton tone="secondary" onClick={() => applyEntryPins(entry.id)}>
+                            Apply pins
+                          </IdeButton>
+                          {(entry.kind === 'bus' || entry.kind === 'slice') && (
+                            <>
+                              <IdeButton tone="ghost" onClick={() => applySequentialPinsForEntry(entry.id, 'SW', 0, entry.totalBits || 1)}>
+                                SW bank
+                              </IdeButton>
+                              <IdeButton tone="ghost" onClick={() => applySequentialPinsForEntry(entry.id, 'LD', 0, entry.totalBits || 1)}>
+                                LED bank
+                              </IdeButton>
+                            </>
+                          )}
+                          <IdeButton
+                            tone="ghost"
+                            onClick={() =>
+                              applyStructuredEdit({
+                                type: 'clear_entry_pins',
+                                entryId: entry.id,
+                              })
+                            }
+                          >
+                            Clear
+                          </IdeButton>
+                          <IdeButton
+                            tone="ghost"
+                            onClick={() => setEntryMetadataSelection(entry.id)}
+                          >
+                            Edit role
+                          </IdeButton>
+                          <IdeButton
+                            tone="danger"
+                            onClick={() =>
+                              applyStructuredEdit({
+                                type: 'remove_entry',
+                                entryId: entry.id,
+                              })
+                            }
+                          >
+                            Remove
+                          </IdeButton>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {selectedStructuredEntry && (
+                    <div className="ide-hw-structured-meta-editor" data-testid="ide-hw-structured-meta-editor">
+                      <h5>{selectedStructuredEntry.id} metadata</h5>
+                      <div className="ide-hw-structured-meta-row">
+                        <label>
+                          Timing role
+                          <select
+                            defaultValue={selectedStructuredEntry.timingRole ?? 'generic'}
+                            onChange={(event) =>
+                              applyStructuredEdit({
+                                type: 'set_entry_meta',
+                                entryId: selectedStructuredEntry.id,
+                                label: selectedStructuredEntry.label,
+                                alias: selectedStructuredEntry.alias,
+                                timingRole: event.target.value as HardwareTimingRole,
+                                boardResourceType: selectedStructuredEntry.boardResourceType,
+                              })
+                            }
+                          >
+                            <option value="generic">generic</option>
+                            <option value="clock">clock</option>
+                            <option value="reset">reset</option>
+                            <option value="manual_step">manual_step</option>
+                            <option value="enable">enable</option>
+                          </select>
+                        </label>
+                        <label>
+                          Resource
+                          <select
+                            defaultValue={selectedStructuredEntry.boardResourceType ?? 'generic'}
+                            onChange={(event) =>
+                              applyStructuredEdit({
+                                type: 'set_entry_meta',
+                                entryId: selectedStructuredEntry.id,
+                                label: selectedStructuredEntry.label,
+                                alias: selectedStructuredEntry.alias,
+                                timingRole: selectedStructuredEntry.timingRole,
+                                boardResourceType: event.target.value as HardwareBoardResourceType,
+                              })
+                            }
+                          >
+                            <option value="generic">generic</option>
+                            <option value="switch">switch</option>
+                            <option value="button">button</option>
+                            <option value="led">led</option>
+                            <option value="clock_pin">clock_pin</option>
+                            <option value="seven_seg">seven_seg</option>
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                  <details>
+                    <summary>Create or upsert structured entry</summary>
+                    <div className="ide-hw-structured-create-grid" data-testid="ide-hw-structured-create-grid">
+                      <label>
+                        Kind
+                        <select value={newEntryKind} onChange={(event) => setNewEntryKind(event.target.value as HardwareMappingEntryV2['kind'])}>
+                          <option value="scalar">scalar</option>
+                          <option value="bit">bit</option>
+                          <option value="slice">slice</option>
+                          <option value="bus">bus</option>
+                          <option value="group">group</option>
+                        </select>
+                      </label>
+                      <label>
+                        ID
+                        <input value={newEntryId} onChange={(event) => setNewEntryId(event.target.value)} />
+                      </label>
+                      <label>
+                        Direction
+                        <select value={newEntryDirection} onChange={(event) => setNewEntryDirection(event.target.value as 'in' | 'out')}>
+                          <option value="in">in</option>
+                          <option value="out">out</option>
+                        </select>
+                      </label>
+                      <label>
+                        Port name
+                        <input value={newEntryPortName} onChange={(event) => setNewEntryPortName(event.target.value)} />
+                      </label>
+                      <label>
+                        Node ID
+                        <input value={newEntryNodeId} onChange={(event) => setNewEntryNodeId(event.target.value)} />
+                      </label>
+                      <label>
+                        Port
+                        <input value={newEntryPort} onChange={(event) => setNewEntryPort(event.target.value)} />
+                      </label>
+                      <label>
+                        Label
+                        <input value={newEntryLabel} onChange={(event) => setNewEntryLabel(event.target.value)} />
+                      </label>
+                      <label>
+                        Alias
+                        <input value={newEntryAlias} onChange={(event) => setNewEntryAlias(event.target.value)} />
+                      </label>
+                      {newEntryKind === 'bus' && (
+                        <label>
+                          Width
+                          <input value={newEntryWidth} onChange={(event) => setNewEntryWidth(event.target.value)} />
+                        </label>
+                      )}
+                      {newEntryKind === 'slice' && (
+                        <>
+                          <label>
+                            MSB
+                            <input value={newEntryMsb} onChange={(event) => setNewEntryMsb(event.target.value)} />
+                          </label>
+                          <label>
+                            LSB
+                            <input value={newEntryLsb} onChange={(event) => setNewEntryLsb(event.target.value)} />
+                          </label>
+                        </>
+                      )}
+                      {newEntryKind === 'bit' && (
+                        <label>
+                          Bit index
+                          <input value={newEntryLsb} onChange={(event) => setNewEntryLsb(event.target.value)} />
+                        </label>
+                      )}
+                      <label>
+                        Pins CSV
+                        <input value={newEntryPinsCsv} onChange={(event) => setNewEntryPinsCsv(event.target.value)} />
+                      </label>
+                      {newEntryKind === 'group' && (
+                        <>
+                          <label>
+                            Group role
+                            <select value={newGroupRole} onChange={(event) => setNewGroupRole(event.target.value as 'switch_bank' | 'led_bank' | 'button_row' | 'custom')}>
+                              <option value="custom">custom</option>
+                              <option value="switch_bank">switch_bank</option>
+                              <option value="led_bank">led_bank</option>
+                              <option value="button_row">button_row</option>
+                            </select>
+                          </label>
+                          <label>
+                            Member IDs CSV
+                            <input value={newGroupMembersCsv} onChange={(event) => setNewGroupMembersCsv(event.target.value)} />
+                          </label>
+                        </>
+                      )}
+                    </div>
+                    <div className="ide-inline-actions">
+                      <IdeButton tone="secondary" onClick={createStructuredEntry} testId="ide-hw-structured-create-btn">
+                        Save entry
+                      </IdeButton>
+                    </div>
+                  </details>
+                </div>
+              )}
               <p className="ide-copy ide-hw-map-instructions">
                 {hasNoBoundaryRows
                   ? 'Add inputs and outputs in Design, then return here to map Basys3 pins.'

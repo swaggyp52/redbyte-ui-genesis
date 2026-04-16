@@ -570,4 +570,59 @@ describe('HardwareSurface readiness', () => {
     expect(cta.textContent).toContain('Vivado Hardware Manager');
     expect(cta.textContent).toContain('Program Device');
   });
+
+  it('applies structured hardware mapping pin edits from map mode', () => {
+    const onApplyHardwareMappingEdit = vi.fn();
+    const { getByTestId, getAllByText } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Structured map editor"
+          expectedBehavior="Map structured entries"
+          mappingRows={[
+            { id: 'reset', label: 'reset', direction: 'in', pin: '', required: true, timingRole: 'reset' },
+          ]}
+          hardwareMappingV2={{
+            schemaVersion: '2.0',
+            boardId: 'basys3',
+            entries: [
+              {
+                kind: 'scalar',
+                id: 'reset',
+                direction: 'in',
+                width: 1,
+                portName: 'reset',
+                nodeId: 'reset_node',
+                port: 'out',
+                label: 'reset',
+                timingRole: 'reset',
+                pin: '',
+              },
+            ],
+          }}
+          onApplyHardwareMappingEdit={onApplyHardwareMappingEdit}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={makeHealth({
+            lastVerify: undefined,
+            lastExport: undefined,
+            dirtySinceVerify: false,
+            dirtySinceExport: false,
+            blockingIssues: [],
+          })}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    fireEvent.change(getByTestId('ide-hw-structured-pins-reset'), { target: { value: 'V17' } });
+    fireEvent.click(getAllByText('Apply pins')[0]!);
+
+    expect(onApplyHardwareMappingEdit).toHaveBeenCalledWith({
+      type: 'map_entry_pins',
+      entryId: 'reset',
+      pins: ['V17'],
+    });
+  });
 });

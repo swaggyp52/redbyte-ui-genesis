@@ -95,7 +95,13 @@ Latest Verify sequencer step-editor slice landed (2026-04-15):
 - sequencer UX now includes typed authoring fields for target/value/expected/label plus duration and pulse semantics, and keeps register/state-bank detail cards tied to selected ticks
 - targeted Verify/runtime regression suite is green (`6` files, `85` tests)
 
-Next action after this slice: keep Verify momentum and implement a richer typed step form experience (kind-specific controls for bus/slice, assert-bus, inspect-state-bank) before shifting primary focus to Map Pins structured editing.
+Latest Map Pins structured V2 editor slice landed (2026-04-15):
+
+- Map Pins now exposes a first-class **hardwareMappingV2** editing stack (scalar/bit/slice/bus/group) instead of only materialized pin rows + board click binding
+- runtime adds `applyHardwareMappingEdit` so structured mutations stay canonical and re-project into `projectIoRows` with the same verify/export dirty semantics as pin clicks
+- targeted regression suite is green for the new editor model + Hardware surface wiring + persistence/export guard tests (`4` files, `41` tests)
+
+Next action after this slice: add Design/HDL-linked guided pickers for bus/slice creation so structured entries cannot drift from real ports, then resume Verify kind-specific step polish once Map Pins no longer lags structured truth.
 
 Latest Lab 8 classroom-readiness slice landed (2026-04-14):
 

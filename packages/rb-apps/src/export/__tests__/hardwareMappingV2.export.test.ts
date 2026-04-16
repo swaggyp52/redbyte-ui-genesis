@@ -91,4 +91,49 @@ describe('Basys3 export with hardwareMappingV2', () => {
     expect(result.bundle?.topXdc).toMatch(/V17/);
     expect(result.bundle?.topXdc).toMatch(/U16/);
   });
+
+  it('reports required-port gaps when structured bus/slice ids do not match entity ports', () => {
+    const project: RBProject = {
+      ...buildMinimalMappedProject(),
+      ioMapping: undefined,
+      hardwareMappingV2: {
+        schemaVersion: '2.0',
+        boardId: 'basys3',
+        entries: [
+          {
+            kind: 'bus',
+            id: 'sw_bus',
+            direction: 'in',
+            portName: 'sw_bus',
+            width: 1,
+            boardResourceType: 'switch',
+            bits: [
+              {
+                id: 'sw0',
+                bitIndex: 0,
+                nodeId: 'sw0_node',
+                port: 'out',
+                pin: 'V17',
+              },
+            ],
+          },
+          {
+            kind: 'slice',
+            id: 'ld_bus',
+            direction: 'out',
+            portName: 'ld_bus',
+            nodeId: 'ld0_node',
+            port: 'in',
+            msb: 0,
+            lsb: 0,
+            pins: ['U16'],
+          },
+        ],
+      },
+    };
+
+    const result = exportProjectAsBasys3(project);
+    expect(result.success).toBe(false);
+    expect(result.errors.some((error) => /ld0/i.test(error.message))).toBe(true);
+  });
 });
