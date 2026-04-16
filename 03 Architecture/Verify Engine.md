@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: verify
-updated: 2026-04-14
+updated: 2026-04-15
 related:
   - "[[Design Surface]]"
   - "[[Verify Design Loop]]"
@@ -32,6 +32,13 @@ Verify currently spans three layers:
 3. `IdeApp.tsx` + `surfaces/VerifySurface.tsx` decide which hash, vectors, and banners the student actually sees.
 
 The deterministic engine itself does run against a fresh circuit + IO snapshot. The weak spots are the layers above it: freshness is still computed in multiple ways and the scenario/session model is only partially live outside the normal shell path. The latest Phase 6 slice made the remaining local Verify toggle explicit authoring intent: `VerifySurface` now uses `nextRunUsesAssertions` for next-run copy/preflight/wiring, while current-run meaning stays on `VerifySessionStatus` plus persisted `runKind`. `READY` / `BLOCKED` now survive only as a draft-only presentation shim.
+
+The latest manual-event sequencer-authority slice made step intent first-class in the runtime workflow:
+
+- `VerifyScenario` now supports persisted typed `steps[]`, and runtime verification now treats those steps as authoritative when present (vector rows remain compatibility fallback)
+- manual-event Verify now exposes inline step editing controls (kind, target, value, expected, label, duration, pulse behavior) with reorder and delete operations
+- runtime scenario actions now support append, update, move, and delete for scenario steps, and those edits flow through the same deterministic compatibility-vector materialization path
+- per-step internal-state observation now includes register/state-bank detail cards for selected ticks, not only summary counts
 
 The latest Lab 8 classroom-readiness slice hardened one remaining sequential authoring seam for manual-clock labs:
 

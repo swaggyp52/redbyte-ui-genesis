@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-04-14
+updated: 2026-04-15
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
@@ -87,6 +87,15 @@ Latest hardware/export mapping-authority slice landed (2026-04-14):
 - targeted validation is complete for this slice: `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx` passed (`3` files, `30` tests), and live browser replay on `http://127.0.0.1:5173/os/` confirmed the blank/custom, `Signal Tour`, and `2-Bit Up Counter` student paths
 
 Next action after this slice: if Hardware/Export classroom risk remains active, add one browser contract or gate that walks blank/home -> `Signal Tour` -> `2-Bit Up Counter` and asserts the current mapping/export truths; otherwise resume the next highest product-risk slice from the active board.
+
+Latest Verify sequencer step-editor slice landed (2026-04-15):
+
+- manual-event Verify now has runtime-backed step editing (inline update, reorder, delete) instead of append-only quick actions
+- scenario-step authority is now explicit in runtime actions and verify reruns: if `scenario.steps[]` exists, those steps drive compatibility vectors for deterministic replay/verification
+- sequencer UX now includes typed authoring fields for target/value/expected/label plus duration and pulse semantics, and keeps register/state-bank detail cards tied to selected ticks
+- targeted Verify/runtime regression suite is green (`6` files, `85` tests)
+
+Next action after this slice: keep Verify momentum and implement a richer typed step form experience (kind-specific controls for bus/slice, assert-bus, inspect-state-bank) before shifting primary focus to Map Pins structured editing.
 
 Latest Lab 8 classroom-readiness slice landed (2026-04-14):
 

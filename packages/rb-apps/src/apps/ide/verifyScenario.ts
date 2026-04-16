@@ -1,5 +1,10 @@
 import type { TestVector } from '@redbyte/rb-utils';
 import { digestValue } from '../../utils/digest';
+import {
+  materializeVectorsFromScenarioSteps,
+  normalizeScenarioSteps,
+  type VerifyScenarioStep,
+} from './verifyScenarioSteps';
 
 export interface VerifyScenario {
   /** Stable identifier — survives renames and vector edits. */
@@ -8,6 +13,8 @@ export interface VerifyScenario {
   name: string;
   /** Ordered test vectors (tick + inputs + expected outputs). */
   vectors: TestVector[];
+  /** Explicit sequencer contract. When present, this is verify-authority. */
+  steps?: VerifyScenarioStep[];
   /**
    * Monotonic version counter — incremented on every save.
    * Stored in run metadata so result-to-scenario drift is machine-checkable.
@@ -22,6 +29,8 @@ export interface VerifyScenario {
 export const DEFAULT_SCENARIO_ID = 'default';
 export const DEFAULT_SCENARIO_NAME = 'Default';
 
+export type { VerifyScenarioStep } from './verifyScenarioSteps';
+
 /**
  * Create a new named scenario with a fresh UUID, optionally seeded from a vector set.
  * Use this for "New Scenario" and "Duplicate" actions — never reuse an existing ID.
@@ -29,11 +38,12 @@ export const DEFAULT_SCENARIO_NAME = 'Default';
  */
 export function createScenario(name: string, seedVectors: TestVector[] = []): VerifyScenario {
   const trimmedName = name.trim() || 'New Scenario';
+  const normalizedVectors = seedVectors.map(cloneVector);
   const now = new Date().toISOString();
   return {
     id: crypto.randomUUID(),
     name: trimmedName,
-    vectors: seedVectors.map(cloneVector),
+    vectors: normalizedVectors,
     version: 1,
     createdAt: now,
     updatedAt: now,
@@ -42,11 +52,12 @@ export function createScenario(name: string, seedVectors: TestVector[] = []): Ve
 
 /** Create a new scenario from a vector set (or empty if omitted). */
 export function createDefaultScenario(vectors: TestVector[] = []): VerifyScenario {
+  const normalizedVectors = vectors.map(cloneVector);
   const now = new Date().toISOString();
   return {
     id: DEFAULT_SCENARIO_ID,
     name: DEFAULT_SCENARIO_NAME,
-    vectors: vectors.map(cloneVector),
+    vectors: normalizedVectors,
     version: 1,
     createdAt: now,
     updatedAt: now,
@@ -60,7 +71,8 @@ export function createDefaultScenario(vectors: TestVector[] = []): VerifyScenari
 export function stampScenario(scenario: VerifyScenario): VerifyScenario {
   return {
     ...scenario,
-    vectors: scenario.vectors.map(cloneVector),
+    vectors: materializeScenarioVectors(scenario),
+    steps: scenario.steps?.map(cloneStep),
     version: scenario.version + 1,
     updatedAt: new Date().toISOString(),
   };
@@ -75,7 +87,8 @@ export function computeScenarioContentHash(scenario: VerifyScenario): string {
   return `scn_${digestValue({
     id: scenario.id,
     version: scenario.version,
-    vectors: scenario.vectors,
+    vectors: materializeScenarioVectors(scenario),
+    steps: scenario.steps ?? [],
   }).slice(0, 12)}`;
 }
 
@@ -99,7 +112,14 @@ export function computeVectorStimulusHash(
 }
 
 export function computeScenarioStimulusHash(scenario: VerifyScenario): string {
-  return computeVectorStimulusHash(scenario.vectors);
+  return computeVectorStimulusHash(materializeScenarioVectors(scenario));
+}
+
+/**
+ * Returns vectors from explicit steps when present; falls back to stored vectors.
+ */
+export function materializeScenarioVectors(scenario: VerifyScenario): TestVector[] {
+  return materializeVectorsFromScenarioSteps(scenario.steps, scenario.vectors);
 }
 
 /**
@@ -116,7 +136,11 @@ export function repairScenarioLibrary(
   fallbackVectors: TestVector[] = []
 ): { scenarios: VerifyScenario[]; activeScenarioId: string } {
   const valid = Array.isArray(rawScenarios)
-    ? rawScenarios.filter(isValidScenario)
+    ? rawScenarios.filter(isValidScenario).map((scenario) => ({
+        ...scenario,
+        vectors: scenario.vectors.map(cloneVector),
+        steps: normalizeScenarioSteps(scenario.steps),
+      }))
     : [];
 
   if (valid.length === 0) {
@@ -162,11 +186,13 @@ export function getActiveScenario(
 function isValidScenario(value: unknown): value is VerifyScenario {
   if (!value || typeof value !== 'object') return false;
   const s = value as Record<string, unknown>;
+  const steps = normalizeScenarioSteps(s.steps);
   return (
     typeof s.id === 'string' && s.id.trim().length > 0 &&
     typeof s.name === 'string' &&
     Array.isArray(s.vectors) &&
-    typeof s.version === 'number'
+    typeof s.version === 'number' &&
+    (s.steps === undefined || Array.isArray(steps))
   );
 }
 
@@ -176,6 +202,23 @@ function cloneVector(v: TestVector): TestVector {
     inputs: { ...v.inputs },
     expected: { ...(v.expected ?? {}) },
   };
+}
+
+function cloneStep(step: VerifyScenarioStep): VerifyScenarioStep {
+  return {
+    ...step,
+    value: cloneStepBitOrRecord(step.value),
+    expectedValue: cloneStepBitOrRecord(step.expectedValue),
+  };
+}
+
+function cloneStepBitOrRecord(
+  value: VerifyScenarioStep['value']
+): VerifyScenarioStep['value'] {
+  if (value && typeof value === 'object') {
+    return { ...value };
+  }
+  return value;
 }
 
 function normalizeStimulusRecord(

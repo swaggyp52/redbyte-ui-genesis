@@ -96,6 +96,16 @@ import { VerifyCommandBar } from './verify/VerifyCommandBar';
 import { VerifyFirstRunPanel } from './verify/VerifyFirstRunPanel';
 import { VerifyWaveformPlaceholder } from './verify/VerifyWaveformPlaceholder';
 import { TickReadoutStrip } from './verify/TickReadoutStrip';
+import { VerifyLabSequencerPanel } from './verify/VerifyLabSequencerPanel';
+import {
+  buildLabSequencerSteps,
+  buildLabSequencerStepsFromScenarioSteps,
+  summarizeStateObservation,
+} from '../verifyLabSequencer';
+import type { VerifyScenarioStepKind } from '../verifyScenarioSteps';
+import type { ScenarioStepDraft } from '../verifyScenarioSteps';
+import type { VerifyScenarioStep } from '../verifyScenarioSteps';
+import { deriveScenarioStepsFromVectors } from '../verifyScenarioSteps';
 
 interface VerifyRow {
   tick: number;
@@ -197,6 +207,13 @@ export interface VerifySurfaceProps {
   onRenameScenario?: (name: string) => void;
   onDeleteScenario?: (id: string) => void;
   onSwitchScenario?: (id: string) => void;
+  onAppendScenarioStep?: (draft: ScenarioStepDraft) => void;
+  onUpdateScenarioStep?: (
+    stepId: string,
+    patch: Partial<Omit<VerifyScenarioStep, 'id' | 'order' | 'origin'>>
+  ) => void;
+  onMoveScenarioStep?: (stepId: string, direction: 'up' | 'down') => void;
+  onDeleteScenarioStep?: (stepId: string) => void;
   /** Live semantic signal roles from IO rows + schedule. Populates clockSignals before any verify run. Run roles override on conflict. */
   liveSignalRoles?: Record<string, 'clock' | 'reset' | 'input' | 'output'>;
   liveScheduleContract?: VerifyScheduleContract;
@@ -312,6 +329,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   onRenameScenario,
   onDeleteScenario,
   onSwitchScenario,
+  onAppendScenarioStep,
+  onUpdateScenarioStep,
+  onMoveScenarioStep,
+  onDeleteScenarioStep,
   projectKind = 'blank',
   sourceExampleId = null,
   scenarioAuthority = 'none',
@@ -3354,6 +3375,61 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     lastRun && runRows.length > 0 && inputCoverage
       ? `${inputCoverage.pct}% coverage`
       : undefined;
+  const labSequencerSteps = useMemo(() => {
+    const explicitSteps = buildLabSequencerStepsFromScenarioSteps(activeScenario?.steps);
+    if (explicitSteps.length > 0) return explicitSteps;
+    return buildLabSequencerSteps(authoredVectors, signalRoleLookup);
+  }, [activeScenario?.steps, authoredVectors, signalRoleLookup]);
+  const editableScenarioSteps = useMemo(() => {
+    if (activeScenario?.steps && activeScenario.steps.length > 0) {
+      return [...activeScenario.steps].sort((left, right) => left.order - right.order);
+    }
+    return deriveScenarioStepsFromVectors(authoredVectors);
+  }, [activeScenario?.steps, authoredVectors]);
+  const selectedTickSignalSample = useMemo(() => {
+    if (selectedTick == null) return null;
+    const sample: Record<string, string> = {};
+    for (const signal of signalTimeline) {
+      const atTick = signal.values.find((entry) => entry.tick === selectedTick);
+      if (atTick) {
+        sample[signal.signal] = atTick.value;
+      }
+    }
+    return Object.keys(sample).length > 0 ? sample : null;
+  }, [selectedTick, signalTimeline]);
+  const stateObservationSummary = useMemo(
+    () =>
+      summarizeStateObservation(
+        selectedTickSignalSample,
+        signalTimeline.map((entry) => entry.signal)
+      ),
+    [selectedTickSignalSample, signalTimeline]
+  );
+  const sequencerModeLabel =
+    activeScheduleContract?.timingMode === 'manual_event_driven_lab'
+      ? 'Manual-event lab mode'
+      : isSequentialRun
+        ? 'General sequential mode'
+        : 'Combinational observation mode';
+  const stateObservationLabel =
+    selectedTick == null
+      ? 'Select a tick to inspect register/state-bank behavior in this sequence.'
+      : `${stateObservationSummary.registerSignalCount} register signal(s), ${stateObservationSummary.stateBankSignalCount} state-bank signal(s), ${stateObservationSummary.totalObservedSignals} observed signal(s) at t${selectedTick}.`;
+  const selectedStateObservationDetails = useMemo(() => {
+    if (!selectedTickSignalSample) return [];
+    const rows: Array<{ signal: string; value: string; category: 'register' | 'state_bank' }> = [];
+    for (const [signal, value] of Object.entries(selectedTickSignalSample)) {
+      const normalized = signal.toLowerCase();
+      if (normalized.startsWith('reg_') || normalized.includes('register')) {
+        rows.push({ signal, value, category: 'register' });
+        continue;
+      }
+      if (normalized.startsWith('state_bank') || normalized.includes('statebank')) {
+        rows.push({ signal, value, category: 'state_bank' });
+      }
+    }
+    return rows.sort((left, right) => left.signal.localeCompare(right.signal));
+  }, [selectedTickSignalSample]);
   // ─────────────────────────────────────────────────────────────────────────────
   const shortenHash = (value: string | null | undefined): string => {
     if (!value || value.trim().length === 0) return '—';
@@ -4450,6 +4526,73 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             onDuplicate={() => onDuplicateScenario?.()}
             onRename={(name) => onRenameScenario?.(name)}
             onDelete={(id) => onDeleteScenario?.(id)}
+          />
+        )}
+        {activeScheduleContract?.timingMode === 'manual_event_driven_lab' && (
+          <VerifyLabSequencerPanel
+            modeLabel={sequencerModeLabel}
+            scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
+            stepCount={labSequencerSteps.length}
+            selectedTick={selectedTick}
+            steps={labSequencerSteps}
+            editableSteps={editableScenarioSteps}
+            stateObservationLabel={stateObservationLabel}
+            stateDetails={selectedStateObservationDetails}
+            onSelectStepTick={(tick) => {
+              setSelectedTick(tick);
+              setIsStepMode(true);
+            }}
+            onQuickAddStep={(kind) => {
+              if (!onAppendScenarioStep) return;
+              const defaultInput = inputFields[0]?.id;
+              const defaultOutput = outputFields[0]?.id;
+              if (kind === 'set_bus') {
+                onAppendScenarioStep({
+                  kind,
+                  targetRef: defaultInput,
+                  value: defaultInput ? { [defaultInput]: 1 } : undefined,
+                  label: 'Quick set bus/slice',
+                });
+                return;
+              }
+              if (kind === 'pulse_step') {
+                const pulseTarget =
+                  Object.entries(signalRoleLookup).find(([, role]) => role === 'clock')?.[0] ?? defaultInput;
+                onAppendScenarioStep({
+                  kind,
+                  targetRef: pulseTarget,
+                  value: 1,
+                  label: 'Quick pulse step',
+                });
+                return;
+              }
+              if (kind === 'apply_reset') {
+                const resetTarget =
+                  Object.entries(signalRoleLookup).find(([, role]) => role === 'reset')?.[0] ?? defaultInput;
+                onAppendScenarioStep({
+                  kind,
+                  targetRef: resetTarget,
+                  value: 1,
+                  label: 'Quick apply reset',
+                });
+                return;
+              }
+              onAppendScenarioStep({
+                kind,
+                targetRef: defaultOutput,
+                expectedValue: 1,
+                label: 'Quick assert output/state',
+              });
+            }}
+            onUpdateStep={(stepId, patch) => {
+              onUpdateScenarioStep?.(stepId, patch);
+            }}
+            onMoveStep={(stepId, direction) => {
+              onMoveScenarioStep?.(stepId, direction);
+            }}
+            onDeleteStep={(stepId) => {
+              onDeleteScenarioStep?.(stepId);
+            }}
           />
         )}
 

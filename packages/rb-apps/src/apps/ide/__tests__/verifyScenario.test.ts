@@ -7,11 +7,13 @@ import {
   repairScenarioLibrary,
   migrateProjectVectorsToScenario,
   getActiveScenario,
+  materializeScenarioVectors,
   DEFAULT_SCENARIO_ID,
   DEFAULT_SCENARIO_NAME,
   type VerifyScenario,
 } from '../verifyScenario';
 import type { TestVector } from '@redbyte/rb-utils';
+import { createScenarioStep } from '../verifyScenarioSteps';
 
 const vec = (tick: number): TestVector => ({
   tick,
@@ -122,6 +124,27 @@ describe('computeScenarioStimulusHash', () => {
     };
 
     expect(computeScenarioStimulusHash(updated)).not.toBe(computeScenarioStimulusHash(baseline));
+  });
+});
+
+describe('materializeScenarioVectors', () => {
+  it('uses explicit steps as the authoritative vectors when present', () => {
+    const scenario = createDefaultScenario([{ tick: 0, inputs: { a: 0 }, expected: { y: 0 } }]);
+    scenario.steps = [
+      createScenarioStep({ kind: 'set_input', targetRef: 'a', value: 1 }, 0),
+      createScenarioStep({ kind: 'assert_scalar', targetRef: 'y', expectedValue: 1 }, 1),
+    ];
+
+    const vectors = materializeScenarioVectors(scenario);
+    expect(vectors[0]?.inputs).toEqual({ a: 1 });
+    expect(vectors[1]?.expected).toEqual({ y: 1 });
+  });
+
+  it('falls back to stored vectors when no explicit steps exist', () => {
+    const scenario = createDefaultScenario([{ tick: 2, inputs: { a: 1 }, expected: { y: 1 } }]);
+    scenario.steps = undefined;
+
+    expect(materializeScenarioVectors(scenario)).toEqual(scenario.vectors);
   });
 });
 

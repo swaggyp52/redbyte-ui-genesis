@@ -209,6 +209,10 @@ export const IdeApp: React.FC = () => {
   const renameVerifyScenario = useProjectRuntime((state) => state.renameScenario);
   const deleteVerifyScenario = useProjectRuntime((state) => state.deleteScenario);
   const switchVerifyScenario = useProjectRuntime((state) => state.switchScenario);
+  const appendVerifyScenarioStep = useProjectRuntime((state) => state.appendScenarioStep);
+  const updateVerifyScenarioStep = useProjectRuntime((state) => state.updateScenarioStep);
+  const moveVerifyScenarioStep = useProjectRuntime((state) => state.moveScenarioStep);
+  const deleteVerifyScenarioStep = useProjectRuntime((state) => state.deleteScenarioStep);
   const applyCircuitMutation = useProjectRuntime((state) => state.applyCircuitMutation);
   const undoProjectEdit = useProjectRuntime((state) => state.undoProjectEdit);
   const redoProjectEdit = useProjectRuntime((state) => state.redoProjectEdit);
@@ -1677,6 +1681,10 @@ export const IdeApp: React.FC = () => {
               onRenameScenario={renameVerifyScenario}
               onDeleteScenario={deleteVerifyScenario}
               onSwitchScenario={switchVerifyScenario}
+              onAppendScenarioStep={appendVerifyScenarioStep}
+              onUpdateScenarioStep={updateVerifyScenarioStep}
+              onMoveScenarioStep={moveVerifyScenarioStep}
+              onDeleteScenarioStep={deleteVerifyScenarioStep}
               projectKind={projectKind}
               sourceExampleId={sourceExampleId}
               scenarioAuthority={scenarioAuthority}

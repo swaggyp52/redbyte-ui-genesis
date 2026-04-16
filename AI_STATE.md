@@ -1,5 +1,40 @@
 # AI State
 
+## Change Log 2026-04-16 (Verify UX: manual-event lab sequencer panel)
+
+**Subsystem**: IDE Verify surface UX (`VerifySurface`, `verifyLabSequencer`, sequencer panel)
+
+### Problem
+
+Manual-event step mode existed but still felt like a waveform toggle. Verify lacked an explicit, readable lab-sequencer flow that tells students what the scenario is doing (set input, reset, pulse, assert) and how to inspect state at each tick.
+
+### What changed
+
+- Added `packages/rb-apps/src/apps/ide/verifyLabSequencer.ts`:
+  - `buildLabSequencerSteps(...)` derives ordered, explicit step types from authored vectors and signal roles:
+    - `set_input`
+    - `apply_reset`
+    - `pulse_step`
+    - `observe_assert_output`
+  - `summarizeStateObservation(...)` provides selected-tick register/state-bank observation counts for in-flow state inspection context.
+- Added `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyLabSequencerPanel.tsx`:
+  - first-class “Lab sequencer” panel with mode label, scenario name, ordered step list, and “Open tN” actions that synchronize selected tick + step mode.
+  - integrated state-observation summary so register/state-bank inspection is part of the Verify flow rather than hidden side context.
+- Updated `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`:
+  - computes sequencer steps from active vectors + role truth.
+  - renders the sequencer panel for `manual_event_driven_lab` timing mode.
+  - uses active scenario name (fallback to last run scenario name) to keep scenario identity visible.
+- Updated styling in `packages/rb-apps/src/apps/ide/ide-root.css` for sequencer readability and hierarchy.
+
+### Validation
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifyLabSequencer.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.manualLabStepMode.test.tsx` → PASS (4 tests)
+
+### Remaining
+
+- Sequencer currently derives from vector rows; next batch should add explicit scenario-step authoring (typed step objects persisted with scenario metadata).
+- State inspection is currently summary-level; next batch should expose richer register/state-bank value cards per step.
+
 ## Change Log 2026-04-16 (Repo sync: rebase onto origin, lab8 fixture hygiene, batched commits)
 
 **Subsystem**: Git / fixtures / maintainer workflow
@@ -30739,5 +30774,103 @@ Key details:
 
 - The live dev app still emits a React runtime console error (`Expected static flag was missing`) that appears unrelated to this shell/rail pass and should be isolated separately.
 - `verifySurface.panelOwnership.test.tsx` still carries 2 skipped tests for the removed collapsed-rail behavior and should be rewritten or deleted in a cleanup pass.
+
+- **Attribution**: Connor Angiel
+
+---
+
+## Change Log 2026-04-15 (Verify: persisted sequencer steps become first-class authority)
+
+**Subsystem**: Verify scenario model + runtime authority + manual-event Verify UX
+
+**Problem**
+
+- Manual-event Verify showed a sequencer narrative, but the narrative was still derived from vectors.
+- Verify could not persist typed lab procedure intent (`set/reset/pulse/assert/inspect`) as a first-class scenario contract.
+- Internal state observation in the sequencer panel was summary-only (counts) with no per-step detail cards.
+
+**Files changed**
+
+- `packages/rb-apps/src/apps/ide/verifyScenarioSteps.ts` (new)
+- `packages/rb-apps/src/apps/ide/verifyScenario.ts`
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyLabSequencerPanel.tsx`
+- `packages/rb-apps/src/apps/ide/verifyLabSequencer.ts`
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+- `packages/rb-apps/src/apps/ide/__tests__/verifyScenarioSteps.test.ts` (new)
+- `packages/rb-apps/src/apps/ide/__tests__/verifyScenario.test.ts`
+- `packages/rb-apps/src/apps/ide/__tests__/verifyLabSequencer.test.ts`
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.manualLabStepMode.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts`
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts`
+
+**What changed**
+
+- Added a persisted typed step model (`VerifyScenarioStep`) with the requested lab step kinds and metadata (`targetRef`, `value`, `expectedValue`, labels/notes, order, pulse/duration semantics).
+- Added conversion utilities:
+  - derive typed steps from legacy vector scenarios for migration fallback,
+  - materialize compatibility vectors from explicit steps for deterministic runtime verify.
+- Updated runtime scenario authority so verify runs now consume `scenario.steps[]` when present; legacy scenarios still run from vectors.
+- Added runtime action `appendScenarioStep` and wired it through `IdeApp` -> `VerifySurface`.
+- Updated the manual-event sequencer panel to:
+  - consume explicit steps first (fallback to derived vectors),
+  - expose a primary quick authoring strip (set bus/slice, reset, pulse, assert),
+  - render per-step register/state-bank detail cards for the selected tick.
+
+**Validation**
+
+- `pnpm vitest run packages/rb-apps/src/apps/ide/__tests__/verifyScenarioSteps.test.ts packages/rb-apps/src/apps/ide/__tests__/verifyScenario.test.ts packages/rb-apps/src/apps/ide/__tests__/verifyLabSequencer.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.manualLabStepMode.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` -> PASS (`83 passed`)
+
+**Remaining weakness**
+
+- Authoring is currently "quick action append" (no full typed step editor form yet for bus slices/register-bank selectors and fine-grained duration editing).
+- Scenario step persistence is currently runtime/persist-store authority; project-file/export packaging of step contracts is a follow-on slice.
+
+- **Attribution**: Connor Angiel
+
+---
+
+## Change Log 2026-04-15 (Verify: full typed step editor controls for scenario.steps[])
+
+**Subsystem**: Verify sequencer UX + runtime scenario-step operations
+
+**Problem**
+
+- The first `scenario.steps[]` slice made steps persisted/authoritative, but authoring was still append-driven and lacked direct inline editing controls.
+
+**Files changed**
+
+- `packages/rb-apps/src/apps/ide/projectRuntime.ts`
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyLabSequencerPanel.tsx`
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.manualLabStepMode.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts`
+- `03 Architecture/Verify Engine.md`
+- `01 Dashboard/RedByte Engineering Brain.md`
+
+**What changed**
+
+- Added runtime scenario-step mutation actions:
+  - `updateScenarioStep(stepId, patch)`
+  - `moveScenarioStep(stepId, 'up' | 'down')`
+  - `deleteScenarioStep(stepId)`
+- Wired these actions through `IdeApp` into `VerifySurface`.
+- Added inline sequencer step editor UI for persisted steps:
+  - editable `kind`, `target`, `value`, `expected`, `label`
+  - `durationTicks` and `pulseBehavior` controls
+  - reorder up/down and delete controls per step
+- Preserved deterministic authority chain by running all step mutations through stamped scenarios and compatibility vector rematerialization.
+
+**Validation**
+
+- `pnpm vitest run packages/rb-apps/src/apps/ide/__tests__/verifyScenarioSteps.test.ts packages/rb-apps/src/apps/ide/__tests__/verifyScenario.test.ts packages/rb-apps/src/apps/ide/__tests__/verifyLabSequencer.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.manualLabStepMode.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` -> PASS (`85 passed`)
+
+**Remaining weakness**
+
+- Step editing is inline and functional, but still generic; kind-specific editors (e.g. bus/slice picker, state-bank register picker, assert-bus shape builder) remain next.
 
 - **Attribution**: Connor Angiel

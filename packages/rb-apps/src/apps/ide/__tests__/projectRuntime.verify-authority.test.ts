@@ -6,6 +6,7 @@ import { deriveVerifySchedule } from '../../../fpga/boards/basys3/verifySchedule
 import { choosePrimaryProjectCta, deriveProjectHealth } from '../projectHealth';
 import { useProjectRuntime } from '../projectRuntime';
 import { computeScenarioContentHash } from '../verifyScenario';
+import { createScenarioStep } from '../verifyScenarioSteps';
 
 function buildAuthorityFixture(): RBProject {
   return {
@@ -788,6 +789,75 @@ describe('projectRuntime verify authority', () => {
     expect(run.runKind).toBe('verify');
     expect(run.report.vectors[0]?.inputs).toEqual({ sw0: 1 });
     expect(run.report.vectors[0]?.expected).toEqual({ ld0: 1 });
+  });
+
+  it('uses explicit scenario steps over stale compatibility vectors during rerun', () => {
+    useProjectRuntime.setState((state) => ({
+      ...state,
+      projectVectors: [{ tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } }],
+      scenarios: state.scenarios.map((scenario) =>
+        scenario.id === state.activeScenarioId
+          ? {
+              ...scenario,
+              vectors: [{ tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } }],
+              steps: [
+                createScenarioStep({ kind: 'set_input', targetRef: 'sw0', value: 1 }, 0),
+                createScenarioStep({ kind: 'assert_scalar', targetRef: 'ld0', expectedValue: 1 }, 1),
+              ],
+            }
+          : scenario
+      ),
+    }));
+
+    const run = useProjectRuntime.getState().runVerification({
+      scenarioId: 'scenario-steps-authority',
+      scenarioName: 'Scenario Steps Authority',
+      deterministicHash: 'scenario-steps-authority-hash',
+      rows: [],
+      ranAtIso: '2026-04-15T19:00:00.000Z',
+      useRuntimeTrace: false,
+    });
+
+    expect(run.status).toBe('pass');
+    expect(run.report.vectors[0]?.inputs).toEqual({ sw0: 1 });
+    expect(run.report.vectors[1]?.expected).toEqual({ ld0: 1 });
+  });
+
+  it('supports inline step update, reorder, and delete operations', () => {
+    useProjectRuntime.getState().appendScenarioStep({
+      kind: 'set_input',
+      targetRef: 'sw0',
+      value: 1,
+      label: 'seed-step',
+    });
+    useProjectRuntime.getState().appendScenarioStep({
+      kind: 'assert_scalar',
+      targetRef: 'ld0',
+      expectedValue: 1,
+      label: 'assert-step',
+    });
+
+    let state = useProjectRuntime.getState();
+    const baselineSteps = state.scenarios.find((scenario) => scenario.id === state.activeScenarioId)?.steps ?? [];
+    const firstStep = baselineSteps[0];
+    const secondStep = baselineSteps[1];
+
+    expect(firstStep).toBeTruthy();
+    expect(secondStep).toBeTruthy();
+
+    useProjectRuntime.getState().updateScenarioStep(firstStep!.id, {
+      targetRef: 'sw0',
+      value: 0,
+      label: 'edited-step',
+    });
+    useProjectRuntime.getState().moveScenarioStep(secondStep!.id, 'up');
+    useProjectRuntime.getState().deleteScenarioStep(firstStep!.id);
+
+    state = useProjectRuntime.getState();
+    const activeSteps = state.scenarios.find((scenario) => scenario.id === state.activeScenarioId)?.steps ?? [];
+    expect(activeSteps).toHaveLength(baselineSteps.length - 1);
+    expect(activeSteps.find((step) => step.id === firstStep!.id)).toBeUndefined();
+    expect(activeSteps.every((step, index) => step.order === index)).toBe(true);
   });
 
   it('prunes removed outputs from project and custom vectors after a design mutation', () => {

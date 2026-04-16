@@ -72,11 +72,19 @@ import {
   createScenario,
   createDefaultScenario,
   getActiveScenario,
+  materializeScenarioVectors,
   migrateProjectVectorsToScenario,
   repairScenarioLibrary,
   stampScenario,
   type VerifyScenario,
 } from './verifyScenario';
+import {
+  createScenarioStep,
+  deriveScenarioStepsFromVectors,
+  normalizeScenarioSteps,
+  type ScenarioStepDraft,
+  type VerifyScenarioStep,
+} from './verifyScenarioSteps';
 import { exportProjectAsBasys3 } from '../../fpga/boards/basys3/basys3ExportService';
 import { canonicalizeSemanticCircuit } from '../../circuit/semanticCircuit';
 import { flattenProjectMacros } from './macros/macroFlattener';
@@ -280,6 +288,13 @@ export interface ProjectRuntimeState {
   renameScenario: (name: string) => void;
   deleteScenario: (scenarioId: string) => void;
   switchScenario: (scenarioId: string) => void;
+  appendScenarioStep: (draft: ScenarioStepDraft) => void;
+  updateScenarioStep: (
+    stepId: string,
+    patch: Partial<Omit<VerifyScenarioStep, 'id' | 'order' | 'origin'>>
+  ) => void;
+  moveScenarioStep: (stepId: string, direction: 'up' | 'down') => void;
+  deleteScenarioStep: (stepId: string) => void;
   applyCircuitMutation: (circuit: Circuit) => void;
   markDesignMutated: (circuit: Circuit) => void;
   undoProjectEdit: () => void;
@@ -861,7 +876,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         set((state) => {
           const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
           if (!activeScenario) return state;
-          const duplicate = createScenario(`${activeScenario.name} Copy`, activeScenario.vectors);
+          const duplicate = {
+            ...createScenario(`${activeScenario.name} Copy`, materializeScenarioVectors(activeScenario)),
+            steps: activeScenario.steps?.map(cloneScenarioStep),
+          };
           return commitScenarioSelection(state, [...state.scenarios, duplicate], duplicate.id);
         });
       },
@@ -906,6 +924,84 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             return state;
           }
           return commitScenarioSelection(state, state.scenarios, activeScenario.id);
+        });
+      },
+      appendScenarioStep: (draft) => {
+        set((state) => {
+          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+          if (!activeScenario) return state;
+          const currentSteps =
+            activeScenario.steps && activeScenario.steps.length > 0
+              ? activeScenario.steps.map(cloneScenarioStep)
+              : deriveScenarioStepsFromVectors(activeScenario.vectors);
+          const nextSteps = [...currentSteps, createScenarioStep(draft, currentSteps.length)];
+          const nextScenario = stampScenario({
+            ...activeScenario,
+            steps: nextSteps,
+            vectors: materializeScenarioVectors({
+              ...activeScenario,
+              steps: nextSteps,
+            }),
+          });
+          const scenarios = state.scenarios.map((scenario) =>
+            scenario.id === nextScenario.id ? nextScenario : scenario
+          );
+          return commitScenarioSelection(state, scenarios, nextScenario.id);
+        });
+      },
+      updateScenarioStep: (stepId, patch) => {
+        set((state) => {
+          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+          if (!activeScenario) return state;
+          const nextScenario = mutateScenarioSteps(activeScenario, (steps) =>
+            steps.map((step) => {
+              if (step.id !== stepId) return step;
+              return {
+                ...step,
+                ...patch,
+              };
+            })
+          );
+          if (!nextScenario) return state;
+          const scenarios = state.scenarios.map((scenario) =>
+            scenario.id === nextScenario.id ? nextScenario : scenario
+          );
+          return commitScenarioSelection(state, scenarios, nextScenario.id);
+        });
+      },
+      moveScenarioStep: (stepId, direction) => {
+        set((state) => {
+          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+          if (!activeScenario) return state;
+          const nextScenario = mutateScenarioSteps(activeScenario, (steps) => {
+            const currentIndex = steps.findIndex((step) => step.id === stepId);
+            if (currentIndex < 0) return steps;
+            const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+            if (targetIndex < 0 || targetIndex >= steps.length) return steps;
+            const reordered = [...steps];
+            const [item] = reordered.splice(currentIndex, 1);
+            reordered.splice(targetIndex, 0, item);
+            return reordered;
+          });
+          if (!nextScenario) return state;
+          const scenarios = state.scenarios.map((scenario) =>
+            scenario.id === nextScenario.id ? nextScenario : scenario
+          );
+          return commitScenarioSelection(state, scenarios, nextScenario.id);
+        });
+      },
+      deleteScenarioStep: (stepId) => {
+        set((state) => {
+          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+          if (!activeScenario) return state;
+          const nextScenario = mutateScenarioSteps(activeScenario, (steps) =>
+            steps.filter((step) => step.id !== stepId)
+          );
+          if (!nextScenario) return state;
+          const scenarios = state.scenarios.map((scenario) =>
+            scenario.id === nextScenario.id ? nextScenario : scenario
+          );
+          return commitScenarioSelection(state, scenarios, nextScenario.id);
         });
       },
       applyCircuitMutation: (circuit) => {
@@ -1698,7 +1794,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         hardwareMappingV2: structuredClone(state.hardwareMappingV2),
         projectIoRows: cloneIoRows(state.projectIoRows),
         projectVectors: cloneVectors(state.projectVectors),
-        scenarios: state.scenarios.map((s) => ({ ...s, vectors: s.vectors.map((v) => ({ ...v, inputs: { ...v.inputs }, expected: { ...(v.expected ?? {}) } })) })),
+        scenarios: state.scenarios.map((s) => ({
+          ...s,
+          vectors: s.vectors.map((v) => ({ ...v, inputs: { ...v.inputs }, expected: { ...(v.expected ?? {}) } })),
+          steps: s.steps?.map(cloneScenarioStep),
+        })),
         activeScenarioId: state.activeScenarioId,
         customVectors: [...(state.customVectors ?? [])],
         circuit: cloneCircuit(state.circuit),
@@ -1851,9 +1951,15 @@ export function mergePersistedRuntimeState(
       : migrateProjectVectorsToScenario(projectVectors);
   const scenarios = repairedScenarios.map((scenario) => ({
     ...scenario,
+    steps: normalizeScenarioSteps(scenario.steps),
     vectors: normalizeVectorsForLiveIo(
       rekeyVectorsForLiveIo(
-        cloneVectors(Array.isArray(scenario.vectors) ? scenario.vectors : []),
+        cloneVectors(
+          materializeScenarioVectors({
+            ...scenario,
+            steps: normalizeScenarioSteps(scenario.steps),
+          })
+        ),
         legacyProjectIoRows,
         projectIoRows
       ),
@@ -1915,6 +2021,10 @@ export function mergePersistedRuntimeState(
     ? scenarios.map((scenario) => ({
         ...scenario,
         vectors: stripExpectedOutputs(scenario.vectors),
+        steps: scenario.steps?.map((step) => ({
+          ...step,
+          expectedValue: undefined,
+        })),
       }))
     : scenarios;
   const detachedCustomVectors = normalizeVectorsForLiveIo(
@@ -2170,11 +2280,13 @@ function syncActiveScenarioVectors(
         return {
           ...scenario,
           vectors: nextVectors,
+          steps: scenario.steps ? deriveScenarioStepsFromVectors(nextVectors) : undefined,
         };
       }
       return stampScenario({
         ...scenario,
         vectors: nextVectors,
+        steps: scenario.steps ? deriveScenarioStepsFromVectors(nextVectors) : undefined,
       });
     }),
   };
@@ -2183,9 +2295,9 @@ function syncActiveScenarioVectors(
 function resolveActiveScenarioVectors(
   state: Pick<ProjectRuntimeState, 'scenarios' | 'activeScenarioId' | 'projectVectors'>
 ): TestVector[] {
-  return cloneVectors(
-    getActiveScenario(state.scenarios, state.activeScenarioId)?.vectors ?? state.projectVectors
-  );
+  const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+  if (!activeScenario) return cloneVectors(state.projectVectors);
+  return cloneVectors(materializeScenarioVectors(activeScenario));
 }
 
 function commitScenarioSelection(
@@ -2199,8 +2311,9 @@ function commitScenarioSelection(
   const resolvedActiveScenario =
     getActiveScenario(scenarios, activeScenarioId) ??
     (scenarios.length > 0 ? scenarios[0] : createDefaultScenario(state.projectVectors));
+  const compatibilityVectors = materializeScenarioVectors(resolvedActiveScenario);
   return {
-    projectVectors: cloneVectors(resolvedActiveScenario.vectors),
+    projectVectors: cloneVectors(compatibilityVectors),
     scenarios,
     activeScenarioId: resolvedActiveScenario.id,
     projectHealthCore: {
@@ -2341,6 +2454,48 @@ function cloneVectors<T extends TestVector>(vectors: T[]): T[] {
     inputs: { ...(vector.inputs ?? {}) },
     expected: { ...(vector.expected ?? {}) },
   }));
+}
+
+function cloneScenarioStep(step: VerifyScenarioStep): VerifyScenarioStep {
+  return {
+    ...step,
+    value:
+      step.value && typeof step.value === 'object'
+        ? { ...step.value }
+        : step.value,
+    expectedValue:
+      step.expectedValue && typeof step.expectedValue === 'object'
+        ? { ...step.expectedValue }
+        : step.expectedValue,
+  };
+}
+
+function mutateScenarioSteps(
+  scenario: VerifyScenario,
+  mutate: (steps: VerifyScenarioStep[]) => VerifyScenarioStep[]
+): VerifyScenario | null {
+  const sourceSteps =
+    scenario.steps && scenario.steps.length > 0
+      ? scenario.steps.map(cloneScenarioStep)
+      : deriveScenarioStepsFromVectors(scenario.vectors);
+  const mutated = mutate(sourceSteps)
+    .filter((step) => step.id.trim().length > 0)
+    .map((step, index) => ({
+      ...step,
+      order: index,
+      targetRef: step.targetRef?.trim() || undefined,
+      label: step.label?.trim() || undefined,
+      notes: step.notes?.trim() || undefined,
+    }));
+  const nextScenario = stampScenario({
+    ...scenario,
+    steps: mutated,
+    vectors: materializeScenarioVectors({
+      ...scenario,
+      steps: mutated,
+    }),
+  });
+  return nextScenario;
 }
 
 function cloneCircuit(circuit: Circuit): Circuit {
@@ -2838,7 +2993,7 @@ function commitDesignSnapshot(
     vectors: ensureVectorOutputCoverage(
       normalizeVectorsForLiveIo(
         rekeyVectorsForLiveIo(
-          cloneVectors(Array.isArray(scenario.vectors) ? scenario.vectors : []),
+          cloneVectors(materializeScenarioVectors(scenario)),
           state.projectIoRows,
           nextIoRows
         ),
@@ -2846,6 +3001,21 @@ function commitDesignSnapshot(
       ),
       nextIoRows
     ),
+    steps: scenario.steps
+      ? deriveScenarioStepsFromVectors(
+          ensureVectorOutputCoverage(
+            normalizeVectorsForLiveIo(
+              rekeyVectorsForLiveIo(
+                cloneVectors(materializeScenarioVectors(scenario)),
+                state.projectIoRows,
+                nextIoRows
+              ),
+              nextIoRows
+            ),
+            nextIoRows
+          )
+        )
+      : undefined,
   }));
   const isDetachingFromExample = state.projectKind === 'example' && Boolean(state.activeExampleId);
   const detachedProjectVectors = isDetachingFromExample

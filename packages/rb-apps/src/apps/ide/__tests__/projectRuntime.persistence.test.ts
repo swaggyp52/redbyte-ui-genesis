@@ -906,6 +906,64 @@ describe('mergePersistedRuntimeState', () => {
     expect(merged.activeScenarioId).toBe('sc-custom');
   });
 
+  it('preserves persisted scenario steps and keeps vectors materialized from steps', () => {
+    const current = useProjectRuntime.getState();
+    const scenario = {
+      id: 'sc-steps',
+      name: 'Manual Lab Procedure',
+      vectors: [{ tick: 0, inputs: { a: 0 }, expected: { y: 0 } }],
+      steps: [
+        { id: 's1', order: 0, kind: 'set_input', targetRef: 'a', value: 1, origin: 'explicit' },
+        { id: 's2', order: 1, kind: 'assert_scalar', targetRef: 'y', expectedValue: 1, origin: 'explicit' },
+      ],
+      version: 4,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-03T00:00:00.000Z',
+    };
+
+    const merged = mergePersistedRuntimeState(
+      {
+        projectId: 'rb-with-step-scenarios',
+        projectName: 'With Step Scenarios',
+        activeExampleId: null,
+        projectIoRows: [
+          {
+            id: 'a',
+            nodeId: 'a_node',
+            port: 'out',
+            label: 'a',
+            direction: 'in',
+            pin: '',
+            required: true,
+          },
+          {
+            id: 'y',
+            nodeId: 'y_node',
+            port: 'in',
+            label: 'y',
+            direction: 'out',
+            pin: '',
+            required: true,
+          },
+        ],
+        projectVectors: [],
+        scenarios: [scenario],
+        activeScenarioId: 'sc-steps',
+        circuit: {
+          nodes: [
+            { id: 'a_node', type: 'INPUT', x: 0, y: 0 },
+            { id: 'y_node', type: 'OUTPUT', x: 40, y: 0 },
+          ],
+          connections: [],
+        },
+      },
+      current
+    );
+
+    expect(merged.scenarios[0]?.steps).toHaveLength(2);
+    expect(merged.activeScenarioId).toBe('sc-steps');
+  });
+
   it('self-heals activeScenarioId when it references a deleted scenario', () => {
     const current = useProjectRuntime.getState();
     const scenario = {

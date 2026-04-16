@@ -29165,3 +29165,137 @@ button:disabled,
 }
 
 /* END 2026-04-13 hardware+export finalization */
+
+.ide-verify-lab-sequencer {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  margin-bottom: var(--rb-space-3);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ide-verify-lab-sequencer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--rb-space-3);
+  padding: var(--rb-space-3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ide-verify-lab-sequencer-header h3 {
+  margin: 0 0 4px;
+}
+
+.ide-verify-lab-sequencer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--rb-space-2);
+}
+
+.ide-verify-lab-chip {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ide-verify-lab-sequencer-body {
+  display: grid;
+  gap: var(--rb-space-3);
+  padding: var(--rb-space-3);
+}
+
+.ide-verify-lab-authoring-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rb-space-2);
+  padding: 0 var(--rb-space-3) var(--rb-space-2);
+}
+
+.ide-verify-lab-step-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--rb-space-2);
+}
+
+.ide-verify-lab-step-editor {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: var(--rb-space-2);
+  display: grid;
+  gap: var(--rb-space-2);
+}
+
+.ide-verify-lab-step-editor-row {
+  display: grid;
+  grid-template-columns: 140px 120px 90px 90px 140px 80px 100px auto 48px;
+  gap: var(--rb-space-2);
+  align-items: center;
+}
+
+.ide-verify-lab-step-editor-row input,
+.ide-verify-lab-step-editor-row select {
+  width: 100%;
+}
+
+.ide-verify-lab-step-editor-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.ide-verify-lab-step-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--rb-space-3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: var(--rb-space-2);
+}
+
+.ide-verify-lab-step-kind {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  color: var(--rb-text-subtle);
+}
+
+.ide-verify-lab-step-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.ide-verify-lab-state-summary {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: var(--rb-space-2);
+}
+
+.ide-verify-lab-state-detail-list {
+  list-style: none;
+  margin: var(--rb-space-2) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--rb-space-2);
+}
+
+.ide-verify-lab-state-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: var(--rb-space-2);
+  display: grid;
+  gap: 2px;
+}
+
+.ide-verify-lab-state-kind {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--rb-text-subtle);
+}
