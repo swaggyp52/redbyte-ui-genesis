@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { migrateIoMappingToHardwareMappingV2 } from '@redbyte/rb-utils';
 import type { RBProject } from '../../export/projectFormat';
 import {
   buildImportedProjectCompilerResult,
@@ -91,6 +92,10 @@ function buildManifestProject(): RBProject {
       inputs: [{ id: 'in_a', nodeId: 'port_in_a', port: 'out', label: 'in_a', pin: 'V17' }],
       outputs: [{ id: 'out_y', nodeId: 'port_out_y', port: 'in', label: 'out_y', pin: 'U16' }],
     },
+    hardwareMappingV2: migrateIoMappingToHardwareMappingV2({
+      inputs: [{ id: 'in_a', nodeId: 'port_in_a', port: 'out', label: 'in_a', pin: 'V17' }],
+      outputs: [{ id: 'out_y', nodeId: 'port_out_y', port: 'in', label: 'out_y', pin: 'U16' }],
+    }),
     vectors: [],
   };
 }
@@ -111,6 +116,9 @@ describe('buildImportedProjectCompilerResult', () => {
     expect(result.ir.schemaVersion).toBe('rb.circuit-ir.v2');
     expect(result.simModel.isRunnable).toBe(true);
     expect(result.compilerDiagnostics).toEqual([]);
+    expect(result.project.hardwareMappingV2?.entries).toHaveLength(3);
+    expect(result.project.ioMapping?.inputs).toHaveLength(2);
+    expect(result.project.ioMapping?.outputs).toHaveLength(1);
   });
 
   it('distinguishes reconstruction success from compiler blockage', () => {

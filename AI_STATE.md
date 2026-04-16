@@ -1,5 +1,93 @@
 # AI State
 
+## Change Log 2026-04-16 (Import emits hardwareMappingV2 as primary mapping truth)
+
+**Subsystem**: HDL/XDC import (`importCompiler`, `importToRbProject`)
+
+### Problem
+
+Import only produced legacy structured **`ioMapping`**. Downstream runtime and IDE now treat **`hardwareMappingV2`** as canonical; import was still legacy-first, so freshly imported projects did not carry authoritative V2 until later saves.
+
+### What changed
+
+- `packages/rb-apps/src/import/importCompiler.ts`
+  - After **`buildIoMapping`**, builds **`hardwareMappingV2`** via **`migrateIoMappingToHardwareMappingV2`** plus **`buildHardwareMappingV2ForImportedProject`** (exported): light **`timingRole`** / **`boardResourceType`** hints from parsed port names (`clk` → clock, `rst`/`reset` → reset, step/button patterns → `manual_step`).
+  - **`buildImportedProjectRecord`** now persists **`hardwareMappingV2`** on **`RBProject`** alongside **`ioMapping`** (compatibility / engines that still read flat mapping).
+  - **`elaborateCircuit`** pin map uses **`resolveIoMappingFromProjectFields(project)`** so pins follow the same authority rule as the rest of the app.
+  - **`deriveProjectCompilerResult`** uses the same resolution for pins.
+- `packages/rb-apps/src/import/importToRbProject.ts`
+  - Thin wrapper: returns **`buildImportedProjectCompilerResult(...).project`** (no duplicate flat-only mapping path).
+- Tests updated: `importToRbProject.test.ts`, `importExportRoundtrip.test.ts`, `importCompiler.test.ts`, `fixture04-lab8-security-lock.test.ts` (assert V2 entry counts + resolved pin labels).
+
+### Validation
+
+- `pnpm -w exec vitest run packages/rb-apps/src/import/__tests__/importToRbProject.test.ts packages/rb-apps/src/import/__tests__/importExportRoundtrip.test.ts packages/rb-apps/src/import/__tests__/importCompiler.test.ts packages/rb-apps/src/import/__tests__/fixture04-lab8-security-lock.test.ts` → PASS
+
+### Remaining (not this change)
+
+- Infer **bus / slice / group** V2 entries from `std_logic_vector` / Vivado-style ports where safe (current import still emits **scalar** V2 per flat port row).
+- Verify typed lab sequencer on V2; structured Map Pins beyond pin assignment.
+
+## Change Log 2026-04-15 (Hardware mapping V2 — canonical structured Basys3 mapping)
+
+**Subsystem**: `@redbyte/rb-utils` / RBProject / Basys3 export / Export view model
+
+### Problem
+
+`IoMapping` is a flat scalar list with no first-class model for buses, slices, grouped board resources, or typed timing roles. That blocked serious bus-heavy and manual-event workflows from having one authoritative mapping representation across Hardware, Verify, and Export.
+
+### What changed
+
+- `packages/rb-utils/src/hardwareMappingV2.ts` (exported from package index)
+  - **HardwareMappingDocumentV2** (`schemaVersion: '2.0'`, `boardId: 'basys3'`) with entry kinds: `scalar`, `bit`, `slice`, `bus`, `group`
+  - Optional metadata: `timingRole`, `boardResourceType`, `portName`, `alias`, grouped bus `bits[]`, slice `pins[]` with inclusive `msb`/`lsb`
+  - **migrateIoMappingToHardwareMappingV2** / **materializeIoMappingFromHardwareMappingV2** / **resolveIoMappingFromProjectFields** (V2 wins when `entries.length > 0`)
+- `packages/rb-apps/src/export/projectFormat.ts`
+  - optional **RBProject.hardwareMappingV2**; normalize + encode paths preserve it
+- `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`
+  - **getExportIoMapping** uses resolved mapping for validation, bundle, and contract generation
+- `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`
+  - pin table / mapping index / bring-up rows use **getEffectiveIoMapping** (same resolution rule)
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - live **deriveVerifySchedule** uses resolved I/O mapping so V2-only projects get correct structural timing hints
+- tests: `packages/rb-utils/src/hardwareMappingV2.test.ts`, `packages/rb-apps/src/export/__tests__/hardwareMappingV2.export.test.ts`
+
+### Validation
+
+- `pnpm exec vitest run packages/rb-utils/src/hardwareMappingV2.test.ts packages/rb-apps/src/export/__tests__/hardwareMappingV2.export.test.ts`
+  - result: PASS
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/buildExportViewModel.canonical-naming.test.ts`
+  - result: PASS
+
+### Remaining (not this change)
+
+- Hardware / Map Pins: structured bus/slice/group **editing** workflows beyond materialized pin rows (runtime already owns V2).
+- Verify lab sequencer should consume V2 roles (reset, manual_step, bus values).
+
+## Change Log 2026-04-15 (Export timing authority — Verify schedule contract alignment)
+
+**Subsystem**: Export surface / cross-surface timing truth
+
+### Problem
+
+Export derived timing guidance only from live structural `deriveVerifySchedule(project)`, while Verify and Map Pins already resolve **active** schedule authority via `resolveActiveScheduleContract` (prefer last Verify run when `deterministicHash` matches). That allowed Export to show generic timing copy even when a passing Verify run had stored `timingMode: manual_event_driven_lab` (or other contract fields), weakening handoff trust.
+
+### What changed
+
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+  - resolves `liveScheduleContract` + `activeScheduleContract` with the same hash rule as Verify/Hardware
+  - `effectiveTimingGuidance` uses `deriveTimingGuidance(activeScheduleContract)`
+  - clock gate row detail appends a short **timing mode** suffix (`Manual-event lab`, `Board clock`, `Combinational`) from the active contract
+  - deterministic checklist clock tooltip extends with manual-event vs board-clock guidance when `timingMode` is set
+- `packages/rb-apps/src/apps/ide/__tests__/exportSurface.timing-authority.test.tsx`
+  - asserts manual-event label when hashes match (even if live structure alone would classify differently)
+  - asserts fallback to live combinational copy when Verify run is stale
+
+### Validation
+
+- `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/exportSurface.timing-authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx`
+  - result: PASS
+
 ## Change Log 2026-04-14 (Hardware / Export mapping authority + blank/combinational Hardware truth)
 
 **Subsystem**: Hardware Map Pins surface / Export pin-table authority / Basys3 testbench alias resolution

@@ -4,11 +4,24 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { resolveIoMappingFromProjectFields } from '@redbyte/rb-utils';
+import type { RBProject } from '../../export/projectFormat';
 import { parseVhdl } from '../vhdlImport';
 import { parseXdcPins } from '../xdcImport';
 import { importToRbProject } from '../importToRbProject';
 
 const FIXTURES_DIR = join(__dirname, '../../fixtures/import');
+
+/** Flat port-label → pin for fixture assertions (matches legacy import test shape). */
+function flatLabelPinMap(project: RBProject): Record<string, string> {
+  const io = resolveIoMappingFromProjectFields(project) ?? project.ioMapping;
+  const m: Record<string, string> = {};
+  for (const row of [...(io?.inputs ?? []), ...(io?.outputs ?? [])]) {
+    const label = (row.label ?? row.id).trim();
+    if (label) m[label] = (row.pin ?? '').trim().toUpperCase();
+  }
+  return m;
+}
 
 /**
  * Load fixture files for a given fixture name.
@@ -41,8 +54,8 @@ describe('importExportRoundtrip', () => {
     expect(project.circuit.connections).toBeDefined();
     expect(project.circuit.nodes.length).toBeGreaterThan(0);
     
-    // Verify IO mapping matches XDC
-    expect(project.ioMapping).toEqual({
+    expect(project.hardwareMappingV2?.entries.length).toBeGreaterThan(0);
+    expect(flatLabelPinMap(project)).toEqual({
       SW0: 'V17',
       SW1: 'V16',
       LD0: 'U16',
@@ -69,8 +82,7 @@ describe('importExportRoundtrip', () => {
     expect(portNames).toContain('LD0');
     expect(portNames).toContain('LD1');
     
-    // Verify IO mapping matches XDC
-    expect(project.ioMapping).toEqual({
+    expect(flatLabelPinMap(project)).toEqual({
       SW0: 'V17',
       SW1: 'V16',
       SW2: 'W16',
@@ -138,9 +150,8 @@ describe('importExportRoundtrip', () => {
       const parsed = parseVhdl(vhdl);
       const xdcResult = parseXdcPins(xdc);
       const project = importToRbProject(parsed, xdcResult);
-      
-      // Should extract all pins: clk, rst, count_en, q0, q1, q2, q3 = 7 ports
-      expect(Object.keys(project.ioMapping || {})).toHaveLength(7);
+      expect(project.hardwareMappingV2?.entries).toHaveLength(7);
+      expect(Object.keys(flatLabelPinMap(project))).toHaveLength(7);
     }).not.toThrow();
   });
 

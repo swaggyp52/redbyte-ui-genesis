@@ -2,6 +2,7 @@
 // Import Bridge — converts ParsedHDL + optional XDC to RBProject.
 //
 // Scope (v1): ParsedHDL + XdcParseResult → RBProject with auto-layout + IO mapping.
+// Canonical mapping is **hardwareMappingV2**; structured **ioMapping** is kept for compatibility.
 
 import type { RBProject } from '@redbyte/rb-circuit';
 import type { ParsedHDL } from './hdlToCircuit.js';
@@ -11,40 +12,15 @@ import { buildImportedProjectCompilerResult } from './importCompiler.js';
 /**
  * Convert ParsedHDL (+ optional XDC output) to RBProject.
  *
- * Process:
- *   1. Convert ParsedHDL → Circuit (auto-layout)
- *   2. If XDC provided: build ioMapping { circuitPortName → physicalPin }
- *   3. Return RBProject with circuit + ioMapping
+ * Delegates to {@link buildImportedProjectCompilerResult} so the project includes
+ * **hardwareMappingV2** (primary) and **ioMapping** (materialization-compatible legacy shape).
  */
-export function importToRbProject(
-  parsedHdl: ParsedHDL,
-  xdcResult?: XdcParseResult,
-): RBProject {
-  // Step 1: Convert HDL to Circuit, then elaborate IR immediately.
-  const compilerResult = buildImportedProjectCompilerResult({
+export function importToRbProject(parsedHdl: ParsedHDL, xdcResult?: XdcParseResult): RBProject {
+  return buildImportedProjectCompilerResult({
     sourceName: `${parsedHdl.entityName || 'imported-design'}.${parsedHdl.lang === 'verilog' ? 'v' : 'vhd'}`,
     topPath: `top.${parsedHdl.lang === 'verilog' ? 'v' : 'vhd'}`,
     topText: '',
     parsedHdl,
     xdcResult,
-  });
-  const circuit = compilerResult.circuit;
-
-  // Step 2: Build IO mapping from XDC (if provided)
-  // Use parsed port names (not circuit.ports, which doesn't expose the port names)
-  const ioMapping: Record<string, string> = {};
-  if (xdcResult) {
-    for (const port of parsedHdl.ports) {
-      const pinFromXdc = xdcResult.pinMap[port.name];
-      if (pinFromXdc) {
-        ioMapping[port.name] = pinFromXdc;
-      }
-    }
-  }
-
-  // Step 3: Return RBProject
-  return {
-    circuit,
-    ioMapping: Object.keys(ioMapping).length > 0 ? ioMapping : undefined,
-  };
+  }).project;
 }

@@ -6,7 +6,11 @@ import {
   type IRDiagnostic,
   type SimulationModel,
 } from '@redbyte/rb-logic-core';
-import type { IoMapping } from '@redbyte/rb-utils';
+import type { HardwareMappingDocumentV2, IoMapping } from '@redbyte/rb-utils';
+import {
+  migrateIoMappingToHardwareMappingV2,
+  resolveIoMappingFromProjectFields,
+} from '@redbyte/rb-utils';
 import type { RBProject } from '../export/projectFormat';
 import { compareCodepoint } from '../export/codepointSort';
 import {
@@ -84,9 +88,13 @@ export function buildImportedProjectCompilerResult(
   }
 
   const ioMapping = buildIoMapping(input.parsedHdl.ports, converted.circuit, input.xdcResult);
-  const project = buildImportedProjectRecord(input, converted.circuit, ioMapping);
+  const hardwareMappingV2 = buildHardwareMappingV2ForImportedProject(
+    ioMapping,
+    input.parsedHdl.ports
+  );
+  const project = buildImportedProjectRecord(input, converted.circuit, ioMapping, hardwareMappingV2);
   const { ir } = elaborateCircuit(converted.circuit, {
-    pins: buildPinMapping(ioMapping),
+    pins: buildPinMapping(resolveIoMappingFromProjectFields(project) ?? ioMapping),
   });
   const simModel = buildSimulationModel(ir);
 
@@ -145,7 +153,7 @@ export function deriveProjectCompilerResult(
   }
 ): ImportedProjectCompilerResult {
   const { ir } = elaborateCircuit(project.circuit, {
-    pins: buildPinMapping(project.ioMapping),
+    pins: buildPinMapping(resolveIoMappingFromProjectFields(project) ?? project.ioMapping),
   });
   const simModel = buildSimulationModel(ir);
   const reconstructionLevel =
@@ -222,10 +230,38 @@ export function buildIoMapping(
   return mapping;
 }
 
+/**
+ * Primary import mapping truth: structured V2 scalars (from XDC-backed {@link IoMapping}),
+ * with light timing hints from parsed port names where obvious.
+ */
+export function buildHardwareMappingV2ForImportedProject(
+  ioMapping: IoMapping,
+  ports: ParsedPort[]
+): HardwareMappingDocumentV2 {
+  const doc = migrateIoMappingToHardwareMappingV2(ioMapping);
+  const portByNorm = new Map(ports.map((p) => [normalizeToken(p.name), p]));
+  for (const entry of doc.entries) {
+    if (entry.kind !== 'scalar') continue;
+    const key = normalizeToken(entry.portName);
+    const port = portByNorm.get(key);
+    const name = (port?.name ?? entry.portName).trim().toLowerCase();
+    if (/^clk|^clock|^clk100/.test(name)) {
+      entry.timingRole = 'clock';
+      entry.boardResourceType = 'clock_pin';
+    } else if (/^rst|^reset/.test(name)) {
+      entry.timingRole = 'reset';
+    } else if (/step|manual|btn_?u|btn_?d|btn_?l|btn_?r|btn_?c/i.test(name)) {
+      entry.timingRole = 'manual_step';
+    }
+  }
+  return doc;
+}
+
 function buildImportedProjectRecord(
   input: BuildImportedProjectCompilerInput,
   circuit: Circuit,
-  ioMapping: IoMapping
+  ioMapping: IoMapping,
+  hardwareMappingV2: HardwareMappingDocumentV2
 ): RBProject {
   const topEntity = sanitizeIdentifier(
     input.parsedHdl.entityName.trim() || stemFromPath(input.topPath) || 'top'
@@ -264,6 +300,7 @@ function buildImportedProjectRecord(
           : undefined,
     },
     ioMapping,
+    hardwareMappingV2,
     vectors: [],
     meta: {
       appSurface: 'ide-import',
@@ -366,7 +403,7 @@ function normalizePath(path: string): string {
 }
 
 function normalizeToken(value: string): string {
-  return value.trim().toLowerCase();
+  return value.trim().toLowerCase().replace(/\(\s*(\d+)\s*\)/g, '[$1]');
 }
 
 function toMappingId(value: string): string {
