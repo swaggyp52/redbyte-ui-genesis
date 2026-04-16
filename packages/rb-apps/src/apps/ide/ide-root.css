@@ -24928,14 +24928,97 @@ button:disabled,
 
 .ide-verify-command-bar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px 12px 10px;
   background: rgba(15, 25, 42, 0.65);
   border-bottom: 1px solid rgba(48, 77, 107, 0.35);
   flex-shrink: 0;
-  min-height: 38px;
+  min-height: 0;
+}
+
+.ide-vcb-row--primary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+
+.ide-vcb-row--primary .ide-vcb-group--status {
+  margin-left: auto;
+}
+
+.ide-vcb-row--session {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.ide-vcb-experiment {
+  flex: 1 1 200px;
+  min-width: 160px;
+  max-width: min(520px, 44vw);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(72, 118, 158, 0.35);
+  background: linear-gradient(135deg, rgba(12, 24, 42, 0.92), rgba(8, 16, 30, 0.88));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.ide-vcb-experiment-eyebrow {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(111, 199, 255, 0.55);
+}
+
+.ide-vcb-experiment-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ide-vcb-experiment-scenario {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: rgba(243, 249, 255, 0.96);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ide-vcb-experiment-case {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--rb-font-mono, ui-monospace, monospace);
+  letter-spacing: 0.04em;
+  color: rgba(186, 230, 253, 0.95);
+}
+
+.ide-vcb-experiment-case.is-locus {
+  color: rgba(125, 211, 252, 0.98);
+  text-shadow: 0 0 18px rgba(56, 189, 248, 0.22);
+}
+
+.ide-vcb-experiment-case.is-idle {
+  font-weight: 600;
+  color: rgba(148, 163, 184, 0.72);
+}
+
+.ide-vcb-experiment-timing {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(148, 180, 210, 0.72);
 }
 
 .ide-vcb-group {
@@ -26233,9 +26316,9 @@ button:disabled,
   background: rgba(5, 11, 23, 0.92) !important;
   border-top: 1px solid rgba(24, 44, 70, 0.4) !important;
   border-bottom: 1px solid rgba(24, 44, 70, 0.4) !important;
-  padding: 3px 10px !important;
-  min-height: 34px !important;
-  gap: 10px !important;
+  padding: 6px 10px 8px !important;
+  min-height: 0 !important;
+  gap: 8px !important;
 }
 
 .ide-verify-region--header .ide-vcb-group {
@@ -27374,13 +27457,13 @@ button:disabled,
   letter-spacing: 0.06em !important;
 }
 
-/* Verify — compress chip soup into one session summary and enlarge the instrument stage. */
+/* Verify — two-row command deck: primary actions + experiment context; session strip below. */
 [data-ide-mode-marker='verify'] .ide-verify-command-bar {
-  display: grid !important;
-  grid-template-columns: auto auto minmax(0, 1fr) auto !important;
-  align-items: center !important;
-  gap: 12px !important;
-  padding: 10px 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+  padding: 10px 14px 12px !important;
   border: 1px solid rgba(64, 108, 146, 0.34) !important;
   border-radius: 16px !important;
   background:
@@ -27390,10 +27473,24 @@ button:disabled,
     inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
 }
 
+[data-ide-mode-marker='verify'] .ide-vcb-row--primary {
+  row-gap: 10px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-vcb-experiment {
+  max-width: min(560px, 48vw) !important;
+  border-color: rgba(80, 130, 175, 0.38) !important;
+}
+
 [data-ide-mode-marker='verify'] .ide-vcb-group--actions,
 [data-ide-mode-marker='verify'] .ide-vcb-group--mode,
 [data-ide-mode-marker='verify'] .ide-vcb-group--status {
   min-width: 0 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-vcb-row--session .ide-vcb-group--session {
+  flex: 1 1 auto !important;
+  width: 100% !important;
 }
 
 [data-ide-mode-marker='verify'] .ide-vcb-group--session {
@@ -28069,8 +28166,9 @@ button:disabled,
 }
 
 @media (max-width: 1279px) {
-  [data-ide-mode-marker='verify'] .ide-verify-command-bar {
-    grid-template-columns: minmax(0, 1fr) !important;
+  [data-ide-mode-marker='verify'] .ide-vcb-experiment {
+    max-width: none !important;
+    flex: 1 1 100% !important;
   }
 
   [data-ide-mode-marker='verify'] .ide-verify-waveform-bar {
@@ -28367,8 +28465,8 @@ button:disabled,
 
 [data-ide-mode-marker='verify'] .ide-verify-lab-grid {
   display: grid;
-  grid-template-columns: minmax(500px, 0.96fr) minmax(560px, 1.04fr);
-  gap: 14px;
+  grid-template-columns: minmax(480px, 0.94fr) minmax(540px, 1.06fr);
+  gap: 20px;
   min-height: 0;
   height: 100%;
   align-items: stretch;
@@ -28407,6 +28505,48 @@ button:disabled,
   min-width: 0 !important;
   min-height: 0 !important;
   padding: 0 !important;
+  border: 1px solid rgba(72, 118, 158, 0.28) !important;
+  border-radius: 18px !important;
+  background:
+    linear-gradient(165deg, rgba(7, 16, 30, 0.92), rgba(4, 10, 20, 0.96)) !important;
+  box-shadow:
+    0 22px 44px rgba(1, 6, 14, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+  overflow: hidden !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-scenario-library-header {
+  padding: 10px 14px !important;
+  gap: 12px !important;
+  min-height: 44px !important;
+  background: rgba(6, 14, 26, 0.82) !important;
+  border-bottom: 1px solid rgba(72, 112, 148, 0.24) !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-scenario-switcher-btn {
+  padding: 7px 14px !important;
+  font-size: 13px !important;
+  border-radius: 10px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-scenario-switcher-name {
+  max-width: min(240px, 28vw) !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-scenario-action-btn {
+  padding: 6px 11px !important;
+  font-size: 12px !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(56, 90, 120, 0.22) !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-stimulus-tick-header.is-selected {
+  background: rgba(56, 189, 248, 0.32) !important;
+  border-top: 3px solid rgba(147, 220, 255, 0.92) !important;
+  color: #f8fcff !important;
+  box-shadow:
+    0 6px 18px rgba(56, 189, 248, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-testbench-zone-header,
@@ -28572,18 +28712,18 @@ button:disabled,
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-command-bar {
-  grid-template-columns: auto auto minmax(0, 1fr) auto !important;
-  gap: 10px !important;
-  padding: 8px 12px !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  padding: 8px 12px 10px !important;
   border-radius: 12px !important;
   box-shadow: none !important;
 }
 
-[data-ide-mode-marker='verify'] .ide-vcb-group--session {
+[data-ide-mode-marker='verify'] .ide-vcb-row--session .ide-vcb-group--session {
   min-height: auto !important;
-  padding: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
+  padding: 7px 11px !important;
+  border: 1px solid rgba(67, 112, 147, 0.26) !important;
+  background: rgba(8, 16, 28, 0.75) !important;
   gap: 8px !important;
 }
 
@@ -29665,6 +29805,15 @@ button:disabled,
   padding: 2px 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-lab-chip {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  padding: 5px 12px !important;
+  border: 1px solid rgba(72, 112, 148, 0.22) !important;
+  background: rgba(10, 20, 34, 0.82) !important;
+  color: rgba(220, 234, 248, 0.9) !important;
 }
 
 .ide-verify-lab-sequencer-body {

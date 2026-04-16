@@ -4,6 +4,10 @@
 import React from 'react';
 import { IdeButton } from '../../components/IdePrimitives';
 
+function experimentCaseEmphasisClass(label: string): string {
+  return /no case/i.test(label) ? ' is-idle' : ' is-locus';
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface VerifyCommandBarProps {
@@ -62,6 +66,13 @@ export interface VerifyCommandBarProps {
   readonly onGoToDesign?: () => void;
   /** Selected tick whose inputs will be injected when opening Design */
   readonly goToDesignTick?: number | null;
+
+  /** Prominent experiment context (scenario library / runtime name — no invented labels) */
+  readonly experimentScenarioName?: string | null;
+  /** Selected stimulus case, e.g. "Case t3" or "No case selected" */
+  readonly experimentCaseLabel?: string | null;
+  /** Timing / lab mode line (e.g. sequential vs manual-event lab) */
+  readonly experimentTimingHint?: string | null;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -101,6 +112,9 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   showGoToDesign,
   onGoToDesign,
   goToDesignTick,
+  experimentScenarioName,
+  experimentCaseLabel,
+  experimentTimingHint,
 }) => {
   const hasUtilityActions = Boolean(
     (showEditCases && onEditCases) || (showSaveAsExpected && onSaveAsExpected)
@@ -182,85 +196,96 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           ]
     );
 
+  const scenarioHeadline =
+    experimentScenarioName != null && experimentScenarioName.trim() !== ''
+      ? experimentScenarioName.trim()
+      : null;
+  const showExperimentRail =
+    scenarioHeadline != null ||
+    experimentCaseLabel != null ||
+    (experimentTimingHint != null && experimentTimingHint.trim() !== '');
+
   return (
     <div className="ide-verify-command-bar" data-testid="ide-verify-command-bar">
-      {/* Left: primary loop actions — Run is the first visible control */}
-      <div className="ide-vcb-group ide-vcb-group--actions">
-        {showGenerate && (
+      <div className="ide-vcb-row ide-vcb-row--primary">
+        {/* Left: primary loop actions — Run is the first visible control */}
+        <div className="ide-vcb-group ide-vcb-group--actions">
+          {showGenerate && (
+            <IdeButton
+              tone="secondary"
+              onClick={onGenerate}
+              testId="ide-vcb-generate"
+            >
+              {generateLabel}
+            </IdeButton>
+          )}
           <IdeButton
-            tone="secondary"
-            onClick={onGenerate}
-            testId="ide-vcb-generate"
+            tone="primary"
+            onClick={onRun}
+            disabled={runDisabled}
+            testId="ide-vcb-run"
+            className={runPulsing ? 'is-pulsing' : undefined}
           >
-            {generateLabel}
+            {runLabel}
           </IdeButton>
-        )}
-        <IdeButton
-          tone="primary"
-          onClick={onRun}
-          disabled={runDisabled}
-          testId="ide-vcb-run"
-          className={runPulsing ? 'is-pulsing' : undefined}
-        >
-          {runLabel}
-        </IdeButton>
-      </div>
-
-      {/* Center: mode toggle — secondary context, rarely changes mid-session */}
-      <div className="ide-vcb-group ide-vcb-group--mode">
-        <div className="ide-vcb-mode-toggle" data-testid="ide-vcb-mode-toggle">
-          <button
-            type="button"
-            className={`ide-vcb-mode-btn${!isCompareMode ? ' is-active' : ''}`}
-            onClick={onSetObserve}
-            data-testid="ide-vcb-mode-observe"
-          >
-            Observe
-          </button>
-          <button
-            type="button"
-            className={`ide-vcb-mode-btn${isCompareMode ? ' is-active' : ''}`}
-            onClick={onSetCompare}
-            disabled={!compareAvailable}
-            title={
-              !compareAvailable
-                ? 'Run the stimulus first, then save observed outputs as checks to unlock Compare'
-                : 'Compare observed outputs against saved checks'
-            }
-            data-testid="ide-vcb-mode-compare"
-          >
-            Check outputs
-          </button>
         </div>
-      </div>
 
-      <div className="ide-vcb-group ide-vcb-group--session" data-testid="ide-vcb-session-summary">
-        <span data-testid="ide-verify-summary-status">
-          <span className={`ide-vcb-status ${toneClass}`} data-testid="ide-vcb-status">
-            {statusLabel}
-          </span>
-        </span>
-        {(sessionMetaParts.length > 0 || sessionSummaryParts.length > 0) && (
-          <div className="ide-vcb-session-copy">
-            {sessionMetaParts.length > 0 && (
-              <span
-                className="ide-vcb-session-line ide-vcb-session-line--meta"
-                data-testid="ide-verify-session-meta"
-              >
-                {interleaveWithSeparators(sessionMetaParts, 'ide-vcb-session-sep')}
-              </span>
-            )}
-            {sessionSummaryParts.length > 0 && (
-              <span className="ide-vcb-session-line ide-vcb-session-line--summary">
-                {interleaveWithSeparators(sessionSummaryParts, 'ide-vcb-session-sep ide-vcb-session-sep--muted')}
-              </span>
-            )}
+        {/* Mode toggle — segmented, secondary to Run */}
+        <div className="ide-vcb-group ide-vcb-group--mode">
+          <div className="ide-vcb-mode-toggle" data-testid="ide-vcb-mode-toggle">
+            <button
+              type="button"
+              className={`ide-vcb-mode-btn${!isCompareMode ? ' is-active' : ''}`}
+              onClick={onSetObserve}
+              data-testid="ide-vcb-mode-observe"
+            >
+              Observe
+            </button>
+            <button
+              type="button"
+              className={`ide-vcb-mode-btn${isCompareMode ? ' is-active' : ''}`}
+              onClick={onSetCompare}
+              disabled={!compareAvailable}
+              title={
+                !compareAvailable
+                  ? 'Run the stimulus first, then save observed outputs as checks to unlock Compare'
+                  : 'Compare observed outputs against saved checks'
+              }
+              data-testid="ide-vcb-mode-compare"
+            >
+              Check outputs
+            </button>
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Right: utility actions (ghost weight) */}
-      <div className="ide-vcb-group ide-vcb-group--status">
+        {showExperimentRail ? (
+          <div className="ide-vcb-experiment" data-testid="ide-vcb-experiment-context">
+            <span className="ide-vcb-experiment-eyebrow">Experiment</span>
+            <div className="ide-vcb-experiment-body">
+              {scenarioHeadline ? (
+                <span className="ide-vcb-experiment-scenario" data-testid="ide-vcb-experiment-scenario">
+                  {scenarioHeadline}
+                </span>
+              ) : null}
+              {experimentCaseLabel != null ? (
+                <span
+                  className={`ide-vcb-experiment-case${experimentCaseEmphasisClass(experimentCaseLabel)}`}
+                  data-testid="ide-vcb-experiment-case"
+                >
+                  {experimentCaseLabel}
+                </span>
+              ) : null}
+              {experimentTimingHint != null && experimentTimingHint.trim() !== '' ? (
+                <span className="ide-vcb-experiment-timing" data-testid="ide-vcb-experiment-timing">
+                  {experimentTimingHint.trim()}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {/* Right: utility actions (ghost weight) */}
+        <div className="ide-vcb-group ide-vcb-group--status">
         {hasUtilityActions && (
           <div className="ide-vcb-utilities">
             <button
@@ -334,6 +359,34 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
             </IdeButton>
           </span>
         )}
+        </div>
+      </div>
+
+      <div className="ide-vcb-row ide-vcb-row--session">
+        <div className="ide-vcb-group ide-vcb-group--session" data-testid="ide-vcb-session-summary">
+          <span data-testid="ide-verify-summary-status">
+            <span className={`ide-vcb-status ${toneClass}`} data-testid="ide-vcb-status">
+              {statusLabel}
+            </span>
+          </span>
+          {(sessionMetaParts.length > 0 || sessionSummaryParts.length > 0) && (
+            <div className="ide-vcb-session-copy">
+              {sessionMetaParts.length > 0 && (
+                <span
+                  className="ide-vcb-session-line ide-vcb-session-line--meta"
+                  data-testid="ide-verify-session-meta"
+                >
+                  {interleaveWithSeparators(sessionMetaParts, 'ide-vcb-session-sep')}
+                </span>
+              )}
+              {sessionSummaryParts.length > 0 && (
+                <span className="ide-vcb-session-line ide-vcb-session-line--summary">
+                  {interleaveWithSeparators(sessionSummaryParts, 'ide-vcb-session-sep ide-vcb-session-sep--muted')}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

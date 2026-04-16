@@ -42,13 +42,59 @@ describe('B-14 Action Row Hierarchy — DOM order contracts', () => {
     expect(runBeforeMode).toBeTruthy();
   });
 
-  it('mode toggle precedes status chip in DOM (mode is center, status is right)', () => {
+  it('mode toggle precedes status chip in DOM (mode row above session strip)', () => {
     const { getByTestId } = render(<VerifyCommandBar {...BASE} />);
     const modeToggle = getByTestId('ide-vcb-mode-toggle');
     const status = getByTestId('ide-vcb-status');
     const modeBeforeStatus =
       modeToggle.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING;
     expect(modeBeforeStatus).toBeTruthy();
+  });
+
+  it('experiment context sits between mode toggle and utilities on the primary row', () => {
+    const { getByTestId } = render(
+      <VerifyCommandBar
+        {...BASE}
+        showSaveAsExpected={true}
+        onSaveAsExpected={vi.fn()}
+        experimentScenarioName="ALU smoke"
+        experimentCaseLabel="Case t2"
+        experimentTimingHint="Manual-event lab mode"
+      />
+    );
+    const modeToggle = getByTestId('ide-vcb-mode-toggle');
+    const experiment = getByTestId('ide-vcb-experiment-context');
+    const utilitiesToggle = getByTestId('ide-vcb-utilities-toggle');
+    expect(
+      modeToggle.compareDocumentPosition(experiment) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      experiment.compareDocumentPosition(utilitiesToggle) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('marks idle emphasis when no case is selected', () => {
+    const { getByTestId } = render(
+      <VerifyCommandBar
+        {...BASE}
+        experimentScenarioName="Bench"
+        experimentCaseLabel="No case selected"
+      />
+    );
+    const caseEl = getByTestId('ide-vcb-experiment-case');
+    expect(caseEl.className).toContain('is-idle');
+  });
+
+  it('marks locus emphasis when a case tick is selected', () => {
+    const { getByTestId } = render(
+      <VerifyCommandBar
+        {...BASE}
+        experimentScenarioName="Bench"
+        experimentCaseLabel="Case t0"
+      />
+    );
+    const caseEl = getByTestId('ide-vcb-experiment-case');
+    expect(caseEl.className).toContain('is-locus');
   });
 
   it('more-actions disclosure is NOT inside the actions group', () => {

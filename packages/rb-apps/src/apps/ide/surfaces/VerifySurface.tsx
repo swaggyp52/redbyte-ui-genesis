@@ -4149,6 +4149,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           showGoToDesign={Boolean(lastRun) && (Boolean(onGoToDesign) || Boolean(onGoToDesignWithInputs))}
           onGoToDesign={handleGoToDesignFromVerify}
           goToDesignTick={selectedTick}
+          experimentScenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
+          experimentCaseLabel={selectedTick != null ? `Case t${selectedTick}` : 'No case selected'}
+          experimentTimingHint={sequencerModeLabel}
         />
         )}
         {usesCompactStaleStrip ? (

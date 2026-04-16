@@ -1,5 +1,23 @@
 # AI State
 
+## Change Log 2026-04-16 (IDE: Verify surface — command deck + experiment context recomposition)
+
+**Subsystem**: `VerifyCommandBar.tsx`, `VerifySurface.tsx`, `ide-root.css`, `verifyCommandBar.actionRowHierarchy.test.tsx`, `docs/IDE_SYSTEM_MAP.md`
+
+### What changed
+
+- **Command bar**: Split into **two rows** — primary row keeps **Run**, **Observe / Check outputs**, and adds a framed **Experiment** block (scenario, **Case tN** / **No case selected**, timing/lab hint from existing `sequencerModeLabel`). Utilities stay **right-aligned** on the primary row. **Session** status + meta + evidence move to a **full-width second row** so they no longer compete with controls.
+- **Truth**: Experiment scenario string is **`activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName`** (same family of labels already used for runs). Case line mirrors **selected tick** only.
+- **Workbench chrome**: **Lab grid** column gap increased; **waveform** region gets a clearer **stage frame**; **scenario library** strip has **taller** switcher/actions; **stimulus** selected-tick column and **lab sequencer** chips read more clearly on Verify.
+
+### Tests
+
+- `verifyCommandBar.actionRowHierarchy.test.tsx` — experiment rail DOM order, **is-idle** / **is-locus** case emphasis.
+
+### Next frontend pass
+
+- **Export** or **Project** surfaces if product priority shifts; otherwise deeper **Verify** waveform toolbar / analysis drawer hierarchy.
+
 ## Change Log 2026-04-16 (IDE: Hardware surface — stage rail, framed board workspace)
 
 **Subsystem**: `HardwareSurface.tsx`, `ide-root.css`, `hardwareSurface.readiness.test.tsx`, `docs/IDE_SYSTEM_MAP.md`, `03 Architecture/Hardware Surface.md`

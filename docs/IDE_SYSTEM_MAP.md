@@ -26,6 +26,11 @@
 - **Stage rail**: Caption + four-column **stage tabs** (Map Pins → Test on Board → Pre-flight → Simulation) with title + hint + status; **board workspace** frame below with chrome header (`Stage N · …`) and Basys3 / timing pills.
 - **Dock / inspector**: Left dock panels use **stage-colored left borders**; hardware inspector tables are **not** opacity-dimmed so live state and assertions stay legible.
 
+### Verify chrome (layout system)
+
+- **Command deck** (`VerifyCommandBar.tsx`, `ide-root.css`): **Two rows** — primary: **Run** / **Generate**, **Observe** / **Check outputs**, **Experiment** block (`data-testid="ide-vcb-experiment-context"`: scenario headline, **Case tN** vs **No case selected**, timing / lab mode line from `sequencerModeLabel`), then **More actions** / **Analysis** / **Open in Design**. Second row: **session** strip (status pill + session meta + evidence / coverage). Scenario headline is **`activeScenario.name` → `lastRun.scenarioName` → vector-bucket label** (no Verify-only invented names).
+- **Lab grid**: Wider **column gap**; **waveform** region gets a stronger **instrument frame** (border, depth shadow); **scenario library** header uses **taller** switcher + **CRUD** buttons; **stimulus tick** **is-selected** state is higher-contrast on Verify; **lab sequencer** meta chips are larger and bordered.
+
 ---
 
 ## 2. Runtime Authorities
