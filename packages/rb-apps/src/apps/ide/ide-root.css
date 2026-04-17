@@ -10376,13 +10376,6 @@ details[open] summary .details-arrow {
   border-radius: 4px;
 }
 
-.ide-design-focus-banner-description {
-  font-size: 12px;
-  color: var(--ide-text-soft, #9fb2c2);
-  line-height: 1.4;
-  margin-bottom: 4px;
-}
-
 .ide-design-focus-banner-hint {
   font-size: 12px;
   color: var(--ide-text, #e6f0fa);
