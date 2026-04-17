@@ -1,5 +1,37 @@
 # AI State
 
+## Change Log 2026-04-16 (Surface ownership S3: focused-module inspector)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/components/DesignFocusInspector.tsx` (new), `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/IdeApp.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/designFocusInspector.test.tsx` (new)
+
+**Context**: The S3 landing banner told the student what they landed on, but the Design right dock still had no serious engineering-facing context for the focused asset. A student doing a real final project needs port-by-port interface truth, honest usage information, and clear navigation affordances. This chunk adds a focused-module inspector to the Design right dock that complements the canvas banner with the deeper authoring context.
+
+**Changes**:
+- New `DesignFocusInspector` component — renders inside an `IdeInspectorSection` titled "Focused asset" in the Design right-dock, only when `focusedAssetContext` is set. Sections:
+  - Identity: kind badge ("Macro" / "Custom component"), asset name in mono, and an "Armed for placement" pill when the macro is armed.
+  - Description from the library/composite definition.
+  - Interface: explicit **Inputs** and **Outputs** lists with port labels (and internal port names when they differ from labels). Uses real IO truth: for macros, `MacroDefinition.inputs`/`outputs`; for custom components, derived from `CompositeNodeDef.inputMapping`/`outputMapping` keys.
+  - Usage (custom components only): honest instance count of `circuit.nodes.filter(n => n.type === componentName).length`, with pluralisation and a "not used yet" case for zero.
+  - Actions: "Clear focus" and optional "Back to Project".
+- **Truth boundary respected**: macros expand into raw node clusters on instantiation and lose identity, so the inspector deliberately does NOT show a macro instance count — it would be a lie. Documented in both the component file and this change log.
+- `DesignSurface` extended with:
+  - A new optional prop `customComponentDefs?: CompositeNodeDef[]` carrying the full composite definitions (the existing `customComponentTypes` projection stays intact for the palette).
+  - Memoised inspector derivations (`focusedMacroDefinition`, `focusedComponentDef`, `focusedComponentInstanceCount`) so lookups happen once per change.
+  - The inspector is rendered at the top of the `inspector` slot, above the existing selection identity card. It doesn't compete with selection — both can be visible when the student has focused an asset and then selected a node on the canvas.
+- `IdeApp` now passes `customComponentDefs={customComponents}` to `DesignSurface`, forwarding the `CompositeNodeDef[]` shape that already lives in `projectRuntime`.
+
+**Tests added**:
+- `packages/rb-apps/src/apps/ide/__tests__/designFocusInspector.test.tsx` — 9 tests covering: macro kind/name/port list rendering, macro usage block suppression (truth boundary), component kind/mapping-derived port rendering with instance count, plural/singular/zero-usage language, empty-port fallback messaging, armed pill gating, `Clear focus` / `Back to Project` wiring and conditional render, and graceful fallback when the library definition is missing.
+
+**Verification**:
+- Focused S3 tests: `pnpm -w exec vitest run …/designFocusInspector …/designFocusBanner …/designFocus …/projectOverviewPanel` → 33/33 pass.
+- Regression sweep: `projectRuntime.persistence` (26), `projectSurface.continuity` (13), `designSurface.blankState` (2), `designSurface.canvasChrome` (3), `designSurface.inspectorTruth` (6), `designSurface.inspectorHierarchy` (6), `designSurface.selectionContext` (11), `ideApp.labday-wiring` (7, 1 pre-existing skip), `designSurface.workstation` (27) → 100/100 pass (1 skip).
+- `pnpm -s build:unified` → success, all dist artifacts verified.
+
+**Truth changes**: The Design right dock now exposes serious focused-asset authoring context. Port-by-port interface, honest per-circuit instance counts (components only), description, and navigation actions are visible whenever a focus handoff has landed. The banner reports "you are working on X"; the inspector reports "here is what X actually is, and how much of it is in your circuit." Both surface the same `focusedAssetContext` state — no drift, no duplicate authority.
+
+**Dead code removed / quarantined**: None. This chunk is additive and reuses the existing `focusedAssetContext`, `activeMacroInsertionId`, `paletteQuery`, and `DesignFocusRequest` authorities. No shadow selection state was introduced. The existing selection-identity card remains the owner of per-node selection truth; the new inspector section scopes strictly to focused-asset context.
+
 ## Change Log 2026-04-16 (Surface ownership S3: Design focused-asset landing zone)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/components/DesignFocusBanner.tsx` (new), `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/designFocusBanner.test.tsx` (new)

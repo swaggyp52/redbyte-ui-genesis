@@ -1638,6 +1638,7 @@ export const IdeApp: React.FC = () => {
               topEntityName={effectiveTopEntityName}
               onSaveAsComponent={addCustomComponent}
               customComponentTypes={customComponents.map((c) => ({ type: c.name, title: c.name, description: c.description ?? '' }))}
+              customComponentDefs={customComponents}
               macros={macros}
               onSaveMacro={saveMacro}
               onDeleteMacro={deleteMacro}

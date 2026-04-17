@@ -18,6 +18,7 @@ import {
   DesignFocusBanner,
   type DesignFocusContext,
 } from '../components/DesignFocusBanner';
+import { DesignFocusInspector } from '../components/DesignFocusInspector';
 import { getFaninCone, getFanoutCone } from '../pathTrace';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -169,6 +170,12 @@ export interface DesignSurfaceProps {
   topEntityName?: string;
   onSaveAsComponent?: (def: CompositeNodeDef) => void;
   customComponentTypes?: Array<{ type: string; title: string; description: string }>;
+  /**
+   * Full composite definitions for custom components. Used by the focused
+   * asset inspector to surface port-by-port interface truth. The palette
+   * continues to use the lighter `customComponentTypes` projection.
+   */
+  customComponentDefs?: CompositeNodeDef[];
   macros?: MacroDefinition[];
   onSaveMacro?: (input: Omit<SaveMacroInput, 'circuit'>) => MacroDefinition | null;
   onDeleteMacro?: (macroId: string) => void;
@@ -829,6 +836,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   topEntityName,
   onSaveAsComponent,
   customComponentTypes,
+  customComponentDefs,
   macros = [],
   onSaveMacro,
   onDeleteMacro,
@@ -1608,6 +1616,31 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     setPaletteQuery('');
     setFocusedAssetContext(null);
   }, []);
+
+  // S3: inspector-facing derivations for the focused asset. Honest
+  // truth only — macros expand on instantiation and have no instance
+  // count, so we only surface the count for custom components.
+  const focusedMacroDefinition = useMemo<MacroDefinition | undefined>(() => {
+    if (!focusedAssetContext || focusedAssetContext.kind !== 'macro') return undefined;
+    return macros.find((m) => m.id === focusedAssetContext.macroId);
+  }, [focusedAssetContext, macros]);
+
+  const focusedComponentDef = useMemo<CompositeNodeDef | undefined>(() => {
+    if (!focusedAssetContext || focusedAssetContext.kind !== 'custom-component') {
+      return undefined;
+    }
+    return (customComponentDefs ?? []).find(
+      (def) => def.name === focusedAssetContext.componentName
+    );
+  }, [focusedAssetContext, customComponentDefs]);
+
+  const focusedComponentInstanceCount = useMemo<number | undefined>(() => {
+    if (!focusedAssetContext || focusedAssetContext.kind !== 'custom-component') {
+      return undefined;
+    }
+    const typeName = focusedAssetContext.componentName;
+    return editorCircuit.nodes.filter((node) => node.type === typeName).length;
+  }, [focusedAssetContext, editorCircuit.nodes]);
 
   useEffect(() => {
     const previous = previousWireCountRef.current;
@@ -5451,6 +5484,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       inspector={
         <>
+          {focusedAssetContext && (
+            <DesignFocusInspector
+              context={focusedAssetContext}
+              macro={focusedMacroDefinition}
+              componentDef={focusedComponentDef}
+              instanceCount={focusedComponentInstanceCount}
+              isPlacementArmed={
+                focusedAssetContext.kind === 'macro' &&
+                activeMacroInsertionId === focusedAssetContext.macroId
+              }
+              onClear={handleClearFocusedAsset}
+              onBackToProject={onGoToProject}
+            />
+          )}
           {renderSelectionIdentityCard()}
           {(() => {
             const content = renderSelectionActions();
