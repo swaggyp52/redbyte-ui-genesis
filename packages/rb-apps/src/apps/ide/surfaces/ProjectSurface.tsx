@@ -37,7 +37,6 @@ import {
 import { ProjectOverviewPanel } from '../components/ProjectOverviewPanel';
 import { ProjectWarningsPanel } from '../components/ProjectWarningsPanel';
 import type { ProjectOutlineSummary } from '../projectOutline';
-import type { ProjectHealthMode } from '../projectHealth';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useIoBus } from '../ioBus';
 import { useBoardSignal } from '../BoardSignalContext';
@@ -309,7 +308,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const activePrimaryCta = workflowAuthority?.primaryCta ?? primaryCta;
   const activePrimaryCtaLabel = workflowAuthority?.primaryCta.label ?? primaryCtaLabel;
   const blockingIssues = useMemo(() => health.blockingIssues, [health.blockingIssues]);
-  const topBlockingIssues = useMemo(() => blockingIssues.slice(0, 3), [blockingIssues]);
   const activeExample = useMemo(
     () => examples.find((example) => example.id === activeExampleId) ?? null,
     [activeExampleId, examples]
@@ -443,11 +441,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       onClick: onOpenDesign,
     };
   }, [onOpenDesign, onOpenImport, readiness.hasCircuit, showStarterGallery]);
-  const nextStepTone = useMemo<'info' | 'warn' | 'success'>(() => {
-    if (hardBlockingIssue || unmappedRequiredCount > 0) return 'warn';
-    if (hardwareReady) return 'success';
-    return exportAvailable || compareCurrent ? 'info' : 'warn';
-  }, [compareCurrent, exportAvailable, hardBlockingIssue, hardwareReady, unmappedRequiredCount]);
   const nextStepReason = useMemo(() => {
     if (!readiness.hasCircuit) {
       return 'Pick a starter, import HDL, or open Design to begin the circuit workflow.';
@@ -495,25 +488,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     readiness.hasVectors,
     unmappedRequiredCount,
   ]);
-  const sourceSummary = useMemo(() => {
-    if (starterExample) {
-      return `${projectContextLabel} - ${starterExample.name}`;
-    }
-    return projectContextLabel;
-  }, [projectContextLabel, starterExample]);
-  const currentFocusProjectLabel = useMemo(() => {
-    if (starterExample) {
-      return `Example Project - ${starterExample.name}`;
-    }
-    return sourceSummary;
-  }, [sourceSummary, starterExample]);
-  const importFidelitySummary = useMemo(() => {
-    if (importFidelity === 'full') return 'Full restore';
-    if (importFidelity === 'reconstructed') return 'Reconstructed';
-    if (importFidelity === 'partial') return 'Partial';
-    if (projectKind === 'import') return 'Not reported yet';
-    return null;
-  }, [importFidelity, projectKind]);
   const bridgeFidelity = useMemo<ProjectBridgeImportFidelity>(() => {
     if (importFidelity === 'full' || importFidelity === 'reconstructed' || importFidelity === 'partial') {
       return importFidelity;
@@ -549,7 +523,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           return;
       }
     },
-    [onOpenDesign, onOpenExport, onOpenHardware, onOpenImport, onOpenVerify]
+    [onOpenDesign, onOpenExport, onOpenHardware, onOpenImport, onOpenVerify, setMappingExpanded]
   );
 
 
@@ -1017,14 +991,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         />
         <ProjectWarningsPanel
           issues={blockingIssues}
-          onNavigateFix={(mode: ProjectHealthMode) => {
-            if (mode === 'design') onOpenDesign();
-            else if (mode === 'verify') onOpenVerify();
-            else if (mode === 'export') onOpenExport();
-            else if (mode === 'hardware') onOpenHardware();
-            else if (mode === 'import') onOpenImport();
-            // mode === 'project' stays on this surface; no-op.
-          }}
+          onNavigateFix={handleProjectModeAction}
         />
         {outline && (
           <ProjectOverviewPanel
@@ -1090,148 +1057,54 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             )}
           />
         </div>
-        <SurfacePanel className="ide-project-current-focus ide-surface-primary-region" testId="ide-project-current-focus">
-          <div className="ide-project-current-focus-shell" data-testid="ide-project-showcase">
-            <div className="ide-project-current-focus-headline">
-              <span className="ide-project-current-focus-eyebrow">
-                {starterExample?.lab ?? starterExample?.course ?? 'Workflow home'}
-              </span>
-              <p className="ide-project-current-focus-kicker">Continue to {activePrimaryCtaLabel}</p>
-              <h2 className="ide-project-current-focus-title">
-                {starterExample?.name ?? projectName}
-              </h2>
-                <p className="ide-project-current-focus-summary">{projectSummary}</p>
-                {starterExample?.expectedBehavior && (
-                  <p className="ide-project-current-focus-goal">{starterExample.expectedBehavior}</p>
+        {/*
+          R2 Project surface reconciliation: the old `ide-project-current-focus`
+          hero duplicated the ProjectBridgePanel (identity/hash/fidelity/facts),
+          the ProjectWarningsPanel (blockers), and the SurfaceCommandStrip
+          (next-step reason / status / chips / CTA label). It has been replaced
+          with a lean session panel carrying only what is genuinely unique:
+          the project narrative and local session controls. Every other piece
+          of truth is owned by its canonical panel above.
+        */}
+        <SurfacePanel className="ide-project-session" testId="ide-project-session">
+          <div className="ide-project-session-narrative" data-testid="ide-project-session-narrative">
+            <p className="ide-surface-block-label">About this project</p>
+            <h3 className="ide-project-session-title">
+              {starterExample?.name ?? projectName}
+            </h3>
+            {projectSummary && (
+              <p className="ide-project-session-summary">{projectSummary}</p>
+            )}
+            {starterExample?.expectedBehavior && (
+              <p className="ide-project-session-goal">{starterExample.expectedBehavior}</p>
+            )}
+          </div>
+          {(onSaveNow || onOpenSavedProjects || onRestoreLastSave || onResetProject) && (
+            <div className="ide-project-session-actions" data-testid="ide-project-session-actions">
+              <p className="ide-surface-block-label">Project session</p>
+              <div className="ide-inline-actions" data-testid="ide-session-controls">
+                {onSaveNow && (
+                  <IdeButton tone="secondary" onClick={onSaveNow} testId="ide-session-save-now">
+                    Save now
+                  </IdeButton>
                 )}
-            </div>
-              <div className="ide-project-current-focus-chip-row">
-                <span className="ide-project-context-tag">Basys3</span>
-                <span className="ide-project-context-tag">{projectContextLabel}</span>
-                <span className="ide-project-context-tag">{inputCount} in / {outputCount} out</span>
-                {starterExample?.concept && (
-                  <span className="ide-project-context-tag">{starterExample.concept}</span>
+                {onOpenSavedProjects && (
+                  <IdeButton tone="ghost" onClick={onOpenSavedProjects} testId="ide-session-open-existing">
+                    Open existing
+                  </IdeButton>
+                )}
+                {onRestoreLastSave && (
+                  <IdeButton tone="ghost" onClick={onRestoreLastSave} testId="ide-session-restore">
+                    Restore last save
+                  </IdeButton>
+                )}
+                {onResetProject && (
+                  <IdeButton tone="danger" onClick={onResetProject} testId="ide-session-reset">
+                    Reset project
+                  </IdeButton>
                 )}
               </div>
-              <IdeCallout
-                tone={nextStepTone}
-                title="Why this is next"
-                testId="ide-project-next-step"
-                className="ide-project-current-focus-callout"
-              >
-                <p data-testid="ide-project-next-step-copy" style={{ margin: 0 }}>
-                  {nextStepReason}
-                </p>
-                <div className="ide-project-current-focus-support" data-testid="ide-project-current-focus-support">
-                  <strong>{heroStatusLabel}.</strong> {heroStatusMessage}
-                </div>
-              </IdeCallout>
-              <div className="ide-project-current-focus-facts" data-testid="ide-project-current-focus-facts">
-                <div className="ide-project-current-focus-fact">
-                  <span className="ide-project-current-focus-fact-label">Project</span>
-                  <span className="ide-project-current-focus-fact-value">{currentFocusProjectLabel}</span>
-                </div>
-                <div className="ide-project-current-focus-fact">
-                  <span className="ide-project-current-focus-fact-label">Top module</span>
-                  <span className="ide-project-current-focus-fact-value">{topModuleName || 'top'}</span>
-                </div>
-                <div className="ide-project-current-focus-fact">
-                  <span className="ide-project-current-focus-fact-label">Project note</span>
-                  <span className="ide-project-current-focus-fact-value">
-                    {starterExample?.expectedBehavior || projectSummary}
-                  </span>
-                </div>
-                <div className="ide-project-current-focus-fact">
-                  <span className="ide-project-current-focus-fact-label">Last saved</span>
-                  <span className="ide-project-current-focus-fact-value">
-                    {lastSavedAt ? formatSavedAt(lastSavedAt) : 'No local snapshot yet'}
-                  </span>
-                </div>
-                {importFidelitySummary ? (
-                  <div className="ide-project-current-focus-fact">
-                    <span className="ide-project-current-focus-fact-label">Import fidelity</span>
-                    <span className="ide-project-current-focus-fact-value" data-testid="ide-project-reference-fidelity">
-                      {importFidelitySummary}
-                    </span>
-                  </div>
-                ) : null}
-                <div className="ide-project-current-focus-fact">
-                  <details className="ide-project-hash-details">
-                    <summary className="ide-project-current-focus-fact-label" style={{ cursor: 'pointer', userSelect: 'none' }}>Circuit hash</summary>
-                    <code className="ide-project-current-focus-fact-value ide-project-hash-code" data-testid="ide-project-reference-determinism">
-                      {determinismHash.slice(0, 12)}
-                    </code>
-                  </details>
-                </div>
-              </div>
-              {(onSaveNow || onOpenSavedProjects || onRestoreLastSave || onResetProject) && (
-                <div className="ide-project-current-focus-actions" data-testid="ide-project-current-focus-actions">
-                  {savedAgoLabel ? (
-                    <p
-                      className="ide-copy"
-                      data-testid="ide-session-last-saved"
-                      style={{ color: 'var(--ide-text-soft)', margin: 0, fontSize: 12 }}
-                    >
-                      Last saved {savedAgoLabel}
-                    </p>
-                  ) : null}
-                  <div className="ide-inline-actions" data-testid="ide-session-controls">
-                    {onSaveNow && (
-                      <IdeButton tone="secondary" onClick={onSaveNow} testId="ide-session-save-now">
-                        Save now
-                      </IdeButton>
-                    )}
-                    {onOpenSavedProjects && (
-                      <IdeButton tone="ghost" onClick={onOpenSavedProjects} testId="ide-session-open-existing">
-                        Open existing
-                      </IdeButton>
-                    )}
-                    {onRestoreLastSave && (
-                      <IdeButton tone="ghost" onClick={onRestoreLastSave} testId="ide-session-restore">
-                        Restore last save
-                      </IdeButton>
-                    )}
-                    {onResetProject && (
-                      <IdeButton tone="danger" onClick={onResetProject} testId="ide-session-reset">
-                        Reset project
-                      </IdeButton>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
-
-          {/* Gate sentinel - text content only, not displayed */}
-          <span style={{ display: 'none' }} data-testid="ide-project-continue-target">{activePrimaryCtaLabel}</span>
-
-          {topBlockingIssues.length > 0 && (
-            <IdeCallout 
-              tone="warn" 
-              title={`${topBlockingIssues.length} blocker${topBlockingIssues.length > 1 ? 's' : ''} to resolve`} 
-              testId="ide-project-hero-blocker"
-            >
-              <div data-testid="ide-project-blockers-list" className="ide-project-blocker-list">
-                {topBlockingIssues.map((issue, idx) => (
-                  <div key={issue.code} data-testid={`ide-project-blocker-${idx}`} className="ide-project-blocker-item">
-                    <span className="ide-project-blocker-msg">{issue.message}</span>
-                    {issue.fixPath && (
-                      <IdeButton
-                        tone="primary"
-                        onClick={() => handleProjectModeAction(issue.fixPath!.mode)}
-                        testId={`ide-project-blocker-${idx}-action`}
-                      >
-                        {issue.fixPath.actionLabel} →
-                      </IdeButton>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {blockingIssues.length > 3 && (
-                <p style={{ margin: '0.75rem 0 0 0', fontSize: 12, opacity: 0.8 }}>
-                  {'...and '}{blockingIssues.length - 3} more
-                </p>
-              )}
-            </IdeCallout>
           )}
         </SurfacePanel>
 
@@ -1331,46 +1204,14 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           className="ide-export-section"
           data-testid="ide-project-panel-mapping"
         >
-          {/* Identity details - KV rows moved here; test IDs preserved */}
-          <details className="ide-project-identity-details" data-testid="ide-project-panel-identity">
-            <summary>Project details</summary>
-            <div className="ide-kv-list" style={{ marginTop: 'var(--rb-space-2)' }}>
-              <div className="ide-kv-row">
-                <span>Determinism hash</span>
-                <code data-testid="ide-project-hash-short">{determinismHash.slice(0, 12)}</code>
-              </div>
-              <div className="ide-kv-row">
-                <span>Last verify</span>
-                <span data-testid="ide-project-last-verify-status">
-                  {compareTraceOnly
-                    ? 'TRACE'
-                    : (health.lastVerify?.status ?? 'none').toUpperCase()}
-                </span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Verify hash</span>
-                <code data-testid="ide-project-last-verify-hash">
-                  {health.lastVerify?.hash?.slice(0, 12) ?? '-'}
-                </code>
-              </div>
-              <div className="ide-kv-row">
-                <span>Dirty since verify</span>
-                <span data-testid="ide-project-dirty-since-verify">
-                  {health.dirtySinceVerify ? 'DIRTY' : 'CLEAN'}
-                </span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Dirty since export</span>
-                <span data-testid="ide-project-dirty-since-export">
-                  {health.dirtySinceExport ? 'DIRTY' : 'CLEAN'}
-                </span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Unmapped required</span>
-                <span data-testid="ide-project-unmapped-count">{unmappedRequiredCount} unmapped</span>
-              </div>
-            </div>
-          </details>
+          {/*
+            R2 Project surface reconciliation: the legacy `Project details`
+            details block duplicated the ProjectBridgePanel hash + fidelity +
+            verify/export pills and was not covered by any active test. Its
+            determinism hash now lives in the Bridge header (ide-project-bridge-hash).
+            Its verify/export/dirty/unmapped flags are reflected by the
+            Bridge Verify/Export field tones and by ProjectWarningsPanel.
+          */}
 
           {/* FPGA Configuration - collapsed by default */}
           <details className="ide-project-identity-details" data-testid="ide-project-fpga-config">
@@ -1500,6 +1341,50 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           )}
         </section>
         )}
+        {/*
+          R2 reconciliation: a minimal, collapsed low-level diagnostics block.
+          The Bridge owns student-facing status framing; this block only exposes
+          machine-readable state (uppercase PASS/FAIL, DIRTY/CLEAN, full hashes)
+          that CI contracts and deep-debug sessions rely on. It is intentionally
+          buried under `<details>` so it does not clutter the primary surface.
+        */}
+        <details className="ide-project-diagnostics" data-testid="ide-project-diagnostics">
+          <summary>Low-level diagnostics</summary>
+          <div className="ide-kv-list">
+            <div className="ide-kv-row">
+              <span>Determinism hash</span>
+              <code data-testid="ide-project-hash-short">
+                {determinismHash ? determinismHash.slice(0, 12) : '—'}
+              </code>
+            </div>
+            <div className="ide-kv-row">
+              <span>Last verify</span>
+              <span data-testid="ide-project-last-verify-status">
+                {compareTraceOnly
+                  ? 'TRACE'
+                  : (health.lastVerify?.status ?? 'none').toUpperCase()}
+              </span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Verify hash</span>
+              <code data-testid="ide-project-last-verify-hash">
+                {health.lastVerify?.hash ?? '—'}
+              </code>
+            </div>
+            <div className="ide-kv-row">
+              <span>Dirty since verify</span>
+              <span data-testid="ide-project-dirty-since-verify">
+                {health.dirtySinceVerify ? 'DIRTY' : 'CLEAN'}
+              </span>
+            </div>
+            <div className="ide-kv-row">
+              <span>Dirty since export</span>
+              <span data-testid="ide-project-dirty-since-export">
+                {health.dirtySinceExport ? 'DIRTY' : 'CLEAN'}
+              </span>
+            </div>
+          </div>
+        </details>
       </IdePanel>
     </IdeSurfaceLayout>
   );

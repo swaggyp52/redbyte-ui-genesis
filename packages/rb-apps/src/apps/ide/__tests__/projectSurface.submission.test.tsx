@@ -87,7 +87,7 @@ describe('ProjectSurface workspace panels', () => {
       verifyQualification: 'incomplete-mapping',
     });
 
-    const { getByTestId, getAllByTestId } = render(
+    const { getAllByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -107,12 +107,15 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Map Pins');
-    expect(getByTestId('ide-project-hero-blocker').textContent).toContain('Finish mapping before relying on hardware behavior');
+    const primaryCtas = getAllByTestId('ide-project-command-strip-primary-cta');
+    expect(primaryCtas[primaryCtas.length - 1].textContent).toContain('Continue to Map Pins');
+    // Reconciliation R2: ProjectWarningsPanel is the single blocker authority.
+    const warningsLists = getAllByTestId('ide-project-warnings-list');
+    expect(warningsLists[warningsLists.length - 1].textContent).toContain('Finish mapping before relying on hardware behavior');
   });
 
   it('keeps the hero CTA dominant while surfacing the active example context', () => {
-    const { getByTestId, getAllByTestId, queryByTestId } = render(
+    const { getAllByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -148,21 +151,23 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    const showcases = getAllByTestId('ide-project-showcase');
-    const showcase = showcases[showcases.length - 1];
-    expect(showcase.textContent).toContain('Signal Tour: Switches -> LEDs');
-    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Verify');
-    expect(getByTestId('ide-project-next-step').textContent).toContain('Refresh Verify');
+    // Reconciliation R2: the session narrative owns the example name + summary.
+    // The command strip owns the "Continue to X" and next-step reason.
+    // The Bridge owns the project-kind label.
+    // NB: the Project surface renders twice in some test contexts (panel + shadow);
+    // we read the last (live) instance to match existing test patterns.
+    const narratives = getAllByTestId('ide-project-session-narrative');
+    const narrative = narratives[narratives.length - 1];
+    expect(narrative.textContent).toContain('Signal Tour: Switches -> LEDs');
+    expect(narrative.textContent).toContain('Flip switches and the matching LEDs follow immediately.');
+    const primaryCtas = getAllByTestId('ide-project-command-strip-primary-cta');
+    expect(primaryCtas[primaryCtas.length - 1].textContent).toContain('Continue to Verify');
+    const nextSteps = getAllByTestId('ide-project-command-strip-next-step-copy');
+    expect(nextSteps[nextSteps.length - 1].textContent).toContain('Refresh Verify');
     expect(queryByTestId('ide-project-board-preview')).toBeNull();
-    expect(getByTestId('ide-project-current-focus').textContent).toContain(
-      'Flip switches and the matching LEDs follow immediately.'
-    );
-
     expect(queryByTestId('ide-project-context')).toBeNull();
-    const facts = getByTestId('ide-project-current-focus-facts');
-    expect(facts.textContent).toContain('Example Project - Signal Tour: Switches -> LEDs');
-    expect(facts.textContent).toContain('Project note');
-    expect(facts.textContent).toContain('Flip switches and the matching LEDs follow immediately.');
+    const bridgeSubtitles = getAllByTestId('ide-project-bridge-subtitle');
+    expect(bridgeSubtitles[bridgeSubtitles.length - 1].textContent).toContain('Example Project');
   });
 
   it('shows open-existing and recent-work entry points on the empty project home', () => {
@@ -289,9 +294,10 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    const targetList = getAllByTestId('ide-project-continue-target');
+    // Reconciliation R2: command strip owns the "Continue to X" label.
+    const targetList = getAllByTestId('ide-project-command-strip-primary-cta');
     expect(targetList[targetList.length - 1].textContent).toContain('Design');
-    
+
     const missingPinsList = getAllByTestId('ide-project-mapping-missing-list');
     const missingPins = missingPinsList[missingPinsList.length - 1];
     expect(missingPins.textContent).toContain('SW0');
@@ -381,8 +387,9 @@ describe('ProjectSurface workspace panels', () => {
 
     const fidelityList = getAllByTestId('ide-project-import-fidelity');
     expect(fidelityList[fidelityList.length - 1].textContent).toContain('Reconstructed');
-    expect(getByTestId('ide-project-reference-fidelity').textContent).toContain('Reconstructed');
-    expect(getByTestId('ide-project-reference-determinism').textContent).toContain('abc123def456');
+    // Reconciliation R2: the Bridge owns the canonical fidelity and determinism hash display.
+    expect(getByTestId('ide-project-bridge-fidelity').textContent).toContain('Reconstructed');
+    expect(getByTestId('ide-project-bridge-hash').textContent).toContain('abc123def456');
     
     const topList = getAllByTestId('ide-project-fpga-top');
     fireEvent.change(topList[topList.length - 1], { target: { value: 'lab_top' } });
@@ -439,7 +446,9 @@ describe('ProjectSurface workspace panels', () => {
   });
 
   it('displays up to top 3 blocking issues with readable messages', () => {
-    const { getAllByTestId, container } = render(
+    // Reconciliation R2: ProjectWarningsPanel is the single authority for the
+    // top-N cap + overflow affordance. The old duplicate hero list was removed.
+    const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -460,23 +469,15 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    // Should show exactly 3 blockers
-    const blocker0 = getAllByTestId('ide-project-blocker-0');
-    const blocker1 = getAllByTestId('ide-project-blocker-1');
-    const blocker2 = getAllByTestId('ide-project-blocker-2');
-    
-    expect(blocker0[blocker0.length - 1].textContent).toContain('First issue');
-    expect(blocker1[blocker1.length - 1].textContent).toContain('Second issue');
-    expect(blocker2[blocker2.length - 1].textContent).toContain('Third issue');
+    expect(getByTestId('ide-project-warnings-item-RBP1000').textContent).toContain('First issue');
+    expect(getByTestId('ide-project-warnings-item-RBP1001').textContent).toContain('Second issue');
+    expect(getByTestId('ide-project-warnings-item-RBP1002').textContent).toContain('Third issue');
 
-    // Fourth blocker should not be rendered directly
-    const blocker3List = container.querySelectorAll('[data-testid="ide-project-blocker-3"]');
-    expect(blocker3List.length).toBe(0);
+    // Fourth item is capped off; it must not render inside the warnings list.
+    expect(queryByTestId('ide-project-warnings-item-RBP1003')).toBeNull();
 
-    // Should show "…and 1 more" overflow text
-    const listElements = getAllByTestId('ide-project-blockers-list');
-    const lastList = listElements[listElements.length - 1];
-    expect(lastList.parentElement?.textContent).toContain('...and 1 more');
+    // Overflow affordance communicates the hidden remainder.
+    expect(getByTestId('ide-project-warnings-overflow').textContent).toContain('...and 1 more');
   });
 
 });

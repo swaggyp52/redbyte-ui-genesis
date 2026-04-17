@@ -24,6 +24,8 @@ export interface ProjectWarningsPanelProps {
   testId?: string;
 }
 
+const MAX_VISIBLE_ISSUES = 3;
+
 export const ProjectWarningsPanel: React.FC<ProjectWarningsPanelProps> = ({
   issues,
   onNavigateFix,
@@ -32,6 +34,11 @@ export const ProjectWarningsPanel: React.FC<ProjectWarningsPanelProps> = ({
   if (issues.length === 0) {
     return null;
   }
+
+  // R2 reconciliation: the warnings panel now owns the top-N cap that used
+  // to live in the legacy `ide-project-current-focus` hero blocker list.
+  const visibleIssues = issues.slice(0, MAX_VISIBLE_ISSUES);
+  const overflowCount = Math.max(0, issues.length - MAX_VISIBLE_ISSUES);
 
   return (
     <SurfacePanel className="ide-project-warnings" testId={testId}>
@@ -56,11 +63,12 @@ export const ProjectWarningsPanel: React.FC<ProjectWarningsPanelProps> = ({
         className="ide-project-warnings-list"
         data-testid={`${testId}-list`}
       >
-        {issues.map((issue) => (
+        {visibleIssues.map((issue, index) => (
           <li
             key={issue.code}
             className="ide-project-warnings-item"
             data-testid={`${testId}-item-${issue.code}`}
+            data-index={index}
           >
             <div className="ide-project-warnings-item-body">
               <div className="ide-project-warnings-item-message">
@@ -82,6 +90,14 @@ export const ProjectWarningsPanel: React.FC<ProjectWarningsPanelProps> = ({
           </li>
         ))}
       </ul>
+      {overflowCount > 0 && (
+        <p
+          className="ide-project-warnings-overflow"
+          data-testid={`${testId}-overflow`}
+        >
+          ...and {overflowCount} more
+        </p>
+      )}
     </SurfacePanel>
   );
 };

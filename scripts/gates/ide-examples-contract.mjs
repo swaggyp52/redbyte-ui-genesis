@@ -31,7 +31,7 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
   await page.locator('[data-testid="mode-button-project"]').click();
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
 
-  await page.waitForSelector('[data-testid="ide-project-showcase"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-project-bridge"]', { timeout: 10000 });
 
   const targetLoad = page.locator('[data-testid="ide-project-example-load"]').nth(1);
   const targetExampleId = (await targetLoad.getAttribute('data-example-id')) ?? '';

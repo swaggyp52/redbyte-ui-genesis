@@ -179,7 +179,13 @@ export const ProjectBridgePanel: React.FC<ProjectBridgePanelProps> = ({
   const verify = verifyCopy(health);
   const exp = exportCopy(health);
   const shortHash = determinismHash ? determinismHash.slice(0, 12) : '—';
-  const kindLabel = getProjectKindDisplayName(projectKind);
+  // Reconciliation R2: a loaded blank-origin project is framed as "Fresh Project"
+  // rather than "Blank Project". This used to live as a duplicate `projectContextLabel`
+  // memo on ProjectSurface + a duplicate `currentFocusProjectLabel` inside the hero.
+  // The Bridge is now the single authority for the project-kind label.
+  const kindLabel = projectKind === 'blank' && readiness.hasCircuit
+    ? 'Fresh Project'
+    : getProjectKindDisplayName(projectKind);
   // Sim top is an authored, distinct entity (conventionally `${designTop}_tb`).
   // Even when a caller omits it, we never claim the testbench *is* the design —
   // we show a muted em-dash so the distinction stays visible.

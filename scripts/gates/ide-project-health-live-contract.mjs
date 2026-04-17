@@ -192,7 +192,7 @@ await runIdeGate('IDE project health live contract satisfied', async ({ page, ba
     await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
   }
 
-  const initialCta = await text(page.locator('[data-testid="ide-project-continue-target"]'));
+  const initialCta = await text(page.locator('[data-testid="ide-project-command-strip-primary-cta"]'));
   assert(
     initialCta.toLowerCase().includes('verify'),
     `expected initial project continue target to route Verify, got "${initialCta}"`
@@ -244,7 +244,7 @@ await runIdeGate('IDE project health live contract satisfied', async ({ page, ba
     dirtySinceVerify === 'DIRTY',
     `expected dirty-since-verify indicator to be DIRTY, got "${dirtySinceVerify}"`
   );
-  const ctaAfterMutation = await text(page.locator('[data-testid="ide-project-continue-target"]'));
+  const ctaAfterMutation = await text(page.locator('[data-testid="ide-project-command-strip-primary-cta"]'));
   assert(
     ctaAfterMutation.toLowerCase().includes('verify'),
     `expected project continue target to route Verify after design mutation, got "${ctaAfterMutation}"`

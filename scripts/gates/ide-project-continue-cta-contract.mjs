@@ -38,8 +38,13 @@ await runIdeGate('IDE project continue CTA contract satisfied', async ({ page, b
     `project primary CTA must start with "Continue", got "${ctaText}"`
   );
 
-  const nextTarget = await text(page.locator('[data-testid="ide-project-continue-target"]'));
-  assert(nextTarget.toLowerCase().includes('verify'), 'expected initial next target to route to Verify');
+  // Reconciliation R2: the legacy hero's `ide-project-continue-target` was removed.
+  // The command strip's primary CTA text is the canonical "Continue to <surface>" label.
+  const nextTargetText = ctaText;
+  assert(
+    nextTargetText.toLowerCase().includes('verify'),
+    `expected initial next target to route to Verify, got "${nextTargetText}"`
+  );
 
   await continueCta.click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });

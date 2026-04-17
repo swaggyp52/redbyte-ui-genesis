@@ -89,6 +89,25 @@ describe('ProjectWarningsPanel', () => {
     expect(onNavigateFix).toHaveBeenNthCalledWith(2, 'export');
   });
 
+  it('caps visible issues at three and surfaces an overflow line', () => {
+    const { getByTestId, queryByTestId } = render(
+      <ProjectWarningsPanel
+        issues={[
+          makeIssue('RBP1000', 'First', 'design', 'Open'),
+          makeIssue('RBP1001', 'Second', 'verify', 'Run'),
+          makeIssue('RBP1002', 'Third', 'export', 'Build'),
+          makeIssue('RBP1003', 'Fourth', 'hardware', 'Map'),
+        ]}
+        onNavigateFix={() => {}}
+      />,
+    );
+    expect(getByTestId('ide-project-warnings-item-RBP1000')).toBeTruthy();
+    expect(getByTestId('ide-project-warnings-item-RBP1001')).toBeTruthy();
+    expect(getByTestId('ide-project-warnings-item-RBP1002')).toBeTruthy();
+    expect(queryByTestId('ide-project-warnings-item-RBP1003')).toBeNull();
+    expect(getByTestId('ide-project-warnings-overflow').textContent).toContain('...and 1 more');
+  });
+
   it('omits the fix button when an issue has no fixPath', () => {
     const { queryByTestId, getByTestId } = render(
       <ProjectWarningsPanel

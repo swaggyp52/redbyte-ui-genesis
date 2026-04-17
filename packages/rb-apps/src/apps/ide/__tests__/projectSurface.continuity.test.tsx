@@ -211,8 +211,10 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-project-blocker-0-action').textContent).toContain('Build Submission Package');
-    expect(getByTestId('ide-project-blocker-0-action').textContent).not.toContain('Ã');
+    // Reconciliation R2: the Warnings panel is the canonical blocker authority.
+    // The old `ide-project-hero-blocker` duplicate in the hero was removed.
+    expect(getByTestId('ide-project-warnings-fix-RBP1999').textContent).toContain('Build Submission Package');
+    expect(getByTestId('ide-project-warnings-fix-RBP1999').textContent).not.toContain('Ã');
     expect(getByTestId('ide-project-mapping-expand-btn').textContent).toContain('Mapping');
     expect(getByTestId('ide-project-mapping-expand-btn').textContent).not.toContain('Ã');
   });
@@ -238,7 +240,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
         verifyQualification: 'incomplete-mapping',
       }
     );
-    const { getAllByTestId } = render(
+    const { container } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -257,17 +259,18 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
       </BoardSignalProvider>
     );
 
-    // RBP1005 is auto-generated when verifyPassIncomplete — fixPath mode: 'hardware'
-    const actionBtns = getAllByTestId('ide-project-blocker-0-action');
-    const lastBtn = actionBtns[actionBtns.length - 1];
-    expect(lastBtn.textContent).toContain('Map Pins');
-    fireEvent.click(lastBtn);
+    // RBP1005 is auto-generated when verifyPassIncomplete — fixPath mode: 'hardware'.
+    // Reconciliation R2: the Warnings panel owns blocker fix buttons.
+    const fixBtn = container.querySelector('[data-testid^="ide-project-warnings-fix-"]') as HTMLButtonElement | null;
+    expect(fixBtn).not.toBeNull();
+    expect(fixBtn!.textContent).toContain('Map Pins');
+    fireEvent.click(fixBtn!);
     expect(onOpenHardware).toHaveBeenCalled();
   });
 
   it('missing verify vectors blocker includes an action button pointing to Verify', () => {
     const onOpenVerify = vi.fn();
-    const { getAllByTestId } = render(
+    const { getByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -299,17 +302,16 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
       </BoardSignalProvider>
     );
 
-    const actionBtns = getAllByTestId('ide-project-blocker-0-action');
-    const lastBtn = actionBtns[actionBtns.length - 1];
-    // Button says the fixPath actionLabel, which is "Add Test Vectors"
-    expect(lastBtn.textContent).toContain('Vectors');
-    fireEvent.click(lastBtn);
+    // Reconciliation R2: blocker fix buttons now live in ProjectWarningsPanel.
+    const fixBtn = getByTestId('ide-project-warnings-fix-RBP1002');
+    expect(fixBtn.textContent).toContain('Vectors');
+    fireEvent.click(fixBtn);
     expect(onOpenVerify).toHaveBeenCalled();
   });
 
   it('verify-failed blocker includes an action button pointing to Verify', () => {
     const onOpenVerify = vi.fn();
-    const { getAllByTestId } = render(
+    const { getByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -341,10 +343,10 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
       </BoardSignalProvider>
     );
 
-    const actionBtns = getAllByTestId('ide-project-blocker-0-action');
-    const lastBtn = actionBtns[actionBtns.length - 1];
-    expect(lastBtn.textContent).toContain('Verification');
-    fireEvent.click(lastBtn);
+    // Reconciliation R2: blocker fix buttons now live in ProjectWarningsPanel.
+    const fixBtn = getByTestId('ide-project-warnings-fix-RBP1003');
+    expect(fixBtn.textContent).toContain('Verification');
+    fireEvent.click(fixBtn);
     expect(onOpenVerify).toHaveBeenCalled();
   });
 
@@ -376,9 +378,11 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(queryByTestId('ide-project-showcase-primary-cta')).toBeNull();
     expect(queryByTestId('ide-project-board-preview')).toBeNull();
     expect(queryByTestId('ide-project-quick-stats')).toBeNull();
+    // Reconciliation R2: the command strip is the single authority for the primary
+    // CTA label, next-step reason, and "Continue to X" narrative.
     expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Verify');
-    expect(getByTestId('ide-project-next-step').textContent).toContain('trusted comparison evidence');
-    expect(getByTestId('ide-project-current-focus').textContent).toContain('Continue to Verify');
+    expect(getByTestId('ide-project-command-strip-next-step-copy').textContent).toContain('trusted comparison evidence');
+    expect(getByTestId('ide-project-command-strip').textContent).toContain('Continue to Verify');
   });
 
   it('keeps export advisory states routed through the hero CTA instead of a duplicate row action', () => {
@@ -407,8 +411,9 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
 
     expect(queryByTestId('ide-project-readiness-goto-verify-for-export')).toBeNull();
     expect(queryByTestId('ide-project-showcase-primary-cta')).toBeNull();
+    // Reconciliation R2: command strip is the single authority for "Continue to X".
     expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Verify');
-    expect(getByTestId('ide-project-current-focus').textContent).toContain('Continue to Verify');
+    expect(getByTestId('ide-project-command-strip').textContent).toContain('Continue to Verify');
   });
 
   it('removes blank-project framing from loaded blank-origin projects', () => {
@@ -425,11 +430,15 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
       </BoardSignalProvider>
     );
 
-    const currentFocus = getByTestId('ide-project-current-focus');
-    expect(currentFocus.textContent).toContain('Fresh Project');
-    expect(currentFocus.textContent).toContain('started from a blank canvas');
-    expect(currentFocus.textContent).not.toContain('Blank Project');
-    expect(currentFocus.textContent).not.toContain('Top module top is loaded and ready for setup.');
+    // Reconciliation R2: the Bridge owns the project-kind label (single authority).
+    // The session narrative owns the project summary/goal copy.
+    const bridgeSubtitle = getByTestId('ide-project-bridge-subtitle');
+    expect(bridgeSubtitle.textContent).toContain('Fresh Project');
+    expect(bridgeSubtitle.textContent).not.toContain('Blank Project');
+
+    const narrative = getByTestId('ide-project-session-narrative');
+    expect(narrative.textContent).toContain('started from a blank canvas');
+    expect(narrative.textContent).not.toContain('Top module top is loaded and ready for setup.');
   });
 
   it('removes starter framing from detached custom projects', () => {
@@ -461,8 +470,9 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-project-current-focus').textContent).toContain('Custom Project');
-    expect(getByTestId('ide-project-current-focus').textContent).toContain('Untitled Project');
+    // Reconciliation R2: the Bridge owns kind framing; the session narrative owns name.
+    expect(getByTestId('ide-project-bridge-subtitle').textContent).toContain('Custom Project');
+    expect(getByTestId('ide-project-session-narrative').textContent).toContain('Untitled Project');
     expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Design');
     expect(queryByText('From Signal Tour: Switches → LEDs')).toBeNull();
     expect(queryByTestId('ide-project-examples-disclosure')).toBeNull();

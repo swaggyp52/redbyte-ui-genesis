@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-04-17 (Surface reconciliation R2: Project control tower)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/components/ProjectBridgePanel.tsx`, `packages/rb-apps/src/apps/ide/components/ProjectWarningsPanel.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectWarningsPanel.test.tsx`, `scripts/gates/ide-project-health-live-contract.mjs`, `scripts/gates/ide-examples-contract.mjs`, `scripts/gates/ide-project-continue-cta-contract.mjs` (comment alignment)
+
+**Context**: After S1–S3, the loaded Project surface stacked **Project Bridge**, **Warnings**, **Overview**, **Command strip**, and a legacy **“current focus” hero** that repeated the same identity, chips, next-step copy, blocker list, fidelity row, hash, and session controls. That violated the user’s **surface reconciliation** rule: no additive layers without subtraction. R2 removes the duplicate hero and folds unique narrative + session actions into a single lean panel.
+
+**Changes**:
+- **Removed** the `ide-project-current-focus` / `ide-project-showcase` hero block (duplicate blockers vs `ProjectWarningsPanel`, duplicate facts vs `ProjectBridgePanel`, duplicate “why next” vs `SurfaceCommandStrip`, duplicate chips vs command-strip meta, hidden `ide-project-continue-target` sentinel).
+- **Added** `ide-project-session` — “About this project” narrative (name, summary, starter `expectedBehavior`) plus **Project session** actions (Save / Open existing / Restore / Reset) only. Bridge + strip remain the authorities for workflow state and primary CTA.
+- **Removed** the redundant collapsed **Project details** KV block under mapping (hash / verify / dirty / unmapped duplicated Bridge + diagnostics). **Kept** `ide-project-diagnostics` `<details>` for CI-style machine-readable rows (`ide-project-hash-short`, last verify, dirty flags) used by `ide-project-health-live-contract.mjs`.
+- **ProjectWarningsPanel**: owns the **top-3 cap** + `ide-project-warnings-overflow` line (moved from hero); `ProjectSurface` routes `onNavigateFix` through **`handleProjectModeAction`** so `fixPath.mode === 'project'` scrolls/opens mapping (single authority; fixes the prior no-op for project-mode fixes).
+- **ProjectBridgePanel**: **Fresh Project** label for `projectKind === 'blank'` when `readiness.hasCircuit` (moved from hero-only `projectContextLabel` duplication).
+- **CSS**: dropped orphaned `.ide-project-current-focus-*` rules; styled `.ide-project-session`; broad-pass selectors now target `.ide-project-session` instead of `.ide-project-current-focus-shell`.
+- **Gates**: `ide-project-health-live-contract` reads CTA text from `ide-project-command-strip-primary-cta`; `ide-examples-contract` waits on `ide-project-bridge` instead of removed showcase.
+
+**Tests**:
+- Continuity + submission suites updated to assert **canonical** test IDs (warnings fix buttons, command strip, bridge fidelity/hash, session narrative).
+- `projectWarningsPanel.test.tsx` — new test for **3-item cap + overflow**.
+
+**Verification**:
+- `pnpm -w exec vitest run --config vitest.config.ts` on `projectSurface.continuity`, `projectSurface.submission`, `projectWarningsPanel`, `projectBridgePanel`, `projectOverviewPanel` → **56/56** pass.
+- `pnpm -s build:unified` → success.
+
+**Truth changes**: One control tower: Bridge for packaged project truth, Warnings for blockers, Command strip for next step + primary CTA, Session panel for narrative + local session only. No second blocker list, no second fidelity/hash row in the primary column.
+
+**Dead / duplicate UI removed**: Legacy hero subtree; duplicate Project-details KV under mapping; duplicate import of `ProjectHealthMode` type in `ProjectSurface.tsx`.
+
 ## Change Log 2026-04-16 (Surface ownership S3: focused-module inspector)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/components/DesignFocusInspector.tsx` (new), `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/IdeApp.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/designFocusInspector.test.tsx` (new)
