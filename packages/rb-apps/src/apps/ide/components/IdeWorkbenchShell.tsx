@@ -328,10 +328,10 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       const widthCaps =
         mode === 'design'
           ? layoutMode === 'wide'
-            ? { left: { min: 232, max: 264 }, right: { min: 292, max: 332 } }
+            ? { left: { min: 196, max: 224 }, right: { min: 212, max: 252 } }
             : layoutMode === 'standard'
-              ? { left: { min: 216, max: 248 }, right: { min: 276, max: 316 } }
-              : { left: { min: 200, max: 228 }, right: { min: 248, max: 292 } }
+              ? { left: { min: 184, max: 212 }, right: { min: 200, max: 236 } }
+              : { left: { min: 176, max: 200 }, right: { min: 192, max: 228 } }
           : mode === 'verify'
             ? layoutMode === 'wide'
               ? { left: { min: 192, max: 214 }, right: { min: 232, max: 272 } }

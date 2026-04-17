@@ -166,17 +166,14 @@ describe('DesignSurface canvas chrome simplification', () => {
     expect(zoomStat.textContent).toContain('%');
   });
 
-  it('groups view controls in one canvas tray and keeps shortcut help off the top edge', () => {
+  it('groups view controls in one canvas tray without a second floating shortcut overlay', () => {
     const view = renderSurface();
 
     const tray = view.getByTestId('ide-design-canvas-view-tools');
     expect(tray.contains(view.getByTestId('ide-design-canvas-controls'))).toBe(true);
     expect(tray.contains(view.getByTestId('ide-design-zoom-presets'))).toBe(true);
     expect(tray.textContent).toContain('zoom');
-
-    const shortcuts = view.getByTestId('ide-design-shortcut-strip');
-    expect(shortcuts.textContent).toContain('Ctrl + wheel');
-    expect(shortcuts.textContent).toContain('Space + drag');
+    expect(view.queryByTestId('ide-design-shortcut-strip')).toBeNull();
   });
 
   it('surfaces verify focus inside the simulation strip instead of the toolbar band', () => {

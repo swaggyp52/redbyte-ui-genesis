@@ -28,7 +28,7 @@ import {
   IdeInspectorSection,
   IdeStatusPill,
 } from '../components/IdePrimitives';
-import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
+import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { RuntimeSimState, RuntimeSignalProbe, RuntimeVerifyRun } from '../projectRuntime';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
@@ -504,11 +504,6 @@ const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
     description: 'Core combinational building blocks for the main circuit path.',
   },
   {
-    id: 'board',
-    title: 'Board Resources',
-    description: 'Basys3 switches, LEDs, buttons, and display resources for hardware mapping.',
-  },
-  {
     id: 'sequential',
     title: 'Sequential & Timing',
     description:
@@ -523,6 +518,11 @@ const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
     id: 'reusable',
     title: 'Reusable Blocks',
     description: 'Built-in helpers, saved macros, and custom parts you can place quickly.',
+  },
+  {
+    id: 'board',
+    title: 'Board Resources',
+    description: 'Basys3 inventory for mapped hardware work once the circuit path is in place.',
   },
 ];
 
@@ -930,7 +930,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   const [paletteQuery, setPaletteQuery] = useState('');
   const [collapsedDockSections, setCollapsedDockSections] = useState<ReadonlySet<DesignDockSectionId>>(
-    () => new Set<DesignDockSectionId>()
+    () => new Set<DesignDockSectionId>(['board', 'live-inputs'])
   );
   const canvasViewportRef = useRef<HTMLDivElement | null>(null);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
@@ -946,7 +946,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [tickEngine] = useState(() => new TickEngine(editorCircuit, { tickRate: 10 }));
   const [toolsExpanded, setToolsExpanded] = useState(false);
   const [showEvalOrder, setShowEvalOrder] = useState(false);
-  const [hasInteracted, setHasInteracted] = useState(false);
   const [designView, setDesignView] = useState<'canvas' | 'hdl' | 'split'>('canvas');
   const [designDebugEnabled, setDesignDebugEnabled] = useState(() => readDesignDebugQueryParam());
   const [hdlDraftText, setHdlDraftText] = useState('');
@@ -1176,7 +1175,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     },
     [designDebugEnabled, liveInputValueById, runtimeSim.inputs, runtimeSim.signals]
   );
-  const emitCircuitMutation = useCallback((nextCircuit?: Circuit) => {
+  const markReplayStale = useCallback(() => {
     if (externalDebugTick != null) {
       const debugContext = externalDebugContext?.tick === externalDebugTick ? externalDebugContext : null;
       setStaleReplayBreadcrumb({
@@ -1189,16 +1188,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       });
       onClearExternalDebug?.();
     }
-    onCircuitMutated?.(nextCircuit ?? useCircuitStore.getState().circuit);
   }, [
     activeVerifySignal,
     debugTickCount,
     debugTickIndex,
     externalDebugContext,
     externalDebugTick,
-    onCircuitMutated,
     onClearExternalDebug,
     replaySession,
+  ]);
+  const emitCircuitMutation = useCallback((nextCircuit?: Circuit) => {
+    markReplayStale();
+    onCircuitMutated?.(nextCircuit ?? useCircuitStore.getState().circuit);
+  }, [
+    markReplayStale,
+    onCircuitMutated,
   ]);
   const getChipMetadata = useCallback((nodeType: string, node?: Node): ChipMetadata | undefined => {
     if (node) {
@@ -2103,17 +2107,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const handleUndo = useCallback(() => {
     if (!onRuntimeUndo) return;
     onRuntimeUndo();
+    if (externalDebugTick != null) {
+      markReplayStale();
+      onCircuitMutated?.(useCircuitStore.getState().circuit);
+    }
     // Do NOT call emitCircuitMutation here — onRuntimeUndo mutates projectRuntime
     // directly; IdeApp's useLayoutEffect syncs projectRuntime → circuitStore.
     // Calling emitCircuitMutation would pass the stale circuitStore snapshot to
     // applyCircuitMutation and overwrite the undo.
-  }, [onRuntimeUndo]);
+  }, [externalDebugTick, markReplayStale, onCircuitMutated, onRuntimeUndo]);
 
   const handleRedo = useCallback(() => {
     if (!onRuntimeRedo) return;
     onRuntimeRedo();
+    if (externalDebugTick != null) {
+      markReplayStale();
+      onCircuitMutated?.(useCircuitStore.getState().circuit);
+    }
     // Same reasoning as handleUndo above.
-  }, [onRuntimeRedo]);
+  }, [externalDebugTick, markReplayStale, onCircuitMutated, onRuntimeRedo]);
 
   const measureCanvasViewport = useCallback(() => {
     if (!canvasHostRef.current) return null;
@@ -2319,7 +2331,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (!viewportSeed) return;
     if (lastViewportSeedRef.current === viewportSeed) return;
     lastViewportSeedRef.current = viewportSeed;
-    setHasInteracted(false);
     hasAutoFitRef.current = false;
     const frame = window.requestAnimationFrame(() => {
       fitToCircuitRef.current();
@@ -3024,9 +3035,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     debugTickCount != null &&
     debugTickCount > 1 &&
     onSelectDebugTickIndex !== undefined;
-  const activeSimulationSelectionLabel = effectiveExternalDebugTick != null
-    ? activeReplaySelectionLabel
-    : `Tick ${simTick}`;
   const staleReplaySelectionLabel = useMemo(
     () =>
       staleReplayBreadcrumb
@@ -3038,9 +3046,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         : null,
     [staleReplayBreadcrumb]
   );
+  const activeSimulationSelectionLabel = effectiveExternalDebugTick != null
+    ? activeReplaySelectionLabel
+    : staleReplaySelectionLabel ?? `Tick ${simTick}`;
   const activeSimulationSummary = activeDebugContext
     ? describeVerifyDebugSummary(activeDebugContext)
-    : simulationStory.summary;
+    : staleReplayBreadcrumb
+      ? 'Replay invalidated. Resume live edits or return to Verify for a fresh waveform.'
+      : simulationStory.summary;
+  const showSimulationSummary =
+    staleReplayBreadcrumb != null ||
+    !!activeDebugContext ||
+    !!activeVerifySignal ||
+    canRenderReplayScrubber ||
+    simRunning ||
+    runtimeSim.trace.length > 0;
   const handleReplayScrubberChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       if (!onSelectDebugTickIndex || debugTickCount == null) return;
@@ -3080,7 +3100,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (effectiveExternalDebugTick != null) return 'Inspect replay';
     const view =
       designView === 'hdl' ? 'Code' : designView === 'split' ? 'Split' : 'Canvas';
-    if (activeVerifySignal) return `${view} · Verify-linked`;
+    if (activeVerifySignal) return `${view} / Verify-linked`;
     return view;
   }, [activeVerifySignal, designView, effectiveExternalDebugTick]);
   const designCommandDescription = effectiveExternalDebugTick != null
@@ -3298,8 +3318,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const isSplitWorkspace = workspacePreset.mode === 'split';
   const showSplitCompareToolbar = isSplitWorkspace && effectiveDesignView === 'split';
   const showSimulationStrip = workspacePreset.showSimulationStrip;
+  const hasMeaningfulSimulationStory =
+    showSimulationStrip &&
+    (showSimulationSummary || isReplayMode || staleReplayBreadcrumb != null || simulationStory.clockEvent != null);
+  const showExpandedCanvasStatus =
+    showFullAuthoringStatus &&
+    (totalAuthoringErrors > 0 ||
+      totalAuthoringWarnings > 0 ||
+      traceState != null ||
+      liveHdlResult.error != null ||
+      hasMeaningfulSimulationStory);
+  const useCompactAuthoringStatus =
+    showCompactAuthoringStatus || (isCanvasWorkspace && !showExpandedCanvasStatus);
   const showWorkspaceStatusBar =
-    showFullAuthoringStatus || showCompactAuthoringStatus || showSimulationStrip;
+    showExpandedCanvasStatus || useCompactAuthoringStatus || hasMeaningfulSimulationStory;
   const selectedNodeIoRow = useMemo(() => {
     if (!selectedNode) return null;
     return ioRowByNodeId.get(selectedNode.id) ?? ioRowByNodeId.get(`${selectedNode.id}.out`) ?? null;
@@ -4260,18 +4292,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     return (
       <div className="ide-design-inspector-empty-card" data-testid="ide-design-inspector-empty">
-        <span className="ide-design-inspector-eyebrow">Selection</span>
+        <span className="ide-design-inspector-eyebrow">Inspector</span>
         <div className="ide-design-inspector-title-block">
           <div className="ide-design-selection-identity">
-            <strong data-testid="ide-design-inspector-identity-title">Nothing selected</strong>
+            <strong data-testid="ide-design-inspector-identity-title">Canvas ready</strong>
           </div>
           <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
-            Select a node, wire, or signal.
+            Selection state, mapping, and signal context land here.
           </p>
         </div>
         {!showBlankStateCard ? (
           <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
-            Start on the canvas first, then inspect the selected part or signal here.
+            Select a node, wire, or verify-linked signal to inspect it without leaving the canvas.
           </p>
         ) : null}
       </div>
@@ -5222,82 +5254,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </section>
               ) : null}
 
-              {filteredBoardGroups.length > 0 ? (
-                <section
-                  className="ide-palette-section ide-palette-section--board"
-                  data-testid="ide-design-palette-section-board"
-                  data-collapsed={isBoardSectionCollapsed ? 'true' : 'false'}
-                >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{boardPaletteSection.title}</h4>
-                    </div>
-                    <div className="ide-palette-section-meta">
-                      <span className="ide-palette-section-count">{boardResourcesCount}</span>
-                      <button
-                        type="button"
-                        className="ide-palette-section-toggle"
-                        data-testid="ide-design-palette-toggle-board"
-                        aria-expanded={isBoardSectionCollapsed ? 'false' : 'true'}
-                        onClick={() => toggleDockSection('board')}
-                      >
-                        {isBoardSectionCollapsed ? 'Show' : 'Hide'}
-                      </button>
-                    </div>
-                  </header>
-                  {!isBoardSectionCollapsed ? (
-                    <div className="ide-palette-board-groups" data-testid="ide-design-board-io-palette">
-                      {filteredBoardGroups.map((group) => (
-                        <div
-                          key={group.id}
-                          className="ide-palette-board-group"
-                          data-testid={`ide-design-board-group-${group.id}`}
-                        >
-                          <div className="ide-palette-subsection-header">
-                            <div>
-                              <h5>{group.title}</h5>
-                              <p>{group.description}</p>
-                            </div>
-                            <span className="ide-palette-subsection-count">{group.entries.length}</span>
-                          </div>
-                          <div className="ide-palette-board-grid">
-                            {group.entries.map((entry) => {
-                              const isPlaced = isBoardAliasPlaced(entry);
-                              const isPending =
-                                pendingPlacement?.kind === 'board-io' &&
-                                pendingPlacement.boardIoEntry?.alias === entry.alias &&
-                                pendingPlacement.boardIoEntry?.direction === entry.direction;
-                              const testId =
-                                entry.direction === 'in'
-                                  ? `ide-design-board-input-${entry.alias.toLowerCase()}`
-                                  : `ide-design-board-output-${entry.alias.toLowerCase()}`;
-                              return (
-                                <button
-                                  key={entry.alias}
-                                  className={`ide-palette-chip ide-palette-chip-board${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
-                                  type="button"
-                                  onClick={() => beginBoardIoPlacement(entry)}
-                                  data-testid={testId}
-                                  disabled={isPlaced}
-                                  title={
-                                    isPlaced
-                                      ? `${entry.alias} already placed`
-                                      : `${entry.alias} - ${describeBoardEntry(entry)}`
-                                  }
-                                  aria-pressed={isPending}
-                                >
-                                  {entry.alias}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </section>
-              ) : null}
-
               {filteredPaletteByCategory.sequential.length > 0 ? (
                 <section
                   className="ide-palette-section"
@@ -5440,6 +5396,82 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </section>
               ) : null}
 
+              {filteredBoardGroups.length > 0 ? (
+                <section
+                  className="ide-palette-section ide-palette-section--board"
+                  data-testid="ide-design-palette-section-board"
+                  data-collapsed={isBoardSectionCollapsed ? 'true' : 'false'}
+                >
+                  <header className="ide-palette-section-header">
+                    <div className="ide-palette-section-title-row">
+                      <h4>{boardPaletteSection.title}</h4>
+                    </div>
+                    <div className="ide-palette-section-meta">
+                      <span className="ide-palette-section-count">{boardResourcesCount}</span>
+                      <button
+                        type="button"
+                        className="ide-palette-section-toggle"
+                        data-testid="ide-design-palette-toggle-board"
+                        aria-expanded={isBoardSectionCollapsed ? 'false' : 'true'}
+                        onClick={() => toggleDockSection('board')}
+                      >
+                        {isBoardSectionCollapsed ? 'Show' : 'Hide'}
+                      </button>
+                    </div>
+                  </header>
+                  {!isBoardSectionCollapsed ? (
+                    <div className="ide-palette-board-groups" data-testid="ide-design-board-io-palette">
+                      {filteredBoardGroups.map((group) => (
+                        <div
+                          key={group.id}
+                          className="ide-palette-board-group"
+                          data-testid={`ide-design-board-group-${group.id}`}
+                        >
+                          <div className="ide-palette-subsection-header">
+                            <div>
+                              <h5>{group.title}</h5>
+                              <p>{group.description}</p>
+                            </div>
+                            <span className="ide-palette-subsection-count">{group.entries.length}</span>
+                          </div>
+                          <div className="ide-palette-board-grid">
+                            {group.entries.map((entry) => {
+                              const isPlaced = isBoardAliasPlaced(entry);
+                              const isPending =
+                                pendingPlacement?.kind === 'board-io' &&
+                                pendingPlacement.boardIoEntry?.alias === entry.alias &&
+                                pendingPlacement.boardIoEntry?.direction === entry.direction;
+                              const testId =
+                                entry.direction === 'in'
+                                  ? `ide-design-board-input-${entry.alias.toLowerCase()}`
+                                  : `ide-design-board-output-${entry.alias.toLowerCase()}`;
+                              return (
+                                <button
+                                  key={entry.alias}
+                                  className={`ide-palette-chip ide-palette-chip-board${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
+                                  type="button"
+                                  onClick={() => beginBoardIoPlacement(entry)}
+                                  data-testid={testId}
+                                  disabled={isPlaced}
+                                  title={
+                                    isPlaced
+                                      ? `${entry.alias} already placed`
+                                      : `${entry.alias} - ${describeBoardEntry(entry)}`
+                                  }
+                                  aria-pressed={isPending}
+                                >
+                                  {entry.alias}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
             </div>
 
             {!hasPaletteResults && paletteHasQuery ? (
@@ -5460,7 +5492,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             <SurfacePanel className="ide-design-input-panel" testId="ide-design-input-panel">
               <header className="ide-design-subheader ide-design-input-panel-header">
                 <div className="ide-design-input-panel-title-row">
-                  <h3>Live Inputs</h3>
+                  <h3>Quick Inputs</h3>
                   <span className="ide-palette-section-count">{allLiveInputRows.length}</span>
                 </div>
                 <button
@@ -5571,9 +5603,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         {totalWarnings > 0
                           ? `${totalWarnings} warning${totalWarnings !== 1 ? 's' : ''}`
                           : null}
+                        {' '}waiting in build status. Select a part or jump from the top status deck to resolve them.
                       </p>
                     ) : (
-                      <p className="ide-copy">Click a node to inspect it.</p>
+                      <p className="ide-copy">Select a part, a wire, or a Verify-linked signal to open actions and live state.</p>
                     )}
                   </div>
                 );
@@ -5653,38 +5686,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     >
         <DesignWorkspaceFrame view={effectiveDesignView}>
           <div className="ide-surface-command-stack">
-            <SurfaceCommandStrip
-              className="ide-design-command-strip"
-              testId="ide-design-command-strip"
-              label="Design"
-              title={designCommandTitle}
-              description={designCommandDescription}
-              meta={designCommandMeta}
-              actions={(
-                <>
-                  {onGoToVerify ? (
-                    <IdeButton
-                      tone="primary"
-                      onClick={onGoToVerify}
-                      testId="ide-design-command-strip-primary-cta"
-                    >
-                      {activeVerifySignal || effectiveExternalDebugTick != null
-                        ? 'Return to Verify waveform'
-                        : 'Open Verify'}
-                    </IdeButton>
-                  ) : null}
-                  {onGoToProject ? (
-                    <IdeButton
-                      tone="secondary"
-                      onClick={onGoToProject}
-                      testId="ide-design-command-strip-secondary-cta"
-                    >
-                      Project
-                    </IdeButton>
-                  ) : null}
-                </>
-              )}
-            />
 
             {/* ── Compact primary toolbar ── */}
           <div
@@ -5693,6 +5694,43 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             }`}
             data-testid="ide-design-control-bar"
           >
+            <div
+              className="ide-design-workspace-header"
+              data-testid="ide-design-workspace-header"
+              title={designCommandDescription}
+            >
+              <div className="ide-design-workspace-heading" data-testid="ide-design-workspace-heading">
+                <span className="ide-design-workspace-label">Design</span>
+                <div className="ide-design-workspace-heading-main">
+                  <span className="ide-design-workspace-title" data-testid="ide-design-workspace-title">
+                    {designCommandTitle}
+                  </span>
+                  {designCommandMeta}
+                </div>
+              </div>
+              <div className="ide-inline-actions ide-design-workspace-actions" data-testid="ide-design-workspace-actions">
+                {onGoToVerify ? (
+                  <IdeButton
+                    tone="primary"
+                    onClick={onGoToVerify}
+                    testId="ide-design-command-strip-primary-cta"
+                  >
+                    {activeVerifySignal || effectiveExternalDebugTick != null
+                      ? 'Return to Verify waveform'
+                      : 'Open Verify'}
+                  </IdeButton>
+                ) : null}
+                {onGoToProject ? (
+                  <IdeButton
+                    tone="secondary"
+                    onClick={onGoToProject}
+                    testId="ide-design-command-strip-secondary-cta"
+                  >
+                    Project
+                  </IdeButton>
+                ) : null}
+              </div>
+            </div>
             <div className="ide-design-toolbar" data-testid="ide-design-toolbar">
               {/* Groups 1+2: Canvas tools — only visible when canvas is in the view */}
               {isCodeWorkspace ? (
@@ -5797,7 +5835,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     onClick={() => setToolsExpanded((v) => !v)}
                     data-testid="ide-design-tools-toggle"
                   >
-                    {toolsExpanded ? 'Less ▲' : 'More ▼'}
+                    {toolsExpanded ? 'Hide tools ▲' : 'Tools ▼'}
                   </button>
                 ) : null}
               </div>
@@ -5844,7 +5882,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             {/* ── Stacked-view notice — shown only when split auto-collapsed to column ── */}
             {showWorkspaceStatusBar ? (
               <div className="ide-design-control-bar-status" data-testid="ide-design-control-bar-status">
-                {showFullAuthoringStatus ? (
+                {showExpandedCanvasStatus ? (
                   <div
                     className={`ide-design-authoring-issues ${authoringStatusToneClass}`}
                     data-testid="ide-design-authoring-issues"
@@ -5902,10 +5940,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </div>
                     ) : null}
                   </div>
-                ) : showCompactAuthoringStatus ? (
+                ) : useCompactAuthoringStatus ? (
                   <div
                     className={`ide-design-authoring-issues is-compact-strip ${authoringStatusToneClass}`}
-                    data-testid="ide-design-authoring-issues-compact"
+                    data-testid="ide-design-authoring-issues"
                   >
                     <div className="ide-design-authoring-issues-summary">
                       <div className="ide-design-authoring-issues-primary">
@@ -5965,10 +6003,24 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         HDL generation failed - {liveHdlResult.error}
                       </div>
                     ) : null}
+                    {topAuthoringIssue ? (
+                      <div className="ide-inline-actions">
+                        <span data-testid="ide-design-authoring-issue-0">
+                          {topAuthoringIssue.title}
+                        </span>
+                        <IdeButton
+                          tone={topAuthoringIssue.blocking ? 'secondary' : 'ghost'}
+                          onClick={() => focusDesignIssue(topAuthoringIssue)}
+                          testId="ide-design-authoring-issue-focus-0"
+                        >
+                          Review issue
+                        </IdeButton>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
 
-                {showSimulationStrip ? (
+                {hasMeaningfulSimulationStory ? (
                   <div
                     className={`ide-design-sim-story-strip${canRenderReplayScrubber ? ' has-replay-scrubber' : ''}${isReplayMode ? ' is-replay-mode' : ''}`}
                     data-testid="ide-design-sim-story-strip"
@@ -5976,14 +6028,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <div className="ide-design-sim-story-topline">
                       <div className="ide-design-sim-story-main">
                         {isReplayMode ? (
-                          <span className="ide-design-replay-mode-badge" data-testid="ide-design-replay-mode-badge">Inspect</span>
+                          <span className="ide-design-replay-mode-badge" data-testid="ide-design-replay-mode-badge">Replay</span>
+                        ) : staleReplayBreadcrumb ? (
+                          <span className="ide-design-replay-mode-badge" data-testid="ide-design-replay-mode-badge">Replay stale</span>
                         ) : (
                           <span className="ide-design-sim-story-label">Simulation</span>
                         )}
                         <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-tick">
                           {activeSimulationSelectionLabel}
                         </span>
-                        {activeReplayTimingHint ? (
+                        {isReplayMode && activeReplayTimingHint ? (
                           <span className="ide-design-sim-story-pill ide-design-sim-story-pill--timing" data-testid="ide-design-sim-story-sample">
                             {activeReplayTimingHint}
                           </span>
@@ -6015,7 +6069,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </div>
                       ) : null}
                     </div>
-                    {activeSimulationSummary ? (
+                    {activeSimulationSummary && showSimulationSummary ? (
                       <p className="ide-design-sim-story-summary" data-testid="ide-design-sim-story-summary">
                         {activeSimulationSummary}
                       </p>
@@ -6102,8 +6156,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               ref={canvasViewportRef}
               className="ide-design-canvasWrap"
               data-testid="ide-design-canvas-wrap"
-              onPointerDown={() => setHasInteracted(true)}
-              onWheel={() => setHasInteracted(true)}
             >
               {showDetails && (
                 <section className="ide-design-compiler-strip" data-testid="ide-design-compiler-strip">
@@ -6524,22 +6576,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <strong data-testid="ide-design-placement-label">{pendingPlacement.label}</strong>
                         <span>Shift keeps placing</span>
                         <span>Esc cancels</span>
-                      </div>
-                    ) : null}
-                    {isCanvasWorkspace && !showBlankStateCard ? (
-                      <div
-                        className="ide-design-shortcut-strip ide-design-shortcut-strip--overlay"
-                        data-testid="ide-design-shortcut-strip"
-                        aria-hidden="true"
-                        data-blocks-canvas-placement="1"
-                        style={{ opacity: hasInteracted ? 0.18 : 0.72, transition: 'opacity 0.4s ease' }}
-                      >
-                        <span><code>S</code> select</span>
-                        <span><code>W</code> wire</span>
-                        <span><code>Ctrl + wheel</code> zoom</span>
-                        <span><code>Space + drag</code> pan</span>
-                        <span><code>F</code> fit</span>
-                        <span><code>G</code> snap</span>
                       </div>
                     ) : null}
                     {showBlankStateCard && (

@@ -17,9 +17,9 @@
 
 ### Design chrome (layout system)
 
-- **Command strip**: `Design` label, **mode headline** (Canvas / Code / Split / Inspect replay / Verify-linked), **description** (coaching copy), **meta** trimmed to authoring **status pill** + optional **Replay** chip + **Verify sync** chip (counts stay in the authoring/status band below).
-- **Control bar**: Tools on top; **status row** separated with a light divider — authoring strip + **simulation strip**. Verify-linked sessions show `Verify focus …` on the badge and an `Inspect … first` hint (`data-testid="ide-design-verify-focus"`) in the sim strip.
-- **Workbench**: Slightly wider left dock (300px), stronger palette/canvas framing; right inspector uses extra vertical padding and clearer section dividers.
+- **Workbench header**: `ide-design-workspace-header` is the top owner. It carries the `Design` label, mode headline (Canvas / Code / Split / replay-linked variants), and the existing primary / secondary CTAs. The old standalone Design command strip does not exist anymore.
+- **Control bar**: one tools row plus compact status ownership. The expanded tool cluster (`ide-design-toolbar-expanded`) is an anchored popup, not a stacked band. Verify-linked sessions still surface `Verify focus …` via `data-testid="ide-design-verify-focus"` in the simulation strip when that story is active.
+- **Workbench**: support rails are narrower, and code / split default both rails to collapsed overlay handles so the workspace keeps its full width. The left palette order is `Logic -> Sequential -> IO -> Reusable -> Board`; `Board` and `Quick Inputs` start collapsed. The idle inspector falls back to the small `Canvas ready` state.
 
 ### Hardware chrome (layout system)
 

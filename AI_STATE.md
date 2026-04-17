@@ -1,5 +1,44 @@
 # AI State
 
+## Change Log 2026-04-17 (Surface reconciliation R4: Design workbench consolidation)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/designWorkspaceConfig.ts`, `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/designSurface.paletteDock.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx`, `scripts/gates/ide-design-workbench-contract.mjs`, `docs/ide/02-design.md`, `docs/IDE_SYSTEM_MAP.md`, `docs/ARCHITECTURE.md`, `docs/00-canon/09-redbyte-product-surface-system.md`
+
+**Context**: Design still read like multiple generations of UI stacked on top of each other: a standalone command strip, a second toolbar/status band, a floating shortcut strip, over-wide idle rails, and a right dock that kept a large empty-state card visible even when nothing deserved that space. The result was a canvas wrapped in helper chrome instead of one serious authoring workspace.
+
+**Changes**:
+- **One visible top owner**: retired the standalone Design command-strip band and folded stage identity, mode headline, and the existing primary/secondary CTAs into `ide-design-workspace-header` inside the control bar.
+- **Canvas-first support chrome**: the Design control bar now resolves to one tools row plus one compact readiness owner. The expanded tool shelf opens as an anchored popup instead of a permanent stacked band.
+- **Secondary rails demoted**: code and split modes now collapse the left and right support rails by default. Collapsed rails render as overlay handles instead of reserving a gutter, so the workspace keeps its full width when the rails are idle.
+- **Palette cleaned up**: the left library order is now `Logic -> Sequential -> IO -> Reusable -> Board`, and `Board` plus `Quick Inputs` start collapsed so idle hardware helpers stop dominating first look.
+- **Inspector calmed down**: the idle right dock now falls back to a small `Canvas ready` state instead of a large empty coaching card. Selection, focus, and verify-linked context still land there when they exist.
+- **Replay and status ownership tightened**: passive sessions no longer force a simulation strip; replay, stale replay, verify-linked focus, and active simulation still surface in the strip when they are the real story. Undo/redo in replay now mark replay stale so the status stays truthful after circuit edits.
+- **Dead chrome removed**: deleted the floating shortcut strip, the dead `hasInteracted` state used only by that strip, and the Design-only CSS blocks that still styled the retired command strip / shortcut layer.
+
+**Tests / gates**:
+- Updated `designSurface.workstation.test.tsx` for the integrated workspace header, collapsed support rails in code/split, and removed shortcut overlay.
+- Updated `designSurface.paletteDock.test.tsx` for the new palette order and default-collapsed secondary sections.
+- Updated `designSurface.canvasChrome.test.tsx` and `ide-design-workbench-contract.mjs` so the gate asserts the post-reconciliation header and no shortcut strip.
+
+**Verification**:
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.paletteDock.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.blankState.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.inspectorHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx` -> **44/44 pass**
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.authoringIssues.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.duplicate.test.tsx` -> **67/67 pass**
+- `pnpm build` -> success
+- `node ./scripts/gates/ide-design-workbench-contract.mjs` -> `PASS: IDE design workbench contract satisfied.`
+- Manual browser checks:
+  - `http://localhost:5173/?mode=design`
+  - `http://127.0.0.1:4173/os/?mode=design`
+  - Verified canvas mode, split mode, and code mode after the rail-overlay fix; captured final built screenshots `design-final-built-canvas.png` and `design-final-built-split.png`
+
+**Truth changes**:
+- Design no longer has a separate command-strip surface above the workspace.
+- The only persistent top owner is the workbench header/control bar.
+- Code and split default to collapsed overlay rails, not reserved support gutters.
+- `Board` resources and `Quick Inputs` are secondary helpers, not first-look palette owners.
+- The Design simulation strip is contextual: it appears for meaningful replay / verify / live-run stories, not just because the page exists.
+
+**Removed / demoted**: standalone Design command strip, floating shortcut strip, dead shortcut state, retired Design-only command-strip CSS, always-expanded board/live-input sections, and the collapsed-rail gutter reservation in code/split modes.
+
 ## Change Log 2026-04-17 (Surface reconciliation R3: Design focus vs selection)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/components/DesignFocusBanner.tsx`, `packages/rb-apps/src/apps/ide/components/DesignFocusInspector.tsx`, `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/designFocusBanner.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/designFocusInspector.test.tsx`

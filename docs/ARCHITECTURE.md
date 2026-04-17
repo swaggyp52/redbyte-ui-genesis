@@ -143,7 +143,7 @@ same bytes. Hash values in the manifest are content-addressed and used for tampe
 | Surface | Mode | Student Purpose |
 |---------|------|-----------------|
 | `ProjectSurface.tsx` | `project` | Enter name, view lab info, export submission |
-| `DesignSurface.tsx` | `design` | Build circuit with drag-and-drop gate editor |
+| `DesignSurface.tsx` | `design` | Build circuit in a canvas-first workbench with contextual replay, focus, and inspection |
 | `VerifySurface.tsx` | `verify` | Run simulation, see pass/fail, jump to failures |
 | `HardwareSurface.tsx` | `hardware` | Map circuit ports to Basys3 physical pins |
 | `ExportSurface.tsx` | `export` | Download Vivado Kit, view generated HDL |
@@ -154,6 +154,7 @@ same bytes. Hash values in the manifest are content-addressed and used for tampe
 - Orchestrates calls to Layers B, C, D on user actions
 - Maintains UI state: `IdeMode`, `verifyLedger`, `diagnosticRouteRequest`
 - Wraps all surfaces in `ErrorBoundary`
+- Keeps support rails secondary to the active workspace; Design now uses an integrated workbench header instead of a separate command-strip dashboard
 
 **What it does NOT do:**
 - Logic simulation (delegates to Layer A)

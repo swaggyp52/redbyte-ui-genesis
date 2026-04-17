@@ -187,17 +187,17 @@ describe('DesignSurface palette dock redesign', () => {
 
     expect(sectionOrder).toEqual([
       'ide-design-palette-section-logic',
-      'ide-design-palette-section-board',
       'ide-design-palette-section-sequential',
       'ide-design-palette-section-io',
       'ide-design-palette-section-reusable',
+      'ide-design-palette-section-board',
     ]);
 
     expect(within(palette).getByTestId('ide-macro-library-panel')).toBeTruthy();
     expect(within(palette).getByTestId('ide-palette-group-custom')).toBeTruthy();
   });
 
-  it('keeps search and core parts visible; board and live inputs expanded by default', () => {
+  it('keeps search and core parts visible while secondary board inventory and quick inputs stay collapsed by default', () => {
     const view = renderSurface();
 
     expect(view.getByTestId('ide-design-search')).toBeTruthy();
@@ -205,11 +205,11 @@ describe('DesignSurface palette dock redesign', () => {
     expect(view.getByTestId('ide-design-palette-dflipflop')).toBeTruthy();
     expect(view.getByTestId('ide-design-palette-input')).toBeTruthy();
 
-    expect(view.getByTestId('ide-design-palette-toggle-board')).toHaveAttribute('aria-expanded', 'true');
-    expect(view.getByTestId('ide-design-board-io-palette')).toBeTruthy();
+    expect(view.getByTestId('ide-design-palette-toggle-board')).toHaveAttribute('aria-expanded', 'false');
+    expect(view.queryByTestId('ide-design-board-io-palette')).toBeNull();
 
-    expect(view.getByTestId('ide-design-live-inputs-toggle')).toHaveAttribute('aria-expanded', 'true');
-    expect(view.getByTestId('ide-design-input-toggle-sw0_node')).toBeTruthy();
+    expect(view.getByTestId('ide-design-live-inputs-toggle')).toHaveAttribute('aria-expanded', 'false');
+    expect(view.queryByTestId('ide-design-input-toggle-sw0_node')).toBeNull();
   });
 
   it('groups sequential palette into registers, timing, and legacy subsections', () => {
@@ -249,15 +249,14 @@ describe('DesignSurface palette dock redesign', () => {
     expect(view.queryByTestId('ide-macro-library-card-macro-and-gate')).toBeNull();
   });
 
-  it('keeps Board Resources expanded and visible when searching board inventory terms', () => {
+  it('auto-expands Board Resources when searching board inventory terms', () => {
     const view = renderSurface();
 
     const search = view.getByTestId('ide-design-search');
     const boardToggle = view.getByTestId('ide-design-palette-toggle-board');
 
-    // Board Resources is expanded by default — no search needed to find board items
-    expect(boardToggle).toHaveAttribute('aria-expanded', 'true');
-    expect(view.getByTestId('ide-design-board-io-palette')).toBeTruthy();
+    expect(boardToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(view.queryByTestId('ide-design-board-io-palette')).toBeNull();
 
     fireEvent.change(search, { target: { value: 'led' } });
 

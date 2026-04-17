@@ -235,10 +235,11 @@ afterEach(() => {
 });
 
 describe('DesignSurface workstation redesign', () => {
-  it('uses the shared design command strip so workflow CTA placement matches Project and Verify', () => {
+  it('folds workflow CTAs into the single design workspace header', () => {
     const view = renderSurface();
 
-    expect(view.getByTestId('ide-design-command-strip').textContent).toContain('Build the circuit');
+    expect(view.getByTestId('ide-design-workspace-header').textContent).toContain('Design');
+    expect(view.getByTestId('ide-design-workspace-header').textContent).toContain('Canvas');
     expect(view.getByTestId('ide-design-command-strip-primary-cta').textContent).toContain('Open Verify');
     expect(view.getByTestId('ide-design-command-strip-secondary-cta').textContent).toContain('Project');
   });
@@ -303,7 +304,7 @@ describe('DesignSurface workstation redesign', () => {
     const controlBar = view.getByTestId('ide-design-control-bar');
     expect(controlBar.contains(view.getByTestId('ide-design-authoring-issues'))).toBe(true);
     expect(controlBar.contains(view.getByTestId('ide-design-sim-story-strip'))).toBe(true);
-    expect(view.getByTestId('ide-design-shortcut-strip').textContent).toContain('Ctrl + wheel');
+    expect(view.queryByTestId('ide-design-shortcut-strip')).toBeNull();
     expect(view.getByTestId('ide-design-sim-story-strip').textContent).toContain('Tick 6');
     expect(view.getByTestId('ide-design-sim-story-summary').textContent).toContain('SW0');
     expect(view.getByTestId('ide-design-sim-story-summary').textContent).toContain('LD0');
@@ -638,7 +639,7 @@ describe('DesignSurface workstation redesign', () => {
     expect(onGoToImport).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps library and inspector visible in code and split modes so Design stays anchored across layouts', async () => {
+  it('collapses support rails in code and split modes so the authoring surface stays focused', async () => {
     const view = renderSurface();
     const modeRoot = view.getByTestId('ide-mode-design');
 
@@ -650,10 +651,10 @@ describe('DesignSurface workstation redesign', () => {
     expect(modeRoot.getAttribute('data-shell-density')).toBe('immersive');
     expect(modeRoot.getAttribute('data-surface-frame')).toBe('edge-to-edge');
     expect(view.queryByTestId('ide-workbench-console')).toBeNull();
-    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
-    expect(view.getByTestId('ide-inspector')).toBeTruthy();
-    expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
-    expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
+    expect(view.queryByTestId('ide-left-dock')).toBeNull();
+    expect(view.queryByTestId('ide-inspector')).toBeNull();
+    expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
     expect(view.queryByTestId('ide-workbench-dock-collapse-left')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-collapse-right')).toBeNull();
 
@@ -662,10 +663,10 @@ describe('DesignSurface workstation redesign', () => {
     await waitFor(() => {
       expect(view.getByTestId('ide-design-workspace').getAttribute('data-design-view')).toBe('split');
     });
-    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
-    expect(view.getByTestId('ide-inspector')).toBeTruthy();
-    expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
-    expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
+    expect(view.queryByTestId('ide-left-dock')).toBeNull();
+    expect(view.queryByTestId('ide-inspector')).toBeNull();
+    expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
     expect(view.queryByTestId('ide-workbench-console')).toBeNull();
   });
 

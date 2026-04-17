@@ -6,12 +6,12 @@ RedByte uses one product surface contract across every major stage surface.
 
 Every major surface should read in the same order:
 
-1. Command strip
+1. Command owner
 2. Primary work region
 3. Secondary evidence or detail region
 4. Optional tertiary drawer, inspector, or advanced layer
 
-The command strip is compact. It carries the page role, current state, and the most important workflow actions. It does not try to be the workspace itself.
+The command owner is compact. It may be a standalone command strip or an integrated workbench header when the workspace itself owns the actions. It carries the page role, current state, and the most important workflow actions. It does not try to become a second workspace.
 
 The primary region owns the page. It is where the student does the main job for that surface.
 
@@ -32,7 +32,7 @@ The tertiary layer holds deeper tools, advanced controls, and analysis that do n
 - One primary action per surface.
 - Secondary actions stay nearby but visibly subordinate.
 - Advanced actions belong behind disclosure, drawers, or secondary panels.
-- Primary CTA placement is consistent in the command strip unless the workspace itself owns the action, as Verify does with Run.
+- Primary CTA placement is consistent in the command owner unless the workspace itself owns the action, as Verify does with Run and Design now does with its workbench header.
 
 ## Status Language
 
@@ -45,7 +45,7 @@ Canonical status words:
 - Needs review
 - Checks current
 
-Status appears first in the command strip, then in supporting detail regions only when the student needs more explanation.
+Status appears first in the command owner, then in supporting detail regions only when the student needs more explanation.
 
 ## Vocabulary
 
