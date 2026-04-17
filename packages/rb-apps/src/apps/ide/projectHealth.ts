@@ -171,7 +171,7 @@ export function deriveProjectHealth(
 
 /**
  * Single source of truth for workflow stage completion.
- * All progress indicators (PipelineStrip, IdeLeftRail, ProjectSurface dock)
+ * All progress indicators (IdeLeftRail, ProjectSurface dock)
  * must consume this to avoid contradictory done/pass signals.
  */
 export function deriveStageCompletion(

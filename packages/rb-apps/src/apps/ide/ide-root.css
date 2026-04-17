@@ -1071,57 +1071,7 @@
   padding-bottom: 6px;
 }
 
-/* Pipeline Strip — replaces IdeGuidedStrip with a 4-stage visualization */
-.ide-pipeline-strip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ide-space-2);
-  padding: 0 var(--ide-space-3);
-  height: 40px;
-  flex-shrink: 0;
-  background: rgba(8, 14, 22, 0.96);
-  border: 1px solid rgba(46, 196, 182, 0.22);
-  border-radius: var(--ide-radius-s);
-  margin-bottom: var(--ide-space-2);
-}
-
-.ide-pipeline-stages {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  flex-shrink: 0;
-}
-
-/* PCB trace connector between stages */
-.ide-pipeline-trace {
-  width: 28px;
-  height: 1px;
-  flex-shrink: 0;
-  position: relative;
-}
-.ide-pipeline-trace::before {
-  content: '';
-  display: block;
-  position: absolute;
-  inset: 0;
-  background: currentColor;
-}
-.ide-pipeline-trace::after {
-  content: '';
-  display: block;
-  position: absolute;
-  right: 0;
-  top: -3px;
-  width: 5px;
-  height: 7px;
-  clip-path: polygon(0 0, 100% 50%, 0 100%);
-  background: currentColor;
-}
-.ide-pipeline-trace--pass   { color: rgba(46, 196, 182, 0.45); }
-.ide-pipeline-trace--active { color: rgba(46, 196, 182, 0.65); }
-.ide-pipeline-trace--blocked { color: rgba(244, 185, 66, 0.4); }
-.ide-pipeline-trace--pending { color: rgba(41, 68, 94, 0.7); }
+/* Import pipeline tabs reuse .ide-pipeline-stage / badge / label (no shell PipelineStrip) */
 
 /* Stage pill button */
 .ide-pipeline-stage {
@@ -1207,91 +1157,7 @@
 }
 .ide-pipeline-stage--pending .ide-pipeline-label { color: var(--ide-text-soft); }
 
-/* Right section: blocker + CTA */
-.ide-pipeline-right {
-  display: flex;
-  align-items: center;
-  gap: var(--ide-space-2);
-  margin-left: auto;
-  flex-shrink: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.ide-pipeline-blocker {
-  display: flex;
-  align-items: center;
-  gap: var(--ide-space-1);
-  min-width: 0;
-}
-
-.ide-pipeline-blocker-pulse {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--rb-warning);
-  flex-shrink: 0;
-  animation: pipeline-pulse 1.8s ease-in-out infinite;
-}
-@keyframes pipeline-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-}
-
-.ide-pipeline-blocker-message {
-  font-size: var(--rb-font-size-1);
-  color: var(--rb-warning);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 320px;
-}
-
-.ide-pipeline-blocker-count {
-  font-size: var(--rb-font-size-1);
-  color: var(--ide-text-soft);
-  background: rgba(244, 185, 66, 0.1);
-  border: 1px solid rgba(244, 185, 66, 0.2);
-  border-radius: 10px;
-  padding: 1px 6px;
-  flex-shrink: 0;
-}
-
-.ide-pipeline-all-pass {
-  font-size: var(--rb-font-size-1);
-  color: var(--rb-success);
-  font-weight: var(--rb-font-weight-medium);
-}
-
-.ide-pipeline-fix-link {
-  border: none;
-  background: transparent;
-  color: var(--rb-accent);
-  font-size: var(--rb-font-size-1);
-  font-weight: var(--rb-font-weight-medium);
-  cursor: pointer;
-  padding: 3px 6px;
-  border-radius: var(--ide-radius-s);
-  white-space: nowrap;
-  transition: background var(--rb-motion-fast) var(--rb-ease-standard);
-}
-.ide-pipeline-fix-link:hover { background: rgba(46, 196, 182, 0.1); text-decoration: underline; }
-.ide-pipeline-fix-link:focus-visible { outline: 2px solid var(--rb-focus-ring); outline-offset: 2px; }
-
-/* Surface-column context: edge-to-edge, flat bottom edge */
-.ide-surface-column > .ide-pipeline-strip {
-  flex-shrink: 0;
-  margin-bottom: 0;
-  border-radius: 0;
-  border-left: none;
-  border-right: none;
-  border-top: none;
-  border-bottom: 1px solid rgba(46, 196, 182, 0.14);
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
-.ide-surface-column > *:not(.ide-guided-strip):not(.ide-pipeline-strip) {
+.ide-surface-column > *:not(.ide-guided-strip) {
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -5736,18 +5602,6 @@ details[open] summary .details-arrow {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   Phase 10B — Pipeline Strip: Grounded, Not Floating
-   ════════════════════════════════════════════════════════════════ */
-
-/* Override the near-invisible bottom-only border in surface-column context */
-.ide-surface-column > .ide-pipeline-strip {
-  background: rgba(4, 10, 18, 0.92);
-  border-bottom: 1px solid rgba(46, 196, 182, 0.22);
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-}
-
-/* ════════════════════════════════════════════════════════════════
    Phase 10C — Project Page: Example Cards Upgraded
    Cards should feel like launch points, not list items.
    ════════════════════════════════════════════════════════════════ */
@@ -5867,11 +5721,6 @@ details[open] summary .details-arrow {
   font-size: 10px;
   color: rgba(160, 185, 210, 0.35);
   margin: 0;
-}
-
-/* Pipeline strip: slightly more prominent bottom border */
-.ide-surface-column > .ide-pipeline-strip {
-  border-bottom: 1px solid rgba(56, 189, 248, 0.18);
 }
 
 /* Active example card: strong glow ring */
@@ -9526,7 +9375,7 @@ details[open] summary .details-arrow {
 
 /* ══════════════════════════════════════════════════════════════════════════
    SWING A — Unified Header Band
-   TopBar + PipelineStrip share one dark background, no visible seam.
+   TopBar forms the shell header band above the active surface.
    ══════════════════════════════════════════════════════════════════════════ */
 
 .ide-top-bar {
@@ -9539,7 +9388,7 @@ details[open] summary .details-arrow {
   gap: var(--ide-space-3);
 }
 .ide-top-bar::after {
-  display: none; /* remove the teal gradient underline — pipeline strip handles the bottom edge */
+  display: none; /* remove the teal gradient underline */
 }
 
 /* Brand mark: clean hex SVG container, no gradient box */
@@ -9692,17 +9541,7 @@ details[open] summary .details-arrow {
   color: rgba(225, 255, 229, 0.92);
 }
 
-/* Pipeline strip: visually unified with topbar */
-.ide-surface-column > .ide-pipeline-strip {
-  background: #0a1220;
-  border-top: none;
-  border-bottom: 1px solid rgba(46, 196, 182, 0.18);
-  box-shadow: none;
-  padding: 0 var(--ide-space-3);
-  min-height: 36px;
-}
-
-/* Pipeline badges: slightly larger for readability */
+/* Pipeline tab badges (Import): slightly larger for readability */
 .ide-pipeline-badge {
   width: 20px;
   height: 20px;
@@ -10112,19 +9951,12 @@ details[open] summary .details-arrow {
   padding: var(--ide-space-2) var(--ide-space-2);
 }
 
-/* ── 5. Header + pipeline strip: seamless top band ──────────────────────── */
+/* ── 5. Header band ──────────────────────── */
 
 /* TopBar: already #070d16 from Phase 7; make border crisper */
 .ide-top-bar {
   background: #070d16;
   border-bottom: 1px solid rgba(46, 196, 182, 0.1);
-}
-
-/* Pipeline strip: flush continuation of top band */
-.ide-pipeline-strip {
-  background: #070d16 !important;
-  border-top: none !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
 /* ── 6. Remove project-hero override gradient stacking from prior phases ─── */
@@ -14334,12 +14166,6 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-pipeline-stage--pending .ide-pipeline-label {
   color: rgba(100, 130, 160, 0.5);
 }
-
-/* Connector traces — bump visibility */
-.ide-pipeline-trace--pass    { color: rgba(46, 196, 182, 0.6); }
-.ide-pipeline-trace--active  { color: rgba(46, 196, 182, 0.8); }
-.ide-pipeline-trace--blocked { color: rgba(244, 185, 66, 0.55); }
-.ide-pipeline-trace--pending { color: rgba(41, 68, 94, 0.5); }
 
 /* ══════════════════════════════════════════════════════════════════
    Phase 36 — Sprint 14: SubmissionViewerSurface Design System
@@ -25390,19 +25216,6 @@ button:disabled,
   color: #94a3b8;
 }
 
-/* Pass hero details collapse */
-.ide-verify-pass-hero-details {
-  width: 100%;
-}
-.ide-verify-pass-hero-summary {
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  color: #94a3b8;
-  padding: 4px 0;
-  user-select: none;
-}
-
 /* Pulsing run button */
 .ide-verify-command-bar .is-pulsing {
   animation: vcb-pulse 1.2s ease-in-out infinite;
@@ -26915,8 +26728,7 @@ button:disabled,
 }
 
 [data-ide-mode-marker='project'] .ide-project-command-strip,
-[data-ide-mode-marker='design'] .ide-design-command-strip,
-[data-ide-mode-marker='verify'] .ide-verify-command-strip {
+[data-ide-mode-marker='design'] .ide-design-command-strip {
   margin-inline: 0;
 }
 
@@ -27476,8 +27288,7 @@ button:disabled,
     radial-gradient(circle at top left, rgba(59, 130, 246, 0.1), transparent 55%);
 }
 
-[data-ide-mode-marker='design'] .ide-design-command-strip,
-[data-ide-mode-marker='verify'] .ide-verify-command-strip {
+[data-ide-mode-marker='design'] .ide-design-command-strip {
   gap: 12px 16px;
   padding: 12px 14px;
   border-radius: 16px;
@@ -27486,29 +27297,24 @@ button:disabled,
     inset 0 1px 0 rgba(214, 232, 255, 0.04);
 }
 
-[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-main,
-[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-main {
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-main {
   gap: 6px;
 }
 
-[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-title,
-[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-title {
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-title {
   font-size: 18px;
 }
 
-[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-description,
-[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-description {
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-description {
   font-size: 12px;
   line-height: 1.35;
 }
 
-[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-meta,
-[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-meta {
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-strip-meta {
   gap: 6px 8px;
 }
 
-[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-chip,
-[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-chip {
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-surface-command-chip {
   min-height: 24px;
   padding: 3px 8px;
   font-size: 10px;
@@ -27519,12 +27325,6 @@ button:disabled,
   border: 1px solid rgba(46, 77, 106, 0.3);
   border-radius: 16px;
   overflow: hidden;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-command-strip {
-  background:
-    linear-gradient(180deg, rgba(9, 18, 32, 0.98), rgba(6, 12, 24, 0.94)),
-    radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 58%);
 }
 
 [data-ide-mode-marker='hardware'] .ide-hardware-command-strip {
@@ -27555,10 +27355,6 @@ button:disabled,
   color: rgba(180, 202, 224, 0.8);
   font-size: 11px;
   font-weight: 600;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-title {
-  font-size: 18px;
 }
 
 [data-ide-mode-marker='verify'] .ide-surface-command-stack > .ide-verify-status-strip[data-testid='ide-verify-banner'] {
@@ -27774,36 +27570,6 @@ button:disabled,
   border-radius: 10px !important;
 }
 
-/* ── 3. VERIFY — SurfaceCommandStrip → compact bar ── */
-
-[data-ide-mode-marker='verify'] .ide-verify-command-strip {
-  padding: 7px 14px !important;
-  border-radius: 10px !important;
-  box-shadow: none !important;
-  border-color: rgba(38, 65, 90, 0.35) !important;
-  background: rgba(8, 14, 26, 0.9) !important;
-  gap: 0 14px !important;
-  align-items: center !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-description {
-  display: none !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-title {
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  letter-spacing: 0 !important;
-  color: rgba(224, 238, 255, 0.88) !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-surface-command-strip-main {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 10px !important;
-}
-
 [data-ide-mode-marker='verify'] .ide-surface-command-stack {
   gap: 4px !important;
   margin-bottom: 0 !important;
@@ -27960,8 +27726,7 @@ button:disabled,
   gap: 5px !important;
 }
 
-[data-ide-mode-marker='design'] .ide-design-command-strip .ide-button,
-[data-ide-mode-marker='verify'] .ide-verify-command-strip .ide-button {
+[data-ide-mode-marker='design'] .ide-design-command-strip .ide-button {
   min-height: 30px !important;
   padding: 4px 12px !important;
   font-size: 12px !important;

@@ -19,7 +19,6 @@ import {
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
-import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { CustomTestVector } from '../components/VectorEditor';
 import { resolveBoardSignal, useBoardSignal } from '../BoardSignalContext';
 import type { VerifyDebugContext } from '../verifyDebug';
@@ -88,7 +87,10 @@ import {
   VerifyWaveformRegion,
   VerifyWorkspaceRegion,
 } from './verify/VerifyRegionLayout';
-import { type VerifyPrimaryStatusAreaProps } from './verify/VerifyPrimaryStatusArea';
+import {
+  VerifyPrimaryStatusArea,
+  type VerifyPrimaryStatusAreaProps,
+} from './verify/VerifyPrimaryStatusArea';
 import { WaveformViewer, type WaveformSignalRow, type SignalLaneGroup } from './verify/WaveformInstrument';
 import { explainSignal, type ExplainerCircuitGraph, type ExplainerSignalMapping } from './verify/signalExplainer';
 import { WhyInspectorPanel } from './verify/WhyInspectorPanel';
@@ -3321,7 +3323,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // desktop workbench. Detailed failure review lives in the lower analysis drawer.
   const showInlineFailureWorkbenchPanels = false;
   const canInspectFirstMismatch = hasSessionFailureEvidence && !isRunStale;
-  const usesCompactStaleStrip = hasStaleAuthoredReference;
   const postRunToolbarMode =
     hasSessionFailureEvidence || canInspectFirstMismatch ? 'visible' : 'advanced';
   const captureIsPrimary =
@@ -3531,63 +3532,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return `Your logic passed, but ${nameList} ${unmappedOutputLabels.length === 1 ? 'is' : 'are'} not mapped to board pins.`;
   }, [unmappedOutputLabels]);
   const verifyLayoutPolicy = useMemo(
-    () => {
-      if (sessionSignalsAssertionFailure) {
-        return {
-          leftDockMode: 'visible' as const,
-          rightDockMode: 'hidden' as const,
-          consoleMode: 'auto' as const,
-        };
-      }
-
-      if (sessionShowsAssertionMatch) {
-        return {
-          leftDockMode: 'visible' as const,
-          rightDockMode: 'hidden' as const,
-          consoleMode: 'hidden' as const,
-        };
-      }
-
-      if (hasStaleAuthoredReference || isRunStale || isScenarioStale || isWrongScenario) {
-        return {
-          leftDockMode: 'visible' as const,
-          rightDockMode: 'hidden' as const,
-          consoleMode: 'hidden' as const,
-        };
-      }
-
-      if (sessionShowsTraceEvidence) {
-        return {
-          leftDockMode: 'visible' as const,
-          rightDockMode: 'hidden' as const,
-          consoleMode: 'hidden' as const,
-        };
-      }
-
-      if (isDraftSession) {
-        return {
-          leftDockMode: 'visible' as const,
-          rightDockMode: 'hidden' as const,
-          consoleMode: 'hidden' as const,
-        };
-      }
-
-      return {
-        leftDockMode: 'visible' as const,
-        rightDockMode: 'hidden' as const,
-        consoleMode: 'hidden' as const,
-      };
-    },
-    [
-      hasStaleAuthoredReference,
-      isDraftSession,
-      isRunStale,
-      isScenarioStale,
-      isWrongScenario,
-      sessionShowsAssertionMatch,
-      sessionShowsTraceEvidence,
-      sessionSignalsAssertionFailure,
-    ]
+    () => ({
+      leftDockMode: 'visible' as const,
+      /** Proof workspace: inspector (vectors / mismatch) is a first-class evidence column */
+      rightDockMode: 'visible' as const,
+      consoleMode: sessionSignalsAssertionFailure ? ('auto' as const) : ('hidden' as const),
+    }),
+    [sessionSignalsAssertionFailure]
   );
 
   useEffect(() => {
@@ -3598,14 +3549,34 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const primaryStatus = useMemo<VerifyPrimaryStatusAreaProps | null>(() => {
     if (hasStaleAuthoredReference) {
+      const actions: VerifyPrimaryStatusAreaProps['actions'] = [
+        {
+          label: 'Keep reference — Run assertions',
+          onClick: handleKeepOlderReference,
+          tone: 'primary',
+          testId: 'ide-verify-stale-keep-reference',
+        },
+      ];
+      if (canResetToStimulusOnly) {
+        actions.push({
+          label: 'Clear assertions — trace only',
+          onClick: handleResetToStimulusOnly,
+          tone: 'secondary',
+          testId: 'ide-verify-stale-reset-stimulus',
+        });
+      }
+      actions.push({
+        label: 'Re-capture from current circuit',
+        onClick: handleStaleRecapture,
+        tone: 'secondary',
+        testId: 'ide-verify-stale-recapture-reauthor',
+      });
       return {
         tone: 'warn',
-        title: 'Circuit changed after saved expected outputs',
-        message: 'Your saved expected outputs came from an older build. Re-capture from current outputs or run in Stimulus mode first.',
-        actions: [
-          { label: 'Re-capture outputs', onClick: handleStaleRecapture, tone: 'primary', testId: 'ide-verify-primary-status-recapture' },
-          { label: 'Run current circuit', onClick: handleRunCurrentTrace, tone: 'secondary', testId: 'ide-verify-primary-status-rerun' },
-        ],
+        title: 'Older authored reference vs current circuit',
+        message:
+          'Older authored reference available — compare or recapture before trusting the next run.',
+        actions,
       };
     }
 
@@ -3652,6 +3623,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return null;
   }, [
     activeScenario?.name,
+    canResetToStimulusOnly,
+    handleKeepOlderReference,
+    handleResetToStimulusOnly,
     handleRunCurrentTrace,
     handleStaleRecapture,
     hasStaleAuthoredReference,
@@ -3686,6 +3660,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       consoleHasEntries={false}
       leftDockMode={verifyLayoutPolicy.leftDockMode}
       rightDockMode={verifyLayoutPolicy.rightDockMode}
+      rightDockCanCollapse
       consoleMode={verifyLayoutPolicy.consoleMode}
       shellDensity="immersive"
       surfaceFrame="edge-to-edge"
@@ -4079,30 +4054,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       >
         <VerifyHeaderRegion>
         <div className="ide-surface-command-stack">
-        {verifyMode === 'blocked' || (!lastRun && totalVectorCount === 0) ? (
-        <SurfaceCommandStrip
-          className="ide-verify-command-strip"
-          testId="ide-verify-command-strip"
-          label="Verify"
-          title="Author procedure, run stimulus, and verify assertions"
-          description={
-            hasSessionFailureEvidence
-              ? 'Edit stimulus on the left, then use the waveform to inspect what changed.'
-              : 'Drive input stimulus on the left and read the resulting outputs on the waveform.'
-          }
-          meta={
-            <>
-              <IdeStatusPill tone={sessionStatusTone}>{sessionStatusBadgeLabel.toUpperCase()}</IdeStatusPill>
-              <span className="ide-surface-command-chip">{sessionModeBadge}</span>
-              <span className="ide-surface-command-chip">{referenceModeLabel}</span>
-              {commandBarEvidenceLabel ? (
-                <span className={`ide-surface-command-chip${hasSessionFailureEvidence ? '' : ' is-ok'}`}>
-                  {commandBarEvidenceLabel}
-                </span>
-              ) : null}
-            </>
-          }
-        />
+        {primaryStatus ? (
+          <VerifyPrimaryStatusArea
+            {...primaryStatus}
+            footnote={
+              hasStaleAuthoredReference
+                ? 'Default next run will use stimulus-only tracing until you choose an action above.'
+                : undefined
+            }
+            footnoteTestId={hasStaleAuthoredReference ? 'ide-verify-stale-reference-mode' : undefined}
+          />
         ) : null}
         {/* ── Always-visible command bar (hidden in blocked mode) ── */}
         {verifyMode !== 'blocked' && (
@@ -4126,8 +4087,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           sessionModeLabel={sessionModeBadge}
           sessionTitle={sessionTitle}
           referenceModeLabel={referenceModeLabel}
-          primaryStatusTitle={primaryStatus?.title}
-          primaryStatusMessage={primaryStatus?.message}
           isSequential={isSequentialRun}
           evidenceLabel={commandBarEvidenceLabel}
           evidenceTone={
@@ -4152,27 +4111,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           experimentTimingHint={sequencerModeLabel}
         />
         )}
-        {usesCompactStaleStrip ? (
-          <div className="ide-verify-header-note ide-verify-header-note--stale" data-testid="ide-verify-strip-stale-guidance">
-            <span className="ide-verify-header-note-copy">
-              Older authored reference available — use the compare or recapture actions before trusting the next run.
-            </span>
-            <span className="ide-verify-header-note-copy" data-testid="ide-verify-stale-reference-mode">
-              Default next run will use stimulus-only tracing.
-            </span>
-            <div className="ide-inline-actions">
-              <IdeButton onClick={handleKeepOlderReference} testId="ide-verify-stale-keep-reference">
-                Keep reference — Run assertions
-              </IdeButton>
-              <IdeButton onClick={handleResetToStimulusOnly} testId="ide-verify-stale-reset-stimulus">
-                Clear assertions — trace only
-              </IdeButton>
-              <IdeButton onClick={handleStaleRecapture} testId="ide-verify-stale-recapture-reauthor">
-                Re-capture from current circuit
-              </IdeButton>
-            </div>
-          </div>
-        ) : null}
         {sessionShowsAssertionMatch && lastRun?.qualification === 'incomplete-mapping' ? (
           <div
             className="ide-verify-incomplete-notice ide-surface-panel"
@@ -4241,8 +4179,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )}
 
         {!isFirstRunState && lastRun && sessionShowsAssertionMatch && (
-          <details className="ide-verify-pass-hero-details">
-          <summary className="ide-verify-pass-hero-summary">Run evidence</summary>
           <section
             className={`ide-verify-run-proof ide-verify-run-proof--pass ide-verify-pass-hero${
               lastRun.qualification === 'incomplete-mapping' ? ' ide-verify-pass-hero--incomplete' : ''
@@ -4340,7 +4276,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               )}
             </dl>
           </section>
-          </details>
         )}
 
         {sessionSignalsAssertionFailure && oracleApplied && (

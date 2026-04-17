@@ -63,8 +63,8 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
     expect(getByTestId('ide-verify-command-bar')).toBeTruthy();
   });
 
-  it('keeps the shared verify command strip visible while the surface is still empty', () => {
-    const { getByTestId } = render(
+  it('does not render the retired Verify SurfaceCommandStrip on cold start', () => {
+    const { queryByTestId, getByTestId } = render(
       <VerifySurface
         deterministicHash="comp-empty"
         hasVectors={false}
@@ -77,7 +77,7 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-command-strip').textContent).toContain('Author procedure, run stimulus, and verify assertions');
+    expect(queryByTestId('ide-verify-command-strip')).toBeNull();
     expect(getByTestId('ide-verify-command-bar')).toBeTruthy();
   });
 
@@ -132,18 +132,12 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
     expect(queryByTestId('ide-verify-coverage-meter')).toBeNull();
   });
 
-  it('result region collapse: pass hero is demoted post-run', () => {
-    const { queryByTestId } = render(
+  it('surfaces pass run evidence as the primary proof block (not hidden behind disclosure)', () => {
+    const { getByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
     );
-    // Pass hero should be inside a collapsible details or absent from dominant position
-    // For this slice: pass hero moves inside a <details> so it doesn't dominate
-    const passHero = queryByTestId('ide-verify-pass-hero');
-    if (passHero) {
-      // If it exists, it should be inside a details element (collapsed by default)
-      const parentDetails = passHero.closest('details');
-      expect(parentDetails).toBeTruthy();
-    }
-    // Either absent or inside details is acceptable
+    const passHero = getByTestId('ide-verify-pass-hero');
+    expect(passHero.closest('details')).toBeNull();
+    expect(passHero.textContent?.length ?? 0).toBeGreaterThan(20);
   });
 });

@@ -256,7 +256,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(getByTestId('ide-verify-empty-open-vectors').textContent).toContain('Open vectors');
     expect(getByTestId('ide-left-dock')).toBeTruthy();
-    expect(queryByTestId('ide-inspector')).toBeNull();
+    expect(getByTestId('ide-inspector')).toBeTruthy();
     expect(queryByText('Advanced vector tools')).toBeNull();
   });
 
@@ -288,7 +288,7 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-empty-run')).toBeNull();
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(getByTestId('ide-left-dock')).toBeTruthy();
-    expect(queryByTestId('ide-inspector')).toBeNull();
+    expect(getByTestId('ide-inspector')).toBeTruthy();
   });
 
   it('does not render retired pre-run inventory panels', () => {
@@ -680,7 +680,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(getByTestId('ide-vcb-evidence').textContent).toBe('1 vector');
     expect(getByTestId('ide-left-dock')).toBeTruthy();
-    expect(queryByTestId('ide-inspector')).toBeNull();
+    expect(getByTestId('ide-inspector')).toBeTruthy();
 
     expect(queryByTestId('ide-stimulus-toolbar')).toBeTruthy();
     expect(queryByTestId('ide-stimulus-toolbar-advanced')).toBeNull();
@@ -1122,7 +1122,7 @@ describe('VerifySurface workstation controls', () => {
     );
 
     await waitFor(() => {
-      expect(getByTestId('ide-verify-strip-stale-guidance').textContent).toContain('Older authored reference available');
+      expect(getByTestId('ide-verify-primary-status').textContent).toContain('Older authored reference available');
     });
     expect(getByTestId('ide-verify-session-status').textContent).toContain('STALE');
     expect(getByTestId('ide-verify-reference-mode').textContent).toContain('stale saved assertions');
@@ -1130,7 +1130,7 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-stale-banner')).toBeNull();
     expect(queryByTestId('ide-verify-prerun-inventory')).toBeNull();
     expect(getByTestId('ide-left-dock')).toBeTruthy();
-    expect(queryByTestId('ide-inspector')).toBeNull();
+    expect(getByTestId('ide-inspector')).toBeTruthy();
     expect(queryByTestId('ide-verify-assertion-mode-toggle')).toBeNull();
     expect(queryByTestId('ide-verify-advanced-debug')).toBeNull();
     expect(queryByTestId('ide-verify-run-proof-design')).toBeNull();
