@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, within } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -9,6 +9,7 @@ function makeFailRun(): RuntimeVerifyRun {
   return {
     scenarioId: 'three-panel-fail',
     scenarioName: 'Three panel fail run',
+    runKind: 'verify',
     status: 'fail',
     deterministicHash: 'three-panel-hash',
     reportHash: 'three-panel-report',
@@ -81,12 +82,13 @@ describe('VerifySurface three-panel workstation', () => {
           { id: 'ld1', label: 'LD1', direction: 'out' },
         ]}
         onOpenProjectVectors={vi.fn()}
+        onFixPath={vi.fn()}
       />
     );
 
     expect(view.queryByTestId('ide-verify-three-panel')).toBeNull();
-    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-left'));
     fireEvent.click(view.getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(within(view.getByTestId('ide-verify-analysis-tab-nav')).getByText('Checks'));
     expect(view.getByTestId('ide-left-dock')).toBeTruthy();
     expect(view.getByTestId('ide-verify-region-inspector')).toBeTruthy();
     expect(view.getByTestId('ide-verify-fail-summary-inline')).toBeTruthy();
@@ -97,9 +99,8 @@ describe('VerifySurface three-panel workstation', () => {
     fireEvent.keyDown(window, { key: 'J' });
     expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t5');
 
-    const ld1Row = view.getByTestId('ide-verify-mismatch-row-ld1-5');
-    fireEvent.click(ld1Row);
-    expect(ld1Row.className).toContain('is-selected');
+    fireEvent.click(view.getByTestId('ide-verify-related-failure-ld1_5'));
+    expect(view.getByTestId('ide-verify-mismatch-row-ld1_5').className).toContain('is-selected');
     expect(view.getByTestId('ide-verify-scope-signal').textContent).toContain('ld1');
     expect(view.getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld1');
     expect(view.getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t5');
@@ -120,11 +121,14 @@ describe('VerifySurface three-panel workstation', () => {
           { id: 'ld1', label: 'LD1', direction: 'out' },
         ]}
         onOpenProjectVectors={vi.fn()}
+        onFixPath={vi.fn()}
       />
     );
 
     fireEvent.click(view.getByTestId('ide-verify-drawer-toggle'));
-    fireEvent.click(view.getByTestId('ide-verify-mismatch-row-ld1-5'));
+    fireEvent.click(within(view.getByTestId('ide-verify-analysis-tab-nav')).getByText('Checks'));
+    fireEvent.keyDown(window, { key: 'J' });
+    fireEvent.click(view.getByTestId('ide-verify-related-failure-ld1_5'));
 
     expect(view.getAllByTestId('ide-verify-waveform-row-ld1')[0].getAttribute('data-selected')).toBe('true');
     expect(view.getAllByTestId('ide-verify-waveform-row-ld0')[0].getAttribute('data-selected')).toBe('false');
@@ -145,6 +149,7 @@ describe('VerifySurface three-panel workstation', () => {
           { id: 'ld1', label: 'LD1', direction: 'out' },
         ]}
         onOpenProjectVectors={vi.fn()}
+        onFixPath={vi.fn()}
       />
     );
 
@@ -153,11 +158,15 @@ describe('VerifySurface three-panel workstation', () => {
       viewport.focus();
       fireEvent.keyDown(viewport, { key: 'ArrowRight' });
     });
-    expect(view.getAllByTestId('ide-verify-selected-tick').map((node) => node.textContent)).toContain('t3');
+    expect(
+      view.getAllByTestId('ide-verify-selected-tick').some((node) => node.textContent?.includes('t3'))
+    ).toBe(true);
 
     waveformViewports.forEach((viewport) => {
       fireEvent.keyDown(viewport, { key: 'ArrowLeft' });
     });
-    expect(view.getAllByTestId('ide-verify-selected-tick').map((node) => node.textContent)).toContain('t1');
+    expect(
+      view.getAllByTestId('ide-verify-selected-tick').some((node) => node.textContent?.includes('t1'))
+    ).toBe(true);
   });
 });

@@ -20664,7 +20664,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-callout,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-run-proof,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-fail-diagnosis,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-readiness-strip,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-export-available-note,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-preview-banner,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-kit-tip,

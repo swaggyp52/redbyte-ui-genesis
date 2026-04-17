@@ -4226,29 +4226,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </IdeCallout>
         )}
 
-        {drawerOpen && hasSessionFailureEvidence && (
-          <div className="ide-verify-readiness-strip" data-testid="ide-verify-readiness-strip">
-            <span
-              className={`ide-verify-readiness-axis ide-verify-readiness-axis--${mappingComplete !== false ? 'ok' : 'warn'}`}
-              data-testid="ide-verify-readiness-design"
-            >
-              {mappingComplete !== false ? '✓ Design: valid' : '⚠ Design: mapping incomplete'}
-            </span>
-            <span
-              className={`ide-verify-readiness-axis ide-verify-readiness-axis--${isStarterScenario ? 'warn' : 'ok'}`}
-              data-testid="ide-verify-readiness-scenario"
-            >
-              {isStarterScenario ? '⚠ Scenario: starter' : '✓ Scenario: authored'}
-            </span>
-            <span
-              className={`ide-verify-readiness-axis ide-verify-readiness-axis--${isStarterScenario ? 'warn' : 'fail'}`}
-              data-testid="ide-verify-readiness-verify"
-            >
-              {isStarterScenario ? '~ Verify: unsealed' : '✗ Verify: failed'}
-            </span>
-          </div>
-        )}
-
         {drawerOpen && hasSessionFailureEvidence && mappingComplete !== false && onGoToExport && (
           <div className="ide-verify-export-available-note" data-testid="ide-verify-export-available">
             <span className="ide-verify-export-available-label">

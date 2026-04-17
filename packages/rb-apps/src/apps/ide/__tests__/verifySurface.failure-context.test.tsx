@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render } from '@testing-library/react';
+import { cleanup, fireEvent, render, within } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -67,7 +67,7 @@ function makeRepeatedFailureRun(): RuntimeVerifyRun {
 
 describe('VerifySurface failure context', () => {
   it('keeps the selected failure scoped to tick plus signal across failure interactions', () => {
-    const { getAllByText, getByTestId } = render(
+    const { getByTestId } = render(
       <VerifySurface
         deterministicHash="det_repeat_fail"
         hasVectors={true}
@@ -87,32 +87,33 @@ describe('VerifySurface failure context', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-right-tick').textContent).toContain('t1');
-    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('LD0');
-
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
-    fireEvent.click(getAllByText('Mismatches')[0]);
+
+    expect(getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t1');
+    expect(getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld0');
+
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Checks'));
     fireEvent.click(getByTestId('ide-verify-mismatch-row-ld0_5'));
-    expect(getByTestId('ide-verify-right-tick').textContent).toContain('t5');
-    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('LD0');
-    expect(getByTestId('ide-verify-right-expected').textContent).toContain('0');
-    expect(getByTestId('ide-verify-right-actual').textContent).toContain('1');
+    expect(getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t5');
+    expect(getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld0');
+    expect(getByTestId('ide-verify-explainer-expected').textContent).toContain('0');
+    expect(getByTestId('ide-verify-explainer-observed').textContent).toContain('1');
     expect(getByTestId('ide-verify-related-failure-ld1_5').textContent).toContain('LD1');
 
     fireEvent.click(getByTestId('ide-verify-related-failure-ld1_5'));
-    expect(getByTestId('ide-verify-right-tick').textContent).toContain('t5');
-    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('LD1');
-    expect(getByTestId('ide-verify-right-expected').textContent).toContain('1');
-    expect(getByTestId('ide-verify-right-actual').textContent).toContain('0');
+    expect(getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t5');
+    expect(getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld1');
+    expect(getByTestId('ide-verify-explainer-expected').textContent).toContain('1');
+    expect(getByTestId('ide-verify-explainer-observed').textContent).toContain('0');
 
     fireEvent.click(getByTestId('ide-verify-fail-nav-first'));
-    expect(getByTestId('ide-verify-right-tick').textContent).toContain('t1');
-    expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('LD0');
+    expect(getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t1');
+    expect(getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld0');
   });
 
   it('keeps the default fix path in Verify and only opens Design on an explicit secondary action', () => {
     const onFixPath = vi.fn();
-    const { getByTestId, getAllByText } = render(
+    const { getByTestId } = render(
       <VerifySurface
         deterministicHash="det_repeat_fail"
         hasVectors={true}
@@ -132,9 +133,12 @@ describe('VerifySurface failure context', () => {
       />
     );
 
+    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Details'));
     fireEvent.click(getByTestId('ide-verify-right-fix-action'));
     expect(onFixPath).not.toHaveBeenCalled();
-    expect(getAllByText('Vectors')[0]).toBeTruthy();
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Details'));
+    expect(getByTestId('ide-verify-vectors-table')).toBeTruthy();
 
     fireEvent.click(getByTestId('ide-verify-right-open-design'));
     expect(onFixPath).toHaveBeenCalledWith({

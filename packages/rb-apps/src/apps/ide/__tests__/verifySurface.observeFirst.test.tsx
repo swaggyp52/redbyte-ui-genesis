@@ -186,7 +186,9 @@ const BASE_PROPS = {
 };
 
 describe('VerifySurface observe-first model', () => {
-  afterEach(() => { cleanup(); });
+  afterEach(() => {
+    cleanup();
+  });
 
   it('shows Open in Design button in command bar when lastRun exists and onGoToDesign provided', () => {
     const onGoToDesign = vi.fn();
@@ -309,7 +311,6 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
     fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     fireEvent.change(getByTestId('ide-verify-tick-scrubber'), { target: { value: '2' } });
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
