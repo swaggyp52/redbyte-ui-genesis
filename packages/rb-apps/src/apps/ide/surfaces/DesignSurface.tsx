@@ -4242,6 +4242,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         </div>
       );
     }
+    // R3 reconciliation: when Project → Design focus is active, the canvas banner
+    // already owns "what you landed on". The large empty Selection card only
+    // competed with that story — show a single deferral line until there is a
+    // real canvas selection to inspect.
+    if (focusedAssetContext) {
+      return (
+        <div className="ide-design-selection-deferred" data-testid="ide-design-selection-deferred">
+          <p className="ide-copy" style={{ margin: 0 }}>
+            <span className="ide-design-inspector-eyebrow">Canvas selection</span>
+            {' — '}
+            Project focus is active. Select a node or wire to inspect it here, or use{' '}
+            <strong>Clear focus</strong> on the canvas banner.
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="ide-design-inspector-empty-card" data-testid="ide-design-inspector-empty">
         <span className="ide-design-inspector-eyebrow">Selection</span>
@@ -5490,12 +5506,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               macro={focusedMacroDefinition}
               componentDef={focusedComponentDef}
               instanceCount={focusedComponentInstanceCount}
-              isPlacementArmed={
-                focusedAssetContext.kind === 'macro' &&
-                activeMacroInsertionId === focusedAssetContext.macroId
-              }
-              onClear={handleClearFocusedAsset}
-              onBackToProject={onGoToProject}
             />
           )}
           {renderSelectionIdentityCard()}

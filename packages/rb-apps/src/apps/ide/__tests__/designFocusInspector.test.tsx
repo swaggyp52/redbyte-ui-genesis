@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { render } from '@testing-library/react';
 import type { CompositeNodeDef } from '@redbyte/rb-logic-core';
 import { DesignFocusInspector } from '../components/DesignFocusInspector';
 import type { DesignFocusContext } from '../components/DesignFocusBanner';
@@ -46,20 +46,13 @@ const COMPONENT_DEF: CompositeNodeDef = {
 };
 
 describe('DesignFocusInspector', () => {
-  it('renders macro kind, name, and port-by-port interface', () => {
+  it('puts kind and name in the section title and renders port-by-port interface', () => {
     const { getByTestId } = render(
-      <DesignFocusInspector
-        context={MACRO_CTX}
-        macro={MACRO_DEF}
-        onClear={vi.fn()}
-      />
+      <DesignFocusInspector context={MACRO_CTX} macro={MACRO_DEF} />
     );
-    expect(getByTestId('ide-design-focus-inspector-kind').textContent).toBe(
-      'Macro'
-    );
-    expect(getByTestId('ide-design-focus-inspector-name').textContent).toBe(
-      'Adder4'
-    );
+    const root = getByTestId('ide-design-focus-inspector');
+    expect(root.querySelector('.ide-inspector-title')?.textContent).toContain('Macro');
+    expect(root.querySelector('.ide-inspector-title')?.textContent).toContain('Adder4');
     expect(
       getByTestId('ide-design-focus-inspector-input-count').textContent
     ).toBe('2');
@@ -73,33 +66,37 @@ describe('DesignFocusInspector', () => {
     expect(outputList.textContent).toContain('SUM');
   });
 
+  it('surfaces the description in the dock (not duplicated on the canvas banner)', () => {
+    const { getByTestId } = render(
+      <DesignFocusInspector context={MACRO_CTX} macro={MACRO_DEF} />
+    );
+    expect(getByTestId('ide-design-focus-inspector-description').textContent).toBe(
+      'Ripple-carry adder'
+    );
+  });
+
   it('omits usage block for macros (no honest instance count)', () => {
     const { queryByTestId } = render(
       <DesignFocusInspector
         context={MACRO_CTX}
         macro={MACRO_DEF}
         instanceCount={5}
-        onClear={vi.fn()}
       />
     );
     expect(queryByTestId('ide-design-focus-inspector-usage')).toBeNull();
   });
 
-  it('renders component kind, ports derived from mappings, and instance count', () => {
+  it('renders component ports derived from mappings and instance count', () => {
     const { getByTestId } = render(
       <DesignFocusInspector
         context={COMPONENT_CTX}
         componentDef={COMPONENT_DEF}
         instanceCount={3}
-        onClear={vi.fn()}
       />
     );
-    expect(getByTestId('ide-design-focus-inspector-kind').textContent).toBe(
-      'Custom component'
-    );
-    expect(getByTestId('ide-design-focus-inspector-name').textContent).toBe(
-      'ALU'
-    );
+    const root = getByTestId('ide-design-focus-inspector');
+    expect(root.querySelector('.ide-inspector-title')?.textContent).toContain('Custom component');
+    expect(root.querySelector('.ide-inspector-title')?.textContent).toContain('ALU');
     expect(
       getByTestId('ide-design-focus-inspector-input-count').textContent
     ).toBe('3');
@@ -116,7 +113,6 @@ describe('DesignFocusInspector', () => {
         context={COMPONENT_CTX}
         componentDef={COMPONENT_DEF}
         instanceCount={1}
-        onClear={vi.fn()}
       />
     );
     expect(
@@ -130,7 +126,6 @@ describe('DesignFocusInspector', () => {
         context={COMPONENT_CTX}
         componentDef={COMPONENT_DEF}
         instanceCount={0}
-        onClear={vi.fn()}
       />
     );
     expect(
@@ -145,11 +140,7 @@ describe('DesignFocusInspector', () => {
       outputs: [],
     };
     const { getByTestId } = render(
-      <DesignFocusInspector
-        context={MACRO_CTX}
-        macro={emptyMacro}
-        onClear={vi.fn()}
-      />
+      <DesignFocusInspector context={MACRO_CTX} macro={emptyMacro} />
     );
     expect(
       getByTestId('ide-design-focus-inspector-input-empty').textContent
@@ -159,63 +150,8 @@ describe('DesignFocusInspector', () => {
     ).toBe('No outputs.');
   });
 
-  it('shows the armed pill only when macro placement is armed', () => {
-    const { getByTestId, queryByText, rerender } = render(
-      <DesignFocusInspector
-        context={MACRO_CTX}
-        macro={MACRO_DEF}
-        isPlacementArmed
-        onClear={vi.fn()}
-      />
-    );
-    expect(queryByText('Armed for placement')).not.toBeNull();
-    const body = getByTestId('ide-design-focus-inspector-body');
-    expect(body.getAttribute('data-placement-armed')).toBe('1');
-
-    rerender(
-      <DesignFocusInspector
-        context={MACRO_CTX}
-        macro={MACRO_DEF}
-        onClear={vi.fn()}
-      />
-    );
-    expect(queryByText('Armed for placement')).toBeNull();
-  });
-
-  it('wires Clear focus and Back to Project buttons', () => {
-    const onClear = vi.fn();
-    const onBackToProject = vi.fn();
-    const { getByTestId, rerender, queryByTestId } = render(
-      <DesignFocusInspector
-        context={MACRO_CTX}
-        macro={MACRO_DEF}
-        onClear={onClear}
-        onBackToProject={onBackToProject}
-      />
-    );
-    fireEvent.click(getByTestId('ide-design-focus-inspector-clear'));
-    expect(onClear).toHaveBeenCalledTimes(1);
-    fireEvent.click(
-      getByTestId('ide-design-focus-inspector-back-to-project')
-    );
-    expect(onBackToProject).toHaveBeenCalledTimes(1);
-
-    rerender(
-      <DesignFocusInspector
-        context={MACRO_CTX}
-        macro={MACRO_DEF}
-        onClear={onClear}
-      />
-    );
-    expect(
-      queryByTestId('ide-design-focus-inspector-back-to-project')
-    ).toBeNull();
-  });
-
   it('falls back gracefully when macro definition is missing', () => {
-    const { getByTestId } = render(
-      <DesignFocusInspector context={MACRO_CTX} onClear={vi.fn()} />
-    );
+    const { getByTestId } = render(<DesignFocusInspector context={MACRO_CTX} />);
     expect(
       getByTestId('ide-design-focus-inspector-input-count').textContent
     ).toBe('0');

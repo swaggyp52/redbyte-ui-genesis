@@ -10393,49 +10393,19 @@ details[open] summary .details-arrow {
   margin-top: var(--ide-space-1);
 }
 
-/* S3: Focused-asset inspector in the right dock. Complements the canvas
-   banner with port-by-port interface truth, honest usage counts, and
-   quick navigation actions. */
+/* R3: Focused-asset inspector — engineering-only (ports, usage). Canvas banner
+   owns actions + short placement orientation. Section title carries kind · name. */
 .ide-design-focus-inspector-body {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.ide-design-focus-inspector-identity {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.ide-design-focus-inspector-kind {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ide-text-soft, #9fb2c2);
-  background: rgba(82, 123, 156, 0.22);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.ide-design-focus-inspector-name {
-  font-family: var(
-    --ide-font-mono,
-    ui-monospace,
-    SFMono-Regular,
-    SF Mono,
-    Menlo,
-    Consolas,
-    monospace
-  );
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ide-text, #e6f0fa);
-  background: rgba(15, 28, 40, 0.45);
-  padding: 2px 8px;
-  border-radius: 4px;
+.ide-design-selection-deferred {
+  padding: 10px 12px;
+  border-radius: var(--ide-radius-s, 8px);
+  border: 1px solid rgba(70, 112, 142, 0.22);
+  background: rgba(7, 15, 27, 0.45);
 }
 
 .ide-design-focus-inspector-description {
@@ -10500,10 +10470,6 @@ details[open] summary .details-arrow {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.ide-design-focus-inspector-actions {
-  margin-top: 2px;
 }
 
 .ide-design-sync-badge-live {

@@ -5,23 +5,14 @@
 import React from 'react';
 import type { CompositeNodeDef } from '@redbyte/rb-logic-core';
 import type { MacroDefinition } from '../macros/MacroLibrary';
-import { IdeButton, IdeInspectorSection, IdeStatusPill } from './IdePrimitives';
+import { IdeInspectorSection } from './IdePrimitives';
 import type { DesignFocusContext } from './DesignFocusBanner';
 
 /**
- * S3: Focused-module inspector. Rendered in the Design right-dock whenever a
- * Project → Design focus handoff has landed. This is the serious authoring
- * context that complements the canvas banner: port-by-port interface,
- * instance-count truth (when honestly derivable), description, and quick
- * actions for navigating back.
- *
- * Truth boundaries:
- *  - macros: we can show the LIBRARY definition (name, description, IO ports)
- *    but NOT an instance count — macros expand into raw node clusters on
- *    placement and lose their identity. Reporting a count here would be a
- *    lie.
- *  - custom components: these are composite node types, so nodes with
- *    `type === componentName` are real instances. Count is honest.
+ * R3: Focused-asset inspector — engineering context only. Canvas banner owns
+ * orientation, placement hints, and Clear / Back actions; this panel owns
+ * description (if any), port-by-port interface, and honest usage for custom
+ * components. No duplicate identity chrome or action row vs the banner.
  */
 
 export interface DesignFocusInspectorProps {
@@ -35,10 +26,6 @@ export interface DesignFocusInspectorProps {
    * value). Omit when the caller can't derive it cheaply.
    */
   instanceCount?: number;
-  /** Whether the macro is currently armed for click-to-place. */
-  isPlacementArmed?: boolean;
-  onClear: () => void;
-  onBackToProject?: () => void;
   testId?: string;
 }
 
@@ -53,15 +40,13 @@ export const DesignFocusInspector: React.FC<DesignFocusInspectorProps> = ({
   macro,
   componentDef,
   instanceCount,
-  isPlacementArmed = false,
-  onClear,
-  onBackToProject,
   testId = 'ide-design-focus-inspector',
 }) => {
   const kindLabel = context.kind === 'macro' ? 'Macro' : 'Custom component';
   const displayName =
     context.kind === 'macro' ? context.name : context.componentName;
   const description = context.description;
+  const sectionTitle = `${kindLabel} · ${displayName}`;
 
   const inputRows: PortRowEntry[] = React.useMemo(() => {
     if (context.kind === 'macro' && macro) {
@@ -108,7 +93,7 @@ export const DesignFocusInspector: React.FC<DesignFocusInspectorProps> = ({
 
   return (
     <IdeInspectorSection
-      title="Focused asset"
+      title={sectionTitle}
       testId={testId}
       collapsible={false}
     >
@@ -116,34 +101,19 @@ export const DesignFocusInspector: React.FC<DesignFocusInspectorProps> = ({
         className="ide-design-focus-inspector-body"
         data-testid={`${testId}-body`}
         data-focus-kind={context.kind}
-        data-placement-armed={isPlacementArmed ? '1' : '0'}
       >
-        <div className="ide-design-focus-inspector-identity">
-          <span
-            className="ide-design-focus-inspector-kind"
-            data-testid={`${testId}-kind`}
-          >
-            {kindLabel}
-          </span>
-          <code
-            className="ide-design-focus-inspector-name"
-            data-testid={`${testId}-name`}
-          >
-            {displayName}
-          </code>
-          {context.kind === 'macro' && isPlacementArmed && (
-            <IdeStatusPill tone="ok">Armed for placement</IdeStatusPill>
-          )}
-        </div>
+        <p className="ide-surface-block-label" data-testid={`${testId}-scope`}>
+          Project focus — interface and usage
+        </p>
 
-        {description && (
+        {description ? (
           <p
             className="ide-design-focus-inspector-description"
             data-testid={`${testId}-description`}
           >
             {description}
           </p>
-        )}
+        ) : null}
 
         <div className="ide-design-focus-inspector-interface">
           <h5 className="ide-design-focus-inspector-subhead">Interface</h5>
@@ -225,25 +195,6 @@ export const DesignFocusInspector: React.FC<DesignFocusInspectorProps> = ({
             </p>
           </div>
         )}
-
-        <div className="ide-inline-actions ide-design-focus-inspector-actions">
-          <IdeButton
-            tone="secondary"
-            onClick={onClear}
-            testId={`${testId}-clear`}
-          >
-            Clear focus
-          </IdeButton>
-          {onBackToProject && (
-            <IdeButton
-              tone="ghost"
-              onClick={onBackToProject}
-              testId={`${testId}-back-to-project`}
-            >
-              Back to Project
-            </IdeButton>
-          )}
-        </div>
       </div>
     </IdeInspectorSection>
   );

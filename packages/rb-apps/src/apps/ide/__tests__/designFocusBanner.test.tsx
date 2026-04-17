@@ -23,17 +23,16 @@ const COMPONENT_CONTEXT: DesignFocusContext = {
 };
 
 describe('DesignFocusBanner', () => {
-  it('renders macro kind, name, io summary, and description', () => {
-    const { getByTestId } = render(
+  it('renders macro kind, name, and io summary without duplicating the long description', () => {
+    const { getByTestId, queryByTestId } = render(
       <DesignFocusBanner context={MACRO_CONTEXT} onClear={vi.fn()} />
     );
     expect(getByTestId('ide-design-focus-banner-kind').textContent).toBe('Macro');
     expect(getByTestId('ide-design-focus-banner-name').textContent).toBe('Adder4');
     const banner = getByTestId('ide-design-focus-banner');
     expect(banner.textContent).toContain('2 in · 1 out');
-    expect(getByTestId('ide-design-focus-banner-description').textContent).toBe(
-      'Ripple-carry adder'
-    );
+    expect(queryByTestId('ide-design-focus-banner-description')).toBeNull();
+    expect(banner.textContent).not.toContain('Ripple-carry adder');
   });
 
   it('shows the armed badge and placement hint when isPlacementArmed is true', () => {
@@ -48,7 +47,7 @@ describe('DesignFocusBanner', () => {
       'Armed for placement'
     );
     expect(getByTestId('ide-design-focus-banner-hint').textContent).toContain(
-      'Click anywhere on the canvas'
+      'canvas HUD'
     );
     const banner = getByTestId('ide-design-focus-banner');
     expect(banner.getAttribute('data-placement-armed')).toBe('1');
@@ -59,7 +58,7 @@ describe('DesignFocusBanner', () => {
       <DesignFocusBanner context={MACRO_CONTEXT} onClear={vi.fn()} />
     );
     expect(getByTestId('ide-design-focus-banner-hint').textContent).toContain(
-      'Select it in the palette'
+      'click its card in the palette'
     );
   });
 
@@ -73,9 +72,7 @@ describe('DesignFocusBanner', () => {
     expect(getByTestId('ide-design-focus-banner-name').textContent).toBe('ALU');
     expect(queryByTestId('ide-design-focus-banner-armed')).toBeNull();
     const banner = getByTestId('ide-design-focus-banner');
-    expect(banner.textContent).toContain(
-      'Drag it from the palette onto the canvas'
-    );
+    expect(banner.textContent.toLowerCase()).toContain('drag from the palette onto the canvas');
   });
 
   it('invokes onClear when the Clear focus button is clicked', () => {

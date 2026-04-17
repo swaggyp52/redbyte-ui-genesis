@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-04-17 (Surface reconciliation R3: Design focus vs selection)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/components/DesignFocusBanner.tsx`, `packages/rb-apps/src/apps/ide/components/DesignFocusInspector.tsx`, `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/designFocusBanner.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/designFocusInspector.test.tsx`
+
+**Context**: After S3, the Design surface stacked a canvas **focus banner**, a right-dock **focused-asset inspector**, and the existing **Selection** identity card. The banner and inspector both repeated **kind, name, description, armed state, and Clear / Back actions** — multiple “what you are doing” regions. R3 reconciles ownership without new state: **banner** = landing + **short** placement orientation + **only** actions; **inspector** = **engineering** copy (description) + ports + honest usage; **canvas HUD** remains the authority for click-to-place mechanics; **Selection** card is **deferred** to a one-line message when project focus is active and nothing is selected so it does not compete with the banner story.
+
+**Changes**:
+- **DesignFocusBanner**: removed the **description** block (description is dock-only). Shortened macro hints so they **do not duplicate** the tool HUD’s long “click to place …” copy; armed hint now points at Esc/Clear + HUD.
+- **DesignFocusInspector**: removed duplicate **identity row**, **armed pill**, and **Clear / Back** button row. Section **title** is now `Macro · Name` / `Custom component · Name`; body leads with a small **scope** label, optional **description**, then **Interface** + **Usage** (unchanged truth rules for macro vs component counts).
+- **DesignSurface**: when `focusedAssetContext` is set and the inspector would otherwise show the large **Nothing selected** card, render **`ide-design-selection-deferred`** instead (single “Canvas selection” deferral line). `DesignSurface` no longer passes `onClear` / `onBackToProject` / `isPlacementArmed` into the inspector (banner remains the only action surface for focus exit).
+- **CSS**: removed unused `.ide-design-focus-inspector-identity|kind|name|actions` rules; added `.ide-design-selection-deferred` panel styling.
+
+**Tests**:
+- `designFocusBanner.test.tsx` — expectations updated for R3 copy and absence of banner description.
+- `designFocusInspector.test.tsx` — rewritten for title-led layout, description in dock, removed button/armed tests.
+
+**Verification**:
+- `pnpm -w exec vitest run` on `designFocusBanner`, `designFocusInspector`, `designFocus`, `designSurface.blankState`, `designSurface.selectionContext`, `designSurface.inspectorTruth`, `designSurface.inspectorHierarchy`, `designSurface.canvasChrome`, `designSurface.workstation` → **71/71** pass in the batched run (after banner hint assertion fix).
+- `pnpm -s build:unified` → success.
+
+**Truth changes**: Same authorities (`focusedAssetContext`, `activeMacroInsertionId`, `paletteQuery`, canvas selection). **Presentation ownership** only: what is “project handoff” vs “canvas selection” vs “placement mechanics” is clearer with less duplicated prose and fewer competing cards.
+
+**Removed / demoted**: Banner description; inspector duplicate identity + actions + armed pill; large empty Selection card when focus is active with no selection; orphaned CSS for removed inspector chrome.
+
 ## Change Log 2026-04-17 (Surface reconciliation R2: Project control tower)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/components/ProjectBridgePanel.tsx`, `packages/rb-apps/src/apps/ide/components/ProjectWarningsPanel.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectWarningsPanel.test.tsx`, `scripts/gates/ide-project-health-live-contract.mjs`, `scripts/gates/ide-examples-contract.mjs`, `scripts/gates/ide-project-continue-cta-contract.mjs` (comment alignment)

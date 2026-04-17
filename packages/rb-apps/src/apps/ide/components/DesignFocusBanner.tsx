@@ -11,9 +11,10 @@ import { IdeButton, IdeCallout, IdeStatusPill } from './IdePrimitives';
  * the focus context, clearing actions, and back-navigation.
  *
  * Deliberately kept narrow: this banner communicates what is focused, why
- * the student landed here, and what to do next. It does NOT introduce a
- * new selection authority; the actual placement/palette state lives in
- * DesignSurface's existing state (`activeMacroInsertionId`, `paletteQuery`).
+ * the student landed here, and what to do next. Long descriptions live in the
+ * right-dock focused-asset inspector (R3 reconciliation) so the canvas is not
+ * stacked with duplicate prose. It does NOT introduce a new selection authority;
+ * placement/palette state remains `activeMacroInsertionId` + `paletteQuery`.
  */
 
 export type DesignFocusContext =
@@ -54,14 +55,16 @@ export const DesignFocusBanner: React.FC<DesignFocusBannerProps> = ({
   const displayName =
     context.kind === 'macro' ? context.name : context.componentName;
 
+  // R3 reconciliation: placement mechanics stay in the canvas tool HUD; the banner
+  // only orients + routes actions. Avoid duplicating the long "click to place" copy.
   let hint: string;
   if (context.kind === 'macro') {
     hint = isPlacementArmed
-      ? 'Click anywhere on the canvas to place this macro. Press Esc or Clear focus to exit placement.'
-      : 'Macro palette is filtered to this macro. Select it in the palette to arm click-to-place.';
+      ? 'Esc or Clear focus exits placement. (Placement steps also show in the canvas HUD.)'
+      : 'Palette is filtered to this macro — click its card in the palette to arm click-to-place.';
   } else {
     hint =
-      'Palette is filtered to this component. Drag it from the palette onto the canvas to instantiate.';
+      'Palette is filtered to this component — drag from the palette onto the canvas.';
   }
 
   return (
@@ -101,14 +104,6 @@ export const DesignFocusBanner: React.FC<DesignFocusBannerProps> = ({
             </span>
           )}
         </div>
-        {context.description && (
-          <div
-            className="ide-design-focus-banner-description"
-            data-testid={`${testId}-description`}
-          >
-            {context.description}
-          </div>
-        )}
         <div
           className="ide-design-focus-banner-hint"
           data-testid={`${testId}-hint`}
