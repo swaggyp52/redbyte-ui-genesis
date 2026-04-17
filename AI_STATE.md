@@ -1,5 +1,31 @@
 # AI State
 
+## Change Log 2026-04-16 (Surface ownership S3: Design focused-asset landing zone)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/components/DesignFocusBanner.tsx` (new), `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/designFocusBanner.test.tsx` (new)
+
+**Context**: S2 built the Project → Design focus handoff: clicking a macro/component in the Overview routes into Design with `activeMacroInsertionId` armed and `paletteQuery` seeded. But the Design surface consumed the ticket silently — the student landed on a canvas with an armed cursor and a filtered palette, with no explicit confirmation of what they were focused on or why. That landing felt accidental, not intentional. This chunk gives Design a serious focused-asset landing zone while still reusing existing Design authorities — no parallel selection state.
+
+**Changes**:
+- New `DesignFocusBanner` component — presentational, tone-aware. Renders a kind badge ("Macro" / "Custom component"), the asset name in mono, an IO-count pill for macros (`N in · M out`) gated by the armed state, an "Armed for placement" badge when `activeMacroInsertionId` matches the focused macro, the authored description, and plain-language next-step hints that describe the current mode (click-to-place vs palette-filter vs drag-from-palette). Actions: "Clear focus" (secondary) and optional "Back to Project" (ghost).
+- `DesignSurface` now derives a durable `focusedAssetContext` projection when a `DesignFocusRequest` lands. The ticket is still one-shot (consumed by `onClearDesignFocus`), but the banner-facing context sticks until the student explicitly clears it or placement completes. Context sources IO/description from the `macros` array for macros, and from `customComponentTypes` for components — no new cross-layer prop drilling required.
+- Auto-clear on successful placement: a `useRef` tracks the previous `activeMacroInsertionId` armed state. When the transition `armed → unarmed` happens while a macro-focus context is active (i.e. `onInstantiateMacro` fired and cleared the insertion id), the banner clears itself. Students don't need a manual dismiss after a successful place.
+- Explicit clear handler (`handleClearFocusedAsset`) resets all three authorities in one go: `activeMacroInsertionId → null`, `paletteQuery → ''`, `focusedAssetContext → null`. No drift between them.
+- Banner renders inside the canvas chrome region at `z-index: 11` (above the diagnostic callout), positioned top-left/right with absolute positioning. It shares the canvas-blocking data attributes (`data-blocks-canvas-placement`, `data-blocks-macro-placement`) so clicks on the banner don't drop nodes onto the canvas underneath.
+
+**Tests added**:
+- `packages/rb-apps/src/apps/ide/__tests__/designFocusBanner.test.tsx` — 8 tests covering: macro kind/name/IO rendering, armed badge + placement hint when armed, palette-filter hint when unarmed, custom-component kind with no IO/armed badge, `onClear` wiring, `onBackToProject` wiring and conditional render, description omission, and `data-focus-kind` / `data-placement-armed` attribute encoding.
+
+**Verification**:
+- `pnpm -w exec vitest run …/designFocusBanner.test.ts …/designFocus.test.ts …/projectOverviewPanel.test.tsx …/projectBridgePanel.test.tsx …/projectWarningsPanel.test.tsx …/projectOutline.test.ts` → 50/50 pass.
+- Regression sweep: `projectRuntime.persistence` (26), `ideApp.labday-wiring` (7, 1 pre-existing skip), `projectSurface.continuity` (13), `projectSurface.submission` (9), `projectSurface.launchpadRemoval` (6), `designSurface.canvasChrome` (3), `designSurface.workstation` (27), `designSurface.blankState` (2) → 92/92 pass (1 skip).
+- Verified that the two failures in `designSurface.debugNav.test.tsx` and `designSurface.placementMode.test.tsx` are pre-existing on `main` prior to S3 (reproduced at `c9249577`) — not caused by this chunk.
+- `pnpm -s build:unified` → success, all dist artifacts verified.
+
+**Truth changes**: The Design surface now acknowledges incoming focus context visibly. Landing from Project is no longer a silent palette-filter-plus-armed-cursor — it's a named, scoped authoring session. The banner truthfully reports: what asset the student is focused on, what kind it is, whether the macro is currently armed for placement, what action to take next, and how to clear focus or return to the Project surface. The focused-asset context lives alongside — not instead of — existing Design authorities; `activeMacroInsertionId` and `paletteQuery` remain the canonical state owners.
+
+**Dead code removed / quarantined**: None. This chunk is purely additive on top of S2 and reuses the existing focus request primitive (`DesignFocusRequest`) and existing Design-surface authorities. No overlapping surface logic was introduced and no legacy path was made redundant by this change.
+
 ## Change Log 2026-04-16 (Surface ownership S2: Project → Design focus handoff)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/designFocus.ts` (new), `packages/rb-apps/src/apps/ide/components/ProjectOverviewPanel.tsx`, `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/IdeApp.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/designFocus.test.ts` (new), `packages/rb-apps/src/apps/ide/__tests__/projectOverviewPanel.test.tsx`

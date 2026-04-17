@@ -14,6 +14,10 @@ import { digestValue } from '../../../utils/digest';
 import { parseWireId } from '../../../utils/wireId';
 import type { IdeDiagnostic, IdeDiagnosticRouteRequest } from '../diagnostics';
 import type { DesignFocusRequest } from '../designFocus';
+import {
+  DesignFocusBanner,
+  type DesignFocusContext,
+} from '../components/DesignFocusBanner';
 import { getFaninCone, getFanoutCone } from '../pathTrace';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -1530,9 +1534,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     setDiagnosticFilterNodeId(diagnosticRouteRequest.nodeId);
   }, [diagnosticRouteRequest]);
 
-  // S2: Project → Design focus handoff. Reuses existing design-surface
-  // authorities (activeMacroInsertionId for macros, paletteQuery for
-  // components). Do NOT introduce a parallel selection authority here.
+  // S2/S3: Project → Design focus handoff.
+  //
+  // The request itself is a one-shot ticket (consumed below via
+  // onClearDesignFocus). `focusedAssetContext` is the durable banner-facing
+  // projection so the student can see "you are working on X" until they
+  // explicitly clear it or finish placement. We do NOT introduce a parallel
+  // selection authority — the actual placement/palette state still lives in
+  // `activeMacroInsertionId` and `paletteQuery`.
+  const [focusedAssetContext, setFocusedAssetContext] =
+    useState<DesignFocusContext | null>(null);
   const lastHandledFocusRequestIdRef = useRef<number | null>(null);
   useEffect(() => {
     if (!designFocusRequest) return;
@@ -1540,17 +1551,63 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     lastHandledFocusRequestIdRef.current = designFocusRequest.requestId;
 
     if (designFocusRequest.kind === 'macro') {
-      const exists = macros.some((m) => m.id === designFocusRequest.targetId);
-      if (exists) {
-        setActiveMacroInsertionId(designFocusRequest.targetId);
+      const macro = macros.find((m) => m.id === designFocusRequest.targetId);
+      if (macro) {
+        setActiveMacroInsertionId(macro.id);
+        setFocusedAssetContext({
+          kind: 'macro',
+          macroId: macro.id,
+          name: macro.name,
+          ioSummary: `${macro.inputs.length} in · ${macro.outputs.length} out`,
+          description: macro.description,
+        });
+      } else {
+        // Asset disappeared between Project dispatch and Design consume;
+        // surface a minimal context so the student sees something happened.
+        setFocusedAssetContext({
+          kind: 'macro',
+          macroId: designFocusRequest.targetId,
+          name: designFocusRequest.displayName,
+          ioSummary: '— · —',
+        });
       }
       setPaletteQuery(designFocusRequest.displayName);
     } else if (designFocusRequest.kind === 'custom-component') {
+      const componentType = (customComponentTypes ?? []).find(
+        (entry) => entry.type === designFocusRequest.targetId
+      );
       setPaletteQuery(designFocusRequest.displayName);
+      setFocusedAssetContext({
+        kind: 'custom-component',
+        componentName: designFocusRequest.displayName,
+        description: componentType?.description,
+      });
     }
 
     onClearDesignFocus?.();
-  }, [designFocusRequest, macros, onClearDesignFocus]);
+  }, [designFocusRequest, macros, customComponentTypes, onClearDesignFocus]);
+
+  // Auto-clear the focused-asset banner when placement completes. Detect
+  // the transition activeMacroInsertionId: truthy → null, which is the
+  // signal emitted by successful click-to-place (onInstantiateMacro).
+  const previousMacroArmedRef = useRef(false);
+  useEffect(() => {
+    const isArmed = activeMacroInsertionId !== null;
+    if (
+      previousMacroArmedRef.current &&
+      !isArmed &&
+      focusedAssetContext?.kind === 'macro'
+    ) {
+      setFocusedAssetContext(null);
+    }
+    previousMacroArmedRef.current = isArmed;
+  }, [activeMacroInsertionId, focusedAssetContext]);
+
+  const handleClearFocusedAsset = useCallback(() => {
+    setActiveMacroInsertionId(null);
+    setPaletteQuery('');
+    setFocusedAssetContext(null);
+  }, []);
 
   useEffect(() => {
     const previous = previousWireCountRef.current;
@@ -6063,6 +6120,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </div>
                     ) : null}
                   </div>
+                  {focusedAssetContext && (
+                    <DesignFocusBanner
+                      context={focusedAssetContext}
+                      isPlacementArmed={
+                        focusedAssetContext.kind === 'macro' &&
+                        activeMacroInsertionId === focusedAssetContext.macroId
+                      }
+                      onClear={handleClearFocusedAsset}
+                      onBackToProject={onGoToProject}
+                    />
+                  )}
                   {diagnosticRouteRequest && diagnosticRouteRequest.mode === 'design' && (
                     <div
                       className="ide-design-diagnostic-callout"
