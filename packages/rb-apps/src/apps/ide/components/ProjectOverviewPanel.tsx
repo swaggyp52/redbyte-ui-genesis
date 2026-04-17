@@ -22,6 +22,16 @@ import type { ProjectOutlineSummary } from '../projectOutline';
 export interface ProjectOverviewPanelProps {
   outline: ProjectOutlineSummary;
   onOpenDesign?: () => void;
+  /**
+   * Navigate to the Design surface and focus the given macro (armed for
+   * click-to-place). When provided, macro rows become buttons.
+   */
+  onFocusMacro?: (macroId: string, macroName: string) => void;
+  /**
+   * Navigate to the Design surface and focus the given custom component
+   * (palette-filtered). When provided, component rows become buttons.
+   */
+  onFocusCustomComponent?: (componentName: string) => void;
   testId?: string;
 }
 
@@ -49,6 +59,8 @@ function formatNodeType(type: string): string {
 export const ProjectOverviewPanel: React.FC<ProjectOverviewPanelProps> = ({
   outline,
   onOpenDesign,
+  onFocusMacro,
+  onFocusCustomComponent,
   testId = 'ide-project-overview',
 }) => {
   const hasAnything =
@@ -156,15 +168,20 @@ export const ProjectOverviewPanel: React.FC<ProjectOverviewPanelProps> = ({
                 data-testid={`${testId}-macro-${macro.id}`}
                 className="ide-project-overview-module"
               >
-                <div className="ide-project-overview-module-name">{macro.name}</div>
-                <div className="ide-project-overview-module-meta">
-                  <IdeStatusPill tone="ok">{macro.ioSummary}</IdeStatusPill>
-                  {macro.description && (
-                    <span className="ide-project-overview-module-desc">
-                      {macro.description}
-                    </span>
-                  )}
-                </div>
+                <ModuleRow
+                  name={macro.name}
+                  ioSummary={macro.ioSummary}
+                  ioTone="ok"
+                  description={macro.description}
+                  kindLabel="Macro"
+                  onClick={
+                    onFocusMacro
+                      ? () => onFocusMacro(macro.id, macro.name)
+                      : undefined
+                  }
+                  actionLabel="Place in Design"
+                  testId={`${testId}-macro-${macro.id}-action`}
+                />
               </li>
             ))}
           </ul>
@@ -194,15 +211,20 @@ export const ProjectOverviewPanel: React.FC<ProjectOverviewPanelProps> = ({
                 data-testid={`${testId}-custom-${def.name}`}
                 className="ide-project-overview-module"
               >
-                <div className="ide-project-overview-module-name">{def.name}</div>
-                <div className="ide-project-overview-module-meta">
-                  <IdeStatusPill tone="idle">{def.ioSummary}</IdeStatusPill>
-                  {def.description && (
-                    <span className="ide-project-overview-module-desc">
-                      {def.description}
-                    </span>
-                  )}
-                </div>
+                <ModuleRow
+                  name={def.name}
+                  ioSummary={def.ioSummary}
+                  ioTone="idle"
+                  description={def.description}
+                  kindLabel="Component"
+                  onClick={
+                    onFocusCustomComponent
+                      ? () => onFocusCustomComponent(def.name)
+                      : undefined
+                  }
+                  actionLabel="Find in Design"
+                  testId={`${testId}-custom-${def.name}-action`}
+                />
               </li>
             ))}
           </ul>
@@ -210,6 +232,68 @@ export const ProjectOverviewPanel: React.FC<ProjectOverviewPanelProps> = ({
       </section>
     </SurfacePanel>
   );
+};
+
+interface ModuleRowProps {
+  name: string;
+  ioSummary: string;
+  ioTone: 'ok' | 'idle';
+  description: string;
+  kindLabel: string;
+  /** When provided, the row renders as a clickable navigation button. */
+  onClick?: () => void;
+  actionLabel: string;
+  testId?: string;
+}
+
+const ModuleRow: React.FC<ModuleRowProps> = ({
+  name,
+  ioSummary,
+  ioTone,
+  description,
+  kindLabel,
+  onClick,
+  actionLabel,
+  testId,
+}) => {
+  const body = (
+    <>
+      <div className="ide-project-overview-module-row">
+        <span className="ide-project-overview-module-kind">{kindLabel}</span>
+        <span className="ide-project-overview-module-name">{name}</span>
+        {onClick && (
+          <span
+            className="ide-project-overview-module-action"
+            aria-hidden="true"
+          >
+            {actionLabel} →
+          </span>
+        )}
+      </div>
+      <div className="ide-project-overview-module-meta">
+        <IdeStatusPill tone={ioTone}>{ioSummary}</IdeStatusPill>
+        {description && (
+          <span className="ide-project-overview-module-desc">{description}</span>
+        )}
+      </div>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className="ide-project-overview-module-button"
+        onClick={onClick}
+        data-testid={testId}
+        title={`${actionLabel}: ${name}`}
+      >
+        {body}
+      </button>
+    );
+  }
+
+  return <>{body}</>;
 };
 
 interface OverviewStatProps {

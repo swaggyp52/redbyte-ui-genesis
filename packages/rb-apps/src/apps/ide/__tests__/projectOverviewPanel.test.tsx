@@ -110,6 +110,38 @@ describe('ProjectOverviewPanel', () => {
     expect(queryByTestId('ide-project-overview-open-design')).toBeNull();
   });
 
+  it('renders macros as clickable buttons when onFocusMacro is provided', () => {
+    const handler = vi.fn();
+    const { getByTestId } = render(
+      <ProjectOverviewPanel outline={makeOutline()} onFocusMacro={handler} />,
+    );
+    const action = getByTestId('ide-project-overview-macro-m1-action');
+    expect(action.tagName).toBe('BUTTON');
+    fireEvent.click(action);
+    expect(handler).toHaveBeenCalledWith('m1', 'Adder4');
+  });
+
+  it('renders custom components as clickable buttons when onFocusCustomComponent is provided', () => {
+    const handler = vi.fn();
+    const { getByTestId } = render(
+      <ProjectOverviewPanel outline={makeOutline()} onFocusCustomComponent={handler} />,
+    );
+    const action = getByTestId('ide-project-overview-custom-ALU-action');
+    expect(action.tagName).toBe('BUTTON');
+    fireEvent.click(action);
+    expect(handler).toHaveBeenCalledWith('ALU');
+  });
+
+  it('keeps macro rows non-interactive when no onFocusMacro is provided', () => {
+    const { queryByTestId } = render(<ProjectOverviewPanel outline={makeOutline()} />);
+    expect(queryByTestId('ide-project-overview-macro-m1-action')).toBeNull();
+  });
+
+  it('keeps custom component rows non-interactive when no onFocusCustomComponent is provided', () => {
+    const { queryByTestId } = render(<ProjectOverviewPanel outline={makeOutline()} />);
+    expect(queryByTestId('ide-project-overview-custom-ALU-action')).toBeNull();
+  });
+
   it('collapses large type lists and shows a "+N more" indicator', () => {
     const outline = makeOutline({
       nodeTypeBreakdown: Array.from({ length: 10 }, (_, i) => ({

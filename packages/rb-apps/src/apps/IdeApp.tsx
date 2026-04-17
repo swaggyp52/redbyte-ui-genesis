@@ -44,6 +44,10 @@ import {
   type IdeDiagnostic,
   type IdeDiagnosticRouteRequest,
 } from './ide/diagnostics';
+import {
+  createDesignFocusRequest,
+  type DesignFocusRequest,
+} from './ide/designFocus';
 import type { VerifyDebugContext } from './ide/verifyDebug';
 import { getStudentFacingIoLabel } from './ide/ioLabels';
 import {
@@ -122,6 +126,7 @@ export const IdeApp: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<IdeMode>(() => resolveInitialIdeMode());
   const [pendingExampleId, setPendingExampleId] = useState<string | null>(null);
   const [diagnosticRouteRequest, setDiagnosticRouteRequest] = useState<IdeDiagnosticRouteRequest | null>(null);
+  const [designFocusRequest, setDesignFocusRequest] = useState<DesignFocusRequest | null>(null);
   const [loadModalOpen, setLoadModalOpen] = useState(false);
   const [savedProjects, setSavedProjects] = useState<PersistedIdeProjectIndexEntry[]>([]);
   const [savedProjectHash, setSavedProjectHash] = useState<string | null>(null);
@@ -1521,6 +1526,22 @@ export const IdeApp: React.FC = () => {
               fpgaConfig={fpgaConfig}
               importFidelity={importFidelity}
               outline={projectOutline}
+              onFocusMacro={(macroId, macroName) => {
+                setDesignFocusRequest(
+                  createDesignFocusRequest('macro', macroId, macroName)
+                );
+                setCurrentMode('design');
+              }}
+              onFocusCustomComponent={(componentName) => {
+                setDesignFocusRequest(
+                  createDesignFocusRequest(
+                    'custom-component',
+                    componentName,
+                    componentName
+                  )
+                );
+                setCurrentMode('design');
+              }}
               onFpgaConfigChange={handleFpgaConfigChange}
               onSaveNow={() => {
                 if (!exportProjectRef.current) return;
@@ -1612,6 +1633,8 @@ export const IdeApp: React.FC = () => {
               onGoToProject={() => setCurrentMode('project')}
               onGoToVerify={() => setCurrentMode('verify')}
               onClearDiagnostic={() => setDiagnosticRouteRequest(null)}
+              designFocusRequest={designFocusRequest}
+              onClearDesignFocus={() => setDesignFocusRequest(null)}
               topEntityName={effectiveTopEntityName}
               onSaveAsComponent={addCustomComponent}
               customComponentTypes={customComponents.map((c) => ({ type: c.name, title: c.name, description: c.description ?? '' }))}

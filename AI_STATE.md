@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-04-16 (Surface ownership S2: Project → Design focus handoff)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/designFocus.ts` (new), `packages/rb-apps/src/apps/ide/components/ProjectOverviewPanel.tsx`, `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/IdeApp.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/designFocus.test.ts` (new), `packages/rb-apps/src/apps/ide/__tests__/projectOverviewPanel.test.tsx`
+
+**Context**: S1 gave the Project surface real project truth (Bridge + Overview + Warnings), but the Overview was still a passive inventory — clicking a macro or custom component did nothing. For larger final projects, students need the Project surface to actually hand them off to the Design surface with the selected reusable block focused. This chunk completes the Project-as-hub → Design-as-workspace handoff while reusing existing Design surface authorities rather than introducing a parallel selection state.
+
+**Changes**:
+- New minimal app-level primitive `DesignFocusRequest` (`designFocus.ts`) — one-shot ticket carrying `{ requestId, kind: 'macro' | 'custom-component', targetId, displayName }`. Deliberately thin: it is a routing hint, not a new selection authority. Monotonic `requestId` so consumers can de-dupe effects and re-fire on repeat clicks of the same asset.
+- `ProjectOverviewPanel` now renders macro and custom-component rows as navigation buttons when `onFocusMacro` / `onFocusCustomComponent` callbacks are supplied. Each row grows an asset-kind badge ("Macro" / "Component"), a right-aligned action label ("Place in Design" / "Find in Design"), and keyboard-accessible focus/hover states. When no callback is supplied, rows stay non-interactive — preserves existing readonly tests and existing storybook-style usage.
+- `ProjectSurface` forwards two optional callbacks (`onFocusMacro`, `onFocusCustomComponent`) to the Overview panel. No new viewmodel; the surface stays a pure projection.
+- `IdeApp` owns the `designFocusRequest` state. The Project surface callbacks do two things atomically: `setDesignFocusRequest(createDesignFocusRequest(...))` and `setCurrentMode('design')`.
+- `DesignSurface` consumes the focus request via a new effect keyed on `requestId`. Reuses the existing authorities: macros arm `activeMacroInsertionId` (so the student lands cursor-armed for click-to-place) AND seed `paletteQuery` (so the palette highlights the target); custom components seed only `paletteQuery`. The effect calls `onClearDesignFocus` after handling so the request doesn't leak back into later effect runs. A `useRef` guards against double-handling when the effect re-runs on unrelated dependency changes.
+- Matching CSS under `[data-ide-mode-marker='project']`: `ide-project-overview-module-button` renders the full card as an accessible button; `:hover` / `:focus-visible` lift the accent border and reveal the action label. The `<li>` uses `:has(.ide-project-overview-module-button)` to drop its own padding/background when the interactive variant is in play, so no double-card nesting.
+
+**Tests added**:
+- `packages/rb-apps/src/apps/ide/__tests__/designFocus.test.ts` — 3 tests covering monotonic `requestId` issuance, field preservation, and kind distinction.
+- `projectOverviewPanel.test.tsx` — 4 new tests: macro rows render as buttons when `onFocusMacro` is provided, custom component rows render as buttons when `onFocusCustomComponent` is provided, click dispatches correct `(id, name)` / `(name)` payloads, and rows stay non-interactive when callbacks are omitted.
+
+**Verification**:
+- `pnpm -w exec vitest run …/designFocus.test.ts …/projectOverviewPanel.test.tsx …/projectBridgePanel.test.tsx …/projectWarningsPanel.test.tsx …/projectOutline.test.ts` → 42/42 pass.
+- Regression sweep: `projectRuntime.persistence` (26), `ideApp.labday-wiring` (6 + 1 skipped), `projectSurface.continuity` (13), `projectSurface.submission` (9), `projectSurface.launchpadRemoval` (6) → 60/60 pass.
+- `pnpm -s build:unified` → success, all dist artifacts verified.
+
+**Truth changes**: The Overview panel is no longer passive. Reusable blocks become first-class navigation primitives: click a macro → land in Design with that macro armed for click-to-place AND palette-highlighted. Click a custom component → land in Design with the palette filtered to it. The handoff uses existing Design-surface state authorities (`activeMacroInsertionId`, `paletteQuery`) rather than creating a parallel selection system.
+
+**Dead code removed / quarantined**: None structurally — this is additive, reusing existing Design-surface authorities. The `DesignFocusRequest` primitive is scoped to Project→Design handoff and explicitly documented to not drift into diagnostic routing (`IdeDiagnosticRouteRequest` remains the owner of diagnostic navigation). No shadow authority was introduced.
+
 ## Change Log 2026-04-16 (Surface ownership S1a: truthful sim-top + Project warnings panel)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/components/ProjectWarningsPanel.tsx` (new), `packages/rb-apps/src/apps/ide/components/ProjectBridgePanel.tsx`, `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/projectBridgePanel.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectWarningsPanel.test.tsx` (new)

@@ -13,6 +13,7 @@ import { useLayoutStore } from '../../../stores/layoutStore';
 import { digestValue } from '../../../utils/digest';
 import { parseWireId } from '../../../utils/wireId';
 import type { IdeDiagnostic, IdeDiagnosticRouteRequest } from '../diagnostics';
+import type { DesignFocusRequest } from '../designFocus';
 import { getFaninCone, getFanoutCone } from '../pathTrace';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -128,6 +129,14 @@ export interface DesignSurfaceProps {
   compilerStatus?: DesignCompilerStatus;
   onDiagnosticAction?: (diagnostic: IdeDiagnostic) => void;
   diagnosticRouteRequest?: IdeDiagnosticRouteRequest | null;
+  /**
+   * One-shot focus ticket from the Project surface. When set, the Design
+   * surface arms the referenced macro for placement (macro) or seeds the
+   * palette query (custom-component) so the student lands on the asset they
+   * asked for. The consumer should call `onClearDesignFocus` after handling.
+   */
+  designFocusRequest?: DesignFocusRequest | null;
+  onClearDesignFocus?: () => void;
   runtimeSim: RuntimeSimState;
   onRuntimeSimRun?: () => void;
   onRuntimeSimPause?: () => void;
@@ -793,6 +802,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   compilerStatus,
   onDiagnosticAction,
   diagnosticRouteRequest,
+  designFocusRequest,
+  onClearDesignFocus,
   runtimeSim,
   onRuntimeSimRun,
   onRuntimeSimPause,
@@ -1518,6 +1529,28 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (!diagnosticRouteRequest.nodeId) return;
     setDiagnosticFilterNodeId(diagnosticRouteRequest.nodeId);
   }, [diagnosticRouteRequest]);
+
+  // S2: Project → Design focus handoff. Reuses existing design-surface
+  // authorities (activeMacroInsertionId for macros, paletteQuery for
+  // components). Do NOT introduce a parallel selection authority here.
+  const lastHandledFocusRequestIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!designFocusRequest) return;
+    if (lastHandledFocusRequestIdRef.current === designFocusRequest.requestId) return;
+    lastHandledFocusRequestIdRef.current = designFocusRequest.requestId;
+
+    if (designFocusRequest.kind === 'macro') {
+      const exists = macros.some((m) => m.id === designFocusRequest.targetId);
+      if (exists) {
+        setActiveMacroInsertionId(designFocusRequest.targetId);
+      }
+      setPaletteQuery(designFocusRequest.displayName);
+    } else if (designFocusRequest.kind === 'custom-component') {
+      setPaletteQuery(designFocusRequest.displayName);
+    }
+
+    onClearDesignFocus?.();
+  }, [designFocusRequest, macros, onClearDesignFocus]);
 
   useEffect(() => {
     const previous = previousWireCountRef.current;

@@ -132,6 +132,16 @@ export interface ProjectSurfaceProps {
    * hidden — callers should always supply it in the real app; tests may omit.
    */
   outline?: ProjectOutlineSummary | null;
+  /**
+   * Navigate to the Design surface and focus the given macro for placement.
+   * Optional — when omitted, macro rows in the Overview panel stay read-only.
+   */
+  onFocusMacro?: (macroId: string, macroName: string) => void;
+  /**
+   * Navigate to the Design surface and focus the given custom component
+   * (palette-filtered). Optional — when omitted, component rows stay read-only.
+   */
+  onFocusCustomComponent?: (componentName: string) => void;
 }
 
 const PROJECT_EMPTY_SIM: RuntimeSimState = {
@@ -201,6 +211,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   importFidelity,
   onFpgaConfigChange,
   outline = null,
+  onFocusMacro,
+  onFocusCustomComponent,
 }) => {
   const [highlightedMappingKey, setHighlightedMappingKey] = useState<string | null>(null);
   const [mappingExpanded, setMappingExpanded] = useState(false);
@@ -1018,6 +1030,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           <ProjectOverviewPanel
             outline={outline}
             onOpenDesign={onOpenDesign}
+            onFocusMacro={onFocusMacro}
+            onFocusCustomComponent={onFocusCustomComponent}
           />
         )}
         <div className="ide-surface-command-stack">
