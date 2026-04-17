@@ -18,6 +18,8 @@ export interface VerifyPrimaryStatusAreaProps {
   footnote?: string;
   footnoteTestId?: string;
   actions?: VerifyPrimaryStatusAction[];
+  /** Tighter chrome when nested inside the unified Verify command bar */
+  density?: 'default' | 'embedded';
 }
 
 export const VerifyPrimaryStatusArea: React.FC<VerifyPrimaryStatusAreaProps> = ({
@@ -27,9 +29,11 @@ export const VerifyPrimaryStatusArea: React.FC<VerifyPrimaryStatusAreaProps> = (
   footnote,
   footnoteTestId,
   actions = [],
+  density = 'default',
 }) => {
+  const densityClass = density === 'embedded' ? ' ide-verify-primary-status--embedded' : '';
   return (
-    <div className="ide-verify-primary-status" data-testid="ide-verify-primary-status">
+    <div className={`ide-verify-primary-status${densityClass}`} data-testid="ide-verify-primary-status">
       <IdeCallout tone={tone} title={title} testId="ide-verify-primary-status-callout">
         <p className="ide-copy" style={{ margin: 0 }}>{message}</p>
         {footnote ? (

@@ -4053,21 +4053,24 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         testId="ide-verify-panel"
       >
         <VerifyHeaderRegion>
-        <div className="ide-surface-command-stack">
-        {primaryStatus ? (
-          <VerifyPrimaryStatusArea
-            {...primaryStatus}
-            footnote={
-              hasStaleAuthoredReference
-                ? 'Default next run will use stimulus-only tracing until you choose an action above.'
-                : undefined
-            }
-            footnoteTestId={hasStaleAuthoredReference ? 'ide-verify-stale-reference-mode' : undefined}
-          />
-        ) : null}
-        {/* ── Always-visible command bar (hidden in blocked mode) ── */}
+        <div className="ide-surface-command-stack ide-verify-chrome-stack">
+        {/* ── Unified chrome: authority callout + procedure row share one card (hidden in blocked mode) ── */}
         {verifyMode !== 'blocked' && (
         <VerifyCommandBar
+          leadingPanel={
+            primaryStatus ? (
+              <VerifyPrimaryStatusArea
+                {...primaryStatus}
+                density="embedded"
+                footnote={
+                  hasStaleAuthoredReference
+                    ? 'Default next run will use stimulus-only tracing until you choose an action above.'
+                    : undefined
+                }
+                footnoteTestId={hasStaleAuthoredReference ? 'ide-verify-stale-reference-mode' : undefined}
+              />
+            ) : undefined
+          }
           isCompareMode={nextRunUsesAssertions}
           onSetObserve={() => setNextRunUsesAssertions(false)}
           onSetCompare={() => setNextRunUsesAssertions(true)}
@@ -4111,25 +4114,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           experimentTimingHint={sequencerModeLabel}
         />
         )}
-        {sessionShowsAssertionMatch && lastRun?.qualification === 'incomplete-mapping' ? (
-          <div
-            className="ide-verify-incomplete-notice ide-surface-panel"
-            data-testid="ide-verify-incomplete-mapping-notice"
-            role="note"
-          >
-            {unmappedOutputLabels.length > 0 ? (
-              <>
-                <span className="ide-verify-incomplete-outputs" data-testid="ide-verify-incomplete-output-names">
-                  {incompleteMappingSummary}
-                </span>
-                {' '}
-                <span className="ide-verify-incomplete-action">Finish mapping these outputs in Map Pins before trusting export or bring-up.</span>
-              </>
-            ) : (
-              <span>Your logic works, but some outputs are not mapped to board pins. Finish mapping these outputs in Map Pins before trusting export or bring-up.</span>
-            )}
-          </div>
-        ) : null}
         </div>
         </VerifyHeaderRegion>
 

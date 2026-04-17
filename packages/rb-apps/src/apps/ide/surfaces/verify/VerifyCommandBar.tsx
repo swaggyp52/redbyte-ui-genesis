@@ -73,6 +73,9 @@ export interface VerifyCommandBarProps {
   readonly experimentCaseLabel?: string | null;
   /** Timing / lab mode line (e.g. sequential vs manual-event lab) */
   readonly experimentTimingHint?: string | null;
+
+  /** Optional authority / recovery callout rendered above the tool row inside one chrome card */
+  readonly leadingPanel?: React.ReactNode;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -115,6 +118,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   experimentScenarioName,
   experimentCaseLabel,
   experimentTimingHint,
+  leadingPanel,
 }) => {
   const hasUtilityActions = Boolean(
     (showEditCases && onEditCases) || (showSaveAsExpected && onSaveAsExpected)
@@ -206,7 +210,11 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
     (experimentTimingHint != null && experimentTimingHint.trim() !== '');
 
   return (
-    <div className="ide-verify-command-bar" data-testid="ide-verify-command-bar">
+    <div
+      className={`ide-verify-command-bar${leadingPanel ? ' ide-verify-command-bar--with-leading' : ''}`}
+      data-testid="ide-verify-command-bar"
+    >
+      {leadingPanel ? <div className="ide-vcb-leading-slot">{leadingPanel}</div> : null}
       <div className="ide-vcb-row ide-vcb-row--primary">
         {/* Left: primary loop actions — Run is the first visible control */}
         <div className="ide-vcb-group ide-vcb-group--actions">
@@ -285,6 +293,32 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           </div>
         ) : null}
 
+        {/* Session truth + evidence (single strip, same row as procedure controls) */}
+        <div className="ide-vcb-truth-strip" data-testid="ide-vcb-session-summary">
+          <span data-testid="ide-verify-summary-status">
+            <span className={`ide-vcb-status ${toneClass}`} data-testid="ide-vcb-status">
+              {statusLabel}
+            </span>
+          </span>
+          {(sessionMetaParts.length > 0 || sessionSummaryParts.length > 0) && (
+            <div className="ide-vcb-session-copy">
+              {sessionMetaParts.length > 0 && (
+                <span
+                  className="ide-vcb-session-line ide-vcb-session-line--meta"
+                  data-testid="ide-verify-session-meta"
+                >
+                  {interleaveWithSeparators(sessionMetaParts, 'ide-vcb-session-sep')}
+                </span>
+              )}
+              {sessionSummaryParts.length > 0 && (
+                <span className="ide-vcb-session-line ide-vcb-session-line--summary">
+                  {interleaveWithSeparators(sessionSummaryParts, 'ide-vcb-session-sep ide-vcb-session-sep--muted')}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Right: utility actions (ghost weight) */}
         <div className="ide-vcb-group ide-vcb-group--status">
         {hasUtilityActions && (
@@ -360,33 +394,6 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
             </IdeButton>
           </span>
         )}
-        </div>
-      </div>
-
-      <div className="ide-vcb-row ide-vcb-row--session">
-        <div className="ide-vcb-group ide-vcb-group--session" data-testid="ide-vcb-session-summary">
-          <span data-testid="ide-verify-summary-status">
-            <span className={`ide-vcb-status ${toneClass}`} data-testid="ide-vcb-status">
-              {statusLabel}
-            </span>
-          </span>
-          {(sessionMetaParts.length > 0 || sessionSummaryParts.length > 0) && (
-            <div className="ide-vcb-session-copy">
-              {sessionMetaParts.length > 0 && (
-                <span
-                  className="ide-vcb-session-line ide-vcb-session-line--meta"
-                  data-testid="ide-verify-session-meta"
-                >
-                  {interleaveWithSeparators(sessionMetaParts, 'ide-vcb-session-sep')}
-                </span>
-              )}
-              {sessionSummaryParts.length > 0 && (
-                <span className="ide-vcb-session-line ide-vcb-session-line--summary">
-                  {interleaveWithSeparators(sessionSummaryParts, 'ide-vcb-session-sep ide-vcb-session-sep--muted')}
-                </span>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

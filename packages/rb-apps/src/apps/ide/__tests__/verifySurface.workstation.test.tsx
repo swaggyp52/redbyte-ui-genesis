@@ -2008,8 +2008,8 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    const notice = getByTestId('ide-verify-incomplete-mapping-notice');
-    expect(notice.textContent).toContain('outputs are not mapped to board pins');
+    const passHero = getByTestId('ide-verify-pass-hero');
+    expect(passHero.textContent).toMatch(/not connected to board pins|not mapped to board pins/i);
   });
 
   it('does NOT show incomplete-mapping banner or notice on a normal PASS with mappingComplete true', () => {
@@ -2033,7 +2033,9 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(queryByTestId('ide-verify-incomplete-mapping-banner')).toBeNull();
-    expect(queryByTestId('ide-verify-incomplete-mapping-notice')).toBeNull();
+    expect(queryByTestId('ide-verify-pass-hero')?.textContent?.toLowerCase() ?? '').not.toContain(
+      'not connected to board pins'
+    );
   });
 
   it('shows full PASS trust milestone copy and continue CTA when mapping is complete', () => {
