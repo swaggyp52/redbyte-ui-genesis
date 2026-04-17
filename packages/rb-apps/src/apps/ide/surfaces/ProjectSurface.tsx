@@ -35,7 +35,9 @@ import {
   type ProjectBridgeImportFidelity,
 } from '../components/ProjectBridgePanel';
 import { ProjectOverviewPanel } from '../components/ProjectOverviewPanel';
+import { ProjectWarningsPanel } from '../components/ProjectWarningsPanel';
 import type { ProjectOutlineSummary } from '../projectOutline';
+import type { ProjectHealthMode } from '../projectHealth';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useIoBus } from '../ioBus';
 import { useBoardSignal } from '../BoardSignalContext';
@@ -986,7 +988,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           sourceExampleId={sourceExampleId}
           determinismHash={determinismHash}
           topModuleName={topModuleName || 'top'}
-          simulationTopName={null}
+          simulationTopName={`${topModuleName || 'top'}_tb`}
           fpgaBoard={fpgaConfig?.board ?? 'Basys3'}
           fpgaPart={fpgaConfig?.part ?? 'xc7a35tcpg236-1'}
           importFidelity={bridgeFidelity}
@@ -1000,6 +1002,17 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           }}
           hardwareReady={hardwareReady}
           blockingIssueCount={blockingIssues.length}
+        />
+        <ProjectWarningsPanel
+          issues={blockingIssues}
+          onNavigateFix={(mode: ProjectHealthMode) => {
+            if (mode === 'design') onOpenDesign();
+            else if (mode === 'verify') onOpenVerify();
+            else if (mode === 'export') onOpenExport();
+            else if (mode === 'hardware') onOpenHardware();
+            else if (mode === 'import') onOpenImport();
+            // mode === 'project' stays on this surface; no-op.
+          }}
         />
         {outline && (
           <ProjectOverviewPanel

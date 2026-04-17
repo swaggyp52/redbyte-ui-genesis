@@ -26890,6 +26890,75 @@ button:disabled,
   line-height: 1.35;
 }
 
+/* ---------- Project Warnings panel ---------- */
+
+[data-ide-mode-marker='project'] .ide-project-warnings {
+  display: grid;
+  gap: 10px;
+  padding: 14px 18px;
+  margin-top: 12px;
+  border-left: 3px solid rgba(236, 175, 85, 0.75);
+  background: rgba(58, 44, 20, 0.28);
+}
+
+[data-ide-mode-marker='project'] .ide-project-warnings-header {
+  display: grid;
+  gap: 2px;
+}
+
+[data-ide-mode-marker='project'] .ide-project-warnings-title {
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ide-text, #e6f0fa);
+}
+
+[data-ide-mode-marker='project'] .ide-project-warnings-subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ide-text-soft, #9fb2c2);
+  line-height: 1.4;
+}
+
+[data-ide-mode-marker='project'] .ide-project-warnings-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+[data-ide-mode-marker='project'] .ide-project-warnings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(15, 28, 40, 0.45);
+  border: 1px solid rgba(236, 175, 85, 0.28);
+  border-radius: 6px;
+}
+
+[data-ide-mode-marker='project'] .ide-project-warnings-item-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+[data-ide-mode-marker='project'] .ide-project-warnings-item-message {
+  font-size: 13px;
+  color: var(--ide-text, #e6f0fa);
+  line-height: 1.35;
+}
+
+[data-ide-mode-marker='project'] .ide-project-warnings-item-code {
+  font-family: var(--rb-font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  color: var(--ide-text-subtle, #7c8fa1);
+  letter-spacing: 0.04em;
+}
+
 /* ---------- Project Overview panel ---------- */
 
 [data-ide-mode-marker='project'] .ide-project-overview {

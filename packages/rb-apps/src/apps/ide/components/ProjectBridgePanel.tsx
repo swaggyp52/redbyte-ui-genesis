@@ -180,7 +180,12 @@ export const ProjectBridgePanel: React.FC<ProjectBridgePanelProps> = ({
   const exp = exportCopy(health);
   const shortHash = determinismHash ? determinismHash.slice(0, 12) : '—';
   const kindLabel = getProjectKindDisplayName(projectKind);
-  const simTop = simulationTopName && simulationTopName !== topModuleName ? simulationTopName : null;
+  // Sim top is an authored, distinct entity (conventionally `${designTop}_tb`).
+  // Even when a caller omits it, we never claim the testbench *is* the design —
+  // we show a muted em-dash so the distinction stays visible.
+  const simTop = simulationTopName && simulationTopName.trim().length > 0
+    ? simulationTopName
+    : null;
 
   return (
     <SurfacePanel className="ide-project-bridge" testId={testId}>
@@ -209,13 +214,17 @@ export const ProjectBridgePanel: React.FC<ProjectBridgePanelProps> = ({
         <BridgeField
           label="Design top"
           value={topModuleName || 'top'}
+          mono
+          hint="Synthesized onto the target board."
           testId={`${testId}-design-top`}
         />
         <BridgeField
           label="Simulation top"
-          value={simTop ?? '— same as design —'}
-          testId={`${testId}-sim-top`}
+          value={simTop ?? '—'}
+          mono
           muted={!simTop}
+          hint="Testbench entity used for simulation only. Never synthesized."
+          testId={`${testId}-sim-top`}
         />
         <BridgeField
           label="Target board"
@@ -278,7 +287,8 @@ export const ProjectBridgePanel: React.FC<ProjectBridgePanelProps> = ({
             style={{ margin: '0.5rem 0 0 0', fontSize: 12, opacity: 0.85 }}
             data-testid={`${testId}-blocking-count`}
           >
-            {blockingIssueCount} blocking issue{blockingIssueCount === 1 ? '' : 's'} open.
+            See the Project warnings panel for {blockingIssueCount} item
+            {blockingIssueCount === 1 ? '' : 's'} to resolve.
           </p>
         )}
       </IdeCallout>

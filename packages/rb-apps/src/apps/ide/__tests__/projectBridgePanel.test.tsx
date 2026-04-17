@@ -82,16 +82,23 @@ describe('ProjectBridgePanel', () => {
     expect(getByTestId('ide-project-bridge-fidelity-hint').textContent).toContain('inspection-only');
   });
 
-  it('shows "same as design" when simulation top is not distinct', () => {
-    const { getByTestId } = render(<ProjectBridgePanel {...makeProps()} />);
-    expect(getByTestId('ide-project-bridge-sim-top').textContent).toContain('same as design');
+  it('shows a muted em-dash when simulation top is not supplied', () => {
+    const { getByTestId } = render(
+      <ProjectBridgePanel {...makeProps({ simulationTopName: null })} />
+    );
+    expect(getByTestId('ide-project-bridge-sim-top').textContent).toContain('—');
   });
 
-  it('shows a distinct simulation top when provided', () => {
+  it('always renders simulation top as its own authored entity, not as "same as design"', () => {
     const { getByTestId } = render(
-      <ProjectBridgePanel {...makeProps({ topModuleName: 'top', simulationTopName: 'tb_top' })} />
+      <ProjectBridgePanel
+        {...makeProps({ topModuleName: 'alu', simulationTopName: 'alu_tb' })}
+      />
     );
-    expect(getByTestId('ide-project-bridge-sim-top').textContent).toContain('tb_top');
+    const simTop = getByTestId('ide-project-bridge-sim-top').textContent ?? '';
+    expect(simTop).toContain('alu_tb');
+    expect(simTop.toLowerCase()).not.toContain('same as design');
+    expect(simTop).toContain('Testbench entity');
   });
 
   it('labels verify state as Not run when no verify has happened', () => {
@@ -157,10 +164,19 @@ describe('ProjectBridgePanel', () => {
     expect(getByTestId('ide-project-bridge-hardware-callout').textContent).toContain('3 required pins are still unmapped');
   });
 
-  it('shows the blocking issue count when > 0', () => {
+  it('points to the Project warnings panel instead of listing issues itself', () => {
     const { getByTestId } = render(
       <ProjectBridgePanel {...makeProps({ blockingIssueCount: 2 })} />
     );
-    expect(getByTestId('ide-project-bridge-blocking-count').textContent).toContain('2 blocking issues');
+    const count = getByTestId('ide-project-bridge-blocking-count').textContent ?? '';
+    expect(count).toContain('2 items');
+    expect(count).toContain('Project warnings panel');
+  });
+
+  it('omits the warnings pointer when there are no blocking issues', () => {
+    const { queryByTestId } = render(
+      <ProjectBridgePanel {...makeProps({ blockingIssueCount: 0 })} />
+    );
+    expect(queryByTestId('ide-project-bridge-blocking-count')).toBeNull();
   });
 });

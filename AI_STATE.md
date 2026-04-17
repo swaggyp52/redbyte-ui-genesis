@@ -1,5 +1,34 @@
 # AI State
 
+## Change Log 2026-04-16 (Surface ownership S1a: truthful sim-top + Project warnings panel)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/components/ProjectWarningsPanel.tsx` (new), `packages/rb-apps/src/apps/ide/components/ProjectBridgePanel.tsx`, `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/projectBridgePanel.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectWarningsPanel.test.tsx` (new)
+
+**Context**: First chunk of Surface Ownership Mode. Two gaps the Bridge was hiding:
+1. The Bridge reported Simulation top as "— same as design —" whenever a caller didn't supply `simulationTopName`. In reality RedByte always emits a distinct testbench entity (`${designTop}_tb`) via the export viewmodel, so the Bridge was quietly lying about one of the most fundamental engineering boundaries students need to understand (synthesizable top vs simulation-only testbench).
+2. `ProjectHealth.blockingIssues` is a rich structured list (code + message + fix path), but the Bridge was collapsing it into a single "N blocking issues open." line inside the hardware callout — truth was buried, fix paths were invisible, and the student had to guess where to go next.
+
+**Changes**:
+- New `ProjectWarningsPanel` component — presentational, hidden when zero issues. Renders each issue with its message, short code (e.g. `RBP1001`), and a direct fix-path button labeled with the authored `actionLabel`. The caller supplies the navigator that maps `fixPath.mode` → the correct surface handler (`onOpenDesign` / `onOpenVerify` / `onOpenExport` / `onOpenHardware` / `onOpenImport`).
+- Bridge panel now treats simulation top as a first-class authored entity. The "Design top" and "Simulation top" fields both render mono with hints that describe their engineering role ("Synthesized onto the target board." / "Testbench entity used for simulation only. Never synthesized."). When sim top is null, the field muted-em-dashes rather than falsely claiming it *is* the design top.
+- `ProjectSurface` now passes `${topModuleName || 'top'}_tb` into the Bridge (matching export authority), and renders `ProjectWarningsPanel` between the Bridge and the Overview panel wired to a fix-path router over the existing surface handlers.
+- Bridge hardware callout no longer owns the blocking-issue count message — it now points at the warnings panel. Single authority for issue rendering, no duplicate lists.
+- Matching `ide-project-warnings-*` styles under `[data-ide-mode-marker='project']`: warm warn-tone left border, item cards with code pills, fix-path buttons right-aligned.
+
+**Tests**:
+- Updated 2 existing Bridge tests: sim top muted-em-dash case, sim top honors authored `*_tb` entity (asserting "same as design" language is gone and the testbench-entity hint is present).
+- Replaced the old `blocking-count` contains-"2 blocking issues" assertion with two new ones: pointer to Project warnings panel when issues exist, and omission of the pointer when count is zero.
+- New `projectWarningsPanel.test.tsx` with 6 tests: empty-state hides the panel; plural vs singular title copy; per-issue message + code rendering; fix-button dispatch to the correct `ProjectHealthMode`; missing-`fixPath` hides the button.
+
+**Verification**:
+- `pnpm -w exec vitest run …/projectWarningsPanel.test.tsx …/projectBridgePanel.test.tsx …/projectOverviewPanel.test.tsx …/projectOutline.test.ts` → 35/35 pass.
+- Regression sweep: `projectRuntime.persistence` (26), `ideApp.labday-wiring` (6 + 1 skipped), `projectSurface.continuity` (13), `projectSurface.submission` (9), `projectSurface.launchpadRemoval` (6) → 60/60 pass.
+- `pnpm -s build:unified` → success, all dist artifacts verified.
+
+**Truth changes**: The Bridge now tells the truth about the sim-top entity boundary instead of pretending testbench and design are the same. Every blocking issue from `deriveProjectHealth` now has a visible home and a working one-click fix path on the Project surface. Zero duplication — one authority (`ProjectHealth.blockingIssues`), one surface (`ProjectWarningsPanel`).
+
+**Dead code removed / quarantined**: The buried `{count} blocking issues open.` copy inside `ProjectBridgePanel`'s hardware callout is replaced with a pointer to the warnings panel. The old phrase is gone from the codebase and its test was replaced with two sharper assertions. No parallel viewmodel was introduced — the warnings panel is a pure view over `health.blockingIssues`.
+
 ## Change Log 2026-04-16 (Project Overview: module/design outline on Project surface)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/projectOutline.ts` (new), `packages/rb-apps/src/apps/ide/components/ProjectOverviewPanel.tsx` (new), `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/IdeApp.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`
