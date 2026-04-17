@@ -38,7 +38,7 @@ describe('buildVerifySessionViewModel', () => {
     expect(model.statusBadge).toBe('DRAFT');
     expect(model.title).toBe('Ready to run stimulus');
     expect(model.summary).toContain('Add output assertions only when you want explicit verification');
-    expect(model.runLabel).toBe('Run stimulus');
+    expect(model.runLabel).toBe('Run simulation');
   });
 
   it('treats first-run sessions with expected outputs armed as draft assertion work', () => {
@@ -59,7 +59,7 @@ describe('buildVerifySessionViewModel', () => {
     expect(model.status).toBe('draft');
     expect(model.statusBadge).toBe('DRAFT');
     expect(model.title).toBe('Ready to run assertions');
-    expect(model.runLabel).toBe('Run assertions');
+    expect(model.runLabel).toBe('Compare');
     expect(model.recommendedNextAction).toBe('verify');
   });
 
@@ -103,7 +103,7 @@ describe('buildVerifySessionViewModel', () => {
 
     expect(model.mode).toBe('capture');
     expect(model.status).toBe('stimulus-only');
-    expect(model.statusBadge).toBe('STIMULUS ONLY');
+    expect(model.statusBadge).toBe('OBSERVATION ONLY');
     expect(model.title).toBe('Waveform recorded — stimulus evidence');
     expect(model.recommendedNextAction).toBe('capture');
   });
@@ -148,7 +148,7 @@ describe('buildVerifySessionViewModel', () => {
 
     expect(model.mode).toBe('assertion');
     expect(model.status).toBe('assertions-differ');
-    expect(model.runLabel).toBe('Run assertions again');
+    expect(model.runLabel).toBe('Re-compare');
     expect(model.recommendedNextAction).toBe('verify');
   });
 
@@ -192,7 +192,7 @@ describe('buildVerifySessionViewModel', () => {
 
     expect(model.mode).toBe('simulation');
     expect(model.status).toBe('assertions-differ');
-    expect(model.statusBadge).toBe('ASSERTIONS DIFFER');
+    expect(model.statusBadge).toBe('CHECKS FAIL');
   });
 
   it('keeps persisted compare evidence authoritative even if live vectors are currently absent', () => {
@@ -233,7 +233,7 @@ describe('buildVerifySessionViewModel', () => {
     });
 
     expect(model.status).toBe('assertions-differ');
-    expect(model.statusBadge).toBe('ASSERTIONS DIFFER');
+    expect(model.statusBadge).toBe('CHECKS FAIL');
   });
 
   it('shows stimulus-only when a run exists but no outputs are asserted', () => {
@@ -279,7 +279,7 @@ describe('buildVerifySessionViewModel', () => {
     });
 
     expect(model.status).toBe('stimulus-only');
-    expect(model.statusBadge).toBe('STIMULUS ONLY');
+    expect(model.statusBadge).toBe('OBSERVATION ONLY');
     expect(model.tone).toBe('idle');
     expect(model.recommendedNextAction).toBe('capture');
   });
@@ -324,7 +324,7 @@ describe('buildVerifySessionViewModel', () => {
 
     expect(model.mode).toBe('capture');
     expect(model.status).toBe('stimulus-only');
-    expect(model.statusBadge).toBe('STIMULUS ONLY');
+    expect(model.statusBadge).toBe('OBSERVATION ONLY');
   });
 
   it('marks outdated compare evidence as stale', () => {
@@ -367,6 +367,6 @@ describe('buildVerifySessionViewModel', () => {
 
     expect(model.status).toBe('stale');
     expect(model.statusBadge).toBe('STALE');
-    expect(model.runLabel).toBe('Re-run stimulus');
+    expect(model.runLabel).toBe('Refresh simulation');
   });
 });

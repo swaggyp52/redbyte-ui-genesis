@@ -41,7 +41,7 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-summary-status').textContent).toContain('ASSERTIONS DIFFER');
+    expect(getByTestId('ide-verify-summary-status').textContent).toContain('CHECKS FAIL');
     expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
@@ -80,7 +80,7 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
     fireEvent.click(getByTestId('ide-vcb-mode-observe'));
 
     expect(getByTestId('ide-vcb-mode-observe').className).toContain('is-active');
-    expect(getByTestId('ide-verify-summary-status').textContent).toContain('ASSERTIONS DIFFER');
+    expect(getByTestId('ide-verify-summary-status').textContent).toContain('CHECKS FAIL');
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
     expect(queryByTestId('ide-verify-failure-explainer')).toBeNull();
   });

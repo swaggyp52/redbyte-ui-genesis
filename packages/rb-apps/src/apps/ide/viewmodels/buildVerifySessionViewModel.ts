@@ -184,14 +184,14 @@ export function buildVerifySessionViewModel(
   const statusBadge =
     status === 'assertions-match'
       ? input.lastRun?.qualification === 'incomplete-mapping'
-        ? 'ASSERTIONS MATCH (MAPPING REVIEW)'
-        : 'ASSERTIONS MATCH'
+        ? 'CHECKS PASS (MAPPING REVIEW)'
+        : 'CHECKS PASS'
         : status === 'assertions-differ'
-          ? 'ASSERTIONS DIFFER'
+          ? 'CHECKS FAIL'
         : status === 'assertions-incomplete'
-          ? 'ASSERTIONS INCOMPLETE'
+          ? 'CHECKS INCOMPLETE'
           : status === 'stimulus-only'
-            ? 'STIMULUS ONLY'
+            ? 'OBSERVATION ONLY'
             : status === 'stale'
               ? 'STALE'
               : status === 'running'
@@ -200,10 +200,10 @@ export function buildVerifySessionViewModel(
 
   const modeLabel =
     mode === 'assertion'
-      ? 'ASSERTIONS'
+      ? 'COMPARE'
       : mode === 'capture'
-        ? 'CAPTURE'
-        : 'STIMULUS';
+        ? 'TRACE'
+        : 'SIMULATION';
 
   const title =
     status === 'assertions-match'
@@ -257,14 +257,14 @@ export function buildVerifySessionViewModel(
 
   const runLabel =
     input.isRunStale
-      ? 'Re-run stimulus'
+      ? 'Refresh simulation'
       : mode === 'assertion'
         ? input.lastRun
-          ? 'Run assertions again'
-          : 'Run assertions'
+          ? 'Re-compare'
+          : 'Compare'
         : input.lastRun
-          ? 'Run stimulus again'
-          : 'Run stimulus';
+          ? 'Re-run simulation'
+          : 'Run simulation';
 
   return {
     mode,

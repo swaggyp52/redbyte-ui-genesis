@@ -3336,31 +3336,31 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const captureActionTone = primaryActionKind === 'capture' ? 'primary' : 'secondary';
   // ── B-12 Slice 3: canonical result zone ──────────────────────────────────────
   const emptyStateRunLabel = isDraftSession
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Run assertions' : 'Run stimulus')
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Compare' : 'Run simulation')
     : verifySession.runLabel;
   const referenceModeLabel: string = hasStaleAuthoredReference
-    ? `Using stale saved assertions (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'})`
+    ? `Using stale saved checks (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'})`
     : totalExpectedCaseCount === 0
-      ? 'Stimulus evidence only — no output assertions saved'
+      ? 'Simulation only — no saved checks'
       : !nextRunUsesAssertions
-        ? `Saved output assertions (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), current mode is Stimulus`
+        ? `Saved checks (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), current mode is Simulation`
         : authoredVectors.length > 0 && customVectorCount > 0
-          ? `Verifying project + custom vectors (${totalVectorCount} total)`
+          ? `Comparing project + custom vectors (${totalVectorCount} total)`
           : customVectorCount > 0
-            ? `Verifying custom vectors (${customVectorCount})`
-            : `Verifying project vectors (${authoredVectors.length})`;
+            ? `Comparing custom vectors (${customVectorCount})`
+            : `Comparing project vectors (${authoredVectors.length})`;
   const sessionModeBadge: string = !lastRun
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'ASSERTIONS' : 'SIMULATION')
-    : isTraceOnly ? 'CAPTURE'
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'COMPARE' : 'SIMULATION')
+    : isTraceOnly ? 'TRACE'
     : sessionStatus === 'assertions-match' || sessionStatus === 'assertions-differ' || sessionStatus === 'stale'
-      ? 'ASSERTIONS'
+      ? 'COMPARE'
       : 'SIMULATION';
   const sessionTitle: string = !lastRun
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Ready to run assertions' : 'Ready to run stimulus')
-    : isTraceOnly ? 'Waveform recorded — stimulus evidence'
-    : sessionStatus === 'assertions-match' ? 'Assertions match'
-    : sessionStatus === 'assertions-differ' ? 'Assertions failed'
-    : sessionStatus === 'stale' ? 'Results from previous build'
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Ready to compare' : 'Ready to simulate')
+    : isTraceOnly ? 'Waveform recorded — stimulus captured'
+    : sessionStatus === 'assertions-match' ? 'Checks passed'
+    : sessionStatus === 'assertions-differ' ? 'Checks failed'
+    : sessionStatus === 'stale' ? 'Stale results'
     : sessionStatusBadgeLabel;
   const commandBarEvidenceLabel =
     lastRun && sessionShowsCompareEvidence
@@ -3551,7 +3551,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (hasStaleAuthoredReference) {
       const actions: VerifyPrimaryStatusAreaProps['actions'] = [
         {
-          label: 'Keep reference — Run assertions',
+          label: 'Keep reference — Compare',
           onClick: handleKeepOlderReference,
           tone: 'primary',
           testId: 'ide-verify-stale-keep-reference',
@@ -3607,8 +3607,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       return {
         tone: 'info',
         title: 'Scenario vectors changed',
-        message: 'The current vectors changed since the last run. Run again to refresh waveform evidence.',
-        actions: [{ label: 'Run circuit again', onClick: runVerification, tone: 'primary', testId: 'ide-verify-primary-status-rerun' }],
+        message: 'Stimulus changed since the last run — re-run to update results.',
+        actions: [{ label: 'Re-run simulation', onClick: runVerification, tone: 'primary', testId: 'ide-verify-primary-status-rerun' }],
       };
     }
 
@@ -3672,7 +3672,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           >
             <div className="ide-verify-signal-rail-toprow">
               <div className="ide-verify-signal-rail-title">
-                <h3>Lanes</h3>
+                <h3>Signals</h3>
                 <span className="ide-verify-signal-rail-count" data-testid="ide-verify-signal-filter-state">
                   {showMismatchOnlySignals
                     ? `${visibleSignalCount} mismatches`
@@ -4218,7 +4218,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       Inspect first mismatch
                     </IdeButton>
                     <IdeButton tone="secondary" onClick={handleEditExpectedOutputs} testId="ide-verify-run-proof-edit-vectors">
-                      Edit expected outputs
+                      Edit checks
                     </IdeButton>
                     {(onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) && (
                       <IdeButton tone="ghost" onClick={handleGoToDesignFromVerify} testId="ide-verify-run-proof-design">
@@ -4229,7 +4229,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 )}
                 {sessionShowsTraceEvidence && canSetOracle && (
                   <IdeButton tone="primary" onClick={handleSetOracleExpected} testId="ide-verify-run-proof-oracle">
-                    Capture observed outputs as expected
+                    Save as checks
                   </IdeButton>
                 )}
               </div>
@@ -5111,7 +5111,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       <span>Outputs don't match the expected values. If the expected values are wrong, update them below. If the circuit is wrong, fix it in Design.</span>
                       <div className="ide-inline-actions">
                         <IdeButton tone="secondary" onClick={handleEditExpectedOutputs} testId="ide-verify-mismatch-edit-vectors">
-                          Edit expected outputs
+                          Edit checks
                         </IdeButton>
                         {(onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) && (
                           <IdeButton tone="ghost" onClick={handleGoToDesignFromVerify} testId="ide-verify-mismatch-goto-design">

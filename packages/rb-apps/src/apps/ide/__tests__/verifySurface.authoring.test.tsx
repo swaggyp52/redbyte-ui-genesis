@@ -148,7 +148,7 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
     );
 
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain(
-      'verifying project vectors'
+      'comparing project vectors'
     );
     // Open the checks view so expected-output lanes render in the canvas
     fireEvent.click(getByTestId('ide-stimulus-checks-toggle'));

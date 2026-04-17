@@ -143,10 +143,10 @@ describe('B-14 Action Row Hierarchy — DOM order contracts', () => {
 });
 
 describe('B-14 Action Row Hierarchy — mode toggle still works', () => {
-  it('mode toggle buttons are still present (Stimulus + Assertions)', () => {
+  it('mode toggle buttons are still present (Simulate + Compare)', () => {
     const { getByTestId } = render(<VerifyCommandBar {...BASE} />);
-    expect(getByTestId('ide-vcb-mode-observe').textContent).toContain('Stimulus');
-    expect(getByTestId('ide-vcb-mode-compare').textContent).toContain('Assertions');
+    expect(getByTestId('ide-vcb-mode-observe').textContent).toContain('Simulate');
+    expect(getByTestId('ide-vcb-mode-compare').textContent).toContain('Compare');
   });
 
   it('keeps secondary command-bar actions hidden until More actions opens', () => {
@@ -198,15 +198,15 @@ describe('B-14 Action Row Hierarchy — mode toggle still works', () => {
     const { getByTestId } = render(
       <VerifyCommandBar
         {...BASE}
-        sessionStatusBadge="STIMULUS ONLY"
-        sessionModeLabel="CAPTURE"
+        sessionStatusBadge="OBSERVATION ONLY"
+        sessionModeLabel="TRACE"
         primaryStatusTitle="Waveform recorded"
       />
     );
 
     const sessionMeta = getByTestId('ide-verify-session-meta');
-    expect(sessionMeta.textContent).toContain('STIMULUS ONLY');
-    expect(sessionMeta.textContent).toContain('CAPTURE');
+    expect(sessionMeta.textContent).toContain('OBSERVATION ONLY');
+    expect(sessionMeta.textContent).toContain('TRACE');
     expect(sessionMeta.textContent).toContain('·');
   });
 });

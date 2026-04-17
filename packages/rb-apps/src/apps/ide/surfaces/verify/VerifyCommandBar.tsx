@@ -240,7 +240,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
 
         {/* Procedure lens toggle — secondary to Run */}
         <div className="ide-vcb-group ide-vcb-group--mode">
-          <span className="ide-vcb-mode-label">Procedure lens</span>
+          <span className="ide-vcb-mode-label">Mode</span>
           <div className="ide-vcb-mode-toggle" data-testid="ide-vcb-mode-toggle">
             <button
               type="button"
@@ -248,7 +248,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
               onClick={onSetObserve}
               data-testid="ide-vcb-mode-observe"
             >
-              Stimulus
+              Simulate
             </button>
             <button
               type="button"
@@ -257,12 +257,12 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
               disabled={!compareAvailable}
               title={
                 !compareAvailable
-                  ? 'Run stimulus first, then save assertions to enable assertion verification'
-                  : 'Verify assertions against observed waveform evidence'
+                  ? 'Run simulation first, then save checks to enable comparison'
+                  : 'Compare observed outputs against saved checks'
               }
               data-testid="ide-vcb-mode-compare"
             >
-              Assertions
+              Compare
             </button>
           </div>
         </div>
@@ -343,7 +343,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
                     }}
                     testId="ide-verify-run-proof-edit-vectors"
                   >
-                    Edit assertions
+                    Edit checks
                   </IdeButton>
                 )}
                 {showSaveAsExpected && onSaveAsExpected && (
@@ -355,7 +355,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
                     }}
                     testId="ide-vcb-save-expected"
                   >
-                    Save assertions
+                    Save as checks
                   </IdeButton>
                 )}
               </div>
