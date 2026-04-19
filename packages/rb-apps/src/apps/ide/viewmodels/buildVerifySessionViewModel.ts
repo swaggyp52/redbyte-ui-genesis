@@ -184,87 +184,87 @@ export function buildVerifySessionViewModel(
   const statusBadge =
     status === 'assertions-match'
       ? input.lastRun?.qualification === 'incomplete-mapping'
-        ? 'CHECKS PASS (MAPPING REVIEW)'
-        : 'CHECKS PASS'
+        ? 'Checks passed (mapping)'
+        : 'Checks passed'
         : status === 'assertions-differ'
-          ? 'CHECKS FAIL'
+          ? 'Checks failed'
         : status === 'assertions-incomplete'
-          ? 'CHECKS INCOMPLETE'
+          ? 'Checks incomplete'
           : status === 'stimulus-only'
-            ? 'OBSERVATION ONLY'
+            ? 'Observation only'
             : status === 'stale'
-              ? 'STALE'
+              ? 'Stale'
               : status === 'running'
-                ? 'RUNNING'
-                : 'DRAFT';
+                ? 'Running'
+                : 'Draft';
 
   const modeLabel =
     mode === 'assertion'
-      ? 'COMPARE'
+      ? 'Check outputs'
       : mode === 'capture'
-        ? 'TRACE'
-        : 'SIMULATION';
+        ? 'Observe'
+        : 'Observe';
 
   const title =
     status === 'assertions-match'
-      ? 'All asserted outputs matched'
+      ? 'Checks passed'
       : status === 'assertions-differ'
-        ? 'Asserted outputs differ from observed'
+        ? 'Checks failed'
         : status === 'assertions-incomplete'
-          ? 'Assertion coverage is incomplete'
+          ? 'Checks incomplete'
           : status === 'stimulus-only'
             ? input.lastRun
-              ? 'Waveform recorded — stimulus evidence'
-              : 'Ready to run this testbench'
+              ? 'Outputs observed'
+              : 'Ready to run stimulus'
             : status === 'stale'
-              ? 'Results are stale'
+              ? 'Stale results'
               : status === 'running'
                 ? mode === 'assertion'
-                  ? 'Verifying assertions'
-                  : 'Recording waveform'
+                  ? 'Running checks...'
+                  : 'Observing outputs...'
                 : hasVectors
                 ? mode === 'assertion'
-                    ? 'Ready to run assertions'
+                    ? 'Ready to run with checks'
                     : 'Ready to run stimulus'
-                  : 'Build a testbench';
+                  : 'Author stimulus to begin';
 
   const summary =
     status === 'assertions-match'
       ? input.lastRun?.qualification === 'incomplete-mapping'
-        ? 'Every asserted output matched. Some board IO mappings are still incomplete — hardware tests may not agree until mapping is finished.'
-        : 'Every asserted output matched the observed design. Blank outputs were not verified.'
+        ? 'Outputs matched, but some board pins are still unmapped — finish mapping before hardware.'
+        : 'Every asserted output matched. Blank outputs were not checked.'
       : status === 'assertions-differ'
         ? input.failingRowCount === 1
-          ? 'One asserted output differs from what the live design produced. Inspect that difference before changing anything else.'
-          : `${input.failingRowCount} asserted outputs differ from what the live design produced. Start with the first difference.`
+          ? 'One saved check differs from the live circuit — inspect it first.'
+          : `${input.failingRowCount} saved checks differ — start with the first mismatch.`
         : status === 'assertions-incomplete'
-          ? 'Some outputs have saved assertions; others remain observational. Only asserted outputs will be verified on the next run.'
+          ? 'Only outputs with saved checks will be checked on the next run.'
           : status === 'stimulus-only'
             ? input.lastRun
-              ? 'You ran the current stimulus and recorded waveform evidence. Save observed outputs as assertions only when you want explicit verification of specific outputs.'
-                : 'Run this stimulus to see what the circuit does on the waveform. Add output assertions only when you want explicit verification of specific outputs.'
+              ? 'Waveform captured. Save checks only when you want explicit output verification.'
+                : 'Author input stimulus, then run to observe outputs.'
             : status === 'stale'
-              ? 'The circuit or testbench changed after the last run. Re-run before trusting the result.'
+              ? 'Circuit or stimulus changed — run the current stimulus again before trusting this result.'
               : status === 'running'
                 ? mode === 'assertion'
-                  ? 'Verifying saved output assertions against the current live design. Blank outputs are not verified.'
-                  : 'Recording waveform data from the current live design.'
+                  ? 'Running the current stimulus against saved checks.'
+                  : 'Running the current stimulus and recording outputs.'
                 : hasVectors
                   ? mode === 'assertion'
-                    ? 'Output assertions are loaded. Verification only checks outputs you intentionally asserted.'
-                      : 'Run this stimulus to see how the circuit behaves. Add output assertions only when you want explicit verification.'
-                    : 'Add ticks and input patterns to build the first stimulus. Output assertions stay optional.';
+                    ? 'Saved checks are armed for the next run.'
+                      : 'Stimulus is ready. Run it to observe outputs.'
+                    : 'Author input patterns for each tick, then run the circuit.';
 
   const runLabel =
     input.isRunStale
-      ? 'Refresh simulation'
+      ? 'Run current stimulus'
       : mode === 'assertion'
         ? input.lastRun
-          ? 'Re-compare'
-          : 'Compare'
+          ? 'Re-run with checks'
+          : 'Run with checks'
         : input.lastRun
-          ? 'Re-run simulation'
-          : 'Run simulation';
+          ? 'Re-run stimulus'
+          : 'Run current stimulus';
 
   return {
     mode,

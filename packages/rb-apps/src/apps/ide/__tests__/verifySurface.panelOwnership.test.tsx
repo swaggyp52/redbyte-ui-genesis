@@ -4,11 +4,11 @@
 // Structural guarantees:
 // 1. Analysis drawer is default-closed after every run (progressive disclosure)
 // 2. Analysis drawer opens when user explicitly clicks the toggle
-// 3. Signals dock (ide-left-dock aside) is absent when session shows match (collapsed mode)
+// 3. Signals dock: visible while drafting; collapsed to rail after pass unless expanded
 // 4. Signals dock is present when session shows failure (visible mode — need the list for debugging)
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, fireEvent } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -25,6 +25,10 @@ const BASE_PROPS = {
   deterministicHash: 'po-test',
   verifyMode: 'combinational' as const,
 };
+
+afterEach(() => {
+  cleanup();
+});
 
 function makePassRun(): RuntimeVerifyRun {
   return {
@@ -126,43 +130,24 @@ describe('B-14 Panel Ownership — signals dock layout policy', () => {
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
   });
 
-  it('signals dock aside remains visible after a pass run', () => {
-    // Pass → leftDockMode: 'collapsed' → no ide-left-dock aside in DOM
+  it('signals dock collapses to a rail after a pass run', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
     );
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+    fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
     expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
-    expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
   });
 
-  it('signals dock aside remains visible during a fail run', () => {
-    // Pass → leftDockMode: 'collapsed' → rail toggle button visible so user can expand
+  it('signals dock stays open during a fail run', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
     );
     expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
-  });
-
-  it.skip('signals dock aside is collapsed to a rail during a fail run', () => {
-    // Fail → leftDockMode: 'collapsed' → no ide-left-dock aside in DOM by default
-    const { getByTestId } = render(
-      <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
-    );
-    expect(() => getByTestId('ide-left-dock')).toThrow();
-    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
-  });
-
-  it.skip('signals dock can still be reopened from the collapsed fail-state rail', () => {
-    const { getByTestId } = render(
-      <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
-    );
-    fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
-    const dock = getByTestId('ide-left-dock');
-    const verifyDock = dock.querySelector('[data-testid="ide-verify-left-dock"]');
-    expect(verifyDock).toBeTruthy();
   });
 
   it('verify keeps secondary analysis out of the shell rails during fail runs', () => {

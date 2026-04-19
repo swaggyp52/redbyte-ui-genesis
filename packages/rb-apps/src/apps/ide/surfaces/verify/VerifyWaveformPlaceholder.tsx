@@ -77,14 +77,14 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
           </span>
           <p className="ide-vwp-overlay-text">
             {hasVectors
-              ? `Use ${runLabel} in the header to generate your first waveform`
+              ? `Author stimulus on the left, then use ${runLabel} to observe outputs here`
               : isSequential
-                ? 'Generate a starter timeline to see waveforms'
-                : 'Initialize inputs to see waveforms'}
+                ? 'Generate starter stimulus to begin the timeline'
+                : 'Seed stimulus to begin the waveform'}
           </p>
           {hasVectors && (
             <p className="ide-vwp-overlay-note" data-testid="ide-vwp-header-run-note">
-              The header {runLabel} control is the only run action in Verify.
+              The header {runLabel} control is the main run action for this workspace.
             </p>
           )}
         </div>

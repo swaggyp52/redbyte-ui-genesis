@@ -176,7 +176,7 @@ describe('ExportSurface workstation redesign', () => {
       <ExportSurface project={buildProject()} determinismHash="ide-hash" />
     );
 
-    expect(getByTestId('ide-export-summary-card').textContent).toContain('Engineering handoff');
+    expect(getByTestId('ide-export-summary-card').textContent).toContain('Handoff summary');
     expect(getByTestId('ide-export-design-summary').textContent).toContain('Mapped Pins');
     expect(getByTestId('ide-export-design-summary').textContent).toContain('Artifacts');
 

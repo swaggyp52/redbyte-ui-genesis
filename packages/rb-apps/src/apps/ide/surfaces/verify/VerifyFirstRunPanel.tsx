@@ -54,8 +54,8 @@ export const VerifyFirstRunPanel: React.FC<VerifyFirstRunPanelProps> = ({
         </h3>
         <p className="ide-vfr-hero-desc">
           {isSequential
-            ? 'Generate an initial timeline with clock pulses, then edit each row to author the specific bit sequence you want to test.'
-            : 'Generate starter inputs, run the circuit, and add assertions only where you need explicit verification.'}
+            ? 'Generate starter stimulus with clock activity, edit the timeline, then run it to observe how the circuit responds.'
+            : 'Author input stimulus, run the circuit, and save checks only where you need explicit output confirmation.'}
         </p>
       </div>
 
@@ -98,17 +98,17 @@ export const VerifyFirstRunPanel: React.FC<VerifyFirstRunPanelProps> = ({
               onClick={onGenerateStarter}
               testId="ide-vfr-generate-starter"
             >
-              {isSequential ? 'Generate starter' : 'Initialize inputs'}
+              {isSequential ? 'Generate starter stimulus' : 'Seed stimulus'}
             </IdeButton>
             <span className="ide-vfr-action-hint">
               {isSequential
-                ? 'Creates an initial timeline with clock pulses — edit the input values to match your test sequence'
-                : 'Sets up input lanes so you can edit values and run immediately'}
+                ? 'Creates a first-pass clocked timeline so you can edit the exact sequence you want to test'
+                : 'Sets up editable input lanes so you can run the current stimulus immediately'}
             </span>
           </>
         ) : (
           <span className="ide-vfr-action-hint">
-            Vectors ready — use Run above to test your circuit
+            Stimulus ready — use the run bar above to observe outputs
           </span>
         )}
       </div>
@@ -117,19 +117,19 @@ export const VerifyFirstRunPanel: React.FC<VerifyFirstRunPanelProps> = ({
       <div className="ide-vfr-steps" data-testid="ide-vfr-steps">
         <div className={`ide-vfr-step${hasVectors ? ' is-done' : ' is-current'}`}>
           <span className="ide-vfr-step-num">{hasVectors ? '✓' : '1'}</span>
-          <span className="ide-vfr-step-text">Set up inputs</span>
+          <span className="ide-vfr-step-text">Author stimulus</span>
         </div>
         <div className={`ide-vfr-step${hasVectors ? ' is-current' : ''}`}>
           <span className="ide-vfr-step-num">2</span>
-          <span className="ide-vfr-step-text">Run circuit</span>
+          <span className="ide-vfr-step-text">Run current stimulus</span>
         </div>
         <div className="ide-vfr-step">
           <span className="ide-vfr-step-num">3</span>
-          <span className="ide-vfr-step-text">Review waveform evidence</span>
+          <span className="ide-vfr-step-text">Observe outputs</span>
         </div>
         <div className="ide-vfr-step">
           <span className="ide-vfr-step-num">4</span>
-          <span className="ide-vfr-step-text">Save assertions → Verify</span>
+          <span className="ide-vfr-step-text">Save checks if needed</span>
         </div>
       </div>
     </section>

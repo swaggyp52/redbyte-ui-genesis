@@ -50,6 +50,8 @@ export interface VerifyCommandBarProps {
   readonly evidenceLabel?: string;
   readonly evidenceTone?: 'pass' | 'fail' | 'idle';
   readonly coverageLabel?: string;
+  /** When inline, evidence + coverage sit in a slim row under the chip (hidden keeps the header calmer). */
+  readonly sessionMetricsRow?: 'hidden' | 'inline';
 
   /** Secondary analysis controls */
   readonly showAnalysisToggle?: boolean;
@@ -106,6 +108,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   evidenceLabel,
   evidenceTone,
   coverageLabel,
+  sessionMetricsRow = 'hidden',
   showAnalysisToggle,
   analysisOpen,
   analysisHint,
@@ -136,6 +139,10 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
     : statusTone === 'error' ? 'ide-vcb-status--error'
     : statusTone === 'warn' ? 'ide-vcb-status--warn'
     : 'ide-vcb-status--idle';
+  const scenarioHeadline =
+    experimentScenarioName != null && experimentScenarioName.trim() !== ''
+      ? experimentScenarioName.trim()
+      : null;
   const sessionCoverageLabel = [
     coverageLabel,
     isSequential ? 'Sequential' : null,
@@ -156,18 +163,42 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
         {primaryStatusTitle}
       </span>
     ) : null,
-  ].filter(Boolean);
-  const sessionSummaryParts = [
     sessionTitle ? (
       <span key="title" className="ide-vcb-session-title" data-testid="ide-verify-session-title">
         {sessionTitle}
       </span>
     ) : null,
-    referenceModeLabel ? (
-      <span key="reference" className="ide-vcb-reference-mode" data-testid="ide-verify-reference-mode">
-        {referenceModeLabel}
+  ].filter(Boolean);
+  const experimentInline =
+    scenarioHeadline != null ||
+    experimentCaseLabel != null ||
+    (experimentTimingHint != null && experimentTimingHint.trim() !== '') ? (
+      <span key="experiment" className="ide-vcb-experiment-inline" data-testid="ide-vcb-experiment-context">
+        {scenarioHeadline ? (
+          <span className="ide-vcb-experiment-scenario" data-testid="ide-vcb-experiment-scenario">
+            {scenarioHeadline}
+          </span>
+        ) : null}
+        {experimentCaseLabel != null ? (
+          <span
+            className={`ide-vcb-experiment-case${experimentCaseEmphasisClass(experimentCaseLabel)}`}
+            data-testid="ide-vcb-experiment-case"
+          >
+            {experimentCaseLabel}
+          </span>
+        ) : null}
+        {experimentTimingHint != null && experimentTimingHint.trim() !== '' ? (
+          <span className="ide-vcb-experiment-timing" data-testid="ide-vcb-experiment-timing">
+            {experimentTimingHint.trim()}
+          </span>
+        ) : null}
       </span>
-    ) : null,
+    ) : null;
+  const compactMetaNodes = [...sessionMetaParts, experimentInline].filter(Boolean);
+  const showMetricsRow =
+    sessionMetricsRow === 'inline' &&
+    (Boolean(evidenceLabel) || Boolean(sessionCoverageLabel));
+  const metricsNodes = [
     evidenceLabel ? (
       <span
         key="evidence"
@@ -200,15 +231,6 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           ]
     );
 
-  const scenarioHeadline =
-    experimentScenarioName != null && experimentScenarioName.trim() !== ''
-      ? experimentScenarioName.trim()
-      : null;
-  const showExperimentRail =
-    scenarioHeadline != null ||
-    experimentCaseLabel != null ||
-    (experimentTimingHint != null && experimentTimingHint.trim() !== '');
-
   return (
     <div
       className={`ide-verify-command-bar${leadingPanel ? ' ide-verify-command-bar--with-leading' : ''}`}
@@ -240,7 +262,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
 
         {/* Procedure lens toggle — secondary to Run */}
         <div className="ide-vcb-group ide-vcb-group--mode">
-          <span className="ide-vcb-mode-label">Mode</span>
+          <span className="ide-vcb-mode-label">Run mode</span>
           <div className="ide-vcb-mode-toggle" data-testid="ide-vcb-mode-toggle">
             <button
               type="button"
@@ -248,7 +270,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
               onClick={onSetObserve}
               data-testid="ide-vcb-mode-observe"
             >
-              Simulate
+              Observe
             </button>
             <button
               type="button"
@@ -257,66 +279,46 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
               disabled={!compareAvailable}
               title={
                 !compareAvailable
-                  ? 'Run simulation first, then save checks to enable comparison'
-                  : 'Compare observed outputs against saved checks'
+                  ? 'Run the current stimulus once, then save checks if you want explicit output checks'
+                  : 'Run the current stimulus against saved output checks'
               }
               data-testid="ide-vcb-mode-compare"
             >
-              Compare
+              Check outputs
             </button>
           </div>
         </div>
 
-        {showExperimentRail ? (
-          <div className="ide-vcb-experiment" data-testid="ide-vcb-experiment-context">
-            <span className="ide-vcb-experiment-eyebrow">Experiment</span>
-            <div className="ide-vcb-experiment-body">
-              {scenarioHeadline ? (
-                <span className="ide-vcb-experiment-scenario" data-testid="ide-vcb-experiment-scenario">
-                  {scenarioHeadline}
-                </span>
-              ) : null}
-              {experimentCaseLabel != null ? (
-                <span
-                  className={`ide-vcb-experiment-case${experimentCaseEmphasisClass(experimentCaseLabel)}`}
-                  data-testid="ide-vcb-experiment-case"
-                >
-                  {experimentCaseLabel}
-                </span>
-              ) : null}
-              {experimentTimingHint != null && experimentTimingHint.trim() !== '' ? (
-                <span className="ide-vcb-experiment-timing" data-testid="ide-vcb-experiment-timing">
-                  {experimentTimingHint.trim()}
-                </span>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-
-        {/* Session truth + evidence (single strip, same row as procedure controls) */}
+        {/* Session truth: one calm cluster (scenario folds into meta; heavy metrics optional) */}
         <div className="ide-vcb-truth-strip" data-testid="ide-vcb-session-summary">
-          <span data-testid="ide-verify-summary-status">
-            <span className={`ide-vcb-status ${toneClass}`} data-testid="ide-vcb-status">
-              {statusLabel}
+          <div className="ide-vcb-truth-strip-stack">
+            <span data-testid="ide-verify-summary-status">
+              <span className={`ide-vcb-status ${toneClass}`} data-testid="ide-vcb-status">
+                {statusLabel}
+              </span>
             </span>
-          </span>
-          {(sessionMetaParts.length > 0 || sessionSummaryParts.length > 0) && (
-            <div className="ide-vcb-session-copy">
-              {sessionMetaParts.length > 0 && (
-                <span
-                  className="ide-vcb-session-line ide-vcb-session-line--meta"
-                  data-testid="ide-verify-session-meta"
-                >
-                  {interleaveWithSeparators(sessionMetaParts, 'ide-vcb-session-sep')}
-                </span>
-              )}
-              {sessionSummaryParts.length > 0 && (
-                <span className="ide-vcb-session-line ide-vcb-session-line--summary">
-                  {interleaveWithSeparators(sessionSummaryParts, 'ide-vcb-session-sep ide-vcb-session-sep--muted')}
-                </span>
-              )}
-            </div>
-          )}
+            {compactMetaNodes.length > 0 && (
+              <span
+                className="ide-vcb-session-line ide-vcb-session-line--meta ide-vcb-session-line--compact"
+                data-testid="ide-verify-session-meta"
+              >
+                {interleaveWithSeparators(compactMetaNodes, 'ide-vcb-session-sep')}
+              </span>
+            )}
+            {showMetricsRow && metricsNodes.length > 0 ? (
+              <span className="ide-vcb-session-line ide-vcb-session-line--metrics">
+                {interleaveWithSeparators(metricsNodes, 'ide-vcb-session-sep ide-vcb-session-sep--muted')}
+              </span>
+            ) : null}
+          </div>
+          {referenceModeLabel ? (
+            <details className="ide-vcb-session-details" data-testid="ide-vcb-session-details">
+              <summary className="ide-vcb-session-details-summary">Session details</summary>
+              <span className="ide-vcb-reference-mode" data-testid="ide-verify-reference-mode">
+                {referenceModeLabel}
+              </span>
+            </details>
+          ) : null}
         </div>
 
         {/* Right: utility actions (ghost weight) */}
@@ -343,7 +345,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
                     }}
                     testId="ide-verify-run-proof-edit-vectors"
                   >
-                    Edit checks
+                    Open checks
                   </IdeButton>
                 )}
                 {showSaveAsExpected && onSaveAsExpected && (
@@ -355,7 +357,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
                     }}
                     testId="ide-vcb-save-expected"
                   >
-                    Save as checks
+                    Save observed outputs
                   </IdeButton>
                 )}
               </div>

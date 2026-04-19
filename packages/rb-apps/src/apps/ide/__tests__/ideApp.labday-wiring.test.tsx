@@ -479,7 +479,7 @@ describe('IdeApp lab-day wiring', () => {
     fireEvent.click(await view.findByTestId('mode-button-verify'));
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION');
+      expect(view.getByTestId('ide-verify-session-mode').textContent).toContain('Observe');
     });
 
     fireEvent.click(view.getByTestId('ide-verify-generate-basic-vectors'));
@@ -490,8 +490,8 @@ describe('IdeApp lab-day wiring', () => {
       expect(state.projectVectors.every((vector) => Object.keys(vector.expected ?? {}).length === 0)).toBe(true);
     });
 
-    expect(view.getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION');
-    expect(view.getByTestId('ide-verify-session-title').textContent).toContain('Ready to simulate');
+    expect(view.getByTestId('ide-verify-session-mode').textContent).toContain('Observe');
+    expect(view.getByTestId('ide-verify-session-title').textContent).toContain('Ready to run stimulus');
     expect(view.getByTestId('ide-vcb-run')).toBeTruthy();
   });
 
@@ -526,9 +526,9 @@ describe('IdeApp lab-day wiring', () => {
       expect(view.queryByTestId('ide-verify-auto-vector-notice')).toBeNull();
     });
 
-    expect(view.getByTestId('ide-verify-session-status').textContent).toContain('DRAFT');
-    expect(view.getByTestId('ide-verify-session-mode').textContent).toContain('SIMULATION');
-    expect(view.getByTestId('ide-verify-session-title').textContent).toContain('Ready to simulate');
+    expect(view.getByTestId('ide-verify-session-status').textContent).toContain('Draft');
+    expect(view.getByTestId('ide-verify-session-mode').textContent).toContain('Observe');
+    expect(view.getByTestId('ide-verify-session-title').textContent).toContain('Ready to run stimulus');
     expect(view.getByTestId('ide-vcb-run')).toBeTruthy();
   });
 });

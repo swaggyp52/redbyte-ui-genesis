@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -29,6 +29,10 @@ function makeFailRun(): RuntimeVerifyRun {
   };
 }
 
+afterEach(() => {
+  cleanup();
+});
+
 describe('VerifySurface FAIL state (PR14 regression guard)', () => {
   it('renders the focused FAIL workspace when lastRun is fail', () => {
     const { getByTestId, queryByTestId } = render(
@@ -41,7 +45,7 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-summary-status').textContent).toContain('CHECKS FAIL');
+    expect(getByTestId('ide-verify-summary-status').textContent).toContain('Checks failed');
     expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
@@ -80,7 +84,7 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
     fireEvent.click(getByTestId('ide-vcb-mode-observe'));
 
     expect(getByTestId('ide-vcb-mode-observe').className).toContain('is-active');
-    expect(getByTestId('ide-verify-summary-status').textContent).toContain('CHECKS FAIL');
+    expect(getByTestId('ide-verify-summary-status').textContent).toContain('Checks failed');
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
     expect(queryByTestId('ide-verify-failure-explainer')).toBeNull();
   });

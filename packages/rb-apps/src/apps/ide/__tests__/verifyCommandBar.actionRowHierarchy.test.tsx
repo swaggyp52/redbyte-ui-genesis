@@ -10,8 +10,8 @@
 // These tests lock in the DOM ordering contract so visual hierarchy
 // cannot accidentally regress through future JSX edits.
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, within } from '@testing-library/react';
 import { VerifyCommandBar, type VerifyCommandBarProps } from '../surfaces/verify/VerifyCommandBar';
 
 const BASE: VerifyCommandBarProps = {
@@ -23,13 +23,17 @@ const BASE: VerifyCommandBarProps = {
   runLabel: 'Run',
   runDisabled: false,
   onGenerate: vi.fn(),
-  generateLabel: 'Initialize inputs',
+  generateLabel: 'Seed stimulus',
   showGenerate: false,
   showSaveAsExpected: false,
   statusLabel: 'Ready',
   statusTone: 'idle',
   isSequential: false,
 };
+
+afterEach(() => {
+  cleanup();
+});
 
 describe('B-14 Action Row Hierarchy — DOM order contracts', () => {
   it('Run button precedes mode toggle in DOM (Run is leftmost primary action)', () => {
@@ -143,10 +147,10 @@ describe('B-14 Action Row Hierarchy — DOM order contracts', () => {
 });
 
 describe('B-14 Action Row Hierarchy — mode toggle still works', () => {
-  it('mode toggle buttons are still present (Simulate + Compare)', () => {
+  it('mode toggle buttons are still present (Observe + Check outputs)', () => {
     const { getByTestId } = render(<VerifyCommandBar {...BASE} />);
-    expect(getByTestId('ide-vcb-mode-observe').textContent).toContain('Simulate');
-    expect(getByTestId('ide-vcb-mode-compare').textContent).toContain('Compare');
+    expect(getByTestId('ide-vcb-mode-observe').textContent).toContain('Observe');
+    expect(getByTestId('ide-vcb-mode-compare').textContent).toContain('Check outputs');
   });
 
   it('keeps secondary command-bar actions hidden until More actions opens', () => {
@@ -185,28 +189,30 @@ describe('B-14 Action Row Hierarchy — mode toggle still works', () => {
         evidenceLabel="Stimulus evidence"
         coverageLabel="8 ticks · 5 signals"
         isSequential={true}
+        sessionMetricsRow="inline"
       />
     );
 
     const sessionSummary = getByTestId('ide-vcb-session-summary');
-    expect(sessionSummary).toContainElement(getByTestId('ide-vcb-status'));
-    expect(sessionSummary).toContainElement(getByTestId('ide-vcb-evidence'));
-    expect(sessionSummary).toContainElement(getByTestId('ide-vcb-coverage'));
+    const sessionScope = within(sessionSummary);
+    expect(sessionScope.getByTestId('ide-vcb-status')).toBeTruthy();
+    expect(sessionScope.getByTestId('ide-vcb-evidence')).toBeTruthy();
+    expect(sessionScope.getByTestId('ide-vcb-coverage')).toBeTruthy();
   });
 
   it('separates session status and mode tokens so stimulus runs do not collapse into one smashed label', () => {
     const { getByTestId } = render(
       <VerifyCommandBar
         {...BASE}
-        sessionStatusBadge="OBSERVATION ONLY"
-        sessionModeLabel="TRACE"
+        sessionStatusBadge="Observation only"
+        sessionModeLabel="Observe"
         primaryStatusTitle="Waveform recorded"
       />
     );
 
     const sessionMeta = getByTestId('ide-verify-session-meta');
-    expect(sessionMeta.textContent).toContain('OBSERVATION ONLY');
-    expect(sessionMeta.textContent).toContain('TRACE');
+    expect(sessionMeta.textContent).toContain('Observation only');
+    expect(sessionMeta.textContent).toContain('Observe');
     expect(sessionMeta.textContent).toContain('·');
   });
 });

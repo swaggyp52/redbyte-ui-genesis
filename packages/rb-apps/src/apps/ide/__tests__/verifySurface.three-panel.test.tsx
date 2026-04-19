@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, within } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -65,6 +65,10 @@ function makeFailRun(): RuntimeVerifyRun {
     ],
   };
 }
+
+afterEach(() => {
+  cleanup();
+});
 
 describe('VerifySurface three-panel workstation', () => {
   it('uses the lower analysis drawer for failure review and keeps waveform selection in sync with mismatch rows', () => {

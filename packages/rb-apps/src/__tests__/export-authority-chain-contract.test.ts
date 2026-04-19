@@ -334,7 +334,7 @@ describe('VerifySessionStatus stimulus-only', () => {
     });
 
     expect(model.status).toBe('stimulus-only');
-    expect(model.statusBadge).toBe('OBSERVATION ONLY');
+    expect(model.statusBadge).toBe('Observation only');
     // Must not imply success or failure — tone should be idle, not ok/error
     expect(model.tone).toBe('idle');
   });
@@ -374,8 +374,8 @@ describe('VerifySessionStatus stimulus-only', () => {
       failingRowCount: 0,
     });
     expect(model.statusBadge).not.toBe(oldBadge);
-    // Explicitly check that "OBSERVATION ONLY" is used (renamed from "STIMULUS ONLY")
-    expect(model.statusBadge).toBe('OBSERVATION ONLY');
+    // Trace-only badge stays neutral (not pass/fail wording)
+    expect(model.statusBadge).toBe('Observation only');
     // Suppress TS unused variable warning
     void allStatuses;
   });

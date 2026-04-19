@@ -1759,18 +1759,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [lastRun?.report.inputsAtTick, orderedTraceInputs]
   );
   const truthTableEmptyReason = useMemo(() => {
-    if (!lastRun) return 'Run simulation to populate tick-by-tick expected and observed values.';
+    if (!lastRun) return 'Run the current stimulus to populate tick-by-tick observed values and saved checks.';
     if (verifyPreflightIssues.length > 0) {
       return 'Verification is blocked by missing mapped or undriven outputs. Fix the listed issues, then run again.';
     }
     if (runRows.length > 0) return '';
     if (waveformTicks.length > 0) {
-      return 'No expected outputs were set for this run. Set expected values in the test vectors, then run again.';
+      return 'No saved checks were set for this run. Save output checks in the stimulus table, then run again.';
     }
     if (isSequentialRun) {
-      return 'No evaluable rows yet. Add vectors with expected outputs for this sequential circuit.';
+      return 'No evaluable rows yet. Add stimulus rows with saved checks for this sequential circuit.';
     }
-    return 'No output rows were produced. Check that your test vectors include expected outputs, then run again.';
+    return 'No output rows were produced. Check that your stimulus rows include any saved checks you expect to evaluate, then run again.';
   }, [isSequentialRun, lastRun, runRows.length, verifyPreflightIssues.length, waveformTicks.length]);
   const firstFailureTick = firstFailure?.tick ?? lastRun?.firstFailingTick;
   const selectedFailureInputs = useMemo(() => {
@@ -1900,7 +1900,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return lookup;
   }, [runRows]);
   const combosUnavailableReason = useMemo(() => {
-    if (!lastRun) return 'Run simulation first to build combinational combinations.';
+    if (!lastRun) return 'Run the current stimulus first to build combinational combinations.';
     if (isSequentialRun) {
       return 'Combinational combos unavailable for sequential behavior (clocked circuit).';
     }
@@ -2571,14 +2571,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       : hasStaleAuthoredReference
         ? `Stale ${isStarterScenario ? 'starter' : 'authored'} test vectors (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}) — circuit has changed since these were written`
       : totalExpectedCaseCount === 0
-        ? 'Stimulus evidence only — no output assertions set'
+        ? 'Stimulus only — no saved checks yet'
         : !nextRunUsesAssertions
-          ? `Saved output assertions (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), current mode is stimulus`
+          ? `Saved checks available (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), current run mode is observation`
         : authoredVectors.length > 0 && customVectorCount > 0
-          ? `Verifying project + custom vectors (${totalVectorCount} total)`
+          ? `Using project + custom checks (${totalVectorCount} total)`
           : customVectorCount > 0
-            ? `Verifying custom vectors (${customVectorCount})`
-            : `Verifying project vectors (${authoredVectors.length})`;
+            ? `Using custom checks (${customVectorCount})`
+            : `Using project checks (${authoredVectors.length})`;
   const verifyScenarioName =
     totalExpectedCaseCount === 0
       ? 'Stimulus Trace'
@@ -2589,16 +2589,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           : 'Project Vectors';
   const verifyReferenceNote =
     totalVectorCount === 0
-      ? 'Add vectors to define the input stimulus for this run.'
+      ? 'Author vectors to define the input stimulus for this run.'
       : hasStaleAuthoredReference
         ? nextRunUsesAssertions
-          ? 'Older asserted reference retained for the next compare.'
-          : 'Older asserted reference available. The next run defaults to live tracing.'
+          ? 'Older saved checks are still loaded for the next checked run.'
+          : 'Older saved checks are available, but the next run defaults to live observation.'
       : totalExpectedCaseCount === 0
-        ? 'Blank expected cells are ignored until you author asserted outputs.'
+        ? 'Blank output cells stay observational until you save checks.'
         : !nextRunUsesAssertions
-          ? 'Saved expected outputs are available, but the current mode is trace only.'
-          : 'Assertion runs only evaluate expected cells that are explicitly asserted.';
+          ? 'Saved checks are available, but this run stays in observation mode.'
+          : 'Only cells with saved checks are evaluated during a checked run.';
   const buildAllVectors = useCallback(
     (): TestVector[] =>
       [...authoredVectors, ...customVectors].map((vector) => ({
@@ -3336,28 +3336,28 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const captureActionTone = primaryActionKind === 'capture' ? 'primary' : 'secondary';
   // ── B-12 Slice 3: canonical result zone ──────────────────────────────────────
   const emptyStateRunLabel = isDraftSession
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Compare' : 'Run simulation')
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Run with checks' : 'Run current stimulus')
     : verifySession.runLabel;
   const referenceModeLabel: string = hasStaleAuthoredReference
-    ? `Using stale saved checks (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'})`
+    ? `Stale saved checks loaded (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'})`
     : totalExpectedCaseCount === 0
-      ? 'Simulation only — no saved checks'
+      ? 'Observation run only — no saved checks'
       : !nextRunUsesAssertions
-        ? `Saved checks (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), current mode is Simulation`
+        ? `Saved checks available (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), next run stays in observation mode`
         : authoredVectors.length > 0 && customVectorCount > 0
-          ? `Comparing project + custom vectors (${totalVectorCount} total)`
+          ? `Using project + custom checks (${totalVectorCount} total)`
           : customVectorCount > 0
-            ? `Comparing custom vectors (${customVectorCount})`
-            : `Comparing project vectors (${authoredVectors.length})`;
+            ? `Using custom checks (${customVectorCount})`
+            : `Using project checks (${authoredVectors.length})`;
   const sessionModeBadge: string = !lastRun
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'COMPARE' : 'SIMULATION')
-    : isTraceOnly ? 'TRACE'
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Check outputs' : 'Observe')
+    : isTraceOnly ? 'Observe'
     : sessionStatus === 'assertions-match' || sessionStatus === 'assertions-differ' || sessionStatus === 'stale'
-      ? 'COMPARE'
-      : 'SIMULATION';
+      ? 'Check outputs'
+      : 'Observe';
   const sessionTitle: string = !lastRun
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Ready to compare' : 'Ready to simulate')
-    : isTraceOnly ? 'Waveform recorded — stimulus captured'
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Ready to run with checks' : 'Ready to run stimulus')
+    : isTraceOnly ? 'Outputs observed — stimulus captured'
     : sessionStatus === 'assertions-match' ? 'Checks passed'
     : sessionStatus === 'assertions-differ' ? 'Checks failed'
     : sessionStatus === 'stale' ? 'Stale results'
@@ -3365,10 +3365,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const commandBarEvidenceLabel =
     lastRun && sessionShowsCompareEvidence
       ? failingRows.length > 0
-        ? `${failingRows.length} differ${typeof firstFailureTick === 'number' ? ` · t${firstFailureTick}` : ''}`
+        ? `${failingRows.length} mismatch${failingRows.length === 1 ? '' : 'es'}${typeof firstFailureTick === 'number' ? ` · t${firstFailureTick}` : ''}`
         : `${runRows.length}/${runRows.length} match`
       : lastRun && sessionShowsTraceEvidence
-        ? `${runVectorCount} vector${runVectorCount === 1 ? '' : 's'}`
+        ? `${runVectorCount} observed row${runVectorCount === 1 ? '' : 's'}`
         : undefined;
   const commandBarCoverageLabel =
     lastRun && runRows.length > 0 && inputCoverage
@@ -3408,7 +3408,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     activeScheduleContract?.timingMode === 'manual_event_driven_lab'
       ? 'Manual-event lab mode'
       : isSequentialRun
-        ? 'General sequential mode'
+        ? 'Sequential stimulus'
         : 'Combinational stimulus mode';
   const stateObservationLabel =
     selectedTick == null
@@ -3497,22 +3497,22 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const runProofTitle =
     sessionShowsAssertionMatch
       ? lastRun?.qualification === 'incomplete-mapping'
-        ? 'Assertions match — mapping review still needed'
-        : `Assertions match across ${runRows.length} vector${runRows.length === 1 ? '' : 's'}`
+        ? 'Checks passed — finish pin mapping'
+        : `Checks passed · ${runRows.length} case${runRows.length === 1 ? '' : 's'}`
       : sessionSignalsAssertionFailure
-        ? `Assertions differ in ${failingRows.length} of ${runRows.length} case${runRows.length === 1 ? '' : 's'}`
+        ? `Checks failed · ${failingRows.length}/${runRows.length} case${runRows.length === 1 ? '' : 's'}`
       : sessionStatus === 'stale'
-          ? 'This page is showing an older Verify run'
+          ? 'Stale results on this page'
             : sessionShowsTraceEvidence
-            ? 'Stimulus-only run - assertions are not enabled'
+            ? 'Simulation only (no checks)'
             : verifySession.title;
   const runProofSummary =
     sessionShowsAssertionMatch
       ? lastRun?.qualification === 'incomplete-mapping'
         ? `${unmappedOutputLabels.length > 0 ? `${unmappedOutputLabels.slice(0, 3).join(', ')}${unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''} ${unmappedOutputLabels.length === 1 ? 'is' : 'are'} not connected to board pins.` : 'Some outputs are not connected to board pins.'} Finish mapping in Map Pins before trusting export or bring-up.`
-        : 'Observed outputs matched every asserted expectation in this run.'
+        : 'Every saved check matched the observed outputs.'
       : sessionSignalsAssertionFailure
-        ? 'Assertions differ from observed outputs in the deterministic run below. Start with the first differing case.'
+        ? 'Inspect the first mismatch on the waveform, then adjust checks or the circuit.'
       : sessionStatus === 'stale'
           ? hasStaleAuthoredReference
             ? 'The visible waveform belongs to an older build. Verify has switched back to stimulus tracing so you can inspect the live circuit before re-authoring or intentionally reusing the older reference.'
@@ -3533,12 +3533,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [unmappedOutputLabels]);
   const verifyLayoutPolicy = useMemo(
     () => ({
-      leftDockMode: 'visible' as const,
-      /** Proof workspace: inspector (vectors / mismatch) is a first-class evidence column */
-      rightDockMode: 'visible' as const,
+      /** Signals rail: open while authoring (no run yet) or when compare failed and you need lanes. */
+      leftDockMode:
+        !lastRun || sessionSignalsAssertionFailure ? ('visible' as const) : ('collapsed' as const),
+      /** Vectors / mismatch inspector: progressive disclosure — expand from rail when needed. */
+      rightDockMode: sessionSignalsAssertionFailure ? ('visible' as const) : ('collapsed' as const),
       consoleMode: sessionSignalsAssertionFailure ? ('auto' as const) : ('hidden' as const),
     }),
-    [sessionSignalsAssertionFailure]
+    [lastRun, sessionSignalsAssertionFailure]
   );
 
   useEffect(() => {
@@ -3551,7 +3553,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (hasStaleAuthoredReference) {
       const actions: VerifyPrimaryStatusAreaProps['actions'] = [
         {
-          label: 'Keep reference — Compare',
+          label: 'Keep saved checks — run checked',
           onClick: handleKeepOlderReference,
           tone: 'primary',
           testId: 'ide-verify-stale-keep-reference',
@@ -3559,7 +3561,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ];
       if (canResetToStimulusOnly) {
         actions.push({
-          label: 'Clear assertions — trace only',
+          label: 'Clear checks — observe only',
           onClick: handleResetToStimulusOnly,
           tone: 'secondary',
           testId: 'ide-verify-stale-reset-stimulus',
@@ -3647,15 +3649,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     selectedFailureCase,
     selectedFailureDisplayLabel,
   ]);
-  const signalRailSummary = selectedSignal
-    ? `${selectedSignal} is focused across the waveform, lane rail, and Design replay.`
-    : hasSessionFailureEvidence
-      ? 'Pin or filter the lanes that matter, then step into Design on the exact failing case.'
-      : 'Filter, pin, and organize the lanes you want to carry across the waveform and into Design.';
+  const verifySessionMetricsRow =
+    sessionSignalsAssertionFailure || (Boolean(lastRun) && isTraceOnly) ? ('inline' as const) : ('hidden' as const);
 
   return (
     <IdeSurfaceLayout
       mode="verify"
+      layoutIntent="workbench"
       consoleHasBlocking={sessionSignalsAssertionFailure}
       consoleHasEntries={false}
       leftDockMode={verifyLayoutPolicy.leftDockMode}
@@ -3672,13 +3672,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           >
             <div className="ide-verify-signal-rail-toprow">
               <div className="ide-verify-signal-rail-title">
-                <h3>Signals</h3>
+                <h3>Signal legend</h3>
                 <span className="ide-verify-signal-rail-count" data-testid="ide-verify-signal-filter-state">
                   {showMismatchOnlySignals
-                    ? `${visibleSignalCount} mismatches`
+                    ? `${visibleSignalCount} flagged`
                     : showAllSignals
-                      ? `${signalTimeline.length} all`
-                      : `${visibleSignalCount}`}
+                      ? `${signalTimeline.length} visible`
+                      : `${visibleSignalCount} visible`}
                 </span>
               </div>
               <div className="ide-verify-signal-rail-actions">
@@ -3695,14 +3695,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     {showAllSignals ? 'Relevant' : 'All'}
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  className="ide-verify-signal-rail-action-btn"
-                  onClick={fitWaveformView}
-                  data-testid="ide-verify-fit-waveform"
-                >
-                  Fit
-                </button>
                 {(manualLaneOrder.length > 0 || hiddenSignals.length > 0) && (
                   <button
                     type="button"
@@ -3715,11 +3707,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 )}
               </div>
             </div>
-            {selectedSignal ? (
-              <p className="ide-verify-signal-rail-focus" data-testid="ide-verify-signal-rail-summary">
-                <code>{selectedSignal}</code> focused
-              </p>
-            ) : null}
+            <p className="ide-verify-signal-rail-focus" data-testid="ide-verify-signal-rail-summary">
+              {selectedSignal ? (
+                <>
+                  <code>{selectedSignal}</code> synced to the waveform
+                </>
+              ) : hasSessionFailureEvidence ? (
+                'Filter to the failing lanes, then inspect the waveform.'
+              ) : (
+                'Filter, pin, or hide lanes to keep the legend focused.'
+              )}
+            </p>
           </header>
           <div className="ide-signal-list" data-testid="ide-verify-signal-list">
             {displaySignalTimeline.length === 0 ? (
@@ -3803,7 +3801,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           {sessionShowsCompareEvidence && (
             <>
               <header className="ide-design-subheader">
-                <h3>Failures</h3>
+                <h3>Mismatches</h3>
                 <span className="ide-copy">{failingRows.length}</span>
               </header>
               <div className="ide-signal-list" data-testid="ide-verify-failures-list">
@@ -3838,7 +3836,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       inspector={
         <IdeInspectorAccordion defaultOpenId="vectors">
           {sessionShowsCompareEvidence && (
-            <IdeInspectorSection title="Mismatch Detail" accordionId="mismatch-detail">
+            <IdeInspectorSection title="Output Check Detail" accordionId="mismatch-detail">
             {selectedFailureCase ? (() => {
               return (
                 <div className="ide-kv-list">
@@ -3947,7 +3945,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             )}
           </IdeInspectorSection>
           )}
-          <IdeInspectorSection title="Vectors" accordionId="vectors">
+          <IdeInspectorSection title="Stimulus Cases" accordionId="vectors">
             <p className="ide-copy">{vectorSourceLabel}</p>
             <p className="ide-copy" data-testid="ide-verify-reference-mode-note">{verifyReferenceNote}</p>
 
@@ -4042,7 +4040,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ) : null}
               </>
             ) : (
-              <p className="ide-copy">Run simulation to populate deterministic activity output.</p>
+              <p className="ide-copy">Run the current stimulus to populate deterministic activity output.</p>
             )}
           </div>
         </section>
@@ -4080,7 +4078,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           runDisabled={runState === 'running'}
           runPulsing={readyDraftCanRun}
           onGenerate={handleGenerateBasicVectors}
-          generateLabel={isSequentialRun ? 'Generate starter' : 'Initialize inputs'}
+          generateLabel={isSequentialRun ? 'Generate starter stimulus' : 'Seed stimulus'}
           showGenerate={isFirstRunState || totalVectorCount === 0}
           onSaveAsExpected={canSetOracle ? handleSetOracleExpected : undefined}
           showSaveAsExpected={Boolean(canSetOracle && !isFirstRunState)}
@@ -4100,6 +4098,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 : undefined
           }
           coverageLabel={commandBarCoverageLabel}
+          sessionMetricsRow={verifySessionMetricsRow}
           showAnalysisToggle={Boolean(lastRun)}
           analysisOpen={drawerOpen}
           analysisHint={analysisDrawerHint}
@@ -4110,7 +4109,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           onGoToDesign={handleGoToDesignFromVerify}
           goToDesignTick={selectedTick}
           experimentScenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
-          experimentCaseLabel={selectedTick != null ? `Case t${selectedTick}` : 'No case selected'}
+          experimentCaseLabel={selectedTick != null ? `t${selectedTick}` : 'No tick selected'}
           experimentTimingHint={sequencerModeLabel}
         />
         )}
@@ -4143,7 +4142,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               <strong>Ran with starter vectors.</strong>{' '}
               {isSequentialRun
                 ? 'Starter vectors may not drive your clock correctly. Author a scenario with explicit clock transitions to test your design.'
-                : 'Author your own scenario with specific expected outputs to verify your design.'}
+                : 'Author your own scenario with specific saved checks when you want explicit output verification.'}
             </span>
           </IdeCallout>
         )}
@@ -4171,7 +4170,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           >
             <div className="ide-verify-run-proof-main">
               <div className="ide-verify-run-proof-copy">
-                <span className="ide-verify-run-proof-eyebrow">Verify run evidence</span>
+                <span className="ide-verify-run-proof-eyebrow">Latest run</span>
                 <strong
                   className="ide-verify-run-proof-title"
                   data-testid={sessionShowsAssertionMatch ? 'ide-verify-pass-hero-title' : undefined}
@@ -4188,7 +4187,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   <strong>Authoritative:</strong>{' '}
                   {isRunStale
                     ? `the waveform below belongs to build ${shortenHash(lastRun.deterministicHash)}, while the current circuit is ${shortenHash(deterministicHash)}.`
-                    : 'the compare result comes from this deterministic Verify run. Design trace is for debug only and does not affect trust status.'}
+                    : 'the checked result comes from this deterministic Verify run. Design trace is for debug only and does not affect trust status.'}
                 </p>
               </div>
               <div className="ide-verify-run-proof-actions">
@@ -4217,8 +4216,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-run-proof-inspect">
                       Inspect first mismatch
                     </IdeButton>
-                    <IdeButton tone="secondary" onClick={handleEditExpectedOutputs} testId="ide-verify-run-proof-edit-vectors">
-                      Edit checks
+                  <IdeButton tone="secondary" onClick={handleEditExpectedOutputs} testId="ide-verify-run-proof-edit-vectors">
+                      Open checks
                     </IdeButton>
                     {(onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) && (
                       <IdeButton tone="ghost" onClick={handleGoToDesignFromVerify} testId="ide-verify-run-proof-design">
@@ -4229,36 +4228,39 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 )}
                 {sessionShowsTraceEvidence && canSetOracle && (
                   <IdeButton tone="primary" onClick={handleSetOracleExpected} testId="ide-verify-run-proof-oracle">
-                    Save as checks
+                    Save observed outputs
                   </IdeButton>
                 )}
               </div>
             </div>
-            <dl className="ide-verify-run-proof-grid">
-              {runProofFacts.map((fact) => (
-                <div key={fact.label} className="ide-verify-run-proof-item">
-                  <dt>{fact.label}</dt>
-                  <dd title={fact.fullValue}>
-                    {fact.label.includes('build') || fact.label.includes('hash') ? <code>{fact.value}</code> : fact.value}
-                  </dd>
-                </div>
-              ))}
-              {lastRun.qualification === 'incomplete-mapping' && unmappedOutputLabels.length > 0 && (
-                <div className="ide-verify-run-proof-item ide-verify-run-proof-item--warning">
-                  <dt>Unmapped outputs</dt>
-                  <dd data-testid="ide-verify-incomplete-output-names">
-                    {unmappedOutputLabels.slice(0, 3).join(', ')}
-                    {unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''}
-                  </dd>
-                </div>
-              )}
-              {oracleApplied && (
-                <div className="ide-verify-run-proof-item ide-verify-run-proof-item--accent">
-                  <dt>Expected outputs</dt>
-                  <dd data-testid="ide-verify-oracle-badge">Locked from observed run</dd>
-                </div>
-              )}
-            </dl>
+            <details className="ide-verify-run-proof-facts" data-testid="ide-verify-run-proof-facts">
+              <summary className="ide-verify-run-proof-facts-summary">Hashes & scenario</summary>
+              <dl className="ide-verify-run-proof-grid">
+                {runProofFacts.map((fact) => (
+                  <div key={fact.label} className="ide-verify-run-proof-item">
+                    <dt>{fact.label}</dt>
+                    <dd title={fact.fullValue}>
+                      {fact.label.includes('build') || fact.label.includes('hash') ? <code>{fact.value}</code> : fact.value}
+                    </dd>
+                  </div>
+                ))}
+                {lastRun.qualification === 'incomplete-mapping' && unmappedOutputLabels.length > 0 && (
+                  <div className="ide-verify-run-proof-item ide-verify-run-proof-item--warning">
+                    <dt>Unmapped outputs</dt>
+                    <dd data-testid="ide-verify-incomplete-output-names">
+                      {unmappedOutputLabels.slice(0, 3).join(', ')}
+                      {unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''}
+                    </dd>
+                  </div>
+                )}
+                {oracleApplied && (
+                  <div className="ide-verify-run-proof-item ide-verify-run-proof-item--accent">
+                    <dt>Expected outputs</dt>
+                    <dd data-testid="ide-verify-oracle-badge">Locked from observed run</dd>
+                  </div>
+                )}
+              </dl>
+            </details>
           </section>
         )}
 
@@ -4989,7 +4991,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   emptyMessage={
                     lastRun
                       ? 'No waveform data in this run — check I/O mapping in Map Pins'
-                      : 'Run simulation to see waveforms'
+                      : 'Run the current stimulus to observe outputs'
                   }
                   ghostSignals={
                     !lastRun && mappedSignals?.length
@@ -5111,7 +5113,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       <span>Outputs don't match the expected values. If the expected values are wrong, update them below. If the circuit is wrong, fix it in Design.</span>
                       <div className="ide-inline-actions">
                         <IdeButton tone="secondary" onClick={handleEditExpectedOutputs} testId="ide-verify-mismatch-edit-vectors">
-                          Edit checks
+                          Open checks
                         </IdeButton>
                         {(onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) && (
                           <IdeButton tone="ghost" onClick={handleGoToDesignFromVerify} testId="ide-verify-mismatch-goto-design">
@@ -5207,7 +5209,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                                   ? 'No sampled output matched this expected signal.'
                                   : selectedFailureEvidence?.actualReason === 'missing-output-node'
                                     ? 'The expected output row is not connected to a concrete design node.'
-                                    : 'Compared expected and sampled signals directly.'}
+                                    : 'Compared saved checks against sampled outputs directly.'}
                               </code>
                             </div>
                           </div>
@@ -6210,7 +6212,7 @@ function formatTickWindowReason(input: {
   selectedTick: number | null;
 }): string {
   const { allTicks, shownTicks, tickZoom, focusedFailureTick, selectedTick } = input;
-  if (allTicks.length === 0 || shownTicks.length === 0) return 'Run simulation to inspect a tick range.';
+  if (allTicks.length === 0 || shownTicks.length === 0) return 'Run the current stimulus to inspect a tick range.';
   if (shownTicks.length === allTicks.length || tickZoom === 'all') {
     return 'Showing the full verification run.';
   }

@@ -74,21 +74,25 @@ export const IdePanel: React.FC<{
   testId?: string;
   className?: string;
 }> = ({ title, description, children, right, actions, testId, className }) => {
+  const hasHeaderContent = Boolean(title || description || right);
+
   return (
     <section className={`ide-panel${className ? ` ${className}` : ''}`} data-testid={testId}>
-      <header className="ide-panel-header" data-testid="ide-panel-title-row">
-        <div className="ide-surface-header" data-testid="ide-surface-header">
-          <div>
-            {title && (
-              <h2 className="ide-panel-title" data-testid="ide-surface-title">
-                {title}
-              </h2>
-            )}
-            {description && <p className="ide-panel-description">{description}</p>}
+      {hasHeaderContent ? (
+        <header className="ide-panel-header" data-testid="ide-panel-title-row">
+          <div className="ide-surface-header" data-testid="ide-surface-header">
+            <div>
+              {title && (
+                <h2 className="ide-panel-title" data-testid="ide-surface-title">
+                  {title}
+                </h2>
+              )}
+              {description && <p className="ide-panel-description">{description}</p>}
+            </div>
+            {right}
           </div>
-          {right}
-        </div>
-      </header>
+        </header>
+      ) : null}
       {actions != null && (
         <div className="ide-panel-actions" data-testid="ide-panel-action-row">
           <div className="ide-surface-actions" data-testid="ide-surface-actions">

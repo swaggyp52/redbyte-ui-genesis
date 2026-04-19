@@ -5,6 +5,7 @@ import {
   type IdeSurfaceMode,
   type LeftDockMode,
   type RightDockMode,
+  type WorkbenchLayoutIntent,
   type WorkbenchShellDensity,
   type WorkbenchSurfaceFrame,
 } from './IdeWorkbenchShell';
@@ -26,6 +27,7 @@ export interface IdeSurfaceLayoutProps {
   consoleMode?: ConsoleMode;
   shellDensity?: WorkbenchShellDensity;
   surfaceFrame?: WorkbenchSurfaceFrame;
+  layoutIntent?: WorkbenchLayoutIntent;
 }
 
 export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({
@@ -44,6 +46,7 @@ export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({
   consoleMode,
   shellDensity,
   surfaceFrame,
+  layoutIntent,
 }) => {
   return (
     <IdeWorkbenchShell
@@ -62,6 +65,7 @@ export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({
       consoleMode={consoleMode}
       shellDensity={shellDensity}
       surfaceFrame={surfaceFrame}
+      layoutIntent={layoutIntent}
     />
   );
 };

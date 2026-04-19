@@ -779,9 +779,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       comparePassIncomplete,
     ]
   );
+  const hasRecentEntryPoints = recentProjects.length > 0 || Boolean(onOpenSavedProjects);
+  const landingPrimaryExamples = examples.slice(0, 3);
   return (
     <IdeSurfaceLayout
       mode="project"
+      layoutIntent="workbench"
       consoleHasBlocking={false}
       consoleHasEntries={false}
       consoleMode="hidden"
@@ -842,103 +845,127 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         {!readiness.hasCircuit ? (
           /* STATE A: No circuit - clean 3-option landing */
           <div className="ide-project-landing" data-testid="ide-project-landing">
-            <div className="ide-project-landing-header">
-              <h2 className="ide-project-landing-title">
-                {projectKind === 'home' ? 'Project Home' : 'Start your lab'}
-              </h2>
-              <p className="ide-project-landing-sub">
-                Pick a starting point to begin the full {STUDENT_WORKFLOW_SUMMARY} workflow.
-              </p>
-            </div>
-            {(recentProjects.length > 0 || onOpenSavedProjects) && (
-              <div className="ide-project-recent-panel" data-testid="ide-project-recent-panel">
-                <div className="ide-project-recent-head">
-                  <div>
-                    <p className="ide-project-recent-title">Continue recent work</p>
+            <section className="ide-project-start-hub" data-testid="ide-project-start-hub">
+              <div className="ide-project-landing-header">
+                <p className="ide-surface-block-label">Project launch</p>
+                <h2 className="ide-project-landing-title">
+                  {projectKind === 'home' ? 'Project Home' : 'Start your lab'}
+                </h2>
+                <p className="ide-project-landing-sub">
+                  Start from one clear move: reopen work, load a starter, or open a blank design and follow {STUDENT_WORKFLOW_SUMMARY}.
+                </p>
+              </div>
+              <div className="ide-project-start-summary" data-testid="ide-project-start-summary">
+                <span className="ide-project-start-summary-chip">No circuit loaded</span>
+                <span className="ide-project-start-summary-chip">Next up: Design</span>
+                <span className="ide-project-start-summary-chip">Workflow: {STUDENT_WORKFLOW_SUMMARY}</span>
+              </div>
+              <div
+                className={`ide-project-start-grid${hasRecentEntryPoints ? '' : ' is-launch-only'}`}
+                data-testid="ide-project-start-grid"
+              >
+                {hasRecentEntryPoints ? (
+                  <div className="ide-project-recent-panel" data-testid="ide-project-recent-panel">
+                    <div className="ide-project-recent-head">
+                      <div>
+                        <p className="ide-project-recent-title">Continue or reopen</p>
+                        <p className="ide-project-recent-sub">
+                          Pick up recent work or browse the full local project list.
+                        </p>
+                      </div>
+                      {onOpenSavedProjects && (
+                        <IdeButton
+                          tone="secondary"
+                          onClick={onOpenSavedProjects}
+                          testId="ide-project-open-existing"
+                        >
+                          Open existing project...
+                        </IdeButton>
+                      )}
+                    </div>
+                    {recentProjects.length > 0 ? (
+                      <div className="ide-project-recent-list">
+                        {recentProjects.map((project) => (
+                          <button
+                            key={project.projectId}
+                            type="button"
+                            className="ide-project-recent-card"
+                            onClick={() => onOpenRecentProject?.(project.projectId)}
+                            data-testid={`ide-project-recent-${project.projectId}`}
+                          >
+                            <span className="ide-project-recent-card-title">{project.projectName}</span>
+                            <span className="ide-project-recent-card-meta">
+                              Saved {formatSavedAt(project.savedAtIso)}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="ide-project-recent-empty">
+                        No local saves yet. Start from a guided example or open a blank design.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+                <div className="ide-project-start-column" data-testid="ide-project-start-column">
+                  <div className="ide-project-start-column-head">
+                    <p className="ide-project-recent-title">Start the project</p>
                     <p className="ide-project-recent-sub">
-                      Reopen a saved project or browse the full local project list.
+                      Choose one primary starting point for this workspace.
                     </p>
                   </div>
-                  {onOpenSavedProjects && (
-                    <IdeButton
-                      tone="secondary"
-                      onClick={onOpenSavedProjects}
-                      testId="ide-project-open-existing"
+                  <div className="ide-project-landing-options">
+                    {landingPrimaryExamples.map((ex) => {
+                      const preview = getExamplePreview(ex.id);
+                      return (
+                        <button
+                          key={ex.id}
+                          type="button"
+                          className="ide-project-landing-option"
+                          onClick={() => { onOpenExample(ex.id); onOpenDesign(); }}
+                          data-testid={`ide-project-landing-example-${ex.id}`}
+                        >
+                          <span className="ide-project-landing-option-eyebrow">{preview.eyebrow}</span>
+                          <span className="ide-project-landing-option-title">{ex.name}</span>
+                          <span className="ide-project-landing-option-sub">{ex.concept}</span>
+                          {ex.expectedBehavior && (
+                            <span className="ide-project-landing-option-learn">{ex.expectedBehavior}</span>
+                          )}
+                          <span className="ide-project-landing-option-cta">Load &amp; Design -&gt;</span>
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      className="ide-project-landing-option ide-project-landing-option--fresh"
+                      onClick={onStartBlankProject ?? onOpenDesign}
+                      data-testid="ide-project-landing-fresh"
                     >
-                        Open existing project...
-                    </IdeButton>
-                  )}
-                </div>
-                {recentProjects.length > 0 && (
-                  <div className="ide-project-recent-list">
-                    {recentProjects.map((project) => (
-                      <button
-                        key={project.projectId}
-                        type="button"
-                        className="ide-project-recent-card"
-                        onClick={() => onOpenRecentProject?.(project.projectId)}
-                        data-testid={`ide-project-recent-${project.projectId}`}
-                      >
-                        <span className="ide-project-recent-card-title">{project.projectName}</span>
-                        <span className="ide-project-recent-card-meta">
-                          Saved {formatSavedAt(project.savedAtIso)}
-                        </span>
-                      </button>
-                    ))}
+                      <span className="ide-project-landing-option-eyebrow">Empty canvas</span>
+                      <span className="ide-project-landing-option-title">Build Fresh</span>
+                      <span className="ide-project-landing-option-sub">Start with gates and wires from scratch</span>
+                      <span className="ide-project-landing-option-cta">Open blank Design -&gt;</span>
+                    </button>
                   </div>
-                )}
+                </div>
               </div>
-            )}
-            <div className="ide-project-landing-options">
-              {examples.slice(0, 3).map((ex) => {
-                const preview = getExamplePreview(ex.id);
-                return (
-                  <button
-                    key={ex.id}
-                    type="button"
-                    className="ide-project-landing-option"
-                    onClick={() => { onOpenExample(ex.id); onOpenDesign(); }}
-                    data-testid={`ide-project-landing-example-${ex.id}`}
-                  >
-                    <span className="ide-project-landing-option-eyebrow">{preview.eyebrow}</span>
-                    <span className="ide-project-landing-option-title">{ex.name}</span>
-                    <span className="ide-project-landing-option-sub">{ex.concept}</span>
-                    {ex.expectedBehavior && (
-                      <span className="ide-project-landing-option-learn">{ex.expectedBehavior}</span>
-                    )}
-                    <span className="ide-project-landing-option-cta">Load &amp; Design -&gt;</span>
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                className="ide-project-landing-option ide-project-landing-option--fresh"
-                onClick={onStartBlankProject ?? onOpenDesign}
-                data-testid="ide-project-landing-fresh"
-              >
-                <span className="ide-project-landing-option-eyebrow">Empty canvas</span>
-                <span className="ide-project-landing-option-title">Build Fresh</span>
-                <span className="ide-project-landing-option-sub">Start with gates and wires from scratch</span>
-                <span className="ide-project-landing-option-cta">Open blank Design -&gt;</span>
-              </button>
-            </div>
-            <p className="ide-copy" style={{ margin: 0, fontSize: 11 }}>
-              Need to reuse prior HDL?{' '}
-              <button
-                type="button"
-                className="ide-project-quickstart-import-link"
-                onClick={onOpenImport}
-                data-testid="ide-project-quickstart-import-link"
-              >
-                import HDL / Vivado ZIP
-              </button>
-              .
-            </p>
+              <p className="ide-project-start-import-note" data-testid="ide-project-start-import-note">
+                Need to reuse prior HDL?{' '}
+                <button
+                  type="button"
+                  className="ide-project-quickstart-import-link"
+                  onClick={onOpenImport}
+                  data-testid="ide-project-quickstart-import-link"
+                >
+                  import HDL / Vivado ZIP
+                </button>
+                .
+              </p>
+            </section>
 
             {/* Lab Starters Gallery */}
             <details
               className="ide-project-lab-gallery-disclosure"
-              open
               data-testid="ide-project-lab-gallery-disclosure"
             >
               <summary className="ide-project-lab-gallery-summary">All lab starters (8 labs)</summary>
@@ -993,14 +1020,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           issues={blockingIssues}
           onNavigateFix={handleProjectModeAction}
         />
-        {outline && (
-          <ProjectOverviewPanel
-            outline={outline}
-            onOpenDesign={onOpenDesign}
-            onFocusMacro={onFocusMacro}
-            onFocusCustomComponent={onFocusCustomComponent}
-          />
-        )}
         <div className="ide-surface-command-stack">
           <SurfaceCommandStrip
             className="ide-project-command-strip"
@@ -1066,47 +1085,57 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           the project narrative and local session controls. Every other piece
           of truth is owned by its canonical panel above.
         */}
-        <SurfacePanel className="ide-project-session" testId="ide-project-session">
-          <div className="ide-project-session-narrative" data-testid="ide-project-session-narrative">
-            <p className="ide-surface-block-label">About this project</p>
-            <h3 className="ide-project-session-title">
-              {starterExample?.name ?? projectName}
-            </h3>
-            {projectSummary && (
-              <p className="ide-project-session-summary">{projectSummary}</p>
-            )}
-            {starterExample?.expectedBehavior && (
-              <p className="ide-project-session-goal">{starterExample.expectedBehavior}</p>
-            )}
-          </div>
-          {(onSaveNow || onOpenSavedProjects || onRestoreLastSave || onResetProject) && (
-            <div className="ide-project-session-actions" data-testid="ide-project-session-actions">
-              <p className="ide-surface-block-label">Project session</p>
-              <div className="ide-inline-actions" data-testid="ide-session-controls">
-                {onSaveNow && (
-                  <IdeButton tone="secondary" onClick={onSaveNow} testId="ide-session-save-now">
-                    Save now
-                  </IdeButton>
-                )}
-                {onOpenSavedProjects && (
-                  <IdeButton tone="ghost" onClick={onOpenSavedProjects} testId="ide-session-open-existing">
-                    Open existing
-                  </IdeButton>
-                )}
-                {onRestoreLastSave && (
-                  <IdeButton tone="ghost" onClick={onRestoreLastSave} testId="ide-session-restore">
-                    Restore last save
-                  </IdeButton>
-                )}
-                {onResetProject && (
-                  <IdeButton tone="danger" onClick={onResetProject} testId="ide-session-reset">
-                    Reset project
-                  </IdeButton>
-                )}
-              </div>
-            </div>
+        <div className="ide-project-workspace-grid" data-testid="ide-project-workspace-grid">
+          {outline && (
+            <ProjectOverviewPanel
+              outline={outline}
+              onOpenDesign={onOpenDesign}
+              onFocusMacro={onFocusMacro}
+              onFocusCustomComponent={onFocusCustomComponent}
+            />
           )}
-        </SurfacePanel>
+          <section className="ide-project-session" data-testid="ide-project-session">
+            <div className="ide-project-session-narrative" data-testid="ide-project-session-narrative">
+              <p className="ide-surface-block-label">About this project</p>
+              <h3 className="ide-project-session-title">
+                {starterExample?.name ?? projectName}
+              </h3>
+              {projectSummary && (
+                <p className="ide-project-session-summary">{projectSummary}</p>
+              )}
+              {starterExample?.expectedBehavior && (
+                <p className="ide-project-session-goal">{starterExample.expectedBehavior}</p>
+              )}
+            </div>
+            {(onSaveNow || onOpenSavedProjects || onRestoreLastSave || onResetProject) && (
+              <div className="ide-project-session-actions" data-testid="ide-project-session-actions">
+                <p className="ide-surface-block-label">Project session</p>
+                <div className="ide-inline-actions" data-testid="ide-session-controls">
+                  {onSaveNow && (
+                    <IdeButton tone="secondary" onClick={onSaveNow} testId="ide-session-save-now">
+                      Save now
+                    </IdeButton>
+                  )}
+                  {onOpenSavedProjects && (
+                    <IdeButton tone="ghost" onClick={onOpenSavedProjects} testId="ide-session-open-existing">
+                      Open existing
+                    </IdeButton>
+                  )}
+                  {onRestoreLastSave && (
+                    <IdeButton tone="ghost" onClick={onRestoreLastSave} testId="ide-session-restore">
+                      Restore last save
+                    </IdeButton>
+                  )}
+                  {onResetProject && (
+                    <IdeButton tone="danger" onClick={onResetProject} testId="ide-session-reset">
+                      Reset project
+                    </IdeButton>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
 
         {showStarterGallery && (
           <details

@@ -3321,17 +3321,28 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const hasMeaningfulSimulationStory =
     showSimulationStrip &&
     (showSimulationSummary || isReplayMode || staleReplayBreadcrumb != null || simulationStory.clockEvent != null);
-  const showExpandedCanvasStatus =
-    showFullAuthoringStatus &&
-    (totalAuthoringErrors > 0 ||
-      totalAuthoringWarnings > 0 ||
-      traceState != null ||
-      liveHdlResult.error != null ||
-      hasMeaningfulSimulationStory);
-  const useCompactAuthoringStatus =
-    showCompactAuthoringStatus || (isCanvasWorkspace && !showExpandedCanvasStatus);
+  const showRuntimeStatus =
+    hasMeaningfulSimulationStory || traceState != null || (isSplitWorkspace && !showSimulationStrip);
   const showWorkspaceStatusBar =
-    showExpandedCanvasStatus || useCompactAuthoringStatus || hasMeaningfulSimulationStory;
+    (!isCodeWorkspace && (showFullAuthoringStatus || showCompactAuthoringStatus || workspacePreset.showCanvasTools)) ||
+    totalAuthoringErrors > 0 ||
+    totalAuthoringWarnings > 0 ||
+    authoringIssueCounts.draftCount > 0 ||
+    liveHdlResult.error != null ||
+    showRuntimeStatus;
+  const designStatusNote =
+    liveHdlResult.error != null
+      ? `HDL generation failed: ${liveHdlResult.error}`
+      : topAuthoringIssue?.title ?? null;
+  const workspaceRuntimeLabel = traceState ? 'Trace' : 'Runtime';
+  const runtimePrimaryPill = isSplitWorkspace && !showSimulationStrip
+    ? `Tick ${simTick}`
+    : activeSimulationSelectionLabel;
+  const runtimeSecondaryPill = isReplayMode
+    ? 'Replay'
+    : staleReplayBreadcrumb
+      ? 'Replay stale'
+      : simModeLabel;
   const selectedNodeIoRow = useMemo(() => {
     if (!selectedNode) return null;
     return ioRowByNodeId.get(selectedNode.id) ?? ioRowByNodeId.get(`${selectedNode.id}.out`) ?? null;
@@ -4851,7 +4862,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </div>
                 <div className="ide-kv-row">
                   <span>Last transition</span>
-                  <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? 'â€”'}</span>
+                  <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
                 </div>
                 {selectedNodeReplayCausation ? (
                   <div className="ide-kv-row">
@@ -5198,6 +5209,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     <>
       <IdeSurfaceLayout
         mode="design"
+        layoutIntent="workbench"
         consoleHasBlocking={compilerErrorCount > 0}
         consoleHasEntries={diagnosticsDrawerRows.length > 0}
         leftDockMode={workspacePreset.leftDockMode}
@@ -5874,178 +5886,89 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   onClick={() => setShowDetails((prev) => !prev)}
                   testId="ide-design-details-toggle"
                 >
-                  Details {showDetails ? '▲' : '▼'}
+                    {showDetails ? 'Hide details' : 'Show details'}
                 </IdeButton>
               </div>
             )}
 
             {/* ── Stacked-view notice — shown only when split auto-collapsed to column ── */}
             {showWorkspaceStatusBar ? (
-              <div className="ide-design-control-bar-status" data-testid="ide-design-control-bar-status">
-                {showExpandedCanvasStatus ? (
-                  <div
-                    className={`ide-design-authoring-issues ${authoringStatusToneClass}`}
-                    data-testid="ide-design-authoring-issues"
-                  >
-                    <div className="ide-design-authoring-issues-summary">
-                      <div className="ide-design-authoring-issues-primary">
-                        <span className="ide-design-authoring-issues-label">Circuit</span>
-                        <span
-                          className="ide-design-authoring-issues-count is-error"
-                          data-testid="ide-design-authoring-issues-errors"
-                        >
-                          {authoringIssueCounts.errorCount} errors
-                        </span>
-                        <span
-                          className="ide-design-authoring-issues-count is-warn"
-                          data-testid="ide-design-authoring-issues-warnings"
-                        >
-                          {authoringIssueCounts.warningCount} warnings
-                        </span>
-                        <span
-                          className="ide-design-authoring-issues-count is-warn"
-                          data-testid="ide-design-authoring-issues-drafts"
-                        >
-                          {authoringIssueCounts.draftCount} drafts
-                        </span>
-                        <span className="ide-design-authoring-issues-status">
-                          {authoringStatusLabel}
-                        </span>
-                      </div>
-                      {traceState ? (
-                        <div className="ide-design-authoring-canvas-meta">
-                          <span className="ide-design-canvas-titlebar-stat is-trace" data-testid="ide-design-active-trace">
-                            {traceState.label}
-                          </span>
-                        </div>
-                      ) : null}
+              <div className="ide-design-workspace-status-bar" data-testid="ide-design-workspace-status-bar">
+                <div
+                  className={`ide-design-workspace-health ${authoringStatusToneClass}`}
+                  data-testid="ide-design-authoring-issues"
+                >
+                  <div className="ide-design-workspace-health-main">
+                    <div className="ide-design-workspace-health-row">
+                      <span className="ide-design-workspace-health-label">Circuit health</span>
+                      <span
+                        className="ide-design-workspace-health-count is-error"
+                        data-testid="ide-design-authoring-issues-errors"
+                      >
+                        {authoringIssueCounts.errorCount} errors
+                      </span>
+                      <span
+                        className="ide-design-workspace-health-count is-warn"
+                        data-testid="ide-design-authoring-issues-warnings"
+                      >
+                        {authoringIssueCounts.warningCount} warnings
+                      </span>
+                      <span
+                        className="ide-design-workspace-health-count is-warn"
+                        data-testid="ide-design-authoring-issues-drafts"
+                        hidden={authoringIssueCounts.draftCount === 0}
+                      >
+                        {authoringIssueCounts.draftCount} drafts
+                      </span>
+                      <span className="ide-design-workspace-health-status">
+                        {authoringStatusLabel}
+                      </span>
                     </div>
-                    {liveHdlResult.error ? (
-                      <div className="ide-design-authoring-inline-error" data-testid="ide-design-hdl-error-canvas">
-                        HDL generation failed - {liveHdlResult.error}
-                      </div>
-                    ) : null}
-                    {topAuthoringIssue ? (
-                      <div className="ide-inline-actions">
-                        <span data-testid="ide-design-authoring-issue-0">
-                          {topAuthoringIssue.title}
+                    {traceState ? (
+                      <div className="ide-design-workspace-health-meta">
+                        <span className="ide-design-canvas-titlebar-stat is-trace" data-testid="ide-design-active-trace">
+                          {traceState.label}
                         </span>
-                        <IdeButton
-                          tone={topAuthoringIssue.blocking ? 'secondary' : 'ghost'}
-                          onClick={() => focusDesignIssue(topAuthoringIssue)}
-                          testId="ide-design-authoring-issue-focus-0"
-                        >
-                          Review issue
-                        </IdeButton>
                       </div>
                     ) : null}
                   </div>
-                ) : useCompactAuthoringStatus ? (
-                  <div
-                    className={`ide-design-authoring-issues is-compact-strip ${authoringStatusToneClass}`}
-                    data-testid="ide-design-authoring-issues"
-                  >
-                    <div className="ide-design-authoring-issues-summary">
-                      <div className="ide-design-authoring-issues-primary">
-                        <span className="ide-design-authoring-issues-label">Circuit</span>
-                        <span
-                          className="ide-design-authoring-issues-count is-error"
-                          data-testid="ide-design-authoring-issues-errors"
-                        >
-                          {authoringIssueCounts.errorCount} errors
-                        </span>
-                        <span
-                          className="ide-design-authoring-issues-count is-warn"
-                          data-testid="ide-design-authoring-issues-warnings"
-                        >
-                          {authoringIssueCounts.warningCount} warnings
-                        </span>
-                        <span
-                          className="ide-design-authoring-issues-count is-warn"
-                          data-testid="ide-design-authoring-issues-drafts"
-                        >
-                          {authoringIssueCounts.draftCount} drafts
-                        </span>
-                        <span className="ide-design-authoring-issues-status">
-                          {authoringStatusLabel}
-                        </span>
-                      </div>
-                      {traceState || (isSplitWorkspace && !showSimulationStrip) ? (
-                        <div className="ide-design-authoring-canvas-meta">
-                          {traceState ? (
-                            <span className="ide-design-canvas-titlebar-stat is-trace" data-testid="ide-design-active-trace">
-                              {traceState.label}
-                            </span>
-                          ) : null}
-                          {isSplitWorkspace && !showSimulationStrip ? (
-                            <>
-                              <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-split-stat-tick">
-                                Tick {simTick}
-                              </span>
-                              <span className="ide-design-canvas-titlebar-stat" data-testid="ide-design-split-stat-mode">
-                                {simModeLabel}
-                              </span>
-                              {activeVerifySignal ? (
-                                <span
-                                  className="ide-design-canvas-titlebar-stat is-trace"
-                                  data-testid="ide-design-split-stat-verify"
-                                >
-                                  Verify {activeVerifySignal}
-                                </span>
-                              ) : null}
-                            </>
-                          ) : null}
-                        </div>
-                      ) : null}
-                    </div>
-                    {liveHdlResult.error ? (
-                      <div className="ide-design-authoring-inline-error" data-testid="ide-design-hdl-error-canvas">
-                        HDL generation failed - {liveHdlResult.error}
-                      </div>
-                    ) : null}
-                    {topAuthoringIssue ? (
-                      <div className="ide-inline-actions">
-                        <span data-testid="ide-design-authoring-issue-0">
-                          {topAuthoringIssue.title}
-                        </span>
-                        <IdeButton
-                          tone={topAuthoringIssue.blocking ? 'secondary' : 'ghost'}
-                          onClick={() => focusDesignIssue(topAuthoringIssue)}
-                          testId="ide-design-authoring-issue-focus-0"
-                        >
-                          Review issue
-                        </IdeButton>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
+                  {designStatusNote ? (
+                    <p className="ide-design-workspace-status-note" data-testid="ide-design-authoring-issue-0">
+                      {designStatusNote}
+                    </p>
+                  ) : null}
+                </div>
 
-                {hasMeaningfulSimulationStory ? (
+                {showRuntimeStatus ? (
                   <div
-                    className={`ide-design-sim-story-strip${canRenderReplayScrubber ? ' has-replay-scrubber' : ''}${isReplayMode ? ' is-replay-mode' : ''}`}
+                    className={`ide-design-sim-story-strip ide-design-workspace-runtime${canRenderReplayScrubber ? ' has-replay-scrubber' : ''}${isReplayMode ? ' is-replay-mode' : ''}`}
                     data-testid="ide-design-sim-story-strip"
                   >
                     <div className="ide-design-sim-story-topline">
                       <div className="ide-design-sim-story-main">
-                        {isReplayMode ? (
-                          <span className="ide-design-replay-mode-badge" data-testid="ide-design-replay-mode-badge">Replay</span>
-                        ) : staleReplayBreadcrumb ? (
-                          <span className="ide-design-replay-mode-badge" data-testid="ide-design-replay-mode-badge">Replay stale</span>
-                        ) : (
-                          <span className="ide-design-sim-story-label">Simulation</span>
-                        )}
+                        <span className="ide-design-sim-story-label" data-testid="ide-design-runtime-label">{workspaceRuntimeLabel}</span>
                         <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-tick">
-                          {activeSimulationSelectionLabel}
+                          {runtimePrimaryPill}
+                        </span>
+                        <span
+                          className="ide-design-sim-story-pill"
+                          data-testid="ide-design-sim-story-mode"
+                        >
+                          {runtimeSecondaryPill}
                         </span>
                         {isReplayMode && activeReplayTimingHint ? (
                           <span className="ide-design-sim-story-pill ide-design-sim-story-pill--timing" data-testid="ide-design-sim-story-sample">
                             {activeReplayTimingHint}
                           </span>
-                        ) : (
-                          <span className="ide-design-sim-story-pill" data-testid="ide-design-sim-story-mode">
-                            {simModeLabel}
-                          </span>
-                        )}
+                        ) : null}
+                        {isSplitWorkspace && !showSimulationStrip ? (
+                          <>
+                            <span className="ide-design-sim-story-pill" data-testid="ide-design-split-stat-tick">Tick {simTick}</span>
+                            <span className="ide-design-sim-story-pill" data-testid="ide-design-split-stat-mode">
+                              {simModeLabel}
+                            </span>
+                          </>
+                        ) : null}
                         {activeVerifySignal ? (
                           <>
                             <span className="ide-design-verify-link-badge" data-testid="ide-design-verify-link-badge">
@@ -6058,6 +5981,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                                 activeVerifySignal}{' '}
                               first
                             </span>
+                            <span className="ide-design-sim-story-pill" data-testid="ide-design-split-stat-verify">
+                              Verify {activeVerifySignalPresentation?.focusLabel ?? activeVerifySignal}
+                            </span>
                           </>
                         ) : null}
                       </div>
@@ -6069,7 +5995,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </div>
                       ) : null}
                     </div>
-                    {activeSimulationSummary && showSimulationSummary ? (
+                    {activeSimulationSummary && (showSimulationSummary || traceState || (isSplitWorkspace && !showSimulationStrip)) ? (
                       <p className="ide-design-sim-story-summary" data-testid="ide-design-sim-story-summary">
                         {activeSimulationSummary}
                       </p>
@@ -6084,7 +6010,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                               disabled={debugTickIndex === 0 || debugTickIndex == null}
                               testId="ide-design-debug-prev"
                             >
-                              ← Prev
+                              Prev
                             </IdeButton>
                           ) : null}
                           {canRenderReplayScrubber ? (
@@ -6109,7 +6035,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                               disabled={debugTickIndex == null || debugTickCount == null || debugTickIndex >= debugTickCount - 1}
                               testId="ide-design-debug-next"
                             >
-                              Next →
+                              Next
                             </IdeButton>
                           ) : null}
                           {debugTickIndex != null && debugTickCount != null ? (
@@ -6125,13 +6051,51 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     )}
                   </div>
                 ) : null}
+                <div className="ide-design-workspace-status-actions" data-testid="ide-design-workspace-status-actions">
+                  {topAuthoringIssue ? (
+                    <IdeButton
+                      tone={topAuthoringIssue.blocking ? 'secondary' : 'ghost'}
+                      onClick={() => focusDesignIssue(topAuthoringIssue)}
+                      testId="ide-design-authoring-issue-focus-0"
+                    >
+                      Review issue
+                    </IdeButton>
+                  ) : null}
+                  {traceState ? (
+                    <IdeButton
+                      tone="ghost"
+                      onClick={clearTrace}
+                      testId="ide-design-workspace-clear-trace"
+                    >
+                      Clear trace
+                    </IdeButton>
+                  ) : null}
+                  {workspacePreset.showCanvasTools ? (
+                    <IdeButton
+                      tone="ghost"
+                      onClick={addIoPins}
+                      testId="ide-design-status-add-io"
+                    >
+                      Add boundary I/O
+                    </IdeButton>
+                  ) : null}
+                  {onGoToProject ? (
+                    <IdeButton
+                      tone="ghost"
+                      onClick={onGoToProject}
+                      testId="ide-design-status-examples"
+                    >
+                      Examples
+                    </IdeButton>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </div>
           </div>
             {effectiveDesignView === 'stacked' && (
               <div className="ide-design-stacked-notice" data-testid="ide-design-stacked-notice">
-                <span className="ide-design-stacked-notice-icon" aria-hidden="true">⇅</span>
+                <span className="ide-design-stacked-notice-icon" aria-hidden="true">||</span>
                 <span>
                   Side-by-side split is stacked because the window is too narrow.
                   Widen the window to restore split layout.
@@ -6580,31 +6544,32 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     ) : null}
                     {showBlankStateCard && (
                       <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
-                        <h3>Build a circuit in three steps</h3>
+                        <span className="ide-design-empty-eyebrow">Start on canvas</span>
+                        <h3>Pick a part, place it, then wire it.</h3>
+                        <p className="ide-design-empty-summary">
+                          Use the library on the left for gates and registers. Add boundary I/O first if you want switches, LEDs, or Basys3 mapping.
+                        </p>
                         <ol className="ide-design-empty-steps" data-testid="ide-design-empty-checklist">
                           <li>
-                            <span className="ide-design-empty-step-index">1</span>
-                            <span>Pick a part from the palette on the left</span>
+                            <span>1. Pick a part</span>
                           </li>
                           <li>
-                            <span className="ide-design-empty-step-index">2</span>
-                            <span>Click empty canvas to place one part</span>
+                            <span>2. Click the canvas to place it</span>
                           </li>
                           <li>
-                            <span className="ide-design-empty-step-index">3</span>
-                            <span>Click an output pin, then a valid input pin to wire it</span>
+                            <span>3. Wire outputs into valid inputs</span>
                           </li>
                         </ol>
                         <div className="ide-design-empty-actions">
                           <IdeButton tone="secondary" onClick={addIoPins} testId="ide-design-empty-add-io">
-                            Add Inputs/Outputs
+                            Add boundary I/O
                           </IdeButton>
                           <IdeButton tone="ghost" onClick={addAndGateStarter} testId="ide-design-empty-add-and">
-                            Add AND Starter
+                            Drop starter gate
                           </IdeButton>
                           {onGoToProject && (
                             <IdeButton tone="ghost" onClick={onGoToProject} testId="ide-design-empty-go-to-project">
-                              Browse examples
+                              Examples
                             </IdeButton>
                           )}
                         </div>

@@ -708,7 +708,7 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-console-list').textContent).toContain('Unconnected output');
   });
 
-  it('renders comparison-focused chrome in split mode', async () => {
+  it('renders compact runtime chrome in split mode', async () => {
     const view = renderSurface();
 
     fireEvent.click(view.getByTestId('ide-design-view-split'));
@@ -724,7 +724,7 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.queryByTestId('ide-design-shortcut-strip')).toBeNull();
     expect(view.queryByTestId('ide-design-zoom-presets')).toBeNull();
     expect(view.getByTestId('ide-design-split-canvas-indicator').textContent).toContain('Circuit pane');
-    expect(view.queryByTestId('ide-design-sim-story-strip')).toBeNull();
+    expect(view.getByTestId('ide-design-sim-story-strip').textContent).toContain('Runtime');
     expect(view.getByTestId('ide-design-split-stat-tick').textContent).toContain('Tick 6');
     expect(view.getByTestId('ide-design-split-stat-mode').textContent).toContain('Paused');
   });

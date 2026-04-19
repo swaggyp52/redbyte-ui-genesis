@@ -450,6 +450,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     const row = mappingRows.find((r) => r.id === selectedMappingRowId);
     return row?.pin?.trim().toUpperCase() || null;
   }, [selectedMappingRowId, mappingRows]);
+  const selectedMappingRow = useMemo(
+    () => (selectedMappingRowId ? mappingRows.find((row) => row.id === selectedMappingRowId) ?? null : null),
+    [mappingRows, selectedMappingRowId]
+  );
 
   // ── Map mode: group rows by signal type for the assignment table ───────
   const mapModeGroups = useMemo(() => {
@@ -1659,9 +1663,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           />
         )}
       </IdeInspectorSection>
-      <IdeInspectorSection title="How mapping works" defaultOpen={false}>
+      <IdeInspectorSection title="Selection Help" defaultOpen={false}>
         <p className="ide-copy">
-          Start by selecting a signal row, then click the highlighted Basys3 region to bind that row to a board pin.
+          {selectedMappingRow
+            ? `Selected ${getStudentFacingIoLabel(selectedMappingRow)}. Click the highlighted Basys3 control or edit the pin entry on the left to finish the binding.`
+            : 'Select a signal row, then click the highlighted Basys3 control to bind it to a board pin.'}
         </p>
       </IdeInspectorSection>
     </>
@@ -1699,6 +1705,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   return (
     <IdeSurfaceLayout
       mode="hardware"
+      layoutIntent="workbench"
       consoleHasBlocking={hasBlocking}
       consoleHasEntries={hasBlocking}
       rightDockMode="collapsed"
@@ -1897,7 +1904,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               }}
             >
               <span className="ide-hw-mode-segment-title">Map Pins</span>
-              <span className="ide-hw-mode-segment-hint">Assign I/O to pins</span>
+              <span className="ide-hw-mode-segment-hint">Bind required I/O</span>
               <span className="ide-hw-mode-segment-status" aria-hidden="true">
                 {mappingReady ? '✓' : unresolvedRequiredCount > 0 ? '○' : '·'}
               </span>
@@ -1914,7 +1921,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               }}
             >
               <span className="ide-hw-mode-segment-title">Test on Board</span>
-              <span className="ide-hw-mode-segment-hint">Guided vectors</span>
+              <span className="ide-hw-mode-segment-hint">Guided board checks</span>
               <span className="ide-hw-mode-segment-status" aria-hidden="true">
                 {vectorsCount > 0 ? '✓' : '○'}
               </span>
@@ -1931,7 +1938,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               }}
             >
               <span className="ide-hw-mode-segment-title">Pre-flight</span>
-              <span className="ide-hw-mode-segment-hint">Evidence gate</span>
+              <span className="ide-hw-mode-segment-hint">Readiness gate</span>
               <span className="ide-hw-mode-segment-status" aria-hidden="true">
                 {confidenceScore === 100 ? '✓' : '·'}
               </span>
@@ -1948,7 +1955,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               }}
             >
               <span className="ide-hw-mode-segment-title">Simulation</span>
-              <span className="ide-hw-mode-segment-hint">Free play</span>
+              <span className="ide-hw-mode-segment-hint">Live sandbox</span>
               <span className="ide-hw-mode-segment-status" aria-hidden="true">
                 ·
               </span>
@@ -2154,15 +2161,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               ) : null}
               {hardwareMappingV2 && onApplyHardwareMappingEdit ? (
                 <div className="ide-hw-structured-editor" data-testid="ide-hw-structured-editor">
-                  <h4 className="ide-hw-structured-editor-title">Structured Map Pins (hardwareMappingV2)</h4>
+                  <h4 className="ide-hw-structured-editor-title">Pin mapping entries</h4>
                   <p className="ide-copy ide-hw-map-instructions">
-                    <strong>Logical signals</strong> come from your circuit boundary; <strong>top port names</strong> must
-                    match the generated VHDL entity. V2 is the canonical source for save, reload, and export.
+                    Match circuit boundary signals to Basys3 pins. Export reads these entries directly, so the top port name must match the generated VHDL entity.
                   </p>
                   {structuredEntries.length === 0 ? (
                     <p className="ide-copy ide-hw-structured-empty" data-testid="ide-hw-structured-empty">
-                      No structured entries yet. Use <strong>Add mapping</strong> below: pick a boundary signal, optionally
-                      align a top-level VHDL port, choose a mapping kind, then assign board pins.
+                      No mapping entries yet. Add one below, choose the boundary signal, then assign board pins.
                     </p>
                   ) : null}
                   <div
@@ -2297,10 +2302,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     </div>
                   )}
                   <details open className="ide-hw-structured-add-details">
-                    <summary>Add structured mapping</summary>
+                    <summary>Add mapping entry</summary>
                     <p className="ide-copy ide-copy--flush">
-                      Start from a <strong>boundary signal</strong> (circuit I/O). Optionally pick a{' '}
-                      <strong>top-level VHDL port</strong> so the mapping&rsquo;s port name matches export.
+                      Start from a boundary signal, then optionally align the generated top-level VHDL port name.
                     </p>
                     <div className="ide-hw-structured-create-grid" data-testid="ide-hw-structured-create-grid">
                       <label htmlFor={guidedBoundarySelectId}>

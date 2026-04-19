@@ -111,14 +111,15 @@ afterEach(() => {
 });
 
 describe('DesignSurface blank-state guidance', () => {
-  it('keeps the blank-state card primary while hiding duplicate shortcut and inspector teaching', async () => {
+  it('keeps a lighter blank-state onboarding card while hiding duplicate shortcut and inspector teaching', async () => {
     const view = renderSurface();
 
     await waitFor(() => {
       expect(view.getByTestId('ide-design-empty-state')).toBeTruthy();
     });
 
-    expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Build a circuit in three steps');
+    expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Start on canvas');
+    expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Pick a part, place it, then wire it.');
     expect(view.getByTestId('ide-left-dock')).toBeTruthy();
     expect(view.getByTestId('ide-inspector')).toBeTruthy();
     expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
@@ -130,7 +131,7 @@ describe('DesignSurface blank-state guidance', () => {
     expect(view.queryByTestId('ide-workbench-console')).toBeNull();
   });
 
-  it('renders a "Browse examples" CTA in the blank state that calls onGoToProject', async () => {
+  it('renders an "Examples" CTA in the blank state that calls onGoToProject', async () => {
     const onGoToProject = vi.fn();
     const view = render(
       <DesignSurface

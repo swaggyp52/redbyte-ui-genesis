@@ -1,5 +1,45 @@
 # AI State
 
+## Change Log 2026-04-18 (Targeted correction: Design workspace bar + corruption sweep)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/designSurface.blankState.test.tsx`
+
+**Context**: After the workbench-width refactor, the biggest remaining obvious defects were a still-awkward Design mid-strip and residual fear around damaged copy on Export / Hardware. Design still presented a cropped, over-composed status band plus a blank-state card that felt too large for a serious workspace. Export and Hardware needed a direct live-browser corruption sweep so the session could stop treating mojibake as an unverified suspicion.
+
+**Changes**:
+- **Design mid-strip replaced with one compact workspace bar**: the old authoring-issues strip composition was rebuilt into a slimmer `Circuit health` owner with count pills, a single readiness/status note, and a restrained action row (`Add boundary I/O`, `Examples`) instead of a clipped decorative slab.
+- **Runtime strip simplified**: replay/runtime copy now avoids duplicate `Replay` wording, active timing remains explicit, and the strip only shows meaningful runtime state instead of acting like a second oversized band.
+- **Blank-state onboarding demoted**: the canvas empty state now uses a smaller card with a short `Start on canvas` eyebrow, a tighter headline, compact step chips, and shorter CTA labels. The old larger three-step coaching block no longer dominates the work area.
+- **Glyph-risk labels normalized to plain ASCII wording**: details toggles and replay navigation now use `Show details` / `Hide details`, `Prev`, and `Next` so the visible UI is less vulnerable to encoding-style ambiguity in review and capture workflows.
+- **Live corruption sweep executed**: Export and Hardware were checked in the browser DOM with explicit damaged-text regex searches; the sweep returned zero user-visible corruption matches in both surfaces.
+
+**Tests / gates**:
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.blankState.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.authoringIssues.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx` -> **59/59 pass**
+- `pnpm build:unified` -> **success**
+- `pnpm repo:status` -> **fails on pre-existing `IDE ZIP Import Contract` only**
+
+**Verification**:
+- Live browser: `http://127.0.0.1:5173/?mode=design`
+  - Verified the cropped mid-strip no longer exists; the top owner now reads as one compact workspace bar.
+  - Captured `manual-design-viewport-2026-04-18-pass2b.png`.
+- Live browser: `http://127.0.0.1:5173/?mode=export`
+  - Ran DOM text corruption sweep (`Ã|Â|â|�|ðŸ|â€”|â†|âœ|â|â€|â–|â‡|â”`) -> **0 matches**.
+- Live browser: `http://127.0.0.1:5173/?mode=hardware`
+  - Ran same DOM text corruption sweep -> **0 matches**.
+- Boot evidence:
+  - Captured `manual-root-ide-2026-04-18-pass2.png`.
+  - Captured `manual-root-launcher-2026-04-18-pass2.png`.
+  - Console still reports `[RB_BOOT] mode=IDE ... config=vite.config.ts` on both `/` and `/?launcher=1` in this dev environment.
+
+**Truth changes**:
+- Design no longer has the awkward clipped authoring/status strip as a visible mid-band.
+- The Design blank state is still present, but it is now an onboarding hint instead of the dominant owner of the canvas.
+- The current live Export and Hardware browser DOM did not reproduce user-visible mojibake.
+
+**Removed / demoted**: the larger Design blank-state tutorial composition, the old multi-part authoring-issues strip layout, and several glyph-heavy labels that were not earning their risk.
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-17 (Surface reconciliation R4: Design workbench consolidation)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/designWorkspaceConfig.ts`, `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/designSurface.paletteDock.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx`, `scripts/gates/ide-design-workbench-contract.mjs`, `docs/ide/02-design.md`, `docs/IDE_SYSTEM_MAP.md`, `docs/ARCHITECTURE.md`, `docs/00-canon/09-redbyte-product-surface-system.md`
@@ -31395,5 +31435,156 @@ Key details:
 **Remaining weakness**
 
 - Step editing is inline and functional, but still generic; kind-specific editors (e.g. bus/slice picker, state-bank register picker, assert-bus shape builder) remain next.
+
+- **Attribution**: Connor Angiel
+
+---
+
+## Change Log 2026-04-18 (Workbench shell/layout refactor: mode-aware width policy + de-boxed lab surfaces)
+
+**Subsystem**: IDE shell contract + Project / Verify / Map Pins / Export spatial ownership
+
+**Problem**
+
+- Major IDE surfaces were still being rendered inside a centered, width-capped shell contract that kept workbench pages feeling like small widgets floating in a large dark frame.
+- The active constraint was no longer just the legacy `.ide-content-grid`; current shell selectors were also re-centering/capping root workspace panels for `project`, `hardware`, `export`, and other modes.
+- Several target surfaces then amplified the issue with redundant panel chrome, conservative padding, placeholder docks, and timid typography.
+
+**Files changed**
+
+- `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`
+- `packages/rb-apps/src/apps/ide/components/IdeSurfaceLayout.tsx`
+- `packages/rb-apps/src/apps/ide/components/IdePrimitives.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+- `packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx`
+
+**What changed**
+
+- Added an explicit shell layout intent split:
+  - `readable` for narrative/document-style surfaces
+  - `workbench` for immersive lab surfaces
+- Routed the shell through `layoutIntent`, with `import` using `readable` and Design / Project / Verify / Hardware / Export using `workbench`.
+- Replaced the single content-width token contract with distinct readable and workbench max-width tokens and used the shell intent to decide when to center/cap content versus letting the workspace own the page.
+- Removed the root-panel re-boxing for workbench surfaces so the main workspace can sit directly in the shell without an extra framed card.
+- Suppressed empty panel headers in `IdePanel` so titleless root panels no longer render dead chrome.
+- Project:
+  - promoted the overview/session region into a stronger two-column workspace split,
+  - converted the session block from `SurfacePanel` into a plain section,
+  - strengthened the primary bridge/status typography and section presence.
+- Verify:
+  - preserved the existing workstation structure,
+  - widened the shell behavior for the left authoring / right waveform split,
+  - softened remaining nested chrome and increased the smallest evidence/tick/scope text.
+- Map Pins / Hardware:
+  - widened the board workspace footprint,
+  - increased the mapping column confidence and row typography.
+- Export:
+  - removed the default placeholder left dock,
+  - converted side and aside boxes from nested `SurfacePanel`s into lighter sections,
+  - reinforced the main two-column handoff layout and typography.
+- Kept Import on the readable layout contract so documentation-style surfaces still use a centered readable width.
+
+**Validation**
+
+- `pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx` -> PASS (`129 passed`)
+- `pnpm --filter @redbyte/rb-apps build` -> PASS (build completed; pre-existing type-check noise remains elsewhere in the repo)
+- `pnpm build:unified` -> PASS
+- `pnpm repo:status` -> FAIL on pre-existing `IDE ZIP Import Contract`; other listed gates passed
+
+**Remaining weakness**
+
+- Verify’s post-run waveform workspace now owns the page, but the pre-run right side still has some intentional emptiness that could use a second pass on empty-state composition.
+- Export is materially less boxed, but the lower artifact/package region is still more conservative than Design and could be pushed further in a follow-up.
+- This slice intentionally focused on shell primitives and target workbench surfaces; broader token cleanup across every IDE mode is still open.
+
+- **Attribution**: Connor Angiel
+
+---
+
+## Change Log 2026-04-18 (Targeted product correction: encoding sweep + Design / Verify / Hardware / Export / Project front-door follow-through)
+
+**Subsystem**: IDE surface product corrections after workbench-shell refactor
+
+**Problem**
+
+- Export still contained real mojibake / damaged text strings after the shell refactor.
+- Design still used a broken mid-band status treatment with clipped pills and fragmented chrome.
+- Verify still read as compare-first tooling instead of a stimulus-first testbench workspace.
+- Hardware / Map Pins still carried too much dense prose and did not let the board fully lead the page.
+- Project home was still too empty and fragmented above the fold, even after the width-policy fix.
+
+**Files changed**
+
+- `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyCommandBar.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyFirstRunPanel.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyWaveformPlaceholder.tsx`
+- `packages/rb-apps/src/apps/ide/viewmodels/buildVerifySessionViewModel.ts`
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+- `packages/rb-apps/src/__tests__/buildVerifySessionViewModel.observe-first.test.ts`
+- `packages/rb-apps/src/__tests__/export-authority-chain-contract.test.ts`
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.observeFirst.test.tsx`
+
+**What changed**
+
+- Repaired remaining mojibake in Export strings and swept Design / Export / Hardware / Verify source files for literal corruption markers.
+- Design:
+  - removed the old clipped status strip behavior,
+  - consolidated health, runtime, and actions into a single compact workspace status bar,
+  - kept runtime state visible only when meaningful,
+  - fixed the remaining literal `â€”` fallback in the selection inspector.
+- Verify:
+  - rewrote the session model and command language around `Stimulus -> Run -> Observe`,
+  - changed primary labels to `Run current stimulus`, `Observe`, and `Check outputs`,
+  - demoted check/assertion framing to secondary language,
+  - removed the left-rail `Fit` action and strengthened signal-legend typography,
+  - clarified first-run and waveform-empty guidance around authored stimulus and observed outputs.
+- Hardware / Map Pins:
+  - shortened the workflow-bar hints,
+  - made the right-side help copy context-sensitive to the selected mapping row,
+  - tightened the left mapping column and gave the board more horizontal ownership,
+  - reduced prose density in the structured mapping editor.
+- Export:
+  - simplified blocker/readiness labels and handoff copy,
+  - renamed the hero eyebrow to `Handoff summary`,
+  - reduced repeated compare-first language in provenance and verify summaries,
+  - quieted the right-column chrome and opened more room for the main artifact workspace.
+- Project:
+  - rebuilt the no-circuit front door into one `continue or start` hub instead of separate floating recent-work and starter regions,
+  - moved the recent-work affordance and primary starter choices into a single top grid,
+  - demoted the full lab gallery by closing it by default,
+  - tightened the stage rail width, spacing, and typography so it stops dominating the left side.
+
+**Validation**
+
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareMappingGuidance.test.ts packages/rb-apps/src/apps/ide/__tests__/hardwareBringup.plain-language.test.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyFirstRunUsability.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.observeFirst.test.tsx packages/rb-apps/src/__tests__/buildVerifySessionViewModel.observe-first.test.ts packages/rb-apps/src/__tests__/export-authority-chain-contract.test.ts` -> PASS (`249 passed`)
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx` -> PASS (`28 passed`, `1 skipped`)
+- `pnpm --filter @redbyte/rb-apps build` -> bundle built successfully; declaration/type output still reports the same pre-existing repo-wide TypeScript debt outside this slice
+- Manual browser checks against local playground (`http://127.0.0.1:5173`) with Playwright:
+  - `manual-project-viewport-2026-04-18-pass2.png`
+  - `manual-design-viewport-2026-04-18.png`
+  - `manual-verify-viewport-2026-04-18.png`
+  - `manual-verify-postrun-viewport-2026-04-18.png`
+  - `manual-hardware-viewport-2026-04-18.png`
+  - `manual-export-viewport-2026-04-18.png`
+
+**Remaining weakness**
+
+- Project is much more coherent above the fold, but the no-circuit state still has unavoidable empty lower-page space until a real project is loaded.
+- Verify now reads correctly as stimulus/observe tooling, but the empty waveform state after run is still thin when there is no mapped IO.
+- Design still uses a large starter card on the blank canvas; the top chrome is corrected, but the onboarding state could be made lighter in a second pass.
 
 - **Attribution**: Connor Angiel

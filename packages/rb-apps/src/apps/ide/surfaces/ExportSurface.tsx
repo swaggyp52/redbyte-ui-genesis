@@ -51,7 +51,7 @@ import {
   IdeSpinner,
   IdeStatusPill,
 } from '../components/IdePrimitives';
-import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
+import { SurfaceCommandStrip } from '../components/SurfaceLayoutPrimitives';
 
 export interface ExportSurfaceProps {
   project: RBProject;
@@ -59,7 +59,7 @@ export interface ExportSurfaceProps {
   verifyLastRun?: RuntimeVerifyRun;
   designReady?: boolean;
   workflowAuthority?: ProjectWorkflowAuthority;
-  /** The currently active Verify scenario ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â used as the authoritative testbench vector source. */
+  /** The currently active Verify scenario — used as the authoritative testbench vector source. */
   activeScenario?: VerifyScenario;
   dirtySinceVerify?: boolean;
   determinismHash: string;
@@ -86,7 +86,7 @@ const ARTIFACT_PLAN_FILES = [
   { path: 'README.txt', desc: 'Build notes' },
 ] as const;
 
-// ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Phase 32: Rebuild Pipeline Types ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
+// ─── Phase 32: Rebuild Pipeline Types ──────────────────────────────────────
 type RebuildStepId =
   | 'validate'
   | 'mapping'
@@ -139,9 +139,9 @@ function formatExportClockGateDetail(
   baseDetail: string
 ): string {
   const mode = contract?.timingMode;
-  if (mode === 'manual_event_driven_lab') return `${baseDetail} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Manual-event lab`;
-  if (mode === 'synchronous_board_clock') return `${baseDetail} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Board clock`;
-  if (mode === 'combinational') return `${baseDetail} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Combinational`;
+  if (mode === 'manual_event_driven_lab') return `${baseDetail} · Manual-event lab`;
+  if (mode === 'synchronous_board_clock') return `${baseDetail} · Board clock`;
+  if (mode === 'combinational') return `${baseDetail} · Combinational`;
   return baseDetail;
 }
 
@@ -379,7 +379,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   }, [editablePortKeys, hasExternalMappingAuthority, pinDrafts, viewModel.pinTable]);
 
   const hasBlockingErrors = viewModel.errors.length > 0;
-  // When export is hard-blocked, suppress RBEV evidence advisories from the visible list ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+  // When export is hard-blocked, suppress RBEV evidence advisories from the visible list —
   // students should focus on the RBEX blocker, not verify coverage they can't act on yet.
   const visibleDiagnosticsList = hasBlockingErrors
     ? [...viewModel.errors, ...viewModel.warnings]
@@ -424,7 +424,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const isVerifyStale = verifyState === 'stale';
   const isTraceOnly = resolvedWorkflowAuthority.compareTraceOnly;
   /** True when the previous verify run passed but the circuit has since changed (STALE).
-   *  Download is allowed but labeled as previous sealed build ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â not blocked. */
+   *  Download is allowed but labeled as previous sealed build — not blocked. */
   const isStaleButPassBefore =
     verifyResult?.status === 'pass' &&
     verifyResult?.runKind !== 'trace' &&
@@ -440,20 +440,20 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     !isIncompleteMappingQualified;
   const hasVerifyEvidenceWarning = evidenceDiagnostics.length > 0;
   const verifyPlain = useMemo(() => {
-    if (hasVerifyPass) return 'Compare PASS ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â expected outputs match simulation for this design hash.';
+    if (hasVerifyPass) return 'Checks match — saved outputs agree with the live design for this build.';
     if (isIncompleteMappingQualified) {
-      return 'Compare PASS with mapping caveat ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â finish pins before hardware.';
+      return 'Checks match, but pin mapping still needs attention before hardware.';
     }
-    if (isVerifyStale) return 'Verify stale ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â re-run Compare after design edits.';
-    if (isTraceOnly) return 'Trace-only run ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â enable output assertions for assertion-backed evidence.';
-    if (isStarterScenarioFail) return 'Starter scenario only ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â author vectors for a graded handoff.';
+    if (isVerifyStale) return 'Verification is stale — rerun Verify after design edits.';
+    if (isTraceOnly) return 'Observation-only run — save checks if you need assertion-backed evidence.';
+    if (isStarterScenarioFail) return 'Starter scenario only — author vectors for a graded handoff.';
     if (isNoRunYet) {
-      return 'Compare not run yet ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â optional before download, recommended before submission.';
+      return 'Verify has not run yet — export is available, but the handoff is still unconfirmed.';
     }
     if (verifyResult?.status === 'fail') {
-      return 'Compare FAIL ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â expected outputs differ from simulation.';
+      return 'Checks differ — saved outputs do not match the live design.';
     }
-    return 'Verify status indeterminate ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â open Verify for details.';
+    return 'Verify status indeterminate — open Verify for details.';
   }, [
     hasVerifyPass,
     isIncompleteMappingQualified,
@@ -478,8 +478,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     return `${requiredMappedCount} of ${requiredCount} required ports have Basys3 pin assignments.`;
   }, [requiredCount, requiredMappedCount]);
   // Use diagnostic codes rather than regex-on-message-text so that RBEX3001
-  // ("Ignoring source XDC directive "create_clock"ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦") is never mistaken for a
-  // clock-domain blocker.  Clock blockers are RBEX4200ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œRBEX4204 only.
+  // ("Ignoring source XDC directive "create_clock"…") is never mistaken for a
+  // clock-domain blocker.  Clock blockers are RBEX4200–RBEX4204 only.
   const clockDiag = diagnosticsList.find((d) =>
     d.code === 'RBEX4200' ||
     d.code === 'RBEX4201' ||
@@ -562,9 +562,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               ? 'error' as const
               : 'warn' as const;
     const verifyDetail = hasVerifyPass
-      ? `Complete ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ${verifyResult?.hash?.slice(0, 8) ?? ''}`
+      ? `Complete · ${verifyResult?.hash?.slice(0, 8) ?? ''}`
       : isIncompleteMappingQualified
-        ? 'Pass incomplete ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â mapping'
+        ? 'Pass incomplete — mapping'
       : isVerifyStale
         ? 'Stale - rerun Verify'
         : isStarterScenarioFail
@@ -573,7 +573,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             ? 'Not run yet'
             : verifyResult
               ? typeof verifyResult.failingTick === 'number'
-                ? `Outputs differ ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· t${verifyResult.failingTick}`
+                ? `Outputs differ · t${verifyResult.failingTick}`
                 : 'Outputs differ'
               : 'Not run';
     const verifyDetailLabel = isTraceOnly ? 'Trace only' : verifyDetail;
@@ -592,7 +592,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     const clockDetail = feedbackDiag
       ? 'Unsupported feedback loop'
       : clockGateIsSoftAdvisory
-        ? 'Lab timing: no board oscillator required ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â open details only if you add a real board clock.'
+        ? 'Lab timing: no board oscillator required — open details only if you add a real board clock.'
         : clockDiag
           ? clockDiag.message.slice(0, 55)
           : formatExportClockGateDetail(activeScheduleContract, effectiveTimingGuidance.exportDetail);
@@ -827,22 +827,22 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     handoffTruth.primaryCtaIntent !== 'build-current-bundle' &&
     handoffTruth.primaryCtaIntent !== 're-export-current-bundle';
   const nextActionTitle = downloadDone
-    ? `Project downloaded ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â open ${projectSlug}.xpr in Vivado to continue.`
+    ? `Project downloaded — open ${projectSlug}.xpr in Vivado to continue.`
     : exportTrusted
       ? 'Open Vivado and import the generated project.'
       : exportBlocked
         ? 'Resolve blockers before downloading the build package.'
         : isIncompleteMappingQualified
-          ? 'Export available ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â assertions match, but mapping review is still needed.'
+          ? 'Export available — assertions match, but mapping review is still needed.'
         : isVerifyStale
-          ? 'Export available ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Verify evidence is stale for the current circuit.'
+          ? 'Export available — Verify evidence is stale for the current circuit.'
         : isStarterScenarioFail
-          ? 'Export available ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â scenario not yet authored.'
+          ? 'Export available — scenario not yet authored.'
           : isNoRunYet
-            ? 'Export available ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â no comparison run yet.'
-            : 'Export available ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â assertions differ from observed outputs.';
+            ? 'Export available — no comparison run yet.'
+            : 'Export available — assertions differ from observed outputs.';
   const nextActionDetail = downloadDone
-    ? 'Unzip the ZIP, then open the .xpr file in Vivado. Run Flow ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Generate Bitstream, then program your Basys3 board using the Hardware Manager.'
+    ? 'Unzip the ZIP, then open the .xpr file in Vivado. Run Flow → Generate Bitstream, then program your Basys3 board using the Hardware Manager.'
     : exportTrusted
       ? 'Download the Vivado Project, unzip it, then run the import script or open the project directly.'
       : exportBlocked
@@ -861,7 +861,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const vivadoCommand =
     'vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log';
   const projectDownloadLabel = isRebuilding
-    ? 'BuildingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦'
+    ? 'Building…'
     : handoffTruth.primaryCtaIntent === 'build-current-bundle'
       ? 'Build Current Bundle'
       : handoffTruth.primaryCtaIntent === 're-export-current-bundle'
@@ -870,7 +870,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       ? 'Re-download'
       : 'Download Vivado Project (Open Project)';
   const projectDownloadCompactLabel = isRebuilding
-    ? 'BuildingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦'
+    ? 'Building…'
     : handoffTruth.primaryCtaIntent === 'build-current-bundle'
       ? 'Build Current Bundle'
       : handoffTruth.primaryCtaIntent === 're-export-current-bundle'
@@ -883,7 +883,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           ? 'Download Project ZIP (starter)'
           : 'Download Project ZIP';
   const kitDownloadLabel = isRebuilding
-    ? 'BuildingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦'
+    ? 'Building…'
     : downloadDone && lastDownloadKind === 'kit'
       ? 'Re-download'
       : 'Download Vivado Kit';
@@ -950,9 +950,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
       <div className="ide-export-next-steps" data-testid="ide-export-vivado-steps">
         <ol className="ide-export-checklist" data-testid="ide-export-vivado-checklist">
-          <li>Open Vivado ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ <strong>File ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Open Project</strong></li>
+          <li>Open Vivado → <strong>File → Open Project</strong></li>
           <li>Select <code>{projectSlug}.xpr</code> inside the unzipped folder</li>
-          <li>Run Synthesis ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Implementation ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Generate Bitstream ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Program Device</li>
+          <li>Run Synthesis → Implementation → Generate Bitstream → Program Device</li>
         </ol>
         <details className="ide-export-advanced-steps">
           <summary>Advanced / full checklist</summary>
@@ -1100,7 +1100,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     }
   };
 
-  // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Phase 32: Pipeline helpers ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
+  // ─── Phase 32: Pipeline helpers ────────────────────────────────────────────
   const markStep = useCallback((id: RebuildStepId, state: RebuildStepState, detail?: string) => {
     setRebuildSteps((prev) =>
       prev.map((s) => (s.id === id ? { ...s, state, detail } : s))
@@ -1122,7 +1122,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     setRebuildSteps(makeSteps());
 
     try {
-      // STEP: validate ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â check blocking diagnostics
+      // STEP: validate — check blocking diagnostics
       markStep('validate', 'running');
       await tick();
       if (hasBlockingErrors) {
@@ -1137,7 +1137,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       }
       markStep('validate', 'done');
 
-      // STEP: mapping ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â check required pins covered
+      // STEP: mapping — check required pins covered
       markStep('mapping', 'running');
       await tick();
       if (requiredMappedCount < requiredCount) {
@@ -1148,7 +1148,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       }
       markStep('mapping', 'done');
 
-      // STEP: clock ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â record verify/trust state.
+      // STEP: clock — record verify/trust state.
       // Export package generation is allowed whenever the export itself is structurally valid.
       // Verify seals trust; it does not determine whether current compiler artifacts exist.
       markStep('clock', 'running');
@@ -1176,17 +1176,17 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         markStep('clock', 'done');
       }
 
-      // STEP: bundle ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â assemble VHDL + constraints
+      // STEP: bundle — assemble VHDL + constraints
       markStep('bundle', 'running');
       await tick();
       markStep('bundle', 'done');
 
-      // STEP: manifest ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â build README
+      // STEP: manifest — build README
       markStep('manifest', 'running');
       await tick();
       markStep('manifest', 'done');
 
-      // STEP: zip ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â package and download
+      // STEP: zip — package and download
       markStep('zip', 'running');
       const zipBytes =
         kind === 'project'
@@ -1303,13 +1303,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   return (
     <IdeSurfaceLayout
       mode="export"
+      layoutIntent="workbench"
       consoleHasBlocking={hasBlockingErrors}
       consoleHasEntries={diagnosticsList.length > 0}
+      leftDockMode="hidden"
       rightDockMode="collapsed"
       consoleMode="collapsed"
       inspector={
         <>
-          {/* Testbench Source ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â always shown when scenario provenance is available.
+          {/* Testbench Source — always shown when scenario provenance is available.
               Constraint: surface positive identity, not only warnings.
               Students must always be able to see which scenario drives the testbench. */}
           {viewModel.exportedScenario && (
@@ -1320,13 +1322,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             >
               {viewModel.exportedScenario.isStaleComparedToLastPass ? (
                 <IdeCallout tone="warn" testId="ide-export-scenario-stale-callout">
-                  <strong>Scenario changed since the last comparison run.</strong>{' '}
+                  <strong>Scenario changed since the last checked run.</strong>{' '}
                   Testbench vectors reflect the current scenario but have not been rechecked against live outputs.
-                  Re-run Compare to restore full provenance.
+                  Re-run Verify to restore current provenance.
                 </IdeCallout>
               ) : (
                 <IdeCallout tone="success" testId="ide-export-scenario-ok-callout">
-                  Testbench matches the last compared scenario.
+                  Testbench matches the last checked scenario.
                 </IdeCallout>
               )}
               <div className="ide-kv-list ide-mt-2">
@@ -1362,7 +1364,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </IdeInspectorSection>
           )}
 
-          {/* Kit sections ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â only when showcase kit is loaded */}
+          {/* Kit sections — only when showcase kit is loaded */}
           {example?.category === 'showcase' && (
             <>
               <IdeInspectorSection title="Kit Summary" defaultOpen testId="ide-export-kit-summary">
@@ -1392,7 +1394,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </>
           )}
 
-          <IdeInspectorSection title="Package Context" defaultOpen>
+          <IdeInspectorSection title="Build Context" defaultOpen>
             <div className="ide-kv-list">
               <div className="ide-kv-row">
                 <span>Board</span>
@@ -1407,14 +1409,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 <span><code>{topModule}</code></span>
               </div>
               <div className="ide-kv-row">
-                <span>Blocking Errors</span>
+                <span>Blocking items</span>
                 <span>{diagnosticsList.filter((entry) => entry.severity === 'error').length}</span>
               </div>
               <div className="ide-kv-row" data-testid="ide-export-capsule-build-state">
                 <span>Export State</span>
                 <span>
                   {isRebuilding
-                    ? 'BuildingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦'
+                    ? 'Building…'
                     : downloadDone
                       ? 'Downloaded'
                       : handoffTruth.statusLabel}
@@ -1475,17 +1477,17 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       <IdePanel
         title={
           downloadDone
-            ? 'Vivado Project Downloaded'
+            ? 'Project Downloaded'
             : exportBlocked
-              ? 'Export Handoff Blocked'
+              ? 'Export Blocked'
               : exportTrusted
-                ? 'Export Handoff Ready'
-                : 'Export Handoff Needs Review'
+                ? 'Export Ready'
+                : 'Export Needs Review'
         }
         description={
           downloadDone
-            ? 'Your ZIP is ready. Unzip it and open the project in Vivado to continue.'
-            : 'Review the generated package, confirm readiness, and prepare the project for Vivado.'
+            ? 'Your ZIP is ready. Open it in Vivado to continue.'
+            : 'Review the handoff state, then inspect the files below.'
         }
         right={
           downloadDone ? (
@@ -1569,7 +1571,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <IdeStatusPill tone={handoffTone}>
                     {handoffTruth.statusLabel}
                   </IdeStatusPill>
-                  <span>Engineering handoff</span>
+                  <span>Handoff summary</span>
                 </div>
                 <h3>{dominantActionTitle}</h3>
                 <p>{dominantActionDetail}</p>
@@ -1599,9 +1601,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   );
                 })()}
               </div>
-              <SurfacePanel
+              <section
                 className="ide-export-sidecard ide-export-buildCard ide-export-action-card"
-                testId="ide-export-checks-dock"
+                data-testid="ide-export-checks-dock"
               >
                 <div className="ide-export-buildCardTop">
                   <div className="ide-export-action-card-copy">
@@ -1626,11 +1628,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       {!verifyResult
                         ? <span className="ide-export-provenance-none">Not run</span>
                         : dirtySinceVerify
-                          ? <span className="ide-export-provenance-stale" title="Circuit changed since the last comparison run">Previous build</span>
+                          ? <span className="ide-export-provenance-stale" title="Circuit changed since the last checked run">Previous build</span>
                           : verifyState === 'trace'
                             ? <span className="ide-export-provenance-none">Trace only</span>
                             : <span className={`ide-export-provenance-${verifyResult.status === 'pass' ? 'pass' : 'fail'}`}>
-                                {verifyResult.status === 'pass' ? 'Assertions match' : 'Assertions differ'}
+                                {verifyResult.status === 'pass' ? 'Checks match' : 'Checks differ'}
                               </span>
                       }
                     </span>
@@ -1730,7 +1732,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     )}
                   </div>
                 </details>
-              </SurfacePanel>
+              </section>
             </div>
             <div className="ide-export-summary-grid" data-testid="ide-export-design-summary">
               <SummaryStat label="Board" value="Basys3" />
@@ -1902,7 +1904,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     </p>
                     <div className="ide-mt-2">
                       <IdeButton tone="primary" onClick={onGoToHardware} testId="ide-export-go-map-pins">
-                        Open Map Pins ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢
+                        Open Map Pins →
                       </IdeButton>
                     </div>
                   </IdeCallout>
@@ -1910,7 +1912,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 {hasBlockingErrors && (
                   <IdeCallout
                     tone="error"
-                    title={`${viewModel.errors.length} blocker${viewModel.errors.length !== 1 ? 's' : ''} ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â download unavailable`}
+                    title={`${viewModel.errors.length} blocker${viewModel.errors.length !== 1 ? 's' : ''} — download unavailable`}
                     testId="ide-export-blockers-callout"
                   >
                     <p className="ide-copy ide-copy--flush">Resolve all mapping and export issues before downloading.</p>
@@ -1990,7 +1992,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                             }
                             testId={`ide-export-diagnostic-action-${entry.id}`}
                           >
-                            {openFixPathId === entry.id ? 'Hide ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Â²' : 'Fix path ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Â¼'}
+                            {openFixPathId === entry.id ? 'Hide ▲' : 'Fix path ▼'}
                           </IdeButton>
                           {mappingRow && portKey && hasSuggestion && (
                             <IdeButton tone="ghost" onClick={() => applySuggestion(portKey)}>
@@ -2085,7 +2087,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                                   onClick={onGoToDesign}
                                   testId="ide-export-go-design"
                                 >
-                                  Fix in Design ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢
+                                  Fix in Design →
                                 </IdeButton>
                               )}
                             </div>
@@ -2210,7 +2212,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                                 placeholder={isEditable ? row.suggestedPin ?? 'PIN' : 'Add mapping first'}
                               />
                               {isPinInvalid && (
-                                <span className="ide-pin-warn">&#9888; Unknown pin ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â check Basys3 reference</span>
+                                <span className="ide-pin-warn">&#9888; Unknown pin — check Basys3 reference</span>
                               )}
                             </td>
                             <td>
@@ -2224,7 +2226,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                             </td>
                             <td>
                               <span className={`ide-export-conf-badge ide-export-conf-${conf}`}>
-                                {conf === 'exact' ? 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ' : conf === 'likely' ? '~' : '?'}
+                                {conf === 'exact' ? '✓' : conf === 'likely' ? '~' : '?'}
                               </span>
                             </td>
                             <td className="ide-export-notes-cell">
@@ -2259,7 +2261,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <div>
                     <h3>Generated Artifacts</h3>
                     <p className="ide-export-section-subcopy">
-                      Bundle composition by role: synthesizable RTL, board constraints, simulation bench, then Vivado scaffolding and notes ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â each group is intentional for Basys3 handoff.
+                      Bundle composition by role: synthesizable RTL, board constraints, simulation bench, then Vivado scaffolding and notes — each group is intentional for Basys3 handoff.
                     </p>
                   </div>
                   <span className="ide-export-section-meta">
@@ -2431,9 +2433,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             <div className="ide-export-right-col">
 
 
-              <SurfacePanel className="ide-export-determinismChecks" testId="ide-export-determinism-checks">
+              <section className="ide-export-determinismChecks ide-export-aside-panel" data-testid="ide-export-determinism-checks">
                 <div className="ide-export-determinismHeader">DETERMINISM</div>
-                <div className="ide-export-determinismLegend">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ satisfied &nbsp;ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·&nbsp; ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â  required</div>
+                <div className="ide-export-determinismLegend">✓ satisfied &nbsp;·&nbsp; ⚠ required</div>
                 {deterministicChecks.map((check) => (
                   <div
                     key={check.id}
@@ -2441,15 +2443,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     data-testid={`ide-export-determinism-${check.id}`}
                     title={check.tooltip}
                   >
-                    <span className="ide-export-determinismIcon">{check.pass ? 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ' : 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â '}</span>
+                    <span className="ide-export-determinismIcon">{check.pass ? '✓' : '⚠'}</span>
                     <span className="ide-export-determinismLabel">{check.label}</span>
                   </div>
                 ))}
-              </SurfacePanel>
+              </section>
 
-              <SurfacePanel className="ide-export-artifact-plan" testId="ide-export-artifact-plan">
+              <section className="ide-export-artifact-plan ide-export-aside-panel" data-testid="ide-export-artifact-plan">
                 <div className="ide-export-artifact-plan-header">
-                  <span className="ide-export-artifact-plan-title">Vivado Kit (Fallback)</span>
+                  <span className="ide-export-artifact-plan-title">Fallback Kit</span>
                   <span style={{ fontSize: 10, color: 'var(--ide-text-muted)' }}>
                     {viewModel.artifacts.length}/5 ready
                   </span>
@@ -2462,7 +2464,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       key={file.path}
                       className={`ide-export-artifact-plan-row ${isReady ? 'is-ready' : 'is-pending'}`}
                     >
-                      <span className="ide-export-plan-row-icon">{isReady ? 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ' : 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹'}</span>
+                      <span className="ide-export-plan-row-icon">{isReady ? '✓' : '○'}</span>
                       <div className="ide-export-plan-row-info">
                         <span className="ide-export-plan-row-path">{file.path}</span>
                         <span className="ide-export-plan-row-desc">
@@ -2472,7 +2474,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     </div>
                   );
                 })}
-              </SurfacePanel>
+              </section>
 
               <details className="ide-export-evidence-details ide-mt-2" data-testid="ide-export-evidence-details">
                 <summary>Debug report</summary>
@@ -2538,28 +2540,28 @@ function buildArtifactGroups(artifacts: ExportArtifactView[]): ExportArtifactGro
       id: 'hdl',
       label: 'HDL',
       description:
-        'Synthesizable top-level VHDL (`top.vhd`) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â authoritative RTL for Vivado synthesis and the port list every other file must match.',
+        'Synthesizable top-level VHDL (`top.vhd`) — authoritative RTL for Vivado synthesis and the port list every other file must match.',
       artifacts: [],
     },
     {
       id: 'constraints',
       label: 'Constraints',
       description:
-        'Pin and timing constraints (`top.xdc`) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â physical bindings and clock policy aligned to Map Pins and the active timing mode.',
+        'Pin and timing constraints (`top.xdc`) — physical bindings and clock policy aligned to Map Pins and the active timing mode.',
       artifacts: [],
     },
     {
       id: 'testbench',
       label: 'Testbench',
       description:
-        'Simulation-only VHDL (`testbench.vhd`) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â instantiates the DUT with the same entity and ports as `top.vhd`; never merged into the design source set.',
+        'Simulation-only VHDL (`testbench.vhd`) — instantiates the DUT with the same entity and ports as `top.vhd`; never merged into the design source set.',
       artifacts: [],
     },
     {
       id: 'project',
       label: 'Project scaffolding',
       description:
-        'Vivado import script, README, and project metadata ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â reproducible import path and student-facing handoff notes.',
+        'Vivado import script, README, and project metadata — reproducible import path and student-facing handoff notes.',
       artifacts: [],
     },
   ];
@@ -2719,7 +2721,7 @@ function buildEvidenceDiagnostics(
     diagnostics.push(createEvidenceDiagnostic({
       code: 'RBEV1001',
       message: isStarterFail
-        ? 'Ran with auto-generated starter vectors ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â scenario not yet authored. Export is available, but the comparison evidence is still starter-grade.'
+        ? 'Ran with auto-generated starter vectors — scenario not yet authored. Export is available, but the comparison evidence is still starter-grade.'
         : typeof verifyResult.failingTick === 'number'
           ? `Latest comparison run differed at tick ${verifyResult.failingTick}. Export files remain available.`
           : 'Latest comparison run differed from observed outputs. Export files remain available.',
@@ -2847,7 +2849,7 @@ function buildInvalidPinSet(
   return invalid;
 }
 
-// ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Phase 2: Syntax Highlighting ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
+// ─── Phase 2: Syntax Highlighting ──────────────────────────────────────────
 
 const VHDL_KEYWORDS = new Set([
   'library','use','entity','architecture','is','begin','end','port','map',
@@ -2993,7 +2995,7 @@ async function buildVivadoKitZip(artifacts: ExportArtifactView[]): Promise<Uint8
   );
 }
 
-// ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Phase 2: Pin Validation ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
+// ─── Phase 2: Pin Validation ────────────────────────────────────────────────
 
 const BASYS3_VALID_PINS = new Set([
   // Switches

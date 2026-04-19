@@ -347,6 +347,20 @@ describe('IdeWorkbenchShell', () => {
     expect(getByTestId('ide-mode-project')).toHaveAttribute('data-surface-frame', 'edge-to-edge');
   });
 
+  it('defaults project surfaces to workbench layout intent', () => {
+    const { getByTestId } = renderShell();
+
+    expect(getByTestId('ide-mode-project')).toHaveAttribute('data-layout-intent', 'workbench');
+  });
+
+  it('allows readable layout intent to be set explicitly', () => {
+    const { getByTestId } = renderShell({
+      layoutIntent: 'readable',
+    });
+
+    expect(getByTestId('ide-mode-project')).toHaveAttribute('data-layout-intent', 'readable');
+  });
+
   it('keeps hideRightDock compatibility by forcing the right dock hidden', () => {
     const { queryByTestId } = renderShell({
       hideRightDock: true,

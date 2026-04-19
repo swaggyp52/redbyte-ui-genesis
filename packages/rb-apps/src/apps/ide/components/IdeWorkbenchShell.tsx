@@ -14,6 +14,7 @@ export type RightDockMode = 'visible' | 'collapsed' | 'hidden';
 export type ConsoleMode = 'expanded' | 'collapsed' | 'hidden' | 'auto';
 export type WorkbenchShellDensity = 'default' | 'immersive';
 export type WorkbenchSurfaceFrame = 'panel' | 'edge-to-edge';
+export type WorkbenchLayoutIntent = 'readable' | 'workbench';
 type WorkbenchConsoleState = 'blocking' | 'expanded' | 'collapsed' | 'hidden';
 
 const LAYOUT_STORAGE_KEY = 'rb.ide.workbench.layout.v6';
@@ -50,6 +51,7 @@ export interface ResolvedWorkbenchPolicy {
   consoleMode: ConsoleMode;
   shellDensity: WorkbenchShellDensity;
   surfaceFrame: WorkbenchSurfaceFrame;
+  layoutIntent: WorkbenchLayoutIntent;
 }
 
 export interface IdeWorkbenchShellProps {
@@ -65,6 +67,7 @@ export interface IdeWorkbenchShellProps {
   consoleMode?: ConsoleMode;
   shellDensity?: WorkbenchShellDensity;
   surfaceFrame?: WorkbenchSurfaceFrame;
+  layoutIntent?: WorkbenchLayoutIntent;
   rightDockCanCollapse?: boolean;
   rightDockRevealKey?: string | null;
   /** @deprecated Use rightDockMode='hidden' instead. */
@@ -84,6 +87,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   consoleMode = 'auto',
   shellDensity = 'default',
   surfaceFrame = 'panel',
+  layoutIntent,
   rightDockCanCollapse = false,
   rightDockRevealKey = null,
   hideRightDock = false,
@@ -101,8 +105,9 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       consoleMode,
       shellDensity,
       surfaceFrame,
+      layoutIntent: layoutIntent ?? resolveDefaultWorkbenchLayoutIntent(mode),
     }),
-    [consoleMode, hideRightDock, leftDockMode, rightDockMode, shellDensity, surfaceFrame]
+    [consoleMode, hideRightDock, layoutIntent, leftDockMode, mode, rightDockMode, shellDensity, surfaceFrame]
   );
   const [isLeftDockExpanded, setIsLeftDockExpanded] = useState(
     policy.leftDockMode === 'visible'
@@ -418,6 +423,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       data-right-dock-state={rightDockState}
       data-shell-density={policy.shellDensity}
       data-surface-frame={policy.surfaceFrame}
+      data-layout-intent={policy.layoutIntent}
       style={shellStyle}
     >
       <div
@@ -658,6 +664,10 @@ function detectLayoutMode(width?: number): WorkbenchLayoutMode {
   if (effectiveWidth >= 1600) return 'wide';
   if (effectiveWidth >= 1320) return 'standard';
   return 'compact';
+}
+
+function resolveDefaultWorkbenchLayoutIntent(mode: IdeSurfaceMode): WorkbenchLayoutIntent {
+  return mode === 'import' ? 'readable' : 'workbench';
 }
 
 const SCROLL_SAVE_SELECTORS =

@@ -2483,6 +2483,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   return (
     <IdeSurfaceLayout
       mode="import"
+      layoutIntent="readable"
       consoleHasBlocking={blockingErrors.length > 0}
       consoleHasEntries={blockingErrors.length > 0 || warnings.length > 0}
       rightDockMode={isImportFirstLook ? 'hidden' : 'collapsed'}
