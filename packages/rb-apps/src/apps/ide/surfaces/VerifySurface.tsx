@@ -95,7 +95,6 @@ import { WaveformViewer, type WaveformSignalRow, type SignalLaneGroup } from './
 import { explainSignal, type ExplainerCircuitGraph, type ExplainerSignalMapping } from './verify/signalExplainer';
 import { WhyInspectorPanel } from './verify/WhyInspectorPanel';
 import { VerifyCommandBar } from './verify/VerifyCommandBar';
-import { VerifyFirstRunPanel } from './verify/VerifyFirstRunPanel';
 import { VerifyWaveformPlaceholder } from './verify/VerifyWaveformPlaceholder';
 import { TickReadoutStrip } from './verify/TickReadoutStrip';
 import { VerifyLabSequencerPanel } from './verify/VerifyLabSequencerPanel';
@@ -3374,6 +3373,28 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     lastRun && runRows.length > 0 && inputCoverage
       ? `${inputCoverage.pct}% coverage`
       : undefined;
+  const workspaceStoryTitle = !lastRun
+    ? 'Stimulus on the left. Observe outputs on the right.'
+    : sessionSignalsAssertionFailure
+      ? 'Edit stimulus, rerun, then inspect the failing waveform.'
+      : sessionShowsAssertionMatch
+        ? 'Stimulus and observed outputs agree.'
+        : 'Stimulus and observed outputs are ready to inspect.';
+  const workspaceStorySummary = !lastRun
+    ? totalVectorCount > 0
+      ? 'Author input changes in the stimulus editor, then run the current stimulus to populate the waveform and output observation area.'
+      : 'Seed a starter stimulus or author the first tick by hand, then run once to turn the observation stage into a real waveform.'
+    : sessionSignalsAssertionFailure
+      ? 'Keep the stimulus editor and waveform visible together. Rerun after each fix, and use the analysis tray only when you need deeper mismatch detail.'
+      : sessionShowsAssertionMatch
+        ? 'The current stimulus and saved checks matched. Keep the waveform open for review, then continue to the next step.'
+        : 'Use the waveform as the main observation surface. Save checks only for outputs that need explicit confirmation later.';
+  const workspaceStoryChips = [
+    activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName,
+    totalVectorCount > 0 ? `${totalVectorCount} case${totalVectorCount === 1 ? '' : 's'}` : 'No cases yet',
+    selectedTick != null ? `Focus t${selectedTick}` : 'No tick selected',
+    totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Checks armed' : 'Observe first',
+  ].filter(Boolean) as string[];
   const labSequencerSteps = useMemo(() => {
     const explicitSteps = buildLabSequencerStepsFromScenarioSteps(activeScenario?.steps);
     if (explicitSteps.length > 0) return explicitSteps;
@@ -3533,14 +3554,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [unmappedOutputLabels]);
   const verifyLayoutPolicy = useMemo(
     () => ({
-      /** Signals rail: open while authoring (no run yet) or when compare failed and you need lanes. */
-      leftDockMode:
-        !lastRun || sessionSignalsAssertionFailure ? ('visible' as const) : ('collapsed' as const),
-      /** Vectors / mismatch inspector: progressive disclosure — expand from rail when needed. */
-      rightDockMode: sessionSignalsAssertionFailure ? ('visible' as const) : ('collapsed' as const),
+      /** Keep shell rails secondary so the stimulus/workform pair owns the page. */
+      leftDockMode: ('collapsed' as const),
+      /** Saved cases and mismatch detail stay available, but no longer reserve width by default. */
+      rightDockMode: ('collapsed' as const),
       consoleMode: sessionSignalsAssertionFailure ? ('auto' as const) : ('hidden' as const),
     }),
-    [lastRun, sessionSignalsAssertionFailure]
+    [sessionSignalsAssertionFailure]
   );
 
   useEffect(() => {
@@ -3660,7 +3680,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       consoleHasEntries={false}
       leftDockMode={verifyLayoutPolicy.leftDockMode}
       rightDockMode={verifyLayoutPolicy.rightDockMode}
-      rightDockCanCollapse
+      rightDockCanCollapse={verifyLayoutPolicy.rightDockMode === 'collapsed'}
       consoleMode={verifyLayoutPolicy.consoleMode}
       shellDensity="immersive"
       surfaceFrame="edge-to-edge"
@@ -3672,7 +3692,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           >
             <div className="ide-verify-signal-rail-toprow">
               <div className="ide-verify-signal-rail-title">
-                <h3>Signal legend</h3>
+                <h3>Signals</h3>
                 <span className="ide-verify-signal-rail-count" data-testid="ide-verify-signal-filter-state">
                   {showMismatchOnlySignals
                     ? `${visibleSignalCount} flagged`
@@ -3710,12 +3730,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <p className="ide-verify-signal-rail-focus" data-testid="ide-verify-signal-rail-summary">
               {selectedSignal ? (
                 <>
-                  <code>{selectedSignal}</code> synced to the waveform
+                  <code>{selectedSignal}</code> follows the waveform focus
                 </>
               ) : hasSessionFailureEvidence ? (
                 'Filter to the failing lanes, then inspect the waveform.'
               ) : (
-                'Filter, pin, or hide lanes to keep the legend focused.'
+                'Use this as a compact legend and filter, not a second workspace.'
               )}
             </p>
           </header>
@@ -3798,39 +3818,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               ))
             )}
           </div>
-          {sessionShowsCompareEvidence && (
-            <>
-              <header className="ide-design-subheader">
-                <h3>Mismatches</h3>
-                <span className="ide-copy">{failingRows.length}</span>
-              </header>
-              <div className="ide-signal-list" data-testid="ide-verify-failures-list">
-                {failingRows.length === 0 ? (
-                  <p className="ide-copy">No failing rows in the latest run.</p>
-                ) : (
-                  failingRows.slice(0, 8).map((row) => (
-                    <button
-                      key={`${row.tick}-${row.signal}`}
-                      type="button"
-                      className={`ide-signal-row ${
-                        selectedFailureKey ===
-                        buildFailureCaseKey(row.tick, row.signal, row.vectorId, row.caseIndex)
-                          ? 'is-active'
-                          : ''
-                      }`}
-                      onClick={() => applyFailureSelection(row)}
-                      onMouseEnter={() => handleSignalHover(row.signal)}
-                      onMouseLeave={() => handleSignalHover(null)}
-                      data-testid={`ide-verify-failure-${toTestId(`${row.signal}-${row.tick}`)}`}
-                    >
-                      <span>{getFailureSignalLabel(row)}</span>
-                      <span>t{row.tick}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-            </>
-          )}
         </section>
       }
       inspector={
@@ -4292,6 +4279,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         </VerifyResultRegion>
 
         <VerifyWorkspaceRegion>
+        <div className="ide-verify-workspace-story" data-testid="ide-verify-workspace-story">
+          <div className="ide-verify-workspace-story-copy">
+            <span className="ide-verify-workspace-story-eyebrow">Stimulus - Run - Observe</span>
+            <strong className="ide-verify-workspace-story-title">{workspaceStoryTitle}</strong>
+            <p className="ide-verify-workspace-story-summary">{workspaceStorySummary}</p>
+          </div>
+          <div className="ide-verify-workspace-story-meta">
+            {workspaceStoryChips.map((chip, index) => (
+              <span
+                key={chip}
+                className={`ide-verify-workspace-story-chip${index === workspaceStoryChips.length - 1 ? ' is-focus' : ''}`}
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
+        </div>
         <div className="ide-verify-lab-frame" data-testid="ide-verify-lab-frame">
         <div
           className="ide-verify-lab-grid"
@@ -4322,22 +4326,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )}
 
         {/* ── First-run hero panel — only when no vectors yet; once canvas is populated, step aside ── */}
-        {isFirstRunState && !lastRun && verifyMode !== 'blocked' && totalVectorCount === 0 && (
-          <VerifyFirstRunPanel
-            isSequential={isSequentialRun}
-            inputNames={inputFields.map((f) => f.label ?? f.id)}
-            outputNames={outputFields.map((f) => f.label ?? f.id)}
-            clockName={clockSignalNames[0]}
-            onGenerateStarter={handleGenerateBasicVectors}
-            onRunCircuit={() => handleRunWithPreflight()}
-            runLabel={verifySession.runLabel}
-            onAlternatingClock={isSequentialRun ? handleInsertClockPattern : undefined}
-            onHoldLow={isSequentialRun ? handleInsertClockHoldLow : undefined}
-            onHoldHigh={isSequentialRun ? handleInsertClockHoldHigh : undefined}
-            onSinglePulse={isSequentialRun ? handleInsertClockPulse : undefined}
-            hasVectors={totalVectorCount > 0}
-          />
-        )}
+        
 
         {/* TRACE callout moved to bottom workbench area — canonical position after results zone */}
 

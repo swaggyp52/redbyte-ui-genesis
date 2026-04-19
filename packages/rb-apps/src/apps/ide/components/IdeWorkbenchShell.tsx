@@ -339,10 +339,10 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
               : { left: { min: 176, max: 200 }, right: { min: 192, max: 228 } }
           : mode === 'verify'
             ? layoutMode === 'wide'
-              ? { left: { min: 192, max: 214 }, right: { min: 232, max: 272 } }
+              ? { left: { min: 132, max: 152 }, right: { min: 248, max: 312 } }
               : layoutMode === 'standard'
-                ? { left: { min: 184, max: 206 }, right: { min: 220, max: 256 } }
-                : { left: { min: 176, max: 198 }, right: { min: 208, max: 240 } }
+                ? { left: { min: 124, max: 144 }, right: { min: 232, max: 292 } }
+                : { left: { min: 116, max: 136 }, right: { min: 216, max: 272 } }
             : usesCalmerNonDesignShell
               ? layoutMode === 'wide'
                 ? { left: { min: 168, max: 188 }, right: { min: 220, max: 248 } }

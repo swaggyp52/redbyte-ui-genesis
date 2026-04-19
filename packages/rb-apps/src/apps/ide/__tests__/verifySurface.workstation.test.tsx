@@ -1385,6 +1385,7 @@ describe('VerifySurface workstation controls', () => {
     onSignalSelected.mockClear();
     fireEvent.click(getByTestId('ide-verify-explainer-show-mismatches'));
     expect(onSignalSelected).toHaveBeenLastCalledWith('ld0');
+    fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
     expect(getByTestId('ide-verify-signal-filter-state').textContent).toContain('flagged');
   });
 

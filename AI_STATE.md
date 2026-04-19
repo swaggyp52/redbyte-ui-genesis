@@ -1,5 +1,45 @@
 # AI State
 
+## Change Log 2026-04-18 (Targeted correction: Verify stimulus-run-observe workspace)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyWaveformPlaceholder.tsx`, `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.caseEditorClarity.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.frontend-dedup.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
+
+**Context**: Verify still read like a cluster of competing panels: a large first-run hero on the left, a wide shell signals rail, a skinny right inspector, and a top region that still felt more like controls stacked above the page than one coherent testbench workspace. The product correction target was explicit: demote shell chrome, remove the retired hero, and make the page read as one session story feeding two dominant zones — stimulus authoring and output observation.
+
+**Changes**:
+- **Removed the old first-run hero surface**: `VerifyFirstRunPanel` was retired from `VerifySurface` and deleted. First-run Verify now starts with the same authored-stimulus editor as every other draft state instead of a separate hero card stealing the left pane.
+- **Center now owns the page**: added a compact Verify workspace story row above the two-pane lab grid so the page states the procedure directly (`Stimulus -> Run -> Observe`) before the editor and waveform.
+- **Shell rails demoted by default**: Verify left and right shell docks now start collapsed. The left rail became a compact signal legend/filter instead of the default owner of draft space. The right rail remains available, but no longer reserves width by default.
+- **Verify-specific dock sizing corrected**: `IdeWorkbenchShell` now uses much narrower left-dock caps and wider right-dock caps for Verify, so the legend/filter stops stealing width and the inspector is less cramped when explicitly opened.
+- **Waveform draft state rebuilt**: `VerifyWaveformPlaceholder` is no longer a large centered overlay card. It now renders as a lighter observation-stage header plus scaffold lanes, reinforcing that the waveform pane is the future observation workspace, not a dead slab with a floating tutorial box.
+- **Failure review stayed secondary**: mismatch navigation continues to live in the waveform and analysis flow. The left shell rail no longer carries its own mismatch list as a competing second workspace.
+
+**Tests / gates**:
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.caseEditorClarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.observeFirst.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.entryState.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.frontend-dedup.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx` -> **114/114 pass**
+- `pnpm --filter @redbyte/rb-apps build` -> bundle builds, declaration step still prints pre-existing repo-wide TypeScript debt outside this slice
+- `pnpm build:unified` -> **success**
+- `pnpm repo:status` -> **fails on pre-existing `IDE ZIP Import Contract` only**
+
+**Verification**:
+- Live browser: `http://127.0.0.1:5173/?mode=verify`
+  - Captured pre-change reference `manual-verify-before-2026-04-18-pass3.png`
+  - Captured post-change draft state `manual-verify-after-2026-04-18-pass3.png`
+  - Captured left-rail-open state `manual-verify-leftdock-open-2026-04-18-pass3.png`
+- Visual outcome:
+  - the old first-run hero is gone
+  - Verify now opens with a compact session story plus two dominant zones
+  - the left rail defaults to a slim collapsed signals rail, not a full drafting panel
+  - the waveform draft state now looks like an observation stage instead of an empty box with a floating card
+
+**Truth changes**:
+- Verify no longer has a separate first-run hero surface.
+- Verify shell rails are secondary by default; the stimulus editor and waveform own the page.
+- The left Verify dock is now a compact legend/filter surface, not a mismatch workspace.
+
+**Removed / demoted**: retired `VerifyFirstRunPanel`, its dedicated tests, the left-rail mismatch list, and the large centered waveform overlay card.
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-18 (Targeted correction: Design workspace bar + corruption sweep)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/designSurface.blankState.test.tsx`

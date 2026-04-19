@@ -88,7 +88,7 @@ describe('Verify frontend — single canonical Run button (B-13 Phase 2)', () =>
     expect(queryByTestId('ide-vfr-run')).toBeNull();
     // Waveform placeholder must not introduce a second run CTA.
     expect(queryByTestId('ide-vwp-run')).toBeNull();
-    expect(getByTestId('ide-vwp-header-run-note').textContent).toContain('only run action');
+    expect(getByTestId('ide-vwp-header-run-note').textContent).toContain('session header');
   });
 
   it('hides ide-verify-workbench-run after a pass run — Run stays in header', () => {

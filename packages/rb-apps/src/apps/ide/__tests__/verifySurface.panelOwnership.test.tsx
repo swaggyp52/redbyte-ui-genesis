@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
-// B-14 Panel Ownership — behavioral contracts for analysis drawer + signals dock
+// B-14 Panel Ownership - behavioral contracts for analysis drawer + signals dock
 //
 // Structural guarantees:
 // 1. Analysis drawer is default-closed after every run (progressive disclosure)
 // 2. Analysis drawer opens when user explicitly clicks the toggle
-// 3. Signals dock: visible while drafting; collapsed to rail after pass unless expanded
-// 4. Signals dock is present when session shows failure (visible mode — need the list for debugging)
+// 3. Signals dock defaults to a collapsed legend rail so the main workspace keeps the width
+// 4. Failure review stays in the waveform + analysis surfaces, not a permanently open shell rail
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, fireEvent } from '@testing-library/react';
@@ -81,7 +81,7 @@ function makeFailRun(): RuntimeVerifyRun {
   };
 }
 
-describe('B-14 Panel Ownership — analysis drawer progressive disclosure', () => {
+describe('B-14 Panel Ownership - analysis drawer progressive disclosure', () => {
   it('analysis tab nav is absent immediately after a run (drawer default-closed)', () => {
     // The drawer body should not be present by default — progressive disclosure
     const { queryByTestId } = render(
@@ -120,14 +120,13 @@ describe('B-14 Panel Ownership — analysis drawer progressive disclosure', () =
   });
 });
 
-describe('B-14 Panel Ownership — signals dock layout policy', () => {
-  it('signals dock aside is visible in draft Verify sessions', () => {
+describe('B-14 Panel Ownership - signals dock layout policy', () => {
+  it('signals dock starts as a collapsed legend rail in draft Verify sessions', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} />
     );
-    expect(getByTestId('ide-left-dock')).toBeTruthy();
-    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
-    expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
   });
 
   it('signals dock collapses to a rail after a pass run', () => {
@@ -141,19 +140,19 @@ describe('B-14 Panel Ownership — signals dock layout policy', () => {
     expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
   });
 
-  it('signals dock stays open during a fail run', () => {
+  it('signals dock remains collapsed by default during a fail run', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
     );
-    expect(getByTestId('ide-left-dock')).toBeTruthy();
-    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
-    expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
   });
 
-  it('verify keeps secondary analysis out of the shell rails during fail runs', () => {
-    const { queryByTestId } = render(
+  it('verify keeps the right inspector demoted to a collapsed rail during fail runs', () => {
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
     );
-    expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
+    expect(queryByTestId('ide-inspector')).toBeNull();
+    expect(getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
   });
 });
