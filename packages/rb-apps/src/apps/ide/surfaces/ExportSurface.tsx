@@ -18,7 +18,6 @@ import {
   deriveVivadoProjectSlug,
   resolveVivadoPart,
 } from '../../../fpga/vivado/vivadoProjectFolder';
-import { canonicalizeSemanticCircuit } from '../../../circuit/semanticCircuit';
 import { deriveVerifySchedule, type VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { resolveActiveScheduleContract } from '../clockAuthority';
@@ -59,7 +58,7 @@ export interface ExportSurfaceProps {
   verifyLastRun?: RuntimeVerifyRun;
   designReady?: boolean;
   workflowAuthority?: ProjectWorkflowAuthority;
-  /** The currently active Verify scenario — used as the authoritative testbench vector source. */
+  /** The currently active Verify scenario - used as the authoritative testbench vector source. */
   activeScenario?: VerifyScenario;
   dirtySinceVerify?: boolean;
   determinismHash: string;
@@ -77,14 +76,6 @@ export interface ExportSurfaceProps {
   onUpdateMappingPin?: (rowId: string, pin: string) => void;
   timingGuidance?: TimingGuidance;
 }
-
-const ARTIFACT_PLAN_FILES = [
-  { path: 'top.vhd', desc: 'Design source' },
-  { path: 'top.xdc', desc: 'Pin constraints' },
-  { path: 'vivado_import.tcl', desc: 'Batch import' },
-  { path: 'testbench.vhd', desc: 'Simulation source' },
-  { path: 'README.txt', desc: 'Build notes' },
-] as const;
 
 // ─── Phase 32: Rebuild Pipeline Types ──────────────────────────────────────
 type RebuildStepId =
@@ -104,13 +95,6 @@ interface ExportArtifactGroup {
   label: string;
   description: string;
   artifacts: ExportArtifactView[];
-}
-
-interface ExportDesignSummary {
-  inputs: number;
-  outputs: number;
-  gates: number;
-  stateful: number;
 }
 
 interface RebuildStep {
@@ -379,7 +363,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   }, [editablePortKeys, hasExternalMappingAuthority, pinDrafts, viewModel.pinTable]);
 
   const hasBlockingErrors = viewModel.errors.length > 0;
-  // When export is hard-blocked, suppress RBEV evidence advisories from the visible list —
+  // When export is hard-blocked, suppress RBEV evidence advisories from the visible list -
   // students should focus on the RBEX blocker, not verify coverage they can't act on yet.
   const visibleDiagnosticsList = hasBlockingErrors
     ? [...viewModel.errors, ...viewModel.warnings]
@@ -424,7 +408,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const isVerifyStale = verifyState === 'stale';
   const isTraceOnly = resolvedWorkflowAuthority.compareTraceOnly;
   /** True when the previous verify run passed but the circuit has since changed (STALE).
-   *  Download is allowed but labeled as previous sealed build — not blocked. */
+   *  Download is allowed but labeled as previous sealed build - not blocked. */
   const isStaleButPassBefore =
     verifyResult?.status === 'pass' &&
     verifyResult?.runKind !== 'trace' &&
@@ -440,20 +424,20 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     !isIncompleteMappingQualified;
   const hasVerifyEvidenceWarning = evidenceDiagnostics.length > 0;
   const verifyPlain = useMemo(() => {
-    if (hasVerifyPass) return 'Checks match — saved outputs agree with the live design for this build.';
+    if (hasVerifyPass) return 'Checks match - saved outputs agree with the live design for this build.';
     if (isIncompleteMappingQualified) {
       return 'Checks match, but pin mapping still needs attention before hardware.';
     }
-    if (isVerifyStale) return 'Verification is stale — rerun Verify after design edits.';
-    if (isTraceOnly) return 'Observation-only run — save checks if you need assertion-backed evidence.';
-    if (isStarterScenarioFail) return 'Starter scenario only — author vectors for a graded handoff.';
+    if (isVerifyStale) return 'Verification is stale - rerun Verify after design edits.';
+    if (isTraceOnly) return 'Observation-only run - save checks if you need assertion-backed evidence.';
+    if (isStarterScenarioFail) return 'Starter scenario only - author vectors for a graded handoff.';
     if (isNoRunYet) {
-      return 'Verify has not run yet — export is available, but the handoff is still unconfirmed.';
+      return 'Verify has not run yet - export is available, but the handoff is still unconfirmed.';
     }
     if (verifyResult?.status === 'fail') {
-      return 'Checks differ — saved outputs do not match the live design.';
+      return 'Checks differ - saved outputs do not match the live design.';
     }
-    return 'Verify status indeterminate — open Verify for details.';
+    return 'Verify status indeterminate - open Verify for details.';
   }, [
     hasVerifyPass,
     isIncompleteMappingQualified,
@@ -562,9 +546,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               ? 'error' as const
               : 'warn' as const;
     const verifyDetail = hasVerifyPass
-      ? `Complete · ${verifyResult?.hash?.slice(0, 8) ?? ''}`
+      ? `Complete - ${verifyResult?.hash?.slice(0, 8) ?? ''}`
       : isIncompleteMappingQualified
-        ? 'Pass incomplete — mapping'
+        ? 'Pass incomplete - mapping'
       : isVerifyStale
         ? 'Stale - rerun Verify'
         : isStarterScenarioFail
@@ -573,7 +557,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             ? 'Not run yet'
             : verifyResult
               ? typeof verifyResult.failingTick === 'number'
-                ? `Outputs differ · t${verifyResult.failingTick}`
+                ? `Outputs differ - t${verifyResult.failingTick}`
                 : 'Outputs differ'
               : 'Not run';
     const verifyDetailLabel = isTraceOnly ? 'Trace only' : verifyDetail;
@@ -592,7 +576,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     const clockDetail = feedbackDiag
       ? 'Unsupported feedback loop'
       : clockGateIsSoftAdvisory
-        ? 'Lab timing: no board oscillator required — open details only if you add a real board clock.'
+        ? 'Lab timing: no board oscillator required - open details only if you add a real board clock.'
         : clockDiag
           ? clockDiag.message.slice(0, 55)
           : formatExportClockGateDetail(activeScheduleContract, effectiveTimingGuidance.exportDetail);
@@ -718,10 +702,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     () => buildArtifactGroups(viewModel.artifacts),
     [viewModel.artifacts]
   );
-  const designSummary = useMemo(
-    () => buildDesignSummary(project),
-    [project]
-  );
   const keyArtifacts = useMemo(
     () => ({
       topVhd: artifactMap.get('top.vhd'),
@@ -827,22 +807,22 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     handoffTruth.primaryCtaIntent !== 'build-current-bundle' &&
     handoffTruth.primaryCtaIntent !== 're-export-current-bundle';
   const nextActionTitle = downloadDone
-    ? `Project downloaded — open ${projectSlug}.xpr in Vivado to continue.`
+    ? `Project downloaded - open ${projectSlug}.xpr in Vivado to continue.`
     : exportTrusted
       ? 'Open Vivado and import the generated project.'
       : exportBlocked
         ? 'Resolve blockers before downloading the build package.'
         : isIncompleteMappingQualified
-          ? 'Export available — assertions match, but mapping review is still needed.'
+          ? 'Export available - assertions match, but mapping review is still needed.'
         : isVerifyStale
-          ? 'Export available — Verify evidence is stale for the current circuit.'
+          ? 'Export available - Verify evidence is stale for the current circuit.'
         : isStarterScenarioFail
-          ? 'Export available — scenario not yet authored.'
+          ? 'Export available - scenario not yet authored.'
           : isNoRunYet
-            ? 'Export available — no comparison run yet.'
-            : 'Export available — assertions differ from observed outputs.';
+            ? 'Export available - no comparison run yet.'
+            : 'Export available - assertions differ from observed outputs.';
   const nextActionDetail = downloadDone
-    ? 'Unzip the ZIP, then open the .xpr file in Vivado. Run Flow → Generate Bitstream, then program your Basys3 board using the Hardware Manager.'
+    ? 'Unzip the ZIP, then open the .xpr file in Vivado. Run Flow -> Generate Bitstream, then program your Basys3 board using the Hardware Manager.'
     : exportTrusted
       ? 'Download the Vivado Project, unzip it, then run the import script or open the project directly.'
       : exportBlocked
@@ -861,7 +841,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const vivadoCommand =
     'vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log';
   const projectDownloadLabel = isRebuilding
-    ? 'Building…'
+    ? 'Building...'
     : handoffTruth.primaryCtaIntent === 'build-current-bundle'
       ? 'Build Current Bundle'
       : handoffTruth.primaryCtaIntent === 're-export-current-bundle'
@@ -870,7 +850,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       ? 'Re-download'
       : 'Download Vivado Project (Open Project)';
   const projectDownloadCompactLabel = isRebuilding
-    ? 'Building…'
+    ? 'Building...'
     : handoffTruth.primaryCtaIntent === 'build-current-bundle'
       ? 'Build Current Bundle'
       : handoffTruth.primaryCtaIntent === 're-export-current-bundle'
@@ -883,7 +863,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           ? 'Download Project ZIP (starter)'
           : 'Download Project ZIP';
   const kitDownloadLabel = isRebuilding
-    ? 'Building…'
+    ? 'Building...'
     : downloadDone && lastDownloadKind === 'kit'
       ? 'Re-download'
       : 'Download Vivado Kit';
@@ -894,12 +874,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     ? 'Unzip the ZIP, then open the .xpr file in Vivado. Run Flow -> Generate Bitstream, then program your Basys3 board using the Hardware Manager.'
     : handoffTruth.message;
   const gateStackSection = (
-    <section className="ide-export-section" data-testid="ide-export-readiness-details">
+    <div className="ide-export-gate-details-panel" data-testid="ide-export-readiness-details">
       <header className="ide-export-section-header">
         <div>
-          <h3>Readiness Details</h3>
+          <h3>Readiness gates</h3>
           <p className="ide-export-section-subcopy">
-            Expand the full gate readout when you want the exact reason Export is ready, advisory, or blocked.
+            Expand the gate readout only when you need the exact reason Export is ready, advisory, or blocked.
           </p>
         </div>
       </header>
@@ -935,7 +915,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           </div>
         ))}
       </div>
-    </section>
+    </div>
   );
   const vivadoSection = (
     <section className="ide-export-section" data-testid="ide-export-vivado-ready">
@@ -943,16 +923,16 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         <div>
           <h3>Open in Vivado</h3>
           <p className="ide-export-section-subcopy">
-            Once the project ZIP is current, this is the import path. Readiness and fix ownership stay in the handoff hub above.
+            Use this only after the handoff summary is current. Import is secondary to the export state above.
           </p>
         </div>
       </header>
 
       <div className="ide-export-next-steps" data-testid="ide-export-vivado-steps">
         <ol className="ide-export-checklist" data-testid="ide-export-vivado-checklist">
-          <li>Open Vivado → <strong>File → Open Project</strong></li>
+          <li>Open Vivado {'->'} <strong>File {'->'} Open Project</strong></li>
           <li>Select <code>{projectSlug}.xpr</code> inside the unzipped folder</li>
-          <li>Run Synthesis → Implementation → Generate Bitstream → Program Device</li>
+          <li>Run Synthesis {'->'} Implementation {'->'} Generate Bitstream {'->'} Program Device</li>
         </ol>
         <details className="ide-export-advanced-steps">
           <summary>Advanced / full checklist</summary>
@@ -993,7 +973,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           <div data-testid="ide-export-readme-preview" className="ide-mt-1">
             <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-muted)', margin: 0 }}
                data-testid="ide-export-vivado-command">
-              Batch import: <code>{vivadoCommand}</code>
+              Batch import command: <code>{vivadoCommand}</code>
             </p>
           </div>
         ) : (
@@ -1416,7 +1396,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 <span>Export State</span>
                 <span>
                   {isRebuilding
-                    ? 'Building…'
+                    ? 'Building...'
                     : downloadDone
                       ? 'Downloaded'
                       : handoffTruth.statusLabel}
@@ -1740,528 +1720,155 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <SummaryStat label="Mapped Pins" value={`${mappedCount}/${viewModel.pinTable.length}`} />
               <SummaryStat label="Artifacts" value={`${readyArtifactCount}/${viewModel.artifacts.length}`} />
             </div>
-            <section
-              className="ide-export-package-handoff"
-              data-testid="ide-export-package-handoff"
-              aria-label="Package handoff summary"
-            >
-              <header className="ide-export-section-header ide-export-package-handoff-header">
-                <div>
-                  <h3>Package handoff</h3>
-                  <p className="ide-export-section-subcopy">
-                    One readiness owner for board target, timing, mapping, verify evidence, and cross-file agreement.
-                  </p>
-                </div>
-              </header>
-              <div className="ide-export-handoff-status" data-testid="ide-export-package-handoff-status">
-                <IdeStatusPill
-                  tone={
-                    packageHandoffSummary.status === 'ready'
-                      ? 'ok'
-                      : packageHandoffSummary.status === 'blocked'
-                        ? 'error'
-                        : 'warn'
-                  }
-                >
-                  {packageHandoffSummary.statusLabel}
-                </IdeStatusPill>
-                <div>
-                  <p className="ide-copy ide-copy--flush ide-export-handoff-headline">
-                    {packageHandoffSummary.headline}
-                  </p>
-                  <p className="ide-copy ide-copy--flush ide-export-handoff-subline">
-                    {packageHandoffSummary.subline}
-                  </p>
-                </div>
-              </div>
-              <dl className="ide-export-handoff-facts" data-testid="ide-export-handoff-facts">
-                <div>
-                  <dt>Board target</dt>
-                  <dd data-testid="ide-export-handoff-board">{packageHandoffSummary.boardTarget}</dd>
-                </div>
-                <div>
-                  <dt>Timing mode</dt>
-                  <dd data-testid="ide-export-handoff-timing">{packageHandoffSummary.timingPlain}</dd>
-                </div>
-                <div>
-                  <dt>Mapping completeness</dt>
-                  <dd data-testid="ide-export-handoff-mapping">{packageHandoffSummary.mappingPlain}</dd>
-                </div>
-                <div>
-                  <dt>Verify / scenario</dt>
-                  <dd data-testid="ide-export-handoff-verify">{packageHandoffSummary.verifyPlain}</dd>
-                </div>
-                <div>
-                  <dt>Cross-artifact agreement</dt>
-                  <dd data-testid="ide-export-handoff-artifacts">{packageHandoffSummary.artifactsPlain}</dd>
-                </div>
-              </dl>
-              <h4 className="ide-export-agreement-heading">Artifact agreement</h4>
-              <p className="ide-export-section-subcopy ide-export-agreement-intro">
-                Top RTL, testbench, XDC, README, and Vivado import script should tell the same story on entity names, ports, widths, and bindings.
-              </p>
-              <table className="ide-export-agreement-table" data-testid="ide-export-artifact-agreement">
-                <tbody>
-                  {artifactAgreementRows.map((row) => (
-                    <tr key={row.id} data-testid={`ide-export-agreement-row-${row.id}`}>
-                      <th scope="row">{row.label}</th>
-                      <td>
-                        <span
-                          className={`ide-export-agreement-tone ide-export-agreement-tone--${row.tone}`}
-                          data-testid={`ide-export-agreement-tone-${row.id}`}
-                        >
-                          {row.detail}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          </section>
-          <section className="ide-export-trust-banner" data-testid="ide-export-trust-banner">
-            {exportTrusted ? (
-              <div className="ide-export-trust-row ide-export-trust-row--trusted">
-                <IdeStatusPill tone="ok">READY</IdeStatusPill>
-                <span className="ide-export-trust-message" data-testid="ide-export-trust-consequence">
-                  {handoffTruth.message}
-                </span>
-              </div>
-            ) : handoffTruth.severity === 'advisory' ? (
-              <div className="ide-export-trust-row ide-export-trust-row--available">
-                <div className="ide-export-trust-header">
-                  <IdeStatusPill tone="warn">NEEDS REVIEW</IdeStatusPill>
-                </div>
-                <div className="ide-export-trust-body">
-                  <p className="ide-export-trust-reason" data-testid="ide-export-trust-reason">
-                    {trustReason}
-                  </p>
-                  <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
-                    {handoffTruth.message}
-                  </p>
-                  {onOpenVerify && (
-                    <IdeButton tone="ghost" onClick={onOpenVerify} testId="ide-export-trust-go-verify">
-                      Open Verify
-                    </IdeButton>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="ide-export-trust-row ide-export-trust-row--blocked">
-                <div className="ide-export-trust-header">
-                  <IdeStatusPill tone="error">BLOCKED</IdeStatusPill>
-                  <div className="ide-export-readiness-strip" data-testid="ide-export-readiness-strip">
-                    <span
-                      className={`ide-export-readiness-axis ${resolvedWorkflowAuthority.designReady ? 'ide-export-readiness-axis--ok' : 'ide-export-readiness-axis--fail'}`}
-                      data-testid="ide-export-readiness-design"
-                    >
-                      {resolvedWorkflowAuthority.designReady ? 'Design valid' : 'Design incomplete'}
-                    </span>
-                    {unmappedRequiredPorts.length > 0 && (
-                      <span className="ide-export-readiness-axis ide-export-readiness-axis--fail" data-testid="ide-export-readiness-mapping">
-                        {unmappedRequiredPorts.length} pin{unmappedRequiredPorts.length !== 1 ? 's' : ''} unmapped
-                      </span>
-                    )}
+            <div className="ide-export-summary-support">
+              <section
+                className="ide-export-package-handoff"
+                data-testid="ide-export-package-handoff"
+                aria-label="Package handoff summary"
+              >
+                <header className="ide-export-section-header ide-export-package-handoff-header">
+                  <div>
+                    <h3>Current handoff</h3>
+                    <p className="ide-export-section-subcopy">
+                      One owner for state, fix direction, board target, timing, mapping, verify evidence, and file agreement.
+                    </p>
+                  </div>
+                </header>
+                <div className="ide-export-handoff-status" data-testid="ide-export-package-handoff-status">
+                  <IdeStatusPill
+                    tone={
+                      packageHandoffSummary.status === 'ready'
+                        ? 'ok'
+                        : packageHandoffSummary.status === 'blocked'
+                          ? 'error'
+                          : 'warn'
+                    }
+                  >
+                    {packageHandoffSummary.statusLabel}
+                  </IdeStatusPill>
+                  <div>
+                    <p className="ide-copy ide-copy--flush ide-export-handoff-headline">
+                      {packageHandoffSummary.headline}
+                    </p>
+                    <p className="ide-copy ide-copy--flush ide-export-handoff-subline">
+                      {packageHandoffSummary.subline}
+                    </p>
                   </div>
                 </div>
-                <div className="ide-export-trust-body">
-                  <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
-                    {handoffTruth.message}
-                  </p>
-                  {onGoToHardware && (
-                    <IdeButton tone="ghost" onClick={onGoToHardware} testId="ide-export-trust-go-hardware">
-                      Open Map Pins
-                    </IdeButton>
+                <div className="ide-export-trust-banner ide-export-trust-banner--inline" data-testid="ide-export-trust-banner">
+                  {exportTrusted ? (
+                    <div className="ide-export-trust-row ide-export-trust-row--trusted">
+                      <IdeStatusPill tone="ok">READY</IdeStatusPill>
+                      <span className="ide-export-trust-message" data-testid="ide-export-trust-consequence">
+                        {handoffTruth.message}
+                      </span>
+                    </div>
+                  ) : handoffTruth.severity === 'advisory' ? (
+                    <div className="ide-export-trust-row ide-export-trust-row--available">
+                      <div className="ide-export-trust-header">
+                        <IdeStatusPill tone="warn">NEEDS REVIEW</IdeStatusPill>
+                      </div>
+                      <div className="ide-export-trust-body">
+                        <p className="ide-export-trust-reason" data-testid="ide-export-trust-reason">
+                          {trustReason}
+                        </p>
+                        <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
+                          {handoffTruth.message}
+                        </p>
+                        {onOpenVerify && (
+                          <IdeButton tone="ghost" onClick={onOpenVerify} testId="ide-export-trust-go-verify">
+                            Open Verify
+                          </IdeButton>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="ide-export-trust-row ide-export-trust-row--blocked">
+                      <div className="ide-export-trust-header">
+                        <IdeStatusPill tone="error">BLOCKED</IdeStatusPill>
+                        <div className="ide-export-readiness-strip" data-testid="ide-export-readiness-strip">
+                          <span
+                            className={`ide-export-readiness-axis ${resolvedWorkflowAuthority.designReady ? 'ide-export-readiness-axis--ok' : 'ide-export-readiness-axis--fail'}`}
+                            data-testid="ide-export-readiness-design"
+                          >
+                            {resolvedWorkflowAuthority.designReady ? 'Design valid' : 'Design incomplete'}
+                          </span>
+                          {unmappedRequiredPorts.length > 0 && (
+                            <span className="ide-export-readiness-axis ide-export-readiness-axis--fail" data-testid="ide-export-readiness-mapping">
+                              {unmappedRequiredPorts.length} pin{unmappedRequiredPorts.length !== 1 ? 's' : ''} unmapped
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="ide-export-trust-body">
+                        <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
+                          {handoffTruth.message}
+                        </p>
+                        {onGoToHardware && (
+                          <IdeButton tone="ghost" onClick={onGoToHardware} testId="ide-export-trust-go-hardware">
+                            Open Map Pins
+                          </IdeButton>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
-              </div>
-            )}
+                <dl className="ide-export-handoff-facts" data-testid="ide-export-handoff-facts">
+                  <div>
+                    <dt>Board target</dt>
+                    <dd data-testid="ide-export-handoff-board">{packageHandoffSummary.boardTarget}</dd>
+                  </div>
+                  <div>
+                    <dt>Timing mode</dt>
+                    <dd data-testid="ide-export-handoff-timing">{packageHandoffSummary.timingPlain}</dd>
+                  </div>
+                  <div>
+                    <dt>Mapping completeness</dt>
+                    <dd data-testid="ide-export-handoff-mapping">{packageHandoffSummary.mappingPlain}</dd>
+                  </div>
+                  <div>
+                    <dt>Verify / scenario</dt>
+                    <dd data-testid="ide-export-handoff-verify">{packageHandoffSummary.verifyPlain}</dd>
+                  </div>
+                  <div>
+                    <dt>Cross-artifact agreement</dt>
+                    <dd data-testid="ide-export-handoff-artifacts">{packageHandoffSummary.artifactsPlain}</dd>
+                  </div>
+                </dl>
+                <details className="ide-export-agreement-details" data-testid="ide-export-agreement-details">
+                  <summary className="ide-summary-toggle">Artifact agreement</summary>
+                  <p className="ide-export-section-subcopy ide-export-agreement-intro">
+                    Top RTL, testbench, XDC, README, and Vivado import script should tell the same story on entity names, ports, widths, and bindings.
+                  </p>
+                  <table className="ide-export-agreement-table" data-testid="ide-export-artifact-agreement">
+                    <tbody>
+                      {artifactAgreementRows.map((row) => (
+                        <tr key={row.id} data-testid={`ide-export-agreement-row-${row.id}`}>
+                          <th scope="row">{row.label}</th>
+                          <td>
+                            <span
+                              className={`ide-export-agreement-tone ide-export-agreement-tone--${row.tone}`}
+                              data-testid={`ide-export-agreement-tone-${row.id}`}
+                            >
+                              {row.detail}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              </section>
+            </div>
           </section>
           <div className="ide-export-layout">
             <div className="ide-export-left-col">
-              {vivadoSection}
-
-              <section className="ide-export-section" data-testid="ide-export-build-output">
-                <header className="ide-export-section-header">
-                  <h3>Readiness</h3>
-                  {visibleDiagnosticsList.length > 0 && (
-                    <span className="ide-export-section-meta">
-                      {visibleDiagnosticsList.filter(d => d.severity === 'error').length > 0
-                        ? `${visibleDiagnosticsList.filter(d => d.severity === 'error').length} blocking`
-                        : `${visibleDiagnosticsList.length} advisory`}
-                    </span>
-                  )}
-                </header>
-
-                {hasBlockingErrors && requiredMappedCount < requiredCount && onGoToHardware && (
-                  <IdeCallout
-                    tone="error"
-                    title="IO mapping incomplete"
-                    testId="ide-export-io-incomplete-callout"
-                  >
-                    <p className="ide-copy ide-copy--flush">
-                      All required input/output ports must be assigned Basys3 pin identifiers before downloading the Vivado kit.
-                    </p>
-                    <div className="ide-mt-2">
-                      <IdeButton tone="primary" onClick={onGoToHardware} testId="ide-export-go-map-pins">
-                        Open Map Pins →
-                      </IdeButton>
-                    </div>
-                  </IdeCallout>
-                )}
-                {hasBlockingErrors && (
-                  <IdeCallout
-                    tone="error"
-                    title={`${viewModel.errors.length} blocker${viewModel.errors.length !== 1 ? 's' : ''} — download unavailable`}
-                    testId="ide-export-blockers-callout"
-                  >
-                    <p className="ide-copy ide-copy--flush">Resolve all mapping and export issues before downloading.</p>
-                    <div className="ide-mt-2" style={{ display: 'flex', gap: 'var(--ide-space-2)', flexWrap: 'wrap' }}>
-                      {onGoToProject && (
-                        <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-export-go-project">
-                          Fix in Project
-                        </IdeButton>
-                      )}
-                      {onOpenVerify && visibleDiagnosticsList.length > 0 && (
-                        <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-go-verify">
-                          Re-run Verify
-                        </IdeButton>
-                      )}
-                    </div>
-                  </IdeCallout>
-                )}
-                {!hasBlockingErrors && hasVerifyEvidenceWarning && (
-                  <div data-testid="ide-export-blockers-callout">
-                    <IdeCallout tone="warn" title="Comparison advisory available" testId="ide-export-unverified-callout">
-                      <p className="ide-copy ide-copy--flush">
-                        Your VHDL files are ready to inspect or download now. Open Verify when you want to compare expected outputs against the live design.
-                      </p>
-                      {onOpenVerify && (
-                        <div className="ide-mt-2">
-                          <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-open-verify-advisory">
-                            Open Verify
-                          </IdeButton>
-                        </div>
-                      )}
-                    </IdeCallout>
-                  </div>
-                )}
-
-                {downloadError.length > 0 && (
-                  <IdeCallout tone="error" title="Export Error" testId="ide-export-capsule-error">
-                    {downloadError}
-                  </IdeCallout>
-                )}
-
-                {!hasBlockingErrors && diagnosticsList.length === 0 && (
-                  <IdeCallout tone="success" title="No blockers">
-                    Export checks passed.
-                  </IdeCallout>
-                )}
-
-                <div className="ide-export-diagnostic-list" data-testid="ide-export-blockers-list">
-                  {visibleDiagnosticsList.map((entry) => {
-                    const portKey = entry.port ? toPortKey(entry.port) : undefined;
-                    const mappingRow = portKey ? mappingIndex.get(portKey) : undefined;
-                    const hasSuggestion =
-                      Boolean(mappingRow?.suggestedPin) &&
-                      (effectivePinsByPortKey[portKey ?? ''] ?? '').trim().length === 0;
-
-                    return (
-                      <article
-                        key={entry.id}
-                        className={`ide-export-diagnostic-row ${
-                          entry.severity === 'error' ? 'is-error' : 'is-warning'
-                        }`}
-                        data-testid={`ide-export-diagnostic-${entry.id}`}
-                      >
-                        <div className="ide-export-diagnostic-meta">
-                          <IdeStatusPill tone={entry.severity === 'error' ? 'error' : 'warn'}>
-                            {entry.severity === 'error' ? 'ERROR' : 'WARN'}
-                          </IdeStatusPill>
-                          <code className="ide-export-diagnostic-code" data-diagnostic-code={entry.code}>
-                            {entry.code}
-                          </code>
-                        </div>
-                        <p className="ide-export-diagnostic-message">{entry.message}</p>
-                        <div className="ide-export-diagnostic-actions">
-                          <IdeButton
-                            tone="secondary"
-                            onClick={() =>
-                              setOpenFixPathId((prev) => (prev === entry.id ? null : entry.id))
-                            }
-                            testId={`ide-export-diagnostic-action-${entry.id}`}
-                          >
-                            {openFixPathId === entry.id ? 'Hide ▲' : 'Fix path ▼'}
-                          </IdeButton>
-                          {mappingRow && portKey && hasSuggestion && (
-                            <IdeButton tone="ghost" onClick={() => applySuggestion(portKey)}>
-                              Auto-suggest
-                            </IdeButton>
-                          )}
-                        </div>
-                        {openFixPathId === entry.id && (
-                          <div
-                            className="ide-export-fixpath-drawer"
-                            data-testid={`ide-export-fixpath-${entry.id}`}
-                          >
-                            <p className="ide-export-fixpath-line" data-testid={`ide-export-fixpath-what-${entry.id}`}>
-                              <strong>What failed:</strong> {entry.title}
-                            </p>
-                            <p className="ide-export-fixpath-line" data-testid={`ide-export-fixpath-why-${entry.id}`}>
-                              <strong>Why it blocks handoff:</strong> {entry.fix ?? entry.message}
-                            </p>
-                            <p className="ide-export-fixpath-line" data-testid={`ide-export-fixpath-owner-${entry.id}`}>
-                              <strong>Owns the fix:</strong> {formatExportDiagnosticOwner(entry.owner)}
-                            </p>
-                            <div className="ide-inline-actions ide-export-fixpath-owning-surface">
-                              {entry.owner.kind === 'mapping' && onGoToHardware && (
-                                <IdeButton
-                                  tone="secondary"
-                                  onClick={onGoToHardware}
-                                  testId={`ide-export-fixpath-open-map-pins-${entry.id}`}
-                                >
-                                  Open Map Pins
-                                </IdeButton>
-                              )}
-                              {(entry.owner.kind === 'node' || entry.owner.kind === 'port') && onGoToDesign && (
-                                <IdeButton
-                                  tone="secondary"
-                                  onClick={onGoToDesign}
-                                  testId={`ide-export-fixpath-open-design-${entry.id}`}
-                                >
-                                  Open Design
-                                </IdeButton>
-                              )}
-                              {entry.owner.kind === 'file' && onGoToProject && (
-                                <IdeButton
-                                  tone="secondary"
-                                  onClick={onGoToProject}
-                                  testId={`ide-export-fixpath-open-project-${entry.id}`}
-                                >
-                                  Open Project
-                                </IdeButton>
-                              )}
-                              {onOpenVerify && (
-                                <IdeButton
-                                  tone="ghost"
-                                  onClick={onOpenVerify}
-                                  testId={`ide-export-fixpath-open-verify-${entry.id}`}
-                                >
-                                  Open Verify
-                                </IdeButton>
-                              )}
-                            </div>
-                            <p className="ide-export-fixpath-cause">{entry.message}</p>
-                            <ul className="ide-export-fixpath-steps">
-                              {(entry.hint ?? []).map((h, i) => (
-                                <li key={i} className="ide-export-fixpath-step">{h}</li>
-                              ))}
-                            </ul>
-                            <div className="ide-inline-actions">
-                              {(entry.actions ?? []).map((action) => (
-                                <IdeButton
-                                  key={action.label}
-                                  tone="secondary"
-                                  onClick={() => onDiagnosticAction?.(entry.canonical)}
-                                >
-                                  {action.label}
-                                </IdeButton>
-                              ))}
-                              {portKey && mappingRow && (
-                                <IdeButton
-                                  tone="ghost"
-                                  onClick={() => jumpToMapping(portKey)}
-                                >
-                                  Jump to mapping
-                                </IdeButton>
-                              )}
-                              {portKey && mappingRow && hasSuggestion && (
-                                <IdeButton tone="ghost" onClick={() => applySuggestion(portKey)}>
-                                  Apply suggestion
-                                </IdeButton>
-                              )}
-                              {onGoToDesign && (
-                                <IdeButton
-                                  tone="ghost"
-                                  onClick={onGoToDesign}
-                                  testId="ide-export-go-design"
-                                >
-                                  Fix in Design →
-                                </IdeButton>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
-
-              {gateStackSection}
-
-              <section
-                ref={mapSectionRef}
-                className="ide-export-section"
-                data-testid="ide-export-mapping-table"
-              >
-                <header className="ide-export-section-header">
-                  <h3>I/O Mapping Table</h3>
-                  <span className="ide-export-section-meta">
-                    {mappedCount}/{viewModel.pinTable.length} mapped
-                  </span>
-                </header>
-                <IdeCallout
-                  tone={hasExternalMappingAuthority ? 'success' : 'warn'}
-                  title="Active pin source"
-                  testId="ide-export-mapping-authority-callout"
-                >
-                  <p className="ide-copy ide-copy--flush" data-testid="ide-export-mapping-authority-text">
-                    {mappingAuthoritySummary}
-                  </p>
-                  {mappingAuthorityUpdateSummary.length > 0 && (
-                    <p className="ide-copy" style={{ margin: 'var(--ide-space-1) 0 0' }} data-testid="ide-export-mapping-authority-updates">
-                      {mappingAuthorityUpdateSummary}
-                    </p>
-                  )}
-                </IdeCallout>
-                {applySuggestionCount > 0 && (
-                  <div className="ide-inline-actions" style={{ marginBottom: 'var(--ide-space-1)' }}>
-                    <IdeButton
-                      tone="ghost"
-                      onClick={applyAllSuggestions}
-                      testId="ide-export-apply-suggestions"
-                    >
-                      Apply {applySuggestionCount} suggestion{applySuggestionCount !== 1 ? 's' : ''}
-                    </IdeButton>
-                  </div>
-                )}
-                {projectMappingMissingRows.length > 0 && (
-                  <IdeCallout tone="warn" title="Add missing project mappings before binding pins">
-                    {projectMappingMissingRows.length} required port
-                    {projectMappingMissingRows.length === 1 ? '' : 's'} appear in the top entity
-                    but not in the project mapping yet. Add them in Project or Design before assigning a
-                    Basys3 pin here.
-                  </IdeCallout>
-                )}
-                <div className="ide-table-wrap ide-export-table-wrap">
-                  <table className="ide-table ide-export-table">
-                    <thead>
-                      <tr>
-                        <th>Port</th>
-                        <th>Direction</th>
-                        <th>Bound Pin</th>
-                        <th>Status</th>
-                        <th>Conf</th>
-                        <th>Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {viewModel.pinTable.map((row) => {
-                        const portKey = toPortKey(row.port);
-                        const pinValue = effectivePinsByPortKey[portKey] ?? '';
-                        const status = resolveRowStatus(row.status, pinValue);
-                        const conf = getPinConfidence(row.suggestedPin, pinValue);
-                        const isPinInvalid = invalidPins.has(portKey);
-                        const isEditable = editablePortKeys.has(portKey);
-                        const changedByAuthority = hasExternalMappingAuthority && recentlyReconciledPins.has(portKey);
-                        return (
-                          <tr
-                            key={row.port}
-                            ref={(node) => {
-                              rowRefs.current[portKey] = node;
-                            }}
-                            className={highlightedPort === portKey ? 'ide-export-row-highlight' : undefined}
-                            data-testid={`ide-export-map-row-${portKey}`}
-                          >
-                            <td>
-                              <div className="ide-export-port-cell">
-                                <code>{row.port}</code>
-                                {row.required && <span className="ide-export-required-tag">Required</span>}
-                              </div>
-                            </td>
-                            <td>
-                              <span className={`ide-export-direction ide-export-direction-${row.direction}`}>
-                                {row.direction === 'in' ? 'IN' : row.direction === 'out' ? 'OUT' : 'INOUT'}
-                              </span>
-                            </td>
-                            <td>
-                              <input
-                                ref={(node) => {
-                                  pinInputRefs.current[portKey] = node;
-                                }}
-                                className="ide-export-pin-input"
-                                value={pinValue}
-                                disabled={!isEditable}
-                                onChange={(event) => {
-                                  const newVal = event.target.value.toUpperCase();
-                                  handlePinOverrideChange(portKey, newVal);
-                                  // Phase 2: validate against known Basys3 pins
-                                  const trimmed = newVal.trim();
-                                  setInvalidPins((prev) => {
-                                    const next = new Set(prev);
-                                    if (trimmed.length > 0 && !BASYS3_VALID_PINS.has(trimmed)) {
-                                      next.add(portKey);
-                                    } else {
-                                      next.delete(portKey);
-                                    }
-                                    return next;
-                                  });
-                                }}
-                                placeholder={isEditable ? row.suggestedPin ?? 'PIN' : 'Add mapping first'}
-                              />
-                              {isPinInvalid && (
-                                <span className="ide-pin-warn">&#9888; Unknown pin — check Basys3 reference</span>
-                              )}
-                            </td>
-                            <td>
-                              <IdeStatusPill tone={statusTone(status)}>
-                                {status === 'mapped'
-                                  ? 'Mapped'
-                                  : status === 'missing'
-                                    ? 'Missing'
-                                    : 'Unused'}
-                              </IdeStatusPill>
-                            </td>
-                            <td>
-                              <span className={`ide-export-conf-badge ide-export-conf-${conf}`}>
-                                {conf === 'exact' ? '✓' : conf === 'likely' ? '~' : '?'}
-                              </span>
-                            </td>
-                            <td className="ide-export-notes-cell">
-                              {row.notes && <div>{row.notes}</div>}
-                              {changedByAuthority && (
-                                <div
-                                  className="ide-export-suggestion"
-                                  data-testid={`ide-export-pin-updated-upstream-${portKey}`}
-                                >
-                                  Updated from Project / Map Pins.
-                                </div>
-                              )}
-                              {!isEditable && (
-                                <div className="ide-export-suggestion">
-                                  Add this mapping in Project or Design before assigning a pin.
-                                </div>
-                              )}
-                              {row.suggestedPin && (
-                                <div className="ide-export-suggestion">Suggested: {row.suggestedPin}</div>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-
               <section className="ide-export-section" data-testid="ide-export-artifact-preview">
                 <header className="ide-export-section-header">
                   <div>
-                    <h3>Generated Artifacts</h3>
+                    <h3>Artifact workspace</h3>
                     <p className="ide-export-section-subcopy">
-                      Bundle composition by role: synthesizable RTL, board constraints, simulation bench, then Vivado scaffolding and notes — each group is intentional for Basys3 handoff.
+                      Review the generated files as one handoff set: RTL, constraints, testbench, and Vivado scaffolding.
                     </p>
                   </div>
                   <span className="ide-export-section-meta">
@@ -2428,14 +2035,395 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 )}
               </section>
 
+              <div className="ide-export-support-grid">
+                <section className="ide-export-section" data-testid="ide-export-build-output">
+                <header className="ide-export-section-header">
+                  <h3>Blockers and advisories</h3>
+                  {visibleDiagnosticsList.length > 0 && (
+                    <span className="ide-export-section-meta">
+                      {visibleDiagnosticsList.filter(d => d.severity === 'error').length > 0
+                        ? `${visibleDiagnosticsList.filter(d => d.severity === 'error').length} blocking`
+                        : `${visibleDiagnosticsList.length} advisory`}
+                    </span>
+                  )}
+                </header>
+
+                {hasBlockingErrors && requiredMappedCount < requiredCount && onGoToHardware && (
+                  <IdeCallout
+                    tone="error"
+                    title="IO mapping incomplete"
+                    testId="ide-export-io-incomplete-callout"
+                  >
+                    <p className="ide-copy ide-copy--flush">
+                      All required input/output ports must be assigned Basys3 pin identifiers before downloading the Vivado kit.
+                    </p>
+                    <div className="ide-mt-2">
+                      <IdeButton tone="primary" onClick={onGoToHardware} testId="ide-export-go-map-pins">
+                        Open Map Pins
+                      </IdeButton>
+                    </div>
+                  </IdeCallout>
+                )}
+                {hasBlockingErrors && (
+                  <IdeCallout
+                    tone="error"
+                    title={`${viewModel.errors.length} blocker${viewModel.errors.length !== 1 ? 's' : ''} - download unavailable`}
+                    testId="ide-export-blockers-callout"
+                  >
+                    <p className="ide-copy ide-copy--flush">Resolve all mapping and export issues before downloading.</p>
+                    <div className="ide-mt-2" style={{ display: 'flex', gap: 'var(--ide-space-2)', flexWrap: 'wrap' }}>
+                      {onGoToProject && (
+                        <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-export-go-project">
+                          Fix in Project
+                        </IdeButton>
+                      )}
+                      {onOpenVerify && visibleDiagnosticsList.length > 0 && (
+                        <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-go-verify">
+                          Re-run Verify
+                        </IdeButton>
+                      )}
+                    </div>
+                  </IdeCallout>
+                )}
+                {!hasBlockingErrors && hasVerifyEvidenceWarning && (
+                  <div data-testid="ide-export-blockers-callout">
+                    <IdeCallout tone="warn" title="Comparison advisory available" testId="ide-export-unverified-callout">
+                      <p className="ide-copy ide-copy--flush">
+                        Your VHDL files are ready to inspect or download now. Open Verify when you want to compare expected outputs against the live design.
+                      </p>
+                      {onOpenVerify && (
+                        <div className="ide-mt-2">
+                          <IdeButton tone="secondary" onClick={onOpenVerify} testId="ide-export-open-verify-advisory">
+                            Open Verify
+                          </IdeButton>
+                        </div>
+                      )}
+                    </IdeCallout>
+                  </div>
+                )}
+
+                {downloadError.length > 0 && (
+                  <IdeCallout tone="error" title="Export Error" testId="ide-export-capsule-error">
+                    {downloadError}
+                  </IdeCallout>
+                )}
+
+                {!hasBlockingErrors && diagnosticsList.length === 0 && (
+                  <IdeCallout tone="success" title="No blockers">
+                    Export checks passed.
+                  </IdeCallout>
+                )}
+
+                <div className="ide-export-diagnostic-list" data-testid="ide-export-blockers-list">
+                  {visibleDiagnosticsList.map((entry) => {
+                    const portKey = entry.port ? toPortKey(entry.port) : undefined;
+                    const mappingRow = portKey ? mappingIndex.get(portKey) : undefined;
+                    const hasSuggestion =
+                      Boolean(mappingRow?.suggestedPin) &&
+                      (effectivePinsByPortKey[portKey ?? ''] ?? '').trim().length === 0;
+
+                    return (
+                      <article
+                        key={entry.id}
+                        className={`ide-export-diagnostic-row ${
+                          entry.severity === 'error' ? 'is-error' : 'is-warning'
+                        }`}
+                        data-testid={`ide-export-diagnostic-${entry.id}`}
+                      >
+                        <div className="ide-export-diagnostic-meta">
+                          <IdeStatusPill tone={entry.severity === 'error' ? 'error' : 'warn'}>
+                            {entry.severity === 'error' ? 'ERROR' : 'WARN'}
+                          </IdeStatusPill>
+                          <code className="ide-export-diagnostic-code" data-diagnostic-code={entry.code}>
+                            {entry.code}
+                          </code>
+                        </div>
+                        <p className="ide-export-diagnostic-message">{entry.message}</p>
+                        <div className="ide-export-diagnostic-actions">
+                          <IdeButton
+                            tone="secondary"
+                            onClick={() =>
+                              setOpenFixPathId((prev) => (prev === entry.id ? null : entry.id))
+                            }
+                            testId={`ide-export-diagnostic-action-${entry.id}`}
+                          >
+                            {openFixPathId === entry.id ? 'Hide details' : 'Show fix path'}
+                          </IdeButton>
+                          {mappingRow && portKey && hasSuggestion && (
+                            <IdeButton tone="ghost" onClick={() => applySuggestion(portKey)}>
+                              Auto-suggest
+                            </IdeButton>
+                          )}
+                        </div>
+                        {openFixPathId === entry.id && (
+                          <div
+                            className="ide-export-fixpath-drawer"
+                            data-testid={`ide-export-fixpath-${entry.id}`}
+                          >
+                            <p className="ide-export-fixpath-line" data-testid={`ide-export-fixpath-what-${entry.id}`}>
+                              <strong>What failed:</strong> {entry.title}
+                            </p>
+                            <p className="ide-export-fixpath-line" data-testid={`ide-export-fixpath-why-${entry.id}`}>
+                              <strong>Why it blocks handoff:</strong> {entry.fix ?? entry.message}
+                            </p>
+                            <p className="ide-export-fixpath-line" data-testid={`ide-export-fixpath-owner-${entry.id}`}>
+                              <strong>Owns the fix:</strong> {formatExportDiagnosticOwner(entry.owner)}
+                            </p>
+                            <div className="ide-inline-actions ide-export-fixpath-owning-surface">
+                              {entry.owner.kind === 'mapping' && onGoToHardware && (
+                                <IdeButton
+                                  tone="secondary"
+                                  onClick={onGoToHardware}
+                                  testId={`ide-export-fixpath-open-map-pins-${entry.id}`}
+                                >
+                                  Open Map Pins
+                                </IdeButton>
+                              )}
+                              {(entry.owner.kind === 'node' || entry.owner.kind === 'port') && onGoToDesign && (
+                                <IdeButton
+                                  tone="secondary"
+                                  onClick={onGoToDesign}
+                                  testId={`ide-export-fixpath-open-design-${entry.id}`}
+                                >
+                                  Open Design
+                                </IdeButton>
+                              )}
+                              {entry.owner.kind === 'file' && onGoToProject && (
+                                <IdeButton
+                                  tone="secondary"
+                                  onClick={onGoToProject}
+                                  testId={`ide-export-fixpath-open-project-${entry.id}`}
+                                >
+                                  Open Project
+                                </IdeButton>
+                              )}
+                              {onOpenVerify && (
+                                <IdeButton
+                                  tone="ghost"
+                                  onClick={onOpenVerify}
+                                  testId={`ide-export-fixpath-open-verify-${entry.id}`}
+                                >
+                                  Open Verify
+                                </IdeButton>
+                              )}
+                            </div>
+                            <p className="ide-export-fixpath-cause">{entry.message}</p>
+                            <ul className="ide-export-fixpath-steps">
+                              {(entry.hint ?? []).map((h, i) => (
+                                <li key={i} className="ide-export-fixpath-step">{h}</li>
+                              ))}
+                            </ul>
+                            <div className="ide-inline-actions">
+                              {(entry.actions ?? []).map((action) => (
+                                <IdeButton
+                                  key={action.label}
+                                  tone="secondary"
+                                  onClick={() => onDiagnosticAction?.(entry.canonical)}
+                                >
+                                  {action.label}
+                                </IdeButton>
+                              ))}
+                              {portKey && mappingRow && (
+                                <IdeButton
+                                  tone="ghost"
+                                  onClick={() => jumpToMapping(portKey)}
+                                >
+                                  Jump to mapping
+                                </IdeButton>
+                              )}
+                              {portKey && mappingRow && hasSuggestion && (
+                                <IdeButton tone="ghost" onClick={() => applySuggestion(portKey)}>
+                                  Apply suggestion
+                                </IdeButton>
+                              )}
+                              {onGoToDesign && (
+                                <IdeButton
+                                  tone="ghost"
+                                  onClick={onGoToDesign}
+                                  testId="ide-export-go-design"
+                                >
+                                  Fix in Design
+                                </IdeButton>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+                <details className="ide-export-gate-details ide-mt-2" data-testid="ide-export-gate-details">
+                  <summary>Readiness gates</summary>
+                  <div className="ide-mt-2">
+                    {gateStackSection}
+                  </div>
+                </details>
+              </section>
+
+              <section
+                ref={mapSectionRef}
+                className="ide-export-section"
+                data-testid="ide-export-mapping-table"
+              >
+                <header className="ide-export-section-header">
+                  <h3>Pin binding</h3>
+                  <span className="ide-export-section-meta">
+                    {mappedCount}/{viewModel.pinTable.length} mapped
+                  </span>
+                </header>
+                <IdeCallout
+                  tone={hasExternalMappingAuthority ? 'success' : 'warn'}
+                  title="Active pin source"
+                  testId="ide-export-mapping-authority-callout"
+                >
+                  <p className="ide-copy ide-copy--flush" data-testid="ide-export-mapping-authority-text">
+                    {mappingAuthoritySummary}
+                  </p>
+                  {mappingAuthorityUpdateSummary.length > 0 && (
+                    <p className="ide-copy" style={{ margin: 'var(--ide-space-1) 0 0' }} data-testid="ide-export-mapping-authority-updates">
+                      {mappingAuthorityUpdateSummary}
+                    </p>
+                  )}
+                </IdeCallout>
+                {applySuggestionCount > 0 && (
+                  <div className="ide-inline-actions" style={{ marginBottom: 'var(--ide-space-1)' }}>
+                    <IdeButton
+                      tone="ghost"
+                      onClick={applyAllSuggestions}
+                      testId="ide-export-apply-suggestions"
+                    >
+                      Apply {applySuggestionCount} suggestion{applySuggestionCount !== 1 ? 's' : ''}
+                    </IdeButton>
+                  </div>
+                )}
+                {projectMappingMissingRows.length > 0 && (
+                  <IdeCallout tone="warn" title="Add missing project mappings before binding pins">
+                    {projectMappingMissingRows.length} required port
+                    {projectMappingMissingRows.length === 1 ? '' : 's'} appear in the top entity
+                    but not in the project mapping yet. Add them in Project or Design before assigning a
+                    Basys3 pin here.
+                  </IdeCallout>
+                )}
+                <div className="ide-table-wrap ide-export-table-wrap">
+                  <table className="ide-table ide-export-table">
+                    <thead>
+                      <tr>
+                        <th>Port</th>
+                        <th>Direction</th>
+                        <th>Bound Pin</th>
+                        <th>Status</th>
+                        <th>Conf</th>
+                        <th>Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {viewModel.pinTable.map((row) => {
+                        const portKey = toPortKey(row.port);
+                        const pinValue = effectivePinsByPortKey[portKey] ?? '';
+                        const status = resolveRowStatus(row.status, pinValue);
+                        const conf = getPinConfidence(row.suggestedPin, pinValue);
+                        const isPinInvalid = invalidPins.has(portKey);
+                        const isEditable = editablePortKeys.has(portKey);
+                        const changedByAuthority = hasExternalMappingAuthority && recentlyReconciledPins.has(portKey);
+                        return (
+                          <tr
+                            key={row.port}
+                            ref={(node) => {
+                              rowRefs.current[portKey] = node;
+                            }}
+                            className={highlightedPort === portKey ? 'ide-export-row-highlight' : undefined}
+                            data-testid={`ide-export-map-row-${portKey}`}
+                          >
+                            <td>
+                              <div className="ide-export-port-cell">
+                                <code>{row.port}</code>
+                                {row.required && <span className="ide-export-required-tag">Required</span>}
+                              </div>
+                            </td>
+                            <td>
+                              <span className={`ide-export-direction ide-export-direction-${row.direction}`}>
+                                {row.direction === 'in' ? 'IN' : row.direction === 'out' ? 'OUT' : 'INOUT'}
+                              </span>
+                            </td>
+                            <td>
+                              <input
+                                ref={(node) => {
+                                  pinInputRefs.current[portKey] = node;
+                                }}
+                                className="ide-export-pin-input"
+                                value={pinValue}
+                                disabled={!isEditable}
+                                onChange={(event) => {
+                                  const newVal = event.target.value.toUpperCase();
+                                  handlePinOverrideChange(portKey, newVal);
+                                  // Phase 2: validate against known Basys3 pins
+                                  const trimmed = newVal.trim();
+                                  setInvalidPins((prev) => {
+                                    const next = new Set(prev);
+                                    if (trimmed.length > 0 && !BASYS3_VALID_PINS.has(trimmed)) {
+                                      next.add(portKey);
+                                    } else {
+                                      next.delete(portKey);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                                placeholder={isEditable ? row.suggestedPin ?? 'PIN' : 'Add mapping first'}
+                              />
+                              {isPinInvalid && (
+                                <span className="ide-pin-warn">[!] Unknown pin - check Basys3 reference</span>
+                              )}
+                            </td>
+                            <td>
+                              <IdeStatusPill tone={statusTone(status)}>
+                                {status === 'mapped'
+                                  ? 'Mapped'
+                                  : status === 'missing'
+                                    ? 'Missing'
+                                    : 'Unused'}
+                              </IdeStatusPill>
+                            </td>
+                            <td>
+                              <span className={`ide-export-conf-badge ide-export-conf-${conf}`}>
+                                {conf === 'exact' ? 'OK' : conf === 'likely' ? '~' : '?'}
+                              </span>
+                            </td>
+                            <td className="ide-export-notes-cell">
+                              {row.notes && <div>{row.notes}</div>}
+                              {changedByAuthority && (
+                                <div
+                                  className="ide-export-suggestion"
+                                  data-testid={`ide-export-pin-updated-upstream-${portKey}`}
+                                >
+                                  Updated from Project / Map Pins.
+                                </div>
+                              )}
+                              {!isEditable && (
+                                <div className="ide-export-suggestion">
+                                  Add this mapping in Project or Design before assigning a pin.
+                                </div>
+                              )}
+                              {row.suggestedPin && (
+                                <div className="ide-export-suggestion">Suggested: {row.suggestedPin}</div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+              </div>
+
             </div>
 
             <div className="ide-export-right-col">
-
+              {vivadoSection}
 
               <section className="ide-export-determinismChecks ide-export-aside-panel" data-testid="ide-export-determinism-checks">
                 <div className="ide-export-determinismHeader">DETERMINISM</div>
-                <div className="ide-export-determinismLegend">✓ satisfied &nbsp;·&nbsp; ⚠ required</div>
+                <div className="ide-export-determinismLegend">OK satisfied | CHECK required</div>
                 {deterministicChecks.map((check) => (
                   <div
                     key={check.id}
@@ -2443,37 +2431,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     data-testid={`ide-export-determinism-${check.id}`}
                     title={check.tooltip}
                   >
-                    <span className="ide-export-determinismIcon">{check.pass ? '✓' : '⚠'}</span>
+                    <span className="ide-export-determinismIcon">{check.pass ? 'OK' : 'CHECK'}</span>
                     <span className="ide-export-determinismLabel">{check.label}</span>
                   </div>
                 ))}
-              </section>
-
-              <section className="ide-export-artifact-plan ide-export-aside-panel" data-testid="ide-export-artifact-plan">
-                <div className="ide-export-artifact-plan-header">
-                  <span className="ide-export-artifact-plan-title">Fallback Kit</span>
-                  <span style={{ fontSize: 10, color: 'var(--ide-text-muted)' }}>
-                    {viewModel.artifacts.length}/5 ready
-                  </span>
-                </div>
-                {ARTIFACT_PLAN_FILES.map((file) => {
-                  const artifactEntry = artifactMap.get(file.path.toLowerCase());
-                  const isReady = artifactEntry?.status === 'ready';
-                  return (
-                    <div
-                      key={file.path}
-                      className={`ide-export-artifact-plan-row ${isReady ? 'is-ready' : 'is-pending'}`}
-                    >
-                      <span className="ide-export-plan-row-icon">{isReady ? '✓' : '○'}</span>
-                      <div className="ide-export-plan-row-info">
-                        <span className="ide-export-plan-row-path">{file.path}</span>
-                        <span className="ide-export-plan-row-desc">
-                          {!isReady && artifactEntry?.note ? artifactEntry.note : file.desc}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
               </section>
 
               <details className="ide-export-evidence-details ide-mt-2" data-testid="ide-export-evidence-details">
@@ -2510,10 +2471,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   );
 };
 
-const LOGIC_INPUT_TYPES = new Set(['INPUT', 'Switch', 'Button', 'Clock', 'CLOCK']);
-const LOGIC_OUTPUT_TYPES = new Set(['OUTPUT', 'Lamp']);
-const CLOCKED_NODE_TYPES = new Set(['DFlipFlop', 'DLatch', 'TFlipFlop', 'JKFlipFlop', 'Counter4Bit', 'Delay']);
-
 const SummaryStat: React.FC<{ label: string; value: string; mono?: boolean }> = ({
   label,
   value,
@@ -2540,28 +2497,28 @@ function buildArtifactGroups(artifacts: ExportArtifactView[]): ExportArtifactGro
       id: 'hdl',
       label: 'HDL',
       description:
-        'Synthesizable top-level VHDL (`top.vhd`) — authoritative RTL for Vivado synthesis and the port list every other file must match.',
+        'Synthesizable top-level VHDL (`top.vhd`) - authoritative RTL for Vivado synthesis and the port list every other file must match.',
       artifacts: [],
     },
     {
       id: 'constraints',
       label: 'Constraints',
       description:
-        'Pin and timing constraints (`top.xdc`) — physical bindings and clock policy aligned to Map Pins and the active timing mode.',
+        'Pin and timing constraints (`top.xdc`) - physical bindings and clock policy aligned to Map Pins and the active timing mode.',
       artifacts: [],
     },
     {
       id: 'testbench',
       label: 'Testbench',
       description:
-        'Simulation-only VHDL (`testbench.vhd`) — instantiates the DUT with the same entity and ports as `top.vhd`; never merged into the design source set.',
+        'Simulation-only VHDL (`testbench.vhd`) - instantiates the DUT with the same entity and ports as `top.vhd`; never merged into the design source set.',
       artifacts: [],
     },
     {
       id: 'project',
       label: 'Project scaffolding',
       description:
-        'Vivado import script, README, and project metadata — reproducible import path and student-facing handoff notes.',
+        'Vivado import script, README, and project metadata - reproducible import path and student-facing handoff notes.',
       artifacts: [],
     },
   ];
@@ -2579,44 +2536,6 @@ function classifyArtifactGroup(artifact: ExportArtifactView): ExportArtifactGrou
   if (artifact.kind === 'vhd' && /testbench/i.test(artifact.path)) return 'testbench';
   if (artifact.kind === 'vhd') return 'hdl';
   return 'project';
-}
-
-function buildDesignSummary(project: RBProject): ExportDesignSummary {
-  const rawNodes = project.circuit?.nodes ?? [];
-  const semanticNodes = canonicalizeSemanticCircuit(project.circuit ?? { nodes: [], connections: [] }).nodes ?? [];
-  let inputs = 0;
-  let outputs = 0;
-  let gates = 0;
-  let stateful = 0;
-
-  for (const node of rawNodes) {
-    if (LOGIC_INPUT_TYPES.has(node.type)) {
-      inputs += 1;
-      continue;
-    }
-    if (LOGIC_OUTPUT_TYPES.has(node.type)) {
-      outputs += 1;
-      continue;
-    }
-    if (CLOCKED_NODE_TYPES.has(node.type)) {
-      gates += 1;
-      continue;
-    }
-    gates += 1;
-  }
-
-  for (const node of semanticNodes) {
-    if (CLOCKED_NODE_TYPES.has(node.type)) {
-      stateful += 1;
-    }
-  }
-
-  return {
-    inputs: Math.max(inputs, project.ioMapping?.inputs?.length ?? 0),
-    outputs: Math.max(outputs, project.ioMapping?.outputs?.length ?? 0),
-    gates,
-    stateful,
-  };
 }
 
 function resolveExportLayoutMode(width?: number): ExportLayoutMode {
@@ -2721,7 +2640,7 @@ function buildEvidenceDiagnostics(
     diagnostics.push(createEvidenceDiagnostic({
       code: 'RBEV1001',
       message: isStarterFail
-        ? 'Ran with auto-generated starter vectors — scenario not yet authored. Export is available, but the comparison evidence is still starter-grade.'
+        ? 'Ran with auto-generated starter vectors - scenario not yet authored. Export is available, but the comparison evidence is still starter-grade.'
         : typeof verifyResult.failingTick === 'number'
           ? `Latest comparison run differed at tick ${verifyResult.failingTick}. Export files remain available.`
           : 'Latest comparison run differed from observed outputs. Export files remain available.',

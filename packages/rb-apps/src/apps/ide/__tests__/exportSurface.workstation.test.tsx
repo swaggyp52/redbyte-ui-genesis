@@ -212,7 +212,7 @@ describe('ExportSurface workstation redesign', () => {
     expect(getByTestId('ide-export-unverified-callout').textContent).toContain(
       'Open Verify when you want to compare expected outputs against the live design'
     );
-    expect(getByText('Readiness')).toBeTruthy();
+    expect(getByText('Blockers and advisories')).toBeTruthy();
     expect(queryByTestId('ide-export-vivado-blocked-callout')).toBeNull();
   });
 

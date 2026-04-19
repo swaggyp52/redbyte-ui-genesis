@@ -1,5 +1,48 @@
 # AI State
 
+## Change Log 2026-04-18 (Targeted correction: Export handoff owner + artifact workspace)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx`
+
+**Context**: After the Verify workspace correction, Export still had too many co-equal owners on screen at once: a summary hero, a separate trust banner, a package handoff slab, a fallback kit side panel, and a lower artifact region that started too far below the fold. The product target for this slice was explicit: one top handoff owner, one artifact workspace below it, a quieter sidebar, and a direct corruption sweep for risky text rendering.
+
+**Changes**:
+- **Removed the standalone trust banner as a separate surface**: Export no longer renders a second readiness/trust band below the summary hero. The trust state now lives inside the top `Current handoff` owner, so blocked/advisory/ready messaging no longer competes with a separate row.
+- **Removed the fallback kit side panel**: the old `Fallback Kit` aside was retired. Artifact ownership now stays in the main artifact workspace instead of duplicating file readiness in a secondary panel.
+- **Artifact workspace moved directly under the summary owner**: the main generated-files workspace now appears immediately after the top handoff summary instead of being pushed below the blockers/mapping support grid by legacy ordering rules.
+- **Support sections demoted**: the old standalone readiness gate stack is no longer a co-equal panel. It now lives inside a collapsible `Readiness gates` details block under `Blockers and advisories`. Pin review remains available, but the main visual center of gravity is the handoff summary plus artifact workspace.
+- **Sidebar calmed down**: the right column now keeps only `Open in Vivado`, determinism checks, and the collapsed debug report. The side rail no longer repeats artifact readiness with a second plan card.
+- **Risky glyphs normalized in Export UI strings**: several export-facing labels and inline symbols were converted to plain ASCII wording (`Building...`, `Hide details`, `Show fix path`, `Open Vivado -> File -> Open Project`, `OK satisfied | CHECK required`) so the visible UI is less vulnerable to mojibake-style review artifacts.
+
+**Tests / gates**:
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.timing-authority.test.tsx` -> **30/30 pass**
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx` -> **19/19 pass**
+- `pnpm --filter @redbyte/rb-apps build` -> bundle build succeeded; declaration/type step still reports pre-existing repo-wide TypeScript debt outside this slice
+- `pnpm build:unified` -> **success**
+- `pnpm repo:status` -> **fails on pre-existing `IDE ZIP Import Contract` only**
+
+**Verification**:
+- Live browser: `http://127.0.0.1:5173/?mode=export`
+  - Captured pre-pass reference `export-before-pass4.png`
+  - Captured post-pass viewport `export-after-pass4b.png`
+  - Captured post-pass full page `export-after-pass4b-full.png`
+- Visual outcome:
+  - the top summary now owns state, consequence, and fix direction without a second standalone trust band
+  - the artifact workspace now appears directly below the summary owner instead of starting deep below the fold
+  - the fallback kit panel is gone, so the right column is quieter
+  - blockers and pin binding are now support sections, not peer heroes
+- DOM corruption sweep:
+  - `document.body.innerText` regex scan for `Ã|Â|â|�|â†’|âœ“|âš |â—‹|â–²|â–¼` -> **0 matches**
+
+**Truth changes**:
+- Export now has one top handoff owner instead of a summary hero plus a separate trust banner plus a separate fallback-kit aside.
+- The artifact workspace is now the first major workspace below the handoff summary.
+- The Export sidebar is now support-only; artifact ownership stays in the main workspace.
+
+**Removed / demoted**: standalone Export trust banner, fallback kit side panel, and standalone readiness gate panel as a first-class surface.
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-18 (Targeted correction: Verify stimulus-run-observe workspace)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyWaveformPlaceholder.tsx`, `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.caseEditorClarity.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface-fail-state.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.frontend-dedup.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`
