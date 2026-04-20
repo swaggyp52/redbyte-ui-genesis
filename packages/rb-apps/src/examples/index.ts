@@ -27,6 +27,8 @@ import example20 from './20_lab5-addsub-starter-basys3.json';
 import example21 from './21_lab6-flipflop-starter.json';
 import example22 from './22_lab7-sync-counter-starter-basys3.json';
 import example23 from './23_lab8-fsm-lock-starter-basys3.json';
+import example24 from './24_dlatch-example.json';
+import example25 from './25_tff-example.json';
 import { generateExampleProject, type ExampleSource } from './exampleGenerator';
 
 export type ExampleId =
@@ -52,7 +54,9 @@ export type ExampleId =
   | '20_lab5-addsub-starter-basys3'
   | '21_lab6-flipflop-starter'
   | '22_lab7-sync-counter-starter-basys3'
-  | '23_lab8-fsm-lock-starter-basys3';
+  | '23_lab8-fsm-lock-starter-basys3'
+  | '24_dlatch-example'
+  | '25_tff-example';
 
 export type CircuitLayer = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -292,10 +296,33 @@ const examples: Record<ExampleId, { data: SerializedCircuitV1; metadata: Example
     data: example23 as SerializedCircuitV1,
     metadata: {
       id: '23_lab8-fsm-lock-starter-basys3',
-      name: 'Lab 8 FSM Lock Starter (Basys3)',
-      description: 'Unsolved starter scaffold for lock FSM input sequencing',
+      name: 'Final Project: Security Lock Starter (Basys3)',
+      description:
+        'Starter canvas for the Digital Security Lock final project. Includes Basys3 pin mappings (SW4–SW8, LED1) and three pre-loaded verification sequences: one invalid stream and two valid streams that should assert OPEN. Add your FSM and counter logic, then run the checkpoints to validate behavior before moving to Vivado.',
       layer: 6,
       difficulty: 'advanced',
+    },
+  },
+  '24_dlatch-example': {
+    data: example24 as SerializedCircuitV1,
+    metadata: {
+      id: '24_dlatch-example',
+      name: 'D Latch (Level-Triggered)',
+      description:
+        'A transparent D latch built from NAND gates. Demonstrates level-triggered storage — compare with the edge-triggered D flip-flop (example 11) to understand why clocked flip-flops are used in synchronous systems.',
+      layer: 3,
+      difficulty: 'intermediate',
+    },
+  },
+  '25_tff-example': {
+    data: example25 as SerializedCircuitV1,
+    metadata: {
+      id: '25_tff-example',
+      name: 'T Flip-Flop (Toggle)',
+      description:
+        'A T flip-flop built from a D flip-flop. Toggles its output on every clock edge when T = 1, holds when T = 0. Useful for building binary counters and understanding state-machine flip-flop input equations.',
+      layer: 3,
+      difficulty: 'intermediate',
     },
   },
 
