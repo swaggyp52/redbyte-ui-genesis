@@ -31671,3 +31671,64 @@ Key details:
 - Design still uses a large starter card on the blank canvas; the top chrome is corrected, but the onboarding state could be made lighter in a second pass.
 
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-04-19 (Verify whole-page correction: compact testbench workspace)
+
+**Subsystem**: IDE Verify surface
+
+**Problem**
+
+- Verify was still behaving like a compare/grading tool instead of a testbench-authoring workspace.
+- The page still carried an oversized workspace-story slab, a heavy left Signals rail, a weak right-side rail, and too much top-band narration.
+- The stimulus editor, waveform area, saved-check language, and details tooling were still competing as co-equal page owners.
+
+**Files changed**
+
+- `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyCommandBar.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyWaveformPlaceholder.tsx`
+- `packages/rb-apps/src/apps/ide/viewmodels/buildVerifySessionViewModel.ts`
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+- `packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts`
+- `packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.caseEditorClarity.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workspaceLayout.test.tsx`
+
+**What changed**
+
+- Reframed Verify around `Stimulus -> Run -> Observe` instead of compare-first wording.
+- Simplified the command bar into one compact session header with:
+  - one primary run action,
+  - a compact run-plan toggle,
+  - a narrower details/tools group.
+- Removed the oversized top workspace-story slab so the page opens directly into the real work areas.
+- Hid the old right inspector rail and moved saved-case/detail work into the lower tray instead of leaving a bolted-on side panel.
+- Kept the left Signals rail collapsed by default and reduced it to a compact legend/filter when opened.
+- Disabled the arbitrary post-run stimulus-workbench collapse so the authoring pane remains a stable primary zone.
+- Reworded status and run labels toward testbench language:
+  - `Run current stimulus`
+  - `Update run`
+  - `Observed outputs recorded`
+  - `Checks aligned`
+  - `Checks need review`
+- Removed stale dead prop plumbing from `ScenarioBuilderPanel` instead of preserving unused Verify-specific hooks.
+- Fixed local Verify/ScenarioBuilder typing mismatches so the current slice no longer adds Verify-specific build noise on top of the repo’s existing TypeScript debt.
+
+**Validation**
+
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.tickChip.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workspaceLayout.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.caseEditorClarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.observeFirst.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx` -> PASS (`59 passed`)
+- `pnpm --filter @redbyte/rb-apps build` -> bundle built successfully; Verify-specific file/type errors introduced during this slice were cleared; declaration output still reports pre-existing repo-wide TypeScript debt outside Verify
+- `pnpm build:unified` -> PASS
+- `pnpm repo:status` -> FAIL on the pre-existing `IDE ZIP Import Contract`
+- Manual browser checks against local playground (`http://127.0.0.1:5173/?mode=verify`) with Playwright:
+  - `verify-viewport-2026-04-19-pass3.png`
+  - `verify-signals-open-2026-04-19-pass3.png`
+
+**Remaining weakness**
+
+- The pre-run observe pane is now correctly the right-hand workspace zone, but it is still visually sparse before the first run because there is no waveform data yet.
+- The stimulus table still leaves some dead vertical space in the draft state; a second pass could tighten the empty lower canvas region further.
+
+- **Attribution**: Connor Angiel

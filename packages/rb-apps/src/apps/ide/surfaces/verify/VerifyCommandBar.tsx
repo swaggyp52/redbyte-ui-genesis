@@ -126,6 +126,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   const hasUtilityActions = Boolean(
     (showEditCases && onEditCases) || (showSaveAsExpected && onSaveAsExpected)
   );
+  const canToggleRunPlan = compareAvailable || isCompareMode;
   const [utilitiesOpen, setUtilitiesOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -198,6 +199,8 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   const showMetricsRow =
     sessionMetricsRow === 'inline' &&
     (Boolean(evidenceLabel) || Boolean(sessionCoverageLabel));
+  const runPlanLabel = isCompareMode ? 'Checks armed' : 'Observe first';
+  const runPlanToggleLabel = isCompareMode ? 'Switch to observe' : 'Use saved checks';
   const metricsNodes = [
     evidenceLabel ? (
       <span
@@ -260,36 +263,6 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           </IdeButton>
         </div>
 
-        {/* Procedure lens toggle — secondary to Run */}
-        <div className="ide-vcb-group ide-vcb-group--mode">
-          <span className="ide-vcb-mode-label">Run mode</span>
-          <div className="ide-vcb-mode-toggle" data-testid="ide-vcb-mode-toggle">
-            <button
-              type="button"
-              className={`ide-vcb-mode-btn${!isCompareMode ? ' is-active' : ''}`}
-              onClick={onSetObserve}
-              data-testid="ide-vcb-mode-observe"
-            >
-              Observe
-            </button>
-            <button
-              type="button"
-              className={`ide-vcb-mode-btn${isCompareMode ? ' is-active' : ''}`}
-              onClick={onSetCompare}
-              disabled={!compareAvailable}
-              title={
-                !compareAvailable
-                  ? 'Run the current stimulus once, then save checks if you want explicit output checks'
-                  : 'Run the current stimulus against saved output checks'
-              }
-              data-testid="ide-vcb-mode-compare"
-            >
-              Check outputs
-            </button>
-          </div>
-        </div>
-
-        {/* Session truth: one calm cluster (scenario folds into meta; heavy metrics optional) */}
         <div className="ide-vcb-truth-strip" data-testid="ide-vcb-session-summary">
           <div className="ide-vcb-truth-strip-stack">
             <span data-testid="ide-verify-summary-status">
@@ -297,6 +270,11 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
                 {statusLabel}
               </span>
             </span>
+            {canToggleRunPlan && (
+              <span className="ide-vcb-session-line ide-vcb-session-line--summary" data-testid="ide-vcb-run-plan-label">
+                {runPlanLabel}
+              </span>
+            )}
             {compactMetaNodes.length > 0 && (
               <span
                 className="ide-vcb-session-line ide-vcb-session-line--meta ide-vcb-session-line--compact"
@@ -321,81 +299,113 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           ) : null}
         </div>
 
-        {/* Right: utility actions (ghost weight) */}
         <div className="ide-vcb-group ide-vcb-group--status">
-        {hasUtilityActions && (
-          <div className="ide-vcb-utilities">
+          {canToggleRunPlan && (
             <button
               type="button"
-              className={`ide-vcb-utilities-toggle${utilitiesOpen ? ' is-open' : ''}`}
-              onClick={() => setUtilitiesOpen((open) => !open)}
-              data-testid="ide-vcb-utilities-toggle"
-              aria-expanded={utilitiesOpen ? 'true' : 'false'}
+              className={`ide-vcb-plan-toggle${isCompareMode ? ' is-armed' : ''}`}
+              onClick={isCompareMode ? onSetObserve : onSetCompare}
+              data-testid="ide-vcb-run-plan-toggle"
+              title={
+                !compareAvailable
+                  ? 'Save observed outputs first if you want the next run to check them explicitly.'
+                  : isCompareMode
+                    ? 'Run the next session as observation only.'
+                    : 'Run the next session with saved output checks armed.'
+              }
             >
-              More actions
+              {runPlanToggleLabel}
             </button>
-            {utilitiesOpen && (
-              <div className="ide-vcb-utilities-panel" data-testid="ide-vcb-utilities-panel">
-                {showEditCases && onEditCases && (
-                  <IdeButton
-                    tone="ghost"
-                    onClick={() => {
-                      onEditCases();
-                      setUtilitiesOpen(false);
-                    }}
-                    testId="ide-verify-run-proof-edit-vectors"
-                  >
-                    Open checks
-                  </IdeButton>
-                )}
-                {showSaveAsExpected && onSaveAsExpected && (
-                  <IdeButton
-                    tone="ghost"
-                    onClick={() => {
-                      onSaveAsExpected();
-                      setUtilitiesOpen(false);
-                    }}
-                    testId="ide-vcb-save-expected"
-                  >
-                    Save observed outputs
-                  </IdeButton>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-        {showAnalysisToggle && onToggleAnalysis && (
-          <button
-            type="button"
-            className={`ide-vcb-analysis-toggle${analysisOpen ? ' is-open' : ''}`}
-            onClick={onToggleAnalysis}
-            data-testid="ide-verify-drawer-toggle"
-            aria-expanded={analysisOpen ? 'true' : 'false'}
-          >
-            <span className="ide-vcb-analysis-label">
-              {analysisOpen ? 'Hide analysis' : 'Analysis'}
-            </span>
-            {!analysisOpen && analysisHint && (
-              <span
-                className="ide-vcb-analysis-hint"
-                data-testid="ide-verify-drawer-hint"
-              >
-                {analysisHint}
-              </span>
-            )}
-          </button>
-        )}
-        {showGoToDesign && onGoToDesign && (
-          <span className="ide-vcb-design-bridge">
-            <IdeButton
-              tone="ghost"
-              onClick={onGoToDesign}
-              testId="ide-verify-inspect-design"
+          )}
+          {showAnalysisToggle && onToggleAnalysis && (
+            <button
+              type="button"
+              className={`ide-vcb-analysis-toggle${analysisOpen ? ' is-open' : ''}`}
+              onClick={onToggleAnalysis}
+              data-testid="ide-verify-drawer-toggle"
+              aria-expanded={analysisOpen ? 'true' : 'false'}
             >
-              Open in Design
-            </IdeButton>
-          </span>
-        )}
+              <span className="ide-vcb-analysis-label">
+                {analysisOpen ? 'Hide details' : 'Details'}
+              </span>
+              {!analysisOpen && analysisHint && (
+                <span
+                  className="ide-vcb-analysis-hint"
+                  data-testid="ide-verify-drawer-hint"
+                >
+                  {analysisHint}
+                </span>
+              )}
+            </button>
+          )}
+          {showGoToDesign && onGoToDesign && (
+            <span className="ide-vcb-design-bridge">
+              <IdeButton
+                tone="ghost"
+                onClick={onGoToDesign}
+                testId="ide-verify-inspect-design"
+              >
+                Open in Design
+              </IdeButton>
+            </span>
+          )}
+          {hasUtilityActions && (
+            <div className="ide-vcb-utilities">
+              <button
+                type="button"
+                className={`ide-vcb-utilities-toggle${utilitiesOpen ? ' is-open' : ''}`}
+                onClick={() => setUtilitiesOpen((open) => !open)}
+                data-testid="ide-vcb-utilities-toggle"
+                aria-expanded={utilitiesOpen ? 'true' : 'false'}
+              >
+                Tools
+              </button>
+              {utilitiesOpen && (
+                <div className="ide-vcb-utilities-panel" data-testid="ide-vcb-utilities-panel">
+                  {canToggleRunPlan && (
+                    <IdeButton
+                      tone="ghost"
+                      onClick={() => {
+                        if (isCompareMode) {
+                          onSetObserve();
+                        } else {
+                          onSetCompare();
+                        }
+                        setUtilitiesOpen(false);
+                      }}
+                      testId="ide-vcb-run-plan-utility"
+                    >
+                      {runPlanToggleLabel}
+                    </IdeButton>
+                  )}
+                  {showEditCases && onEditCases && (
+                    <IdeButton
+                      tone="ghost"
+                      onClick={() => {
+                        onEditCases();
+                        setUtilitiesOpen(false);
+                      }}
+                      testId="ide-verify-run-proof-edit-vectors"
+                    >
+                      Open checks
+                    </IdeButton>
+                  )}
+                  {showSaveAsExpected && onSaveAsExpected && (
+                    <IdeButton
+                      tone="ghost"
+                      onClick={() => {
+                        onSaveAsExpected();
+                        setUtilitiesOpen(false);
+                      }}
+                      testId="ide-vcb-save-expected"
+                    >
+                      Save observed outputs
+                    </IdeButton>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

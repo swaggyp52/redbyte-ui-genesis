@@ -31159,32 +31159,12 @@ button:disabled,
    and a lighter observation-stage draft state. */
 [data-ide-mode-marker='verify'] .ide-verify-workspace {
   gap: 12px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-workspace-story {
-  padding: 12px 16px;
-  border-radius: 14px;
-  gap: 12px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-workspace-story-title {
-  font-size: 16px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-workspace-story-summary {
-  max-width: 860px;
-  font-size: 12px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-workspace-story-chip {
-  min-height: 24px;
-  padding: 0 8px;
-  font-size: 10px;
+  --ide-workbench-left-slot-width: 228px;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-lab-grid {
-  grid-template-columns: minmax(300px, 0.42fr) minmax(560px, 1.58fr);
-  gap: 12px;
+  grid-template-columns: minmax(360px, 0.78fr) minmax(0, 1.42fr);
+  gap: 14px;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-region--stimulus,
@@ -31194,8 +31174,8 @@ button:disabled,
 
 [data-ide-mode-marker='verify'] .ide-verify-left-dock {
   display: grid;
-  gap: 10px;
-  padding: 12px 10px;
+  gap: 8px;
+  padding: 10px 8px;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-signal-rail-header {
@@ -31212,7 +31192,7 @@ button:disabled,
 [data-ide-mode-marker='verify'] .ide-verify-signal-rail-count {
   min-height: 20px;
   padding: 0 6px;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-signal-rail-focus {
@@ -31223,7 +31203,7 @@ button:disabled,
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-signal-list {
-  gap: 8px;
+  gap: 6px;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-design-subheader {
@@ -31238,20 +31218,32 @@ button:disabled,
   font-size: 11px;
 }
 
-[data-ide-mode-marker='verify'] .ide-verify-signal-row-wrap {
+[data-ide-mode-marker='verify'] .ide-verify-signal-entry {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 6px;
   align-items: center;
 }
 
-[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-signal-row,
-[data-ide-mode-marker='verify'] .ide-verify-signal-pin-btn,
-[data-ide-mode-marker='verify'] .ide-verify-signal-visibility-btn {
-  min-height: 26px;
+[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-signal-row {
+  min-height: 28px;
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: 11px;
   border-radius: 8px;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-signal-entry-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(127, 29, 29, 0.22);
+  color: rgba(254, 202, 202, 0.92);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-command-bar {
@@ -31260,35 +31252,51 @@ button:disabled,
 }
 
 [data-ide-mode-marker='verify'] .ide-vcb-row--primary {
-  align-items: center;
-  column-gap: 10px;
+  align-items: start;
+  column-gap: 12px;
 }
 
 [data-ide-mode-marker='verify'] .ide-vcb-truth-strip {
   min-height: 0;
-  padding: 7px 10px !important;
+  padding: 8px 10px !important;
 }
 
-[data-ide-mode-marker='verify'] .ide-vcb-group--mode {
-  flex: 0 0 auto;
+[data-ide-mode-marker='verify'] .ide-vcb-session-line--summary {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(124, 214, 255, 0.84);
 }
 
-[data-ide-mode-marker='verify'] .ide-vcb-mode-label {
-  display: none;
+[data-ide-mode-marker='verify'] .ide-vcb-plan-toggle {
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(86, 123, 159, 0.28);
+  background: rgba(8, 18, 31, 0.92);
+  color: rgba(222, 237, 250, 0.9);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+[data-ide-mode-marker='verify'] .ide-vcb-plan-toggle.is-armed {
+  border-color: rgba(67, 169, 255, 0.4);
+  color: rgba(178, 225, 255, 0.96);
 }
 
 [data-ide-mode-marker='verify'] .ide-vwp {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
   min-height: 0;
-  padding: 14px 16px 16px;
-  gap: 14px;
+  padding: 12px 14px 14px;
+  gap: 12px;
 }
 
-[data-ide-mode-marker='verify'] .ide-vwp-header {
+[data-ide-mode-marker='verify'] .ide-vwp-summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 10px;
   align-items: start;
 }
 
@@ -31341,12 +31349,12 @@ button:disabled,
 
 [data-ide-mode-marker='verify'] .ide-vwp-lanes {
   align-content: start;
-  gap: 10px;
+  gap: 8px;
 }
 
 [data-ide-mode-marker='verify'] .ide-vwp-lane {
-  min-height: 36px;
-  padding: 0 10px;
+  min-height: 32px;
+  padding: 0 9px;
   border-radius: 10px;
   background: rgba(9, 17, 30, 0.64);
 }

@@ -1,14 +1,4 @@
 // @vitest-environment jsdom
-// B-14 Action Row Hierarchy — structural contracts for VerifyCommandBar
-//
-// The command bar should read as a professional tool row:
-//   PRIMARY: Run (leftmost, first in DOM, most prominent)
-//   SECONDARY: mode toggle (center, smaller visual weight)
-//   UTILITIES: save-as-expected (rightmost, ghost, low visual weight)
-//   INFORMATIONAL: status + evidence chips (right-aligned)
-//
-// These tests lock in the DOM ordering contract so visual hierarchy
-// cannot accidentally regress through future JSX edits.
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, within } from '@testing-library/react';
@@ -20,13 +10,13 @@ const BASE: VerifyCommandBarProps = {
   onSetCompare: vi.fn(),
   compareAvailable: false,
   onRun: vi.fn(),
-  runLabel: 'Run',
+  runLabel: 'Run current stimulus',
   runDisabled: false,
   onGenerate: vi.fn(),
   generateLabel: 'Seed stimulus',
   showGenerate: false,
   showSaveAsExpected: false,
-  statusLabel: 'Ready',
+  statusLabel: 'Draft',
   statusTone: 'idle',
   isSequential: false,
 };
@@ -35,128 +25,43 @@ afterEach(() => {
   cleanup();
 });
 
-describe('B-14 Action Row Hierarchy — DOM order contracts', () => {
-  it('Run button precedes mode toggle in DOM (Run is leftmost primary action)', () => {
+describe('VerifyCommandBar session header hierarchy', () => {
+  it('keeps Run as the first primary action before the session summary cluster', () => {
     const { getByTestId } = render(<VerifyCommandBar {...BASE} />);
     const run = getByTestId('ide-vcb-run');
-    const modeToggle = getByTestId('ide-vcb-mode-toggle');
-    // Run should come BEFORE mode toggle: mode toggle FOLLOWS run in DOM
-    const runBeforeMode =
-      run.compareDocumentPosition(modeToggle) & Node.DOCUMENT_POSITION_FOLLOWING;
-    expect(runBeforeMode).toBeTruthy();
-  });
-
-  it('mode toggle precedes status chip in DOM (mode row above session strip)', () => {
-    const { getByTestId } = render(<VerifyCommandBar {...BASE} />);
-    const modeToggle = getByTestId('ide-vcb-mode-toggle');
-    const status = getByTestId('ide-vcb-status');
-    const modeBeforeStatus =
-      modeToggle.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING;
-    expect(modeBeforeStatus).toBeTruthy();
-  });
-
-  it('experiment context sits between mode toggle and utilities on the primary row', () => {
-    const { getByTestId } = render(
-      <VerifyCommandBar
-        {...BASE}
-        showSaveAsExpected={true}
-        onSaveAsExpected={vi.fn()}
-        experimentScenarioName="ALU smoke"
-        experimentCaseLabel="Case t2"
-        experimentTimingHint="Manual-event lab mode"
-      />
-    );
-    const modeToggle = getByTestId('ide-vcb-mode-toggle');
-    const experiment = getByTestId('ide-vcb-experiment-context');
-    const utilitiesToggle = getByTestId('ide-vcb-utilities-toggle');
+    const sessionSummary = getByTestId('ide-vcb-session-summary');
     expect(
-      modeToggle.compareDocumentPosition(experiment) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
-    expect(
-      experiment.compareDocumentPosition(utilitiesToggle) & Node.DOCUMENT_POSITION_FOLLOWING
+      run.compareDocumentPosition(sessionSummary) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
   });
 
-  it('marks idle emphasis when no case is selected', () => {
+  it('shows the compact run-plan label inside the session summary when checks are available', () => {
     const { getByTestId } = render(
-      <VerifyCommandBar
-        {...BASE}
-        experimentScenarioName="Bench"
-        experimentCaseLabel="No case selected"
-      />
+      <VerifyCommandBar {...BASE} compareAvailable={true} />
     );
-    const caseEl = getByTestId('ide-vcb-experiment-case');
-    expect(caseEl.className).toContain('is-idle');
+    expect(getByTestId('ide-vcb-run-plan-label').textContent).toContain('Observe first');
   });
 
-  it('marks locus emphasis when a case tick is selected', () => {
-    const { getByTestId } = render(
-      <VerifyCommandBar
-        {...BASE}
-        experimentScenarioName="Bench"
-        experimentCaseLabel="Case t0"
-      />
-    );
-    const caseEl = getByTestId('ide-vcb-experiment-case');
-    expect(caseEl.className).toContain('is-locus');
-  });
-
-  it('more-actions disclosure is NOT inside the actions group', () => {
-    const { getByTestId, container } = render(
-      <VerifyCommandBar
-        {...BASE}
-        showSaveAsExpected={true}
-        onSaveAsExpected={vi.fn()}
-        compareAvailable={true}
-      />
-    );
-    const utilitiesToggle = getByTestId('ide-vcb-utilities-toggle');
-    const actionsGroup = container.querySelector('.ide-vcb-group--actions');
-    expect(actionsGroup).toBeTruthy();
-    expect(actionsGroup!.contains(utilitiesToggle)).toBe(false);
-  });
-
-  it('more-actions disclosure lives inside the status group (right side)', () => {
-    const { getByTestId, container } = render(
-      <VerifyCommandBar
-        {...BASE}
-        showSaveAsExpected={true}
-        onSaveAsExpected={vi.fn()}
-        compareAvailable={true}
-      />
-    );
-    const utilitiesToggle = getByTestId('ide-vcb-utilities-toggle');
-    const statusGroup = container.querySelector('.ide-vcb-group--status');
-    expect(statusGroup).toBeTruthy();
-    expect(statusGroup!.contains(utilitiesToggle)).toBe(true);
-  });
-
-  it('Run button is inside the actions group', () => {
-    const { getByTestId, container } = render(<VerifyCommandBar {...BASE} />);
-    const run = getByTestId('ide-vcb-run');
-    const actionsGroup = container.querySelector('.ide-vcb-group--actions');
-    expect(actionsGroup!.contains(run)).toBe(true);
-  });
-
-  it('mode toggle is NOT in the actions group (secondary, not primary area)', () => {
-    const { getByTestId, container } = render(<VerifyCommandBar {...BASE} />);
-    const modeToggle = getByTestId('ide-vcb-mode-toggle');
-    const actionsGroup = container.querySelector('.ide-vcb-group--actions');
-    expect(actionsGroup!.contains(modeToggle)).toBe(false);
-  });
-});
-
-describe('B-14 Action Row Hierarchy — mode toggle still works', () => {
-  it('mode toggle buttons are still present (Observe + Check outputs)', () => {
-    const { getByTestId } = render(<VerifyCommandBar {...BASE} />);
-    expect(getByTestId('ide-vcb-mode-observe').textContent).toContain('Observe');
-    expect(getByTestId('ide-vcb-mode-compare').textContent).toContain('Check outputs');
-  });
-
-  it('keeps secondary command-bar actions hidden until More actions opens', () => {
+  it('uses a single run-plan toggle instead of the old mode toggle row', () => {
+    const onSetCompare = vi.fn();
     const { getByTestId, queryByTestId } = render(
       <VerifyCommandBar
         {...BASE}
+        compareAvailable={true}
+        onSetCompare={onSetCompare}
+      />
+    );
+
+    expect(queryByTestId('ide-vcb-mode-toggle')).toBeNull();
+    fireEvent.click(getByTestId('ide-vcb-run-plan-toggle'));
+    expect(onSetCompare).toHaveBeenCalledOnce();
+  });
+
+  it('keeps utilities hidden until Tools opens', () => {
+    const { getByTestId, queryByTestId } = render(
+      <VerifyCommandBar
+        {...BASE}
+        compareAvailable={true}
         showSaveAsExpected={true}
         onSaveAsExpected={vi.fn()}
         showEditCases={true}
@@ -165,54 +70,45 @@ describe('B-14 Action Row Hierarchy — mode toggle still works', () => {
     );
 
     expect(queryByTestId('ide-vcb-utilities-panel')).toBeNull();
-
     fireEvent.click(getByTestId('ide-vcb-utilities-toggle'));
-
     expect(getByTestId('ide-vcb-utilities-panel')).toBeTruthy();
+    expect(getByTestId('ide-vcb-run-plan-utility')).toBeTruthy();
     expect(getByTestId('ide-vcb-save-expected')).toBeTruthy();
     expect(getByTestId('ide-verify-run-proof-edit-vectors')).toBeTruthy();
   });
 
-  it('active mode button has is-active class (Stimulus active by default)', () => {
-    const { getByTestId } = render(<VerifyCommandBar {...BASE} isCompareMode={false} />);
-    const stimulusBtn = getByTestId('ide-vcb-mode-observe');
-    expect(stimulusBtn.className).toContain('is-active');
-    const assertionBtn = getByTestId('ide-vcb-mode-compare');
-    expect(assertionBtn.className).not.toContain('is-active');
+  it('keeps the run-plan toggle and detail toggle in the right-side status group', () => {
+    const { getByTestId, container } = render(
+      <VerifyCommandBar
+        {...BASE}
+        compareAvailable={true}
+        showAnalysisToggle={true}
+        onToggleAnalysis={vi.fn()}
+      />
+    );
+
+    const statusGroup = container.querySelector('.ide-vcb-group--status');
+    expect(statusGroup).toBeTruthy();
+    expect(statusGroup!.contains(getByTestId('ide-vcb-run-plan-toggle'))).toBe(true);
+    expect(statusGroup!.contains(getByTestId('ide-verify-drawer-toggle'))).toBe(true);
   });
 
-  it('collapses status, evidence, and coverage into one session summary cluster instead of separate chips', () => {
+  it('collapses status, evidence, and coverage into one session summary cluster', () => {
     const { getByTestId } = render(
       <VerifyCommandBar
         {...BASE}
-        statusLabel="Ready to run stimulus"
-        evidenceLabel="Stimulus evidence"
-        coverageLabel="8 ticks · 5 signals"
-        isSequential={true}
+        compareAvailable={true}
+        statusLabel="Observation only"
+        evidenceLabel="3 observed rows"
+        coverageLabel="80% coverage"
         sessionMetricsRow="inline"
       />
     );
 
-    const sessionSummary = getByTestId('ide-vcb-session-summary');
-    const sessionScope = within(sessionSummary);
-    expect(sessionScope.getByTestId('ide-vcb-status')).toBeTruthy();
-    expect(sessionScope.getByTestId('ide-vcb-evidence')).toBeTruthy();
-    expect(sessionScope.getByTestId('ide-vcb-coverage')).toBeTruthy();
-  });
-
-  it('separates session status and mode tokens so stimulus runs do not collapse into one smashed label', () => {
-    const { getByTestId } = render(
-      <VerifyCommandBar
-        {...BASE}
-        sessionStatusBadge="Observation only"
-        sessionModeLabel="Observe"
-        primaryStatusTitle="Waveform recorded"
-      />
-    );
-
-    const sessionMeta = getByTestId('ide-verify-session-meta');
-    expect(sessionMeta.textContent).toContain('Observation only');
-    expect(sessionMeta.textContent).toContain('Observe');
-    expect(sessionMeta.textContent).toContain('·');
+    const summary = within(getByTestId('ide-vcb-session-summary'));
+    expect(summary.getByTestId('ide-vcb-status')).toBeTruthy();
+    expect(summary.getByTestId('ide-vcb-run-plan-label')).toBeTruthy();
+    expect(summary.getByTestId('ide-vcb-evidence')).toBeTruthy();
+    expect(summary.getByTestId('ide-vcb-coverage')).toBeTruthy();
   });
 });

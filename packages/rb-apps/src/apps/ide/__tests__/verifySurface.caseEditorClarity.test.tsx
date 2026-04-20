@@ -1,6 +1,4 @@
 // @vitest-environment jsdom
-// B-14 Slice 1 - Case-editor clarity: the old first-run hero is gone and the
-// stimulus editor remains the primary authoring surface in every draft state.
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
@@ -30,7 +28,7 @@ const NO_VECTORS = {
   onVectorsChange: vi.fn(),
 };
 
-describe('B-14 Slice 1 - Verify first-run demotion (canvas owns the page)', () => {
+describe('Verify first-run composition', () => {
   it('does not render the retired first-run hero when vectors exist and no lastRun', () => {
     const { queryByTestId } = render(
       <VerifySurface
@@ -43,7 +41,7 @@ describe('B-14 Slice 1 - Verify first-run demotion (canvas owns the page)', () =
     expect(queryByTestId('ide-verify-first-run-panel')).toBeNull();
   });
 
-  it('keeps the first-run workspace story and canvas visible when no vectors exist', () => {
+  it('does not render the retired workspace story when no vectors exist', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface
         {...NO_VECTORS}
@@ -53,12 +51,12 @@ describe('B-14 Slice 1 - Verify first-run demotion (canvas owns the page)', () =
     );
 
     expect(queryByTestId('ide-verify-first-run-panel')).toBeNull();
-    expect(getByTestId('ide-verify-workspace-story').textContent).toContain('Stimulus - Run - Observe');
+    expect(queryByTestId('ide-verify-workspace-story')).toBeNull();
     expect(getByTestId('ide-verify-add-vector-form')).toBeTruthy();
+    expect(getByTestId('ide-vwp-header-run-note').textContent).toContain('left pane');
   });
 
-  it('canvas (ide-verify-add-vector-form) still renders when vectors exist without hero panel', () => {
-    // Removing the hero must not remove the canvas — regression guard
+  it('keeps the stimulus canvas visible when vectors exist without a hero panel', () => {
     const { getByTestId } = render(
       <VerifySurface
         {...WITH_VECTORS}
@@ -70,7 +68,7 @@ describe('B-14 Slice 1 - Verify first-run demotion (canvas owns the page)', () =
     expect(getByTestId('ide-verify-add-vector-form')).toBeTruthy();
   });
 
-  it('canvas still renders when no vectors exist', () => {
+  it('keeps the stimulus canvas visible when no vectors exist', () => {
     const { getByTestId } = render(
       <VerifySurface
         {...NO_VECTORS}

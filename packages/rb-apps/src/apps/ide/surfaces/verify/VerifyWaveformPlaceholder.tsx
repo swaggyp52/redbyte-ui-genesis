@@ -39,18 +39,18 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
 
   return (
     <div className="ide-vwp" data-testid="ide-verify-waveform-placeholder">
-      <div className="ide-vwp-header" data-testid="ide-vwp-header">
+      <div className="ide-vwp-summary" data-testid="ide-vwp-header">
         <div className="ide-vwp-header-copy">
-          <span className="ide-vwp-header-eyebrow">Observe</span>
+          <span className="ide-vwp-header-eyebrow">Observe outputs</span>
           <strong className="ide-vwp-header-title">
             {hasVectors
-              ? 'Outputs appear here after you run the current stimulus.'
-              : 'Build the first stimulus, then run once to observe outputs.'}
+              ? 'Run the current stimulus to populate the waveform and output readout.'
+              : 'Author the first stimulus, then run once to observe outputs.'}
           </strong>
           <p className="ide-vwp-header-note" data-testid="ide-vwp-header-run-note">
             {hasVectors
-              ? `Use ${runLabel} in the session header to populate the waveform and output readout.`
-              : 'Keep the left side focused on stimulus authoring. This stage becomes the observation surface after the first run.'}
+              ? `${runLabel} turns this pane into the live waveform and output workspace.`
+              : 'Keep the left pane focused on stimulus authoring. This pane becomes the observation surface after the first run.'}
           </p>
         </div>
         <div className="ide-vwp-header-meta">
@@ -58,7 +58,7 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
             {allSignals.length} lane{allSignals.length === 1 ? '' : 's'}
           </span>
           <span className="ide-vwp-header-chip">
-            {isSequential ? 'Sequential observe' : 'Combinational observe'}
+            {isSequential ? 'Sequential lab' : 'Combinational lab'}
           </span>
         </div>
       </div>

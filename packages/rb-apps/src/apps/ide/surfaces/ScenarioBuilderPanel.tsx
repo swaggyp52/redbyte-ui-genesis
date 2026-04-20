@@ -76,12 +76,13 @@ export interface ScenarioBuilderPanelProps {
   onGoToHardware?: () => void;
   // Programmatic expansion: when set, the post-run <details> uses this ref
   // so the parent can scroll or inspect the editor container.
-  detailsRef?: React.RefObject<HTMLElement>;
+  detailsRef?: React.RefObject<HTMLElement | null>;
   /** Initial expanded state of the post-run workbench. Pass true for pass runs, false for fail/trace. */
   initialExpanded?: boolean;
   /** Controlled post-run workbench state owned by VerifySurface. */
   workbenchExpanded?: boolean;
   onWorkbenchExpandedChange?: (expanded: boolean) => void;
+  allowWorkbenchCollapse?: boolean;
   /** Optional output-check editor visibility. Default Verify keeps outputs on the waveform first. */
   showExpectedOutputs?: boolean;
   onToggleExpectedOutputs?: () => void;
@@ -140,6 +141,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   initialExpanded,
   workbenchExpanded,
   onWorkbenchExpandedChange,
+  allowWorkbenchCollapse = true,
   showExpectedOutputs = false,
   onToggleExpectedOutputs,
 }) => {
@@ -574,9 +576,12 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
     () => initialExpanded ?? !isFirstRun
   );
   const usesControlledWorkbenchState = typeof workbenchExpanded === 'boolean';
-  const effectiveWorkbenchExpanded = usesControlledWorkbenchState
+  const controlledWorkbenchExpanded = usesControlledWorkbenchState
     ? workbenchExpanded
     : uncontrolledWorkbenchExpanded;
+  const effectiveWorkbenchExpanded = allowWorkbenchCollapse
+    ? controlledWorkbenchExpanded
+    : true;
 
   const updateWorkbenchExpanded = React.useCallback(
     (expanded: boolean) => {
@@ -594,12 +599,8 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
     }
   }, [initialExpanded, isFirstRun, usesControlledWorkbenchState]);
 
-  const stopWorkbenchHeaderClick = (event: React.MouseEvent<HTMLElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-  };
-
   const handleWorkbenchHeaderToggle = () => {
+    if (!allowWorkbenchCollapse) return;
     updateWorkbenchExpanded(!effectiveWorkbenchExpanded);
   };
 
@@ -624,12 +625,14 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
       <div
         className="ide-verify-scenario-builder-summary ide-verify-workbench-header"
         data-testid="ide-verify-workbench-toggle"
-        role="button"
-        tabIndex={0}
-        aria-expanded={effectiveWorkbenchExpanded}
+        role={allowWorkbenchCollapse ? 'button' : undefined}
+        tabIndex={allowWorkbenchCollapse ? 0 : undefined}
+        aria-expanded={allowWorkbenchCollapse ? effectiveWorkbenchExpanded : undefined}
         onClick={(event) => {
           event.preventDefault();
-          handleWorkbenchHeaderToggle();
+          if (allowWorkbenchCollapse) {
+            handleWorkbenchHeaderToggle();
+          }
         }}
         onKeyDown={handleWorkbenchHeaderKeyDown}
       >
@@ -664,20 +667,14 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           <div className="ide-verify-workbench-collapsed-actions">
             <IdeButton
               tone="secondary"
-              onClick={(event) => {
-                stopWorkbenchHeaderClick(event);
-                updateWorkbenchExpanded(true);
-              }}
+              onClick={() => updateWorkbenchExpanded(true)}
               testId="ide-verify-workbench-reopen"
             >
               Edit cases
             </IdeButton>
             <IdeButton
               tone="ghost"
-              onClick={(event) => {
-                stopWorkbenchHeaderClick(event);
-                onOpenProjectVectors();
-              }}
+              onClick={onOpenProjectVectors}
               testId="ide-verify-workbench-open-vectors"
             >
               Project vectors
@@ -685,10 +682,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             {outputFields.length > 0 && onToggleExpectedOutputs && (
               <IdeButton
                 tone={showExpectedOutputs ? 'secondary' : 'ghost'}
-                onClick={(event) => {
-                  stopWorkbenchHeaderClick(event);
-                  onToggleExpectedOutputs();
-                }}
+                onClick={onToggleExpectedOutputs}
                 testId="ide-verify-workbench-toggle-checks"
               >
                 {showExpectedOutputs ? 'Hide assertions' : 'Show assertions'}

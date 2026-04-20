@@ -36,7 +36,7 @@ describe('buildVerifySessionViewModel', () => {
     expect(model.mode).toBe('simulation');
     expect(model.status).toBe('draft');
     expect(model.statusBadge).toBe('Draft');
-    expect(model.title).toBe('Ready to run stimulus');
+    expect(model.title).toBe('Ready to run the current stimulus');
     expect(model.summary).toContain('Stimulus is ready');
     expect(model.runLabel).toBe('Run current stimulus');
   });
@@ -58,8 +58,8 @@ describe('buildVerifySessionViewModel', () => {
     expect(model.mode).toBe('assertion');
     expect(model.status).toBe('draft');
     expect(model.statusBadge).toBe('Draft');
-    expect(model.title).toBe('Ready to run with checks');
-    expect(model.runLabel).toBe('Run with checks');
+    expect(model.title).toBe('Ready to run the current stimulus');
+    expect(model.runLabel).toBe('Run current stimulus');
     expect(model.recommendedNextAction).toBe('verify');
   });
 
@@ -104,7 +104,7 @@ describe('buildVerifySessionViewModel', () => {
     expect(model.mode).toBe('capture');
     expect(model.status).toBe('stimulus-only');
     expect(model.statusBadge).toBe('Observation only');
-    expect(model.title).toBe('Outputs observed');
+    expect(model.title).toBe('Observed outputs recorded');
     expect(model.recommendedNextAction).toBe('capture');
   });
 
@@ -148,7 +148,7 @@ describe('buildVerifySessionViewModel', () => {
 
     expect(model.mode).toBe('assertion');
     expect(model.status).toBe('assertions-differ');
-    expect(model.runLabel).toBe('Re-run with checks');
+    expect(model.runLabel).toBe('Update run');
     expect(model.recommendedNextAction).toBe('verify');
   });
 
@@ -192,7 +192,7 @@ describe('buildVerifySessionViewModel', () => {
 
     expect(model.mode).toBe('simulation');
     expect(model.status).toBe('assertions-differ');
-    expect(model.statusBadge).toBe('Checks failed');
+    expect(model.statusBadge).toBe('Checks need review');
   });
 
   it('keeps persisted compare evidence authoritative even if live vectors are currently absent', () => {
@@ -233,7 +233,7 @@ describe('buildVerifySessionViewModel', () => {
     });
 
     expect(model.status).toBe('assertions-differ');
-    expect(model.statusBadge).toBe('Checks failed');
+    expect(model.statusBadge).toBe('Checks need review');
   });
 
   it('shows stimulus-only when a run exists but no outputs are asserted', () => {
@@ -366,7 +366,7 @@ describe('buildVerifySessionViewModel', () => {
     });
 
     expect(model.status).toBe('stale');
-    expect(model.statusBadge).toBe('Stale');
-    expect(model.runLabel).toBe('Run current stimulus');
+    expect(model.statusBadge).toBe('Needs update');
+    expect(model.runLabel).toBe('Update run');
   });
 });

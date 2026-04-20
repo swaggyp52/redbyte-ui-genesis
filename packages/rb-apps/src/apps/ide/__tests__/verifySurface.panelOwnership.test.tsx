@@ -1,11 +1,4 @@
 // @vitest-environment jsdom
-// B-14 Panel Ownership - behavioral contracts for analysis drawer + signals dock
-//
-// Structural guarantees:
-// 1. Analysis drawer is default-closed after every run (progressive disclosure)
-// 2. Analysis drawer opens when user explicitly clicks the toggle
-// 3. Signals dock defaults to a collapsed legend rail so the main workspace keeps the width
-// 4. Failure review stays in the waveform + analysis surfaces, not a permanently open shell rail
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, fireEvent } from '@testing-library/react';
@@ -81,78 +74,48 @@ function makeFailRun(): RuntimeVerifyRun {
   };
 }
 
-describe('B-14 Panel Ownership - analysis drawer progressive disclosure', () => {
-  it('analysis tab nav is absent immediately after a run (drawer default-closed)', () => {
-    // The drawer body should not be present by default — progressive disclosure
+describe('VerifySurface panel ownership', () => {
+  it('keeps the lower details tray closed by default after a run', () => {
     const { queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
     );
     expect(queryByTestId('ide-verify-analysis-tab-nav')).toBeNull();
   });
 
-  it('analysis drawer toggle button is present after a run', () => {
-    const { getByTestId } = render(
-      <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
-    );
-    expect(getByTestId('ide-verify-drawer-toggle')).toBeTruthy();
-  });
-
-  it('analysis tab nav appears after clicking the drawer toggle', () => {
+  it('opens the lower details tray only when the toggle is clicked', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
     );
-    // Confirm it's absent before clicking
+
     expect(queryByTestId('ide-verify-analysis-tab-nav')).toBeNull();
-    // Open the drawer
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
-    // Now it should be present
     expect(getByTestId('ide-verify-analysis-tab-nav')).toBeTruthy();
   });
 
-  it('drawer toggle has aria-expanded=false when closed and aria-expanded=true when open', () => {
-    const { getByTestId } = render(
-      <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
-    );
-    const toggle = getByTestId('ide-verify-drawer-toggle');
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    fireEvent.click(toggle);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
-  });
-});
-
-describe('B-14 Panel Ownership - signals dock layout policy', () => {
-  it('signals dock starts as a collapsed legend rail in draft Verify sessions', () => {
+  it('keeps the signal legend in a collapsed shell rail by default', () => {
     const { getByTestId, queryByTestId } = render(
-      <VerifySurface {...BASE_PROPS} />
+      <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
     );
     expect(queryByTestId('ide-left-dock')).toBeNull();
     expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
   });
 
-  it('signals dock collapses to a rail after a pass run', () => {
+  it('opens the compact signal legend when the left rail toggle is used', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
     );
+
     expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
     fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
     expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
   });
 
-  it('signals dock remains collapsed by default during a fail run', () => {
-    const { getByTestId, queryByTestId } = render(
-      <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
-    );
-    expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
-  });
-
-  it('verify keeps the right inspector demoted to a collapsed rail during fail runs', () => {
-    const { getByTestId, queryByTestId } = render(
+  it('removes the right shell inspector rail from Verify', () => {
+    const { queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
     );
     expect(queryByTestId('ide-inspector')).toBeNull();
-    expect(getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
+    expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
   });
 });

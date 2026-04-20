@@ -14,8 +14,6 @@ import {
   IdeButton,
   IdeCallout,
   IdeDataTable,
-  IdeInspectorAccordion,
-  IdeInspectorSection,
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
@@ -432,8 +430,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     () => getRuntimeVerifyRunKind(lastRun) === 'verify'
   );
   const [showExpectedOutputs, setShowExpectedOutputs] = useState(false);
-  const [sidePanelTab, setSidePanelTab] = useState<'mismatches' | 'vectors' | 'details'>('mismatches');
-  const [showAllVectorTicks, setShowAllVectorTicks] = useState(false);
   const [oracleApplied, setOracleApplied] = useState(false);
   const [selectedFailureKey, setSelectedFailureKey] = useState<string | null>(null);
   // selectedVectorId: pinpoints the specific authored row when a failure has vectorId.
@@ -470,7 +466,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
   });
   const waveformScrollRef = useRef<HTMLDivElement | null>(null);
-  const draggedSignalRef = useRef<string | null>(null);
   const lastAutoExpandedPassRunRef = useRef<string | null>(null);
   const scenarioBuilderDetailsRef = useRef<HTMLElement>(null);
   const [scenarioWorkbenchExpanded, setScenarioWorkbenchExpanded] = useState(() => Boolean(lastRun));
@@ -1014,15 +1009,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     // Pin to specific authored row when vectorId is available.
     // When absent, fall back to tick-only; do not imply row-level pinpointing.
     setSelectedVectorId(target.vectorId ?? null);
-    // Open the inspector drawer and switch to vectors tab so the authored row is visible.
+    // Open the lower details tray so the authored row is visible without using a shell rail.
     setDrawerOpen(true);
-    setSidePanelTab('vectors');
   }, [handleSignalSelect]);
   const reviewFailureInVerify = useCallback(
     (target: VerifyFailureTarget | VerifyRow | null) => {
       if (!target) return;
       applyFailureSelection(target);
-      setVerifyTab('vectors');
+      setVerifyTab('details');
       setDrawerOpen(true);
     },
     [applyFailureSelection]
@@ -1097,7 +1091,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       let expectedValue: 0 | 1 | null = null;
       for (const vec of vectors ?? []) {
         if (vec.tick === tick) {
-          expectedValue = vec.expected?.[signal] ?? null;
+          expectedValue = vec.expected?.[signal] == null ? null : normalizeBit(vec.expected[signal]);
           break;
         }
       }
@@ -1544,14 +1538,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     ]
   );
 
-  const inspectorVectorRows = useMemo(() => {
-    // Filter vector rows by tick, using the authoredVectors array for tick lookup
-    // (the tick cell is a React element, not a plain string in Slice 4).
-    // When selectedVectorId is set: show all rows at the same tick (pinpointed row + peers).
-    // When absent: filter by selectedTick only.
-    if (showAllVectorTicks || selectedTick === null) return vectorRows;
-    return vectorRows.filter((_row, idx) => authoredVectors[idx]?.tick === selectedTick);
-  }, [vectorRows, showAllVectorTicks, selectedTick, selectedVectorId, authoredVectors]);
+  const inspectorVectorRows = vectorRows;
 
   const status: VerifyStatus = lastRun ? (lastRun.status === 'pass' ? 'pass' : 'fail') : 'idle';
   const hasResults = runRows.length > 0;
@@ -2240,12 +2227,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const clearMismatchLaneFilter = () => {
     setShowMismatchOnlySignals(false);
   };
-  const togglePinnedSignal = (signal: string) => {
-    setPinnedSignalOrder((previous) => {
-      if (previous.includes(signal)) return previous.filter((entry) => entry !== signal);
-      return [...previous, signal];
-    });
-  };
   const setCursorFromSelected = (cursor: 'A' | 'B') => {
     if (selectedTick === null) return;
     if (cursor === 'A') setCursorA(selectedTick);
@@ -2299,29 +2280,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const toggleLaneGroup = useCallback((group: SignalLaneGroup) => {
     setCollapsedGroups((previous) => ({ ...previous, [group]: !previous[group] }));
   }, []);
-  const toggleSignalVisibility = useCallback((signal: string) => {
-    setHiddenSignals((previous) =>
-      previous.includes(signal)
-        ? previous.filter((entry) => entry !== signal)
-        : [...previous, signal]
-    );
-  }, []);
-  const resetLaneLayout = useCallback(() => {
-    setManualLaneOrder([]);
-    setHiddenSignals([]);
-    setCollapsedGroups({ Inputs: false, Outputs: false, Internal: false });
-  }, []);
-  const moveSignalBefore = useCallback((draggedSignal: string, beforeSignal: string) => {
-    if (!draggedSignal || draggedSignal === beforeSignal) return;
-    setManualLaneOrder((previous) => {
-      const seed = previous.length > 0 ? previous.filter((entry) => displaySignalTimeline.some((row) => row.signal === entry)) : displaySignalTimeline.map((row) => row.signal);
-      const working = seed.filter((entry) => entry !== draggedSignal && entry !== beforeSignal);
-      const insertionIndex = seed.indexOf(beforeSignal);
-      const next = [...working];
-      next.splice(Math.max(0, insertionIndex), 0, draggedSignal, beforeSignal);
-      return Array.from(new Set(next));
-    });
-  }, [displaySignalTimeline]);
   const handleWaveformWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
     const container = waveformScrollRef.current;
     if (!container) return;
@@ -2574,10 +2532,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         : !nextRunUsesAssertions
           ? `Saved checks available (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), current run mode is observation`
         : authoredVectors.length > 0 && customVectorCount > 0
-          ? `Using project + custom checks (${totalVectorCount} total)`
+          ? `Saved checks armed from project + custom cases (${totalVectorCount} total)`
           : customVectorCount > 0
-            ? `Using custom checks (${customVectorCount})`
-            : `Using project checks (${authoredVectors.length})`;
+            ? `Saved checks armed from custom cases (${customVectorCount})`
+            : `Saved checks armed from project cases (${authoredVectors.length})`;
   const verifyScenarioName =
     totalExpectedCaseCount === 0
       ? 'Stimulus Trace'
@@ -2781,12 +2739,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     const startTick = authoredVectors.length > 0
       ? Math.max(...authoredVectors.map((v) => v.tick)) + 1
       : 0;
-    const clkVectors = buildClockHelperVectors({
+    const clkVectors = buildAuthoredClockHelperVectors(
+      buildClockHelperVectors({
       clockSignalName: clkKey,
       startTick,
       count: 4,
       pattern: 'alternating',
-    });
+      })
+    );
     onVectorsChange?.([...authoredVectors, ...clkVectors]);
     setOracleApplied(false);
   }, [authoredVectors, clockSignalNames, onVectorsChange]);
@@ -2797,12 +2757,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     const startTick = authoredVectors.length > 0
       ? Math.max(...authoredVectors.map((v) => v.tick)) + 1
       : 0;
-    const clkVectors = buildClockHelperVectors({
+    const clkVectors = buildAuthoredClockHelperVectors(
+      buildClockHelperVectors({
       clockSignalName: clkKey,
       startTick,
       count: 4,
       pattern: 'hold-low',
-    });
+      })
+    );
     onVectorsChange?.([...authoredVectors, ...clkVectors]);
     setOracleApplied(false);
   }, [authoredVectors, clockSignalNames, onVectorsChange]);
@@ -2813,12 +2775,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     const startTick = authoredVectors.length > 0
       ? Math.max(...authoredVectors.map((v) => v.tick)) + 1
       : 0;
-    const clkVectors = buildClockHelperVectors({
+    const clkVectors = buildAuthoredClockHelperVectors(
+      buildClockHelperVectors({
       clockSignalName: clkKey,
       startTick,
       count: 4,
       pattern: 'hold-high',
-    });
+      })
+    );
     onVectorsChange?.([...authoredVectors, ...clkVectors]);
     setOracleApplied(false);
   }, [authoredVectors, clockSignalNames, onVectorsChange]);
@@ -3005,7 +2969,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const applyScopedCapture = useCallback(
     (scope: CaptureScope): boolean => {
-      if ((lastRun?.waveform?.length ?? 0) === 0) return false;
+      if ((lastRun?.waveform?.length ?? 0) === 0 || !captureContext) return false;
       const result = applyCaptureScopeToVectorSets({
         projectVectors: authoredVectors,
         customVectors,
@@ -3335,7 +3299,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const captureActionTone = primaryActionKind === 'capture' ? 'primary' : 'secondary';
   // ── B-12 Slice 3: canonical result zone ──────────────────────────────────────
   const emptyStateRunLabel = isDraftSession
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Run with checks' : 'Run current stimulus')
+    ? 'Run current stimulus'
     : verifySession.runLabel;
   const referenceModeLabel: string = hasStaleAuthoredReference
     ? `Stale saved checks loaded (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'})`
@@ -3349,17 +3313,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             ? `Using custom checks (${customVectorCount})`
             : `Using project checks (${authoredVectors.length})`;
   const sessionModeBadge: string = !lastRun
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Check outputs' : 'Observe')
+    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Checks armed' : 'Observe')
     : isTraceOnly ? 'Observe'
     : sessionStatus === 'assertions-match' || sessionStatus === 'assertions-differ' || sessionStatus === 'stale'
-      ? 'Check outputs'
+      ? 'Checks armed'
       : 'Observe';
   const sessionTitle: string = !lastRun
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Ready to run with checks' : 'Ready to run stimulus')
+    ? 'Ready to run the current stimulus'
     : isTraceOnly ? 'Outputs observed — stimulus captured'
-    : sessionStatus === 'assertions-match' ? 'Checks passed'
-    : sessionStatus === 'assertions-differ' ? 'Checks failed'
-    : sessionStatus === 'stale' ? 'Stale results'
+    : sessionStatus === 'assertions-match' ? 'Checks aligned with the observed run'
+    : sessionStatus === 'assertions-differ' ? 'Checks need review'
+    : sessionStatus === 'stale' ? 'Run needs an update'
     : sessionStatusBadgeLabel;
   const commandBarEvidenceLabel =
     lastRun && sessionShowsCompareEvidence
@@ -3373,28 +3337,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     lastRun && runRows.length > 0 && inputCoverage
       ? `${inputCoverage.pct}% coverage`
       : undefined;
-  const workspaceStoryTitle = !lastRun
-    ? 'Stimulus on the left. Observe outputs on the right.'
-    : sessionSignalsAssertionFailure
-      ? 'Edit stimulus, rerun, then inspect the failing waveform.'
-      : sessionShowsAssertionMatch
-        ? 'Stimulus and observed outputs agree.'
-        : 'Stimulus and observed outputs are ready to inspect.';
-  const workspaceStorySummary = !lastRun
-    ? totalVectorCount > 0
-      ? 'Author input changes in the stimulus editor, then run the current stimulus to populate the waveform and output observation area.'
-      : 'Seed a starter stimulus or author the first tick by hand, then run once to turn the observation stage into a real waveform.'
-    : sessionSignalsAssertionFailure
-      ? 'Keep the stimulus editor and waveform visible together. Rerun after each fix, and use the analysis tray only when you need deeper mismatch detail.'
-      : sessionShowsAssertionMatch
-        ? 'The current stimulus and saved checks matched. Keep the waveform open for review, then continue to the next step.'
-        : 'Use the waveform as the main observation surface. Save checks only for outputs that need explicit confirmation later.';
-  const workspaceStoryChips = [
-    activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName,
-    totalVectorCount > 0 ? `${totalVectorCount} case${totalVectorCount === 1 ? '' : 's'}` : 'No cases yet',
-    selectedTick != null ? `Focus t${selectedTick}` : 'No tick selected',
-    totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Checks armed' : 'Observe first',
-  ].filter(Boolean) as string[];
   const labSequencerSteps = useMemo(() => {
     const explicitSteps = buildLabSequencerStepsFromScenarioSteps(activeScenario?.steps);
     if (explicitSteps.length > 0) return explicitSteps;
@@ -3554,10 +3496,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [unmappedOutputLabels]);
   const verifyLayoutPolicy = useMemo(
     () => ({
-      /** Keep shell rails secondary so the stimulus/workform pair owns the page. */
+      /** Keep shell rails secondary so the stimulus/waveform pair owns the page. */
       leftDockMode: ('collapsed' as const),
-      /** Saved cases and mismatch detail stay available, but no longer reserve width by default. */
-      rightDockMode: ('collapsed' as const),
+      /** Saved cases and mismatch detail now live in the lower details tray. */
+      rightDockMode: ('hidden' as const),
       consoleMode: sessionSignalsAssertionFailure ? ('auto' as const) : ('hidden' as const),
     }),
     [sessionSignalsAssertionFailure]
@@ -3565,7 +3507,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   useEffect(() => {
     if (sessionShowsAssertionMatch && failingRows.length === 0 && verifyTab === 'mismatches') {
-      setVerifyTab('truth');
+      setVerifyTab('details');
     }
   }, [failingRows.length, sessionShowsAssertionMatch, verifyTab]);
 
@@ -3680,7 +3622,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       consoleHasEntries={false}
       leftDockMode={verifyLayoutPolicy.leftDockMode}
       rightDockMode={verifyLayoutPolicy.rightDockMode}
-      rightDockCanCollapse={verifyLayoutPolicy.rightDockMode === 'collapsed'}
+      rightDockCanCollapse={false}
       consoleMode={verifyLayoutPolicy.consoleMode}
       shellDensity="immersive"
       surfaceFrame="edge-to-edge"
@@ -3715,27 +3657,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     {showAllSignals ? 'Relevant' : 'All'}
                   </button>
                 ) : null}
-                {(manualLaneOrder.length > 0 || hiddenSignals.length > 0) && (
-                  <button
-                    type="button"
-                    className="ide-verify-signal-rail-action-btn"
-                    onClick={resetLaneLayout}
-                    data-testid="ide-verify-reset-lanes"
-                  >
-                    Reset
-                  </button>
-                )}
               </div>
             </div>
             <p className="ide-verify-signal-rail-focus" data-testid="ide-verify-signal-rail-summary">
               {selectedSignal ? (
                 <>
-                  <code>{selectedSignal}</code> follows the waveform focus
+                  <code>{selectedSignal}</code> is the active observation lane
                 </>
               ) : hasSessionFailureEvidence ? (
                 'Filter to the failing lanes, then inspect the waveform.'
               ) : (
-                'Use this as a compact legend and filter, not a second workspace.'
+                'Compact legend and filter for the waveform lanes.'
               )}
             </p>
           </header>
@@ -3766,21 +3698,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         groupedVisibleSignals[group].map((signalRow) => (
                           <div
                             key={signalRow.signal}
-                            className="ide-verify-signal-row-wrap"
-                            draggable
-                            onDragStart={() => {
-                              draggedSignalRef.current = signalRow.signal;
-                            }}
-                            onDragEnd={() => {
-                              draggedSignalRef.current = null;
-                            }}
-                            onDragOver={(event) => event.preventDefault()}
-                            onDrop={() => {
-                              if (draggedSignalRef.current) {
-                                moveSignalBefore(draggedSignalRef.current, signalRow.signal);
-                                draggedSignalRef.current = null;
-                              }
-                            }}
+                            className="ide-verify-signal-entry"
                             onMouseEnter={() => handleSignalHover(signalRow.signal)}
                             onMouseLeave={() => handleSignalHover(null)}
                           >
@@ -3792,23 +3710,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                             >
                               {signalRow.signal}
                             </button>
-                            <button
-                              type="button"
-                              className={`ide-verify-signal-pin-btn ${pinnedSignals.has(signalRow.signal) ? 'is-pinned' : ''}`}
-                              onClick={() => togglePinnedSignal(signalRow.signal)}
-                              data-testid={`ide-verify-pin-signal-${toTestId(signalRow.signal)}`}
-                              aria-label={pinnedSignals.has(signalRow.signal) ? `Unpin ${signalRow.signal}` : `Pin ${signalRow.signal}`}
-                            >
-                              {pinnedSignals.has(signalRow.signal) ? 'Pinned' : 'Pin'}
-                            </button>
-                            <button
-                              type="button"
-                              className={`ide-verify-signal-visibility-btn ${hiddenSignalSet.has(signalRow.signal) ? 'is-hidden' : ''}`}
-                              onClick={() => toggleSignalVisibility(signalRow.signal)}
-                              data-testid={`ide-verify-toggle-signal-${toTestId(signalRow.signal)}`}
-                            >
-                              {hiddenSignalSet.has(signalRow.signal) ? 'Show' : 'Hide'}
-                            </button>
+                            {hasSessionFailureEvidence &&
+                            failingRows.some((row) => row.signal === signalRow.signal) ? (
+                              <span className="ide-verify-signal-entry-badge">Mismatch</span>
+                            ) : null}
                           </div>
                         ))
                       )}
@@ -3820,173 +3725,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         </section>
       }
-      inspector={
-        <IdeInspectorAccordion defaultOpenId="vectors">
-          {sessionShowsCompareEvidence && (
-            <IdeInspectorSection title="Output Check Detail" accordionId="mismatch-detail">
-            {selectedFailureCase ? (() => {
-              return (
-                <div className="ide-kv-list">
-                  <div className="ide-kv-row">
-                    <span>Signal</span>
-                    <code>{selectedFailureLabel ?? selectedFailureCase.signal}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Expected</span>
-                    <code>{selectedFailureCase.expected}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Actual</span>
-                    <code>{selectedFailureCase.actual}</code>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Tick</span>
-                    <span>{selectedFailureCase.tick}</span>
-                  </div>
-                  {selectedFailureEvidence && (
-                    <div className="ide-kv-row ide-kv-row--full">
-                      <details className="ide-verify-technical-details" data-testid="ide-verify-mismatch-technical-details">
-                        <summary>Technical details</summary>
-                        <div className="ide-kv-list" style={{ marginTop: '0.75rem' }}>
-                          <div className="ide-kv-row" data-testid="ide-verify-mismatch-case-id">
-                            <span>Case</span>
-                            <code>{selectedFailureEvidence.vectorId}</code>
-                          </div>
-                          <div className="ide-kv-row" data-testid="ide-verify-mismatch-sampled-key">
-                            <span>Sampled key</span>
-                            <code>{selectedFailureEvidence.actualSourceKey ?? 'missing'}</code>
-                          </div>
-                          <div className="ide-kv-row" data-testid="ide-verify-mismatch-expected-key">
-                            <span>Expected key</span>
-                            <code>{selectedFailureEvidence.expectedSourceKey ?? 'missing'}</code>
-                          </div>
-                          <div className="ide-kv-row" data-testid="ide-verify-mismatch-reason">
-                            <span>Why</span>
-                            <span style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-                              {selectedFailureEvidence.actualReason === 'missing-output-sample'
-                                ? 'The expected output could not be sampled from the circuit trace. Check mapping, drivers, and output wiring.'
-                                : selectedFailureEvidence.actualReason === 'missing-output-node'
-                                  ? 'The expected output is not mapped to a concrete design node.'
-                                  : 'The sampled output did not match the expected value for this case.'}
-                            </span>
-                          </div>
-                        </div>
-                      </details>
-                    </div>
-                  )}
-                  {selectedFailureCase.expected !== selectedFailureCase.actual && (
-                    <div className="ide-kv-row" data-testid="ide-verify-mismatch-hint">
-                      <span>Hint</span>
-                      <span style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-                        {selectedFailureCase.actual === '0' && selectedFailureCase.expected === '1'
-                          ? `${selectedFailureLabel ?? selectedFailureCase.signal} reads 0 when 1 is expected — verify the driving node is connected and producing output.`
-                          : selectedFailureCase.actual === '1' && selectedFailureCase.expected === '0'
-                            ? `${selectedFailureLabel ?? selectedFailureCase.signal} reads 1 when 0 is expected — check for unintended connections or inverted logic.`
-                            : `${selectedFailureLabel ?? selectedFailureCase.signal} has an unexpected value at tick ${String(selectedFailureCase.tick)} — verify input conditions.`}
-                      </span>
-                    </div>
-                  )}
-                  <div className="ide-kv-row" data-testid="ide-verify-mismatch-detail-related">
-                    <span>Also failing</span>
-                    {selectedFailurePeers.length > 0 ? (
-                      <div className="ide-inline-actions">
-                        {selectedFailurePeers.map((row) => (
-                              <button
-                                key={`related-${row.tick}-${row.signal}`}
-                                type="button"
-                                className="ide-verify-mismatch-fix-btn"
-                                onClick={() => applyFailureSelection(row)}
-                              >
-                                <code>{getFailureSignalLabel(row)}</code> {row.expected}{' -> '}{row.actual}
-                              </button>
-                            ))}
-                      </div>
-                    ) : (
-                      <span>None at t{selectedFailureCase.tick}</span>
-                    )}
-                  </div>
-                  {onFixPath && (
-                    <div className="ide-inline-actions">
-                      <IdeButton
-                        tone="secondary"
-                        onClick={() => reviewFailureInVerify(selectedFailureCase)}
-                        testId="ide-verify-mismatch-fix"
-                      >
-                        Review in Verify
-                      </IdeButton>
-                      <IdeButton
-                        tone="ghost"
-                        onClick={() => openFailureInDesign(selectedFailureCase)}
-                        testId="ide-verify-mismatch-open-design"
-                      >
-                        Open in Design
-                      </IdeButton>
-                    </div>
-                  )}
-                </div>
-              );
-            })() : (
-              <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-                Select a failing signal to see details.
-              </p>
-            )}
-          </IdeInspectorSection>
-          )}
-          <IdeInspectorSection title="Stimulus Cases" accordionId="vectors">
-            <p className="ide-copy">{vectorSourceLabel}</p>
-            <p className="ide-copy" data-testid="ide-verify-reference-mode-note">{verifyReferenceNote}</p>
-
-            {selectedTick !== null && !showAllVectorTicks ? (
-              <div className="ide-kv-list ide-verify-tick-snapshot" data-testid="ide-verify-vectors-tick-snapshot">
-                {(() => {
-                  const tickVec = authoredVectors.find((v) => v.tick === selectedTick);
-                  return tickVec ? (
-                    inputFields.map((field, index) => (
-                      <div key={`${field.id || 'field'}-${index}`} className="ide-kv-row">
-                        <span>{field.label}</span>
-                        <code>{String(tickVec.inputs[field.id] ?? '—')}</code>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-                      No vector at t{selectedTick}.
-                    </p>
-                  );
-                })()}
-                {authoredVectors.length > 0 && (
-                  <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-1)' }}>
-                    <IdeButton tone="ghost" onClick={() => setShowAllVectorTicks(true)} testId="ide-verify-vectors-show-all">
-                      Show all {authoredVectors.length}
-                    </IdeButton>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                {selectedTick !== null && (
-                  <div className="ide-inline-actions" style={{ marginBottom: 'var(--ide-space-1)' }}>
-                    <IdeButton tone="ghost" onClick={() => setShowAllVectorTicks(false)} testId="ide-verify-vectors-tick-filter">
-                      t{selectedTick} only
-                    </IdeButton>
-                  </div>
-                )}
-                <IdeDataTable
-                  columns={[
-                    'Tick',
-                    ...inputFields.map((field) => field.label),
-                    ...outputFields.map((field) => `${field.label} (exp)`),
-                    ...(onPreviewVector ? ['Preview'] : []),
-                    'Dup',
-                    ...(onDeleteVector ? ['Delete'] : []),
-                  ]}
-                  rows={inspectorVectorRows}
-                  testId="ide-verify-vectors-table"
-                />
-              </>
-            )}
-          </IdeInspectorSection>
-        </IdeInspectorAccordion>
-      }
+      inspector={null}
       console={
         <section className="ide-verify-console" data-testid="ide-verify-console">
           <header className="ide-design-diagnostics-drawer-header">
@@ -4279,23 +4018,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         </VerifyResultRegion>
 
         <VerifyWorkspaceRegion>
-        <div className="ide-verify-workspace-story" data-testid="ide-verify-workspace-story">
-          <div className="ide-verify-workspace-story-copy">
-            <span className="ide-verify-workspace-story-eyebrow">Stimulus - Run - Observe</span>
-            <strong className="ide-verify-workspace-story-title">{workspaceStoryTitle}</strong>
-            <p className="ide-verify-workspace-story-summary">{workspaceStorySummary}</p>
-          </div>
-          <div className="ide-verify-workspace-story-meta">
-            {workspaceStoryChips.map((chip, index) => (
-              <span
-                key={chip}
-                className={`ide-verify-workspace-story-chip${index === workspaceStoryChips.length - 1 ? ' is-focus' : ''}`}
-              >
-                {chip}
-              </span>
-            ))}
-          </div>
-        </div>
         <div className="ide-verify-lab-frame" data-testid="ide-verify-lab-frame">
         <div
           className="ide-verify-lab-grid"
@@ -4535,8 +4257,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           hasAssertedExpectedCells={totalExpectedCaseCount > 0}
           selectedTick={selectedTick}
           onSelectedTickChange={handleStimulusSelectedTickChange}
-          signalInventory={signalInventory}
-          scenarioAuthority={scenarioAuthority}
           onVectorsChange={onVectorsChange}
           draftTick={draftTick}
           draftInputs={draftInputs}
@@ -4571,16 +4291,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             !(mappedInputs && mappedInputs.length > 0)
           }
           onGoToHardware={onGoToHardware}
-          onGoToDesign={onGoToDesign}
-          onInsertClockPattern={handleInsertClockPattern}
-          onCaptureObserved={canSetOracle ? handleSetOracleExpected : undefined}
-          canCaptureObserved={Boolean(lastRun && sessionShowsTraceEvidence && canSetOracle)}
-          timingGuidance={effectiveTimingGuidance}
-          postRunToolbarMode={postRunToolbarMode}
           detailsRef={scenarioBuilderDetailsRef}
           initialExpanded={Boolean(lastRun)}
           workbenchExpanded={scenarioWorkbenchExpanded}
           onWorkbenchExpandedChange={setScenarioWorkbenchExpanded}
+          allowWorkbenchCollapse={false}
           showExpectedOutputs={showExpectedOutputs}
           onToggleExpectedOutputs={handleToggleExpectedOutputs}
         />
@@ -4610,7 +4325,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               testId="ide-verify-three-panel"
               leftPanel={showInlineFailureWorkbenchPanels ? (
                 <VerifyVectorListPanel
-                  rows={studentFailureRows}
+                  rows={studentFailureRows.map((row) => ({
+                    key: row.key,
+                    tick: row.tick,
+                    signal: row.rawSignal,
+                    signalLabel: row.signalLabel,
+                    expected: row.expected,
+                    actual: row.actual,
+                    vectorId: row.vectorId,
+                    caseIndex: row.caseIndex,
+                  }))}
                   selectedKey={selectedFailureKey}
                   onSelectFailureKey={handleThreePanelFailureSelect}
                   onSelectNextFailure={goToNextFail}
@@ -5083,10 +4807,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 >
                   {tab === 'why' ? 'Inspect'
                     : tab === 'mismatches' ? 'Checks'
-                    : tab === 'vectors' ? 'Vectors'
-                    : tab === 'truth' ? 'Truth Table'
-                    : tab === 'kmap' ? 'K-Map'
-                    : 'Details'}
+                    : 'Cases and details'}
                 </button>
               ))}
             </nav>
@@ -5343,6 +5064,21 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
               {verifyTab === 'details' && (
                 <>
+                  <section className="ide-verify-run-context" data-testid="ide-verify-details-summary">
+                    <div className="ide-verify-run-context__header">
+                      <span className="ide-verify-run-context__title">Cases and saved checks</span>
+                    </div>
+                    <dl className="ide-verify-run-context__grid">
+                      <div className="ide-verify-run-context__item">
+                        <dt>Case source</dt>
+                        <dd>{vectorSourceLabel}</dd>
+                      </div>
+                      <div className="ide-verify-run-context__item">
+                        <dt>Run note</dt>
+                        <dd>{verifyReferenceNote}</dd>
+                      </div>
+                    </dl>
+                  </section>
                   <VerifyFailureExplanationPanel
                     failure={selectedFailureExplanationCase}
                     classification={selectedFailureClassification}
@@ -5619,6 +5355,19 @@ function normalizeVectors(
     .sort((left, right) => left.tick - right.tick);
 }
 
+function buildAuthoredClockHelperVectors(vectors: TestVector[]): VerifyAuthorVector[] {
+  return vectors.map((vector, index) => ({
+    id: `vec-clk-${String(vector.tick ?? index).padStart(2, '0')}`,
+    tick: Number.isFinite(vector.tick) ? Math.max(0, Math.floor(vector.tick)) : index,
+    inputs: Object.fromEntries(
+      Object.entries(vector.inputs ?? {}).map(([key, value]) => [key, normalizeBit(value)] as [string, 0 | 1])
+    ),
+    expected: Object.fromEntries(
+      Object.entries(vector.expected ?? {}).map(([key, value]) => [key, normalizeBit(value)] as [string, 0 | 1])
+    ),
+  }));
+}
+
 function normalizeVerifyFields(
   seed: Array<{ id: string; label?: string; pin?: string }>
 ): VerifyVectorDraftInput[] {
@@ -5879,6 +5628,7 @@ function buildCaptureContext(input: {
       row.nodeId ? `${row.nodeId}.in` : '',
       row.nodeId ? `${row.nodeId}_in` : '',
     ]) {
+      if (!candidate) continue;
       const normalizedCandidate = normalizeFieldId(candidate);
       if (!normalizedCandidate) continue;
       canonicalOutputKeyByWaveSignal.set(normalizedCandidate, canonicalOutputKey);

@@ -184,86 +184,84 @@ export function buildVerifySessionViewModel(
   const statusBadge =
     status === 'assertions-match'
       ? input.lastRun?.qualification === 'incomplete-mapping'
-        ? 'Checks passed (mapping)'
-        : 'Checks passed'
+        ? 'Checks aligned (mapping)'
+        : 'Checks aligned'
         : status === 'assertions-differ'
-          ? 'Checks failed'
+          ? 'Checks need review'
         : status === 'assertions-incomplete'
-          ? 'Checks incomplete'
+          ? 'Checks optional'
           : status === 'stimulus-only'
             ? 'Observation only'
             : status === 'stale'
-              ? 'Stale'
+              ? 'Needs update'
               : status === 'running'
                 ? 'Running'
                 : 'Draft';
 
   const modeLabel =
     mode === 'assertion'
-      ? 'Check outputs'
+      ? 'Checks armed'
       : mode === 'capture'
         ? 'Observe'
         : 'Observe';
 
   const title =
     status === 'assertions-match'
-      ? 'Checks passed'
+      ? 'Checks aligned with observed outputs'
       : status === 'assertions-differ'
-        ? 'Checks failed'
+        ? 'Checks need review'
         : status === 'assertions-incomplete'
-          ? 'Checks incomplete'
+          ? 'Checks are optional'
           : status === 'stimulus-only'
             ? input.lastRun
-              ? 'Outputs observed'
+              ? 'Observed outputs recorded'
               : 'Ready to run stimulus'
             : status === 'stale'
-              ? 'Stale results'
+              ? 'Run needs an update'
               : status === 'running'
                 ? mode === 'assertion'
-                  ? 'Running checks...'
+                  ? 'Running saved checks...'
                   : 'Observing outputs...'
                 : hasVectors
-                ? mode === 'assertion'
-                    ? 'Ready to run with checks'
-                    : 'Ready to run stimulus'
+                ? 'Ready to run the current stimulus'
                   : 'Author stimulus to begin';
 
   const summary =
     status === 'assertions-match'
       ? input.lastRun?.qualification === 'incomplete-mapping'
         ? 'Outputs matched, but some board pins are still unmapped — finish mapping before hardware.'
-        : 'Every asserted output matched. Blank outputs were not checked.'
+        : 'Observed outputs matched the saved checks on this run.'
       : status === 'assertions-differ'
         ? input.failingRowCount === 1
-          ? 'One saved check differs from the live circuit — inspect it first.'
+          ? 'One saved check differs from the observed run — inspect it first.'
           : `${input.failingRowCount} saved checks differ — start with the first mismatch.`
         : status === 'assertions-incomplete'
-          ? 'Only outputs with saved checks will be checked on the next run.'
+          ? 'Only outputs with saved checks will be reviewed on the next run.'
           : status === 'stimulus-only'
             ? input.lastRun
-              ? 'Waveform captured. Save checks only when you want explicit output verification.'
+              ? 'Waveform captured. Save checks only when you want explicit output review.'
                 : 'Author input stimulus, then run to observe outputs.'
             : status === 'stale'
               ? 'Circuit or stimulus changed — run the current stimulus again before trusting this result.'
               : status === 'running'
                 ? mode === 'assertion'
-                  ? 'Running the current stimulus against saved checks.'
+                  ? 'Running the current stimulus with saved checks armed.'
                   : 'Running the current stimulus and recording outputs.'
                 : hasVectors
                   ? mode === 'assertion'
-                    ? 'Saved checks are armed for the next run.'
+                    ? 'Stimulus is ready. Saved checks are armed for the next run.'
                       : 'Stimulus is ready. Run it to observe outputs.'
                     : 'Author input patterns for each tick, then run the circuit.';
 
   const runLabel =
     input.isRunStale
-      ? 'Run current stimulus'
+      ? 'Update run'
       : mode === 'assertion'
         ? input.lastRun
-          ? 'Re-run with checks'
-          : 'Run with checks'
+          ? 'Update run'
+          : 'Run current stimulus'
         : input.lastRun
-          ? 'Re-run stimulus'
+          ? 'Update run'
           : 'Run current stimulus';
 
   return {
