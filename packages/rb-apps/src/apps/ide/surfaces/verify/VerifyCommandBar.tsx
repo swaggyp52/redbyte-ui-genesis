@@ -199,7 +199,6 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   const showMetricsRow =
     sessionMetricsRow === 'inline' &&
     (Boolean(evidenceLabel) || Boolean(sessionCoverageLabel));
-  const runPlanLabel = isCompareMode ? 'Checks armed' : 'Observe first';
   const runPlanToggleLabel = isCompareMode ? 'Switch to observe' : 'Use saved checks';
   const metricsNodes = [
     evidenceLabel ? (
@@ -263,6 +262,18 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           </IdeButton>
         </div>
 
+        {canToggleRunPlan && !hasUtilityActions && (
+          <div className="ide-vcb-group ide-vcb-group--run-plan" data-testid="ide-vcb-run-plan-inline">
+            <IdeButton
+              tone={isCompareMode ? 'ghost' : 'secondary'}
+              onClick={isCompareMode ? onSetObserve : onSetCompare}
+              testId={isCompareMode ? 'ide-vcb-observe-only' : 'ide-vcb-use-saved-checks'}
+            >
+              {runPlanToggleLabel}
+            </IdeButton>
+          </div>
+        )}
+
         <div className="ide-vcb-truth-strip" data-testid="ide-vcb-session-summary">
           <div className="ide-vcb-truth-strip-stack">
             <span data-testid="ide-verify-summary-status">
@@ -270,11 +281,6 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
                 {statusLabel}
               </span>
             </span>
-            {canToggleRunPlan && (
-              <span className="ide-vcb-session-line ide-vcb-session-line--summary" data-testid="ide-vcb-run-plan-label">
-                {runPlanLabel}
-              </span>
-            )}
             {compactMetaNodes.length > 0 && (
               <span
                 className="ide-vcb-session-line ide-vcb-session-line--meta ide-vcb-session-line--compact"
@@ -300,23 +306,6 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
         </div>
 
         <div className="ide-vcb-group ide-vcb-group--status">
-          {canToggleRunPlan && (
-            <button
-              type="button"
-              className={`ide-vcb-plan-toggle${isCompareMode ? ' is-armed' : ''}`}
-              onClick={isCompareMode ? onSetObserve : onSetCompare}
-              data-testid="ide-vcb-run-plan-toggle"
-              title={
-                !compareAvailable
-                  ? 'Save observed outputs first if you want the next run to check them explicitly.'
-                  : isCompareMode
-                    ? 'Run the next session as observation only.'
-                    : 'Run the next session with saved output checks armed.'
-              }
-            >
-              {runPlanToggleLabel}
-            </button>
-          )}
           {showAnalysisToggle && onToggleAnalysis && (
             <button
               type="button"

@@ -29,6 +29,28 @@
 - The fuller final-project package is now framed as a separate advanced/reference path rather than a peer default.
 - The lock starter now teaches subsystem organization by structure and labels, not by giving away the finished design.
 
+## Change Log 2026-04-21 (Product hardening slice: Verify surface legitimacy + post-verify continuity)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyCommandBar.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx`, `tests/e2e/verify-surface-legitimacy-proof.spec.ts`, `docs/IDE_SYSTEM_MAP.md`, `docs/release/product-hardening-ticket-2026-04-21-verify-surface-legitimacy-continuity.md`
+
+**Context**: Verify had become more correct underneath but still read as dev-heavy; pass+`incomplete-mapping` incorrectly sent students to **Hardware** with **Map Pins** labels, contradicting the accepted Project mapping authority, and “Use saved checks” was only behind **Tools** when the utilities menu was missing.
+
+**Changes**:
+- **Pass hero CTAs**: `incomplete-mapping` → primary **Open Project — Map Pins** + secondary **View on Hardware**; full pass → **Continue to Hardware** + **Open Export**; trust copy relabeled to **What this means** in plain student language.
+- **Primary status**: unmapped / incomplete mapping (when not already covered by the pass+incomplete hero) → **Open Project — Map Pins** with optional **View on Hardware**; removed the redundant thin pre-run `ide-verify-incomplete-mapping-banner` in favor of the command-bar callout.
+- **Failure diagnosis**: header text **What to fix first** (replacing “Issues found” on that strip).
+- **Compare discoverability**: `VerifyCommandBar` renders **Use saved checks** / `ide-vcb-use-saved-checks` **inline** when `canToggleRunPlan && !hasUtilityActions` (see `ide-vcb-run-plan-inline`).
+- **Playwright** minimal proof: `artifacts/verify-surface-hardening-2026-04-21-workspace.png` from preview.
+
+**Tests / gates**:
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx` -> **pass**
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.mapping-authority.test.ts` -> **pass**
+- `pnpm exec playwright test tests/e2e/verify-surface-legitimacy-proof.spec.ts --project=chromium` -> **pass**
+
+**Truth changes**: Verify explicitly routes mapping follow-up to **Project → Map Pins**; Hardware is secondary for the same view; pass/fail is explained in student language first.
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-18 (Targeted correction: Export handoff owner + artifact workspace)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx`

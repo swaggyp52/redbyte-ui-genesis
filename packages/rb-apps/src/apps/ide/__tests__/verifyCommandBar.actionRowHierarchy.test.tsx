@@ -35,14 +35,34 @@ describe('VerifyCommandBar session header hierarchy', () => {
     ).toBeTruthy();
   });
 
-  it('shows the compact run-plan label inside the session summary when checks are available', () => {
+  it('keeps the session summary compact when checks are available', () => {
     const { getByTestId } = render(
       <VerifyCommandBar {...BASE} compareAvailable={true} />
     );
-    expect(getByTestId('ide-vcb-run-plan-label').textContent).toContain('Observe first');
+    expect(getByTestId('ide-vcb-session-summary').textContent).not.toContain('Observe first');
   });
 
-  it('uses a single run-plan toggle instead of the old mode toggle row', () => {
+  it('keeps the run-plan control in Tools when the utilities menu is available (no duplicate inline toggle)', () => {
+    const onSetCompare = vi.fn();
+    const { getByTestId, queryByTestId } = render(
+      <VerifyCommandBar
+        {...BASE}
+        compareAvailable={true}
+        onSetCompare={onSetCompare}
+        showSaveAsExpected={true}
+        onSaveAsExpected={vi.fn()}
+      />
+    );
+
+    expect(queryByTestId('ide-vcb-mode-toggle')).toBeNull();
+    expect(queryByTestId('ide-vcb-run-plan-toggle')).toBeNull();
+    expect(queryByTestId('ide-vcb-use-saved-checks')).toBeNull();
+    fireEvent.click(getByTestId('ide-vcb-utilities-toggle'));
+    fireEvent.click(getByTestId('ide-vcb-run-plan-utility'));
+    expect(onSetCompare).toHaveBeenCalledOnce();
+  });
+
+  it('shows an inline run-plan control when compare is available but Tools is not offered', () => {
     const onSetCompare = vi.fn();
     const { getByTestId, queryByTestId } = render(
       <VerifyCommandBar
@@ -52,8 +72,8 @@ describe('VerifyCommandBar session header hierarchy', () => {
       />
     );
 
-    expect(queryByTestId('ide-vcb-mode-toggle')).toBeNull();
-    fireEvent.click(getByTestId('ide-vcb-run-plan-toggle'));
+    expect(queryByTestId('ide-vcb-utilities-toggle')).toBeNull();
+    fireEvent.click(getByTestId('ide-vcb-use-saved-checks'));
     expect(onSetCompare).toHaveBeenCalledOnce();
   });
 
@@ -77,7 +97,7 @@ describe('VerifyCommandBar session header hierarchy', () => {
     expect(getByTestId('ide-verify-run-proof-edit-vectors')).toBeTruthy();
   });
 
-  it('keeps the run-plan toggle and detail toggle in the right-side status group', () => {
+  it('keeps only the detail toggle in the visible right-side status group', () => {
     const { getByTestId, container } = render(
       <VerifyCommandBar
         {...BASE}
@@ -89,11 +109,11 @@ describe('VerifyCommandBar session header hierarchy', () => {
 
     const statusGroup = container.querySelector('.ide-vcb-group--status');
     expect(statusGroup).toBeTruthy();
-    expect(statusGroup!.contains(getByTestId('ide-vcb-run-plan-toggle'))).toBe(true);
     expect(statusGroup!.contains(getByTestId('ide-verify-drawer-toggle'))).toBe(true);
+    expect(container.querySelector('[data-testid=\"ide-vcb-run-plan-toggle\"]')).toBeNull();
   });
 
-  it('collapses status, evidence, and coverage into one session summary cluster', () => {
+  it('collapses status, evidence, and coverage into one session summary cluster without a run-plan line', () => {
     const { getByTestId } = render(
       <VerifyCommandBar
         {...BASE}
@@ -107,7 +127,6 @@ describe('VerifyCommandBar session header hierarchy', () => {
 
     const summary = within(getByTestId('ide-vcb-session-summary'));
     expect(summary.getByTestId('ide-vcb-status')).toBeTruthy();
-    expect(summary.getByTestId('ide-vcb-run-plan-label')).toBeTruthy();
     expect(summary.getByTestId('ide-vcb-evidence')).toBeTruthy();
     expect(summary.getByTestId('ide-vcb-coverage')).toBeTruthy();
   });

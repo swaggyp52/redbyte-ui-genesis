@@ -3319,11 +3319,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ? 'Checks armed'
       : 'Observe';
   const sessionTitle: string = !lastRun
-    ? 'Ready to run the current stimulus'
+    ? 'Ready to run'
     : isTraceOnly ? 'Outputs observed — stimulus captured'
-    : sessionStatus === 'assertions-match' ? 'Checks aligned with the observed run'
+    : sessionStatus === 'assertions-match' ? 'Checks aligned'
     : sessionStatus === 'assertions-differ' ? 'Checks need review'
-    : sessionStatus === 'stale' ? 'Run needs an update'
+    : sessionStatus === 'stale' ? 'Update run'
     : sessionStatusBadgeLabel;
   const commandBarEvidenceLabel =
     lastRun && sessionShowsCompareEvidence
@@ -3472,7 +3472,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const runProofSummary =
     sessionShowsAssertionMatch
       ? lastRun?.qualification === 'incomplete-mapping'
-        ? `${unmappedOutputLabels.length > 0 ? `${unmappedOutputLabels.slice(0, 3).join(', ')}${unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''} ${unmappedOutputLabels.length === 1 ? 'is' : 'are'} not connected to board pins.` : 'Some outputs are not connected to board pins.'} Finish mapping in Map Pins before trusting export or bring-up.`
+        ? `${unmappedOutputLabels.length > 0 ? `${unmappedOutputLabels.slice(0, 3).join(', ')}${unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''} ${unmappedOutputLabels.length === 1 ? 'is' : 'are'} not connected to board pins.` : 'Some outputs are not connected to board pins.'} Open Project, then the Map Pins stage, and finish pin names there — Export and Hardware read that same table.`
         : 'Every saved check matched the observed outputs.'
       : sessionSignalsAssertionFailure
         ? 'Inspect the first mismatch on the waveform, then adjust checks or the circuit.'
@@ -3483,17 +3483,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       : sessionShowsTraceEvidence
             ? 'This run recorded live waveform behavior only. Save observed outputs as assertions or reveal the assertions editor when you want explicit verification.'
             : verifySession.summary;
-  const incompleteMappingSummary = useMemo(() => {
-    if (unmappedOutputLabels.length === 0) {
-      return null;
-    }
-
-    const shown = unmappedOutputLabels.slice(0, 3);
-    const overflow = unmappedOutputLabels.length - shown.length;
-    const nameList = shown.join(', ') + (overflow > 0 ? ` (+${overflow} more)` : '');
-
-    return `Your logic passed, but ${nameList} ${unmappedOutputLabels.length === 1 ? 'is' : 'are'} not mapped to board pins.`;
-  }, [unmappedOutputLabels]);
   const verifyLayoutPolicy = useMemo(
     () => ({
       /** Keep shell rails secondary so the stimulus/waveform pair owns the page. */
@@ -3576,11 +3565,32 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       };
     }
 
-    if (!mappingComplete) {
+    if (
+      !mappingComplete &&
+      !(lastRun?.qualification === 'incomplete-mapping' && sessionStatus === 'assertions-match')
+    ) {
+      const actions: VerifyPrimaryStatusAreaProps['actions'] = [
+        {
+          label: 'Open Project — Map Pins',
+          onClick: onOpenProjectVectors,
+          tone: 'primary',
+          testId: 'ide-verify-primary-open-project-mappins',
+        },
+      ];
+      if (onGoToHardware) {
+        actions.push({
+          label: 'View on Hardware (same mapping)',
+          onClick: onGoToHardware,
+          tone: 'secondary',
+          testId: 'ide-verify-primary-open-hardware',
+        });
+      }
       return {
-        tone: 'info',
-        title: 'Pin mapping incomplete',
-        message: 'Verification can run, but unmapped outputs may not match hardware behavior yet.',
+        tone: 'warn',
+        title: 'Board pins are not finished on Project',
+        message:
+          'Simulation and checks can still run, but unmapped outputs will not line up with a trustworthy export or board test until you assign them on Project → Map Pins.',
+        actions,
       };
     }
 
@@ -3596,11 +3606,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     isRunStale,
     isScenarioStale,
     isWrongScenario,
+    lastRun?.qualification,
     lastRunScenarioId,
     lastRunScenarioName,
     mappingComplete,
+    onGoToHardware,
+    onOpenProjectVectors,
     onSwitchScenario,
     runVerification,
+    sessionStatus,
   ]);
 
   const analysisDrawerHint = useMemo(() => {
@@ -3613,6 +3627,75 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   ]);
   const verifySessionMetricsRow =
     sessionSignalsAssertionFailure || (Boolean(lastRun) && isTraceOnly) ? ('inline' as const) : ('hidden' as const);
+  const stimulusAssist = useMemo<React.ReactNode>(() => {
+    if (verifyMode === 'sequential' && isFirstRunState) {
+      return (
+        <div className="ide-verify-stimulus-assist" data-testid="ide-verify-sequential-helper">
+          <div className="ide-verify-stimulus-assist-copy">
+            <strong className="ide-verify-stimulus-assist-title">{sequentialGuidanceCopy.introTitle}</strong>
+            <span className="ide-verify-stimulus-assist-message">
+              {sequentialGuidanceCopy.introStep} Run once to inspect state before saving checks.
+            </span>
+          </div>
+          <div className="ide-verify-stimulus-assist-actions">
+            <IdeButton tone="secondary" onClick={handleInsertClockPattern} testId="ide-verify-insert-clock-pattern">
+              {effectiveTimingGuidance.kind === 'latch-control' ? 'Insert basic enable pattern' : 'Alternating clock'}
+            </IdeButton>
+            <IdeButton tone="ghost" onClick={handleInsertClockHoldLow} testId="ide-verify-insert-clock-hold-low">
+              Hold low
+            </IdeButton>
+            <IdeButton tone="ghost" onClick={handleInsertClockHoldHigh} testId="ide-verify-insert-clock-hold-high">
+              Hold high
+            </IdeButton>
+            <IdeButton tone="ghost" onClick={handleInsertClockPulse} testId="ide-verify-insert-clock-pulse">
+              Single pulse
+            </IdeButton>
+          </div>
+        </div>
+      );
+    }
+
+    if (verifyMode === 'sequential' && !isFirstRunState && nextRunNeedsClockActivity) {
+      return (
+        <div className="ide-verify-stimulus-assist is-warn" data-testid="ide-verify-needs-clock">
+          <div className="ide-verify-stimulus-assist-copy">
+            <strong className="ide-verify-stimulus-assist-title">Clock activity needed</strong>
+            <span className="ide-verify-stimulus-assist-message">
+              {sequentialGuidanceCopy.missingActivity} Add a clock pattern, then update the run.
+            </span>
+          </div>
+          <div className="ide-verify-stimulus-assist-actions">
+            <IdeButton tone="secondary" onClick={handleInsertClockPattern} testId="ide-verify-insert-clock-pattern-warn">
+              Alternating clock
+            </IdeButton>
+            <IdeButton tone="ghost" onClick={handleInsertClockHoldLow} testId="ide-verify-insert-clock-hold-low-warn">
+              Hold low
+            </IdeButton>
+            <IdeButton tone="ghost" onClick={handleInsertClockHoldHigh} testId="ide-verify-insert-clock-hold-high-warn">
+              Hold high
+            </IdeButton>
+            <IdeButton tone="ghost" onClick={handleInsertClockPulse} testId="ide-verify-insert-clock-pulse-warn">
+              Single pulse
+            </IdeButton>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  }, [
+    effectiveTimingGuidance.kind,
+    handleInsertClockHoldHigh,
+    handleInsertClockHoldLow,
+    handleInsertClockPattern,
+    handleInsertClockPulse,
+    isFirstRunState,
+    nextRunNeedsClockActivity,
+    sequentialGuidanceCopy.introStep,
+    sequentialGuidanceCopy.introTitle,
+    sequentialGuidanceCopy.missingActivity,
+    verifyMode,
+  ]);
 
   return (
     <IdeSurfaceLayout
@@ -3662,12 +3745,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <p className="ide-verify-signal-rail-focus" data-testid="ide-verify-signal-rail-summary">
               {selectedSignal ? (
                 <>
-                  <code>{selectedSignal}</code> is the active observation lane
+                  <code>{selectedSignal}</code> active
                 </>
               ) : hasSessionFailureEvidence ? (
-                'Filter to the failing lanes, then inspect the waveform.'
+                'Showing failing lanes first.'
               ) : (
-                'Compact legend and filter for the waveform lanes.'
+                'Legend and lane filter.'
               )}
             </p>
           </header>
@@ -3835,8 +3918,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           onGoToDesign={handleGoToDesignFromVerify}
           goToDesignTick={selectedTick}
           experimentScenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
-          experimentCaseLabel={selectedTick != null ? `t${selectedTick}` : 'No tick selected'}
-          experimentTimingHint={sequencerModeLabel}
+          experimentCaseLabel={lastRun && selectedTick != null ? `t${selectedTick}` : null}
+          experimentTimingHint={lastRun ? sequencerModeLabel : null}
         />
         )}
         </div>
@@ -3846,7 +3929,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {/* ── Result / failure context panels ────────────────────────────── */}
         {drawerOpen && hasSessionFailureEvidence && failureDiagnosis.length > 0 && (
           <div className="ide-verify-fail-diagnosis" data-testid="ide-verify-fail-diagnosis">
-            <span className="ide-verify-fail-diagnosis-header" data-testid="ide-verify-fail-diagnosis-header">Issues found</span>
+            <span className="ide-verify-fail-diagnosis-header" data-testid="ide-verify-fail-diagnosis-header">What to fix first</span>
             {failureDiagnosis.map((item) => (
               <div key={item.signal} className="ide-verify-fail-diagnosis-row" data-testid="ide-verify-fail-diagnosis-row">
                 <span className="ide-verify-fail-diagnosis-label">{item.label}</span>
@@ -3910,26 +3993,52 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   {runProofSummary}
                 </p>
                 <p className="ide-verify-run-proof-authority" data-testid="ide-verify-authority-note">
-                  <strong>Authoritative:</strong>{' '}
+                  <strong>What this means:</strong>{' '}
                   {isRunStale
-                    ? `the waveform below belongs to build ${shortenHash(lastRun.deterministicHash)}, while the current circuit is ${shortenHash(deterministicHash)}.`
-                    : 'the checked result comes from this deterministic Verify run. Design trace is for debug only and does not affect trust status.'}
+                    ? `The waveform and checks here belong to an older build (${shortenHash(lastRun.deterministicHash)}) than your current circuit (${shortenHash(deterministicHash)}). Re-run Verify when you are ready.`
+                    : 'Pass or fail reflects this Verify run: your saved test vectors were compared to the simulation. Change the design in Design, or finish board pins on Project — then return here to re-check.'}
                 </p>
               </div>
               <div className="ide-verify-run-proof-actions">
                 {sessionShowsAssertionMatch && (
                   <>
-                    <span data-testid="ide-verify-cta-continue">
-                      <IdeButton
-                        tone={lastRun.qualification === 'incomplete-mapping' ? 'secondary' : 'primary'}
-                        onClick={onGoToHardware}
-                        testId="ide-verify-pass-hero-hardware"
-                      >
-                        {lastRun.qualification === 'incomplete-mapping'
-                          ? 'Finish mapping → Map Pins'
-                          : 'Continue → Map Pins'}
-                      </IdeButton>
-                    </span>
+                    {lastRun.qualification === 'incomplete-mapping' ? (
+                      <>
+                        <span data-testid="ide-verify-cta-continue">
+                          <IdeButton
+                            tone="primary"
+                            onClick={onOpenProjectVectors}
+                            testId="ide-verify-pass-hero-open-project-mappins"
+                          >
+                            Open Project — Map Pins
+                          </IdeButton>
+                        </span>
+                        {onGoToHardware ? (
+                          <IdeButton
+                            tone="secondary"
+                            onClick={onGoToHardware}
+                            testId="ide-verify-pass-hero-hardware"
+                          >
+                            View on Hardware
+                          </IdeButton>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        {onGoToHardware ? (
+                          <span data-testid="ide-verify-cta-continue">
+                            <IdeButton tone="primary" onClick={onGoToHardware} testId="ide-verify-pass-hero-hardware">
+                              Continue to Hardware
+                            </IdeButton>
+                          </span>
+                        ) : null}
+                        {onGoToExport ? (
+                          <IdeButton tone="secondary" onClick={onGoToExport} testId="ide-verify-pass-hero-export">
+                            Open Export
+                          </IdeButton>
+                        ) : null}
+                      </>
+                    )}
                     {(onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) && (
                       <IdeButton tone="secondary" onClick={handleGoToDesignFromVerify} testId="ide-verify-pass-hero-design">
                         Back to Design
@@ -4053,7 +4162,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {/* TRACE callout moved to bottom workbench area — canonical position after results zone */}
 
         {/* Sequential first-run helper strip — shown whenever mode is sequential + first-run */}
-        {verifyMode === 'sequential' && isFirstRunState && (
+        {false && verifyMode === 'sequential' && isFirstRunState && (
           <IdeCallout tone="info" testId="ide-verify-sequential-helper">
             <strong>{sequentialGuidanceCopy.introTitle}</strong>
             <ul className="ide-copy" style={{ margin: '4px 0 4px 16px', padding: 0 }}>
@@ -4078,7 +4187,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )}
 
         {/* Sequential clock-missing guidance when vectors exist but no clock activity */}
-        {verifyMode === 'sequential' && !isFirstRunState && nextRunNeedsClockActivity && (
+        {false && verifyMode === 'sequential' && !isFirstRunState && nextRunNeedsClockActivity && (
           <IdeCallout tone="warn" testId="ide-verify-needs-clock">
             {sequentialGuidanceCopy.missingActivity}
             <div className="ide-inline-actions" style={{ marginTop: 6 }}>
@@ -4240,13 +4349,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {/* Pre-run incomplete-mapping warning */}
-        {mappingComplete === false && !lastRun && (
-          <div data-testid="ide-verify-incomplete-mapping-banner" className="ide-verify-incomplete-mapping-banner">
-            Some outputs are not mapped to board pins
-          </div>
-        )}
-
         <ScenarioBuilderPanel
           isFirstRun={isFirstRunState}
           isSequential={isSequentialRun}
@@ -4266,8 +4368,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           onDraftExpectedChange={handleDraftExpectedChange}
           onAddVector={handleAddVector}
           onGenerateBasics={handleGenerateBasicVectors}
-          onRun={runVerification}
-          runButtonLabel={emptyStateRunLabel}
           onOpenProjectVectors={onOpenProjectVectors}
           onAutoGenerate={handleAutoGenerateVectors}
           sweepPreset={sweepPreset}
@@ -4298,6 +4398,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           allowWorkbenchCollapse={false}
           showExpectedOutputs={showExpectedOutputs}
           onToggleExpectedOutputs={handleToggleExpectedOutputs}
+          stimulusAssist={stimulusAssist}
         />
         </VerifyStimulusRegion>
 
@@ -4308,9 +4409,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               outputNames={outputFields.map((f) => f.label ?? f.id)}
               clockName={clockSignalNames[0]}
               isSequential={isSequentialRun}
-              onGenerate={handleGenerateBasicVectors}
               hasVectors={totalVectorCount > 0}
-              runLabel={verifySession.runLabel}
+              runLabel={emptyStateRunLabel}
             />
           ) : <div
             className="ide-verify-workbench ide-verify-workbench-v2"
