@@ -581,4 +581,88 @@ export const OUTPUTBehavior: NodeBehavior = {
     };
   },
 };
+
+// ─── Analog Node Behaviors ────────────────────────────────────────────────────
+
+/**
+ * LM358 Op-Amp Comparator
+ * Inputs: V_plus, V_minus (from connections or state when unconnected)
+ * Output: out — 1 if V_plus > V_minus, else 0
+ */
+export const LM358Behavior: NodeBehavior = {
+  evaluate(inputs, state) {
+    const vplus = (inputs.V_plus ?? state.V_plus ?? 0) as number;
+    const vminus = (inputs.V_minus ?? state.V_minus ?? 0) as number;
+    const out = vplus > vminus ? 1 : 0;
+    return {
+      outputs: { out: out as Signal },
+      state: { V_plus: vplus, V_minus: vminus },
+    };
+  },
+};
+
+/**
+ * LDR — Light-Dependent Resistor
+ * State: { light: 0..1 }  (0 = dark, 1 = bright)
+ * Output: resistance (Ohms) — 100000*(1-light), clamped to 10 Ω minimum
+ * Physics: high resistance in dark (100 kΩ), low in bright (~10 Ω)
+ */
+export const LDRBehavior: NodeBehavior = {
+  evaluate(_inputs, state) {
+    const light = Math.max(0, Math.min(1, (state.light ?? 0.5) as number));
+    const resistance = Math.max(10, 100000 * (1 - light));
+    return {
+      outputs: { resistance: resistance as Signal },
+      state: { light, resistance },
+    };
+  },
+};
+
+/**
+ * FixedResistor — constant resistor
+ * Config: { resistance: number } (Ohms, default 1000)
+ * Output: resistance
+ */
+export const FixedResistorBehavior: NodeBehavior = {
+  evaluate(_inputs, _state, config) {
+    const resistance = (config.resistance ?? 1000) as number;
+    return {
+      outputs: { resistance: resistance as Signal },
+      state: {},
+    };
+  },
+};
+
+/**
+ * VoltageSource — ideal DC voltage source
+ * Config: { voltage: number } (Volts, default 5)
+ * Output: out (voltage value)
+ */
+export const VoltageSourceBehavior: NodeBehavior = {
+  evaluate(_inputs, _state, config) {
+    const voltage = (config.voltage ?? 5) as number;
+    return {
+      outputs: { out: voltage as Signal },
+      state: {},
+    };
+  },
+};
+
+/**
+ * VoltageDivider — computes v_out = v_in * r2 / (r1 + r2)
+ * Inputs: r1, r2, v_in (from connections or state fallback)
+ * Output: v_out
+ */
+export const VoltageDividerBehavior: NodeBehavior = {
+  evaluate(inputs, state) {
+    const r1 = ((inputs.r1 ?? state.r1 ?? 1000)) as number;
+    const r2 = ((inputs.r2 ?? state.r2 ?? 1000)) as number;
+    const v_in = ((inputs.v_in ?? state.v_in ?? 0)) as number;
+    const v_out = (r1 + r2) > 0 ? (v_in * r2) / (r1 + r2) : 0;
+    return {
+      outputs: { v_out: v_out as Signal },
+      state: { r1, r2, v_in },
+    };
+  },
+};
  
