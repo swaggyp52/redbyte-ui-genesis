@@ -171,6 +171,58 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(getByTestId('ide-project-landing').textContent).not.toContain('Ã');
   });
 
+  it('features the security lock bridge as the recommended student path and separates the advanced reference', () => {
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            readiness: {
+              hasCircuit: false,
+              hasIoMapping: false,
+              hasVectors: false,
+              verifyPass: false,
+              missingRequiredCount: 0,
+            },
+            health: {
+              lastVerify: undefined,
+              lastExport: undefined,
+              dirtySinceVerify: false,
+              dirtySinceExport: false,
+              blockingIssues: [],
+            },
+            examples: [
+              {
+                id: '23_lab8-fsm-lock-starter-basys3',
+                name: 'ECE141 Security Lock Starter - Lab 8 Bridge',
+                summary: 'Recommended student path for the Digital Security Lock final project.',
+                expectedBehavior: 'Build the lock one subsystem at a time.',
+                tags: ['fsm', 'starter'],
+                course: 'ECE141',
+                lab: 'Lab 8',
+                concept: 'Finite State Machines',
+              },
+              {
+                id: 'signal-tour',
+                name: 'Signal Tour',
+                summary: 'Starter project',
+                expectedBehavior: 'Flip switches and observe LEDs.',
+                tags: ['starter'],
+                course: 'ECE141',
+                lab: 'Lab 1',
+                concept: 'I/O mapping',
+              },
+            ],
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-project-featured-security-lock').textContent).toContain('Load recommended starter ->');
+    expect(getByTestId('ide-project-featured-security-lock').textContent).toContain('Lab 8 Bridge');
+    expect(getByTestId('ide-project-security-lock-reference-note').textContent).toContain('labs/ece141-final-project');
+    expect(getByTestId('ide-project-start-column').textContent).toContain('Other starting points');
+  });
+
   it('renders blocker and mapping actions without mojibake suffixes', () => {
     const { getByTestId } = render(
       <BoardSignalProvider>

@@ -5,7 +5,10 @@
       "id": "sw_in2",
       "type": "Switch",
       "label": "IN2 (SW8)",
-      "position": { "x": 80, "y": 70 },
+      "position": {
+        "x": 80,
+        "y": 80
+      },
       "rotation": 0,
       "config": {}
     },
@@ -13,7 +16,10 @@
       "id": "sw_in1",
       "type": "Switch",
       "label": "IN1 (SW7)",
-      "position": { "x": 80, "y": 140 },
+      "position": {
+        "x": 80,
+        "y": 150
+      },
       "rotation": 0,
       "config": {}
     },
@@ -21,7 +27,10 @@
       "id": "sw_in0",
       "type": "Switch",
       "label": "IN0 (SW6)",
-      "position": { "x": 80, "y": 210 },
+      "position": {
+        "x": 80,
+        "y": 220
+      },
       "rotation": 0,
       "config": {}
     },
@@ -29,7 +38,10 @@
       "id": "sw_enter",
       "type": "Switch",
       "label": "ENTER (SW5)",
-      "position": { "x": 80, "y": 280 },
+      "position": {
+        "x": 80,
+        "y": 320
+      },
       "rotation": 0,
       "config": {}
     },
@@ -37,7 +49,142 @@
       "id": "sw_reset",
       "type": "Switch",
       "label": "RESET (SW4)",
-      "position": { "x": 80, "y": 350 },
+      "position": {
+        "x": 80,
+        "y": 400
+      },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "cap_p0_ff",
+      "type": "DFlipFlop",
+      "label": "CAP p0",
+      "position": {
+        "x": 320,
+        "y": 120
+      },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "cap_p1_ff",
+      "type": "DFlipFlop",
+      "label": "CAP p1",
+      "position": {
+        "x": 320,
+        "y": 220
+      },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "pos0_ff",
+      "type": "DFlipFlop",
+      "label": "POS0",
+      "position": {
+        "x": 320,
+        "y": 360
+      },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "pos1_ff",
+      "type": "DFlipFlop",
+      "label": "POS1",
+      "position": {
+        "x": 320,
+        "y": 460
+      },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "xor_valid",
+      "type": "XOR",
+      "label": "010 / 100 XOR",
+      "position": {
+        "x": 520,
+        "y": 170
+      },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "not_last",
+      "type": "NOT",
+      "label": "Last bit = 0",
+      "position": {
+        "x": 520,
+        "y": 290
+      },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "valid_group",
+      "type": "AND",
+      "label": "GROUP VALID",
+      "position": {
+        "x": 520,
+        "y": 410
+      },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "m1_ff",
+      "type": "DFlipFlop",
+      "label": "M1",
+      "position": {
+        "x": 760,
+        "y": 110
+      },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "m2_ff",
+      "type": "DFlipFlop",
+      "label": "M2",
+      "position": {
+        "x": 760,
+        "y": 210
+      },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "m3_ff",
+      "type": "DFlipFlop",
+      "label": "M3",
+      "position": {
+        "x": 760,
+        "y": 310
+      },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "m4_ff",
+      "type": "DFlipFlop",
+      "label": "M4",
+      "position": {
+        "x": 760,
+        "y": 410
+      },
+      "rotation": 0,
+      "config": {}
+    },
+    {
+      "id": "lock_drive",
+      "type": "OR",
+      "label": "OPEN / LOCK",
+      "position": {
+        "x": 960,
+        "y": 260
+      },
       "rotation": 0,
       "config": {}
     },
@@ -45,12 +192,124 @@
       "id": "led_lock",
       "type": "Lamp",
       "label": "LOCK (LED1)",
-      "position": { "x": 920, "y": 220 },
+      "position": {
+        "x": 1140,
+        "y": 260
+      },
       "rotation": 0,
       "config": {}
     }
   ],
-  "connections": [],
+  "connections": [
+    {
+      "fromNodeId": "sw_enter",
+      "fromPin": "out",
+      "toNodeId": "cap_p0_ff",
+      "toPin": "CLK"
+    },
+    {
+      "fromNodeId": "sw_enter",
+      "fromPin": "out",
+      "toNodeId": "cap_p1_ff",
+      "toPin": "CLK"
+    },
+    {
+      "fromNodeId": "sw_enter",
+      "fromPin": "out",
+      "toNodeId": "pos0_ff",
+      "toPin": "CLK"
+    },
+    {
+      "fromNodeId": "sw_enter",
+      "fromPin": "out",
+      "toNodeId": "pos1_ff",
+      "toPin": "CLK"
+    },
+    {
+      "fromNodeId": "sw_enter",
+      "fromPin": "out",
+      "toNodeId": "m1_ff",
+      "toPin": "CLK"
+    },
+    {
+      "fromNodeId": "sw_enter",
+      "fromPin": "out",
+      "toNodeId": "m2_ff",
+      "toPin": "CLK"
+    },
+    {
+      "fromNodeId": "sw_enter",
+      "fromPin": "out",
+      "toNodeId": "m3_ff",
+      "toPin": "CLK"
+    },
+    {
+      "fromNodeId": "sw_enter",
+      "fromPin": "out",
+      "toNodeId": "m4_ff",
+      "toPin": "CLK"
+    },
+    {
+      "fromNodeId": "sw_reset",
+      "fromPin": "out",
+      "toNodeId": "cap_p0_ff",
+      "toPin": "RST"
+    },
+    {
+      "fromNodeId": "sw_reset",
+      "fromPin": "out",
+      "toNodeId": "cap_p1_ff",
+      "toPin": "RST"
+    },
+    {
+      "fromNodeId": "sw_reset",
+      "fromPin": "out",
+      "toNodeId": "pos0_ff",
+      "toPin": "RST"
+    },
+    {
+      "fromNodeId": "sw_reset",
+      "fromPin": "out",
+      "toNodeId": "pos1_ff",
+      "toPin": "RST"
+    },
+    {
+      "fromNodeId": "sw_reset",
+      "fromPin": "out",
+      "toNodeId": "m1_ff",
+      "toPin": "RST"
+    },
+    {
+      "fromNodeId": "sw_reset",
+      "fromPin": "out",
+      "toNodeId": "m2_ff",
+      "toPin": "RST"
+    },
+    {
+      "fromNodeId": "sw_reset",
+      "fromPin": "out",
+      "toNodeId": "m3_ff",
+      "toPin": "RST"
+    },
+    {
+      "fromNodeId": "sw_reset",
+      "fromPin": "out",
+      "toNodeId": "m4_ff",
+      "toPin": "RST"
+    },
+    {
+      "fromNodeId": "m4_ff",
+      "fromPin": "Q",
+      "toNodeId": "lock_drive",
+      "toPin": "a"
+    },
+    {
+      "fromNodeId": "lock_drive",
+      "fromPin": "out",
+      "toNodeId": "led_lock",
+      "toPin": "in"
+    }
+  ],
   "ioMapping": {
     "inputs": [
       {
@@ -103,7 +362,7 @@
     "schemaVersion": "1.0",
     "labId": "lab-8",
     "title": "Lab 8 - Security Lock FSM",
-    "description": "Starter contract checkpoints for valid and invalid serial FSM paths.\n\nBuild notes:\n- ENTER (SW5) is the manual clock. Connect it to the CLK pin of EVERY DFlipFlop.\n- RESET (SW4) clears all state. Connect it to RST on every DFlipFlop.\n- IN0 (SW6) is the serial data bit for these checkpoints.\n- Valid 3-bit groups: 010 and 100. Four consecutive valid groups unlocks.\n- LOCK (LED1) should go high only after the 12th clock pulse of the valid sequence.",
+    "description": "Bridge starter checkpoints for the ECE141 security lock.\\n\\nBuild notes:\\n- Start with this Lab 8 bridge before the fuller final-project reference package.\\n- ENTER (SW5) is the shared manual clock. Keep it on the CLK pin of every DFlipFlop.\\n- RESET (SW4) clears the bridge state so you can replay 12-bit attempts cleanly.\\n- Use the scaffold to separate bit/window count, valid-group detection, milestone count, and LOCK output.\\n- LOCK (LED1) should rise only after the fourth valid 3-bit group finishes.",
     "objectives": [
       "Prove both invalid and valid serial trajectories with ENTER as the clock pulse."
     ],
@@ -111,93 +370,495 @@
       {
         "id": "fsm-invalid-path",
         "type": "truth-table",
-        "title": "Invalid path proof",
-        "description": "Bitstream 110010010100 on IN0 with IN2/IN1 held low must never unlock.",
+        "title": "Check 1: invalid 12-bit attempt never opens LOCK",
+        "description": "This proves bad 3-bit groups do not advance the lock. After every ENTER pulse in 110010010100, LOCK should stay 0.",
         "config": {
           "schedule": "clocked_macro",
           "clockSignal": "sw_enter",
-          "inputs": ["sw_in0", "sw_in1", "sw_in2", "sw_reset"],
-          "outputs": ["led_lock"],
+          "inputs": [
+            "sw_in0",
+            "sw_in1",
+            "sw_in2",
+            "sw_reset"
+          ],
+          "outputs": [
+            "led_lock"
+          ],
           "table": [
-            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } }
+            {
+              "inputs": {
+                "sw_in0": true,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": true,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": true,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": true,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": true,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            }
           ]
         },
         "spec": {
-          "inputs": ["sw_in0", "sw_in1", "sw_in2", "sw_reset"],
-          "outputs": ["led_lock"],
+          "inputs": [
+            "sw_in0",
+            "sw_in1",
+            "sw_in2",
+            "sw_reset"
+          ],
+          "outputs": [
+            "led_lock"
+          ],
           "expectedTable": []
         }
       },
       {
         "id": "fsm-valid-path",
         "type": "truth-table",
-        "title": "Valid path proof (010100010100)",
-        "description": "Bitstream 010100010100 on IN0 with IN2/IN1 held low must unlock at the final step.",
+        "title": "Check 2: valid grouped path opens on bit 12",
+        "description": "This proves your bit/window logic and valid-group logic work together. LOCK should stay 0 through bits 1-11 and rise only after the fourth valid group.",
         "config": {
           "schedule": "clocked_macro",
           "clockSignal": "sw_enter",
-          "inputs": ["sw_in0", "sw_in1", "sw_in2", "sw_reset"],
-          "outputs": ["led_lock"],
+          "inputs": [
+            "sw_in0",
+            "sw_in1",
+            "sw_in2",
+            "sw_reset"
+          ],
+          "outputs": [
+            "led_lock"
+          ],
           "table": [
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": true  } }
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": true,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": true,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": true,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": true,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": true
+              }
+            }
           ]
         },
         "spec": {
-          "inputs": ["sw_in0", "sw_in1", "sw_in2", "sw_reset"],
-          "outputs": ["led_lock"],
+          "inputs": [
+            "sw_in0",
+            "sw_in1",
+            "sw_in2",
+            "sw_reset"
+          ],
+          "outputs": [
+            "led_lock"
+          ],
           "expectedTable": []
         }
       },
       {
         "id": "fsm-valid-path-2",
         "type": "truth-table",
-        "title": "Valid path proof (100010100010)",
-        "description": "Bitstream 100010100010 on IN0 with IN2/IN1 held low must unlock at the final step.",
+        "title": "Check 3: alternate valid grouping also opens on bit 12",
+        "description": "This proves you accept both allowed groups, 010 and 100, instead of hard-coding only one happy path.",
         "config": {
           "schedule": "clocked_macro",
           "clockSignal": "sw_enter",
-          "inputs": ["sw_in0", "sw_in1", "sw_in2", "sw_reset"],
-          "outputs": ["led_lock"],
+          "inputs": [
+            "sw_in0",
+            "sw_in1",
+            "sw_in2",
+            "sw_reset"
+          ],
+          "outputs": [
+            "led_lock"
+          ],
           "table": [
-            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": true,  "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": false } },
-            { "inputs": { "sw_in0": false, "sw_in1": false, "sw_in2": false, "sw_reset": false }, "outputs": { "led_lock": true  } }
+            {
+              "inputs": {
+                "sw_in0": true,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": true,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": true,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": true,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": false
+              }
+            },
+            {
+              "inputs": {
+                "sw_in0": false,
+                "sw_in1": false,
+                "sw_in2": false,
+                "sw_reset": false
+              },
+              "outputs": {
+                "led_lock": true
+              }
+            }
           ]
         },
         "spec": {
-          "inputs": ["sw_in0", "sw_in1", "sw_in2", "sw_reset"],
-          "outputs": ["led_lock"],
+          "inputs": [
+            "sw_in0",
+            "sw_in1",
+            "sw_in2",
+            "sw_reset"
+          ],
+          "outputs": [
+            "led_lock"
+          ],
           "expectedTable": []
         }
       }

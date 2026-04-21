@@ -45,8 +45,34 @@ describe('buildLabSequencerSteps', () => {
       'observe_assert_output',
       'observe_assert_output',
     ]);
-    expect(steps[0].title).toMatch(/apply reset/i);
+    expect(steps[0].title).toMatch(/apply reset|clear state/i);
     expect(steps[4].title).toMatch(/pulse step/i);
+  });
+
+  it('uses student-facing security-lock wording for manual Lab 8 checkpoints', () => {
+    const vectors: VerifyAuthorVector[] = [
+      vec(0, { sw_reset: 1, sw_in0: 0, sw_enter: 0 }, { led_lock: 0 }),
+      vec(1, { sw_reset: 0, sw_in0: 1, sw_enter: 1 }, { led_lock: 0 }),
+      vec(2, { sw_reset: 0, sw_in0: 0, sw_enter: 1 }, { led_lock: 1 }),
+    ];
+    const roles: LabSequencerSignalRoles = {
+      sw_reset: 'reset',
+      sw_enter: 'clock',
+      sw_in0: 'input',
+      led_lock: 'output',
+    };
+
+    const steps = buildLabSequencerSteps(vectors, roles);
+    expect(steps.map((step) => step.title)).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/clear state/i),
+        expect.stringMatching(/set next input bit/i),
+        expect.stringMatching(/pulse enter/i),
+        expect.stringMatching(/check lock stays low/i),
+        expect.stringMatching(/check lock opens here/i),
+      ])
+    );
+    expect(steps.map((step) => step.detail).join(' ')).toContain('fourth valid 3-bit group');
   });
 });
 

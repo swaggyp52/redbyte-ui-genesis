@@ -78,11 +78,6 @@ export {
   StateBankBehavior,
   TFlipFlopBehavior,
   JKFlipFlopBehavior,
-  LM358Behavior,
-  LDRBehavior,
-  FixedResistorBehavior,
-  VoltageSourceBehavior,
-  VoltageDividerBehavior,
 } from './builtins';
 
 // Composite nodes
@@ -125,11 +120,6 @@ import {
   JKFlipFlopBehavior,
   INPUTBehavior,
   OUTPUTBehavior,
-  LM358Behavior,
-  LDRBehavior,
-  FixedResistorBehavior,
-  VoltageSourceBehavior,
-  VoltageDividerBehavior,
 } from './builtins';
 import { registerCompositeNode } from './CompositeNode';
 import {
@@ -163,13 +153,6 @@ NodeRegistry.register('TFlipFlop', TFlipFlopBehavior);
 NodeRegistry.register('JKFlipFlop', JKFlipFlopBehavior);
 NodeRegistry.register('INPUT', INPUTBehavior);
 NodeRegistry.register('OUTPUT', OUTPUTBehavior);
-
-// Analog node behaviors
-NodeRegistry.register('LM358', LM358Behavior);
-NodeRegistry.register('LDR', LDRBehavior);
-NodeRegistry.register('FixedResistor', FixedResistorBehavior);
-NodeRegistry.register('VoltageSource', VoltageSourceBehavior);
-NodeRegistry.register('VoltageDivider', VoltageDividerBehavior);
 
 // Register composite nodes
 registerCompositeNode(RSLatchDef);

@@ -46,12 +46,17 @@ export function buildLabSequencerSteps(
       (signal) => roles[signal] === 'reset' && current.inputs[signal] === 1
     );
     if (resetSignals.length > 0) {
+      const resetLabels = resetSignals.map(formatLabSignalLabel);
+      const isSecurityLockReset =
+        resetSignals.length === 1 && isSecurityLockResetSignal(resetSignals[0] ?? '');
       steps.push({
         id: `${current.id}:reset`,
         tick: current.tick,
         kind: 'apply_reset',
-        title: `Apply reset · t${current.tick}`,
-        detail: resetSignals.join(', '),
+        title: `${isSecurityLockReset ? 'Clear state' : 'Apply reset'} · t${current.tick}`,
+        detail: isSecurityLockReset
+          ? `${resetLabels[0]} clears the stored bits before the next ENTER pulse.`
+          : resetLabels.join(', '),
       });
     }
 
@@ -61,15 +66,20 @@ export function buildLabSequencerSteps(
       return previousValue === undefined || previousValue !== current.inputs[signal];
     });
     if (changedInputs.length > 0) {
+      const changedInputLabels = changedInputs.map(formatLabSignalLabel);
+      const isSecurityLockBitStep =
+        changedInputs.length === 1 && isSecurityLockDataSignal(changedInputs[0] ?? '');
       const detail = changedInputs
-        .map((signal) => `${signal}=${current.inputs[signal]}`)
+        .map((signal, signalIndex) => `${changedInputLabels[signalIndex] ?? signal}=${current.inputs[signal]}`)
         .join(', ');
       steps.push({
         id: `${current.id}:set`,
         tick: current.tick,
         kind: 'set_input',
-        title: `Set inputs · t${current.tick}`,
-        detail,
+        title: `${isSecurityLockBitStep ? 'Set next input bit' : 'Set inputs'} · t${current.tick}`,
+        detail: isSecurityLockBitStep
+          ? `${detail}. This is the bit the next ENTER pulse should clock into the design.`
+          : detail,
       });
     }
 
@@ -79,27 +89,42 @@ export function buildLabSequencerSteps(
       return previousValue === 0 && current.inputs[signal] === 1;
     });
     if (pulsedClock) {
+      const pulsedClockLabel = formatLabSignalLabel(pulsedClock);
+      const isSecurityLockStep = isSecurityLockClockSignal(pulsedClock);
       steps.push({
         id: `${current.id}:pulse`,
         tick: current.tick,
         kind: 'pulse_step',
-        title: `Pulse step · t${current.tick}`,
-        detail: `${pulsedClock} rising edge`,
+        title: `${isSecurityLockStep ? 'Pulse ENTER' : 'Pulse step'} · t${current.tick}`,
+        detail: isSecurityLockStep
+          ? `${pulsedClockLabel} advances the bridge one manual step.`
+          : `${pulsedClockLabel} rising edge`,
       });
     }
 
     const expected = current.expected ?? {};
     const assertedOutputs = Object.keys(expected);
     if (assertedOutputs.length > 0) {
+      const isSecurityLockProof =
+        assertedOutputs.length === 1 && isSecurityLockOutputSignal(assertedOutputs[0] ?? '');
+      const securityLockSignal = assertedOutputs[0] ?? '';
+      const securityLockLabel = formatLabSignalLabel(securityLockSignal);
+      const securityLockExpected = expected[securityLockSignal];
       const detail = assertedOutputs
-        .map((signal) => `${signal}=${expected[signal]}`)
+        .map((signal) => `${formatLabSignalLabel(signal)}=${expected[signal]}`)
         .join(', ');
       steps.push({
         id: `${current.id}:assert`,
         tick: current.tick,
         kind: 'observe_assert_output',
-        title: `Capture / assert · t${current.tick}`,
-        detail,
+        title: isSecurityLockProof
+          ? `${securityLockExpected === 1 ? 'Check LOCK opens here' : 'Check LOCK stays low'} · t${current.tick}`
+          : `Capture / assert · t${current.tick}`,
+        detail: isSecurityLockProof
+          ? securityLockExpected === 1
+            ? `${securityLockLabel} should become 1 only after the fourth valid 3-bit group finishes.`
+            : `${securityLockLabel} should still be 0 after this step.`
+          : detail,
       });
     }
   }
@@ -200,4 +225,35 @@ function toLabStepKind(kind: VerifyScenarioStep['kind']): LabSequencerStepKind {
     default:
       return 'observe_assert_output';
   }
+}
+
+function formatLabSignalLabel(signal: string): string {
+  const normalized = signal.trim().toLowerCase();
+  if (isSecurityLockClockSignal(normalized)) return 'ENTER';
+  if (isSecurityLockResetSignal(normalized)) return 'RESET';
+  if (isSecurityLockOutputSignal(normalized)) return 'LOCK';
+
+  const inMatch = /(?:^|_)(in\d+)/i.exec(signal);
+  if (inMatch?.[1]) return inMatch[1].toUpperCase();
+
+  return signal;
+}
+
+function isSecurityLockDataSignal(signal: string): boolean {
+  const normalized = signal.trim().toLowerCase();
+  return normalized.includes('in0') || normalized.includes('serial');
+}
+
+function isSecurityLockClockSignal(signal: string): boolean {
+  return signal.trim().toLowerCase().includes('enter');
+}
+
+function isSecurityLockResetSignal(signal: string): boolean {
+  const normalized = signal.trim().toLowerCase();
+  return normalized === 'rst' || normalized.includes('reset');
+}
+
+function isSecurityLockOutputSignal(signal: string): boolean {
+  const normalized = signal.trim().toLowerCase();
+  return normalized.includes('lock') || normalized.includes('open');
 }

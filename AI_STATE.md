@@ -1,5 +1,34 @@
 # AI State
 
+## Change Log 2026-04-21 (ECE141 security lock first-pass product shaping)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/labStarters.ts`, `packages/rb-apps/src/apps/ide/verifyLabSequencer.ts`, `packages/rb-apps/src/examples/23_lab8-fsm-lock-starter-basys3.json`, `packages/rb-apps/src/examples/index.ts`, `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifyLabSequencer.test.ts`
+
+**Context**: The ECE141 Digital Security Lock flow already had meaningful RedByte pieces, but the student-facing path was too easy to miss and the starter itself was too thin to orient students around the project mental model. This pass stayed deliberately small and product-shaped around one job: make the Lab 8 bridge starter the obvious place to begin, keep the fuller package separate, add enough subsystem scaffold to help students start productively, and clarify what the verification checks are proving.
+
+**Changes**:
+- **Promoted the ECE141 security lock bridge in Project entry flow**: Project home now features the Lab 8 security-lock starter as a dedicated recommended path instead of leaving it buried among generic starters. The landing copy now frames this as the student starting point and explicitly points to the fuller `labs/ece141-final-project` package as a separate advanced/reference path.
+- **Kept the canonical student path distinct after load**: when the Lab 8 bridge starter is active, Project now reinforces that it is the student path and that the fuller package remains separate. The alternate-starter disclosure also keeps the security-lock bridge visible and labels other starters as secondary.
+- **Replaced the thin lock starter with an unsolved subsystem scaffold**: the Lab 8 starter metadata and example asset now lay out an unsolved bridge around shared ENTER/RESET wiring, capture/state D flip-flops, bit/window position storage, valid-group milestone storage, and the final LOCK path. The scaffold adds structure without shipping solved sequence logic.
+- **Reframed lock verification language around what each proof means**: the manual lab sequencer now uses student-facing language such as `Clear state`, `Set next input bit`, `Pulse ENTER`, `Check LOCK stays low`, and `Check LOCK opens here`. The lock example checkpoints were also renamed so they explain what each invalid/valid sequence is proving instead of reading like opaque path labels.
+- **Aligned example metadata with the new student/reference split**: the example catalog now labels the lock asset as the `ECE141 Security Lock Bridge Starter (Basys3)` and describes it as the recommended student bridge before the fuller reference package or Vivado handoff.
+
+**Tests / gates**:
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyLabSequencer.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.manualLabStepMode.test.tsx` -> **22/22 pass**
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` -> **fails in multiple pre-existing workstation assertions unrelated to this slice** (status/copy and drawer/workbench expectations outside the touched files)
+- `pnpm --filter @redbyte/rb-apps build` -> **bundle build succeeded; declaration/type stage still reports pre-existing repo-wide TypeScript debt outside this slice**
+- `pnpm build:unified` -> **success**
+
+**Verification**:
+- Project landing now presents the security-lock starter as a top-level recommended entry point instead of a buried lab card choice.
+- The Lab 8 bridge starter now opens with explicit unsolved subsystem regions that map to how students are expected to think about the assignment.
+- Verification copy now explains why the lock is expected to stay closed or open at each stage of the manual sequence flow.
+
+**Truth changes**:
+- The simple Lab 8 bridge is now the explicit student-facing starting point for the ECE141 security lock workflow inside RedByte.
+- The fuller final-project package is now framed as a separate advanced/reference path rather than a peer default.
+- The lock starter now teaches subsystem organization by structure and labels, not by giving away the finished design.
+
 ## Change Log 2026-04-18 (Targeted correction: Export handoff owner + artifact workspace)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx`

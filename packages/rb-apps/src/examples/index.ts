@@ -296,9 +296,9 @@ const examples: Record<ExampleId, { data: SerializedCircuitV1; metadata: Example
     data: example23 as SerializedCircuitV1,
     metadata: {
       id: '23_lab8-fsm-lock-starter-basys3',
-      name: 'Final Project: Security Lock Starter (Basys3)',
+      name: 'ECE141 Security Lock Bridge Starter (Basys3)',
       description:
-        'Starter canvas for the Digital Security Lock final project. Includes Basys3 pin mappings (SW4–SW8, LED1) and three pre-loaded verification sequences: one invalid stream and two valid streams that should assert OPEN. Add your FSM and counter logic, then run the checkpoints to validate behavior before moving to Vivado.',
+        'Recommended student bridge for the Digital Security Lock workflow. Includes the Lab 8-style scaffold, Basys3 pin mappings (SW4-SW8, LED1), and three checks that prove invalid and valid grouped serial paths before students move to the fuller reference package or Vivado.',
       layer: 6,
       difficulty: 'advanced',
     },

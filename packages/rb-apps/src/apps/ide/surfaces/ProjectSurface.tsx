@@ -166,6 +166,9 @@ const PROJECT_OUTPUT_ALIAS_OPTIONS = [
   ...Array.from({ length: 4 }, (_, index) => `AN${index}`),
 ];
 
+const SECURITY_LOCK_STARTER_ID = '23_lab8-fsm-lock-starter-basys3';
+const SECURITY_LOCK_REFERENCE_PATH = 'labs/ece141-final-project';
+
 export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   projectName,
   description,
@@ -313,6 +316,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [activeExampleId, examples]
   );
   const starterExample = projectKind === 'example' ? activeExample : null;
+  const featuredSecurityStarter = useMemo(
+    () => examples.find((example) => example.id === SECURITY_LOCK_STARTER_ID) ?? null,
+    [examples]
+  );
+  const isSecurityLockStarterActive = starterExample?.id === SECURITY_LOCK_STARTER_ID;
   const projectContextLabel = useMemo(() => {
     if (projectKind === 'blank' && readiness.hasCircuit) {
       return 'Fresh Project';
@@ -780,7 +788,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     ]
   );
   const hasRecentEntryPoints = recentProjects.length > 0 || Boolean(onOpenSavedProjects);
-  const landingPrimaryExamples = examples.slice(0, 3);
+  const landingPrimaryExamples = useMemo(() => examples.slice(0, 3), [examples]);
+  const alternateStarterExamples = useMemo(() => {
+    if (examples.length === 0) return [];
+    if (!featuredSecurityStarter) return examples.slice(0, 3);
+    return [
+      featuredSecurityStarter,
+      ...examples.filter((example) => example.id !== featuredSecurityStarter.id),
+    ].slice(0, 4);
+  }, [examples, featuredSecurityStarter]);
   return (
     <IdeSurfaceLayout
       mode="project"
@@ -860,6 +876,33 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 <span className="ide-project-start-summary-chip">Next up: Design</span>
                 <span className="ide-project-start-summary-chip">Workflow: {STUDENT_WORKFLOW_SUMMARY}</span>
               </div>
+              {featuredSecurityStarter && (
+                <SurfacePanel className="ide-project-quickstart" testId="ide-project-recommended-security-lock">
+                  <p className="ide-project-quickstart-title">
+                    Recommended for the ECE141 security lock
+                  </p>
+                  <p className="ide-project-quickstart-sub">
+                    Start here for the Digital Security Lock project. This Lab 8 bridge keeps the manual ENTER clock and D flip-flop feel, but leaves the logic for you to build.
+                  </p>
+                  <div className="ide-project-landing-options">
+                    <button
+                      type="button"
+                      className="ide-project-landing-option"
+                      onClick={() => { onOpenExample(featuredSecurityStarter.id); onOpenDesign(); }}
+                      data-testid="ide-project-featured-security-lock"
+                    >
+                      <span className="ide-project-landing-option-eyebrow">ECE141 final project</span>
+                      <span className="ide-project-landing-option-title">{featuredSecurityStarter.name}</span>
+                      <span className="ide-project-landing-option-sub">Lab 8 bridge starter</span>
+                      <span className="ide-project-landing-option-learn">{featuredSecurityStarter.summary}</span>
+                      <span className="ide-project-landing-option-cta">Load recommended starter -&gt;</span>
+                    </button>
+                  </div>
+                  <p className="ide-copy" style={{ margin: 0, fontSize: 11 }} data-testid="ide-project-security-lock-reference-note">
+                    Advanced reference only: the fuller package stays separate in <code>{SECURITY_LOCK_REFERENCE_PATH}</code>. Start from this bridge unless you are reviewing the instructor/reference package.
+                  </p>
+                </SurfacePanel>
+              )}
               <div
                 className={`ide-project-start-grid${hasRecentEntryPoints ? '' : ' is-launch-only'}`}
                 data-testid="ide-project-start-grid"
@@ -909,9 +952,13 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 ) : null}
                 <div className="ide-project-start-column" data-testid="ide-project-start-column">
                   <div className="ide-project-start-column-head">
-                    <p className="ide-project-recent-title">Start the project</p>
+                    <p className="ide-project-recent-title">
+                      {featuredSecurityStarter ? 'Other starting points' : 'Start the project'}
+                    </p>
                     <p className="ide-project-recent-sub">
-                      Choose one primary starting point for this workspace.
+                      {featuredSecurityStarter
+                        ? 'The Lab 8 bridge above is the recommended student path for the security lock. These are secondary starting points.'
+                        : 'Choose one primary starting point for this workspace.'}
                     </p>
                   </div>
                   <div className="ide-project-landing-options">
@@ -1106,6 +1153,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               {starterExample?.expectedBehavior && (
                 <p className="ide-project-session-goal">{starterExample.expectedBehavior}</p>
               )}
+              {isSecurityLockStarterActive && (
+                <p className="ide-copy" style={{ margin: 0 }} data-testid="ide-project-security-lock-path-note">
+                  Student path: use this Lab 8 bridge to organize the design first. Advanced reference stays separate in <code>{SECURITY_LOCK_REFERENCE_PATH}</code>.
+                </p>
+              )}
             </div>
             {(onSaveNow || onOpenSavedProjects || onRestoreLastSave || onResetProject) && (
               <div className="ide-project-session-actions" data-testid="ide-project-session-actions">
@@ -1151,10 +1203,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 Starter Projects
               </p>
               <p className="ide-project-quickstart-sub">
-                Swap into a different starter to compare mappings, verify flows, and hardware outcomes.
+                {featuredSecurityStarter
+                  ? 'Keep the Lab 8 bridge in view while comparing other starters. The fuller final-project package remains a separate advanced reference.'
+                  : 'Swap into a different starter to compare mappings, verify flows, and hardware outcomes.'}
               </p>
               <div className="ide-project-example-card-row">
-                {examples.slice(0, 3).map((ex) => {
+                {alternateStarterExamples.map((ex) => {
                   const preview = getExamplePreview(ex.id);
                   return (
                     <div
@@ -1564,6 +1618,16 @@ function getExamplePreview(exampleId: string): {
           { left: 'CLK', right: 'Q0' },
           { left: 'Q0', right: 'Q1' },
           { left: 'RST', right: 'CLR' },
+        ],
+      };
+    case SECURITY_LOCK_STARTER_ID:
+      return {
+        eyebrow: 'Lab 8 bridge',
+        pill: 'ECE141',
+        rows: [
+          { left: 'IN0', right: 'Detect' },
+          { left: 'ENTER', right: 'Step' },
+          { left: 'M4', right: 'LOCK' },
         ],
       };
     default:
