@@ -831,7 +831,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       }),
     [hasOtherBlockingIssue, mappingReady, resolvedWorkflowAuthority]
   );
-  const hasBlocking = failureTruth.severity === 'blocked';
   const readinessCalloutTone = failureTruth.severity === 'ready'
     ? 'success'
     : failureTruth.severity === 'blocked'
@@ -1747,15 +1746,81 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     showBlockedHero ? heroSecondaryLabel : nextActionHero.secondaryLabel;
   const showHardwareCommandActions = hwMode !== 'map' || mappingReady;
 
+  /** Shown in the main workspace (not the bottom console) so Verify → Export → Program and readiness are visible on first entry. */
+  const hardwareWorkflowRibbon = (
+    <section
+      className="ide-hw-workflow-ribbon"
+      data-testid="ide-hw-workflow-ribbon"
+      aria-label="Board programming workflow: verify, export, then program"
+    >
+      <div className="ide-hardware-dep-chain" data-testid="ide-hardware-dep-chain">
+        <button
+          type="button"
+          className={`ide-hardware-dep-step ${
+            compareMatches || compareCurrent ? 'is-ok' : verifyCurrent && !compareMatches ? 'is-warn' : 'is-missing'
+          }`}
+          onClick={onOpenVerify}
+          title="Open Verify"
+        >
+          <span className="ide-hardware-dep-step__num">1</span>
+          <span className="ide-hardware-dep-step__label">{VERIFY_STAGE_LABEL}</span>
+          <span className="ide-hardware-dep-step__status">
+            {compareMatches ? '✓' : verifyCurrent ? '⚠' : '—'}
+          </span>
+        </button>
+        <span className="ide-hardware-dep-arrow" aria-hidden="true">
+          →
+        </span>
+        <button
+          type="button"
+          className={`ide-hardware-dep-step ${
+            hardwareState === 'ready' ? 'is-ok' : hardwareState === 'export-stale' ? 'is-warn' : 'is-missing'
+          }`}
+          onClick={onOpenExport}
+          title="Open Export"
+        >
+          <span className="ide-hardware-dep-step__num">2</span>
+          <span className="ide-hardware-dep-step__label">{EXPORT_STAGE_LABEL}</span>
+          <span className="ide-hardware-dep-step__status">
+            {hardwareState === 'ready'
+              ? '✓'
+              : hardwareState === 'export-stale'
+                ? '⚠ Re-export needed'
+                : '— Build needed'}
+          </span>
+        </button>
+        <span className="ide-hardware-dep-arrow" aria-hidden="true">
+          →
+        </span>
+        <span
+          className={`ide-hardware-dep-step ide-hardware-dep-step--terminal ${
+            failureTruth.condition === 'ready' ? 'is-ok' : 'is-locked'
+          }`}
+        >
+          <span className="ide-hardware-dep-step__num">3</span>
+          <span className="ide-hardware-dep-step__label">{PROGRAM_STAGE_LABEL}</span>
+          <span className="ide-hardware-dep-step__status">
+            {failureTruth.condition === 'ready' ? '✓ Ready' : 'Locked'}
+          </span>
+        </span>
+      </div>
+      <IdeCallout
+        tone={readinessCalloutTone}
+        title={failureTruth.title}
+        testId="ide-hardware-readiness-callout"
+      >
+        {failureTruth.message}
+      </IdeCallout>
+    </section>
+  );
+
   return (
     <IdeSurfaceLayout
       mode="hardware"
       layoutIntent="workbench"
-      consoleHasBlocking={hasBlocking}
-      consoleHasEntries={hasBlocking}
       rightDockMode="visible"
       rightDockCanCollapse
-      consoleMode="collapsed"
+      consoleMode="hidden"
       dock={activeDock}
       inspector={
         <>
@@ -1770,57 +1835,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           )}
           {activeInspector}
         </>
-      }
-      console={
-        <section className="ide-workbench-console-content" data-testid="ide-hardware-console">
-          <header className="ide-workbench-console-header">
-            <h3>Hardware Console</h3>
-            <span className="ide-workbench-console-mode">Hardware</span>
-          </header>
-          {/* Dependency chain strip — shows the 3-step prerequisite chain at a glance */}
-          <div className="ide-hardware-dep-chain" data-testid="ide-hardware-dep-chain">
-            <button
-              className={`ide-hardware-dep-step ${compareMatches || compareCurrent ? 'is-ok' : verifyCurrent && !compareMatches ? 'is-warn' : 'is-missing'}`}
-              onClick={onOpenVerify}
-              title="Open Verify"
-            >
-              <span className="ide-hardware-dep-step__num">1</span>
-              <span className="ide-hardware-dep-step__label">{VERIFY_STAGE_LABEL}</span>
-              <span className="ide-hardware-dep-step__status">
-                {compareMatches ? '✓' : verifyCurrent ? '⚠' : '—'}
-              </span>
-            </button>
-            <span className="ide-hardware-dep-arrow" aria-hidden="true">→</span>
-            <button
-              className={`ide-hardware-dep-step ${hardwareState === 'ready' ? 'is-ok' : hardwareState === 'export-stale' ? 'is-warn' : 'is-missing'}`}
-              onClick={onOpenExport}
-              title="Open Export"
-            >
-              <span className="ide-hardware-dep-step__num">2</span>
-              <span className="ide-hardware-dep-step__label">{EXPORT_STAGE_LABEL}</span>
-              <span className="ide-hardware-dep-step__status">
-                {hardwareState === 'ready' ? '✓' : hardwareState === 'export-stale' ? '⚠ Re-export needed' : '— Build needed'}
-              </span>
-            </button>
-            <span className="ide-hardware-dep-arrow" aria-hidden="true">→</span>
-            <span
-              className={`ide-hardware-dep-step ide-hardware-dep-step--terminal ${failureTruth.condition === 'ready' ? 'is-ok' : 'is-locked'}`}
-            >
-              <span className="ide-hardware-dep-step__num">3</span>
-              <span className="ide-hardware-dep-step__label">{PROGRAM_STAGE_LABEL}</span>
-              <span className="ide-hardware-dep-step__status">
-                {failureTruth.condition === 'ready' ? '✓ Ready' : 'Locked'}
-              </span>
-            </span>
-          </div>
-          <IdeCallout
-            tone={readinessCalloutTone}
-            title={failureTruth.title}
-            testId="ide-hardware-readiness-callout"
-          >
-            {failureTruth.message}
-          </IdeCallout>
-        </section>
       }
     >
       <IdePanel
@@ -1897,6 +1911,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             }
           />
         </div>
+        {hardwareWorkflowRibbon}
         {/* ── Connection callout strip ── */}
         {false && <div className="ide-hw-callout" data-testid="ide-hw-callout">
           <span className="ide-hw-callout-label">Project:</span>

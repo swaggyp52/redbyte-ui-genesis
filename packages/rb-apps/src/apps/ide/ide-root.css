@@ -24902,6 +24902,17 @@ button:disabled,
   padding: 0 2px;
 }
 
+/* Hardware: workflow ribbon sits in the main panel (console hidden) so the chain is visible on entry */
+.ide-hw-workflow-ribbon {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ide-space-2);
+  margin: 0 0 var(--ide-space-3);
+}
+.ide-hw-workflow-ribbon .ide-hardware-dep-chain {
+  margin-bottom: 0;
+}
+
 /* Shell simplification pass: shared spacing/skeleton discipline for non-Design pages */
 .ide-workbench-shell:is(
     [data-ide-mode-marker='project'],

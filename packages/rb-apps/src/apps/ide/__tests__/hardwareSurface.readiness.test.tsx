@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render } from '@testing-library/react';
 import type { ProjectHealth } from '../projectHealth';
 import {
   deriveProjectWorkflowAuthority,
@@ -13,6 +13,10 @@ import { buildCurrentVerifyProjectHash } from '../verifyProjectHash';
 import { BoardSignalProvider } from '../BoardSignalContext';
 import { HardwareSurface } from '../surfaces/HardwareSurface';
 import { deriveTimingGuidance } from '../timingGuidance';
+
+afterEach(() => {
+  cleanup();
+});
 
 function makeVerifyRunWithRoles(
   signalRoles: Record<string, 'clock' | 'reset' | 'input' | 'output'>
@@ -93,7 +97,7 @@ function makeHardwareWorkflowAuthority(
 }
 
 describe('HardwareSurface readiness', () => {
-  it('starts with the inspector visible and the console minimized so bring-up context stays readable', () => {
+  it('places the verify/export/program workflow ribbon in the main workspace and hides the bottom console', () => {
     const health = makeHealth({
       blockingIssues: [],
       dirtySinceExport: false,
@@ -123,10 +127,13 @@ describe('HardwareSurface readiness', () => {
     );
 
     expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Hardware');
+    expect(getByTestId('ide-hw-workflow-ribbon')).toBeTruthy();
+    expect(getByTestId('ide-hardware-dep-chain')).toBeTruthy();
+    expect(getByTestId('ide-hardware-readiness-callout')).toBeTruthy();
     expect(queryByTestId('ide-hw-callout')).toBeNull();
     expect(getByTestId('ide-inspector')).toBeTruthy();
     expect(getByTestId('ide-workbench-dock-collapse-right')).toBeTruthy();
-    expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'collapsed');
+    expect(queryByTestId('ide-workbench-console')).toBeNull();
   });
 
   it('shows a stage rail, framed board workspace, and map caption when mapping is incomplete', () => {
