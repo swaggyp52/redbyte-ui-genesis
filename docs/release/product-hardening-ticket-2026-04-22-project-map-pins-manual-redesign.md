@@ -39,7 +39,7 @@
 ## Disposition
 
 - **Status:** fixed in slice
-- **Commit:** see `git log -1` on `main` for `fix(ide): Phase 4 — surface Map Pins above Project command strip`
+- **Commit:** `7b87fb2e054d9d7473193068ecfbbfdddb70e5ce`
 
 ## Attribution
 
