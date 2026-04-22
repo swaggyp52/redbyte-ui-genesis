@@ -1096,59 +1096,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     setTraceState(null);
   }, []);
 
-  const handlePortClick = useCallback((nodeId: string, portName: string) => {
-    const portKey = `${nodeId}.${portName}`;
-    if (lastTracedPortRef.current === portKey) {
-      clearTrace();
-      return;
-    }
-    lastTracedPortRef.current = portKey;
-    autoWireSelectionTraceIdRef.current = null;
-    const { wireIds, nodeIds } = getFaninCone(editorCircuit, nodeId);
-    const highlights = new Map<string, string[]>();
-    wireIds.forEach((wid) => highlights.set(wid, ['#fbbf24']));
-    const portKeys = buildTracePortKeySet(wireIds);
-    portKeys.add(`${nodeId}:${portName}`);
-    const highlightedNodes = new Set(nodeIds);
-    highlightedNodes.add(nodeId);
-    setTraceState({
-      kind: 'fanin-port',
-      sourceKey: portKey,
-      label: `Fanin to ${portKey}`,
-      signalKey: `${nodeId}.${portName}`,
-      wireHighlights: highlights,
-      nodeIds: highlightedNodes,
-      portKeys,
-    });
-  }, [clearTrace, editorCircuit]);
-
-  // Fan-out trace — highlights all wires/nodes driven by the selected source node
-  const handleFanoutTrace = useCallback((nodeId: string) => {
-    const fanoutKey = `fanout:${nodeId}`;
-    if (lastTracedPortRef.current === fanoutKey) {
-      clearTrace();
-      return;
-    }
-    lastTracedPortRef.current = fanoutKey;
-    autoWireSelectionTraceIdRef.current = null;
-    const { wireIds, nodeIds } = getFanoutCone(editorCircuit, nodeId);
-    const highlights = new Map<string, string[]>();
-    wireIds.forEach((wid) => highlights.set(wid, ['#34d399']));
-    const portKeys = buildTracePortKeySet(wireIds);
-    portKeys.add(`${nodeId}:out`);
-    const highlightedNodes = new Set(nodeIds);
-    highlightedNodes.add(nodeId);
-    setTraceState({
-      kind: 'fanout-port',
-      sourceKey: nodeId,
-      label: `Fanout from ${nodeId}`,
-      signalKey: null,
-      wireHighlights: highlights,
-      nodeIds: highlightedNodes,
-      portKeys,
-    });
-  }, [clearTrace, editorCircuit]);
-
   // Force canvas host to recompute its size when view mode changes.
   // Double-rAF: first frame applies display changes, second measures new dims.
   useLayoutEffect(() => {
@@ -1245,6 +1192,66 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     return index;
   }, [ioRows]);
+
+  const handlePortClick = useCallback(
+    (nodeId: string, portName: string) => {
+      const portKey = `${nodeId}.${portName}`;
+      if (lastTracedPortRef.current === portKey) {
+        clearTrace();
+        return;
+      }
+      lastTracedPortRef.current = portKey;
+      autoWireSelectionTraceIdRef.current = null;
+      const { wireIds, nodeIds } = getFaninCone(editorCircuit, nodeId);
+      const highlights = new Map<string, string[]>();
+      wireIds.forEach((wid) => highlights.set(wid, ['#fbbf24']));
+      const portKeys = buildTracePortKeySet(wireIds);
+      portKeys.add(`${nodeId}:${portName}`);
+      const highlightedNodes = new Set(nodeIds);
+      highlightedNodes.add(nodeId);
+      setTraceState({
+        kind: 'fanin-port',
+        sourceKey: portKey,
+        label: buildStudentFaninPortTraceLabel(editorCircuit, nodeId, portName, ioRowByNodeId),
+        signalKey: `${nodeId}.${portName}`,
+        wireHighlights: highlights,
+        nodeIds: highlightedNodes,
+        portKeys,
+      });
+    },
+    [clearTrace, editorCircuit, ioRowByNodeId]
+  );
+
+  // Fan-out trace — highlights all wires/nodes driven by the selected source node
+  const handleFanoutTrace = useCallback(
+    (nodeId: string) => {
+      const fanoutKey = `fanout:${nodeId}`;
+      if (lastTracedPortRef.current === fanoutKey) {
+        clearTrace();
+        return;
+      }
+      lastTracedPortRef.current = fanoutKey;
+      autoWireSelectionTraceIdRef.current = null;
+      const { wireIds, nodeIds } = getFanoutCone(editorCircuit, nodeId);
+      const highlights = new Map<string, string[]>();
+      wireIds.forEach((wid) => highlights.set(wid, ['#34d399']));
+      const portKeys = buildTracePortKeySet(wireIds);
+      portKeys.add(`${nodeId}:out`);
+      const highlightedNodes = new Set(nodeIds);
+      highlightedNodes.add(nodeId);
+      setTraceState({
+        kind: 'fanout-port',
+        sourceKey: nodeId,
+        label: buildStudentFanoutPortTraceLabel(editorCircuit, nodeId, ioRowByNodeId),
+        signalKey: null,
+        wireHighlights: highlights,
+        nodeIds: highlightedNodes,
+        portKeys,
+      });
+    },
+    [clearTrace, editorCircuit, ioRowByNodeId]
+  );
+
   const allLiveInputRows = useMemo(() => {
     return editorCircuit.nodes
       .filter((node) => node.type === 'INPUT' || node.type === 'Switch')
@@ -3291,14 +3298,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     setTraceState({
       kind: 'fanin-port',
       sourceKey: `verify:${verifyLinkedSignalKey}`,
-      label: `Verify focus ${verifyLinkedSignalKey}`,
+      label: buildStudentVerifyDebugTraceLabel('Verify', verifyLinkedSignalKey, editorCircuit, ioRowByNodeId),
       signalKey: verifyLinkedSignalKey,
       wireHighlights: highlights,
       nodeIds: highlightedNodes,
       portKeys,
     });
     lastTracedPortRef.current = `${nodeId}.${portName}`;
-  }, [editorCircuit, onRuntimeSimSetSelectedSignal, verifyLinkedSignalKey]);
+  }, [editorCircuit, ioRowByNodeId, onRuntimeSimSetSelectedSignal, verifyLinkedSignalKey]);
   useEffect(() => {
     if (!debugLinkedSignalKey) {
       if (traceStateRef.current?.sourceKey.startsWith('debug:')) {
@@ -3321,14 +3328,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     setTraceState({
       kind: 'fanin-port',
       sourceKey: `debug:${debugLinkedSignalKey}:${activeDebugContext?.tick ?? effectiveExternalDebugTick ?? 'tick'}`,
-      label: `Debug focus ${debugLinkedSignalKey}`,
+      label: buildStudentVerifyDebugTraceLabel('Debug', debugLinkedSignalKey, editorCircuit, ioRowByNodeId),
       signalKey: debugLinkedSignalKey,
       wireHighlights: highlights,
       nodeIds: highlightedNodes,
       portKeys,
     });
     lastTracedPortRef.current = `${nodeId}.${portName}`;
-  }, [activeDebugContext?.tick, debugLinkedSignalKey, editorCircuit, effectiveExternalDebugTick, onRuntimeSimSetSelectedSignal]);
+  }, [
+    activeDebugContext?.tick,
+    debugLinkedSignalKey,
+    editorCircuit,
+    effectiveExternalDebugTick,
+    ioRowByNodeId,
+    onRuntimeSimSetSelectedSignal,
+  ]);
   const selectedSignalValue = selectedSignalKey ? displayRuntimeSignals[selectedSignalKey] ?? 0 : 0;
   const selectedSignalHistory = useMemo(() => {
     if (!selectedSignalKey) return [];
@@ -3848,14 +3862,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       if (!bundle || !parsed) return;
       if (origin === 'manual') {
         autoWireSelectionTraceIdRef.current = null;
-        setActionToast(`Tracing ${parsed.fromNodeId}.${parsed.fromPort}.`);
+        setActionToast('Net trace: all branches of this connection are highlighted.');
       } else {
         autoWireSelectionTraceIdRef.current = wireId;
       }
       setTraceState({
         kind: 'wire-net',
         sourceKey: wireId,
-        label: `Net ${parsed.fromNodeId}.${parsed.fromPort}`,
+        label: buildStudentWireNetTraceLabel(editorCircuit, parsed.fromNodeId, parsed.fromPort, ioRowByNodeId),
         signalKey: `${parsed.fromNodeId}.${parsed.fromPort}`,
         wireHighlights: bundle.wireHighlights,
         nodeIds: bundle.nodeIds,
@@ -3864,7 +3878,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       lastTracedPortRef.current = null;
       setWireContextMenu(null);
     },
-    [editorCircuit]
+    [editorCircuit, ioRowByNodeId]
   );
 
   const traceSelectedWire = useCallback(
@@ -7656,6 +7670,66 @@ function describeNodeConnectionSummary(
 function describeEndpointLabel(nodeId: string, node?: Node, ioRow?: DesignIoRow | null): string {
   const label = ioRow?.label?.trim() || node?.label?.trim();
   return label && label.length > 0 ? label : node?.type === 'INPUT' || node?.type === 'OUTPUT' ? nodeId : node?.id ?? nodeId;
+}
+
+function findNodeById(circuit: Circuit, nodeId: string): Node | undefined {
+  return circuit.nodes.find((n) => n.id === nodeId);
+}
+
+/** Board / instance name for trace banners — prefers Map Pins label, then schematic label, then type + id. */
+function formatTracePartName(node: Node | undefined, ioRow: DesignIoRow | undefined, nodeId: string): string {
+  const name = ioRow?.label?.trim() || node?.label?.trim();
+  if (name) return name;
+  if (node) {
+    const t = nodeTypeLabel(node.type);
+    return nodeId.length > 8 ? `${t} (…${nodeId.slice(-4)})` : `${t} (${nodeId})`;
+  }
+  return nodeId;
+}
+
+function buildStudentFaninPortTraceLabel(
+  circuit: Circuit,
+  nodeId: string,
+  portName: string,
+  ioByNodeId: Map<string, DesignIoRow>
+): string {
+  const node = findNodeById(circuit, nodeId);
+  const part = formatTracePartName(node, ioByNodeId.get(nodeId), nodeId);
+  return `What feeds ${part} · ${portName} — drivers on this input highlighted`;
+}
+
+function buildStudentFanoutPortTraceLabel(
+  circuit: Circuit,
+  sourceNodeId: string,
+  ioByNodeId: Map<string, DesignIoRow>
+): string {
+  const node = findNodeById(circuit, sourceNodeId);
+  const part = formatTracePartName(node, ioByNodeId.get(sourceNodeId), sourceNodeId);
+  return `What ${part} drives — every path from this source highlighted`;
+}
+
+function buildStudentWireNetTraceLabel(
+  circuit: Circuit,
+  fromNodeId: string,
+  fromPort: string,
+  ioByNodeId: Map<string, DesignIoRow>
+): string {
+  const node = findNodeById(circuit, fromNodeId);
+  const part = formatTracePartName(node, ioByNodeId.get(fromNodeId), fromNodeId);
+  return `One net: ${part} · ${fromPort} — every segment of this signal highlighted`;
+}
+
+function buildStudentVerifyDebugTraceLabel(
+  mode: 'Verify' | 'Debug',
+  signalKey: string,
+  circuit: Circuit,
+  ioByNodeId: Map<string, DesignIoRow>
+): string {
+  const [nodeId, portName = 'out'] = signalKey.split('.');
+  if (!nodeId) return `${mode}: ${signalKey}`;
+  const node = findNodeById(circuit, nodeId);
+  const part = formatTracePartName(node, ioByNodeId.get(nodeId), nodeId);
+  return `${mode}: what drives ${part} · ${portName} — same highlight`;
 }
 
 function buildTracePortKeySet(wireIds: Iterable<string>): Set<string> {

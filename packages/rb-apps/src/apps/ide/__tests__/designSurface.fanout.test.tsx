@@ -210,7 +210,7 @@ describe('DesignSurface fan-out — trace activation', () => {
 
     await waitFor(() => {
       const traceLabel = view.getByTestId('ide-design-context-trace-state');
-      expect(traceLabel.textContent).toContain('Fanout from');
+      expect(traceLabel.textContent).toContain('What SW0 drives');
     });
   });
 
@@ -232,7 +232,7 @@ describe('DesignSurface fan-out — trace activation', () => {
 
     await waitFor(() => {
       const traceLabel = view.getByTestId('ide-design-context-trace-state');
-      expect(traceLabel.textContent).toContain('Fanin to');
+      expect(traceLabel.textContent).toContain('What feeds LD0');
     });
 
     // Now clear and activate fan-out trace on sw0_node
@@ -252,8 +252,8 @@ describe('DesignSurface fan-out — trace activation', () => {
 
     await waitFor(() => {
       const traceLabel = view.getByTestId('ide-design-context-trace-state');
-      expect(traceLabel.textContent).toContain('Fanout from');
-      expect(traceLabel.textContent).not.toContain('Fanin');
+      expect(traceLabel.textContent).toContain('What SW0 drives');
+      expect(traceLabel.textContent).not.toContain('What feeds');
     });
   });
 
@@ -274,7 +274,7 @@ describe('DesignSurface fan-out — trace activation', () => {
 
     await waitFor(() => {
       const traceLabel = view.getByTestId('ide-design-context-trace-state');
-      expect(traceLabel.textContent).toContain('Fanout from');
+      expect(traceLabel.textContent).toContain('What SW0 drives');
     });
 
     act(() => {
@@ -297,7 +297,9 @@ describe('DesignSurface fan-out — trace activation', () => {
 
     await waitFor(() => {
       const traceLabel = view.getByTestId('ide-design-context-trace-state');
-      expect(traceLabel.textContent).toContain('Net sw0_node.out');
+      expect(traceLabel.textContent).toContain('One net:');
+      expect(traceLabel.textContent).toContain('SW0');
+      expect(traceLabel.textContent).toContain('out');
     });
   });
 });
@@ -322,7 +324,7 @@ describe('DesignSurface fan-out — upstream trace regression', () => {
 
     await waitFor(() => {
       const traceLabel = view.getByTestId('ide-design-context-trace-state');
-      expect(traceLabel.textContent).toContain('Fanin to');
+      expect(traceLabel.textContent).toContain('What feeds LD0');
     });
   });
 

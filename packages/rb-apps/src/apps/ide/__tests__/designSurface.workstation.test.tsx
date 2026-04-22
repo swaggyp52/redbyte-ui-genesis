@@ -313,7 +313,7 @@ describe('DesignSurface workstation redesign', () => {
     fireEvent.click(view.getByTestId('ide-design-context-trace'));
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Fanin to ld0_node.in');
+      expect(view.getByTestId('ide-design-active-trace').textContent).toContain('What feeds LD0 · in');
     });
   });
 
@@ -364,7 +364,7 @@ describe('DesignSurface workstation redesign', () => {
 
     expect(view.getByTestId('ide-design-verify-link-badge').textContent).toContain('LD0');
     expect(view.getByTestId('ide-design-verify-focus').textContent).toContain('LD0');
-    expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Verify focus ld0_node.in');
+    expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Verify: what drives LD0 · in');
   });
 
   it('adds a replay causation cue for verify-linked signal focus', async () => {
@@ -413,7 +413,7 @@ describe('DesignSurface workstation redesign', () => {
     });
 
     expect(view.getByTestId('ide-design-context-trace')).toBeTruthy();
-    expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Verify focus ld0_node.in');
+    expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Verify: what drives LD0 · in');
   });
 
   it('resolves canonical verify aliases through io row ids for signal-first Design focus', async () => {
@@ -470,7 +470,7 @@ describe('DesignSurface workstation redesign', () => {
 
     expect(view.getByTestId('ide-design-verify-link-badge').textContent).toContain('Verify focus q1');
     expect(view.getByTestId('ide-design-verify-focus').textContent).toContain('Inspect LD1 first');
-    expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Verify focus q1_out.in');
+    expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Verify: what drives LD1 · in');
     expect(view.getByTestId('ide-design-inspector-identity-subtitle').textContent).toContain('Verify focus q1');
     expect(view.getByTestId('ide-design-inspector-identity-title').textContent).toContain('LD1');
     expect(view.getByTestId('ide-design-inspector-next-step').textContent).toContain('q1');
@@ -563,7 +563,7 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-failure-brief-inputs').textContent).toContain('SW0=1');
     expect(view.getByTestId('ide-design-failure-brief-next').textContent).toContain('Inspect the wire between SW0 and LD0.');
     expect(view.getByTestId('ide-design-failure-brief-pattern').textContent).toContain('Output stayed low while the selected input was high.');
-    expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Debug focus ld0_node.in');
+    expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Debug: what drives LD0 · in');
     expect(view.getByTestId('ide-design-inspector-identity-subtitle').textContent).toContain('Debug focus');
     expect(view.getByTestId('ide-design-sim-story-summary').textContent).toContain('Verify expected LD0=1 but sampled 0 at tick 6.');
   });
