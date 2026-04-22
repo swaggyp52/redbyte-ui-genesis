@@ -37,8 +37,8 @@
 
 ## Disposition
 
-- **Status:** in progress → update to **fixed** when Campaign D is closed in `AI_STATE.md`
-- **Commits:** see final campaign report (local SHAs in order)
+- **Status:** **fixed** (this slice: contract + authority + validation)
+- **Commits (local):** `21de3167` (contract test), `69e3932a` (authority + ticket + `AI_STATE`)
 - **Notes:** Remote sync is out of scope for this environment; re-land by cherry-pick or rebase of listed files.
 
 ## Attribution
