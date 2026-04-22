@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-04-22 (SEV-1 boot triage: lazy surface chunk failure → ErrorBoundary)
+
+**Subsystem**: `packages/rb-apps/src/apps/IdeApp.tsx`, `docs/release/product-hardening-ticket-2026-04-22-browser-boot-top-blocker.md`
+
+**Context**: Phase 1 browser-first boot triage (GitHub issue #77 intent: boot stabilization). Simulated lazy chunk load failure on `?mode=design` left the IDE shell visible without mounting Design and without ErrorBoundary fallback — a half-boot. Root cause: **Suspense wrapped the mode tree with ErrorBoundary inside it**, so `React.lazy()` rejections did not reliably activate the boundary.
+
+**Changes**:
+- Wrapped each **lazy** mode (`design`, `verify`, `hardware`, `export`, `import`) as **ErrorBoundary → Suspense → surface** with the existing per-mode loading copy. **Project** branch unchanged.
+
+**Tests / gates**:
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx --fileParallelism false` → **8 passed, 1 skipped**
+- `pnpm --filter @redbyte/playground build` → **pass**
+- `pnpm build:unified` → **pass**
+- Local diagnostic: `node scripts/diag/browser-boot-chunk-fail.mjs` → `errorBoundaryFallback: true`, `boundaryHit: true` (script not committed in this slice)
+
+**Tests (lab-day follow-up)**:
+- `ideApp.labday-wiring` scenario provenance test no longer clicks `ide-workbench-dock-toggle-right` after switching to Export; Export keeps the right inspector visible (`IdeSurfaceLayout` / `IdeWorkbenchShell`), so that rail toggle is absent. Assertion waits for `ide-export-testbench-source` directly.
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-21 (SEV-1 boot triage: IDE shell rail width + layout gate truth)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/ide-root.css`, `scripts/gates/ide-layout-contract.mjs`, `docs/release/product-hardening-ticket-2026-04-21-boot-triage-top-blocker.md`

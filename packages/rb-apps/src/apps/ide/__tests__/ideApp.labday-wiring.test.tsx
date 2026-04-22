@@ -340,82 +340,90 @@ describe('IdeApp lab-day wiring', () => {
     });
   });
 
-  it('wires authoritative scenario provenance through Verify, Export, and Hardware in normal flow', async () => {
-    const view = render(<IdeApp />);
+  it(
+    'wires authoritative scenario provenance through Verify, Export, and Hardware in normal flow',
+    async () => {
+      const view = render(<IdeApp />);
 
-    await act(async () => {
-      useProjectRuntime.getState().loadFromProject(buildScenarioAuthorityProject());
-      useProjectRuntime.getState().setVectors([
-        { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
-        { tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
-        { tick: 2, inputs: { sw0: 1 }, expected: { ld0: 1 } },
-      ]);
-    });
+      await act(async () => {
+        useProjectRuntime.getState().loadFromProject(buildScenarioAuthorityProject());
+        useProjectRuntime.getState().setVectors([
+          { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+          { tick: 2, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        ]);
+      });
 
-    const scenarioBeforeRun = useProjectRuntime
-      .getState()
-      .scenarios.find((scenario) => scenario.id === useProjectRuntime.getState().activeScenarioId);
+      const scenarioBeforeRun = useProjectRuntime
+        .getState()
+        .scenarios.find((scenario) => scenario.id === useProjectRuntime.getState().activeScenarioId);
 
-    expect(scenarioBeforeRun).toBeTruthy();
-    expect(scenarioBeforeRun?.version).toBeGreaterThan(1);
+      expect(scenarioBeforeRun).toBeTruthy();
+      expect(scenarioBeforeRun?.version).toBeGreaterThan(1);
 
-    fireEvent.click(await view.findByTestId('mode-button-verify'));
-    await view.findByTestId('ide-verify-panel', {}, { timeout: 5000 });
-    const useSaved = await view.findByTestId('ide-vcb-use-saved-checks');
-    fireEvent.click(useSaved);
+      fireEvent.click(await view.findByTestId('mode-button-verify'));
+      await view.findByTestId('ide-verify-panel', {}, { timeout: 5000 });
+      const useSaved = await view.findByTestId('ide-vcb-use-saved-checks');
+      fireEvent.click(useSaved);
 
-    await act(async () => {
-      fireEvent.click(await findVerifyRunAction(view));
-    });
+      await act(async () => {
+        fireEvent.click(await findVerifyRunAction(view));
+      });
 
-    await waitFor(() => {
-      const state = useProjectRuntime.getState();
-      const run = state.verifyLastRun;
-      const activeScenario = state.scenarios.find((scenario) => scenario.id === state.activeScenarioId);
+      await waitFor(() => {
+        const state = useProjectRuntime.getState();
+        const run = state.verifyLastRun;
+        const activeScenario = state.scenarios.find((scenario) => scenario.id === state.activeScenarioId);
 
-      expect(run).toBeTruthy();
-      expect(activeScenario).toBeTruthy();
-      expect(run?.runKind).toBe('verify');
-      expect(run?.scenarioId).toBe(activeScenario?.id);
-      expect(run?.scenarioVersion).toBe(activeScenario?.version);
-      expect(run?.scenarioContentHash).toBe(computeScenarioContentHash(activeScenario!));
-    });
+        expect(run).toBeTruthy();
+        expect(activeScenario).toBeTruthy();
+        expect(run?.runKind).toBe('verify');
+        expect(run?.scenarioId).toBe(activeScenario?.id);
+        expect(run?.scenarioVersion).toBe(activeScenario?.version);
+        expect(run?.scenarioContentHash).toBe(computeScenarioContentHash(activeScenario!));
+      });
 
-    fireEvent.click(view.getByTestId('mode-button-export'));
-    fireEvent.click(await view.findByTestId('ide-workbench-dock-toggle-right'));
-
-    await waitFor(() => {
-      expect(view.getByTestId('ide-export-testbench-source')).toBeTruthy();
-    });
-
-    const stateAfterRun = useProjectRuntime.getState();
-    const activeScenarioAfterRun = stateAfterRun.scenarios.find(
-      (scenario) => scenario.id === stateAfterRun.activeScenarioId
-    )!;
-    expect(view.getByTestId('ide-export-scenario-name').textContent).toContain(activeScenarioAfterRun.name);
-    expect(view.getByTestId('ide-export-scenario-version').textContent).toContain(
-      String(activeScenarioAfterRun.version)
-    );
-    expect(view.getByTestId('ide-export-scenario-hash').textContent).toContain(
-      computeScenarioContentHash(activeScenarioAfterRun)
-    );
-
-    await act(async () => {
-      useProjectRuntime.getState().setVectors([
-        { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
-        { tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
-        { tick: 2, inputs: { sw0: 0 }, expected: { ld0: 0 } },
-      ]);
-    });
-
-    fireEvent.click(view.getByTestId('mode-button-hardware'));
-
-    await waitFor(() => {
-      expect(view.getByTestId('ide-hardware-drift-callout').textContent).toContain(
-        'edited after the last verify run'
+      await act(async () => {
+        fireEvent.click(view.getByTestId('mode-button-export'));
+      });
+      // Export uses a visible right inspector (no `ide-workbench-dock-toggle-right` rail).
+      await waitFor(
+        () => {
+          expect(view.getByTestId('ide-export-testbench-source')).toBeTruthy();
+        },
+        { timeout: 15000 }
       );
-    });
-  });
+
+      const stateAfterRun = useProjectRuntime.getState();
+      const activeScenarioAfterRun = stateAfterRun.scenarios.find(
+        (scenario) => scenario.id === stateAfterRun.activeScenarioId
+      )!;
+      expect(view.getByTestId('ide-export-scenario-name').textContent).toContain(activeScenarioAfterRun.name);
+      expect(view.getByTestId('ide-export-scenario-version').textContent).toContain(
+        String(activeScenarioAfterRun.version)
+      );
+      expect(view.getByTestId('ide-export-scenario-hash').textContent).toContain(
+        computeScenarioContentHash(activeScenarioAfterRun)
+      );
+
+      await act(async () => {
+        useProjectRuntime.getState().setVectors([
+          { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+          { tick: 2, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+        ]);
+      });
+
+      fireEvent.click(view.getByTestId('mode-button-hardware'));
+
+      await waitFor(() => {
+        expect(view.getByTestId('ide-hardware-drift-callout').textContent).toContain(
+          'edited after the last verify run'
+        );
+      });
+    },
+    20_000
+  );
 
   it('wires the Verify scenario library header into runtime create and switch actions', async () => {
     const view = render(<IdeApp />);

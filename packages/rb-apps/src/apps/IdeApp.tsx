@@ -1612,16 +1612,15 @@ export const IdeApp: React.FC = () => {
               }}
             />
           </ErrorBoundary>
-        ) : (
-          <Suspense
-            fallback={
-              <div className="ide-copy" data-testid="ide-surface-loading">
-                Loading {getIdeModeLabel(currentMode)} workspace...
-              </div>
-            }
-          >
-          {currentMode === 'design' ? (
+        ) : currentMode === 'design' ? (
           <ErrorBoundary fallbackTitle="Design workspace encountered an error">
+            <Suspense
+              fallback={
+                <div className="ide-copy" data-testid="ide-surface-loading">
+                  Loading {getIdeModeLabel('design')} workspace...
+                </div>
+              }
+            >
             <ThrowOnce surface="design" />
             <DesignSurface
               onCircuitMutated={handleDesignMutation}
@@ -1676,9 +1675,17 @@ export const IdeApp: React.FC = () => {
               activeVerifySignal={verifySelectedSignal}
               timingGuidance={liveTimingGuidance}
             />
+            </Suspense>
           </ErrorBoundary>
         ) : currentMode === 'verify' ? (
           <ErrorBoundary fallbackTitle="Verify workspace encountered an error">
+            <Suspense
+              fallback={
+                <div className="ide-copy" data-testid="ide-surface-loading">
+                  Loading {getIdeModeLabel('verify')} workspace...
+                </div>
+              }
+            >
             <VerifySurface
               circuitGraph={circuit}
               deterministicHash={currentVerifyReplayHash}
@@ -1752,9 +1759,17 @@ export const IdeApp: React.FC = () => {
               sourceExampleId={sourceExampleId}
               scenarioAuthority={scenarioAuthority}
             />
+            </Suspense>
           </ErrorBoundary>
         ) : currentMode === 'hardware' ? (
           <ErrorBoundary fallbackTitle="Map Pins workspace encountered an error">
+            <Suspense
+              fallback={
+                <div className="ide-copy" data-testid="ide-surface-loading">
+                  Loading {getIdeModeLabel('hardware')} workspace...
+                </div>
+              }
+            >
             <HardwareSurface
               projectName={projectName}
               expectedBehavior={hardwareExpectedBehavior}
@@ -1785,9 +1800,17 @@ export const IdeApp: React.FC = () => {
               topLevelVhdlText={exportProject.hdl?.sources?.find((s) => s.language === 'vhdl')?.text}
               onRepairExportDiagnostic={(diagnostic) => handleDiagnosticAction(diagnostic.canonical)}
             />
+            </Suspense>
           </ErrorBoundary>
         ) : currentMode === 'export' ? (
           <ErrorBoundary fallbackTitle="Export workspace encountered an error">
+            <Suspense
+              fallback={
+                <div className="ide-copy" data-testid="ide-surface-loading">
+                  Loading {getIdeModeLabel('export')} workspace...
+                </div>
+              }
+            >
             <ExportSurface
               project={exportProject}
               verifyResult={projectHealthCore.lastVerify}
@@ -1807,9 +1830,17 @@ export const IdeApp: React.FC = () => {
               onUpdateMappingPin={handleMappingPinChange}
               timingGuidance={liveTimingGuidance}
             />
+            </Suspense>
           </ErrorBoundary>
         ) : (
           <ErrorBoundary fallbackTitle="Import workspace encountered an error">
+            <Suspense
+              fallback={
+                <div className="ide-copy" data-testid="ide-surface-loading">
+                  Loading {getIdeModeLabel('import')} workspace...
+                </div>
+              }
+            >
             <ImportSurface
               onImportProject={handleImportProject}
               onImportCommitted={handleImportCommitted}
@@ -1820,9 +1851,8 @@ export const IdeApp: React.FC = () => {
               onGoToVerify={() => setCurrentMode('verify')}
               onGoToExport={() => setCurrentMode('export')}
             />
+            </Suspense>
           </ErrorBoundary>
-        )}
-          </Suspense>
         )}
         </div>
       </div>
