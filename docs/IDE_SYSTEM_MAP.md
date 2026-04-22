@@ -81,8 +81,10 @@ Gate: `scripts/gates/ide-verify-reality-contract.mjs`
 1. Project must have: IO mapping complete + verify PASS
 2. ExportSurface → `buildEvidenceDiagnostics()` → no errors
 3. User clicks "Download Vivado Pack" → `onExportBundle()` → ZIP with top.vhd + top.xdc + BRINGUP.md
+4. **Handoff copy:** Project “Export readiness” and the command strip distinguish **no bundle yet** vs **stale bundle** (via `hasSuccessfulExportBundle` / `exportPackageCurrent`); the Export “Open in Vivado” block (`ide-export-vivado-zip-contents`) names **top.vhd / top.xdc / .xpr / tcl + README** and that synthesis or bitstream still run in Vivado locally.
 
 Gate: `scripts/gates/ide-export-generates-hdl.mjs`
+Gate: `scripts/gates/ide-export-ready-contract.mjs` (opens **Readiness gates** `<details>`; artifact list uses `ide-export-artifact-preview`)
 
 ---
 

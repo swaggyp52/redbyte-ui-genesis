@@ -193,6 +193,8 @@ describe('ExportSurface workstation redesign', () => {
     expect(checklist).toHaveLength(3);
     expect(checklist[0].textContent).toContain('Open Vivado');
     expect(getByText('Advanced / full checklist')).toBeTruthy();
+    expect(getByTestId('ide-export-vivado-zip-contents').textContent).toMatch(/top\.vhd/);
+    expect(getByTestId('ide-export-vivado-zip-contents').textContent).toMatch(/Ready for Vivado/);
   });
 
   it('keeps project export available when verify has not run yet', () => {

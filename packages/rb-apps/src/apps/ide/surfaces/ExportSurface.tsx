@@ -935,8 +935,21 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         <div>
           <h3>Open in Vivado</h3>
           <p className="ide-export-section-subcopy">
-            Use this only after the handoff summary is current. Import is secondary to the export state above.
+            Use this only after the handoff summary above is honest for your current design (mapping, gates, Verify).
           </p>
+          {downloadReady ? (
+            <p
+              className="ide-export-section-subcopy"
+              data-testid="ide-export-vivado-zip-contents"
+              style={{ marginTop: 'var(--ide-space-2)' }}
+            >
+              The project ZIP includes <code>top.vhd</code> (your generated top), <code>top.xdc</code> (Basys3 pin
+              constraints), <code>{projectSlug}.xpr</code> (Vivado project), <code>vivado_import.tcl</code>, and a README
+              with bring-up notes. “Ready for Vivado” in RedByte means those files line up with your mapped ports and
+              the export build completed without hard blockers — you still run synthesis, implementation, and bitstream
+              on your computer in Vivado.
+            </p>
+          ) : null}
         </div>
       </header>
 

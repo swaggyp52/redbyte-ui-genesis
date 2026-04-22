@@ -115,7 +115,10 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
 
     const commandStrip = getByTestId('ide-project-command-strip');
     expect(commandStrip.textContent).toContain(
-      'Compare results are current - open Export to build or refresh the submission package.'
+      'No successful export bundle yet. Open Export and use Build Current Bundle when Verify and Map Pins are satisfied.'
+    );
+    expect(getByTestId('ide-project-map-export-alignment').textContent).toContain(
+      'No successful bundle in this project yet.'
     );
     expect(commandStrip.textContent).not.toContain('Ã');
   });

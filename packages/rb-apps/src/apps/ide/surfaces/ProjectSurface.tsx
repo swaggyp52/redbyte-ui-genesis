@@ -381,6 +381,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   }, [lastSavedAt]);
   const exportAvailable = resolvedWorkflowAuthority.exportAvailable;
   const exportPackageCurrent = resolvedWorkflowAuthority.exportPackageCurrent;
+  const hasSuccessfulExportBundle = resolvedWorkflowAuthority.hasSuccessfulExportBundle;
   const hardwareReady = resolvedWorkflowAuthority.hardwareReady;
   const hardBlockingIssue = blockingIssues.find((issue) =>
     issue.code === 'RBP1000' ||
@@ -407,15 +408,27 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       return projectVerifyState === 'verify-error'
         ? 'Latest verify run hit a verification error. Export is still available, but inspect Verify before relying on the result.'
         : 'Assertions differ from observed outputs. Export is still available, but review the first difference before relying on the result.';
-    if (!compareCurrent) return 'Compare results are not current yet. Export files are still available.';
-    if (!exportPackageCurrent) return 'Compare results are current - open Export to build or refresh the submission package.';
+    if (!compareCurrent) {
+      if (exportAvailable && !hasSuccessfulExportBundle) {
+        return 'Comparison is not on the current design yet, and no successful export bundle exists. Rerun or open Verify, then build a fresh bundle in Export.';
+      }
+      return 'Compare results are not current for this design. Rerun Verify, then use Export to preview or build files when mapping allows.';
+    }
+    if (!exportPackageCurrent) {
+      if (!hasSuccessfulExportBundle) {
+        return 'No successful export bundle yet. Open Export and use Build Current Bundle when Verify and Map Pins are satisfied.';
+      }
+      return 'Your last export no longer matches the current circuit. Open Export to re-export a fresh bundle before hardware handoff.';
+    }
     return 'All stages complete - bring up on hardware.';
   }, [
     compareCurrent,
     compareDiffers,
     comparePassIncomplete,
     compareTraceOnly,
+    exportAvailable,
     exportPackageCurrent,
+    hasSuccessfulExportBundle,
     projectVerifyState,
     readiness.hasCircuit,
     readiness.hasIoMapping,
@@ -448,8 +461,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [compareMatches, comparePassIncomplete, health, projectVerifyState]
   );
   const exportSummary = useMemo(
-    () => getExportSummary(health, exportAvailable, exportPackageCurrent, hardwareReady),
-    [exportAvailable, exportPackageCurrent, hardwareReady, health]
+    () =>
+      getExportSummary(
+        health,
+        exportAvailable,
+        exportPackageCurrent,
+        hardwareReady,
+        hasSuccessfulExportBundle
+      ),
+    [exportAvailable, exportPackageCurrent, hasSuccessfulExportBundle, hardwareReady, health]
   );
   const heroStatusTone = hardBlockingIssue ? 'warn' : hardwareReady ? 'ok' : exportAvailable ? 'warn' : 'idle';
   const heroStatusLabel = hardBlockingIssue
@@ -1807,26 +1827,33 @@ function getExportSummary(
   health: ProjectHealth,
   exportAvailable: boolean,
   exportPackageCurrent: boolean,
-  hardwareReady: boolean
+  hardwareReady: boolean,
+  hasOkBundle: boolean
 ): string {
   if (!health.lastExport) {
     if (!exportAvailable) return 'Export stays blocked until mapping is complete.';
-    return exportPackageCurrent
-      ? 'Ready for the first export build.'
-      : 'Export can be opened now for file review or download.';
+    return 'No successful bundle in this project yet. Open Export and run Build Current Bundle to generate the ZIP (RTL, pin constraints, Vivado project, and README).';
   }
   if (health.lastExport.status === 'blocked') {
     return 'Latest export attempt was blocked. Open Export diagnostics before hardware.';
   }
   if (hardwareReady) return 'Latest export bundle is current and ready for hardware.';
   if (health.dirtySinceExport) {
-    return exportPackageCurrent
-      ? 'A previous export exists, but the project changed since then.'
-      : 'A previous export exists, and Export can still be reopened while compare results catch up.';
+    if (exportPackageCurrent) {
+      return 'A previous export exists, but the project changed since then.';
+    }
+    if (hasOkBundle) {
+      return 'A bundle was built, but the design has changed. Rebuild in Export so the download matches the current circuit.';
+    }
+    return 'Reopen Export to generate a bundle that matches the current design and Verify evidence.';
   }
-  return exportPackageCurrent
-    ? 'Export can be opened for artifact review or rebuild.'
-    : 'Export is available for artifact review or download.';
+  if (exportPackageCurrent) {
+    return 'Export is available for download, review, or rebuild.';
+  }
+  if (hasOkBundle) {
+    return 'The last successful bundle is stale. Open Export to re-export a build that matches the current circuit.';
+  }
+  return 'Build a successful export in Export to create a Vivado / lab submission package.';
 }
 
 function toMappingKey(value: string): string {

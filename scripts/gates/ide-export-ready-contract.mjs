@@ -70,7 +70,12 @@ await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }
 
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-export-gate-stack"]', { timeout: 10000 });
+  // Readiness gates live in a <details> panel; open it so the stack is visible for the contract.
+  await page.evaluate(() => {
+    const el = document.querySelector('[data-testid="ide-export-gate-details"]');
+    if (el && 'open' in el) el.open = true;
+  });
+  await page.waitForSelector('[data-testid="ide-export-gate-stack"]', { state: 'visible', timeout: 10000 });
 
   const statusStrip = await text(page.locator('[data-testid="ide-export-gate-stack"]'));
   assert(statusStrip.toUpperCase().includes('VERIFY'), 'export gate stack must include verify gate row');
@@ -86,8 +91,8 @@ await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }
     'readme.txt',
     'vivado_import.tcl',
   ];
-  const artifactPlan = page.locator('[data-testid="ide-export-artifact-plan"]').first();
-  assert(await visible(artifactPlan), 'artifact plan must be visible');
+  const artifactPlan = page.locator('[data-testid="ide-export-artifact-preview"]').first();
+  assert(await visible(artifactPlan), 'artifact workspace (generated files list) must be visible');
   const artifactPlanText = ((await artifactPlan.textContent()) ?? '').toLowerCase();
   for (const fileName of requiredArtifacts) {
     assert(
