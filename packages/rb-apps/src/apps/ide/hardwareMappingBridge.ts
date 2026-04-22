@@ -8,7 +8,9 @@ import {
   cloneHardwareMappingDocumentV2,
   materializeIoMappingFromHardwareMappingV2,
   migrateIoMappingToHardwareMappingV2,
+  type HardwareMappingEntryV2,
   type HardwareMappingDocumentV2,
+  type HardwareMappingScalarV2,
 } from '@redbyte/rb-utils';
 import type { IdeExampleIoRow } from './examplesCatalog';
 
@@ -235,4 +237,134 @@ export function deriveMappingCompleteness(row: {
     return hasPin ? 'complete' : 'partial';
   }
   return hasPin ? 'complete' : 'unmapped';
+}
+
+function normalizeMappingToken(value: string | undefined): string {
+  return (value ?? '').trim().toLowerCase().replace(/[^a-z0-9_]+/g, '');
+}
+
+function scoreScalarEntryMatch(
+  entry: HardwareMappingScalarV2,
+  row: IdeExampleIoRow
+): number {
+  let score = 0;
+  if (
+    normalizeMappingToken(entry.nodeId).length > 0 &&
+    normalizeMappingToken(entry.nodeId) === normalizeMappingToken(row.nodeId)
+  ) {
+    score += 1000;
+  }
+  if (normalizeMappingToken(entry.id) === normalizeMappingToken(row.id)) {
+    score += 400;
+  }
+  if (normalizeMappingToken(entry.label) === normalizeMappingToken(row.label)) {
+    score += 200;
+  }
+  if (
+    normalizeMappingToken(entry.portName) === normalizeMappingToken(row.label) ||
+    normalizeMappingToken(entry.portName) === normalizeMappingToken(row.id)
+  ) {
+    score += 150;
+  }
+  if (entry.direction === row.direction) {
+    score += 50;
+  }
+  if ((entry.pin ?? '').trim().length > 0) {
+    score += 10;
+  }
+  return score;
+}
+
+function updateGroupMemberIds(
+  entry: HardwareMappingEntryV2,
+  scalarRekeyMap: ReadonlyMap<string, string>
+): HardwareMappingEntryV2 {
+  if (entry.kind !== 'group') {
+    return entry;
+  }
+  return {
+    ...entry,
+    memberIds: entry.memberIds.map((memberId) => {
+      const remapped = scalarRekeyMap.get(normalizeMappingToken(memberId));
+      return remapped ?? memberId;
+    }),
+  };
+}
+
+/**
+ * Realigns scalar V2 entries with the current live boundary rows after boundary rename/delete churn.
+ *
+ * This preserves canonical pin truth while ensuring the authoritative document uses the same ids,
+ * labels, and node ownership that Project / Hardware / Export now present to the student.
+ */
+export function synchronizeScalarHardwareMappingV2WithProjectIoRows(
+  doc: HardwareMappingDocumentV2,
+  rows: IdeExampleIoRow[]
+): HardwareMappingDocumentV2 {
+  const next = cloneHardwareMappingDocumentV2(doc);
+  const scalarEntries = next.entries.filter(
+    (entry): entry is HardwareMappingScalarV2 => entry.kind === 'scalar'
+  );
+  if (scalarEntries.length === 0) {
+    return next;
+  }
+
+  const liveScalarRows = rows.filter((row) => (row.mappingKind ?? 'scalar') === 'scalar');
+  const usedScalarIndexes = new Set<number>();
+  const scalarRekeyMap = new Map<string, string>();
+  const synchronizedScalars: HardwareMappingScalarV2[] = [];
+
+  for (const row of liveScalarRows) {
+    let bestIndex = -1;
+    let bestScore = -1;
+
+    for (let index = 0; index < scalarEntries.length; index += 1) {
+      if (usedScalarIndexes.has(index)) continue;
+      const score = scoreScalarEntryMatch(scalarEntries[index]!, row);
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    }
+
+    const matchedEntry =
+      bestIndex >= 0 && bestScore > 0 ? scalarEntries[bestIndex] : undefined;
+    if (bestIndex >= 0 && bestScore > 0) {
+      usedScalarIndexes.add(bestIndex);
+      const previousId = normalizeMappingToken(matchedEntry?.id);
+      const nextId = row.id.trim();
+      if (previousId.length > 0 && nextId.length > 0 && previousId !== normalizeMappingToken(nextId)) {
+        scalarRekeyMap.set(previousId, nextId);
+      }
+    }
+
+    const inferredBoardResource =
+      row.boardResourceType ??
+      matchedEntry?.boardResourceType ??
+      inferBoardResourceFromLabel(row.label ?? row.id);
+
+    synchronizedScalars.push({
+      kind: 'scalar',
+      width: 1,
+      id: row.id,
+      direction: row.direction,
+      nodeId: row.nodeId ?? matchedEntry?.nodeId ?? '',
+      port: row.port ?? matchedEntry?.port ?? (row.direction === 'in' ? 'out' : 'in'),
+      label: row.label,
+      alias: matchedEntry?.alias,
+      portName: (row.label ?? row.id).trim() || row.id,
+      timingRole: row.timingRole ?? matchedEntry?.timingRole,
+      boardResourceType: inferredBoardResource,
+      pin: row.pin?.trim() ?? matchedEntry?.pin ?? '',
+    });
+  }
+
+  const preservedEntries = next.entries
+    .filter((entry) => entry.kind !== 'scalar')
+    .map((entry) => updateGroupMemberIds(entry, scalarRekeyMap));
+
+  return {
+    ...next,
+    entries: [...synchronizedScalars, ...preservedEntries],
+  };
 }

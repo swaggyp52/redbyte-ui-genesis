@@ -1281,8 +1281,21 @@ function diagnosticTitleFor(
 
 function suggestPin(portName: string, direction: ExportPinDirection): string {
   const normalized = normalizePort(portName);
-  if (normalized === 'clk' || normalized === 'clock' || normalized === 'clk100mhz') {
+  if (
+    normalized === 'clk' ||
+    normalized === 'clock' ||
+    normalized === 'clk100mhz' ||
+    normalized.endsWith('clk') ||
+    normalized.includes('clock')
+  ) {
     return 'CLK100MHZ';
+  }
+  if (
+    normalized === 'rst' ||
+    normalized.endsWith('rst') ||
+    normalized.includes('reset')
+  ) {
+    return 'BTNC';
   }
   if (direction === 'in') return 'SW0';
   if (direction === 'out') return 'LD0';

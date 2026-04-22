@@ -38,6 +38,7 @@ import {
   cloneHardwareMappingDocumentV2,
   enrichProjectIoRowsWithV2Metadata,
   materializedIoRowsFromHardwareMappingV2,
+  synchronizeScalarHardwareMappingV2WithProjectIoRows,
   toIoMappingFromProjectIoRows,
   upsertScalarMappingEntry,
 } from './hardwareMappingBridge';
@@ -138,6 +139,18 @@ function deriveProjectIoRowsFromCircuitAndV2(
 ): ProjectIoRow[] {
   const baseRows = materializedIoRowsFromHardwareMappingV2(doc);
   return synchronizeProjectIoRows(circuit, baseRows);
+}
+
+function deriveAuthoritativeHardwareState(
+  circuit: Circuit,
+  doc: HardwareMappingDocumentV2
+): { hardwareMappingV2: HardwareMappingDocumentV2; projectIoRows: ProjectIoRow[] } {
+  const candidateRows = deriveProjectIoRowsFromCircuitAndV2(circuit, doc);
+  const hardwareMappingV2 = synchronizeScalarHardwareMappingV2WithProjectIoRows(doc, candidateRows);
+  return {
+    hardwareMappingV2,
+    projectIoRows: deriveProjectIoRowsFromCircuitAndV2(circuit, hardwareMappingV2),
+  };
 }
 
 export type ProjectIoRow = IdeExampleIoRow;
@@ -618,8 +631,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       loadFromProject: (project) => {
         const circuit = cloneCircuit(project.circuit);
         const legacyProjectIoRows = ioRowsFromProject(project);
-        const hardwareMappingV2 = pickHardwareMappingV2FromProject(project);
-        const projectIoRows = deriveProjectIoRowsFromCircuitAndV2(circuit, hardwareMappingV2);
+        const {
+          hardwareMappingV2,
+          projectIoRows,
+        } = deriveAuthoritativeHardwareState(circuit, pickHardwareMappingV2FromProject(project));
         const incomingProjectId = (project.meta?.projectId ?? '').trim();
         const persistedProjectKind = normalizeProjectKind(project.meta?.projectKind, 'saved');
         const rawSourceExampleId =
@@ -728,12 +743,15 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       },
       setMappingPin: (rowId, pin) => {
         set((state) => {
-          const hardwareMappingV2 = applyMaterializedPinToHardwareMappingV2(
+          const nextDoc = applyMaterializedPinToHardwareMappingV2(
             structuredClone(state.hardwareMappingV2),
             rowId,
             pin
           );
-          const projectIoRows = deriveProjectIoRowsFromCircuitAndV2(state.circuit, hardwareMappingV2);
+          const { hardwareMappingV2, projectIoRows } = deriveAuthoritativeHardwareState(
+            state.circuit,
+            nextDoc
+          );
           return {
             hardwareMappingV2,
             projectIoRows,
@@ -749,8 +767,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       },
       applyHardwareMappingEdit: (operation) => {
         set((state) => {
-          const hardwareMappingV2 = applyHardwareMappingV2Edit(state.hardwareMappingV2, operation);
-          const projectIoRows = deriveProjectIoRowsFromCircuitAndV2(state.circuit, hardwareMappingV2);
+          const { hardwareMappingV2, projectIoRows } = deriveAuthoritativeHardwareState(
+            state.circuit,
+            applyHardwareMappingV2Edit(state.hardwareMappingV2, operation)
+          );
           return {
             hardwareMappingV2,
             projectIoRows,
@@ -767,7 +787,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       autoSuggestMapping: () => {
         set((state) => {
           let hardwareMappingV2 = structuredClone(state.hardwareMappingV2);
-          const baseRows = deriveProjectIoRowsFromCircuitAndV2(state.circuit, hardwareMappingV2);
+          const { projectIoRows: baseRows } = deriveAuthoritativeHardwareState(state.circuit, hardwareMappingV2);
           for (let index = 0; index < baseRows.length; index += 1) {
             const entry = baseRows[index];
             if (!entry || entry.pin.trim().length > 0) continue;
@@ -778,9 +798,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               suggested
             );
           }
-          const projectIoRows = deriveProjectIoRowsFromCircuitAndV2(state.circuit, hardwareMappingV2);
+          const { hardwareMappingV2: synchronizedDoc, projectIoRows } =
+            deriveAuthoritativeHardwareState(state.circuit, hardwareMappingV2);
           return {
-            hardwareMappingV2,
+            hardwareMappingV2: synchronizedDoc,
             projectIoRows,
             scenarioAuthority:
               state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
@@ -1930,8 +1951,10 @@ export function mergePersistedRuntimeState(
 
   const circuit = cloneCircuit(normalizedProject.circuit);
   const legacyProjectIoRows = ioRowsFromProject(normalizedProject);
-  const hardwareMappingV2 = pickHardwareMappingV2FromProject(normalizedProject);
-  const projectIoRows = deriveProjectIoRowsFromCircuitAndV2(circuit, hardwareMappingV2);
+  const {
+    hardwareMappingV2,
+    projectIoRows,
+  } = deriveAuthoritativeHardwareState(circuit, pickHardwareMappingV2FromProject(normalizedProject));
   const projectVectors = normalizeVectorsForLiveIo(
     rekeyVectorsForLiveIo(cloneVectors(normalizedProject.vectors ?? []), legacyProjectIoRows, projectIoRows),
     projectIoRows
@@ -3014,11 +3037,12 @@ function commitDesignSnapshot(
   | 'projectHealthCore'
 > {
   const nextCircuit = cloneCircuit(snapshot.circuit);
-  const nextHardwareMappingV2 =
+  const snapshotHardwareMappingV2 =
     snapshot.hardwareMappingV2 !== undefined
       ? structuredClone(snapshot.hardwareMappingV2)
       : migrateIoMappingToHardwareMappingV2(toIoMappingFromProjectIoRows(snapshot.projectIoRows));
-  const nextIoRows = deriveProjectIoRowsFromCircuitAndV2(nextCircuit, nextHardwareMappingV2);
+  const { hardwareMappingV2: nextHardwareMappingV2, projectIoRows: nextIoRows } =
+    deriveAuthoritativeHardwareState(nextCircuit, snapshotHardwareMappingV2);
   const sourceProjectVectors = snapshot.projectVectors
     ? cloneVectors(snapshot.projectVectors)
     : cloneVectors(state.projectVectors);
@@ -3776,9 +3800,30 @@ function buildVerifyRunMeta(scheduleContract: VerifyScheduleContract): VerifyRun
   };
 }
 
-function suggestBasys3Pin(signal: { id: string; direction: 'in' | 'out' }, index: number): string {
+function suggestBasys3Pin(
+  signal: { id: string; label?: string; direction: 'in' | 'out' },
+  index: number
+): string {
+  const normalizedToken = [signal.id, signal.label]
+    .map((value) => normalizePortToken(value ?? ''))
+    .find((value) => value.length > 0) ?? '';
   if (signal.direction === 'in') {
-    if (signal.id.toLowerCase() === 'clk') return 'CLK100MHZ';
+    if (
+      normalizedToken === 'clk' ||
+      normalizedToken === 'clock' ||
+      normalizedToken === 'clk100mhz' ||
+      normalizedToken.endsWith('clk') ||
+      normalizedToken.includes('clock')
+    ) {
+      return 'CLK100MHZ';
+    }
+    if (
+      normalizedToken === 'rst' ||
+      normalizedToken.endsWith('rst') ||
+      normalizedToken.includes('reset')
+    ) {
+      return 'BTNC';
+    }
     return `SW${Math.min(index, 15)}`;
   }
   return `LD${Math.min(index, 15)}`;
