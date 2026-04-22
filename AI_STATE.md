@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-04-22 (Phase 3b dual mapping UI — Project authority story)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts`, `docs/release/product-hardening-ticket-2026-04-22-dual-mapping-ui-authority-clarity.md`, `docs/IDE_SYSTEM_MAP.md`
+
+**Context**: Shared mapping state was coherent after Phase 3 / Export CTA fixes, but **Project** and **Hardware** both presented as places to “do Map Pins.” Hardware heroes and **`map-pins`** labels said **Open Map Pins** while actions only switched **Hardware** map mode; Export **`map-pins`** handoff jumped to **Hardware** instead of **Project**.
+
+**Changes**:
+- **Workflow truth:** `mapping-incomplete` / `mapping-review` primary label **Open Project — Map Pins**; body copy leads with **Project → Map Pins**.
+- **Hardware:** `map-pins` intent and incomplete-mapping **next hero** call **`onGoToProject` first**; secondary **Board quick-assign view** stays on Hardware; left dock retitled **Pin readiness** with authority subtitle; stage caption, dock hint, and board callout reframed; export repair mentions **Project → Map Pins**.
+- **Export:** `map-pins` handoff prefers **`onGoToProject`**; IO incomplete callout primary opens **Project** when wired (`ExportSurface` patched without full-file EOL churn).
+- **Project:** Map Pins subcopy states **main place to type Basys3 pin codes** and that Hardware reads the same table.
+
+**Tests / gates**:
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts` → pass
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx` → pass
+- `pnpm exec playwright test tests/e2e/ide-mapping-pipeline-coherence.spec.ts --project=chromium` → **2/2**
+- `pnpm --filter @redbyte/playground build` → pass
+- `pnpm build:unified` → pass
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-22 (Phase 3 mapping authority: Hardware outputs N/A vs Project/Export)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`, `docs/release/product-hardening-ticket-2026-04-22-mapping-authority-coherence-top-blocker.md`, `docs/IDE_SYSTEM_MAP.md`

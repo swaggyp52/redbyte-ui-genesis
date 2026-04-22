@@ -12,7 +12,7 @@
 | Design | `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` | Circuit canvas editing + live simulation |
 | Verify | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` | Deterministic verification, waveform viewer |
 | Export | `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` | Vivado bundle generation, evidence capsule |
-| Hardware | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Bring-up checklist, mapping summary; **Map Pins `mappingReady`** treats **no required output rows** as outputs satisfied (N/A), so the dock matches Project/Export when the boundary is inputs-only |
+| Hardware | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Bring-up checklist, mapping summary; **Map Pins `mappingReady`** treats **no required output rows** as outputs satisfied (N/A); **Phase 3b:** left dock **Pin readiness** + copy frames **Project → Map Pins** as the authoritative pin table; **`map-pins` / incomplete-mapping CTAs prefer `onGoToProject`** over “fake” Map Pins that only toggled Hardware map mode |
 | Import | `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` | Vivado ZIP / HDL+XDC import pipeline |
 
 ### Design chrome (layout system)

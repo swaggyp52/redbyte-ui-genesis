@@ -1378,8 +1378,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             <div>
               <h3 className="ide-export-section-header-title ide-project-map-pins-title">Board pin mapping (Basys3)</h3>
               <p className="ide-project-map-pins-sub" data-testid="ide-project-map-pipeline-copy">
-                After Design and Verify, assign each top-level port to a board pin here.{' '}
-                <strong>Export and Hardware both read this same table.</strong>
+                <strong>This is the main place to type Basys3 pin codes.</strong> After Design and Verify, assign each
+                top-level port to a board pin here. <strong>Export and Hardware Map Pins both read this same table.</strong>
               </p>
             </div>
             <div className="ide-project-map-pins-export-note" data-testid="ide-project-map-export-alignment">

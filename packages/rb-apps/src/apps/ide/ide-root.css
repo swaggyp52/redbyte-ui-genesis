@@ -21866,6 +21866,19 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 [data-ide-mode-marker='hardware'] .ide-hw-dock-panel.ide-hw-dock--map {
   border-left: 3px solid rgba(56, 189, 248, 0.65);
 }
+[data-ide-mode-marker='hardware'] .ide-hw-map-dock-header.ide-workbench-placeholder-header {
+  align-items: flex-start;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-map-dock-head-main {
+  flex: 1;
+  min-width: 0;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-map-dock-authority-line {
+  margin: 6px 0 0;
+  font-size: var(--rb-font-size-1);
+  color: var(--ide-text-soft);
+  line-height: var(--rb-line-height-2);
+}
 [data-ide-mode-marker='hardware'] .ide-hw-dock-panel.ide-hw-dock--bringup {
   border-left: 3px solid rgba(52, 211, 153, 0.65);
 }

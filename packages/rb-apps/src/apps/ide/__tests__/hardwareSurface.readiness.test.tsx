@@ -158,7 +158,7 @@ describe('HardwareSurface readiness', () => {
     );
 
     expect(getByTestId('ide-hw-stage-rail')).toBeTruthy();
-    expect(getByTestId('ide-hw-stage-caption').textContent).toMatch(/Assign every required signal/i);
+    expect(getByTestId('ide-hw-stage-caption').textContent).toMatch(/required pin.*board assignments/i);
     expect(getByTestId('ide-hw-board-workspace')).toBeTruthy();
     expect(getByTestId('ide-hw-board-chrome-stage').textContent).toContain('Stage 1');
     expect(getByTestId('ide-hw-mode-btn-map').getAttribute('aria-selected')).toBe('true');
@@ -776,6 +776,7 @@ describe('HardwareSurface readiness', () => {
     );
 
     expect(getByTestId('ide-hw-map-authority-callout').textContent).toMatch(/Project/);
+    expect(getByTestId('ide-hw-map-dock-authority-sub').textContent).toMatch(/Authoritative pin table/);
     fireEvent.click(getByTestId('ide-hw-open-project-map-pins'));
     expect(onGoToProject).toHaveBeenCalled();
   });

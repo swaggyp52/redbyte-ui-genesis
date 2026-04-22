@@ -153,8 +153,8 @@ export function deriveHardwareExportFailureTruth(
     return blocked(
       'mapping-incomplete',
       'Complete required pin mapping',
-      'Required Basys3 pins are still missing. Finish mapping, then return here for the current hardware handoff.',
-      'Open Map Pins',
+      'Required Basys3 pins are still missing. Open Project → Map Pins to type assignments, then return here for the hardware handoff.',
+      'Open Project — Map Pins',
       'map-pins'
     );
   }
@@ -233,8 +233,8 @@ export function deriveHardwareExportFailureTruth(
     return advisory(
       'mapping-review',
       'Complete mapping review',
-      'The last comparison passed with incomplete mapping. Finish mapping and rerun Compare when you want current evidence for this handoff.',
-      'Open Map Pins',
+      'The last comparison passed with incomplete mapping. Finish mapping in Project → Map Pins and rerun Compare when you want current evidence for this handoff.',
+      'Open Project — Map Pins',
       'map-pins'
     );
   }

@@ -845,6 +845,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     switch (failureTruth.primaryCtaIntent) {
       case 'map-pins':
         return () => {
+          if (onGoToProject) {
+            onGoToProject();
+            return;
+          }
           setHwMode('map');
           setSelectedMappingRowId(null);
         };
@@ -860,7 +864,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       default:
         return () => {};
     }
-  }, [failureTruth.primaryCtaIntent, onGoToDesign, onOpenExport, onOpenVerify]);
+  }, [failureTruth.primaryCtaIntent, onGoToDesign, onGoToProject, onOpenExport, onOpenVerify]);
   const showBlockedHero = failureTruth.severity === 'blocked';
   const heroSecondaryAction =
     showBlockedHero && failureTruth.primaryCtaIntent !== 'design' && onGoToDesign
@@ -925,17 +929,24 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       const unresolvedLabel = unresolvedRequiredCount > 0
         ? `${unresolvedRequiredCount} required pin${unresolvedRequiredCount === 1 ? '' : 's'} still need board assignments.`
         : 'Finish the required clock and output mappings before you rely on the board view.';
+      const openBoardMap = () => {
+        setHwMode('map');
+        setSelectedMappingRowId(null);
+      };
       return {
-        title: 'Map the board pins first',
-        body: `Choose a signal row, then click the matching board region. ${unresolvedLabel}`,
-        primaryLabel: 'Open Map Pins',
-        primaryAction: () => {
-          setHwMode('map');
-          setSelectedMappingRowId(null);
-        },
+        title: onGoToProject ? 'Finish pins in Project first' : 'Map the board pins first',
+        body: onGoToProject
+          ? `${unresolvedLabel} Project → Map Pins is the main pin table. Use the board Map Pins stage when you want to click the diagram.`
+          : `Choose a signal row, then click the matching board region. ${unresolvedLabel}`,
+        primaryLabel: onGoToProject ? 'Open Project — Map Pins' : 'Show board mapping',
+        primaryAction: onGoToProject
+          ? () => {
+              onGoToProject();
+            }
+          : openBoardMap,
         primaryTestId: 'ide-hardware-next-primary',
-        secondaryLabel: onGoToDesign ? 'Open Design' : null,
-        secondaryAction: onGoToDesign ?? null,
+        secondaryLabel: onGoToProject ? 'Board quick-assign view' : onGoToDesign ? 'Open Design' : null,
+        secondaryAction: onGoToProject ? openBoardMap : onGoToDesign ?? null,
       };
     }
 
@@ -1007,6 +1018,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     unresolvedRequiredCount,
     vectorsCount,
     verifyLastRun,
+    onGoToProject,
   ]);
 
   // ── Bring-Up: group expectedIoRows by tick ──────────────────────────
@@ -1226,7 +1238,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         if (mappingReady) {
           return 'Mapping is complete. Continue to Board Check with bring-up vectors, or open Export when you are ready to build a bitstream.';
         }
-        return `Assign every required signal to a board pin (${unresolvedRequiredCount} remaining). Select a row in the list, then click the matching region on the board.`;
+        if (unresolvedRequiredCount > 0) {
+          return `${unresolvedRequiredCount} required pin${unresolvedRequiredCount === 1 ? '' : 's'} still need board assignments. Type Basys3 codes in Project → Map Pins first, or select a row here and click the board — same mapping Export uses.`;
+        }
+        return 'Finish the required clock and output checks. Use Project → Map Pins for pin codes, or use the board view here to quick-assign rows.';
       case 'bringup':
         if (bringupTickGroups.length === 0) {
           return 'Generate bring-up vectors from Verify, then use these steps to set switches and confirm LEDs against the expected trace.';
@@ -1300,8 +1315,20 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
   const mapDock = (
     <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--map" testId="ide-hw-map-dock">
-      <header className="ide-workbench-placeholder-header">
-        <h3>Map Pins</h3>
+      <header className="ide-workbench-placeholder-header ide-hw-map-dock-header">
+        <div className="ide-hw-map-dock-head-main">
+          <h3>Pin readiness</h3>
+          <p className="ide-copy ide-copy--flush ide-hw-map-dock-authority-line" data-testid="ide-hw-map-dock-authority-sub">
+            {onGoToProject ? (
+              <>
+                Authoritative pin table: <strong>Project → Map Pins</strong>. This panel tracks the same saved mapping for
+                board prep.
+              </>
+            ) : (
+              <>Tracks Basys3 assignments from your project for board stages.</>
+            )}
+          </p>
+        </div>
         <IdeStatusPill tone={mappingReady ? 'ok' : 'warn'}>
           {hasNoBoundaryRows ? 'Design first' : mappingReady ? 'Complete' : `${unresolvedRequiredCount} left`}
         </IdeStatusPill>
@@ -1352,7 +1379,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         ) : (
           <div className="ide-hw-map-dock-hint" data-testid="ide-hw-map-dock-incomplete-hint">
             <p className="ide-copy" style={{ margin: 0, fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-              Select a row in the table, then click a region on the board, or finish typing pins on Project.
+              {onGoToProject
+                ? 'Type Basys3 pin codes in Project → Map Pins first. Here you can select a row and click the board to quick-assign — same saved mapping.'
+                : 'Select a row in the table, then click a region on the board, or finish typing pins on Project.'}
             </p>
             {onGoToProject ? (
               <div className="ide-inline-actions" style={{ marginTop: '8px' }}>
@@ -2111,13 +2140,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             {onGoToProject ? (
               <IdeCallout
                 tone="info"
-                title="Same mapping as Project and Export"
+                title="Board view — same mapping as Project"
                 testId="ide-hw-map-authority-callout"
               >
                 <p className="ide-copy ide-copy--flush">
-                  Use <strong>Project → Map Pins</strong> to type Basys3 aliases and read required vs optional rows.
-                  This Map Pins stage uses the <strong>same saved project mapping</strong> as Export. Select a signal
-                  row here and click the board to quick-assign, or jump back to Project for precise typing.
+                  <strong>Project → Map Pins</strong> is the main place to type Basys3 pin codes and see required vs
+                  optional rows. This stage shows the <strong>same saved mapping</strong> Export uses. Use it to
+                  quick-assign by row + board click, not as a separate pin list.
                 </p>
                 <div className="ide-inline-actions" style={{ marginTop: 'var(--rb-space-2)' }}>
                   <IdeButton tone="primary" onClick={onGoToProject} testId="ide-hw-open-project-map-pins">
@@ -2143,8 +2172,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                         Top entity: <code>{designTopEntityName}</code>.
                       </>
                     ) : null}{' '}
-                    Use the details below to fix the mismatch in <strong>Map Pins</strong> (structured entries and pins)
-                    or adjust boundary I/O in <strong>Design</strong> so top-level ports line up.
+                    Use the details below to fix the mismatch in <strong>Project → Map Pins</strong> (structured
+                    entries and pins) or adjust boundary I/O in <strong>Design</strong> so top-level ports line up.
                   </p>
                   <ul className="ide-hw-export-repair-list">
                     {exportBlockingDiagnostics.map((diagnostic) => (

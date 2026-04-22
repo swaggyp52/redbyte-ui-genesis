@@ -1238,7 +1238,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         void handleDownloadExport('project');
         break;
       case 'map-pins':
-        onGoToHardware?.();
+        if (onGoToProject) {
+          onGoToProject();
+        } else {
+          onGoToHardware?.();
+        }
         break;
       case 'design':
         onGoToDesign?.();
@@ -1252,7 +1256,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       default:
         break;
     }
-  }, [handoffTruth.primaryCtaIntent, handleDownloadExport, onGoToDesign, onGoToHardware, onOpenVerify]);
+  }, [handoffTruth.primaryCtaIntent, handleDownloadExport, onGoToDesign, onGoToHardware, onGoToProject, onOpenVerify]);
 
   const handleDownloadArtifact = (artifact: ExportArtifactView) => {
     if (typeof window === 'undefined' || artifact.content.trim().length === 0) return;
@@ -2061,7 +2065,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   )}
                 </header>
 
-                {hasBlockingErrors && requiredMappedCount < requiredCount && onGoToHardware && (
+                {hasBlockingErrors && requiredMappedCount < requiredCount && (onGoToProject || onGoToHardware) && (
                   <IdeCallout
                     tone="error"
                     title="IO mapping incomplete"
@@ -2071,9 +2075,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       All required input/output ports must be assigned Basys3 pin identifiers before downloading the Vivado kit.
                     </p>
                     <div className="ide-mt-2">
-                      <IdeButton tone="primary" onClick={onGoToHardware} testId="ide-export-go-map-pins">
-                        Open Map Pins
-                      </IdeButton>
+                      {onGoToProject ? (
+                        <IdeButton tone="primary" onClick={onGoToProject} testId="ide-export-go-map-pins">
+                          Open Project — Map Pins
+                        </IdeButton>
+                      ) : (
+                        <IdeButton tone="primary" onClick={onGoToHardware} testId="ide-export-go-map-pins">
+                          Open Map Pins
+                        </IdeButton>
+                      )}
                     </div>
                   </IdeCallout>
                 )}
