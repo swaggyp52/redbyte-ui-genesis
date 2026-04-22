@@ -642,11 +642,14 @@ describe('HardwareSurface readiness', () => {
 
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-proof').at(-1)!);
 
-    // When export is current the program handoff CTA must be present.
+    // When export is current the program handoff CTA must be present and must not imply a .bit ships from RedByte.
     const cta = getByTestId('ide-hardware-program-handoff-cta');
     expect(cta).toBeDefined();
-    expect(cta.textContent).toContain('Vivado Hardware Manager');
+    expect(cta.textContent).toContain('Vivado project ZIP');
+    expect(cta.textContent).toContain('Generate Bitstream');
+    expect(cta.textContent).toContain('Hardware Manager');
     expect(cta.textContent).toContain('Program Device');
+    expect(getByTestId('ide-hardware-submission-hint').textContent).toContain('export ZIP');
   });
 
   it('applies structured hardware mapping pin edits from map mode', () => {

@@ -93,6 +93,7 @@ Gate: `scripts/gates/ide-export-ready-contract.mjs` (opens **Readiness gates** `
 1. Hardware surface receives `health` + `mappingRows` + `vectorsCount`
 2. Derives: `hasClockMapping`, `hasResetMapping`, `hasOutputMapping`
 3. Checklist rows show Ready/Missing per check
+4. **Student truth (Vivado / board):** RedByte’s **export** is a **Vivado project ZIP** (HDL, constraints, `xpr`, etc.); the **.bit** is produced in **Vivado** (synth/impl, **Generate Bitstream**), then **Hardware Manager → Program Device**. Hardware copy (`HardwareSurface` map/proof stages, program handoff, `ide-hardware-submission-hint`) is explicit about that boundary — **not** a bitstream in the ZIP from RedByte.
 
 Gate: `scripts/gates/ide-bringup-contract.mjs`
 

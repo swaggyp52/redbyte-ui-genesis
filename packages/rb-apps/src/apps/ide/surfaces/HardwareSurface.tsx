@@ -1235,7 +1235,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           return 'Add inputs and outputs in Design first, then bind each boundary signal to a physical pin on the Basys3.';
         }
         if (mappingReady) {
-          return 'Mapping is complete. Continue to Board Check with bring-up vectors, or open Export when you are ready to build a bitstream.';
+          return 'Mapping is complete. Continue to Board Check with bring-up vectors, or open Export to download the Vivado project ZIP. The bitstream (.bit) is created later in Vivado (synthesis/implementation) — not inside RedByte.';
         }
         if (unresolvedRequiredCount > 0) {
           return `${unresolvedRequiredCount} required pin${unresolvedRequiredCount === 1 ? '' : 's'} still need board assignments. Type Basys3 codes in Project → Map Pins first, or select a row here and click the board — same mapping Export uses.`;
@@ -1249,7 +1249,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           currentTick != null ? ` · vector tick ${currentTick}` : ''
         }. Follow the checklist on the left; the board highlights what to set; the inspector shows live values.`;
       case 'proof':
-        return 'Confirm compare, export, and assertion evidence before programming. This is the last gate before Vivado Hardware Manager.';
+        return 'Confirm compare and export are current for this design. After that, program happens in Vivado: synthesize, generate bitstream, then use Hardware Manager — RedByte does not produce the .bit file.';
       case 'live':
       default:
         return 'Explore the mapped board interactively. Switches and buttons drive the same I/O path as bring-up, without the guided step list.';
@@ -1541,9 +1541,19 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       {failureTruth.condition === 'ready' && (
         <div className="ide-hw-program-handoff" data-testid="ide-hardware-program-handoff-cta">
           <p className="ide-copy">
-            Open the <code>.bit</code> file in{' '}
-            <strong>Vivado Hardware Manager</strong> and click{' '}
+            The RedByte download is a <strong>Vivado project ZIP</strong> — it does <strong>not</strong> include a bitstream.
+            In Vivado, open the project, run <strong>Generate Bitstream</strong>, then open{' '}
+            <strong>Hardware Manager</strong>, add the generated <code>.bit</code> from the run folder, and use{' '}
             <strong>Program Device</strong> to flash the Basys3.
+          </p>
+          <p
+            className="ide-copy"
+            data-testid="ide-hardware-submission-hint"
+            style={{ marginTop: 'var(--ide-space-2)', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-muted)' }}
+          >
+            <strong>Typical lab hand-in</strong> (follow your rubric): the <strong>export ZIP</strong> from RedByte, plus
+            what your course requires — often a <strong>passing Verify</strong> run and a{' '}
+            <strong>working bitstream from Vivado</strong>, not RedByte export alone.
           </p>
         </div>
       )}
@@ -1800,7 +1810,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           <span className="ide-hardware-dep-step__num">3</span>
           <span className="ide-hardware-dep-step__label">{PROGRAM_STAGE_LABEL}</span>
           <span className="ide-hardware-dep-step__status">
-            {failureTruth.condition === 'ready' ? '✓ Ready' : 'Locked'}
+            {failureTruth.condition === 'ready' ? '✓ In Vivado' : 'Locked'}
           </span>
         </span>
       </div>

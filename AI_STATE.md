@@ -1,5 +1,23 @@
 # AI State
 
+## Change Log 2026-04-22 (Campaign F — Program device / bitstream / submission lane, slice 1)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`, `docs/release/product-hardening-ticket-2026-04-22-program-device-bitstream-submission-lane.md`, `docs/IDE_SYSTEM_MAP.md` (Path 4)
+
+**Context:** After export/ Vivado handoff truth (Campaign E), students still conflated **export-ready** with **bitstream- / program-ready**. Hardware map and proof captions implied building a **.bit** in RedByte; program handoff suggested opening a **.bit** as if it shipped in the app; ribbon “✓ Ready” on step 3 overclaimed board state.
+
+**Changes:**
+- **Map + proof** stage copy: state explicitly that the ZIP is a **Vivado project** and the **.bit** is created in **Vivado** (not RedByte).
+- **Workflow ribbon** step 3: when the failure-truth handoff is “ready,” label **`✓ Ready` → `✓ In Vivado`** (next work is off-app).
+- **Program handoff CTA** (`ide-hardware-program-handoff-cta`): walkthrough **Open exported ZIP in Vivado → Generate Bitstream → Hardware Manager → Program Device** with the **generated** `.bit` (no `.bit` in the export bundle).
+- **Submission hint** (`ide-hardware-submission-hint` when handoff clear): typical lab hand-in (rubric) — e.g. export ZIP, course requirements, often **passing Verify** and **Vivado-generated** bitstream.
+
+**Validation:** `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx` + `pnpm -s ide:gate:bringup-contract` + `pnpm build:unified` → pass.
+
+**Local commit:** (same commit as this Campaign F changelog block; `git log -1` on branch)
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-22 (Campaign E — Project / Export / Vivado handoff truth)
 
 **Subsystem:** `ProjectSurface.tsx` (`getExportSummary`, command-strip hero), `ExportSurface.tsx` (Vivado section `ide-export-vivado-zip-contents`), `projectSurface.continuity.test.tsx`, `exportSurface.workstation.test.tsx`, `scripts/gates/ide-export-ready-contract.mjs`, `docs/release/product-hardening-ticket-2026-04-22-project-export-vivado-handoff-truth.md`
