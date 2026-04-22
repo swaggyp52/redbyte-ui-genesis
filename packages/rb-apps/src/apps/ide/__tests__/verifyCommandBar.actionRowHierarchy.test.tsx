@@ -42,7 +42,7 @@ describe('VerifyCommandBar session header hierarchy', () => {
     expect(getByTestId('ide-vcb-session-summary').textContent).not.toContain('Observe first');
   });
 
-  it('keeps the run-plan control in Tools when the utilities menu is available (no duplicate inline toggle)', () => {
+  it('keeps the next-run mode selector visible even when Tools is offered', () => {
     const onSetCompare = vi.fn();
     const { getByTestId, queryByTestId } = render(
       <VerifyCommandBar
@@ -54,25 +54,27 @@ describe('VerifyCommandBar session header hierarchy', () => {
       />
     );
 
-    expect(queryByTestId('ide-vcb-mode-toggle')).toBeNull();
-    expect(queryByTestId('ide-vcb-run-plan-toggle')).toBeNull();
-    expect(queryByTestId('ide-vcb-use-saved-checks')).toBeNull();
-    fireEvent.click(getByTestId('ide-vcb-utilities-toggle'));
-    fireEvent.click(getByTestId('ide-vcb-run-plan-utility'));
+    expect(getByTestId('ide-vcb-run-mode')).toBeTruthy();
+    expect(queryByTestId('ide-vcb-run-plan-utility')).toBeNull();
+    fireEvent.click(getByTestId('ide-vcb-use-saved-checks'));
     expect(onSetCompare).toHaveBeenCalledOnce();
   });
 
-  it('shows an inline run-plan control when compare is available but Tools is not offered', () => {
+  it('shows explicit observe and compare choices when checks are available', () => {
     const onSetCompare = vi.fn();
+    const onSetObserve = vi.fn();
     const { getByTestId, queryByTestId } = render(
       <VerifyCommandBar
         {...BASE}
         compareAvailable={true}
+        onSetObserve={onSetObserve}
         onSetCompare={onSetCompare}
       />
     );
 
     expect(queryByTestId('ide-vcb-utilities-toggle')).toBeNull();
+    fireEvent.click(getByTestId('ide-vcb-observe-only'));
+    expect(onSetObserve).toHaveBeenCalledOnce();
     fireEvent.click(getByTestId('ide-vcb-use-saved-checks'));
     expect(onSetCompare).toHaveBeenCalledOnce();
   });
@@ -92,12 +94,11 @@ describe('VerifyCommandBar session header hierarchy', () => {
     expect(queryByTestId('ide-vcb-utilities-panel')).toBeNull();
     fireEvent.click(getByTestId('ide-vcb-utilities-toggle'));
     expect(getByTestId('ide-vcb-utilities-panel')).toBeTruthy();
-    expect(getByTestId('ide-vcb-run-plan-utility')).toBeTruthy();
     expect(getByTestId('ide-vcb-save-expected')).toBeTruthy();
     expect(getByTestId('ide-verify-run-proof-edit-vectors')).toBeTruthy();
   });
 
-  it('keeps only the detail toggle in the visible right-side status group', () => {
+  it('keeps detail controls on the right without moving the run mode into Tools', () => {
     const { getByTestId, container } = render(
       <VerifyCommandBar
         {...BASE}
@@ -110,15 +111,18 @@ describe('VerifyCommandBar session header hierarchy', () => {
     const statusGroup = container.querySelector('.ide-vcb-group--status');
     expect(statusGroup).toBeTruthy();
     expect(statusGroup!.contains(getByTestId('ide-verify-drawer-toggle'))).toBe(true);
-    expect(container.querySelector('[data-testid=\"ide-vcb-run-plan-toggle\"]')).toBeNull();
+    expect(getByTestId('ide-vcb-run-mode')).toBeTruthy();
   });
 
-  it('collapses status, evidence, and coverage into one session summary cluster without a run-plan line', () => {
+  it('dedupes repeated session labels inside the session summary cluster', () => {
     const { getByTestId } = render(
       <VerifyCommandBar
         {...BASE}
         compareAvailable={true}
-        statusLabel="Observation only"
+        statusLabel="Checks need review"
+        sessionStatusBadge="Checks need review"
+        sessionTitle="Checks need review"
+        sessionModeLabel="Checks armed"
         evidenceLabel="3 observed rows"
         coverageLabel="80% coverage"
         sessionMetricsRow="inline"
@@ -129,5 +133,7 @@ describe('VerifyCommandBar session header hierarchy', () => {
     expect(summary.getByTestId('ide-vcb-status')).toBeTruthy();
     expect(summary.getByTestId('ide-vcb-evidence')).toBeTruthy();
     expect(summary.getByTestId('ide-vcb-coverage')).toBeTruthy();
+    const fullText = getByTestId('ide-vcb-session-summary').textContent ?? '';
+    expect(fullText.match(/Checks need review/g)?.length ?? 0).toBe(1);
   });
 });

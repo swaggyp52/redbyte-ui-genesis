@@ -3255,6 +3255,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     ]
   );
   const sessionStatus = verifySession.status;
+  const nextRunIsCompare = verifySession.mode === 'assertion';
   const sessionShowsAssertionMatch = sessionStatus === 'assertions-match';
   const sessionSignalsAssertionFailure = sessionStatus === 'assertions-differ';
   const sessionShowsCompareEvidence =
@@ -3303,25 +3304,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     ? `Stale saved checks loaded (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'})`
     : totalExpectedCaseCount === 0
       ? 'Observation run only — no saved checks'
-      : !nextRunUsesAssertions
+      : !nextRunIsCompare
         ? `Saved checks available (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), next run stays in observation mode`
         : authoredVectors.length > 0 && customVectorCount > 0
           ? `Using project + custom checks (${totalVectorCount} total)`
           : customVectorCount > 0
             ? `Using custom checks (${customVectorCount})`
             : `Using project checks (${authoredVectors.length})`;
-  const sessionModeBadge: string = !lastRun
-    ? (totalExpectedCaseCount > 0 && nextRunUsesAssertions ? 'Checks armed' : 'Observe')
-    : isTraceOnly ? 'Observe'
-    : sessionStatus === 'assertions-match' || sessionStatus === 'assertions-differ' || sessionStatus === 'stale'
-      ? 'Checks armed'
-      : 'Observe';
+  const sessionModeBadge: string = nextRunIsCompare ? 'Checks armed' : 'Observe';
   const sessionTitle: string = !lastRun
     ? 'Ready to run'
     : isTraceOnly ? 'Outputs observed — stimulus captured'
     : sessionStatus === 'assertions-match' ? 'Checks aligned'
     : sessionStatus === 'assertions-differ' ? 'Checks need review'
-    : sessionStatus === 'stale' ? 'Update run'
+    : sessionStatus === 'stale'
+      ? hasStaleAuthoredReference || !nextRunIsCompare
+        ? 'Observe current circuit'
+        : 'Compare current circuit'
     : sessionStatusBadgeLabel;
   const commandBarEvidenceLabel =
     lastRun && sessionShowsCompareEvidence
@@ -3876,7 +3875,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               />
             ) : undefined
           }
-          isCompareMode={nextRunUsesAssertions}
+          isCompareMode={nextRunIsCompare}
           onSetObserve={() => setNextRunUsesAssertions(false)}
           onSetCompare={() => setNextRunUsesAssertions(true)}
           compareAvailable={totalExpectedCaseCount > 0}
@@ -3891,7 +3890,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           showSaveAsExpected={Boolean(canSetOracle && !isFirstRunState)}
           statusLabel={sessionStatusBadgeLabel}
           statusTone={sessionStatusTone}
-          sessionStatusBadge={verifySession.statusBadge}
+          sessionStatusBadge={sessionStatusBadgeLabel}
           sessionModeLabel={sessionModeBadge}
           sessionTitle={sessionTitle}
           referenceModeLabel={referenceModeLabel}

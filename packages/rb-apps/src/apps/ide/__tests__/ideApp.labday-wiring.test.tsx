@@ -535,7 +535,7 @@ describe('IdeApp lab-day wiring', () => {
       expect(view.queryByTestId('ide-verify-auto-vector-notice')).toBeNull();
     });
 
-    expect(view.getByTestId('ide-verify-session-status').textContent).toContain('Draft');
+    expect(view.getByTestId('ide-vcb-status').textContent).toContain('READY');
     expect(view.getByTestId('ide-verify-session-mode').textContent).toContain('Observe');
     expect(view.getByTestId('ide-verify-session-title').textContent).toMatch(/Ready to run( stimulus)?/);
     expect(view.getByTestId('ide-vcb-run')).toBeTruthy();

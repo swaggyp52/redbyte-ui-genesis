@@ -258,7 +258,7 @@ describe('VerifySurface workstation controls', () => {
     );
     expect(queryByTestId('ide-verify-generate-all-combos')).toBeNull();
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('saved checks');
-    expect(getByTestId('ide-verify-session-status').textContent).toContain('Draft');
+    expect(getByTestId('ide-vcb-status').textContent).toContain('READY');
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('Observe');
     expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to run');
     // footer run button removed (B-13 Phase 3) — header Run is canonical
@@ -291,7 +291,7 @@ describe('VerifySurface workstation controls', () => {
     const { getAllByText, getByTestId, queryByTestId } = view;
 
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('observation run only');
-    expect(getByTestId('ide-verify-session-status').textContent).toContain('Draft');
+    expect(getByTestId('ide-vcb-status').textContent).toContain('READY');
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('Observe');
     expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to run');
     expect(getByTestId('ide-verify-empty-message').textContent).toContain(
@@ -684,7 +684,7 @@ describe('VerifySurface workstation controls', () => {
     );
     const { container, getByTestId, queryByTestId } = view;
 
-    expect(getByTestId('ide-verify-session-status').textContent).toContain('Observation only');
+    expect(getByTestId('ide-vcb-status').textContent).toContain('Observation only');
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('Observe');
     expect(getByTestId('ide-verify-session-title').textContent).toContain('Outputs observed — stimulus captured');
     expect(getByTestId('ide-verify-summary-status').textContent).toContain('Observation only');
@@ -924,8 +924,8 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-session-status').textContent).toContain('Observation only');
-    expect(getByTestId('ide-verify-session-status').textContent).not.toContain('Stale');
+    expect(getByTestId('ide-vcb-status').textContent).toContain('Observation only');
+    expect(getByTestId('ide-vcb-status').textContent).not.toContain('Stale');
     expect(getByTestId('ide-verify-session-mode').textContent).toContain('Observe');
     expect(queryByTestId('ide-verify-workbench-mode')).toBeNull();
     expect(queryByTestId('ide-verify-workbench-subtitle')).toBeNull();
@@ -952,8 +952,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    openVerifyUtilities(getByTestId);
-    fireEvent.click(getByTestId('ide-vcb-run-plan-utility'));
+    fireEvent.click(getByTestId('ide-vcb-observe-only'));
 
     fireEvent.click(getByTestId('ide-vcb-run'));
 
@@ -983,8 +982,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    openVerifyUtilities(getByTestId);
-    fireEvent.click(getByTestId('ide-vcb-run-plan-utility'));
+    fireEvent.click(getByTestId('ide-vcb-observe-only'));
 
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain(
       'saved checks'
@@ -1142,7 +1140,8 @@ describe('VerifySurface workstation controls', () => {
     await waitFor(() => {
       expect(getByTestId('ide-verify-primary-status').textContent).toContain('Older authored reference available');
     });
-    expect(getByTestId('ide-verify-session-status').textContent).toContain('Needs update');
+    expect(getByTestId('ide-vcb-status').textContent).toContain('Needs update');
+    expect(getByTestId('ide-verify-session-title').textContent).toContain('Observe current circuit');
     expect(getByTestId('ide-verify-reference-mode').textContent).toContain('Stale saved checks loaded');
     expect(getByTestId('ide-verify-stale-reference-mode').textContent).toContain('stimulus-only tracing');
     expect(queryByTestId('ide-verify-stale-banner')).toBeNull();

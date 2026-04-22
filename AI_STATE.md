@@ -1,5 +1,24 @@
 # AI State
 
+## Change Log 2026-04-22 (Phase 6 — Verify header simplification / result hierarchy recovery)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyCommandBar.tsx`, `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.frontend-dedup.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx`, `docs/release/product-hardening-ticket-2026-04-22-verify-simplification-result-hierarchy-recovery.md`, `docs/IDE_SYSTEM_MAP.md`
+
+**Context**: Runtime replay of Verify showed the header still acting like an internal session console: first entry mixed **Run · observe only** with a second compare action, stale reruns could surface mixed observe/compare cues, and the summary line repeated or contradicted the status pill.
+
+**Changes**:
+- **`VerifyCommandBar`:** promote observe vs compare into a visible **Next run** selector (`ide-vcb-run-mode`) and remove run-mode switching from **Tools**.
+- **Session summary:** dedupe repeated header labels so the same state is not shown as pill + meta + title.
+- **`VerifySurface`:** align stale titles, mode badges, reference messaging, and the header selector to the same canonical next-run mode (`verifySession.mode`); draft sessions no longer show **READY** in the pill and **Draft** in the meta line.
+- Tests updated to assert the new header truth rather than the removed duplicate status node.
+
+**Tests / gates**:
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.frontend-dedup.test.tsx` → pass
+- `pnpm --filter @redbyte/playground build` → pass
+- `pnpm build:unified` → pass
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-22 (Phase 5 — Verify observe vs compare Run label)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/viewmodels/buildVerifySessionViewModel.ts`, `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts`, `packages/rb-apps/src/__tests__/buildVerifySessionViewModel.observe-first.test.ts`, `packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx`, `docs/release/product-hardening-ticket-2026-04-22-verify-observe-compare-clarity.md`, `docs/IDE_SYSTEM_MAP.md`

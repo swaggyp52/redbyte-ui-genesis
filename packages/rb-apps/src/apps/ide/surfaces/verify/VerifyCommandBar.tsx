@@ -148,28 +148,60 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
     coverageLabel,
     isSequential ? 'Sequential' : null,
   ].filter(Boolean).join(' · ');
+  const normalizeSessionLabel = (value: string | null | undefined): string =>
+    (value ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const seenSessionLabels = new Set<string>();
   const sessionMetaParts = [
-    sessionStatusBadge ? (
-      <span key="status" data-testid="ide-verify-session-status">
-        {sessionStatusBadge}
-      </span>
-    ) : null,
-    sessionModeLabel ? (
-      <span key="mode" data-testid="ide-verify-session-mode">
-        {sessionModeLabel}
-      </span>
-    ) : null,
-    primaryStatusTitle ? (
-      <span key="primary-status" data-testid="ide-verify-primary-status" title={primaryStatusMessage}>
-        {primaryStatusTitle}
-      </span>
-    ) : null,
-    sessionTitle ? (
-      <span key="title" className="ide-vcb-session-title" data-testid="ide-verify-session-title">
-        {sessionTitle}
-      </span>
-    ) : null,
-  ].filter(Boolean);
+    {
+      key: 'status',
+      label: sessionStatusBadge,
+      node:
+        sessionStatusBadge != null ? (
+          <span key="status" data-testid="ide-verify-session-status">
+            {sessionStatusBadge}
+          </span>
+        ) : null,
+    },
+    {
+      key: 'mode',
+      label: sessionModeLabel,
+      node:
+        sessionModeLabel ? (
+          <span key="mode" data-testid="ide-verify-session-mode">
+            {sessionModeLabel}
+          </span>
+        ) : null,
+    },
+    {
+      key: 'primary-status',
+      label: primaryStatusTitle,
+      node:
+        primaryStatusTitle ? (
+          <span key="primary-status" data-testid="ide-verify-primary-status" title={primaryStatusMessage}>
+            {primaryStatusTitle}
+          </span>
+        ) : null,
+    },
+    {
+      key: 'title',
+      label: sessionTitle,
+      node:
+        sessionTitle ? (
+          <span key="title" className="ide-vcb-session-title" data-testid="ide-verify-session-title">
+            {sessionTitle}
+          </span>
+        ) : null,
+    },
+  ]
+    .filter((entry) => entry.node != null && normalizeSessionLabel(entry.label) !== normalizeSessionLabel(statusLabel))
+    .filter((entry) => {
+      const normalized = normalizeSessionLabel(entry.label);
+      if (!normalized) return false;
+      if (seenSessionLabels.has(normalized)) return false;
+      seenSessionLabels.add(normalized);
+      return true;
+    })
+    .map((entry) => entry.node as React.ReactNode);
   const experimentInline =
     scenarioHeadline != null ||
     experimentCaseLabel != null ||
@@ -199,7 +231,8 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   const showMetricsRow =
     sessionMetricsRow === 'inline' &&
     (Boolean(evidenceLabel) || Boolean(sessionCoverageLabel));
-  const runPlanToggleLabel = isCompareMode ? 'Switch to observe' : 'Use saved checks';
+  const observeModeActive = !isCompareMode;
+  const compareModeDisabled = !compareAvailable && !isCompareMode;
   const metricsNodes = [
     evidenceLabel ? (
       <span
@@ -262,15 +295,32 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           </IdeButton>
         </div>
 
-        {canToggleRunPlan && !hasUtilityActions && (
-          <div className="ide-vcb-group ide-vcb-group--run-plan" data-testid="ide-vcb-run-plan-inline">
-            <IdeButton
-              tone={isCompareMode ? 'ghost' : 'secondary'}
-              onClick={isCompareMode ? onSetObserve : onSetCompare}
-              testId={isCompareMode ? 'ide-vcb-observe-only' : 'ide-vcb-use-saved-checks'}
-            >
-              {runPlanToggleLabel}
-            </IdeButton>
+        {canToggleRunPlan && (
+          <div className="ide-vcb-group ide-vcb-group--mode" data-testid="ide-vcb-run-mode">
+            <span className="ide-vcb-mode-label" data-testid="ide-vcb-next-run-label">
+              Next run
+            </span>
+            <div className="ide-vcb-mode-toggle" role="group" aria-label="Next run mode">
+              <button
+                type="button"
+                className={`ide-vcb-mode-btn${observeModeActive ? ' is-active' : ''}`}
+                onClick={onSetObserve}
+                data-testid="ide-vcb-observe-only"
+                aria-pressed={observeModeActive ? 'true' : 'false'}
+              >
+                Observe only
+              </button>
+              <button
+                type="button"
+                className={`ide-vcb-mode-btn${isCompareMode ? ' is-active' : ''}`}
+                onClick={onSetCompare}
+                data-testid="ide-vcb-use-saved-checks"
+                aria-pressed={isCompareMode ? 'true' : 'false'}
+                disabled={compareModeDisabled}
+              >
+                Compare checks
+              </button>
+            </div>
           </div>
         )}
 
@@ -351,22 +401,6 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
               </button>
               {utilitiesOpen && (
                 <div className="ide-vcb-utilities-panel" data-testid="ide-vcb-utilities-panel">
-                  {canToggleRunPlan && (
-                    <IdeButton
-                      tone="ghost"
-                      onClick={() => {
-                        if (isCompareMode) {
-                          onSetObserve();
-                        } else {
-                          onSetCompare();
-                        }
-                        setUtilitiesOpen(false);
-                      }}
-                      testId="ide-vcb-run-plan-utility"
-                    >
-                      {runPlanToggleLabel}
-                    </IdeButton>
-                  )}
                   {showEditCases && onEditCases && (
                     <IdeButton
                       tone="ghost"
