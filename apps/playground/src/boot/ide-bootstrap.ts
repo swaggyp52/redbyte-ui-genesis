@@ -110,18 +110,20 @@ export async function bootstrapIDE() {
 
   console.log('[RB_BOOT] RB_APPS_REGISTER_START (IDE)', opts ?? { mode: 'full' });
   const startedAt = performance.now();
+  const registerTimeoutMs = 5000;
+  const registerWatchdog = window.setTimeout(() => {
+    console.warn('[RB_BOOT] RB_APPS_REGISTER_TIMEOUT (IDE)', { ms: registerTimeoutMs });
+  }, registerTimeoutMs);
 
   registerAllApps(opts as any)
     .then(() => {
+      window.clearTimeout(registerWatchdog);
       console.log('[RB_BOOT] RB_APPS_REGISTERED (IDE)', { ms: Math.round(performance.now() - startedAt) });
     })
     .catch((err) => {
+      window.clearTimeout(registerWatchdog);
       console.error('[RB_BOOT] RB_APPS_REGISTER_FAILED', err);
     });
-
-  setTimeout(() => {
-    console.warn('[RB_BOOT] RB_APPS_REGISTER_TIMEOUT (IDE)', { ms: 5000 });
-  }, 5000);
 
   if (import.meta.env.DEV) {
     initializeStoreInstrumentation();

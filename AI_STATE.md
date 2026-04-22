@@ -1,5 +1,22 @@
 # AI State
 
+## Change Log 2026-04-22 (Phase 2 startup: false `RB_APPS_REGISTER_TIMEOUT` watchdog)
+
+**Subsystem**: `apps/playground/src/boot/ide-bootstrap.ts`, `docs/release/product-hardening-ticket-2026-04-22-startup-restore-readiness-top-blocker.md`
+
+**Context**: Phase 2 browser-first startup/readiness triage after lazy-surface ErrorBoundary baseline (`07250512`). Console showed `RB_APPS_REGISTER_TIMEOUT (IDE)` in classroom and hardening captures even when registration succeeded — **`registerAllApps()` resolves immediately** (no-op compatibility API) but a **5 s `setTimeout` was never cleared** on success/failure.
+
+**Changes**:
+- Store watchdog id; **`clearTimeout` on `registerAllApps` resolve or reject**; timeout now means “promise not settled within 5 s,” not “always warn at 5 s.”
+
+**Tests / gates**:
+- Playwright matrix (fresh, persisted custom, starter-leaning session, edited custom) on `vite preview` with **6.5 s** listen: **`RB_APPS_REGISTER_TIMEOUT` absent** when `RB_APPS_REGISTERED` present
+- `pnpm --filter @redbyte/playground build` → **pass**
+- `pnpm build:unified` → **pass** (recorded at slice close)
+- `pnpm repo:status` → not re-run; ZIP import gate may still be red for unrelated reasons
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-22 (SEV-1 boot triage: lazy surface chunk failure → ErrorBoundary)
 
 **Subsystem**: `packages/rb-apps/src/apps/IdeApp.tsx`, `docs/release/product-hardening-ticket-2026-04-22-browser-boot-top-blocker.md`
