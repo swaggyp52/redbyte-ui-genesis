@@ -1,5 +1,15 @@
 # AI State
 
+## Change Log 2026-04-22 (Campaign E — Project / Export / Vivado handoff truth)
+
+**Subsystem:** `ProjectSurface.tsx` (`getExportSummary`, command-strip hero), `ExportSurface.tsx` (Vivado section `ide-export-vivado-zip-contents`), `projectSurface.continuity.test.tsx`, `exportSurface.workstation.test.tsx`, `scripts/gates/ide-export-ready-contract.mjs`, `docs/release/product-hardening-ticket-2026-04-22-project-export-vivado-handoff-truth.md`
+
+**Context:** Project could imply export/download readiness while no successful bundle existed; Export Vivado copy was procedural but light on what the ZIP actually contains. Aligned map-pins “Export readiness” and hero next-step with `hasSuccessfulExportBundle`; added explicit RTL/XDC/xpr/README + synthesis-outside-RedByte sentence when download path is valid; fixed export ready gate to open readiness `<details>` and to assert `ide-export-artifact-preview` (replaces obsolete `ide-export-artifact-plan` test id).
+
+**Validation:** `pnpm exec vitest run` (continuity, export workstation, mapping-legitimacy) + `pnpm -s ide:gate:export-ready-contract` + `pnpm build:unified` → pass.
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-22 (Campaign D — ZIP import contract + import authority)
 
 **Subsystem:** `packages/rb-apps/src/__tests__/ide-zip-import-contract.test.ts`, `packages/rb-apps/src/apps/ide/importSurfaceZipAuthority.ts`, `packages/rb-apps/src/apps/ide/__tests__/importSurfaceZipAuthority.test.ts`, `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`, `docs/release/product-hardening-ticket-2026-04-22-zip-import-truth-contract-and-authority-cleanup.md`
