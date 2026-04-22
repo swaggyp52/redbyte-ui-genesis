@@ -3866,7 +3866,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       if (!bundle || !parsed) return;
       if (origin === 'manual') {
         autoWireSelectionTraceIdRef.current = null;
-        setActionToast('Net trace: all branches of this connection are highlighted.');
+        // Intentionally no action toast: traceState.label (title bar + inspector) and canvas
+        // highlight already confirm the same relationship — a toast duplicates noise.
       } else {
         autoWireSelectionTraceIdRef.current = wireId;
       }

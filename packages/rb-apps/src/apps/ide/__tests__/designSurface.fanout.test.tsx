@@ -287,6 +287,29 @@ describe('DesignSurface fan-out — trace activation', () => {
     });
   });
 
+  it('does not show a redundant action toast when Trace net is clicked (label + highlight are enough)', async () => {
+    const view = renderSurface();
+    const wireId = 'sw0_node.out-ld0_node.in';
+
+    act(() => {
+      useLogicViewStore.getState().selectWire(wireId);
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-context-trace')).toBeTruthy();
+    });
+
+    act(() => {
+      fireEvent.click(view.getByTestId('ide-design-context-trace'));
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-active-trace').textContent).toMatch(/One net/);
+    });
+
+    expect(view.queryByTestId('ide-design-action-toast')).toBeNull();
+  });
+
   it('auto-applies driver net trace when a single wire is selected (no Trace net click)', async () => {
     const view = renderSurface();
     const wireId = 'sw0_node.out-ld0_node.in';
