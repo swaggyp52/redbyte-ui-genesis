@@ -204,7 +204,7 @@ describe('VerifySurface layout workflow architecture', () => {
     expect(queryByTestId('ide-verify-command-strip')).toBeNull();
   });
 
-  it('shows clock helper strip for sequential circuits', () => {
+  it('shows the clock helper inside the stimulus pane for sequential circuits', () => {
     const { getByTestId } = render(
       <VerifySurface
         {...baseProps}
@@ -216,6 +216,7 @@ describe('VerifySurface layout workflow architecture', () => {
     expect(getByTestId('ide-verify-sequential-helper')).toBeTruthy();
     expect(getByTestId('ide-verify-insert-clock-pattern')).toBeTruthy();
     expect(getByTestId('ide-verify-insert-clock-pulse')).toBeTruthy();
+    expect(getByTestId('ide-verify-empty-state').contains(getByTestId('ide-verify-sequential-helper'))).toBe(true);
   });
 
   it('applies hold-low clock preset without manual waveform painting', () => {

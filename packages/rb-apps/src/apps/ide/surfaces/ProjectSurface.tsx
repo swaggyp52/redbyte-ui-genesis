@@ -28,6 +28,7 @@ import {
   IdeDataTable,
   IdePanel,
   IdeStatusPill,
+  IdeTag,
 } from '../components/IdePrimitives';
 import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import {
@@ -42,6 +43,7 @@ import { useIoBus } from '../ioBus';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getStudentFacingIoLabel } from '../ioLabels';
 import { LAB_STARTERS } from '../labStarters';
+import type { HardwareBoardResourceType, HardwareTimingRole } from '@redbyte/rb-utils';
 import { getProjectKindDisplayName, type ProjectKind, type ScenarioAuthority } from '../projectIdentity';
 import {
   EXPORT_STAGE_LABEL,
@@ -50,6 +52,8 @@ import {
   STUDENT_WORKFLOW_SUMMARY,
   VERIFY_STAGE_LABEL,
 } from '../workflowStages';
+import type { ProjectIoMappingKind } from '../examplesCatalog';
+import type { IoSignalRole } from '../ioSignalRoles';
 
 export interface ProjectMappingRow {
   id: string;
@@ -59,6 +63,9 @@ export interface ProjectMappingRow {
   pin: string;
   required: boolean;
   port: string;
+  mappingKind?: ProjectIoMappingKind;
+  timingRole?: HardwareTimingRole;
+  boardResourceType?: HardwareBoardResourceType;
 }
 
 export interface ProjectSurfaceProps {
@@ -141,6 +148,8 @@ export interface ProjectSurfaceProps {
    * (palette-filtered). Optional — when omitted, component rows stay read-only.
    */
   onFocusCustomComponent?: (componentName: string) => void;
+  /** Schedule-aware roles keyed by student-facing IO label (Design label / port name). */
+  ioSignalRolesByLabel?: Record<string, IoSignalRole>;
 }
 
 const PROJECT_EMPTY_SIM: RuntimeSimState = {
@@ -215,9 +224,13 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   outline = null,
   onFocusMacro,
   onFocusCustomComponent,
+  ioSignalRolesByLabel = {},
 }) => {
   const [highlightedMappingKey, setHighlightedMappingKey] = useState<string | null>(null);
-  const [mappingExpanded, setMappingExpanded] = useState(false);
+  /** Default open so Map Pins reads as a first-class step, not a hidden utility. */
+  const [mappingExpanded, setMappingExpanded] = useState(true);
+  const [mappingEditFeedback, setMappingEditFeedback] = useState<string | null>(null);
+  const mappingFeedbackTimer = useRef<number | null>(null);
   const mappingInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const mappingSectionRef = useRef<HTMLElement | null>(null);
   const examplesSectionRef = useRef<HTMLDetailsElement | null>(null);
@@ -230,8 +243,27 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       if (highlightResetTimer.current !== null && typeof window !== 'undefined') {
         window.clearTimeout(highlightResetTimer.current);
       }
+      if (mappingFeedbackTimer.current !== null && typeof window !== 'undefined') {
+        window.clearTimeout(mappingFeedbackTimer.current);
+      }
     };
   }, []);
+
+  const commitMappingPin = useCallback(
+    (rowId: string, pin: string) => {
+      onUpdateMappingPin(rowId, pin);
+      setMappingEditFeedback('Saved — board pins are stored on this project. Export uses this same table.');
+      if (mappingFeedbackTimer.current !== null && typeof window !== 'undefined') {
+        window.clearTimeout(mappingFeedbackTimer.current);
+      }
+      if (typeof window !== 'undefined') {
+        mappingFeedbackTimer.current = window.setTimeout(() => {
+          setMappingEditFeedback(null);
+        }, 2800);
+      }
+    },
+    [onUpdateMappingPin]
+  );
 
   useEffect(() => {
     if (!diagnosticRouteRequest) return;
@@ -548,13 +580,20 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     setInput: () => {},
   });
 
+  const mappingRowClassNames = useMemo(
+    () => sortedMappingRows.map((row, index) => buildMappingRowClass(row, index)),
+    [sortedMappingRows]
+  );
+
   const mappingRowsUi = useMemo(
     () =>
       sortedMappingRows.map((row, index) => {
         const mappingView = toMappingView(row, index);
         const mappingKey = toMappingKey(row.label || row.id);
         const displayLabel = getStudentFacingIoLabel(row);
-        const quickPins = getProjectQuickPickPins(row, index);
+        const rolePresentation = resolveMappingRolePresentation(row, ioSignalRolesByLabel);
+        const directPin = isDirectPinRow(row);
+        const quickPins = directPin ? getProjectQuickPickPins(row, index) : [];
         const swM2 = /^SW(\d+)$/i.exec(row.label);
         const ldM2 = /^LD(\d+)$/i.exec(row.label);
         const rowSigType = swM2 ? 'sw' : ldM2 ? 'ld' : null;
@@ -565,34 +604,55 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           effectiveBoardSignal.type === rowSigType &&
           effectiveBoardSignal.index === rowSigIdx;
         const portCell = (
-          <span
+          <div
             key={`${row.id}-port`}
-            data-testid={`ide-project-port-${mappingKey}`}
-            style={isActiveRow ? {
-              background: 'color-mix(in srgb, var(--rb-signal) 12%, transparent)',
-              borderRadius: 'var(--ide-radius-s)',
-              padding: '1px 4px',
-              cursor: onGoToHardware ? 'pointer' : undefined,
-            } : undefined}
-            onClick={isActiveRow && onGoToHardware ? () => onGoToHardware() : undefined}
+            className="ide-project-map-port-cell"
+            data-testid={`ide-project-port-wrap-${mappingKey}`}
           >
-            <code style={{ fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>
-              {displayLabel}
-            </code>
+            <span
+              data-testid={`ide-project-port-${mappingKey}`}
+              style={isActiveRow ? {
+                background: 'color-mix(in srgb, var(--rb-signal) 12%, transparent)',
+                borderRadius: 'var(--ide-radius-s)',
+                padding: '1px 4px',
+                cursor: onGoToHardware ? 'pointer' : undefined,
+              } : undefined}
+              onClick={isActiveRow && onGoToHardware ? () => onGoToHardware() : undefined}
+            >
+              <code style={{ fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>
+                {displayLabel}
+              </code>
+            </span>
+            <span
+              className={`ide-project-map-req-badge${row.required ? ' is-required' : ' is-optional'}`}
+              data-testid={`ide-project-map-req-${mappingKey}`}
+            >
+              {row.required ? 'Required' : 'Optional'}
+            </span>
+          </div>
+        );
+        const roleCell = (
+          <span
+            key={`${row.id}-role`}
+            className="ide-project-map-role-cell"
+            data-testid={`ide-project-role-${mappingKey}`}
+            title={rolePresentation.title}
+          >
+            <IdeTag tone={rolePresentation.tagTone}>{rolePresentation.tag}</IdeTag>
           </span>
         );
-        const pinCell = (
+        const pinCell = directPin ? (
           <div className="ide-project-pin-field" data-testid={`ide-project-pin-field-${mappingKey}`}>
             <input
               ref={(node) => {
                 mappingInputRefs.current[mappingKey] = node;
               }}
-              className={`ide-export-pin-input ${
+              className={`ide-export-pin-input ide-project-map-pin-input ${
                 highlightedMappingKey === mappingKey ? 'is-highlighted' : ''
               }`}
               value={row.pin}
               list={row.direction === 'in' ? 'ide-project-input-pin-options' : 'ide-project-output-pin-options'}
-              onChange={(event) => onUpdateMappingPin(row.id, event.target.value.toUpperCase().trim())}
+              onChange={(event) => commitMappingPin(row.id, event.target.value.toUpperCase().trim())}
               placeholder={suggestBasys3Pin(row, index)}
               aria-label={`pin-${row.id}`}
               data-testid={`ide-project-map-input-${mappingKey}`}
@@ -608,7 +668,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                       key={`${row.id}-${pin}`}
                       type="button"
                       className={`ide-project-pin-quick-pick${isActive ? ' is-active' : ''}`}
-                      onClick={() => onUpdateMappingPin(row.id, pin)}
+                      onClick={() => commitMappingPin(row.id, pin)}
                       data-testid={`ide-project-map-quick-${mappingKey}-${toMappingKey(pin)}`}
                     >
                       {pin}
@@ -618,9 +678,18 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               </div>
             )}
           </div>
+        ) : (
+          <div
+            className="ide-project-pin-field ide-project-pin-field--locked"
+            data-testid={`ide-project-pin-locked-${mappingKey}`}
+            title="This row is not a single Basys3 pin assignment. Change buses or slices in Design; Export still reflects structured entries."
+          >
+            <span className="ide-project-pin-locked-copy">Structured IO — edit in Design</span>
+          </div>
         );
         return [
           portCell,
+          roleCell,
           <span key={`${row.id}-alias`} data-testid={`ide-project-alias-${mappingKey}`}>
             {mappingView.aliasDisplay}
           </span>,
@@ -658,7 +727,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </span>,
         ];
       }),
-    [effectiveBoardSignal, highlightedMappingKey, ioBus, onGoToHardware, onUpdateMappingPin, sortedMappingRows]
+    [
+      commitMappingPin,
+      effectiveBoardSignal,
+      highlightedMappingKey,
+      ioBus,
+      ioSignalRolesByLabel,
+      onGoToHardware,
+      sortedMappingRows,
+    ]
   );
 
   const stageCompletion = resolvedWorkflowAuthority.stageCompletion;
@@ -969,7 +1046,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                           key={ex.id}
                           type="button"
                           className="ide-project-landing-option"
-                          onClick={() => { onOpenExample(ex.id); onOpenDesign(); }}
+                          onClick={() => { onOpenExample(ex.id); }}
                           data-testid={`ide-project-landing-example-${ex.id}`}
                         >
                           <span className="ide-project-landing-option-eyebrow">{preview.eyebrow}</span>
@@ -1022,7 +1099,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     key={starter.id}
                     type="button"
                     className="ide-project-lab-card"
-                    onClick={() => { onOpenExample(starter.example.id); onOpenDesign(); }}
+                    onClick={() => { onOpenExample(starter.example.id); }}
                     data-testid={`ide-project-lab-card-${starter.id}`}
                   >
                     <span className="ide-project-lab-card-number">Lab {starter.labNumber}</span>
@@ -1258,7 +1335,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                           type="button"
                           className="ide-button ide-button-primary"
                           style={{ fontSize: 11, padding: '4px 12px', minHeight: 26 }}
-                          onClick={() => { onOpenExample(ex.id); onOpenDesign(); }}
+                          onClick={() => { onOpenExample(ex.id); }}
                           data-testid={`ide-project-load-start-${ex.id}`}
                         >
                           Load &amp; Design -&gt;
@@ -1284,7 +1361,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         {readiness.hasCircuit && (
         <section
           ref={mappingSectionRef}
-          className="ide-export-section"
+          className="ide-export-section ide-project-map-pins-section"
           data-testid="ide-project-panel-mapping"
         >
           {/*
@@ -1295,6 +1372,29 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             Its verify/export/dirty/unmapped flags are reflected by the
             Bridge Verify/Export field tones and by ProjectWarningsPanel.
           */}
+
+          <header className="ide-project-map-pins-header" data-testid="ide-project-map-pins-header">
+            <div>
+              <h3 className="ide-export-section-header-title ide-project-map-pins-title">Board pin mapping (Basys3)</h3>
+              <p className="ide-project-map-pins-sub" data-testid="ide-project-map-pipeline-copy">
+                After Design and Verify, assign each top-level port to a board pin here.{' '}
+                <strong>Export and Hardware both read this same table.</strong>
+              </p>
+            </div>
+            <div className="ide-project-map-pins-export-note" data-testid="ide-project-map-export-alignment">
+              <span className="ide-surface-block-label">Export readiness</span>
+              <p className="ide-project-map-pins-export-text">{exportSummary}</p>
+            </div>
+          </header>
+
+          {hasVerifyRun && unmappedRequiredCount > 0 && (
+            <div className="ide-project-map-post-verify" data-testid="ide-project-mapping-post-verify-hint">
+              <IdeCallout tone="info" title="You verified the logic — finish board pins">
+                Assign the highlighted required ports below so the Vivado bundle matches what you simulated.
+                Optional ports stay off the board unless you map them on purpose.
+              </IdeCallout>
+            </div>
+          )}
 
           {/* FPGA Configuration - collapsed by default */}
           <details className="ide-project-identity-details" data-testid="ide-project-fpga-config">
@@ -1339,6 +1439,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               )}
             </div>
           </details>
+
+          {mappingEditFeedback && (
+            <div className="ide-project-mapping-saved-feedback" data-testid="ide-project-mapping-saved-feedback" role="status">
+              {mappingEditFeedback}
+            </div>
+          )}
 
           <div
             className={`ide-project-mapping-summary${unmappedRequiredCount > 0 ? ' has-error' : ''}`}
@@ -1390,9 +1496,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           {mappingExpanded && (
             <div className="ide-project-mapping-table-wrap" data-testid="ide-project-mapping-table-wrap">
               <div className="ide-project-mapping-quick-hint" data-testid="ide-project-mapping-quick-hint">
-                Use Basys3 aliases directly: inputs <code>CLK100MHZ</code>, <code>SW0-SW15</code>,{' '}
-                <code>BTNC-BTNR</code>; outputs <code>LD0-LD15</code>, <code>SEG0-SEG6</code>,{' '}
-                <code>DP</code>, <code>AN0-AN3</code>.
+                Quick picks and placeholders infer likely pins from port names (clock, reset, switches, LEDs).{' '}
+                You can override any suggestion — the project stores exactly what you type. Board aliases: inputs{' '}
+                <code>CLK100MHZ</code>, <code>SW0-SW15</code>, <code>BTNC-BTNR</code>; outputs{' '}
+                <code>LD0-LD15</code>, <code>SEG0-SEG6</code>, <code>DP</code>, <code>AN0-AN3</code>.
               </div>
               <div
                 className={`ide-project-mapping-status ${unmappedRequiredCount > 0 ? 'is-error' : 'is-complete'}`}
@@ -1401,14 +1508,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 <span className="ide-project-mapping-status-dot" />
                 <span>
                   {unmappedRequiredCount > 0
-                    ? `${unmappedRequiredCount} port${unmappedRequiredCount !== 1 ? 's' : ''} unmapped`
-                    : `${mappedRequiredCount} / ${requiredCount} required mapped`}
+                    ? `${unmappedRequiredCount} required port${unmappedRequiredCount !== 1 ? 's' : ''} still need a board pin`
+                    : `${mappedRequiredCount} / ${requiredCount} required ports mapped — optional rows can stay blank`}
                 </span>
               </div>
               <IdeDataTable
-                columns={['Port', 'Alias (Basys3)', 'Pin', 'Dir', 'Status']}
+                columns={['Port', 'Role', 'Alias → package pin', 'Pin editor', 'Dir', 'Status']}
                 rows={mappingRowsUi}
                 testId="ide-project-mapping-table"
+                getRowClassName={(rowIndex) => mappingRowClassNames[rowIndex]}
               />
               <datalist id="ide-project-input-pin-options">
                 {PROJECT_INPUT_ALIAS_OPTIONS.map((pin) => (
@@ -1542,9 +1650,34 @@ function inferAliasFromPackagePin(
   return direction === 'in' ? `SW${Math.min(fallbackIndex, 15)}` : `LD${Math.min(fallbackIndex, 15)}`;
 }
 
-function suggestBasys3Pin(signal: { id: string; direction: 'in' | 'out' }, index: number): string {
+function normalizeProjectMappingToken(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '');
+}
+
+function suggestBasys3Pin(
+  signal: { id: string; label?: string; direction: 'in' | 'out' },
+  index: number
+): string {
+  const normalizedToken = [signal.id, signal.label]
+    .map((value) => normalizeProjectMappingToken(value ?? ''))
+    .find((value) => value.length > 0) ?? '';
   if (signal.direction === 'in') {
-    if (signal.id.toLowerCase() === 'clk') return 'CLK100MHZ';
+    if (
+      normalizedToken === 'clk' ||
+      normalizedToken === 'clock' ||
+      normalizedToken === 'clk100mhz' ||
+      normalizedToken.endsWith('clk') ||
+      normalizedToken.includes('clock')
+    ) {
+      return 'CLK100MHZ';
+    }
+    if (
+      normalizedToken === 'rst' ||
+      normalizedToken.endsWith('rst') ||
+      normalizedToken.includes('reset')
+    ) {
+      return 'BTNC';
+    }
     return `SW${Math.min(index, 15)}`;
   }
   return `LD${Math.min(index, 15)}`;
@@ -1704,4 +1837,63 @@ function compareText(left: string, right: string): number {
   if (left < right) return -1;
   if (left > right) return 1;
   return 0;
+}
+
+function isDirectPinRow(row: Pick<ProjectMappingRow, 'mappingKind'>): boolean {
+  const k = row.mappingKind ?? 'scalar';
+  return k === 'scalar' || k === 'bit';
+}
+
+function buildMappingRowClass(row: ProjectMappingRow, sortIndex: number): string {
+  const parts = ['ide-project-map-row'];
+  if (!isDirectPinRow(row)) {
+    return `${parts.join(' ')} ide-project-map-row--locked`;
+  }
+  const mv = toMappingView(row, sortIndex);
+  const pin = row.pin.trim();
+  if (mv.statusTone === 'error') parts.push('ide-project-map-row--invalid');
+  else if (row.required && pin.length === 0) parts.push('ide-project-map-row--action');
+  else if (!row.required) parts.push('ide-project-map-row--optional');
+  else parts.push('ide-project-map-row--ok');
+  return parts.join(' ');
+}
+
+type RoleTagTone = 'neutral' | 'accent' | 'ok' | 'warn' | 'error';
+
+function resolveMappingRolePresentation(
+  row: ProjectMappingRow,
+  roles: Record<string, IoSignalRole>
+): { tag: string; title: string; tagTone: RoleTagTone } {
+  const label = getStudentFacingIoLabel(row);
+  const tr = row.timingRole;
+  if (tr === 'clock') {
+    return { tag: 'Clock', title: 'Hardware timing: clock input for sequential logic.', tagTone: 'accent' };
+  }
+  if (tr === 'reset') {
+    return { tag: 'Reset', title: 'Hardware timing: reset or clear style input.', tagTone: 'warn' };
+  }
+  if (tr === 'manual_step') {
+    return { tag: 'Step', title: 'Manual single-step / clock control.', tagTone: 'accent' };
+  }
+  if (tr === 'enable') {
+    return { tag: 'Enable', title: 'Enable or gate style input.', tagTone: 'neutral' };
+  }
+  const r = roles[label];
+  if (r === 'clock') {
+    return { tag: 'Clock', title: 'Matched as clock from verify schedule and labels.', tagTone: 'accent' };
+  }
+  if (r === 'reset') {
+    return { tag: 'Reset', title: 'Matched as reset from verify schedule or label pattern.', tagTone: 'warn' };
+  }
+  if (r === 'input') {
+    return { tag: 'Data in', title: 'Top-level input exposed for board mapping.', tagTone: 'neutral' };
+  }
+  if (r === 'output') {
+    return { tag: 'Data out', title: 'Top-level output exposed for board mapping.', tagTone: 'neutral' };
+  }
+  return {
+    tag: row.direction === 'in' ? 'In' : 'Out',
+    title: row.direction === 'in' ? 'Top-level input port.' : 'Top-level output port.',
+    tagTone: 'neutral',
+  };
 }

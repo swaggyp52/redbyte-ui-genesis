@@ -93,7 +93,7 @@ describe('VerifySurface entry state — B-12 Slice 2', () => {
 
   // ── SEQUENTIAL mode — first-run entry ───────────────────────────────────────
 
-  it('sequential mode shows clock helper in first-run state without a prior run', () => {
+  it('sequential mode shows clock helper inline in the first-run stimulus pane', () => {
     const { getByTestId } = render(
       <VerifySurface
         {...withVectors}
@@ -104,5 +104,6 @@ describe('VerifySurface entry state — B-12 Slice 2', () => {
 
     expect(getByTestId('ide-verify-sequential-helper')).toBeTruthy();
     expect(getByTestId('ide-verify-insert-clock-pattern')).toBeTruthy();
+    expect(getByTestId('ide-verify-empty-state').contains(getByTestId('ide-verify-sequential-helper'))).toBe(true);
   });
 });

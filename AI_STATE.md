@@ -1,5 +1,16 @@
 # AI State
 
+## Change Log 2026-04-21 (Project surface + startup entry hardening; surface conformance)
+
+**Subsystem**: `packages/rb-apps/src/apps/IdeApp.tsx`, `ProjectSurface.tsx`, `DesignSurface.tsx`, `ScenarioBuilderPanel.tsx`, `VerifyWaveformPlaceholder.tsx`, `IdePrimitives.tsx`, `ide-root.css`, `docs/ide/SURFACE_CONFORMANCE.md`, `docs/release/product-hardening-ticket-2026-04-21-project-mapping-legitimacy-ux.md`, `docs/release/product-hardening-ticket-2026-04-21-startup-project-entry-starter-load.md`, `__tests__/projectSurface.mapping-legitimacy.test.tsx`, `__tests__/ideApp.labday-wiring.test.tsx`, and related verify surface test tweaks, plus startup-flow PNG evidence under `artifacts/`.
+
+**Context**: Tighten Project as the place students trust for mapping pipeline and export alignment, document surface conformance rules, and capture startup/starter load evidence. Lab-day wiring tests updated for Verify command bar (`ide-vcb-use-saved-checks`) and flexible starter copy. `.gitignore` ignores `playground-dev-*.log` noise.
+
+**Tests / gates**:
+- `pnpm exec vitest run --config vitest.config.ts --fileParallelism false` on `ideApp.labday-wiring`, `projectSurface.mapping-legitimacy`, `projectSurface.submission`, and the four `verifySurface.*` files touched in this slice -> **48 passed, 1 skipped** (order-sensitive; when run in parallel with other files, `ideApp.labday-wiring` can fail due to cross-file interference — re-run with `--fileParallelism false` if needed).
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-21 (ECE141 security lock first-pass product shaping)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/labStarters.ts`, `packages/rb-apps/src/apps/ide/verifyLabSequencer.ts`, `packages/rb-apps/src/examples/23_lab8-fsm-lock-starter-basys3.json`, `packages/rb-apps/src/examples/index.ts`, `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifyLabSequencer.test.ts`

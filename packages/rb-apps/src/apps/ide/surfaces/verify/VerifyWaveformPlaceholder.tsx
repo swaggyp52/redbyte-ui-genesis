@@ -8,7 +8,6 @@ export interface VerifyWaveformPlaceholderProps {
   readonly outputNames: readonly string[];
   readonly clockName?: string;
   readonly isSequential: boolean;
-  readonly onGenerate: () => void;
   readonly hasVectors: boolean;
   readonly runLabel: string;
 }
@@ -40,19 +39,14 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
   return (
     <div className="ide-vwp" data-testid="ide-verify-waveform-placeholder">
       <div className="ide-vwp-summary" data-testid="ide-vwp-header">
-        <div className="ide-vwp-header-copy">
-          <span className="ide-vwp-header-eyebrow">Observe outputs</span>
-          <strong className="ide-vwp-header-title">
-            {hasVectors
-              ? 'Run the current stimulus to populate the waveform and output readout.'
-              : 'Author the first stimulus, then run once to observe outputs.'}
-          </strong>
-          <p className="ide-vwp-header-note" data-testid="ide-vwp-header-run-note">
-            {hasVectors
-              ? `${runLabel} turns this pane into the live waveform and output workspace.`
-              : 'Keep the left pane focused on stimulus authoring. This pane becomes the observation surface after the first run.'}
-          </p>
-        </div>
+        <span className="ide-vwp-observe-chip" data-testid="ide-vwp-observe-chip">
+          Observe
+        </span>
+        <p className="ide-vwp-header-note" data-testid="ide-vwp-header-run-note">
+          {hasVectors
+            ? `${runLabel} to populate waveform and observed outputs.`
+            : 'Author stimulus, then run once to populate waveform and observed outputs.'}
+        </p>
         <div className="ide-vwp-header-meta">
           <span className="ide-vwp-header-chip">
             {allSignals.length} lane{allSignals.length === 1 ? '' : 's'}

@@ -332,9 +332,6 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    const expandBtnList = getAllByTestId('ide-project-mapping-expand-btn');
-    fireEvent.click(expandBtnList[expandBtnList.length - 1]);
-
     const portSw0List = getAllByTestId('ide-project-port-sw0');
     expect(portSw0List[portSw0List.length - 1].textContent).toContain('SW0');
     expect(portSw0List[portSw0List.length - 1].textContent).not.toContain('out');
@@ -381,9 +378,6 @@ describe('ProjectSurface workspace panels', () => {
         />
       </BoardSignalProvider>
     );
-
-    const expandBtnList = getAllByTestId('ide-project-mapping-expand-btn');
-    fireEvent.click(expandBtnList[expandBtnList.length - 1]);
 
     const fidelityList = getAllByTestId('ide-project-import-fidelity');
     expect(fidelityList[fidelityList.length - 1].textContent).toContain('Reconstructed');

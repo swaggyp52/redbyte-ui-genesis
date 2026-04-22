@@ -361,7 +361,8 @@ describe('IdeApp lab-day wiring', () => {
 
     fireEvent.click(await view.findByTestId('mode-button-verify'));
     await view.findByTestId('ide-verify-panel', {}, { timeout: 5000 });
-    fireEvent.click(await view.findByTestId('ide-vcb-mode-compare'));
+    const useSaved = await view.findByTestId('ide-vcb-use-saved-checks');
+    fireEvent.click(useSaved);
 
     await act(async () => {
       fireEvent.click(await findVerifyRunAction(view));
@@ -491,7 +492,7 @@ describe('IdeApp lab-day wiring', () => {
     });
 
     expect(view.getByTestId('ide-verify-session-mode').textContent).toContain('Observe');
-    expect(view.getByTestId('ide-verify-session-title').textContent).toContain('Ready to run stimulus');
+    expect(view.getByTestId('ide-verify-session-title').textContent).toMatch(/Ready to run( stimulus)?/);
     expect(view.getByTestId('ide-vcb-run')).toBeTruthy();
   });
 
@@ -528,7 +529,74 @@ describe('IdeApp lab-day wiring', () => {
 
     expect(view.getByTestId('ide-verify-session-status').textContent).toContain('Draft');
     expect(view.getByTestId('ide-verify-session-mode').textContent).toContain('Observe');
-    expect(view.getByTestId('ide-verify-session-title').textContent).toContain('Ready to run stimulus');
+    expect(view.getByTestId('ide-verify-session-title').textContent).toMatch(/Ready to run( stimulus)?/);
     expect(view.getByTestId('ide-vcb-run')).toBeTruthy();
+  });
+
+  it('loads the Lab 8 starter directly into Design with visible starter authority', async () => {
+    const view = render(<IdeApp />);
+
+    await view.findByTestId('ide-project-landing');
+    fireEvent.click(await view.findByTestId('ide-project-lab-card-lab8-security-lock-fsm'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Design');
+    });
+
+    await waitFor(() => {
+      expect(useProjectRuntime.getState().activeExampleId).toBe('23_lab8-fsm-lock-starter-basys3');
+    });
+
+    const starterTitle = (await view.findByTestId('ide-design-starter-banner-title', {}, { timeout: 5000 }))
+      .textContent;
+    expect(starterTitle).toMatch(/Lab 8|Security Lock/);
+
+    expect((await view.findByTestId('ide-design-starter-banner-lab', {}, { timeout: 5000 })).textContent).toContain('Lab 8');
+    const nextAction = (await view.findByTestId('ide-design-starter-banner-next-action', {}, { timeout: 5000 })).textContent;
+    expect(nextAction).toMatch(/Connect ENTER|DFlipFlop|final-project reference|bridge/i);
+    expect(view.queryByTestId('ide-design-empty-state')).toBeNull();
+    expect(useProjectRuntime.getState().circuit.nodes.some((node) => node.label === 'IN0 (SW6)')).toBe(true);
+    expect(useProjectRuntime.getState().circuit.nodes.some((node) => node.label === 'LOCK (LED1)')).toBe(true);
+  });
+
+  it('holds starter replacement on Project until overwrite is confirmed', async () => {
+    const view = render(<IdeApp />);
+
+    await view.findByTestId('ide-project-landing');
+    fireEvent.click(await view.findByTestId('ide-project-landing-example-signal-tour'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Design');
+    });
+
+    fireEvent.click(await view.findByTestId('mode-button-project'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Project');
+    });
+
+    await view.findByTestId('ide-project-panel', {}, { timeout: 5000 });
+    fireEvent.click(await view.findByTestId('ide-project-load-start-logic-gates', {}, { timeout: 5000 }));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-example-confirm-modal')).toBeTruthy();
+    });
+
+    expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Project');
+    expect(useProjectRuntime.getState().activeExampleId).not.toBe('logic-gates');
+
+    fireEvent.click(view.getByTestId('ide-example-confirm'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Design');
+    });
+
+    await waitFor(() => {
+      expect(useProjectRuntime.getState().activeExampleId).toBe('logic-gates');
+    });
+
+    expect((await view.findByTestId('ide-design-starter-banner-title', {}, { timeout: 5000 })).textContent).toContain(
+      'Logic Gates'
+    );
   });
 });

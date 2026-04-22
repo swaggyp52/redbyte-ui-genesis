@@ -41,7 +41,7 @@ export interface ScenarioBuilderPanelProps {
   // Test case actions
   onAddVector: () => void;
   onGenerateBasics: () => void;
-  onRun: () => void;
+  onRun?: () => void;
   runButtonLabel?: string;
   onOpenProjectVectors: () => void;
   // Auto-generate
@@ -86,6 +86,8 @@ export interface ScenarioBuilderPanelProps {
   /** Optional output-check editor visibility. Default Verify keeps outputs on the waveform first. */
   showExpectedOutputs?: boolean;
   onToggleExpectedOutputs?: () => void;
+  /** Compact helper copy/actions that belong inside the stimulus pane. */
+  stimulusAssist?: React.ReactNode;
 }
 
 function normalizeFieldId(value: string): string {
@@ -144,6 +146,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   allowWorkbenchCollapse = true,
   showExpectedOutputs = false,
   onToggleExpectedOutputs,
+  stimulusAssist,
 }) => {
   const effectiveVectorCount = totalVectorCount ?? authoredVectors.length;
   const hasVectors = effectiveVectorCount > 0;
@@ -507,6 +510,12 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
         </div>
 
         {/* ── Unmapped signal warning — shown when circuit has no real I/O ── */}
+        {stimulusAssist ? (
+          <div className="ide-verify-stimulus-assist-slot">
+            {stimulusAssist}
+          </div>
+        ) : null}
+
         {isUsingFallbackSignals && (
           <div className="ide-verify-sync-warning" data-testid="ide-verify-sync-warning">
             <span className="ide-verify-sync-warning-icon">⚠</span>
@@ -713,6 +722,11 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
       {/* ── Editable stimulus region — mounted when expanded ── */}
       {effectiveWorkbenchExpanded && (
         <div className="ide-verify-workbench-body" data-testid="ide-verify-workbench-body">
+          {stimulusAssist ? (
+            <div className="ide-verify-stimulus-assist-slot ide-verify-stimulus-assist-slot--inline">
+              {stimulusAssist}
+            </div>
+          ) : null}
           {authoringForm}
         </div>
       )}

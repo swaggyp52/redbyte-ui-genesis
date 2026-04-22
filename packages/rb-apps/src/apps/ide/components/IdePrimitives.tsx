@@ -266,7 +266,9 @@ export const IdeDataTable: React.FC<{
   columns: string[];
   rows: Array<Array<React.ReactNode>>;
   testId?: string;
-}> = ({ columns, rows, testId }) => {
+  /** Optional per-row class for emphasis (e.g. action-required vs optional mapping rows). */
+  getRowClassName?: (rowIndex: number) => string | undefined;
+}> = ({ columns, rows, testId, getRowClassName }) => {
   return (
     <div className="ide-table-wrap" data-testid={testId}>
       <table className="ide-table">
@@ -280,7 +282,7 @@ export const IdeDataTable: React.FC<{
         <tbody>
           {rows.length > 0 ? (
             rows.map((row, rowIndex) => (
-              <tr key={`row-${rowIndex}`}>
+              <tr key={`row-${rowIndex}`} className={getRowClassName?.(rowIndex)}>
                 {row.map((cell, cellIndex) => (
                   <td key={`cell-${rowIndex}-${cellIndex}`}>{cell}</td>
                 ))}

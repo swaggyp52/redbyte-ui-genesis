@@ -88,7 +88,7 @@ describe('Verify frontend — single canonical Run button (B-13 Phase 2)', () =>
     expect(queryByTestId('ide-vfr-run')).toBeNull();
     // Waveform placeholder must not introduce a second run CTA.
     expect(queryByTestId('ide-vwp-run')).toBeNull();
-    expect(getByTestId('ide-vwp-header-run-note').textContent).toContain('session header');
+    expect(getByTestId('ide-vwp-header-run-note').textContent).toContain('populate waveform');
   });
 
   it('hides ide-verify-workbench-run after a pass run — Run stays in header', () => {
@@ -165,7 +165,7 @@ describe('Verify frontend — single canonical Run button, Phase 3 (B-13 Phase 3
 });
 
 describe('Verify frontend — single canonical sequential helper (B-13 Phase 2)', () => {
-  it('shows ide-verify-sequential-helper callout and no ide-vfr-seq-presets in first-run sequential', () => {
+  it('shows the sequential helper inline in the stimulus pane and no ide-vfr-seq-presets in first-run sequential', () => {
     const seqProps = {
       ...baseProps,
       hasVectors: false,
@@ -189,6 +189,7 @@ describe('Verify frontend — single canonical sequential helper (B-13 Phase 2)'
 
     // Canonical sequential helper present
     expect(getByTestId('ide-verify-sequential-helper')).toBeTruthy();
+    expect(getByTestId('ide-verify-empty-state').contains(getByTestId('ide-verify-sequential-helper'))).toBe(true);
     // Duplicate seq presets in VerifyFirstRunPanel must be absent
     expect(queryByTestId('ide-vfr-seq-presets')).toBeNull();
   });

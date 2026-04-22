@@ -129,6 +129,9 @@ tsconfig.tsbuildinfo
 codex_laneA_*.bundle
 *.bundle
 
+# Local dev server logs in artifacts/ (not proof assets)
+/artifacts/playground-dev-*.log
+
 # Accidental artifacts
 ersconnoredbyte-ui
 ops-liveness*.json

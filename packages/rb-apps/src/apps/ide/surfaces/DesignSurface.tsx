@@ -152,6 +152,14 @@ export interface DesignSurfaceProps {
   onRuntimeSimSetSelectedSignal?: (signalKey: string | null) => void;
   onRuntimeSimToggleProbe?: (probe: RuntimeSignalProbe) => void;
   viewportSeed?: string;
+  starterContext?: {
+    name: string;
+    lab?: string;
+    concept?: string;
+    summary?: string;
+    expectedBehavior?: string;
+    nextAction?: string;
+  };
   ioRows?: Array<{
     id: string;
     nodeId: string;
@@ -825,6 +833,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   onRuntimeSimSetSelectedSignal,
   onRuntimeSimToggleProbe,
   viewportSeed,
+  starterContext,
   ioRows = [],
   onGoToHardware,
   onGoToImport,
@@ -1217,6 +1226,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     [activeMacroInsertionId, macros]
   );
   const placementModeLabel = activeInsertionMacro?.name ?? pendingPlacement?.label ?? null;
+  const starterNextAction =
+    starterContext?.nextAction?.trim() ||
+    'Inspect the scaffold on the canvas, then continue editing or move to Verify.';
   const isPlacementMode = placementModeLabel != null;
   // NOTE: commitRuntimeMutation was removed. onRuntime* callbacks (addDesignNode,
   // addDesignIo, addDesignBoardIo, connectDesignNodes) mutate projectRuntime directly.
@@ -5892,6 +5904,58 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             )}
 
             {/* ── Stacked-view notice — shown only when split auto-collapsed to column ── */}
+            {starterContext ? (
+              <section className="ide-design-starter-banner" data-testid="ide-design-starter-banner">
+                <div className="ide-design-starter-banner-main">
+                  <div className="ide-design-starter-banner-head">
+                    <span className="ide-design-starter-banner-eyebrow">Starter loaded</span>
+                    <div className="ide-design-starter-banner-tags">
+                      {starterContext.lab ? (
+                        <span className="ide-design-starter-banner-tag" data-testid="ide-design-starter-banner-lab">
+                          {starterContext.lab}
+                        </span>
+                      ) : null}
+                      {starterContext.concept ? (
+                        <span className="ide-design-starter-banner-tag">{starterContext.concept}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <h3 className="ide-design-starter-banner-title" data-testid="ide-design-starter-banner-title">
+                    {starterContext.name}
+                  </h3>
+                  {starterContext.summary ? (
+                    <p className="ide-design-starter-banner-summary">{starterContext.summary}</p>
+                  ) : null}
+                  {starterContext.expectedBehavior ? (
+                    <p className="ide-design-starter-banner-expected">
+                      <strong>Expected behavior:</strong> {starterContext.expectedBehavior}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="ide-design-starter-banner-next">
+                  <span className="ide-design-starter-banner-next-label">Next</span>
+                  <p
+                    className="ide-design-starter-banner-next-copy"
+                    data-testid="ide-design-starter-banner-next-action"
+                  >
+                    {starterNextAction}
+                  </p>
+                  <div className="ide-design-starter-banner-actions">
+                    {onGoToVerify ? (
+                      <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-design-starter-go-to-verify">
+                        Open Verify
+                      </IdeButton>
+                    ) : null}
+                    {onGoToProject ? (
+                      <IdeButton tone="ghost" onClick={onGoToProject} testId="ide-design-starter-back-to-project">
+                        Back to Project
+                      </IdeButton>
+                    ) : null}
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
             {showWorkspaceStatusBar ? (
               <div className="ide-design-workspace-status-bar" data-testid="ide-design-workspace-status-bar">
                 <div
