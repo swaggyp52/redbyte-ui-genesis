@@ -233,7 +233,7 @@ describe('project workflow authority', () => {
         condition: 'mapping-incomplete',
         severity: 'blocked',
         statusLabel: 'BLOCKED',
-        primaryCtaLabel: 'Open Project — Map Pins',
+        primaryCtaLabel: 'Open Map Pins',
         primaryCtaIntent: 'map-pins',
       })
     );

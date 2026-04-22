@@ -759,7 +759,7 @@ describe('HardwareSurface readiness', () => {
     expect(onGoToDesign).toHaveBeenCalled();
   });
 
-  it('shows Project authority callout on Map Pins when onGoToProject is wired', () => {
+  it('shows Map Pins authority callout when onGoToProject is wired', () => {
     const onGoToProject = vi.fn();
     const health = makeHealth({ blockingIssues: [], dirtySinceExport: false });
     const { getByTestId } = render(
@@ -785,9 +785,8 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-map-authority-callout').textContent).toMatch(/Project/);
-    expect(getByTestId('ide-hw-map-dock-authority-sub').textContent).toMatch(/Authoritative pin table/);
-    fireEvent.click(getByTestId('ide-hw-open-project-map-pins'));
-    expect(onGoToProject).toHaveBeenCalled();
+    expect(getByTestId('ide-hw-map-authority-callout').textContent).toMatch(/Map Pins owns board binding/);
+    expect(getByTestId('ide-hw-map-dock-authority-sub').textContent).toMatch(/authoritative mapping lives here/i);
+    expect(onGoToProject).not.toHaveBeenCalled();
   });
 });

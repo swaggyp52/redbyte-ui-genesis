@@ -246,7 +246,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   // Phase 2: track which port keys have invalid (non-Basys3) pin values
   const [invalidPins, setInvalidPins] = useState<Set<string>>(new Set());
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
-  const pinInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const mapSectionRef = useRef<HTMLElement>(null);
   const highlightResetTimer = useRef<number | null>(null);
   const copyResetTimer = useRef<number | null>(null);
@@ -484,16 +483,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     () => new Map(viewModel.artifacts.map((a) => [a.path.toLowerCase(), a])),
     [viewModel.artifacts]
   );
-  const applySuggestionCount = useMemo(
-    () =>
-      viewModel.pinTable.filter(
-        (r) =>
-          editablePortKeys.has(toPortKey(r.port)) &&
-          r.suggestedPin &&
-          (effectivePinsByPortKey[toPortKey(r.port)] ?? '').trim().length === 0
-      ).length,
-    [editablePortKeys, effectivePinsByPortKey, viewModel.pinTable]
-  );
   const projectMappingMissingRows = useMemo(
     () => viewModel.pinTable.filter((row) => row.required && !editablePortKeys.has(toPortKey(row.port))),
     [editablePortKeys, viewModel.pinTable]
@@ -505,11 +494,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       ),
     [effectivePinsByPortKey, viewModel.pinTable]
   );
-  const mappingAuthoritySummary = hasExternalMappingAuthority
-    ? 'Export is using pin mapping from Project and Map Pins. Changes here follow that shared mapping.'
-    : 'Export is using a local preview mapping. This view is editable, but changes stay local to this Export session.';
+  const mappingAuthoritySummary =
+    'Map Pins owns the saved pin binding. Export mirrors that mapping so you can inspect constraints and generated files without editing board state here.';
   const mappingAuthorityUpdateSummary = recentlyReconciledPins.size > 0
-    ? `${recentlyReconciledPins.size} pin ${recentlyReconciledPins.size === 1 ? 'was' : 'were'} updated from Project or Map Pins.`
+    ? `${recentlyReconciledPins.size} pin ${recentlyReconciledPins.size === 1 ? 'was' : 'were'} updated from Map Pins.`
     : '';
 
   const appEnv = (import.meta as ImportMeta & {
@@ -580,10 +568,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         : clockDiag
           ? clockDiag.message.slice(0, 55)
           : formatExportClockGateDetail(activeScheduleContract, effectiveTimingGuidance.exportDetail);
-    const mappingGateActionLabel =
-      mappingTone === 'error' && hasExternalMappingAuthority && onGoToProject
-        ? 'Open Project — Map Pins'
-        : 'Fix Mapping';
+    const mappingGateActionLabel = mappingTone === 'error' ? 'Open Map Pins' : 'Review mapping';
     return [
       {
         id: 'verify',
@@ -600,8 +585,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         detail: mappingDetail,
         actionLabel: mappingGateActionLabel,
         onAction: () => {
-          if (mappingTone === 'error' && hasExternalMappingAuthority && onGoToProject) {
-            onGoToProject();
+          if (onGoToHardware) {
+            onGoToHardware();
             return;
           }
           mapSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1059,49 +1044,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       highlightResetTimer.current = window.setTimeout(() => {
         setHighlightedPort(null);
       }, 1200);
-    }
-    pinInputRefs.current[portKey]?.focus();
-  };
-
-  const handlePinOverrideChange = useCallback(
-    (portKey: string, newVal: string) => {
-      if (!editablePortKeys.has(portKey)) return;
-      const row = mappingIndex.get(portKey);
-      if (!hasExternalMappingAuthority) {
-        setPinDrafts((prev) => ({ ...prev, [portKey]: newVal }));
-      }
-      if (row?.rowId) {
-        onUpdateMappingPin?.(row.rowId, newVal.trim());
-      }
-    },
-    [editablePortKeys, hasExternalMappingAuthority, mappingIndex, onUpdateMappingPin]
-  );
-
-  const applySuggestion = (portKey: string) => {
-    if (!editablePortKeys.has(portKey)) return;
-    const row = mappingIndex.get(portKey);
-    if (!row?.suggestedPin) return;
-    handlePinOverrideChange(portKey, row.suggestedPin);
-    jumpToMapping(portKey);
-  };
-
-  const applyAllSuggestions = () => {
-    const toApply: Array<{ key: string; rowId?: string; pin: string }> = [];
-    for (const row of viewModel.pinTable) {
-      const key = toPortKey(row.port);
-      if (!editablePortKeys.has(key)) continue;
-      if (!row.suggestedPin) continue;
-      if ((effectivePinsByPortKey[key] ?? '').trim().length === 0) {
-        toApply.push({ key, rowId: row.rowId, pin: row.suggestedPin });
-      }
-    }
-    if (toApply.length === 0) return;
-    if (!hasExternalMappingAuthority) {
-      const overridePatch = Object.fromEntries(toApply.map(({ key, pin }) => [key, pin]));
-      setPinDrafts((prev) => ({ ...prev, ...overridePatch }));
-    }
-    for (const { rowId, pin } of toApply) {
-      if (rowId) onUpdateMappingPin?.(rowId, pin);
     }
   };
 
@@ -2088,15 +2030,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       All required input/output ports must be assigned Basys3 pin identifiers before downloading the Vivado kit.
                     </p>
                     <div className="ide-mt-2">
-                      {onGoToProject ? (
-                        <IdeButton tone="primary" onClick={onGoToProject} testId="ide-export-go-map-pins">
-                          Open Project — Map Pins
-                        </IdeButton>
-                      ) : (
+                      {onGoToHardware ? (
                         <IdeButton tone="primary" onClick={onGoToHardware} testId="ide-export-go-map-pins">
                           Open Map Pins
                         </IdeButton>
-                      )}
+                      ) : null}
                     </div>
                   </IdeCallout>
                 )}
@@ -2185,11 +2123,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                           >
                             {openFixPathId === entry.id ? 'Hide details' : 'Show fix path'}
                           </IdeButton>
-                          {mappingRow && portKey && hasSuggestion && (
-                            <IdeButton tone="ghost" onClick={() => applySuggestion(portKey)}>
-                              Auto-suggest
-                            </IdeButton>
-                          )}
                         </div>
                         {openFixPathId === entry.id && (
                           <div
@@ -2267,11 +2200,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                                   Jump to mapping
                                 </IdeButton>
                               )}
-                              {portKey && mappingRow && hasSuggestion && (
-                                <IdeButton tone="ghost" onClick={() => applySuggestion(portKey)}>
-                                  Apply suggestion
-                                </IdeButton>
-                              )}
                               {onGoToDesign && (
                                 <IdeButton
                                   tone="ghost"
@@ -2308,8 +2236,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   </span>
                 </header>
                 <IdeCallout
-                  tone={hasExternalMappingAuthority ? 'success' : 'warn'}
-                  title="Active pin source"
+                  tone="info"
+                  title="Pin source"
                   testId="ide-export-mapping-authority-callout"
                 >
                   <p className="ide-copy ide-copy--flush" data-testid="ide-export-mapping-authority-text">
@@ -2321,23 +2249,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     </p>
                   )}
                 </IdeCallout>
-                {applySuggestionCount > 0 && (
-                  <div className="ide-inline-actions" style={{ marginBottom: 'var(--ide-space-1)' }}>
-                    <IdeButton
-                      tone="ghost"
-                      onClick={applyAllSuggestions}
-                      testId="ide-export-apply-suggestions"
-                    >
-                      Apply {applySuggestionCount} suggestion{applySuggestionCount !== 1 ? 's' : ''}
-                    </IdeButton>
-                  </div>
-                )}
                 {projectMappingMissingRows.length > 0 && (
-                  <IdeCallout tone="warn" title="Add missing project mappings before binding pins">
+                  <IdeCallout tone="warn" title="Add missing project mappings before export">
                     {projectMappingMissingRows.length} required port
                     {projectMappingMissingRows.length === 1 ? '' : 's'} appear in the top entity
-                    but not in the project mapping yet. Add them in Project or Design before assigning a
-                    Basys3 pin here.
+                    but not in the project mapping yet. Add them in Design, then finish the board assignment in Map Pins.
                   </IdeCallout>
                 )}
                 <div className="ide-table-wrap ide-export-table-wrap">
@@ -2359,7 +2275,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         const status = resolveRowStatus(row.status, pinValue);
                         const conf = getPinConfidence(row.suggestedPin, pinValue);
                         const isPinInvalid = invalidPins.has(portKey);
-                        const isEditable = editablePortKeys.has(portKey);
                         const changedByAuthority = hasExternalMappingAuthority && recentlyReconciledPins.has(portKey);
                         return (
                           <tr
@@ -2382,30 +2297,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                               </span>
                             </td>
                             <td>
-                              <input
-                                ref={(node) => {
-                                  pinInputRefs.current[portKey] = node;
-                                }}
-                                className="ide-export-pin-input"
-                                value={pinValue}
-                                disabled={!isEditable}
-                                onChange={(event) => {
-                                  const newVal = event.target.value.toUpperCase();
-                                  handlePinOverrideChange(portKey, newVal);
-                                  // Phase 2: validate against known Basys3 pins
-                                  const trimmed = newVal.trim();
-                                  setInvalidPins((prev) => {
-                                    const next = new Set(prev);
-                                    if (trimmed.length > 0 && !BASYS3_VALID_PINS.has(trimmed)) {
-                                      next.add(portKey);
-                                    } else {
-                                      next.delete(portKey);
-                                    }
-                                    return next;
-                                  });
-                                }}
-                                placeholder={isEditable ? row.suggestedPin ?? 'PIN' : 'Add mapping first'}
-                              />
+                              <div className="ide-project-pin-field ide-project-pin-field--locked">
+                                <span className="ide-project-pin-locked-copy">
+                                  {pinValue.trim().length > 0 ? pinValue : 'Assign in Map Pins'}
+                                </span>
+                              </div>
                               {isPinInvalid && (
                                 <span className="ide-pin-warn">[!] Unknown pin - check Basys3 reference</span>
                               )}
@@ -2431,16 +2327,16 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                                   className="ide-export-suggestion"
                                   data-testid={`ide-export-pin-updated-upstream-${portKey}`}
                                 >
-                                  Updated from Project / Map Pins.
+                                  Updated from Map Pins.
                                 </div>
                               )}
-                              {!isEditable && (
+                              {pinValue.trim().length === 0 && (
                                 <div className="ide-export-suggestion">
-                                  Add this mapping in Project or Design before assigning a pin.
+                                  Finish this assignment in Map Pins before download.
                                 </div>
                               )}
-                              {row.suggestedPin && (
-                                <div className="ide-export-suggestion">Suggested: {row.suggestedPin}</div>
+                              {row.suggestedPin && pinValue.trim().length === 0 && (
+                                <div className="ide-export-suggestion">Suggested board resource: {row.suggestedPin}</div>
                               )}
                             </td>
                           </tr>

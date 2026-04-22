@@ -157,24 +157,6 @@ const PROJECT_EMPTY_SIM: RuntimeSimState = {
   inputs: {}, signals: {}, trace: [], selectedSignalKey: null, probes: [],
 };
 
-const PROJECT_INPUT_ALIAS_OPTIONS = [
-  'CLK100MHZ',
-  ...Array.from({ length: 16 }, (_, index) => `SW${index}`),
-  'BTNC',
-  'BTNU',
-  'BTND',
-  'BTNL',
-  'BTNR',
-];
-
-const PROJECT_OUTPUT_ALIAS_OPTIONS = [
-  ...Array.from({ length: 16 }, (_, index) => `LD${index}`),
-  ...Array.from({ length: 16 }, (_, index) => `LED${index}`),
-  ...Array.from({ length: 7 }, (_, index) => `SEG${index}`),
-  'DP',
-  ...Array.from({ length: 4 }, (_, index) => `AN${index}`),
-];
-
 const SECURITY_LOCK_STARTER_ID = '23_lab8-fsm-lock-starter-basys3';
 const SECURITY_LOCK_REFERENCE_PATH = 'labs/ece141-final-project';
 
@@ -274,11 +256,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     );
     if (!mappingKey) return;
 
-    const input = mappingInputRefs.current[mappingKey];
-    if (!input) return;
-
-    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    input.focus();
+    mappingSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setMappingExpanded(true);
     setHighlightedMappingKey(mappingKey);
 
     if (highlightResetTimer.current !== null && typeof window !== 'undefined') {
@@ -576,14 +555,13 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           onOpenImport();
           return;
         case 'project':
-          setMappingExpanded(true);
-          mappingSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          onOpenHardware();
           return;
         default:
           return;
       }
     },
-    [onOpenDesign, onOpenExport, onOpenHardware, onOpenImport, onOpenVerify, setMappingExpanded]
+    [onOpenDesign, onOpenExport, onOpenHardware, onOpenImport, onOpenVerify]
   );
 
 
@@ -613,7 +591,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         const displayLabel = getStudentFacingIoLabel(row);
         const rolePresentation = resolveMappingRolePresentation(row, ioSignalRolesByLabel);
         const directPin = isDirectPinRow(row);
-        const quickPins = directPin ? getProjectQuickPickPins(row, index) : [];
         const swM2 = /^SW(\d+)$/i.exec(row.label);
         const ldM2 = /^LD(\d+)$/i.exec(row.label);
         const rowSigType = swM2 ? 'sw' : ldM2 ? 'ld' : null;
@@ -662,41 +639,20 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </span>
         );
         const pinCell = directPin ? (
-          <div className="ide-project-pin-field" data-testid={`ide-project-pin-field-${mappingKey}`}>
-            <input
-              ref={(node) => {
-                mappingInputRefs.current[mappingKey] = node;
-              }}
-              className={`ide-export-pin-input ide-project-map-pin-input ${
-                highlightedMappingKey === mappingKey ? 'is-highlighted' : ''
-              }`}
-              value={row.pin}
-              list={row.direction === 'in' ? 'ide-project-input-pin-options' : 'ide-project-output-pin-options'}
-              onChange={(event) => commitMappingPin(row.id, event.target.value.toUpperCase().trim())}
-              placeholder={suggestBasys3Pin(row, index)}
-              aria-label={`pin-${row.id}`}
-              data-testid={`ide-project-map-input-${mappingKey}`}
-            />
-            {quickPins.length > 0 && (
-              <div className="ide-project-pin-quick-picks">
-                {quickPins.map((pin) => {
-                  const isActive =
-                    resolveBasys3PackagePin(row.pin) === resolveBasys3PackagePin(pin) &&
-                    row.pin.trim().length > 0;
-                  return (
-                    <button
-                      key={`${row.id}-${pin}`}
-                      type="button"
-                      className={`ide-project-pin-quick-pick${isActive ? ' is-active' : ''}`}
-                      onClick={() => commitMappingPin(row.id, pin)}
-                      data-testid={`ide-project-map-quick-${mappingKey}-${toMappingKey(pin)}`}
-                    >
-                      {pin}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+          <div
+            className={`ide-project-pin-field ide-project-pin-field--locked ${
+              highlightedMappingKey === mappingKey ? 'is-highlighted' : ''
+            }`}
+            data-testid={`ide-project-pin-field-${mappingKey}`}
+            title={
+              row.pin.trim().length > 0
+                ? `Saved Basys3 binding: ${row.pin}`
+                : `Assign this port in Map Pins. Suggested board resource: ${suggestBasys3Pin(row, index)}`
+            }
+          >
+            <span className="ide-project-pin-locked-copy">
+              {row.pin.trim().length > 0 ? row.pin.trim().toUpperCase() : 'Assign in Map Pins'}
+            </span>
           </div>
         ) : (
           <div
@@ -748,7 +704,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         ];
       }),
     [
-      commitMappingPin,
       effectiveBoardSignal,
       highlightedMappingKey,
       ioBus,
@@ -1184,8 +1139,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             <div>
               <h3 className="ide-export-section-header-title ide-project-map-pins-title">Board pin mapping (Basys3)</h3>
               <p className="ide-project-map-pins-sub" data-testid="ide-project-map-pipeline-copy">
-                <strong>This is the main place to type Basys3 pin codes.</strong> After Design and Verify, assign each
-                top-level port to a board pin here. <strong>Export and Hardware Map Pins both read this same table.</strong>
+                <strong>Map Pins is the authoritative editing stage.</strong> Project mirrors the saved board binding so
+                you can confirm which top-level ports are ready before export and hardware handoff.
               </p>
             </div>
             <div className="ide-project-map-pins-export-note" data-testid="ide-project-map-export-alignment">
@@ -1197,7 +1152,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           {hasVerifyRun && unmappedRequiredCount > 0 && (
             <div className="ide-project-map-post-verify" data-testid="ide-project-mapping-post-verify-hint">
               <IdeCallout tone="info" title="You verified the logic — finish board pins">
-                Assign the highlighted required ports below so the Vivado bundle matches what you simulated.
+                Finish the highlighted required ports in Map Pins so the Vivado bundle matches what you simulated.
                 Optional ports stay off the board unless you map them on purpose.
               </IdeCallout>
             </div>
@@ -1247,12 +1202,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             </div>
           </details>
 
-          {mappingEditFeedback && (
-            <div className="ide-project-mapping-saved-feedback" data-testid="ide-project-mapping-saved-feedback" role="status">
-              {mappingEditFeedback}
-            </div>
-          )}
-
           <div
             className={`ide-project-mapping-summary${unmappedRequiredCount > 0 ? ' has-error' : ''}`}
             data-testid="ide-project-mapping-summary-strip"
@@ -1284,6 +1233,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 )}
               </div>
             )}
+            <IdeButton tone="secondary" onClick={onOpenHardware} testId="ide-project-open-map-pins">
+              Open Map Pins
+            </IdeButton>
             <button
               type="button"
               className={`ide-project-mapping-expand-btn${unmappedRequiredCount > 0 ? ' is-error' : ''}`}
@@ -1303,10 +1255,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           {mappingExpanded && (
             <div className="ide-project-mapping-table-wrap" data-testid="ide-project-mapping-table-wrap">
               <div className="ide-project-mapping-quick-hint" data-testid="ide-project-mapping-quick-hint">
-                Quick picks and placeholders infer likely pins from port names (clock, reset, switches, LEDs).{' '}
-                You can override any suggestion — the project stores exactly what you type. Board aliases: inputs{' '}
-                <code>CLK100MHZ</code>, <code>SW0-SW15</code>, <code>BTNC-BTNR</code>; outputs{' '}
-                <code>LD0-LD15</code>, <code>SEG0-SEG6</code>, <code>DP</code>, <code>AN0-AN3</code>.
+                Project now shows mapping truth without editing it. Use <strong>Map Pins</strong> to assign the board
+                resource, then return here to confirm the logical port, board name, and package pin line up.
               </div>
               <div
                 className={`ide-project-mapping-status ${unmappedRequiredCount > 0 ? 'is-error' : 'is-complete'}`}
@@ -1320,21 +1270,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 </span>
               </div>
               <IdeDataTable
-                columns={['Port', 'Role', 'Alias → package pin', 'Pin editor', 'Dir', 'Status']}
+                columns={['Port', 'Role', 'Alias → package pin', 'Saved binding', 'Dir', 'Status']}
                 rows={mappingRowsUi}
                 testId="ide-project-mapping-table"
                 getRowClassName={(rowIndex) => mappingRowClassNames[rowIndex]}
               />
-              <datalist id="ide-project-input-pin-options">
-                {PROJECT_INPUT_ALIAS_OPTIONS.map((pin) => (
-                  <option key={pin} value={pin} />
-                ))}
-              </datalist>
-              <datalist id="ide-project-output-pin-options">
-                {PROJECT_OUTPUT_ALIAS_OPTIONS.map((pin) => (
-                  <option key={pin} value={pin} />
-                ))}
-              </datalist>
             </div>
           )}
         </section>
@@ -1701,35 +1641,6 @@ function suggestBasys3Pin(
     return `SW${Math.min(index, 15)}`;
   }
   return `LD${Math.min(index, 15)}`;
-}
-
-function getProjectQuickPickPins(
-  row: Pick<ProjectMappingRow, 'label' | 'port' | 'direction'>,
-  index: number
-): string[] {
-  const raw = getStudentFacingIoLabel(row).trim().toUpperCase();
-  const suggestions = new Set<string>();
-  const exactMatch = /^(CLK100MHZ|CLK|SW\d{1,2}|LD\d{1,2}|LED\d{1,2}|BTN[CUDLR]|\bDP\b|SEG\d|AN\d)$/i.exec(raw);
-  if (exactMatch) {
-    suggestions.add(raw === 'CLK' ? 'CLK100MHZ' : raw);
-  }
-
-  if (row.direction === 'in') {
-    if (!exactMatch && /RESET|RST/.test(raw)) suggestions.add('BTNC');
-    suggestions.add(suggestBasys3Pin({ id: raw || `IN${index}`, direction: row.direction }, index));
-    if (!suggestions.has('CLK100MHZ')) suggestions.add('CLK100MHZ');
-    suggestions.add('SW0');
-    suggestions.add('BTNC');
-  } else {
-    suggestions.add(suggestBasys3Pin({ id: raw || `OUT${index}`, direction: row.direction }, index));
-    suggestions.add('SEG0');
-    suggestions.add('AN0');
-    suggestions.add('DP');
-  }
-
-  return Array.from(suggestions)
-    .filter((pin) => resolveBasys3PackagePin(pin) !== null)
-    .slice(0, 4);
 }
 
 function formatSavedAt(value: string): string {

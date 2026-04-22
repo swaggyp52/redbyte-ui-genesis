@@ -933,19 +933,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         setSelectedMappingRowId(null);
       };
       return {
-        title: onGoToProject ? 'Finish pins in Project first' : 'Map the board pins first',
-        body: onGoToProject
-          ? `${unresolvedLabel} Project → Map Pins is the main pin table. Use the board Map Pins stage when you want to click the diagram.`
-          : `Choose a signal row, then click the matching board region. ${unresolvedLabel}`,
-        primaryLabel: onGoToProject ? 'Open Project — Map Pins' : 'Show board mapping',
-        primaryAction: onGoToProject
-          ? () => {
-              onGoToProject();
-            }
-          : openBoardMap,
+        title: 'Map the board pins first',
+        body: `Choose a signal row, then click the matching board region. ${unresolvedLabel}`,
+        primaryLabel: 'Show board mapping',
+        primaryAction: openBoardMap,
         primaryTestId: 'ide-hardware-next-primary',
-        secondaryLabel: onGoToProject ? 'Board quick-assign view' : onGoToDesign ? 'Open Design' : null,
-        secondaryAction: onGoToProject ? openBoardMap : onGoToDesign ?? null,
+        secondaryLabel: onGoToDesign ? 'Open Design' : null,
+        secondaryAction: onGoToDesign ?? null,
       };
     }
 
@@ -1238,9 +1232,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           return 'Mapping is complete. Continue to Board Check with bring-up vectors, or open Export to download the Vivado project ZIP. The bitstream (.bit) is created later in Vivado (synthesis/implementation) — not inside RedByte.';
         }
         if (unresolvedRequiredCount > 0) {
-          return `${unresolvedRequiredCount} required pin${unresolvedRequiredCount === 1 ? '' : 's'} still need board assignments. Type Basys3 codes in Project → Map Pins first, or select a row here and click the board — same mapping Export uses.`;
+          return `${unresolvedRequiredCount} required pin${unresolvedRequiredCount === 1 ? '' : 's'} still need board assignments. Select a row here and click the board so Export receives the same saved mapping.`;
         }
-        return 'Finish the required clock and output checks. Use Project → Map Pins for pin codes, or use the board view here to quick-assign rows.';
+        return 'Finish the required clock and output checks, then use the board view here to complete the saved mapping.';
       case 'bringup':
         if (bringupTickGroups.length === 0) {
           return 'Generate bring-up vectors from Verify, then use these steps to set switches and confirm LEDs against the expected trace.';
@@ -1318,14 +1312,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         <div className="ide-hw-map-dock-head-main">
           <h3>Pin readiness</h3>
           <p className="ide-copy ide-copy--flush ide-hw-map-dock-authority-line" data-testid="ide-hw-map-dock-authority-sub">
-            {onGoToProject ? (
-              <>
-                Authoritative pin table: <strong>Project → Map Pins</strong>. This panel tracks the same saved mapping for
-                board prep.
-              </>
-            ) : (
-              <>Tracks Basys3 assignments from your project for board stages.</>
-            )}
+            Authoritative mapping lives here in <strong>Map Pins</strong>. Export reads this same saved binding for
+            constraints and handoff files.
           </p>
         </div>
         <IdeStatusPill tone={mappingReady ? 'ok' : 'warn'}>
@@ -1378,17 +1366,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         ) : (
           <div className="ide-hw-map-dock-hint" data-testid="ide-hw-map-dock-incomplete-hint">
             <p className="ide-copy" style={{ margin: 0, fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-              {onGoToProject
-                ? 'Type Basys3 pin codes in Project → Map Pins first. Here you can select a row and click the board to quick-assign — same saved mapping.'
-                : 'Select a row in the table, then click a region on the board, or finish typing pins on Project.'}
+              Select a row in the table, then click a region on the board to assign the saved board resource mapping.
             </p>
-            {onGoToProject ? (
-              <div className="ide-inline-actions" style={{ marginTop: '8px' }}>
-                <IdeButton tone="primary" onClick={onGoToProject} testId="ide-hw-dock-open-project-map">
-                  Open Project — Map Pins
-                </IdeButton>
-              </div>
-            ) : null}
           </div>
         )}
       </div>
@@ -2162,24 +2141,16 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 </span>
               </div>
             </header>
-            {onGoToProject ? (
-              <IdeCallout
-                tone="info"
-                title="Board view — same mapping as Project"
-                testId="ide-hw-map-authority-callout"
-              >
-                <p className="ide-copy ide-copy--flush">
-                  <strong>Project → Map Pins</strong> is the main place to type Basys3 pin codes and see required vs
-                  optional rows. This stage shows the <strong>same saved mapping</strong> Export uses. Use it to
-                  quick-assign by row + board click, not as a separate pin list.
-                </p>
-                <div className="ide-inline-actions" style={{ marginTop: 'var(--rb-space-2)' }}>
-                  <IdeButton tone="primary" onClick={onGoToProject} testId="ide-hw-open-project-map-pins">
-                    Open Project — Map Pins
-                  </IdeButton>
-                </div>
-              </IdeCallout>
-            ) : null}
+            <IdeCallout
+              tone="info"
+              title="Map Pins owns board binding"
+              testId="ide-hw-map-authority-callout"
+            >
+              <p className="ide-copy ide-copy--flush">
+                Use this stage to connect each logical port to a Basys3 resource and inspect the matching package pin.
+                Export reads the same saved mapping when it generates `top.xdc`.
+              </p>
+            </IdeCallout>
             <div className="ide-hw-board-canvas ide-hw-board-canvas--split">
           <div className="ide-hw-map-mode" data-testid="ide-hw-map-mode">
             <div className="ide-hw-map-table" data-testid="ide-hw-map-table">
@@ -2197,7 +2168,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                         Top entity: <code>{designTopEntityName}</code>.
                       </>
                     ) : null}{' '}
-                    Use the details below to fix the mismatch in <strong>Project → Map Pins</strong> (structured
+                    Use the details below to fix the mismatch in <strong>Map Pins</strong> (structured
                     entries and pins) or adjust boundary I/O in <strong>Design</strong> so top-level ports line up.
                   </p>
                   <ul className="ide-hw-export-repair-list">
@@ -2256,9 +2227,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     testId="ide-hw-structured-authority-note"
                   >
                     <p className="ide-copy ide-copy--flush">
-                      Scalar pins are easiest to assign on <strong>Project → Map Pins</strong>. Use this block when you need
-                      bus/bit rows or Export surfaced a structured validation issue — it edits the same{' '}
-                      <code>hardwareMappingV2</code> payload as Project and Export.
+                      Scalar pins are easiest to assign in the main <strong>Map Pins</strong> table. Use this block when
+                      you need bus/bit rows or Export surfaced a structured validation issue — it edits the same{' '}
+                      <code>hardwareMappingV2</code> payload Export reads.
                     </p>
                   </IdeCallout>
                   <h4 className="ide-hw-structured-editor-title">Pin mapping entries</h4>

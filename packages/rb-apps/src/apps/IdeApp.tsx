@@ -1340,7 +1340,7 @@ export const IdeApp: React.FC = () => {
   const statusBarGateStatus = workflowAuthority.statusBarGateStatus;
 
   const handleProjectPrimaryAction = useCallback(() => {
-    setCurrentMode(primaryProjectCta.mode);
+    setCurrentMode(primaryProjectCta.mode === 'project' ? 'hardware' : primaryProjectCta.mode);
   }, [primaryProjectCta.mode]);
 
   const handleVerifyFixPath = useCallback(

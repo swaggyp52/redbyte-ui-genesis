@@ -341,9 +341,9 @@ describe('ProjectSurface workspace panels', () => {
     expect(portLd0List[portLd0List.length - 1].textContent).not.toContain('in');
   });
 
-  it('surfaces FPGA config, fidelity, and Project-side quick picks for lab-day export prep', () => {
+  it('surfaces FPGA config, fidelity, and a Map Pins handoff for lab-day export prep', () => {
     const onFpgaConfigChange = vi.fn();
-    const onUpdateMappingPin = vi.fn();
+    const onOpenHardware = vi.fn();
     const { getAllByTestId, getByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
@@ -373,7 +373,7 @@ describe('ProjectSurface workspace panels', () => {
             },
             importFidelity: 'reconstructed',
             onFpgaConfigChange,
-            onUpdateMappingPin,
+            onOpenHardware,
           })}
         />
       </BoardSignalProvider>
@@ -390,18 +390,12 @@ describe('ProjectSurface workspace panels', () => {
     
     const partList = getAllByTestId('ide-project-fpga-part');
     fireEvent.change(partList[partList.length - 1], { target: { value: 'xc7a100tcsg324-1' } });
-    
-    const clkList = getAllByTestId('ide-project-map-quick-clk-clk100mhz');
-    fireEvent.click(clkList[clkList.length - 1]);
-    
-    const seg0List = getAllByTestId('ide-project-map-quick-seg0-seg0');
-    fireEvent.click(seg0List[seg0List.length - 1]);
+
+    fireEvent.click(getByTestId('ide-project-open-map-pins'));
 
     expect(onFpgaConfigChange).toHaveBeenCalledWith({ top: 'lab_top' });
     expect(onFpgaConfigChange).toHaveBeenCalledWith({ part: 'xc7a100tcsg324-1' });
-    expect(onUpdateMappingPin).toHaveBeenCalledWith('clk', 'CLK100MHZ');
-    expect(onUpdateMappingPin).toHaveBeenCalledWith('seg0', 'SEG0');
-    
+    expect(onOpenHardware).toHaveBeenCalledTimes(1);
   });
 
   it('keeps export available on Project even when Verify has not been trusted yet', () => {

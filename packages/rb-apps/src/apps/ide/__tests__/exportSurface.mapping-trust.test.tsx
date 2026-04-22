@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, within } from '@testing-library/react';
 import type { RBProject } from '../../../export/projectFormat';
 import { ExportSurface } from '../surfaces/ExportSurface';
@@ -132,58 +132,47 @@ function withUpdatedPin(project: RBProject, rowId: string, pin: string): RBProje
 }
 
 describe('ExportSurface mapping trust', () => {
-  it('rebuilds the previewed constraints from the edited pin map', () => {
-    const { getByDisplayValue, getByTestId } = render(
-      <ExportSurface
-        project={buildProject()}
-        determinismHash="ide-hash"
-      />
-    );
-
-    fireEvent.click(getByTestId('ide-export-artifact-tab-top-xdc'));
-
-    expect(getByTestId('ide-export-preview-code').textContent).toContain('PACKAGE_PIN V17');
-
-    fireEvent.change(getByDisplayValue('V17'), { target: { value: 'W16' } });
-
-    expect(getByTestId('ide-export-preview-code').textContent).toContain('PACKAGE_PIN W16');
-
-    const sw0Row = getByTestId('ide-export-map-row-sw0');
-    expect(within(sw0Row).getByDisplayValue('W16')).toBeTruthy();
-  });
-
-  it('reads edited pins from project authority when parent updates mapping state', () => {
-    const initialProject = buildProject();
-    let currentProject = initialProject;
-
+  it('rebuilds the previewed constraints when Map Pins updates project mapping upstream', () => {
+    let currentProject = buildProject();
     const view = render(
       <ExportSurface
         project={currentProject}
         determinismHash="ide-hash"
-        onUpdateMappingPin={(rowId, pin) => {
-          currentProject = withUpdatedPin(currentProject, rowId, pin);
-        }}
       />
     );
 
     fireEvent.click(view.getByTestId('ide-export-artifact-tab-top-xdc'));
+
     expect(view.getByTestId('ide-export-preview-code').textContent).toContain('PACKAGE_PIN V17');
 
-    fireEvent.change(view.getByDisplayValue('V17'), { target: { value: 'W16' } });
-
+    currentProject = withUpdatedPin(currentProject, 'sw0', 'W16');
     view.rerender(
       <ExportSurface
         project={currentProject}
         determinismHash="ide-hash"
-        onUpdateMappingPin={(rowId, pin) => {
-          currentProject = withUpdatedPin(currentProject, rowId, pin);
-        }}
       />
     );
 
     expect(view.getByTestId('ide-export-preview-code').textContent).toContain('PACKAGE_PIN W16');
+
     const sw0Row = view.getByTestId('ide-export-map-row-sw0');
-    expect(within(sw0Row).getByDisplayValue('W16')).toBeTruthy();
+    expect(within(sw0Row).getByText('W16')).toBeTruthy();
+  });
+
+  it('renders the pin table as read-only even when a parent updater exists', () => {
+    const onUpdateMappingPin = vi.fn();
+    const view = render(
+      <ExportSurface
+        project={buildProject()}
+        determinismHash="ide-hash"
+        onUpdateMappingPin={onUpdateMappingPin}
+      />
+    );
+
+    const sw0Row = view.getByTestId('ide-export-map-row-sw0');
+    expect(within(sw0Row).queryByRole('textbox')).toBeNull();
+    expect(within(sw0Row).getByText('V17')).toBeTruthy();
+    expect(onUpdateMappingPin).not.toHaveBeenCalled();
   });
 
   it('shows active project/map-pins authority and upstream pin reconciliation', () => {
@@ -199,7 +188,7 @@ describe('ExportSurface mapping trust', () => {
     );
 
     expect(view.getByTestId('ide-export-mapping-authority-text').textContent).toContain(
-      'Export is using pin mapping from Project and Map Pins.'
+      'Map Pins owns the saved pin binding.'
     );
 
     currentProject = withUpdatedPin(currentProject, 'sw0', 'W16');
@@ -214,31 +203,33 @@ describe('ExportSurface mapping trust', () => {
     );
 
     expect(view.getByTestId('ide-export-mapping-authority-updates').textContent).toContain(
-      '1 pin was updated from Project or Map Pins.'
+      '1 pin was updated from Map Pins.'
     );
     expect(view.getByTestId('ide-export-pin-updated-upstream-sw0').textContent).toContain(
-      'Updated from Project / Map Pins.'
+      'Updated from Map Pins.'
     );
   });
 
-  it('shows standalone local-preview authority when no project updater is wired', () => {
+  it('keeps the same Map Pins authority copy when no project updater is wired', () => {
     const view = render(<ExportSurface project={buildProject()} determinismHash="ide-hash" />);
 
     expect(view.getByTestId('ide-export-mapping-authority-text').textContent).toContain(
-      'Export is using a local preview mapping.'
+      'Map Pins owns the saved pin binding.'
     );
     expect(view.queryByTestId('ide-export-mapping-authority-updates')).toBeNull();
   });
 
-  it('keeps live boundary rows editable when export labels sanitize differently', () => {
+  it('keeps live boundary rows visible when export labels sanitize differently', () => {
     const view = render(
       <ExportSurface project={buildExampleProject('two-bit-counter')} determinismHash="ide-hash" />
     );
 
-    const enableInput = within(view.getByTestId('ide-export-map-row-en')).getByDisplayValue('V17') as HTMLInputElement;
-    const resetInput = within(view.getByTestId('ide-export-map-row-rst')).getByDisplayValue('U18') as HTMLInputElement;
+    const enableRow = view.getByTestId('ide-export-map-row-en');
+    const resetRow = view.getByTestId('ide-export-map-row-rst');
 
-    expect(enableInput.disabled).toBe(false);
-    expect(resetInput.disabled).toBe(false);
+    expect(within(enableRow).getByText('V17')).toBeTruthy();
+    expect(within(resetRow).getByText('U18')).toBeTruthy();
+    expect(within(enableRow).queryByRole('textbox')).toBeNull();
+    expect(within(resetRow).queryByRole('textbox')).toBeNull();
   });
 });

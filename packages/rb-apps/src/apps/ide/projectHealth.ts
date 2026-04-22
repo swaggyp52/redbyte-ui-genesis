@@ -135,7 +135,7 @@ export function deriveProjectHealth(
     blockingIssues.push({
       code: 'RBP1001',
       message: 'Required Basys3 I/O mappings are missing.',
-      fixPath: { mode: 'project', actionLabel: 'Fix Mapping' },
+      fixPath: { mode: 'hardware', actionLabel: getOpenStageActionLabel('hardware') },
     });
   }
 
@@ -207,7 +207,7 @@ export function choosePrimaryProjectCta(
     return { label: 'Verify', mode: 'verify', code: 'RBP1004' };
   }
   if (!readiness.hasIoMapping) {
-    return { label: 'Fix Mapping', mode: 'project', code: 'RBP1001' };
+    return { label: getWorkflowCtaLabel('hardware'), mode: 'hardware', code: 'RBP1001' };
   }
   if (!readiness.hasVectors) {
     return { label: 'Verify', mode: 'verify', code: 'RBP1002' };

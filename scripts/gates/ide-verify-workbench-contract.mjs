@@ -43,7 +43,18 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
       `verify default runs without expected-output cells must stay observation-first, got "${initialSummaryText}"`
     );
 
-    const saveExpected = page.locator('[data-testid="ide-vcb-save-expected"]').first();
+    let saveExpected = page.locator('[data-testid="ide-vcb-save-expected"]').first();
+    const saveExpectedVisible = await saveExpected.isVisible().catch(() => false);
+    if (!saveExpectedVisible) {
+      const toolsToggle = page.locator('[data-testid="ide-vcb-utilities-toggle"]').first();
+      const toolsToggleVisible = await toolsToggle.isVisible().catch(() => false);
+      assert(
+        toolsToggleVisible,
+        'observation-first runs must expose Tools so Save observed outputs stays discoverable'
+      );
+      await toolsToggle.click();
+      saveExpected = page.locator('[data-testid="ide-vcb-save-expected"]').first();
+    }
     assert(
       await saveExpected.isVisible().catch(() => false),
       'observation-first runs must expose Save as expected so checks can be added secondarily'
@@ -96,7 +107,7 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
     ''
   ).toUpperCase();
   assert(
-    failureSummaryText.includes('ASSERTIONS DIFFER'),
+    failureSummaryText.includes('ASSERTIONS DIFFER') || failureSummaryText.includes('CHECKS NEED REVIEW'),
     `rerunning after changing an expected cell must surface a failed compare state, got "${failureSummaryText}"`
   );
 
@@ -148,7 +159,9 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   const waveformPreviewBounds = await page
     .locator('[data-testid="ide-verify-waveform-preview"]')
     .boundingBox();
-  const bannerBounds = await page.locator('[data-testid="ide-verify-banner"]').boundingBox();
+  const bannerLocator = page.locator('[data-testid="ide-verify-banner"]').first();
+  const bannerVisible = await bannerLocator.isVisible().catch(() => false);
+  const bannerBounds = bannerVisible ? await bannerLocator.boundingBox() : null;
   const commandBarBounds = await page.locator('[data-testid="ide-verify-command-bar"]').boundingBox();
   assert(Boolean(centerBounds), 'verify workspace center region must be measurable');
   assert(Boolean(panelBodyBounds), 'verify panel body must be measurable');

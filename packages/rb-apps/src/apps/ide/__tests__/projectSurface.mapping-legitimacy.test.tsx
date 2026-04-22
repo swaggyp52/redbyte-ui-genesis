@@ -81,7 +81,7 @@ describe('ProjectSurface — mapping legitimacy (trust + workflow)', () => {
     );
 
     expect(getByTestId('ide-project-map-pins-header').textContent).toContain('Board pin mapping');
-    expect(getByTestId('ide-project-map-pipeline-copy').textContent).toContain('Export and Hardware');
+    expect(getByTestId('ide-project-map-pipeline-copy').textContent).toContain('export and hardware handoff');
     expect(getByTestId('ide-project-map-export-alignment').textContent).toMatch(/Export/i);
     expect(getByTestId('ide-project-mapping-post-verify-hint').textContent).toContain('verified');
   });
@@ -136,9 +136,9 @@ describe('ProjectSurface — mapping legitimacy (trust + workflow)', () => {
     expect(container.querySelector('tr.ide-project-map-row--locked')).toBeTruthy();
   });
 
-  it('shows persistence feedback after a scalar pin edit', () => {
-    const onUpdateMappingPin = vi.fn();
-    const { getByTestId } = render(
+  it('keeps Project mapping rows read-only and routes the student to Map Pins', () => {
+    const onOpenHardware = vi.fn();
+    const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -153,16 +153,16 @@ describe('ProjectSurface — mapping legitimacy (trust + workflow)', () => {
                 port: 'sw',
               },
             ],
-            onUpdateMappingPin,
+            onOpenHardware,
           })}
         />
       </BoardSignalProvider>
     );
 
-    const input = getByTestId('ide-project-map-input-sw0') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'V17' } });
+    expect(getByTestId('ide-project-pin-field-sw0').textContent).toContain('Assign in Map Pins');
+    expect(queryByTestId('ide-project-map-input-sw0')).toBeNull();
 
-    expect(onUpdateMappingPin).toHaveBeenCalledWith('sw', 'V17');
-    expect(getByTestId('ide-project-mapping-saved-feedback').textContent).toContain('Saved');
+    fireEvent.click(getByTestId('ide-project-open-map-pins'));
+    expect(onOpenHardware).toHaveBeenCalledTimes(1);
   });
 });

@@ -32135,3 +32135,54 @@ Key details:
 - Verify remains intentionally sparse before a run populates evidence; the shell is more coherent, but that pre-run empty state is still visually thin.
 
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-04-22 (IDE mapping authority reset)
+
+**Subsystem**: IDE Project / Hardware / Export workflow boundaries
+
+**Problem**
+
+- Mapping edits were split across Project, Hardware, and Export, so students could change board state from multiple places and still be unsure which surface actually owned the truth.
+- Project still behaved like a light mapping editor instead of a readiness and handoff surface.
+- Export still looked like a place to repair or override pins even though the product needs a clear `Build -> Verify -> Map -> Export` story.
+
+**Files changed**
+
+- `docs/release/product-hardening-ticket-2026-04-22-mapping-authority-reset.md`
+- `packages/rb-apps/src/apps/IdeApp.tsx`
+- `packages/rb-apps/src/apps/ide/projectHealth.ts`
+- `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts`
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts`
+- `packages/rb-apps/src/apps/ide/__tests__/projectSurface.mapping-legitimacy.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx`
+- `scripts/gates/_verifyStatus.mjs`
+- `scripts/gates/ide-project-readiness-contract.mjs`
+- `scripts/gates/ide-verify-workbench-contract.mjs`
+
+**What changed**
+
+- Moved the canonical mapping handoff to `Map Pins` by routing incomplete-mapping CTAs and repair language to Hardware instead of Project.
+- Turned Project's mapping area into a read-only readiness summary with an explicit `Open Map Pins` handoff instead of inline pin edits and quick-picks.
+- Turned Export's pin table into a read-only inspection surface that mirrors saved bindings from `Map Pins` and no longer implies local pin repair.
+- Rewrote Hardware authority copy so it clearly owns logical port -> board resource -> package pin assignment.
+- Updated the affected surface and gate tests so they assert the new ownership contract instead of the retired Project / Export pin editors.
+
+**Validation**
+
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.mapping-legitimacy.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx` -> PASS (`61 passed`)
+- `pnpm ide:gate:hardware-checklist-contract` -> PASS
+- `pnpm ide:gate:export-artifact-explorer-contract` -> PASS
+- `pnpm ide:gate:project-readiness-contract` -> PASS after updating the contract to the new read-only Project summary model
+- `pnpm build:unified` -> PASS
+
+**Remaining weakness**
+
+- `pnpm ide:gate:verify-workbench-contract` still fails on the existing Verify desktop workspace share threshold (`share=0.370`), so Verify has not been reset yet and still needs its own follow-on slice.
+- `ProjectSurface.tsx` still contains some retired Project-side mapping edit plumbing that is now dead-path and should be removed during a focused cleanup pass.
+
+- **Attribution**: Connor Angiel
