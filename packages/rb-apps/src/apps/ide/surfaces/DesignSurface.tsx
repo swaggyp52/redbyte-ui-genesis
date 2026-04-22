@@ -4268,7 +4268,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     {selectedNodeTeachingProfile?.partKind ?? 'Part'}
                   </span>
                   <span className="ide-design-identity-sep"> · </span>
-                  {typeName}
+                  <span data-testid="ide-design-selection-type">{typeName}</span>
                 </p>
                 {selectedNodeTeachingProfile ? (
                   <div className="ide-design-inspector-meaning" data-testid="ide-design-inspector-meaning">
@@ -4298,10 +4298,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </p>
             {renderSelectionGuidance()}
             <div className="ide-design-inspector-facts ide-kv-list">
-              <div className="ide-kv-row">
-                <span>Type</span>
-                <span data-testid="ide-design-selection-type">{typeName}</span>
-              </div>
               <div className="ide-kv-row">
                 <span>Reference</span>
                 <code data-testid="ide-design-selection-id">{studentNodeLabel}</code>
@@ -5046,6 +5042,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       </div>
     );
   };
+  /** When the workspace strip already shows the full trace sentence, the dock line repeats it — use a calmer "Active" with tooltip. */
+  const formatTraceStateDock = (inActiveTrace: boolean) => {
+    if (!inActiveTrace) {
+      return { text: 'No trace locked' as const, title: undefined as string | undefined };
+    }
+    if (showWorkspaceStatusBar && traceState) {
+      return { text: 'Active' as const, title: traceState.label };
+    }
+    return { text: traceState!.label, title: undefined as string | undefined };
+  };
   const renderSelectionState = () => {
     if (hasSingleSelectedNode && selectedNode) {
       if (selectedSequentialInspector) {
@@ -5125,9 +5131,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 ) : null}
                 <div className="ide-kv-row">
                   <span>Trace state</span>
-                  <span data-testid="ide-design-context-trace-state">
-                    {traceState?.nodeIds.has(selectedNode.id) ? traceState.label : 'No trace locked'}
-                  </span>
+                  {(() => {
+                    const dock = formatTraceStateDock(traceState?.nodeIds.has(selectedNode.id) ?? false);
+                    return (
+                      <span data-testid="ide-design-context-trace-state" title={dock.title}>
+                        {dock.text}
+                      </span>
+                    );
+                  })()}
                 </div>
                 {renderReplayContextRows()}
               </div>
@@ -5182,9 +5193,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
               <div className="ide-kv-row">
                 <span>Trace state</span>
-                <span data-testid="ide-design-context-trace-state">
-                  {traceState?.nodeIds.has(selectedNode.id) ? traceState.label : 'No trace locked'}
-                </span>
+                {(() => {
+                  const dock = formatTraceStateDock(traceState?.nodeIds.has(selectedNode.id) ?? false);
+                  return (
+                    <span data-testid="ide-design-context-trace-state" title={dock.title}>
+                      {dock.text}
+                    </span>
+                  );
+                })()}
               </div>
               {renderReplayContextRows()}
             </div>
@@ -5265,9 +5281,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
             <div className="ide-kv-row">
               <span>Trace state</span>
-              <span data-testid="ide-design-context-trace-state">
-                {traceState?.kind === 'wire-net' && traceState.sourceKey === selectedWireContext.wireId ? traceState.label : 'No trace locked'}
-              </span>
+              {(() => {
+                const inWireTrace = Boolean(
+                  traceState?.kind === 'wire-net' && traceState.sourceKey === selectedWireContext.wireId,
+                );
+                const dock = formatTraceStateDock(inWireTrace);
+                return (
+                  <span data-testid="ide-design-context-trace-state" title={dock.title}>
+                    {dock.text}
+                  </span>
+                );
+              })()}
             </div>
             {renderReplayContextRows()}
           </div>
@@ -5311,7 +5335,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
             <div className="ide-kv-row">
               <span>Trace state</span>
-              <span data-testid="ide-design-context-trace-state">{traceState?.label ?? 'No trace locked'}</span>
+              {(() => {
+                const dock = formatTraceStateDock(Boolean(traceState));
+                return (
+                  <span data-testid="ide-design-context-trace-state" title={dock.title}>
+                    {dock.text}
+                  </span>
+                );
+              })()}
             </div>
             {renderReplayContextRows()}
           </div>
@@ -5412,7 +5443,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <span data-testid="ide-design-signal-depth">{selectedNodeEvalStats.depth}</span>
                 </div>
                 <div className="ide-kv-row">
-                  <span>Fanout</span>
+                  <span>Outgoing connections</span>
                   <span data-testid="ide-design-fanout">{selectedNodeEvalStats.fanout}</span>
                 </div>
               </div>

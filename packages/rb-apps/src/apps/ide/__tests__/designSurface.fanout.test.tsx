@@ -209,8 +209,10 @@ describe('DesignSurface fan-out — trace activation', () => {
     });
 
     await waitFor(() => {
+      expect(view.getByTestId('ide-design-active-trace').textContent).toContain('What SW0 drives');
       const traceLabel = view.getByTestId('ide-design-context-trace-state');
-      expect(traceLabel.textContent).toContain('What SW0 drives');
+      expect(traceLabel.textContent).toBe('Active');
+      expect(traceLabel.getAttribute('title')).toContain('What SW0 drives');
     });
   });
 
@@ -231,8 +233,10 @@ describe('DesignSurface fan-out — trace activation', () => {
     });
 
     await waitFor(() => {
+      expect(view.getByTestId('ide-design-active-trace').textContent).toContain('What feeds LD0');
       const traceLabel = view.getByTestId('ide-design-context-trace-state');
-      expect(traceLabel.textContent).toContain('What feeds LD0');
+      expect(traceLabel.textContent).toBe('Active');
+      expect(traceLabel.getAttribute('title')).toContain('What feeds LD0');
     });
 
     // Now clear and activate fan-out trace on sw0_node
@@ -251,9 +255,11 @@ describe('DesignSurface fan-out — trace activation', () => {
     });
 
     await waitFor(() => {
+      expect(view.getByTestId('ide-design-active-trace').textContent).toContain('What SW0 drives');
       const traceLabel = view.getByTestId('ide-design-context-trace-state');
-      expect(traceLabel.textContent).toContain('What SW0 drives');
-      expect(traceLabel.textContent).not.toContain('What feeds');
+      expect(traceLabel.textContent).toBe('Active');
+      expect(traceLabel.getAttribute('title')).toContain('What SW0 drives');
+      expect(traceLabel.getAttribute('title')).not.toContain('What feeds');
     });
   });
 
@@ -273,8 +279,9 @@ describe('DesignSurface fan-out — trace activation', () => {
     });
 
     await waitFor(() => {
+      expect(view.getByTestId('ide-design-active-trace').textContent).toContain('What SW0 drives');
       const traceLabel = view.getByTestId('ide-design-context-trace-state');
-      expect(traceLabel.textContent).toContain('What SW0 drives');
+      expect(traceLabel.textContent).toBe('Active');
     });
 
     act(() => {
@@ -319,10 +326,13 @@ describe('DesignSurface fan-out — trace activation', () => {
     });
 
     await waitFor(() => {
+      const full = view.getByTestId('ide-design-active-trace').textContent ?? '';
+      expect(full).toContain('One net:');
+      expect(full).toContain('SW0');
+      expect(full).toContain('out');
       const traceLabel = view.getByTestId('ide-design-context-trace-state');
-      expect(traceLabel.textContent).toContain('One net:');
-      expect(traceLabel.textContent).toContain('SW0');
-      expect(traceLabel.textContent).toContain('out');
+      expect(traceLabel.textContent).toBe('Active');
+      expect(traceLabel.getAttribute('title') ?? full).toContain('One net:');
     });
   });
 });
@@ -346,8 +356,10 @@ describe('DesignSurface fan-out — upstream trace regression', () => {
     });
 
     await waitFor(() => {
+      expect(view.getByTestId('ide-design-active-trace').textContent).toContain('What feeds LD0');
       const traceLabel = view.getByTestId('ide-design-context-trace-state');
-      expect(traceLabel.textContent).toContain('What feeds LD0');
+      expect(traceLabel.textContent).toBe('Active');
+      expect(traceLabel.getAttribute('title')).toContain('What feeds LD0');
     });
   });
 
