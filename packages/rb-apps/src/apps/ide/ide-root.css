@@ -18438,6 +18438,28 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   color: rgba(206, 221, 236, 0.92);
 }
 
+.ide-design-inspector-meaning {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  min-width: 0;
+}
+
+.ide-design-inspector-what-it-is {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(214, 228, 242, 0.96);
+}
+
+.ide-design-inspector-structure-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(182, 200, 218, 0.82);
+}
+
 .ide-design-inspector-next-step {
   margin: 0;
   font-size: 13px;

@@ -766,6 +766,96 @@ interface DesignSequentialInspectorContext {
   actionPort: string | null;
 }
 
+/** Short teaching copy for the selection identity card — not a substitute for the sequential callout. */
+interface DesignNodeTeachingProfile {
+  partKind: string;
+  whatItIs: string;
+  structureHint: string | null;
+}
+
+const NODE_TEACHING_COMBINATIONAL_TYPES = new Set<string>([
+  'AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR', 'XNOR',
+  'AND3', 'OR3', 'NAND3', 'NOR3', 'XOR3',
+  'MUX', 'DEMUX', 'DECODER', 'ENCODER', 'HALFADDER', 'FULLADDER', 'BUFFER',
+]);
+const NODE_TEACHING_BOARD_IO_TYPES = new Set<string>(['INPUT', 'OUTPUT', 'Switch', 'Lamp', 'Clock']);
+
+function teachingFirstSentence(behaviorSummary: string): string {
+  const t = behaviorSummary.trim();
+  const cut = t.indexOf('. ');
+  if (cut === -1) return t.length > 240 ? `${t.slice(0, 237)}…` : t;
+  return t.slice(0, cut + 1);
+}
+
+function resolveNodeInspectionTeachingProfile(
+  node: Node,
+  input: {
+    sequential: DesignSequentialInspectorContext | null;
+    customComponentDefs?: CompositeNodeDef[];
+    customComponentTypes?: Array<{ type: string; title: string; description: string }>;
+  }
+): DesignNodeTeachingProfile {
+  const { sequential, customComponentDefs, customComponentTypes } = input;
+  const fromTypes = customComponentTypes?.find((c) => c.type === node.type);
+  const fromDefs = customComponentDefs?.find((c) => c.name === node.type);
+  if (fromTypes || fromDefs) {
+    const title = fromTypes?.title?.trim() || fromDefs?.name?.trim() || nodeTypeLabel(node.type);
+    const desc = (fromTypes?.description ?? fromDefs?.description ?? '').trim();
+    return {
+      partKind: 'Saved component',
+      whatItIs:
+        desc.length > 0
+          ? desc
+          : `Reusable “${title}” from your project — it behaves like a single block; connect only through its ports.`,
+      structureHint:
+        'Internals are fixed in this build — use the port list in the lower inspector to see inputs and outputs.',
+    };
+  }
+  if (sequential) {
+    return {
+      partKind: 'Sequential',
+      whatItIs: teachingFirstSentence(sequential.behaviorSummary),
+      structureHint:
+        'Port roles and timing are expanded in the Sequential guidance card below; follow clock/enable before you trust Q outputs.',
+    };
+  }
+  if (NODE_TEACHING_BOARD_IO_TYPES.has(node.type)) {
+    if (node.type === 'INPUT' || node.type === 'Switch') {
+      return {
+        partKind: 'Board I/O',
+        whatItIs: 'Drives a test or board input into the schematic — Map Pins ties it to a physical switch or pin when you go to the board.',
+        structureHint: null,
+      };
+    }
+    if (node.type === 'OUTPUT' || node.type === 'Lamp') {
+      return {
+        partKind: 'Board I/O',
+        whatItIs: 'Receives a net that should reach an LED or other board output; Map Pins assigns the Basys3 pin name.',
+        structureHint: null,
+      };
+    }
+    if (node.type === 'Clock') {
+      return {
+        partKind: 'Board I/O',
+        whatItIs: 'A timing source for clocked (sequential) logic — fan out from here to flip-flop CLK and register clock pins.',
+        structureHint: null,
+      };
+    }
+  }
+  if (NODE_TEACHING_COMBINATIONAL_TYPES.has(node.type)) {
+    return {
+      partKind: 'Combinational',
+      whatItIs: 'Pure Boolean logic: outputs depend only on the current input values, not on earlier clock cycles.',
+      structureHint: null,
+    };
+  }
+  return {
+    partKind: 'Primitive',
+    whatItIs: `${nodeTypeLabel(node.type)} — a built-in palette block for this course.`,
+    structureHint: null,
+  };
+}
+
 function resolveDesignDebugSample(
   signals: Record<string, 0 | 1>,
   preferredKeys: readonly string[]
@@ -3426,6 +3516,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       selectedNodeSignalMap,
     ]
   );
+  const selectedNodeTeachingProfile = useMemo(
+    () =>
+      selectedNode
+        ? resolveNodeInspectionTeachingProfile(selectedNode, {
+            sequential: selectedSequentialInspector,
+            customComponentDefs,
+            customComponentTypes,
+          })
+        : null,
+    [customComponentDefs, customComponentTypes, selectedNode, selectedSequentialInspector]
+  );
   const selectedNodeInputDrivers = useMemo(() => {
     if (!selectedNode || liveSignals.size === 0) return [];
     return editorCircuit.connections
@@ -4136,8 +4237,30 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   ) : null}
                 </div>
                 <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                  <span data-testid="ide-design-inspector-part-kind">
+                    {selectedNodeTeachingProfile?.partKind ?? 'Part'}
+                  </span>
+                  <span className="ide-design-identity-sep"> · </span>
                   {typeName}
                 </p>
+                {selectedNodeTeachingProfile ? (
+                  <div className="ide-design-inspector-meaning" data-testid="ide-design-inspector-meaning">
+                    <p
+                      className="ide-design-inspector-what-it-is"
+                      data-testid="ide-design-inspector-what-it-is"
+                    >
+                      {selectedNodeTeachingProfile.whatItIs}
+                    </p>
+                    {selectedNodeTeachingProfile.structureHint ? (
+                      <p
+                        className="ide-design-inspector-structure-hint"
+                        data-testid="ide-design-inspector-structure-hint"
+                      >
+                        {selectedNodeTeachingProfile.structureHint}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
               <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
                 {selectionStatusLabel}

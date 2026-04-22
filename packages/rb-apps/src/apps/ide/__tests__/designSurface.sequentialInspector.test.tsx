@@ -246,6 +246,11 @@ describe('DesignSurface sequential inspector hardening', () => {
       expect(view.getByTestId('ide-design-sequential-guidance')).toBeTruthy();
     });
 
+    expect(view.getByTestId('ide-design-inspector-part-kind').textContent).toBe('Sequential');
+    expect(view.getByTestId('ide-design-inspector-what-it-is').textContent).toContain(
+      'captures D on the active clock edge'
+    );
+    expect(view.getByTestId('ide-design-inspector-structure-hint').textContent).toContain('Sequential guidance');
     expect(view.getByTestId('ide-design-sequential-guidance-copy').textContent).toContain(
       'captures D on the active clock edge'
     );
