@@ -1417,6 +1417,17 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             const isNetHighlighted =
               (hoveredNetId !== null && netId === hoveredNetId) ||
               (netId !== null && selectedNetIds.has(netId));
+            const tracePathHighlightActive =
+              probeWireHighlights != null && probeWireHighlights.size > 0;
+            const isOnTracedPath = (probeColors?.length ?? 0) > 0;
+            const hasMismatch = (mismatchColors?.length ?? 0) > 0;
+            const unrelatedInTraceScope =
+              tracePathHighlightActive &&
+              !isOnTracedPath &&
+              !hasMismatch &&
+              !selection.wires.has(wireId) &&
+              hoveredWireId !== wireId &&
+              !isNetHighlighted;
 
             return (
               <WireView
@@ -1443,6 +1454,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                 signal={signal}
                 probeColors={probeColors}
                 mismatchColors={mismatchColors}
+                unrelatedInTraceScope={unrelatedInTraceScope}
               />
             );
           })}

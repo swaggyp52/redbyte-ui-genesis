@@ -105,6 +105,8 @@ export interface WireViewProps {
   signal?: 0 | 1;
   probeColors?: string[];
   mismatchColors?: string[];
+  /** When a trace or probe path is active on the canvas, de-emphasize other wires to reduce clutter. */
+  unrelatedInTraceScope?: boolean;
 }
 
 const WireViewComponent: React.FC<WireViewProps> = ({
@@ -122,6 +124,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
   signal,
   probeColors,
   mismatchColors,
+  unrelatedInTraceScope = false,
 }) => {
   const { fromNodeId, toNodeId, fromPortName, toPortName, wireId } = getConnectionKey(connection);
 
@@ -165,12 +168,15 @@ const WireViewComponent: React.FC<WireViewProps> = ({
     mismatchGlowStroke: baseBandStyle.mismatchGlowStroke * wireScale,
   };
 
+  const groupOpacity = isBeingRewired ? 0.35 : unrelatedInTraceScope ? 0.4 : undefined;
+
   return (
     <g
       data-wire-id={wireId}
       data-wire-hovered={isHovered ? '1' : '0'}
       data-wire-selected={isSelected ? '1' : '0'}
       data-wire-being-rewired={isBeingRewired ? '1' : '0'}
+      data-wire-trace-dim={unrelatedInTraceScope ? '1' : '0'}
       data-wire-zoom-band={zoomBand}
       onClick={handleClick}
       onContextMenu={(event) => {
@@ -180,7 +186,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
       }}
       onMouseEnter={() => onHover?.(wireId)}
       onMouseLeave={() => onHover?.(null)}
-      style={{ cursor: 'pointer', opacity: isBeingRewired ? 0.35 : undefined }}
+      style={{ cursor: 'pointer', opacity: groupOpacity }}
     >
       {/* Invisible wider path for easier clicking */}
       <path d={path} fill="none" stroke="transparent" strokeWidth={bandStyle.hitWidth} />
